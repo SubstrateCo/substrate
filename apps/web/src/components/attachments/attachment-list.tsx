@@ -10,14 +10,19 @@ export function AttachmentList({
   attachments,
   href,
   actions,
+  compact = false,
 }: {
   attachments: Attachment[];
   href: (attachment: Attachment) => string;
   actions?: (attachment: Attachment) => ReactNode;
+  compact?: boolean;
 }) {
   if (!attachments.length) return null;
   return (
-    <ul aria-label="Attachments" className="my-2 grid max-w-md gap-2">
+    <ul
+      aria-label="Attachments"
+      className={cn("my-2 grid", compact ? "max-w-xs gap-1" : "max-w-md gap-2")}
+    >
       {attachments.map((attachment) => (
         <li
           key={attachment.id}
@@ -29,7 +34,10 @@ export function AttachmentList({
           <a
             href={href(attachment)}
             download={attachment.filename}
-            className="flex min-w-0 flex-1 items-center gap-3 rounded-md px-3 py-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            className={cn(
+              "flex min-w-0 flex-1 items-center rounded-md text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+              compact ? "gap-2 px-2 py-1.5" : "gap-3 px-3 py-2",
+            )}
             aria-label={`Download ${attachment.filename}`}
           >
             <File aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />

@@ -10,6 +10,7 @@ import type { WorkspaceScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
 import type { ObjectStorage } from "../../storage/types";
 import type { CommittedPublisher } from "../realtime/committed";
+import { previewAttachmentImage } from "./attachment-image";
 import type { z } from "zod";
 
 export function createAttachmentService({
@@ -43,6 +44,17 @@ export function createAttachmentService({
         return {
           bytes: await storage.read(file.objectKey, MAX_FILE_BYTES),
           filename: file.filename,
+        };
+      });
+    },
+    messageAttachmentPreview(
+      scope: WorkspaceScope,
+      input: z.output<typeof messageAttachmentRequest>,
+    ) {
+      return serviceResult(async () => {
+        const file = await scope.repositories.files.messageContent(input);
+        return {
+          bytes: await previewAttachmentImage(await storage.read(file.objectKey, MAX_FILE_BYTES)),
         };
       });
     },

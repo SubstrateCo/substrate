@@ -6,17 +6,17 @@ import { LinkMessageWork } from "../../context/links/link-message-work";
 import { MessageContext, type MessageContextState } from "../../context/references/message-context";
 import { ReferencedMessageBody } from "../../context/references/referenced-message-body";
 import { EditMessageDialog } from "./edit-message-dialog";
-import { messageAttachmentUrl } from "@/api/files/attachments";
+import { messageAttachmentUrl, messageAttachmentPreviewUrl } from "@/api/files/attachments";
 import type { Message } from "@/api/messaging/requests";
 import {
   AgentWorkBadge,
   AgentWorkSlot,
   AgentWorkStatus,
 } from "@/components/agent-work/agent-work-slot";
-import { AttachmentList } from "@/components/attachments/attachment-list";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { LinkedMessage } from "@/components/messaging/messages/linked-message";
+import { MessageAttachments } from "@/components/messaging/messages/message-attachments";
 import { MessageItem as MessageItemView } from "@/components/messaging/messages/message-item-view";
 import { MessageReaction } from "@/components/messaging/messages/message-reaction";
 import { ReactionPeopleDialog } from "@/components/messaging/messages/reaction-people-dialog";
@@ -118,8 +118,16 @@ export function MessageItem({
                 context={context}
                 body={message.body}
               />
-              <AttachmentList
+              <MessageAttachments
                 attachments={message.attachments}
+                previewHref={(attachment) =>
+                  messageAttachmentPreviewUrl({
+                    organizationId,
+                    conversationId: message.conversationId,
+                    messageId: message.id,
+                    attachmentId: attachment.id,
+                  })
+                }
                 href={(attachment) =>
                   messageAttachmentUrl({
                     organizationId,

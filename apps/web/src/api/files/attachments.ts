@@ -20,6 +20,8 @@ export const taskAttachmentUrl = (data: z.input<typeof taskAttachmentRequest>) =
   api.files.attachments.tasks.content.$path({ query: data });
 export const messageAttachmentUrl = (data: z.input<typeof messageAttachmentRequest>) =>
   api.files.attachments.messages.content.$path({ query: data });
+export const messageAttachmentPreviewUrl = (data: z.input<typeof messageAttachmentRequest>) =>
+  api.files.attachments.messages.preview.$path({ query: data });
 
 export async function uploadAttachment(
   file: File,

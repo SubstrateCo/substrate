@@ -38,6 +38,21 @@ export function createAttachmentRoutes(services: AttachmentService, scopes: Scop
       },
     )
     .get(
+      "/messages/preview",
+      v("query", messageAttachmentRequest),
+      scopes.workspace("query"),
+      async (c) => {
+        const result = await services.messageAttachmentPreview(c.var.scope, c.req.valid("query"));
+        if (!result.success) return respond(c, result);
+        c.header("Cache-Control", "private, no-store");
+        c.header("Vary", "Cookie");
+        c.header("Content-Disposition", "inline");
+        c.header("Content-Type", "image/webp");
+        c.header("X-Content-Type-Options", "nosniff");
+        return c.body(new Uint8Array(result.data.bytes));
+      },
+    )
+    .get(
       "/messages/content",
       v("query", messageAttachmentRequest),
       scopes.workspace("query"),
