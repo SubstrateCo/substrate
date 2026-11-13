@@ -1,4 +1,4 @@
-import { interactionFields } from "@substrate/contracts/crm/input";
+import { interactionFields } from "@substrate/contracts/context/interactions";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { parseInput } from "../../core/contacts/inputs";
@@ -7,11 +7,11 @@ import { contactInteractions } from "../../core/contacts/interactions.schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { messageEntityReferences } from "../context/schema";
+import { recordCrmActivity } from "../crm/activity";
+import { presentInteraction } from "../crm/actor-views";
+import { crmContactProfiles } from "../crm/schema";
 import { requireMessage } from "../messaging/access";
-import { recordCrmActivity } from "./activity";
-import { presentInteraction } from "./actor-views";
-import { crmInteractionPublications } from "./publications.schema";
-import { crmContactProfiles } from "./schema";
+import { crmInteractionPublications } from "./interaction-publications.schema";
 import { and, eq } from "drizzle-orm";
 import { createHash } from "node:crypto";
 import { z } from "zod";

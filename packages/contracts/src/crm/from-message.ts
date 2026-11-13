@@ -1,5 +1,6 @@
+import { contactFields } from "../contacts/input.ts";
 import { organizationId } from "../workspace.ts";
-import { accountFields, contactFields, dealFields } from "./input.ts";
+import { accountFields, dealFields } from "./input.ts";
 import { z } from "zod";
 
 const source = z.object({

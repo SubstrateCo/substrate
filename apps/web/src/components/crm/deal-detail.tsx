@@ -16,15 +16,11 @@ import { WorkDiscussions } from "@/components/context/discussions/work-discussio
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
 import { formatDueDate } from "@/lib/format/date";
-import { crmLink } from "@/lib/navigation/record-links";
+import { crmLink, contactLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
-import { useCrmMutation } from "@/queries/crm/mutations";
-import {
-  accountsOptions,
-  contactsOptions,
-  dealOptions,
-  pipelineOptions,
-} from "@/queries/crm/options";
+import { contactsOptions } from "@/queries/contacts/options";
+import { accountsOptions, dealOptions, pipelineOptions } from "@/queries/crm/options";
+import { useRecordMutation } from "@/queries/records/mutations";
 import { ArrowRight } from "lucide-react";
 
 export function DealDetail({
@@ -36,7 +32,7 @@ export function DealDetail({
 }) {
   const query = useQuery(dealOptions(organizationId, entityId));
   const pipeline = useQuery(pipelineOptions(organizationId));
-  const mutation = useCrmMutation(organizationId);
+  const mutation = useRecordMutation(organizationId, "deals");
   const [dialog, setDialog] = useState<"edit" | "archive" | "transition" | null>(null);
   const [editingRecord, setEditingRecord] = useState<RecordDraft | null>(null);
   const accounts = useQuery({ ...accountsOptions(organizationId), enabled: dialog === "edit" });
@@ -130,7 +126,7 @@ export function DealDetail({
                   {participants.map(({ contact, isPrimary }) => (
                     <li key={contact.entityId}>
                       <Link
-                        {...crmLink(organizationId, "contacts", contact.entityId)}
+                        {...contactLink(organizationId, contact.entityId)}
                         className="underline underline-offset-4"
                       >
                         {contact.displayName}

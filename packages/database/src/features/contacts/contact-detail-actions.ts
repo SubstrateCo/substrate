@@ -1,9 +1,9 @@
-import type { CrmWrite } from "@substrate/contracts/crm/input";
+import type { ContactWrite } from "@substrate/contracts/contacts/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { contactRepository } from "../../core/contacts/repository";
 import type { RepositoryContext } from "../../core/repository-context";
-import { recordCrmActivity } from "./activity";
+import { recordCrmActivity } from "../crm/activity";
 
 type Action =
   | "addIdentifier"
@@ -15,7 +15,7 @@ type Action =
   | "addUrl"
   | "updateUrl"
   | "removeUrl";
-type Input = Extract<CrmWrite, { action: Action }>;
+type Input = Extract<ContactWrite, { action: Action }>;
 type Details = Awaited<ReturnType<ReturnType<typeof contactRepository>["getDetail"]>>;
 function contentKey(detail: Details) {
   return JSON.stringify({

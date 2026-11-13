@@ -68,8 +68,8 @@ test("only a CRM root owner can list its explicit human grants", async () => {
   expect(await rejection(a.crm.grants(project.entityId))).toMatchObject({
     name: "AccessDeniedError",
   });
-  const contact = await a.crm.createContact({ displayName: "Customer" });
-  const interaction = await a.crm.createInteraction({
+  const contact = await a.contacts.createContact({ displayName: "Customer" });
+  const interaction = await a.contactInteractions.createInteraction({
     contactEntityId: contact.entityId,
     kind: "call",
     summary: "Call",

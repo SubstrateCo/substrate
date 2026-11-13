@@ -2,25 +2,30 @@ import { QueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 import { domainTargets, invalidateTargets } from "../targets";
-import { invalidateCrmWrite } from "./mutations";
+import { invalidateRecordWrite } from "./invalidation";
 import { expect, test } from "bun:test";
 
 test("CRM writes refresh customer details, tasks, and related context only in their workspace", async () => {
   const client = new QueryClient();
   const affected = [
     queryKeys.crmList("workspace", "accounts", "", false),
-    queryKeys.crmRecord("workspace", "contacts", "person"),
+    [...queryKeys.contacts("workspace"), "record", "person"],
+    [...queryKeys.contactInteractions("workspace"), "person"],
     queryKeys.crmRecord("workspace", "deals", "deal"),
     queryKeys.crmActivity("workspace", "deal"),
     queryKeys.related("workspace", "person"),
     queryKeys.project("workspace", "project"),
   ];
-  const foreign = queryKeys.crmRecord("other", "deals", "deal");
-  for (const key of [...affected, foreign]) client.setQueryData(key, []);
+  const foreign = [
+    queryKeys.crmRecord("other", "deals", "deal"),
+    queryKeys.contacts("other"),
+    queryKeys.contactInteractions("other"),
+  ];
+  for (const key of [...affected, ...foreign]) client.setQueryData(key, []);
   try {
-    await invalidateCrmWrite(client, "workspace");
+    await invalidateRecordWrite(client, "workspace");
     for (const key of affected) expect(client.getQueryState(key)?.isInvalidated).toBe(true);
-    expect(client.getQueryState(foreign)?.isInvalidated).toBe(false);
+    for (const key of foreign) expect(client.getQueryState(key)?.isInvalidated).toBe(false);
   } finally {
     client.clear();
   }

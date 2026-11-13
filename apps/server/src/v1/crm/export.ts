@@ -5,6 +5,7 @@ import { respond, v } from "../../shared/http";
 import type { ScopeEnv, Scopes, WorkspaceScope } from "../../shared/scope";
 import { ServiceError, serviceResult } from "../../shared/service-result";
 import { Hono } from "hono";
+import { z } from "zod";
 
 function cell(value: string | Date | null) {
   let text = value instanceof Date ? value.toISOString() : (value ?? "");
@@ -54,16 +55,18 @@ export function exportCrm(scope: WorkspaceScope, input: CrmExport) {
           cells: [row.entityId, row.name, row.website, row.domain, row.archivedAt],
         }));
       } else if (input.kind === "contacts") {
-        rows = (await crm.listContacts(options)).map(({ contact, archivedAt }) => ({
-          id: contact.entityId,
-          cells: [
-            contact.entityId,
-            contact.displayName,
-            contact.givenName,
-            contact.familyName,
-            archivedAt,
-          ],
-        }));
+        rows = (await scope.repositories.contacts.listContacts(options)).map(
+          ({ contact, archivedAt }) => ({
+            id: contact.entityId,
+            cells: [
+              contact.entityId,
+              contact.displayName,
+              contact.givenName,
+              contact.familyName,
+              archivedAt,
+            ],
+          }),
+        );
       } else {
         rows = (await crm.listDeals(options)).map((row) => ({
           id: row.entityId,
@@ -97,7 +100,7 @@ export function exportCrm(scope: WorkspaceScope, input: CrmExport) {
 export function createCrmExportRoutes(scopes: Scopes) {
   return new Hono<ScopeEnv>().get(
     "/export",
-    v("query", crmExport),
+    v("query", crmExport.extend({ kind: z.enum(["accounts", "deals"]) })),
     scopes.workspace("query"),
     async (c) => {
       const input = c.req.valid("query");

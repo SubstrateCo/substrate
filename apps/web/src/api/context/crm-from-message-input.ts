@@ -1,13 +1,9 @@
+import { contactFields, type ContactWrite } from "@substrate/contracts/contacts/input";
 import type { CrmFromMessage } from "@substrate/contracts/crm/from-message";
-import {
-  accountFields,
-  contactFields,
-  dealFields,
-  type CrmWrite,
-} from "@substrate/contracts/crm/input";
+import { accountFields, dealFields, type CrmWrite } from "@substrate/contracts/crm/input";
 
 export type MessageRecordDraft = Extract<
-  CrmWrite,
+  CrmWrite | ContactWrite,
   { action: "createAccount" | "createContact" | "createDeal" }
 >;
 

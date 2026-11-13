@@ -97,7 +97,7 @@ test("a caller rollback removes CRM activity with the record", async () => {
 
 test("contact detail and interaction wrappers record changes without duplicate no-ops", async () => {
   const a = f.forActor(f.alice);
-  const contact = await a.crm.createContact({ displayName: "Customer" });
+  const contact = await a.contacts.createContact({ displayName: "Customer" });
   const input = {
     organizationId: f.orgA,
     contactEntityId: contact.entityId,
@@ -105,24 +105,28 @@ test("contact detail and interaction wrappers record changes without duplicate n
     type: "email" as const,
     value: "buyer@example.com",
   };
-  const identifier = await a.crm.mutateContactDetail(input);
+  const identifier = await a.contacts.mutateContactDetail(input);
   if (!("id" in identifier)) throw new Error("Expected an identifier result.");
-  await a.crm.mutateContactDetail({ ...input, action: "updateIdentifier", id: identifier.id });
-  const interaction = await a.crm.createInteraction({
+  await a.contacts.mutateContactDetail({ ...input, action: "updateIdentifier", id: identifier.id });
+  const interaction = await a.contactInteractions.createInteraction({
     contactEntityId: contact.entityId,
     kind: "call",
     summary: "Called customer",
     occurredAt: new Date(),
   });
-  await a.crm.updateInteraction(interaction.entityId, { summary: "Corrected summary" });
-  await a.crm.updateInteraction(interaction.entityId, { summary: "Corrected summary" });
+  await a.contactInteractions.updateInteraction(interaction.entityId, {
+    summary: "Corrected summary",
+  });
+  await a.contactInteractions.updateInteraction(interaction.entityId, {
+    summary: "Corrected summary",
+  });
   const rows = (await activity(contact.entityId)).items;
   expect(
     rows.filter((row) => row.action === "updated" && row.changedFields.includes("identifier")),
   ).toHaveLength(1);
   expect(rows.filter((row) => row.action === "interaction_created")).toHaveLength(1);
   expect(rows.filter((row) => row.action === "interaction_updated")).toHaveLength(1);
-  await a.crm.deleteInteraction(interaction.entityId);
+  await a.contactInteractions.deleteInteraction(interaction.entityId);
   expect(
     (await activity(contact.entityId)).items.filter((row) => row.action === "interaction_deleted"),
   ).toHaveLength(1);
@@ -133,7 +137,7 @@ test("contact detail and interaction wrappers record changes without duplicate n
 
 test("publication and follow-up request retries append only one event, with independently hidden task context", async () => {
   const { repos, reply, project } = await contextConversation(f);
-  const contact = await repos.crm.createContact({ displayName: "Customer" });
+  const contact = await repos.contacts.createContact({ displayName: "Customer" });
   await repos.crm.share(contact.entityId, f.bob, "view");
   const alice = await f.forSession("alice");
   const input = {
@@ -144,8 +148,8 @@ test("publication and follow-up request retries append only one event, with inde
     messageId: reply.id,
     consentToContactAudience: true as const,
   };
-  await alice.crm.publishInteraction(input);
-  await alice.crm.publishInteraction(input);
+  await alice.contactInteractions.publishInteraction(input);
+  await alice.contactInteractions.publishInteraction(input);
   const followup = {
     entityId: contact.entityId,
     projectEntityId: project.entityId,
@@ -182,7 +186,7 @@ test("a non-admin can revoke their own grant without losing the committed activi
 test("contact profile, detail and interaction mutations publish data-less committed contact hints", async () => {
   const a = f.forActor(f.alice);
   const created = await a.transaction((repos) =>
-    repos.crm.createContact({ displayName: "Customer" }),
+    repos.contacts.createContact({ displayName: "Customer" }),
   );
   const contact = created.result;
   const expected = {
@@ -191,11 +195,11 @@ test("contact profile, detail and interaction mutations publish data-less commit
   } as const;
   expect(created.hints).toContainEqual(expected);
   const profile = await a.transaction((repos) =>
-    repos.crm.updateContact(contact.entityId, { notes: "Private CRM note" }),
+    repos.contacts.updateContact(contact.entityId, { notes: "Private CRM note" }),
   );
   expect(profile.hints).toContainEqual(expected);
   const detail = await a.transaction((repos) =>
-    repos.crm.mutateContactDetail({
+    repos.contacts.mutateContactDetail({
       organizationId: f.orgA,
       action: "addUrl",
       contactEntityId: contact.entityId,
@@ -204,7 +208,7 @@ test("contact profile, detail and interaction mutations publish data-less commit
   );
   expect(detail.hints).toContainEqual(expected);
   const interaction = await a.transaction((repos) =>
-    repos.crm.createInteraction({
+    repos.contactInteractions.createInteraction({
       contactEntityId: contact.entityId,
       summary: "Private call summary",
       kind: "call",
@@ -213,13 +217,13 @@ test("contact profile, detail and interaction mutations publish data-less commit
   );
   expect(interaction.hints).toContainEqual(expected);
   const updated = await a.transaction((repos) =>
-    repos.crm.updateInteraction(interaction.result.entityId, {
+    repos.contactInteractions.updateInteraction(interaction.result.entityId, {
       summary: "Updated private call summary",
     }),
   );
   expect(updated.hints).toContainEqual(expected);
   const deleted = await a.transaction((repos) =>
-    repos.crm.deleteInteraction(interaction.result.entityId),
+    repos.contactInteractions.deleteInteraction(interaction.result.entityId),
   );
   expect(deleted.hints).toContainEqual(expected);
   const hints = JSON.stringify([

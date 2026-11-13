@@ -1,7 +1,7 @@
-export type CrmSection = "accounts" | "contacts" | "deals" | "settings";
-export type CrmKind = Exclude<CrmSection, "settings">;
+export type CrmSection = "accounts" | "deals" | "settings";
+export type CrmKind = Exclude<CrmSection, "settings"> | "contacts";
 
-export const sectionLabels: Record<CrmSection, string> = {
+export const sectionLabels: Record<CrmSection | "contacts", string> = {
   accounts: "Accounts",
   contacts: "Contacts",
   deals: "Deals",

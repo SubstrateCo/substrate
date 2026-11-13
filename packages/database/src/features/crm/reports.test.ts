@@ -4,14 +4,14 @@ import { expect, test } from "bun:test";
 const f = setupDatabase();
 test("a customer's touch refreshes only the deal it explicitly references", async () => {
   const a = f.forActor(f.alice);
-  const contact = await a.crm.createContact({ displayName: "Shared buyer" });
+  const contact = await a.contacts.createContact({ displayName: "Shared buyer" });
   const stages = await a.crm.ensurePipeline();
   const fields = { contactEntityIds: [contact.entityId], stageId: stages[0]!.id };
   const dealA = await a.crm.createDeal({ ...fields, title: "Pursuit A" });
   const dealB = await a.crm.createDeal({ ...fields, title: "Pursuit B" });
   const asOf = new Date(Date.now() + 40 * 86400000).toISOString();
   const recent = new Date(+new Date(asOf) - 86400000);
-  const linked = await a.crm.createInteraction({
+  const linked = await a.contactInteractions.createInteraction({
     contactEntityId: contact.entityId,
     kind: "call",
     occurredAt: recent,
@@ -29,7 +29,7 @@ test("a customer's touch refreshes only the deal it explicitly references", asyn
   expect(stale.items.map((row) => row.entityId)).toEqual([dealB.entityId]);
   expect(stale.items[0]!.lastMeaningfulInteractionAt).toBeNull();
 
-  await a.crm.createInteraction({
+  await a.contactInteractions.createInteraction({
     contactEntityId: contact.entityId,
     kind: "meeting",
     occurredAt: new Date(+recent + 3600000),
@@ -77,7 +77,7 @@ test("follow-up exceptions use readable tasks and meaningful touches with matchi
       consentToTaskAudience: true,
     });
   }
-  const interaction = await a.crm.createInteraction({
+  const interaction = await a.contactInteractions.createInteraction({
     contactEntityId: contact.entityId,
     kind: "call",
     occurredAt: new Date(+new Date(asOf) - 86400000),
@@ -88,7 +88,7 @@ test("follow-up exceptions use readable tasks and meaningful touches with matchi
     targetEntityId: deals[0]!.entityId,
     relationType: "related_to",
   });
-  const note = await a.crm.createInteraction({
+  const note = await a.contactInteractions.createInteraction({
     contactEntityId: contact.entityId,
     kind: "note",
     occurredAt: new Date(+new Date(asOf) - 86400000),

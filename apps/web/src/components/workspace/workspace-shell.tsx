@@ -6,12 +6,13 @@ import { appShortcutKeys, useAppShortcuts } from "./use-app-shortcuts";
 import { UserMenu } from "./user-menu";
 import { RealtimeContainerContext } from "@/components/realtime/realtime-container-context";
 import { WorkspaceAppButton } from "@/components/workspace/workspace-app-button";
-import { Bell, Bot, Handshake, ListTodo, MessageSquare } from "lucide-react";
+import { Bell, Bot, Handshake, ListTodo, MessageSquare, Users } from "lucide-react";
 
 export type WorkspaceView =
   | "messages"
   | "tasks"
   | "crm"
+  | "contacts"
   | "agents"
   | "notifications"
   | "user-settings"
@@ -94,6 +95,13 @@ export function WorkspaceShell({
           unreadLabel="needs you"
           dotTone="warning"
           onClick={() => onViewChange("agents")}
+        />
+        <WorkspaceAppButton
+          label="Contacts"
+          icon={Users}
+          shortcut={appShortcutKeys.contacts}
+          active={view === "contacts"}
+          onClick={() => onViewChange("contacts")}
         />
         <div className="mt-auto flex flex-col items-center gap-3">
           <WorkspaceAppButton

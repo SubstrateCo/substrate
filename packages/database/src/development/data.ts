@@ -10,8 +10,26 @@ export const developmentTeams = [
       { id: "dev-carol", name: "Carol Rivera", email: "carol@northstar.test", role: "member" },
     ],
     contacts: [
-      { name: "Jamie Park — Cedar Analytics", email: "jamie@cedar.test" },
-      { name: "Morgan Reed — Harbor Health", email: "morgan@harbor.test" },
+      {
+        name: "Jamie Park — Cedar Analytics",
+        givenName: "Jamie",
+        familyName: "Park",
+        email: "jamie@cedar.test",
+        phone: "+1 415 555 0101",
+        website: "https://cedar.test",
+        notes:
+          "Product lead at Cedar Analytics. Coordinates the customer portal pilot and prefers email for review notes.",
+      },
+      {
+        name: "Morgan Reed — Harbor Health",
+        givenName: "Morgan",
+        familyName: "Reed",
+        email: "morgan@harbor.test",
+        phone: "+1 206 555 0102",
+        website: "https://harbor.test",
+        notes:
+          "Operations lead at Harbor Health. Owns pilot feedback and launch readiness. Available for afternoon check-ins.",
+      },
     ],
     projects: [
       {
@@ -52,8 +70,26 @@ export const developmentTeams = [
       { id: "dev-farah", name: "Farah Ahmed", email: "farah@orbit.test", role: "member" },
     ],
     contacts: [
-      { name: "Taylor Ellis — Fieldwork Media", email: "taylor@fieldwork.test" },
-      { name: "Sam Okafor — Summit Events", email: "sam@summit.test" },
+      {
+        name: "Taylor Ellis — Fieldwork Media",
+        givenName: "Taylor",
+        familyName: "Ellis",
+        email: "taylor@fieldwork.test",
+        phone: "+1 212 555 0103",
+        website: "https://fieldwork.test",
+        notes:
+          "Creative director at Fieldwork Media. Reviews accessible brand assets and coordinates campaign approvals.",
+      },
+      {
+        name: "Sam Okafor — Summit Events",
+        givenName: "Sam",
+        familyName: "Okafor",
+        email: "sam@summit.test",
+        phone: "+1 312 555 0104",
+        website: "https://summit.test",
+        notes:
+          "Producer at Summit Events. Coordinates the partner launch, speaker brief, and event schedule.",
+      },
     ],
     projects: [
       {

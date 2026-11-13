@@ -3,12 +3,12 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { useState } from "react";
 
-import { CrmExport } from "./crm-export";
-import { CrmResourceState } from "./crm-resource-state";
-import { sectionLabels, singularLabels, type CrmKind } from "./crm-types";
-import { DealPipeline } from "./deal-pipeline";
-import { RecordEditor } from "./record-editor";
-import { RecordList } from "./record-list";
+import { CrmExport } from "@/components/crm/crm-export";
+import { CrmResourceState } from "@/components/crm/crm-resource-state";
+import { sectionLabels, singularLabels, type CrmKind } from "@/components/crm/crm-types";
+import { DealPipeline } from "@/components/crm/deal-pipeline";
+import { RecordEditor } from "@/components/crm/record-editor";
+import { RecordList } from "@/components/crm/record-list";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -16,18 +16,25 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
+import { contactLink, crmLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
-import { useCrmMutation } from "@/queries/crm/mutations";
+import { contactsOptions } from "@/queries/contacts/options";
 import {
   accountsOptions,
-  contactsOptions,
   dealsOptions,
   pipelineOptions,
   crmSettingsOptions,
 } from "@/queries/crm/options";
+import { useRecordMutation } from "@/queries/records/mutations";
 import { Plus } from "lucide-react";
 
-export function CrmCollection({ organizationId, kind }: { organizationId: string; kind: CrmKind }) {
+export function RecordCollection({
+  organizationId,
+  kind,
+}: {
+  organizationId: string;
+  kind: CrmKind;
+}) {
   const [search, setSearch] = useState("");
   const [archived, setArchived] = useState(false);
   const debounced = useSearchDebounce(search, JSON.stringify([organizationId, kind, archived]));
@@ -36,7 +43,7 @@ export function CrmCollection({ organizationId, kind }: { organizationId: string
   const [cursors, setCursors] = useState<string[]>([]);
   const afterEntityId = cursors.at(-1);
   const navigate = useNavigate();
-  const mutation = useCrmMutation(organizationId);
+  const mutation = useRecordMutation(organizationId, kind);
   const accounts = useQuery({
     ...accountsOptions(
       organizationId,
@@ -240,14 +247,11 @@ export function CrmCollection({ organizationId, kind }: { organizationId: string
               onSuccess: (result) => {
                 setCreating(false);
                 if ("entityId" in result)
-                  void navigate({
-                    to: "/crm",
-                    search: {
-                      workspaceId: organizationId,
-                      section: kind,
-                      recordId: result.entityId,
-                    },
-                  });
+                  void navigate(
+                    kind === "contacts"
+                      ? contactLink(organizationId, result.entityId)
+                      : crmLink(organizationId, kind, result.entityId),
+                  );
               },
             })
           }

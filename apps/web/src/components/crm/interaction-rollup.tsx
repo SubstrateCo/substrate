@@ -7,7 +7,7 @@ import { CrmResourceState } from "./crm-resource-state";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
-import { crmLink } from "@/lib/navigation/record-links";
+import { contactLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { crmTimelineOptions } from "@/queries/crm/options";
 
@@ -64,7 +64,7 @@ export function InteractionRollup({
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Timestamp value={row.occurredAt} format="datetime" />
               <Link
-                {...crmLink(organizationId, "contacts", row.contactEntityId)}
+                {...contactLink(organizationId, row.contactEntityId)}
                 className="underline underline-offset-4"
               >
                 Open contact

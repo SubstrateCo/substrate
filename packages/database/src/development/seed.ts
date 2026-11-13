@@ -1,6 +1,5 @@
 import type { DatabaseExecutor } from "../client";
 import { ensureHumanActor } from "../core/actors/provisioning";
-import { contactRepository } from "../core/contacts/repository";
 import { commit } from "../core/effects";
 import { linkRepository } from "../core/links/repository";
 import { permissionRepository } from "../core/permissions/repository";
@@ -12,6 +11,7 @@ import { createSharingService } from "../features/messaging/sharing/service";
 import { projectRepository } from "../features/projects/repository";
 import { taskRepository } from "../features/tasks/repository";
 import { account, member, organization, user, userAgents } from "../schema";
+import { seedDevelopmentContact, seedDevelopmentContactPublication } from "./contacts";
 import {
   developmentAgent,
   developmentConversations,
@@ -99,17 +99,13 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
       const context = new RepositoryContext(tx, {
         organizationId: team.id,
         actorEntityId: actors[0]!.entityId,
+        userId: team.people[0].id,
       });
       const messaging = (index: number) =>
         createMessagingService(tx, { userId: team.people[index]!.id, organizationId: team.id });
       const contacts = [];
-      for (const input of team.contacts) {
-        const contact = await contactRepository(context).create({ displayName: input.name });
-        await contactRepository(context).addIdentifier(contact.entityId, {
-          type: "email",
-          value: input.email,
-          isPrimary: true,
-        });
+      for (const [index, input] of team.contacts.entries()) {
+        const contact = await seedDevelopmentContact(context, input, team.projects[index]!.name);
         for (const actor of actors.slice(1)) {
           await permissionRepository(context).grant({
             entityId: contact.entityId,
@@ -211,6 +207,19 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
         userId: team.people[0].id,
         organizationId: team.id,
       });
+      for (const [index, contact] of contacts.entries()) {
+        const project = team.projects[index]!;
+        const summary = `${contact.givenName} confirmed the ${project.name} review notes. The team will send one consolidated update after the walkthrough.`;
+        const message = await messaging(0).sendMessage(channel.id, summary);
+        await workContext.attach(message.id, contact.entityId);
+        await seedDevelopmentContactPublication(
+          context,
+          contact.entityId,
+          seededTasks[index * developmentWork.stages.length]!.entityId,
+          message.id,
+          summary,
+        );
+      }
       const feedbackTask = await workContext.createTaskFromMessage({
         ...developmentWork.feedbackTask,
         requestId: crypto.randomUUID(),

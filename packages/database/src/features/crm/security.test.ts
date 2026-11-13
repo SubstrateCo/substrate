@@ -91,7 +91,7 @@ test("shared deal history and interaction responses do not reveal private agent 
   const agent = await ownedAgent(f, "alice", "Private strategy assistant");
   const agentRepos = f.forActor(agent.actorId);
   const account = await a.crm.createAccount({ name: "Business" });
-  const contact = await a.crm.createContact({ displayName: "Customer" });
+  const contact = await a.contacts.createContact({ displayName: "Customer" });
   const stages = await a.crm.ensurePipeline();
   const deal = await a.crm.createDeal({
     title: "Sale",
@@ -107,14 +107,14 @@ test("shared deal history and interaction responses do not reveal private agent 
     outcome: "open",
     lostReason: null,
   });
-  await agentRepos.crm.createInteraction({
+  await agentRepos.contactInteractions.createInteraction({
     contactEntityId: contact.entityId,
     kind: "call",
     occurredAt: new Date(),
     summary: "Customer call",
   });
   const history = await b.crm.getDeal(deal.entityId);
-  const interactions = await b.crm.listInteractions(contact.entityId);
+  const interactions = await b.contactInteractions.listInteractions(contact.entityId);
   expect(history.events).toHaveLength(2);
   expect(history.events.map((event) => event.actor)).toContainEqual({
     type: "agent",

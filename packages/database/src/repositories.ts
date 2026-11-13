@@ -1,6 +1,4 @@
 import type { DatabaseExecutor } from "./client";
-import { contactInteractionRepository } from "./core/contacts/interactions.repository";
-import { contactRepository } from "./core/contacts/repository";
 import { registerDevice, touchDevice } from "./core/devices/repository";
 import { RepositoryEffects, collectedEffects, commit, commitWrites } from "./core/effects";
 import type { Committed } from "./core/effects";
@@ -16,6 +14,8 @@ import { workspaceContext, type ResolvedWorkspace } from "./core/session/workspa
 import { createDeviceWorkRepository } from "./features/agent-work/device-repository";
 import { createAgentWorkReadRepository } from "./features/agent-work/read-repository";
 import { createAgentRepository } from "./features/agents/repository";
+import { contactApplicationRepository } from "./features/contacts/repository";
+import { contextContactInteractionRepository } from "./features/context/contact-interactions";
 import { createContextRepository } from "./features/context/service";
 import { crmRepository } from "./features/crm/repository";
 import { createAttachmentRepository } from "./features/files/repository";
@@ -49,8 +49,8 @@ export class ActorRepositories {
     effects?: RepositoryEffects,
   ) {
     this.repositoryContext = new RepositoryContext(db, scope, effects);
-    this.contacts = contactRepository(this.repositoryContext);
-    this.contactInteractions = contactInteractionRepository(this.repositoryContext);
+    this.contacts = contactApplicationRepository(this.repositoryContext);
+    this.contactInteractions = contextContactInteractionRepository(this.repositoryContext);
     this.entities = entityRepository(this.repositoryContext);
     this.links = linkRepository(this.repositoryContext);
     this.permissions = permissionRepository(this.repositoryContext);
@@ -146,26 +146,35 @@ function standalone(
     return commitWrites(repositories[key], reads, (work) => transaction((tx) => work(tx[key])));
   }
   return {
-    contacts: domain("contacts", ["get", "getDetail", "list", "findByIdentifier"]),
+    contacts: domain("contacts", [
+      "get",
+      "getDetail",
+      "list",
+      "findByIdentifier",
+      "listContacts",
+      "getContact",
+    ]),
     crm: domain("crm", [
       "listAccounts",
       "getAccount",
-      "listContacts",
-      "getContact",
       "pipeline",
       "listDeals",
       "getDeal",
       "report",
       "reportDeals",
       "activity",
-      "listInteractions",
       "people",
       "grants",
       "followUps",
       "settings",
       "timeline",
     ]),
-    contactInteractions: domain("contactInteractions", ["get", "listForContact", "listForSource"]),
+    contactInteractions: domain("contactInteractions", [
+      "get",
+      "listForContact",
+      "listForSource",
+      "listInteractions",
+    ]),
     entities: domain("entities", ["get"]),
     links: domain("links", ["list"]),
     permissions: domain("permissions", []),

@@ -3,6 +3,8 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./contacts/input": "./src/contacts/input.ts",
+    "./context/interactions": "./src/context/interactions.ts",
     "./crm/from-message": "./src/crm/from-message.ts",
     "./crm/activity": "./src/crm/activity.ts",
     "./crm/input": "./src/crm/input.ts",

@@ -1,10 +1,9 @@
 import { contactProfileInput, parseInput, type ContactInput } from "../../core/contacts/inputs";
 import { contactRepository } from "../../core/contacts/repository";
 import type { RepositoryContext } from "../../core/repository-context";
-import { recordCrmActivity } from "./activity";
+import { recordCrmActivity } from "../crm/activity";
 
-// CRM entry points use these wrappers; the shared contacts primitive stays feature-independent.
-export function crmContactActions(context: RepositoryContext) {
+export function contactActions(context: RepositoryContext) {
   return {
     create(input: ContactInput) {
       return context.transaction(async (ctx) => {

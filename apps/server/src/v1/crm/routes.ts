@@ -3,9 +3,7 @@ import {
   crmWorkspace,
   crmList,
   crmRecord,
-  crmContact,
   crmReport,
-  crmIdentifierSearch,
   crmWrite,
   crmTimeline,
 } from "@substrate/contracts/crm/input";
@@ -50,9 +48,6 @@ export function createCrmRoutes(service: CrmService, scopes: Scopes) {
     .get("/follow-ups", v("query", crmRecord), scopes.workspace("query"), async (c) =>
       respond(c, await service.followUps(c.var.scope, c.req.valid("query").entityId)),
     )
-    .get("/candidates", v("query", crmIdentifierSearch), scopes.workspace("query"), async (c) =>
-      respond(c, await service.candidates(c.var.scope, c.req.valid("query"))),
-    )
     .get("/report", v("query", crmReport), scopes.workspace("query"), async (c) =>
       respond(
         c,
@@ -70,12 +65,6 @@ export function createCrmRoutes(service: CrmService, scopes: Scopes) {
     .get("/account", v("query", crmRecord), scopes.workspace("query"), async (c) =>
       respond(c, await service.getAccount(c.var.scope, c.req.valid("query").entityId)),
     )
-    .get("/contacts", v("query", crmList), scopes.workspace("query"), async (c) =>
-      respond(c, await service.listContacts(c.var.scope, c.req.valid("query"))),
-    )
-    .get("/contact", v("query", crmRecord), scopes.workspace("query"), async (c) =>
-      respond(c, await service.getContact(c.var.scope, c.req.valid("query").entityId)),
-    )
     .get("/deals", v("query", crmList), scopes.workspace("query"), async (c) =>
       respond(c, await service.listDeals(c.var.scope, c.req.valid("query"))),
     )
@@ -84,9 +73,6 @@ export function createCrmRoutes(service: CrmService, scopes: Scopes) {
     )
     .get("/pipeline", v("query", crmWorkspace), scopes.workspace("query"), async (c) =>
       respond(c, await service.pipeline(c.var.scope)),
-    )
-    .get("/interactions", v("query", crmContact), scopes.workspace("query"), async (c) =>
-      respond(c, await service.interactions(c.var.scope, c.req.valid("query").contactEntityId)),
     )
     .post("/mutations", v("json", crmWrite), scopes.workspace("json"), async (c) =>
       respond(c, await service.mutate(c.var.scope, c.req.valid("json"))),

@@ -1,8 +1,8 @@
 import { useState } from "react";
 
-import { CrmSelect } from "./crm-select";
-import { formText } from "./form-text";
-import type { getContact } from "@/api/crm/requests";
+import type { getContact } from "@/api/contacts/requests";
+import { CrmSelect } from "@/components/crm/crm-select";
+import { formText } from "@/components/crm/form-text";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
@@ -18,7 +18,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { useCrmMutation } from "@/queries/crm/mutations";
+import { useRecordMutation } from "@/queries/records/mutations";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 type Identifier = Awaited<ReturnType<typeof getContact>>["identifiers"][number];
@@ -36,7 +36,7 @@ export function ContactMethods({
 }) {
   const [editor, setEditor] = useState<{ record?: Identifier } | null>(null);
   const [removing, setRemoving] = useState<Identifier | null>(null);
-  const mutation = useCrmMutation(organizationId);
+  const mutation = useRecordMutation(organizationId, "contacts");
   return (
     <section aria-label="Contact methods" className="space-y-3">
       <div className="flex items-center justify-between gap-3">
@@ -129,7 +129,7 @@ function ContactMethodEditor({
   record?: Identifier;
   onClose: () => void;
 }) {
-  const mutation = useCrmMutation(organizationId);
+  const mutation = useRecordMutation(organizationId, "contacts");
   const [type, setType] = useState<"email" | "phone">(record?.type ?? "email");
   return (
     <Dialog

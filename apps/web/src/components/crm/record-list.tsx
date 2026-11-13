@@ -10,7 +10,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { crmLink } from "@/lib/navigation/record-links";
+import { recordLink } from "@/lib/navigation/record-links";
 import { Building2, Handshake, Users } from "lucide-react";
 
 export type CrmListRow = {
@@ -57,7 +57,7 @@ export function RecordList({
             <TableRow key={row.entityId}>
               <TableCell>
                 <Link
-                  {...crmLink(organizationId, kind, row.entityId)}
+                  {...recordLink(organizationId, kind, row.entityId)}
                   className="font-medium underline-offset-4 hover:underline"
                 >
                   {row.name}

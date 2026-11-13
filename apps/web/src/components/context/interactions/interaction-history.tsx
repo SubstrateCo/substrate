@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
-import { CrmResourceState } from "./crm-resource-state";
-import { formText } from "./form-text";
+import { CrmResourceState } from "@/components/crm/crm-resource-state";
+import { formText } from "@/components/crm/form-text";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
@@ -21,8 +21,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { resourceState } from "@/lib/resource-state";
-import { useCrmMutation } from "@/queries/crm/mutations";
-import { interactionsOptions } from "@/queries/crm/options";
+import { useInteractionMutation, interactionsOptions } from "@/queries/context/interactions";
 import { Pencil, Trash2 } from "lucide-react";
 
 export function InteractionHistory({
@@ -37,7 +36,7 @@ export function InteractionHistory({
   canDelete: boolean;
 }) {
   const query = useQuery(interactionsOptions(organizationId, contactEntityId));
-  const mutation = useCrmMutation(organizationId);
+  const mutation = useInteractionMutation(organizationId);
   const [selected, setSelected] = useState<{
     entityId: string;
     summary: string;

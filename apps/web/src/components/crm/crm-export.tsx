@@ -23,7 +23,10 @@ export function CrmExport({ organizationId, kind, archived, search }: CrmExportP
     mutationFn: async () => {
       let response;
       try {
-        response = await api.crm.export.$get({ query: { organizationId, kind, archived, search } });
+        response =
+          kind === "contacts"
+            ? await api.contacts.export.$get({ query: { organizationId, kind, archived, search } })
+            : await api.crm.export.$get({ query: { organizationId, kind, archived, search } });
       } catch (error) {
         if (error instanceof TypeError) throw new NetworkError(error);
         throw error;
@@ -35,7 +38,7 @@ export function CrmExport({ organizationId, kind, archived, search }: CrmExportP
       const url = URL.createObjectURL(await response.blob());
       const link = document.createElement("a");
       link.href = url;
-      link.download = `crm-${kind}.csv`;
+      link.download = kind === "contacts" ? "contacts.csv" : `crm-${kind}.csv`;
       document.body.append(link);
       try {
         link.click();

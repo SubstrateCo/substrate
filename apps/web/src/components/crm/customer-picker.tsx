@@ -14,7 +14,8 @@ import {
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { resourceState } from "@/lib/resource-state";
-import { accountsOptions, contactsOptions } from "@/queries/crm/options";
+import { contactsOptions } from "@/queries/contacts/options";
+import { accountsOptions } from "@/queries/crm/options";
 import { Check, ChevronsUpDown } from "lucide-react";
 
 export function CustomerPicker({

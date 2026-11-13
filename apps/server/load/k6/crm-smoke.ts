@@ -59,6 +59,7 @@ export default async function () {
   let projectId: string | undefined;
   let conversationId: string | undefined;
   let interactionId: string | undefined;
+  let contactId: string | undefined;
   let publicationId: string | undefined;
   let sourceAccountId: string | undefined;
   let roleChanged = false;
@@ -84,6 +85,7 @@ export default async function () {
       "contact creation",
     );
     ids.push(contact.entityId);
+    contactId = contact.entityId;
     await mutate({
       action: "updateAccount",
       entityId: account.entityId,
@@ -608,7 +610,10 @@ export default async function () {
 
     await login(owner);
     for (const entityId of ids) {
-      await mutate({ action: "archive", entityId, archived: true });
+      await mutate(
+        { action: "archive", entityId, archived: true },
+        entityId === contactId ? "contacts" : "crm",
+      );
       let route: "crm.accounts" | "crm.contacts" | "crm.deals" = "crm.deals";
       if (entityId === account.entityId) route = "crm.accounts";
       if (entityId === contact.entityId) route = "crm.contacts";
@@ -641,7 +646,10 @@ export default async function () {
     if (sourceAccountId)
       await mutate({ action: "archive", entityId: sourceAccountId, archived: true });
     for (const entityId of ids.toReversed())
-      await mutate({ action: "archive", entityId, archived: true });
+      await mutate(
+        { action: "archive", entityId, archived: true },
+        entityId === contactId ? "contacts" : "crm",
+      );
     if (conversationId) await call("messaging.conversations.delete", { conversationId });
     if (projectId)
       await call("tasks.mutations", { action: "deleteProject", projectEntityId: projectId });

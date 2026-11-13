@@ -11,6 +11,7 @@ import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ConflictError } from "../../errors";
+import { contactApplicationRepository } from "../contacts/repository";
 import { messageEntityReferences } from "../context/schema";
 import { requireMessage } from "../messaging/access";
 import { referenceChangeHints } from "../realtime/routing";
@@ -93,19 +94,20 @@ export async function createCrmFromMessageInContext(
         ),
       );
     const crm = crmRepository(ctx);
+    const contacts = contactApplicationRepository(ctx);
     let entityId: string;
     if (previous) {
       if (previous.fingerprint !== fingerprint)
         throw new ConflictError("Request identity was reused with different input.");
       // Read the current record, not stored source content. Never restore a missing source edge.
       if (value.kind === "account") await crm.getAccount(previous.entityId);
-      else if (value.kind === "contact") await crm.getContact(previous.entityId);
+      else if (value.kind === "contact") await contacts.getContact(previous.entityId);
       else await crm.getDeal(previous.entityId);
       entityId = previous.entityId;
     } else {
       if (value.kind === "account") entityId = (await crm.createAccount(value.fields)).entityId;
       else if (value.kind === "contact")
-        entityId = (await crm.createContact(value.fields)).entityId;
+        entityId = (await contacts.createContact(value.fields)).entityId;
       else entityId = (await crm.createDeal(value.fields)).entityId;
       // Only reviewed fields above are saved. A message is not an entity or a contact identity.
       await ctx.db.insert(messageEntityReferences).values(

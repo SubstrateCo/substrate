@@ -10,6 +10,8 @@ import { createDeviceService } from "./v1/agent-work/device-service";
 import { createAgentWorkService } from "./v1/agent-work/service";
 import { createCallerService } from "./v1/agents/callers-service";
 import { createAgentService } from "./v1/agents/service";
+import { createContactsService } from "./v1/contacts/service";
+import { createContactInteractionsService } from "./v1/context/interactions-service";
 import { createContextService } from "./v1/context/service";
 import { createCrmFromMessageService } from "./v1/crm/from-message-service";
 import { createCrmService } from "./v1/crm/service";
@@ -34,6 +36,8 @@ export function createServices(deps: {
   const projectPictures = projectPictureAccess(deps.db);
   return {
     crm: createCrmService(deps),
+    contacts: createContactsService(deps),
+    contactInteractions: createContactInteractionsService(deps),
     crmFromMessage: createCrmFromMessageService(deps),
     files: createFileService({ repository, storage: deps.storage }),
     pictures: createPictureService({

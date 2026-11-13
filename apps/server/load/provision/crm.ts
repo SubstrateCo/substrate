@@ -1,3 +1,4 @@
+import type { contactWrite } from "@substrate/contracts/contacts/input";
 import type { crmWrite } from "@substrate/contracts/crm/input";
 
 import { api, parallel, type Account } from "./client";
@@ -6,7 +7,7 @@ import type { z } from "zod";
 type WithoutOrganization<T> = T extends unknown ? Omit<T, "organizationId"> : never;
 type ProvisionCommand = WithoutOrganization<
   Extract<
-    z.input<typeof crmWrite>,
+    z.input<typeof crmWrite> | z.input<typeof contactWrite>,
     {
       action: "createAccount" | "createContact" | "createDeal" | "setAffiliation";
     }
@@ -22,7 +23,11 @@ export async function crm(members: Account[]) {
     const read = <T>(path: string, search = "") =>
       api<T>(member.client, `/api/v1/${path}${query}${search}`);
     const write = <T>(input: ProvisionCommand) =>
-      api<T>(member.client, "/api/v1/crm/mutations", { organizationId, ...input });
+      api<T>(
+        member.client,
+        input.action === "createContact" ? "/api/v1/contacts/mutations" : "/api/v1/crm/mutations",
+        { organizationId, ...input },
+      );
     const accounts = await read<{ entityId: string; name: string }[]>(
       "crm/accounts",
       `&search=${encodeURIComponent(name)}`,
@@ -35,7 +40,7 @@ export async function crm(members: Account[]) {
         requestId: crypto.randomUUID(),
       }));
     const contacts = await read<{ contact: { entityId: string; displayName: string } }[]>(
-      "crm/contacts",
+      "contacts",
       `&search=${encodeURIComponent(name)}`,
     );
     const contact =

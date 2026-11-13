@@ -28,7 +28,7 @@ export * from "../features/agent-work/invocations.schema";
 export * from "../features/agent-work/status.schema";
 export * from "../features/messaging/read-state.schema";
 export * from "../features/crm/schema";
-export * from "../features/crm/publications.schema";
+export * from "../features/context/interaction-publications.schema";
 export * from "../features/crm/follow-ups.schema";
 export * from "../features/crm/settings.schema";
 export * from "../features/crm/requests.schema";

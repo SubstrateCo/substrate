@@ -1,5 +1,3 @@
-import type { CrmWrite } from "@substrate/contracts/crm/input";
-
 import { useState } from "react";
 
 import { CrmSelect } from "./crm-select";
@@ -19,6 +17,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import type { RecordWrite } from "@/queries/records/mutations";
 
 export type RecordDraft = {
   entityId: string;
@@ -62,7 +61,7 @@ export function RecordEditor({
   error: Error | null;
   defaultCurrency?: string | null;
   onClose: () => void;
-  onSubmit: (write: CrmWrite) => void;
+  onSubmit: (write: RecordWrite) => void;
 }) {
   const singular = { accounts: "account", contacts: "contact", deals: "deal" }[kind];
   const [accountId, setAccountId] = useState(record?.accountEntityId ?? "");

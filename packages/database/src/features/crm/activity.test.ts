@@ -4,9 +4,9 @@ import { RepositoryContext } from "../../core/repository-context";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
+import { contactActions } from "../contacts/contact-actions";
 import { listCrmActivity, recordCrmActivity } from "./activity";
 import { crmActivityEvents } from "./activity.schema";
-import { crmContactActions } from "./contact-actions";
 import { expect, test } from "bun:test";
 import { eq, sql } from "drizzle-orm";
 
@@ -186,7 +186,7 @@ test("a domain failure rolls back both changed data and its activity", async () 
 });
 
 test("contact updates record only changed field names and concurrent retries do not duplicate history", async () => {
-  const repo = crmContactActions(ctx());
+  const repo = contactActions(ctx());
   const target = await repo.create({ displayName: "Customer" });
   await Promise.all([
     repo.update(target.entityId, { notes: "Sensitive note" }),

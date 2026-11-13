@@ -23,9 +23,9 @@ export function linkedWorkLink(
 ) {
   if (link.entityType === "account") return crmLink(organizationId, "accounts", link.entityId);
   if (link.entityType === "deal") return crmLink(organizationId, "deals", link.entityId);
-  if (link.entityType === "contact") return crmLink(organizationId, "contacts", link.entityId);
+  if (link.entityType === "contact") return contactLink(organizationId, link.entityId);
   if (link.entityType === "contact_interaction")
-    return crmLink(organizationId, "contacts", link.contactEntityId ?? undefined);
+    return contactLink(organizationId, link.contactEntityId ?? undefined);
   return workLink(
     organizationId,
     link.projectEntityId ?? link.entityId,
@@ -48,14 +48,25 @@ export function agentLink(organizationId: string, agentId: string, section?: Age
 
 export type RecordLink =
   | ReturnType<typeof crmLink>
+  | ReturnType<typeof contactLink>
   | ReturnType<typeof workLink>
   | ReturnType<typeof messageLink>
   | ReturnType<typeof agentLink>;
 
-export function crmLink(
+export function crmLink(organizationId: string, section: "accounts" | "deals", recordId?: string) {
+  return linkOptions({ to: "/crm", search: { workspaceId: organizationId, section, recordId } });
+}
+
+export function contactLink(organizationId: string, recordId?: string) {
+  return linkOptions({ to: "/contacts", search: { workspaceId: organizationId, recordId } });
+}
+
+export function recordLink(
   organizationId: string,
-  section: "accounts" | "contacts" | "deals",
+  kind: "accounts" | "contacts" | "deals",
   recordId?: string,
 ) {
-  return linkOptions({ to: "/crm", search: { workspaceId: organizationId, section, recordId } });
+  return kind === "contacts"
+    ? contactLink(organizationId, recordId)
+    : crmLink(organizationId, kind, recordId);
 }

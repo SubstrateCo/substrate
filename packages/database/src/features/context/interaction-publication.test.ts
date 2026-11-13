@@ -2,7 +2,7 @@ import { contextConversation } from "../../testing/context";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { messagingMessages } from "../messaging/schema";
-import { crmInteractionPublications } from "./publications.schema";
+import { crmInteractionPublications } from "./interaction-publications.schema";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -25,8 +25,8 @@ test("publication is consented, idempotent, contact-visible, and cannot revive a
     consentToContactAudience: true as const,
   };
   const [first, second] = await Promise.all([
-    alice.crm.publishInteraction(input),
-    alice.crm.publishInteraction(input),
+    alice.contactInteractions.publishInteraction(input),
+    alice.contactInteractions.publishInteraction(input),
   ]);
   expect(first.result.entityId).toBe(second.result.entityId);
   expect(await f.db.select().from(crmInteractionPublications)).toHaveLength(1);
@@ -35,17 +35,21 @@ test("publication is consented, idempotent, contact-visible, and cannot revive a
   expect(visible.source).toBeNull();
   expect(visible).not.toHaveProperty("messageId");
   await repos.contactInteractions.update(first.result.entityId, { summary: "Later correction" });
-  expect((await alice.crm.publishInteraction(input)).result.summary).toBe("Later correction");
+  expect((await alice.contactInteractions.publishInteraction(input)).result.summary).toBe(
+    "Later correction",
+  );
   expect(
-    await rejection(alice.crm.publishInteraction({ ...input, summary: "Changed replay" })),
+    await rejection(
+      alice.contactInteractions.publishInteraction({ ...input, summary: "Changed replay" }),
+    ),
   ).toMatchObject({ name: "ConflictError" });
   await repos.contactInteractions.softDelete(first.result.entityId);
-  expect(await rejection(alice.crm.publishInteraction(input))).toMatchObject({
+  expect(await rejection(alice.contactInteractions.publishInteraction(input))).toMatchObject({
     name: "AccessDeniedError",
   });
   await f.db.delete(messagingMessages).where(eq(messagingMessages.id, reply.id));
   expect(await f.db.select().from(crmInteractionPublications)).toHaveLength(1);
-  expect(await rejection(alice.crm.publishInteraction(input))).toMatchObject({
+  expect(await rejection(alice.contactInteractions.publishInteraction(input))).toMatchObject({
     name: "AccessDeniedError",
   });
 });
@@ -67,14 +71,17 @@ test("publication rejects a contact-only reader and false audience consent", asy
     messageId: reply.id,
     consentToContactAudience: true as const,
   };
-  expect(await rejection(bob.crm.publishInteraction(input))).toMatchObject({
+  expect(await rejection(bob.contactInteractions.publishInteraction(input))).toMatchObject({
     name: "AccessDeniedError",
   });
   const alice = await f.forSession("alice");
   // SAFETY: deliberately bypass the literal consent type to test the untrusted runtime boundary.
   expect(
     await rejection(
-      alice.crm.publishInteraction({ ...input, consentToContactAudience: false as never }),
+      alice.contactInteractions.publishInteraction({
+        ...input,
+        consentToContactAudience: false as never,
+      }),
     ),
   ).toMatchObject({ name: "ValidationError" });
   expect(await f.db.select().from(crmInteractionPublications)).toEqual([]);

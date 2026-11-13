@@ -5,23 +5,17 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 import { permissionActorEntityId } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { parseInput } from "../../core/contacts/inputs";
-import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
-import { contactRepository } from "../../core/contacts/repository";
 import { contacts } from "../../core/contacts/schema";
 import { adminRoleCondition } from "../../core/organizations/roles";
 import { member } from "../../core/organizations/schema";
 import { RepositoryContext, pageSize } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { recordCrmActivity, listCrmActivity } from "./activity";
-import { crmActorViews, presentInteraction, presentInteractions } from "./actor-views";
-import { crmContactActions } from "./contact-actions";
-import { mutateContactDetail } from "./contact-detail-actions";
+import { crmActorViews } from "./actor-views";
 import { createOnce } from "./creation";
 import { createFollowUp, followUps } from "./follow-ups";
-import { crmInteractionActions } from "./interaction-actions";
 import { crmManagementRepository } from "./management";
 import { assignOwner } from "./ownership";
-import { publishInteraction } from "./publication";
 import { report, reportDeals } from "./reports";
 import {
   crmAccounts,
@@ -192,36 +186,8 @@ export function crmRepository(context: RepositoryContext) {
   }
   return {
     ...crmManagementRepository(context),
-    ...crmInteractionActions(context),
-    mutateContactDetail: (input: Parameters<typeof mutateContactDetail>[1]) =>
-      mutateContactDetail(context, input),
     activity: (id: string, options?: Parameters<typeof listCrmActivity>[2]) =>
       listCrmActivity(context, id, options),
-    createContact: async (input: Parameters<ReturnType<typeof crmContactActions>["create"]>[0]) => {
-      return context.transaction(async (ctx) => {
-        const row = await crmContactActions(ctx).create(input);
-        changed(ctx, row.entityId);
-        return row;
-      });
-    },
-    updateContact: async (
-      id: string,
-      input: Parameters<ReturnType<typeof crmContactActions>["update"]>[1],
-    ) => {
-      return context.transaction(async (ctx) => {
-        const row = await crmContactActions(ctx).update(id, input);
-        changed(ctx, row.entityId);
-        return row;
-      });
-    },
-    listInteractions: async (
-      id: string,
-      options?: Parameters<ReturnType<typeof contactInteractionRepository>["listForContact"]>[1],
-    ) =>
-      presentInteractions(
-        context,
-        await contactInteractionRepository(context).listForContact(id, options),
-      ),
     assignOwner: (id: string, input: Parameters<typeof assignOwner>[2]) =>
       assignOwner(context, id, input),
     ...crmSharing(context),
@@ -230,8 +196,6 @@ export function crmRepository(context: RepositoryContext) {
     ...settingsRepository(context),
     createFollowUp: (input: Parameters<typeof createFollowUp>[1]) => createFollowUp(context, input),
     followUps: (id: string) => followUps(context, id),
-    publishInteraction: (input: Parameters<typeof publishInteraction>[1]) =>
-      publishInteraction(context, input),
     async configureStages(stages: { id?: string; name: string }[]) {
       const value = parseInput(
         crmWrite.options.find((option) => option.shape.action.value === "configureStages")!,
@@ -304,22 +268,6 @@ export function crmRepository(context: RepositoryContext) {
     report: (from: Date, to: Date, options?: Parameters<typeof report>[3]) =>
       report(context, from, to, options),
     reportDeals: (input: Parameters<typeof reportDeals>[1]) => reportDeals(context, input),
-    async createInteraction(
-      input: Parameters<ReturnType<typeof contactInteractionRepository>["createManual"]>[0],
-    ) {
-      return context.transaction(async (ctx) => {
-        await ctx.lockAccessPath(input.contactEntityId);
-        await active(ctx, input.contactEntityId, "contact");
-        const interaction = await contactInteractionRepository(ctx).createManual(input);
-        await recordCrmActivity(ctx, {
-          entityId: input.contactEntityId,
-          action: "interaction_created",
-          relatedEntityId: interaction.entityId,
-        });
-        changed(ctx, input.contactEntityId);
-        return presentInteraction(ctx, interaction);
-      });
-    },
     async listAccounts(options: ListOptions = {}) {
       await context.requireActiveActor();
       return db
@@ -412,74 +360,6 @@ export function crmRepository(context: RepositoryContext) {
         .orderBy(asc(crmDeals.entityId))
         .limit(100);
       return { account, level: access.level, contacts: people, deals };
-    },
-    async listContacts(options: ListOptions = {}) {
-      await context.requireActiveActor();
-      let archiveFilter;
-      if (options.archived !== "all")
-        archiveFilter =
-          options.archived === "archived"
-            ? isNotNull(crmContactProfiles.archivedAt)
-            : isNull(crmContactProfiles.archivedAt);
-      return db
-        .select({ contact: contacts, archivedAt: crmContactProfiles.archivedAt })
-        .from(contacts)
-        .leftJoin(
-          crmContactProfiles,
-          and(
-            eq(crmContactProfiles.organizationId, contacts.organizationId),
-            eq(crmContactProfiles.contactEntityId, contacts.entityId),
-          ),
-        )
-        .where(
-          and(
-            eq(contacts.organizationId, org),
-            context.readable(contacts.entityId),
-            options.afterEntityId ? gt(contacts.entityId, options.afterEntityId) : undefined,
-            options.search
-              ? ilike(contacts.displayName, `%${options.search.replace(/[\\%_]/g, "\\$&")}%`)
-              : undefined,
-            archiveFilter,
-          ),
-        )
-        .orderBy(asc(contacts.entityId))
-        .limit(pageSize(options.limit));
-    },
-    async getContact(id: string) {
-      const detail = await contactRepository(context).getDetail(id);
-      const access = await requireType(context, id, "contact");
-      const affiliations = await db
-        .select({ affiliation: crmAffiliations, account: crmAccounts })
-        .from(crmAffiliations)
-        .innerJoin(
-          crmAccounts,
-          and(
-            eq(crmAccounts.organizationId, crmAffiliations.organizationId),
-            eq(crmAccounts.entityId, crmAffiliations.accountEntityId),
-          ),
-        )
-        .where(
-          and(
-            eq(crmAffiliations.organizationId, org),
-            eq(crmAffiliations.contactEntityId, id),
-            context.readable(crmAccounts.entityId),
-          ),
-        );
-      const [profile] = await db
-        .select()
-        .from(crmContactProfiles)
-        .where(
-          and(
-            eq(crmContactProfiles.organizationId, org),
-            eq(crmContactProfiles.contactEntityId, id),
-          ),
-        );
-      return {
-        ...detail,
-        affiliations,
-        archivedAt: profile?.archivedAt ?? null,
-        level: access.level,
-      };
     },
     async setAffiliation(input: {
       contactEntityId: string;
@@ -885,18 +765,7 @@ export function crmRepository(context: RepositoryContext) {
       return context.transaction(async (ctx) => {
         const { entity } = await ctx.requireAccess(id, "edit", true);
         let previousArchived = false;
-        if (entity.entityType === "contact") {
-          const [previous] = await ctx.db
-            .select({ archivedAt: crmContactProfiles.archivedAt })
-            .from(crmContactProfiles)
-            .where(
-              and(
-                eq(crmContactProfiles.organizationId, org),
-                eq(crmContactProfiles.contactEntityId, id),
-              ),
-            );
-          previousArchived = !!previous?.archivedAt;
-        } else if (entity.entityType === "account" || entity.entityType === "deal") {
+        if (entity.entityType === "account" || entity.entityType === "deal") {
           const table = entity.entityType === "account" ? crmAccounts : crmDeals;
           const [previous] = await ctx.db
             .select({ archivedAt: table.archivedAt })
@@ -905,15 +774,7 @@ export function crmRepository(context: RepositoryContext) {
           previousArchived = !!previous?.archivedAt;
         }
         const archivedAt = archived ? new Date() : null;
-        if (entity.entityType === "contact")
-          await ctx.db
-            .insert(crmContactProfiles)
-            .values({ organizationId: org, contactEntityId: id, archivedAt })
-            .onConflictDoUpdate({
-              target: crmContactProfiles.contactEntityId,
-              set: { archivedAt },
-            });
-        else if (entity.entityType === "account")
+        if (entity.entityType === "account")
           await ctx.db.update(crmAccounts).set({ archivedAt }).where(target(crmAccounts, id));
         else if (entity.entityType === "deal")
           await ctx.db

@@ -10,7 +10,7 @@ import { CopyLink } from "@/components/context/links/copy-link";
 import { Tag } from "@/components/feedback/tag";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { crmLink } from "@/lib/navigation/record-links";
+import { recordLink } from "@/lib/navigation/record-links";
 import { ArrowLeft, Archive, Pencil, RotateCcw } from "lucide-react";
 
 export function RecordDetailView({
@@ -48,7 +48,7 @@ export function RecordDetailView({
     <div className="min-h-0 flex-1 overflow-y-auto p-6">
       <div className="mx-auto max-w-6xl space-y-6">
         <Button variant="link" size="sm" asChild>
-          <Link {...crmLink(organizationId, kind)}>
+          <Link {...recordLink(organizationId, kind)}>
             <ArrowLeft aria-hidden />
             Back to {kind}
           </Link>
@@ -58,7 +58,7 @@ export function RecordDetailView({
           description={archived ? <Tag>Archived</Tag> : undefined}
           actions={
             <>
-              <CopyLink link={crmLink(organizationId, kind, entityId)} grouped />
+              <CopyLink link={recordLink(organizationId, kind, entityId)} grouped />
               <RecordManagement
                 key={entityId}
                 organizationId={organizationId}

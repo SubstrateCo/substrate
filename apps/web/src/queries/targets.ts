@@ -309,6 +309,8 @@ export function domainTargets(
       if (detail.projectId) return referencedWorkTargets(organizationId, detail);
       // Without IDs, such as a conversation deletion: any reference can change.
       return [
+        { queryKey: queryKeys.contacts(organizationId) },
+        { queryKey: queryKeys.contactInteractions(organizationId) },
         { queryKey: queryKeys.crm(organizationId) },
         { queryKey: queryKeys.activity(organizationId) },
         { queryKey: queryKeys.related(organizationId) },

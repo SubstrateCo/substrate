@@ -1,18 +1,16 @@
 import { Link } from "@tanstack/react-router";
 
 import { AccountDetail } from "./account-detail";
-import { ContactDetail } from "./contact-detail";
-import { CrmCollection } from "./crm-collection";
 import { CrmSettings } from "./crm-settings";
 import type { CrmSection } from "./crm-types";
 import { DealDetail } from "./deal-detail";
+import { RecordCollection } from "@/components/records/record-collection";
 import { Button } from "@/components/ui/button";
-import { Building2, Handshake, Settings, Users } from "lucide-react";
+import { Building2, Handshake, Settings } from "lucide-react";
 
 const sections = [
   { value: "deals", label: "Deals", icon: Handshake },
   { value: "accounts", label: "Accounts", icon: Building2 },
-  { value: "contacts", label: "Contacts", icon: Users },
   { value: "settings", label: "Settings", icon: Settings },
 ] as const;
 
@@ -28,9 +26,9 @@ export function CrmWorkspace({
   let content;
   if (section === "settings") content = <CrmSettings organizationId={organizationId} />;
   else if (!recordId)
-    content = <CrmCollection key={section} organizationId={organizationId} kind={section} />;
+    content = <RecordCollection key={section} organizationId={organizationId} kind={section} />;
   else {
-    const Detail = { accounts: AccountDetail, contacts: ContactDetail, deals: DealDetail }[section];
+    const Detail = { accounts: AccountDetail, deals: DealDetail }[section];
     content = <Detail key={recordId} organizationId={organizationId} entityId={recordId} />;
   }
   return (

@@ -123,6 +123,10 @@ export const queryKeys = {
   invitation: (invitationId: string) => ["invitations", invitationId] as const,
   tasks: (organizationId: string) => [...queryKeys.organization(organizationId), "tasks"] as const,
   crm: (organizationId: string) => [...queryKeys.organization(organizationId), "crm"] as const,
+  contacts: (organizationId: string) =>
+    [...queryKeys.organization(organizationId), "contacts"] as const,
+  contactInteractions: (organizationId: string) =>
+    [...queryKeys.context(organizationId), "contact-interactions"] as const,
   crmList: (
     organizationId: string,
     kind: string,

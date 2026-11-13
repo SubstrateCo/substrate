@@ -27,7 +27,10 @@ async function customerDeal(actor: Actor, contactEntityIds: string[] = []) {
 function savedDeal(page: Page, action: string) {
   return page.waitForResponse(
     (response) =>
-      new URL(response.url()).pathname === "/api/v1/crm/mutations" &&
+      new URL(response.url()).pathname ===
+        (action.endsWith("Interaction")
+          ? "/api/v1/context/interactions/mutations"
+          : "/api/v1/crm/mutations") &&
       response.request().method() === "POST" &&
       response.request().postDataJSON()?.action === action,
   );
@@ -231,7 +234,7 @@ test("a contact editor can correct a published interaction, but only its owner c
     consentToContactAudience: true,
   });
   const user = await client(actors.member);
-  await visit(user, undefined, "/crm", { section: "contacts", recordId: contact.entityId });
+  await visit(user, undefined, "/contacts", { recordId: contact.entityId });
   const history = user.page.getByRole("region", { name: "Interaction history", exact: true });
   await expect(
     user.page.getByText("The pilot includes twenty seats.", { exact: true }),
@@ -256,7 +259,7 @@ test("a contact editor can correct a published interaction, but only its owner c
   ).toHaveCount(0);
 
   const owner = await client(account);
-  await visit(owner, undefined, "/crm", { section: "contacts", recordId: contact.entityId });
+  await visit(owner, undefined, "/contacts", { recordId: contact.entityId });
   const ownerHistory = owner.page.getByRole("region", { name: "Interaction history", exact: true });
   const ownerRow = ownerHistory
     .getByRole("listitem")

@@ -3,11 +3,11 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 import { parseInput } from "../../core/contacts/inputs";
 import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
 import type { RepositoryContext } from "../../core/repository-context";
-import { recordCrmActivity } from "./activity";
-import { presentInteraction } from "./actor-views";
+import { recordCrmActivity } from "../crm/activity";
+import { presentInteraction } from "../crm/actor-views";
 import { z } from "zod";
 
-export function crmInteractionActions(context: RepositoryContext) {
+export function contextInteractionActions(context: RepositoryContext) {
   return {
     updateInteraction(entityId: string, input: { summary: string }) {
       const value = parseInput(z.object({ summary: z.string().trim().min(1).max(10000) }), input);

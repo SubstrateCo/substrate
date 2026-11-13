@@ -6,7 +6,7 @@ import { z } from "zod";
 export const Route = createFileRoute("/_authenticated/_frame/_workspace/crm/")({
   component: CrmRoute,
   validateSearch: z.object({
-    section: z.enum(["accounts", "contacts", "deals", "settings"]).optional(),
+    section: z.enum(["accounts", "deals", "settings"]).optional(),
     recordId: z.uuid().optional(),
   }),
 });

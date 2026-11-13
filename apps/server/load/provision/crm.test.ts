@@ -1,3 +1,4 @@
+import { contactWrite } from "@substrate/contracts/contacts/input";
 import { crmWrite } from "@substrate/contracts/crm/input";
 import { tasksWrite } from "@substrate/contracts/tasks/input";
 
@@ -9,7 +10,7 @@ import { expect, test } from "bun:test";
 test("CRM provisioning resumes per-user fixtures without duplicate customers, deals or projects", async () => {
   const organizationId = crypto.randomUUID();
   const stageId = crypto.randomUUID();
-  const writes: ReturnType<typeof crmWrite.parse>[] = [];
+  const writes: (ReturnType<typeof crmWrite.parse> | ReturnType<typeof contactWrite.parse>)[] = [];
   const projects: { entityId: string; name: string }[] = [];
   const server = Bun.serve({
     port: 0,
@@ -28,7 +29,10 @@ test("CRM provisioning resumes per-user fixtures without duplicate customers, de
           projects.push(project);
           data = { id: project.entityId };
         } else {
-          const command = crmWrite.parse(body);
+          const command =
+            url.pathname === "/api/v1/contacts/mutations"
+              ? contactWrite.parse(body)
+              : crmWrite.parse(body);
           expect(command.organizationId).toBe(organizationId);
           writes.push(command);
           data = {
@@ -46,7 +50,7 @@ test("CRM provisioning resumes per-user fixtures without duplicate customers, de
           case "/api/v1/crm/accounts":
             data = accounts.filter((row) => row.name === search);
             break;
-          case "/api/v1/crm/contacts":
+          case "/api/v1/contacts":
             data = contacts.flatMap((contact) =>
               contact.displayName === search ? [{ contact, archivedAt: null }] : [],
             );

@@ -1,9 +1,10 @@
 import type { CrmFromMessageResult } from "@substrate/contracts/crm/from-message";
 import type { McpInput } from "@substrate/contracts/harness/tools";
 
-import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
+import { contactApplicationRepository } from "../contacts/repository";
+import { contextContactInteractionRepository } from "../context/contact-interactions";
 import { createCrmFromMessageInContext } from "../crm/from-message";
 import { crmRepository } from "../crm/repository";
 import { requireCrmAdmin } from "../crm/settings";
@@ -13,13 +14,14 @@ import { mcpTaskQueries } from "./tasks";
 export async function mcpCrmTools(context: RepositoryContext, identity: SessionIdentity) {
   // Preserve the validated acting agent. CRM resolves human responsibility separately.
   const crm = crmRepository(context);
-  const interactions = contactInteractionRepository(context);
+  const interactions = contextContactInteractionRepository(context);
+  const contacts = contactApplicationRepository(context);
   const read = (input: McpInput<"get_crm_record">) => {
     switch (input.kind) {
       case "account":
         return crm.getAccount(input.entityId);
       case "contact":
-        return crm.getContact(input.entityId);
+        return contacts.getContact(input.entityId);
       case "deal":
         return crm.getDeal(input.entityId);
     }
@@ -56,7 +58,7 @@ export async function mcpCrmTools(context: RepositoryContext, identity: SessionI
     },
     async requireDealRelations(input: McpInput<"create_crm_deal">) {
       if (input.accountEntityId) await crm.getAccount(input.accountEntityId);
-      for (const entityId of input.contactEntityIds) await crm.getContact(entityId);
+      for (const entityId of input.contactEntityIds) await contacts.getContact(entityId);
     },
     async list(input: McpInput<"list_crm_records">) {
       const limit = input.limit ?? 25;
@@ -66,7 +68,7 @@ export async function mcpCrmTools(context: RepositoryContext, identity: SessionI
           case "account":
             return crm.listAccounts(options);
           case "contact":
-            return crm.listContacts(options);
+            return contacts.listContacts(options);
           case "deal":
             return crm.listDeals(options);
         }
@@ -94,10 +96,10 @@ export async function mcpCrmTools(context: RepositoryContext, identity: SessionI
       return { record: await crm.updateAccount(input.entityId, input) };
     },
     async createContact(input: McpInput<"create_crm_contact">) {
-      return { record: await crm.createContact(input) };
+      return { record: await contacts.createContact(input) };
     },
     async updateContact(input: McpInput<"update_crm_contact">) {
-      return { record: await crm.updateContact(input.entityId, input) };
+      return { record: await contacts.updateContact(input.entityId, input) };
     },
     async createDeal(input: McpInput<"create_crm_deal">) {
       return { record: await crm.createDeal(input) };
@@ -110,7 +112,7 @@ export async function mcpCrmTools(context: RepositoryContext, identity: SessionI
       return { record: await crm.transitionDeal(entityId, change) };
     },
     async listInteractions(input: McpInput<"list_crm_interactions">) {
-      const items = await crm.listInteractions(input.contactEntityId, {
+      const items = await interactions.listInteractions(input.contactEntityId, {
         limit: input.limit,
         before: input.before
           ? { ...input.before, occurredAt: new Date(input.before.occurredAt) }
@@ -127,7 +129,7 @@ export async function mcpCrmTools(context: RepositoryContext, identity: SessionI
     },
     async createInteraction(input: McpInput<"create_crm_interaction">) {
       return {
-        record: await crm.createInteraction({
+        record: await interactions.createInteraction({
           ...input,
           occurredAt: new Date(input.occurredAt),
           endedAt: input.endedAt == null ? input.endedAt : new Date(input.endedAt),
@@ -139,7 +141,7 @@ export async function mcpCrmTools(context: RepositoryContext, identity: SessionI
       await interactions.get(entityId);
     },
     async publishInteraction(input: McpInput<"publish_crm_interaction">) {
-      return { record: await crm.publishInteraction(input) };
+      return { record: await interactions.publishInteraction(input) };
     },
   };
 }

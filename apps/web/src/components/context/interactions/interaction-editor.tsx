@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import { CrmSelect } from "./crm-select";
-import { formText } from "./form-text";
+import { CrmSelect } from "@/components/crm/crm-select";
+import { formText } from "@/components/crm/form-text";
 import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { NativeField, NativeForm } from "@/components/forms/native-form";

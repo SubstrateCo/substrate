@@ -61,6 +61,7 @@ export function WorkspaceFrame({
   else if (pathname.startsWith("/settings/organization")) view = "organization-settings";
   else if (pathname.startsWith("/tasks")) view = "tasks";
   else if (pathname.startsWith("/crm")) view = "crm";
+  else if (pathname.startsWith("/contacts")) view = "contacts";
   else if (pathname.startsWith("/agents")) view = "agents";
   else if (pathname.startsWith("/notifications")) view = "notifications";
   return (
@@ -80,6 +81,7 @@ export function WorkspaceFrame({
             messages: "/dashboard",
             tasks: "/tasks",
             crm: "/crm",
+            contacts: "/contacts",
             agents: "/agents",
             notifications: "/notifications",
             "user-settings": "/settings/user",

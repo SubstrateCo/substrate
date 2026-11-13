@@ -13,10 +13,10 @@ import { RecordDetailView, DetailProperty } from "./record-detail-view";
 import { RecordEditor } from "./record-editor";
 import { RecordList } from "./record-list";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
-import { crmLink } from "@/lib/navigation/record-links";
+import { contactLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
-import { useCrmMutation } from "@/queries/crm/mutations";
 import { accountOptions } from "@/queries/crm/options";
+import { useRecordMutation } from "@/queries/records/mutations";
 
 export function AccountDetail({
   organizationId,
@@ -26,7 +26,7 @@ export function AccountDetail({
   entityId: string;
 }) {
   const query = useQuery(accountOptions(organizationId, entityId));
-  const mutation = useCrmMutation(organizationId);
+  const mutation = useRecordMutation(organizationId, "accounts");
   const [dialog, setDialog] = useState<"edit" | "archive" | null>(null);
   const state = resourceState(query);
   const data = state.data;
@@ -92,7 +92,7 @@ export function AccountDetail({
                   className="flex items-center justify-between gap-4 px-4 py-2"
                 >
                   <Link
-                    {...crmLink(organizationId, "contacts", contact.entityId)}
+                    {...contactLink(organizationId, contact.entityId)}
                     className="text-sm font-medium hover:underline"
                   >
                     {contact.displayName}

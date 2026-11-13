@@ -5,11 +5,12 @@ export const appShortcutKeys = {
   messages: "M",
   tasks: "T",
   crm: "C",
+  contacts: "P",
   agents: "A",
   notifications: "N",
 } as const;
 
-const apps = ["messages", "tasks", "crm", "agents", "notifications"] as const;
+const apps = ["messages", "tasks", "crm", "contacts", "agents", "notifications"] as const;
 export type ShortcutApp = (typeof apps)[number];
 
 const sequenceMs = 1000;

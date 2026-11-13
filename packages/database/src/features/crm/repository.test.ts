@@ -21,7 +21,7 @@ describe("connected CRM", () => {
       contactEntityIds: [contact.entityId],
       stageId: stages[0]!.id,
     });
-    const interaction = await a.crm.createInteraction({
+    const interaction = await a.contactInteractions.createInteraction({
       contactEntityId: contact.entityId,
       kind: "call",
       occurredAt: new Date(),
@@ -169,18 +169,18 @@ describe("connected CRM", () => {
   test("archive preserves history and blocks new routine relationships until restored", async () => {
     const a = f.forActor(f.alice);
     const contact = await a.contacts.create({ displayName: "Customer" });
-    const interaction = await a.crm.createInteraction({
+    const interaction = await a.contactInteractions.createInteraction({
       contactEntityId: contact.entityId,
       kind: "call",
       summary: "Called",
       occurredAt: new Date(),
     });
-    await a.crm.archive(contact.entityId, true);
-    expect(await a.crm.listContacts()).toEqual([]);
+    await a.contacts.archive(contact.entityId, true);
+    expect(await a.contacts.listContacts()).toEqual([]);
     expect((await a.contactInteractions.get(interaction.entityId)).summary).toBe("Called");
     expect(
       await rejection(
-        a.crm.createInteraction({
+        a.contactInteractions.createInteraction({
           contactEntityId: contact.entityId,
           kind: "call",
           summary: "New",
@@ -188,7 +188,7 @@ describe("connected CRM", () => {
         }),
       ),
     ).toMatchObject({ name: "ValidationError" });
-    await a.crm.archive(contact.entityId, false);
-    expect(await a.crm.listContacts()).toHaveLength(1);
+    await a.contacts.archive(contact.entityId, false);
+    expect(await a.contacts.listContacts()).toHaveLength(1);
   });
 });

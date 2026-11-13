@@ -55,19 +55,9 @@ describe("CRM request validation", () => {
     ).toMatchObject({ expectedVersion: 1, requestId: entityId, outcome: "won" });
   });
 
-  test("rejects blank customer names and interaction summaries", () => {
+  test("rejects blank customer names", () => {
     expect(
       crmWrite.safeParse({ organizationId, action: "createAccount", name: "  " }).success,
-    ).toBe(false);
-    expect(
-      crmWrite.safeParse({
-        organizationId,
-        action: "createInteraction",
-        contactEntityId: entityId,
-        kind: "call",
-        occurredAt: "2026-11-12T12:00:00Z",
-        summary: "  ",
-      }).success,
     ).toBe(false);
   });
 
@@ -86,26 +76,6 @@ describe("CRM request validation", () => {
     expect(
       crmWrite.safeParse({ organizationId, action: "configureStages", stages: [] }).success,
     ).toBe(false);
-  });
-
-  test("requires explicit contact-audience consent for message publication", () => {
-    const publication = {
-      organizationId,
-      action: "publishInteraction",
-      contactEntityId: entityId,
-      messageId: stageId,
-      kind: "message",
-      occurredAt: "2026-11-12T12:00:00Z",
-      summary: "Customer confirmed the pilot scope.",
-    };
-    expect(crmWrite.safeParse(publication).success).toBe(false);
-    expect(crmWrite.safeParse({ ...publication, consentToContactAudience: false }).success).toBe(
-      false,
-    );
-    expect(crmWrite.parse({ ...publication, consentToContactAudience: true })).toMatchObject({
-      consentToContactAudience: true,
-      messageId: stageId,
-    });
   });
 
   test("requires a destination project and audience consent for CRM follow-ups", () => {

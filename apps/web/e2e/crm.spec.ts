@@ -1,16 +1,22 @@
+import type { ContactWrite } from "@substrate/contracts/contacts/input";
+import type { InteractionWrite } from "@substrate/contracts/context/interactions";
 import type { CrmWrite } from "@substrate/contracts/crm/input";
 import type { ServiceResult } from "@substrate/contracts/result";
 
 import { result } from "../../server/integration/test-support/api";
-import { createCrm, readCrm } from "../../server/integration/test-support/crm";
+import { createCrm, readCrm, recordMutationPath } from "../../server/integration/test-support/crm";
 import { captureCrm, selectCrmOption } from "./test-support/crm";
 import { conversation, post, test, visit } from "./test-support/fixtures";
 import { expect, type Locator, type Page } from "@playwright/test";
 
-async function submitCrm(page: Page, action: CrmWrite["action"], button: Locator) {
+async function submitCrm(
+  page: Page,
+  action: (CrmWrite | ContactWrite | InteractionWrite)["action"],
+  button: Locator,
+) {
   const response = page.waitForResponse(
     (response) =>
-      new URL(response.url()).pathname === "/api/v1/crm/mutations" &&
+      new URL(response.url()).pathname === recordMutationPath(action) &&
       response.request().method() === "POST" &&
       response.request().postDataJSON()?.action === action,
   );
@@ -29,6 +35,7 @@ test("create customer records, record a call, and advance a linked deal", async 
   test.setTimeout(45_000);
   const user = await client(account);
   const { page } = user;
+  await page.emulateMedia({ colorScheme: "dark" });
   await visit(user, undefined, "/crm", { section: "accounts" });
   await page.getByRole("button", { name: "New account", exact: true }).click();
   const accountDialog = page.getByRole("dialog", { name: "New account", exact: true });
@@ -46,7 +53,7 @@ test("create customer records, record a call, and advance a linked deal", async 
   await expect(page.getByRole("heading", { name: "Northstar Labs", exact: true })).toBeVisible();
   await captureCrm(page, "01-account-detail");
 
-  await visit(user, undefined, "/crm", { section: "contacts" });
+  await visit(user, undefined, "/contacts");
   await page.getByRole("button", { name: "New contact", exact: true }).click();
   const contactDialog = page.getByRole("dialog", { name: "New contact", exact: true });
   await contactDialog.getByLabel("Name", { exact: true }).fill("Jordan Lee");
@@ -73,6 +80,10 @@ test("create customer records, record a call, and advance a linked deal", async 
   await page.reload();
   await expect(page.getByText(summary, { exact: true })).toBeVisible();
   await captureCrm(page, "02-contact-interaction");
+  await expect(page.locator("html")).toHaveClass(/dark/);
+  await visit(user, undefined, "/contacts");
+  await expect(page.getByRole("link", { name: "Jordan Lee", exact: true })).toBeVisible();
+  await captureCrm(page, "contacts-dark");
 
   await visit(user, undefined, "/crm", { section: "deals" });
   await page.getByRole("button", { name: "New deal", exact: true }).click();
@@ -121,6 +132,10 @@ test("create customer records, record a call, and advance a linked deal", async 
     contacts: [{ contact: { entityId: contact.entityId }, isPrimary: true }],
   });
   expect(Number(persisted.deal.amount)).toBe(48000);
+  await expect(page.getByRole("link", { name: "Jordan Lee", exact: true })).toHaveAttribute(
+    "href",
+    new RegExp(`/contacts\\?.*recordId=${contact.entityId}`),
+  );
   const activity = page.getByRole("region", { name: "Activity", exact: true });
   for (const action of ["Created record", "Changed stage or outcome"]) {
     const event = activity.getByRole("listitem").filter({ hasText: action });

@@ -10,6 +10,8 @@ import type { Scopes } from "./shared/scope";
 import { createAgentWorkRoutes } from "./v1/agent-work/routes";
 import { createCallerRoutes } from "./v1/agents/callers-routes";
 import { createAgentsRoutes } from "./v1/agents/routes";
+import { createContactsRoutes } from "./v1/contacts/routes";
+import { createContactInteractionsRoutes } from "./v1/context/interactions-routes";
 import { createContextRoutes } from "./v1/context/routes";
 import { createCrmFromMessageRoutes } from "./v1/crm/from-message-routes";
 import { createCrmRoutes } from "./v1/crm/routes";
@@ -88,6 +90,11 @@ export function createApp({
     .route("/api/v1/files", createFilesRoutes(services.files, scopes))
     .route("/api/v1/tasks", createTasksRoutes(services.tasks, scopes))
     .route("/api/v1/crm", createCrmRoutes(services.crm, scopes))
+    .route("/api/v1/contacts", createContactsRoutes(services.contacts, scopes))
+    .route(
+      "/api/v1/context/interactions",
+      createContactInteractionsRoutes(services.contactInteractions, scopes),
+    )
     .route("/api/v1/crm", createCrmFromMessageRoutes(services.crmFromMessage, scopes))
     .route("/api/v1/messaging", createMessagingRoutes(services.messaging, scopes))
     .route("/api/v1/messaging", createReadRoutes(services.messagingRead, scopes))

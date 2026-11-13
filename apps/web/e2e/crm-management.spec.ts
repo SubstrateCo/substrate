@@ -45,7 +45,12 @@ for (const kind of ["accounts", "contacts", "deals"] as const) {
   }) => {
     const record = await managedRecord(actors.sender, kind);
     const owner = await client(actors.sender);
-    await visit(owner, undefined, "/crm", { section: kind, recordId: record.entityId });
+    const path = kind === "contacts" ? "/contacts" : "/crm";
+    const search =
+      kind === "contacts"
+        ? { recordId: record.entityId }
+        : { section: kind, recordId: record.entityId };
+    await visit(owner, undefined, path, search);
     await owner.page.getByRole("button", { name: "Share", exact: true }).click();
     const sharing = owner.page.getByRole("dialog", { name: `Share ${record.name}`, exact: true });
     await choosePerson(owner.page, actors.member.name);
@@ -55,7 +60,7 @@ for (const kind of ["accounts", "contacts", "deals"] as const) {
     await expect(sharing).toHaveCount(0);
 
     const reader = await client(actors.member);
-    await visit(reader, undefined, "/crm", { section: kind, recordId: record.entityId });
+    await visit(reader, undefined, path, search);
     await expect(
       reader.page.getByRole("heading", { name: record.name, exact: true }),
     ).toBeVisible();

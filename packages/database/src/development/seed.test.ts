@@ -215,10 +215,17 @@ describe("development seed", () => {
     const before = await fixture.db.select().from(schema.messagingMessages);
     const workBefore = await fixture.db.select().from(schema.taskLinks);
     const agentsBefore = await fixture.db.select().from(schema.userAgents);
+    const [interaction] = await fixture.db.select().from(schema.contactInteractions);
+    await fixture.db
+      .update(schema.contactInteractions)
+      .set({ summary: "My edited call summary" })
+      .where(eq(schema.contactInteractions.entityId, interaction!.entityId));
+    const interactionsBefore = await fixture.db.select().from(schema.contactInteractions);
     expect(await seedDevelopmentDatabase(fixture.db, "replacement-hash")).toBe(false);
     expect(await fixture.db.select().from(schema.messagingMessages)).toEqual(before);
     expect(await fixture.db.select().from(schema.taskLinks)).toEqual(workBefore);
     expect(await fixture.db.select().from(schema.userAgents)).toEqual(agentsBefore);
+    expect(await fixture.db.select().from(schema.contactInteractions)).toEqual(interactionsBefore);
     expect(
       (
         await fixture.db
@@ -235,6 +242,72 @@ describe("development seed", () => {
     expect(
       (await fixture.db.select().from(schema.user).where(eq(schema.user.id, "alice")))[0]!.email,
     ).toBe("alice@example.com");
+  });
+
+  test("seeds readable contact history, inherited access, and structured discussion and task context", async () => {
+    await seedDevelopmentDatabase(fixture.db, "development-password-hash");
+    for (const organizationId of ["dev-northstar", "dev-orbit"]) {
+      const actors = await fixture.db
+        .select()
+        .from(schema.actors)
+        .where(eq(schema.actors.organizationId, organizationId));
+      for (const actor of actors) {
+        const repos = fixture.forActor(actor.entityId, organizationId);
+        const contacts = await repos.contacts.listContacts();
+        expect(contacts).toHaveLength(2);
+        for (const { contact } of contacts) {
+          const detail = await repos.contacts.getContact(contact.entityId);
+          expect(detail.profile.notes).toBeTruthy();
+          expect(new Set(detail.identifiers.map((identifier) => identifier.type))).toEqual(
+            new Set(["email", "phone"]),
+          );
+          expect(detail.urls).toHaveLength(1);
+          const history = await repos.contactInteractions.listInteractions(contact.entityId);
+          expect(new Set(history.map((interaction) => interaction.kind))).toEqual(
+            new Set(["email", "meeting", "call", "note", "message"]),
+          );
+          expect(history).toHaveLength(5);
+          for (const interaction of history) {
+            const entity = await repos.entities.get(interaction.entityId);
+            expect(entity.accessEntityId).toBe(contact.entityId);
+          }
+          const publication = history.find(
+            (interaction) => interaction.origin === "message_publication",
+          )!;
+          const [source] = await fixture.db
+            .select()
+            .from(schema.messageEntityReferences)
+            .where(
+              and(
+                eq(schema.messageEntityReferences.entityId, publication.entityId),
+                eq(schema.messageEntityReferences.purpose, "source"),
+              ),
+            );
+          expect(source?.organizationId).toBe(organizationId);
+          const [taskLink] = await fixture.db
+            .select()
+            .from(schema.entityLinks)
+            .where(eq(schema.entityLinks.targetEntityId, publication.entityId));
+          expect(taskLink).toBeDefined();
+          expect((await repos.entities.get(taskLink!.sourceEntityId)).entityType).toBe("task");
+          expect(taskLink?.organizationId).toBe(organizationId);
+        }
+      }
+    }
+    const [foreignInteraction] = await fixture.db
+      .select()
+      .from(schema.contactInteractions)
+      .where(eq(schema.contactInteractions.organizationId, "dev-orbit"));
+    const [alice] = await fixture.db
+      .select()
+      .from(schema.actors)
+      .where(eq(schema.actors.userId, "dev-alice"));
+    expect(
+      await fixture
+        .forActor(alice!.entityId, "dev-northstar")
+        .contactInteractions.get(foreignInteraction!.entityId)
+        .catch((error: Error) => error),
+    ).toBeInstanceOf(AccessDeniedError);
   });
 
   test("a conflicting existing account rolls back the whole seed", async () => {

@@ -3,9 +3,9 @@ import { Link } from "@tanstack/react-router";
 
 import { useState } from "react";
 
-import { CrmResourceState } from "./crm-resource-state";
-import { CrmSelect } from "./crm-select";
-import { formText } from "./form-text";
+import { CrmResourceState } from "@/components/crm/crm-resource-state";
+import { CrmSelect } from "@/components/crm/crm-select";
+import { formText } from "@/components/crm/form-text";
 import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { NativeField, NativeForm } from "@/components/forms/native-form";
@@ -24,8 +24,8 @@ import { Label } from "@/components/ui/label";
 import { formatDateTime } from "@/lib/format/date";
 import { messageLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
+import { useInteractionMutation } from "@/queries/context/interactions";
 import { relatedContextOptions } from "@/queries/context/links";
-import { useCrmMutation } from "@/queries/crm/mutations";
 
 export function PublishInteraction({
   organizationId,
@@ -61,7 +61,7 @@ function PublicationEditor({
   onClose: () => void;
 }) {
   const related = useQuery(relatedContextOptions(organizationId, contactEntityId));
-  const mutation = useCrmMutation(organizationId);
+  const mutation = useInteractionMutation(organizationId);
   const [messageId, setMessageId] = useState("");
   const [kind, setKind] = useState<"message" | "email" | "meeting" | "call" | "note" | "other">(
     "message",

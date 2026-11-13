@@ -1,3 +1,5 @@
+import { contactWrite } from "../../contacts/input.ts";
+import { interactionWrite } from "../../context/interactions.ts";
 import {
   crmActivityActions,
   crmActivityFields,
@@ -15,12 +17,13 @@ const kind = z.enum(["account", "contact", "deal"]);
 const record = z.record(z.string(), z.json());
 const recordResult = z.object({ record: z.object({ entityId: id }).catchall(z.json()) });
 const interactionCursor = z.object({ occurredAt: timestamp, entityId: id }).strict();
+const mutationSchemas = [...crmWrite.options, ...contactWrite.options, ...interactionWrite.options];
 type MutationSchemas = {
-  [S in (typeof crmWrite.options)[number] as S["shape"]["action"]["value"]]: S;
+  [S in (typeof mutationSchemas)[number] as S["shape"]["action"]["value"]]: S;
 };
 // SAFETY: each union member is keyed by its own literal discriminator.
 const mutations = Object.fromEntries(
-  crmWrite.options.map((schema) => [schema.shape.action.value, schema]),
+  mutationSchemas.map((schema) => [schema.shape.action.value, schema]),
 ) as MutationSchemas;
 
 export const crmTools = {

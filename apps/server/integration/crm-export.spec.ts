@@ -33,12 +33,17 @@ test("CRM CSV attachments exclude private bodies and enforce export and tenant b
     ["contacts", contact.entityId],
     ["deals", deal.entityId],
   ]) {
-    const response = await owner.request.get("/api/v1/crm/export", {
-      params: { organizationId: owner.organizationId, kind: kind! },
-    });
+    const response = await owner.request.get(
+      kind === "contacts" ? "/api/v1/contacts/export" : "/api/v1/crm/export",
+      {
+        params: { organizationId: owner.organizationId, kind: kind! },
+      },
+    );
     expect(response.status()).toBe(200);
     expect(response.headers()["content-disposition"]).toBe(
-      `attachment; filename="crm-${kind}.csv"`,
+      kind === "contacts"
+        ? 'attachment; filename="contacts.csv"'
+        : `attachment; filename="crm-${kind}.csv"`,
     );
     expect(response.headers()["cache-control"]).toBe("no-store");
     const csv = await response.text();
@@ -98,9 +103,12 @@ test("CRM exports apply the active search filter to accounts, contacts, and deal
     ["contacts", matchingContact, hiddenContact],
     ["deals", matchingDeal, hiddenDeal],
   ] as const) {
-    const response = await owner.request.get("/api/v1/crm/export", {
-      params: { organizationId: owner.organizationId, kind, search: " north export " },
-    });
+    const response = await owner.request.get(
+      kind === "contacts" ? "/api/v1/contacts/export" : "/api/v1/crm/export",
+      {
+        params: { organizationId: owner.organizationId, kind, search: " north export " },
+      },
+    );
     expect(response.status()).toBe(200);
     const csv = await response.text();
     expect(csv).toContain(matching.entityId);

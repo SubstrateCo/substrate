@@ -8,7 +8,7 @@ import {
 } from "@/components/context/search/workspace-search-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
-import { crmLink, messageLink, workLink } from "@/lib/navigation/record-links";
+import { recordLink, contactLink, messageLink, workLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { searchPagesOptions, useJoinSearchConversation } from "@/queries/context/search";
 import { toast } from "sonner";
@@ -35,10 +35,10 @@ export function WorkspaceSearch({
         (item) => {
           if (item.kind === "account" || item.kind === "contact" || item.kind === "deal") {
             const section = { account: "accounts", contact: "contacts", deal: "deals" } as const;
-            return { ...item, link: crmLink(organizationId, section[item.kind], item.id) };
+            return { ...item, link: recordLink(organizationId, section[item.kind], item.id) };
           }
           if (item.kind === "contact_interaction")
-            return { ...item, link: crmLink(organizationId, "contacts", item.contactEntityId) };
+            return { ...item, link: contactLink(organizationId, item.contactEntityId) };
           return {
             ...item,
             link: item.conversationId

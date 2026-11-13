@@ -3,24 +3,24 @@ import { Link } from "@tanstack/react-router";
 
 import { useState } from "react";
 
-import { AffiliationEditor } from "./affiliation-editor";
 import { ContactMethods } from "./contact-methods";
-import { CrmActivity } from "./crm-activity";
-import { CrmResourceState } from "./crm-resource-state";
-import { accessLabel } from "./crm-types";
-import { FollowUps } from "./follow-ups";
-import { InteractionEditor } from "./interaction-editor";
-import { InteractionHistory } from "./interaction-history";
-import { PublishInteraction } from "./publish-interaction";
-import { RecordArchive } from "./record-archive";
-import { RecordDetailView, DetailProperty } from "./record-detail-view";
-import { RecordEditor } from "./record-editor";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
+import { InteractionEditor } from "@/components/context/interactions/interaction-editor";
+import { InteractionHistory } from "@/components/context/interactions/interaction-history";
+import { PublishInteraction } from "@/components/context/interactions/publish-interaction";
+import { AffiliationEditor } from "@/components/crm/affiliation-editor";
+import { CrmActivity } from "@/components/crm/crm-activity";
+import { CrmResourceState } from "@/components/crm/crm-resource-state";
+import { accessLabel } from "@/components/crm/crm-types";
+import { FollowUps } from "@/components/crm/follow-ups";
+import { RecordArchive } from "@/components/crm/record-archive";
+import { RecordDetailView, DetailProperty } from "@/components/crm/record-detail-view";
+import { RecordEditor } from "@/components/crm/record-editor";
 import { Button } from "@/components/ui/button";
 import { crmLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
-import { useCrmMutation } from "@/queries/crm/mutations";
-import { contactOptions } from "@/queries/crm/options";
+import { contactOptions } from "@/queries/contacts/options";
+import { useRecordMutation } from "@/queries/records/mutations";
 import { Plus } from "lucide-react";
 
 export function ContactDetail({
@@ -31,7 +31,7 @@ export function ContactDetail({
   entityId: string;
 }) {
   const query = useQuery(contactOptions(organizationId, entityId));
-  const mutation = useCrmMutation(organizationId);
+  const mutation = useRecordMutation(organizationId, "contacts");
   const [dialog, setDialog] = useState<"edit" | "archive" | "interaction" | "affiliation" | null>(
     null,
   );

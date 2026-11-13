@@ -211,7 +211,7 @@ test("contact creation uses the canonical CRM wrapper and deal creation retains 
   expect(await f.db.select().from(contacts)).toMatchObject([
     { entityId: contact.result.entityId, displayName: "Buyer" },
   ]);
-  expect((await repos.crm.getContact(contact.result.entityId)).profile.entityId).toBe(
+  expect((await repos.contacts.getContact(contact.result.entityId)).profile.entityId).toBe(
     contact.result.entityId,
   );
   const stages = await repos.crm.ensurePipeline();
@@ -229,7 +229,7 @@ test("invalid deal relationships roll back without leaving a root or source", as
   const stages = await repos.crm.ensurePipeline();
   const foreignContact = await f
     .forActor(f.outsider, f.orgB)
-    .crm.createContact({ displayName: "Foreign buyer" });
+    .contacts.createContact({ displayName: "Foreign buyer" });
   const before = await f.db.select().from(entities);
   expect(
     await rejection(
