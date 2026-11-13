@@ -25,35 +25,15 @@
 
 ## Relationships and context
 
-Every relationship uses exactly one of three mechanisms. Take the first one that fits:
+Load the `database-table-design` skill before you add or change a table, relationship, entity type, or relation type. It has the decision steps and table templates. These rules always apply:
 
-1. **Structure: a domain foreign key or join table.** Use it when the relationship defines where a record belongs or who is responsible for it: containment (task → project, subtask → parent task), membership, ownership, assignment, or a business relationship with its own fields (deal contacts, account affiliations). Put it in the owning domain's schema, with composite organization foreign keys.
-2. **Record context: `entity_links`.** Use it when two entities are related, but neither one belongs to the other (a task about a deal, an interaction about a deal).
-   - `related_to` has no direction. Store it once, in ID order, with `relatedPair()`. Write it through `linkRepository`, or in the transaction of the domain workflow that creates it.
-   - `blocks` and `duplicates` are task relations. Only the task domain writes them, and it checks that both ends are tasks.
-   - To add a relation type, add it to `relationTypes`, give one domain its write path and type checks, and generate a migration. Add it only for a real feature.
-3. **Message context: `message_entity_references`.** Messages are not entities, so they cannot use `entity_links`. Purposes:
-   - `source`: a workflow created the record from the message.
-   - `mention`: the reference is parsed from the message body.
-   - `association`: a person attached the message by hand.
-
-   The purposes are independent. Removing one never removes another.
-
-Do not add another table for one of these jobs:
-
-- **Provenance.** When a workflow creates one record from another, write the `source` message reference or a `related_to` link in the same transaction. Do not add a provenance table for each workflow.
-- **Retries.** Use `previousRequest()` and `recordRequest()` from `core/requests/once.ts` with a new value in `requestOperations`. Do not add a request table for each workflow.
-- **History.** Record changes in the domain's activity table (`task_activity`, `crm_activity_events`). Do not add an event table for one field or one action.
-- **Derived references.** Do not store what the content already holds. Channel and thread references are read from the message body each time the message is read.
-
-Rules for all relationships:
-
+- Every relationship uses exactly one of three mechanisms. Take the first one that fits:
+  1. **Structure:** a domain foreign key or join table, when the relationship defines where a record belongs, who is responsible for it, or has its own fields.
+  2. **Record context:** `entity_links`, when two entities are related but neither one belongs to the other.
+  3. **Message context:** `message_entity_references`, when one end is a message. Messages are not entities.
+- Do not add a table for provenance, retries, history, or derived references. Use the `source` message reference or a `related_to` link, `core/requests/once.ts`, the domain's activity table, and the content itself.
 - Do not copy a structural relationship into `entity_links`.
-- Validate organization, entity type, lifecycle state, and required access when establishing a relationship. Writing a link needs edit access on the record being changed and view access on the other record.
-- Linking does not grant access or send notifications unless an explicit application policy requires it. Readers see a link only when they can read both ends.
-- Do not assume one table holds every relationship. Cross-domain context queries combine structural relationships, `entity_links`, and `message_entity_references`, and apply each domain's access rules.
-- Save content and derived references atomically.
-- Define relationship behavior for deletion, restoration, membership changes, and reparenting when implementing those operations.
+- Writing a link needs edit access on the record being changed and view access on the other record. Linking does not grant access or send notifications. Readers see a link only when they can read both ends.
 - An entity-type enum value alone does not constitute an implemented domain. Do not create placeholder entities for unsupported feature types.
 
 ## Agent work
