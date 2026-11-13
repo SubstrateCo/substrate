@@ -1,4 +1,4 @@
-import { organizationId } from "../workspace.js";
+import { organizationId } from "../workspace.ts";
 import { z } from "zod";
 
 export const crmReportFilters = z.object({

@@ -1,4 +1,4 @@
-import { crmWorkspace } from "./input.js";
+import { crmWorkspace } from "./input.ts";
 import { z } from "zod";
 
 export const CRM_EXPORT_MAX_ROWS = 1000;

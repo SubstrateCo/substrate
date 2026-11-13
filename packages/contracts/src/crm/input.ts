@@ -1,6 +1,6 @@
-import { taskStatusValues, taskPriorityValues } from "../tasks/status.js";
-import { organizationId } from "../workspace.js";
-import { crmReportFilters } from "./report-input.js";
+import { taskStatusValues, taskPriorityValues } from "../tasks/status.ts";
+import { organizationId } from "../workspace.ts";
+import { crmReportFilters } from "./report-input.ts";
 import { z } from "zod";
 
 export const crmWorkspace = z.object({ organizationId });

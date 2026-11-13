@@ -1,5 +1,3 @@
-import { isDeepStrictEqual } from "node:util";
-
 interface DevelopmentService {
   name: string;
   script: "dev:server" | "dev:web";
@@ -36,7 +34,7 @@ export function developmentServices(
           return false;
         }
         const body: unknown = await response.json();
-        return isDeepStrictEqual(body, { success: true, data: null });
+        return body === null;
       } catch {
         return false;
       }

@@ -19,7 +19,7 @@ for (const [webReady, apiReady, expected] of [
         if (!available.has(url)) throw new Error("Connection refused");
         return url.endsWith("/login")
           ? new Response("Frontend")
-          : Response.json({ success: true, data: null });
+          : Response.json(null);
       },
     );
     await ensureDevelopmentServices(
@@ -42,7 +42,8 @@ test("API readiness requires the actual anonymous session response, not frontend
     Response.json({ success: false, data: null }),
     Response.json({ success: true, data: { user: {} } }),
     Response.json({ success: true }),
-    Response.json({ success: true, data: null }, { status: 503 }),
+    Response.json({ success: true, data: null }),
+    Response.json(null, { status: 503 }),
     new Response(null, { status: 302, headers: { location: "/login" } }),
   ]) {
     const [api] = developmentServices(

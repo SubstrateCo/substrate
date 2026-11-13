@@ -1,5 +1,5 @@
-import { taskPriorityValues, taskStatusValues } from "../tasks/status.js";
-import { organizationId } from "../workspace.js";
+import { taskPriorityValues, taskStatusValues } from "../tasks/status.ts";
+import { organizationId } from "../workspace.ts";
 import { z } from "zod";
 
 export const contextWorkspace = z.object({ organizationId });

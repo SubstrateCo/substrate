@@ -1,5 +1,5 @@
-import { organizationId } from "../workspace.js";
-import { accountFields, contactFields, dealFields } from "./input.js";
+import { organizationId } from "../workspace.ts";
+import { accountFields, contactFields, dealFields } from "./input.ts";
 import { z } from "zod";
 
 const source = z.object({
