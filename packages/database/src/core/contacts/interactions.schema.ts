@@ -10,7 +10,6 @@ import {
   pgTable,
   text,
   timestamp,
-  uniqueIndex,
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
@@ -23,9 +22,9 @@ export const contactInteractionKind = pgEnum("contact_interaction_kind", [
   "note",
   "other",
 ]);
+// A published interaction's source message is its `source` message reference.
 export const contactInteractionOrigin = pgEnum("contact_interaction_origin", [
   "manual",
-  "imported",
   "message_publication",
 ]);
 
@@ -42,8 +41,6 @@ export const contactInteractions = pgTable(
     endedAt: timestamp("ended_at", { withTimezone: true }),
     summary: text("summary").notNull(),
     origin: contactInteractionOrigin("origin").notNull(),
-    sourceEntityId: uuid("source_entity_id"),
-    sourceEntityType: entityType("source_entity_type"),
     createdByActorEntityId: uuid("created_by_actor_entity_id").notNull(),
   },
   (table) => [
@@ -60,10 +57,6 @@ export const contactInteractions = pgTable(
       foreignColumns: [entities.organizationId, entities.entityId, entities.accessEntityId],
     }),
     foreignKey({
-      columns: [table.organizationId, table.sourceEntityId, table.sourceEntityType],
-      foreignColumns: [entities.organizationId, entities.entityId, entities.entityType],
-    }),
-    foreignKey({
       columns: [table.organizationId, table.createdByActorEntityId],
       foreignColumns: [actors.organizationId, actors.entityId],
     }),
@@ -76,24 +69,12 @@ export const contactInteractions = pgTable(
       "contact_interactions_time_check",
       sql`${table.endedAt} IS NULL OR ${table.endedAt} >= ${table.occurredAt}`,
     ),
-    check(
-      "contact_interactions_source_check",
-      sql`(${table.origin}::text IN ('manual', 'message_publication') AND ${table.sourceEntityId} IS NULL AND ${table.sourceEntityType} IS NULL) OR (${table.origin}::text = 'imported' AND ${table.sourceEntityId} IS NOT NULL AND ${table.sourceEntityType} IS NOT NULL)`,
-    ),
-    check(
-      "contact_interactions_no_self_source_check",
-      sql`${table.sourceEntityId} IS NULL OR ${table.sourceEntityId} <> ${table.entityId}`,
-    ),
     index("contact_interactions_timeline_idx").on(
       table.organizationId,
       table.contactEntityId,
       table.occurredAt.desc(),
       table.entityId.desc(),
     ),
-    uniqueIndex("contact_interactions_source_unique")
-      .on(table.organizationId, table.contactEntityId, table.sourceEntityId)
-      .where(sql`${table.origin} = 'imported'`),
-    index("contact_interactions_source_idx").on(table.organizationId, table.sourceEntityId),
     unique("contact_interactions_org_entity_contact_unique").on(
       table.organizationId,
       table.entityId,

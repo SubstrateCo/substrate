@@ -182,9 +182,8 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
         );
         await messaging(1).sendMessage(discussionId, developmentWork.reviewerReply);
         await linkRepository(context).create({
-          sourceEntityId: projectTasks[0]!.entityId,
-          targetEntityId: contacts[projectIndex]!.entityId,
-          relationType: "related_to",
+          entityId: projectTasks[0]!.entityId,
+          otherEntityId: contacts[projectIndex]!.entityId,
         });
         if (projectIndex === 1) {
           const link = developmentWork.crossProjectLink;

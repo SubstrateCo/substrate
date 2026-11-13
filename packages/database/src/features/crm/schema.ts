@@ -167,38 +167,3 @@ export const crmDealContacts = pgTable(
     unique().on(t.organizationId, t.dealEntityId, t.contactEntityId),
   ],
 );
-export const crmDealEvents = pgTable(
-  "crm_deal_events",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    organizationId: text("organization_id").notNull(),
-    dealEntityId: uuid("deal_entity_id").notNull(),
-    actorEntityId: uuid("actor_entity_id").notNull(),
-    requestId: uuid("request_id"),
-    fingerprint: text("fingerprint"),
-    fromStageId: uuid("from_stage_id"),
-    toStageId: uuid("to_stage_id").notNull(),
-    fromOutcome: text("from_outcome"),
-    toOutcome: text("to_outcome").notNull(),
-    occurredAt: timestamp("occurred_at", { withTimezone: true }).defaultNow().notNull(),
-  },
-  (t) => [
-    foreignKey({
-      columns: [t.organizationId, t.dealEntityId],
-      foreignColumns: [crmDeals.organizationId, crmDeals.entityId],
-    }).onDelete("cascade"),
-    foreignKey({
-      columns: [t.organizationId, t.actorEntityId],
-      foreignColumns: [actors.organizationId, actors.entityId],
-    }),
-    foreignKey({
-      columns: [t.organizationId, t.fromStageId],
-      foreignColumns: [crmStages.organizationId, crmStages.id],
-    }),
-    foreignKey({
-      columns: [t.organizationId, t.toStageId],
-      foreignColumns: [crmStages.organizationId, crmStages.id],
-    }),
-    unique().on(t.organizationId, t.dealEntityId, t.requestId),
-  ],
-);

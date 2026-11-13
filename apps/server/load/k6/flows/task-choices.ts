@@ -97,7 +97,7 @@ export function skewed<T extends { entityId: string }>(items: T[], exponent: num
   return rng.weighted(ranked, (entry) => entry.weight)?.item;
 }
 
-const relations = ["blocked_by", "relates_to", "blocks", "duplicates"] as const;
+const relations = ["blocked_by", "related_to", "blocks", "duplicates"] as const;
 
 /** The picker starts at "Is blocked by"; people change it about half the time. */
 export const pickRelation = () =>

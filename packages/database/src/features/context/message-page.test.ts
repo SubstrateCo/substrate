@@ -305,9 +305,6 @@ test("single-purpose context matches page shapes and order with bounded reads as
     queries.length = 0;
     const links = await service.messageLinks(root.id);
     const linkQueries = queries.length;
-    expect(queries.some((query) => query.includes('from "message_messaging_references"'))).toBe(
-      false,
-    );
     queries.length = 0;
     const people = await service.messagePeople(root.id);
     const peopleQueries = queries.length;

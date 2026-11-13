@@ -418,16 +418,8 @@ test("related search is one-hop, bidirectional, and includes structural membersh
   });
   const other = await alice.projects.create({ name: "Other" });
   const distant = await alice.projects.create({ name: "Distant" });
-  await alice.links.create({
-    sourceEntityId: other.entityId,
-    targetEntityId: parent.entityId,
-    relationType: "related_to",
-  });
-  await alice.links.create({
-    sourceEntityId: other.entityId,
-    targetEntityId: distant.entityId,
-    relationType: "related_to",
-  });
+  await alice.links.create({ entityId: other.entityId, otherEntityId: parent.entityId });
+  await alice.links.create({ entityId: other.entityId, otherEntityId: distant.entityId });
   const context = createContextService(f.db, { userId: "alice", organizationId: f.orgA });
   const ids = async (relatedToEntityId: string) =>
     (await context.search({ query: "", relatedToEntityId })).map((row) => row.id).sort();

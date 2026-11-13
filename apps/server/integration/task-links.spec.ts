@@ -54,7 +54,7 @@ test("task links enforce access, origin, and workspace, and redact a task the re
   // The member can edit the visible task but cannot name a task they cannot open.
   await rejected(await write(member, link), ["Undisclosed acquisition"]);
   await rejected(
-    await write(outsider, { ...link, relation: "relates_to", otherTaskEntityId: visible }),
+    await write(outsider, { ...link, relation: "related_to", otherTaskEntityId: visible }),
   );
   await result(await write(owner, link));
   expect((await write(owner, link)).status()).toBe(400);

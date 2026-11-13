@@ -6,7 +6,7 @@ import type { SessionIdentity } from "../../core/session/identity";
 import { messagingSession, type MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError } from "../../errors";
 import { applyMessageEffects } from "../context/message-effects";
-import { messageEntityReferences, messageMessagingReferences } from "../context/schema";
+import { messageEntityReferences } from "../context/schema";
 import { messageAttachmentMetadata } from "../files/metadata";
 import { messageAttachments } from "../files/schema";
 import { notifications } from "../notifications/schema";
@@ -74,9 +74,6 @@ export function messageMutationOperations(
             eq(messageEntityReferences.purpose, "mention"),
           ),
         );
-      await tx
-        .delete(messageMessagingReferences)
-        .where(eq(messageMessagingReferences.messageId, messageId));
       const [updated] = await tx
         .update(messagingMessages)
         .set(deleting ? { body: "", deletedAt: new Date() } : { body, editedAt: new Date() })

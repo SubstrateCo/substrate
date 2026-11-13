@@ -1,8 +1,9 @@
+import { contactInteractions } from "../../core/contacts/interactions.schema";
 import { contextConversation } from "../../testing/context";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { messagingMessages } from "../messaging/schema";
-import { crmInteractionPublications } from "./interaction-publications.schema";
+import { messageEntityReferences } from "./schema";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -29,26 +30,31 @@ test("publication is consented, idempotent, contact-visible, and cannot revive a
     alice.contactInteractions.publishInteraction(input),
   ]);
   expect(first.result.entityId).toBe(second.result.entityId);
-  expect(await f.db.select().from(crmInteractionPublications)).toHaveLength(1);
+  expect(await f.db.select().from(contactInteractions)).toHaveLength(1);
+  expect(
+    await f.db
+      .select({ purpose: messageEntityReferences.purpose })
+      .from(messageEntityReferences)
+      .where(eq(messageEntityReferences.entityId, first.result.entityId)),
+  ).toEqual([{ purpose: "source" }]);
   const visible = await f.forActor(f.bob).contactInteractions.get(first.result.entityId);
   expect(visible.summary).toBe("Approved summary");
-  expect(visible.source).toBeNull();
   expect(visible).not.toHaveProperty("messageId");
   await repos.contactInteractions.update(first.result.entityId, { summary: "Later correction" });
-  expect((await alice.contactInteractions.publishInteraction(input)).result.summary).toBe(
-    "Later correction",
-  );
-  expect(
-    await rejection(
-      alice.contactInteractions.publishInteraction({ ...input, summary: "Changed replay" }),
-    ),
-  ).toMatchObject({ name: "ConflictError" });
+  // A repeat, even with a different summary, returns the published interaction unchanged.
+  const replay = await alice.contactInteractions.publishInteraction({
+    ...input,
+    summary: "Changed replay",
+  });
+  expect(replay.result).toMatchObject({
+    entityId: first.result.entityId,
+    summary: "Later correction",
+  });
   await repos.contactInteractions.softDelete(first.result.entityId);
   expect(await rejection(alice.contactInteractions.publishInteraction(input))).toMatchObject({
     name: "AccessDeniedError",
   });
   await f.db.delete(messagingMessages).where(eq(messagingMessages.id, reply.id));
-  expect(await f.db.select().from(crmInteractionPublications)).toHaveLength(1);
   expect(await rejection(alice.contactInteractions.publishInteraction(input))).toMatchObject({
     name: "AccessDeniedError",
   });
@@ -84,5 +90,5 @@ test("publication rejects a contact-only reader and false audience consent", asy
       }),
     ),
   ).toMatchObject({ name: "ValidationError" });
-  expect(await f.db.select().from(crmInteractionPublications)).toEqual([]);
+  expect(await f.db.select().from(contactInteractions)).toEqual([]);
 });

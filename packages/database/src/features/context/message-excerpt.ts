@@ -61,7 +61,7 @@ export async function messageExcerpts(
       for (const link of links) labels.set(`${link.entityType}:${link.entityId}`, link.title);
   signal?.throwIfAborted();
   if (ids.length && /@\[(channel|thread):/i.test(bodies))
-    for (const reference of await messagingReferencePage(db, scope, ids)) {
+    for (const reference of await messagingReferencePage(db, scope, messages)) {
       const channel = reference.conversationName ? `#${reference.conversationName}` : "a channel";
       labels.set(
         `${reference.kind}:${reference.id}`,

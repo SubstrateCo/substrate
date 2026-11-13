@@ -4,7 +4,7 @@ import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
 import { rejection } from "../../testing/rejection";
-import { messageEntityReferences, messageMessagingReferences } from "../context/schema";
+import { messageEntityReferences } from "../context/schema";
 import { createContextService } from "../context/service";
 import { messagingMessages, messagingReactions } from "./schema";
 import { createMessagingService } from "./service";
@@ -218,7 +218,6 @@ test("edits replace only derived references and do not redeliver notifications",
   expect(await f.db.select().from(messageEntityReferences)).toMatchObject([
     { messageId: sent.id, purpose: "association" },
   ]);
-  expect(await f.db.select().from(messageMessagingReferences)).toEqual([]);
   expect(
     await rejection(f.messaging("alice").editMessage(sent.id, `@[project:${crypto.randomUUID()}]`)),
   ).toBeInstanceOf(AccessDeniedError);

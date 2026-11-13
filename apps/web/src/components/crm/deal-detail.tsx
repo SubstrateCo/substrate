@@ -47,7 +47,7 @@ export function DealDetail({
         onRetry={() => void query.refetch()}
       />
     );
-  const { deal, account, contacts: participants, events, level } = data;
+  const { deal, account, contacts: participants, level } = data;
   const canEdit = level === "edit" || level === "owner";
   const archived = !!deal.archivedAt;
   const stages = (pipeline.data ?? [])
@@ -153,27 +153,6 @@ export function DealDetail({
         <InteractionRollup organizationId={organizationId} entityId={entityId} kind="deal" />
         <CrmActivity organizationId={organizationId} entityId={entityId} />
         <WorkDiscussions organizationId={organizationId} entityId={entityId} />
-        <section className="space-y-3" aria-label="Deal history">
-          <h2 className="text-sm font-medium">Deal history</h2>
-          <ol className="divide-y">
-            {events.map((event) => (
-              <li
-                key={event.id}
-                className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm"
-              >
-                <span>
-                  {event.fromStageId ? `${stageName(event.fromStageId)} → ` : "Created in "}
-                  {stageName(event.toStageId)} · {outcomeLabel(event.toOutcome)}
-                </span>
-                <Timestamp
-                  value={event.occurredAt}
-                  format="datetime"
-                  className="text-xs text-muted-foreground"
-                />
-              </li>
-            ))}
-          </ol>
-        </section>
       </RecordDetailView>
       {dialog === "edit" && editingRecord && (
         <RecordEditor

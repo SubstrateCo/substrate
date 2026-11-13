@@ -26,12 +26,12 @@ import {
   messagingParticipants,
 } from "../messaging/schema";
 import { projects } from "../projects/schema";
-import { taskLinks } from "../tasks/links.schema";
 import { tasks } from "../tasks/tasks.schema";
 import { requireWork } from "./access";
 import { crmContextTargets, crmContextTypes, isCrmContextType } from "./crm-targets";
 import { messageExcerpts } from "./message-excerpt";
-import { messageEntityReferences, messageMessagingReferences } from "./schema";
+import { bodyMessagingReferences } from "./messaging-references";
+import { messageEntityReferences } from "./schema";
 import {
   and,
   asc,
@@ -143,6 +143,8 @@ export async function contextSearch(
   let anchorConversationId: string | undefined;
   // A task anchor's subtasks share its project, which bounds the scan by the unique index.
   let anchorProjectId: string | undefined;
+  // A message anchor's channel and thread references, read from its body.
+  let anchorReferences: ReturnType<typeof bodyMessagingReferences> = [];
   const anchorId = input.relatedToEntityId;
   if (anchorId) {
     const [entity] = await db
@@ -169,7 +171,10 @@ export async function contextSearch(
         anchorConversationId = conversation.id;
       } else {
         const [message] = await db
-          .select({ conversationId: messagingMessages.conversationId })
+          .select({
+            conversationId: messagingMessages.conversationId,
+            body: messagingMessages.body,
+          })
           .from(messagingMessages)
           .innerJoin(
             messagingConversations,
@@ -180,6 +185,7 @@ export async function contextSearch(
         if (!message) throw new AccessDeniedError();
         anchorKind = "message";
         anchorConversationId = message.conversationId;
+        anchorReferences = bodyMessagingReferences(message.body);
       }
     }
   }
@@ -191,11 +197,6 @@ export async function contextSearch(
         FROM ${entityLinks}
         WHERE ${entityLinks.organizationId} = ${scope.organizationId}
           AND (${entityLinks.sourceEntityId} = ${anchorId} OR ${entityLinks.targetEntityId} = ${anchorId})
-        UNION SELECT CASE WHEN ${taskLinks.sourceTaskEntityId} = ${anchorId}
-          THEN ${taskLinks.targetTaskEntityId} ELSE ${taskLinks.sourceTaskEntityId} END
-        FROM ${taskLinks}
-        WHERE ${taskLinks.organizationId} = ${scope.organizationId}
-          AND (${taskLinks.sourceTaskEntityId} = ${anchorId} OR ${taskLinks.targetTaskEntityId} = ${anchorId})
         UNION SELECT ${tasks.entityId} FROM ${tasks}
         WHERE ${tasks.organizationId} = ${scope.organizationId}
           AND ${anchorProjectId ? eq(tasks.projectEntityId, anchorProjectId) : sql`true`}
@@ -240,64 +241,18 @@ export async function contextSearch(
         inArray(messagingMessages.id, relatedReferenceIds(messageEntityReferences.messageId)),
       );
     } else if (anchorKind === "message") {
+      // Only the anchor's own outgoing references: references are not stored, so incoming ones
+      // cannot be found without scanning message bodies.
+      const ids = (kind: "channel" | "thread") =>
+        anchorReferences.flatMap((reference) => (reference.kind === kind ? [reference.id] : []));
+      const threadIds = ids("thread");
       relatedConversations = or(
         eq(messagingConversations.id, anchorConversationId!),
-        inArray(
-          messagingConversations.id,
-          db
-            .select({ id: messageMessagingReferences.targetConversationId })
-            .from(messageMessagingReferences)
-            .where(
-              and(
-                eq(messageMessagingReferences.organizationId, scope.organizationId),
-                eq(messageMessagingReferences.messageId, anchorId),
-              ),
-            ),
-        ),
+        ...ids("channel").map((id) => eq(messagingConversations.id, id)),
       );
-      relatedMessages = or(
-        inArray(
-          messagingMessages.id,
-          db
-            .select({ id: messageMessagingReferences.messageId })
-            .from(messageMessagingReferences)
-            .where(
-              and(
-                eq(messageMessagingReferences.organizationId, scope.organizationId),
-                eq(messageMessagingReferences.targetConversationId, anchorConversationId!),
-                eq(messageMessagingReferences.targetThreadId, anchorId),
-              ),
-            ),
-        ),
-        inArray(
-          messagingMessages.id,
-          db
-            .select({ id: messageMessagingReferences.targetThreadId })
-            .from(messageMessagingReferences)
-            .where(
-              and(
-                eq(messageMessagingReferences.organizationId, scope.organizationId),
-                eq(messageMessagingReferences.messageId, anchorId),
-              ),
-            ),
-        ),
-      );
+      relatedMessages = threadIds.length ? inArray(messagingMessages.id, threadIds) : sql`false`;
     } else {
-      relatedMessages = or(
-        eq(messagingMessages.conversationId, anchorConversationId!),
-        inArray(
-          messagingMessages.id,
-          db
-            .select({ id: messageMessagingReferences.messageId })
-            .from(messageMessagingReferences)
-            .where(
-              and(
-                eq(messageMessagingReferences.organizationId, scope.organizationId),
-                eq(messageMessagingReferences.targetConversationId, anchorConversationId!),
-              ),
-            ),
-        ),
-      );
+      relatedMessages = eq(messagingMessages.conversationId, anchorConversationId!);
     }
   }
   const words = wordPrefixQuery(query);

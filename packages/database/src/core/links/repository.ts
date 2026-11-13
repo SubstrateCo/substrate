@@ -2,26 +2,31 @@ import { RepositoryContext, pageSize } from "../repository-context";
 import { entityLinks } from "./schema";
 import { and, asc, eq, or, sql } from "drizzle-orm";
 
-type LinkInput = Pick<
-  typeof entityLinks.$inferInsert,
-  "sourceEntityId" | "targetEntityId" | "relationType"
->;
+/** A `related_to` link connects two entities in no direction. It is stored in ID order. */
+export function relatedPair(entityId: string, otherEntityId: string) {
+  return entityId < otherEntityId
+    ? { sourceEntityId: entityId, targetEntityId: otherEntityId }
+    : { sourceEntityId: otherEntityId, targetEntityId: entityId };
+}
 
+// `entityId` is the record being edited; `otherEntityId` only needs to be readable.
+type RelatedInput = { entityId: string; otherEntityId: string };
+
+/** Generic `related_to` links. Task relations (`blocks`, `duplicates`) belong to the task domain. */
 export function linkRepository(context: RepositoryContext) {
   const { scope, db } = context;
   return {
-    async create(input: LinkInput) {
+    async create(input: RelatedInput) {
       return db.transaction(async (tx) => {
         const ctx = new RepositoryContext(tx, scope);
-        await ctx.requireAccess(input.sourceEntityId, "edit", true);
-        await ctx.requireAccess(input.targetEntityId, "view");
+        await ctx.requireAccess(input.entityId, "edit", true);
+        await ctx.requireAccess(input.otherEntityId, "view");
         const [link] = await tx
           .insert(entityLinks)
           .values({
             organizationId: scope.organizationId,
-            sourceEntityId: input.sourceEntityId,
-            targetEntityId: input.targetEntityId,
-            relationType: input.relationType,
+            ...relatedPair(input.entityId, input.otherEntityId),
+            relationType: "related_to",
             createdByActorEntityId: scope.actorEntityId,
           })
           .returning();
@@ -53,19 +58,20 @@ export function linkRepository(context: RepositoryContext) {
         .limit(pageSize(options.limit));
     },
 
-    async remove(input: LinkInput) {
+    async remove(input: RelatedInput) {
       await db.transaction(async (tx) => {
         const ctx = new RepositoryContext(tx, scope);
-        await ctx.requireAccess(input.sourceEntityId, "edit", true);
-        await ctx.requireAccess(input.targetEntityId, "view");
+        await ctx.requireAccess(input.entityId, "edit", true);
+        await ctx.requireAccess(input.otherEntityId, "view");
+        const pair = relatedPair(input.entityId, input.otherEntityId);
         await tx
           .delete(entityLinks)
           .where(
             and(
               eq(entityLinks.organizationId, scope.organizationId),
-              eq(entityLinks.sourceEntityId, input.sourceEntityId),
-              eq(entityLinks.targetEntityId, input.targetEntityId),
-              eq(entityLinks.relationType, input.relationType),
+              eq(entityLinks.sourceEntityId, pair.sourceEntityId),
+              eq(entityLinks.targetEntityId, pair.targetEntityId),
+              eq(entityLinks.relationType, "related_to"),
             ),
           );
       });

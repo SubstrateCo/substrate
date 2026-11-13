@@ -1,4 +1,5 @@
 import { entities } from "../../core/entities/schema";
+import { relatedPair } from "../../core/links/repository";
 import { entityLinks } from "../../core/links/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { ActorRepositories } from "../../repositories";
@@ -139,8 +140,7 @@ describe("projects and tasks", () => {
           .insert(entityLinks)
           .values({
             organizationId: fixture.orgB,
-            sourceEntityId: fixture.outsider,
-            targetEntityId: task.entityId,
+            ...relatedPair(fixture.outsider, task.entityId),
             createdByActorEntityId: fixture.outsider,
             relationType: "related_to",
           })

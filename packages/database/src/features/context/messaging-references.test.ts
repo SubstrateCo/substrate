@@ -9,7 +9,6 @@ import {
   messagingParticipants,
 } from "../messaging/schema";
 import { notifications } from "../notifications/schema";
-import { messageMessagingReferences } from "./schema";
 import { createContextService } from "./service";
 import { expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
@@ -44,7 +43,7 @@ test("hashtag search returns channels and distinct threads, not DMs or standalon
   ]);
 });
 
-test("references save atomically, resolve with live access, and expose safe related records", async () => {
+test("references are checked on send, resolve with live access, and expose safe related records", async () => {
   await f.db.update(user).set({ emailVerified: true });
   const chat = createAcceptedMessagingService(f.db, scope);
   const source = await chat.createConversation({ kind: "channel", name: "Source" });
@@ -58,12 +57,6 @@ test("references save atomically, resolve with live access, and expose safe rela
   const body = `See @[channel:${target.id}] @[thread:${root.id}] @[channel:${target.id}]`;
   const sent = await chat.sendMessage(source.id, body);
   expect(
-    await f.db
-      .select()
-      .from(messageMessagingReferences)
-      .where(eq(messageMessagingReferences.messageId, sent.id)),
-  ).toHaveLength(2);
-  expect(
     await f.db.select().from(notifications).where(eq(notifications.messageId, sent.id)),
   ).toEqual([]);
   const context = createContextService(f.db, scope);
@@ -72,11 +65,8 @@ test("references save atomically, resolve with live access, and expose safe rela
     { id: root.id, kind: "thread", title: "Target thread" },
   ]);
   expect(
-    (await context.search({ query: "", relatedToEntityId: target.id })).map((row) => row.id),
-  ).toContain(sent.id);
-  expect(
-    (await context.search({ query: "", relatedToEntityId: root.id })).map((row) => row.id),
-  ).toContain(sent.id);
+    (await context.search({ query: "", relatedToEntityId: sent.id })).map((row) => row.id),
+  ).toEqual(expect.arrayContaining([target.id, root.id]));
   const bob = createContextService(f.db, { userId: "bob", organizationId: f.orgA });
   expect((await bob.messagePage([sent.id]))[0]?.messaging).toEqual([]);
   expect(await rejection(bob.search({ query: "", relatedToEntityId: root.id }))).toBeInstanceOf(
@@ -125,7 +115,6 @@ test("invalid target kinds, reply targets, and cross-workspace references roll b
   ])
     expect(await rejection(chat.sendMessage(source.id, body))).toBeInstanceOf(AccessDeniedError);
   expect(await f.db.select().from(messagingMessages)).toEqual(before);
-  expect(await f.db.select().from(messageMessagingReferences)).toEqual([]);
 });
 
 test("shared foreign source conversations cannot suggest or save local hashtag references", async () => {
@@ -172,9 +161,6 @@ test("channel renames resolve live labels and removed thread targets lose their 
   await f.db.delete(messagingMessages).where(eq(messagingMessages.id, reply.id));
   await f.db.delete(messagingMessages).where(eq(messagingMessages.id, root.id));
   expect((await context.messagePage([sent.id]))[0]?.messaging.map((item) => item.kind)).toEqual([
-    "channel",
-  ]);
-  expect((await f.db.select().from(messageMessagingReferences)).map((item) => item.kind)).toEqual([
     "channel",
   ]);
 });

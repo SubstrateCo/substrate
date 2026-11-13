@@ -172,7 +172,6 @@ function standalone(
     contactInteractions: domain("contactInteractions", [
       "get",
       "listForContact",
-      "listForSource",
       "listInteractions",
     ]),
     entities: domain("entities", ["get"]),

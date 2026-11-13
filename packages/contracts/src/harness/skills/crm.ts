@@ -45,7 +45,7 @@ export const crmSkill: HarnessSkill = {
 - Before publishing source-derived text, ask your owner to approve the exact summary and its audience: contact readers can retain that summary after source access is removed. Use \`publish_crm_interaction\` with messageId to preserve structured provenance, and set consentToContactAudience only after that explicit approval. This is different from linking a message, which does not copy its text into the CRM audience.
 - Linking does not grant access, notify anyone or wake an agent. Do not reveal hidden labels, source IDs, message bodies or relationship counts to an audience that cannot read them. CRM visibility does not grant private conversation access.
 - Use \`attach_message\` with the selected CRM target to associate a discussion without copying its contents. Use \`detach_message\` only to remove that manual association; it does not delete a published interaction or its provenance.
-- Read \`list_links\` with source messages for permitted message references and source entities for core contextual links. Both accept supported CRM entity targets and check each endpoint. Neither includes every structural relationship; use the record read for account affiliations and deal participants. Do not claim that either link list is a complete backlink graph.
+- Read \`list_links\` with source messages for permitted message references and source entities for entity links. Both accept supported CRM entity targets and check each endpoint. Neither includes every structural relationship; use the record read for account affiliations and deal participants. Do not claim that either link list is a complete backlink graph.
 
 ## Follow-up work
 
@@ -58,7 +58,7 @@ export const crmSkill: HarnessSkill = {
 
 - In background turns, read and prepare recommendations only. Do not change CRM records. CRM proposal actions are not available unless the propose tool explicitly lists them; send a plain reply requesting a later interactive instruction without ask, then end the turn rather than inventing an action. Background reply rejects the ask field.
 - Publish messages only with reply or propose. Text outside those tools is the private transcript. Do not create an automatic wake or send outreach from a CRM change.
-- Where a tool accepts requestId, use a new one for each new action. Retry the same action with the same requestId and input. Message publication instead deduplicates by contact and message; retry the exact input and do not change the summary to force another publication. Read after a conflict; a new requestId is not permission to overwrite stale state.
+- Where a tool accepts requestId, use a new one for each new action. Retry the same action with the same requestId and input. Message publication instead deduplicates by contact and message: a repeat returns the existing interaction unchanged, so do not change the summary to force another publication. Read after a conflict; a new requestId is not permission to overwrite stale state.
 - Report only confirmed changes and clearly name any unsupported source capture, publication, follow-up, import or automation. CSV import is not supported.
 `,
 };

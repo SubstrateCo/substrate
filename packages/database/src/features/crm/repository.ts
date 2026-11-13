@@ -9,9 +9,9 @@ import { contacts } from "../../core/contacts/schema";
 import { adminRoleCondition } from "../../core/organizations/roles";
 import { member } from "../../core/organizations/schema";
 import { RepositoryContext, pageSize } from "../../core/repository-context";
+import { previousRequest, recordRequest, requestFingerprint } from "../../core/requests/once";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { recordCrmActivity, listCrmActivity } from "./activity";
-import { crmActorViews } from "./actor-views";
 import { createOnce } from "./creation";
 import { createFollowUp, followUps } from "./follow-ups";
 import { crmManagementRepository } from "./management";
@@ -24,12 +24,11 @@ import {
   crmStages,
   crmDeals,
   crmDealContacts,
-  crmDealEvents,
 } from "./schema";
 import { settingsRepository } from "./settings";
 import { crmSharing } from "./sharing";
 import { timeline } from "./timeline";
-import { and, asc, desc, eq, gt, ilike, isNull, isNotNull, sql } from "drizzle-orm";
+import { and, asc, eq, gt, ilike, isNull, isNotNull, sql } from "drizzle-orm";
 import { z } from "zod";
 
 type ListOptions = {
@@ -512,13 +511,6 @@ export function crmRepository(context: RepositoryContext) {
             })
             .returning();
           await participants(ctx, entity.entityId, value);
-          await ctx.db.insert(crmDealEvents).values({
-            organizationId: org,
-            dealEntityId: entity.entityId,
-            actorEntityId: scope.actorEntityId,
-            toStageId: value.stageId,
-            toOutcome: "open",
-          });
           changed(ctx, entity.entityId);
           await recordCrmActivity(ctx, { entityId: entity.entityId, action: "created" });
           return row!;
@@ -615,26 +607,14 @@ export function crmRepository(context: RepositoryContext) {
     ) {
       return context.transaction(async (ctx) => {
         await requireType(ctx, id, "deal", true);
-        const fingerprint = JSON.stringify([
-          scope.actorEntityId,
+        const fingerprint = requestFingerprint([
+          id,
           input.expectedVersion,
           input.stageId,
           input.outcome,
           input.lostReason ?? null,
         ]);
-        const [event] = await ctx.db
-          .select()
-          .from(crmDealEvents)
-          .where(
-            and(
-              eq(crmDealEvents.organizationId, org),
-              eq(crmDealEvents.dealEntityId, id),
-              eq(crmDealEvents.requestId, input.requestId),
-            ),
-          );
-        if (event) {
-          if (event.fingerprint !== fingerprint)
-            throw new ConflictError("Request identity was reused with different input.");
+        if (await previousRequest(ctx, "deal_transition", input.requestId, fingerprint)) {
           const [row] = await ctx.db.select().from(crmDeals).where(target(crmDeals, id));
           changed(ctx, id);
           return presentDeal(ctx, row!);
@@ -656,17 +636,7 @@ export function crmRepository(context: RepositoryContext) {
           })
           .where(target(crmDeals, id))
           .returning();
-        await ctx.db.insert(crmDealEvents).values({
-          organizationId: org,
-          dealEntityId: id,
-          actorEntityId: scope.actorEntityId,
-          requestId: input.requestId,
-          fingerprint,
-          fromStageId: previous.stageId,
-          toStageId: input.stageId,
-          fromOutcome: previous.outcome,
-          toOutcome: input.outcome,
-        });
+        await recordRequest(ctx, "deal_transition", input.requestId, fingerprint, id);
         await ctx.touch(id);
         changed(ctx, id);
         const changedFields: NonNullable<CrmActivityInput["changedFields"]> = [];
@@ -732,32 +702,10 @@ export function crmRepository(context: RepositoryContext) {
             context.readable(contacts.entityId),
           ),
         );
-      const events = await db
-        .select()
-        .from(crmDealEvents)
-        .where(and(eq(crmDealEvents.organizationId, org), eq(crmDealEvents.dealEntityId, id)))
-        .orderBy(desc(crmDealEvents.occurredAt), desc(crmDealEvents.id))
-        .limit(100);
-      const eventActors = await crmActorViews(
-        context,
-        events.map((event) => event.actorEntityId),
-      );
       return {
         deal: { ...raw, accountEntityId: account?.entityId ?? null },
         account: account ?? null,
         contacts: people,
-        events: events.map((event) => ({
-          id: event.id,
-          fromStageId: event.fromStageId,
-          toStageId: event.toStageId,
-          fromOutcome: event.fromOutcome,
-          toOutcome: event.toOutcome,
-          occurredAt: event.occurredAt,
-          actor: eventActors.get(event.actorEntityId) ?? {
-            type: "human" as const,
-            displayName: "Former member",
-          },
-        })),
         level: access.level,
       };
     },

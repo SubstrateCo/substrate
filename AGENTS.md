@@ -13,6 +13,7 @@ Substrate is an Electron workspace for email, messages, docs, tasks, agents, and
 
 - Integrate features with existing workspace records and shared identity, permission, and linking mechanisms.
 - Keep structural relationships, contextual references, provenance, permissions, and notifications distinct.
+- Model each relationship with exactly one mechanism: domain foreign keys for structure, `entity_links` for record-to-record context, and `message_entity_references` for message-to-record context. Read "Relationships and context" in `packages/database/AGENTS.md` before you add a relationship, provenance, request, or history table.
 - Preserve structured source references when creating work from existing context; copied text alone is not enough.
 - Provide forward navigation and backlinks where useful, checking access on each side.
 - Keep cross-organization boundaries explicit. Users, actors, and contacts are distinct; matching identifiers do not establish identity or access.

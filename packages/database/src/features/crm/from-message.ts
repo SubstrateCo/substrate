@@ -8,18 +8,16 @@ import type { DatabaseExecutor } from "../../client";
 import { parseInput } from "../../core/contacts/inputs";
 import { commit } from "../../core/effects";
 import type { RepositoryContext } from "../../core/repository-context";
+import { previousRequest, recordRequest, requestFingerprint } from "../../core/requests/once";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
-import { AccessDeniedError, ConflictError } from "../../errors";
+import { AccessDeniedError } from "../../errors";
 import { contactApplicationRepository } from "../contacts/repository";
 import { messageEntityReferences } from "../context/schema";
 import { requireMessage } from "../messaging/access";
 import { referenceChangeHints } from "../realtime/routing";
 import { recordCrmActivity } from "./activity";
 import { crmRepository } from "./repository";
-import { crmCreateRequests } from "./requests.schema";
-import { and, eq, sql } from "drizzle-orm";
-import { createHash } from "node:crypto";
 
 // The identity and actor context are supplied by the host, never by model/request fields.
 export async function createCrmFromMessageInContext(
@@ -63,47 +61,27 @@ export async function createCrmFromMessageInContext(
     if (!conversation.taskEntityId) await ctx.lockAccessPaths(destinationIds);
 
     const { organizationId, actorEntityId } = ctx.scope;
-    const operation = "from_message";
-    await ctx.db.execute(
-      sql`select pg_advisory_xact_lock(hashtextextended(${`crm-create:${organizationId}:${actorEntityId}:${operation}:${value.requestId}`}, 0))`,
-    );
     const fields =
       value.kind === "deal"
         ? { ...value.fields, contactEntityIds: [...value.fields.contactEntityIds].sort() }
         : value.fields;
-    const fingerprint = createHash("sha256")
-      .update(
-        JSON.stringify({
-          messageId: value.messageId,
-          kind: value.kind,
-          fields,
-          consentToRecordAudience: value.consentToRecordAudience,
-          associate: value.associate,
-        }),
-      )
-      .digest("hex");
-    const [previous] = await ctx.db
-      .select()
-      .from(crmCreateRequests)
-      .where(
-        and(
-          eq(crmCreateRequests.organizationId, organizationId),
-          eq(crmCreateRequests.actorEntityId, actorEntityId),
-          eq(crmCreateRequests.operation, operation),
-          eq(crmCreateRequests.requestId, value.requestId),
-        ),
-      );
+    const fingerprint = requestFingerprint({
+      messageId: value.messageId,
+      kind: value.kind,
+      fields,
+      consentToRecordAudience: value.consentToRecordAudience,
+      associate: value.associate,
+    });
+    const previous = await previousRequest(ctx, "crm_from_message", value.requestId, fingerprint);
     const crm = crmRepository(ctx);
     const contacts = contactApplicationRepository(ctx);
     let entityId: string;
     if (previous) {
-      if (previous.fingerprint !== fingerprint)
-        throw new ConflictError("Request identity was reused with different input.");
       // Read the current record, not stored source content. Never restore a missing source edge.
-      if (value.kind === "account") await crm.getAccount(previous.entityId);
-      else if (value.kind === "contact") await contacts.getContact(previous.entityId);
-      else await crm.getDeal(previous.entityId);
-      entityId = previous.entityId;
+      if (value.kind === "account") await crm.getAccount(previous);
+      else if (value.kind === "contact") await contacts.getContact(previous);
+      else await crm.getDeal(previous);
+      entityId = previous;
     } else {
       if (value.kind === "account") entityId = (await crm.createAccount(value.fields)).entityId;
       else if (value.kind === "contact")
@@ -125,14 +103,7 @@ export async function createCrmFromMessageInContext(
       );
       // Account/deal and the canonical contact wrapper already record "created" activity.
       if (value.associate) await recordCrmActivity(ctx, { entityId, action: "discussion_linked" });
-      await ctx.db.insert(crmCreateRequests).values({
-        organizationId,
-        actorEntityId,
-        operation,
-        requestId: value.requestId,
-        fingerprint,
-        entityId,
-      });
+      await recordRequest(ctx, "crm_from_message", value.requestId, fingerprint, entityId);
     }
     for (const hint of referenceChangeHints(
       organizationId,

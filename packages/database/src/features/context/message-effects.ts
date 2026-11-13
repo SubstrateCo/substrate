@@ -12,7 +12,7 @@ import {
 } from "../messaging/schema";
 import { notify } from "../notifications/effects";
 import { readableWorkTargets } from "../notifications/targets";
-import { saveMessagingReferences } from "./messaging-references";
+import { checkMessagingReferences } from "./messaging-references";
 import { messageEntityReferences } from "./schema";
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
@@ -47,13 +47,7 @@ export async function applyMessageEffects(
     else if (reference.kind === "agent") agentIds.push(reference.id);
     else workReferences.push({ id: reference.id, kind: reference.kind });
   }
-  await saveMessagingReferences(
-    db,
-    scope,
-    message,
-    conversationOrganizationId,
-    messagingReferences,
-  );
+  await checkMessagingReferences(db, scope, conversationOrganizationId, messagingReferences);
   let referenced = messagingReferences.length > 0;
   if (agentIds.length) {
     // A mentioned agent must be an active member of this conversation. Mentions notify nobody;

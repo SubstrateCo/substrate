@@ -1,9 +1,9 @@
 import { entities } from "../../core/entities/schema";
+import { entityLinks } from "../../core/links/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { taskActivity } from "../activity/schema";
-import { taskLinks } from "./links.schema";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -28,7 +28,7 @@ async function twoProjects() {
 test("a link reads from both tasks and stores one row for each direction rule", async () => {
   const { alice, shared, open, second } = await twoProjects();
   await alice.tasks.addLink(open.entityId, "blocked_by", second.entityId);
-  await alice.tasks.addLink(open.entityId, "relates_to", second.entityId);
+  await alice.tasks.addLink(open.entityId, "related_to", second.entityId);
   const [blocks, relates] = await alice.tasks.listLinks(open.entityId);
   expect(blocks).toMatchObject({
     kind: "blocks",
@@ -36,14 +36,14 @@ test("a link reads from both tasks and stores one row for each direction rule", 
     target: { entityId: open.entityId },
     blocking: true,
   });
-  expect(relates!.kind).toBe("relates_to");
+  expect(relates!.kind).toBe("related_to");
   expect(relates!.source!.entityId < relates!.target!.entityId).toBe(true);
   // The same pair, named from the other task, is the same link.
   expect(await rejection(alice.tasks.addLink(second.entityId, "blocks", open.entityId))).toEqual(
     new ValidationError("These tasks already have this link."),
   );
   expect(
-    await rejection(alice.tasks.addLink(second.entityId, "relates_to", open.entityId)),
+    await rejection(alice.tasks.addLink(second.entityId, "related_to", open.entityId)),
   ).toBeInstanceOf(ValidationError);
   expect((await alice.projects.getDetail(shared.entityId)).links.map((link) => link.id)).toEqual([
     blocks!.id,
@@ -66,7 +66,7 @@ test("links reject self links, block cycles, and reversed duplicates", async () 
   const { alice, shared, open, second } = await twoProjects();
   const third = await alice.tasks.create({ projectEntityId: shared.entityId, title: "Third" });
   expect(
-    await rejection(alice.tasks.addLink(open.entityId, "relates_to", open.entityId)),
+    await rejection(alice.tasks.addLink(open.entityId, "related_to", open.entityId)),
   ).toBeInstanceOf(ValidationError);
   await alice.tasks.addLink(open.entityId, "blocks", second.entityId);
   await alice.tasks.addLink(second.entityId, "blocks", third.entityId);
@@ -80,7 +80,7 @@ test("links reject self links, block cycles, and reversed duplicates", async () 
   expect(
     await rejection(alice.tasks.addLink(second.entityId, "duplicates", open.entityId)),
   ).toBeInstanceOf(ValidationError);
-  expect(await fixture.db.select().from(taskLinks)).toHaveLength(3);
+  expect(await fixture.db.select().from(entityLinks)).toHaveLength(3);
 });
 
 test("adding a link needs edit on the task and view on the other task", async () => {
@@ -110,7 +110,7 @@ test("adding a link needs edit on the task and view on the other task", async ()
         .tasks.addLink(open.entityId, "blocks", second.entityId),
     ),
   ).toBeInstanceOf(AccessDeniedError);
-  expect(await fixture.db.select().from(taskLinks)).toEqual([]);
+  expect(await fixture.db.select().from(entityLinks)).toEqual([]);
 });
 
 test("a reader without access to the other task sees a link with no task details", async () => {
@@ -127,7 +127,7 @@ test("a reader without access to the other task sees a link with no task details
   });
   // Bob can edit his side, so he can remove the link without seeing the other task.
   await bob.tasks.removeLink(open.entityId, link.id);
-  expect(await fixture.db.select().from(taskLinks)).toEqual([]);
+  expect(await fixture.db.select().from(entityLinks)).toEqual([]);
 });
 
 test("removing a link needs edit on a task the link touches", async () => {
@@ -145,9 +145,24 @@ test("removing a link needs edit on a task the link touches", async () => {
   expect(await rejection(bob.tasks.removeLink(open.entityId, link.id))).toBeInstanceOf(
     AccessDeniedError,
   );
-  expect(await fixture.db.select().from(taskLinks)).toHaveLength(1);
+  expect(await fixture.db.select().from(entityLinks)).toHaveLength(1);
   await alice.tasks.removeLink(second.entityId, link.id);
-  expect(await fixture.db.select().from(taskLinks)).toEqual([]);
+  expect(await fixture.db.select().from(entityLinks)).toEqual([]);
+});
+
+test("a task's link to a CRM record is not a task relation", async () => {
+  const { alice, shared, open } = await twoProjects();
+  const contact = await alice.contacts.create({ displayName: "Customer" });
+  const link = await alice.links.create({
+    entityId: open.entityId,
+    otherEntityId: contact.entityId,
+  });
+  expect(await alice.tasks.listLinks(open.entityId)).toEqual([]);
+  expect((await alice.projects.getDetail(shared.entityId)).links).toEqual([]);
+  expect(await rejection(alice.tasks.removeLink(open.entityId, link.id))).toBeInstanceOf(
+    AccessDeniedError,
+  );
+  expect(await fixture.db.select().from(entityLinks)).toHaveLength(1);
 });
 
 test("link changes add history to both tasks without naming the other task", async () => {
@@ -179,18 +194,18 @@ test("a link to a deleted task is hidden and a failed caller transaction keeps n
     .set({ deletedAt: new Date() })
     .where(eq(entities.entityId, second.entityId));
   expect(await alice.tasks.listLinks(open.entityId)).toEqual([]);
-  await fixture.db.delete(taskLinks);
+  await fixture.db.delete(entityLinks);
   await rejection(
     alice.transaction(async (repos) => {
       const third = await repos.tasks.create({
         projectEntityId: open.projectEntityId,
         title: "Third",
       });
-      await repos.tasks.addLink(open.entityId, "relates_to", third.entityId);
+      await repos.tasks.addLink(open.entityId, "related_to", third.entityId);
       throw new Error("rollback");
     }),
   );
-  expect(await fixture.db.select().from(taskLinks)).toEqual([]);
+  expect(await fixture.db.select().from(entityLinks)).toEqual([]);
 });
 
 test("the database rejects links that break the direction rules", async () => {
@@ -199,20 +214,18 @@ test("the database rejects links that break the direction rules", async () => {
   const row = {
     organizationId: fixture.orgA,
     createdByActorEntityId: fixture.alice,
-    kind: "relates_to" as const,
+    relationType: "related_to" as const,
   };
   expect(
     await rejection(
       fixture.db
-        .insert(taskLinks)
-        .values({ ...row, sourceTaskEntityId: high!, targetTaskEntityId: low! }),
+        .insert(entityLinks)
+        .values({ ...row, sourceEntityId: high!, targetEntityId: low! }),
     ),
   ).toBeInstanceOf(Error);
   expect(
     await rejection(
-      fixture.db
-        .insert(taskLinks)
-        .values({ ...row, sourceTaskEntityId: low!, targetTaskEntityId: low! }),
+      fixture.db.insert(entityLinks).values({ ...row, sourceEntityId: low!, targetEntityId: low! }),
     ),
   ).toBeInstanceOf(Error);
   expect(await alice.tasks.listLinks(open.entityId)).toEqual([]);

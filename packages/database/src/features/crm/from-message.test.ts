@@ -1,7 +1,7 @@
 import { commit } from "../../core/effects";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ConflictError } from "../../errors";
-import { entities, entityGrants, contacts, member } from "../../schema";
+import { entities, entityGrants, contacts, idempotentRequests, member } from "../../schema";
 import { ownedAgent } from "../../testing/agents";
 import { contextConversation } from "../../testing/context";
 import { setupDatabase } from "../../testing/database";
@@ -10,7 +10,6 @@ import { messageEntityReferences } from "../context/schema";
 import { messagingParticipants } from "../messaging/schema";
 import { crmActivityEvents } from "./activity.schema";
 import { createCrmFromMessage, createCrmFromMessageInContext } from "./from-message";
-import { crmCreateRequests } from "./requests.schema";
 import { crmAccounts } from "./schema";
 import { expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
@@ -57,7 +56,7 @@ test("concurrent replay creates one independent root, source, request, and activ
       createdByActorEntityId: f.alice,
     },
   ]);
-  expect(await f.db.select().from(crmCreateRequests)).toHaveLength(1);
+  expect(await f.db.select().from(idempotentRequests)).toHaveLength(1);
   expect(await f.db.select().from(crmActivityEvents)).toHaveLength(1);
   expect(await f.db.select().from(crmAccounts)).toHaveLength(1);
   expect(await f.accessLevel(f.alice, a.result.entityId)).toBe("owner");
@@ -132,7 +131,7 @@ test("source must be readable in its host tenant, including for admins and cross
     ),
   ).toBeInstanceOf(AccessDeniedError);
   expect(await f.db.select().from(crmAccounts)).toEqual([]);
-  expect(await f.db.select().from(crmCreateRequests)).toEqual([]);
+  expect(await f.db.select().from(idempotentRequests)).toEqual([]);
 });
 
 test("replay preserves current record edits and does not recreate removed source references", async () => {
@@ -198,7 +197,7 @@ test("caller rollback removes root, grants, source, activity, and retry identity
   expect(await f.db.select().from(entityGrants)).toEqual(beforeGrants);
   expect(await f.db.select().from(messageEntityReferences)).toEqual([]);
   expect(await f.db.select().from(crmActivityEvents)).toEqual([]);
-  expect(await f.db.select().from(crmCreateRequests)).toEqual([]);
+  expect(await f.db.select().from(idempotentRequests)).toEqual([]);
 });
 
 test("contact creation uses the canonical CRM wrapper and deal creation retains real participants", async () => {
@@ -246,7 +245,7 @@ test("invalid deal relationships roll back without leaving a root or source", as
   ).toBeInstanceOf(AccessDeniedError);
   expect(await f.db.select().from(entities)).toEqual(before);
   expect(await f.db.select().from(messageEntityReferences)).toEqual([]);
-  expect(await f.db.select().from(crmCreateRequests)).toEqual([]);
+  expect(await f.db.select().from(idempotentRequests)).toEqual([]);
 });
 
 test("task-discussion sources require independent task access and retain the reviewed record after revocation", async () => {
@@ -291,7 +290,7 @@ test("trusted agent context is retained in source, activity, and request attribu
   expect(await f.db.select().from(crmActivityEvents)).toMatchObject([
     { entityId: created.result.entityId, actorEntityId: agent.actorId, action: "created" },
   ]);
-  expect(await f.db.select().from(crmCreateRequests)).toMatchObject([
+  expect(await f.db.select().from(idempotentRequests)).toMatchObject([
     { entityId: created.result.entityId, actorEntityId: agent.actorId },
   ]);
   expect(

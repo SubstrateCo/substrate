@@ -6,7 +6,7 @@ import * as schema from "../schema";
 import { setupDatabase } from "../testing/database";
 import { seedDevelopmentDatabase } from "./seed";
 import { describe, expect, test } from "bun:test";
-import { and, eq, isNotNull } from "drizzle-orm";
+import { and, eq, isNotNull, or } from "drizzle-orm";
 
 describe("development seed", () => {
   const fixture = setupDatabase();
@@ -18,17 +18,16 @@ describe("development seed", () => {
         .select()
         .from(schema.tasks)
         .where(eq(schema.tasks.organizationId, organizationId));
-      const links = await fixture.db
-        .select()
-        .from(schema.taskLinks)
-        .where(eq(schema.taskLinks.organizationId, organizationId));
-      expect(new Set(links.map((link) => link.kind))).toEqual(
-        new Set(["blocks", "duplicates", "relates_to"]),
+      const isTask = (entityId: string) => tasks.some((task) => task.entityId === entityId);
+      const links = (
+        await fixture.db
+          .select()
+          .from(schema.entityLinks)
+          .where(eq(schema.entityLinks.organizationId, organizationId))
+      ).filter((link) => isTask(link.sourceEntityId) && isTask(link.targetEntityId));
+      expect(new Set(links.map((link) => link.relationType))).toEqual(
+        new Set(["blocks", "duplicates", "related_to"]),
       );
-      for (const link of links) {
-        expect(tasks.some((task) => task.entityId === link.sourceTaskEntityId)).toBe(true);
-        expect(tasks.some((task) => task.entityId === link.targetTaskEntityId)).toBe(true);
-      }
       const children = tasks.filter((task) => task.parentTaskEntityId);
       expect(children).toHaveLength(4);
       const entities = await fixture.db
@@ -76,12 +75,17 @@ describe("development seed", () => {
       );
       const requests = await fixture.db
         .select()
-        .from(schema.sourceTaskRequests)
-        .where(eq(schema.sourceTaskRequests.organizationId, organizationId));
+        .from(schema.idempotentRequests)
+        .where(
+          and(
+            eq(schema.idempotentRequests.organizationId, organizationId),
+            eq(schema.idempotentRequests.operation, "task_from_message"),
+          ),
+        );
       expect(requests).toHaveLength(1);
       expect(
         sources.some(
-          (source) => source.purpose === "source" && source.entityId === requests[0]!.taskEntityId,
+          (source) => source.purpose === "source" && source.entityId === requests[0]!.entityId,
         ),
       ).toBe(true);
       const contacts = await fixture.db
@@ -104,8 +108,8 @@ describe("development seed", () => {
         expect(
           contextLinks.some(
             (link) =>
-              link.targetEntityId === contact.entityId &&
-              tasks.some((task) => task.entityId === link.sourceEntityId),
+              (link.targetEntityId === contact.entityId && isTask(link.sourceEntityId)) ||
+              (link.sourceEntityId === contact.entityId && isTask(link.targetEntityId)),
           ),
         ).toBe(true);
       }
@@ -213,7 +217,7 @@ describe("development seed", () => {
       .set({ title: "My edited task" })
       .where(eq(schema.tasks.entityId, task!.entityId));
     const before = await fixture.db.select().from(schema.messagingMessages);
-    const workBefore = await fixture.db.select().from(schema.taskLinks);
+    const workBefore = await fixture.db.select().from(schema.entityLinks);
     const agentsBefore = await fixture.db.select().from(schema.userAgents);
     const [interaction] = await fixture.db.select().from(schema.contactInteractions);
     await fixture.db
@@ -223,7 +227,7 @@ describe("development seed", () => {
     const interactionsBefore = await fixture.db.select().from(schema.contactInteractions);
     expect(await seedDevelopmentDatabase(fixture.db, "replacement-hash")).toBe(false);
     expect(await fixture.db.select().from(schema.messagingMessages)).toEqual(before);
-    expect(await fixture.db.select().from(schema.taskLinks)).toEqual(workBefore);
+    expect(await fixture.db.select().from(schema.entityLinks)).toEqual(workBefore);
     expect(await fixture.db.select().from(schema.userAgents)).toEqual(agentsBefore);
     expect(await fixture.db.select().from(schema.contactInteractions)).toEqual(interactionsBefore);
     expect(
@@ -287,9 +291,18 @@ describe("development seed", () => {
           const [taskLink] = await fixture.db
             .select()
             .from(schema.entityLinks)
-            .where(eq(schema.entityLinks.targetEntityId, publication.entityId));
+            .where(
+              or(
+                eq(schema.entityLinks.targetEntityId, publication.entityId),
+                eq(schema.entityLinks.sourceEntityId, publication.entityId),
+              ),
+            );
           expect(taskLink).toBeDefined();
-          expect((await repos.entities.get(taskLink!.sourceEntityId)).entityType).toBe("task");
+          const taskId =
+            taskLink!.sourceEntityId === publication.entityId
+              ? taskLink!.targetEntityId
+              : taskLink!.sourceEntityId;
+          expect((await repos.entities.get(taskId)).entityType).toBe("task");
           expect(taskLink?.organizationId).toBe(organizationId);
         }
       }

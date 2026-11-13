@@ -3,10 +3,7 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { parseInput } from "../../core/contacts/inputs";
 import type { RepositoryContext } from "../../core/repository-context";
-import { ConflictError } from "../../errors";
-import { crmCreateRequests } from "./requests.schema";
-import { and, eq, sql } from "drizzle-orm";
-import { createHash } from "node:crypto";
+import { previousRequest, recordRequest, requestFingerprint } from "../../core/requests/once";
 import { z } from "zod";
 
 type CreatePayload = z.output<typeof accountFields> | z.output<typeof dealFields>;
@@ -23,41 +20,18 @@ export async function createOnce<T extends { entityId: string }>(
   return context.transaction(async (ctx) => {
     await ctx.requireActiveActor();
     if (!requestId) return create(ctx);
-    const { organizationId, actorEntityId } = ctx.scope;
-    await ctx.db.execute(
-      sql`select pg_advisory_xact_lock(hashtextextended(${`crm-create:${organizationId}:${actorEntityId}:${operation}:${requestId}`}, 0))`,
-    );
-    const fingerprint = createHash("sha256").update(JSON.stringify(payload)).digest("hex");
-    const [previous] = await ctx.db
-      .select()
-      .from(crmCreateRequests)
-      .where(
-        and(
-          eq(crmCreateRequests.organizationId, organizationId),
-          eq(crmCreateRequests.actorEntityId, actorEntityId),
-          eq(crmCreateRequests.operation, operation),
-          eq(crmCreateRequests.requestId, requestId),
-        ),
-      );
+    const fingerprint = requestFingerprint(payload);
+    const previous = await previousRequest(ctx, operation, requestId, fingerprint);
     if (previous) {
-      if (previous.fingerprint !== fingerprint)
-        throw new ConflictError("Request identity was reused with different input.");
-      const result = await read(ctx, previous.entityId);
+      const result = await read(ctx, previous);
       ctx.effects.hint({
-        audience: realtimeKeys.entity(organizationId, previous.entityId),
+        audience: realtimeKeys.entity(ctx.scope.organizationId, previous),
         domain: "context",
       });
       return result;
     }
     const result = await create(ctx);
-    await ctx.db.insert(crmCreateRequests).values({
-      organizationId,
-      actorEntityId,
-      operation,
-      requestId,
-      fingerprint,
-      entityId: result.entityId,
-    });
+    await recordRequest(ctx, operation, requestId, fingerprint, result.entityId);
     return result;
   });
 }

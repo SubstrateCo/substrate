@@ -82,7 +82,6 @@ test("closed deal text remains editable after its current stage is retired", asy
   });
   expect(updated.title).toBe("Corrected sale");
   expect(updated.stageId).toBe(deal.stageId);
-  expect((await a.crm.getDeal(deal.entityId)).events).toHaveLength(2);
 });
 
 test("shared deal history and interaction responses do not reveal private agent identity", async () => {
@@ -113,10 +112,10 @@ test("shared deal history and interaction responses do not reveal private agent 
     occurredAt: new Date(),
     summary: "Customer call",
   });
-  const history = await b.crm.getDeal(deal.entityId);
+  const history = await b.crm.activity(deal.entityId);
   const interactions = await b.contactInteractions.listInteractions(contact.entityId);
-  expect(history.events).toHaveLength(2);
-  expect(history.events.map((event) => event.actor)).toContainEqual({
+  expect(history.items.map((item) => item.action)).toContain("stage_changed");
+  expect(history.items.map((item) => item.actor)).toContainEqual({
     type: "agent",
     displayName: "Agent on behalf of Alice",
   });

@@ -27,11 +27,7 @@ describe("connected CRM", () => {
       occurredAt: new Date(),
       summary: "Call",
     });
-    await a.links.create({
-      sourceEntityId: interaction.entityId,
-      targetEntityId: deal.entityId,
-      relationType: "related_to",
-    });
+    await a.links.create({ entityId: interaction.entityId, otherEntityId: deal.entityId });
     expect(await a.crm.timeline(deal.entityId)).toHaveLength(1);
     expect(await a.crm.timeline(deal.entityId, { mode: "linked" })).toHaveLength(1);
     expect(await a.crm.timeline(account.entityId, { mode: "linked" })).toEqual([]);
@@ -84,7 +80,9 @@ describe("connected CRM", () => {
     const won = await a.crm.transitionDeal(deal.entityId, input);
     expect(won.closedAt).not.toBeNull();
     expect((await a.crm.transitionDeal(deal.entityId, input)).version).toBe(2);
-    expect((await a.crm.getDeal(deal.entityId)).events).toHaveLength(2);
+    const stageChanges = async () =>
+      (await a.crm.activity(deal.entityId)).items.filter((item) => item.action === "stage_changed");
+    expect(await stageChanges()).toHaveLength(1);
     expect(
       await rejection(
         a.crm.transitionDeal(deal.entityId, { ...input, requestId: crypto.randomUUID() }),
@@ -97,7 +95,7 @@ describe("connected CRM", () => {
       outcome: "open",
     });
     expect(reopened.closedAt).toBeNull();
-    expect((await a.crm.getDeal(deal.entityId)).events).toHaveLength(3);
+    expect(await stageChanges()).toHaveLength(2);
   });
   test("rejects unrelated deals, invalid money, and cross-tenant relationships", async () => {
     const a = f.forActor(f.alice);

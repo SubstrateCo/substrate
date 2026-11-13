@@ -31,9 +31,7 @@ export async function messagePage(
   // Reject the whole page before resolving any metadata if even one message is unavailable.
   if (messages.length !== ids.length) throw new AccessDeniedError();
   const [messaging, work, people] = await Promise.all([
-    messages.some((message) => /@\[(channel|thread):/i.test(message.body))
-      ? messagingReferencePage(db, scope, ids)
-      : [],
+    messagingReferencePage(db, scope, messages),
     messageWorkLinks(ctx, ids),
     messagePeople(db, scope, messages),
   ]);

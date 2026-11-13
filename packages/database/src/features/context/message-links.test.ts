@@ -1,13 +1,13 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { AccessDeniedError, ConflictError } from "../../errors";
-import { entityGrants, tasks, taskActivity, notifications } from "../../schema";
+import { entityGrants, idempotentRequests, tasks, taskActivity, notifications } from "../../schema";
 import { contextConversation } from "../../testing/context";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { messagingParticipants } from "../messaging/schema";
-import { messageEntityReferences, sourceTaskRequests } from "./schema";
+import { messageEntityReferences } from "./schema";
 import { createContextService } from "./service";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -67,7 +67,7 @@ test("source creation is atomic, concurrent-idempotent, and preserves the exact 
     { entityId: a.entityId, title: "Ship request", status: "in_review", statusName: "In review" },
   ]);
   expect(await f.db.select().from(entityGrants)).toEqual(before);
-  expect(await f.db.select().from(sourceTaskRequests)).toHaveLength(1);
+  expect(await f.db.select().from(idempotentRequests)).toHaveLength(1);
   expect(
     await rejection(context().createTaskFromMessage({ ...input, title: "Different" })),
   ).toBeInstanceOf(ConflictError);
@@ -80,8 +80,9 @@ test("source creation is atomic, concurrent-idempotent, and preserves the exact 
   );
   // The project lock taken for idempotency also covers the task insert.
   expect(queries.filter((query) => query.includes("FOR NO KEY UPDATE"))).toHaveLength(1);
-  // Source validation now also locks and rechecks the conversation against concurrent deletion.
-  expect(queries).toHaveLength(14);
+  // Source validation now also locks and rechecks the conversation against concurrent deletion,
+  // and the request identity takes its own advisory lock.
+  expect(queries).toHaveLength(15);
 });
 
 test("both endpoints are required, membership revocation hides context, and linking never shares", async () => {

@@ -10,7 +10,7 @@ export const linkTools = {
   list_links: {
     title: "List links",
     description:
-      "List permitted explicit links for tasks, projects or CRM records. source messages (default) reads message references; target message reads its linked records. source entities reads core contextual entity links, not structural account/participant relationships. Read both sources for explicit context; neither is a complete relationship graph. Linking never grants access or wakes agents.",
+      "List permitted explicit links for tasks, projects or CRM records. source messages (default) reads message references; target message reads its linked records. source entities reads entity links (related records and task blocks/duplicates relations), not structural account/participant relationships. Read both sources for explicit context; neither is a complete relationship graph. Linking never grants access or wakes agents.",
     readOnly: true,
     input: z
       .object({
@@ -39,11 +39,13 @@ export const linkTools = {
         entity: entityRef
           .extend({
             title: z.string(),
-            relation: z.enum(["related_to", "mentions"]),
-            direction: z.enum(["outgoing", "incoming"]),
+            relation: z.enum(["related_to", "blocks", "duplicates"]),
+            direction: z.enum(["outgoing", "incoming", "none"]),
           })
           .optional()
-          .describe("The readable opposite endpoint of a core contextual link."),
+          .describe(
+            "The readable opposite endpoint of an entity link. related_to has direction none; blocks and duplicates point from source to target.",
+          ),
       }),
     ),
   },

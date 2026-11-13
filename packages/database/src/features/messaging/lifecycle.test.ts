@@ -5,7 +5,7 @@ import { member, notifications, taskActivity, user } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
 import { rejection } from "../../testing/rejection";
-import { messageEntityReferences, messageMessagingReferences } from "../context/schema";
+import { messageEntityReferences } from "../context/schema";
 import { createContextService } from "../context/service";
 import { createFeedService } from "../notifications/service";
 import { messagingConversations, messagingMessages } from "./schema";
@@ -190,7 +190,7 @@ test("deleting a conversation keeps task history and removes links, references a
     projectEntityId: project.entityId,
     title: "Follow up",
   });
-  const mention = await chat("alice").sendMessage(other.id, `See @[channel:${channel.id}]`);
+  await chat("alice").sendMessage(other.id, `See @[channel:${channel.id}]`);
 
   const { hints } = await (await f.forSession("alice")).messaging.deleteConversation(channel.id);
 
@@ -213,12 +213,6 @@ test("deleting a conversation keeps task history and removes links, references a
       .select()
       .from(messageEntityReferences)
       .where(eq(messageEntityReferences.messageId, source.id)),
-  ).toEqual([]);
-  expect(
-    await f.db
-      .select()
-      .from(messageMessagingReferences)
-      .where(eq(messageMessagingReferences.messageId, mention.id)),
   ).toEqual([]);
   expect(
     await f.db.select().from(notifications).where(eq(notifications.messageId, source.id)),

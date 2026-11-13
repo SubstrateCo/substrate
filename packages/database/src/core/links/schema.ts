@@ -7,17 +7,22 @@ import {
   index,
   pgEnum,
   pgTable,
-  primaryKey,
   text,
   timestamp,
+  unique,
   uuid,
 } from "drizzle-orm/pg-core";
 
-export const relationType = pgEnum("relation_type", ["related_to", "mentions"]);
+// `related_to` has no direction: it is stored once, with the lower entity ID as the source.
+// `blocks` and `duplicates` point from source to target and link tasks only; the task domain
+// writes them.
+export const relationTypes = ["related_to", "blocks", "duplicates"] as const;
+export const relationType = pgEnum("relation_type", relationTypes);
 
 export const entityLinks = pgTable(
   "entity_links",
   {
+    id: uuid("id").defaultRandom().primaryKey(),
     organizationId: text("organization_id").notNull(),
     sourceEntityId: uuid("source_entity_id").notNull(),
     targetEntityId: uuid("target_entity_id").notNull(),
@@ -26,14 +31,12 @@ export const entityLinks = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (table) => [
-    primaryKey({
-      columns: [
-        table.organizationId,
-        table.sourceEntityId,
-        table.targetEntityId,
-        table.relationType,
-      ],
-    }),
+    unique("entity_links_pair_unique").on(
+      table.organizationId,
+      table.sourceEntityId,
+      table.targetEntityId,
+      table.relationType,
+    ),
     foreignKey({
       columns: [table.organizationId, table.sourceEntityId],
       foreignColumns: [entities.organizationId, entities.entityId],
@@ -48,5 +51,9 @@ export const entityLinks = pgTable(
     }),
     index("entity_links_target_idx").on(table.organizationId, table.targetEntityId),
     check("entity_links_no_self_link", sql`${table.sourceEntityId} <> ${table.targetEntityId}`),
+    check(
+      "entity_links_related_order",
+      sql`${table.relationType}::text <> 'related_to' OR ${table.sourceEntityId} < ${table.targetEntityId}`,
+    ),
   ],
 );

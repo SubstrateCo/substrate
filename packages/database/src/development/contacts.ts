@@ -98,8 +98,7 @@ export async function seedDevelopmentContactPublication(
     consentToContactAudience: true,
   });
   await linkRepository(context).create({
-    sourceEntityId: taskEntityId,
-    targetEntityId: interaction.entityId,
-    relationType: "related_to",
+    entityId: taskEntityId,
+    otherEntityId: interaction.entityId,
   });
 }

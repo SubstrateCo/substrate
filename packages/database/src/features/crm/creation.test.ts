@@ -26,7 +26,6 @@ test("account and deal creation requests dedupe concurrent delivery and reject c
     a.crm.createDeal(dealInput),
   ]);
   expect(deal.entityId).toBe(replay.entityId);
-  expect((await a.crm.getDeal(deal.entityId)).events).toHaveLength(1);
   expect(await a.crm.listDeals()).toHaveLength(1);
   await a.entities.softDelete(first.entityId);
   expect(await rejection(a.crm.createAccount(input))).toMatchObject({ name: "AccessDeniedError" });

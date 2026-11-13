@@ -1,6 +1,7 @@
 import { contacts, entities, entityGrants, entityLinks } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
+import { relatedPair } from "../links/repository";
 import { rootEntityValues } from "./identity";
 import { describe, expect, test } from "bun:test";
 import { sql } from "drizzle-orm";
@@ -86,8 +87,7 @@ describe("database integrity", () => {
           .insert(entityLinks)
           .values({
             organizationId: f.orgA,
-            sourceEntityId: contact.entityId,
-            targetEntityId: other.entityId,
+            ...relatedPair(contact.entityId, other.entityId),
             relationType: "related_to",
             createdByActorEntityId: f.alice,
           })

@@ -52,15 +52,12 @@ describe("contacts and transactions", () => {
     const { result: ids } = await f.forActor(f.alice).transaction(async (tx) => {
       const a = await tx.contacts.create({ displayName: "One" });
       const b = await tx.contacts.create({ displayName: "Two" });
-      await tx.links.create({
-        sourceEntityId: a.entityId,
-        targetEntityId: b.entityId,
-        relationType: "related_to",
-      });
+      await tx.links.create({ entityId: a.entityId, otherEntityId: b.entityId });
       return [a.entityId, b.entityId];
     });
     expect(await f.forActor(f.alice).contacts.list()).toHaveLength(2);
-    expect((await f.forActor(f.alice).links.list(ids[0]!))[0]?.targetEntityId).toBe(ids[1]);
+    const [link] = await f.forActor(f.alice).links.list(ids[0]!);
+    expect([link?.sourceEntityId, link?.targetEntityId]).toEqual([...ids].sort());
   });
 
   test("pagination is bounded and ordered consistently", async () => {

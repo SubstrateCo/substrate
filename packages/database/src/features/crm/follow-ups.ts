@@ -2,16 +2,16 @@ import type { CrmWrite } from "@substrate/contracts/crm/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { contactInteractions } from "../../core/contacts/interactions.schema";
+import { relatedPair } from "../../core/links/repository";
 import { entityLinks } from "../../core/links/schema";
 import type { RepositoryContext } from "../../core/repository-context";
-import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
+import { previousRequest, recordRequest, requestFingerprint } from "../../core/requests/once";
+import { AccessDeniedError, ValidationError } from "../../errors";
 import { taskRepository } from "../tasks/repository";
 import { tasks } from "../tasks/tasks.schema";
 import { recordCrmActivity } from "./activity";
-import { crmFollowUpSources } from "./follow-ups.schema";
 import { crmAccounts, crmContactProfiles, crmDeals } from "./schema";
-import { and, asc, eq, notInArray, or, sql } from "drizzle-orm";
-import { createHash } from "node:crypto";
+import { and, asc, eq, notInArray, or } from "drizzle-orm";
 
 type Input = Extract<CrmWrite, { action: "createFollowUp" }>;
 export async function createFollowUp(
@@ -26,42 +26,22 @@ export async function createFollowUp(
   return context.transaction(async (ctx) => {
     await ctx.requireActiveActor();
     // The request identity is actor-scoped, independent of the chosen source.
-    await ctx.db.execute(
-      sql`select pg_advisory_xact_lock(hashtextextended(${`crm-followup:${scope.organizationId}:${scope.actorEntityId}:${input.requestId}`}, 0))`,
-    );
+    const fingerprint = requestFingerprint({
+      source: input.entityId,
+      project: input.projectEntityId,
+      title: input.title,
+      description: input.description ?? "",
+      dueDate: input.dueDate ?? null,
+      assignee: input.assigneeActorEntityId ?? null,
+      status: input.status ?? "not_started",
+      priority: input.priority ?? "none",
+    });
+    const previous = await previousRequest(ctx, "crm_follow_up", input.requestId, fingerprint);
     await ctx.lockAccessPaths([input.entityId, input.projectEntityId]);
     const { entity } = await ctx.requireAccess(input.entityId, "edit");
     if (!["contact", "account", "deal", "contact_interaction"].includes(entity.entityType))
       throw new ValidationError("Choose a CRM source.");
-    const fingerprint = createHash("sha256")
-      .update(
-        JSON.stringify({
-          source: input.entityId,
-          project: input.projectEntityId,
-          title: input.title,
-          description: input.description ?? "",
-          dueDate: input.dueDate ?? null,
-          assignee: input.assigneeActorEntityId ?? null,
-          status: input.status ?? "not_started",
-          priority: input.priority ?? "none",
-        }),
-      )
-      .digest("hex");
-    const [previous] = await ctx.db
-      .select()
-      .from(crmFollowUpSources)
-      .where(
-        and(
-          eq(crmFollowUpSources.organizationId, scope.organizationId),
-          eq(crmFollowUpSources.actorEntityId, scope.actorEntityId),
-          eq(crmFollowUpSources.requestId, input.requestId),
-        ),
-      );
-    if (previous) {
-      if (previous.fingerprint !== fingerprint)
-        throw new ConflictError("Request identity was reused with different input.");
-      return taskRepository(ctx).get(previous.taskEntityId);
-    }
+    if (previous) return taskRepository(ctx).get(previous);
     let archived = false;
     let activityEntityId = input.entityId;
     if (entity.entityType === "account") {
@@ -115,18 +95,10 @@ export async function createFollowUp(
     }
     if (archived) throw new ValidationError("Restore the CRM record first.");
     const task = await taskRepository(ctx).create(input);
-    await ctx.db.insert(crmFollowUpSources).values({
-      organizationId: scope.organizationId,
-      actorEntityId: scope.actorEntityId,
-      requestId: input.requestId,
-      fingerprint,
-      sourceEntityId: input.entityId,
-      taskEntityId: task.entityId,
-    });
+    await recordRequest(ctx, "crm_follow_up", input.requestId, fingerprint, task.entityId);
     await ctx.db.insert(entityLinks).values({
       organizationId: scope.organizationId,
-      sourceEntityId: task.entityId,
-      targetEntityId: input.entityId,
+      ...relatedPair(task.entityId, input.entityId),
       relationType: "related_to",
       createdByActorEntityId: scope.actorEntityId,
     });

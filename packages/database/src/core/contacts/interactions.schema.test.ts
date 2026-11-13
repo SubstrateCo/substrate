@@ -8,7 +8,7 @@ import { eq } from "drizzle-orm";
 const f = setupDatabase();
 
 describe("contact interaction constraints", () => {
-  test("rejects mismatched organizations, source types, actors, and access containers", async () => {
+  test("rejects mismatched organizations, actors, and access containers", async () => {
     const repo = f.forActor(f.alice);
     const contact = await repo.contacts.create({ displayName: "Jane" });
     const other = await repo.contacts.create({ displayName: "Other" });
@@ -23,11 +23,6 @@ describe("contact interaction constraints", () => {
       { organizationId: f.orgB },
       { contactEntityId: other.entityId },
       { createdByActorEntityId: f.outsider },
-      {
-        origin: "imported" as const,
-        sourceEntityId: other.entityId,
-        sourceEntityType: "project" as const,
-      },
     ]) {
       expect(
         await rejection(f.db.update(contactInteractions).set(change).where(where)),
@@ -43,7 +38,7 @@ describe("contact interaction constraints", () => {
     ).toMatchObject({ cause: { code: "23503" } });
   });
 
-  test("requires complete import provenance and valid times and summaries", async () => {
+  test("requires valid times, summaries, and entity type", async () => {
     const repo = f.forActor(f.alice);
     const contact = await repo.contacts.create({ displayName: "Jane" });
     const entry = await repo.contactInteractions.createManual({
@@ -53,8 +48,6 @@ describe("contact interaction constraints", () => {
       summary: "Note",
     });
     for (const change of [
-      { origin: "imported" as const },
-      { sourceEntityId: contact.entityId, sourceEntityType: "contact" as const },
       { summary: "  " },
       { endedAt: new Date("2026-01-01") },
       { entityType: "contact" as const },

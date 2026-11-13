@@ -5,15 +5,13 @@ import { parseInput } from "../../core/contacts/inputs";
 import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
 import { contactInteractions } from "../../core/contacts/interactions.schema";
 import type { RepositoryContext } from "../../core/repository-context";
-import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
+import { AccessDeniedError, ValidationError } from "../../errors";
 import { messageEntityReferences } from "../context/schema";
 import { recordCrmActivity } from "../crm/activity";
 import { presentInteraction } from "../crm/actor-views";
 import { crmContactProfiles } from "../crm/schema";
 import { requireMessage } from "../messaging/access";
-import { crmInteractionPublications } from "./interaction-publications.schema";
 import { and, eq } from "drizzle-orm";
-import { createHash } from "node:crypto";
 import { z } from "zod";
 
 const publicationInput = interactionFields.extend({
@@ -60,34 +58,31 @@ export async function publishInteraction(
     const endedAt = value.endedAt ? new Date(value.endedAt) : null;
     if (endedAt && endedAt < occurredAt)
       throw new ValidationError("The end must not precede the start.");
-    const fingerprint = createHash("sha256")
-      .update(
-        JSON.stringify({
-          kind: value.kind,
-          occurredAt: occurredAt.toISOString(),
-          endedAt: endedAt?.toISOString() ?? null,
-          summary: value.summary,
-        }),
-      )
-      .digest("hex");
+    // A message is published once per contact; a repeat returns the earlier interaction unchanged.
+    // The contact lock above serializes publishers, and the message's `source` reference finds it.
     const [existing] = await ctx.db
-      .select()
-      .from(crmInteractionPublications)
+      .select({ entityId: contactInteractions.entityId })
+      .from(contactInteractions)
+      .innerJoin(
+        messageEntityReferences,
+        and(
+          eq(messageEntityReferences.organizationId, contactInteractions.organizationId),
+          eq(messageEntityReferences.entityId, contactInteractions.entityId),
+          eq(messageEntityReferences.messageId, value.messageId),
+          eq(messageEntityReferences.purpose, "source"),
+        ),
+      )
       .where(
         and(
-          eq(crmInteractionPublications.organizationId, scope.organizationId),
-          eq(crmInteractionPublications.contactEntityId, value.contactEntityId),
-          eq(crmInteractionPublications.messageId, value.messageId),
+          eq(contactInteractions.organizationId, scope.organizationId),
+          eq(contactInteractions.contactEntityId, value.contactEntityId),
         ),
       );
-    if (existing) {
-      if (existing.fingerprint !== fingerprint)
-        throw new ConflictError("This message was already published with different input.");
+    if (existing)
       return presentInteraction(
         ctx,
-        await contactInteractionRepository(ctx).get(existing.interactionEntityId),
+        await contactInteractionRepository(ctx).get(existing.entityId),
       );
-    }
     const entity = await ctx.createChildEntity("contact_interaction", parent);
     await ctx.db.insert(contactInteractions).values({
       entityId: entity.entityId,
@@ -100,15 +95,6 @@ export async function publishInteraction(
       summary: value.summary,
       origin: "message_publication",
       createdByActorEntityId: scope.actorEntityId,
-    });
-    await ctx.db.insert(crmInteractionPublications).values({
-      organizationId: scope.organizationId,
-      contactEntityId: value.contactEntityId,
-      interactionEntityId: entity.entityId,
-      messageId: value.messageId,
-      conversationId: conversation.id,
-      publisherActorEntityId: scope.actorEntityId,
-      fingerprint,
     });
     await ctx.db.insert(messageEntityReferences).values({
       organizationId: scope.organizationId,

@@ -96,7 +96,7 @@ test("creating from a discussion rechecks source access after waiting for its de
   });
   expect(await pending).toBeInstanceOf(AccessDeniedError);
   expect(await alice.tasks.list(destination!.entityId)).toEqual([]);
-  expect(await f.db.select().from(schema.sourceTaskRequests)).toEqual([]);
+  expect(await f.db.select().from(schema.idempotentRequests)).toEqual([]);
   expect(
     await f.db
       .select()

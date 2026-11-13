@@ -78,6 +78,9 @@ export async function listLinks(
     const items = await Promise.all(
       rows.map(async (row) => {
         const other = await requireContextTarget(ctx, row.id);
+        let direction: "none" | "outgoing" | "incoming" = "none";
+        if (row.relation !== "related_to")
+          direction = row.sourceEntityId === input.target.id ? "outgoing" : "incoming";
         return {
           kind: "entity" as const,
           createdAt: iso(row.createdAt),
@@ -86,10 +89,7 @@ export async function listLinks(
             id: row.id,
             title: other.title,
             relation: row.relation,
-            direction:
-              row.sourceEntityId === input.target.id
-                ? ("outgoing" as const)
-                : ("incoming" as const),
+            direction,
           },
         };
       }),

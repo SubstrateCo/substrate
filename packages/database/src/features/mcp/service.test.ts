@@ -748,11 +748,7 @@ test("CRM follow-up tools use existing project tasks and expose permission-filte
   await f
     .forActor(f.bob)
     .permissions.grant({ entityId: hidden.entityId, actorEntityId: f.alice, level: "view" });
-  await alice.links.create({
-    sourceEntityId: account.record.entityId,
-    targetEntityId: hidden.entityId,
-    relationType: "related_to",
-  });
+  await alice.links.create({ entityId: account.record.entityId, otherEntityId: hidden.entityId });
   await f.forActor(f.bob).permissions.revoke({ entityId: hidden.entityId, actorEntityId: f.alice });
   const input = {
     requestId: crypto.randomUUID(),
@@ -773,7 +769,7 @@ test("CRM follow-up tools use existing project tasks and expose permission-filte
   expect(links.items).toMatchObject([
     {
       kind: "entity",
-      entity: { type: "task", id: task.id, relation: "related_to", direction: "incoming" },
+      entity: { type: "task", id: task.id, relation: "related_to", direction: "none" },
     },
   ]);
   expect(links.items).toHaveLength(1);
@@ -782,7 +778,7 @@ test("CRM follow-up tools use existing project tasks and expose permission-filte
     source: "entities",
   });
   expect(reverse.items).toMatchObject([
-    { entity: { type: "account", id: account.record.entityId, direction: "outgoing" } },
+    { entity: { type: "account", id: account.record.entityId, direction: "none" } },
   ]);
   expect(
     await rejection(
@@ -828,11 +824,9 @@ test("CRM message and entity links resolve all supported customer record types",
       { message: { id: reply.id } },
     ]);
     if (target.type !== "account")
-      await f.forActor(f.alice).links.create({
-        sourceEntityId: account.record.entityId,
-        targetEntityId: target.id,
-        relationType: "related_to",
-      });
+      await f
+        .forActor(f.alice)
+        .links.create({ entityId: account.record.entityId, otherEntityId: target.id });
   }
   const messages = await call("list_links", { target: { type: "message", id: reply.id } });
   expect(

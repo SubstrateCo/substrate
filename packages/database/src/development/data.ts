@@ -149,7 +149,7 @@ export const developmentWork = {
     { source: 0, relation: "blocks", target: 1 },
     { source: 1, relation: "blocks", target: 2 },
     { source: 5, relation: "duplicates", target: 0 },
-    { source: 5, relation: "relates_to", target: 2 },
+    { source: 5, relation: "related_to", target: 2 },
   ],
   crossProjectLink: { source: 2, relation: "blocks", target: 1 },
   subtasks: [

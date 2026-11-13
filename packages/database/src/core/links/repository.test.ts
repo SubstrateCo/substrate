@@ -1,6 +1,7 @@
 import { AccessDeniedError } from "../../index";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
+import { entityLinks } from "./schema";
 import { describe, expect, test } from "bun:test";
 
 const f = setupDatabase();
@@ -10,11 +11,7 @@ describe("links", () => {
     const repo = f.forActor(f.alice);
     const shared = await repo.contacts.create({ displayName: "Shared" });
     const privateContact = await repo.contacts.create({ displayName: "Private" });
-    await repo.links.create({
-      sourceEntityId: shared.entityId,
-      targetEntityId: privateContact.entityId,
-      relationType: "related_to",
-    });
+    await repo.links.create({ entityId: shared.entityId, otherEntityId: privateContact.entityId });
     await repo.permissions.grant({
       entityId: shared.entityId,
       actorEntityId: f.bob,
@@ -23,10 +20,9 @@ describe("links", () => {
     expect(await f.forActor(f.bob).links.list(shared.entityId)).toEqual([]);
     expect(
       await rejection(
-        f.forActor(f.bob).links.create({
-          sourceEntityId: shared.entityId,
-          targetEntityId: privateContact.entityId,
-          relationType: "mentions",
+        f.forActor(f.bob).links.remove({
+          entityId: shared.entityId,
+          otherEntityId: privateContact.entityId,
         }),
       ),
     ).toBeInstanceOf(AccessDeniedError);
@@ -42,41 +38,54 @@ describe("links", () => {
     expect(await f.forActor(f.bob).links.list(privateContact.entityId)).toEqual([]);
   });
 
-  test("rejects duplicate, self, and cross-organization links", async () => {
+  test("related_to has no direction and rejects duplicate, self, and cross-organization links", async () => {
     const repo = f.forActor(f.alice);
     const a = await repo.contacts.create({ displayName: "A" });
     const b = await repo.contacts.create({ displayName: "B" });
     const other = await f.forActor(f.outsider, f.orgB).contacts.create({ displayName: "Other" });
-    const link = {
-      sourceEntityId: a.entityId,
-      targetEntityId: b.entityId,
-      relationType: "related_to" as const,
-    };
-    await repo.links.create(link);
-    expect(await repo.links.list(b.entityId)).toEqual(await repo.links.list(a.entityId));
-    await rejection(repo.links.create(link));
-    await rejection(repo.links.create({ ...link, targetEntityId: a.entityId }));
+    await repo.links.create({ entityId: b.entityId, otherEntityId: a.entityId });
+    const [stored] = await repo.links.list(a.entityId);
+    expect([stored!.sourceEntityId, stored!.targetEntityId]).toEqual(
+      [a.entityId, b.entityId].sort(),
+    );
+    expect(await repo.links.list(b.entityId)).toEqual([stored!]);
+    await rejection(repo.links.create({ entityId: a.entityId, otherEntityId: b.entityId }));
+    await rejection(repo.links.create({ entityId: a.entityId, otherEntityId: a.entityId }));
     expect(
-      await rejection(repo.links.create({ ...link, targetEntityId: other.entityId })),
+      await rejection(repo.links.create({ entityId: a.entityId, otherEntityId: other.entityId })),
     ).toBeInstanceOf(AccessDeniedError);
     expect(await repo.links.list(a.entityId)).toHaveLength(1);
   });
 
-  test("only an editor of the source can remove a link", async () => {
+  test("the database stores related_to only in ID order", async () => {
     const repo = f.forActor(f.alice);
     const a = await repo.contacts.create({ displayName: "A" });
     const b = await repo.contacts.create({ displayName: "B" });
-    const link = {
-      sourceEntityId: a.entityId,
-      targetEntityId: b.entityId,
-      relationType: "related_to" as const,
-    };
+    const [low, high] = [a.entityId, b.entityId].sort();
+    expect(
+      await rejection(
+        f.db.insert(entityLinks).values({
+          organizationId: f.orgA,
+          sourceEntityId: high!,
+          targetEntityId: low!,
+          relationType: "related_to",
+          createdByActorEntityId: f.alice,
+        }),
+      ),
+    ).toBeInstanceOf(Error);
+  });
+
+  test("only an editor of the entity can remove a link", async () => {
+    const repo = f.forActor(f.alice);
+    const a = await repo.contacts.create({ displayName: "A" });
+    const b = await repo.contacts.create({ displayName: "B" });
+    const link = { entityId: a.entityId, otherEntityId: b.entityId };
     await repo.links.create(link);
     for (const entityId of [a.entityId, b.entityId]) {
       await repo.permissions.grant({ entityId, actorEntityId: f.bob, level: "view" });
     }
     expect(await rejection(f.forActor(f.bob).links.remove(link))).toBeInstanceOf(AccessDeniedError);
-    await repo.links.remove(link);
+    await repo.links.remove({ entityId: b.entityId, otherEntityId: a.entityId });
     expect(await repo.links.list(a.entityId)).toEqual([]);
   });
 });

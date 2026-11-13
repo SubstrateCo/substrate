@@ -39,7 +39,7 @@ const link = (
 
 test("a task reads each link from its own side, in the standard relation order", () => {
   const links = [
-    link("related", "relates_to", "a", "b"),
+    link("related", "related_to", "a", "b"),
     link("dup", "duplicates", "c", "a"),
     link("blocker", "blocks", null, "a"),
     link("blocked", "blocks", "a", "d"),
@@ -57,7 +57,7 @@ test("a task reads each link from its own side, in the standard relation order",
     // The reader cannot open the blocker, but the task is still blocked.
     { id: "blocker", relation: "blocked_by", other: null, blocking: true },
     { id: "dup", relation: "duplicated_by", other: "c", blocking: false },
-    { id: "related", relation: "relates_to", other: "b", blocking: false },
+    { id: "related", relation: "related_to", other: "b", blocking: false },
   ]);
 });
 
@@ -67,7 +67,7 @@ test("only open tasks with an open blocker are blocked, and the filter keeps onl
     link("1", "blocks", "free", "open"),
     link("2", "blocks", "free", "done"),
     link("3", "blocks", "done", "unblocked", false),
-    link("4", "relates_to", "free", "unblocked"),
+    link("4", "related_to", "free", "unblocked"),
   ];
   const blocked = blockedTaskIds(links, tasks);
   expect([...blocked]).toEqual(["open"]);

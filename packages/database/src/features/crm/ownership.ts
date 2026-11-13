@@ -5,7 +5,6 @@ import { parseInput } from "../../core/contacts/inputs";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { recordCrmActivity } from "./activity";
-import { crmOwnerEvents } from "./ownership.schema";
 import { crmAccounts, crmDeals } from "./schema";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -63,15 +62,6 @@ export async function assignOwner(context: RepositoryContext, id: string, input:
             eq(crmAccounts.entityId, id),
           ),
         );
-    await ctx.db.insert(crmOwnerEvents).values({
-      organizationId: ctx.scope.organizationId,
-      entityId: id,
-      entityType: entity.entityType,
-      actorEntityId: ctx.scope.actorEntityId,
-      fromActorEntityId: previous.ownerActorEntityId,
-      toActorEntityId: ownerActorEntityId,
-      accessDecision: input.accessDecision,
-    });
     await ctx.touch(id);
     await recordCrmActivity(ctx, {
       entityId: id,

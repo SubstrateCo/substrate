@@ -30,7 +30,7 @@ const taskSummary = z.object({
 const relation = z
   .enum(taskLinkRelations)
   .describe(
-    "How the task relates to the other task: blocks | blocked_by | duplicates | duplicated_by | relates_to",
+    "How the task relates to the other task: blocks | blocked_by | duplicates | duplicated_by | related_to",
   );
 const taskLink = z.object({
   id,

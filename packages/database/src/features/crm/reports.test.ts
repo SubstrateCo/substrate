@@ -17,11 +17,7 @@ test("a customer's touch refreshes only the deal it explicitly references", asyn
     occurredAt: recent,
     summary: "Call about pursuit A",
   });
-  await a.links.create({
-    sourceEntityId: dealA.entityId,
-    targetEntityId: linked.entityId,
-    relationType: "related_to",
-  });
+  await a.links.create({ entityId: dealA.entityId, otherEntityId: linked.entityId });
   const options = { asOf, staleDays: 30 };
   const report = () => a.crm.report(new Date("2000-01-01Z"), new Date("2100-01-01Z"), options);
   expect((await report()).exceptions.stale).toBe(1);
@@ -83,22 +79,14 @@ test("follow-up exceptions use readable tasks and meaningful touches with matchi
     occurredAt: new Date(+new Date(asOf) - 86400000),
     summary: "Customer call",
   });
-  await a.links.create({
-    sourceEntityId: interaction.entityId,
-    targetEntityId: deals[0]!.entityId,
-    relationType: "related_to",
-  });
+  await a.links.create({ entityId: interaction.entityId, otherEntityId: deals[0]!.entityId });
   const note = await a.contactInteractions.createInteraction({
     contactEntityId: contact.entityId,
     kind: "note",
     occurredAt: new Date(+new Date(asOf) - 86400000),
     summary: "Internal planning",
   });
-  await a.links.create({
-    sourceEntityId: note.entityId,
-    targetEntityId: deals[1]!.entityId,
-    relationType: "related_to",
-  });
+  await a.links.create({ entityId: note.entityId, otherEntityId: deals[1]!.entityId });
   const input = { asOf, staleDays: 30 };
   const report = await a.crm.report(new Date("2000-01-01Z"), new Date("2100-01-01Z"), input);
   expect(report.exceptions).toMatchObject({ overdue: 1, noNextAction: 1, stale: 2 });

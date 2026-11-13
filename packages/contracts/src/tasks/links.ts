@@ -1,7 +1,10 @@
 import type { TaskStatus } from "./status.ts";
 
-/** Stored link kinds. `blocks` and `duplicates` point from source to target; `relates_to` has no direction. */
-export const taskLinkKinds = ["blocks", "relates_to", "duplicates"] as const;
+/**
+ * Task relations, stored as entity links. `blocks` and `duplicates` point from source to target;
+ * `related_to` has no direction.
+ */
+export const taskLinkKinds = ["blocks", "related_to", "duplicates"] as const;
 export type TaskLinkKind = (typeof taskLinkKinds)[number];
 
 export interface TaskLinkEnd {
@@ -29,7 +32,7 @@ export const taskLinkRelations = [
   "blocked_by",
   "duplicates",
   "duplicated_by",
-  "relates_to",
+  "related_to",
 ] as const;
 export type TaskLinkRelation = (typeof taskLinkRelations)[number];
 
@@ -38,7 +41,7 @@ export const taskLinkRelationLabels: Record<TaskLinkRelation, string> = {
   blocked_by: "Is blocked by",
   duplicates: "Duplicates",
   duplicated_by: "Is duplicated by",
-  relates_to: "Relates to",
+  related_to: "Relates to",
 };
 
 /** The same link, seen from the other task. */
@@ -47,12 +50,12 @@ export const inverseTaskLinkRelation: Record<TaskLinkRelation, TaskLinkRelation>
   blocked_by: "blocks",
   duplicates: "duplicated_by",
   duplicated_by: "duplicates",
-  relates_to: "relates_to",
+  related_to: "related_to",
 };
 
 /** The relation a task has through a link, given the side it is on. */
 export function taskLinkRelation(kind: TaskLinkKind, side: "source" | "target"): TaskLinkRelation {
-  if (kind === "relates_to") return "relates_to";
+  if (kind === "related_to") return "related_to";
   if (kind === "blocks") return side === "source" ? "blocks" : "blocked_by";
   return side === "source" ? "duplicates" : "duplicated_by";
 }

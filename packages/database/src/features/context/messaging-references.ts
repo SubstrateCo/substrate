@@ -1,43 +1,45 @@
 import type { DatabaseExecutor } from "../../client";
 import type { SessionIdentity } from "../../core/session/identity";
-import type { Reference } from "../../core/text/references";
+import { messageReferences, type Reference } from "../../core/text/references";
 import { AccessDeniedError } from "../../errors";
 import { visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { messageMessagingReferences } from "./schema";
-import { and, asc, eq, exists, inArray, isNull, sql } from "drizzle-orm";
+import { and, eq, exists, inArray, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-// Messages reference channels and threads of their own organization that the author can see.
-// A thread is a root message with at least one reply. Any other target rejects the message.
-export async function saveMessagingReferences(
-  db: DatabaseExecutor,
-  scope: SessionIdentity,
-  message: typeof messagingMessages.$inferSelect,
-  conversationOrganizationId: string,
-  references: (Reference & { kind: "channel" | "thread" })[],
-) {
-  if (!references.length) return;
-  if (conversationOrganizationId !== scope.organizationId) throw new AccessDeniedError();
-  const ids = (kind: Reference["kind"]) =>
-    references.flatMap((reference) => (reference.kind === kind ? [reference.id] : []));
-  const channelIds = ids("channel");
-  const threadIds = ids("thread");
-  const visibleChannel = and(
+type MessagingReference = Reference & { kind: "channel" | "thread" };
+
+// Channel and thread references are read from the message body, never stored. Each read resolves
+// them with the reader's current access.
+const visibleChannel = (db: DatabaseExecutor, scope: SessionIdentity) =>
+  and(
     eq(messagingConversations.organizationId, scope.organizationId),
     eq(messagingConversations.kind, "channel"),
     visibleConversations(db, scope),
   );
+
+// Messages reference channels and threads of their own organization that the author can see.
+// A thread is a root message with at least one reply. Any other target rejects the message.
+export async function checkMessagingReferences(
+  db: DatabaseExecutor,
+  scope: SessionIdentity,
+  conversationOrganizationId: string,
+  references: MessagingReference[],
+) {
+  if (!references.length) return;
+  if (conversationOrganizationId !== scope.organizationId) throw new AccessDeniedError();
+  const channelIds = references.flatMap((item) => (item.kind === "channel" ? [item.id] : []));
+  const threadIds = references.flatMap((item) => (item.kind === "thread" ? [item.id] : []));
   const channels = channelIds.length
     ? await db
-        .select({ id: messagingConversations.id, conversationId: messagingConversations.id })
+        .select({ id: messagingConversations.id })
         .from(messagingConversations)
-        .where(and(inArray(messagingConversations.id, channelIds), visibleChannel))
+        .where(and(inArray(messagingConversations.id, channelIds), visibleChannel(db, scope)))
     : [];
   const replies = alias(messagingMessages, "replies");
   const threads = threadIds.length
     ? await db
-        .select({ id: messagingMessages.id, conversationId: messagingMessages.conversationId })
+        .select({ id: messagingMessages.id })
         .from(messagingMessages)
         .innerJoin(
           messagingConversations,
@@ -48,7 +50,7 @@ export async function saveMessagingReferences(
             inArray(messagingMessages.id, threadIds),
             isNull(messagingMessages.deletedAt),
             isNull(messagingMessages.threadId),
-            visibleChannel,
+            visibleChannel(db, scope),
             exists(
               db
                 .select({ id: replies.id })
@@ -65,59 +67,76 @@ export async function saveMessagingReferences(
     : [];
   if (channels.length !== channelIds.length || threads.length !== threadIds.length)
     throw new AccessDeniedError();
-  const targets = new Map([...channels, ...threads].map((row) => [row.id, row.conversationId]));
-  await db
-    .insert(messageMessagingReferences)
-    .values(
-      references.map((reference) => ({
-        organizationId: scope.organizationId,
-        conversationId: message.conversationId,
-        messageId: message.id,
-        kind: reference.kind,
-        targetId: reference.id,
-        targetConversationId: targets.get(reference.id)!,
-        targetThreadId: reference.kind === "thread" ? reference.id : null,
-      })),
-    )
-    .onConflictDoNothing();
 }
 
-// The caller has checked access to every source message. Resolve target metadata with live access.
+export function bodyMessagingReferences(body: string): MessagingReference[] {
+  return messageReferences(body).filter(
+    (reference): reference is MessagingReference =>
+      reference.kind === "channel" || reference.kind === "thread",
+  );
+}
+
+// The caller has checked access to every source message. Targets the reader cannot see are left out.
 export async function messagingReferencePage(
   db: DatabaseExecutor,
   scope: SessionIdentity,
-  messageIds: string[],
+  messages: { id: string; body: string }[],
 ) {
-  return db
-    .select({
-      messageId: messageMessagingReferences.messageId,
-      id: messageMessagingReferences.targetId,
-      kind: messageMessagingReferences.kind,
-      conversationId: messageMessagingReferences.targetConversationId,
-      threadId: messageMessagingReferences.targetThreadId,
-      title: sql<string>`CASE WHEN ${messageMessagingReferences.kind} = 'channel' THEN ${messagingConversations.name} WHEN ${messagingMessages.deletedAt} IS NOT NULL THEN 'Message deleted' ELSE left(${messagingMessages.body}, 160) END`,
-      conversationName: messagingConversations.name,
-    })
-    .from(messageMessagingReferences)
-    .innerJoin(
-      messagingConversations,
-      eq(messagingConversations.id, messageMessagingReferences.targetConversationId),
-    )
-    .leftJoin(
-      messagingMessages,
-      and(
-        eq(messagingMessages.id, messageMessagingReferences.targetThreadId),
-        isNull(messagingMessages.threadId),
-      ),
-    )
-    .where(
-      and(
-        inArray(messageMessagingReferences.messageId, messageIds),
-        eq(messageMessagingReferences.organizationId, scope.organizationId),
-        eq(messagingConversations.organizationId, scope.organizationId),
-        eq(messagingConversations.kind, "channel"),
-        visibleConversations(db, scope),
-      ),
-    )
-    .orderBy(asc(messageMessagingReferences.kind), asc(messageMessagingReferences.targetId));
+  const references = messages.flatMap((message) =>
+    bodyMessagingReferences(message.body).map((reference) => ({
+      messageId: message.id,
+      ...reference,
+    })),
+  );
+  const ids = (kind: MessagingReference["kind"]) => [
+    ...new Set(references.flatMap((item) => (item.kind === kind ? [item.id] : []))),
+  ];
+  const channelIds = ids("channel");
+  const threadIds = ids("thread");
+  const [channels, threads] = await Promise.all([
+    channelIds.length
+      ? db
+          .select({
+            id: messagingConversations.id,
+            conversationId: messagingConversations.id,
+            threadId: sql<string | null>`null::uuid`,
+            title: sql<string>`${messagingConversations.name}`,
+            conversationName: messagingConversations.name,
+          })
+          .from(messagingConversations)
+          .where(and(inArray(messagingConversations.id, channelIds), visibleChannel(db, scope)))
+      : [],
+    threadIds.length
+      ? db
+          .select({
+            id: messagingMessages.id,
+            conversationId: messagingConversations.id,
+            threadId: sql<string | null>`${messagingMessages.id}`,
+            title: sql<string>`CASE WHEN ${messagingMessages.deletedAt} IS NOT NULL THEN 'Message deleted' ELSE left(${messagingMessages.body}, 160) END`,
+            conversationName: messagingConversations.name,
+          })
+          .from(messagingMessages)
+          .innerJoin(
+            messagingConversations,
+            eq(messagingConversations.id, messagingMessages.conversationId),
+          )
+          .where(
+            and(
+              inArray(messagingMessages.id, threadIds),
+              isNull(messagingMessages.threadId),
+              visibleChannel(db, scope),
+            ),
+          )
+      : [],
+  ]);
+  const targets = new Map([
+    ...channels.map((target) => [`channel:${target.id}`, target] as const),
+    ...threads.map((target) => [`thread:${target.id}`, target] as const),
+  ]);
+  return references
+    .sort((left, right) => left.kind.localeCompare(right.kind) || left.id.localeCompare(right.id))
+    .flatMap((reference) => {
+      const target = targets.get(`${reference.kind}:${reference.id}`);
+      return target ? [{ ...target, messageId: reference.messageId, kind: reference.kind }] : [];
+    });
 }

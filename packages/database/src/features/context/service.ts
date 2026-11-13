@@ -7,9 +7,10 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
+import { previousRequest, recordRequest, requestFingerprint } from "../../core/requests/once";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
-import { ConflictError, AccessDeniedError } from "../../errors";
+import { AccessDeniedError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
 import { recordCrmActivity } from "../crm/activity";
 import { requireMessage, visibleConversations } from "../messaging/access";
@@ -23,7 +24,7 @@ import { tasks } from "../tasks/tasks.schema";
 import { requireContextTarget } from "./access";
 import { messagePeople, messageWorkLinks } from "./message-metadata";
 import { messagePage } from "./message-page";
-import { messageEntityReferences, sourceTaskRequests } from "./schema";
+import { messageEntityReferences } from "./schema";
 import { contextSearch } from "./search";
 import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
@@ -211,7 +212,6 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
     messagePage: (messageIds: string[]) => messagePage(context, scope, messageIds),
     async createTaskFromMessage(input: CreateTaskInput & { requestId: string; messageId: string }) {
       return transaction(async (ctx) => {
-        const tx = ctx.db;
         const { conversation, message } = await lockSourceMessage(
           ctx,
           scope,
@@ -223,7 +223,7 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
         if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
         const project = await ctx.requireAccess(input.projectEntityId, "edit", true);
         // Project access locking serializes retries, including simultaneous submissions.
-        const fingerprint = JSON.stringify({
+        const fingerprint = requestFingerprint({
           messageId: input.messageId,
           projectEntityId: input.projectEntityId,
           title: input.title.trim(),
@@ -234,34 +234,20 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
           dueDate: input.dueDate ?? null,
           parentTaskEntityId: input.parentTaskEntityId ?? null,
         });
-        const [existing] = await tx
-          .select()
-          .from(sourceTaskRequests)
-          .where(
-            and(
-              eq(sourceTaskRequests.organizationId, scope.organizationId),
-              eq(sourceTaskRequests.actorEntityId, ctx.scope.actorEntityId),
-              eq(sourceTaskRequests.requestId, input.requestId),
-            ),
-          );
-        if (existing) {
-          if (existing.fingerprint !== fingerprint)
-            throw new ConflictError("This request was already used for different task details.");
-          return taskRepository(ctx).get(existing.taskEntityId);
-        }
+        const existing = await previousRequest(
+          ctx,
+          "task_from_message",
+          input.requestId,
+          fingerprint,
+        );
+        if (existing) return taskRepository(ctx).get(existing);
         const task = await createTaskInLockedProject(ctx, project, input);
         await recordTaskSource(
           ctx,
           { messageId: input.messageId, conversationId: conversation.id },
           task,
         );
-        await tx.insert(sourceTaskRequests).values({
-          organizationId: scope.organizationId,
-          actorEntityId: ctx.scope.actorEntityId,
-          requestId: input.requestId,
-          fingerprint,
-          taskEntityId: task.entityId,
-        });
+        await recordRequest(ctx, "task_from_message", input.requestId, fingerprint, task.entityId);
         return task;
       });
     },
