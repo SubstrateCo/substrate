@@ -10,8 +10,6 @@ import {
 
 import type { LiveTurn, RuntimeContext } from "./context.ts";
 
-/* oxlint-disable deslop/no-unknown-parameters -- Native request data is untyped JSON from the harness. */
-
 interface OpenRequest {
   serverId: string | null;
   nativeRequestId: string;

@@ -1,6 +1,6 @@
 import { previewAttachmentImage } from "./attachment-image";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import sharp from "sharp";
 
 test("attachment previews bound dimensions and strip source metadata", async () => {
@@ -25,7 +25,7 @@ test("attachment previews reject active content, corrupt images, and excessive p
       .png()
       .toBuffer(),
   ])
-    await expect(previewAttachmentImage(bytes)).rejects.toThrow("This file cannot be previewed.");
+    await rejects(previewAttachmentImage(bytes), { message: "This file cannot be previewed." });
 });
 
 test("GIF previews preserve animation", async () => {

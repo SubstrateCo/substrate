@@ -1,8 +1,6 @@
 import { taskTools } from "../harness/tools/tasks.ts";
 import { z } from "zod";
 
-/* oxlint-disable deslop/no-runtime-typeof -- canonicalJson walks JSON values by their runtime kind. */
-
 const id = z.uuid();
 
 /** Actions an agent may propose. Approval executes exactly the proposed action, as the agent. */
@@ -95,8 +93,10 @@ export type JsonValue =
  * Undefined object fields are left out, so equal parsed values always produce equal text.
  */
 export function canonicalJson(value: JsonValue): string {
+  // oxlint-disable-next-line deslop/no-runtime-typeof -- Canonical JSON serialization must distinguish finite numbers from the other JSON kinds.
   if (typeof value === "number" && !Number.isFinite(value))
     throw new TypeError("canonicalJson accepts finite numbers only");
+  // oxlint-disable-next-line deslop/no-runtime-typeof -- Canonical JSON serialization handles primitive values separately from arrays and objects.
   if (value === null || typeof value !== "object") return JSON.stringify(value);
   if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
   const fields = Object.keys(value)

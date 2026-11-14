@@ -4,8 +4,6 @@ import type { HarnessCommand } from "@substrate/contracts/harness";
 import { agentId, CodeError, openStore, organizationId, runtimeFixture } from "./test-support.ts";
 import { afterEach, expect, test } from "bun:test";
 
-/* oxlint-disable deslop/no-unknown-parameters, deslop/require-safety-comment-for-type-assertion -- Recorded fake server bodies and harness commands are untyped, as the real boundaries are. */
-
 let fixture: Awaited<ReturnType<typeof runtimeFixture>> | undefined;
 afterEach(async () => {
   await fixture?.close();
@@ -29,7 +27,7 @@ test("an owner message runs after the debounce, its events are stored, and a qui
   expect(f.turns()).toEqual([]);
 
   await f.advance(600);
-  const [turn] = f.turns() as [TurnCommand];
+  const turn = f.turns()[0]!;
   expect(turn.mode).toBe("interactive");
   expect(turn.input.text).toContain(">Status?</item>");
   expect(turn.context).toMatchObject({ turnId: turn.turnId, attempt: 1, kind: "interactive" });
@@ -71,7 +69,7 @@ test("a reply recorded from the MCP call makes the turn replied", async () => {
   const { conversationId } = f.ownerMessage();
   await f.runtime.sync();
   await f.advance(600);
-  const [turn] = f.turns() as [TurnCommand];
+  const turn = f.turns()[0]!;
   const messageId = crypto.randomUUID();
   await f.runtime.observeToolCall(
     { tool: "reply", input: { requestId: "r", body: "Done" }, turn: { turnId: turn.turnId } },
@@ -131,7 +129,7 @@ test("an answer wake runs a turn whose input carries the owner's answer, under t
   );
   await f.runtime.sync();
   await f.settle();
-  const [turn] = f.turns() as [TurnCommand];
+  const turn = f.turns()[0]!;
   expect(turn.mode).toBe("interactive");
   expect(turn.input.text).toContain("Question: Which week?\nAnswer: Next week</item>");
   const view = await f.runtime.conversation(conversationId);
@@ -143,7 +141,7 @@ test("an asked question needs the owner only while the server still has it open"
   const { conversationId } = f.ownerMessage();
   await f.runtime.sync();
   await f.advance(600);
-  const [turn] = f.turns() as [TurnCommand];
+  const turn = f.turns()[0]!;
   const questionId = crypto.randomUUID();
   f.serverOpenRequests.add(questionId);
   await f.runtime.observeToolCall(
@@ -174,7 +172,7 @@ test("a question with an answer wake no longer needs the owner, even before the 
   const { conversationId } = f.ownerMessage();
   await f.runtime.sync();
   await f.advance(600);
-  const [turn] = f.turns() as [TurnCommand];
+  const turn = f.turns()[0]!;
   const questionId = crypto.randomUUID();
   f.serverOpenRequests.add(questionId);
   await f.runtime.observeToolCall(
@@ -209,7 +207,7 @@ test("a question with an answer wake no longer needs the owner, even before the 
   );
   await f.runtime.sync();
   await f.settle();
-  const answered = f.turns().at(-1) as TurnCommand;
+  const answered = f.turns().at(-1)!;
   await f.emit(answered.turnId, { type: "turn.completed", result: { status: "completed" } });
   expect((await f.runtime.agents())[0]?.state).toBe("idle");
 });
@@ -219,7 +217,7 @@ test("status reads during a burst of changes ask the server for open requests at
   const { conversationId } = f.ownerMessage();
   await f.runtime.sync();
   await f.advance(600);
-  const [turn] = f.turns() as [TurnCommand];
+  const turn = f.turns()[0]!;
   const questionId = crypto.randomUUID();
   f.serverOpenRequests.add(questionId);
   await f.runtime.observeToolCall(
@@ -246,11 +244,9 @@ test("status reads during a burst of changes ask the server for open requests at
 test("a tool start that only changes the activity publishes later, and a state change publishes at once", async () => {
   const f = await started();
   const statuses = () =>
-    f.posts
-      .filter((post) => post.method === "status")
-      .map((post) => post.body as { state: string; activity?: string });
+    f.posts.filter((post) => post.method === "status").map((post) => post.body);
   await f.message();
-  const [turn] = f.turns() as [TurnCommand];
+  const turn = f.turns()[0]!;
   await f.emit(turn.turnId, { type: "turn.started" });
   await f.emit(turn.turnId, {
     type: "item.started",
@@ -289,16 +285,13 @@ test("a new message for the live session is steered when the harness can steer",
   const { conversationId } = f.ownerMessage();
   await f.runtime.sync();
   await f.advance(600);
-  const [turn] = f.turns() as [TurnCommand];
+  const turn = f.turns()[0]!;
   f.ownerMessage({ conversationId, body: "Also this" });
   await f.runtime.sync();
   await f.advance(600);
   const steer = f.commands.find((command) => command.type === "steer");
   expect(steer).toMatchObject({ turnId: turn.turnId, text: expect.stringContaining("Also this") });
-  const item = await f.store.inbox.get(
-    organizationId,
-    (steer as Extract<HarnessCommand, { type: "steer" }>).inputId,
-  );
+  const item = await f.store.inbox.get(organizationId, steer!.inputId);
   expect(item).toMatchObject({ status: "submitted", steered: true, turnId: turn.turnId });
 
   await f.emit(turn.turnId, { type: "input.consumed", inputId: item!.id });
@@ -310,7 +303,7 @@ test("without steer the message is held, and Send now interrupts and runs it nex
   f.ownerMessage({ body: "First" });
   await f.runtime.sync();
   await f.advance(600);
-  const [first] = f.turns() as [TurnCommand];
+  const first = f.turns()[0]!;
 
   // Another session of the same agent shares the main slot.
   f.ownerMessage({ threadId: crypto.randomUUID(), body: "Urgent" });
@@ -329,10 +322,10 @@ test("without steer the message is held, and Send now interrupts and runs it nex
   await f.emit(first.turnId, { type: "turn.completed", result: { status: "interrupted" } });
   expect((await f.store.turns.get(first.turnId))!.status).toBe("interrupted");
 
-  const [, urgent] = f.turns() as TurnCommand[];
+  const [, urgent] = f.turns();
   expect(urgent!.input.inputIds).toEqual([waiting!.id]);
   await f.emit(urgent!.turnId, { type: "turn.completed", result: { status: "completed" } });
-  const [, , resumed] = f.turns() as TurnCommand[];
+  const [, , resumed] = f.turns();
   expect(resumed!.sessionId).toBe(first.sessionId);
   expect(resumed!.input.text).toContain(`<resume turn="${first.turnId}"`);
 });
@@ -342,7 +335,7 @@ test("Stop cancels the live turn after the worker confirms", async () => {
   f.ownerMessage();
   await f.runtime.sync();
   await f.advance(600);
-  const [turn] = f.turns() as [TurnCommand];
+  const turn = f.turns()[0]!;
   await f.runtime.stop(turn.turnId);
   expect((await f.store.turns.get(turn.turnId))!.status).toBe("stopping");
   await f.emit(turn.turnId, { type: "turn.completed", result: { status: "interrupted" } });
@@ -356,7 +349,7 @@ async function interruptedTurn(path: string) {
   before.ownerMessage();
   await before.runtime.sync();
   await before.advance(600);
-  const [turn] = before.turns() as [TurnCommand];
+  const turn = before.turns()[0]!;
   await before.emit(turn.turnId, { type: "turn.started" });
   await before.emit(turn.turnId, {
     type: "item.started",
@@ -380,7 +373,7 @@ test("after a restart a safe turn continues once, resuming its native session", 
       requireResume: true,
       nativeSessionId: turn.nativeSessionId,
     });
-    const [continued] = f.turns() as [TurnCommand];
+    const continued = f.turns()[0]!;
     expect(continued).toMatchObject({
       turnId: turn.turnId,
       generation: 2,
@@ -416,11 +409,11 @@ test("a blocking request opens on the server, gets the owner's answer, and expir
   f.ownerMessage();
   await f.runtime.sync();
   await f.advance(600);
-  const [turn] = f.turns() as [TurnCommand];
+  const turn = f.turns()[0]!;
   const data = { toolName: "Bash", input: { command: "ls" } };
   await f.emit(turn.turnId, { type: "turn.started" });
   await f.emit(turn.turnId, { type: "request.opened", requestId: "n1", kind: "permission", data });
-  const opened = f.posts.find((post) => post.method === "openRequest")!.body as { turnId: string };
+  const opened = f.posts.find((post) => post.method === "openRequest")!.body;
   expect(opened).toMatchObject({ turnId: turn.turnId, nativeRequestId: "n1", mode: "blocking" });
   expect((await f.store.turns.get(turn.turnId))!.status).toBe("waiting");
 
@@ -439,9 +432,7 @@ test("a blocking request opens on the server, gets the owner's answer, and expir
   await f.advance(10 * 60_000);
   expect(f.commands.at(-1)).toMatchObject({ type: "respond", requestId: "n2", response: "deny" });
   expect(
-    f.posts
-      .filter((post) => post.method === "closeRequest")
-      .map((post) => (post.body as { status: string }).status),
+    f.posts.filter((post) => post.method === "closeRequest").map((post) => post.body.status),
   ).toEqual(["delivered", "expired"]);
 });
 
@@ -456,7 +447,7 @@ test("a burst of agent-work hints pulls once, and pulls answers only while a req
   expect(calls("requestAnswers")).toBe(before.answers);
 
   await f.message();
-  const [turn] = f.turns() as [TurnCommand];
+  const turn = f.turns()[0]!;
   await f.emit(turn.turnId, { type: "turn.started" });
   await f.emit(turn.turnId, {
     type: "request.opened",
@@ -521,7 +512,7 @@ test("an idle desktop with realtime up calls the server every minute, so it stay
 test("turns synchronize agent folders once, and again after agents change or the harness fails", async () => {
   const f = await started();
   const finish = async () => {
-    const turn = f.turns().at(-1) as TurnCommand;
+    const turn = f.turns().at(-1)!;
     await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
   };
   await f.message();
@@ -553,7 +544,7 @@ test("a helper runs in its own folder and its finish wakes the parent with the r
   f.ownerMessage();
   await f.runtime.sync();
   await f.advance(600);
-  const [main] = f.turns() as [TurnCommand];
+  const main = f.turns()[0]!;
   const call = (
     tool: string,
     sessionId: string,
@@ -574,15 +565,15 @@ test("a helper runs in its own folder and its finish wakes the parent with the r
   });
   if (!started_.success) throw new Error("start_helper failed.");
   expect(started_.data).toMatchObject({ status: "running" });
+  // SAFETY: start_helper returned success for this fixture's live turn.
   const { helperId } = started_.data as { helperId: string };
   await f.settle();
   const helperOpen = f.commands.find(
-    (command) => command.type === "open" && command.folder !== "main",
-  ) as Extract<HarnessCommand, { type: "open" }>;
+    (command): command is Extract<HarnessCommand, { type: "open" }> =>
+      command.type === "open" && command.folder !== "main",
+  )!;
   expect(helperOpen.folder).toEqual({ helperId });
-  const helperTurn = f
-    .turns()
-    .find((command) => command.sessionId === helperOpen.sessionId) as TurnCommand;
+  const helperTurn = f.turns().find((command) => command.sessionId === helperOpen.sessionId)!;
   expect(helperTurn.mode).toBe("unattended");
 
   expect(
@@ -596,7 +587,7 @@ test("a helper runs in its own folder and its finish wakes the parent with the r
   const next = f
     .turns()
     .filter((command) => command.sessionId === main.sessionId)
-    .at(-1) as TurnCommand;
+    .at(-1)!;
   expect(next.turnId).not.toBe(main.turnId);
   expect(next.input.text).toContain('source="helper_result"');
   expect(next.input.text).toContain(">Found it.</item>");

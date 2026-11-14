@@ -21,6 +21,7 @@ function describeMachine<
   statuses: readonly string[],
   table: (readonly [S, keyof E, S])[],
 ) {
+  // SAFETY: these machines define their event tables as own enumerable string keys.
   const events = Object.keys(machine.events) as (keyof E)[];
 
   test(`the ${name} machine has the stored statuses as its states`, () => {

@@ -1,5 +1,5 @@
+import { Rng } from "../../workload.ts";
 import { pickResource, rng } from "../lib/persona.ts";
-import { Rng } from "../lib/random.ts";
 import type { Task, TaskPriority, TaskStatus } from "../lib/screens/tasks.ts";
 
 /** Choices a person makes about tasks, shared by the live and backfill paths. */

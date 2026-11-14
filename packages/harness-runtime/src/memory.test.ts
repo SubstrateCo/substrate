@@ -1,10 +1,9 @@
 import { forget, profileMemoryLimit, readProfileMemory, remember } from "./memory.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
-/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations. */
 
 let folder: string;
 const now = new Date("2026-11-09T12:00:00.000Z");
@@ -22,9 +21,9 @@ test("profile memory is capped and stays readable for the managed prefix", async
   expect(await readProfileMemory(folder)).toBe("- Owner works in UTC.\n");
   const long = "x".repeat(2000);
   await remember(folder, { layer: "profile", text: `${long}a` }, now);
-  await expect(remember(folder, { layer: "profile", text: `${long}b` }, now)).rejects.toMatchObject(
-    { code: "INVALID_INPUT" },
-  );
+  await rejects(remember(folder, { layer: "profile", text: `${long}b` }, now), {
+    code: "INVALID_INPUT",
+  });
   expect((await readProfileMemory(folder)).length).toBeLessThanOrEqual(profileMemoryLimit);
   expect(await forget(folder, { layer: "profile", match: "xxxxa" }, now)).toEqual({
     layer: "profile",
@@ -46,16 +45,18 @@ test("notes expire, and expiry is rejected for other layers", async () => {
   const notes = await readFile(join(folder, "memory", "notes.md"), "utf8");
   expect(notes).not.toContain("Follow up Friday");
   expect(notes).toContain("Keep forever");
-  await expect(
+  await rejects(
     remember(folder, { layer: "notes", text: "Past", expiresAt: "2026-11-01T00:00:00.000Z" }, now),
-  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
-  await expect(
+    { code: "INVALID_INPUT" },
+  );
+  await rejects(
     remember(
       folder,
       { layer: "profile", text: "Fact", expiresAt: "2026-12-01T00:00:00.000Z" },
       now,
     ),
-  ).rejects.toMatchObject({ code: "INVALID_INPUT" });
+    { code: "INVALID_INPUT" },
+  );
 });
 
 test("log entries go to the month file and forget searches every month", async () => {

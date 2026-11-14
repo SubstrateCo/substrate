@@ -1,10 +1,10 @@
-/* Search parameters are untrusted router input. This module is their parsing boundary. */
-/* oxlint-disable deslop/no-unknown-parameters, deslop/no-runtime-typeof */
 import { linkOptions } from "@tanstack/react-router";
 
 import type { ElectronAuthorization } from "../desktop/authorization-query";
 import { z } from "zod";
+// oxlint-disable-next-line deslop/no-unknown-parameters -- Search parameters are untrusted router input; validate them at this boundary.
 export function safeRedirect(value: unknown, fallback = "/dashboard"): string {
+  // oxlint-disable-next-line deslop/no-runtime-typeof -- Reject non-string router input before inspecting the redirect path.
   if (typeof value !== "string" || !value.startsWith("/") || value.startsWith("//"))
     return fallback;
   try {

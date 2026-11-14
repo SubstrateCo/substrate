@@ -5,8 +5,6 @@ import { DesktopSessionAuthority } from "../../session/desktop-session-authority
 import { HarnessWorkerError } from "../worker/protocol.ts";
 import { createHarnessController } from "./harness-controller.ts";
 
-/* oxlint-disable deslop/no-unknown-parameters -- The fake worker records structured-clone payloads. */
-
 const sessionRef = {
   id: "session-1",
   organizationId: "org-1",

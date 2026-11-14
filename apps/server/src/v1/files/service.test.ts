@@ -2,8 +2,8 @@ import type { StorageRepository } from "@substrate/database/storage";
 
 import { ObjectNotFoundError, type ObjectStorage } from "../../storage/types";
 import { createFileService } from "./service";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import sharp from "sharp";
 
 function fixture() {
@@ -123,9 +123,7 @@ describe("file workflow", () => {
     f.candidates.add("failed");
     f.candidates.add("unprocessed");
     f.storage.removeMany = async () => ["orphan"];
-    await expect(f.service.cleanup()).rejects.toThrow(
-      "Storage cleanup did not remove every orphan.",
-    );
+    await rejects(f.service.cleanup(), { message: "Storage cleanup did not remove every orphan." });
     expect([...f.candidates]).toEqual(["failed", "unprocessed"]);
     expect(f.forgottenCandidates).toEqual([["orphan"]]);
   });
@@ -134,9 +132,9 @@ describe("file workflow", () => {
     f.candidates.clear();
     f.expiredUploads.set("failed-upload", { id: "failed-upload", temporaryKey: "failed-key" });
     f.storage.removeMany = async () => [f.upload.temporaryKey];
-    await expect(f.service.cleanup()).rejects.toThrow(
-      "Storage cleanup did not remove every temporary object.",
-    );
+    await rejects(f.service.cleanup(), {
+      message: "Storage cleanup did not remove every temporary object.",
+    });
     expect(f.forgottenUploads).toEqual([[f.id]]);
     expect([...f.expiredUploads.keys()]).toEqual(["failed-upload"]);
   });
@@ -231,7 +229,7 @@ describe("file workflow", () => {
         if (keys.includes(key)) throw new Error("Storage unavailable");
         return remove(keys);
       };
-      await expect(f.service.cleanup()).rejects.toThrow("Storage unavailable");
+      await rejects(f.service.cleanup(), { message: "Storage unavailable" });
       expect(f.objects.has(key)).toBe(true);
       expect(kind === "orphan" ? f.candidates.has(key) : f.expiredUploads.has(f.id)).toBe(true);
       f.storage.removeMany = remove;

@@ -3,10 +3,13 @@ import type { HarnessEventBody, TurnResult } from "@substrate/contracts/harness"
 import { claudeOptions, ClaudeSession, type ClaudeQuery } from "./claude.ts";
 import { InputQueue } from "./input-queue.ts";
 import { unattendedDenial, type NativePrefixContext, type EventScope } from "./types.ts";
-import type { SDKMessage, SDKUserMessage } from "@anthropic-ai/claude-agent-sdk";
+import type {
+  SDKAssistantMessage,
+  SDKMessage,
+  SDKResultSuccess,
+  SDKUserMessage,
+} from "@anthropic-ai/claude-agent-sdk";
 import { expect, test } from "bun:test";
-
-/* oxlint-disable deslop/no-unsafe-dictionary-type, deslop/no-chained-type-assertions -- Tests build partial native SDK frames; the adapter reads only the fields given here. */
 
 const turnInput = "11111111-1111-4111-8111-111111111111";
 const steerInput = "22222222-2222-4222-8222-222222222222";
@@ -61,25 +64,79 @@ test("managed Claude sessions defer workspace schemas and retain session credent
   expect(unmanaged.sessionId).toBeUndefined();
 });
 
-function result(fields: Record<string, unknown>): SDKMessage {
-  // SAFETY: tests build only the result fields the adapter reads.
+function result(fields: Partial<SDKResultSuccess>): SDKResultSuccess {
   return {
     type: "result",
     subtype: "success",
     is_error: false,
-    usage: { input_tokens: 10, output_tokens: 5, cache_read_input_tokens: 2 },
-    modelUsage: { model: { contextWindow: 200000 } },
+    uuid: turnInput,
+    session_id: "native-1",
+    duration_ms: 0,
+    duration_api_ms: 0,
+    num_turns: 1,
+    result: "Done",
+    stop_reason: "end_turn",
+    total_cost_usd: 0,
+    permission_denials: [],
+    usage: {
+      input_tokens: 10,
+      output_tokens: 5,
+      cache_read_input_tokens: 2,
+      cache_creation_input_tokens: 0,
+      cache_creation: { ephemeral_1h_input_tokens: 0, ephemeral_5m_input_tokens: 0 },
+      server_tool_use: { web_search_requests: 0, web_fetch_requests: 0 },
+      service_tier: "standard",
+      inference_geo: "not_available",
+      iterations: [],
+      speed: "standard",
+      fallback_credit: null,
+      output_tokens_details: { thinking_tokens: 0 },
+    },
+    modelUsage: {
+      model: {
+        contextWindow: 200000,
+        inputTokens: 10,
+        outputTokens: 5,
+        cacheReadInputTokens: 2,
+        cacheCreationInputTokens: 0,
+        webSearchRequests: 0,
+        costUSD: 0,
+        maxOutputTokens: 16384,
+      },
+    },
     ...fields,
-  } as unknown as SDKMessage;
+  };
 }
-function assistant(fields: Record<string, unknown>, content: unknown[]): SDKMessage {
-  // SAFETY: tests build only the assistant fields the adapter reads.
+function assistant(
+  fields: Partial<SDKAssistantMessage>,
+  content: SDKAssistantMessage["message"]["content"],
+): SDKAssistantMessage {
   return {
     type: "assistant",
+    uuid: turnInput,
+    session_id: "native-1",
     parent_tool_use_id: null,
-    message: { content, usage: { input_tokens: 100, output_tokens: 20 } },
+    message: {
+      id: "msg-1",
+      type: "message",
+      role: "assistant",
+      model: "claude-sonnet-4-6",
+      content,
+      stop_reason: "end_turn",
+      stop_sequence: null,
+      container: null,
+      context_management: null,
+      diagnostics: null,
+      stop_details: null,
+      usage: {
+        ...result({}).usage,
+        input_tokens: 100,
+        output_tokens: 20,
+        cache_read_input_tokens: 0,
+      },
+    },
     ...fields,
-  } as unknown as SDKMessage;
+  };
 }
 
 function setup(receipt?: (sent: SDKUserMessage[]) => { still_queued: string[] }) {
@@ -136,7 +193,9 @@ test("each sent message has a fresh uuid, and consumption maps back to our input
   }
   expect(turnUuid).not.toBe(steerUuid);
   await f.push(
-    assistant({ user_message_uuids: [turnUuid, steerUuid] }, [{ type: "text", text: "Done" }]),
+    assistant({ user_message_uuids: [turnUuid, steerUuid] }, [
+      { type: "text", text: "Done", citations: null },
+    ]),
   );
   expect(f.events.filter(({ body }) => body.type === "input.consumed")).toEqual([
     { body: { type: "input.consumed", inputId: steerInput }, scope: "turn" },
@@ -168,8 +227,11 @@ test("unattended turns deny every native prompt without opening a request", asyn
   const f = setup();
   void f.adapter.turn({ inputIds: [turnInput], text: "Routine" }, { mode: "unattended" });
   const signal = new AbortController().signal;
-  // SAFETY: the adapter reads only signal from the permission options.
-  const options = { signal } as Parameters<typeof f.session.canUseTool>[2];
+  const options: Parameters<typeof f.session.canUseTool>[2] = {
+    signal,
+    toolUseID: "tool-1",
+    requestId: "request-1",
+  };
   expect(await f.session.canUseTool("Bash", { command: "ls" }, options)).toEqual({
     behavior: "deny",
     message: unattendedDenial,
@@ -179,7 +241,7 @@ test("unattended turns deny every native prompt without opening a request", asyn
 
 test("native output outside our turn is session-scoped and does not complete our turn", async () => {
   const f = setup();
-  await f.push(assistant({}, [{ type: "text", text: "Before any turn" }]));
+  await f.push(assistant({}, [{ type: "text", text: "Before any turn", citations: null }]));
   let finished = false;
   const done = f.adapter
     .turn({ inputIds: [turnInput], text: "Turn" }, { mode: "interactive" })
@@ -190,15 +252,15 @@ test("native output outside our turn is session-scoped and does not complete our
   const other = "33333333-3333-4333-8333-333333333333";
   await f.push(
     assistant({ user_message_uuids: [other] }, [
-      { type: "text", text: "Native work" },
-      { type: "tool_use", id: "tool-1", name: "Bash" },
+      { type: "text", text: "Native work", citations: null },
+      { type: "tool_use", id: "tool-1", name: "Bash", input: { command: "ls" } },
     ]),
   );
-  // SAFETY: tests build only the user frame fields the adapter reads.
   await f.push({
     type: "user",
-    message: { content: [{ type: "tool_result", tool_use_id: "tool-1" }] },
-  } as unknown as SDKMessage);
+    parent_tool_use_id: null,
+    message: { role: "user", content: [{ type: "tool_result", tool_use_id: "tool-1" }] },
+  });
   await f.push(result({ user_message_uuids: [other] }));
   expect(finished).toBe(false);
   expect(

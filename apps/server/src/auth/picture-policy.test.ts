@@ -5,8 +5,8 @@ import {
   protectUserPicture,
   readPictureMutation,
 } from "./picture-policy";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 
 const id = crypto.randomUUID();
 const image = `/api/v1/files/pictures/avatar/alice?v=${id}`;
@@ -83,50 +83,54 @@ test("native mutations derive identity from verified session and only accept the
   await authorizePictureMutation(valid, session, repository);
   await authorizePictureMutation({ ...valid, url: null }, session, repository);
   expect(seen).toEqual(["alice:org:avatar", "alice:org:avatar"]);
-  await expect(authorizePictureMutation(valid, null, repository)).rejects.toMatchObject({
+  await rejects(authorizePictureMutation(valid, null, repository), {
     statusCode: 401,
     body: { code: "UNAUTHENTICATED", message: "Sign in to continue." },
   });
-  await expect(
+  await rejects(
     authorizePictureMutation(
       valid,
       { ...session, user: { ...session.user, emailVerified: false } },
       repository,
     ),
-  ).rejects.toMatchObject({
-    statusCode: 403,
-    body: { code: "EMAIL_NOT_VERIFIED", message: "Verify your email to continue." },
-  });
-  await expect(
+    {
+      statusCode: 403,
+      body: { code: "EMAIL_NOT_VERIFIED", message: "Verify your email to continue." },
+    },
+  );
+  await rejects(
     authorizePictureMutation(
       { ...valid, url: `/api/v1/files/pictures/avatar/bob?v=${id}` },
       session,
       repository,
     ),
-  ).rejects.toMatchObject({ statusCode: 400 });
-  await expect(
+    { statusCode: 400 },
+  );
+  await rejects(
     authorizePictureMutation(
       { ...valid, purpose: "organization-logo", organizationId: "foreign" },
       session,
       repository,
     ),
-  ).rejects.toMatchObject({
-    statusCode: 403,
-    body: { code: "WORKSPACE_CHANGED", message: "Your active workspace changed." },
-  });
+    {
+      statusCode: 403,
+      body: { code: "WORKSPACE_CHANGED", message: "Your active workspace changed." },
+    },
+  );
   await authorizePictureMutation(
     { ...valid, purpose: "organization-logo", url: logo },
     session,
     repository,
   );
-  await expect(
+  await rejects(
     authorizePictureMutation({ ...valid, purpose: "organization-logo", url: logo }, session, {
       requirePictureAccess: async () => {
         throw new AccessDeniedError();
       },
     }),
-  ).rejects.toMatchObject({
-    statusCode: 400,
-    body: { code: "NOT_FOUND", message: "Picture not found or access denied." },
-  });
+    {
+      statusCode: 400,
+      body: { code: "NOT_FOUND", message: "Picture not found or access denied." },
+    },
+  );
 });

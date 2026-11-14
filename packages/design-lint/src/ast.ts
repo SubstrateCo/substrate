@@ -1,4 +1,3 @@
-/* oxlint-disable deslop/no-runtime-typeof, deslop/no-reflect-get -- ESTree gives every literal one node type, so the value's runtime kind tells strings apart; descendants reads oxlint's lazily built nodes through sourceCode.visitorKeys. */
 import type { RuleTester } from "oxlint/plugins-dev";
 
 export type Rule = Parameters<RuleTester["run"]>[1];
@@ -36,6 +35,7 @@ export function hasSpread(element: OpeningElement) {
 /** A string the expression always evaluates to, such as `"icon-sm"` or `` `icon-sm` ``. */
 function staticString(node: AstNode | null | undefined): string | undefined {
   if (!node) return undefined;
+  // oxlint-disable-next-line deslop/no-runtime-typeof -- ESTree Literal values include strings, numbers, booleans, and null.
   if (node.type === "Literal") return typeof node.value === "string" ? node.value : undefined;
   if (node.type === "JSXExpressionContainer") return staticString(node.expression);
   if (node.type === "TemplateLiteral" && node.expressions.length === 0)
@@ -56,6 +56,7 @@ export type StringSite = { value: string; node: AstNode };
 export function possibleStrings(node: AstNode | null | undefined): StringSite[] {
   if (!node) return [];
   if (node.type === "Literal")
+    // oxlint-disable-next-line deslop/no-runtime-typeof -- ESTree Literal values include strings, numbers, booleans, and null.
     return typeof node.value === "string" ? [{ value: node.value, node }] : [];
   if (node.type === "TemplateLiteral") {
     return [
@@ -168,13 +169,15 @@ export function classTokens(value: string) {
 
 function isNode(value: unknown): value is AstNode {
   return (
-    typeof value === "object" && value !== null && typeof Reflect.get(value, "type") === "string"
+    // oxlint-disable-next-line deslop/no-runtime-typeof -- Visitor-key values can be nodes, scalars, or null; validate them before traversing.
+    typeof value === "object" && value !== null && "type" in value && typeof value.type === "string"
   );
 }
 
 /** Every node below `node`, depth first, including inside callbacks such as `items.map(...)`. */
 export function* descendants(context: Context, node: AstNode): Generator<AstNode> {
   for (const key of context.sourceCode.visitorKeys[node.type] ?? []) {
+    // oxlint-disable-next-line deslop/no-reflect-get -- oxlint exposes lazy node fields through visitorKeys; the key depends on the node kind.
     const value: unknown = Reflect.get(node, key);
     for (const child of Array.isArray(value) ? value : [value]) {
       if (!isNode(child)) continue;

@@ -1,5 +1,6 @@
 import { createLifecycle } from "./lifecycle.ts";
 import { expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 
 test("shutdown waits for work before sessions and worker, and shares concurrent calls", async () => {
   const gate = Promise.withResolvers<void>();
@@ -40,7 +41,6 @@ test("shutdown still disposes the worker if session close fails", async () => {
       disposed = true;
     },
   });
-  // oxlint-disable-next-line typescript/await-thenable -- Bun's rejection assertion is asynchronous at runtime.
-  await expect(lifecycle.shutdown()).rejects.toThrow("closed");
+  await rejects(lifecycle.shutdown(), /closed/);
   expect(disposed).toBe(true);
 });

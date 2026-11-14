@@ -9,8 +9,7 @@ import { createBunWebSocket } from "hono/bun";
 import { z } from "zod";
 
 export function createRealtimeRoutes(hub: RealtimeHub, trustedOrigins: string[]) {
-  // This factory is the official adapter for the pinned Hono version.
-  // oxlint-disable-next-line typescript/no-deprecated
+  // oxlint-disable-next-line typescript/no-deprecated -- The installed hono/bun adapter is deprecated; @hono/bun is not installed. This factory retains native socket typing, unlike its any-typed direct export.
   const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket<unknown>>();
   type Connection = NonNullable<Awaited<ReturnType<RealtimeHub["reserve"]>>>;
   const peers = new WeakMap<object, Connection>();

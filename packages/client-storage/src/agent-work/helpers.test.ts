@@ -3,6 +3,7 @@ import { sessionKeys } from "@substrate/contracts/agent-work";
 import { HelperLimitError } from "./helpers.ts";
 import { createSession, openTestStore } from "./test-support.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 
 let fixture: Awaited<ReturnType<typeof openTestStore>>;
 beforeEach(async () => {
@@ -16,8 +17,8 @@ test("an agent runs at most two helpers, and a repeated request returns the same
   const first = await store.helpers.start(parent.id, { requestId: "r1", task: "A" }, 0);
   expect(await store.helpers.start(parent.id, { requestId: "r1", task: "A" }, 1)).toEqual(first);
   await store.helpers.start(parent.id, { requestId: "r2", task: "B" }, 2);
-  // oxlint-disable-next-line typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations.
-  await expect(store.helpers.start(parent.id, { requestId: "r3", task: "C" }, 3)).rejects.toThrow(
+  await rejects(
+    store.helpers.start(parent.id, { requestId: "r3", task: "C" }, 3),
     HelperLimitError,
   );
   await store.helpers.stop(first.id, 4);

@@ -31,7 +31,7 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-/* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- The fake server records untyped request bodies and hooks return untyped results, as the real boundaries do. */
+/* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- Deferred rejections accept arbitrary errors; command hooks and host results preserve the worker boundary's unparsed results. */
 
 export const agentId = "00000000-0000-4000-8000-0000000000a1";
 export const organizationId = "org-1";
@@ -80,6 +80,20 @@ interface FakeNative {
   finish?: (result: TurnResult) => void;
 }
 
+type ServerPost =
+  | { method: "register"; body: Parameters<AgentWorkServer["register"]>[0] }
+  | { method: "heartbeat" | "requestAnswers" | "openRequestIds"; body: null }
+  | { method: "pullWakes"; body: { limit: number } }
+  | { method: "status"; body: Parameters<AgentWorkServer["publishStatus"]>[0] }
+  | { method: "openRequest"; body: Parameters<AgentWorkServer["openRequest"]>[0] }
+  | {
+      method: "closeRequest";
+      body: {
+        requestId: string;
+        status: Parameters<AgentWorkServer["closeRequest"]>[2];
+      };
+    };
+
 /** A promise that the test settles. */
 export function deferred<T = unknown>() {
   let resolve!: (value: T) => void;
@@ -116,7 +130,7 @@ export async function runtimeFixture(
   const acked = new Set<string>();
   const messages = new Map<string, AgentSourceMessage>();
   const revokedInvocations = new Set<string>();
-  const posts: { method: string; body: unknown }[] = [];
+  const posts: ServerPost[] = [];
   let answers: AgentRequestDelivery[] = [];
   /** Requests the server lists as open in needs-you. */
   const serverOpenRequests = new Set<string>();
@@ -139,16 +153,16 @@ export async function runtimeFixture(
   const synchronizations = { count: 0 };
   /** The runtime's periodic tick, run by the test. */
   let tick = () => {};
-  const record = (method: string, body: unknown) => {
-    posts.push({ method, body });
+  const record = (post: ServerPost) => {
+    posts.push(post);
   };
 
   const server: AgentWorkServer = {
-    register: async (body) => record("register", body),
-    heartbeat: async () => record("heartbeat", null),
+    register: async (body) => record({ method: "register", body }),
+    heartbeat: async () => record({ method: "heartbeat", body: null }),
     catalog: async () => catalog.map((agent) => ({ ...agent })),
     async pullWakes(_organization, limit) {
-      record("pullWakes", { limit });
+      record({ method: "pullWakes", body: { limit } });
       return wakes.filter((wake) => !acked.has(wake.id)).slice(0, limit);
     },
     ackWakes: async (_organization, ids) => {
@@ -162,24 +176,24 @@ export async function runtimeFixture(
         inaccessibleInvocations: invocationIds.filter((id) => revokedInvocations.has(id)),
       };
     },
-    publishStatus: async (body) => record("status", body),
+    publishStatus: async (body) => record({ method: "status", body }),
     async openRequest(body) {
-      record("openRequest", body);
+      record({ method: "openRequest", body });
       if (outage.openRequest) throw new TypeError("fetch failed");
       if (hooks.openRequest) return hooks.openRequest();
       return { id: crypto.randomUUID(), status: "pending" };
     },
     closeRequest: async (_organization, requestId, status) =>
-      record("closeRequest", { requestId, status }),
+      record({ method: "closeRequest", body: { requestId, status } }),
     async requestAnswers() {
-      record("requestAnswers", null);
+      record({ method: "requestAnswers", body: null });
       const result = answers;
       answers = [];
       return result;
     },
     directConversation: async () => crypto.randomUUID(),
     async openRequestIds() {
-      record("openRequestIds", null);
+      record({ method: "openRequestIds", body: null });
       return [...serverOpenRequests];
     },
   };

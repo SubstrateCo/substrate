@@ -1,11 +1,10 @@
 import { offloadOutput } from "./offload.ts";
 import { helperDirectory } from "./paths.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import { mkdir, mkdtemp, readdir, realpath, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
-/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations. */
 
 let root: string;
 const turnId = "0d6f4c3e-8b4f-4c39-9d7e-3f1c2a5b6e71";
@@ -33,10 +32,10 @@ test("small outputs stay inline", async () => {
 });
 
 test("offload refuses path segments and redirected folders", async () => {
-  await expect(offloadOutput(root, "../escape", "get_me", 1, large)).rejects.toMatchObject({
+  await rejects(offloadOutput(root, "../escape", "get_me", 1, large), {
     code: "invalid-id",
   });
-  await expect(offloadOutput(root, turnId, "../../x", 1, large)).rejects.toMatchObject({
+  await rejects(offloadOutput(root, turnId, "../../x", 1, large), {
     code: "invalid-id",
   });
   const outside = join(root, "outside");
@@ -48,7 +47,7 @@ test("offload refuses path segments and redirected folders", async () => {
     join(folder, ".substrate"),
     process.platform === "win32" ? "junction" : "dir",
   );
-  await expect(offloadOutput(folder, turnId, "get_me", 1, large)).rejects.toMatchObject({
+  await rejects(offloadOutput(folder, turnId, "get_me", 1, large), {
     code: "unsafe-path",
   });
   expect(await readdir(outside)).toEqual([]);
@@ -57,10 +56,10 @@ test("offload refuses path segments and redirected folders", async () => {
 test("helper folders sit under _helpers and reject unsafe IDs", async () => {
   const path = await helperDirectory(root, "org-a", "agent-a", "helper-1");
   expect(path).toBe(join(await realpath(root), "orgs", "org-a", "_helpers", "agent-a", "helper-1"));
-  await expect(helperDirectory(root, "org-a", "agent-a", "..")).rejects.toMatchObject({
+  await rejects(helperDirectory(root, "org-a", "agent-a", ".."), {
     code: "invalid-id",
   });
-  await expect(helperDirectory(root, "org-a", "../org-b", "helper-1")).rejects.toMatchObject({
+  await rejects(helperDirectory(root, "org-a", "../org-b", "helper-1"), {
     code: "invalid-id",
   });
 });

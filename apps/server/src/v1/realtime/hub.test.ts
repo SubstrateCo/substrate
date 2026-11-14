@@ -5,8 +5,8 @@ import type { RealtimeReceiver } from "@substrate/database/realtime";
 import { createRealtimeHub } from "./hub";
 import type { Change, HubDependencies, Transport } from "./hub";
 import { testReceiver } from "./test-support";
-/* oxlint-disable typescript/await-thenable -- Bun's rejection matchers return promises at runtime. */
 import { expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 
 function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
   const sessions = new Map<string, RealtimeReceiver>();
@@ -362,9 +362,9 @@ test("a slow heartbeat session check does not delay pings to other connections",
 test("bounds reservations and expires abandoned upgrades", async () => {
   const f = fixture({ maxConnections: 2, maxPerUser: 1 });
   const live = await f.connect();
-  await expect(f.hub.reserve(new Headers({ cookie: live.cookie }), "org")).rejects.toThrow(
-    "Realtime capacity reached",
-  );
+  await rejects(f.hub.reserve(new Headers({ cookie: live.cookie }), "org"), {
+    message: "Realtime capacity reached",
+  });
   f.sessions.set(
     "pending",
     testReceiver({ userId: "pending", organizationId: null, actorId: null }),
@@ -372,7 +372,7 @@ test("bounds reservations and expires abandoned upgrades", async () => {
   const pending = await f.hub.reserve(new Headers({ cookie: "pending" }), null);
   expect(pending).not.toBeNull();
   const atCapacity = f.hub.reserve(new Headers({ cookie: "pending" }), null);
-  await expect(atCapacity).rejects.toThrow("Realtime capacity reached");
+  await rejects(atCapacity, { message: "Realtime capacity reached" });
   await f.hub.tick(Date.now() + 20_000);
   expect(f.hub.size).toBe(1);
   const recovered = await f.hub.reserve(new Headers({ cookie: "pending" }), null);
@@ -411,9 +411,9 @@ test("subscription loss disconnects clients and blocks upgrades until fan-out re
   const viewer = await f.connect();
   f.hub.setAvailable(false);
   expect(viewer.closed).toEqual([1012]);
-  await expect(f.hub.reserve(new Headers({ cookie: viewer.cookie }), "org")).rejects.toThrow(
-    "Realtime capacity reached",
-  );
+  await rejects(f.hub.reserve(new Headers({ cookie: viewer.cookie }), "org"), {
+    message: "Realtime capacity reached",
+  });
   f.hub.setAvailable(true);
   const replacement = await f.connect();
   expect(replacement.events).toEqual([{ version: 1, type: "ready" }]);
@@ -432,7 +432,7 @@ test("shutdown while authorization is pending prevents a late delivery", async (
   await pending;
   expect(viewer.events).toEqual([{ version: 1, type: "ready" }]);
   expect(viewer.terminated).toBe(true);
-  await expect(f.hub.reserve(new Headers({ cookie: viewer.cookie }), "org")).rejects.toThrow(
-    "Realtime capacity reached",
-  );
+  await rejects(f.hub.reserve(new Headers({ cookie: viewer.cookie }), "org"), {
+    message: "Realtime capacity reached",
+  });
 });

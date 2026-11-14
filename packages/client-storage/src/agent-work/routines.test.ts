@@ -2,6 +2,7 @@ import { sessionKeys } from "@substrate/contracts/agent-work";
 
 import { openTestStore } from "./test-support.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 
 let fixture: Awaited<ReturnType<typeof openTestStore>>;
 beforeEach(async () => {
@@ -71,8 +72,7 @@ test("an edit creates a revision that does not run until it is approved", async 
       1000,
     ),
   ).toBeUndefined();
-  // oxlint-disable-next-line typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations.
-  await expect(store.routines.approve(routine.id, 1, 1000)).rejects.toThrow();
+  await rejects(store.routines.approve(routine.id, 1, 1000));
   expect((await store.routines.update(routine.id, { enabled: false }, null)).revision).toBe(2);
 });
 

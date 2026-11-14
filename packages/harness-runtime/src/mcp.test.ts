@@ -10,11 +10,10 @@ import { createStartupMcp, type McpLeaseOptions, type StartupMcpHandlers } from 
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import { mkdir, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
-/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations. */
 
 const agentId = "ad4f709e-b80e-40f5-80ee-588e1db066e5";
 const turn: TurnContext = {
@@ -252,7 +251,7 @@ test("a discovered tool cannot run after its session lease is revoked", async ()
     expect(tools.some((tool) => tool.name === "list_projects")).toBe(true);
     mcp.lease.bind(turn);
     mcp.lease.revoke();
-    await expect(mcp.client.callTool({ name: "list_projects", arguments: {} })).rejects.toThrow();
+    await rejects(mcp.client.callTool({ name: "list_projects", arguments: {} }));
     expect(calls).toEqual([]);
   } finally {
     await mcp.close();

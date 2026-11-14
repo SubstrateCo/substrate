@@ -1,5 +1,4 @@
 import type { ContextEntityType } from "@substrate/contracts/context/input";
-/* oxlint-disable shadcn/no-restyle -- Selected record chips must grow vertically to reveal long identities. */
 
 import { useState } from "react";
 
@@ -154,6 +153,7 @@ export function LinkMessageWork({
                       type="button"
                       variant="secondary"
                       size="xs"
+                      // oxlint-disable-next-line shadcn/no-restyle -- Compact selected chips must grow with wrapped identities; no supported size combines xs spacing with automatic height.
                       className="h-auto max-w-full text-left whitespace-normal"
                       disabled={pending}
                       onClick={() => toggle(item)}

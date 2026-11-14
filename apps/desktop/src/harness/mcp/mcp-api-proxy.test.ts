@@ -3,8 +3,7 @@ import type { WorkspaceApiRequest, WorkspaceApiResult } from "@substrate/contrac
 
 import { createMcpApiProxy } from "./mcp-api-proxy.ts";
 import { expect, test } from "bun:test";
-
-/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous. */
+import { rejects } from "node:assert/strict";
 
 const projects: WorkspaceApiRequest = {
   tool: "list_projects",
@@ -92,7 +91,7 @@ test("calls without a turn context are rejected before the network", async () =>
   const f = fixture();
   const { turn: _turn, ...withoutTurn } = projects;
   // SAFETY: the test sends a request that lacks turn on purpose; the proxy must reject it.
-  await expect(f.proxy(withoutTurn as WorkspaceApiRequest)).rejects.toThrow();
+  await rejects(f.proxy(withoutTurn as WorkspaceApiRequest), Error);
   expect(f.requests).toEqual([]);
 });
 
@@ -108,14 +107,14 @@ test("mutations use the agent endpoint with lease-bound scope and the turn conte
 
 test("callers cannot select an organization in tool input", async () => {
   const f = fixture();
-  await expect(f.proxy({ ...projects, input: { organizationId: "org-b" } })).rejects.toThrow();
+  await rejects(f.proxy({ ...projects, input: { organizationId: "org-b" } }), Error);
   expect(f.requests).toEqual([]);
 });
 
 test("a disconnected worker generation cannot call the server", async () => {
   const f = fixture();
   f.disconnect();
-  await expect(f.proxy(projects)).rejects.toThrow();
+  await rejects(f.proxy(projects), Error);
   expect(f.requests).toEqual([]);
 });
 

@@ -5,7 +5,23 @@ import { handleBridge } from "@substrate/contracts/desktop/ipc";
 import type { AgentWorkRuntime } from "../runtime/runtime.ts";
 
 export async function dispatchAgentWork(
-  runtime: AgentWorkRuntime,
+  runtime: Pick<
+    AgentWorkRuntime,
+    | "conversation"
+    | "turn"
+    | "turnEvents"
+    | "agents"
+    | "agentActivity"
+    | "sendNow"
+    | "resendItem"
+    | "discardItem"
+    | "stop"
+    | "retry"
+    | "dismiss"
+    | "startFresh"
+    | "newTopic"
+    | "routines"
+  >,
   method: unknown,
   value?: unknown,
 ) {

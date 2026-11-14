@@ -6,8 +6,6 @@ import { unattendedDenial, type AdapterContext } from "./types.ts";
 import { expect, test } from "bun:test";
 import { parse } from "smol-toml";
 
-/* oxlint-disable deslop/no-unknown-parameters -- The fake RPC records native request payloads. */
-
 function setup() {
   const sent: RpcMessage[] = [];
   const events: HarnessEventBody[] = [];
@@ -19,6 +17,7 @@ function setup() {
   };
   const session = new CodexSession(context, {
     send: (message) => sent.push(message),
+    // oxlint-disable-next-line deslop/no-unknown-parameters -- The fake implements the generic native RPC transport and records its unparsed wire payload.
     request: async <T>(method: string, params: unknown) => {
       requests.push({ method, params });
       // SAFETY: turn/start is the only request these tests make.

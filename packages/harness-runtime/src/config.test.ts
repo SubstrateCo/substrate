@@ -12,11 +12,10 @@ import { scanNativeSkills, saveNativeSkill } from "./native-config.ts";
 import { agentDirectory } from "./paths.ts";
 import { harnessDefinitions } from "./registry.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, rm, symlink, unlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
-/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations. */
 
 let root: string;
 const agent = (harness: HarnessKind, overrides: Partial<HarnessAgent> = {}): HarnessAgent => ({
@@ -115,12 +114,10 @@ test("defaults are never written through a symlink", async () => {
   const outside = join(root, "outside.md");
   await writeFile(outside, "Outside content");
   await symlink(outside, join(directory, "CLAUDE.md"));
-  await expect(materialize(root, configuration(agent("claude")))).rejects.toMatchObject({
+  await rejects(materialize(root, configuration(agent("claude"))), {
     code: "unsafe-path",
   });
-  await expect(
-    writeDefaultFiles(directory, "org-a", agent("claude"), { replace: true }),
-  ).rejects.toMatchObject({
+  await rejects(writeDefaultFiles(directory, "org-a", agent("claude"), { replace: true }), {
     code: "unsafe-path",
   });
   expect(await readFile(outside, "utf8")).toBe("Outside content");

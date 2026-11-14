@@ -3,10 +3,13 @@ import electron from "electron";
 import { spawnSync } from "node:child_process";
 
 test("Electron can load CRM and context contracts from TypeScript source", () => {
+  // Electron's Node entry exports a path, not the declared runtime API namespace.
+  const executable: unknown = electron;
+  // oxlint-disable-next-line deslop/no-runtime-typeof -- Validate Electron's Node entry at the package boundary; its declarations describe the Electron runtime instead.
+  if (typeof executable !== "string")
+    throw new Error("Electron did not provide an executable path.");
   const result = spawnSync(
-    // Electron's Node entry point exports the executable path, despite its API typings.
-    // oxlint-disable-next-line typescript/no-base-to-string
-    String(electron),
+    executable,
     [
       "--input-type=module",
       "-e",

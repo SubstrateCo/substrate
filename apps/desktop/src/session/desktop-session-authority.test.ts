@@ -1,5 +1,6 @@
 import { DesktopSessionAuthority } from "./desktop-session-authority.ts";
 import { afterEach, expect, jest, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 
 afterEach(() => jest.useRealTimers());
 
@@ -59,8 +60,7 @@ test("invalidation rejects an old verification and drops the catalog cache", asy
   authority.invalidate();
   delayed = false;
   gate.resolve();
-  // oxlint-disable-next-line typescript/await-thenable -- Bun's rejection assertion is asynchronous at runtime.
-  await expect(old).rejects.toThrow("Session changed.");
+  await rejects(old, /Session changed\./);
   expect((await authority.verify()).organizationId).toBe("org");
   await authority.catalog();
   await authority.catalog();

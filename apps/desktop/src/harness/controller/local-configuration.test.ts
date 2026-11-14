@@ -1,6 +1,7 @@
 import { prepareLocalInput } from "./local-configuration.ts";
 import { fixture } from "./test-support.ts";
 import { describe, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 
 describe("desktop harness local configuration", () => {
   test("local configuration rejects paths, traversal, organization selection, and embedded credentials", () => {
@@ -61,14 +62,15 @@ describe("desktop harness local configuration", () => {
         skill: { id: "notes", name: "Notes", description: "", content: "Keep notes." },
       },
     });
-    expect(
+    await rejects(
       f.controller.run("deleteSkill", {
         organizationId: "other-org",
         agentId: "agent-1",
         harness: "codex",
         id: "notes",
       }),
-    ).rejects.toThrow();
+      Error,
+    );
     expect(f.calls.length).toBe(2);
   });
   test("new native configuration uses stable names instead of random database-style IDs", async () => {
@@ -141,7 +143,6 @@ describe("desktop harness local configuration", () => {
     await scanning;
     f.controller.disconnect();
     release();
-    // oxlint-disable-next-line typescript/await-thenable -- Bun's rejects matchers return a promise at runtime.
-    await expect(result).rejects.toThrow("Harness unavailable");
+    await rejects(result, /Harness unavailable/);
   });
 });

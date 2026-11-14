@@ -1,8 +1,7 @@
 import { launch } from "../process.ts";
 import { JsonLineRpc } from "./json-rpc.ts";
 import { expect, test } from "bun:test";
-
-/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations. */
+import { rejects } from "node:assert/strict";
 
 test("native process exit rejects pending RPC calls instead of hanging", async () => {
   const child = launch(
@@ -12,7 +11,7 @@ test("native process exit rejects pending RPC calls instead of hanging", async (
   );
   const rpc = new JsonLineRpc(child, () => {});
   try {
-    await expect(rpc.request("initialize", {})).rejects.toMatchObject({ code: "process-exit" });
+    await rejects(rpc.request("initialize", {}), { code: "process-exit" });
   } finally {
     rpc.close();
   }
@@ -26,7 +25,7 @@ test("malformed native output rejects pending RPC calls", async () => {
   );
   const rpc = new JsonLineRpc(child, () => {});
   try {
-    await expect(rpc.request("initialize", {})).rejects.toMatchObject({ code: "invalid-protocol" });
+    await rejects(rpc.request("initialize", {}), { code: "invalid-protocol" });
   } finally {
     rpc.close();
   }
@@ -78,7 +77,7 @@ test("a line above the size limit rejects pending RPC calls", async () => {
   );
   const rpc = new JsonLineRpc(child, () => {});
   try {
-    await expect(rpc.request("initialize", {})).rejects.toMatchObject({ code: "protocol-limit" });
+    await rejects(rpc.request("initialize", {}), { code: "protocol-limit" });
   } finally {
     rpc.close();
   }

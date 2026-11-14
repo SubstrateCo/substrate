@@ -1,10 +1,10 @@
 import type { HarnessEvent } from "@substrate/contracts/harness";
 
 import { expect, mock, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import { EventEmitter } from "node:events";
 
 /* oxlint-disable deslop/no-unknown-parameters -- The fake child records structured-clone messages. */
-/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations. */
 
 class FakeChild extends EventEmitter {
   readonly sent: { id: number; method: string; value?: unknown }[] = [];
@@ -104,7 +104,7 @@ test("worker exit closes every open session with its live turn", async () => {
   const pending = f.worker.request("execute", open("session-4"));
   await Bun.sleep(0);
   f.child.emit("exit", 1);
-  await expect(pending).rejects.toMatchObject({ code: "worker-stopped" });
+  await rejects(pending, { code: "worker-stopped" });
   expect(closed(f.events)).toEqual([
     ["session-3", "idle", null, null],
     ["session-1", "worker_exited", null, null],
@@ -125,7 +125,7 @@ test("a slow session command fails alone; the worker and its sessions keep runni
     organizationId: "org-1",
     sessionId: "session-1",
   });
-  await expect(compact).rejects.toMatchObject({ code: "timeout" });
+  await rejects(compact, { code: "timeout" });
   expect(f.child.killed).toBe(false);
   expect(closed(f.events)).toEqual([]);
   const status = f.worker.request("inspect");
@@ -137,7 +137,7 @@ test("a slow session command fails alone; the worker and its sessions keep runni
 test("a hung worker request stops the worker and closes its sessions", async () => {
   const f = await started({ requestMs: 20 });
   await f.openSession("session-1");
-  await expect(f.worker.request("inspect")).rejects.toMatchObject({ code: "worker-stopped" });
+  await rejects(f.worker.request("inspect"), { code: "worker-stopped" });
   expect(f.child.killed).toBe(true);
   expect(closed(f.events)).toEqual([["session-1", "worker_exited", null, null]]);
 });
@@ -156,7 +156,7 @@ for (const code of ["resume-failed", "not-initialized", "ENOENT", "toString", un
     await Bun.sleep(0);
     const request = f.child.sent.filter((entry) => entry.method === "inspect").at(-1);
     f.child.emit("message", { id: request!.id, error: "Native details", code });
-    await expect(pending).rejects.toMatchObject({
+    await rejects(pending, {
       code: code === "resume-failed" || code === "not-initialized" ? code : "harness-error",
       message: "Harness operation failed.",
     });

@@ -14,14 +14,13 @@ export function DesktopFrame({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!bridge) return;
-    let active = true;
+    const controller = new AbortController();
     const unsubscribe = bridge.onFullscreenChange(setFullscreen);
     void bridge.isFullscreen().then((value) => {
-      if (active) setFullscreen(value);
+      if (!controller.signal.aborted) setFullscreen(value);
     });
     return () => {
-      // oxlint-disable-next-line react/immutability -- This effect-local flag prevents an async result from updating an unmounted component.
-      active = false;
+      controller.abort();
       unsubscribe();
     };
   }, [bridge]);

@@ -50,8 +50,7 @@ export function ImageCropper({
           zoom={zoom}
           rotation={rotation}
           aspect={1}
-          // The third-party API names this prop cropShape.
-          // oxlint-disable-next-line deslop/no-shape-in-symbol-names
+          // oxlint-disable-next-line deslop/no-shape-in-symbol-names -- react-easy-crop requires the cropShape prop name.
           cropShape={kind === "avatar" ? "round" : "rect"}
           showGrid={false}
           onCropChange={onCropChange}

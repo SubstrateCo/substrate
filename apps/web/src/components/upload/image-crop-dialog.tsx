@@ -78,8 +78,7 @@ export function ImageCropDialog({
     : upload.error;
   useEffect(() => {
     const url = URL.createObjectURL(file);
-    // Synchronize the external object URL with the image element; revoke it on cleanup.
-    // oxlint-disable-next-line react/set-state-in-effect
+    // oxlint-disable-next-line react/set-state-in-effect -- This effect owns the object URL: publish it after creation and revoke it on cleanup, including Strict Mode replay.
     setSrc(url);
     return () => URL.revokeObjectURL(url);
   }, [file]);

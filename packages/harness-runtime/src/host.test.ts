@@ -12,11 +12,10 @@ import { createHarnessHost, type ConnectNative, type HostClock } from "./host.ts
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, realpath, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
-/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations. */
 
 const agentId = "ad4f709e-b80e-40f5-80ee-588e1db066e5";
 const turnId = "0d6f4c3e-8b4f-4c39-9d7e-3f1c2a5b6e71";
@@ -236,7 +235,7 @@ test("a second turn while one is live is rejected", async () => {
   try {
     await f.host.execute(open);
     await f.host.execute(turn);
-    await expect(f.host.execute(turn)).rejects.toMatchObject({ code: "turn-active" });
+    await rejects(f.host.execute(turn), { code: "turn-active" });
   } finally {
     await f.host.dispose();
   }
@@ -251,7 +250,7 @@ test("an open of a session that closes after its live turn waits with session-cl
       organizationId: "org-a",
       agents: [agent({ instructions: "Work elsewhere" })],
     });
-    await expect(f.host.execute(open)).rejects.toMatchObject({ code: "session-closing" });
+    await rejects(f.host.execute(open), { code: "session-closing" });
   } finally {
     await f.host.dispose();
   }
@@ -265,14 +264,15 @@ test("open rewrites the instructions file with the managed prefix and reports fa
     const instructions = await readFile(join(root, "orgs", "org-a", agentId, "AGENTS.md"), "utf8");
     expect(instructions.startsWith("# Managed policy\n")).toBe(true);
     expect(instructions).toContain("Work locally");
-    await expect(
+    await rejects(
       f.host.execute({
         ...open,
         sessionId: "session-b",
         nativeSessionId: "lost",
         requireResume: true,
       }),
-    ).rejects.toMatchObject({ code: "resume-failed" });
+      { code: "resume-failed" },
+    );
   } finally {
     await f.host.dispose();
   }
@@ -285,9 +285,10 @@ test("helper sessions open in their own folder", async () => {
     expect(f.native.state.context!.directory).toBe(
       join(await realpath(root), "orgs", "org-a", "_helpers", agentId, "helper-1"),
     );
-    await expect(
+    await rejects(
       f.host.execute({ ...open, sessionId: "session-c", folder: { helperId: "../x" } }),
-    ).rejects.toMatchObject({ code: "invalid-id" });
+      { code: "invalid-id" },
+    );
   } finally {
     await f.host.dispose();
   }
@@ -322,9 +323,9 @@ test("interrupt without the live turn fails with no-live-turn", async () => {
       sessionId: "session-a",
       turnId,
     };
-    await expect(f.host.execute(interrupt)).rejects.toMatchObject({ code: "no-live-turn" });
+    await rejects(f.host.execute(interrupt), { code: "no-live-turn" });
     await f.host.execute(open);
-    await expect(f.host.execute(interrupt)).rejects.toMatchObject({ code: "no-live-turn" });
+    await rejects(f.host.execute(interrupt), { code: "no-live-turn" });
   } finally {
     await f.host.dispose();
   }
@@ -396,7 +397,7 @@ test("closeOrganization ends and closes that organization's sessions, whatever i
       ["turn.completed", "session-a"],
       ["session.closed", "session-a"],
     ]);
-    await expect(f.host.execute(turn)).rejects.toMatchObject({ code: "not-connected" });
+    await rejects(f.host.execute(turn), { code: "not-connected" });
     expect(
       await f.host.execute({ ...open, organizationId: "org-b", sessionId: "session-b" }),
     ).toMatchObject({ id: "session-b" });
@@ -572,7 +573,7 @@ test("a failed disconnect still ends its turn, revokes MCP and allows a fresh op
     await f.host.execute(open);
     await f.host.execute(turn);
     const lease = native.state.context!.lease!;
-    await expect(f.host.execute({ ...open, type: "close" })).rejects.toThrow("disconnect failed");
+    await rejects(f.host.execute({ ...open, type: "close" }), /disconnect failed/);
     expect(f.events.map((event) => event.type)).toEqual([
       "turn.started",
       "turn.completed",
@@ -753,7 +754,7 @@ for (const action of ["close", "organization", "dispose"] as const) {
         code: action === "dispose" ? "disposed" : "not-connected",
       });
       expect(disconnected).toBe(true);
-      await expect(f.host.execute(turn)).rejects.toMatchObject({
+      await rejects(f.host.execute(turn), {
         code: action === "dispose" ? "disposed" : "not-connected",
       });
     } finally {
@@ -820,7 +821,7 @@ for (const action of ["close", "organization", "dispose"] as const) {
         releaseDisconnect.resolve();
         const openError = { code: action === "dispose" ? "disposed" : "not-connected" };
         expect(await opened).toMatchObject(failure ? expected : openError);
-        await expect(f.host.execute(turn)).rejects.toMatchObject({
+        await rejects(f.host.execute(turn), {
           code: action === "dispose" ? "disposed" : "not-connected",
         });
       } finally {

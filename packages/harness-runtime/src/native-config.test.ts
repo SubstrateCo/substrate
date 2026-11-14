@@ -13,13 +13,12 @@ import {
 } from "./native-config.ts";
 import { organizationDirectory, safePath } from "./paths.ts";
 import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import * as fs from "node:fs/promises";
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { parse } from "smol-toml";
-
-/* oxlint-disable typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations. */
 
 let root: string;
 beforeEach(async () => {
@@ -192,7 +191,7 @@ describe("native MCP files", () => {
 
   test("rejects credential writes and URL credentials", async () => {
     const directory = await organizationDirectory(root, "org-a");
-    await expect(
+    await rejects(
       editNativeServer(directory, "claude", "private", {
         id: "private",
         name: "Private",
@@ -200,15 +199,17 @@ describe("native MCP files", () => {
         command: "tool",
         environment: { API_KEY: "secret" },
       }),
-    ).rejects.toMatchObject({ code: "secret-configuration" });
-    await expect(
+      { code: "secret-configuration" },
+    );
+    await rejects(
       editNativeServer(directory, "claude", "private", {
         id: "private",
         name: "Private",
         transport: "http",
         url: "https://user:pass@example.com/mcp",
       }),
-    ).rejects.toMatchObject({ code: "invalid-mcp-url" });
+      { code: "invalid-mcp-url" },
+    );
   });
 });
 
@@ -216,19 +217,21 @@ test("host scopes local file operations to a safe organization ID", async () => 
   const host = await createHarnessHost({ accountDirectory: root });
   try {
     await host.configure(config());
-    await expect(
+    await rejects(
       host.scanConfiguration({ organizationId: "../org-a", agentId: "agent-a", harness: "claude" }),
-    ).rejects.toMatchObject({ code: "invalid-id" });
-    await expect(
+      { code: "invalid-id" },
+    );
+    await rejects(
       host.saveSkill({
         organizationId: "org-a",
         agentId: "agent-a",
         harness: "claude",
         skill: { id: "../escape", name: "Escape", description: "", content: "unsafe" },
       }),
-    ).rejects.toMatchObject({ code: "invalid-id" });
+      { code: "invalid-id" },
+    );
     await host.configure({ organizationId: "org-a", agents: [] });
-    await expect(
+    await rejects(
       host.execute({
         type: "open",
         organizationId: "org-a",
@@ -238,7 +241,8 @@ test("host scopes local file operations to a safe organization ID", async () => 
         folder: "main",
         prefix: "",
       }),
-    ).rejects.toMatchObject({ code: "agent-not-found" });
+      { code: "agent-not-found" },
+    );
   } finally {
     await host.dispose();
   }
@@ -252,14 +256,15 @@ test("rejects a junction that redirects managed writes outside the organization"
     join(directory, ".claude"),
     process.platform === "win32" ? "junction" : "dir",
   );
-  await expect(
+  await rejects(
     saveNativeSkill(directory, "claude", {
       id: "escape",
       name: "escape",
       description: "",
       content: "unsafe",
     }),
-  ).rejects.toMatchObject({ code: "unsafe-path" });
+    { code: "unsafe-path" },
+  );
   expect(await readdir(other)).toEqual([]);
 });
 
@@ -344,13 +349,14 @@ test("recreates the host and synchronizes edited actors without replacing local 
       harness: "claude",
     });
     expect(await readFile(claudePrompt, "utf8")).toContain("Edited Claude instructions");
-    await expect(
+    await rejects(
       second.resetDefaults({
         organizationId: configuration.organizationId,
         agentId: "claude-agent",
         harness: "codex",
       }),
-    ).rejects.toMatchObject({ code: "agent-not-found" });
+      { code: "agent-not-found" },
+    );
   } finally {
     await second.dispose();
   }

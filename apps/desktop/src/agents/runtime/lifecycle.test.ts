@@ -13,11 +13,7 @@ import {
 } from "./test-support.ts";
 import { outageBackoffMaxMs } from "./turn-executor.ts";
 import { afterEach, expect, test } from "bun:test";
-
-/* oxlint-disable deslop/no-unknown-parameters, deslop/require-safety-comment-for-type-assertion -- Recorded fake server bodies and harness commands are untyped, as the real boundaries are. */
-
-type TurnCommand = Extract<HarnessCommand, { type: "turn" }>;
-type OpenCommand = Extract<HarnessCommand, { type: "open" }>;
+import { rejects } from "node:assert/strict";
 
 let fixture: RuntimeFixture | undefined;
 afterEach(async () => {
@@ -32,13 +28,13 @@ async function started(options: Parameters<typeof runtimeFixture>[0] = {}) {
   return fixture;
 }
 
-const lastTurn = (f: RuntimeFixture) => f.turns().at(-1) as TurnCommand;
-const commandsOf = (f: RuntimeFixture, type: HarnessCommand["type"]) =>
-  f.commands.filter((command) => command.type === type);
+const lastTurn = (f: RuntimeFixture) => f.turns().at(-1)!;
+const commandsOf = <T extends HarnessCommand["type"]>(f: RuntimeFixture, type: T) =>
+  f.commands.filter(
+    (command): command is Extract<HarnessCommand, { type: T }> => command.type === type,
+  );
 const closedStatuses = (f: RuntimeFixture) =>
-  f.posts
-    .filter((post) => post.method === "closeRequest")
-    .map((post) => post.body as { requestId: string; status: string });
+  f.posts.filter((post) => post.method === "closeRequest").map((post) => post.body);
 
 test("when the harness worker exits, its live turn is interrupted and continues once when safe", async () => {
   const f = await started();
@@ -122,7 +118,7 @@ for (const code of [
       return Promise.reject(code ? new CodeError(code) : new Error("Lost."));
     };
     await f.message({ conversationId, body: "Also this" });
-    const steer = commandsOf(f, "steer")[0] as Extract<HarnessCommand, { type: "steer" }>;
+    const steer = commandsOf(f, "steer")[0]!;
     expect(await f.store.inbox.get(organizationId, steer.inputId)).toMatchObject({
       status: "uncertain",
       turnId: turn.turnId,
@@ -157,7 +153,7 @@ test("consumption evidence that arrives while the steer command runs still appli
     return Promise.resolve();
   };
   await f.message({ conversationId, body: "Also this" });
-  const steer = commandsOf(f, "steer")[0] as Extract<HarnessCommand, { type: "steer" }>;
+  const steer = commandsOf(f, "steer")[0]!;
   expect((await f.store.inbox.get(organizationId, steer.inputId))!.status).toBe("consumed");
 });
 
@@ -191,7 +187,7 @@ test("a turn that ends with uncertain input needs the owner, who can send the me
   const { conversationId } = await f.message();
   const turn = lastTurn(f);
   await f.message({ conversationId, body: "Also this" });
-  const steer = commandsOf(f, "steer")[0] as Extract<HarnessCommand, { type: "steer" }>;
+  const steer = commandsOf(f, "steer")[0]!;
   await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
   expect(await f.store.turns.get(turn.turnId)).toMatchObject({
     status: "needs_attention",
@@ -211,13 +207,12 @@ test("the owner can discard an uncertain message instead", async () => {
   const { conversationId } = await f.message();
   const turn = lastTurn(f);
   await f.message({ conversationId, body: "Also this" });
-  const steer = commandsOf(f, "steer")[0] as Extract<HarnessCommand, { type: "steer" }>;
+  const steer = commandsOf(f, "steer")[0]!;
   await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
   await f.runtime.discardItem(steer.inputId);
   expect((await f.store.inbox.get(organizationId, steer.inputId))!.status).toBe("dropped");
   expect((await f.store.turns.get(turn.turnId))!.status).toBe("completed");
-  // oxlint-disable-next-line typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations.
-  await expect(f.runtime.discardItem(steer.inputId)).rejects.toThrow();
+  await rejects(f.runtime.discardItem(steer.inputId), Error);
 });
 
 test("Stop ends with the host's terminal event 15 s after the interrupt, as cancelled", async () => {
@@ -363,7 +358,7 @@ test("a started turn whose turn command fails transiently follows recovery, neve
     });
   };
   await f.message();
-  const [first] = f.turns() as TurnCommand[];
+  const [first] = f.turns();
   // The native turn of unknown state is closed, then the turn continues once.
   expect(commandsOf(f, "close")).toMatchObject([{ sessionId: first!.sessionId }]);
   const continued = lastTurn(f);
@@ -506,6 +501,7 @@ async function helperTurn(f: RuntimeFixture) {
   if (!result.success) throw new Error("start_helper failed.");
   await f.settle();
   const helper = f.turns().find((command) => command.sessionId !== main.sessionId)!;
+  // SAFETY: start_helper returned success for this fixture's live turn.
   return { main, helper, helperId: (result.data as { helperId: string }).helperId };
 }
 
@@ -549,14 +545,14 @@ test("a handoff closes the native session before the epoch rotates, and rotates 
   const { conversationId } = await f.message();
   const first = lastTurn(f);
   await f.emit(first.turnId, { type: "turn.completed", result: { status: "completed" } });
-  const firstOpen = commandsOf(f, "open")[0] as OpenCommand;
+  const firstOpen = commandsOf(f, "open")[0]!;
   expect(firstOpen.epoch).toBe(0);
 
   await f.runtime.newTopic(conversationId);
   await f.settle();
   const handoff = lastTurn(f);
   expect(handoff.context).toMatchObject({ purpose: "handoff", installationId });
-  const handoffOpen = commandsOf(f, "open").at(-1) as OpenCommand;
+  const handoffOpen = commandsOf(f, "open").at(-1)!;
   expect(handoffOpen).toMatchObject({ epoch: 0, prefix: firstOpen.prefix });
 
   const epochAtClose: number[] = [];
@@ -572,7 +568,7 @@ test("a handoff closes the native session before the epoch rotates, and rotates 
 
   f.hooks.command = undefined;
   await f.message({ conversationId });
-  const next = commandsOf(f, "open").at(-1) as OpenCommand;
+  const next = commandsOf(f, "open").at(-1)!;
   expect(next).toMatchObject({ epoch: 1 });
   expect(next.nativeSessionId).toBeUndefined();
 });
@@ -621,9 +617,7 @@ test("status versions are milliseconds and never go down, also after a restart",
     await before.message();
     await before.advance(500);
     const versions = () =>
-      before.posts
-        .filter((post) => post.method === "status")
-        .map((post) => (post.body as { version: number }).version);
+      before.posts.filter((post) => post.method === "status").map((post) => post.body.version);
     expect(versions().at(-1)).toBeGreaterThanOrEqual(start);
     await before.emit(lastTurn(before).turnId, {
       type: "turn.completed",
@@ -640,7 +634,7 @@ test("status versions are milliseconds and never go down, also after a restart",
     await f.advance(500);
     const after = f.posts
       .filter((post) => post.method === "status")
-      .map((post) => (post.body as { version: number }).version);
+      .map((post) => post.body.version);
     expect(after.at(-1)).toBeGreaterThan(last);
   } finally {
     await fixture?.close();

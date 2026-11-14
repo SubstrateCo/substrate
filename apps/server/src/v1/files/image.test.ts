@@ -1,6 +1,6 @@
 import { normalizePicture } from "./image";
-/* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import sharp from "sharp";
 
 test("pictures are decoded and reencoded, stripping metadata and bounding dimensions", async () => {
@@ -21,18 +21,16 @@ test("pictures reject non-images, MIME spoofing, SVG, animation, and excessive p
   const png = await sharp({ create: { width: 10, height: 10, channels: 3, background: "red" } })
     .png()
     .toBuffer();
-  await expect(normalizePicture(png, "image/jpeg")).rejects.toThrow();
-  await expect(
-    normalizePicture(new TextEncoder().encode("not an image"), "image/png"),
-  ).rejects.toThrow();
-  await expect(
+  await rejects(normalizePicture(png, "image/jpeg"));
+  await rejects(normalizePicture(new TextEncoder().encode("not an image"), "image/png"));
+  await rejects(
     normalizePicture(
       new TextEncoder().encode(
         '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"></svg>',
       ),
       "image/png",
     ),
-  ).rejects.toThrow();
+  );
   const frames = Buffer.from([
     ...Array.from({ length: 4 }, () => [255, 0, 0, 255]).flat(),
     ...Array.from({ length: 4 }, () => [0, 0, 255, 255]).flat(),
@@ -43,13 +41,13 @@ test("pictures reject non-images, MIME spoofing, SVG, animation, and excessive p
     .webp({ loop: 0, delay: [100, 100] })
     .toBuffer();
   expect((await sharp(animation, { animated: true }).metadata()).pages).toBe(2);
-  await expect(normalizePicture(animation, "image/webp")).rejects.toThrow();
+  await rejects(normalizePicture(animation, "image/webp"));
   const large = await sharp({
     create: { width: 5000, height: 5000, channels: 3, background: "red" },
   })
     .png()
     .toBuffer();
-  await expect(normalizePicture(large, "image/png")).rejects.toThrow();
+  await rejects(normalizePicture(large, "image/png"));
 });
 
 test("logo normalization preserves transparent padding and opaque artwork", async () => {

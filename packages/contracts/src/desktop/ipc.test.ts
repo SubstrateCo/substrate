@@ -1,5 +1,6 @@
 import { exposeBridge, handleBridge } from "./ipc.ts";
 import { describe, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import { z } from "zod";
 
 describe("handleBridge", () => {
@@ -14,10 +15,8 @@ describe("handleBridge", () => {
         },
       },
     );
-    // oxlint-disable-next-line typescript/await-thenable -- Bun's rejection assertion is asynchronous at runtime.
-    await expect(run("set", "true")).rejects.toThrow();
-    // oxlint-disable-next-line typescript/await-thenable -- Bun's rejection assertion is asynchronous at runtime.
-    await expect(run("toString")).rejects.toThrow("Invalid bridge operation.");
+    await rejects(run("set", "true"));
+    await rejects(run("toString"), { message: "Invalid bridge operation." });
     expect(calls).toBe(0);
     await run("set", true);
     expect(calls).toBe(1);

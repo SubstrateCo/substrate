@@ -2,6 +2,7 @@ import { inboxLaneAgingMs, sessionKeys } from "@substrate/contracts/agent-work";
 
 import { background, createSession, item, openTestStore, system } from "./test-support.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 
 let fixture: Awaited<ReturnType<typeof openTestStore>>;
 beforeEach(async () => {
@@ -300,10 +301,9 @@ test("an output whose event cannot be appended is not recorded", async () => {
     kind: "output",
     data: { kind: "task", id: "task-1", createdAt: "2026-01-01T00:00:00.000Z" },
   } as const;
-  // oxlint-disable-next-line typescript/await-thenable -- Bun rejection assertions are asynchronous despite their assertion return declarations.
-  await expect(store.outputs.record("no-such-turn", output, 1, [event])).rejects.toThrow(
-    "Turn not found.",
-  );
+  await rejects(store.outputs.record("no-such-turn", output, 1, [event]), {
+    message: "Turn not found.",
+  });
   expect(await store.outputs.forTurn("no-such-turn")).toEqual([]);
 
   const session = await createSession(store);

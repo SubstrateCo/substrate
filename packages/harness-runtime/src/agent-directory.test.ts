@@ -1,5 +1,6 @@
 import { createHarnessHost } from "./host.ts";
 import { expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import { mkdir, mkdtemp, readdir, rm, symlink } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -49,8 +50,7 @@ test("agents in the same organization have separate working folders and native c
     expect(otherOrganization.skills).toEqual([]);
     expect(otherOrganization.mcpServers).toEqual([]);
     for (const agentId of ["../agent-b", "missing-agent"]) {
-      // oxlint-disable-next-line typescript/await-thenable -- Bun rejection assertions return promises at runtime.
-      await expect(host.scanConfiguration({ ...scope, agentId })).rejects.toMatchObject({
+      await rejects(host.scanConfiguration({ ...scope, agentId }), {
         code: agentId === "missing-agent" ? "agent-not-found" : "invalid-id",
       });
     }
@@ -60,8 +60,7 @@ test("agents in the same organization have separate working folders and native c
       secondDirectory,
       process.platform === "win32" ? "junction" : "dir",
     );
-    // oxlint-disable-next-line typescript/await-thenable -- Bun rejection assertions return promises at runtime.
-    await expect(host.scanConfiguration({ ...scope, agentId: "agent-b" })).rejects.toMatchObject({
+    await rejects(host.scanConfiguration({ ...scope, agentId: "agent-b" }), {
       code: "unsafe-path",
     });
   } finally {

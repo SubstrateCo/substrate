@@ -20,7 +20,6 @@ export function ImageThumbnail({
   if (status === "failed")
     return <AttachmentList attachments={[attachment]} href={() => href} compact />;
   return (
-    // oxlint-disable-next-line shadcn/no-raw-buttons -- Image preview targets need intrinsic image height, not a control size.
     <button
       type="button"
       onClick={onOpen}

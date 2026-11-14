@@ -1,5 +1,4 @@
 import type { TaskStatus } from "@substrate/contracts/tasks";
-/* oxlint-disable shadcn/no-restyle -- Picker candidates need a neutral cursor and wrapping context, not a button's selected state. */
 
 import { Button } from "../../ui/button";
 import type { ReferenceKind } from "./reference-picker";
@@ -51,6 +50,7 @@ export function ReferencePickerOption({
       variant="ghost"
       size="default"
       tabIndex={selected ? 0 : -1}
+      // oxlint-disable-next-line shadcn/no-restyle -- Picker rows need default spacing with content-driven height and a neutral keyboard cursor, not a button's selected state.
       className={`h-auto w-full justify-start py-1.5 font-normal hover:bg-row-hover active:scale-100 ${selected ? "bg-row-highlight hover:bg-row-highlight" : ""}`}
       onFocus={onFocus}
       onClick={onSelect}
