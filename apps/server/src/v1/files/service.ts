@@ -6,7 +6,7 @@ import {
 } from "@substrate/database/storage";
 
 import { ServiceError, serviceResult } from "../../shared/service-result";
-import type { ObjectStorage } from "../../storage/types";
+import { ObjectNotFoundError, type ObjectStorage } from "../../storage/types";
 import { fileDisposition } from "./disposition";
 import { normalizePicture } from "./image";
 import { createHash } from "node:crypto";
@@ -47,7 +47,7 @@ export function createFileService(deps: FileServiceDependencies) {
         } catch (error) {
           if (error instanceof RangeError)
             throw new ServiceError("PAYLOAD_TOO_LARGE", "File exceeds 5 MB.");
-          if (error instanceof Error && ["NoSuchKey", "NotFound"].includes(error.name))
+          if (error instanceof ObjectNotFoundError)
             throw new ServiceError("CONFLICT", "Upload has not finished. Try again.");
           throw error;
         }

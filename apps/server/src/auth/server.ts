@@ -12,8 +12,8 @@ import type { Database } from "@substrate/database/trusted";
 
 import { environment } from "../environment";
 import type { MailService } from "../mail/service";
+import type { CommittedPublisher } from "../shared/committed";
 import { isTrustedOrigin } from "../shared/origin";
-import type { createCommittedPublisher } from "../v1/realtime/committed";
 import { createOrganizationLifecycle } from "./organization-lifecycle";
 import {
   organizationBody,
@@ -37,7 +37,7 @@ import { organization } from "better-auth/plugins";
 export function createAuth(deps: {
   db: Database;
   mail: MailService;
-  publish: ReturnType<typeof createCommittedPublisher>;
+  publish: CommittedPublisher;
   realtime: ReturnType<typeof createAuthPublisher>;
 }) {
   const { db, mail, publish: publishCommitted } = deps;

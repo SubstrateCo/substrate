@@ -1,11 +1,13 @@
 import type { ContactWrite } from "@substrate/contracts/contacts/input";
 
+import type { CommittedPublisher } from "../../shared/committed";
 import type { WorkspaceScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
-import type { CommittedPublisher } from "../realtime/committed";
+import { exportCrm } from "../crm/export";
 
 export function createContactsService(deps: { publish: CommittedPublisher }) {
   return {
+    export: exportCrm,
     list: (
       scope: WorkspaceScope,
       input: Parameters<WorkspaceScope["repositories"]["contacts"]["listContacts"]>[0],

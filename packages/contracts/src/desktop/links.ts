@@ -31,6 +31,13 @@ export function desktopLink(path: string, scheme: DesktopScheme = "substrate") {
   return `${scheme}://open${desktopPath.parse(path)}`;
 }
 
+/** The public /desktop/open page for a destination. Throws when the validator rejects it. */
+export function desktopHandoffURL(path: string, apiURL: string) {
+  const url = new URL("/desktop/open", apiURL);
+  url.searchParams.set("path", desktopPath.parse(path));
+  return url.toString();
+}
+
 export function resolveDesktopLink(
   value: string,
   rendererOrigin: string,

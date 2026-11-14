@@ -16,13 +16,11 @@ import {
   notificationGroupEventsInput,
   notificationGroupReadInput,
 } from "@substrate/contracts/context/notification-groups";
-import { failure } from "@substrate/contracts/result";
 
-import { respond, v } from "../../shared/http";
+import { respond, respondCancellable, v } from "../../shared/http";
 import type { ScopeEnv, Scopes } from "../../shared/scope";
 import type { ContextService } from "./service";
 import { Hono } from "hono";
-import type { UnofficialStatusCode } from "hono/utils/http-status";
 
 export function createContextRoutes(services: ContextService, scopes: Scopes) {
   return new Hono<ScopeEnv>()
@@ -44,21 +42,11 @@ export function createContextRoutes(services: ContextService, scopes: Scopes) {
     .post("/message-targets", v("json", contextTargets), scopes.workspace("json"), async (c) =>
       respond(c, await services.getMessageTargets(c.var.scope, c.req.valid("json"))),
     )
-    .post("/search", v("json", contextSearch), scopes.workspace("json"), async (c) => {
-      const signal = c.req.raw.signal;
-      try {
-        return respond(c, await services.searchContext(c.var.scope, c.req.valid("json"), signal));
-      } catch (error) {
-        if (signal.aborted) {
-          // SAFETY: Hono uses this marker for unofficial statuses; 499 means client cancellation.
-          return c.json(
-            failure("INVALID_INPUT", "Request cancelled."),
-            499 as UnofficialStatusCode,
-          );
-        }
-        throw error;
-      }
-    })
+    .post("/search", v("json", contextSearch), scopes.workspace("json"), async (c) =>
+      respondCancellable(c, (signal) =>
+        services.searchContext(c.var.scope, c.req.valid("json"), signal),
+      ),
+    )
     .post("/source-tasks", v("json", contextSourceTask), scopes.workspace("json"), async (c) =>
       respond(c, await services.createTaskFromMessage(c.var.scope, c.req.valid("json"))),
     )

@@ -31,7 +31,7 @@
     },
     {
       "name": "kernel",
-      "files": ["apps/server/src/shared/service-result.ts"]
+      "files": ["apps/server/src/shared/{service-result,committed}.ts"]
     },
     {
       "name": "route",
@@ -215,6 +215,26 @@
       "rule": "D1",
       "files": ["packages/database/src/**"],
       "reason": "Repositories are the shared trust boundary for HTTP and MCP callers and own their input contracts (packages/database/AGENTS.md)."
+    },
+    {
+      "rule": "R1",
+      "files": ["apps/server/src/v1/realtime/routes.ts"],
+      "reason": "WebSocket upgrade transport; type-only RealtimeHub import drives the hub adapter's connection lifecycle."
+    },
+    {
+      "rule": "R3",
+      "files": ["apps/server/src/v1/realtime/routes.ts"],
+      "reason": "The upgrade handshake reads Origin and Upgrade headers; it mounts before trustedOrigin middleware, which skips GET."
+    },
+    {
+      "rule": "R4",
+      "files": ["apps/server/src/v1/realtime/routes.ts"],
+      "reason": "Handshake rejections (400/403/426/503) have no body; WebSocket clients cannot read the result envelope."
+    },
+    {
+      "rule": "C1",
+      "files": ["packages/contracts/src/auth/permissions.ts"],
+      "reason": "Role definitions are shared by the server and the renderer's organization client; better-auth/plugins/access is pure and browser-safe."
     }
   ]
 }

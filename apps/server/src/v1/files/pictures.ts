@@ -11,10 +11,17 @@ interface PictureDependencies {
   repository: {
     requirePictureAccess(
       scope: StorageScope,
-      purpose: PictureKind,
-      ownerId?: string,
+      purpose: Exclude<PictureKind, "project-icon">,
     ): Promise<void>;
-    canReadPicture(scope: StorageScope, purpose: PictureKind, ownerId: string): Promise<boolean>;
+    canReadPicture(
+      scope: StorageScope,
+      purpose: Exclude<PictureKind, "project-icon">,
+      ownerId: string,
+    ): Promise<boolean>;
+  };
+  projects: {
+    requireEdit(scope: StorageScope, id: string): Promise<void>;
+    canRead(scope: StorageScope, id: string): Promise<boolean>;
   };
   storage: Pick<ObjectStorage, "put" | "signDownload">;
 }
@@ -23,6 +30,16 @@ const objectKey = (purpose: PictureKind, owner: string) =>
   `pictures/${purpose}/${encodeURIComponent(owner)}.webp`;
 
 export function createPictureService(deps: PictureDependencies) {
+  function requireAccess(scope: StorageScope, purpose: PictureKind, ownerId?: string) {
+    return purpose === "project-icon"
+      ? deps.projects.requireEdit(scope, ownerId!)
+      : deps.repository.requirePictureAccess(scope, purpose);
+  }
+  function canRead(scope: StorageScope, purpose: PictureKind, ownerId: string) {
+    return purpose === "project-icon"
+      ? deps.projects.canRead(scope, ownerId)
+      : deps.repository.canReadPicture(scope, purpose, ownerId);
+  }
   return {
     upload(
       scope: StorageScope,
@@ -36,7 +53,7 @@ export function createPictureService(deps: PictureDependencies) {
           requireWorkspace(organizationId ?? scope.organizationId ?? "", scope.organizationId);
         if (purpose === "project-icon" && !projectEntityId)
           throw new ServiceError("INVALID_INPUT", "Choose a project for this icon.");
-        await deps.repository.requirePictureAccess(scope, purpose, projectEntityId);
+        await requireAccess(scope, purpose, projectEntityId);
         if (!file.size || file.size > MAX_FILE_BYTES)
           throw new ServiceError("INVALID_INPUT", "Use a picture up to 5 MB.");
         const bytes = await normalizePicture(new Uint8Array(await file.arrayBuffer()), file.type);
@@ -49,7 +66,7 @@ export function createPictureService(deps: PictureDependencies) {
     },
     content(scope: StorageScope, purpose: PictureKind, owner: string) {
       return serviceResult(async () => {
-        if (!(await deps.repository.canReadPicture(scope, purpose, owner)))
+        if (!(await canRead(scope, purpose, owner)))
           throw new ServiceError("NOT_FOUND", "Picture not found or access denied.");
         return { url: await deps.storage.signDownload(objectKey(purpose, owner), "inline") };
       });

@@ -1,19 +1,16 @@
 import type { DesktopScheme } from "@substrate/contracts/desktop/identity";
-import { desktopLink, desktopPath } from "@substrate/contracts/desktop/links";
-import { publicFailure, success, type ServiceResult } from "@substrate/contracts/result";
+import { desktopLink, type desktopPath } from "@substrate/contracts/desktop/links";
 
-/** The public /desktop/open page for a destination. Throws when the validator rejects it. */
-export function desktopHandoffURL(path: string, apiURL: string) {
-  const url = new URL("/desktop/open", apiURL);
-  url.searchParams.set("path", desktopPath.parse(path));
-  return url.toString();
-}
+import type { z } from "zod";
 
-export function openDesktop(
-  path: string,
-  scheme: DesktopScheme = "substrate",
-): ServiceResult<{ link: string }> {
-  const result = desktopPath.safeParse(path);
-  if (!result.success) return publicFailure("INVALID_INPUT", "Invalid desktop destination.");
-  return success({ link: desktopLink(result.data, scheme) });
+type DesktopPath = z.output<typeof desktopPath>;
+
+export function openDesktop(path: DesktopPath, options: { scheme: DesktopScheme; webURL: string }) {
+  const downloadURL = new URL("/download", options.webURL);
+  downloadURL.searchParams.set("redirect", path);
+  return {
+    link: desktopLink(path, options.scheme),
+    browserURL: new URL(path, options.webURL).toString(),
+    downloadURL: downloadURL.toString(),
+  };
 }

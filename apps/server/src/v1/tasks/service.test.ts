@@ -1,7 +1,7 @@
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
+import { createCommittedPublisher } from "../../shared/committed";
 import { scopeFixture } from "../../test-support";
-import { createCommittedPublisher } from "../realtime/committed";
 import { createTasksService } from "./service";
 import { expect, mock, test } from "bun:test";
 

@@ -5,6 +5,7 @@ import {
   type Database,
 } from "@substrate/database/trusted";
 
+import type { CommittedPublisher } from "./shared/committed";
 import type { ObjectStorage } from "./storage/types";
 import { createDeviceService } from "./v1/agent-work/device-service";
 import { createAgentWorkService } from "./v1/agent-work/service";
@@ -23,7 +24,6 @@ import { createReadService } from "./v1/messaging/read-service";
 import { createMessagingService } from "./v1/messaging/service";
 import { createSharingService } from "./v1/messaging/sharing-service";
 import { createOrganizationService } from "./v1/organizations/service";
-import type { CommittedPublisher } from "./v1/realtime/committed";
 import { projectPictureAccess } from "./v1/tasks/picture-access";
 import { createTasksService } from "./v1/tasks/service";
 
@@ -33,7 +33,6 @@ export function createServices(deps: {
   publish: CommittedPublisher;
 }) {
   const repository = createStorageRepository(deps.db, attachmentReferences);
-  const projectPictures = projectPictureAccess(deps.db);
   return {
     crm: createCrmService(deps),
     contacts: createContactsService(deps),
@@ -42,18 +41,8 @@ export function createServices(deps: {
     files: createFileService({ repository, storage: deps.storage }),
     pictures: createPictureService({
       storage: deps.storage,
-      repository: {
-        requirePictureAccess(scope, purpose, ownerId) {
-          return purpose === "project-icon"
-            ? projectPictures.requireEdit(scope, ownerId!)
-            : repository.requirePictureAccess(scope, purpose);
-        },
-        canReadPicture(scope, purpose, ownerId) {
-          return purpose === "project-icon"
-            ? projectPictures.canRead(scope, ownerId)
-            : repository.canReadPicture(scope, purpose, ownerId);
-        },
-      },
+      repository,
+      projects: projectPictureAccess(deps.db),
     }),
     attachments: createAttachmentService(deps),
     messaging: createMessagingService(deps),

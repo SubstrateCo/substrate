@@ -1,6 +1,4 @@
-import { desktopOrigin } from "@substrate/contracts/desktop/links";
-
-import { desktopHandoffURL } from "../desktop/service";
+import { desktopHandoffURL, desktopOrigin } from "@substrate/contracts/desktop/links";
 
 type LinkOptions = { baseURL: string; request?: Request };
 

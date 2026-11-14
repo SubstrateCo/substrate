@@ -146,6 +146,10 @@ test("rejects untrusted or missing origins, unauthenticated cookies, and subscri
   expect(await status("/api/v1/realtime?organizationId=a&organizationId=b", trustedOrigin)).toBe(
     400,
   );
+  const invalid = await fetch(new URL("/api/v1/realtime?room=private", f.server.url), {
+    headers: { Upgrade: "websocket", Cookie: "session=test", Origin: trustedOrigin },
+  });
+  expect(await invalid.text()).toBe("");
 });
 
 test("real sockets close on unexpected client data, revocation, oversized payload, and shutdown", async () => {

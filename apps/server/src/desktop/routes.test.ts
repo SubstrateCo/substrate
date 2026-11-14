@@ -34,7 +34,9 @@ describe("desktop open landing", () => {
     expect(response.status).toBe(400);
     expect(response.headers.get("Cache-Control")).toBe("no-store");
     expect(response.headers.get("Referrer-Policy")).toBe("no-referrer");
-    expect(await response.text()).not.toContain('href="substrate-dev:');
+    const body = await response.text();
+    expect(body).not.toContain('href="substrate-dev:');
+    expect(JSON.parse(body)).toMatchObject({ success: false, error: { code: "INVALID_INPUT" } });
   });
 });
 

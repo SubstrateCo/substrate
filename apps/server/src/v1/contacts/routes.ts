@@ -7,13 +7,13 @@ import {
 
 import { respond, v } from "../../shared/http";
 import type { ScopeEnv, Scopes } from "../../shared/scope";
-import { createContactsExportRoutes } from "./export";
+import { createContactsExportRoutes } from "./export-routes";
 import type { ContactsService } from "./service";
 import { Hono } from "hono";
 
 export function createContactsRoutes(service: ContactsService, scopes: Scopes) {
   return new Hono<ScopeEnv>()
-    .route("/", createContactsExportRoutes(scopes))
+    .route("/", createContactsExportRoutes(service, scopes))
     .get("/", v("query", contactsList), scopes.workspace("query"), async (c) =>
       respond(c, await service.list(c.var.scope, c.req.valid("query"))),
     )

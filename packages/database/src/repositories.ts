@@ -148,7 +148,8 @@ function standalone(
       | "sharing"
       | "feed"
       | "files"
-      | "organizations",
+      | "organizations"
+      | "agentWork",
     R extends keyof WorkspaceRepositories[K],
   >(key: K, reads: readonly R[]) {
     return commitWrites(repositories[key], reads, (work) => transaction((tx) => work(tx[key])));
@@ -209,7 +210,15 @@ function standalone(
     feed: domain("feed", ["activity", "list", "groups", "groupEvents", "hasUnread"]),
     files: domain("files", ["listTask", "taskContent", "messageContent"]),
     organizations: domain("organizations", ["summary", "people"]),
-    agentWork: repositories.agentWork,
+    agentWork: domain("agentWork", [
+      "listConversationRequests",
+      "listNeedsYou",
+      "listStatus",
+      "listInvocations",
+      "listMyCalls",
+      "listCallsLog",
+      "listCallers",
+    ]),
     transaction,
   };
 }

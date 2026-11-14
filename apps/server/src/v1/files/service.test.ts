@@ -1,6 +1,6 @@
 import type { StorageRepository } from "@substrate/database/storage";
 
-import type { ObjectStorage } from "../../storage/types";
+import { ObjectNotFoundError, type ObjectStorage } from "../../storage/types";
 import { createFileService } from "./service";
 /* oxlint-disable typescript/await-thenable -- Bun's rejects matchers return promises at runtime. */
 import { describe, expect, test } from "bun:test";
@@ -63,7 +63,11 @@ function fixture() {
       url: "https://s3.test/upload",
       headers: { "Content-Type": upload.contentType },
     }),
-    read: async (key) => objects.get(key)!,
+    read: async (key) => {
+      const bytes = objects.get(key);
+      if (!bytes) throw new ObjectNotFoundError("Object not found.");
+      return bytes;
+    },
     put: async (key, bytes) => {
       objects.set(key, bytes.slice());
     },
@@ -180,6 +184,15 @@ describe("file workflow", () => {
     expect(
       (await f.repository.getUpload({ userId: "alice", organizationId: "org" }, f.id)).completed,
     ).toBeNull();
+  });
+
+  test("completion before the upload object exists asks the client to retry", async () => {
+    const f = fixture();
+    f.objects.delete(f.upload.temporaryKey);
+    expect(await f.service.completeUpload(f.scope, f.id)).toMatchObject({
+      success: false,
+      error: { code: "CONFLICT", message: "Upload has not finished. Try again." },
+    });
   });
 
   test("pictures store only normalized pixels", async () => {

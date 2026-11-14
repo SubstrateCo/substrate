@@ -64,6 +64,20 @@ test("expired and revoked external invitations release their DM key for concurre
   }
 });
 
+test("conversation views do not disclose the DM key", async () => {
+  await verified();
+  const chat = service("alice");
+  const views = [
+    await chat.createConversation({ kind: "dm", emails: ["bob@example.com"] }),
+    await chat.createConversation({ kind: "dm", emails: ["bob@example.com"] }),
+    await chat.createConversation({ kind: "dm", emails: ["outside@example.com"] }),
+    await chat.createConversation({ kind: "dm", emails: ["outside@example.com"] }),
+    ...(await chat.listConversations()),
+  ];
+  expect(views).toHaveLength(6);
+  for (const view of views) expect(view).not.toHaveProperty("dmKey");
+});
+
 test("cross-org DMs use explicit participants without adding entity grants", async () => {
   await verified();
   const before = await fixture.db.select().from(entityGrants);

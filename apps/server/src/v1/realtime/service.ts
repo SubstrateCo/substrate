@@ -3,10 +3,8 @@ import type { Database } from "@substrate/database/trusted";
 
 import { createRealtimeAuthenticator } from "../../auth/realtime-session";
 import type { Auth } from "../../auth/server";
-import { environment } from "../../environment";
 import { createRealtimeHub } from "./hub";
 import { coalesceReceivers } from "./receivers";
-import { createRealtimeRoutes } from "./routes";
 import { createRealtimeSubscription } from "./subscription";
 
 export function createRealtimeService({ db, auth }: { db: Database; auth: Auth }) {
@@ -22,13 +20,11 @@ export function createRealtimeService({ db, auth }: { db: Database; auth: Auth }
       console.warn("Realtime operation failed; client resync required", { failures });
     },
   });
-  const routes = createRealtimeRoutes(hub, environment.trustedOrigins);
   const subscription = createRealtimeSubscription({
     receive: (changes) => hub.publish(...changes),
     setAvailable: (available) => hub.setAvailable(available),
   });
   return {
-    ...routes,
     hub,
     async start() {
       await subscription.start();

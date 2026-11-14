@@ -1,4 +1,4 @@
-import { AccessDeniedError } from "../../errors";
+import { AccessDeniedError, ConflictError, violatedConstraint } from "../../errors";
 import { RepositoryContext, pageSize } from "../repository-context";
 import { contactAddresses, contactUrls } from "./details.schema";
 import {
@@ -12,6 +12,18 @@ import {
 } from "./inputs";
 import { contactIdentifiers, contacts } from "./schema";
 import { and, asc, eq, sql } from "drizzle-orm";
+
+function duplicateIdentifier(error: Error): never {
+  if (violatedConstraint(error) === "contact_identifiers_value_unique")
+    throw new ConflictError("This contact already has that email or phone.");
+  throw error;
+}
+
+function duplicateUrl(error: Error): never {
+  if (violatedConstraint(error) === "contact_urls_value_unique")
+    throw new ConflictError("This contact already has that URL.");
+  throw error;
+}
 
 export function contactDetailsRepository(context: RepositoryContext) {
   const { db, scope } = context;
@@ -138,7 +150,8 @@ export function contactDetailsRepository(context: RepositoryContext) {
         const [row] = await ctx.db
           .insert(contactIdentifiers)
           .values({ ...value, organizationId: scope.organizationId, contactEntityId: contactId })
-          .returning();
+          .returning()
+          .catch(duplicateIdentifier);
         return row!;
       });
     },
@@ -162,7 +175,8 @@ export function contactDetailsRepository(context: RepositoryContext) {
             updatedAt: new Date(),
           })
           .where(target(contactIdentifiers, contactId, id))
-          .returning();
+          .returning()
+          .catch(duplicateIdentifier);
         return row!;
       });
     },
@@ -242,7 +256,8 @@ export function contactDetailsRepository(context: RepositoryContext) {
         const [row] = await ctx.db
           .insert(contactUrls)
           .values({ ...value, organizationId: scope.organizationId, contactEntityId: contactId })
-          .returning();
+          .returning()
+          .catch(duplicateUrl);
         return row!;
       });
     },
@@ -254,7 +269,8 @@ export function contactDetailsRepository(context: RepositoryContext) {
           .update(contactUrls)
           .set({ ...value, label: value.label ?? null, updatedAt: new Date() })
           .where(target(contactUrls, contactId, id))
-          .returning();
+          .returning()
+          .catch(duplicateUrl);
         if (!row) throw new AccessDeniedError();
         return row;
       });

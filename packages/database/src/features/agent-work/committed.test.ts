@@ -1,4 +1,5 @@
 import type { DatabaseExecutor } from "../../client";
+import { createRepositories } from "../../repositories";
 import { agentAuditEvents, agentRequests, agentWakes, userAgents } from "../../schema";
 import { agentWorkFixture, callerFixture, dmTurn } from "../../testing/agent-work";
 import { testDatabase } from "../../testing/connection";
@@ -118,6 +119,66 @@ test("committed answers and declines need no savepoint; approval keeps its actio
       expect(result.result.outcome.status).toBe("executed");
       expect(transactionCount).toBe(2);
     }
+  }
+});
+
+test("scoped agent-work writes commit once each and approval nests its savepoint", async () => {
+  const x = await callerFixture(f);
+  const agentWork = (await createRepositories(db).forSession(x.owner)).agentWork;
+  const writes = [
+    () => agentWork.saveCallerPolicy(x.agent.agentId, "ask"),
+    () => agentWork.allowCaller(x.agent.agentId, x.carolActorId),
+    () => agentWork.removeCaller(x.agent.agentId, x.carolActorId),
+  ];
+  for (const write of writes) {
+    transactionCount = 0;
+    expect((await write()).hints.length).toBeGreaterThan(0);
+    expect(transactionCount).toBe(1);
+  }
+  await x.bob.sendMessage(x.channel.id, `${x.mention} help`);
+  const [invocation] = await f.db.query.agentInvocations.findMany();
+  transactionCount = 0;
+  expect((await agentWork.decideInvocation(invocation!.id, "always_allow")).result).toEqual({
+    status: "admitted",
+  });
+  expect(transactionCount).toBe(1);
+
+  const y = await agentWorkFixture(f);
+  const owned = (await createRepositories(db).forSession(y.owner)).agentWork;
+  const turn = dmTurn(y.dm.id);
+  const question = await y.call(
+    "reply",
+    { requestId: crypto.randomUUID(), body: "Which week?", ask: { question: "Which week?" } },
+    turn,
+  );
+  transactionCount = 0;
+  expect(
+    (
+      await owned.respondToRequest(question.questionId!, {
+        type: "questions",
+        answers: { answer: ["Next week"] },
+      })
+    ).result,
+  ).toEqual({ status: "resolved" });
+  expect(transactionCount).toBe(1);
+  const channel = await y.alice.createConversation({ kind: "channel", name: "Updates" });
+  for (const decision of ["declineProposal", "approveProposal"] as const) {
+    const proposal = await y.call(
+      "propose",
+      {
+        requestId: crypto.randomUUID(),
+        summary: "Post update",
+        action: { type: "reply_elsewhere", input: { conversationId: channel.id, body: "Update" } },
+      },
+      { ...turn, kind: "unattended" },
+    );
+    transactionCount = 0;
+    const committed = await owned[decision](proposal.proposalId);
+    expect(committed.hints.length).toBeGreaterThan(0);
+    expect(committed.result.outcome.status).toBe(
+      decision === "approveProposal" ? "executed" : "declined",
+    );
+    expect(transactionCount).toBe(decision === "approveProposal" ? 2 : 1);
   }
 });
 

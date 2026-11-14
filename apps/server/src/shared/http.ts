@@ -1,4 +1,5 @@
 import {
+  failure,
   publicFailure,
   type ServiceErrorCode,
   type ServiceResult,
@@ -6,6 +7,7 @@ import {
 
 import { zValidator, type Hook } from "@hono/zod-validator";
 import type { Context, Env, ValidationTargets } from "hono";
+import type { UnofficialStatusCode } from "hono/utils/http-status";
 import type { z } from "zod";
 
 const statuses = {
@@ -21,6 +23,23 @@ const statuses = {
 
 export function respond<T extends ServiceResult<unknown>>(c: Context, result: T) {
   return c.json(result, result.success ? 200 : statuses[result.error.code]);
+}
+
+/** Runs work with the request's abort signal and answers 499 when the client cancelled it. */
+export async function respondCancellable<T extends ServiceResult<unknown>>(
+  c: Context,
+  work: (signal: AbortSignal) => Promise<T>,
+) {
+  const signal = c.req.raw.signal;
+  try {
+    return respond(c, await work(signal));
+  } catch (error) {
+    if (signal.aborted) {
+      // SAFETY: Hono uses this marker for unofficial statuses; 499 means client cancellation.
+      return c.json(failure("INVALID_INPUT", "Request cancelled."), 499 as UnofficialStatusCode);
+    }
+    throw error;
+  }
 }
 
 export const validationHook = ((result, c) => {

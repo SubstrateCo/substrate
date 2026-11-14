@@ -1,5 +1,23 @@
-import { desktopLink, desktopOrigin, desktopPath, resolveDesktopLink } from "./links.ts";
+import {
+  desktopHandoffURL,
+  desktopLink,
+  desktopOrigin,
+  desktopPath,
+  resolveDesktopLink,
+} from "./links.ts";
 import { describe, expect, test } from "bun:test";
+import { ZodError } from "zod";
+
+describe("desktop handoff URLs", () => {
+  test("point to the public open page and reject unsafe destinations", () => {
+    expect(desktopHandoffURL("/accept-sharing/share-1", "https://api.example.test")).toBe(
+      "https://api.example.test/desktop/open?path=%2Faccept-sharing%2Fshare-1",
+    );
+    expect(() => desktopHandoffURL("https://evil.test", "https://api.example.test")).toThrow(
+      ZodError,
+    );
+  });
+});
 
 describe("external desktop links", () => {
   test("routes each environment's links only to its own desktop", () => {

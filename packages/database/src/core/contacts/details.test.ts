@@ -1,3 +1,4 @@
+import { ConflictError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { describe, expect, test } from "bun:test";
@@ -62,6 +63,39 @@ describe("contact details", () => {
       bob.addIdentifier(a.entityId, { type: "email", value: "unauthorized@example.com" }),
     );
     await rejection(f.forActor(f.outsider, f.orgB).contacts.getDetail(a.entityId));
+  });
+
+  test("reports duplicate methods and URLs within a contact as conflicts", async () => {
+    const repo = f.forActor(f.alice).contacts;
+    const contact = await repo.create({ displayName: "Jane" });
+    await repo.addIdentifier(contact.entityId, { type: "email", value: "jane@example.com" });
+    const other = await repo.addIdentifier(contact.entityId, {
+      type: "email",
+      value: "other@example.com",
+    });
+    await repo.addUrl(contact.entityId, { url: "https://example.com" });
+    const otherUrl = await repo.addUrl(contact.entityId, { url: "https://example.org" });
+    expect(
+      await rejection(
+        repo.addIdentifier(contact.entityId, { type: "email", value: "jane@EXAMPLE.com" }),
+      ),
+    ).toBeInstanceOf(ConflictError);
+    expect(
+      await rejection(
+        repo.updateIdentifier(contact.entityId, other.id, {
+          type: "email",
+          value: "jane@example.com",
+        }),
+      ),
+    ).toBeInstanceOf(ConflictError);
+    expect(
+      await rejection(repo.addUrl(contact.entityId, { url: "https://example.com" })),
+    ).toBeInstanceOf(ConflictError);
+    expect(
+      await rejection(
+        repo.updateUrl(contact.entityId, otherUrl.id, { url: "https://example.com" }),
+      ),
+    ).toBeInstanceOf(ConflictError);
   });
 
   test("validates methods, URLs, and addresses without leaving partial writes", async () => {

@@ -8,21 +8,13 @@ import type {
   ownerScopeInput,
   respondRequestInput,
 } from "@substrate/contracts/agent-work";
-import * as work from "@substrate/database/agent-work";
-import type { Database } from "@substrate/database/trusted";
 
+import type { CommittedPublisher } from "../../shared/committed";
 import type { WorkspaceScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
-import type { CommittedPublisher } from "../realtime/committed";
 import type { z } from "zod";
 
-export function createAgentWorkService({
-  db,
-  publish,
-}: {
-  db: Database;
-  publish: CommittedPublisher;
-}) {
+export function createAgentWorkService({ publish }: { publish: CommittedPublisher }) {
   return {
     listConversationRequests(
       this: void,
@@ -46,7 +38,7 @@ export function createAgentWorkService({
       input: z.output<typeof respondRequestInput>,
     ) {
       return serviceResult(async () =>
-        publish(await work.respondToRequest(db, scope, requestId, input.response)),
+        publish(await scope.repositories.agentWork.respondToRequest(requestId, input.response)),
       );
     },
     approveProposal(
@@ -55,7 +47,9 @@ export function createAgentWorkService({
       requestId: string,
       _input: z.output<typeof decideProposalInput>,
     ) {
-      return serviceResult(async () => publish(await work.approveProposal(db, scope, requestId)));
+      return serviceResult(async () =>
+        publish(await scope.repositories.agentWork.approveProposal(requestId)),
+      );
     },
     declineProposal(
       this: void,
@@ -63,7 +57,9 @@ export function createAgentWorkService({
       requestId: string,
       _input: z.output<typeof decideProposalInput>,
     ) {
-      return serviceResult(async () => publish(await work.declineProposal(db, scope, requestId)));
+      return serviceResult(async () =>
+        publish(await scope.repositories.agentWork.declineProposal(requestId)),
+      );
     },
     /** The owner's calls of their agents. */
     listInvocations(
@@ -80,7 +76,7 @@ export function createAgentWorkService({
       input: z.output<typeof decideInvocationInput>,
     ) {
       return serviceResult(async () =>
-        publish(await work.decideInvocation(db, scope, invocationId, input.decision)),
+        publish(await scope.repositories.agentWork.decideInvocation(invocationId, input.decision)),
       );
     },
     /** The owner's Calls log of one agent. */

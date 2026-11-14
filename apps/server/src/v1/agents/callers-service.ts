@@ -3,26 +3,18 @@ import type {
   listCallersInput,
   saveCallerPolicyInput,
 } from "@substrate/contracts/agents";
-import * as work from "@substrate/database/agent-work";
-import type { Database } from "@substrate/database/trusted";
 
+import type { CommittedPublisher } from "../../shared/committed";
 import type { WorkspaceScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
-import type { CommittedPublisher } from "../realtime/committed";
 import type { z } from "zod";
 
 /** Who may call an agent. Only the agent's owner reads or changes it. */
-export function createCallerService({
-  db,
-  publish,
-}: {
-  db: Database;
-  publish: CommittedPublisher;
-}) {
+export function createCallerService({ publish }: { publish: CommittedPublisher }) {
   return {
     savePolicy(this: void, scope: WorkspaceScope, input: z.output<typeof saveCallerPolicyInput>) {
       return serviceResult(async () =>
-        publish(await work.saveCallerPolicy(db, scope, input.agentId, input.policy)),
+        publish(await scope.repositories.agentWork.saveCallerPolicy(input.agentId, input.policy)),
       );
     },
     listCallers(this: void, scope: WorkspaceScope, input: z.output<typeof listCallersInput>) {
@@ -30,12 +22,14 @@ export function createCallerService({
     },
     allowCaller(this: void, scope: WorkspaceScope, input: z.output<typeof agentCallerInput>) {
       return serviceResult(async () =>
-        publish(await work.allowCaller(db, scope, input.agentId, input.callerActorId)),
+        publish(await scope.repositories.agentWork.allowCaller(input.agentId, input.callerActorId)),
       );
     },
     removeCaller(this: void, scope: WorkspaceScope, input: z.output<typeof agentCallerInput>) {
       return serviceResult(async () =>
-        publish(await work.removeCaller(db, scope, input.agentId, input.callerActorId)),
+        publish(
+          await scope.repositories.agentWork.removeCaller(input.agentId, input.callerActorId),
+        ),
       );
     },
   };

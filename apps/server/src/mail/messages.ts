@@ -1,4 +1,5 @@
-import { desktopHandoffURL } from "../desktop/service";
+import { desktopHandoffURL } from "@substrate/contracts/desktop/links";
+
 import { frontendAuthLink, invitationLink } from "./links";
 
 /** Where links in emails point: the public web app and the public API. */

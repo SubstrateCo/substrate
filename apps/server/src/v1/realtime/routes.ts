@@ -29,6 +29,9 @@ export function createRealtimeRoutes(hub: RealtimeHub, trustedOrigins: string[])
           organizationId: realtimeConnectInput.shape.organizationId.unwrap().optional(),
         })
         .strict(),
+      (result, c) => {
+        if (!result.success) return c.body(null, 400);
+      },
     ),
     async (c, next) => {
       let connection: Connection | null = null;

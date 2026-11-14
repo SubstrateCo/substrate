@@ -10,7 +10,11 @@ import {
 } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
-import { messagingConversations, messagingParticipants } from "../messaging/schema";
+import {
+  messagingConversations,
+  messagingMessages,
+  messagingParticipants,
+} from "../messaging/schema";
 import { applyMessageEffects } from "./message-effects";
 import { messageEntityReferences } from "./schema";
 import { expect, test } from "bun:test";
@@ -161,11 +165,15 @@ test("notification recipients use one conflict-safe insert-select for one or man
   expect(notices.map((row) => `${row.recipientActorEntityId}:${row.kind}`).sort()).toEqual(
     [`${f.bob}:mention`, `${bobB.entityId}:mention`, `${outsiderA.entityId}:reply`].sort(),
   );
+  const [stored] = await f.db
+    .select()
+    .from(messagingMessages)
+    .where(eq(messagingMessages.id, mentioned.id));
   await f.db.transaction((tx) =>
     applyMessageEffects(
       new RepositoryContext(tx, { organizationId: f.orgA, actorEntityId: f.alice }),
       { userId: "alice", organizationId: f.orgA },
-      mentioned,
+      stored!,
       channel,
     ),
   );

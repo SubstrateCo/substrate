@@ -1,21 +1,28 @@
+import type { crmActivityList } from "@substrate/contracts/crm/activity";
 import type { CrmWrite } from "@substrate/contracts/crm/input";
 
+import type { CommittedPublisher } from "../../shared/committed";
 import type { WorkspaceScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
-import type { CommittedPublisher } from "../realtime/committed";
 import { exportCrm } from "./export";
 import { createCrmManagementService } from "./management";
+import type { z } from "zod";
 
 type List = Parameters<WorkspaceScope["repositories"]["crm"]["listAccounts"]>[0];
 export function createCrmService(deps: { publish: CommittedPublisher }) {
   return {
     ...createCrmManagementService(),
     export: exportCrm,
-    activity: (
-      scope: WorkspaceScope,
-      id: string,
-      options?: Parameters<WorkspaceScope["repositories"]["crm"]["activity"]>[1],
-    ) => serviceResult(() => scope.repositories.crm.activity(id, options)),
+    activity: (scope: WorkspaceScope, input: z.output<typeof crmActivityList>) =>
+      serviceResult(() =>
+        scope.repositories.crm.activity(input.entityId, {
+          limit: input.limit,
+          before:
+            input.beforeCreatedAt && input.beforeId
+              ? { createdAt: input.beforeCreatedAt, id: input.beforeId }
+              : undefined,
+        }),
+      ),
     timeline: (
       scope: WorkspaceScope,
       id: string,

@@ -5,9 +5,9 @@ import type {
   setAgentPictureInput,
 } from "@substrate/contracts/agents";
 
+import type { CommittedPublisher } from "../../shared/committed";
 import type { UserScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
-import type { CommittedPublisher } from "../realtime/committed";
 import type { z } from "zod";
 
 export function createAgentService({ publish }: { publish: CommittedPublisher }) {

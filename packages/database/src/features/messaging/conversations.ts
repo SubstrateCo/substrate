@@ -12,7 +12,12 @@ import { AccessDeniedError, ValidationError } from "../../errors";
 import { messageEntityReferences } from "../context/schema";
 import { withRemovalHints } from "../realtime/routing";
 import { tasks } from "../tasks/tasks.schema";
-import { loadConversation, lockConversation, visibleConversations } from "./access";
+import {
+  loadConversation,
+  lockConversation,
+  visibleConversations,
+  type Conversation,
+} from "./access";
 import {
   directMessageKey,
   externalDirectMessageKey,
@@ -46,6 +51,21 @@ interface CreateConversationInput {
 // An unnamed conversation is named after the given members.
 function displayName(name: string | null, members: { name: string }[]) {
   return name ?? (members.map((person) => person.name).join(", ") || null);
+}
+
+// The client view of a conversation. The DM key holds organization, actor and invited email IDs.
+function conversationView(conversation: Conversation) {
+  const { id, organizationId, kind, taskEntityId, name, createdBy, createdAt } = conversation;
+  return {
+    id,
+    organizationId,
+    kind,
+    taskEntityId,
+    name,
+    private: conversation.private,
+    createdBy,
+    createdAt,
+  };
 }
 
 // Conversation membership and management. Scope comes from the authenticated session.
@@ -171,7 +191,7 @@ export function conversationOperations(
               own: org.id === scope.organizationId,
             }));
           return {
-            ...row,
+            ...conversationView(row),
             task,
             canPost: row.taskEntityId ? !!discussion?.canPost : true,
             organizations: channelOrganizations,
@@ -215,7 +235,7 @@ export function conversationOperations(
         let dmKey: string | null = null;
         if (input.kind === "dm" && external.length) {
           const existing = await findExternalDirectMessage(tx, scope, external[0]!);
-          if (existing) return existing;
+          if (existing) return conversationView(existing);
           dmKey = externalDirectMessageKey(scope, external[0]!);
         } else if (input.kind === "dm")
           dmKey = directMessageKey(scope.organizationId, [actor.entityId, selected[0]!.entityId]);
@@ -242,10 +262,10 @@ export function conversationOperations(
             : existingQuery);
           // A deletion or another re-invite can release the key while the insert waits.
           if (!existing) continue;
-          if (!external.length) return existing;
+          if (!external.length) return conversationView(existing);
           // Read validity after the wait: a concurrent creator may just have queued its invite.
           const valid = await findExternalDirectMessage(tx, scope, external[0]!);
-          if (valid) return valid;
+          if (valid) return conversationView(valid);
           // Expired/revoked invitations and departed or disconnected people do not reserve a DM.
           await tx
             .update(messagingConversations)
@@ -267,7 +287,7 @@ export function conversationOperations(
           viewer,
         );
         changed(tx, conversation!.id);
-        return conversation!;
+        return conversationView(conversation!);
       });
     },
 

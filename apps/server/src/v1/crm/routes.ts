@@ -16,19 +16,9 @@ import { Hono } from "hono";
 
 export function createCrmRoutes(service: CrmService, scopes: Scopes) {
   return new Hono<ScopeEnv>()
-    .get("/activity", v("query", crmActivityList), scopes.workspace("query"), async (c) => {
-      const input = c.req.valid("query");
-      return respond(
-        c,
-        await service.activity(c.var.scope, input.entityId, {
-          limit: input.limit,
-          before:
-            input.beforeCreatedAt && input.beforeId
-              ? { createdAt: input.beforeCreatedAt, id: input.beforeId }
-              : undefined,
-        }),
-      );
-    })
+    .get("/activity", v("query", crmActivityList), scopes.workspace("query"), async (c) =>
+      respond(c, await service.activity(c.var.scope, c.req.valid("query"))),
+    )
     .get("/report-deals", v("query", crmReportDeals), scopes.workspace("query"), async (c) =>
       respond(c, await service.reportDeals(c.var.scope, c.req.valid("query"))),
     )

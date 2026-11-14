@@ -1,8 +1,8 @@
 import type { InteractionWrite } from "@substrate/contracts/context/interactions";
 
+import type { CommittedPublisher } from "../../shared/committed";
 import type { WorkspaceScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
-import type { CommittedPublisher } from "../realtime/committed";
 
 export function createContactInteractionsService(deps: { publish: CommittedPublisher }) {
   return {

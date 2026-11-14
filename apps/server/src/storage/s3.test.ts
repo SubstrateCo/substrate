@@ -1,4 +1,5 @@
 import { createS3Storage } from "./s3";
+import { ObjectNotFoundError } from "./types";
 import { expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
 
@@ -8,6 +9,11 @@ test("read enforces byte limits", async () => {
     port: 0,
     fetch(request) {
       if (new URL(request.url).pathname.endsWith("/empty")) return new Response("");
+      if (new URL(request.url).pathname.endsWith("/missing"))
+        return new Response(
+          "<Error><Code>NoSuchKey</Code><Message>The specified key does not exist.</Message></Error>",
+          { status: 404, headers: { "content-type": "application/xml" } },
+        );
       return new Response("object");
     },
   });
@@ -25,6 +31,7 @@ test("read enforces byte limits", async () => {
       name: "RangeError",
       message: "Object exceeds size limit.",
     });
+    await rejects(storage.read("missing", 5), ObjectNotFoundError);
   } finally {
     await server.stop(true);
   }

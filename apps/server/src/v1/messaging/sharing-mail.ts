@@ -2,7 +2,7 @@ import { claimSharingMail, finishSharingMail } from "@substrate/database/messagi
 import type { Database } from "@substrate/database/trusted";
 
 import type { MailService } from "../../mail/service";
-import type { CommittedPublisher } from "../realtime/committed";
+import type { CommittedPublisher } from "../../shared/committed";
 import { SharingMailWorker } from "./sharing-mail-worker";
 
 export function createSharingMail(deps: {

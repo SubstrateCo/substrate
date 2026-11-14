@@ -10,11 +10,12 @@ import { createServerDatabase } from "./infrastructure/database";
 import { createRuntimeMetrics } from "./infrastructure/runtime-metrics";
 import { createSmtpMail } from "./mail/service";
 import { createServices } from "./services";
+import { createCommittedPublisher } from "./shared/committed";
 import { createScopes } from "./shared/scope";
 import { createS3Storage } from "./storage/s3";
 import { createSharingMail } from "./v1/messaging/sharing-mail";
-import { createCommittedPublisher } from "./v1/realtime/committed";
 import { createRedisPublisher } from "./v1/realtime/publisher";
+import { createRealtimeRoutes } from "./v1/realtime/routes";
 import { createRealtimeService } from "./v1/realtime/service";
 
 const { db, close: closeDatabase } = createServerDatabase();
@@ -38,20 +39,21 @@ const scopes = createScopes({
   },
 });
 const realtime = createRealtimeService({ db, auth });
+const realtimeRoutes = createRealtimeRoutes(realtime.hub, environment.trustedOrigins);
 const metrics = createRuntimeMetrics(environment.serverMetrics, environment.databasePoolSize);
 const app = createApp({
   auth,
   services,
   scopes,
   trustedOrigins: environment.trustedOrigins,
-  realtime,
+  realtime: realtimeRoutes,
   metrics,
 });
 await realtime.start();
 const stopSharingMail = sharingMail.start();
 const server = Bun.serve({
   port: environment.port,
-  websocket: realtime.websocket,
+  websocket: realtimeRoutes.websocket,
   fetch: app.fetch,
 });
 console.log(`Substrate API listening on ${server.url}`);

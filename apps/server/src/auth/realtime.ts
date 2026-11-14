@@ -2,7 +2,7 @@ import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 import { invitationRefreshHints, profileRefreshHints } from "@substrate/database/realtime";
 import type { Database } from "@substrate/database/trusted";
 
-import type { CommittedPublisher } from "../v1/realtime/committed";
+import type { CommittedPublisher } from "../shared/committed";
 
 // Better Auth runs these hooks after its own writes commit, so their hints publish as committed.
 export function createAuthPublisher(db: Database, publish: CommittedPublisher) {

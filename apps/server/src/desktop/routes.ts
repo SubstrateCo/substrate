@@ -35,11 +35,10 @@ export function createDesktopRoutes(
       return c.redirect(config.windowsDownloadURL, 303);
     })
     .get("/open", zValidator("query", z.object({ path: desktopPath }), validationHook), (c) => {
-      const result = openDesktop(c.req.valid("query").path, config.desktopScheme);
-      if (!result.success) return respond(c, result);
-      const browserURL = new URL(c.req.valid("query").path, config.webURL).toString();
-      const downloadURL = new URL("/download", config.webURL);
-      downloadURL.searchParams.set("redirect", c.req.valid("query").path);
+      const { link, browserURL, downloadURL } = openDesktop(c.req.valid("query").path, {
+        scheme: config.desktopScheme,
+        webURL: config.webURL,
+      });
       return c.html(
         html`<!doctype html>
           <html lang="en">
@@ -52,9 +51,9 @@ export function createDesktopRoutes(
               <main>
                 <h1>Continue in Substrate</h1>
                 <p>Open the desktop app, or finish setup in your browser before installing.</p>
-                <p><a href="${result.data.link}" rel="noreferrer">Open Substrate</a></p>
+                <p><a href="${link}" rel="noreferrer">Open Substrate</a></p>
                 <p><a href="${browserURL}" rel="noreferrer">Continue in browser</a></p>
-                <p><a href="${downloadURL.toString()}" rel="noreferrer">Download Substrate</a></p>
+                <p><a href="${downloadURL}" rel="noreferrer">Download Substrate</a></p>
                 <p>After installing, return to this page and choose Open Substrate.</p>
               </main>
             </body>

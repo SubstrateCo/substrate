@@ -49,6 +49,53 @@ test("send and replay reuse authenticated identity and the locked conversation",
   );
 });
 
+test("concurrent sends with one request create one message and both return it", async () => {
+  await verified();
+  const channel = await service("alice").createConversation({ kind: "channel", name: "retry" });
+  const requestId = crypto.randomUUID();
+  const held = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  // The first send stays uncommitted, so the second passes the replay lookup and races the insert.
+  const open = fixture.db.transaction(async (tx) => {
+    const sent = await createMessagingService(tx, {
+      userId: "alice",
+      organizationId: fixture.orgA,
+    }).sendMessage(channel.id, "hello", undefined, requestId);
+    held.resolve();
+    await release.promise;
+    return sent;
+  });
+  await held.promise;
+  const retry = service("alice").sendMessage(channel.id, "hello", undefined, requestId);
+  const changed = rejection(
+    service("alice").sendMessage(channel.id, "changed", undefined, requestId),
+  );
+  await Bun.sleep(200);
+  release.resolve();
+  const [first, second] = await Promise.all([open, retry]);
+  expect(await changed).toBeInstanceOf(ConflictError);
+  expect(second.id).toBe(first.id);
+  const rows = await fixture.db
+    .select({ id: messagingMessages.id })
+    .from(messagingMessages)
+    .where(eq(messagingMessages.requestId, requestId));
+  expect(rows).toEqual([{ id: first.id }]);
+});
+
+test("message views show a request ID only to its author and omit internal columns", async () => {
+  await verified();
+  const channel = await service("alice").createConversation({ kind: "channel", name: "ids" });
+  const requestId = crypto.randomUUID();
+  const sent = await service("alice").sendMessage(channel.id, "hello", undefined, requestId);
+  expect(sent.requestId).toBe(requestId);
+  expect((await service("alice").listMessages(channel.id))[0]?.requestId).toBe(requestId);
+  const [seen] = await service("bob").listMessages(channel.id);
+  expect(seen).toMatchObject({ id: sent.id, requestId: null });
+  for (const view of [sent, seen])
+    for (const column of ["authorOrganizationId", "isRoot", "threadRoot"])
+      expect(view).not.toHaveProperty(column);
+});
+
 test("send hints come from the write itself and describe only what the message changed", async () => {
   await verified();
   const channel = await service("alice").createConversation({ kind: "channel", name: "general" });

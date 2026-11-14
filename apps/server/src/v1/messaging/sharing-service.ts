@@ -8,9 +8,9 @@ import type {
   sharingRemoveInput,
 } from "@substrate/contracts/messaging/sharing";
 
+import type { CommittedPublisher } from "../../shared/committed";
 import type { UserScope, WorkspaceScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
-import type { CommittedPublisher } from "../realtime/committed";
 import type { z } from "zod";
 
 export function createSharingService({ publish }: { publish: CommittedPublisher }) {

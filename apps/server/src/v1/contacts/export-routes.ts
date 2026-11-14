@@ -1,18 +1,17 @@
-import { crmExport } from "@substrate/contracts/crm/export";
+import { contactsExport } from "@substrate/contracts/crm/export";
 
 import { respond, v } from "../../shared/http";
 import type { ScopeEnv, Scopes } from "../../shared/scope";
-import { exportCrm } from "../crm/export";
+import type { ContactsService } from "./service";
 import { Hono } from "hono";
-import { z } from "zod";
 
-export function createContactsExportRoutes(scopes: Scopes) {
+export function createContactsExportRoutes(service: ContactsService, scopes: Scopes) {
   return new Hono<ScopeEnv>().get(
     "/export",
-    v("query", crmExport.extend({ kind: z.literal("contacts").default("contacts") })),
+    v("query", contactsExport),
     scopes.workspace("query"),
     async (c) => {
-      const result = await exportCrm(c.var.scope, c.req.valid("query"));
+      const result = await service.export(c.var.scope, c.req.valid("query"));
       if (!result.success) return respond(c, result);
       return c.body(result.data, 200, {
         "Content-Type": "text/csv; charset=utf-8",

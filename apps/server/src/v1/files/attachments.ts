@@ -6,10 +6,10 @@ import type {
 } from "@substrate/contracts/files/attachments";
 import { MAX_FILE_BYTES } from "@substrate/contracts/files/input";
 
+import type { CommittedPublisher } from "../../shared/committed";
 import type { WorkspaceScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
 import type { ObjectStorage } from "../../storage/types";
-import type { CommittedPublisher } from "../realtime/committed";
 import { previewAttachmentImage } from "./attachment-image";
 import type { z } from "zod";
 

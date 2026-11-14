@@ -6,9 +6,9 @@ import type {
   tasksWrite,
 } from "@substrate/contracts/tasks/input";
 
+import type { createCommittedPublisher } from "../../shared/committed";
 import type { WorkspaceScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
-import type { createCommittedPublisher } from "../realtime/committed";
 import type { z } from "zod";
 
 export function createTasksService(deps: {

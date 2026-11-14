@@ -1,10 +1,11 @@
 import { environment, type ServerEnvironment } from "../environment";
-import type { ObjectStorage } from "./types";
+import { ObjectNotFoundError, type ObjectStorage } from "./types";
 import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
   DeleteObjectsCommand,
+  type GetObjectCommandOutput,
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 
@@ -36,7 +37,14 @@ export function createS3Storage(
       return { url, headers: { "Content-Type": contentType } };
     },
     async read(key, maxBytes) {
-      const object = await client.send(new GetObjectCommand({ Bucket, Key: key }));
+      let object: GetObjectCommandOutput;
+      try {
+        object = await client.send(new GetObjectCommand({ Bucket, Key: key }));
+      } catch (error) {
+        if (error instanceof Error && ["NoSuchKey", "NotFound"].includes(error.name))
+          throw new ObjectNotFoundError("Object not found.", { cause: error });
+        throw error;
+      }
       if (!object.Body) throw new Error("Object has no body.");
       if (object.ContentLength !== undefined && object.ContentLength > maxBytes) {
         await object.Body.transformToWebStream().cancel();

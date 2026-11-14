@@ -15,6 +15,12 @@ async function fixture() {
       },
       canReadPicture: async () => allowed,
     },
+    projects: {
+      requireEdit: async () => {
+        if (!allowed) throw new ServiceError("FORBIDDEN", "Access denied.");
+      },
+      canRead: async () => allowed,
+    },
     storage: {
       put: async (key, bytes) => {
         objects.set(key, bytes);
@@ -118,6 +124,22 @@ test("project icons reuse the picture upload pipeline with a project-specific ob
   const denied = await f.service.upload(scope, "project-icon", await f.image("blue"), "org", id);
   expect(denied.success).toBe(false);
   expect(f.objects.get(key)).toEqual(previous);
+});
+
+test("project icons check project access and other pictures check workspace access", async () => {
+  const service = createPictureService({
+    repository: {
+      requirePictureAccess: async () => {
+        throw new ServiceError("FORBIDDEN", "Access denied.");
+      },
+      canReadPicture: async () => false,
+    },
+    projects: { requireEdit: async () => {}, canRead: async (_scope, id) => id === "project" },
+    storage: { put: async () => {}, signDownload: async (key) => `https://s3.test/${key}` },
+  });
+  expect((await service.content(scope, "project-icon", "project")).success).toBe(true);
+  expect((await service.content(scope, "organization-logo", "project")).success).toBe(false);
+  expect((await service.content(scope, "project-icon", "other")).success).toBe(false);
 });
 
 test("project icons require a target project and cannot cross the active workspace", async () => {

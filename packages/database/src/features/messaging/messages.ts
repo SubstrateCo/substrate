@@ -102,6 +102,22 @@ async function messageSummaries(
   );
 }
 
+// The client view of a message. A request ID is private to the message's author.
+function messageView(message: typeof messagingMessages.$inferSelect, viewerActorEntityId: string) {
+  return {
+    id: message.id,
+    conversationId: message.conversationId,
+    authorActorEntityId: message.authorActorEntityId,
+    body: message.body,
+    requestId: message.authorActorEntityId === viewerActorEntityId ? message.requestId : null,
+    threadId: message.threadId,
+    originTurnId: message.originTurnId,
+    editedAt: message.editedAt,
+    deletedAt: message.deletedAt,
+    createdAt: message.createdAt,
+  };
+}
+
 // Messages with their author. Callers add the filters that authorize each message.
 export function selectMessages(db: DatabaseExecutor, scope: SessionIdentity) {
   return db
@@ -140,7 +156,7 @@ export async function messageViews(
     rows.map((row) => row.message),
   );
   return rows.map(({ message, authorOwnerUserId, ...author }) => ({
-    ...message,
+    ...messageView(message, viewerActorEntityId),
     canModify:
       !scope.actorEntityId &&
       !message.deletedAt &&
@@ -181,53 +197,57 @@ export async function sendMessageAs(
   if (conversation.taskEntityId)
     await ctx.requireAccess(conversation.taskEntityId, "comment", true);
   validateBody(body, fileIds.length);
-  if (requestId) {
+  const findRequest = async (id: string) => {
     const [existing] = await tx
       .select()
       .from(messagingMessages)
       .where(
         and(
           eq(messagingMessages.authorActorEntityId, actor.entityId),
-          eq(messagingMessages.requestId, requestId),
+          eq(messagingMessages.requestId, id),
         ),
       );
-    if (existing) {
-      if (existing.deletedAt || existing.editedAt)
-        throw new ConflictError("This message has changed since it was sent.");
-      const attachments = await messageAttachmentMetadata(tx, [existing.id]);
-      const sameAttachments =
-        JSON.stringify(attachments.map((item) => item.fileId)) === JSON.stringify(fileIds);
-      const sameContent = existing.body === body && sameAttachments;
-      if (
-        existing.conversationId !== conversationId ||
-        !sameContent ||
-        existing.threadId !== (threadId ?? null)
-      )
-        throw new ConflictError("This request was already used for another message.");
-      const reactions: { emoji: string; count: number; reacted: boolean }[] = [];
-      ctx.effects.replay(
-        messageChangeHints(
-          {
-            conversationId,
-            organizationId: scope.organizationId,
-            messageId: existing.id,
-            threadId: existing.threadId,
-          },
-          { joined: false },
-        ),
-      );
-      return {
-        ...existing,
-        attachments,
-        authorName,
-        authorType: actor.type,
-        reactions,
-        replyCount: 0,
-      };
-    }
+    return existing;
+  };
+  const replay = async (existing: typeof messagingMessages.$inferSelect) => {
+    if (existing.deletedAt || existing.editedAt)
+      throw new ConflictError("This message has changed since it was sent.");
+    const attachments = await messageAttachmentMetadata(tx, [existing.id]);
+    const sameAttachments =
+      JSON.stringify(attachments.map((item) => item.fileId)) === JSON.stringify(fileIds);
+    const sameContent = existing.body === body && sameAttachments;
+    if (
+      existing.conversationId !== conversationId ||
+      !sameContent ||
+      existing.threadId !== (threadId ?? null)
+    )
+      throw new ConflictError("This request was already used for another message.");
+    const reactions: { emoji: string; count: number; reacted: boolean }[] = [];
+    ctx.effects.replay(
+      messageChangeHints(
+        {
+          conversationId,
+          organizationId: scope.organizationId,
+          messageId: existing.id,
+          threadId: existing.threadId,
+        },
+        { joined: false },
+      ),
+    );
+    return {
+      ...messageView(existing, actor.entityId),
+      attachments,
+      authorName,
+      authorType: actor.type,
+      reactions,
+      replyCount: 0,
+    };
+  };
+  if (requestId) {
+    const existing = await findRequest(requestId);
+    if (existing) return replay(existing);
   }
   if (threadId) await requireThreadRoot(tx, conversationId, threadId);
-  await publishFiles(ctx, conversation, fileIds);
   let joined = false;
   // Posting rejoins a public channel the person left. Private conversations are not visible after
   // leaving, so the access check fails first.
@@ -245,30 +265,41 @@ export async function sendMessageAs(
       requestId,
       originTurnId,
     })
+    // A concurrent send with this request waits for the first to commit, then replays it.
+    .onConflictDoNothing({
+      target: [messagingMessages.authorActorEntityId, messagingMessages.requestId],
+    })
     .returning();
+  if (!created) {
+    const existing = requestId ? await findRequest(requestId) : undefined;
+    if (!existing) throw new ConflictError("This request is being retried. Try again.");
+    return replay(existing);
+  }
+  // Publish only for a new message, so a replayed request does not publish its files again.
+  await publishFiles(ctx, conversation, fileIds);
   if (fileIds.length)
     await tx.insert(messageAttachments).values(
       fileIds.map((fileId, position) => ({
         conversationId,
-        messageId: created!.id,
+        messageId: created.id,
         fileOrganizationId: scope.organizationId,
         fileId,
         addedByActorEntityId: actor.entityId,
         position,
       })),
     );
-  const attachments = await messageAttachmentMetadata(tx, fileIds.length ? [created!.id] : []);
-  const effects = await applyMessageEffects(ctx, scope, created!, conversation);
+  const attachments = await messageAttachmentMetadata(tx, fileIds.length ? [created.id] : []);
+  const effects = await applyMessageEffects(ctx, scope, created, conversation);
   const wakeHints = conversation.taskEntityId
     ? []
-    : await routeWake(tx, scope, created!, conversation.kind);
+    : await routeWake(tx, scope, created, conversation.kind);
   for (const hint of [
     ...messageChangeHints(
       {
         conversationId,
         organizationId: scope.organizationId,
-        messageId: created!.id,
-        threadId: created!.threadId,
+        messageId: created.id,
+        threadId: created.threadId,
       },
       { joined, ...effects },
     ),
@@ -277,7 +308,7 @@ export async function sendMessageAs(
     ctx.effects.hint(hint);
   const initialReactions: { emoji: string; count: number; reacted: boolean }[] = [];
   return {
-    ...created!,
+    ...messageView(created, actor.entityId),
     attachments,
     authorName,
     authorType: actor.type,
@@ -419,7 +450,7 @@ export function messageOperations(
             message
               ? [
                   {
-                    ...message,
+                    ...messageView(message, actor.entityId),
                     canModify:
                       !scope.actorEntityId &&
                       !message.deletedAt &&
