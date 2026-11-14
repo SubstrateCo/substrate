@@ -8,7 +8,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Spinner } from "../ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { openPicture } from "./crop-image";
+import { openPicture, pictureErrorMessage } from "./crop-image";
 import { FileUpload } from "./file-upload";
 import { pictureAccept, pictureMaxSize } from "./file-validation";
 import { ImageCropDialog, type PictureUploadContext } from "./image-crop-dialog";
@@ -47,7 +47,7 @@ export function PictureUpload({
   disabled = false,
   name: owner,
 }: PictureUploadProps) {
-  const [source, setSource] = useState<File | null>(null);
+  const [source, setSource] = useState<{ file: File; src: string } | null>(null);
   const chooseButton = useRef<HTMLButtonElement | null>(null);
   // Opening checks the image before the crop dialog shows it.
   const open = useMutation({
@@ -55,8 +55,12 @@ export function PictureUpload({
       (await openPicture(file)).close();
       return file;
     },
-    onSuccess: setSource,
+    onSuccess: (file) => setSource({ file, src: URL.createObjectURL(file) }),
   });
+  function closeSource() {
+    if (source) URL.revokeObjectURL(source.src);
+    setSource(null);
+  }
   const name = {
     avatar: "Profile picture",
     "organization-logo": "Organization logo",
@@ -80,8 +84,7 @@ export function PictureUpload({
         pending={open.isPending}
         label={value ? "Replace picture" : "Choose picture"}
         description="Drop an image here. JPEG, PNG, or WebP, up to 5 MB."
-        // oxlint-disable-next-line design/no-raw-error-message -- openPicture throws only its own reviewed copy, such as the size and format limits.
-        error={open.error && (open.error.message || "This image could not be opened.")}
+        error={open.error && pictureErrorMessage(open.error)}
         preview={
           kind === "avatar" ? (
             <Avatar variant="picture" className="size-16 shrink-0">
@@ -133,16 +136,17 @@ export function PictureUpload({
       />
       {source && (
         <ImageCropDialog
-          file={source}
+          file={source.file}
+          src={source.src}
           kind={kind}
           uploading={uploading}
           uploadError={uploadError}
           onRestoreFocus={() => chooseButton.current?.focus()}
-          onCancel={() => setSource(null)}
+          onCancel={closeSource}
           onUpload={(blob, context) =>
             onUpload(
               { file: new File([blob], `${kind}.png`, { type: "image/png" }), ...context },
-              { onSuccess: () => setSource(null) },
+              { onSuccess: closeSource },
             )
           }
         />

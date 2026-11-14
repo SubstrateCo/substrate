@@ -14,7 +14,7 @@ const tanstackRecommendedRules = Object.fromEntries(
 );
 
 export default defineConfig({
-  ignorePatterns: [".opencode/**"],
+  ignorePatterns: [".opencode/**", "packages/design-lint/**"],
   plugins: ["unicorn", "typescript", "oxc", "react"],
   jsPlugins: [
     "ai-deslop",

@@ -25,8 +25,7 @@ function queryString(data: Data) {
 
 function queryValue(value: JSONValue): string {
   if (Array.isArray(value)) return value.map(queryValue).join(",");
-  // oxlint-disable-next-line deslop/no-runtime-typeof -- HTTP serialization boundary: objects need JSON; scalars use their string value.
-  return typeof value === "object" && value !== null ? JSON.stringify(value) : String(value);
+  return value instanceof Object ? JSON.stringify(value) : String(value);
 }
 
 function failureCode(status: number, code: JSONValue): FailureCode {

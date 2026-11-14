@@ -1,4 +1,4 @@
-import { checkImageDimensions, cropImage } from "./crop-image";
+import { checkImageDimensions, cropImage, pictureErrorMessage } from "./crop-image";
 import { expect, mock, test } from "bun:test";
 
 test("image dimensions bound raster memory independently of compressed file size", () => {
@@ -6,6 +6,19 @@ test("image dimensions bound raster memory independently of compressed file size
   expect(() => checkImageDimensions(8193, 1)).toThrow("8192");
   expect(() => checkImageDimensions(6000, 6000)).toThrow("32 megapixels");
   expect(() => checkImageDimensions(0, 10)).toThrow();
+});
+
+test("only picture limits reach the user; other failures show the fallback", () => {
+  let limit = new Error("checkImageDimensions did not throw");
+  try {
+    checkImageDimensions(8193, 1);
+  } catch (error) {
+    if (error instanceof Error) limit = error;
+  }
+  expect(pictureErrorMessage(limit)).toContain("8192 pixels");
+  expect(pictureErrorMessage(new Error("DOMException: decode failed"))).toBe(
+    "This image could not be opened.",
+  );
 });
 
 const picture = () =>

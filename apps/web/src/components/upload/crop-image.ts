@@ -4,11 +4,19 @@ export type CropArea = { x: number; y: number; width: number; height: number };
 const maxImagePixels = 32_000_000;
 const maxImageDimension = 8192;
 
+/** A picture the user must replace. Its message is reviewed copy that the UI can show. */
+export class PictureError extends Error {}
+
+/** Shows a picture's own limit, or a fallback for any other failure. */
+export function pictureErrorMessage(error: Error) {
+  return error instanceof PictureError ? error.message : "This image could not be opened.";
+}
+
 export function checkImageDimensions(width: number, height: number) {
   const hasValidSize = Number.isFinite(width + height) && width >= 1 && height >= 1;
   const withinDimensions = width <= maxImageDimension && height <= maxImageDimension;
   if (!hasValidSize || !withinDimensions || width * height > maxImagePixels) {
-    throw new Error("Choose an image up to 8192 pixels per side and 32 megapixels.");
+    throw new PictureError("Choose an image up to 8192 pixels per side and 32 megapixels.");
   }
 }
 
@@ -16,13 +24,15 @@ export async function openPicture(file: File, signal?: AbortSignal) {
   signal?.throwIfAborted();
   const error = await validatePicture(file);
   signal?.throwIfAborted();
-  if (error) throw new Error(error);
+  if (error) throw new PictureError(error);
   let image: ImageBitmap;
   try {
     image = await createImageBitmap(file, { imageOrientation: "from-image" });
   } catch {
     signal?.throwIfAborted();
-    throw new Error("This image could not be opened. Choose a valid JPEG, PNG, or WebP image.");
+    throw new PictureError(
+      "This image could not be opened. Choose a valid JPEG, PNG, or WebP image.",
+    );
   }
   try {
     signal?.throwIfAborted();

@@ -14,6 +14,7 @@ import {
   type APIRequestContext,
   type BrowserContext,
   type Page,
+  type ViewportSize,
 } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { z } from "zod";
@@ -47,6 +48,11 @@ export interface Client {
   ) => Promise<void>;
 }
 type Actors = { sender: Actor; member: Actor; partner: Actor };
+/** Worker contexts that tests reuse, so the HTTP cache outlives each test. */
+interface ContextPool {
+  take: (viewport: ViewportSize | null) => Promise<BrowserContext>;
+  release: (contexts: BrowserContext[]) => void;
+}
 
 const changedContexts = new WeakSet<BrowserContext>();
 
@@ -106,7 +112,7 @@ export const test = base.extend<
     /** Signs the actor in again, for tests that sign out. */
     freshSession: (actor: Actor) => Promise<Actor>;
   },
-  { actors: Actors; idleContexts: BrowserContext[] }
+  { actors: Actors; contextPool: ContextPool }
 >({
   actors: [
     async ({ playwright }, use, workerInfo) => {
@@ -187,17 +193,21 @@ export const test = base.extend<
     }
   },
 
-  idleContexts: [
-    // oxlint-disable-next-line no-empty-pattern -- Playwright fixtures must destructure their first argument.
-    async ({}, use) => {
+  contextPool: [
+    async ({ browser }, use) => {
       const idle: BrowserContext[] = [];
-      await use(idle);
+      await use({
+        take: async (viewport) =>
+          idle.pop() ??
+          (await browser.newContext({ baseURL: process.env.PLAYWRIGHT_BASE_URL, viewport })),
+        release: (contexts) => idle.push(...contexts),
+      });
       await Promise.all(idle.map((context) => context.close()));
     },
     { scope: "worker" },
   ],
 
-  client: async ({ browser, viewport, video, idleContexts }, use, testInfo) => {
+  client: async ({ browser, viewport, video, contextPool }, use, testInfo) => {
     const taken: BrowserContext[] = [];
     const recorded: BrowserContext[] = [];
     const pages: Page[] = [];
@@ -219,9 +229,7 @@ export const test = base.extend<
           // storage. Reusing contexts keeps the HTTP cache, which spares the dev server from
           // serving every module again. API responses are never cached, so only the session
           // cookies decide who the window is.
-          context =
-            idleContexts.pop() ??
-            (await browser.newContext({ baseURL: process.env.PLAYWRIGHT_BASE_URL, viewport }));
+          context = await contextPool.take(viewport);
           taken.push(context);
           await context.clearCookies();
           await context.addCookies(actor.state.cookies);
@@ -274,7 +282,7 @@ export const test = base.extend<
       await Promise.all(pages.map((page) => page.close()));
       // A context that a test changed for good is closed instead of reused.
       const changed = taken.filter((context) => changedContexts.has(context));
-      idleContexts.push(...taken.filter((context) => !changedContexts.has(context)));
+      contextPool.release(taken.filter((context) => !changedContexts.has(context)));
       await Promise.all([...changed, ...recorded].map((context) => context.close()));
       for (const [index, page] of recordings.entries()) {
         const path = await page.video()?.path();

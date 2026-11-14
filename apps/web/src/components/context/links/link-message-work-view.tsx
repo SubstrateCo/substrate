@@ -152,9 +152,8 @@ export function LinkMessageWork({
                       key={item.id}
                       type="button"
                       variant="secondary"
-                      size="xs"
-                      // oxlint-disable-next-line shadcn/no-restyle -- Compact selected chips must grow with wrapped identities; no supported size combines xs spacing with automatic height.
-                      className="h-auto max-w-full text-left whitespace-normal"
+                      size="chip"
+                      className="max-w-full"
                       disabled={pending}
                       onClick={() => toggle(item)}
                       aria-label={`Remove ${item.title} from selection`}

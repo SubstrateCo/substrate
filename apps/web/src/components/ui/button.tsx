@@ -36,6 +36,10 @@ const buttonVariants = cva(
         // A property value that opens a picker, such as a task's assignee. Reads as text at rest.
         property:
           "justify-start font-normal hover:bg-row-hover focus-visible:bg-row-hover active:scale-100 aria-expanded:bg-row-hover",
+        // A listbox option row, such as a reference picker result. The keyboard cursor is
+        // aria-selected; it is not a pressed or chosen state.
+        option:
+          "justify-start font-normal hover:bg-row-hover active:scale-100 aria-selected:bg-row-highlight aria-selected:hover:bg-row-highlight",
         // A popover or combobox trigger that is a form field (task Assignee, Time zone). It has
         // the field boundary and height of Input and SelectTrigger. Inline values in a row or
         // inspector stay `property`.
@@ -58,9 +62,15 @@ const buttonVariants = cva(
         "icon-sm": "size-7 rounded-md in-data-[slot=button-group]:rounded-lg",
         "icon-lg": "size-9",
         selection: "h-auto min-h-12 px-3 py-2",
+        // xs spacing for a removable chip whose label wraps, so it grows with its text.
+        chip: "h-auto min-h-6 gap-1 rounded-md px-2 py-1 text-left text-xs whitespace-normal [&_svg:not([class*='size-'])]:size-3",
       },
     },
-    compoundVariants: [{ variant: "sidebar", size: "default", className: "gap-2 px-2" }],
+    compoundVariants: [
+      { variant: "sidebar", size: "default", className: "gap-2 px-2" },
+      // Option rows grow with a wrapped title and description.
+      { variant: "option", size: "default", className: "h-auto py-1.5" },
+    ],
     defaultVariants: {
       variant: "default",
       size: "default",

@@ -1,6 +1,6 @@
 import type { PictureKind } from "@substrate/contracts/files/pictures";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 import { Button } from "../ui/button";
 import {
@@ -20,6 +20,8 @@ import { usePictureUpload } from "@/components/upload/use-picture-upload";
 
 export interface ImageCropDialogProps {
   file: File;
+  /** An object URL for `file`. The caller creates it and revokes it after the dialog closes. */
+  src: string;
   kind: PictureKind;
   /** The caller's upload mutation state. */
   uploading: boolean;
@@ -49,6 +51,7 @@ function cropDescription(kind: ImageCropDialogProps["kind"], mode: "fit" | "fill
 /** Mount for one source file; unmount on cancel or successful confirmation. */
 export function ImageCropDialog({
   file,
+  src,
   kind,
   uploading,
   uploadError,
@@ -56,7 +59,6 @@ export function ImageCropDialog({
   onCancel,
   onRestoreFocus,
 }: ImageCropDialogProps) {
-  const [src, setSrc] = useState<string | null>(null);
   const [crop, setCrop] = useState({ x: 0, y: 0 });
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
@@ -76,12 +78,6 @@ export function ImageCropDialog({
   const error = mediaFailed
     ? "This image could not be opened. Choose another image."
     : upload.error;
-  useEffect(() => {
-    const url = URL.createObjectURL(file);
-    // oxlint-disable-next-line react/set-state-in-effect -- This effect owns the object URL: publish it after creation and revoke it on cleanup, including Strict Mode replay.
-    setSrc(url);
-    return () => URL.revokeObjectURL(url);
-  }, [file]);
   function reset() {
     setCrop({ x: 0, y: 0 });
     setZoom(1);
@@ -123,22 +119,20 @@ export function ImageCropDialog({
         </DialogHeader>
         <DialogBody>
           <fieldset disabled={pending} className="min-w-0 space-y-3">
-            {src && (
-              <div inert={pending}>
-                <ImageCropper
-                  src={src}
-                  kind={kind}
-                  crop={crop}
-                  zoom={zoom}
-                  rotation={rotation}
-                  mode={mode}
-                  onCropChange={setCrop}
-                  onZoomChange={setZoom}
-                  onCropComplete={setArea}
-                  onError={() => setMediaFailed(true)}
-                />
-              </div>
-            )}
+            <div inert={pending}>
+              <ImageCropper
+                src={src}
+                kind={kind}
+                crop={crop}
+                zoom={zoom}
+                rotation={rotation}
+                mode={mode}
+                onCropChange={setCrop}
+                onZoomChange={setZoom}
+                onCropComplete={setArea}
+                onError={() => setMediaFailed(true)}
+              />
+            </div>
             <ImageCropControls
               kind={kind}
               mode={mode}
@@ -178,7 +172,7 @@ export function ImageCropDialog({
           <Button
             type="button"
             aria-busy={pending}
-            disabled={pending || mediaFailed || !src || (mode === "fill" && !area)}
+            disabled={pending || mediaFailed || (mode === "fill" && !area)}
             onClick={confirm}
           >
             Save picture

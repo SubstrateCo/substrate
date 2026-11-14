@@ -50,8 +50,7 @@ export function ImageCropper({
           zoom={zoom}
           rotation={rotation}
           aspect={1}
-          // oxlint-disable-next-line deslop/no-shape-in-symbol-names -- react-easy-crop requires the cropShape prop name.
-          cropShape={kind === "avatar" ? "round" : "rect"}
+          classes={{ cropAreaClassName: kind === "avatar" ? "rounded-full" : undefined }}
           showGrid={false}
           onCropChange={onCropChange}
           onZoomChange={onZoomChange}

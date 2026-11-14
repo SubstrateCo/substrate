@@ -133,8 +133,8 @@ export function connectRealtime(
       socket.close();
     }, readyTimeoutMs);
     socket.onmessage = (event) => {
-      // oxlint-disable-next-line deslop/no-runtime-typeof -- WebSocket input boundary: only text frames contain JSON hints.
-      if (!ended && typeof event?.data === "string") receive(event.data);
+      // Only text frames carry JSON hints. Binary frames arrive as ArrayBuffer or Blob objects.
+      if (event && !ended && !(event.data instanceof Object)) receive(event.data);
     };
     // The runtime passes the close event; the published types omit it.
     // SAFETY: k6 accepts the standard close event name; EventName is a string enum in its declarations.
