@@ -13,7 +13,9 @@ import { createAgentsRoutes } from "./v1/agents/routes";
 import { createContactsRoutes } from "./v1/contacts/routes";
 import { createContactInteractionsRoutes } from "./v1/context/interactions-routes";
 import { createContextRoutes } from "./v1/context/routes";
+import { createCrmExportRoutes } from "./v1/crm/export-routes";
 import { createCrmFromMessageRoutes } from "./v1/crm/from-message-routes";
+import { createCrmManagementRoutes } from "./v1/crm/management-routes";
 import { createCrmRoutes } from "./v1/crm/routes";
 import { createAttachmentRoutes } from "./v1/files/attachment-routes";
 import { createPictureRoutes } from "./v1/files/picture-routes";
@@ -89,6 +91,8 @@ export function createApp({
     .route("/api/v1/files/attachments", createAttachmentRoutes(services.attachments, scopes))
     .route("/api/v1/files", createFilesRoutes(services.files, scopes))
     .route("/api/v1/tasks", createTasksRoutes(services.tasks, scopes))
+    .route("/api/v1/crm", createCrmExportRoutes(services.crm, scopes))
+    .route("/api/v1/crm", createCrmManagementRoutes(services.crm, scopes))
     .route("/api/v1/crm", createCrmRoutes(services.crm, scopes))
     .route("/api/v1/contacts", createContactsRoutes(services.contacts, scopes))
     .route(

@@ -3,12 +3,14 @@ import type { CrmWrite } from "@substrate/contracts/crm/input";
 import type { WorkspaceScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
 import type { CommittedPublisher } from "../realtime/committed";
+import { exportCrm } from "./export";
 import { createCrmManagementService } from "./management";
 
 type List = Parameters<WorkspaceScope["repositories"]["crm"]["listAccounts"]>[0];
 export function createCrmService(deps: { publish: CommittedPublisher }) {
   return {
     ...createCrmManagementService(),
+    export: exportCrm,
     activity: (
       scope: WorkspaceScope,
       id: string,

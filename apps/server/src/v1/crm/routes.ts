@@ -11,15 +11,11 @@ import { crmReportDeals } from "@substrate/contracts/crm/report-input";
 
 import { respond, v } from "../../shared/http";
 import type { ScopeEnv, Scopes } from "../../shared/scope";
-import { createCrmExportRoutes } from "./export";
-import { createCrmManagementRoutes } from "./management";
 import type { CrmService } from "./service";
 import { Hono } from "hono";
 
 export function createCrmRoutes(service: CrmService, scopes: Scopes) {
   return new Hono<ScopeEnv>()
-    .route("/", createCrmExportRoutes(scopes))
-    .route("/", createCrmManagementRoutes(scopes))
     .get("/activity", v("query", crmActivityList), scopes.workspace("query"), async (c) => {
       const input = c.req.valid("query");
       return respond(

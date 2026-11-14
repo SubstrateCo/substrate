@@ -1,8 +1,12 @@
 import { CRM_EXPORT_MAX_ROWS } from "@substrate/contracts/crm/export";
 
 import { createTestScopes, scopeFixture } from "../../test-support";
-import { createCrmExportRoutes, exportCrm } from "./export";
+import { exportCrm } from "./export";
+import { createCrmExportRoutes } from "./export-routes";
+import { createCrmService } from "./service";
 import { expect, mock, test } from "bun:test";
+
+const service = createCrmService({ publish: async (committed) => committed.result });
 
 function account(entityId: string, name = "Customer") {
   return {
@@ -109,6 +113,7 @@ test("search exports matching rows across pages and rejects searches above 200 c
       .slice(0, limit),
   );
   const app = createCrmExportRoutes(
+    service,
     createTestScopes({ repositories: { forSession: async () => scope.repositories } }),
   );
   const response = await app.request("/export?organizationId=org&kind=accounts&search=%20North%20");
@@ -155,6 +160,7 @@ test("exports every page and fails explicitly rather than truncating oversized e
 test("attachment responses are private and foreign workspace requests are rejected before reads", async () => {
   const { scope, listAccounts } = fixture();
   const app = createCrmExportRoutes(
+    service,
     createTestScopes({ repositories: { forSession: async () => scope.repositories } }),
   );
   const response = await app.request("/export?organizationId=org&kind=accounts");
@@ -178,6 +184,7 @@ test("export requires a verified session and validates kind before reading recor
     { ...scope.session, user: { ...scope.session.user, emailVerified: false } },
   ]) {
     const app = createCrmExportRoutes(
+      service,
       createTestScopes({
         api: {
           getSession: async () => session,
@@ -189,7 +196,7 @@ test("export requires a verified session and validates kind before reading recor
       session ? 403 : 401,
     );
   }
-  const app = createCrmExportRoutes(createTestScopes());
+  const app = createCrmExportRoutes(service, createTestScopes());
   expect((await app.request("/export?organizationId=org&kind=interactions")).status).toBe(400);
   expect(listAccounts).not.toHaveBeenCalled();
 });

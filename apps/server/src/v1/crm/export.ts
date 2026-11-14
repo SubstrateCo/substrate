@@ -1,11 +1,8 @@
 import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
-import { CRM_EXPORT_MAX_ROWS, crmExport, type CrmExport } from "@substrate/contracts/crm/export";
+import { CRM_EXPORT_MAX_ROWS, type CrmExport } from "@substrate/contracts/crm/export";
 
-import { respond, v } from "../../shared/http";
-import type { ScopeEnv, Scopes, WorkspaceScope } from "../../shared/scope";
+import type { WorkspaceScope } from "../../shared/scope";
 import { ServiceError, serviceResult } from "../../shared/service-result";
-import { Hono } from "hono";
-import { z } from "zod";
 
 function cell(value: string | Date | null) {
   let text = value instanceof Date ? value.toISOString() : (value ?? "");
@@ -95,23 +92,4 @@ export function exportCrm(scope: WorkspaceScope, input: CrmExport) {
     }
     return `${lines.join("\r\n")}\r\n`;
   });
-}
-
-export function createCrmExportRoutes(scopes: Scopes) {
-  return new Hono<ScopeEnv>().get(
-    "/export",
-    v("query", crmExport.extend({ kind: z.enum(["accounts", "deals"]) })),
-    scopes.workspace("query"),
-    async (c) => {
-      const input = c.req.valid("query");
-      const result = await exportCrm(c.var.scope, input);
-      if (!result.success) return respond(c, result);
-      return c.body(result.data, 200, {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": `attachment; filename="crm-${input.kind}.csv"`,
-        "Cache-Control": "no-store",
-        "X-Content-Type-Options": "nosniff",
-      });
-    },
-  );
 }

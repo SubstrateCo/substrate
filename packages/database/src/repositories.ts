@@ -1,3 +1,5 @@
+import type { CrmFromMessageInput } from "@substrate/contracts/crm/from-message";
+
 import type { DatabaseExecutor } from "./client";
 import { registerDevice, touchDevice } from "./core/devices/repository";
 import { RepositoryEffects, collectedEffects, commit, commitWrites } from "./core/effects";
@@ -17,6 +19,7 @@ import { createAgentRepository } from "./features/agents/repository";
 import { contactApplicationRepository } from "./features/contacts/repository";
 import { contextContactInteractionRepository } from "./features/context/contact-interactions";
 import { createContextRepository } from "./features/context/service";
+import { createCrmFromMessageInContext } from "./features/crm/from-message";
 import { crmRepository } from "./features/crm/repository";
 import { createAttachmentRepository } from "./features/files/repository";
 import { createMessagingRepository } from "./features/messaging/service";
@@ -79,6 +82,7 @@ class WorkspaceRepositories extends ActorRepositories {
   readonly files;
   readonly agentWork;
   readonly organizations;
+  readonly crmFromMessage;
 
   constructor(
     context: RepositoryContext,
@@ -93,6 +97,10 @@ class WorkspaceRepositories extends ActorRepositories {
     this.files = createAttachmentRepository(context);
     this.agentWork = createAgentWorkReadRepository(context, identity);
     this.organizations = organizationRepository(context, identity);
+    this.crmFromMessage = {
+      create: (input: CrmFromMessageInput) =>
+        createCrmFromMessageInContext(context, identity, input),
+    };
   }
 
   override async transaction<T>(

@@ -8,3 +8,4 @@ export const crmExport = crmWorkspace.extend({
   search: z.string().trim().max(200).optional(),
 });
 export type CrmExport = z.output<typeof crmExport>;
+export const crmRecordExport = crmExport.extend({ kind: z.enum(["accounts", "deals"]) });
