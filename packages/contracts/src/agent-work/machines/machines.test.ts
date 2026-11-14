@@ -11,7 +11,6 @@ import { turnMachine } from "./turn.ts";
 import { agentWakeStates, wakeMachine } from "./wake.ts";
 import { expect, test } from "bun:test";
 
-/** Checks a machine against the transitions the stores perform today, as [from, event, to]. */
 function describeMachine<
   S extends string,
   T extends S,
@@ -22,7 +21,6 @@ function describeMachine<
   statuses: readonly string[],
   table: (readonly [S, keyof E, S])[],
 ) {
-  // SAFETY: the keys of an events object are the machine's event names.
   const events = Object.keys(machine.events) as (keyof E)[];
 
   test(`the ${name} machine has the stored statuses as its states`, () => {

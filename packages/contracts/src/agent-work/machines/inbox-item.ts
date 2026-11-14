@@ -1,10 +1,8 @@
 import { defineMachine } from "../../state-machine.ts";
 import { inboxStatuses } from "../turns.ts";
 
-/** A local inbox item on the home desktop. */
 export const inboxItemMachine = defineMachine({
   states: inboxStatuses,
-  // expired is reserved: no event reaches it today.
   terminal: ["dropped", "superseded", "expired"],
   events: {
     /** A claimed turn takes the item into its batch, or the item is steered into a live turn. */

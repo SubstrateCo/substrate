@@ -3,7 +3,6 @@ import { turnStatuses } from "../turns.ts";
 
 const live = ["assigned", "running", "waiting", "stopping"] as const;
 
-/** A local turn on the home desktop. */
 export const turnMachine = defineMachine({
   states: turnStatuses,
   terminal: ["completed", "cancelled", "interrupted", "failed"],
@@ -13,7 +12,6 @@ export const turnMachine = defineMachine({
     wait: { from: ["running"], to: "waiting" },
     /** The owner or the runtime asked the live turn to end. */
     stop: { from: live, to: "stopping" },
-    // A live turn ends.
     complete: { from: live, to: "completed" },
     cancel: { from: live, to: "cancelled" },
     interrupt: { from: live, to: "interrupted" },
