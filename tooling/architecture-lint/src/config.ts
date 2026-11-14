@@ -21,7 +21,7 @@ const TESTS = ["**/*.test.ts", "**/test-support.ts", "**/testing/**"];
  * for agent-work state and adapter capabilities. Paths are relative to the repository root.
  */
 export const architectureConfig = {
-  jsPlugins: [{ name: "architecture", specifier: "./packages/architecture-lint/src/index.ts" }],
+  jsPlugins: [{ name: "architecture", specifier: "./tooling/architecture-lint/src/index.ts" }],
   rules: {
     "architecture/layer-imports": "error",
     "architecture/layer-syntax": "error",

@@ -1,10 +1,10 @@
 import pluginQuery from "@tanstack/eslint-plugin-query";
 import pluginRouter from "@tanstack/eslint-plugin-router";
 
-import { architectureConfig } from "./packages/architecture-lint/src/config.ts";
 import contracts from "./packages/contracts/package.json" with { type: "json" };
 import database from "./packages/database/package.json" with { type: "json" };
-import { designConfig } from "./packages/design-lint/src/config.ts";
+import { architectureConfig } from "./tooling/architecture-lint/src/config.ts";
+import { designConfig } from "./tooling/design-lint/src/config.ts";
 import { configs } from "ai-deslop";
 import { defineConfig } from "oxlint";
 
@@ -15,7 +15,7 @@ const tanstackRecommendedRules = Object.fromEntries(
 );
 
 export default defineConfig({
-  ignorePatterns: [".opencode/**", "packages/design-lint/**"],
+  ignorePatterns: [".opencode/**", "tooling/design-lint/**"],
   plugins: ["unicorn", "typescript", "oxc", "react"],
   jsPlugins: [
     "ai-deslop",

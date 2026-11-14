@@ -82,7 +82,7 @@ Layer direction (`mayImport`):
 
 ## Lint rules
 
-The architecture lint (`packages/architecture-lint` in this repository)
+The architecture lint (`tooling/architecture-lint` in this repository)
 reads `layers`, `rules`, and `exceptions` from the same config. It puts
 files into layers exactly as the scanner does. `architecture/layer-imports`
 checks `mayImport` (X3) and `forbidImports`. `architecture/layer-syntax`
@@ -263,7 +263,7 @@ name.
 
 ## When to use a dedicated tool
 
-This repository enforces the config rules with `packages/architecture-lint`
+This repository enforces the config rules with `tooling/architecture-lint`
 in `bun run lint`. In a codebase without it, enforce the import rules in CI
 with a tool for the stack:
 

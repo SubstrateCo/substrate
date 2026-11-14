@@ -11,7 +11,7 @@ const DIALOG_INSETS =
  * repository root, where `oxlint.config.ts` lives.
  */
 export const designConfig = {
-  jsPlugins: [{ name: "design", specifier: "./packages/design-lint/src/index.ts" }],
+  jsPlugins: [{ name: "design", specifier: "./tooling/design-lint/src/index.ts" }],
   settings: {
     shadcn: {
       ui: "@/components/ui",

@@ -114,14 +114,6 @@
         "vite": "^8.3.6",
       },
     },
-    "packages/architecture-lint": {
-      "name": "@substrate/architecture-lint",
-      "devDependencies": {
-        "@types/node": "24.19.2",
-        "oxlint": "^1.91.0",
-        "typescript": "^7.0.2",
-      },
-    },
     "packages/client-storage": {
       "name": "@substrate/client-storage",
       "dependencies": {
@@ -158,14 +150,6 @@
         "zod": "^4.6.7",
       },
     },
-    "packages/design-lint": {
-      "name": "@substrate/design-lint",
-      "devDependencies": {
-        "@types/node": "24.19.2",
-        "oxlint": "^1.91.0",
-        "typescript": "^7.0.2",
-      },
-    },
     "packages/harness-runtime": {
       "name": "@substrate/harness-runtime",
       "dependencies": {
@@ -181,6 +165,22 @@
       },
       "devDependencies": {
         "@types/node": "24.19.2",
+        "typescript": "^7.0.2",
+      },
+    },
+    "tooling/architecture-lint": {
+      "name": "@substrate/architecture-lint",
+      "devDependencies": {
+        "@types/node": "24.19.2",
+        "oxlint": "^1.91.0",
+        "typescript": "^7.0.2",
+      },
+    },
+    "tooling/design-lint": {
+      "name": "@substrate/design-lint",
+      "devDependencies": {
+        "@types/node": "24.19.2",
+        "oxlint": "^1.91.0",
         "typescript": "^7.0.2",
       },
     },
@@ -954,7 +954,7 @@
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
-    "@substrate/architecture-lint": ["@substrate/architecture-lint@workspace:packages/architecture-lint"],
+    "@substrate/architecture-lint": ["@substrate/architecture-lint@workspace:tooling/architecture-lint"],
 
     "@substrate/client-storage": ["@substrate/client-storage@workspace:packages/client-storage"],
 
@@ -962,7 +962,7 @@
 
     "@substrate/database": ["@substrate/database@workspace:packages/database"],
 
-    "@substrate/design-lint": ["@substrate/design-lint@workspace:packages/design-lint"],
+    "@substrate/design-lint": ["@substrate/design-lint@workspace:tooling/design-lint"],
 
     "@substrate/desktop": ["@substrate/desktop@workspace:apps/desktop"],
 

@@ -12,7 +12,7 @@ plan fixes. The work has four parts:
    imports between layers. See [references/scanner.md](references/scanner.md).
 2. **Lint.** The project lint enforces the config `rules`: imports, calls,
    and syntax that a layer must not use. In this repository that is
-   `packages/architecture-lint`, which runs in `bun run lint`.
+   `tooling/architecture-lint`, which runs in `bun run lint`.
 3. **Trace.** You read each selected entrypoint and write a high-level pseudo
    call stack. See [references/call-stack.md](references/call-stack.md).
 4. **Judge and fix.** You check each frame against the antipatterns, write
