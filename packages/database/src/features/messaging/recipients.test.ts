@@ -107,7 +107,9 @@ test("first-use recipients get actors in the same statements for few or many peo
       .from(messagingParticipants)
       .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
       .where(eq(messagingParticipants.conversationId, conversation.id));
-    expect(participants.map(({ userId }) => userId).sort()).toEqual(
+    expect(
+      participants.map(({ userId }) => userId).sort((a, b) => String(a).localeCompare(String(b))),
+    ).toEqual(
       ["alice", ...group.map(({ id }) => id)].sort(),
     );
     // Provisioned people own their actor, as single provisioning grants.

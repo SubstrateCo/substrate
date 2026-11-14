@@ -54,7 +54,7 @@ test("grouped entity alerts use one access-checked read and one insert, and the 
   expect(
     (await f.db.select().from(notifications).where(eq(notifications.eventKey, eventKey)))
       .map((row) => `${row.recipientActorEntityId}:${row.kind}`)
-      .sort(),
+      .sort((a, b) => a.localeCompare(b)),
   ).toEqual([`${f.alice}:assignment`, `${f.bob}:mention`].sort());
   expect(result.map((row) => row.actorId).sort((a, b) => a.localeCompare(b))).toEqual(
     [f.alice, f.bob].sort(),
@@ -63,6 +63,10 @@ test("grouped entity alerts use one access-checked read and one insert, and the 
     hints
       .filter((hint) => hint.domain === "notifications")
       .map((hint) => hint.audience)
-      .sort(),
-  ).toEqual([realtimeKeys.actor(f.orgA, f.alice), realtimeKeys.actor(f.orgA, f.bob)].sort());
+      .sort((a, b) => String(a).localeCompare(String(b))),
+  ).toEqual(
+    [realtimeKeys.actor(f.orgA, f.alice), realtimeKeys.actor(f.orgA, f.bob)].sort((a, b) =>
+      String(a).localeCompare(String(b)),
+    ),
+  );
 });

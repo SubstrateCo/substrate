@@ -4,6 +4,8 @@ import { spawnSync } from "node:child_process";
 
 test("Electron can load CRM and context contracts from TypeScript source", () => {
   const result = spawnSync(
+    // Electron's Node entry point exports the executable path, despite its API typings.
+    // oxlint-disable-next-line typescript/no-base-to-string
     String(electron),
     [
       "--input-type=module",
