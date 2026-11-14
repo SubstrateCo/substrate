@@ -1,6 +1,7 @@
 import type { HarnessEvent } from "@substrate/contracts/harness";
 
-import { expect, mock, test } from "bun:test";
+import { createHarnessProcess } from "./harness-process.ts";
+import { expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
 import { EventEmitter } from "node:events";
 
@@ -23,17 +24,6 @@ class FakeChild extends EventEmitter {
     this.emit("message", { id: request!.id, result });
   }
 }
-
-let child: FakeChild;
-await mock.module("electron", () => ({
-  utilityProcess: {
-    fork: () => {
-      child = new FakeChild();
-      return child;
-    },
-  },
-}));
-const { createHarnessProcess } = await import("./harness-process.ts");
 
 const turnId = "0d6f4c3e-8b4f-4c39-9d7e-3f1c2a5b6e71";
 
@@ -63,7 +53,9 @@ function event(sessionId: string, body: Partial<HarnessEvent>): HarnessEvent {
 
 async function started(timeouts?: { commandMs?: number; requestMs?: number }) {
   const events: HarnessEvent[] = [];
+  const child = new FakeChild();
   const worker = createHarnessProcess(
+    { fork: () => child },
     "entry",
     "account",
     (entry) => events.push(entry),

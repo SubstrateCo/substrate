@@ -10,6 +10,7 @@ import { createMessageNotifications } from "../transport/message-notifications.t
 import { readNotificationFeed } from "../transport/notification-feed.ts";
 import { createRealtimeController } from "../transport/realtime-controller.ts";
 import { createLifecycle } from "./lifecycle.ts";
+import { utilityProcess } from "electron";
 
 export function composeDesktop(options: {
   backend: string;
@@ -48,6 +49,7 @@ export function composeDesktop(options: {
     onResult: (request, result) => agentWork.observeToolCall(request, result),
     createWorker: (directory, proxy, localTools) =>
       createHarnessProcess(
+        utilityProcess,
         options.workerEntry,
         directory,
         (event) => agentWork.onHarnessEvent(event),

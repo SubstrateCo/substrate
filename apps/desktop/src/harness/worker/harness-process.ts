@@ -19,7 +19,8 @@ import {
   type HarnessWorkerCall,
   type HarnessWorkerRequest,
 } from "./protocol.ts";
-import { utilityProcess } from "electron";
+import type { ForkOptions, UtilityProcess } from "electron";
+import type { EventEmitter } from "node:events";
 
 /**
  * Session commands fail alone after these limits; the worker and its other sessions keep
@@ -44,6 +45,16 @@ const requestTimeoutMs = 120_000;
  * every session that was open, with its live turn.
  */
 export function createHarnessProcess(
+  processes: {
+    fork: (
+      entry: string,
+      args: string[],
+      options: ForkOptions,
+    ) => Pick<UtilityProcess, "postMessage"> &
+      Pick<EventEmitter, "on"> & {
+        kill(): void;
+      };
+  },
   entry: string,
   accountDirectory: string,
   onEvent: (event: HarnessEvent) => void,
@@ -67,7 +78,7 @@ export function createHarnessProcess(
       "LOCALAPPDATA",
     ].flatMap((key) => (process.env[key] ? [[key, process.env[key]!]] : [])),
   );
-  const child = utilityProcess.fork(entry, [], {
+  const child = processes.fork(entry, [], {
     serviceName: "Substrate Harness",
     env,
     stdio: "ignore",

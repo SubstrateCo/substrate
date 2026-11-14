@@ -208,7 +208,8 @@ export function ensureHumanActors(
   db: DatabaseExecutor,
   input: { organizationId: string; userIds: string[] },
 ) {
-  const userIds = [...new Set(input.userIds)];
+  // Acquire unique identity locks in the same order across overlapping batches.
+  const userIds = [...new Set(input.userIds)].sort();
   if (!userIds.length) return Promise.resolve([]);
   return db.transaction(async (tx) => {
     const memberships = await tx

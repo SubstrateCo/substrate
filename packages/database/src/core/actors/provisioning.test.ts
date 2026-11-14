@@ -10,7 +10,7 @@ import {
   ensureUserAgentActor,
 } from "./provisioning";
 import { describe, expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
 
@@ -235,10 +235,50 @@ describe("actor provisioning", () => {
     const input = { organizationId: f.orgB, userIds: [...people, "outsider"] };
     const entitiesBefore = await f.db.select().from(entities);
     const grantsBefore = await f.db.select().from(entityGrants);
+    const held = Promise.withResolvers<void>();
+    const release = Promise.withResolvers<void>();
+    const singleResult = f.db.transaction(async (tx) => {
+      const actor = await ensureHumanActor(tx, { organizationId: f.orgB, userId: "two" });
+      held.resolve();
+      await release.promise;
+      return actor;
+    });
+    await held.promise;
+    function bulk(userIds: string[]) {
+      const started = Promise.withResolvers<number>();
+      const result = f.db.transaction(async (tx) => {
+        const [backend] = await tx.execute<{ pid: number }>(sql`SELECT pg_backend_pid() AS pid`);
+        started.resolve(backend!.pid);
+        return ensureHumanActors(tx, { ...input, userIds });
+      });
+      return { started: started.promise, result };
+    }
+    const forward = bulk(input.userIds);
+    const reverse = bulk([...input.userIds].reverse());
+    const settled = Promise.allSettled([forward.result, reverse.result, singleResult]);
+    try {
+      const [firstPid, secondPid] = await Promise.all([forward.started, reverse.started]);
+      // Both batches must reach a lock before the single insert commits. Without a stable
+      // insert order, each batch holds the identity the other needs after "two" is released.
+      let blocked = 0;
+      const deadline = Date.now() + 2_000;
+      while (blocked < 2 && Date.now() < deadline) {
+        const [row] = await f.db.execute<{ count: number }>(sql`
+          SELECT count(*)::int AS count FROM pg_stat_activity
+          WHERE pid IN (${firstPid}, ${secondPid}) AND wait_event_type = 'Lock'
+        `);
+        blocked = row!.count;
+        if (blocked < 2) await Bun.sleep(5);
+      }
+      expect(blocked).toBe(2);
+    } finally {
+      release.resolve();
+      await settled;
+    }
     const [first, second, single] = await Promise.all([
-      ensureHumanActors(f.db, input),
-      ensureHumanActors(f.db, { ...input, userIds: [...input.userIds].reverse() }),
-      ensureHumanActor(f.db, { organizationId: f.orgB, userId: "two" }),
+      forward.result,
+      reverse.result,
+      singleResult,
     ]);
     const byUser = (list: { userId: string | null; entityId: string }[]) =>
       Object.fromEntries(list.map((actor) => [actor.userId, actor.entityId]));
