@@ -5,10 +5,10 @@ is narrow:
 
 - list the entrypoints;
 - put files into layers;
-- count the imports between layers;
-- emit cheap rule hints.
+- count the imports between layers, and list two-layer cycles.
 
-The agent does the call-stack reasoning. The scanner tells it where to look.
+The lint enforces the config `rules` (see "Lint rules" below). The agent
+does the call-stack reasoning. The scanner tells it where to look.
 
 You can use the reference scanner (`scripts/scan.ts`) with a config, extend
 it, or replace it with any tool. Whatever you use, it must emit the contract
@@ -28,14 +28,14 @@ have the same sections:
   "dependencies": {                              // cross-layer import counts
     "route": { "service": { "runtime": 5, "type": 18 }, "3p:hono": { "runtime": 22, "type": 1 } }
   },
+  "cycles": [                                    // runtime imports in both directions
+    { "layers": ["route", "service"], "examples": [
+      { "file": "src/invoices/routes.ts", "line": 3, "specifier": "./service" },
+      { "file": "src/invoices/service.ts", "line": 5, "specifier": "./routes" } ] }
+  ],
   "entrypoints": [
     { "group": "rest", "method": "GET", "path": "/api/invoices/:id", "file": "src/invoices/routes.ts", "line": 14 }
-  ],
-  "findings": [
-    { "file": "src/db/invoices.ts", "line": 88, "tag": "validate", "rule": "D1",
-      "message": "database parses input (`.safeParse(`)", "fix": "Move parsing to the route" }
-  ],
-  "suppressed": 2                                // hints hidden by config exceptions
+  ]
 }
 ```
 
@@ -50,9 +50,6 @@ Import target labels:
 | `builtin` | A language or runtime built-in. |
 | `unresolved` | A relative import that did not resolve. |
 
-Markdown findings are one line each:
-`<file>:L<line>: <tag>: <message>. <fix>. [<rule>]`.
-
 ## Config reference (`architecture.config.json`)
 
 | Field | Purpose |
@@ -64,23 +61,33 @@ Markdown findings are one line each:
 | `include` / `ignore` | Globs for the files to scan. Supports `**`, `*`, `?`, and `{a,b}`. |
 | `entrypoints[]` | `{ name, files, route, mount? }`. `route` is a regex with named groups `method` and `path`. The optional `mount: { files, pattern }` has named groups `prefix` and `factory`. |
 | `layers[]` | `{ name, files, specifiers?, mayImport? }`. Order matters: the first matching layer wins, so put specific globs before broad ones. `specifiers` are regexes for package, namespace, or path-alias imports (`^@acme/db`, `^MyApp\\.Data`, `^@/db/`). `mayImport` lists the only other layers this layer may import. |
-| `rules[]` | `{ id, tag, layer, forbidImports?, allowTypeOnly?, forbidPatterns?, message, fix }`. |
-| `exceptions[]` | `{ rule, files, reason }`. Every exception needs a reason. |
+| `rules[]` | Read by the lint. See "Lint rules". |
+| `exceptions[]` | `{ rule, files, reason }`. Read by the lint. Every exception needs a reason. |
 
-The scanner checks the config before it scans. It exits with code 2 and a
-list of problems for an unknown field, an unknown layer name, an unknown
-rule ID in an exception, or an exception without a reason.
+The scanner checks its fields before it scans. It exits with code 2 and a
+list of problems for an unknown field or an unknown layer name. The lint
+checks `rules` and `exceptions` the same way when it loads, and fails the
+run on an unknown field, layer, or rule ID, or an exception without a reason.
 
 Layer direction (`mayImport`):
 
 - Prefer `mayImport` to a rule that lists forbidden layers. A list of
   forbidden layers goes stale when you add a layer; an allowlist does not.
-- A layer with `mayImport` gets a built-in X3 hint for each import of a
+- The lint reports X3 for each import from a layer with `mayImport` to a
   configured layer that is not in the list. `[]` makes the layer a leaf.
 - It checks layer targets only, and it counts type-only imports. Use rules
   for third-party packages. Use an exception for a deliberate edge.
 - Set it first on the layers at the bottom (database, contracts). Leave it
   off the composition layer.
+
+## Lint rules
+
+The architecture lint (`packages/architecture-lint` in this repository)
+reads `layers`, `rules`, and `exceptions` from the same config. It puts
+files into layers exactly as the scanner does. `architecture/layer-imports`
+checks `mayImport` (X3) and `forbidImports`. `architecture/layer-syntax`
+checks the call, constructor, member, and syntax fields. Findings read
+`[<rule>] <message>. <fix>.`
 
 Rule fields:
 
@@ -92,9 +99,24 @@ Rule fields:
 - `allowTypeOnly`: skip `import type` and other type-only imports. Type
   imports often point upward legitimately, for example a route that imports
   a service type.
-- `forbidPatterns`: line regexes. Comment lines are skipped. `{match}` in the
-  message is replaced with the matched text, and `{target}` with the layer
-  or import target.
+- `forbidCalls`: callee paths, such as `c.req.json`. In a path, `*` matches
+  one name, `**` matches any run of names, and `{a,b}` matches either. A
+  base that is not a name, such as a call result, is `()`:
+  `z.object({}).parse` is `().parse`, which `**.parse` matches.
+- `forbidNew`: constructor paths, such as `Response`.
+- `forbidMembers`: member paths, such as `repositories.*`. Each link of a
+  chain is checked, so `repositories.*` matches `repositories.tasks` in
+  `repositories.tasks.list()`.
+- `forbidSyntax`: ESTree node types, such as `CatchClause` or
+  `ImportExpression`.
+- `message` and `fix`: `{match}` is replaced with the import specifier or the
+  matched path or node type, and `{target}` with the import target or the
+  file's layer.
+
+A rule needs at least one `forbid*` field. Strings and comments never match.
+Prefer a narrow layer to a broad pattern: to allow a call in one directory,
+give that directory its own layer (for example `renderer-queries`) and leave
+it out of the rule.
 
 Every config regex is a JSON string, so escape each backslash once: `\\.`,
 `\\(`, `\\s`.
@@ -138,7 +160,6 @@ Add an entry to `LANGUAGES` in `scan.ts`. An adapter needs these members:
 | Member | What it does |
 | --- | --- |
 | `extensions` | The file extensions to scan. |
-| `comment` | A regex for comment lines. `forbidPatterns` skips them. |
 | `parseImports(text)` | Returns `{ index, specifier, typeOnly }[]`. |
 | `resolve({ root, fromFile, specifier, sourceRoots })` | Returns a repo-relative file for internal imports, or `undefined`. |
 | `isBuiltin(specifier)` | True for the standard library. |
@@ -150,7 +171,6 @@ in the directory:
 ```ts
 go: {
   extensions: [".go"],
-  comment: /^\s*\/\//,
   parseImports(text) {
     const found = [];
     for (const m of text.matchAll(/^import\s+(?:\w+\s+)?"([^"]+)"/gm))
@@ -179,9 +199,9 @@ Languages without file-based imports:
   and map layers by package with `specifiers: ["^com\\.acme\\.data\\."]`.
 - **C#:** parse `^using\s+([\w.]+);`. Namespaces do not map to files, so
   classify layers only by `specifiers`.
-- **Ruby/Rails:** autoloading hides imports. Use `forbidPatterns` on constant
-  references instead, for example `\\b\\w+\\.(where|find_by|create!?)\\(` in
-  controllers for R1.
+- **Ruby/Rails:** autoloading hides imports, so the matrix stays empty. Map
+  layers by directory and find model calls in controllers in the read pass,
+  or with the stack's own lint (RuboCop).
 
 ### Entrypoint recipes
 
@@ -240,13 +260,12 @@ name.
   or more.
 - No call graph. The scanner says which files talk; the agent decides which
   calls cross layers.
-- `forbidPatterns` works one line at a time. A multi-line construct needs
-  either a pattern on its first line or the read pass.
 
 ## When to use a dedicated tool
 
-When the rules settle, enforce the import rules in CI with a tool for the
-stack:
+This repository enforces the config rules with `packages/architecture-lint`
+in `bun run lint`. In a codebase without it, enforce the import rules in CI
+with a tool for the stack:
 
 | Stack | Tool |
 | --- | --- |

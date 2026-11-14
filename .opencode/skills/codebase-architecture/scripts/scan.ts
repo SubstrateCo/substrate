@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
-// Reference architecture scanner. It lists entrypoints, puts files into layers,
-// maps imports between layers, and reports candidate rule violations.
-// Output follows references/scanner.md. Replace or extend it per codebase.
+// Reference architecture scanner. It lists entrypoints, puts files into layers, and maps imports
+// between layers. Lint enforces the rules. Output follows references/scanner.md.
 //
 // Run:  bun scan.ts [--config architecture.config.json] [--entry <text>] [--json]
 // Node: node scan.ts (23.6+), or node --experimental-strip-types scan.ts (22.x)
@@ -16,23 +15,6 @@ interface Layer {
   files: string[];
   specifiers?: string[];
   mayImport?: string[];
-}
-
-interface Rule {
-  id: string;
-  tag: string;
-  layer: string | string[];
-  forbidImports?: string[];
-  allowTypeOnly?: boolean;
-  forbidPatterns?: string[];
-  message: string;
-  fix: string;
-}
-
-interface RuleException {
-  rule: string;
-  files: string[];
-  reason: string;
 }
 
 interface EntrypointGroup {
@@ -50,8 +32,6 @@ interface Config {
   ignore?: string[];
   layers: Layer[];
   entrypoints: EntrypointGroup[];
-  rules: Rule[];
-  exceptions?: RuleException[];
 }
 
 // ---------------------------------------------------------------- languages
@@ -66,7 +46,6 @@ interface RawImport {
 
 interface Language {
   extensions: string[];
-  comment: RegExp;
   parseImports(text: string): RawImport[];
   resolve(ctx: { root: string; fromFile: string; specifier: string; sourceRoots: string[] }):
     | string
@@ -91,7 +70,6 @@ function firstFile(root: string, candidates: string[]) {
 const LANGUAGES = {
   typescript: {
     extensions: JS_EXTENSIONS,
-    comment: /^\s*(\/\/|\/\*|\*)/,
     parseImports(text) {
       const found: RawImport[] = [];
       const fromImport =
@@ -141,7 +119,6 @@ const LANGUAGES = {
 
   python: {
     extensions: [".py"],
-    comment: /^\s*#/,
     parseImports(text) {
       const found: RawImport[] = [];
       for (const match of text.matchAll(/^[ \t]*from[ \t]+([.\w]+)[ \t]+import\b/gm)) {
@@ -182,21 +159,17 @@ interface ImportRecord {
   file?: string;
 }
 
-interface Finding {
-  file: string;
-  line: number;
-  tag: string;
-  rule: string;
-  message: string;
-  fix: string;
-}
-
 interface Entrypoint {
   group: string;
   method: string;
   path: string;
   file: string;
   line: number;
+}
+
+interface Cycle {
+  layers: [string, string];
+  examples: { file: string; line: number; specifier: string }[];
 }
 
 const SKIP_DIRS = new Set([
@@ -241,19 +214,15 @@ function loadConfig(configPath: string): Config {
   }
 }
 
-// Built-in rule IDs. See references/antipatterns.md.
-const BUILT_IN_RULES = ["X1", "X3"];
-const TARGET_LABELS = new Set(["unlayered", "builtin", "unresolved"]);
+// `rules` and `exceptions` belong to the lint, which checks them. The scanner ignores them.
 const FIELDS = {
   config: ["$schema", "root", "scanner", "languages", "sourceRoots", "include", "ignore", "entrypoints", "layers", "rules", "exceptions"],
   layer: ["name", "files", "specifiers", "mayImport"],
   entrypoint: ["name", "files", "route", "mount"],
-  rule: ["id", "tag", "layer", "forbidImports", "allowTypeOnly", "forbidPatterns", "message", "fix"],
-  exception: ["rule", "files", "reason"],
 };
 
 // A config mistake must not pass silently: a misspelled field or layer name
-// would turn a rule off without any sign.
+// would drop files from a layer without any sign.
 function validateConfig(config: Config) {
   const problems: string[] = [];
   const unknownFields = (value: object, known: string[], where: string) => {
@@ -262,7 +231,7 @@ function validateConfig(config: Config) {
     }
   };
   unknownFields(config, FIELDS.config, "config");
-  for (const key of ["layers", "entrypoints", "rules"] as const) {
+  for (const key of ["layers", "entrypoints"] as const) {
     if (!Array.isArray(config[key])) problems.push(`config: "${key}" must be an array`);
   }
   if (problems.length) fail(problems);
@@ -278,29 +247,6 @@ function validateConfig(config: Config) {
   config.entrypoints.forEach((group, index) =>
     unknownFields(group, FIELDS.entrypoint, `entrypoints[${index}] (${group.name})`),
   );
-  config.rules.forEach((rule, index) => {
-    const where = `rules[${index}] (${rule.id})`;
-    unknownFields(rule, FIELDS.rule, where);
-    if (BUILT_IN_RULES.includes(rule.id)) problems.push(`${where}: "${rule.id}" is a built-in rule ID`);
-    for (const name of Array.isArray(rule.layer) ? rule.layer : [rule.layer]) {
-      if (!layerNames.has(name)) problems.push(`${where}: unknown layer "${name}"`);
-    }
-    if (!rule.forbidImports?.length && !rule.forbidPatterns?.length) {
-      problems.push(`${where}: needs forbidImports or forbidPatterns`);
-    }
-    for (const entry of rule.forbidImports ?? []) {
-      const known =
-        entry.startsWith("/") || /^(3p|pkg):/.test(entry) || layerNames.has(entry) || TARGET_LABELS.has(entry);
-      if (!known) problems.push(`${where}: forbidImports entry "${entry}" is not a layer, a target label, or a /regex/`);
-    }
-  });
-  const ruleIds = new Set([...config.rules.map((rule) => rule.id), ...BUILT_IN_RULES]);
-  (config.exceptions ?? []).forEach((exception, index) => {
-    const where = `exceptions[${index}]`;
-    unknownFields(exception, FIELDS.exception, where);
-    if (!ruleIds.has(exception.rule)) problems.push(`${where}: unknown rule "${exception.rule}"`);
-    if (!exception.reason?.trim()) problems.push(`${where}: needs a reason`);
-  });
   if (problems.length) fail(problems);
 }
 
@@ -338,23 +284,8 @@ function lineAt(text: string, index: number) {
   return line;
 }
 
-function stripPeriod(text: string) {
-  return text.trim().replace(/\.$/, "");
-}
-
 function escapeRegExp(text: string) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-}
-
-// Forbid entries: an exact target label ("database", "3p:zod"), or a /regex/
-// that matches the target label or the raw import specifier.
-function compileForbid(entry: string) {
-  const end = entry.lastIndexOf("/");
-  if (entry.startsWith("/") && end > 0) {
-    const pattern = new RegExp(entry.slice(1, end), entry.slice(end + 1));
-    return (record: ImportRecord) => pattern.test(record.target) || pattern.test(record.specifier);
-  }
-  return (record: ImportRecord) => record.target === entry;
 }
 
 function walk(root: string, extensions: string[], include: (f: string) => boolean, ignore: (f: string) => boolean) {
@@ -516,7 +447,7 @@ function main() {
   }
 
   // Layer dependency matrix.
-  type Cell = { runtime: number; type: number; example: { from: string; line: number; specifier: string } };
+  type Cell = { runtime: number; type: number; example: { file: string; line: number; specifier: string } };
   const matrix = new Map<string, Map<string, Cell>>();
   const unlayered = new Map<string, number>();
   for (const [file, records] of imports) {
@@ -532,7 +463,7 @@ function main() {
       const cell = row.get(record.target) ?? {
         runtime: 0,
         type: 0,
-        example: { from: file, line: record.line, specifier: record.specifier },
+        example: { file, line: record.line, specifier: record.specifier },
       };
       if (record.typeOnly) cell.type++;
       else cell.runtime++;
@@ -540,103 +471,17 @@ function main() {
     }
   }
 
-  // Rules.
-  const exceptions = (config.exceptions ?? []).map((exception) => ({
-    rule: exception.rule,
-    files: matcher(exception.files),
-  }));
-  const findings: Finding[] = [];
-  let suppressed = 0;
-  const report = (finding: Finding) => {
-    if (exceptions.some((e) => e.rule === finding.rule && e.files(finding.file))) suppressed++;
-    else findings.push(finding);
-  };
-  const render = (template: string, target: string, match: string) =>
-    stripPeriod(template).replaceAll("{target}", target).replaceAll("{match}", match);
-
-  // Built-in X3: a layer with `mayImport` imports a layer outside that list.
-  const layerNames = new Set(config.layers.map((layer) => layer.name));
-  for (const layer of config.layers) {
-    if (!layer.mayImport) continue;
-    const allowed = new Set([layer.name, ...layer.mayImport]);
-    for (const file of files) {
-      if (layerOf(file) !== layer.name || !inScope(file)) continue;
-      for (const record of imports.get(file) ?? []) {
-        if (!layerNames.has(record.target) || allowed.has(record.target)) continue;
-        report({
-          file,
-          line: record.line,
-          tag: "upward",
-          rule: "X3",
-          message: `${layer.name} imports ${record.target} (${record.specifier}); it may import only ${layer.mayImport.join(", ") || "no other layer"}`,
-          fix: "Invert the dependency, or move the shared code to a layer both may import",
-        });
-      }
-    }
-  }
-
-  for (const rule of config.rules) {
-    const layers = Array.isArray(rule.layer) ? rule.layer : [rule.layer];
-    const forbidImports = (rule.forbidImports ?? []).map(compileForbid);
-    const forbidPatterns = (rule.forbidPatterns ?? []).map((pattern) => new RegExp(pattern));
-    for (const file of files) {
-      const layer = layerOf(file);
-      if (!layer || !layers.includes(layer) || !inScope(file)) continue;
-      for (const record of imports.get(file) ?? []) {
-        if (record.typeOnly && rule.allowTypeOnly) continue;
-        if (!forbidImports.some((test) => test(record))) continue;
-        report({
-          file,
-          line: record.line,
-          tag: rule.tag,
-          rule: rule.id,
-          message: render(rule.message, record.target, record.specifier),
-          fix: stripPeriod(rule.fix),
-        });
-      }
-      if (!forbidPatterns.length) continue;
-      const comment = languageOf(file)?.comment;
-      (sources.get(file) ?? "").split("\n").forEach((text, index) => {
-        if (comment?.test(text)) return;
-        const hit = forbidPatterns.map((pattern) => pattern.exec(text)).find(Boolean);
-        if (!hit) return;
-        report({
-          file,
-          line: index + 1,
-          tag: rule.tag,
-          rule: rule.id,
-          message: render(rule.message, layer, hit[0].trim().slice(0, 60)),
-          fix: stripPeriod(rule.fix),
-        });
-      });
-    }
-  }
-
-  // Built-in X1: runtime imports in both directions between two layers.
-  // An import that another rule already flags is not reported again.
+  // Two-layer cycles: runtime imports in both directions. The lint checks
+  // `mayImport` per import; a cycle between layers without `mayImport` shows here only.
+  const cycles: Cycle[] = [];
   for (const [a, row] of matrix) {
     for (const [b, ab] of row) {
       const ba = matrix.get(b)?.get(a);
       if (a >= b || !ab.runtime || !ba?.runtime) continue;
-      for (const [cell, from, to] of [
-        [ab, a, b],
-        [ba, b, a],
-      ] as const) {
-        const { from: file, line } = cell.example;
-        if (findings.some((finding) => finding.file === file && finding.line === line)) continue;
-        report({
-          file: cell.example.from,
-          line: cell.example.line,
-          tag: "cycle",
-          rule: "X1",
-          message: `${from} imports ${to} (${cell.example.specifier}) and ${to} imports ${from}`,
-          fix: "Remove the upward direction",
-        });
-      }
+      cycles.push({ layers: [a, b], examples: [ab.example, ba.example] });
     }
   }
 
-  findings.sort((a, b) => a.file.localeCompare(b.file) || a.line - b.line);
   const layerCounts = Object.fromEntries(
     config.layers.map((layer) => [
       layer.name,
@@ -660,9 +505,8 @@ function main() {
           layers: layerCounts,
           unlayered: Object.fromEntries(unlayered),
           dependencies,
+          cycles,
           entrypoints: selected,
-          findings,
-          suppressed,
         },
         null,
         2,
@@ -673,7 +517,7 @@ function main() {
 
   const out: string[] = ["# Architecture scan", ""];
   out.push(
-    `Config: ${configLabel} | Files: ${files.length} | Entrypoints: ${selected.length} | Findings: ${findings.length} (${suppressed} suppressed)${args.entry ? ` | Focus: "${args.entry}"` : ""}`,
+    `Config: ${configLabel} | Files: ${files.length} | Entrypoints: ${selected.length} | Cycles: ${cycles.length}${args.entry ? ` | Focus: "${args.entry}"` : ""}`,
     "",
     "## Layers",
     "",
@@ -698,20 +542,22 @@ function main() {
       );
     out.push(`${from} -> ${cells.join(", ")}`);
   }
-  out.push("```", "", `## Entrypoints (${selected.length})`, "", "```text");
+  out.push("```");
+  if (cycles.length) {
+    out.push("", `## Cycles (${cycles.length})`, "");
+    for (const { layers: [a, b], examples } of cycles) {
+      const where = examples.map((e) => `${e.file}:L${e.line} (${e.specifier})`).join(" and ");
+      out.push(`- ${a} <-> ${b}: ${where}`);
+    }
+  }
+  out.push("", `## Entrypoints (${selected.length})`, "", "```text");
   const width = Math.max(0, ...selected.map((entry) => entry.method.length + entry.path.length + 1));
   for (const entry of [...selected].sort(
     (a, b) => a.path.localeCompare(b.path) || a.method.localeCompare(b.method),
   )) {
     out.push(`${`${entry.method} ${entry.path}`.padEnd(width)}  ${entry.file}:L${entry.line}`);
   }
-  out.push("```", "", `## Candidate findings (${findings.length})`, "");
-  out.push("Static hints only. Confirm each one by reading the code.", "");
-  for (const finding of findings) {
-    out.push(
-      `${finding.file}:L${finding.line}: ${finding.tag}: ${finding.message}. ${finding.fix}. [${finding.rule}]`,
-    );
-  }
+  out.push("```");
   console.log(out.join("\n"));
 }
 

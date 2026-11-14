@@ -1,26 +1,30 @@
 ---
 name: codebase-architecture
-description: Trace application entrypoints (REST endpoints first) into high-level pseudo call stacks, check them against layer rules (route → service → database), and plan architecture fixes. Use when the user asks to "analyze our architecture", "check layering", "are routes thin", "find business logic in routes", "database doing validation", "trace this endpoint", "plan an architecture cleanup", or to set up or adapt the architecture scanner for a codebase. Works for any language; ships a TS/JS and Python reference scanner.
+description: Trace application entrypoints (REST endpoints first) into high-level pseudo call stacks, check them against layer rules (route → service → database), and plan architecture fixes. Use when the user asks to "analyze our architecture", "check layering", "are routes thin", "find business logic in routes", "database doing validation", "trace this endpoint", "plan an architecture cleanup", or to set up or adapt the architecture scanner or architecture lint rules for a codebase. Works for any language; ships a TS/JS and Python reference scanner.
 ---
 
 # Codebase architecture
 
 Find where code sits in the wrong layer, show it as a pseudo call stack, and
-plan fixes. The work has three parts:
+plan fixes. The work has four parts:
 
-1. **Scan.** A script lists entrypoints, puts files into layers, and reports
-   candidate violations. The script is per codebase. See
-   [references/scanner.md](references/scanner.md).
-2. **Trace.** You read each selected entrypoint and write a high-level pseudo
+1. **Scan.** A script lists entrypoints, puts files into layers, and maps the
+   imports between layers. See [references/scanner.md](references/scanner.md).
+2. **Lint.** The project lint enforces the config `rules`: imports, calls,
+   and syntax that a layer must not use. In this repository that is
+   `packages/architecture-lint`, which runs in `bun run lint`.
+3. **Trace.** You read each selected entrypoint and write a high-level pseudo
    call stack. See [references/call-stack.md](references/call-stack.md).
-3. **Judge and fix.** You check each frame against the antipatterns, write
+4. **Judge and fix.** You check each frame against the antipatterns, write
    a work list of findings, and fix them when asked. See
    [references/antipatterns.md](references/antipatterns.md).
 
 ```mermaid
 flowchart LR
   C[architecture.config.json] --> S[scan script]
-  S -->|entrypoints, layer matrix, hints| T[trace call stacks]
+  C --> L[architecture lint]
+  S -->|entrypoints, layer matrix, cycles| T[trace call stacks]
+  L -->|lint findings| J
   T --> J[judge vs antipatterns]
   J --> F[findings]
   F --> P[fix plan]
@@ -81,12 +85,22 @@ Read the output in this order:
 
 1. **Unlayered files.** If many files are unlayered, fix the config before
    you continue.
-2. **Layer dependencies.** Any upward edge is a lead, for example
-   `database -> service`. Layers with `mayImport` in the config report
-   these edges as X3 hints.
+2. **Layer dependencies and cycles.** Any upward edge is a lead, for example
+   `database -> service`. The lint reports the edges that break a
+   `mayImport` list as X3.
 3. **Entrypoints.** These are the stacks to trace.
-4. **Candidate findings.** These are hints, not findings. Regex cannot tell
-   decoding a stored row from validating a request.
+
+Then run the lint on the scope, and keep the `architecture/*` findings:
+
+```sh
+bunx oxlint apps/server/src/v1/invoices
+```
+
+Each lint finding names its rule ID, for example `[R3]`. The lint reads the
+AST, so strings and comments do not match. A finding is still a lead for the
+judge step: a rule cannot tell decoding a stored row from validating a request.
+If the project has no architecture lint, the matrix and the read pass are all
+you have.
 
 ### 3. Trace
 
@@ -107,11 +121,11 @@ database or vendor boundary. Write the stack in the notation from
 
 Check every frame against [references/antipatterns.md](references/antipatterns.md).
 
-- Confirm or drop each scanner hint by reading the code at that line.
+- Confirm or drop each lint finding by reading the code at that line.
 - Add the violations that only reading can find: every rule marked
-  `Detect: read` or `scan+read` in the antipatterns file.
-- When a hint is a correct, deliberate pattern, do not report it. Propose a
-  config `exceptions` entry with a one-line reason.
+  `Detect: read` or `lint+read` in the antipatterns file.
+- When a lint finding is a correct, deliberate pattern, do not report it.
+  Propose a config `exceptions` entry with a one-line reason.
 
 ### 5. Report and fix
 

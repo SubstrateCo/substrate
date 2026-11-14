@@ -37,7 +37,8 @@
       "id": "R3",
       "tag": "validate",
       "layer": "route",
-      "forbidPatterns": ["\\breq\\.(body|query|params)\\b(?!.*\\.parse)", "\\bc\\.req\\.(json|query|param|parseBody)\\("],
+      "forbidMembers": ["req.{body,query,params}"],
+      "forbidCalls": ["c.req.{json,query,param,parseBody}"],
       "message": "route reads raw input (`{match}`)",
       "fix": "Validate with a schema middleware and use the parsed value"
     },
@@ -45,7 +46,8 @@
       "id": "R4",
       "tag": "sanitize",
       "layer": "route",
-      "forbidPatterns": ["\\bcatch\\s*[({]", "\\.stack\\b"],
+      "forbidSyntax": ["CatchClause"],
+      "forbidMembers": ["**.stack"],
       "message": "route handles errors itself (`{match}`)",
       "fix": "Throw or return a domain error; use the shared error mapper"
     },
@@ -87,7 +89,7 @@
       "id": "D1",
       "tag": "validate",
       "layer": "database",
-      "forbidPatterns": ["\\b\\w+(Schema|Input|Request|Dto)\\.(safeParse|parse)\\("],
+      "forbidCalls": ["*{Schema,Input,Request,Dto}.{safeParse,parse}"],
       "message": "database parses input (`{match}`)",
       "fix": "Validate in the route or service; accept typed values"
     },

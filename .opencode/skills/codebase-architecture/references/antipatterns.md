@@ -7,9 +7,10 @@ reuse an ID for a different meaning.
 
 **Detect** says who can find the problem:
 
-- **scan:** the scanner can flag it from imports or patterns.
+- **lint:** the architecture lint flags it from imports, calls, or syntax.
+  Encode it as a config rule.
 - **read:** only reading the code finds it.
-- **scan+read:** the scanner gives hints, and reading confirms them.
+- **lint+read:** the lint flags candidates, and reading confirms them.
 
 ## Tags
 
@@ -28,7 +29,7 @@ reuse an ID for a different meaning.
 A route owns transport only: parse, authorize through middleware, call one
 service method, map the result.
 
-**R1 `bypass`: route calls persistence.** Detect: scan+read.
+**R1 `bypass`: route calls persistence.** Detect: lint+read.
 - Signs: the route imports the database layer, an ORM, or an adapter, or it
   calls repositories or a database client.
 - Why: access rules and business rules are spread across routes and cannot
@@ -47,12 +48,12 @@ service method, map the result.
   request-context values to pass along.
 - Fix: move the logic into the service. The route makes one call.
 
-**R3 `validate`: untrusted input is not validated.** Detect: scan+read.
+**R3 `validate`: untrusted input is not validated.** Detect: lint+read.
 - Signs: the route reads the body, query, params, or headers without a
   schema validator, or it casts the input with `as`.
 - Fix: use validator middleware with a schema from the shared contracts.
 
-**R4 `sanitize`: raw output or errors leak.** Detect: scan+read.
+**R4 `sanitize`: raw output or errors leak.** Detect: lint+read.
 - Signs:
   - The route returns raw rows, internal IDs, secrets, or fields from
     records that the caller cannot access.
@@ -61,7 +62,7 @@ service method, map the result.
     shape.
 - Fix: return a response contract. Use the shared error mapper.
 
-**R5 `vendor`: route calls a vendor SDK.** Detect: scan.
+**R5 `vendor`: route calls a vendor SDK.** Detect: lint.
 - Allowed: the HTTP framework, its official middleware, and the validator.
 - Fix: put the SDK behind an adapter and call it from a service.
 
@@ -70,7 +71,7 @@ service method, map the result.
 A service owns business logic. It takes plain, already-validated values and
 returns a result type. The same service can serve HTTP, jobs, CLI, or tests.
 
-**S1 `upward`: service knows about HTTP.** Detect: scan+read.
+**S1 `upward`: service knows about HTTP.** Detect: lint+read.
 - Signs:
   - The service imports framework types (`Context`, `Request`).
   - It reads headers or cookies.
@@ -79,7 +80,7 @@ returns a result type. The same service can serve HTTP, jobs, CLI, or tests.
 - Fix: the route extracts values and passes them in. The service returns a
   result or an error code, and the route maps it.
 
-**S2 `bypass`: service builds queries.** Detect: scan.
+**S2 `bypass`: service builds queries.** Detect: lint.
 - Signs: the service imports an ORM, a query builder, a SQL client, or table
   schemas.
 - Fix: add a repository method. The service calls it.
@@ -91,7 +92,7 @@ returns a result type. The same service can serve HTTP, jobs, CLI, or tests.
   here.
 - Fix: accept the parsed type. Keep the invariant checks.
 
-**S4 `vendor`: service constructs vendor clients.** Detect: scan.
+**S4 `vendor`: service constructs vendor clients.** Detect: lint.
 - Signs: the service imports an SDK directly (object storage, mail, queue,
   AI provider)
   instead of receiving an injected adapter.
@@ -102,7 +103,7 @@ returns a result type. The same service can serve HTTP, jobs, CLI, or tests.
 The database layer owns persistence. It accepts typed values and returns
 plain records.
 
-**D1 `validate`: database validates request input.** Detect: scan+read.
+**D1 `validate`: database validates request input.** Detect: lint+read.
 - Signs: a repository parses request payloads, checks user-provided shape,
   or imports request input schemas.
 - Not signs:
@@ -123,12 +124,12 @@ plain records.
 - Fix: the repository exposes the write primitive, and the service runs the
   workflow.
 
-**D3 `upward`: database imports upper layers.** Detect: scan.
+**D3 `upward`: database imports upper layers.** Detect: lint.
 - Signs: imports from routes, services, middleware, the HTTP framework, or
   app config.
 - Fix: invert the dependency. The caller passes values or callbacks in.
 
-**D4 `vendor`: database calls non-persistence vendors.** Detect: scan.
+**D4 `vendor`: database calls non-persistence vendors.** Detect: lint.
 - Signs: object storage, mail, HTTP clients, or AI calls inside
   repositories.
 - Fix: move the call to a service or adapter.
@@ -150,18 +151,18 @@ limits, headers, metrics, and request scope.
 
 ## Cross-layer (X)
 
-**X1 `cycle`: layers import each other.** Detect: scan (built in).
+**X1 `cycle`: layers import each other.** Detect: scan (the Cycles section).
 - Fix: remove the upward edge. Often a shared type sits in the wrong layer.
   Move it down to a shared leaf layer.
-- The scanner finds cycles between two layers only. It skips an X1 hint
-  when another rule already flags the same import.
+- The scanner finds cycles between two layers only. A cycle between
+  layers with `mayImport` lists also fails the lint as X3.
 
 **X2 `move`: one file spans several layers.** Detect: read.
 - Signs: a route file that also has repository code, or a "service" file
   that is mostly handlers.
 - Fix: split the file by layer.
 
-**X3 `upward`: a layer imports a layer it may not.** Detect: scan (built in).
+**X3 `upward`: a layer imports a layer it may not.** Detect: lint (built in).
 - Signs: an import whose target layer is not in the importing layer's
   `mayImport` list. Type-only imports count.
 - Fix: invert the dependency, or move the shared code to a layer that both
@@ -170,8 +171,8 @@ limits, headers, metrics, and request scope.
 ## Writing project rules
 
 Project rules go in `architecture.config.json` (see
-[scanner.md](scanner.md)). Encode only rules that a regex or an import check
-can approximate. Leave the rules marked `Detect: read` to the read pass.
+[scanner.md](scanner.md)). Encode only rules that an import, call, or syntax
+check can approximate. Leave the rules marked `Detect: read` to the read pass.
 When a project instruction contradicts a default here, the project wins.
 Record the difference as an exception or a custom rule, so the next run
 does not report it again.
