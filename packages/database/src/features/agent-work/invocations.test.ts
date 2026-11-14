@@ -1,9 +1,6 @@
 import { maxAdmittedInvocationsPerDay, sessionKeys } from "@substrate/contracts/agent-work";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../client";
-import type { DeviceIdentity } from "../../core/session/device";
-import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import {
@@ -28,52 +25,11 @@ import { contextSearch } from "../context/search";
 import { executeAgentTool } from "../mcp/committed";
 import { createMessagingService } from "../messaging/service";
 import { admit } from "./admission";
-import { listCallsLog } from "./audit";
-import { expireInvocations, listInvocations, listMyCalls, revokedInvocations } from "./invocations";
-import { listNeedsYou } from "./request-views";
+import { expireInvocations, revokedInvocations } from "./invocations";
 import { expect, test } from "bun:test";
 import { and, asc, eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
-
-// Owner and device writes go through the scoped repositories that the server uses.
-type OwnerWork = Awaited<ReturnType<typeof ownerAgentWork>>;
-type DeviceWork = Awaited<ReturnType<typeof deviceAgentWork>>;
-const saveCallerPolicy = async (
-  db: DatabaseExecutor,
-  owner: SessionIdentity,
-  ...args: Parameters<OwnerWork["saveCallerPolicy"]>
-) => (await ownerAgentWork(db, owner)).saveCallerPolicy(...args);
-const allowCaller = async (
-  db: DatabaseExecutor,
-  owner: SessionIdentity,
-  ...args: Parameters<OwnerWork["allowCaller"]>
-) => (await ownerAgentWork(db, owner)).allowCaller(...args);
-const removeCaller = async (
-  db: DatabaseExecutor,
-  owner: SessionIdentity,
-  ...args: Parameters<OwnerWork["removeCaller"]>
-) => (await ownerAgentWork(db, owner)).removeCaller(...args);
-const decideInvocation = async (
-  db: DatabaseExecutor,
-  owner: SessionIdentity,
-  ...args: Parameters<OwnerWork["decideInvocation"]>
-) => (await ownerAgentWork(db, owner)).decideInvocation(...args);
-const loadSources = async (
-  db: DatabaseExecutor,
-  identity: DeviceIdentity,
-  ...args: Parameters<DeviceWork["loadSources"]>
-) => (await deviceAgentWork(db, identity)).loadSources(...args);
-const pullWakes = async (
-  db: DatabaseExecutor,
-  identity: DeviceIdentity,
-  ...args: Parameters<DeviceWork["pullWakes"]>
-) => (await deviceAgentWork(db, identity)).pullWakes(...args);
-const ackWakes = async (
-  db: DatabaseExecutor,
-  identity: DeviceIdentity,
-  ...args: Parameters<DeviceWork["ackWakes"]>
-) => (await deviceAgentWork(db, identity)).ackWakes(...args);
 
 const calls = () => f.db.select().from(agentInvocations).orderBy(asc(agentInvocations.createdAt));
 const callerWakes = () =>
@@ -162,7 +118,8 @@ test("people call a shared agent only as its policy allows; agents and the owner
     status: "pending_approval",
   });
   expect(await callerWakes()).toHaveLength(1);
-  const needsYou = await listNeedsYou(f.db, x.owner);
+  const work = await ownerAgentWork(f.db, x.owner);
+  const needsYou = await work.listNeedsYou();
   expect(needsYou.calls).toEqual([
     expect.objectContaining({
       status: "pending_approval",
@@ -172,9 +129,10 @@ test("people call a shared agent only as its policy allows; agents and the owner
     }),
   ]);
   // Only the owner sees calls of the agent.
-  expect((await listNeedsYou(f.db, { userId: "bob", organizationId: f.orgA })).calls).toEqual([]);
+  const bobWork = await ownerAgentWork(f.db, { userId: "bob", organizationId: f.orgA });
+  expect((await bobWork.listNeedsYou()).calls).toEqual([]);
 
-  await allowCaller(f.db, x.owner, x.agent.agentId, x.carolActorId);
+  await work.allowCaller(x.agent.agentId, x.carolActorId);
   const allowed = await x.carol.sendMessage(x.channel.id, `${x.mention} again`);
   expect((await calls()).at(-1)).toMatchObject({
     messageId: allowed.id,
@@ -303,8 +261,9 @@ test("owner approvals count toward the daily cap and are never blocked by it", a
   const first = await x.bob.sendMessage(x.channel.id, `${x.mention} first`);
   const pending = await callOf(first.id);
   await admittedCalls(pending, maxAdmittedInvocationsPerDay - 1);
+  const work = await ownerAgentWork(f.db, x.owner);
   // The approval is the 100th call admitted today.
-  expect((await decideInvocation(f.db, x.owner, pending.id, "approve")).result).toEqual({
+  expect((await work.decideInvocation(pending.id, "approve")).result).toEqual({
     status: "admitted",
   });
   await x.policy("anyone");
@@ -315,7 +274,7 @@ test("owner approvals count toward the daily cap and are never blocked by it", a
   const later = await x.bob.sendMessage(x.channel.id, `${x.mention} later`);
   const held = await callOf(later.id);
   expect(held.status).toBe("pending_approval");
-  expect((await decideInvocation(f.db, x.owner, held.id, "approve")).result).toEqual({
+  expect((await work.decideInvocation(held.id, "approve")).result).toEqual({
     status: "admitted",
   });
 });
@@ -384,9 +343,9 @@ test("one message batches caller facts and wake links across agents", async () =
   const x = await callerFixture(f);
   await x.policy("anyone");
   const second = await ownedAgent(f, "carol");
-  const secondOwner = { userId: "carol", organizationId: f.orgA };
-  await saveCallerPolicy(f.db, secondOwner, second.agentId, "ask");
-  await allowCaller(f.db, secondOwner, second.agentId, f.bob);
+  const secondOwner = await ownerAgentWork(f.db, { userId: "carol", organizationId: f.orgA });
+  await secondOwner.saveCallerPolicy(second.agentId, "ask");
+  await secondOwner.allowCaller(second.agentId, f.bob);
   await x.carol.addAgent(x.channel.id, second.agentId);
   const sent = await x.bob.sendMessage(x.channel.id, "hello");
   const triggers = await messageTriggers(
@@ -426,7 +385,8 @@ test("batched caller visibility remains bound to each agent owner", async () => 
   const x = await callerFixture(f);
   await x.policy("anyone");
   const second = await ownedAgent(f, "carol");
-  await saveCallerPolicy(f.db, { userId: "carol", organizationId: f.orgA }, second.agentId, "ask");
+  const secondOwner = await ownerAgentWork(f.db, { userId: "carol", organizationId: f.orgA });
+  await secondOwner.saveCallerPolicy(second.agentId, "ask");
   const channel = await x.alice.createConversation({
     kind: "channel",
     name: "private callers",
@@ -449,7 +409,8 @@ test("source revocation batches call checks and trigger toggles without crossing
   const first = await x.bob.sendMessage(x.channel.id, x.mention);
   const second = await x.carol.sendMessage(x.channel.id, x.mention);
   const other = await ownedAgent(f, "bob");
-  await saveCallerPolicy(f.db, { userId: "bob", organizationId: f.orgA }, other.agentId, "anyone");
+  const otherOwner = await ownerAgentWork(f.db, { userId: "bob", organizationId: f.orgA });
+  await otherOwner.saveCallerPolicy(other.agentId, "anyone");
   await x.bob.addAgent(x.channel.id, other.agentId);
   const foreign = await x.alice.sendMessage(x.channel.id, `@[agent:${other.actorId}]`);
   const foreignCall = await callOf(foreign.id);
@@ -492,9 +453,10 @@ test("the first decision wins, an approval wakes the agent once, and always allo
   await x.policy("ask");
   await x.bob.sendMessage(x.channel.id, `${x.mention} one`);
   const [call] = await calls();
+  const work = await ownerAgentWork(f.db, x.owner);
   const results = await Promise.allSettled([
-    decideInvocation(f.db, x.owner, call!.id, "approve"),
-    decideInvocation(f.db, x.owner, call!.id, "approve"),
+    work.decideInvocation(call!.id, "approve"),
+    work.decideInvocation(call!.id, "approve"),
   ]);
   const won = results.filter((result) => result.status === "fulfilled");
   const lost = results.filter((result) => result.status === "rejected");
@@ -511,12 +473,11 @@ test("the first decision wins, an approval wakes the agent once, and always allo
   await x.carol.sendMessage(x.channel.id, `${x.mention} two`);
   const carolCall = (await calls()).at(-1)!;
   // Only the owner decides.
-  expect(
-    await rejection(
-      decideInvocation(f.db, { userId: "bob", organizationId: f.orgA }, carolCall.id, "approve"),
-    ),
-  ).toBeInstanceOf(AccessDeniedError);
-  const approved = await decideInvocation(f.db, x.owner, carolCall.id, "always_allow");
+  const bobWork = await ownerAgentWork(f.db, { userId: "bob", organizationId: f.orgA });
+  expect(await rejection(bobWork.decideInvocation(carolCall.id, "approve"))).toBeInstanceOf(
+    AccessDeniedError,
+  );
+  const approved = await work.decideInvocation(carolCall.id, "always_allow");
   expect(approved.result).toEqual({ status: "admitted" });
   // The owner refreshes work lists; the caller learns only that their call changed.
   expect(approved.hints).toEqual(
@@ -546,7 +507,7 @@ test("rolling back an approval also rolls back its wake and decision audit", asy
   expect(
     await rejection(
       f.db.transaction(async (tx) => {
-        await decideInvocation(tx, x.owner, call.id, "approve");
+        await (await ownerAgentWork(tx, x.owner)).decideInvocation(call.id, "approve");
         throw rollback;
       }),
     ),
@@ -565,7 +526,8 @@ test("approving a call whose trigger the owner disabled since cancels it", async
     agentId: x.agent.agentId,
     triggers: [{ kind: "mention", enabled: false }],
   });
-  const decided = await decideInvocation(f.db, x.owner, call!.id, "always_allow");
+  const work = await ownerAgentWork(f.db, x.owner);
+  const decided = await work.decideInvocation(call!.id, "always_allow");
   expect(decided.result).toEqual({ status: "cancelled" });
   expect(await callerWakes()).toEqual([]);
   // A cancelled approval does not allowlist the caller.
@@ -581,15 +543,15 @@ test("a decision after expiry fails, and maintenance expires the call", async ()
     .update(agentInvocations)
     .set({ expiresAt: new Date(Date.now() - 1000) })
     .where(eq(agentInvocations.id, call!.id));
-  expect(await rejection(decideInvocation(f.db, x.owner, call!.id, "approve"))).toBeInstanceOf(
-    ConflictError,
-  );
+  const work = await ownerAgentWork(f.db, x.owner);
+  expect(await rejection(work.decideInvocation(call!.id, "approve"))).toBeInstanceOf(ConflictError);
   expect(await callerWakes()).toEqual([]);
-  expect((await listNeedsYou(f.db, x.owner)).calls).toEqual([]);
-  expect((await listInvocations(f.db, x.owner)).map((view) => view.status)).toEqual(["expired"]);
+  expect((await work.listNeedsYou()).calls).toEqual([]);
+  expect((await work.listInvocations()).map((view) => view.status)).toEqual(["expired"]);
   expect(await expireInvocations(f.db, 10)).toBe(1);
   expect((await calls())[0]!.status).toBe("expired");
-  const mine = await listMyCalls(f.db, { userId: "bob", organizationId: f.orgA }, x.channel.id);
+  const bobWork = await ownerAgentWork(f.db, { userId: "bob", organizationId: f.orgA });
+  const mine = await bobWork.listMyCalls(x.channel.id);
   expect(mine.map((view) => view.status)).toEqual(["expired"]);
 });
 
@@ -602,7 +564,8 @@ test("switching to owner only cancels waiting calls and drops queued ones at the
   await x.policy("owner");
   const [admitted, pending] = await calls();
   expect(pending!.status).toBe("cancelled");
-  const checked = await loadSources(f.db, x.agent.identity, [queued.id], [admitted!.id]);
+  const device = await deviceAgentWork(f.db, x.agent.identity);
+  const checked = await device.loadSources([queued.id], [admitted!.id]);
   expect(checked.result).toMatchObject({
     messages: [],
     inaccessible: [queued.id],
@@ -626,12 +589,14 @@ test("switching to owner only cancels waiting calls and drops queued ones at the
 test("allowlist removal and a caller who leaves the organization revoke queued calls", async () => {
   const x = await callerFixture(f);
   await x.policy("ask");
-  await allowCaller(f.db, x.owner, x.agent.agentId, x.carolActorId);
+  const work = await ownerAgentWork(f.db, x.owner);
+  const device = await deviceAgentWork(f.db, x.agent.identity);
+  await work.allowCaller(x.agent.agentId, x.carolActorId);
   const first = await x.carol.sendMessage(x.channel.id, `${x.mention} first`);
   const second = await x.carol.sendMessage(x.channel.id, `${x.mention} second`);
   const [one, two] = await calls();
   const sources = (messageIds: string[], invocationIds: string[]) =>
-    loadSources(f.db, x.agent.identity, messageIds, invocationIds).then((value) => value.result);
+    device.loadSources(messageIds, invocationIds).then((value) => value.result);
   // While the call may run, the source check returns its message with the caller as author.
   expect((await sources([], [one!.id])).messages).toEqual([
     expect.objectContaining({
@@ -639,10 +604,10 @@ test("allowlist removal and a caller who leaves the organization revoke queued c
       author: { actorId: x.carolActorId, name: "Carol", kind: "member" },
     }),
   ]);
-  await removeCaller(f.db, x.owner, x.agent.agentId, x.carolActorId);
+  await work.removeCaller(x.agent.agentId, x.carolActorId);
   expect((await sources([first.id], [one!.id])).inaccessibleInvocations).toEqual([one!.id]);
 
-  await allowCaller(f.db, x.owner, x.agent.agentId, x.carolActorId);
+  await work.allowCaller(x.agent.agentId, x.carolActorId);
   await f.db
     .delete(member)
     .where(and(eq(member.userId, "carol"), eq(member.organizationId, f.orgA)));
@@ -662,7 +627,7 @@ test("a queued call drops at the source check once the owner disables its trigge
     agentId: x.agent.agentId,
     triggers: [{ kind: "mention", enabled: false }],
   });
-  const checked = await loadSources(f.db, x.agent.identity, [], [call.id]);
+  const checked = await (await deviceAgentWork(f.db, x.agent.identity)).loadSources([], [call.id]);
   expect(checked.result).toMatchObject({ messages: [], inaccessibleInvocations: [call.id] });
   expect(await callOf(asked.id)).toMatchObject({ status: "dropped", dropReason: "revoked" });
   expect(await auditActions()).toContain("invocation_dropped");
@@ -673,7 +638,8 @@ test("a caller sees a call as queued until the agent's reply for it is published
   await x.policy("anyone");
   const root = await x.bob.sendMessage(x.channel.id, `${x.mention} help`);
   const call = await callOf(root.id);
-  const bobCalls = () => listMyCalls(f.db, { userId: "bob", organizationId: f.orgA }, x.channel.id);
+  const bobWork = await ownerAgentWork(f.db, { userId: "bob", organizationId: f.orgA });
+  const bobCalls = () => bobWork.listMyCalls(x.channel.id);
   expect((await bobCalls()).map((view) => view.status)).toEqual(["queued"]);
   // A reply in a turn that answers no call is not an answer to this call.
   await x.call(
@@ -700,14 +666,17 @@ test("caller wakes withheld from an old desktop for a day drop and ask the owner
       .update(agentWakes)
       .set({ createdAt: new Date(Date.now() - hours * 60 * 60_000) })
       .where(eq(agentWakes.source, "caller_message"));
-  const signal = async () => (await listNeedsYou(f.db, x.owner)).desktopUpdateRequired;
+  const work = await ownerAgentWork(f.db, x.owner);
+  const bobWork = await ownerAgentWork(f.db, { userId: "bob", organizationId: f.orgA });
+  const device = await deviceAgentWork(f.db, x.agent.identity);
+  const signal = async () => (await work.listNeedsYou()).desktopUpdateRequired;
   await age(23);
-  expect((await pullWakes(f.db, x.agent.identity, 50)).result).toEqual([]);
+  expect((await device.pullWakes(50)).result).toEqual([]);
   expect((await callOf(asked.id)).status).toBe("admitted");
   expect(await signal()).toEqual([]);
 
   await age(25);
-  expect((await pullWakes(f.db, x.agent.identity, 50)).result).toEqual([]);
+  expect((await device.pullWakes(50)).result).toEqual([]);
   expect(await callOf(asked.id)).toMatchObject({
     status: "dropped",
     dropReason: "desktop_needs_update",
@@ -718,7 +687,7 @@ test("caller wakes withheld from an old desktop for a day drop and ask the owner
     .from(agentAuditEvents)
     .where(eq(agentAuditEvents.action, "invocation_dropped"));
   expect(dropped).toMatchObject({ invocationId: call.id, result: "desktop_needs_update" });
-  const mine = await listMyCalls(f.db, { userId: "bob", organizationId: f.orgA }, x.channel.id);
+  const mine = await bobWork.listMyCalls(x.channel.id);
   expect(mine.map((view) => view.status)).toEqual(["expired"]);
   expect(await signal()).toEqual([
     {
@@ -729,20 +698,14 @@ test("caller wakes withheld from an old desktop for a day drop and ask the owner
     },
   ]);
   // Only the owner gets the signal.
-  expect(
-    (await listNeedsYou(f.db, { userId: "bob", organizationId: f.orgA })).desktopUpdateRequired,
-  ).toEqual([]);
+  expect((await bobWork.listNeedsYou()).desktopUpdateRequired).toEqual([]);
 
   // An updated desktop gets old caller wakes, and storing one clears the signal.
   await x.bob.sendMessage(x.channel.id, `${x.mention} again`);
   await age(25);
-  const pulled = (await pullWakes(f.db, x.agent.identity, 50, ["caller_wakes"])).result;
+  const pulled = (await device.pullWakes(50, ["caller_wakes"])).result;
   expect(pulled).toHaveLength(1);
-  await ackWakes(
-    f.db,
-    x.agent.identity,
-    pulled.map((wake) => wake.id),
-  );
+  await device.ackWakes(pulled.map((wake) => wake.id));
   expect(await signal()).toEqual([]);
 });
 
@@ -751,8 +714,9 @@ test("caller wakes go only to desktops that declare caller_wakes", async () => {
   await x.policy("anyone");
   const asked = await x.bob.sendMessage(x.channel.id, `${x.mention} help`);
   const [call] = await calls();
-  expect((await pullWakes(f.db, x.agent.identity, 50)).result).toEqual([]);
-  const pulled = await pullWakes(f.db, x.agent.identity, 50, ["caller_wakes"]);
+  const device = await deviceAgentWork(f.db, x.agent.identity);
+  expect((await device.pullWakes(50)).result).toEqual([]);
+  const pulled = await device.pullWakes(50, ["caller_wakes"]);
   expect(pulled.result).toEqual([
     expect.objectContaining({
       source: "caller_message",
@@ -819,11 +783,10 @@ test("MCP calls of a caller turn need its admitted calls in the turn's place and
     { result: "ok", access: "write" },
     { result: "invalid", access: "read" },
   ]);
-  const log = await listCallsLog(f.db, x.owner, x.agent.agentId);
+  const log = await (await ownerAgentWork(f.db, x.owner)).listCallsLog(x.agent.agentId);
   expect(JSON.stringify(log)).not.toContain("Done");
-  expect(
-    await rejection(listCallsLog(f.db, { userId: "bob", organizationId: f.orgA }, x.agent.agentId)),
-  ).toBeInstanceOf(AccessDeniedError);
+  const bobWork = await ownerAgentWork(f.db, { userId: "bob", organizationId: f.orgA });
+  expect(await rejection(bobWork.listCallsLog(x.agent.agentId))).toBeInstanceOf(AccessDeniedError);
 });
 
 test("members find a shared agent and its mode, never its allowlist; agents never do", async () => {
@@ -836,7 +799,7 @@ test("members find a shared agent and its mode, never its allowlist; agents neve
     );
   expect(await agents("bob")).toEqual([]);
   await x.policy("ask");
-  await allowCaller(f.db, x.owner, x.agent.agentId, x.carolActorId);
+  await (await ownerAgentWork(f.db, x.owner)).allowCaller(x.agent.agentId, x.carolActorId);
   const [found] = await agents("bob");
   expect(found).toMatchObject({ id: x.agent.actorId, kind: "agent", callMode: "ask" });
   expect(found).not.toHaveProperty("agentId");

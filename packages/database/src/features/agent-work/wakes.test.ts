@@ -3,14 +3,15 @@ import { askRequestPayload, sessionKeys } from "@substrate/contracts/agent-work"
 import { registerDevice } from "../../core/devices/repository";
 import { AccessDeniedError } from "../../errors";
 import { agentWakes, userAgents } from "../../schema";
-import { agentWorkFixture, dmTurn } from "../../testing/agent-work";
+import {
+  agentWorkFixture,
+  deviceAgentWork,
+  dmTurn,
+  ownerAgentWork,
+} from "../../testing/agent-work";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
-import { declineProposal, respondToRequest } from "./decisions";
-import { openRequest } from "./device-requests";
-import { loadSources } from "./sources";
-import { ackWakes, pullWakes } from "./wakes";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -21,9 +22,11 @@ test("only the home device pulls an agent's wakes, and ack is idempotent", async
   const message = await alice.sendMessage(dm.id, "Check the build");
   const laptop = { ...agent.identity, installationId: crypto.randomUUID() };
   await registerDevice(f.db, "alice", { ...laptop, name: "Other", platform: "darwin" });
-  expect(await pullWakes(f.db, laptop, 50)).toEqual([]);
+  const other = await deviceAgentWork(f.db, laptop);
+  const home = await deviceAgentWork(f.db, agent.identity);
+  expect((await other.pullWakes(50)).result).toEqual([]);
 
-  const [wake, ...rest] = await pullWakes(f.db, agent.identity, 50);
+  const [wake, ...rest] = (await home.pullWakes(50)).result;
   expect(rest).toEqual([]);
   expect(wake).toMatchObject({
     userAgentId: agent.agentId,
@@ -32,21 +35,19 @@ test("only the home device pulls an agent's wakes, and ack is idempotent", async
     sourceRef: { messageId: message.id },
   });
   // A wake stays until the home device stores it; another device cannot ack it.
-  expect(await ackWakes(f.db, laptop, [wake!.id])).toEqual({ acked: 0 });
-  expect(await pullWakes(f.db, agent.identity, 50)).toHaveLength(1);
-  const acks = [
-    await ackWakes(f.db, agent.identity, [wake!.id]),
-    await ackWakes(f.db, agent.identity, [wake!.id]),
-  ];
+  expect((await other.ackWakes([wake!.id])).result).toEqual({ acked: 0 });
+  expect((await home.pullWakes(50)).result).toHaveLength(1);
+  const acks = [(await home.ackWakes([wake!.id])).result, (await home.ackWakes([wake!.id])).result];
   expect(acks).toEqual([{ acked: 1 }, { acked: 0 }]);
-  expect(await pullWakes(f.db, agent.identity, 50)).toEqual([]);
+  expect((await home.pullWakes(50)).result).toEqual([]);
 });
 
 test("an agent without a home is adopted by the first desktop that pulls its wakes", async () => {
   const { agent, alice, dm } = await agentWorkFixture(f);
   await f.db.update(userAgents).set({ homeDeviceId: null });
   await alice.sendMessage(dm.id, "Hello");
-  expect(await pullWakes(f.db, agent.identity, 50)).toHaveLength(1);
+  const device = await deviceAgentWork(f.db, agent.identity);
+  expect((await device.pullWakes(50)).result).toHaveLength(1);
   const [row] = await f.db.select().from(userAgents).where(eq(userAgents.id, agent.agentId));
   expect(row!.homeDeviceId).toBe(agent.device.id);
 });
@@ -55,11 +56,11 @@ test("other people and organizations cannot pull or ack someone's wakes", async 
   const { agent, alice, dm } = await agentWorkFixture(f);
   await alice.sendMessage(dm.id, "Private");
   const bobDevice = { userId: "bob", organizationId: f.orgA, installationId: crypto.randomUUID() };
-  expect(await rejection(pullWakes(f.db, bobDevice, 50))).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(deviceAgentWork(f.db, bobDevice))).toBeInstanceOf(AccessDeniedError);
   await registerDevice(f.db, "bob", { ...bobDevice, name: "Bob", platform: "linux" });
-  expect(await pullWakes(f.db, bobDevice, 50)).toEqual([]);
+  expect((await (await deviceAgentWork(f.db, bobDevice)).pullWakes(50)).result).toEqual([]);
   expect(
-    await rejection(pullWakes(f.db, { ...agent.identity, organizationId: f.orgB }, 50)),
+    await rejection(deviceAgentWork(f.db, { ...agent.identity, organizationId: f.orgB })),
   ).toBeInstanceOf(AccessDeniedError);
 });
 
@@ -76,7 +77,8 @@ test("answer and approval wakes carry the decided request for the agent's home d
     turn,
   );
   const answer = { type: "questions" as const, answers: { answer: ["Next week"] } };
-  await respondToRequest(f.db, owner, asked.questionId!, answer);
+  const work = await ownerAgentWork(f.db, owner);
+  await work.respondToRequest(asked.questionId!, answer);
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
   const proposed = await call(
     "propose",
@@ -87,9 +89,9 @@ test("answer and approval wakes carry the decided request for the agent's home d
     },
     turn,
   );
-  await declineProposal(f.db, owner, proposed.proposalId);
+  await work.declineProposal(proposed.proposalId);
 
-  const wakes = await pullWakes(f.db, agent.identity, 50);
+  const wakes = (await (await deviceAgentWork(f.db, agent.identity)).pullWakes(50)).result;
   expect(wakes.find((wake) => wake.source === "answer")?.request).toEqual({
     id: asked.questionId!,
     kind: "question",
@@ -120,8 +122,8 @@ test("a wake never carries a request of another agent or another owner", async (
   const { agent, dm } = await agentWorkFixture(f);
   const other = await ownedAgent(f, "alice", "Other");
   const bobs = await ownedAgent(f, "bob", "Bob's");
-  const open = (identity: typeof agent.identity, userAgentId: string) =>
-    openRequest(f.db, identity, {
+  const open = async (identity: typeof agent.identity, userAgentId: string) =>
+    (await deviceAgentWork(f.db, identity)).openRequest({
       userAgentId,
       sessionKey: sessionKeys.dm(dm.id),
       turnId: crypto.randomUUID(),
@@ -137,8 +139,8 @@ test("a wake never carries a request of another agent or another owner", async (
       },
     });
   const foreign = [
-    await open(other.identity, other.agentId),
-    await open(bobs.identity, bobs.agentId),
+    (await open(other.identity, other.agentId)).result,
+    (await open(bobs.identity, bobs.agentId)).result,
   ];
   // Forged wakes for Alice's first agent that point at those requests.
   await f.db.insert(agentWakes).values(
@@ -153,7 +155,7 @@ test("a wake never carries a request of another agent or another owner", async (
       dedupeKey: `answer:${request.id}`,
     })),
   );
-  const wakes = await pullWakes(f.db, agent.identity, 50);
+  const wakes = (await (await deviceAgentWork(f.db, agent.identity)).pullWakes(50)).result;
   expect(wakes.map((wake) => wake.request)).toEqual([null, null]);
 });
 
@@ -176,7 +178,8 @@ test("sources return bodies the owner can see now, with author kinds, and drop t
   const secret = await bob.sendMessage(hidden.id, "Secret");
   const missing = crypto.randomUUID();
 
-  const result = await loadSources(f.db, agent.identity, [
+  const device = await deviceAgentWork(f.db, agent.identity);
+  const { result } = await device.loadSources([
     own.id,
     member.id,
     reply.messageId,
@@ -198,14 +201,15 @@ test("sources return bodies the owner can see now, with author kinds, and drop t
 
   // Access is checked on every load: after leaving, the channel's messages are dropped.
   await alice.leaveConversation(channel.id, "bob");
-  expect((await loadSources(f.db, agent.identity, [own.id])).inaccessible).toEqual([own.id]);
+  expect((await device.loadSources([own.id])).result.inaccessible).toEqual([own.id]);
 });
 
 test("deleted sources are inaccessible to queued agent work, not empty valid inputs", async () => {
   const { agent, alice, dm } = await agentWorkFixture(f);
   const sent = await alice.sendMessage(dm.id, "Erase before the desktop reads this");
   await alice.deleteMessage(sent.id);
-  expect(await loadSources(f.db, agent.identity, [sent.id])).toEqual({
+  const device = await deviceAgentWork(f.db, agent.identity);
+  expect((await device.loadSources([sent.id])).result).toEqual({
     messages: [],
     inaccessible: [sent.id],
   });

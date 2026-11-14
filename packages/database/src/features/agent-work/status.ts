@@ -7,13 +7,8 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import { deviceOnline } from "../../core/devices/repository";
 import { desktopDevices } from "../../core/devices/schema";
 import { effectsFor } from "../../core/effects";
-import {
-  requireDevice,
-  type DeviceIdentity,
-  type ResolvedDeviceIdentity,
-} from "../../core/session/device";
+import { type ResolvedDeviceIdentity } from "../../core/session/device";
 import type { SessionIdentity } from "../../core/session/identity";
-import { workspaceContext } from "../../core/session/workspace";
 import { threadRoot, visibleConversationIds, visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { requireHomedAgent } from "./device";
@@ -105,17 +100,6 @@ export async function publishStatusForDevice(
   return { applied: applied.length > 0, changed };
 }
 
-export function publishStatus(
-  db: DatabaseExecutor,
-  identity: DeviceIdentity,
-  input: PublishStatusInput,
-) {
-  return db.transaction(async (tx) => {
-    const device = await requireDevice(tx, identity);
-    return publishStatusForDevice(tx, { ...identity, deviceId: device.id }, input);
-  });
-}
-
 /** Status rows of the owner's agents in the organization, with each agent's home desktop. */
 export async function statusViews(
   db: DatabaseExecutor,
@@ -152,12 +136,4 @@ export async function statusViews(
     )
     .orderBy(asc(userAgents.name), asc(agentStatus.userAgentId));
   return rows.map(toStatusView);
-}
-
-/** The owner's agents' published status. */
-export function listStatus(db: DatabaseExecutor, identity: SessionIdentity) {
-  return db.transaction(async (tx) => {
-    await workspaceContext(tx, identity);
-    return statusViews(tx, identity);
-  });
 }

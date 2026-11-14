@@ -2,12 +2,11 @@ import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError } from "../../errors";
+import { ownerAgentWork } from "../../testing/agent-work";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
-import { listCallsLog } from "./audit";
 import { createAgentWorkReadRepository } from "./read-repository";
-import { listConversationRequests } from "./request-views";
 import { expect, test } from "bun:test";
 
 const f = setupDatabase();
@@ -20,14 +19,10 @@ test("conversation requests combine visibility and rows instead of a preflight q
     .messaging("alice")
     .createConversation({ kind: "channel", name: "Requests" });
   const { db, queries } = recordQueries();
-  expect(
-    await listConversationRequests(
-      db,
-      { userId: "alice", organizationId: f.orgA },
-      conversation.id,
-    ),
-  ).toEqual([]);
-  expect(statements(queries)).toHaveLength(2);
+  const work = await ownerAgentWork(db, { userId: "alice", organizationId: f.orgA });
+  queries.length = 0;
+  expect(await work.listConversationRequests(conversation.id)).toEqual([]);
+  expect(statements(queries)).toHaveLength(1);
 });
 
 test("calls log checks ownership with its rows even when the log is empty", async () => {
@@ -42,13 +37,12 @@ test("calls log checks ownership with its rows even when the log is empty", asyn
     userAgentId: agent!.id,
   });
   const { db, queries } = recordQueries();
-  expect(await listCallsLog(db, { userId: "alice", organizationId: f.orgA }, agent!.id)).toEqual(
-    [],
-  );
-  expect(statements(queries)).toHaveLength(2);
-  expect(
-    await rejection(listCallsLog(db, { userId: "bob", organizationId: f.orgA }, agent!.id)),
-  ).toBeInstanceOf(AccessDeniedError);
+  const alice = await ownerAgentWork(db, { userId: "alice", organizationId: f.orgA });
+  const bob = await ownerAgentWork(db, { userId: "bob", organizationId: f.orgA });
+  queries.length = 0;
+  expect(await alice.listCallsLog(agent!.id)).toEqual([]);
+  expect(statements(queries)).toHaveLength(1);
+  expect(await rejection(bob.listCallsLog(agent!.id))).toBeInstanceOf(AccessDeniedError);
 });
 
 test("scoped work reads do not resolve membership or actors again", async () => {

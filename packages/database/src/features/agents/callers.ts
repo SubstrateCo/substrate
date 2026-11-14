@@ -51,15 +51,6 @@ async function changed(db: DatabaseExecutor, identity: SessionIdentity) {
  * Sets who may call the agent. Switching to owner only cancels its pending calls; calls already
  * admitted drop at the home desktop's source check. Running turns are not stopped.
  */
-export function saveCallerPolicy(
-  db: DatabaseExecutor,
-  identity: SessionIdentity,
-  agentId: string,
-  policy: AgentCallerPolicy,
-) {
-  return db.transaction((tx) => saveCallerPolicyInTransaction(tx, identity, agentId, policy));
-}
-
 export async function saveCallerPolicyInTransaction(
   tx: DatabaseExecutor,
   identity: SessionIdentity,

@@ -5,11 +5,7 @@ import { actorAuthorKind } from "../../core/actors/display-name";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
-import {
-  requireDevice,
-  type DeviceIdentity,
-  type ResolvedDeviceIdentity,
-} from "../../core/session/device";
+import { type ResolvedDeviceIdentity } from "../../core/session/device";
 import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
@@ -74,21 +70,4 @@ export async function loadSourcesForDevice(
   };
   if (invocationIds.length) result.inaccessibleInvocations = calls.revoked;
   return result;
-}
-
-export function loadSources(
-  db: DatabaseExecutor,
-  identity: DeviceIdentity,
-  messageIds: string[],
-  invocationIds: string[] = [],
-) {
-  return db.transaction(async (tx) => {
-    const device = await requireDevice(tx, identity);
-    return loadSourcesForDevice(
-      tx,
-      { ...identity, deviceId: device.id },
-      messageIds,
-      invocationIds,
-    );
-  });
 }

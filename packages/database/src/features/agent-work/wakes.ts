@@ -11,11 +11,7 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 import type { DatabaseExecutor } from "../../client";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { effectsFor } from "../../core/effects";
-import {
-  requireDevice,
-  type DeviceIdentity,
-  type ResolvedDeviceIdentity,
-} from "../../core/session/device";
+import { type DeviceIdentity, type ResolvedDeviceIdentity } from "../../core/session/device";
 import { admit } from "./admission";
 import { homedAgentIds } from "./device";
 import { dropWithheldCallerWakes } from "./invocations";
@@ -225,25 +221,6 @@ export async function ackWakesForDevice(
     )
     .returning({ id: agentWakes.id });
   return { acked: acked.length };
-}
-
-export function pullWakes(
-  db: DatabaseExecutor,
-  identity: DeviceIdentity,
-  limit: number,
-  capabilities: readonly DeviceCapability[] = [],
-) {
-  return db.transaction(async (tx) => {
-    const device = await requireDevice(tx, identity);
-    return pullWakesForDevice(tx, { ...identity, deviceId: device.id }, limit, capabilities);
-  });
-}
-
-export function ackWakes(db: DatabaseExecutor, identity: DeviceIdentity, ids: string[]) {
-  return db.transaction(async (tx) => {
-    const device = await requireDevice(tx, identity);
-    return ackWakesForDevice(tx, { ...identity, deviceId: device.id }, ids);
-  });
 }
 
 /** Wakes the agent with the owner's decision on a request. One wake per request and kind. */

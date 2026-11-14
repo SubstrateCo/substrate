@@ -47,15 +47,6 @@ async function requireOwnedRequest(
  * applies only while the request is still pending. A blocking answer waits for the home desktop
  * to deliver it; an async answer wakes the agent in the request's session.
  */
-export function respondToRequest(
-  db: DatabaseExecutor,
-  identity: SessionIdentity,
-  requestId: string,
-  response: AgentRequestResponse,
-) {
-  return db.transaction((tx) => respondToRequestInTransaction(tx, identity, requestId, response));
-}
-
 export async function respondToRequestInTransaction(
   tx: DatabaseExecutor,
   identity: SessionIdentity,
@@ -83,14 +74,6 @@ export async function respondToRequestInTransaction(
 }
 
 /** Declines a proposal. Nothing runs; the agent learns the decision in its session. */
-export function declineProposal(
-  db: DatabaseExecutor,
-  identity: SessionIdentity,
-  requestId: string,
-) {
-  return db.transaction((tx) => declineProposalInTransaction(tx, identity, requestId));
-}
-
 export async function declineProposalInTransaction(
   tx: DatabaseExecutor,
   identity: SessionIdentity,
@@ -128,14 +111,6 @@ export function proposalFailure(error: Error): ProposalOutcome | null {
   if (error instanceof ValidationError || error instanceof ConflictError)
     return { status: "failed", error: error.message };
   return null;
-}
-
-export function approveProposal(
-  db: DatabaseExecutor,
-  identity: SessionIdentity,
-  requestId: string,
-) {
-  return db.transaction((tx) => approveProposalInTransaction(tx, identity, requestId));
 }
 
 export async function approveProposalInTransaction(

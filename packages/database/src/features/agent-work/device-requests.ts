@@ -9,11 +9,7 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
 import { effectsFor } from "../../core/effects";
-import {
-  requireDevice,
-  type DeviceIdentity,
-  type ResolvedDeviceIdentity,
-} from "../../core/session/device";
+import { type DeviceIdentity, type ResolvedDeviceIdentity } from "../../core/session/device";
 import { AccessDeniedError } from "../../errors";
 import { homedAgentIds, requireHomedAgent } from "./device";
 import { inStates } from "./machine-sql";
@@ -166,34 +162,4 @@ export async function requestAnswersForDevice(
   return rows.flatMap(({ response, nativeRequestId, ...row }) =>
     response && nativeRequestId ? [{ ...row, nativeRequestId, response }] : [],
   );
-}
-
-export function openRequest(
-  db: DatabaseExecutor,
-  identity: DeviceIdentity,
-  input: OpenRequestInput,
-) {
-  return db.transaction(async (tx) => {
-    const device = await requireDevice(tx, identity);
-    return openRequestForDevice(tx, { ...identity, deviceId: device.id }, input);
-  });
-}
-
-export function closeRequest(
-  db: DatabaseExecutor,
-  identity: DeviceIdentity,
-  requestId: string,
-  status: keyof typeof closable,
-) {
-  return db.transaction(async (tx) => {
-    const device = await requireDevice(tx, identity);
-    return closeRequestForDevice(tx, { ...identity, deviceId: device.id }, requestId, status);
-  });
-}
-
-export function requestAnswers(db: DatabaseExecutor, identity: DeviceIdentity) {
-  return db.transaction(async (tx) => {
-    const device = await requireDevice(tx, identity);
-    return requestAnswersForDevice(tx, { ...identity, deviceId: device.id });
-  });
 }

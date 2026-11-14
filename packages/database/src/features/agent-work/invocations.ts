@@ -516,38 +516,11 @@ export const awaitingOwner = and(
   gt(agentInvocations.expiresAt, sql`now()`),
 );
 
-/** The owner's calls in this organization, newest first; one agent's when userAgentId is set. */
-export function listInvocations(
-  db: DatabaseExecutor,
-  identity: SessionIdentity,
-  userAgentId?: string,
-) {
-  return db.transaction(async (tx) => {
-    await workspaceContext(tx, identity);
-    return invocationViews(
-      tx,
-      identity,
-      userAgentId ? eq(agentInvocations.userAgentId, userAgentId) : undefined,
-    );
-  });
-}
-
 /**
  * The caller's own calls on their messages in one conversation they can see now. Nothing for a
  * conversation they cannot open. Callers learn only waiting, queued, answered, declined or
  * expired. A call is answered once a reply that the agent published for it is audited.
  */
-export function listMyCalls(
-  db: DatabaseExecutor,
-  identity: SessionIdentity,
-  conversationId: string,
-) {
-  return db.transaction(async (tx): Promise<AgentCallStatusView[]> => {
-    await workspaceContext(tx, identity);
-    return queryMyCalls(tx, identity, conversationId);
-  });
-}
-
 export async function queryMyCalls(
   db: DatabaseExecutor,
   identity: SessionIdentity,

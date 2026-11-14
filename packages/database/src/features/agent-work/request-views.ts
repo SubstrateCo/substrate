@@ -8,7 +8,6 @@ import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import type { SessionIdentity } from "../../core/session/identity";
-import { workspaceContext } from "../../core/session/workspace";
 import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations } from "../messaging/schema";
@@ -86,17 +85,6 @@ export const answerableRequest = answerableBy("answer");
  * day, so cards can show the result, and executed proposals that posted here, so the created
  * message links back. Nothing for a conversation the owner cannot open.
  */
-export function listConversationRequests(
-  db: DatabaseExecutor,
-  identity: SessionIdentity,
-  conversationId: string,
-) {
-  return db.transaction(async (tx) => {
-    await workspaceContext(tx, identity);
-    return queryConversationRequests(tx, identity, conversationId);
-  });
-}
-
 export function queryConversationRequests(
   db: DatabaseExecutor,
   identity: SessionIdentity,
@@ -135,13 +123,6 @@ export function queryConversationRequests(
  * Everything that waits for the owner: open requests, agents that report needs_you, calls that
  * wait for approval, and agents whose desktop needs an update to run caller calls.
  */
-export function listNeedsYou(db: DatabaseExecutor, identity: SessionIdentity) {
-  return db.transaction(async (tx): Promise<AgentNeedsYou> => {
-    await workspaceContext(tx, identity);
-    return queryNeedsYou(tx, identity);
-  });
-}
-
 export async function queryNeedsYou(
   db: DatabaseExecutor,
   identity: SessionIdentity,

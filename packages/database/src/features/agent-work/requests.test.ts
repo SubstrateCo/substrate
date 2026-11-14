@@ -8,12 +8,15 @@ import {
   messagingMessages,
   tasks,
 } from "../../schema";
-import { agentWorkFixture, dmTurn, threadTurn } from "../../testing/agent-work";
+import {
+  agentWorkFixture,
+  deviceAgentWork,
+  dmTurn,
+  ownerAgentWork,
+  threadTurn,
+} from "../../testing/agent-work";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
-import { approveProposal, declineProposal, respondToRequest } from "./decisions";
-import { closeRequest, openRequest, requestAnswers } from "./device-requests";
-import { listConversationRequests, listNeedsYou } from "./request-views";
 import { expect, test } from "bun:test";
 import { eq, sql } from "drizzle-orm";
 
@@ -49,29 +52,27 @@ async function blocking() {
     conversationId: fixture.dm.id,
     payload: approval,
   };
-  const request = await openRequest(f.db, fixture.agent.identity, input);
-  return { ...fixture, input, request };
+  const device = await deviceAgentWork(f.db, fixture.agent.identity);
+  const work = await ownerAgentWork(f.db, fixture.owner);
+  const request = (await device.openRequest(input)).result;
+  return { ...fixture, device, work, input, request };
 }
 
 test("a blocking request opens once, the first answer wins, and the home device delivers it", async () => {
-  const { agent, owner, input, request } = await blocking();
-  expect(await openRequest(f.db, agent.identity, input)).toEqual(request);
+  const { agent, device, work, input, request } = await blocking();
+  expect((await device.openRequest(input)).result).toEqual(request);
 
   expect(
-    await rejection(
-      respondToRequest(f.db, owner, request.id, { type: "approval", optionId: "sudo" }),
-    ),
+    await rejection(work.respondToRequest(request.id, { type: "approval", optionId: "sudo" })),
   ).toBeInstanceOf(ValidationError);
-  await respondToRequest(f.db, owner, request.id, { type: "approval", optionId: "deny" });
+  await work.respondToRequest(request.id, { type: "approval", optionId: "deny" });
   expect(
-    await rejection(
-      respondToRequest(f.db, owner, request.id, { type: "approval", optionId: "allow" }),
-    ),
+    await rejection(work.respondToRequest(request.id, { type: "approval", optionId: "allow" })),
   ).toBeInstanceOf(ConflictError);
   // A blocking answer goes to the waiting callback, not to a new turn.
   expect(await wakesFor(request.id)).toEqual([]);
 
-  expect(await requestAnswers(f.db, agent.identity)).toEqual([
+  expect(await device.requestAnswers()).toEqual([
     {
       requestId: request.id,
       userAgentId: agent.agentId,
@@ -81,29 +82,29 @@ test("a blocking request opens once, the first answer wins, and the home device 
     },
   ]);
   const closes = [
-    await closeRequest(f.db, agent.identity, request.id, "delivered"),
-    await closeRequest(f.db, agent.identity, request.id, "delivered"),
+    (await device.closeRequest(request.id, "delivered")).result,
+    (await device.closeRequest(request.id, "delivered")).result,
   ];
   expect(closes).toEqual([{ changed: true }, { changed: false }]);
-  expect(await requestAnswers(f.db, agent.identity)).toEqual([]);
+  expect(await device.requestAnswers()).toEqual([]);
 });
 
 test("an answer whose callback went away is undelivered and kept; an unanswered one is orphaned", async () => {
-  const { agent, owner, dm, input, request } = await blocking();
-  await respondToRequest(f.db, owner, request.id, { type: "approval", optionId: "allow" });
-  expect(await closeRequest(f.db, agent.identity, request.id, "orphaned")).toEqual({
+  const { device, work, dm, input, request } = await blocking();
+  await work.respondToRequest(request.id, { type: "approval", optionId: "allow" });
+  expect((await device.closeRequest(request.id, "orphaned")).result).toEqual({
     changed: true,
   });
-  const [answered] = await listConversationRequests(f.db, owner, dm.id);
+  const [answered] = await work.listConversationRequests(dm.id);
   expect(answered).toMatchObject({
     id: request.id,
     status: "undelivered",
     response: { type: "approval", optionId: "allow" },
   });
-  expect(await requestAnswers(f.db, agent.identity)).toEqual([]);
+  expect(await device.requestAnswers()).toEqual([]);
 
-  const open = await openRequest(f.db, agent.identity, { ...input, nativeRequestId: "native-2" });
-  expect(await closeRequest(f.db, agent.identity, open.id, "orphaned")).toEqual({
+  const open = (await device.openRequest({ ...input, nativeRequestId: "native-2" })).result;
+  expect((await device.closeRequest(open.id, "orphaned")).result).toEqual({
     changed: true,
   });
   const [row] = await f.db
@@ -114,30 +115,29 @@ test("an answer whose callback went away is undelivered and kept; an unanswered 
 });
 
 test("an expired blocking request cannot be answered", async () => {
-  const { owner, request } = await blocking();
+  const { work, request } = await blocking();
   await f.db
     .update(agentRequests)
     .set({ expiresAt: sql`now() - interval '1 second'` })
     .where(eq(agentRequests.id, request.id));
   expect(
-    await rejection(
-      respondToRequest(f.db, owner, request.id, { type: "approval", optionId: "allow" }),
-    ),
+    await rejection(work.respondToRequest(request.id, { type: "approval", optionId: "allow" })),
   ).toBeInstanceOf(ConflictError);
 });
 
 test("other people cannot see or answer someone's requests, or act as their device", async () => {
   const { dm, input, request } = await blocking();
   const bob = { userId: "bob", organizationId: f.orgA };
+  const bobWork = await ownerAgentWork(f.db, bob);
   expect(
-    await rejection(
-      respondToRequest(f.db, bob, request.id, { type: "approval", optionId: "allow" }),
-    ),
+    await rejection(bobWork.respondToRequest(request.id, { type: "approval", optionId: "allow" })),
   ).toBeInstanceOf(AccessDeniedError);
-  expect((await listNeedsYou(f.db, bob)).requests).toEqual([]);
-  expect(await listConversationRequests(f.db, bob, dm.id)).toEqual([]);
+  expect((await bobWork.listNeedsYou()).requests).toEqual([]);
+  expect(await bobWork.listConversationRequests(dm.id)).toEqual([]);
   const bobDevice = { ...bob, installationId: crypto.randomUUID() };
-  expect(await rejection(openRequest(f.db, bobDevice, input))).toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(deviceAgentWork(f.db, bobDevice).then((device) => device.openRequest(input))),
+  ).toBeInstanceOf(AccessDeniedError);
 });
 
 test("an async question's answer wakes the agent exactly once in the question's session", async () => {
@@ -148,7 +148,8 @@ test("an async question's answer wakes the agent exactly once in the question's 
     { requestId: crypto.randomUUID(), body: "Which week?", ask: { question: "Which week?" } },
     turn,
   );
-  const [view] = (await listNeedsYou(f.db, owner)).requests;
+  const work = await ownerAgentWork(f.db, owner);
+  const [view] = (await work.listNeedsYou()).requests;
   expect(view).toMatchObject({
     id: reply.questionId,
     kind: "question",
@@ -156,14 +157,14 @@ test("an async question's answer wakes the agent exactly once in the question's 
     place: { access: "visible", conversationId: dm.id, anchorMessageId: reply.messageId },
   });
   const answer = { type: "questions" as const, answers: { answer: ["Next week"] } };
-  await respondToRequest(f.db, owner, reply.questionId!, answer);
-  expect(await rejection(respondToRequest(f.db, owner, reply.questionId!, answer))).toBeInstanceOf(
+  await work.respondToRequest(reply.questionId!, answer);
+  expect(await rejection(work.respondToRequest(reply.questionId!, answer))).toBeInstanceOf(
     ConflictError,
   );
   expect(await wakesFor(reply.questionId!)).toEqual([
     { source: "answer", sessionKey: turn.sessionKey },
   ]);
-  expect((await listNeedsYou(f.db, owner)).requests).toEqual([]);
+  expect((await work.listNeedsYou()).requests).toEqual([]);
 });
 
 test("approving a proposal runs the exact action once, even when approved twice at once", async () => {
@@ -179,12 +180,13 @@ test("approving a proposal runs the exact action once, even when approved twice 
     { requestId: crypto.randomUUID(), summary: "Post the summary", action },
     turn,
   );
+  const work = await ownerAgentWork(f.db, owner);
   const results = await Promise.allSettled([
-    approveProposal(f.db, owner, proposalId),
-    approveProposal(f.db, owner, proposalId),
+    work.approveProposal(proposalId),
+    work.approveProposal(proposalId),
   ]);
   const approved = results.flatMap((result) =>
-    result.status === "fulfilled" ? [result.value] : [],
+    result.status === "fulfilled" ? [result.value.result] : [],
   );
   expect(approved).toHaveLength(1);
   expect(results.find((result) => result.status === "rejected")?.reason).toBeInstanceOf(
@@ -224,21 +226,21 @@ test("an executed proposal is listed in the conversation it posted to, for its o
     dmTurn(dm.id, "unattended"),
   );
   // Before approval the proposal belongs only to the conversation it came from.
-  expect(await listConversationRequests(f.db, owner, target.id)).toEqual([]);
-  const { outcome } = await approveProposal(f.db, owner, proposalId);
-  const listed = await listConversationRequests(f.db, owner, target.id);
+  const work = await ownerAgentWork(f.db, owner);
+  expect(await work.listConversationRequests(target.id)).toEqual([]);
+  const { outcome } = (await work.approveProposal(proposalId)).result;
+  const listed = await work.listConversationRequests(target.id);
   expect(listed.map((view) => [view.id, view.proposal?.outcome])).toEqual([[proposalId, outcome]]);
   // The card stays where it came from; here it is only a backlink.
   expect(listed[0]!.place).toMatchObject({ access: "visible", conversationId: dm.id });
 
   // A member of the target conversation sees nothing of Alice's proposal.
   await bob.sendMessage(target.id, "Thanks");
-  expect(
-    await listConversationRequests(f.db, { userId: "bob", organizationId: f.orgA }, target.id),
-  ).toEqual([]);
+  const bobWork = await ownerAgentWork(f.db, { userId: "bob", organizationId: f.orgA });
+  expect(await bobWork.listConversationRequests(target.id)).toEqual([]);
   // After leaving the target, the owner gets nothing for it either.
   await alice.leaveConversation(target.id);
-  expect(await listConversationRequests(f.db, owner, target.id)).toEqual([]);
+  expect(await work.listConversationRequests(target.id)).toEqual([]);
 });
 
 test("a task proposal's receipt names the task's project", async () => {
@@ -253,7 +255,8 @@ test("a task proposal's receipt names the task's project", async () => {
     },
     dmTurn(dm.id, "unattended"),
   );
-  const { outcome } = await approveProposal(f.db, owner, proposalId);
+  const { outcome } = (await (await ownerAgentWork(f.db, owner)).approveProposal(proposalId))
+    .result;
   const [task] = await f.db.select().from(tasks).where(eq(tasks.projectEntityId, project.entityId));
   expect(outcome).toEqual({
     status: "executed",
@@ -277,7 +280,8 @@ test("approval checks access again and records a failure; decline runs nothing",
     input: { conversationId: shared.id, body: "Hello" },
   });
   await alice.leaveConversation(shared.id);
-  expect((await approveProposal(f.db, owner, post.proposalId)).outcome).toEqual({
+  const work = await ownerAgentWork(f.db, owner);
+  expect((await work.approveProposal(post.proposalId)).result.outcome).toEqual({
     status: "failed",
     error: "The target no longer exists or is no longer available.",
   });
@@ -293,24 +297,21 @@ test("approval checks access again and records a failure; decline runs nothing",
     type: "create_task",
     input: { projectId: project.entityId, title: "Write checklist" },
   });
-  expect(await declineProposal(f.db, owner, create.proposalId)).toEqual({
+  expect((await work.declineProposal(create.proposalId)).result).toEqual({
     status: "resolved",
     outcome: { status: "declined" },
   });
-  expect(await rejection(approveProposal(f.db, owner, create.proposalId))).toBeInstanceOf(
-    ConflictError,
-  );
+  expect(await rejection(work.approveProposal(create.proposalId))).toBeInstanceOf(ConflictError);
   expect(
     await f.db.select().from(tasks).where(eq(tasks.projectEntityId, project.entityId)),
   ).toEqual([]);
   expect(await wakesFor(create.proposalId)).toEqual([
     { source: "approval_result", sessionKey: turn.sessionKey },
   ]);
-  expect(
-    await rejection(
-      approveProposal(f.db, { userId: "bob", organizationId: f.orgA }, post.proposalId),
-    ),
-  ).toBeInstanceOf(AccessDeniedError);
+  const bobWork = await ownerAgentWork(f.db, { userId: "bob", organizationId: f.orgA });
+  expect(await rejection(bobWork.approveProposal(post.proposalId))).toBeInstanceOf(
+    AccessDeniedError,
+  );
 });
 
 test("after the owner leaves, a request is a placeholder without IDs, text or proposal", async () => {
@@ -366,7 +367,7 @@ test("after the owner leaves, a request is a placeholder without IDs, text or pr
   await alice.leaveConversation(shared.id);
   await alice.leaveConversation(target.id);
 
-  const views = (await listNeedsYou(f.db, owner)).requests;
+  const views = (await (await ownerAgentWork(f.db, owner)).listNeedsYou()).requests;
   const byId = new Map(views.map((view) => [view.id, view]));
   for (const id of [asked.questionId!, proposed.proposalId]) {
     expect(byId.get(id)!.place).toEqual({ access: "hidden" });
@@ -403,7 +404,8 @@ test("an approval runs only while the target is as it was proposed", async () =>
     status: "failed" as const,
     error: "The target changed after this was proposed. Ask the agent to propose again.",
   };
-  expect(await approveProposal(f.db, owner, update.proposalId)).toEqual({
+  const work = await ownerAgentWork(f.db, owner);
+  expect((await work.approveProposal(update.proposalId)).result).toEqual({
     status: "failed",
     outcome: stale,
   });
@@ -423,7 +425,7 @@ test("an approval runs only while the target is as it was proposed", async () =>
     .update(messagingConversations)
     .set({ private: true })
     .where(eq(messagingConversations.id, channel.id));
-  expect((await approveProposal(f.db, owner, post.proposalId)).outcome).toEqual(stale);
+  expect((await work.approveProposal(post.proposalId)).result.outcome).toEqual(stale);
   expect(
     await f.db
       .select()
@@ -436,25 +438,27 @@ test("an approval runs only while the target is as it was proposed", async () =>
     type: "update_task",
     input: { taskId: task.entityId, changes: { status: "completed" } },
   });
-  expect((await approveProposal(f.db, owner, fresh.proposalId)).status).toBe("executed");
+  expect((await work.approveProposal(fresh.proposalId)).result.status).toBe("executed");
 });
 
 test("a request in a conversation the owner left shows no name or ID", async () => {
-  const { owner, alice, bob, agent, input } = await blocking();
+  const { alice, bob, device, work, input } = await blocking();
   const shared = await bob.createConversation({
     kind: "channel",
     name: "secret-plans",
     private: true,
     emails: ["alice@example.com"],
   });
-  const hidden = await openRequest(f.db, agent.identity, {
-    ...input,
-    nativeRequestId: "native-2",
-    conversationId: shared.id,
-  });
+  const hidden = (
+    await device.openRequest({
+      ...input,
+      nativeRequestId: "native-2",
+      conversationId: shared.id,
+    })
+  ).result;
   await alice.leaveConversation(shared.id);
-  const views = (await listNeedsYou(f.db, owner)).requests;
+  const views = (await work.listNeedsYou()).requests;
   expect(views.find((view) => view.id === hidden.id)?.place).toEqual({ access: "hidden" });
   expect(JSON.stringify(views)).not.toContain("secret-plans");
-  expect(await listConversationRequests(f.db, owner, shared.id)).toEqual([]);
+  expect(await work.listConversationRequests(shared.id)).toEqual([]);
 });

@@ -11,8 +11,6 @@ import {
 import { testDatabase } from "../../testing/connection";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
-import { saveCallerPolicy } from "../agents/callers";
-import { respondToRequest } from "./decisions";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -135,52 +133,44 @@ function failingInsert(
   });
 }
 
-test("raw and scoped policy changes roll back if the audit fails", async () => {
+test("policy changes roll back if the audit fails", async () => {
   const x = await callerFixture(f);
-  const failing = failingInsert(db, agentAuditEvents);
-  const scoped = await ownerAgentWork(failing, x.owner);
-  for (const write of [
-    () => scoped.saveCallerPolicy(x.agent.agentId, "ask"),
-    () => saveCallerPolicy(failing, x.owner, x.agent.agentId, "ask"),
-  ]) {
-    transactionCount = 0;
-    expect(await rejection(write())).toMatchObject({ message: "Insert unavailable" });
-    expect(transactionCount).toBe(1);
-    expect(
-      (await f.db.query.userAgents.findFirst({ where: eq(userAgents.id, x.agent.agentId) }))!
-        .callerPolicy,
-    ).toBe("owner");
-    expect(await f.db.select().from(agentAuditEvents)).toEqual([]);
-  }
+  const scoped = await ownerAgentWork(failingInsert(db, agentAuditEvents), x.owner);
+  transactionCount = 0;
+  expect(await rejection(scoped.saveCallerPolicy(x.agent.agentId, "ask"))).toMatchObject({
+    message: "Insert unavailable",
+  });
+  expect(transactionCount).toBe(1);
+  expect(
+    (await f.db.query.userAgents.findFirst({ where: eq(userAgents.id, x.agent.agentId) }))!
+      .callerPolicy,
+  ).toBe("owner");
+  expect(await f.db.select().from(agentAuditEvents)).toEqual([]);
 });
 
-test("raw and scoped answers roll back the decision if creating its wake fails", async () => {
+test("answers roll back the decision if creating its wake fails", async () => {
   const x = await agentWorkFixture(f);
   const question = await x.call(
     "reply",
     { requestId: crypto.randomUUID(), body: "Which week?", ask: { question: "Which week?" } },
     dmTurn(x.dm.id),
   );
-  const failing = failingInsert(db, agentWakes);
-  const scoped = await ownerAgentWork(failing, x.owner);
+  const scoped = await ownerAgentWork(failingInsert(db, agentWakes), x.owner);
   const response = { type: "questions" as const, answers: { answer: ["Next week"] } };
-  for (const write of [
-    () => scoped.respondToRequest(question.questionId!, response),
-    () => respondToRequest(failing, x.owner, question.questionId!, response),
-  ]) {
-    transactionCount = 0;
-    expect(await rejection(write())).toMatchObject({ message: "Insert unavailable" });
-    expect(transactionCount).toBe(1);
-    expect(
-      await f.db.query.agentRequests.findFirst({
-        where: eq(agentRequests.id, question.questionId!),
-      }),
-    ).toMatchObject({
-      status: "pending",
-      response: null,
-      resolvedAt: null,
-      resolvedByUserId: null,
-    });
-    expect(await f.db.select().from(agentWakes).where(eq(agentWakes.source, "answer"))).toEqual([]);
-  }
+  transactionCount = 0;
+  expect(await rejection(scoped.respondToRequest(question.questionId!, response))).toMatchObject({
+    message: "Insert unavailable",
+  });
+  expect(transactionCount).toBe(1);
+  expect(
+    await f.db.query.agentRequests.findFirst({
+      where: eq(agentRequests.id, question.questionId!),
+    }),
+  ).toMatchObject({
+    status: "pending",
+    response: null,
+    resolvedAt: null,
+    resolvedByUserId: null,
+  });
+  expect(await f.db.select().from(agentWakes).where(eq(agentWakes.source, "answer"))).toEqual([]);
 });
