@@ -1,25 +1,18 @@
 import type { DatabaseExecutor } from "../../client";
 import { createRepositories } from "../../repositories";
 import { agentAuditEvents, agentRequests, agentWakes, userAgents } from "../../schema";
-import { agentWorkFixture, callerFixture, dmTurn } from "../../testing/agent-work";
+import {
+  agentWorkFixture,
+  callerFixture,
+  deviceAgentWork,
+  dmTurn,
+  ownerAgentWork,
+} from "../../testing/agent-work";
 import { testDatabase } from "../../testing/connection";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
-import { saveCallerPolicy as rawSaveCallerPolicy } from "../agents/callers";
-import {
-  allowCaller,
-  approveProposal,
-  decideInvocation,
-  declineProposal,
-  removeCaller,
-  respondToRequest,
-  saveCallerPolicy,
-  ackWakes,
-  loadSources,
-  pullWakes,
-  publishStatus,
-} from "./committed";
-import { respondToRequest as rawRespondToRequest } from "./decisions";
+import { saveCallerPolicy } from "../agents/callers";
+import { respondToRequest } from "./decisions";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -39,14 +32,15 @@ function trackedTransactions(executor: DatabaseExecutor): DatabaseExecutor {
 }
 const db = trackedTransactions(testDatabase);
 
-test("committed native calls resolve their device without an extra savepoint", async () => {
+test("scoped device writes commit in one transaction each", async () => {
   const x = await agentWorkFixture(f);
+  const device = await deviceAgentWork(db, x.agent.identity);
   const writes = [
-    () => ackWakes(db, x.agent.identity, []),
-    () => loadSources(db, x.agent.identity, []),
-    () => pullWakes(db, x.agent.identity, 10, ["caller_wakes"]),
+    () => device.ackWakes([]),
+    () => device.loadSources([]),
+    () => device.pullWakes(10, ["caller_wakes"]),
     () =>
-      publishStatus(db, x.agent.identity, {
+      device.publishStatus({
         userAgentId: x.agent.agentId,
         state: "idle",
         queuedCount: 0,
@@ -57,68 +51,6 @@ test("committed native calls resolve their device without an extra savepoint", a
     transactionCount = 0;
     await write();
     expect(transactionCount).toBe(1);
-  }
-});
-
-test("committed caller changes and invocation decisions use one transaction each", async () => {
-  const x = await callerFixture(f);
-  const writes = [
-    () => saveCallerPolicy(db, x.owner, x.agent.agentId, "ask"),
-    () => allowCaller(db, x.owner, x.agent.agentId, x.carolActorId),
-    () => removeCaller(db, x.owner, x.agent.agentId, x.carolActorId),
-  ];
-  for (const write of writes) {
-    transactionCount = 0;
-    expect((await write()).hints.length).toBeGreaterThan(0);
-    expect(transactionCount).toBe(1);
-  }
-  await x.bob.sendMessage(x.channel.id, `${x.mention} help`);
-  const [invocation] = await f.db.query.agentInvocations.findMany();
-  transactionCount = 0;
-  expect((await decideInvocation(db, x.owner, invocation!.id, "always_allow")).result).toEqual({
-    status: "admitted",
-  });
-  expect(transactionCount).toBe(1);
-});
-
-test("committed answers and declines need no savepoint; approval keeps its action savepoint", async () => {
-  const x = await agentWorkFixture(f);
-  const turn = dmTurn(x.dm.id);
-  const question = await x.call(
-    "reply",
-    { requestId: crypto.randomUUID(), body: "Which week?", ask: { question: "Which week?" } },
-    turn,
-  );
-  transactionCount = 0;
-  expect(
-    (
-      await respondToRequest(db, x.owner, question.questionId!, {
-        type: "questions",
-        answers: { answer: ["Next week"] },
-      })
-    ).result,
-  ).toEqual({ status: "resolved" });
-  expect(transactionCount).toBe(1);
-  const channel = await x.alice.createConversation({ kind: "channel", name: "Updates" });
-  for (const decision of [declineProposal, approveProposal]) {
-    const proposal = await x.call(
-      "propose",
-      {
-        requestId: crypto.randomUUID(),
-        summary: "Post update",
-        action: { type: "reply_elsewhere", input: { conversationId: channel.id, body: "Update" } },
-      },
-      { ...turn, kind: "unattended" },
-    );
-    transactionCount = 0;
-    const result = await decision(db, x.owner, proposal.proposalId);
-    if (decision === declineProposal) {
-      expect(result.result.outcome.status).toBe("declined");
-      expect(transactionCount).toBe(1);
-    } else {
-      expect(result.result.outcome.status).toBe("executed");
-      expect(transactionCount).toBe(2);
-    }
   }
 });
 
@@ -203,13 +135,16 @@ function failingInsert(
   });
 }
 
-test("raw and committed policy changes roll back if the audit fails", async () => {
+test("raw and scoped policy changes roll back if the audit fails", async () => {
   const x = await callerFixture(f);
-  for (const write of [saveCallerPolicy, rawSaveCallerPolicy]) {
+  const failing = failingInsert(db, agentAuditEvents);
+  const scoped = await ownerAgentWork(failing, x.owner);
+  for (const write of [
+    () => scoped.saveCallerPolicy(x.agent.agentId, "ask"),
+    () => saveCallerPolicy(failing, x.owner, x.agent.agentId, "ask"),
+  ]) {
     transactionCount = 0;
-    expect(
-      await rejection(write(failingInsert(db, agentAuditEvents), x.owner, x.agent.agentId, "ask")),
-    ).toMatchObject({ message: "Insert unavailable" });
+    expect(await rejection(write())).toMatchObject({ message: "Insert unavailable" });
     expect(transactionCount).toBe(1);
     expect(
       (await f.db.query.userAgents.findFirst({ where: eq(userAgents.id, x.agent.agentId) }))!
@@ -219,23 +154,22 @@ test("raw and committed policy changes roll back if the audit fails", async () =
   }
 });
 
-test("raw and committed answers roll back the decision if creating its wake fails", async () => {
+test("raw and scoped answers roll back the decision if creating its wake fails", async () => {
   const x = await agentWorkFixture(f);
   const question = await x.call(
     "reply",
     { requestId: crypto.randomUUID(), body: "Which week?", ask: { question: "Which week?" } },
     dmTurn(x.dm.id),
   );
-  for (const write of [respondToRequest, rawRespondToRequest]) {
+  const failing = failingInsert(db, agentWakes);
+  const scoped = await ownerAgentWork(failing, x.owner);
+  const response = { type: "questions" as const, answers: { answer: ["Next week"] } };
+  for (const write of [
+    () => scoped.respondToRequest(question.questionId!, response),
+    () => respondToRequest(failing, x.owner, question.questionId!, response),
+  ]) {
     transactionCount = 0;
-    expect(
-      await rejection(
-        write(failingInsert(db, agentWakes), x.owner, question.questionId!, {
-          type: "questions",
-          answers: { answer: ["Next week"] },
-        }),
-      ),
-    ).toMatchObject({ message: "Insert unavailable" });
+    expect(await rejection(write())).toMatchObject({ message: "Insert unavailable" });
     expect(transactionCount).toBe(1);
     expect(
       await f.db.query.agentRequests.findFirst({

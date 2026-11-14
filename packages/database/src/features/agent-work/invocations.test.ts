@@ -1,6 +1,9 @@
 import { maxAdmittedInvocationsPerDay, sessionKeys } from "@substrate/contracts/agent-work";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
+import type { DatabaseExecutor } from "../../client";
+import type { DeviceIdentity } from "../../core/session/device";
+import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import {
@@ -10,7 +13,12 @@ import {
   member,
   messagingMessages,
 } from "../../schema";
-import { callerFixture, threadTurn } from "../../testing/agent-work";
+import {
+  callerFixture,
+  deviceAgentWork,
+  ownerAgentWork,
+  threadTurn,
+} from "../../testing/agent-work";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
@@ -21,21 +29,51 @@ import { executeAgentTool } from "../mcp/committed";
 import { createMessagingService } from "../messaging/service";
 import { admit } from "./admission";
 import { listCallsLog } from "./audit";
-import {
-  ackWakes,
-  allowCaller,
-  decideInvocation,
-  loadSources,
-  pullWakes,
-  removeCaller,
-  saveCallerPolicy,
-} from "./committed";
 import { expireInvocations, listInvocations, listMyCalls, revokedInvocations } from "./invocations";
 import { listNeedsYou } from "./request-views";
 import { expect, test } from "bun:test";
 import { and, asc, eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
+
+// Owner and device writes go through the scoped repositories that the server uses.
+type OwnerWork = Awaited<ReturnType<typeof ownerAgentWork>>;
+type DeviceWork = Awaited<ReturnType<typeof deviceAgentWork>>;
+const saveCallerPolicy = async (
+  db: DatabaseExecutor,
+  owner: SessionIdentity,
+  ...args: Parameters<OwnerWork["saveCallerPolicy"]>
+) => (await ownerAgentWork(db, owner)).saveCallerPolicy(...args);
+const allowCaller = async (
+  db: DatabaseExecutor,
+  owner: SessionIdentity,
+  ...args: Parameters<OwnerWork["allowCaller"]>
+) => (await ownerAgentWork(db, owner)).allowCaller(...args);
+const removeCaller = async (
+  db: DatabaseExecutor,
+  owner: SessionIdentity,
+  ...args: Parameters<OwnerWork["removeCaller"]>
+) => (await ownerAgentWork(db, owner)).removeCaller(...args);
+const decideInvocation = async (
+  db: DatabaseExecutor,
+  owner: SessionIdentity,
+  ...args: Parameters<OwnerWork["decideInvocation"]>
+) => (await ownerAgentWork(db, owner)).decideInvocation(...args);
+const loadSources = async (
+  db: DatabaseExecutor,
+  identity: DeviceIdentity,
+  ...args: Parameters<DeviceWork["loadSources"]>
+) => (await deviceAgentWork(db, identity)).loadSources(...args);
+const pullWakes = async (
+  db: DatabaseExecutor,
+  identity: DeviceIdentity,
+  ...args: Parameters<DeviceWork["pullWakes"]>
+) => (await deviceAgentWork(db, identity)).pullWakes(...args);
+const ackWakes = async (
+  db: DatabaseExecutor,
+  identity: DeviceIdentity,
+  ...args: Parameters<DeviceWork["ackWakes"]>
+) => (await deviceAgentWork(db, identity)).ackWakes(...args);
 
 const calls = () => f.db.select().from(agentInvocations).orderBy(asc(agentInvocations.createdAt));
 const callerWakes = () =>

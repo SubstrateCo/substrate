@@ -101,13 +101,6 @@ export async function saveCallerPolicyInTransaction(
 }
 
 /** The agent's policy and its allowlist in this organization. */
-export function listCallers(db: DatabaseExecutor, identity: SessionIdentity, agentId: string) {
-  return db.transaction(async (tx): Promise<AgentCallers> => {
-    await workspaceContext(tx, identity);
-    return queryCallers(tx, identity, agentId);
-  });
-}
-
 export async function queryCallers(
   db: DatabaseExecutor,
   identity: SessionIdentity,

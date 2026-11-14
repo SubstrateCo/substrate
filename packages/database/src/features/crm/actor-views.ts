@@ -7,7 +7,7 @@ import type { RepositoryContext } from "../../core/repository-context";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-export async function crmActorViews(context: RepositoryContext, ids: string[]) {
+async function crmActorViews(context: RepositoryContext, ids: string[]) {
   const views = new Map<string, CrmActivity["actor"]>();
   if (!ids.length) return views;
   const person = alias(actors, "crm_attribution_person");

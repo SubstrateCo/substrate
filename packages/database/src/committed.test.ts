@@ -1,11 +1,10 @@
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
 import { AccessDeniedError, ConflictError } from "./errors";
-import { approveProposal, publishStatus } from "./features/agent-work/committed";
 import { executeAgentTool } from "./features/mcp/committed";
 import { createRepositories } from "./repositories";
 import { notifications, messagingInvitations, member } from "./schema";
-import { agentWorkFixture, dmTurn } from "./testing/agent-work";
+import { agentWorkFixture, deviceAgentWork, dmTurn, ownerAgentWork } from "./testing/agent-work";
 import { setupDatabase } from "./testing/database";
 import { recordQueries } from "./testing/queries";
 import { rejection } from "./testing/rejection";
@@ -256,7 +255,8 @@ test("MCP proposals and approved actions expose owner and confirmed notification
   );
   const ownerHint = { audience: realtimeKeys.user("alice"), domain: "agent-work" as const };
   expect(proposed.hints).toEqual([ownerHint]);
-  const approved = await approveProposal(f.db, owner, proposed.result.output.proposalId);
+  const ownerWork = await ownerAgentWork(f.db, owner);
+  const approved = await ownerWork.approveProposal(proposed.result.output.proposalId);
   expect(approved.result.outcome.status).toBe("executed");
   expect(approved.hints).toContainEqual(ownerHint);
   expect(approved.hints).toContainEqual(
@@ -271,7 +271,7 @@ test("MCP proposals and approved actions expose owner and confirmed notification
     domain: "notifications",
   });
   expect(
-    await rejection(approveProposal(f.db, owner, proposed.result.output.proposalId)),
+    await rejection(ownerWork.approveProposal(proposed.result.output.proposalId)),
   ).toBeInstanceOf(ConflictError);
   expect(await f.db.select().from(notifications)).toHaveLength(1);
 });
@@ -284,12 +284,13 @@ test("device status publication exposes effects only when the owner's view chang
     queuedCount: 0,
     version: 1,
   };
-  const first = await publishStatus(f.db, agent.identity, status);
+  const device = await deviceAgentWork(f.db, agent.identity);
+  const first = await device.publishStatus(status);
   expect(first.hints).toEqual([{ audience: realtimeKeys.user("alice"), domain: "agent-work" }]);
-  const duplicate = await publishStatus(f.db, agent.identity, status);
+  const duplicate = await device.publishStatus(status);
   expect(duplicate.result.applied).toBe(false);
   expect(duplicate.hints).toEqual([]);
-  const newerSameView = await publishStatus(f.db, agent.identity, { ...status, version: 2 });
+  const newerSameView = await device.publishStatus({ ...status, version: 2 });
   expect(newerSameView.result.applied).toBe(true);
   expect(newerSameView.hints).toEqual([]);
 });

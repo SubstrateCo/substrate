@@ -170,14 +170,3 @@ export async function showLinkedWork(world: World, work: LinkableWork) {
   };
   return { rows: (related?.length ?? 0) + (activity?.length ?? 0), close };
 }
-
-/**
- * One message's links and people. No web screen reads these routes yet (the page context
- * carries both); they stay a rare read so their queries get some traffic.
- */
-export function messageDetails(messageId: string) {
-  return Promise.all([
-    call<unknown[]>("context.messageLinks", { messageId }),
-    call<unknown[]>("context.messagePeople", { messageId }),
-  ]);
-}

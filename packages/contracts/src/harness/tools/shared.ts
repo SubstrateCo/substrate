@@ -56,10 +56,6 @@ export const timed = <T extends Record<string, z.ZodType>>(fields: T) =>
 export const requestId = id.describe(
   "Generate a new UUID for each new action. Reuse it only to retry the same call with the same input.",
 );
-export const workRef = z.discriminatedUnion("type", [
-  z.object({ type: z.literal("task"), id }).strict(),
-  z.object({ type: z.literal("project"), id }).strict(),
-]);
 /** threadId is the root message ID for a reply and null for a top-level message. */
 export const messageRef = z.object({
   type: z.literal("message"),

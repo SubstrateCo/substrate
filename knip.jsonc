@@ -15,6 +15,7 @@
       "entry": [
         "load/k6/main.ts",
         "load/k6/discussions-smoke.ts",
+        "load/k6/crm-smoke.ts",
         "load/stats/{reset,snapshot,plans,report}.ts",
       ],
       "project": [

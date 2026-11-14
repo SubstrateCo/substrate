@@ -1,7 +1,7 @@
 import { agentAuditEvents, userAgents } from "../../schema";
+import { ownerAgentWork } from "../../testing/agent-work";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
-import { saveCallerPolicy } from "../agent-work/committed";
 import { expect, test } from "bun:test";
 import { and, eq, sql } from "drizzle-orm";
 
@@ -10,6 +10,7 @@ const f = setupDatabase();
 test("concurrent policy changes audit a consistent old and new policy chain", async () => {
   const agent = await ownedAgent(f);
   const owner = { userId: "alice", organizationId: f.orgA };
+  const agentWork = await ownerAgentWork(f.db, owner);
   let changes!: Promise<unknown[]>;
   await f.db.transaction(async (tx) => {
     await tx
@@ -18,8 +19,8 @@ test("concurrent policy changes audit a consistent old and new policy chain", as
       .where(eq(userAgents.id, agent.agentId))
       .for("no key update");
     changes = Promise.all([
-      saveCallerPolicy(f.db, owner, agent.agentId, "ask"),
-      saveCallerPolicy(f.db, owner, agent.agentId, "anyone"),
+      agentWork.saveCallerPolicy(agent.agentId, "ask"),
+      agentWork.saveCallerPolicy(agent.agentId, "anyone"),
     ]);
     // Both changes reach the blocked UPDATE with the same old policy.
     for (let attempt = 0; ; attempt++) {

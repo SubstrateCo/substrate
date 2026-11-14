@@ -1,7 +1,7 @@
 import { Counter, Trend } from "k6/metrics";
 import { setInterval, clearInterval } from "k6/timers";
 
-export const sessionPresenceMs = new Counter("session_presence_ms");
+const sessionPresenceMs = new Counter("session_presence_ms");
 let presenceAt: number | undefined;
 let presenceTimer: number | undefined;
 
@@ -28,22 +28,22 @@ export function stopPresence() {
 // Tags: endpoint (and code on failures). main.ts declares one submetric per tag value, so the
 // summary can report each one.
 export const apiCalls = new Counter("api_calls");
-export const apiFailures = new Counter("api_failures");
+const apiFailures = new Counter("api_failures");
 export const apiDuration = new Trend("api_duration", true);
 /** Successful writes (endpoints marked `write`), for the backfill write rate. */
 export const writes = new Counter("writes");
 
 // Tag: flow.
-export const flowRuns = new Counter("flow_runs");
-export const flowDuration = new Trend("flow_duration", true);
-export const flowCompleted = new Counter("flow_completed");
-export const flowFailed = new Counter("flow_failed");
-export const flowSkipped = new Counter("flow_skipped");
+const flowRuns = new Counter("flow_runs");
+const flowDuration = new Trend("flow_duration", true);
+const flowCompleted = new Counter("flow_completed");
+const flowFailed = new Counter("flow_failed");
+const flowSkipped = new Counter("flow_skipped");
 
 let failureCount = 0;
 
-export const coverageSessionsCompleted = new Counter("coverage_sessions_completed");
-export const sessionErrors = new Counter("session_errors");
+const coverageSessionsCompleted = new Counter("coverage_sessions_completed");
+const sessionErrors = new Counter("session_errors");
 
 /** Call only after all coverage flows and session cleanup finish successfully. */
 export function recordCoverageSessionCompleted() {
@@ -95,12 +95,8 @@ export function endFlow(flow: string, token: ReturnType<typeof beginFlow>, outco
   return result;
 }
 
-export function recordFlowSkip(flow: string) {
-  flowSkipped.add(1, { flow });
-}
-
 /** Counts visits, not unique identities. Values must come from bounded workload cohorts. */
-export const observations = new Counter("workload_observations");
+const observations = new Counter("workload_observations");
 export function recordObservation(dimension: string, value: string) {
   observations.add(1, { dimension, value });
 }

@@ -9,7 +9,7 @@ export const sectionLabels: Record<CrmSection | "contacts", string> = {
 };
 
 export const singularLabels = { accounts: "account", contacts: "contact", deals: "deal" } as const;
-export const outcomeLabels = { open: "Open", won: "Won", lost: "Lost" } as const;
+const outcomeLabels = { open: "Open", won: "Won", lost: "Lost" } as const;
 export function outcomeLabel(outcome: string) {
   if (outcome === "open" || outcome === "won" || outcome === "lost") return outcomeLabels[outcome];
   return "Unknown outcome";

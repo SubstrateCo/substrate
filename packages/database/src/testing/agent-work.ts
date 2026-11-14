@@ -3,16 +3,29 @@ import type { AgentCallerPolicy } from "@substrate/contracts/agents";
 import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
 
+import type { DatabaseExecutor } from "../client";
 import { actors } from "../core/actors/schema";
-import { saveCallerPolicy } from "../features/agent-work/committed";
+import type { DeviceIdentity } from "../core/session/device";
+import type { SessionIdentity } from "../core/session/identity";
 import { executeAgentTool } from "../features/mcp/service";
 import { createMessagingService } from "../features/messaging/service";
+import { createRepositories } from "../repositories";
 import { member, user } from "../schema";
 import { ownedAgent } from "./agents";
 import type { setupDatabase } from "./database";
 import { and, eq } from "drizzle-orm";
 
 type Fixture = ReturnType<typeof setupDatabase>;
+
+/** The owner's agent-work repository, scoped as the server scopes it. */
+export async function ownerAgentWork(db: DatabaseExecutor, owner: SessionIdentity) {
+  return (await createRepositories(db).forSession(owner)).agentWork;
+}
+
+/** The home desktop's agent-work repository, scoped as the server scopes it. */
+export async function deviceAgentWork(db: DatabaseExecutor, identity: DeviceIdentity) {
+  return (await createRepositories(db).forDeviceSession(identity)).agentWork;
+}
 
 export const dmTurn = (
   conversationId: string,
@@ -79,8 +92,8 @@ export async function callerFixture(f: Fixture) {
   const carol = createMessagingService(f.db, { organizationId: f.orgA, userId: "carol" });
   const channel = await base.alice.createConversation({ kind: "channel", name: "general" });
   await base.alice.addAgent(channel.id, base.agent.agentId);
-  const policy = (value: AgentCallerPolicy) =>
-    saveCallerPolicy(f.db, base.owner, base.agent.agentId, value);
+  const policy = async (value: AgentCallerPolicy) =>
+    (await ownerAgentWork(f.db, base.owner)).saveCallerPolicy(base.agent.agentId, value);
   // Carol's first workspace read provisions her person actor.
   await carol.listConversations();
   const [carolActor] = await f.db

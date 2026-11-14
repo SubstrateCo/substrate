@@ -3,8 +3,6 @@ import { organizations, userOf } from "./data.ts";
 import { recordObservation } from "./metrics.ts";
 import { Rng } from "./random.ts";
 
-export type Persona = ReturnType<typeof userProfile>;
-
 // k6 isolates module state per VU; setup uses slot 1 but never runs a flow.
 const user = userOf(Math.max(__VU, 1));
 const slug = organizationSlug(user.organizationId, organizations);

@@ -15,7 +15,6 @@
     "./notifications": "./src/features/notifications/index.ts",
     "./mcp": "./src/features/mcp/index.ts",
     "./agents": "./src/features/agents/index.ts",
-    "./agent-work": "./src/features/agent-work/index.ts",
     "./realtime": "./src/features/realtime/index.ts",
     "./development": "./src/development/seed.ts"
   },

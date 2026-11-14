@@ -1,6 +1,6 @@
 import { defineMachine } from "@substrate/contracts/state-machine";
 
-export const attachmentUploadMachine = defineMachine({
+const attachmentUploadMachine = defineMachine({
   states: ["uploading", "ready", "failed"],
   terminal: ["ready"],
   events: {
