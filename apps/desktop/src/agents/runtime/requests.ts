@@ -3,9 +3,11 @@ import {
   denyResponse,
   liveTurnStatuses,
   nativeHarnessResponse,
+  nativeRequestData,
   normalizeHarnessRequest,
   type AgentRequestPayload,
   type AgentRequestResponse,
+  type NativeRequestData,
 } from "@substrate/contracts/agent-work";
 
 import type { LiveTurn, RuntimeContext } from "./context.ts";
@@ -17,7 +19,7 @@ interface OpenRequest {
   sessionId: string;
   userAgentId: string;
   kind: "permission" | "input";
-  data: unknown;
+  data: NativeRequestData;
   payload: AgentRequestPayload;
   live: LiveTurn;
   timer: () => void;
@@ -86,7 +88,8 @@ export function createRequestBridge(context: RuntimeContext) {
       live: LiveTurn,
       event: { requestId: string; kind: "permission" | "input"; data: unknown },
     ) {
-      const payload = normalizeHarnessRequest(live.harness, event.kind, event.data);
+      const data = nativeRequestData.parse(event.data);
+      const payload = normalizeHarnessRequest(live.harness, event.kind, data);
       const now = context.now();
       if (!payload) {
         await context.store.events.append(
@@ -111,7 +114,7 @@ export function createRequestBridge(context: RuntimeContext) {
         sessionId: live.sessionId,
         userAgentId: live.userAgentId,
         kind: event.kind,
-        data: event.data,
+        data,
         payload,
         live,
         timer: () => {},

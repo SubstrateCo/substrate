@@ -13,6 +13,7 @@ import {
   type AgentWorkChange,
 } from "@substrate/contracts/agent-work/desktop";
 import type { HarnessEvent } from "@substrate/contracts/harness";
+import type { WorkspaceApiRequest, WorkspaceApiResult } from "@substrate/contracts/harness/mcp";
 
 import { createLocalTools } from "../helpers/local-tools.ts";
 import { createRoutines } from "../routines/routines.ts";
@@ -24,8 +25,6 @@ import { createRequestBridge } from "./requests.ts";
 import { createStatusPublisher } from "./status.ts";
 import { createSteering } from "./steering.ts";
 import { createTurnExecutor } from "./turn-executor.ts";
-
-/* oxlint-disable deslop/no-unknown-parameters -- MCP bodies and results are parsed in toolOutputs. */
 
 const syncIntervalMs = 30_000;
 /** While realtime is connected, hints drive pulls; the tick still pulls this often. */
@@ -263,7 +262,7 @@ export function createAgentWorkRuntime(
       if (event.organizationId === context.organizationId) executor.onEvent(event);
     },
     /** Records what a server tool call published, as seen on its way through main. */
-    async observeToolCall(request: unknown, result: unknown) {
+    async observeToolCall(request: WorkspaceApiRequest, result: WorkspaceApiResult) {
       const found = toolOutputs(request, result);
       if (!found) return;
       // A reply may have asked a question, or a proposal opened a request.

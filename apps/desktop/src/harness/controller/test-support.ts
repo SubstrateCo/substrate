@@ -1,3 +1,4 @@
+import type { IpcValue } from "@substrate/contracts/desktop/ipc";
 import type { HarnessErrorCode } from "@substrate/contracts/harness";
 import type { LocalToolProxy } from "@substrate/contracts/harness/mcp";
 
@@ -25,7 +26,7 @@ const sessionRef = {
 
 export function fixture(
   beforeScan?: () => Promise<void>,
-  nativeMcpServers: unknown[] = [],
+  nativeMcpServers: IpcValue[] = [],
   options: {
     failExecute?: HarnessErrorCode;
     /** Holds every execute command except interrupt until resolved. */

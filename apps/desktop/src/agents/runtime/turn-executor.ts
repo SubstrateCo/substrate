@@ -32,8 +32,6 @@ import { inaccessibleItems, sourceRequest } from "./source-check.ts";
 import { createHash } from "node:crypto";
 import { z } from "zod";
 
-/* oxlint-disable deslop/no-unknown-parameters -- Harness errors cross the worker boundary untyped; errorCode reads their fixed code. */
-
 const sha256 = (value: string) => createHash("sha256").update(value).digest("hex");
 
 /**
@@ -56,8 +54,8 @@ const unknownFailureWindowMs = 30 * 60_000;
 const codedError = z.object({ code: z.string() });
 
 /** The fixed code of a harness or server error, if it has one. */
-export function errorCode(error: unknown) {
-  return codedError.safeParse(error).data?.code;
+export function errorCode(cause: unknown) {
+  return codedError.safeParse(cause).data?.code;
 }
 
 /**
@@ -65,15 +63,15 @@ export function errorCode(error: unknown) {
  * a TypeError when the network fails; the controller uses a code when it cannot verify the
  * session.
  */
-function outage(error: unknown) {
-  const code = errorCode(error);
+function outage(cause: unknown) {
+  const code = errorCode(cause);
   if (code !== undefined) return transientHarnessCodes.has(code);
-  return error instanceof TypeError;
+  return cause instanceof TypeError;
 }
 
 /** A failure that is worth retrying later: an outage, or a failure without any code. */
-function transient(error: unknown) {
-  return errorCode(error) === undefined || outage(error);
+function transient(cause: unknown) {
+  return errorCode(cause) === undefined || outage(cause);
 }
 
 /** Items rendered into the turn's first input. Steered items were delivered on their own. */
@@ -159,7 +157,7 @@ export function createTurnExecutor(
    * already started natively cannot go back to the inbox: it lost its native turn, so it
    * follows the recovery rules.
    */
-  async function retryLater(turn: TurnRow, error: unknown) {
+  async function retryLater(turn: TurnRow, cause: unknown) {
     const state = live.get(turn.id);
     const row = await context.store.turns.get(turn.id);
     if (row && row.status !== "assigned" && liveTurnStatuses.includes(row.status))
@@ -174,7 +172,7 @@ export function createTurnExecutor(
     const failures = { attempts: (previous?.attempts ?? 0) + 1, since: previous?.since ?? now };
     backoff.set(turn.sessionId, failures);
     if (
-      !outage(error) &&
+      !outage(cause) &&
       (failures.attempts > unknownFailureRetries || now - failures.since >= unknownFailureWindowMs)
     ) {
       backoff.delete(turn.sessionId);

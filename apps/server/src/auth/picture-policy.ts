@@ -33,8 +33,14 @@ export interface PictureMutation {
   organizationId: string | undefined;
 }
 
-// oxlint-disable-next-line deslop/no-unknown-parameters -- This parser validates raw Better Auth request bodies before authorization.
-export function readPictureMutation(path: string, body: unknown): PictureMutation | null {
+/** Reads a picture change from a raw Better Auth request before the endpoint runs. */
+export function readPictureMutation({
+  path,
+  body,
+}: {
+  path: string;
+  body: unknown;
+}): PictureMutation | null {
   if (
     !["/sign-up/email", "/organization/create", "/update-user", "/organization/update"].includes(
       path,

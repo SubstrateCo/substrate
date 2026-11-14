@@ -16,7 +16,13 @@ import {
   type Page,
 } from "@playwright/test";
 import { randomUUID } from "node:crypto";
-import type { z } from "zod";
+import { z } from "zod";
+
+// Playwright defines video as a mode string or an options object.
+const videoMode = z.union([
+  z.string(),
+  z.object({ mode: z.string() }).transform(({ mode }) => mode),
+]);
 
 type StorageState = Awaited<ReturnType<APIRequestContext["storageState"]>>;
 export interface Actor {
@@ -198,8 +204,7 @@ export const test = base.extend<
     const recordings: Page[] = [];
     try {
       await use(async (actor) => {
-        // oxlint-disable-next-line deslop/no-runtime-typeof -- Playwright defines video as a mode string or an options object.
-        const record = typeof video === "string" ? video !== "off" : video.mode !== "off";
+        const record = videoMode.parse(video) !== "off";
         let context: BrowserContext;
         if (record) {
           context = await browser.newContext({

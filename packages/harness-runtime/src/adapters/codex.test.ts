@@ -1,5 +1,6 @@
 import type { HarnessEventBody } from "@substrate/contracts/harness";
 
+import type { JsonValue } from "../json.ts";
 import { codexArgs, CodexSession } from "./codex.ts";
 import type { RpcMessage } from "./json-rpc.ts";
 import { unattendedDenial, type AdapterContext } from "./types.ts";
@@ -9,7 +10,7 @@ import { parse } from "smol-toml";
 function setup() {
   const sent: RpcMessage[] = [];
   const events: HarnessEventBody[] = [];
-  const requests: { method: string; params: unknown }[] = [];
+  const requests: { method: string; params: JsonValue }[] = [];
   const context: AdapterContext = {
     directory: ".",
     executable: "codex",
@@ -17,11 +18,10 @@ function setup() {
   };
   const session = new CodexSession(context, {
     send: (message) => sent.push(message),
-    // oxlint-disable-next-line deslop/no-unknown-parameters -- The fake implements the generic native RPC transport and records its unparsed wire payload.
-    request: async <T>(method: string, params: unknown) => {
+    request: async (method, params) => {
       requests.push({ method, params });
-      // SAFETY: turn/start is the only request these tests make.
-      return { turn: { id: "turn-1" } } as T;
+      // turn/start is the only request these tests make.
+      return { turn: { id: "turn-1" } };
     },
   });
   session.nativeSessionId = "thread-1";

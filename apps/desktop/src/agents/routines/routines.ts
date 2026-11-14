@@ -5,12 +5,13 @@ import {
   deleteRoutineInput,
   updateRoutineInput,
   type AgentRoutineView,
+  type ApproveRoutineInput,
+  type CreateRoutineInput,
+  type UpdateRoutineInput,
 } from "@substrate/contracts/agent-work";
 
 import type { RuntimeContext } from "../runtime/context.ts";
 import { dueOccurrence, nextOccurrence, validCron } from "./schedule.ts";
-
-/* oxlint-disable deslop/no-unknown-parameters -- Bridge input is parsed here with the contract schemas. */
 
 /**
  * Owner-approved routines. Edits create a new revision; only the approved revision runs. Ticks
@@ -41,7 +42,7 @@ export function createRoutines(context: RuntimeContext) {
     async list(agentId: string): Promise<AgentRoutineView[]> {
       return (await context.store.routines.list(context.organizationId, agentId)).map(routineView);
     },
-    async create(value: unknown) {
+    async create(value: CreateRoutineInput) {
       const input = createRoutineInput.parse(value);
       if (!(await context.agents.get(input.agentId))) throw new Error("Agent not found.");
       checkCron(input.cron, input.timezone);
@@ -63,7 +64,7 @@ export function createRoutines(context: RuntimeContext) {
       context.changed({ userAgentId: row.userAgentId });
       return routineView(row);
     },
-    async update(value: unknown) {
+    async update(value: UpdateRoutineInput) {
       const input = updateRoutineInput.parse(value);
       const routine = await owned(input.routineId);
       const { destination: place, ...rest } = input.changes;
@@ -84,7 +85,7 @@ export function createRoutines(context: RuntimeContext) {
       context.changed({ userAgentId: row.userAgentId });
       return routineView(row);
     },
-    async approve(value: unknown) {
+    async approve(value: ApproveRoutineInput) {
       const input = approveRoutineInput.parse(value);
       const routine = await owned(input.routineId);
       const row = await context.store.routines.approve(
@@ -95,8 +96,8 @@ export function createRoutines(context: RuntimeContext) {
       context.changed({ userAgentId: row.userAgentId });
       return routineView(row);
     },
-    async delete(value: unknown) {
-      const routine = await owned(deleteRoutineInput.parse({ routineId: value }).routineId);
+    async delete(routineId: string) {
+      const routine = await owned(deleteRoutineInput.parse({ routineId }).routineId);
       await context.store.routines.delete(routine.id);
       context.changed({ userAgentId: routine.userAgentId });
     },

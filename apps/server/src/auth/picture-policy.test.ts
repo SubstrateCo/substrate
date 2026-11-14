@@ -18,26 +18,31 @@ test("native user and organization updates accept only canonical managed picture
     name: "Alice",
     image: undefined,
   });
-  expect(readPictureMutation("/update-user", { image })).toEqual({
+  expect(readPictureMutation({ path: "/update-user", body: { image } })).toEqual({
     purpose: "avatar",
     url: image,
     organizationId: undefined,
   });
-  expect(readPictureMutation("/update-user", { image: null })).toEqual({
+  expect(readPictureMutation({ path: "/update-user", body: { image: null } })).toEqual({
     purpose: "avatar",
     url: null,
     organizationId: undefined,
   });
-  expect(readPictureMutation("/organization/update", { data: { logo } })).toEqual({
+  expect(readPictureMutation({ path: "/organization/update", body: { data: { logo } } })).toEqual({
     purpose: "organization-logo",
     url: logo,
     organizationId: undefined,
   });
   expect(
-    readPictureMutation("/organization/update", { data: { logo: null }, organizationId: "org" }),
+    readPictureMutation({
+      path: "/organization/update",
+      body: { data: { logo: null }, organizationId: "org" },
+    }),
   ).toEqual({ purpose: "organization-logo", url: null, organizationId: "org" });
-  expect(readPictureMutation("/update-user", { name: "Alice" })).toBeNull();
-  expect(readPictureMutation("/organization/update", { data: { name: "Workspace" } })).toBeNull();
+  expect(readPictureMutation({ path: "/update-user", body: { name: "Alice" } })).toBeNull();
+  expect(
+    readPictureMutation({ path: "/organization/update", body: { data: { name: "Workspace" } } }),
+  ).toBeNull();
   for (const value of [
     "https://evil.test/a",
     `https://localhost:3001${image}`,
@@ -46,23 +51,27 @@ test("native user and organization updates accept only canonical managed picture
     "data:image/png;base64,abc",
   ]) {
     expect(() => protectUserPicture({ image: value })).toThrow();
-    expect(() => readPictureMutation("/organization/update", { data: { logo: value } })).toThrow();
+    expect(() =>
+      readPictureMutation({ path: "/organization/update", body: { data: { logo: value } } }),
+    ).toThrow();
   }
 });
 
 test("new identities cannot inject pictures before a managed upload exists", () => {
   expect(() => protectUserPicture({ image }, true)).toThrow();
   expect(protectUserPicture({ image: null }, true)).toEqual({ image: null });
-  expect(() => readPictureMutation("/sign-up/email", { image })).toThrow();
-  expect(() => readPictureMutation("/organization/create", { logo: image })).toThrow();
-  expect(readPictureMutation("/sign-up/email", { image: null })).toBeNull();
-  expect(readPictureMutation("/organization/create", { logo: null })).toBeNull();
+  expect(() => readPictureMutation({ path: "/sign-up/email", body: { image } })).toThrow();
+  expect(() =>
+    readPictureMutation({ path: "/organization/create", body: { logo: image } }),
+  ).toThrow();
+  expect(readPictureMutation({ path: "/sign-up/email", body: { image: null } })).toBeNull();
+  expect(readPictureMutation({ path: "/organization/create", body: { logo: null } })).toBeNull();
 });
 
 test("malformed extra fields cannot bypass managed picture authorization", () => {
   const body = { image, data: null };
-  expect(() => readPictureMutation("/update-user", body)).toThrow();
-  expect(readPictureMutation("/sign-in/email", body)).toBeNull();
+  expect(() => readPictureMutation({ path: "/update-user", body })).toThrow();
+  expect(readPictureMutation({ path: "/sign-in/email", body })).toBeNull();
 });
 
 test("native mutations derive identity from verified session and only accept the owner's picture path", async () => {

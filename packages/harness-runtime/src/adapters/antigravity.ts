@@ -17,8 +17,6 @@ import {
 } from "@agentclientprotocol/sdk";
 import { Readable, Writable } from "node:stream";
 
-/* oxlint-disable deslop/no-runtime-typeof -- These checks validate host responses at the ACP I/O boundary. */
-
 /**
  * Evidence from the installed @agentclientprotocol/sdk 2.4.0 (dist/v1/schema/types.gen.d.ts):
  * - usage: session/update "usage_update" carries used and size context tokens (:2374, :2712).
@@ -113,8 +111,7 @@ export class AcpSession {
         this.context.emit({ type: "request.opened", kind: "permission", requestId, data: request }),
       signal,
     );
-    const optionId = typeof response === "string" ? response : undefined;
-    const option = request.options.find((entry) => entry.optionId === optionId);
+    const option = request.options.find((entry) => entry.optionId === response);
     if (!option)
       throw new HarnessError("invalid-response", "Choose one of the native permission option IDs.");
     return { outcome: { outcome: "selected", optionId: option.optionId } };

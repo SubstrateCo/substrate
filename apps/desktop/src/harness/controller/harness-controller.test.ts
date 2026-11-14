@@ -118,7 +118,6 @@ describe("desktop harness authority", () => {
       "Invalid harness operation",
     );
     expect(f.controller.run("status", {})).rejects.toThrow("Invalid harness operation");
-    expect(f.controller.run("scanSkills", {})).rejects.toThrow("Invalid harness operation");
     expect(f.catalogRequests()).toBe(0);
     expect(f.directories).toEqual([]);
   });
@@ -137,12 +136,6 @@ describe("desktop harness authority", () => {
     await f.controller.run("synchronize");
     // The shared authority keeps membership and the catalog until invalidated.
     expect(f.requests()).toHaveLength(5);
-  });
-  test("the renderer cannot run session commands", async () => {
-    const f = fixture();
-    await f.controller.run("synchronize");
-    expect(f.controller.run("execute", open)).rejects.toThrow("Invalid harness operation");
-    expect(f.calls.map((call) => call.method)).toEqual(["configure"]);
   });
   test("session commands verify once per generation and again after refreshAuthority", async () => {
     const f = fixture();

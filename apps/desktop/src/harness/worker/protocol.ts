@@ -1,7 +1,6 @@
+import type { IpcValue } from "@substrate/contracts/desktop/ipc";
 import type { HarnessErrorCode } from "@substrate/contracts/harness";
 import type { RuntimeHarnessHost } from "@substrate/harness-runtime";
-
-/* oxlint-disable deslop/no-unknown-returns -- Main parses structured-clone results at the process boundary before exposing domain values. */
 
 type HostMethods = Omit<RuntimeHarnessHost, "subscribe">;
 type HarnessWorkerMethod = Exclude<keyof HostMethods, "dispose">;
@@ -32,10 +31,10 @@ export class HarnessWorkerError extends Error {
 }
 
 export interface HarnessWorker {
-  /** Main parses worker results at the process boundary. */
+  /** Main parses worker results at the process boundary; they arrive as structured-clone data. */
   request<Method extends HarnessWorkerMethod>(
     method: Method,
     ...args: Parameters<HostMethods[Method]>
-  ): Promise<unknown>;
+  ): Promise<IpcValue>;
   dispose(): void;
 }

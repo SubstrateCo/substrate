@@ -1,15 +1,14 @@
 import { expect, test } from "bun:test";
 import electron from "electron";
 import { spawnSync } from "node:child_process";
+import { z } from "zod";
 
 test("Electron can load CRM and context contracts from TypeScript source", () => {
   // Electron's Node entry exports a path, not the declared runtime API namespace.
-  const executable: unknown = electron;
-  // oxlint-disable-next-line deslop/no-runtime-typeof -- Validate Electron's Node entry at the package boundary; its declarations describe the Electron runtime instead.
-  if (typeof executable !== "string")
-    throw new Error("Electron did not provide an executable path.");
+  const executable = z.string().safeParse(electron);
+  if (!executable.success) throw new Error("Electron did not provide an executable path.");
   const result = spawnSync(
-    executable,
+    executable.data,
     [
       "--input-type=module",
       "-e",

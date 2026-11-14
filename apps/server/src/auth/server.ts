@@ -33,6 +33,9 @@ import { electron } from "@better-auth/electron";
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { organization } from "better-auth/plugins";
+import { z } from "zod";
+
+const accountOwner = z.object({ userId: z.string() });
 
 export function createAuth(deps: {
   db: Database;
@@ -127,9 +130,8 @@ export function createAuth(deps: {
         update: {
           // Bulk password updates return a count; onPasswordReset supplies their owner.
           after: async (account: { userId: string } | number | null) => {
-            // oxlint-disable-next-line deslop/no-runtime-typeof -- Better Auth returns either an account row or a bulk affected-row count.
-            if (account === null || typeof account === "number") return;
-            await publishSessionChange(account);
+            const owner = accountOwner.safeParse(account);
+            if (owner.success) await publishSessionChange(owner.data);
           },
         },
         delete: { after: publishSessionChange },
@@ -137,7 +139,7 @@ export function createAuth(deps: {
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
-        const mutation = readPictureMutation(ctx.path, ctx.body ?? {});
+        const mutation = readPictureMutation({ path: ctx.path, body: ctx.body ?? {} });
         if (!mutation) return;
         const origin = ctx.headers?.get("origin");
         if (!isTrustedOrigin(origin, environment.trustedOrigins))

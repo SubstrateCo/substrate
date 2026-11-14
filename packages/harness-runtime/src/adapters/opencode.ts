@@ -6,6 +6,7 @@ import type {
 } from "@substrate/contracts/harness";
 
 import { HarnessError } from "../errors.ts";
+import { jsonValue } from "../json.ts";
 import { safePath } from "../paths.ts";
 import { startOpenCode } from "./opencode-client.ts";
 import { toolInput, toolLabel, type ToolInput } from "./tool-label.ts";
@@ -19,8 +20,14 @@ import {
 } from "./types.ts";
 import type { ConfigEntry, OpenCodeClient, OpenCodeEvent } from "@opencode/client";
 import { writeFile } from "node:fs/promises";
+import { z } from "zod";
 
-/* oxlint-disable deslop/no-runtime-typeof -- Host form responses and the native endpoint announcement are validated at this I/O boundary. */
+const formReply = z.record(z.string(), jsonValue);
+/** The host's form reply, in the native form answer value union. */
+const formAnswer = z.record(
+  z.string(),
+  z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]),
+);
 
 /**
  * Evidence from the installed @opencode/client 2.2.5 (dist/promise/generated/types.d.ts unless
@@ -321,19 +328,15 @@ export class OpenCodeSession {
             decision: response,
           });
         } else {
-          if (!response || typeof response !== "object" || Array.isArray(response))
+          if (!formReply.safeParse(response).success)
             throw new HarnessError("invalid-response", "OpenCode forms require an answer object.");
-          for (const value of Object.values(response))
-            if (
-              !["string", "number", "boolean"].includes(typeof value) &&
-              !(Array.isArray(value) && value.every((item) => typeof item === "string"))
-            )
-              throw new HarnessError("invalid-response", "Unsupported form answer value.");
-          // SAFETY: the object and every value were checked against the native form answer value union above.
+          const answer = formAnswer.safeParse(response);
+          if (!answer.success)
+            throw new HarnessError("invalid-response", "Unsupported form answer value.");
           await this.client.session.form.reply({
             sessionID: this.sessionID,
             formID: requestId,
-            answer: response as Record<string, string | number | boolean | string[]>,
+            answer: answer.data,
           });
         }
         this.requests.delete(requestId);

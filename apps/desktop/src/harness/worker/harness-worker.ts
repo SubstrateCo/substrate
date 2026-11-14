@@ -13,11 +13,9 @@ import {
   type WorkspaceApiResponse,
 } from "./workspace-proxy.ts";
 
-/* oxlint-disable deslop/no-unknown-parameters -- Rejections arrive untyped; only registered error codes cross the process boundary. */
-
 /** Forwards only fixed error codes, never native output or local paths. */
-function errorCode(error: unknown) {
-  const code = error instanceof Error && "code" in error ? error.code : undefined;
+function errorCode(cause: unknown) {
+  const code = cause instanceof Error && "code" in cause ? cause.code : undefined;
   return isHarnessErrorCode(code) ? code : "harness-error";
 }
 
@@ -31,8 +29,8 @@ const localToolProxy = createLocalToolProxy((message) => port.postMessage(messag
 function reply(id: number, task: () => Promise<HarnessWorkerResult>) {
   return task().then(
     (result) => port.postMessage({ id, result }),
-    (error: unknown) =>
-      port.postMessage({ id, error: "Harness operation failed.", code: errorCode(error) }),
+    (cause: unknown) =>
+      port.postMessage({ id, error: "Harness operation failed.", code: errorCode(cause) }),
   );
 }
 

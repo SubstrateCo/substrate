@@ -31,8 +31,6 @@ import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-/* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- Deferred rejections accept arbitrary errors; command hooks and host results preserve the worker boundary's unparsed results. */
-
 export const agentId = "00000000-0000-4000-8000-0000000000a1";
 export const organizationId = "org-1";
 export const installationId = "00000000-0000-4000-8000-0000000000d1";
@@ -64,13 +62,18 @@ export async function openStore() {
   };
 }
 
+export type HostResult = Awaited<ReturnType<RuntimeHarnessHost["execute"]>>;
+
 /** Test overrides of the controller and server. */
 interface FixtureHooks {
   /**
    * Replaces the controller's result of a command. Return undefined to keep the default. next
    * sends the command to the host, so a hook can let the command reach the host and then fail.
    */
-  command?: (command: HarnessCommand, next: () => Promise<unknown>) => Promise<unknown> | undefined;
+  command?: (
+    command: HarnessCommand,
+    next: () => Promise<HostResult>,
+  ) => Promise<HostResult> | undefined;
   openRequest?: () => Promise<{ id: string; status: string }>;
 }
 
@@ -97,7 +100,7 @@ type ServerPost =
 /** A promise that the test settles. */
 export function deferred<T = unknown>() {
   let resolve!: (value: T) => void;
-  let reject!: (error: unknown) => void;
+  let reject!: (cause: unknown) => void;
   const promise = new Promise<T>((done, fail) => {
     resolve = done;
     reject = fail;
@@ -271,8 +274,8 @@ export async function runtimeFixture(
   }
 
   /** Host commands on their way. The host does file work, so settle waits for them. */
-  const inflight = new Set<Promise<unknown>>();
-  function hostCommand(command: HarnessCommand): Promise<unknown> {
+  const inflight = new Set<Promise<HostResult>>();
+  function hostCommand(command: HarnessCommand): Promise<HostResult> {
     const pending = sendToHost(command);
     const tracked = pending.catch(() => {});
     inflight.add(tracked);
@@ -281,7 +284,7 @@ export async function runtimeFixture(
   }
 
   /** The command reaches the host, and fails with a registered code as the worker reports it. */
-  async function sendToHost(command: HarnessCommand): Promise<unknown> {
+  async function sendToHost(command: HarnessCommand): Promise<HostResult> {
     try {
       if (command.type !== "open") return await host.execute(command);
       workerSessions.opening(command);

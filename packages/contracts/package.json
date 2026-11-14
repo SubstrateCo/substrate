@@ -41,6 +41,7 @@
     "./desktop/links": "./src/desktop/links.ts",
     "./desktop/identity": "./src/desktop/identity.ts",
     "./desktop/window": "./src/desktop/window.ts",
+    "./paths": "./src/paths.ts",
     "./result": "./src/result.ts",
     "./state-machine": "./src/state-machine.ts"
   },

@@ -1,4 +1,4 @@
-/* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- This transport forwards structured-clone payloads. Main validates requests and parses responses in the controller. */
+import type { IpcValue } from "@substrate/contracts/desktop/ipc";
 import {
   harnessEventSchema,
   isHarnessErrorCode,
@@ -89,7 +89,7 @@ export function createHarnessProcess(
   const pending = new Map<
     number,
     {
-      resolve: (value: unknown) => void;
+      resolve: (value: IpcValue) => void;
       reject: (reason: Error) => void;
       timer: ReturnType<typeof setTimeout>;
     }
@@ -134,7 +134,7 @@ export function createHarnessProcess(
     "message",
     (message: {
       id: number;
-      result?: unknown;
+      result?: IpcValue;
       error?: string;
       code?: string;
       event?: HarnessEvent;
@@ -172,7 +172,7 @@ export function createHarnessProcess(
       else request.resolve(message.result);
     },
   );
-  function send(call: HarnessWorkerCall): Promise<unknown> {
+  function send(call: HarnessWorkerCall): Promise<IpcValue> {
     if (disposed) return Promise.reject(new HarnessWorkerError("worker-stopped"));
     const command = call.method === "execute" ? call.value : undefined;
     return new Promise((resolve, reject) => {
@@ -191,7 +191,7 @@ export function createHarnessProcess(
       child.postMessage({ id, ...call } satisfies HarnessWorkerRequest);
     });
   }
-  async function request(call: HarnessWorkerCall): Promise<unknown> {
+  async function request(call: HarnessWorkerCall): Promise<IpcValue> {
     if (call.method !== "execute" || call.value.type !== "open") return send(call);
     const command = call.value;
     open.opening(command);

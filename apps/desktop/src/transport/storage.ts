@@ -1,14 +1,11 @@
-// oxlint-disable-next-line deslop/no-unknown-parameters -- This public config/env boundary validates raw values before returning allowed origins.
-export function storageOrigins(value: unknown, packaged: boolean): string[] {
+/** Origins come as comma-separated environment text or as the build's parsed list. */
+export function storageOrigins(value: string | string[] | undefined, packaged: boolean): string[] {
   if (value === undefined) return [];
-  // oxlint-disable-next-line deslop/no-runtime-typeof -- Public config/env boundary: parse comma-separated env text or a JSON array before validating each origin.
-  const values = typeof value === "string" ? value.split(",") : value;
-  if (!Array.isArray(values)) throw new Error("Storage origins must be a list of origins.");
+  const values = Array.isArray(value) ? value : value.split(",");
   return [
     ...new Set(
       values.map((entry) => {
-        // oxlint-disable-next-line deslop/no-runtime-typeof -- Public JSON config boundary: reject non-string entries before URL parsing.
-        if (typeof entry !== "string" || !entry.trim()) throw new Error("Invalid storage origin.");
+        if (!entry.trim()) throw new Error("Invalid storage origin.");
         const url = new URL(entry.trim());
         const loopback = ["localhost", "127.0.0.1", "[::1]"].includes(url.hostname);
         const hasCredentials = url.username || url.password;

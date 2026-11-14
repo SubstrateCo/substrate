@@ -1,9 +1,8 @@
 import type { HarnessModel } from "@substrate/contracts/harness";
 
 import { HarnessError } from "../errors.ts";
+import type { JsonValue } from "../json.ts";
 import { z } from "zod";
-
-/* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- This module parses native protocol catalog payloads before returning domain models. */
 
 export function openCodeModels(
   models: { id: string; providerID: string; name: string; enabled: boolean; type?: string }[],
@@ -38,7 +37,7 @@ const codexPage = z.object({
 });
 
 export async function codexModels(
-  requestPage: (cursor: string | undefined) => Promise<unknown>,
+  requestPage: (cursor: string | undefined) => Promise<JsonValue | undefined>,
 ): Promise<HarnessModel[]> {
   const models: HarnessModel[] = [];
   const seen = new Set<string>();
@@ -86,7 +85,7 @@ const acpSession = z.object({
     .nullish(),
 });
 
-export function acpModels(response: unknown): HarnessModel[] {
+export function acpModels(response: z.input<typeof acpSession>): HarnessModel[] {
   const model = acpSession
     .parse(response)
     .configOptions?.find((option) => option.category === "model" && option.type === "select");

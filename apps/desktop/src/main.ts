@@ -18,7 +18,7 @@ import { trustedSender } from "./shell/trusted-sender.ts";
 import { createShellWindow, configurePermissions } from "./shell/window.ts";
 import { desktopAPITransport } from "./transport/api-transport.ts";
 import { configureProtocols } from "./transport/protocols.ts";
-import { resolvePublicConfig } from "./transport/public-config.ts";
+import { publicConfigSchema, resolvePublicConfig } from "./transport/public-config.ts";
 import { emitToRenderer } from "./transport/realtime-events.ts";
 import { app, BrowserWindow, ipcMain, Menu, Notification, session, Tray } from "electron";
 import { readFileSync } from "node:fs";
@@ -54,7 +54,11 @@ function main() {
   const publicConfig = resolvePublicConfig(process.env, {
     packaged: app.isPackaged,
     built: app.isPackaged
-      ? JSON.parse(readFileSync(new URL("./desktop-config.json", import.meta.url), "utf8"))
+      ? publicConfigSchema
+          .partial()
+          .parse(
+            JSON.parse(readFileSync(new URL("./desktop-config.json", import.meta.url), "utf8")),
+          )
       : undefined,
   });
   const backend = publicConfig.apiURL;

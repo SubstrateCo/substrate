@@ -1,3 +1,4 @@
+import type { IpcValue } from "@substrate/contracts/desktop/ipc";
 import {
   harnessIdSchema,
   harnessInspectionSchema,
@@ -10,7 +11,7 @@ import {
   type HarnessErrorCode,
 } from "@substrate/contracts/harness";
 import { harnessMethods, localHarnessMethods } from "@substrate/contracts/harness/ipc";
-import type { HarnessMethod } from "@substrate/contracts/harness/ipc";
+import type { HarnessAPI, HarnessMethod } from "@substrate/contracts/harness/ipc";
 import {
   localToolRequest,
   workspaceApiResult,
@@ -27,7 +28,6 @@ import { createMcpApiProxy } from "../mcp/mcp-api-proxy.ts";
 import { HarnessWorkerError, type HarnessWorker } from "../worker/protocol.ts";
 import { prepareLocalInput } from "./local-configuration.ts";
 import { join } from "node:path";
-/* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- Main parses IPC and worker response payloads at this boundary. The injected transport carries structured-clone values. */
 import { z } from "zod";
 
 const methodSchema = z.enum(harnessMethods);
@@ -53,6 +53,9 @@ export class HarnessCommandError extends Error {
 }
 
 type Authorization = Awaited<ReturnType<DesktopSessionAuthority["verify"]>>;
+type HarnessResult<M extends HarnessMethod> = Awaited<ReturnType<HarnessAPI[M]>>;
+
+const ignore = () => {};
 
 /** Main-only authority. Never accepts an account path or a catalog from IPC. */
 export function createHarnessController(options: {
@@ -72,8 +75,8 @@ export function createHarnessController(options: {
   let worker: HarnessWorker | undefined;
   let identity: string | undefined;
   let generation = 0;
-  let queue = Promise.resolve<unknown>(undefined);
-  let syncing: Promise<unknown> | undefined;
+  let queue = Promise.resolve();
+  let syncing: Promise<HarnessResult<"synchronize">> | undefined;
   const localToolHandler = options.localToolHandler;
   authority.onChange(() => {
     syncing = undefined;
@@ -122,7 +125,7 @@ export function createHarnessController(options: {
     };
   }
 
-  async function perform(method: HarnessMethod, value?: unknown) {
+  async function perform(method: HarnessMethod, value?: IpcValue) {
     const session = capture();
     try {
       const auth = await authority.verify();
@@ -172,8 +175,8 @@ export function createHarnessController(options: {
       }
       if (!worker || identity !== auth.identity) return { connected: false };
       const inspection = capture();
-      const result = await worker.request("inspect").catch((error: unknown) => {
-        if (error instanceof HarnessWorkerError && error.code === "worker-stopped") throw error;
+      const result = await worker.request("inspect").catch((cause: unknown) => {
+        if (cause instanceof HarnessWorkerError && cause.code === "worker-stopped") throw cause;
         throw new CommandFailure();
       });
       inspection.assertCurrent(auth.identity);
@@ -217,12 +220,9 @@ export function createHarnessController(options: {
     return { auth, worker, current: generation };
   }
 
-  async function request(
-    target: Awaited<ReturnType<typeof connected>>,
-    run: () => Promise<unknown>,
-  ) {
-    const result = await run().catch((error: unknown) => {
-      const code = error instanceof HarnessWorkerError ? error.code : "harness-error";
+  async function request<T>(target: Awaited<ReturnType<typeof connected>>, run: () => Promise<T>) {
+    const result = await run().catch((cause: unknown) => {
+      const code = cause instanceof HarnessWorkerError ? cause.code : "harness-error";
       // A stopped worker cannot recover; the next synchronization starts a new one.
       if (code === "worker-stopped" && target.worker === worker) disconnect();
       throw new HarnessCommandError(code);
@@ -240,7 +240,7 @@ export function createHarnessController(options: {
       await worker.request("closeOrganization", auth.organizationId);
     },
     /** The renderer IPC allowlist. Renderer values are parsed again in perform(). */
-    run(method: unknown, value?: unknown) {
+    run<M extends HarnessMethod>(method: M, value?: IpcValue): Promise<HarnessResult<M>> {
       const parsed = methodSchema.safeParse(method);
       if (
         !parsed.success ||
@@ -248,11 +248,16 @@ export function createHarnessController(options: {
       )
         return Promise.reject(new Error("Invalid harness operation."));
       // Several renderer views synchronize at once; they share one verified round trip.
-      if (parsed.data === "synchronize" && syncing) return syncing;
-      const result = queue.then(() => perform(parsed.data, value));
-      if (parsed.data !== "listModels") queue = result.catch(() => undefined);
+      if (parsed.data === "synchronize" && syncing) {
+        // SAFETY: M is "synchronize", and syncing holds the result of a synchronize run.
+        return syncing as Promise<HarnessResult<M>>;
+      }
+      // SAFETY: perform() returns the contract's output shape for each method; the bridge parses it again.
+      const result = queue.then(() => perform(parsed.data, value)) as Promise<HarnessResult<M>>;
+      if (parsed.data !== "listModels") queue = result.then(ignore, ignore);
       if (parsed.data === "synchronize") {
-        syncing = result;
+        // SAFETY: this run is a synchronize run.
+        syncing = result as Promise<HarnessResult<"synchronize">>;
         const clear = () => {
           if (syncing === result) syncing = undefined;
         };

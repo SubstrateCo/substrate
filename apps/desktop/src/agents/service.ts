@@ -1,7 +1,12 @@
 import { AgentWorkStore } from "@substrate/client-storage/agent-work";
 import type { AgentWorkChange } from "@substrate/contracts/agent-work/desktop";
+import type { IpcValue } from "@substrate/contracts/desktop/ipc";
 import type { HarnessEvent } from "@substrate/contracts/harness";
-import type { WorkspaceApiResult } from "@substrate/contracts/harness/mcp";
+import type {
+  LocalToolRequest,
+  WorkspaceApiRequest,
+  WorkspaceApiResult,
+} from "@substrate/contracts/harness/mcp";
 import type { RealtimeUpdate } from "@substrate/contracts/realtime";
 
 import {
@@ -15,8 +20,6 @@ import { createAgentWorkServer } from "./server/agent-work-server.ts";
 import { agentWorkServiceMachine, type AgentWorkServiceState } from "./service-machine.ts";
 import { lstat, mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
-
-/* oxlint-disable deslop/no-unknown-parameters -- IPC values, MCP bodies and local tool calls are parsed by the modules this service calls. */
 
 interface Active {
   identity: string;
@@ -276,10 +279,10 @@ export function createAgentWorkService(options: {
     onHarnessEvent(event: HarnessEvent) {
       active?.runtime.onHarnessEvent(event);
     },
-    observeToolCall(request: unknown, result: unknown) {
+    observeToolCall(request: WorkspaceApiRequest, result: WorkspaceApiResult) {
       return active?.runtime.observeToolCall(request, result);
     },
-    async handleLocalTool(request: unknown): Promise<WorkspaceApiResult> {
+    async handleLocalTool(request: LocalToolRequest): Promise<WorkspaceApiResult> {
       const current = available(active);
       if (!current)
         return {
@@ -289,7 +292,7 @@ export function createAgentWorkService(options: {
       return current.runtime.handleLocalTool(request);
     },
     /** The IPC bridge. Values are parsed per method. */
-    async call(method: unknown, value?: unknown) {
+    async call(method: string, value?: IpcValue) {
       return dispatchAgentWork(await required(), method, value);
     },
   };

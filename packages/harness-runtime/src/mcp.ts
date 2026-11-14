@@ -18,8 +18,9 @@ import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
 import { randomBytes, timingSafeEqual } from "node:crypto";
 import { createServer } from "node:http";
+import { z } from "zod";
 
-/* oxlint-disable deslop/no-runtime-typeof -- The server.address() platform union is checked before constructing a loopback URL. */
+const tcpAddress = z.object({ port: z.number() });
 
 export interface McpLeaseOptions {
   organizationId: string;
@@ -309,9 +310,10 @@ export async function createStartupMcp(
       resolve();
     });
   });
-  const address = server.address();
-  if (!address || typeof address === "string") throw new Error("MCP loopback listener failed");
-  authority = `127.0.0.1:${address.port}`;
+  // A TCP listener reports an AddressInfo; a pipe path or a closed server does not.
+  const address = tcpAddress.safeParse(server.address());
+  if (!address.success) throw new Error("MCP loopback listener failed");
+  authority = `127.0.0.1:${address.data.port}`;
   return {
     issue(options: McpLeaseOptions): McpLease {
       const token = randomBytes(32).toString("hex");

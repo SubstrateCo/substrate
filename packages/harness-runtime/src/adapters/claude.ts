@@ -27,8 +27,10 @@ import {
   type SDKUserMessage,
 } from "@anthropic-ai/claude-agent-sdk";
 import { randomUUID } from "node:crypto";
+import { z } from "zod";
 
-/* oxlint-disable deslop/no-runtime-typeof -- These checks validate host permission/question replies at the Claude SDK boundary. */
+/** The host's AskUserQuestion reply: question text → answer text. */
+const questionAnswers = z.record(z.string(), z.string());
 
 /**
  * Evidence from the installed @anthropic-ai/claude-agent-sdk 0.3.319 sdk.d.ts:
@@ -119,14 +121,13 @@ export class ClaudeSession {
       signal,
     );
     if (toolName === "AskUserQuestion") {
-      const isAnswerObject =
-        typeof response === "object" && response !== null && !Array.isArray(response);
-      if (!isAnswerObject || !Object.values(response).every((answer) => typeof answer === "string"))
+      const answers = questionAnswers.safeParse(response);
+      if (!answers.success)
         throw new HarnessError(
           "invalid-response",
           "Claude questions require an object mapping question text to answer text.",
         );
-      return { behavior: "allow", updatedInput: { ...input, answers: response } };
+      return { behavior: "allow", updatedInput: { ...input, answers: answers.data } };
     }
     if (response === "allow") return { behavior: "allow", updatedInput: input };
     if (response !== "deny")

@@ -2,15 +2,13 @@ import { realtimeConnectInput } from "@substrate/contracts/realtime";
 
 import { isTrustedOrigin } from "../../shared/origin";
 import type { RealtimeHub } from "./hub";
+import { upgradeWebSocket, websocket, type BunWebSocketData } from "@hono/bun";
 import { zValidator } from "@hono/zod-validator";
 import type { ServerWebSocket } from "bun";
 import { Hono } from "hono";
-import { createBunWebSocket } from "hono/bun";
 import { z } from "zod";
 
 export function createRealtimeRoutes(hub: RealtimeHub, trustedOrigins: string[]) {
-  // oxlint-disable-next-line typescript/no-deprecated -- The installed hono/bun adapter is deprecated; @hono/bun is not installed. This factory retains native socket typing, unlike its any-typed direct export.
-  const { upgradeWebSocket, websocket } = createBunWebSocket<ServerWebSocket<unknown>>();
   type Connection = NonNullable<Awaited<ReturnType<RealtimeHub["reserve"]>>>;
   const peers = new WeakMap<object, Connection>();
   const app = new Hono<{ Variables: { connection: Connection } }>().get(
@@ -51,7 +49,8 @@ export function createRealtimeRoutes(hub: RealtimeHub, trustedOrigins: string[])
       const connection = c.get("connection");
       return {
         onOpen(_event, ws) {
-          const raw = ws.raw;
+          // The adapter types its socket as any; under Bun it is Bun's server socket.
+          const raw: ServerWebSocket<BunWebSocketData> | undefined = ws.raw;
           if (!raw) {
             hub.close(connection);
             return;

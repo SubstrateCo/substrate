@@ -5,6 +5,7 @@ import { bundleHarnessWorker } from "./harness-worker.ts";
 import { bundlePreload } from "./preload.js";
 import electron from "electron";
 import { fileURLToPath } from "node:url";
+import { z } from "zod";
 
 const root = fileURLToPath(new URL("../../../", import.meta.url));
 const desktop = fileURLToPath(new URL("../", import.meta.url));
@@ -42,12 +43,10 @@ try {
     const env = { ...process.env };
     delete env.ELECTRON_RUN_AS_NODE;
     // Electron's Node entry returns its executable path, not its declared API namespace.
-    const executable: unknown = electron;
-    // oxlint-disable-next-line deslop/no-runtime-typeof -- Validate Electron's Node entry at the package boundary; its declarations describe the Electron runtime instead.
-    if (typeof executable !== "string")
-      throw new Error("Electron did not provide an executable path.");
+    const executable = z.string().safeParse(electron);
+    if (!executable.success) throw new Error("Electron did not provide an executable path.");
     windowProcess = Bun.spawn(
-      [executable, fileURLToPath(new URL("../src/main.ts", import.meta.url))],
+      [executable.data, fileURLToPath(new URL("../src/main.ts", import.meta.url))],
       {
         cwd: desktop,
         env,

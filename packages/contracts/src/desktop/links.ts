@@ -1,3 +1,4 @@
+import { hasUnsafePathCharacter } from "../paths.ts";
 import type { DesktopScheme } from "./identity.ts";
 import { z } from "zod";
 
@@ -12,8 +13,7 @@ export const desktopPath = z
   .refine((value) => {
     try {
       const decoded = decodeURIComponent(value);
-      // oxlint-disable-next-line no-control-regex -- External app links must not contain URL controls or backslashes.
-      const invalidCharacters = /[\\\u0000-\u0020\u007f]/.test(decoded);
+      const invalidCharacters = hasUnsafePathCharacter(decoded);
       if (!value.startsWith("/") || invalidCharacters || decoded.startsWith("//")) return false;
       const url = new URL(value, desktopOrigin);
       if (url.origin !== desktopOrigin) return false;

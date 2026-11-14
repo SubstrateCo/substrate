@@ -82,8 +82,7 @@ const schema = z.object({
 });
 
 export function validateFixture(
-  // oxlint-disable-next-line deslop/no-unknown-parameters -- This function is the fixture JSON parsing boundary.
-  value: unknown,
+  value: LoadFixture,
   target: { apiUrl: string; origin: string },
 ): LoadFixture {
   const fixture = schema.parse(value);

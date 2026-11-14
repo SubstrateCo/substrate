@@ -8,9 +8,8 @@ import type {
   TurnResult,
 } from "@substrate/contracts/harness";
 
+import type { JsonValue } from "../json.ts";
 import type { McpLease } from "../mcp.ts";
-
-/* oxlint-disable deslop/no-unknown-parameters -- Native response payloads have different protocols; each adapter validates its own wire boundary. */
 
 /**
  * turn: the event belongs to the host's live turn, if one is live.
@@ -54,6 +53,7 @@ export interface NativeAdapter {
   steer?(input: { inputId: string; text: string }): Promise<void>;
   compact?(): Promise<void>;
   interrupt(): Promise<InterruptReceipt>;
-  respond(requestId: string, response: unknown): Promise<void>;
+  /** The host has checked that the response is JSON. The adapter parses its shape. */
+  respond(requestId: string, response: JsonValue | undefined): Promise<void>;
   disconnect(): Promise<void>;
 }

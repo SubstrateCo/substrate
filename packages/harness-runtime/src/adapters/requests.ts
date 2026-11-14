@@ -1,19 +1,18 @@
 import { HarnessError } from "../errors.ts";
+import type { JsonValue } from "../json.ts";
 import { randomUUID } from "node:crypto";
-
-/* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns -- This queue transports response payloads to the native adapter that owns their validation. */
 
 export class PendingRequests {
   private readonly requests = new Map<
     string,
     {
-      resolve(value: unknown): void;
+      resolve(value: JsonValue | undefined): void;
       reject(error: Error): void;
       timer: ReturnType<typeof setTimeout>;
     }
   >();
 
-  request(emit: (id: string) => void, signal?: AbortSignal): Promise<unknown> {
+  request(emit: (id: string) => void, signal?: AbortSignal): Promise<JsonValue | undefined> {
     const id = randomUUID();
     return new Promise((resolve, reject) => {
       const finish = () => {
@@ -42,7 +41,7 @@ export class PendingRequests {
       else emit(id);
     });
   }
-  respond(id: string, value: unknown): void {
+  respond(id: string, value: JsonValue | undefined): void {
     const request = this.requests.get(id);
     if (!request)
       throw new HarnessError(

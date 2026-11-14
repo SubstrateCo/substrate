@@ -11,7 +11,6 @@ import {
 } from "@substrate/contracts/agent-work";
 import { harnessKinds, desktopAgentCatalogSchema } from "@substrate/contracts/harness";
 
-/* oxlint-disable deslop/no-unknown-parameters -- Server responses are parsed at this boundary. */
 import { z } from "zod";
 
 type Fetch = (url: string, init: RequestInit) => Promise<Response>;
@@ -86,7 +85,7 @@ export function createAgentWorkServer(options: {
 }): AgentWorkServer {
   async function call<T extends z.ZodType>(
     path: string,
-    body: unknown,
+    body: z.core.util.JSONType | undefined,
     schema: T,
     method = "POST",
   ): Promise<z.output<T>> {

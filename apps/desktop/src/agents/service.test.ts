@@ -1,4 +1,5 @@
 import { AgentWorkStore } from "@substrate/client-storage/agent-work";
+import type { LocalToolRequest } from "@substrate/contracts/harness/mcp";
 import type { RealtimeDomain, RealtimeUpdate } from "@substrate/contracts/realtime";
 
 import { DesktopSessionAuthority } from "../session/desktop-session-authority.ts";
@@ -9,10 +10,24 @@ import { afterEach, expect, jest, spyOn, test } from "bun:test";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
-/* oxlint-disable deslop/no-unknown-parameters -- The fake backend answers with untyped JSON bodies, as the real one does. */
+import type { z } from "zod";
 
 const backend = "https://api.example.com";
+/** A well-formed local tool call. Tests use it where no runtime is available to answer it. */
+const unscopedLocalCall: LocalToolRequest = {
+  tool: "list_helpers",
+  sessionId: "session-1",
+  organizationId: "org-1",
+  agentId: "00000000-0000-4000-8000-0000000000a1",
+  input: {},
+  turn: {
+    turnId: "00000000-0000-4000-8000-0000000000a2",
+    attempt: 1,
+    sessionKey: "session",
+    origin: null,
+    kind: "interactive",
+  },
+};
 
 function gate() {
   const entered = Promise.withResolvers<void>();
@@ -70,8 +85,8 @@ async function serviceFixture() {
   const registeredOrganizations: string[] = [];
   const pulledOrganizations: string[] = [];
   /** Wakes the next pull returns. */
-  const wakes: unknown[] = [];
-  const ok = (data: unknown) => Response.json({ success: true, data });
+  const wakes: z.core.util.JSONType[] = [];
+  const ok = (data: z.core.util.JSONType) => Response.json({ success: true, data });
   const serviceOptions = {
     backend,
     installationId: "00000000-0000-4000-8000-0000000000d1",
@@ -205,7 +220,7 @@ test("a live local tool still works during slow routine verification", async () 
   const read = f.service.call("agents");
   await pending.entered;
   const result = await f.service.handleLocalTool({
-    tool: "list_helpers",
+    tool: "list_helpers" as const,
     sessionId: turn.sessionId,
     organizationId,
     agentId,
@@ -221,7 +236,7 @@ test("a session invalidation blocks old local tools during verification and afte
   const f = await liveServiceFixture();
   const turn = f.runtime.turns()[0]!;
   const request = {
-    tool: "list_helpers",
+    tool: "list_helpers" as const,
     sessionId: turn.sessionId,
     organizationId,
     agentId,
@@ -281,7 +296,7 @@ test("stop waits for runtime startup and closes it only once", async () => {
   const pending = f.holdRegistration();
   f.service.start();
   await pending.entered;
-  expect(await f.service.handleLocalTool({})).toMatchObject({
+  expect(await f.service.handleLocalTool(unscopedLocalCall)).toMatchObject({
     success: false,
     error: { code: "UNAVAILABLE" },
   });
@@ -374,7 +389,7 @@ test("a workspace change during retirement cannot publish the superseded workspa
   f.organization("org-2");
   f.service.onRealtime(change("organization"));
   await pending.entered;
-  expect(await f.service.handleLocalTool({})).toMatchObject({
+  expect(await f.service.handleLocalTool(unscopedLocalCall)).toMatchObject({
     success: false,
     error: { code: "UNAVAILABLE" },
   });

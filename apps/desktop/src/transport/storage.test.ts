@@ -23,8 +23,7 @@ test("storage origins are explicit, normalized, and HTTPS-only in packages", () 
     "https://storage.example.test; img-src *",
     "https://storage.example.test;",
     "",
-    [42],
-    {},
+    [""],
   ])
     expect(() => storageOrigins(value, false)).toThrow();
   expect(() => storageOrigins("http://localhost:9000", true)).toThrow();

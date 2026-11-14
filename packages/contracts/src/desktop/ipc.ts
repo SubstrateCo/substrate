@@ -1,4 +1,3 @@
-/* oxlint-disable deslop/no-unknown-parameters, deslop/no-unknown-returns, deslop/no-unsafe-dictionary-type -- This generic IPC boundary parses wire values using each method's contract; the dynamic preload object is typed only after construction. */
 import { z } from "zod";
 
 export interface BridgeMethod {
@@ -6,6 +5,19 @@ export interface BridgeMethod {
   output?: z.ZodType;
 }
 export type BridgeMethods = Record<string, BridgeMethod>;
+/** A value the renderer sends through Electron's structured clone. Main parses it with the method's input schema. */
+export type IpcValue =
+  | string
+  | number
+  | boolean
+  | null
+  | undefined
+  | IpcValue[]
+  | { [key: string]: IpcValue };
+type BridgeResult<B extends BridgeMethod> = B extends { output: infer O extends z.ZodType }
+  ? z.output<O>
+  : void;
+type BridgeResults<M extends BridgeMethods> = { [K in keyof M]: BridgeResult<M[K]> }[keyof M];
 type MethodAPI<M extends BridgeMethods> = {
   [K in keyof M]: (
     ...args: M[K]["input"] extends z.ZodTuple
@@ -13,7 +25,7 @@ type MethodAPI<M extends BridgeMethods> = {
       : undefined extends z.input<M[K]["input"]>
         ? [input?: z.input<M[K]["input"]>]
         : [input: z.input<M[K]["input"]>]
-  ) => Promise<M[K] extends { output: infer O extends z.ZodType } ? z.output<O> : void>;
+  ) => Promise<BridgeResult<M[K]>>;
 };
 type Group<K> = K extends `${infer G}.${string}` ? G : never;
 export type BridgeAPI<M extends BridgeMethods> = Pick<
@@ -32,9 +44,14 @@ export const bridgeOutput = <T>() => z.custom<T>();
 export function handleBridge<M extends BridgeMethods>(
   _channel: string,
   methods: M,
-  implementation: { [K in keyof M]: (input: z.output<M[K]["input"]>) => unknown },
+  implementation: {
+    [K in keyof M]: (
+      input: z.output<M[K]["input"]>,
+    ) => BridgeResult<M[K]> | Promise<BridgeResult<M[K]>>;
+  },
 ) {
-  return async (method: unknown, value?: unknown): Promise<unknown> => {
+  return async (method: string, value?: IpcValue): Promise<BridgeResults<M>> => {
+    // Electron delivers renderer arguments untyped, so the method name is checked here too.
     const name = z.string().safeParse(method);
     if (!name.success || !Object.hasOwn(methods, name.data))
       throw new Error("Invalid bridge operation.");
@@ -45,29 +62,36 @@ export function handleBridge<M extends BridgeMethods>(
     const result = await implementation[key](
       definition.input.parse(value) as z.output<M[keyof M]["input"]>,
     );
-    return definition.output ? definition.output.parse(result) : result;
+    if (!definition.output) return result;
+    // SAFETY: definition.output is the output schema for this exact implementation key.
+    return definition.output.parse(result) as BridgeResults<M>;
   };
 }
 
 export function exposeBridge<M extends BridgeMethods>(
   channel: string,
   methods: M,
-  invoke: (channel: string, method: string, value?: unknown) => Promise<unknown>,
+  invoke: (channel: string, method: string, value?: IpcValue) => Promise<BridgeResults<M>>,
 ): BridgeAPI<M> {
-  const api: Record<string, unknown> = {};
+  type Call = (...args: IpcValue[]) => Promise<BridgeResults<M>>;
+  // SAFETY: the loop below defines every contract method; dotted names form one nested group.
+  const api = {} as BridgeAPI<M>;
+  const groups = new Map<string, Record<string, Call>>();
   for (const [method, definition] of Object.entries(methods)) {
-    const call = (...args: unknown[]) =>
+    const call: Call = (...args) =>
       invoke(channel, method, definition.input instanceof z.ZodTuple ? args : args[0]);
     const parts = method.split(".");
-    if (parts.length === 1) api[method] = call;
+    if (parts.length === 1) Object.defineProperty(api, method, { value: call, enumerable: true });
     else {
       const group = parts[0]!;
-      const name = parts[1]!;
-      // SAFETY: dotted methods share a nested object created in this loop.
-      const nested = (api[group] ??= {}) as Record<string, unknown>;
-      nested[name] = call;
+      let nested = groups.get(group);
+      if (!nested) {
+        nested = {};
+        groups.set(group, nested);
+        Object.defineProperty(api, group, { value: nested, enumerable: true });
+      }
+      nested[parts[1]!] = call;
     }
   }
-  // SAFETY: every generated function forwards the contract's method and input to main; dotted names form one nested group.
-  return api as BridgeAPI<M>;
+  return api;
 }

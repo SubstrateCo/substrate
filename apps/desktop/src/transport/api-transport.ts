@@ -1,18 +1,8 @@
 import { desktopInstallationHeader, desktopOrigin } from "@substrate/contracts/desktop/links";
 
-/** Remove session credentials before returning auth responses to the renderer. */
-// oxlint-disable-next-line deslop/no-unknown-parameters, deslop/no-unknown-returns -- This JSON boundary removes credentials from arbitrary auth response shapes before serialization.
-function publicAuthData(value: unknown): unknown {
-  if (Array.isArray(value)) return value.map(publicAuthData);
-  // oxlint-disable-next-line deslop/no-runtime-typeof -- JSON response boundary: remove credentials recursively without assuming an endpoint's response shape.
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value)
-        .filter(([key]) => key !== "token")
-        .map(([key, item]) => [key, publicAuthData(item)]),
-    );
-  }
-  return value;
+/** Remove session credentials, at any depth, before returning auth responses to the renderer. */
+function publicAuthJSON(body: string) {
+  return JSON.stringify(JSON.parse(body, (key, item) => (key === "token" ? undefined : item)));
 }
 
 type AuthFetchOptions = {
@@ -31,8 +21,8 @@ export function desktopAPITransport({
   installationId,
 }: {
   getCookie: () => string;
-  // oxlint-disable-next-line deslop/no-unknown-returns -- Auth endpoint results have different shapes; this transport uses the raw response hook instead of the parsed result.
-  authFetch: (path: string, options: AuthFetchOptions) => Promise<unknown>;
+  /** The transport reads the response in onResponse, not the client's parsed result. */
+  authFetch: (path: string, options: AuthFetchOptions) => Promise<object | void>;
   fetchUpstream?: (url: string, init: RequestInit) => Promise<Response>;
   installationId?: string;
 }) {
@@ -66,7 +56,7 @@ export function desktopAPITransport({
           const body = await response.clone().text();
           result = new Response(
             body && responseHeaders.get("content-type")?.includes("application/json")
-              ? JSON.stringify(publicAuthData(JSON.parse(body)))
+              ? publicAuthJSON(body)
               : body || null,
             {
               status: response.status,

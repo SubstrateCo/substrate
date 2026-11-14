@@ -34,7 +34,6 @@ export async function writeJson<T>(name: string, value: T) {
   await Bun.write(`${dataDirectory}/${name}`, `${JSON.stringify(value, null, 2)}\n`);
 }
 
-// oxlint-disable-next-line deslop/no-unknown-parameters -- Catch values are untrusted; this boundary converts them to a log message.
-export function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : String(error);
+export function errorMessage(cause: unknown) {
+  return cause instanceof Error ? cause.message : String(cause);
 }

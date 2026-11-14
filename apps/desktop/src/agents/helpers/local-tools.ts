@@ -1,12 +1,14 @@
 import { folderKeys, HelperLimitError } from "@substrate/client-storage/agent-work";
-import { localToolRequest, type WorkspaceApiResult } from "@substrate/contracts/harness/mcp";
+import {
+  localToolRequest,
+  type LocalToolRequest,
+  type WorkspaceApiResult,
+} from "@substrate/contracts/harness/mcp";
 import { mcpTools, type LocalToolName, type McpOutput } from "@substrate/contracts/harness/tools";
 
 import type { RuntimeContext } from "../runtime/context.ts";
 import type { Steering } from "../runtime/steering.ts";
 import type { TurnExecutor } from "../runtime/turn-executor.ts";
-
-/* oxlint-disable deslop/no-unknown-parameters -- Local tool calls arrive unparsed from the harness worker and are parsed here. */
 
 class ToolError extends Error {
   readonly code: string;
@@ -117,13 +119,11 @@ export function createLocalTools(
     }
   }
 
-  return async function handle(raw: unknown): Promise<WorkspaceApiResult> {
-    const parsed = localToolRequest.safeParse(raw);
-    if (!parsed.success)
-      return { success: false, error: { code: "INVALID_INPUT", message: "Invalid tool call." } };
+  /** The harness controller parses the call before it reaches this handler. */
+  return async function handle(request: LocalToolRequest): Promise<WorkspaceApiResult> {
     try {
       // SAFETY: tool results are plain JSON objects built above.
-      return { success: true, data: (await run(parsed.data)) as never };
+      return { success: true, data: (await run(request)) as never };
     } catch (error) {
       if (error instanceof ToolError || error instanceof HelperLimitError)
         return {

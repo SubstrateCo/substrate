@@ -1,4 +1,6 @@
 import type { NewOutput } from "@substrate/client-storage/agent-work";
+import type { WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
+import type { ServerToolName } from "@substrate/contracts/harness/tools";
 
 import { turnOutcome } from "./outcome.ts";
 import { toolOutputs } from "./tool-results.ts";
@@ -35,10 +37,18 @@ const ids = {
   project: "00000000-0000-4000-8000-000000000008",
 };
 const createdAt = "2026-11-09T10:00:00.000Z";
-const call = (tool: string) => ({
+const call = (tool: ServerToolName): WorkspaceApiRequest => ({
   tool,
   input: { requestId: ids.turn, body: "Which one?" },
-  turn: { turnId: ids.turn },
+  organizationId: "org-1",
+  agentId: "00000000-0000-4000-8000-000000000009",
+  turn: {
+    turnId: ids.turn,
+    attempt: 1,
+    sessionKey: "session",
+    origin: null,
+    kind: "interactive",
+  },
 });
 const outcomeOf = (outputs: NewOutput[]) =>
   turnOutcome(
@@ -100,7 +110,7 @@ test("created and updated tasks are task outputs", () => {
     createdAt,
     updatedAt: createdAt,
   };
-  for (const tool of ["create_task", "update_task"])
+  for (const tool of ["create_task", "update_task"] as const)
     expect(toolOutputs(call(tool), { success: true, data: task })?.outputs).toEqual([
       { kind: "task", id: ids.task },
     ]);

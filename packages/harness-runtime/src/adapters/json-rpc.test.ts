@@ -54,7 +54,7 @@ test("one large line split over many chunks is delivered whole, with the message
     if (message.method === "partial") notified.resolve();
   });
   try {
-    expect(await rpc.request<string>("initialize", {})).toBe("é".repeat(1_000_000));
+    expect(await rpc.request("initialize", {})).toBe("é".repeat(1_000_000));
     await notified.promise;
     expect(methods).toEqual(["after", "partial"]);
   } finally {

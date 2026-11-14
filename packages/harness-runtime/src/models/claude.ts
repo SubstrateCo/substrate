@@ -10,15 +10,20 @@ export async function discoverClaudeModels(
   const held = new Promise<void>((resolve) => {
     finish = resolve;
   });
-  // oxlint-disable-next-line eslint/require-yield -- Initialize the SDK for metadata without ever sending a prompt.
-  async function* noPrompts(): AsyncGenerator<SDKUserMessage> {
-    await held;
-  }
+  // Initialize the SDK for metadata without ever sending a prompt: the stream ends when released.
+  const noPrompts: AsyncIterable<SDKUserMessage> = {
+    [Symbol.asyncIterator]: () => ({
+      next: async () => {
+        await held;
+        return { done: true, value: undefined };
+      },
+    }),
+  };
   const abortController = new AbortController();
   const abort = () => abortController.abort();
   signal.addEventListener("abort", abort, { once: true });
   const probe = query({
-    prompt: noPrompts(),
+    prompt: noPrompts,
     options: {
       cwd: directory,
       pathToClaudeCodeExecutable: executable,

@@ -1,8 +1,6 @@
 import type { HarnessKind } from "../harness/kinds.ts";
 import { z } from "zod";
 
-/* oxlint-disable deslop/no-unknown-parameters, deslop/no-runtime-typeof -- Native harness request payloads are untyped JSON; these functions validate them at the desktop boundary. */
-
 const text = (max: number) => z.string().max(max);
 
 /** permission and question are native blocking prompts or reply.ask; proposal comes from propose. */
@@ -139,13 +137,75 @@ export function responseMatchesPayload(
   }
 }
 
-const jsonObject = z.record(z.string(), z.unknown());
-const record = (value: unknown) => jsonObject.safeParse(value).data ?? {};
-const string = (value: unknown) => (typeof value === "string" && value.trim() ? value : null);
-const list = (value: unknown) => (Array.isArray(value) ? value : []);
+// Native request fields are lenient: a field of an unexpected type is dropped, and fields this
+// module does not read stay as they are, for display.
+const nativeText = z.string().optional().catch(undefined);
+const nativeFlag = z.boolean().optional().catch(undefined);
+const nativeChoice = z
+  .looseObject({ label: nativeText, description: nativeText, value: nativeText })
+  .catch({});
+const nativeChoices = z.array(nativeChoice).optional().catch(undefined);
+const nativeQuestion = z
+  .looseObject({
+    id: nativeText,
+    question: nativeText,
+    header: nativeText,
+    multiSelect: nativeFlag,
+    options: nativeChoices,
+  })
+  .catch({});
+const nativeQuestions = z.array(nativeQuestion).optional().catch(undefined);
+const nativeField = z
+  .looseObject({
+    key: nativeText,
+    hidden: nativeFlag,
+    type: nativeText,
+    title: nativeText,
+    description: nativeText,
+    custom: nativeFlag,
+    options: nativeChoices,
+  })
+  .catch({});
+const nativeOption = z
+  .looseObject({ optionId: nativeText, kind: nativeText, name: nativeText })
+  .catch({});
+const nativeShown = z.json().optional().catch(undefined);
+
+/** A native harness request as the adapter emitted it. Parse it once when it arrives. */
+export const nativeRequestData = z
+  .looseObject({
+    input: z
+      .looseObject({ command: nativeText, file_path: nativeText, questions: nativeQuestions })
+      .optional()
+      .catch(undefined),
+    toolName: nativeText,
+    command: nativeText,
+    reason: nativeText,
+    message: nativeText,
+    title: nativeText,
+    permission: nativeText,
+    patterns: nativeShown,
+    metadata: nativeShown,
+    questions: nativeQuestions,
+    fields: z.array(nativeField).optional().catch(undefined),
+    options: z.array(nativeOption).optional().catch(undefined),
+    toolCall: z.looseObject({ title: nativeText }).optional().catch(undefined),
+  })
+  .catch({});
+export type NativeRequestData = z.output<typeof nativeRequestData>;
+type Choice = z.output<typeof nativeChoice>;
+
+const string = (value: string | undefined) => (value?.trim() ? value : null);
 const clip = (value: string, max: number) =>
   value.length > max ? value.slice(0, max - 1) + "…" : value;
-const json = (value: unknown) =>
+/** Native values that a request shows as detail text. */
+type Shown =
+  | NativeRequestData
+  | NonNullable<NativeRequestData["input"]>
+  | NonNullable<NativeRequestData["toolCall"]>
+  | z.core.util.JSONType
+  | undefined;
+const json = (value: Shown) =>
   clip(value === undefined ? "" : JSON.stringify(value, null, 2), 8000);
 
 function approve(
@@ -171,10 +231,9 @@ const acceptDecline = [
   { id: "cancel", label: "Stop the turn", style: "neutral" as const },
 ];
 
-function questionOptions(value: unknown) {
-  return list(value)
-    .map((option) => {
-      const entry = record(option);
+function questionOptions(value: Choice[] | undefined) {
+  return (value ?? [])
+    .map((entry) => {
       const label = string(entry.label);
       return label
         ? {
@@ -187,22 +246,21 @@ function questionOptions(value: unknown) {
     .slice(0, 20);
 }
 
-function opencodeFields(form: z.infer<typeof jsonObject>) {
-  return list(form.fields)
-    .map((field) => record(field))
-    .filter((field) => string(field.key) && field.hidden !== true && field.type !== "external");
+function opencodeFields(form: NativeRequestData) {
+  return (form.fields ?? []).filter(
+    (field) => string(field.key) && field.hidden !== true && field.type !== "external",
+  );
 }
 
 /** Converts a native harness request into the shared request shape, or null when unsupported. */
 export function normalizeHarnessRequest(
   harness: HarnessKind,
   kind: "permission" | "input",
-  data: unknown,
+  value: NativeRequestData,
 ): AgentRequestPayload | null {
-  const value = record(data);
   switch (harness) {
     case "claude": {
-      const input = record(value.input);
+      const input = value.input ?? {};
       const tool = string(value.toolName) ?? "a tool";
       if (kind === "permission")
         return approve(
@@ -210,23 +268,21 @@ export function normalizeHarnessRequest(
           string(input.command) ?? string(input.file_path) ?? json(input),
           allowDeny,
         );
-      const questions = list(input.questions)
-        .map((entry) => record(entry))
-        .flatMap((entry) => {
-          const question = string(entry.question);
-          return question
-            ? [
-                {
-                  id: clip(question, 2000),
-                  header: clip(string(entry.header) ?? "", 200),
-                  question: clip(question, 2000),
-                  options: questionOptions(entry.options),
-                  multiSelect: entry.multiSelect === true,
-                  allowCustom: true,
-                },
-              ]
-            : [];
-        });
+      const questions = (input.questions ?? []).flatMap((entry) => {
+        const question = string(entry.question);
+        return question
+          ? [
+              {
+                id: clip(question, 2000),
+                header: clip(string(entry.header) ?? "", 200),
+                question: clip(question, 2000),
+                options: questionOptions(entry.options),
+                multiSelect: entry.multiSelect === true,
+                allowCustom: true,
+              },
+            ]
+          : [];
+      });
       return questions.length
         ? {
             type: "questions",
@@ -242,24 +298,22 @@ export function normalizeHarnessRequest(
           string(value.command) ?? string(value.reason) ?? json(value),
           acceptDecline,
         );
-      const questions = list(value.questions)
-        .map((entry) => record(entry))
-        .flatMap((entry) => {
-          const id = string(entry.id);
-          const question = string(entry.question);
-          return id && question
-            ? [
-                {
-                  id: clip(id, 2000),
-                  header: clip(string(entry.header) ?? "", 200),
-                  question: clip(question, 2000),
-                  options: questionOptions(entry.options),
-                  multiSelect: false,
-                  allowCustom: true,
-                },
-              ]
-            : [];
-        });
+      const questions = (value.questions ?? []).flatMap((entry) => {
+        const id = string(entry.id);
+        const question = string(entry.question);
+        return id && question
+          ? [
+              {
+                id: clip(id, 2000),
+                header: clip(string(entry.header) ?? "", 200),
+                question: clip(question, 2000),
+                options: questionOptions(entry.options),
+                multiSelect: false,
+                allowCustom: true,
+              },
+            ]
+          : [];
+      });
       if (questions.length)
         return {
           type: "questions",
@@ -288,8 +342,7 @@ export function normalizeHarnessRequest(
                 { label: "Yes", description: null },
                 { label: "No", description: null },
               ]
-            : list(field.options)
-                .map((option) => record(option))
+            : (field.options ?? [])
                 .flatMap((option) => {
                   const label = string(option.label) ?? string(option.value);
                   return label
@@ -315,8 +368,7 @@ export function normalizeHarnessRequest(
         : null;
     }
     case "antigravity": {
-      const options = list(value.options)
-        .map((option) => record(option))
+      const options = (value.options ?? [])
         .flatMap((option) => {
           const id = string(option.optionId);
           if (!id) return [];
@@ -327,7 +379,7 @@ export function normalizeHarnessRequest(
           return [{ id: clip(id, 100), label: clip(string(option.name) ?? id, 100), style }];
         })
         .slice(0, 6);
-      const call = record(value.toolCall);
+      const call = value.toolCall ?? {};
       return options.length
         ? approve(string(call.title) ?? "Allow this action?", json(call), options)
         : null;
@@ -347,7 +399,7 @@ export type NativeHarnessResponse =
 export function nativeHarnessResponse(
   harness: HarnessKind,
   kind: "permission" | "input",
-  data: unknown,
+  data: NativeRequestData,
   response: AgentRequestResponse,
 ): NativeHarnessResponse {
   if (response.type === "approval") {
@@ -367,9 +419,7 @@ export function nativeHarnessResponse(
         ),
       };
     case "opencode": {
-      const fields = new Map(
-        opencodeFields(record(data)).map((field) => [string(field.key)!, field]),
-      );
+      const fields = new Map(opencodeFields(data).map((field) => [string(field.key)!, field]));
       const result: Record<string, string | number | boolean | string[]> = {};
       for (const [key, values] of Object.entries(answers)) {
         const field = fields.get(key);
@@ -380,9 +430,7 @@ export function nativeHarnessResponse(
           result[key] = Number(values[0]);
         else {
           // Selected labels map back to option values.
-          const option = list(field.options)
-            .map((entry) => record(entry))
-            .find((entry) => entry.label === values[0]);
+          const option = (field.options ?? []).find((entry) => entry.label === values[0]);
           result[key] = string(option?.value) ?? values[0]!;
         }
       }

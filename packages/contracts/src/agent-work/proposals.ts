@@ -93,19 +93,17 @@ export type JsonValue =
  * Undefined object fields are left out, so equal parsed values always produce equal text.
  */
 export function canonicalJson(value: JsonValue): string {
-  // oxlint-disable-next-line deslop/no-runtime-typeof -- Canonical JSON serialization must distinguish finite numbers from the other JSON kinds.
-  if (typeof value === "number" && !Number.isFinite(value))
-    throw new TypeError("canonicalJson accepts finite numbers only");
-  // oxlint-disable-next-line deslop/no-runtime-typeof -- Canonical JSON serialization handles primitive values separately from arrays and objects.
-  if (value === null || typeof value !== "object") return JSON.stringify(value);
-  if (Array.isArray(value)) return `[${value.map(canonicalJson).join(",")}]`;
-  const fields = Object.keys(value)
-    .sort()
-    .flatMap((key) => {
-      const field = value[key];
-      return field === undefined ? [] : [`${JSON.stringify(key)}:${canonicalJson(field)}`];
-    });
-  return `{${fields.join(",")}}`;
+  const keys = new Set<string>();
+  JSON.stringify(value, (key, field: JsonValue | undefined) => {
+    if (field === Infinity || field === -Infinity || Number.isNaN(field))
+      throw new TypeError("canonicalJson accepts finite numbers only");
+    // A property list reads keys through the prototype, so `__proto__` would appear in every object.
+    if (key === "__proto__") throw new TypeError("canonicalJson does not accept __proto__ keys");
+    keys.add(key);
+    return field;
+  });
+  // A property list writes each object's own keys in list order and leaves arrays unchanged.
+  return JSON.stringify(value, [...keys].sort());
 }
 
 /** Hex SHA-256 of the canonical JSON of a parsed action. Stored as agent_requests.action_hash. */

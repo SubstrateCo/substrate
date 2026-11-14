@@ -1,5 +1,6 @@
 import { sessionKeys } from "@substrate/contracts/agent-work";
 import type { HarnessCommand } from "@substrate/contracts/harness";
+import type { LocalToolName } from "@substrate/contracts/harness/tools";
 
 import { agentId, CodeError, openStore, organizationId, runtimeFixture } from "./test-support.ts";
 import { afterEach, expect, test } from "bun:test";
@@ -72,7 +73,13 @@ test("a reply recorded from the MCP call makes the turn replied", async () => {
   const turn = f.turns()[0]!;
   const messageId = crypto.randomUUID();
   await f.runtime.observeToolCall(
-    { tool: "reply", input: { requestId: "r", body: "Done" }, turn: { turnId: turn.turnId } },
+    {
+      tool: "reply",
+      input: { requestId: "r", body: "Done" },
+      organizationId,
+      agentId,
+      turn: turn.context,
+    },
     {
       success: true,
       data: {
@@ -145,7 +152,13 @@ test("an asked question needs the owner only while the server still has it open"
   const questionId = crypto.randomUUID();
   f.serverOpenRequests.add(questionId);
   await f.runtime.observeToolCall(
-    { tool: "reply", input: { requestId: "r", body: "Which?" }, turn: { turnId: turn.turnId } },
+    {
+      tool: "reply",
+      input: { requestId: "r", body: "Which?" },
+      organizationId,
+      agentId,
+      turn: turn.context,
+    },
     {
       success: true,
       data: {
@@ -176,7 +189,13 @@ test("a question with an answer wake no longer needs the owner, even before the 
   const questionId = crypto.randomUUID();
   f.serverOpenRequests.add(questionId);
   await f.runtime.observeToolCall(
-    { tool: "reply", input: { requestId: "r", body: "Which?" }, turn: { turnId: turn.turnId } },
+    {
+      tool: "reply",
+      input: { requestId: "r", body: "Which?" },
+      organizationId,
+      agentId,
+      turn: turn.context,
+    },
     {
       success: true,
       data: {
@@ -221,7 +240,13 @@ test("status reads during a burst of changes ask the server for open requests at
   const questionId = crypto.randomUUID();
   f.serverOpenRequests.add(questionId);
   await f.runtime.observeToolCall(
-    { tool: "reply", input: { requestId: "r", body: "Which?" }, turn: { turnId: turn.turnId } },
+    {
+      tool: "reply",
+      input: { requestId: "r", body: "Which?" },
+      organizationId,
+      agentId,
+      turn: turn.context,
+    },
     {
       success: true,
       data: {
@@ -546,7 +571,7 @@ test("a helper runs in its own folder and its finish wakes the parent with the r
   await f.advance(600);
   const main = f.turns()[0]!;
   const call = (
-    tool: string,
+    tool: LocalToolName,
     sessionId: string,
     turn: TurnCommand,
     input: Record<string, string>,

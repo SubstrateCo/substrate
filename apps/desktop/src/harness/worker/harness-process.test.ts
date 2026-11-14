@@ -1,11 +1,10 @@
+import type { IpcValue } from "@substrate/contracts/desktop/ipc";
 import type { HarnessEvent } from "@substrate/contracts/harness";
 
 import { createHarnessProcess } from "./harness-process.ts";
 import { expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
 import { EventEmitter } from "node:events";
-
-/* oxlint-disable deslop/no-unknown-parameters -- The fake child records structured-clone messages. */
 
 class FakeChild extends EventEmitter {
   readonly sent: { id: number; method: string; value?: unknown }[] = [];
@@ -19,7 +18,7 @@ class FakeChild extends EventEmitter {
     this.emit("exit", 1);
   }
   /** Answers the latest request for method. */
-  answer(method: string, result?: unknown) {
+  answer(method: string, result?: IpcValue) {
     const request = this.sent.filter((entry) => entry.method === method).at(-1);
     this.emit("message", { id: request!.id, result });
   }

@@ -9,6 +9,7 @@ import {
   openStore,
   organizationId,
   runtimeFixture,
+  type HostResult,
   type RuntimeFixture,
 } from "./test-support.ts";
 import { outageBackoffMaxMs } from "./turn-executor.ts";
@@ -159,13 +160,18 @@ test("consumption evidence that arrives while the steer command runs still appli
 
 test("Stop while the session opens sends no turn and cancels it", async () => {
   const f = await started();
-  const opening = deferred();
+  const opening = deferred<HostResult>();
   f.hooks.command = (command) => (command.type === "open" ? opening.promise : undefined);
   await f.message();
   const [turn] = await f.store.turns.assigned(organizationId);
   await f.runtime.stop(turn!.id);
   f.hooks.command = undefined;
   opening.resolve({
+    id: turn!.sessionId,
+    organizationId,
+    agentId,
+    harness: "codex",
+    folder: "main",
     nativeSessionId: "native-1",
     capabilities: {
       steer: false,
@@ -687,7 +693,7 @@ test("native compaction holds the agent's slot until it finishes", async () => {
   const f = await started({ capabilities: { compact: true, usage: true } });
   await f.message();
   const turn = lastTurn(f);
-  const compacting = deferred();
+  const compacting = deferred<HostResult>();
   f.hooks.command = (command) => (command.type === "compact" ? compacting.promise : undefined);
   f.ownerMessage({ threadId: crypto.randomUUID() });
   await f.emit(turn.turnId, {

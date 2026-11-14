@@ -1,6 +1,5 @@
 import { channel, methods } from "@substrate/contracts/agent-work/ipc";
-/* oxlint-disable deslop/no-unknown-parameters -- Main's IPC payload is parsed by handleBridge before the runtime sees it. */
-import { handleBridge } from "@substrate/contracts/desktop/ipc";
+import { handleBridge, type IpcValue } from "@substrate/contracts/desktop/ipc";
 
 import type { AgentWorkRuntime } from "../runtime/runtime.ts";
 
@@ -22,8 +21,8 @@ export async function dispatchAgentWork(
     | "newTopic"
     | "routines"
   >,
-  method: unknown,
-  value?: unknown,
+  method: string,
+  value?: IpcValue,
 ) {
   return handleBridge(channel, methods, {
     conversation: (input) => runtime.conversation(input),

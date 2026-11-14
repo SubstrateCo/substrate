@@ -7,15 +7,25 @@ import { applyEdits, modify, parse, type ParseError } from "jsonc-parser";
 import { readdir, unlink, writeFile } from "node:fs/promises";
 import { parse as parseToml, stringify } from "smol-toml";
 import { parseDocument } from "yaml";
+import { z } from "zod";
 
-/* oxlint-disable deslop/no-runtime-typeof, deslop/no-unsafe-dictionary-type, deslop/no-unknown-parameters -- This codec validates arbitrary native file formats and preserves unowned settings without exposing them as app configuration. */
+/**
+ * A native configuration table. Values keep their parsed form, so settings the host does not own
+ * survive a rewrite; each reader parses the fields it uses.
+ */
+const nativeTable = z.record(z.string(), z.unknown());
+type NativeTable = z.infer<typeof nativeTable>;
 
-function nativeObject(value: unknown, label: string): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value))
-    throw new HarnessError("invalid-config", label);
-  // SAFETY: the value is a non-null object and not an array; all properties remain unknown until checked below.
-  return value as Record<string, unknown>;
+function nativeObject(result: z.ZodSafeParseResult<NativeTable>, label: string): NativeTable {
+  if (!result.success) throw new HarnessError("invalid-config", label);
+  return result.data;
 }
+
+const nativeString = z.string().optional().catch(undefined);
+/** Native arguments. A value that is not a string reads as undefined. */
+const nativeArgs = z.array(nativeString).catch([]);
+/** A setting that holds nothing: absent, null, or an empty array or object. */
+const unsetSetting = z.union([z.undefined(), z.null(), z.tuple([]), z.strictObject({})]);
 
 // Environment keys and native arguments use the same credential-name screen.
 const credentialName = /token|secret|password|credential|api.?key|authorization/i;
@@ -76,10 +86,7 @@ export async function scanNativeSkills(
     const frontmatter = parseDocument(match[1]);
     if (frontmatter.errors.length)
       throw new HarnessError("invalid-skill", `Invalid YAML frontmatter: ${entry.name}`);
-    const field = (key: string) => {
-      const value: unknown = frontmatter.get(key);
-      return typeof value === "string" ? value : "";
-    };
+    const field = (key: string) => z.string().catch("").parse(frontmatter.get(key));
     skills.push({
       id: entry.name,
       name: field("name") || entry.name,
@@ -171,39 +178,44 @@ function mcpDocument(harness: HarnessKind, name: string, path: string, text: str
   }
   if (errors.length)
     throw new HarnessError("invalid-config", `Invalid native configuration: ${name}`);
-  const document = nativeObject(parsed, `Invalid native configuration: ${name}`);
-  let servers: Record<string, unknown> = document;
+  const document = nativeObject(
+    nativeTable.safeParse(parsed),
+    `Invalid native configuration: ${name}`,
+  );
+  let servers = document;
   for (const key of harnessDefinitions[harness].mcpKeys) {
-    servers = nativeObject(servers[key] ?? {}, `Invalid MCP configuration in ${name}`);
+    servers = nativeObject(
+      nativeTable.safeParse(servers[key] ?? {}),
+      `Invalid MCP configuration in ${name}`,
+    );
   }
   return { name, path, text, document, servers };
 }
 
-function describeServer(id: string, raw: unknown): HarnessMcpServer {
-  const value = nativeObject(raw, "MCP server entry must be an object.");
+function describeServer(id: string, value: NativeTable): HarnessMcpServer {
   const url = value.url ?? value.httpUrl;
-  const command = Array.isArray(value.command) ? value.command[0] : value.command;
+  const urlText = nativeString.parse(url);
+  const command = nativeString.parse(
+    Array.isArray(value.command) ? value.command[0] : value.command,
+  );
   // Never expose native credentials or environment values to the renderer.
-  let args: unknown[] = [];
-  if (Array.isArray(value.command)) args = value.command.slice(1);
-  else if (Array.isArray(value.args)) args = value.args;
+  const args = nativeArgs.parse(Array.isArray(value.command) ? value.command.slice(1) : value.args);
   const protectedCommand =
-    typeof command === "string" &&
+    command !== undefined &&
     /token|secret|password|credential|api.?key|authorization|bearer\s/i.test(command);
   const protectedEntry =
     protectedCommand ||
     Object.entries(value).some(
       ([key, entry]) =>
         /token|secret|password|authorization|headers|env|environment|oauth/i.test(key) &&
-        entry !== undefined &&
-        (typeof entry !== "object" || (entry !== null && Object.keys(entry).length > 0)),
+        !unsetSetting.safeParse(entry).success,
     ) ||
-    args.some((arg) => typeof arg !== "string" || credentialName.test(arg));
-  const readOnly = protectedEntry || (typeof url === "string" && /[?#@]/.test(url));
+    args.some((arg) => arg === undefined || credentialName.test(arg));
+  const readOnly = protectedEntry || (urlText !== undefined && /[?#@]/.test(urlText));
   if (url) {
     let address = "";
-    if (typeof url === "string") {
-      const parsed = new URL(url);
+    if (urlText !== undefined) {
+      const parsed = new URL(urlText);
       parsed.username = "";
       parsed.password = "";
       parsed.search = "";
@@ -213,14 +225,14 @@ function describeServer(id: string, raw: unknown): HarnessMcpServer {
     return { id, name: id, transport: "http", readOnly, url: address, args: [] };
   }
   let visibleCommand = "";
-  if (typeof command === "string") visibleCommand = protectedCommand ? "native-managed" : command;
+  if (command !== undefined) visibleCommand = protectedCommand ? "native-managed" : command;
   return {
     id,
     name: id,
     transport: "stdio",
     readOnly,
     command: visibleCommand,
-    args: protectedEntry ? [] : args.filter((arg): arg is string => typeof arg === "string"),
+    args: protectedEntry ? [] : args.filter((arg) => arg !== undefined),
   };
 }
 
@@ -228,10 +240,15 @@ export async function scanNativeServers(
   directory: string,
   harness: HarnessKind,
 ): Promise<HarnessMcpServer[]> {
-  const servers: Record<string, unknown> = {};
+  const servers: NativeTable = {};
   for (const document of await loadMcpDocuments(directory, harness))
     Object.assign(servers, document.servers);
-  return Object.entries(servers).map(([id, raw]) => describeServer(id, raw));
+  return Object.entries(servers).map(([id, raw]) =>
+    describeServer(
+      id,
+      nativeObject(nativeTable.safeParse(raw), "MCP server entry must be an object."),
+    ),
+  );
 }
 
 export async function editNativeServer(
@@ -255,7 +272,7 @@ export async function editNativeServer(
   const previous =
     servers[id] === undefined
       ? undefined
-      : nativeObject(servers[id], "MCP server entry must be an object.");
+      : nativeObject(nativeTable.safeParse(servers[id]), "MCP server entry must be an object.");
   // Editing credential-bearing entries would silently remove or re-store secrets. Native UI owns those.
   if (server && previous && describeServer(id, previous).readOnly)
     throw new HarnessError(

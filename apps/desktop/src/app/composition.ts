@@ -1,6 +1,8 @@
-/* oxlint-disable deslop/no-unknown-parameters -- The composition root forwards typed domain events through one structured-clone transport. */
-import { agentWorkChangeChannel } from "@substrate/contracts/agent-work/desktop";
-import { realtimeEventChannel } from "@substrate/contracts/realtime";
+import {
+  agentWorkChangeChannel,
+  type AgentWorkChange,
+} from "@substrate/contracts/agent-work/desktop";
+import { realtimeEventChannel, type RealtimeUpdate } from "@substrate/contracts/realtime";
 
 import { createAgentWorkService } from "../agents/service.ts";
 import { createHarnessController } from "../harness/controller/harness-controller.ts";
@@ -21,7 +23,7 @@ export function composeDesktop(options: {
   device: { name: string; platform: string };
   workerEntry: string;
   migrationsDirectory?: string;
-  emit(channel: string, value: unknown): void;
+  emit(channel: string, value: AgentWorkChange | RealtimeUpdate): void;
   showMessageNotification?: (onClick: () => Promise<void>) => () => void;
   openMessage?: (target: {
     organizationId: string;

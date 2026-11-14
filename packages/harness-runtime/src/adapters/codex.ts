@@ -1,6 +1,7 @@
 import type { AdapterCapabilities, TurnResult } from "@substrate/contracts/harness";
 
 import { HarnessError } from "../errors.ts";
+import { jsonValue, type JsonValue } from "../json.ts";
 import { launch, stopProcess } from "../process.ts";
 import { JsonLineRpc, type RpcMessage } from "./json-rpc.ts";
 import { toolInput, toolLabel } from "./tool-label.ts";
@@ -11,8 +12,7 @@ import {
   type NativeAdapter,
   type TurnOptions,
 } from "./types.ts";
-
-/* oxlint-disable deslop/no-runtime-typeof, deslop/no-unsafe-dictionary-type, deslop/no-unknown-parameters -- Native app-server notifications and host replies are validated at this protocol boundary. */
+import { z } from "zod";
 
 /**
  * Codex runs through our handwritten app-server JSON-RPC client; no Codex protocol package is
@@ -33,18 +33,18 @@ export const codexCapabilities: AdapterCapabilities = {
   interruptReceipt: false,
 };
 
-interface ThreadOptions {
+type ThreadOptions = {
   threadId?: string;
   excludeTurns?: boolean;
   model?: string;
   cwd: string;
   approvalPolicy: "on-request";
   sandbox: "workspace-write";
-}
+};
 
 export interface CodexRpc {
   send(message: RpcMessage): void;
-  request<T>(method: string, params: unknown): Promise<T>;
+  request(method: string, params: JsonValue): Promise<JsonValue | undefined>;
 }
 
 const requestMethods = [
@@ -56,32 +56,38 @@ const requestMethods = [
 /** Item types that are messages, not tool work. */
 const messageItems = new Set(["agentMessage", "userMessage", "reasoning"]);
 
-function hasField<Key extends string>(value: unknown, key: Key): value is Record<Key, unknown> {
-  return typeof value === "object" && value !== null && key in value;
-}
+/** Notification fields that route a message to its thread and turn. */
+const codexParams = z.object({
+  threadId: z.string().optional(),
+  turnId: z.string().optional(),
+  turn: z.object({ id: z.string().optional(), status: z.string().optional() }).optional(),
+  item: jsonValue.optional(),
+});
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
-}
+/** A thread item. An item without a string id and type yields no event. */
+const codexItem = z.object({
+  id: z.string(),
+  type: z.string(),
+  text: z.string().optional().catch(undefined),
+  status: jsonValue.optional(),
+  tool: z.string().optional().catch(undefined),
+  arguments: jsonValue.optional(),
+  command: jsonValue.optional(),
+  query: jsonValue.optional(),
+});
+type CodexItem = z.infer<typeof codexItem>;
 
-function isStringArray(value: unknown): value is string[] {
-  return Array.isArray(value) && value.every((item: unknown) => typeof item === "string");
-}
+const turnStarted = z.object({ turn: z.object({ id: z.string() }) });
+const threadOpened = z.object({ thread: z.object({ id: z.string() }) });
 
-interface CodexItem {
-  id?: unknown;
-  type?: unknown;
-  text?: unknown;
-  status?: unknown;
-  tool?: unknown;
-  arguments?: unknown;
-  command?: unknown;
-  query?: unknown;
-}
+const approvalDecision = z.enum(["accept", "decline", "cancel"]);
+const userInputReply = z.object({ answers: z.record(z.string(), jsonValue) });
+const questionAnswer = z.object({ answers: z.array(z.string()) });
+const elicitationReply = z.object({ action: approvalDecision, content: jsonValue.optional() });
 
 /** A readable step label for a Codex tool item. */
 function codexItemLabel(item: CodexItem, type: string) {
-  if (typeof item.tool === "string") return toolLabel(item.tool, toolInput.parse(item.arguments));
+  if (item.tool !== undefined) return toolLabel(item.tool, toolInput.parse(item.arguments));
   if (type === "commandExecution")
     return toolLabel("shell", toolInput.parse({ command: item.command }));
   if (type === "webSearch") return toolLabel("websearch", toolInput.parse({ query: item.query }));
@@ -110,14 +116,14 @@ export class CodexSession {
   }
 
   handle(message: RpcMessage): void {
-    // SAFETY: known notification discriminants select the native payload shape; authorization still checks the exact connected thread ID.
-    const params = (message.params ?? {}) as {
-      threadId?: string;
-      turnId?: string;
-      turn?: { id: string; status: string };
-      item?: CodexItem;
-      [key: string]: unknown;
-    };
+    const data = message.params ?? {};
+    const parsed = codexParams.safeParse(data);
+    // Without a readable thread ID the message cannot be proven to belong to this thread.
+    if (!parsed.success) {
+      if (message.id !== undefined && message.method) this.decline(message.id, message.method);
+      return;
+    }
+    const params = parsed.data;
     if (params.threadId && params.threadId !== this.nativeSessionId) return;
     const turn = this.turnState;
     const nativeTurnId = params.turnId ?? params.turn?.id;
@@ -143,13 +149,13 @@ export class CodexSession {
         type: "request.opened",
         requestId,
         kind: message.method.endsWith("requestApproval") ? "permission" : "input",
-        data: params,
+        data,
       });
       return;
     }
-    const item = params.item;
-    if (message.method === "item/started" && item && typeof item.id === "string") {
-      if (typeof item.type === "string" && !messageItems.has(item.type))
+    const item = codexItem.safeParse(params.item).data;
+    if (message.method === "item/started" && item) {
+      if (!messageItems.has(item.type))
         this.context.emit(
           {
             type: "item.started",
@@ -159,11 +165,10 @@ export class CodexSession {
           },
           scope,
         );
-    } else if (message.method === "item/completed" && item && typeof item.id === "string") {
+    } else if (message.method === "item/completed" && item) {
       if (item.type === "agentMessage") {
-        if (typeof item.text === "string" && item.text.trim())
-          this.context.emit({ type: "text", text: item.text }, scope);
-      } else if (typeof item.type === "string" && !messageItems.has(item.type))
+        if (item.text?.trim()) this.context.emit({ type: "text", text: item.text }, scope);
+      } else if (!messageItems.has(item.type))
         this.context.emit(
           {
             type: "item.completed",
@@ -213,13 +218,15 @@ export class CodexSession {
         const turn: LiveTurn = { inputIds: input.inputIds, mode: options.mode, resolve };
         this.turnState = turn;
         try {
-          const result = await this.rpc.request<{ turn: { id: string } }>("turn/start", {
-            threadId: this.nativeSessionId,
-            input: [{ type: "text", text: input.text }],
-            // A turn's approvalPolicy also applies to later turns, so every turn sets its own.
-            // The decline handler stays as a second guard for unattended turns.
-            approvalPolicy: options.mode === "unattended" ? "never" : "on-request",
-          });
+          const result = turnStarted.parse(
+            await this.rpc.request("turn/start", {
+              threadId: this.nativeSessionId,
+              input: [{ type: "text", text: input.text }],
+              // A turn's approvalPolicy also applies to later turns, so every turn sets its own.
+              // The decline handler stays as a second guard for unattended turns.
+              approvalPolicy: options.mode === "unattended" ? "never" : "on-request",
+            }),
+          );
           turn.nativeTurnId = result.turn.id;
         } catch {
           this.finish({ status: "failed", error: "Codex rejected the turn input." });
@@ -236,30 +243,30 @@ export class CodexSession {
         const request = this.approvals.get(requestId);
         if (!request) throw new HarnessError("unknown-request", "Unknown native request.");
         if (request.method.endsWith("requestApproval")) {
-          if (!["accept", "decline", "cancel"].includes(String(response)))
+          const decision = approvalDecision.safeParse(response);
+          if (!decision.success)
             throw new HarnessError(
               "invalid-response",
               "Codex approval accepts accept, decline, or cancel.",
             );
-          this.rpc.send({ id: request.id, result: { decision: response } });
+          this.rpc.send({ id: request.id, result: { decision: decision.data } });
         } else if (request.method === "item/tool/requestUserInput") {
-          if (!hasField(response, "answers") || !isRecord(response.answers))
+          const reply = userInputReply.safeParse(response);
+          if (!reply.success)
             throw new HarnessError(
               "invalid-response",
               "Codex user input requires an answers object.",
             );
-          for (const answer of Object.values(response.answers))
-            if (!hasField(answer, "answers") || !isStringArray(answer.answers))
+          for (const answer of Object.values(reply.data.answers))
+            if (!questionAnswer.safeParse(answer).success)
               throw new HarnessError(
                 "invalid-response",
                 "Each question requires an array of answer strings.",
               );
-          this.rpc.send({ id: request.id, result: { answers: response.answers } });
+          this.rpc.send({ id: request.id, result: { answers: reply.data.answers } });
         } else {
-          if (
-            !hasField(response, "action") ||
-            !["accept", "decline", "cancel"].includes(String(response.action))
-          )
+          const reply = elicitationReply.safeParse(response);
+          if (!reply.success)
             throw new HarnessError(
               "invalid-response",
               "MCP elicitation requires accept, decline, or cancel.",
@@ -267,9 +274,8 @@ export class CodexSession {
           this.rpc.send({
             id: request.id,
             result: {
-              action: response.action,
-              content:
-                response.action === "accept" && "content" in response ? response.content : null,
+              action: reply.data.action,
+              content: reply.data.action === "accept" ? (reply.data.content ?? null) : null,
             },
           });
         }
@@ -311,9 +317,9 @@ export async function connectCodex(
   let rpc: JsonLineRpc | undefined;
   const session = new CodexSession(context, {
     send: (message) => rpc?.send(message),
-    request: <T>(method: string, params: unknown) =>
+    request: (method, params) =>
       rpc
-        ? rpc.request<T>(method, params)
+        ? rpc.request(method, params)
         : Promise.reject(new HarnessError("disconnected", "Codex is not connected.")),
   });
   rpc = new JsonLineRpc(child, (message) => session.handle(message));
@@ -335,9 +341,8 @@ export async function connectCodex(
       params.excludeTurns = true;
     }
     if (context.model) params.model = context.model;
-    const result = await rpc.request<{ thread: { id: string } }>(
-      resumeId ? "thread/resume" : "thread/start",
-      params,
+    const result = threadOpened.parse(
+      await rpc.request(resumeId ? "thread/resume" : "thread/start", params),
     );
     session.nativeSessionId = result.thread.id;
     const connection = rpc;
