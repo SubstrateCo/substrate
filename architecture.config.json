@@ -210,6 +210,11 @@
       "rule": "R4",
       "files": ["apps/server/src/desktop/routes.ts"],
       "reason": "The /desktop/open handoff returns HTML and redirects, not the result envelope."
+    },
+    {
+      "rule": "D1",
+      "files": ["packages/database/src/**"],
+      "reason": "Repositories are the shared trust boundary for HTTP and MCP callers and own their input contracts (packages/database/AGENTS.md)."
     }
   ]
 }
