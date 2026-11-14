@@ -1,0 +1,215 @@
+{
+  "root": ".",
+  "languages": ["typescript"],
+  "include": ["apps/server/src/**", "packages/database/src/**", "packages/contracts/src/**"],
+  "ignore": [
+    "**/*.test.ts",
+    "**/test-support.ts",
+    "**/testing/**",
+    "**/development/**",
+    "packages/database/src/migrations/**"
+  ],
+  "entrypoints": [
+    {
+      "name": "rest",
+      "files": ["apps/server/src/**/routes.ts", "apps/server/src/**/*-routes.ts"],
+      "route": "\\.(?<method>get|post|put|patch|delete)\\(\\s*[\"'`](?<path>[^\"'`]*)[\"'`]",
+      "mount": {
+        "files": ["apps/server/src/app.ts"],
+        "pattern": "\\.route\\(\\s*[\"'`](?<prefix>[^\"'`]+)[\"'`]\\s*,\\s*(?<factory>\\w+)\\("
+      }
+    }
+  ],
+  "layers": [
+    {
+      "name": "composition",
+      "files": ["apps/server/src/{app,main,services}.ts"]
+    },
+    {
+      "name": "config",
+      "files": ["apps/server/src/environment.ts"]
+    },
+    {
+      "name": "kernel",
+      "files": ["apps/server/src/shared/service-result.ts"]
+    },
+    {
+      "name": "route",
+      "files": ["apps/server/src/**/routes.ts", "apps/server/src/**/*-routes.ts"]
+    },
+    {
+      "name": "http",
+      "files": ["apps/server/src/shared/http.ts"]
+    },
+    {
+      "name": "middleware",
+      "files": [
+        "apps/server/src/shared/{scope,origin,workspace}.ts",
+        "apps/server/src/infrastructure/runtime-metrics.ts"
+      ]
+    },
+    {
+      "name": "adapter",
+      "files": [
+        "apps/server/src/auth/**",
+        "apps/server/src/mail/**",
+        "apps/server/src/storage/**",
+        "apps/server/src/infrastructure/database.ts",
+        "apps/server/src/v1/realtime/{publisher,subscription,hub}.ts",
+        "apps/server/src/v1/files/{image,attachment-image}.ts"
+      ]
+    },
+    {
+      "name": "service",
+      "files": ["apps/server/src/v1/**", "apps/server/src/desktop/**", "apps/server/src/shared/**"]
+    },
+    {
+      "name": "database",
+      "files": ["packages/database/src/**"],
+      "specifiers": ["^@substrate/database"],
+      "mayImport": ["contracts"]
+    },
+    {
+      "name": "contracts",
+      "files": ["packages/contracts/src/**"],
+      "specifiers": ["^@substrate/contracts"],
+      "mayImport": []
+    }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "tag": "bypass",
+      "layer": "route",
+      "forbidImports": ["database", "adapter", "3p:drizzle-orm", "3p:postgres"],
+      "message": "route imports {target} ({match})",
+      "fix": "Call a service method; the service owns repositories and adapters"
+    },
+    {
+      "id": "R1",
+      "tag": "bypass",
+      "layer": "route",
+      "forbidPatterns": [
+        "\\brepositories\\.\\w+",
+        "\\bdb\\.(select|insert|update|delete|execute|transaction)\\b"
+      ],
+      "message": "route uses persistence directly (`{match}`)",
+      "fix": "Move the call into a service method"
+    },
+    {
+      "id": "R3",
+      "tag": "validate",
+      "layer": "route",
+      "forbidPatterns": [
+        "c\\.req\\.(json|parseBody|formData|text|arrayBuffer|blob)\\(",
+        "c\\.req\\.(query|param|header)\\("
+      ],
+      "message": "route reads raw request input (`{match}`)",
+      "fix": "Validate with v(target, schema) from shared/http and read c.req.valid(target)"
+    },
+    {
+      "id": "R4",
+      "tag": "sanitize",
+      "layer": "route",
+      "forbidPatterns": [
+        "\\bc\\.(json|text)\\(",
+        "\\bnew Response\\(",
+        "\\bc\\.status\\(",
+        "\\bcatch\\s*[({]"
+      ],
+      "message": "route shapes the response or error itself (`{match}`)",
+      "fix": "Return a ServiceResult and map it with respond(c, result)"
+    },
+    {
+      "id": "R5",
+      "tag": "vendor",
+      "layer": "route",
+      "forbidImports": ["/^3p:(?!hono$|@hono\\/|zod$)/"],
+      "message": "route imports third-party {target}",
+      "fix": "Wrap the SDK in an adapter and call it from a service"
+    },
+    {
+      "id": "S1",
+      "tag": "upward",
+      "layer": "service",
+      "forbidImports": ["route", "composition", "3p:hono", "/^3p:@hono\\//"],
+      "allowTypeOnly": true,
+      "message": "service imports {target} ({match})",
+      "fix": "Take plain inputs and return ServiceResult; keep HTTP types in routes"
+    },
+    {
+      "id": "S1",
+      "tag": "upward",
+      "layer": "service",
+      "forbidPatterns": ["\\bc\\.req\\b", "\\bnew Response\\(", "\\bHTTPException\\b"],
+      "message": "service handles HTTP (`{match}`)",
+      "fix": "Return a ServiceError code; respond() maps it to HTTP"
+    },
+    {
+      "id": "S2",
+      "tag": "bypass",
+      "layer": "service",
+      "forbidImports": ["3p:drizzle-orm", "3p:postgres", "/^@substrate\\/database\\/schema/"],
+      "allowTypeOnly": true,
+      "message": "service imports query tools ({match})",
+      "fix": "Add a repository method in packages/database and call it"
+    },
+    {
+      "id": "S4",
+      "tag": "vendor",
+      "layer": "service",
+      "forbidImports": ["/^3p:(@aws-sdk\\/|nodemailer$|sharp$|ioredis$|redis$)/"],
+      "message": "service imports SDK {target} directly",
+      "fix": "Inject an adapter interface from services.ts"
+    },
+    {
+      "id": "D1",
+      "tag": "validate",
+      "layer": "database",
+      "forbidImports": ["3p:zod", "/^@substrate\\/contracts\\/.*input$/"],
+      "allowTypeOnly": true,
+      "message": "database imports runtime validation ({match})",
+      "fix": "Validate shape in the route and domain rules in the service; pass parsed values"
+    },
+    {
+      "id": "D1",
+      "tag": "validate",
+      "layer": "database",
+      "forbidPatterns": ["\\.safeParse\\(", "\\b\\w+(Schema|Input|Request)\\.parse\\("],
+      "message": "database parses input (`{match}`)",
+      "fix": "Move parsing to the route; the repository accepts typed values"
+    },
+    {
+      "id": "D3",
+      "tag": "upward",
+      "layer": "database",
+      "forbidImports": ["3p:hono", "/^3p:@hono\\//", "3p:better-auth"],
+      "message": "database imports {target} ({match})",
+      "fix": "Invert the dependency; the caller passes values in"
+    },
+    {
+      "id": "D4",
+      "tag": "vendor",
+      "layer": "database",
+      "forbidImports": ["/^3p:(?!drizzle-orm$|postgres$|zod$|libphonenumber-js$)/"],
+      "allowTypeOnly": true,
+      "message": "database imports non-persistence {target}",
+      "fix": "Call the SDK from a service or adapter"
+    },
+    {
+      "id": "C1",
+      "tag": "upward",
+      "layer": "contracts",
+      "forbidImports": ["/^3p:(?!zod$)/"],
+      "message": "browser-safe contracts import {target} ({match})",
+      "fix": "Keep contracts to schemas and types; move server code out"
+    }
+  ],
+  "exceptions": [
+    {
+      "rule": "R4",
+      "files": ["apps/server/src/desktop/routes.ts"],
+      "reason": "The /desktop/open handoff returns HTML and redirects, not the result envelope."
+    }
+  ]
+}

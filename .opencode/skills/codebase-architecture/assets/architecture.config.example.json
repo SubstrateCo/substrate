@@ -1,0 +1,112 @@
+{
+  "root": ".",
+  "languages": ["typescript"],
+  "include": ["src/**"],
+  "ignore": ["**/*.test.*", "**/*.spec.*", "**/__tests__/**", "**/migrations/**"],
+  "entrypoints": [
+    {
+      "name": "rest",
+      "files": ["src/**/routes.ts", "src/**/*.routes.ts"],
+      "route": "\\.(?<method>get|post|put|patch|delete)\\(\\s*[\"'`](?<path>[^\"'`]*)[\"'`]",
+      "mount": {
+        "files": ["src/app.ts"],
+        "pattern": "\\.(?:use|route)\\(\\s*[\"'`](?<prefix>[^\"'`]+)[\"'`]\\s*,\\s*(?<factory>\\w+)"
+      }
+    }
+  ],
+  "layers": [
+    { "name": "composition", "files": ["src/{app,main,server,index}.ts"] },
+    { "name": "config", "files": ["src/config/**", "src/env.ts"] },
+    { "name": "route", "files": ["src/**/routes.ts", "src/**/*.routes.ts", "src/**/*.controller.ts"] },
+    { "name": "middleware", "files": ["src/middleware/**"] },
+    { "name": "adapter", "files": ["src/adapters/**", "src/integrations/**"] },
+    { "name": "database", "files": ["src/db/**", "src/**/*.repository.ts"], "mayImport": ["contracts", "config"] },
+    { "name": "contracts", "files": ["src/contracts/**", "src/**/*.schema.ts"], "mayImport": [] },
+    { "name": "service", "files": ["src/**/*.service.ts", "src/services/**", "src/domain/**"] }
+  ],
+  "rules": [
+    {
+      "id": "R1",
+      "tag": "bypass",
+      "layer": "route",
+      "forbidImports": ["database", "adapter", "/^3p:(prisma|@prisma\\/client|drizzle-orm|typeorm|knex|pg|mysql2|mongoose)$/"],
+      "message": "route imports {target} ({match})",
+      "fix": "Call a service method"
+    },
+    {
+      "id": "R3",
+      "tag": "validate",
+      "layer": "route",
+      "forbidPatterns": ["\\breq\\.(body|query|params)\\b(?!.*\\.parse)", "\\bc\\.req\\.(json|query|param|parseBody)\\("],
+      "message": "route reads raw input (`{match}`)",
+      "fix": "Validate with a schema middleware and use the parsed value"
+    },
+    {
+      "id": "R4",
+      "tag": "sanitize",
+      "layer": "route",
+      "forbidPatterns": ["\\bcatch\\s*[({]", "\\.stack\\b"],
+      "message": "route handles errors itself (`{match}`)",
+      "fix": "Throw or return a domain error; use the shared error mapper"
+    },
+    {
+      "id": "R5",
+      "tag": "vendor",
+      "layer": "route",
+      "forbidImports": ["/^3p:(?!express$|hono$|@hono\\/|fastify$|zod$|valibot$|joi$)/"],
+      "message": "route imports third-party {target}",
+      "fix": "Wrap the SDK in an adapter and call it from a service"
+    },
+    {
+      "id": "S1",
+      "tag": "upward",
+      "layer": "service",
+      "forbidImports": ["route", "middleware", "composition", "3p:express", "3p:hono", "3p:fastify"],
+      "allowTypeOnly": true,
+      "message": "service imports {target} ({match})",
+      "fix": "Take plain inputs and return a result; keep HTTP in routes"
+    },
+    {
+      "id": "S2",
+      "tag": "bypass",
+      "layer": "service",
+      "forbidImports": ["/^3p:(prisma|@prisma\\/client|drizzle-orm|typeorm|knex|pg|mysql2|mongoose)$/"],
+      "allowTypeOnly": true,
+      "message": "service imports query tools ({match})",
+      "fix": "Add a repository method and call it"
+    },
+    {
+      "id": "S4",
+      "tag": "vendor",
+      "layer": "service",
+      "forbidImports": ["/^3p:(@aws-sdk\\/|stripe$|nodemailer$|@sendgrid\\/|postmark$|openai$|@anthropic-ai\\/|ioredis$|redis$)/"],
+      "message": "service imports SDK {target} directly",
+      "fix": "Inject an adapter interface"
+    },
+    {
+      "id": "D1",
+      "tag": "validate",
+      "layer": "database",
+      "forbidPatterns": ["\\b\\w+(Schema|Input|Request|Dto)\\.(safeParse|parse)\\("],
+      "message": "database parses input (`{match}`)",
+      "fix": "Validate in the route or service; accept typed values"
+    },
+    {
+      "id": "D3",
+      "tag": "upward",
+      "layer": "database",
+      "forbidImports": ["3p:express", "3p:hono", "3p:fastify"],
+      "message": "database imports {target} ({match})",
+      "fix": "Invert the dependency; the caller passes values in"
+    },
+    {
+      "id": "D4",
+      "tag": "vendor",
+      "layer": "database",
+      "forbidImports": ["/^3p:(@aws-sdk\\/|stripe$|nodemailer$|axios$|openai$|@anthropic-ai\\/)/"],
+      "message": "database imports non-persistence {target}",
+      "fix": "Call the SDK from a service or adapter"
+    }
+  ],
+  "exceptions": []
+}
