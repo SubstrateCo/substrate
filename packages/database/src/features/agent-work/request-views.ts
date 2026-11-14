@@ -78,7 +78,7 @@ export const answerableBy = (event: "answer" | "decline" | "approve") =>
     inStates(agentRequests.status, requestMachine.from(event)),
     or(sql`${agentRequests.expiresAt} IS NULL`, gt(agentRequests.expiresAt, sql`now()`)),
   );
-export const answerableRequest = answerableBy("answer");
+const answerableRequest = answerableBy("answer");
 
 /**
  * The owner's requests in one conversation they can see: open ones and those decided in the last

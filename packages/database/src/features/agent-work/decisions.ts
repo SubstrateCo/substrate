@@ -15,7 +15,7 @@ import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { inStates } from "./machine-sql";
 import { runProposalAction } from "./proposals";
-import { answerableBy, answerableRequest, ownedRequests } from "./request-views";
+import { answerableBy, ownedRequests } from "./request-views";
 import { agentRequests } from "./requests.schema";
 import { wakeForRequest } from "./wakes";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -65,7 +65,7 @@ export async function respondToRequestInTransaction(
       resolvedAt: sql`now()`,
       resolvedByUserId: identity.userId,
     })
-    .where(and(eq(agentRequests.id, requestId), answerableRequest))
+    .where(and(eq(agentRequests.id, requestId), answerableBy("answer")))
     .returning();
   if (!resolved) throw new ConflictError(closed);
   if (resolved.mode === "async") await wakeForRequest(tx, resolved, "answer");

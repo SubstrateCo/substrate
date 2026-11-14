@@ -21,8 +21,9 @@ import { z } from "zod";
  * - usage: no token usage notification is handled or typed here. Off.
  * - interruptReceipt: turn/interrupt returns no queued-input report. Off.
  * - noAskProfile: unattended turns start with turn/start approvalPolicy "never"
- *   (TurnStartParams.approvalPolicy, app-server-protocol schema v2), and the adapter declines
- *   every approval, user-input and elicitation request that still arrives. On.
+ *   (TurnStartParams.approvalPolicy, app-server-protocol schema v2; sent at codex.ts:228), and
+ *   the adapter declines every approval, user-input and elicitation request that still arrives
+ *   (codex.ts:143, codex.ts:191). On.
  */
 export const codexCapabilities: AdapterCapabilities = {
   steer: false,
