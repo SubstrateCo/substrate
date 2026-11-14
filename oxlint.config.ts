@@ -1,6 +1,7 @@
 import pluginQuery from "@tanstack/eslint-plugin-query";
 import pluginRouter from "@tanstack/eslint-plugin-router";
 
+import { architectureConfig } from "./packages/architecture-lint/src/config.ts";
 import contracts from "./packages/contracts/package.json" with { type: "json" };
 import database from "./packages/database/package.json" with { type: "json" };
 import { designConfig } from "./packages/design-lint/src/config.ts";
@@ -22,6 +23,7 @@ export default defineConfig({
     "@tanstack/eslint-plugin-query",
     "@tanstack/eslint-plugin-router",
     ...designConfig.jsPlugins,
+    ...architectureConfig.jsPlugins,
   ],
   options: configs.recommended.options,
   settings: designConfig.settings,
@@ -67,6 +69,7 @@ export default defineConfig({
     ],
     "deslop/max-boolean-conditions": ["error", { maxConditions: 3 }],
     ...designConfig.rules,
+    ...architectureConfig.rules,
   },
   overrides: [
     {
@@ -139,5 +142,6 @@ export default defineConfig({
       },
     },
     ...designConfig.overrides,
+    ...architectureConfig.overrides,
   ],
 });

@@ -1,9 +1,15 @@
 {
   "root": ".",
   "languages": ["typescript"],
-  "include": ["apps/server/src/**", "packages/database/src/**", "packages/contracts/src/**"],
+  "include": [
+    "apps/server/src/**",
+    "apps/web/src/**",
+    "packages/database/src/**",
+    "packages/contracts/src/**"
+  ],
   "ignore": [
     "**/*.test.ts",
+    "**/*.test.tsx",
     "**/test-support.ts",
     "**/testing/**",
     "**/development/**",
@@ -64,16 +70,40 @@
       "files": ["apps/server/src/v1/**", "apps/server/src/desktop/**", "apps/server/src/shared/**"]
     },
     {
+      "name": "database-client",
+      "files": ["packages/database/src/client.ts"]
+    },
+    {
+      "name": "database-core",
+      "files": ["packages/database/src/core/**", "packages/database/src/errors.ts"],
+      "mayImport": ["database-client", "contracts"]
+    },
+    {
       "name": "database",
       "files": ["packages/database/src/**"],
       "specifiers": ["^@substrate/database"],
-      "mayImport": ["contracts"]
+      "mayImport": ["database-client", "database-core", "contracts"]
     },
     {
       "name": "contracts",
       "files": ["packages/contracts/src/**"],
       "specifiers": ["^@substrate/contracts"],
       "mayImport": []
+    },
+    {
+      "name": "renderer-api",
+      "files": ["apps/web/src/api/**"],
+      "specifiers": ["^@/api/"]
+    },
+    {
+      "name": "renderer-queries",
+      "files": ["apps/web/src/queries/**"],
+      "specifiers": ["^@/queries/"]
+    },
+    {
+      "name": "renderer",
+      "files": ["apps/web/src/**"],
+      "specifiers": ["^@/"]
     }
   ],
   "rules": [
@@ -81,7 +111,14 @@
       "id": "R1",
       "tag": "bypass",
       "layer": "route",
-      "forbidImports": ["database", "adapter", "3p:drizzle-orm", "3p:postgres"],
+      "forbidImports": [
+        "database",
+        "database-core",
+        "database-client",
+        "adapter",
+        "3p:drizzle-orm",
+        "3p:postgres"
+      ],
       "message": "route imports {target} ({match})",
       "fix": "Call a service method; the service owns repositories and adapters"
     },
@@ -89,10 +126,8 @@
       "id": "R1",
       "tag": "bypass",
       "layer": "route",
-      "forbidPatterns": [
-        "\\brepositories\\.\\w+",
-        "\\bdb\\.(select|insert|update|delete|execute|transaction)\\b"
-      ],
+      "forbidMembers": ["repositories.*"],
+      "forbidCalls": ["db.{select,insert,update,delete,execute,transaction}"],
       "message": "route uses persistence directly (`{match}`)",
       "fix": "Move the call into a service method"
     },
@@ -100,10 +135,7 @@
       "id": "R3",
       "tag": "validate",
       "layer": "route",
-      "forbidPatterns": [
-        "c\\.req\\.(json|parseBody|formData|text|arrayBuffer|blob)\\(",
-        "c\\.req\\.(query|param|header)\\("
-      ],
+      "forbidCalls": ["*.req.{json,parseBody,formData,text,arrayBuffer,blob,query,param,header}"],
       "message": "route reads raw request input (`{match}`)",
       "fix": "Validate with v(target, schema) from shared/http and read c.req.valid(target)"
     },
@@ -111,12 +143,9 @@
       "id": "R4",
       "tag": "sanitize",
       "layer": "route",
-      "forbidPatterns": [
-        "\\bc\\.(json|text)\\(",
-        "\\bnew Response\\(",
-        "\\bc\\.status\\(",
-        "\\bcatch\\s*[({]"
-      ],
+      "forbidCalls": ["c.{json,text,status}"],
+      "forbidNew": ["Response"],
+      "forbidSyntax": ["CatchClause"],
       "message": "route shapes the response or error itself (`{match}`)",
       "fix": "Return a ServiceResult and map it with respond(c, result)"
     },
@@ -141,7 +170,8 @@
       "id": "S1",
       "tag": "upward",
       "layer": "service",
-      "forbidPatterns": ["\\bc\\.req\\b", "\\bnew Response\\(", "\\bHTTPException\\b"],
+      "forbidMembers": ["*.req"],
+      "forbidNew": ["Response", "HTTPException"],
       "message": "service handles HTTP (`{match}`)",
       "fix": "Return a ServiceError code; respond() maps it to HTTP"
     },
@@ -165,7 +195,7 @@
     {
       "id": "D1",
       "tag": "validate",
-      "layer": "database",
+      "layer": ["database-client", "database-core", "database"],
       "forbidImports": ["3p:zod", "/^@substrate\\/contracts\\/.*input$/"],
       "allowTypeOnly": true,
       "message": "database imports runtime validation ({match})",
@@ -174,15 +204,15 @@
     {
       "id": "D1",
       "tag": "validate",
-      "layer": "database",
-      "forbidPatterns": ["\\.safeParse\\(", "\\b\\w+(Schema|Input|Request)\\.parse\\("],
+      "layer": ["database-client", "database-core", "database"],
+      "forbidCalls": ["**.safeParse", "*{Schema,Input,Request}.parse"],
       "message": "database parses input (`{match}`)",
       "fix": "Move parsing to the route; the repository accepts typed values"
     },
     {
       "id": "D3",
       "tag": "upward",
-      "layer": "database",
+      "layer": ["database-client", "database-core", "database"],
       "forbidImports": ["3p:hono", "/^3p:@hono\\//", "3p:better-auth"],
       "message": "database imports {target} ({match})",
       "fix": "Invert the dependency; the caller passes values in"
@@ -190,7 +220,7 @@
     {
       "id": "D4",
       "tag": "vendor",
-      "layer": "database",
+      "layer": ["database-client", "database-core", "database"],
       "forbidImports": ["/^3p:(?!drizzle-orm$|postgres$|zod$|libphonenumber-js$)/"],
       "allowTypeOnly": true,
       "message": "database imports non-persistence {target}",
@@ -203,6 +233,54 @@
       "forbidImports": ["/^3p:(?!zod$)/"],
       "message": "browser-safe contracts import {target} ({match})",
       "fix": "Keep contracts to schemas and types; move server code out"
+    },
+    {
+      "id": "W1",
+      "tag": "upward",
+      "layer": ["renderer", "renderer-api", "renderer-queries"],
+      "forbidImports": ["/^@substrate\\/server/"],
+      "allowTypeOnly": true,
+      "message": "renderer imports server runtime code ({match})",
+      "fix": "Import server types with `import type` and call the server through the hc client in src/api"
+    },
+    {
+      "id": "W2",
+      "tag": "bypass",
+      "layer": ["renderer", "renderer-api", "renderer-queries"],
+      "forbidImports": [
+        "database",
+        "database-core",
+        "database-client",
+        "3p:drizzle-orm",
+        "3p:postgres"
+      ],
+      "message": "renderer imports {target} ({match})",
+      "fix": "Keep database access on the server; share browser-safe contracts through @substrate/contracts"
+    },
+    {
+      "id": "W3",
+      "tag": "move",
+      "layer": ["renderer", "renderer-api", "renderer-queries"],
+      "forbidSyntax": ["ImportExpression"],
+      "message": "renderer uses a dynamic import()",
+      "fix": "Use a static import; fix the dependency injection, server-only boundary, or import configuration instead of bypassing it"
+    },
+    {
+      "id": "W4",
+      "tag": "move",
+      "layer": ["renderer", "renderer-api"],
+      "forbidCalls": ["{queryOptions,infiniteQueryOptions}"],
+      "message": "{target} defines query options (`{match}()`)",
+      "fix": "Put reusable query option factories in src/queries/<domain>/ and use the shared query-key factory"
+    },
+    {
+      "id": "W5",
+      "tag": "bypass",
+      "layer": ["renderer", "renderer-queries"],
+      "forbidImports": ["/^hono\\/client$/"],
+      "forbidCalls": ["hc"],
+      "message": "{target} builds an RPC client ({match})",
+      "fix": "Use the hc client from src/api"
     }
   ],
   "exceptions": [

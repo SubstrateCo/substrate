@@ -50,6 +50,11 @@
       // Tests run through a custom Bun launcher rather than a bun test script.
       "bun": true,
     },
+    "packages/architecture-lint": {
+      // oxlint loads src/index.ts through jsPlugins; `node --test` runs the rule tests.
+      "entry": ["src/**/*.test.ts"],
+      "project": ["src/**/*.ts"],
+    },
     "packages/design-lint": {
       // oxlint loads src/index.ts through jsPlugins; `node --test` runs the rule tests.
       "entry": ["src/**/*.test.ts"],

@@ -114,6 +114,14 @@
         "vite": "^8.3.6",
       },
     },
+    "packages/architecture-lint": {
+      "name": "@substrate/architecture-lint",
+      "devDependencies": {
+        "@types/node": "24.19.2",
+        "oxlint": "^1.91.0",
+        "typescript": "^7.0.2",
+      },
+    },
     "packages/client-storage": {
       "name": "@substrate/client-storage",
       "dependencies": {
@@ -945,6 +953,8 @@
     "@stablelib/base64": ["@stablelib/base64@1.0.1", "", {}, "sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
+
+    "@substrate/architecture-lint": ["@substrate/architecture-lint@workspace:packages/architecture-lint"],
 
     "@substrate/client-storage": ["@substrate/client-storage@workspace:packages/client-storage"],
 
