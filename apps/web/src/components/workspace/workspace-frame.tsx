@@ -14,7 +14,6 @@ import { WorkspaceShell, type WorkspaceView } from "@/components/workspace/works
 import { needsYouCount } from "@/lib/agent-work/needs-you";
 import { needsYouOptions } from "@/queries/agent-work/server";
 import { useAgentWorkBridgeSync } from "@/queries/agent-work/sync";
-import { sessionQueryOptions } from "@/queries/auth/session";
 import { notificationUnreadOptions } from "@/queries/context/notification-groups";
 import { unreadCountsOptions } from "@/queries/messaging/read-state";
 import { currentOrganizationQueryOptions } from "@/queries/organizations/options";
@@ -23,15 +22,16 @@ export function WorkspaceFrame({
   userId,
   organizationId,
   name,
+  image,
   children,
 }: {
   userId: string;
   organizationId?: string | null;
   name: string;
+  image?: string | null;
   children: ReactNode;
 }) {
   const navigate = useNavigate();
-  const session = useQuery({ ...sessionQueryOptions(), staleTime: Infinity });
   const pathname = useLocation({ select: (location) => location.pathname });
   const organization = useQuery({
     ...currentOrganizationQueryOptions(organizationId ?? ""),
@@ -69,7 +69,7 @@ export function WorkspaceFrame({
       <WorkspaceShell
         unavailable={isAccessFailure(organization.error)}
         name={name}
-        image={session.data?.user.image}
+        image={image}
         view={view}
         hasUnreadNotifications={!notifications.error && notifications.data?.unread}
         hasUnreadMessages={

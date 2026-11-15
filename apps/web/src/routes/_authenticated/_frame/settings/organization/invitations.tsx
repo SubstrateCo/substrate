@@ -2,9 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { OrganizationInvitations } from "@/components/organizations/settings/organization-invitations";
 
-export const Route = createFileRoute(
-  "/_authenticated/_frame/_workspace/settings/organization/invitations",
-)({
+export const Route = createFileRoute("/_authenticated/_frame/settings/organization/invitations")({
   component: Section,
 });
 

@@ -4,9 +4,8 @@ import { useQuery } from "@tanstack/react-query";
 
 import type { ReactNode } from "react";
 
-import { SettingsPage } from "@/components/layout/settings-page";
+import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import { SettingsNav, type SettingsNavGroup } from "@/components/settings/settings-nav";
-import { sessionQueryOptions } from "@/queries/auth/session";
 import { currentOrganizationQueryOptions } from "@/queries/organizations/options";
 import {
   Building2,
@@ -28,13 +27,18 @@ const accountGroup: SettingsNavGroup = {
   ],
 };
 
-// User and organization settings share this frame. Organization sections appear only for the
-// active organization's owners and admins; the server still checks the role on every request.
-export function SettingsShell({ children }: { children: ReactNode }) {
-  const session = useQuery({ ...sessionQueryOptions(), staleTime: Infinity });
-  const organizationId = session.data?.session.activeOrganizationId ?? "";
+// The frame of user and organization settings: section links on the left and the open section
+// on the right. Organization sections appear only for the active organization's owners and
+// admins; the server still checks the role on every request.
+export function SettingsShell({
+  organizationId,
+  children,
+}: {
+  organizationId: string | null;
+  children: ReactNode;
+}) {
   const organization = useQuery({
-    ...currentOrganizationQueryOptions(organizationId),
+    ...currentOrganizationQueryOptions(organizationId ?? ""),
     enabled: !!organizationId,
   });
   const access = organizationSettingsAccess(
@@ -53,8 +57,9 @@ export function SettingsShell({ children }: { children: ReactNode }) {
       ],
     });
   return (
-    <SettingsPage id="settings" label="Settings" sidebar={<SettingsNav groups={groups} />}>
-      {children}
-    </SettingsPage>
+    <PageLayout id="settings" aria-label="Settings">
+      <SettingsNav groups={groups} />
+      <PageContent className="overflow-y-auto p-6">{children}</PageContent>
+    </PageLayout>
   );
 }

@@ -2,9 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { ManagedConversations } from "@/components/organizations/settings/managed-conversations";
 
-export const Route = createFileRoute(
-  "/_authenticated/_frame/_workspace/settings/organization/conversations",
-)({
+export const Route = createFileRoute("/_authenticated/_frame/settings/organization/conversations")({
   component: Section,
 });
 

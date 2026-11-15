@@ -4,6 +4,7 @@ import {
   useQueryClient,
   type QueryClient,
 } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 
 import { setAgentPicture, uploadAgentPicture } from "@/api/agents/requests";
 import { pictureApi } from "@/api/files/pictures";
@@ -26,11 +27,14 @@ export function pictureMutationOptions(
   queryClient: QueryClient,
   target: PictureTarget,
   pictures = pictureApi,
+  reloadRouteContext: () => Promise<void> = async () => {},
 ) {
   const onSettled = async () => {
     switch (target.kind) {
       case "avatar":
         await queryClient.invalidateQueries({ queryKey: queryKeys.session });
+        // The frame reads the picture from route context, so reload it too.
+        await reloadRouteContext();
         return;
       case "organization-logo":
         await Promise.all([
@@ -100,7 +104,10 @@ export function pictureMutationOptions(
 }
 
 export function usePictureMutations(target: PictureTarget) {
-  const options = pictureMutationOptions(useQueryClient(), target);
+  const router = useRouter();
+  const options = pictureMutationOptions(useQueryClient(), target, pictureApi, () =>
+    router.invalidate(),
+  );
   const upload = useMutation(options.upload);
   const remove = useMutation(options.remove);
   return { upload, remove, refresh: options.refresh };

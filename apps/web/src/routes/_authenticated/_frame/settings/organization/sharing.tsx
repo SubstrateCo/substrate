@@ -2,9 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 
 import { SharingSettings } from "@/components/messaging/sharing/sharing-settings";
 
-export const Route = createFileRoute(
-  "/_authenticated/_frame/_workspace/settings/organization/sharing",
-)({
+export const Route = createFileRoute("/_authenticated/_frame/settings/organization/sharing")({
   component: Section,
 });
 
