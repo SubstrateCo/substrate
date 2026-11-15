@@ -16,7 +16,7 @@
     "test:integration": "bun run --filter @substrate/server test:integration",
     "test:e2e": "bun run --filter @substrate/web test:e2e",
     "services:up": "docker compose up -d --wait postgres mailpit s3 s3-init valkey",
-    "services:test": "docker compose --profile test up -d --wait postgres-test postgres-e2e mailpit valkey",
+    "services:test": "docker compose --profile test up -d --wait postgres-test postgres-e2e mailpit valkey s3 s3-init",
     "load:services": "docker compose --profile load up -d --wait postgres-load valkey-load mailpit-load s3-load s3-load-init",
     "load:baseline": "bun --no-env-file apps/server/load/run.ts",
     "load:preflight": "bun --no-env-file apps/server/load/preflight.ts",
