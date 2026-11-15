@@ -9,11 +9,11 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as AuthenticatedFrameRouteRouteImport } from './routes/_authenticated/_frame/route'
 import { Route as AuthenticatedStandaloneRouteRouteImport } from './routes/_authenticated/_standalone/route'
+import { Route as PublicIndexRouteImport } from './routes/_public/index'
 import { Route as PublicGuestRouteRouteImport } from './routes/_public/_guest/route'
 import { Route as PublicDownloadRouteImport } from './routes/_public/download'
 import { Route as PublicForgotPasswordRouteImport } from './routes/_public/forgot-password'
@@ -44,11 +44,6 @@ import { Route as AuthenticatedFrameWorkspaceSettingsOrganizationInvitationsRout
 import { Route as AuthenticatedFrameWorkspaceSettingsOrganizationMembersRouteImport } from './routes/_authenticated/_frame/_workspace/settings/organization/members'
 import { Route as AuthenticatedFrameWorkspaceSettingsOrganizationSharingRouteImport } from './routes/_authenticated/_frame/_workspace/settings/organization/sharing'
 
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
@@ -66,6 +61,11 @@ const AuthenticatedStandaloneRouteRoute =
     id: '/_standalone',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const PublicIndexRoute = PublicIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
 const PublicGuestRouteRoute = PublicGuestRouteRouteImport.update({
   id: '/_guest',
   getParentRoute: () => PublicRouteRoute,
@@ -240,7 +240,7 @@ const AuthenticatedFrameWorkspaceSettingsOrganizationSharingRoute =
   } as any)
 
 export interface FileRoutesByFullPath {
-  '/': typeof IndexRoute
+  '/': typeof PublicIndexRoute
   '/download': typeof PublicDownloadRoute
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/reset-password': typeof PublicResetPasswordRoute
@@ -270,7 +270,7 @@ export interface FileRoutesByFullPath {
   '/settings/organization/': typeof AuthenticatedFrameWorkspaceSettingsOrganizationIndexRoute
 }
 export interface FileRoutesByTo {
-  '/': typeof IndexRoute
+  '/': typeof PublicIndexRoute
   '/download': typeof PublicDownloadRoute
   '/forgot-password': typeof PublicForgotPasswordRoute
   '/reset-password': typeof PublicResetPasswordRoute
@@ -299,7 +299,6 @@ export interface FileRoutesByTo {
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
-  '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/_public': typeof PublicRouteRouteWithChildren
   '/_authenticated/_frame': typeof AuthenticatedFrameRouteRouteWithChildren
@@ -309,6 +308,7 @@ export interface FileRoutesById {
   '/_public/forgot-password': typeof PublicForgotPasswordRoute
   '/_public/reset-password': typeof PublicResetPasswordRoute
   '/_public/verify-email': typeof PublicVerifyEmailRoute
+  '/_public/': typeof PublicIndexRoute
   '/_authenticated/_frame/_workspace': typeof AuthenticatedFrameWorkspaceRouteRouteWithChildren
   '/_authenticated/_standalone/onboarding': typeof AuthenticatedStandaloneOnboardingRoute
   '/_authenticated/_standalone/organizations': typeof AuthenticatedStandaloneOrganizationsRoute
@@ -395,7 +395,6 @@ export interface FileRouteTypes {
     | '/settings/organization'
   id:
     | '__root__'
-    | '/'
     | '/_authenticated'
     | '/_public'
     | '/_authenticated/_frame'
@@ -405,6 +404,7 @@ export interface FileRouteTypes {
     | '/_public/forgot-password'
     | '/_public/reset-password'
     | '/_public/verify-email'
+    | '/_public/'
     | '/_authenticated/_frame/_workspace'
     | '/_authenticated/_standalone/onboarding'
     | '/_authenticated/_standalone/organizations'
@@ -432,20 +432,12 @@ export interface FileRouteTypes {
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
-  IndexRoute: typeof IndexRoute
   AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
   PublicRouteRoute: typeof PublicRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/_authenticated': {
       id: '/_authenticated'
       path: ''
@@ -473,6 +465,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof AuthenticatedStandaloneRouteRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_public/': {
+      id: '/_public/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof PublicIndexRouteImport
+      parentRoute: typeof PublicRouteRoute
     }
     '/_public/_guest': {
       id: '/_public/_guest'
@@ -839,6 +838,7 @@ interface PublicRouteRouteChildren {
   PublicForgotPasswordRoute: typeof PublicForgotPasswordRoute
   PublicResetPasswordRoute: typeof PublicResetPasswordRoute
   PublicVerifyEmailRoute: typeof PublicVerifyEmailRoute
+  PublicIndexRoute: typeof PublicIndexRoute
 }
 
 const PublicRouteRouteChildren: PublicRouteRouteChildren = {
@@ -847,6 +847,7 @@ const PublicRouteRouteChildren: PublicRouteRouteChildren = {
   PublicForgotPasswordRoute: PublicForgotPasswordRoute,
   PublicResetPasswordRoute: PublicResetPasswordRoute,
   PublicVerifyEmailRoute: PublicVerifyEmailRoute,
+  PublicIndexRoute: PublicIndexRoute,
 }
 
 const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
@@ -854,7 +855,6 @@ const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
 )
 
 const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
   AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
   PublicRouteRoute: PublicRouteRouteWithChildren,
 }

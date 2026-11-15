@@ -1,13 +1,18 @@
 import type { QueryClient } from "@tanstack/react-query";
-import { createRootRouteWithContext, Link, Outlet } from "@tanstack/react-router";
+import { createRootRouteWithContext, Link, Outlet, useRouter } from "@tanstack/react-router";
 
+import { ErrorScreen } from "@/components/feedback/error-screen";
 import { NotFound } from "@/components/feedback/not-found";
-import { RouteErrorScreen } from "@/components/feedback/route-error-screen";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: Outlet,
   notFoundComponent: () => (
     <NotFound homeLink={<Link to="/dashboard">Go to your workspace</Link>} />
   ),
-  errorComponent: RouteErrorScreen,
+  errorComponent: RootError,
 });
+
+function RootError() {
+  const router = useRouter();
+  return <ErrorScreen onRetry={() => void router.invalidate()} />;
+}

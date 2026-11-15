@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { SignupForm } from "@/components/auth/signup/signup-form";
+import { BrowserSignupForm } from "@/components/auth/signup/browser-signup-form";
 
 export const Route = createFileRoute("/_public/_guest/signup")({ component: Signup });
 function Signup() {
-  return <SignupForm {...Route.useSearch()} />;
+  const { redirect } = Route.useSearch();
+  return <BrowserSignupForm redirect={redirect} />;
 }

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { OrganizationSharing } from "@/components/organizations/settings/organization-sharing";
+import { SharingSettings } from "@/components/messaging/sharing/sharing-settings";
 
 export const Route = createFileRoute(
   "/_authenticated/_frame/_workspace/settings/organization/sharing",
@@ -10,5 +10,5 @@ export const Route = createFileRoute(
 
 function Section() {
   const { organizationSettings } = Route.useRouteContext();
-  return <OrganizationSharing organizationId={organizationSettings.organizationId} />;
+  return <SharingSettings organizationId={organizationSettings.organizationId} />;
 }

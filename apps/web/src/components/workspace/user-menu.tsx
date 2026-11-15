@@ -5,7 +5,7 @@ import { Button } from "../ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Separator } from "../ui/separator";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { UserMenuTheme } from "./user-menu-theme";
+import { ThemeControl } from "@/components/theme/theme-control";
 import { initials } from "@/lib/people/initials";
 import { Building2, Settings } from "lucide-react";
 
@@ -102,7 +102,10 @@ export function UserMenu({
           )}
         </div>
         <Separator />
-        <UserMenuTheme />
+        <div className="flex items-center justify-between gap-2 py-1 pr-1 pl-2">
+          <span className="text-sm text-muted-foreground">Theme</span>
+          <ThemeControl iconOnly />
+        </div>
         <Separator />
         <div className="[&_button]:w-full [&_button]:justify-start [&_svg]:text-muted-foreground">
           {signOut}

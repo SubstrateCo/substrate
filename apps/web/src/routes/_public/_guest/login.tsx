@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { LoginForm } from "@/components/auth/login/login-form";
+import { BrowserLoginForm } from "@/components/auth/login/browser-login-form";
 
 export const Route = createFileRoute("/_public/_guest/login")({ component: Login });
 function Login() {
-  return <LoginForm {...Route.useSearch()} />;
+  const { redirect, email } = Route.useSearch();
+  return <BrowserLoginForm redirect={redirect} email={email} />;
 }
