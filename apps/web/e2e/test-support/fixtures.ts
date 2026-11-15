@@ -207,7 +207,7 @@ export const test = base.extend<
     { scope: "worker" },
   ],
 
-  client: async ({ browser, viewport, video, contextPool }, use, testInfo) => {
+  client: async ({ browser, viewport, video, reducedMotion, contextPool }, use, testInfo) => {
     const taken: BrowserContext[] = [];
     const recorded: BrowserContext[] = [];
     const pages: Page[] = [];
@@ -236,6 +236,9 @@ export const test = base.extend<
         }
         const page = await context.newPage();
         pages.push(page);
+        // Contexts are built here, not by Playwright, so apply the spec's `test.use` media option
+        // to the page. It ends with the page and never reaches a pooled context.
+        if (reducedMotion) await page.emulateMedia({ reducedMotion });
         if (record) recordings.push(page);
         // A reused context keeps local storage. Clear it on this window's first app load only, so
         // reloads within the test still see what the test stored.
