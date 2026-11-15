@@ -1,7 +1,10 @@
+import { useHotkey } from "@tanstack/react-hotkeys";
+
 import { useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 
 import { Command, CommandInput } from "../../ui/command";
 import { Kbd, KbdGroup } from "../../ui/kbd";
+import { appHotkeys } from "@/lib/hotkeys/app-hotkeys";
 
 export function WorkspaceTools({
   renderSearch,
@@ -48,19 +51,19 @@ export function WorkspaceTools({
     document.addEventListener("pointerdown", dismiss);
     return () => document.removeEventListener("pointerdown", dismiss);
   }, []);
-  const onShortcut = useEffectEvent((event: KeyboardEvent) => {
-    if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "k") {
-      event.preventDefault();
-      input.current?.focus();
-      setOpen(true);
-    }
+  useHotkey(appHotkeys["search.open"], () => {
+    input.current?.focus();
+    setOpen(true);
+  });
+  // Escape closes the panel, like other overlays. It is not an app shortcut.
+  const onEscape = useEffectEvent((event: KeyboardEvent) => {
     if (event.key === "Escape" && open && !event.defaultPrevented) {
       event.preventDefault();
       close();
     }
   });
   useEffect(() => {
-    const handle = (event: KeyboardEvent) => onShortcut(event);
+    const handle = (event: KeyboardEvent) => onEscape(event);
     window.addEventListener("keydown", handle);
     return () => window.removeEventListener("keydown", handle);
   }, []);

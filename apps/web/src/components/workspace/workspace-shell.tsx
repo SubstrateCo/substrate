@@ -2,28 +2,15 @@ import { useContext, type ReactNode } from "react";
 
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
-import { appShortcutKeys, useAppShortcuts } from "./use-app-shortcuts";
 import { UserMenu } from "./user-menu";
+import { workspaceApps, type WorkspaceAppId } from "./workspace-apps";
 import { RealtimeContainerContext } from "@/components/realtime/realtime-container-context";
 import { WorkspaceAppButton } from "@/components/workspace/workspace-app-button";
-import { Bell, Bot, Handshake, ListTodo, MessageSquare, Users } from "lucide-react";
-
-export type WorkspaceView =
-  | "messages"
-  | "tasks"
-  | "crm"
-  | "contacts"
-  | "agents"
-  | "notifications"
-  | "user-settings"
-  | "organization-settings";
 
 export function WorkspaceShell({
   name,
   unavailable,
   image,
-  view,
-  onViewChange,
   showOrganizationSettings,
   organizationName,
   switcher,
@@ -39,8 +26,6 @@ export function WorkspaceShell({
   name: string;
   unavailable: boolean;
   image?: string | null;
-  view: WorkspaceView;
-  onViewChange: (view: WorkspaceView) => void;
   hasUnreadNotifications?: boolean;
   hasUnreadMessages?: boolean;
   /** One of the viewer's agents waits for an answer, an approval, or a decision. */
@@ -55,7 +40,29 @@ export function WorkspaceShell({
   children: ReactNode;
 }) {
   const realtimeContainerRef = useContext(RealtimeContainerContext);
-  useAppShortcuts(onViewChange);
+  const badges: Partial<
+    Record<
+      WorkspaceAppId,
+      { unread: boolean; unreadLabel?: string; dotTone?: "primary" | "warning" }
+    >
+  > = {
+    messages: { unread: hasUnreadMessages, unreadLabel: "unread messages" },
+    agents: { unread: agentsNeedYou, unreadLabel: "needs you", dotTone: "warning" },
+    notifications: { unread: hasUnreadNotifications },
+  };
+  const appButtons = (placement: "top" | "bottom") =>
+    workspaceApps
+      .filter((app) => app.placement === placement)
+      .map((app) => (
+        <WorkspaceAppButton
+          key={app.id}
+          label={app.label}
+          icon={app.icon}
+          to={app.to}
+          hotkey={app.hotkey}
+          {...badges[app.id]}
+        />
+      ));
   return (
     <main data-workspace-shell className="flex h-(--app-height) min-h-0 overflow-hidden bg-rail">
       <nav
@@ -63,62 +70,14 @@ export function WorkspaceShell({
         className="z-20 flex w-14 shrink-0 flex-col items-center gap-3 bg-rail py-3 text-rail-foreground"
       >
         {switcher}
-        <WorkspaceAppButton
-          label="Messages"
-          icon={MessageSquare}
-          shortcut={appShortcutKeys.messages}
-          active={view === "messages"}
-          unread={hasUnreadMessages}
-          unreadLabel="unread messages"
-          onClick={() => onViewChange("messages")}
-        />
-        <WorkspaceAppButton
-          label="Tasks"
-          icon={ListTodo}
-          shortcut={appShortcutKeys.tasks}
-          active={view === "tasks"}
-          onClick={() => onViewChange("tasks")}
-        />
-        <WorkspaceAppButton
-          label="CRM"
-          icon={Handshake}
-          shortcut={appShortcutKeys.crm}
-          active={view === "crm"}
-          onClick={() => onViewChange("crm")}
-        />
-        <WorkspaceAppButton
-          label="Agents"
-          icon={Bot}
-          shortcut={appShortcutKeys.agents}
-          active={view === "agents"}
-          unread={agentsNeedYou}
-          unreadLabel="needs you"
-          dotTone="warning"
-          onClick={() => onViewChange("agents")}
-        />
-        <WorkspaceAppButton
-          label="Contacts"
-          icon={Users}
-          shortcut={appShortcutKeys.contacts}
-          active={view === "contacts"}
-          onClick={() => onViewChange("contacts")}
-        />
+        {appButtons("top")}
         <div className="mt-auto flex flex-col items-center gap-3">
-          <WorkspaceAppButton
-            label="Notifications"
-            icon={Bell}
-            shortcut={appShortcutKeys.notifications}
-            active={view === "notifications"}
-            unread={hasUnreadNotifications}
-            onClick={() => onViewChange("notifications")}
-          />
+          {appButtons("bottom")}
           <UserMenu
             name={name}
             image={image}
             showOrganizationSettings={showOrganizationSettings}
             organizationName={organizationName}
-            onUserSettings={() => onViewChange("user-settings")}
-            onOrganizationSettings={() => onViewChange("organization-settings")}
             signOut={signOut}
           />
         </div>

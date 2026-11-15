@@ -1,9 +1,12 @@
-import { useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from "react";
+import { useHotkeys } from "@tanstack/react-hotkeys";
+
+import { useLayoutEffect, useRef, useState } from "react";
 
 import { Kbd } from "../../ui/kbd";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import type { SearchResultItem } from "./search-result";
 import { SearchResults } from "@/components/context/search/search-results";
+import { appHotkeys } from "@/lib/hotkeys/app-hotkeys";
 
 // "channel" lists channels only, with membership. DMs and group messages appear under "all".
 export type SearchKind = "all" | "task" | "project" | "message" | "channel";
@@ -16,13 +19,6 @@ const kindLabels = {
   message: "Messages",
   channel: "Channels",
 } satisfies Record<SearchKind, string>;
-
-// Ctrl+Tab and Ctrl+Shift+Tab switch the type, so plain arrows keep moving the caret.
-function tabStep(event: KeyboardEvent) {
-  const otherModifier = event.altKey || event.metaKey;
-  if (event.key !== "Tab" || !event.ctrlKey || otherModifier) return 0;
-  return event.shiftKey ? -1 : 1;
-}
 
 function Hint({ keys, label }: { keys: string[]; label: string }) {
   return (
@@ -73,20 +69,21 @@ export function WorkspaceSearch({
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
   }, []);
-  const switchKind = useEffectEvent((event: KeyboardEvent) => {
-    // The search input sits outside this panel, in the same search container.
-    const container = panel.current?.closest("[data-workspace-search]");
-    if (!(event.target instanceof Node) || !container?.contains(event.target)) return;
-    const step = tabStep(event);
-    if (!step) return;
-    event.preventDefault();
-    onKindChange(kinds[(kinds.indexOf(kind) + step + kinds.length) % kinds.length]!);
-  });
-  useEffect(() => {
-    const handle = (event: KeyboardEvent) => switchKind(event);
-    document.addEventListener("keydown", handle);
-    return () => document.removeEventListener("keydown", handle);
+  // The search input sits outside this panel, in the same search container, so the type
+  // shortcuts listen on that container.
+  const [container, setContainer] = useState<HTMLElement | null>(null);
+  useLayoutEffect(() => {
+    setContainer(panel.current?.closest<HTMLElement>("[data-workspace-search]") ?? null);
   }, []);
+  const switchKind = (step: number) =>
+    onKindChange(kinds[(kinds.indexOf(kind) + step + kinds.length) % kinds.length]!);
+  useHotkeys(
+    [
+      { hotkey: appHotkeys["search.nextType"], callback: () => switchKind(1) },
+      { hotkey: appHotkeys["search.previousType"], callback: () => switchKind(-1) },
+    ],
+    { target: container },
+  );
   return (
     <section
       ref={panel}

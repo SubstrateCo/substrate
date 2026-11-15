@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+
 import { useState, type KeyboardEvent, type ReactNode } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
@@ -15,7 +17,7 @@ function moveFocusWithArrows(event: KeyboardEvent<HTMLElement>) {
   if (!step) return;
   // A roving group (theme) exposes one stop; the rest have tabindex -1.
   const stops = [
-    ...event.currentTarget.querySelectorAll<HTMLElement>("button:not([tabindex='-1'])"),
+    ...event.currentTarget.querySelectorAll<HTMLElement>("button:not([tabindex='-1']), a[href]"),
   ];
   const current = stops.findIndex((stop) => stop === document.activeElement);
   event.preventDefault();
@@ -27,16 +29,12 @@ export function UserMenu({
   image,
   showOrganizationSettings,
   organizationName,
-  onUserSettings,
-  onOrganizationSettings,
   signOut,
 }: {
   name: string;
   image?: string | null;
   showOrganizationSettings: boolean;
   organizationName?: string;
-  onUserSettings: () => void;
-  onOrganizationSettings: () => void;
   signOut: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
@@ -46,10 +44,7 @@ export function UserMenu({
       <AvatarFallback>{initials(name)}</AvatarFallback>
     </Avatar>
   );
-  const go = (action: () => void) => () => {
-    setOpen(false);
-    action();
-  };
+  const close = () => setOpen(false);
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <Tooltip>
@@ -86,18 +81,18 @@ export function UserMenu({
         </div>
         <Separator />
         <div className="flex flex-col [&_svg]:text-muted-foreground">
-          <Button variant="ghost" className="w-full justify-start" onClick={go(onUserSettings)}>
-            <Settings aria-hidden="true" />
-            User settings
+          <Button variant="ghost" className="w-full justify-start" asChild>
+            <Link to="/settings/user" onClick={close}>
+              <Settings aria-hidden="true" />
+              User settings
+            </Link>
           </Button>
           {showOrganizationSettings && (
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={go(onOrganizationSettings)}
-            >
-              <Building2 aria-hidden="true" />
-              Organization settings
+            <Button variant="ghost" className="w-full justify-start" asChild>
+              <Link to="/settings/organization" onClick={close}>
+                <Building2 aria-hidden="true" />
+                Organization settings
+              </Link>
             </Button>
           )}
         </div>

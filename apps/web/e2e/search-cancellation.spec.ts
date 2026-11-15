@@ -218,7 +218,7 @@ for (const [section, endpoint] of [
       const aborted = page.waitForEvent("requestfailed", {
         predicate: (failed) => failed === request,
       });
-      await page.getByRole("button", { name: "CRM", exact: true }).click();
+      await page.getByRole("link", { name: "CRM", exact: true }).click();
       expect((await aborted).failure()?.errorText).toContain("ERR_ABORTED");
     } finally {
       release.resolve();

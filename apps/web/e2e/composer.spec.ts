@@ -12,12 +12,12 @@ test("text drafts survive app and settings navigation", async ({ actors, client 
   for (const app of ["Tasks", "Notifications"]) {
     await page
       .getByRole("navigation", { name: "Apps", exact: true })
-      .getByRole("button", { name: new RegExp(`^${app}(?:,|$)`) })
+      .getByRole("link", { name: new RegExp(`^${app}(?:,|$)`) })
       .click();
     await expect(editor).toHaveCount(0);
     await page
       .getByRole("navigation", { name: "Apps", exact: true })
-      .getByRole("button", { name: "Messages", exact: true })
+      .getByRole("link", { name: "Messages", exact: true })
       .click();
     await conversationButton(page, channel.name).click();
     await expect(editor).toHaveText("Keep this draft across apps");
@@ -26,11 +26,11 @@ test("text drafts survive app and settings navigation", async ({ actors, client 
     await page
       .getByRole("button", { name: `Signed in as ${actors.sender.name}`, exact: true })
       .click();
-    await page.getByRole("button", { name: settings, exact: true }).click();
+    await page.getByRole("link", { name: settings, exact: true }).click();
     await expect(editor).toHaveCount(0);
     await page
       .getByRole("navigation", { name: "Apps", exact: true })
-      .getByRole("button", { name: "Messages", exact: true })
+      .getByRole("link", { name: "Messages", exact: true })
       .click();
     await conversationButton(page, channel.name).click();
     await expect(editor).toHaveText("Keep this draft across apps");
@@ -66,11 +66,11 @@ test("retry after a committed send loses its response keeps its request ID acros
   await expect(editor).toBeEmpty();
   await page
     .getByRole("navigation", { name: "Apps", exact: true })
-    .getByRole("button", { name: "Tasks", exact: true })
+    .getByRole("link", { name: "Tasks", exact: true })
     .click();
   await page
     .getByRole("navigation", { name: "Apps", exact: true })
-    .getByRole("button", { name: "Messages", exact: true })
+    .getByRole("link", { name: "Messages", exact: true })
     .click();
   await conversationButton(page, first.name).click();
   await expect(editor).toHaveText(body);

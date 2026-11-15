@@ -1,61 +1,70 @@
+import { useFormatForDisplay, type AppHotkeyId } from "@tanstack/react-hotkeys";
+import { Link, type LinkProps } from "@tanstack/react-router";
+
 import { Button } from "@/components/ui/button";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { appHotkeys } from "@/lib/hotkeys/app-hotkeys";
 import { cn } from "cn";
 import type { LucideIcon } from "lucide-react";
 
 export function WorkspaceAppButton({
   label,
   icon: Icon,
-  active,
-  shortcut,
+  to,
+  hotkey,
   unread = false,
   unreadLabel = "unread notifications",
   dotTone = "primary",
-  onClick,
 }: {
   label: string;
   icon: LucideIcon;
-  active: boolean;
-  /** The key pressed after G to open this app. */
-  shortcut?: string;
+  to: NonNullable<LinkProps["to"]>;
+  /** The app shortcut that opens this app. */
+  hotkey: AppHotkeyId;
   unread?: boolean;
   /** What the dot means, read after the label. */
   unreadLabel?: string;
   /** Primary for unread notifications; warning for work that needs the person. Red is for errors. */
   dotTone?: "primary" | "warning";
-  onClick: () => void;
 }) {
+  const format = useFormatForDisplay();
+  const binding = appHotkeys[hotkey].hotkey;
+  // A chord is one step; a sequence is several.
+  const steps = binding ? [binding].flat() : [];
   return (
     <Tooltip>
       <TooltipTrigger asChild>
-        <Button
-          variant="rail"
-          size="icon-lg"
-          className="relative"
-          aria-label={unread ? `${label}, ${unreadLabel}` : label}
-          aria-keyshortcuts={shortcut ? `G ${shortcut}` : undefined}
-          aria-current={active ? "page" : undefined}
-          onClick={onClick}
-        >
-          <Icon className="size-5" />
-          {unread && (
-            <span
-              aria-hidden="true"
-              className={cn(
-                "absolute top-2 right-2 size-2 rounded-full ring-2 ring-rail",
-                dotTone === "warning" ? "bg-warning" : "bg-primary",
-              )}
-            />
-          )}
+        <Button variant="rail" size="icon-lg" className="relative" asChild>
+          <Link
+            to={to}
+            // The workspace search param belongs to deep links, not to which app is open.
+            activeOptions={{ includeSearch: false }}
+            activeProps={{ "aria-current": "page" }}
+            aria-label={unread ? `${label}, ${unreadLabel}` : label}
+            // Rail shortcuts are letter sequences, which read the same in ARIA syntax.
+            aria-keyshortcuts={steps.length ? steps.join(" ") : undefined}
+          >
+            <Icon className="size-5" />
+            {unread && (
+              <span
+                aria-hidden="true"
+                className={cn(
+                  "absolute top-2 right-2 size-2 rounded-full ring-2 ring-rail",
+                  dotTone === "warning" ? "bg-warning" : "bg-primary",
+                )}
+              />
+            )}
+          </Link>
         </Button>
       </TooltipTrigger>
       <TooltipContent side="right">
         {label}
-        {shortcut && (
+        {steps.length > 0 && (
           <KbdGroup aria-hidden="true">
-            <Kbd>G</Kbd>
-            <Kbd>{shortcut}</Kbd>
+            {steps.map((step, index) => (
+              <Kbd key={index}>{format(step)}</Kbd>
+            ))}
           </KbdGroup>
         )}
       </TooltipContent>

@@ -1,7 +1,6 @@
 import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
 
 import { useQuery } from "@tanstack/react-query";
-import { useLocation, useNavigate } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
@@ -10,7 +9,8 @@ import { WorkspaceSearchProvider } from "@/components/context/search/workspace-s
 import { WorkspaceTools } from "@/components/context/search/workspace-tools";
 import { isAccessFailure } from "@/components/feedback/request-failure";
 import { OrganizationSwitcher } from "@/components/organizations/switcher/organization-switcher";
-import { WorkspaceShell, type WorkspaceView } from "@/components/workspace/workspace-shell";
+import { useAppShortcuts } from "@/components/workspace/use-app-shortcuts";
+import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { needsYouCount } from "@/lib/agent-work/needs-you";
 import { needsYouOptions } from "@/queries/agent-work/server";
 import { useAgentWorkBridgeSync } from "@/queries/agent-work/sync";
@@ -31,8 +31,6 @@ export function WorkspaceFrame({
   image?: string | null;
   children: ReactNode;
 }) {
-  const navigate = useNavigate();
-  const pathname = useLocation({ select: (location) => location.pathname });
   const organization = useQuery({
     ...currentOrganizationQueryOptions(organizationId ?? ""),
     enabled: !!organizationId,
@@ -56,39 +54,18 @@ export function WorkspaceFrame({
   const access = organizationSettingsAccess(
     organization.data?.id === organizationId ? organization.data?.role : undefined,
   );
-  let view: WorkspaceView = "messages";
-  if (pathname.startsWith("/settings/user")) view = "user-settings";
-  else if (pathname.startsWith("/settings/organization")) view = "organization-settings";
-  else if (pathname.startsWith("/tasks")) view = "tasks";
-  else if (pathname.startsWith("/crm")) view = "crm";
-  else if (pathname.startsWith("/contacts")) view = "contacts";
-  else if (pathname.startsWith("/agents")) view = "agents";
-  else if (pathname.startsWith("/notifications")) view = "notifications";
+  useAppShortcuts();
   return (
     <WorkspaceSearchProvider>
       <WorkspaceShell
         unavailable={isAccessFailure(organization.error)}
         name={name}
         image={image}
-        view={view}
         hasUnreadNotifications={!notifications.error && notifications.data?.unread}
         hasUnreadMessages={
           !unreadMessages.error && unreadMessages.data?.some((row) => row.unreadCount > 0)
         }
         agentsNeedYou={!needsYou.error && needsYouCount(needsYou.data) > 0}
-        onViewChange={(nextView) => {
-          const to = {
-            messages: "/dashboard",
-            tasks: "/tasks",
-            crm: "/crm",
-            contacts: "/contacts",
-            agents: "/agents",
-            notifications: "/notifications",
-            "user-settings": "/settings/user",
-            "organization-settings": "/settings/organization",
-          } as const;
-          void navigate({ to: to[nextView] });
-        }}
         showOrganizationSettings={access.allowed}
         organizationName={organization.data?.name}
         switcher={

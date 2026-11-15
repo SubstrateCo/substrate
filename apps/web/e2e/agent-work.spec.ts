@@ -70,7 +70,7 @@ test("an undelivered native answer stays visible after the agent stops waiting",
     ),
   ).toBeVisible();
   await expect(card).toHaveCount(0);
-  await expect(user.page.getByRole("button", { name: "Agents, needs you" })).toHaveCount(0);
+  await expect(user.page.getByRole("link", { name: "Agents, needs you" })).toHaveCount(0);
 });
 
 test("agent messages and task activity retain attribution and source links", async ({
@@ -166,19 +166,19 @@ test("the owner answers an agent's question from another window; members see onl
   await expect(
     member.page
       .getByRole("navigation", { name: "Apps" })
-      .getByRole("button", { name: "Agents", exact: true }),
+      .getByRole("link", { name: "Agents", exact: true }),
   ).toBeVisible();
 
   // The second window answers from Needs you, which reads only the server.
   const inbox = await client(owner);
   await visit(inbox, undefined, "/agents");
-  await expect(inbox.page.getByRole("button", { name: "Agents, needs you" })).toBeVisible();
+  await expect(inbox.page.getByRole("link", { name: "Agents, needs you" })).toBeVisible();
   const needsYou = inbox.page.getByRole("list", { name: "Needs you" });
   await expect(needsYou.getByRole("link", { name: `In ${channel.name}` })).toBeVisible();
   await needsYou.getByRole("radio", { name: /Blue/ }).click();
   await needsYou.getByRole("button", { name: "Submit" }).click();
   await expect(inbox.page.getByRole("heading", { name: "Nothing needs you" })).toBeVisible();
-  await expect(inbox.page.getByRole("button", { name: "Agents", exact: true })).toBeVisible();
+  await expect(inbox.page.getByRole("link", { name: "Agents", exact: true })).toBeVisible();
 
   // The first window updates through the realtime hint.
   await expect(pane.getByText("Answered: Blue")).toBeVisible();

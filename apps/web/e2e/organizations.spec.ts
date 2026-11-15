@@ -65,7 +65,7 @@ test("switching workspaces clears private messages, reconnects in the selected o
   await user.page
     .getByRole("button", { name: `Signed in as ${account.name}`, exact: true })
     .click();
-  await user.page.getByRole("button", { name: "User settings", exact: true }).click();
+  await user.page.getByRole("link", { name: "User settings", exact: true }).click();
   await expect(user.page).toHaveURL(/\/settings\/user\/?$/);
   const fullName = user.page.getByLabel("Full name", { exact: true });
   await expect(fullName).toHaveValue(account.name);
@@ -147,10 +147,10 @@ test("an owner invites a teammate, who accepts without receiving project access 
     .getByRole("button", { name: `Signed in as ${account.name}`, exact: true })
     .click();
   await expect(
-    invitee.page.getByRole("button", { name: "Organization settings", exact: true }),
+    invitee.page.getByRole("link", { name: "Organization settings", exact: true }),
   ).toHaveCount(0);
   await invitee.page.keyboard.press("Escape");
-  await invitee.page.getByRole("button", { name: "Tasks", exact: true }).click();
+  await invitee.page.getByRole("link", { name: "Tasks", exact: true }).click();
   await expect(
     invitee.page.getByRole("heading", { name: "No projects yet", exact: true }),
   ).toBeVisible();

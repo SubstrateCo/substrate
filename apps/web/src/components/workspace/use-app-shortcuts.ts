@@ -1,50 +1,26 @@
-import { useEffect, useEffectEvent, useRef } from "react";
+import { useHotkeys } from "@tanstack/react-hotkeys";
+import { useNavigate } from "@tanstack/react-router";
 
-/** Keys pressed after G, Linear style: G then M opens Messages. */
-export const appShortcutKeys = {
-  messages: "M",
-  tasks: "T",
-  crm: "C",
-  contacts: "P",
-  agents: "A",
-  notifications: "N",
-} as const;
+import { workspaceApps } from "./workspace-apps";
+import { appHotkeys } from "@/lib/hotkeys/app-hotkeys";
 
-const apps = ["messages", "tasks", "crm", "contacts", "agents", "notifications"] as const;
-export type ShortcutApp = (typeof apps)[number];
-
-const sequenceMs = 1000;
-
-// Text fields keep their keys, and open dialogs and menus own the keyboard.
-function busy(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false;
-  return !!target.closest(
-    "input, textarea, select, [contenteditable=''], [contenteditable=true], [role=dialog], [role=alertdialog], [role=menu], [role=listbox]",
-  );
+// Text fields, menus, and listboxes keep their keys through `ignoreInputs`. Open dialogs own the
+// keyboard too, so a sequence typed inside one does not leave it.
+function inDialog(target: EventTarget | null) {
+  return target instanceof Element && !!target.closest("[role=dialog], [role=alertdialog]");
 }
 
-/** Listens for G then an app key outside text fields and calls `onOpen` with the app. */
-export function useAppShortcuts(onOpen: (app: ShortcutApp) => void) {
-  const pressed = useRef(0);
-  const open = useEffectEvent(onOpen);
-  useEffect(() => {
-    const handle = (event: KeyboardEvent) => {
-      if (event.defaultPrevented || event.repeat || busy(event.target)) return;
-      if (event.altKey || event.ctrlKey || event.metaKey) return;
-      const key = event.key.toUpperCase();
-      if (key === "G") {
-        pressed.current = event.timeStamp;
-        return;
-      }
-      const started = pressed.current;
-      pressed.current = 0;
-      if (!started || event.timeStamp - started > sequenceMs) return;
-      const app = apps.find((name) => appShortcutKeys[name] === key);
-      if (!app) return;
-      event.preventDefault();
-      open(app);
-    };
-    window.addEventListener("keydown", handle);
-    return () => window.removeEventListener("keydown", handle);
-  }, []);
+/** Binds each rail app's shortcut to opening that app. */
+export function useAppShortcuts() {
+  const navigate = useNavigate();
+  useHotkeys(
+    workspaceApps.map((app) => ({
+      hotkey: appHotkeys[app.hotkey],
+      callback: (event: KeyboardEvent) => {
+        if (inDialog(event.target)) return;
+        void navigate({ to: app.to });
+      },
+    })),
+    { ignoreDefaultPrevented: true },
+  );
 }

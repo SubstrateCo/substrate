@@ -139,7 +139,7 @@ test("notifications page complete groups, filter unread, and mark groups and all
   await expect(recipient.page.getByText("Loading workspace details…")).toHaveCount(0);
   await recipient.page
     .getByRole("navigation", { name: "Apps" })
-    .getByRole("button", { name: /^Notifications/ })
+    .getByRole("link", { name: /^Notifications/ })
     .click();
   const feed = recipient.page.getByRole("region", { name: "Notifications", exact: true });
   const rows = feed.getByRole("list", { name: "Notification activity" }).getByRole("listitem");
@@ -201,7 +201,7 @@ test("thread replies deliver live notifications to another organization", async 
   await expect(notice).toContainText(reply);
   await expectChange(recipient, since, "notifications");
   await expect(
-    recipient.page.getByRole("button", {
+    recipient.page.getByRole("link", {
       name: "Notifications, unread notifications",
       exact: true,
     }),
@@ -219,7 +219,7 @@ test("thread replies deliver live notifications to another organization", async 
   expect(new URL(recipient.page.url()).searchParams.get("messageId")).toBe(sent.id);
   await recipient.page
     .getByRole("navigation", { name: "Apps" })
-    .getByRole("button", { name: /^Notifications/ })
+    .getByRole("link", { name: /^Notifications/ })
     .click();
   await expect(link).toHaveAccessibleName(
     `${actors.sender.name} replied to a thread in ${channel.name}`,

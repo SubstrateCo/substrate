@@ -19,7 +19,7 @@ test("Contacts is a separate app and CRM keeps only deals, accounts, and setting
   await expect(user.page.getByRole("heading", { name: "CRM settings", exact: true })).toBeVisible();
   await user.page
     .getByRole("navigation", { name: "Apps", exact: true })
-    .getByRole("button", { name: "Contacts", exact: true })
+    .getByRole("link", { name: "Contacts", exact: true })
     .click();
   await expect(user.page).toHaveURL(/\/contacts/);
   await expect(user.page.getByRole("heading", { name: "Contacts", exact: true })).toBeVisible();

@@ -16,6 +16,7 @@
     "@substrate/contracts": "workspace:*",
     "@substrate/server": "workspace:*",
     "@tanstack/react-form": "^1.33.5",
+    "@tanstack/react-hotkeys": "^0.25.1",
     "@tanstack/react-query": "^5.106.1",
     "@tanstack/react-router": "^1.170.46",
     "@tanstack/react-table": "^9.3.1",
