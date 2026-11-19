@@ -1,8 +1,11 @@
+import { useMemo } from "react";
+
 import { Button } from "@/components/ui/button";
 import type { LucideIcon } from "lucide-react";
 
 type SettingsNavItem<T extends string> = { value: T; label: string; icon: LucideIcon };
 export type SettingsNavGroup<T extends string> = {
+  id: string;
   /** A small heading above the group in the wide layout. */
   label?: string;
   items: readonly SettingsNavItem<T>[];
@@ -16,7 +19,7 @@ export function SettingsNav<T extends string>({
   label,
   groups,
   value,
-  marked = [],
+  marked,
   onChange,
 }: {
   label: string;
@@ -26,14 +29,15 @@ export function SettingsNav<T extends string>({
   marked?: readonly T[];
   onChange: (value: T) => void;
 }) {
+  const markedItems = useMemo(() => (marked?.length ? new Set(marked) : undefined), [marked]);
   return (
     <nav
       aria-label={label}
       className="-mx-1 flex min-w-0 gap-1 overflow-x-auto px-1 pb-1 @3xl:sticky @3xl:top-0 @3xl:mx-0 @3xl:w-48 @3xl:shrink-0 @3xl:flex-col @3xl:gap-5 @3xl:overflow-visible @3xl:px-0 @3xl:pb-0"
     >
-      {groups.map((group, index) => (
+      {groups.map((group) => (
         <div
-          key={group.label ?? index}
+          key={group.id}
           role="group"
           aria-label={group.label}
           className="flex shrink-0 gap-1 @3xl:flex-col @3xl:gap-0.5"
@@ -57,7 +61,7 @@ export function SettingsNav<T extends string>({
             >
               <Icon aria-hidden="true" />
               {itemLabel}
-              {marked.includes(item) && (
+              {markedItems?.has(item) && (
                 // Decoration only: the unsaved-changes bar and each card footer say it in words.
                 <span
                   aria-hidden="true"

@@ -17,6 +17,7 @@ import {
 
 const groups = [
   {
+    id: "activity",
     items: [
       { value: "activity", label: "Activity", icon: Activity },
       { value: "routines", label: "Routines", icon: CalendarClock },
@@ -24,6 +25,7 @@ const groups = [
     ],
   },
   {
+    id: "settings",
     label: "Settings",
     items: [
       { value: "general", label: "General", icon: SlidersHorizontal },

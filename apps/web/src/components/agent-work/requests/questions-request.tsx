@@ -1,6 +1,6 @@
 import type { AgentRequestPayload, AgentRequestResponse } from "@substrate/contracts/agent-work";
 
-import { useId, useRef, useState, type KeyboardEvent } from "react";
+import { useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 
 import { PendingButton } from "@/components/feedback/pending-button";
 import { useFocusAfterRender } from "@/components/feedback/use-focus-after-render";
@@ -49,8 +49,15 @@ export function QuestionsRequest({
   const focusAfterRender = useFocusAfterRender();
   const question = payload.questions[step]!;
   const last = step === payload.questions.length - 1;
-  const answered = questionAnswer(drafts[question.id]).length > 0;
-  const selected = drafts[question.id]?.selected ?? [];
+  const draft = drafts[question.id];
+  const answered = questionAnswer(draft).length > 0;
+  const selected = draft?.selected;
+  const firstSelection = selected?.[0];
+  const secondSelection = selected?.[1];
+  const selectedLabels = useMemo(
+    () => (question.multiSelect && selected && selected.length > 2 ? new Set(selected) : undefined),
+    [question.multiSelect, selected],
+  );
   const shortcuts = Math.min(question.options.length, 9);
   // Focus moves to the new question once it shows.
   const goTo = (next: number) => {
@@ -66,7 +73,7 @@ export function QuestionsRequest({
   };
   const choose = (label: string) => {
     if (pending) return;
-    update(toggleQuestionOption(drafts[question.id], label, question.multiSelect));
+    update(toggleQuestionOption(draft, label, question.multiSelect));
   };
   const onKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
     const modified = [event.altKey, event.ctrlKey, event.metaKey, event.shiftKey].some(Boolean);
@@ -124,7 +131,10 @@ export function QuestionsRequest({
             <label key={option.label} htmlFor={`${id}-${step}-${index}`} className={optionRow}>
               <Checkbox
                 id={`${id}-${step}-${index}`}
-                checked={selected.includes(option.label)}
+                checked={
+                  selectedLabels?.has(option.label) ??
+                  (firstSelection === option.label || secondSelection === option.label)
+                }
                 disabled={pending}
                 onCheckedChange={() => choose(option.label)}
                 className="mt-0.5"
@@ -137,7 +147,7 @@ export function QuestionsRequest({
       ) : (
         <RadioGroup
           aria-labelledby={`${id}-question`}
-          value={selected[0] ?? ""}
+          value={firstSelection ?? ""}
           disabled={pending}
           onValueChange={choose}
         >
@@ -158,10 +168,10 @@ export function QuestionsRequest({
         <Input
           aria-label="Your own answer"
           placeholder="Or type your own answer"
-          value={drafts[question.id]?.custom ?? ""}
+          value={draft?.custom ?? ""}
           disabled={pending}
           onChange={(event) =>
-            update(setQuestionCustom(drafts[question.id], event.target.value, question.multiSelect))
+            update(setQuestionCustom(draft, event.target.value, question.multiSelect))
           }
           onKeyDown={(event) => {
             if (event.key === "Enter" && !event.nativeEvent.isComposing) {

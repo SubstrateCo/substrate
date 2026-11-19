@@ -101,6 +101,51 @@ function ModelCatalogStatus({
   return null;
 }
 
+function useModelCatalogs({
+  userId,
+  organizationId,
+  agentId,
+  open,
+  browseHarness,
+  searching,
+}: {
+  userId: string;
+  organizationId?: string | null;
+  agentId?: string;
+  open: boolean;
+  browseHarness: HarnessKind;
+  searching: boolean;
+}) {
+  const available = !!harnessBridge() && !!organizationId;
+  const includesHarness = (harness: HarnessKind) => searching || harness === browseHarness;
+  const catalogs = useQueries({
+    queries: harnessOptions.map((option) => ({
+      ...harnessModelsQueryOptions(userId, organizationId ?? "", option.value, agentId),
+      enabled: open && available && includesHarness(option.value),
+    })),
+  });
+  const choices: Choice[] = harnessOptions.flatMap((option, index) =>
+    (catalogs[index]?.data?.models ?? []).map((item) => ({ ...item, harness: option.value })),
+  );
+  const selected = catalogs[harnessOptions.findIndex((option) => option.value === browseHarness)];
+  const groups = harnessOptions.filter(
+    (option, index) =>
+      catalogs[index]?.data?.status !== "unavailable" && includesHarness(option.value),
+  );
+  return {
+    available,
+    choices,
+    groups,
+    selected,
+    refreshing: catalogs.some((catalog) => catalog.isFetching),
+    refresh: () => {
+      catalogs.forEach((catalog, index) => {
+        if (includesHarness(harnessOptions[index]!.value)) void catalog.refetch();
+      });
+    },
+  };
+}
+
 // T3 Code's grouped model rows, adapted to our native bridge and UI primitives.
 // Source: pingdotgg/t3code/apps/web/src/components/chat (MIT, icons/LICENSE).
 export function ModelPicker({
@@ -123,35 +168,33 @@ export function ModelPicker({
   onChange: (harness: HarnessKind, model: string | undefined) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const [selectedHarness, setSelectedHarness] = useState<HarnessKind>(harness);
+  const [browseOverride, setBrowseOverride] = useState<HarnessKind>();
   const [search, setSearch] = useState("");
-  const available = !!harnessBridge() && !!organizationId;
+  const browseHarness = browseOverride ?? harness;
   const query = search.trim();
-  const catalogs = useQueries({
-    queries: harnessOptions.map((option) => ({
-      ...harnessModelsQueryOptions(userId, organizationId ?? "", option.value, agentId),
-      enabled: open && available && (!!query || option.value === selectedHarness),
-    })),
+  const {
+    available,
+    choices,
+    groups,
+    selected: selectedCatalog,
+    refreshing,
+    refresh,
+  } = useModelCatalogs({
+    userId,
+    organizationId,
+    agentId,
+    open,
+    browseHarness,
+    searching: !!query,
   });
-  const choices: Choice[] = harnessOptions.flatMap((option, index) =>
-    (catalogs[index]?.data?.models ?? []).map((item) => ({ ...item, harness: option.value })),
-  );
   const modelName = includeSavedModel(choices, harness, model)?.name ?? defaultModelLabel;
   const label = harnessLabel(harness);
-  const selectedLabel = harnessLabel(selectedHarness);
-  const selectedIndex = harnessOptions.findIndex((option) => option.value === selectedHarness);
-  const selectedCatalog = catalogs[selectedIndex];
+  const selectedLabel = harnessLabel(browseHarness);
   const selectedUnavailable = selectedCatalog.data?.status === "unavailable";
-  const groups = harnessOptions.filter(
-    (option, index) =>
-      catalogs[index]?.data?.status !== "unavailable" &&
-      (query || selectedHarness === option.value),
-  );
   const customAllowed =
     !selectedUnavailable &&
     query.length > 0 &&
-    (selectedHarness !== "opencode" || /^[^/\s]+\/\S+$/.test(query));
-  const refreshing = catalogs.some((catalog) => catalog.isFetching);
+    (browseHarness !== "opencode" || /^[^/\s]+\/\S+$/.test(query));
   function key(choice: Choice) {
     return `${choice.harness}/${choice.id}`;
   }
@@ -160,20 +203,18 @@ export function ModelPicker({
     setOpen(false);
   }
   function chooseHarness(value: HarnessKind) {
-    setSelectedHarness(value);
+    setBrowseOverride(value);
     setSearch("");
-  }
-  function refresh() {
-    catalogs.forEach((catalog, index) => {
-      if (query || harnessOptions[index]!.value === selectedHarness) void catalog.refetch();
-    });
   }
   return (
     <Popover
       open={open}
       onOpenChange={(value) => {
         setOpen(value);
-        if (value) chooseHarness(harness);
+        if (value) {
+          setBrowseOverride(undefined);
+          setSearch("");
+        }
       }}
     >
       <PopoverTrigger asChild>
@@ -205,16 +246,16 @@ export function ModelPicker({
         <div className="border-b p-2">
           <SegmentedControl
             aria-label="Runtime"
-            value={selectedHarness}
+            value={browseHarness}
             options={harnessOptions}
             onValueChange={chooseHarness}
           />
         </div>
         {!selectedUnavailable && (
           <Command
-            key={`${open}/${selectedHarness}`}
+            key={`${open}/${browseHarness}`}
             className="min-h-0 flex-1"
-            defaultValue={`${selectedHarness}/${selectedHarness === harness && model ? model : "default"}`}
+            defaultValue={`${browseHarness}/${browseHarness === harness && model ? model : "default"}`}
           >
             <div className="p-2">
               <CommandInput
@@ -292,12 +333,12 @@ export function ModelPicker({
               })}
               {customAllowed &&
                 !choices.some(
-                  (choice) => choice.harness === selectedHarness && choice.id === query,
+                  (choice) => choice.harness === browseHarness && choice.id === query,
                 ) && (
                   <CommandGroup heading="Custom model">
                     <CommandItem
                       value={`Use ${query}`}
-                      onSelect={() => select(selectedHarness, query)}
+                      onSelect={() => select(browseHarness, query)}
                     >
                       <span className="truncate">Use “{query}”</span>
                     </CommandItem>

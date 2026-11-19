@@ -1,13 +1,14 @@
 import type {
   AgentInboxItemView,
   AgentRequestView,
+  AgentStatusView,
   AgentTurnView,
 } from "@substrate/contracts/agent-work";
 import { liveTurnStatuses } from "@substrate/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
 
-import type { ReactNode } from "react";
+import { useMemo, type ReactNode } from "react";
 
 import { AgentWorkProvider } from "./agent-work-slot";
 import { CallStatus } from "./calls/call-status";
@@ -35,6 +36,8 @@ import { useNewTopic } from "@/queries/agent-work/mutations";
 import { agentStatusOptions, conversationRequestsOptions } from "@/queries/agent-work/server";
 import { toast } from "sonner";
 
+const noticeTurnStatuses = new Set([...liveTurnStatuses, "needs_attention"]);
+
 function messageWorkLookups(
   turns: readonly AgentTurnView[],
   items: readonly AgentInboxItemView[],
@@ -52,13 +55,26 @@ function messageWorkLookups(
     ),
   );
   const itemsByAgent = new Map<string, AgentInboxItemView[]>();
+  const uncertainIds: string[] = [];
   for (const item of items) {
+    if (item.status === "uncertain") uncertainIds.push(item.id);
     const agentId = agentOf(item);
     const list = itemsByAgent.get(agentId);
     if (list) list.push(item);
     else itemsByAgent.set(agentId, [item]);
   }
-  return { openRequest: (turnId: string) => openRequests.get(turnId), outputs, itemsByAgent };
+  return {
+    openRequest: (turnId: string) => openRequests.get(turnId),
+    outputs,
+    itemsByAgent,
+    uncertainIds,
+  };
+}
+
+function uncertainItemsForTurn(turn: AgentTurnView, uncertainIds: readonly string[]) {
+  if (turn.attentionReason !== "uncertain_input" || !uncertainIds.length) return undefined;
+  const turnItems = new Set(turn.itemIds);
+  return uncertainIds.filter((id) => turnItems.has(id));
 }
 
 /**
@@ -97,7 +113,14 @@ export function ConversationAgentWork({
     enabled: localWorkEnabled(userId) && homed.size > 0,
   });
   const requests = useQuery(conversationRequestsOptions(userId, organizationId, conversation.id));
-  const statuses = useQuery(agentStatusOptions(userId, organizationId));
+  const { data: statuses } = useQuery(agentStatusOptions(userId, organizationId));
+  const statusByAgent = useMemo(() => {
+    if (!statuses?.length) return undefined;
+    const index = new Map<string, AgentStatusView>();
+    for (const status of statuses)
+      if (!index.has(status.userAgentId)) index.set(status.userAgentId, status);
+    return index;
+  }, [statuses]);
   const calls = useQuery(myCallsOptions(userId, organizationId, conversation.id));
   const newTopic = useNewTopic(userId, organizationId);
   const turns = local.data?.turns ?? [];
@@ -109,18 +132,15 @@ export function ConversationAgentWork({
     members,
     turns,
     requests: requests.data ?? [],
-    statuses: statuses.data ?? [],
+    statuses: statuses ?? [],
   });
   const name = (agentId: string) =>
     agents.find((agent) => agent.agentId === agentId)?.name ?? "Agent";
-  const uncertain = items.filter((entry) => entry.status === "uncertain");
-  const uncertainItems = (turn: AgentTurnView) =>
-    uncertain.filter((entry) => turn.itemIds.includes(entry.id)).map((entry) => entry.id);
   const { placements, anchors } = turnPlacements(turns, conversation.id);
   const waitingItems = itemPlacements(items, turns, conversation.id);
   const { cards, backlinks } = requestPlacements(requests.data ?? [], anchors, conversation.id);
   const agentOf = (item: AgentInboxItemView) => sessions.get(item.sessionId)?.userAgentId ?? "";
-  const { openRequest, outputs, itemsByAgent } = messageWorkLookups(
+  const { openRequest, outputs, itemsByAgent, uncertainIds } = messageWorkLookups(
     turns,
     items,
     requests.data ?? [],
@@ -135,7 +155,7 @@ export function ConversationAgentWork({
         const current = turns.find(
           (turn) =>
             turn.userAgentId === agent.agentId &&
-            (liveTurnStatuses.includes(turn.status) || turn.status === "needs_attention") &&
+            noticeTurnStatuses.has(turn.status) &&
             (sessions.get(turn.sessionId)?.origin?.threadId ?? null) === threadId,
         );
         if (current) {
@@ -149,7 +169,7 @@ export function ConversationAgentWork({
         }
         continue;
       }
-      const status = statuses.data?.find((entry) => entry.userAgentId === agent.agentId);
+      const status = statusByAgent?.get(agent.agentId);
       if (!status) continue;
       const here =
         status.liveConversationId === conversation.id && (status.liveThreadId ?? null) === threadId;
@@ -252,7 +272,7 @@ export function ConversationAgentWork({
                   agentName={name(turn.userAgentId)}
                   underReply={message.fromAgent}
                   openRequest={openRequest(turn.id)}
-                  uncertainItemIds={uncertainItems(turn)}
+                  uncertainItemIds={uncertainItemsForTurn(turn, uncertainIds)}
                   onTranscript={onTranscript}
                 />
               ))}

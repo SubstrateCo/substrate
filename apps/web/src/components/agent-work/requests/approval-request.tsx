@@ -28,7 +28,9 @@ export function ApprovalRequest({
     ...payload.options.filter((option) => option.style === "deny"),
   ];
   const primary = styled.length ? styled : payload.options.slice(0, 2);
-  const more = payload.options.filter((option) => !primary.includes(option));
+  const more = styled.length
+    ? payload.options.filter((option) => option.style === "neutral")
+    : payload.options.slice(2);
   const sendingMore = more.find((option) => option.id === pendingOptionId);
   // The card around this shows the title.
   return (
