@@ -6,10 +6,8 @@ import { domainTargets, type QueryTarget } from "../targets";
 export type AgentWorkEffect =
   /** An answer or decline: a server write, so server and local agent work change. */
   | { kind: "agent-work" }
-  /** A local action changes only this desktop's local work. The server hears later, by hint. */
+  /** A local action or routine edit changes only this desktop's local work. */
   | { kind: "local" }
-  /** A routine edit changes the routine list and the agent's activity on this desktop. */
-  | { kind: "routines" }
   /** An approved proposal also writes the record it proposed. */
   | { kind: "approved"; action: ProposalAction | null };
 
@@ -22,7 +20,7 @@ export function agentWorkInvalidations(
   organizationId: string,
   effect: AgentWorkEffect,
 ): QueryTarget[] {
-  if (effect.kind === "routines" || effect.kind === "local")
+  if (effect.kind === "local")
     return [{ queryKey: queryKeys.agentWorkLocal(userId, organizationId) }];
   const targets: QueryTarget[] = [{ queryKey: queryKeys.agentWork(userId, organizationId) }];
   if (effect.kind !== "approved") return targets;

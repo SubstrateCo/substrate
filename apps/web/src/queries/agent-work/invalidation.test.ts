@@ -1,10 +1,11 @@
-import { QueryClient, QueryObserver, type QueryKey } from "@tanstack/react-query";
+import { MutationObserver, QueryClient, QueryObserver, type QueryKey } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
-import { invalidateTargets, queryTargetFilter, type QueryTarget } from "../targets";
+import { queryTargetFilter, type QueryTarget } from "../targets";
 import { agentWorkInvalidations } from "./invalidation";
+import { localWorkMutationOptions, requestActionMutationOptions } from "./mutations";
 import { bridgeChangeTargets } from "./sync";
-import { describe, expect, test } from "bun:test";
+import { describe, expect, spyOn, test } from "bun:test";
 
 const target = crypto.randomUUID();
 
@@ -47,6 +48,9 @@ describe("agent-work mutation invalidation", () => {
     const reads = keys.map(() => 0);
     let canceled = 0;
     const response = Promise.withResolvers<{ links: unknown[] }[]>();
+    const fetch = spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      Response.json({ success: true, data: null }),
+    );
     const stops = keys.map((queryKey, index) =>
       new QueryObserver(client, {
         queryKey,
@@ -60,21 +64,76 @@ describe("agent-work mutation invalidation", () => {
       }).subscribe(() => {}),
     );
     try {
-      const pending = invalidateTargets(
+      const pending = new MutationObserver(
         client,
-        agentWorkInvalidations("user", "org", {
-          kind: "approved",
-          action: { type: "create_task", input: { projectId: target, title: "Follow up" } },
-        }),
-      );
+        requestActionMutationOptions(client, "user", "org"),
+      ).mutate({
+        kind: "approve",
+        requestId: "request",
+        action: { type: "create_task", input: { projectId: target, title: "Follow up" } },
+      });
       response.resolve([{ links: [] }]);
       await pending;
       expect(reads).toEqual([1, 1, 1]);
       expect(canceled).toBe(0);
       for (const key of keys) expect(client.getQueryData(key)).toEqual([{ links: [] }]);
     } finally {
+      fetch.mockRestore();
       response.resolve([]);
       stops.forEach((stop) => stop());
+      client.clear();
+    }
+  });
+
+  test("a conflict still refreshes the owner's requests, but not another owner's", async () => {
+    const client = new QueryClient();
+    const key = queryKeys.agentWorkRequests("user", "org", "conversation");
+    const otherOwner = queryKeys.agentWorkRequests("other-user", "org", "conversation");
+    for (const cachedKey of [key, otherOwner]) client.setQueryData(cachedKey, []);
+    const fetch = spyOn(globalThis, "fetch").mockResolvedValueOnce(
+      Response.json(
+        { success: false, error: { code: "CONFLICT", message: "Already answered." } },
+        { status: 409 },
+      ),
+    );
+    try {
+      const action = new MutationObserver(
+        client,
+        requestActionMutationOptions(client, "user", "org"),
+      );
+      const result = await action
+        .mutate({ kind: "decline", requestId: "request" })
+        .catch((error: Error) => error);
+      expect(result).toMatchObject({ status: 409 });
+      expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+      expect(client.getQueryState(otherOwner)?.isInvalidated).toBe(false);
+    } finally {
+      fetch.mockRestore();
+      client.clear();
+    }
+  });
+
+  test("a partial desktop failure refreshes local work, not server work or another workspace", async () => {
+    const client = new QueryClient();
+    const local = queryKeys.agentWorkRoutines("user", "org", "agent");
+    const untouched = [
+      queryKeys.agentWorkStatus("user", "org"),
+      queryKeys.agentWorkRoutines("user", "other-org", "agent"),
+    ];
+    for (const key of [local, ...untouched]) client.setQueryData(key, []);
+    try {
+      const failure = new Error("Desktop response lost");
+      const options = localWorkMutationOptions(client, "user", "org");
+      const action = new MutationObserver(
+        client,
+        options(async (_id: string) => {
+          throw failure;
+        }),
+      );
+      expect(await action.mutate("routine").catch((error: Error) => error)).toBe(failure);
+      expect(client.getQueryState(local)?.isInvalidated).toBe(true);
+      for (const key of untouched) expect(client.getQueryState(key)?.isInvalidated).toBe(false);
+    } finally {
       client.clear();
     }
   });

@@ -8,18 +8,17 @@ import type {
 import { createRoutineInput, updateRoutineInput } from "@substrate/contracts/agent-work";
 import type { AgentWorkAPI } from "@substrate/contracts/agent-work/desktop";
 
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import {
+  mutationOptions,
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 
 import { invalidateTargets } from "../targets";
 import { agentWorkBridge } from "./bridge";
-import { agentWorkInvalidations, type AgentWorkEffect } from "./invalidation";
+import { agentWorkInvalidations } from "./invalidation";
 import { approveProposal, declineProposal, respondToRequest } from "@/api/agent-work/requests";
-
-function useRefresh(userId: string, organizationId: string) {
-  const client = useQueryClient();
-  return (effect: AgentWorkEffect) =>
-    invalidateTargets(client, agentWorkInvalidations(userId, organizationId, effect));
-}
 
 export type RequestAction =
   | { kind: "respond"; requestId: string; response: AgentRequestResponse }
@@ -30,9 +29,12 @@ export type RequestAction =
  * Answers and proposal decisions, as one mutation, so its state is always the latest attempt.
  * They go to the server, so any owner device can make them.
  */
-export function useRequestAction(userId: string, organizationId: string) {
-  const refresh = useRefresh(userId, organizationId);
-  return useMutation({
+export function requestActionMutationOptions(
+  client: QueryClient,
+  userId: string,
+  organizationId: string,
+) {
+  return mutationOptions({
     mutationFn: (input: RequestAction) => {
       const { requestId } = input;
       if (input.kind === "respond")
@@ -42,12 +44,35 @@ export function useRequestAction(userId: string, organizationId: string) {
     },
     // A conflict means another device answered first. Refresh to show that answer.
     onSettled: (_data, _error, input) =>
-      refresh(
-        input.kind === "approve"
-          ? { kind: "approved", action: input.action }
-          : { kind: "agent-work" },
+      invalidateTargets(
+        client,
+        agentWorkInvalidations(
+          userId,
+          organizationId,
+          input.kind === "approve"
+            ? { kind: "approved", action: input.action }
+            : { kind: "agent-work" },
+        ),
       ),
   });
+}
+
+export function useRequestAction(userId: string, organizationId: string) {
+  return useMutation(requestActionMutationOptions(useQueryClient(), userId, organizationId));
+}
+
+/** Local commands can change work even if the desktop didn't return a success response. */
+export function localWorkMutationOptions(
+  client: QueryClient,
+  userId: string,
+  organizationId: string,
+) {
+  const targets = agentWorkInvalidations(userId, organizationId, { kind: "local" });
+  return <TInput, TResult>(mutationFn: (input: TInput) => Promise<TResult>) =>
+    mutationOptions({
+      mutationFn,
+      onSettled: () => invalidateTargets(client, targets),
+    });
 }
 
 /**
@@ -59,8 +84,8 @@ function useLocalWorkAction<T>(
   organizationId: string,
   mutationFn: (id: string) => Promise<T>,
 ) {
-  const refresh = useRefresh(userId, organizationId);
-  return useMutation({ mutationFn, onSettled: () => refresh({ kind: "local" }) });
+  const options = localWorkMutationOptions(useQueryClient(), userId, organizationId);
+  return useMutation(options(mutationFn));
 }
 
 export const useSendNow = (userId: string, organizationId: string) =>
@@ -84,9 +109,9 @@ export type AttentionAction = "retry" | "dismiss" | "startFresh" | "resend" | "d
  * for resend and discard; the attempt fails if any of them fails.
  */
 export function useAttentionAction(userId: string, organizationId: string) {
-  const refresh = useRefresh(userId, organizationId);
-  return useMutation({
-    mutationFn: ({ kind, ids }: { kind: AttentionAction; ids: readonly string[] }) => {
+  const options = localWorkMutationOptions(useQueryClient(), userId, organizationId);
+  return useMutation(
+    options(({ kind, ids }: { kind: AttentionAction; ids: readonly string[] }) => {
       const bridge = agentWorkBridge();
       // Every one of these bridge commands has the same result.
       const calls: Record<AttentionAction, AgentWorkAPI["retry"]> = {
@@ -97,9 +122,8 @@ export function useAttentionAction(userId: string, organizationId: string) {
         discard: (id) => bridge.discardItem(id),
       };
       return Promise.all(ids.map(calls[kind]));
-    },
-    onSettled: () => refresh({ kind: "local" }),
-  });
+    }),
+  );
 }
 
 export const useNewTopic = (userId: string, organizationId: string) =>
@@ -108,27 +132,24 @@ export const useNewTopic = (userId: string, organizationId: string) =>
   );
 
 export function useRoutineActions(userId: string, organizationId: string) {
-  const refresh = useRefresh(userId, organizationId);
-  const settled = () => refresh({ kind: "routines" });
+  const options = localWorkMutationOptions(useQueryClient(), userId, organizationId);
   // Editors check each field first; parsing here guards the bridge contract.
   return {
-    create: useMutation({
-      mutationFn: (input: CreateRoutineInput) =>
+    create: useMutation(
+      options((input: CreateRoutineInput) =>
         agentWorkBridge().routines.create(createRoutineInput.parse(input)),
-      onSettled: settled,
-    }),
-    update: useMutation({
-      mutationFn: (input: UpdateRoutineInput) =>
+      ),
+    ),
+    update: useMutation(
+      options((input: UpdateRoutineInput) =>
         agentWorkBridge().routines.update(updateRoutineInput.parse(input)),
-      onSettled: settled,
-    }),
-    approve: useMutation({
-      mutationFn: (input: ApproveRoutineInput) => agentWorkBridge().routines.approve(input),
-      onSettled: settled,
-    }),
-    remove: useMutation({
-      mutationFn: (routineId: string) => agentWorkBridge().routines.delete(routineId),
-      onSettled: settled,
-    }),
+      ),
+    ),
+    approve: useMutation(
+      options((input: ApproveRoutineInput) => agentWorkBridge().routines.approve(input)),
+    ),
+    remove: useMutation(
+      options((routineId: string) => agentWorkBridge().routines.delete(routineId)),
+    ),
   };
 }
