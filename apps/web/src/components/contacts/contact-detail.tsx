@@ -10,15 +10,17 @@ import { InteractionHistory } from "@/components/context/interactions/interactio
 import { PublishInteraction } from "@/components/context/interactions/publish-interaction";
 import { AffiliationEditor } from "@/components/crm/affiliation-editor";
 import { CrmActivity } from "@/components/crm/crm-activity";
-import { CrmResourceState } from "@/components/crm/crm-resource-state";
+import { crmResource } from "@/components/crm/crm-resource-state";
 import { accessLabel } from "@/components/crm/crm-types";
 import { FollowUps } from "@/components/crm/follow-ups";
-import { RecordArchive } from "@/components/crm/record-archive";
+import {
+  RecordChangeDialogs,
+  recordChangeDialog,
+  type RecordChangeDialog,
+} from "@/components/crm/record-change-dialogs";
 import { RecordDetailView, DetailProperty } from "@/components/crm/record-detail-view";
-import { RecordEditor } from "@/components/crm/record-editor";
 import { Button } from "@/components/ui/button";
 import { crmLink } from "@/lib/navigation/record-links";
-import { resourceState } from "@/lib/resource-state";
 import { contactOptions } from "@/queries/contacts/options";
 import { useRecordMutation } from "@/queries/records/mutations";
 import { Plus } from "lucide-react";
@@ -32,22 +34,15 @@ export function ContactDetail({
 }) {
   const query = useQuery(contactOptions(organizationId, entityId));
   const mutation = useRecordMutation(organizationId, "contacts");
-  const [dialog, setDialog] = useState<"edit" | "archive" | "interaction" | "affiliation" | null>(
+  const [dialog, setDialog] = useState<RecordChangeDialog | "interaction" | "affiliation" | null>(
     null,
   );
-  const state = resourceState(query);
-  const data = state.data;
-  if (!data || state.error)
-    return (
-      <CrmResourceState
-        pending={query.isPending}
-        error={query.error}
-        onRetry={() => void query.refetch()}
-      />
-    );
+  const { data, fallback } = crmResource(query);
+  if (!data) return fallback;
   const { profile, affiliations, level } = data;
   const canEdit = level === "edit" || level === "owner";
   const archived = !!data.archivedAt;
+  const change = recordChangeDialog(dialog);
   const canChange = canEdit && !archived;
   const open = (next: NonNullable<typeof dialog>) => {
     mutation.reset();
@@ -148,33 +143,17 @@ export function ContactDetail({
         </WorkDiscussions>
         <CrmActivity organizationId={organizationId} entityId={entityId} />
       </RecordDetailView>
-      {dialog === "edit" && (
-        <RecordEditor
+      {change && (
+        <RecordChangeDialogs
+          dialog={change}
           kind="contacts"
           organizationId={organizationId}
-          record={profile}
-          accounts={[]}
-          contacts={[]}
-          stages={[]}
-          pending={mutation.isPending}
-          error={mutation.error}
-          onClose={() => setDialog(null)}
-          onSubmit={(write) => mutation.mutate(write, { onSuccess: () => setDialog(null) })}
-        />
-      )}
-      {dialog === "archive" && (
-        <RecordArchive
+          entityId={entityId}
           name={profile.displayName}
           archived={archived}
-          pending={mutation.isPending}
-          error={mutation.error}
+          record={profile}
+          mutation={mutation}
           onClose={() => setDialog(null)}
-          onConfirm={() =>
-            mutation.mutate(
-              { action: "archive", organizationId, entityId, archived: !archived },
-              { onSuccess: () => setDialog(null) },
-            )
-          }
         />
       )}
       {dialog === "interaction" && (

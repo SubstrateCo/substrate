@@ -1,3 +1,4 @@
+import { pictureMutationProps } from "@/components/upload/picture-mutation-props";
 import { PictureUpload } from "@/components/upload/picture-upload";
 import { usePictureMutations } from "@/queries/files/mutations";
 
@@ -13,17 +14,8 @@ export function AgentPicture({
   name: string;
   image: string | null;
 }) {
-  const { upload, remove } = usePictureMutations({ kind: "agent", userId, agentId });
+  const mutations = usePictureMutations({ kind: "agent", userId, agentId });
   return (
-    <PictureUpload
-      kind="avatar"
-      name={name}
-      value={image}
-      uploading={upload.isPending}
-      uploadError={upload.error}
-      onUpload={(input, options) => upload.mutate(input, options)}
-      removing={remove.isPending}
-      onRemove={(options) => remove.mutate(undefined, options)}
-    />
+    <PictureUpload kind="avatar" name={name} value={image} {...pictureMutationProps(mutations)} />
   );
 }

@@ -4,17 +4,15 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { CrmActivity } from "./crm-activity";
-import { CrmResourceState } from "./crm-resource-state";
+import { crmResource } from "./crm-resource-state";
 import { accessLabel } from "./crm-types";
 import { FollowUps } from "./follow-ups";
 import { InteractionRollup } from "./interaction-rollup";
-import { RecordArchive } from "./record-archive";
+import { RecordChangeDialogs, type RecordChangeDialog } from "./record-change-dialogs";
 import { RecordDetailView, DetailProperty } from "./record-detail-view";
-import { RecordEditor } from "./record-editor";
 import { RecordList } from "./record-list";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
 import { contactLink } from "@/lib/navigation/record-links";
-import { resourceState } from "@/lib/resource-state";
 import { accountOptions } from "@/queries/crm/options";
 import { useRecordMutation } from "@/queries/records/mutations";
 
@@ -27,21 +25,13 @@ export function AccountDetail({
 }) {
   const query = useQuery(accountOptions(organizationId, entityId));
   const mutation = useRecordMutation(organizationId, "accounts");
-  const [dialog, setDialog] = useState<"edit" | "archive" | null>(null);
-  const state = resourceState(query);
-  const data = state.data;
-  if (!data || state.error)
-    return (
-      <CrmResourceState
-        pending={query.isPending}
-        error={query.error}
-        onRetry={() => void query.refetch()}
-      />
-    );
+  const [dialog, setDialog] = useState<RecordChangeDialog | null>(null);
+  const { data, fallback } = crmResource(query);
+  if (!data) return fallback;
   const { account, contacts, deals, level } = data;
   const canEdit = level === "edit" || level === "owner";
   const archived = !!account.archivedAt;
-  const open = (next: "edit" | "archive") => {
+  const open = (next: RecordChangeDialog) => {
     mutation.reset();
     setDialog(next);
   };
@@ -125,33 +115,17 @@ export function AccountDetail({
         <CrmActivity organizationId={organizationId} entityId={entityId} />
         <WorkDiscussions organizationId={organizationId} entityId={entityId} />
       </RecordDetailView>
-      {dialog === "edit" && (
-        <RecordEditor
+      {dialog && (
+        <RecordChangeDialogs
+          dialog={dialog}
           kind="accounts"
           organizationId={organizationId}
-          record={account}
-          accounts={[]}
-          contacts={[]}
-          stages={[]}
-          pending={mutation.isPending}
-          error={mutation.error}
-          onClose={() => setDialog(null)}
-          onSubmit={(write) => mutation.mutate(write, { onSuccess: () => setDialog(null) })}
-        />
-      )}
-      {dialog === "archive" && (
-        <RecordArchive
+          entityId={entityId}
           name={account.name}
           archived={archived}
-          pending={mutation.isPending}
-          error={mutation.error}
+          record={account}
+          mutation={mutation}
           onClose={() => setDialog(null)}
-          onConfirm={() =>
-            mutation.mutate(
-              { action: "archive", organizationId, entityId, archived: !archived },
-              { onSuccess: () => setDialog(null) },
-            )
-          }
         />
       )}
     </>

@@ -1,5 +1,6 @@
 import { PictureSettings } from "@/components/settings/profile/picture-settings";
 import type { Project } from "@/components/tasks/types";
+import { pictureMutationProps } from "@/components/upload/picture-mutation-props";
 import { usePictureMutations } from "@/queries/files/mutations";
 
 export function ProjectPicture({
@@ -9,7 +10,7 @@ export function ProjectPicture({
   organizationId: string;
   project: Project;
 }) {
-  const { upload, remove, refresh } = usePictureMutations({
+  const mutations = usePictureMutations({
     kind: "project",
     organizationId,
     projectEntityId: project.entityId,
@@ -21,12 +22,8 @@ export function ProjectPicture({
       description="Shown beside this project’s name. Anyone who can view the project can see its icon."
       kind="project-icon"
       value={project.image}
-      onRetry={() => void refresh()}
-      uploading={upload.isPending}
-      uploadError={upload.error}
-      onUpload={(input, options) => upload.mutate(input, options)}
-      removing={remove.isPending}
-      onRemove={(options) => remove.mutate(undefined, options)}
+      onRetry={() => void mutations.refresh()}
+      {...pictureMutationProps(mutations)}
     />
   );
 }

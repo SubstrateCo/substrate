@@ -4,14 +4,18 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { CrmActivity } from "./crm-activity";
-import { CrmResourceState } from "./crm-resource-state";
+import { crmResource } from "./crm-resource-state";
 import { accessLabel, dealAmount, outcomeLabel } from "./crm-types";
 import { DealTransition } from "./deal-transition";
 import { FollowUps } from "./follow-ups";
 import { InteractionRollup } from "./interaction-rollup";
-import { RecordArchive } from "./record-archive";
+import {
+  RecordChangeDialogs,
+  recordChangeDialog,
+  type RecordChangeDialog,
+} from "./record-change-dialogs";
 import { RecordDetailView, DetailProperty } from "./record-detail-view";
-import { RecordEditor, type RecordDraft } from "./record-editor";
+import type { RecordDraft } from "./record-editor";
 import type { getDeal } from "@/api/crm/requests";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
 import { Timestamp } from "@/components/time/timestamp";
@@ -34,23 +38,16 @@ export function DealDetail({
   const query = useQuery(dealOptions(organizationId, entityId));
   const pipeline = useQuery(pipelineOptions(organizationId));
   const mutation = useRecordMutation(organizationId, "deals");
-  const [dialog, setDialog] = useState<"edit" | "archive" | "transition" | null>(null);
+  const [dialog, setDialog] = useState<RecordChangeDialog | "transition" | null>(null);
   const [editingRecord, setEditingRecord] = useState<RecordDraft | null>(null);
   const accounts = useQuery({ ...accountsOptions(organizationId), enabled: dialog === "edit" });
   const contacts = useQuery({ ...contactsOptions(organizationId), enabled: dialog === "edit" });
-  const state = resourceState(query);
-  const data = state.data;
-  if (!data || state.error)
-    return (
-      <CrmResourceState
-        pending={query.isPending}
-        error={query.error}
-        onRetry={() => void query.refetch()}
-      />
-    );
+  const { data, fallback } = crmResource(query);
+  if (!data) return fallback;
   const { deal, contacts: participants, level } = data;
   const canEdit = level === "edit" || level === "owner";
   const archived = !!deal.archivedAt;
+  const change = recordChangeDialog(dialog);
   const stages = (pipeline.data ?? [])
     .filter((stage) => !stage.retired)
     .map((stage) => ({ value: stage.id, label: stage.name }));
@@ -112,10 +109,14 @@ export function DealDetail({
         <CrmActivity organizationId={organizationId} entityId={entityId} />
         <WorkDiscussions organizationId={organizationId} entityId={entityId} />
       </RecordDetailView>
-      {dialog === "edit" && editingRecord && (
-        <RecordEditor
+      {change && (
+        <RecordChangeDialogs
+          dialog={change}
           kind="deals"
           organizationId={organizationId}
+          entityId={entityId}
+          name={deal.title}
+          archived={archived}
           record={editingRecord}
           accounts={(resourceState(accounts).data ?? []).map((row) => ({
             value: row.entityId,
@@ -126,25 +127,8 @@ export function DealDetail({
             label: contact.displayName,
           }))}
           stages={stages}
-          pending={mutation.isPending}
-          error={mutation.error}
+          mutation={mutation}
           onClose={() => setDialog(null)}
-          onSubmit={(write) => mutation.mutate(write, { onSuccess: () => setDialog(null) })}
-        />
-      )}
-      {dialog === "archive" && (
-        <RecordArchive
-          name={deal.title}
-          archived={archived}
-          pending={mutation.isPending}
-          error={mutation.error}
-          onClose={() => setDialog(null)}
-          onConfirm={() =>
-            mutation.mutate(
-              { action: "archive", organizationId, entityId, archived: !archived },
-              { onSuccess: () => setDialog(null) },
-            )
-          }
         />
       )}
       {dialog === "transition" && (
