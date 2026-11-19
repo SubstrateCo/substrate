@@ -1,3 +1,5 @@
+import type { CrmTimelineMode } from "@substrate/contracts/crm/input";
+
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
@@ -20,9 +22,7 @@ export function InteractionRollup({
   entityId: string;
   kind: "account" | "deal";
 }) {
-  const [mode, setMode] = useState<"participants" | "linked">(
-    kind === "deal" ? "linked" : "participants",
-  );
+  const [mode, setMode] = useState<CrmTimelineMode>(kind === "deal" ? "linked" : "participants");
   const [before, setBefore] = useState<{ beforeOccurredAt: string; beforeEntityId: string } | null>(
     null,
   );

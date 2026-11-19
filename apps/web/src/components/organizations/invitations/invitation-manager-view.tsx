@@ -1,3 +1,5 @@
+import type { OrganizationRole } from "@substrate/contracts/auth/permissions";
+
 import { useState } from "react";
 
 import { ConfirmDialog } from "../../feedback/confirm-dialog";
@@ -9,11 +11,10 @@ import { InvitationTable } from "./invitation-table";
 import { FormMessage } from "@/components/feedback/form-message";
 import { Send } from "lucide-react";
 
-export type InvitationRole = "owner" | "admin" | "member";
 export type InvitationListItem = {
   id: string;
   email: string;
-  role: InvitationRole;
+  role: OrganizationRole;
   status: string;
   expired: boolean;
   expiresAt: Date | string;
@@ -45,7 +46,7 @@ export function InvitationManager({
   loadError?: Error | null;
   framed?: boolean;
   onRetry: () => void;
-  onInvite: (email: string, role: InvitationRole, resend?: boolean) => void;
+  onInvite: (email: string, role: OrganizationRole, resend?: boolean) => void;
   onCancel: (id: string) => void;
 }) {
   const busy = sending || canceling;

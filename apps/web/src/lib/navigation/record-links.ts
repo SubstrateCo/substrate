@@ -1,3 +1,6 @@
+import type { ContextEntityType } from "@substrate/contracts/context/input";
+import type { CrmExport } from "@substrate/contracts/crm/export";
+
 import { linkOptions } from "@tanstack/react-router";
 
 import type { agentPageSections } from "@/components/agent-work/app/agent-sections";
@@ -17,7 +20,7 @@ export function linkedWorkLink(
   link: {
     projectEntityId: string | null;
     contactEntityId?: string | null;
-    entityType: "task" | "project" | "contact" | "account" | "deal" | "contact_interaction";
+    entityType: ContextEntityType;
     entityId: string;
   },
 ) {
@@ -61,11 +64,7 @@ export function contactLink(organizationId: string, recordId?: string) {
   return linkOptions({ to: "/contacts", search: { workspaceId: organizationId, recordId } });
 }
 
-export function recordLink(
-  organizationId: string,
-  kind: "accounts" | "contacts" | "deals",
-  recordId?: string,
-) {
+export function recordLink(organizationId: string, kind: CrmExport["kind"], recordId?: string) {
   return kind === "contacts"
     ? contactLink(organizationId, recordId)
     : crmLink(organizationId, kind, recordId);

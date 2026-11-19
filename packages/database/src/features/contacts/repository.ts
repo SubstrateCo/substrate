@@ -1,3 +1,4 @@
+import type { RecordArchiveFilter } from "@substrate/contracts/crm/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { contactRepository } from "../../core/contacts/repository";
@@ -41,7 +42,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
         limit?: number;
         afterEntityId?: string;
         search?: string;
-        archived?: "active" | "archived" | "all";
+        archived?: RecordArchiveFilter;
       } = {},
     ) {
       await context.requireActiveActor();

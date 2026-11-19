@@ -1,3 +1,5 @@
+import type { NotificationFilter } from "@substrate/contracts/context/notification-groups";
+
 import { partialMatchKey, type QueryKey } from "@tanstack/react-query";
 
 export const queryKeys = {
@@ -94,7 +96,7 @@ export const queryKeys = {
     [...queryKeys.context(organizationId), "notifications"] as const,
   notificationUnread: (organizationId: string) =>
     [...queryKeys.notifications(organizationId), "unread-status"] as const,
-  notificationGroups: (organizationId: string, filter: "all" | "unread") =>
+  notificationGroups: (organizationId: string, filter: NotificationFilter) =>
     [...queryKeys.notifications(organizationId), "groups", filter] as const,
   // Without a group key, every group's events.
   notificationEvents: (organizationId: string, groupKey?: string) =>

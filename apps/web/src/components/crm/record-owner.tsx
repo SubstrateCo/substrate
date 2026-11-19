@@ -1,4 +1,5 @@
 import type { CrmWrite } from "@substrate/contracts/crm/input";
+import type { PermissionLevel } from "@substrate/contracts/tasks";
 
 import { useId, useState } from "react";
 
@@ -16,7 +17,7 @@ export type RecordOwnerProps = {
   organizationId: string;
   entityId: string;
   name: string;
-  level: "view" | "comment" | "edit" | "owner";
+  level: PermissionLevel;
   record:
     | { kind: "account"; ownerActorEntityId: string }
     | { kind: "deal"; ownerActorEntityId: string; version: number };

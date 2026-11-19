@@ -8,6 +8,7 @@ import { z } from "zod";
  */
 export const agentCallerPolicies = ["owner", "anyone", "ask"] as const;
 export type AgentCallerPolicy = (typeof agentCallerPolicies)[number];
+export type AgentCallMode = Exclude<AgentCallerPolicy, "owner">;
 
 const id = z.uuid();
 

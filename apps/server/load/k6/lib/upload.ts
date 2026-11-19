@@ -1,3 +1,5 @@
+import type { PictureKind } from "@substrate/contracts/files/pictures";
+
 import { withConnection } from "./connections.ts";
 import { apiUrl, origin } from "./data.ts";
 import { trace } from "./debug.ts";
@@ -112,7 +114,7 @@ export async function pictureContent(path: string) {
  * the picture URL to save, or null.
  */
 export async function uploadPicture(
-  purpose: "avatar" | "organization-logo" | "project-icon",
+  purpose: PictureKind,
   bytes: ArrayBuffer,
   fields: Record<string, string> = {},
 ) {

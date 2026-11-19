@@ -1,5 +1,6 @@
 import { sessionKeys, type AgentWakeMessageKind } from "@substrate/contracts/agent-work";
 import { agentTriggerPrecedence } from "@substrate/contracts/agents";
+import type { ConversationKind } from "@substrate/contracts/messaging/input";
 
 /**
  * Why an owner message wakes one of the owner's agents, if it does: the first matching kind in
@@ -22,7 +23,7 @@ export function wakeKind(agent: {
 
 /** One session per DM conversation; elsewhere one per thread, keyed by its root. */
 export function wakeSessionKey(
-  conversationKind: "dm" | "group" | "channel",
+  conversationKind: ConversationKind,
   message: { id: string; conversationId: string; threadId: string | null },
 ) {
   return conversationKind === "dm"

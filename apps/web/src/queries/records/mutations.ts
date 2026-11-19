@@ -1,5 +1,6 @@
 import type { ContactWrite } from "@substrate/contracts/contacts/input";
 import type { InteractionWrite } from "@substrate/contracts/context/interactions";
+import type { CrmExport } from "@substrate/contracts/crm/export";
 import type { CrmWrite } from "@substrate/contracts/crm/input";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -12,7 +13,7 @@ import { mutateCrm } from "@/api/crm/requests";
 export type RecordWrite = ContactWrite | CrmWrite | InteractionWrite;
 
 // Shared record editors also expose CRM relationships and context actions.
-export function useRecordMutation(organizationId: string, kind: "accounts" | "contacts" | "deals") {
+export function useRecordMutation(organizationId: string, kind: CrmExport["kind"]) {
   const client = useQueryClient();
   return useMutation({
     mutationFn: async (data: RecordWrite) => {

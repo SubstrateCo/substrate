@@ -1,4 +1,4 @@
-import { organizationId } from "../workspace";
+import { organizationId } from "../workspace.ts";
 import { z } from "zod";
 
 export const MAX_ATTACHMENTS = 10;

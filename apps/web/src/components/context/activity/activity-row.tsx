@@ -1,3 +1,5 @@
+import type { ConversationKind } from "@substrate/contracts/messaging/input";
+
 import { Link } from "@tanstack/react-router";
 
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
@@ -16,7 +18,7 @@ export type ActivityEvent = {
   source: {
     link: RecordLink;
     conversationName: string | null;
-    conversationKind?: "channel" | "dm" | "group";
+    conversationKind?: ConversationKind;
     private?: boolean;
   } | null;
 };

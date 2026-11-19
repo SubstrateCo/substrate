@@ -1,8 +1,9 @@
+import type { OrganizationRole } from "@substrate/contracts/auth/permissions";
+
 import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
 
 import { authClient } from "@/lib/auth/client";
 import { unwrap } from "@/lib/auth/result";
-import type { OrganizationRole } from "@/lib/organizations/member-policy";
 import { queryKeys } from "@/queries/keys";
 
 // Names, roles, and membership show in the switcher, the frame, and member lists. The detail

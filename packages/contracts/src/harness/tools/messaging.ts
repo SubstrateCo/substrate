@@ -1,9 +1,9 @@
 import { proposalAction, proposalSummary } from "../../agent-work/proposals.ts";
 import { agentAsk } from "../../agent-work/requests.ts";
+import { conversationKind } from "../../messaging/input.ts";
 import { author, excerpt, id, page, pageInput, requestId, timed, timestamp } from "./shared.ts";
 import { z } from "zod";
 
-const kind = z.enum(["dm", "group", "channel"]);
 const message = z.object({ id, author, body: z.string(), createdAt: timestamp });
 
 /** What reply returns. The place is always the posted message's own conversation and thread. */
@@ -26,13 +26,20 @@ export const messagingTools = {
     input: z
       .object({
         ...pageInput,
-        kind: kind.optional(),
+        kind: conversationKind.optional(),
         activeSince: timestamp
           .optional()
           .describe("Return only conversations with activity at or after this time (ISO 8601)."),
       })
       .strict(),
-    output: page(z.object({ id, kind, name: z.string(), lastActivityAt: timestamp.nullable() })),
+    output: page(
+      z.object({
+        id,
+        kind: conversationKind,
+        name: z.string(),
+        lastActivityAt: timestamp.nullable(),
+      }),
+    ),
   },
   read_conversation: {
     title: "Read conversation",

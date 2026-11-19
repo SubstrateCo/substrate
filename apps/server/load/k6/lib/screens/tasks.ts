@@ -1,3 +1,5 @@
+import type { PermissionLevel, TaskPriority, TaskStatus } from "@substrate/contracts/tasks";
+
 import { currentView, mount, navigate, settleInactive, unmount } from "../client-cache.ts";
 import { call } from "../http.ts";
 import { keys } from "../keys.ts";
@@ -9,10 +11,6 @@ import { hidePictures, showPictures } from "./pictures.ts";
  * pane, its Discussions tab, and the task inspector. Each function mounts what its pane mounts,
  * through the cache. Writes are in task-writes.ts.
  */
-
-export type TaskStatus = "not_started" | "in_progress" | "in_review" | "completed" | "canceled";
-export type TaskPriority = "none" | "low" | "medium" | "high" | "urgent";
-export type Level = "view" | "comment" | "edit" | "owner";
 
 export interface Project {
   entityId: string;
@@ -45,7 +43,7 @@ interface TaskLink {
 
 export interface ProjectDetail {
   project: Project;
-  level: Level;
+  level: PermissionLevel;
   members: { actorEntityId: string; type: "human" | "agent"; image: string | null }[];
   actors: {
     entityId: string;

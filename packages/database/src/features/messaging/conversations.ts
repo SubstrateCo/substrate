@@ -1,3 +1,4 @@
+import type { ConversationKind } from "@substrate/contracts/messaging/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
@@ -39,7 +40,7 @@ import { queueSharingInvitations } from "./sharing/invitations";
 import { and, asc, countDistinct, eq, inArray, isNull, ne, or } from "drizzle-orm";
 
 interface CreateConversationInput {
-  kind: "dm" | "group" | "channel";
+  kind: ConversationKind;
   name?: string;
   private?: boolean;
   emails?: string[];
@@ -535,4 +536,5 @@ export function conversationOperations(
     },
   };
 }
+
 import { messagingSession } from "../../core/session/messaging";

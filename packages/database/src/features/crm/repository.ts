@@ -1,4 +1,5 @@
 import type { CrmActivityInput } from "@substrate/contracts/crm/activity";
+import type { RecordArchiveFilter } from "@substrate/contracts/crm/input";
 import { accountFields, dealFields, crmWrite } from "@substrate/contracts/crm/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
@@ -34,7 +35,7 @@ type ListOptions = {
   limit?: number;
   afterEntityId?: string;
   search?: string;
-  archived?: "active" | "archived" | "all";
+  archived?: RecordArchiveFilter;
 };
 type DealInput = z.input<typeof dealFields>;
 type Transition = Extract<z.output<typeof crmWrite>, { action: "transitionDeal" }>;

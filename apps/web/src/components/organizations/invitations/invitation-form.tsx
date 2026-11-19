@@ -1,3 +1,5 @@
+import type { OrganizationRole } from "@substrate/contracts/auth/permissions";
+
 import { useId, useRef, useState } from "react";
 
 import { ConfirmDialog } from "../../feedback/confirm-dialog";
@@ -6,7 +8,6 @@ import { useNativeValidation } from "../../forms/use-native-validation";
 import { Field, FieldDescription, FieldError, FieldLabel } from "../../ui/field";
 import { Input } from "../../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
-import type { InvitationRole } from "./invitation-manager-view";
 import { organizationRoles } from "@/lib/organizations/member-policy";
 
 // On wide screens the fields share one subgrid: labels, then controls, then errors and hints.
@@ -22,11 +23,11 @@ export function InvitationForm({
 }: {
   sending: boolean;
   disabled: boolean;
-  onInvite: (email: string, role: InvitationRole) => void;
+  onInvite: (email: string, role: OrganizationRole) => void;
 }) {
   const id = useId();
   const inviteButton = useRef<HTMLButtonElement>(null);
-  const [role, setRole] = useState<InvitationRole>("member");
+  const [role, setRole] = useState<OrganizationRole>("member");
   // Owner invitations grant full control, so they are confirmed first.
   const [ownerInvite, setOwnerInvite] = useState<string>();
   const validation = useNativeValidation();

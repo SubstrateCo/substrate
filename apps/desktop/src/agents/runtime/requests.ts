@@ -9,8 +9,11 @@ import {
   type AgentRequestResponse,
   type NativeRequestData,
 } from "@substrate/contracts/agent-work";
+import type { HarnessEventBody } from "@substrate/contracts/harness";
 
 import type { LiveTurn, RuntimeContext } from "./context.ts";
+
+type RequestOpened = Extract<HarnessEventBody, { type: "request.opened" }>;
 
 interface OpenRequest {
   serverId: string | null;
@@ -18,7 +21,7 @@ interface OpenRequest {
   turnId: string;
   sessionId: string;
   userAgentId: string;
-  kind: "permission" | "input";
+  kind: RequestOpened["kind"];
   data: NativeRequestData;
   payload: AgentRequestPayload;
   live: LiveTurn;
@@ -84,10 +87,7 @@ export function createRequestBridge(context: RuntimeContext) {
   }
 
   return {
-    async opened(
-      live: LiveTurn,
-      event: { requestId: string; kind: "permission" | "input"; data: unknown },
-    ) {
+    async opened(live: LiveTurn, event: Pick<RequestOpened, "requestId" | "kind" | "data">) {
       const data = nativeRequestData.parse(event.data);
       const payload = normalizeHarnessRequest(live.harness, event.kind, data);
       const now = context.now();

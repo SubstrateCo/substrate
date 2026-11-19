@@ -1,4 +1,5 @@
 import { agentTriggerKinds } from "../agents/triggers.ts";
+import { conversationKind } from "../messaging/input.ts";
 import { agentInvocationKinds } from "./invocations.ts";
 import { proposalOutcome } from "./proposals.ts";
 import {
@@ -149,7 +150,7 @@ export const agentSourceMessage = z.object({
   conversationId: ref,
   threadId: ref.nullable(),
   conversationName: z.string(),
-  conversationKind: z.enum(["dm", "group", "channel"]),
+  conversationKind,
   author: z.object({
     actorId: ref,
     name: z.string(),

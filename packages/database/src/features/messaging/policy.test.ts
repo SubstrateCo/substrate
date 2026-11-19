@@ -1,4 +1,4 @@
-import { messagingLimits } from "@substrate/contracts/messaging/input";
+import { messagingLimits, type ConversationKind } from "@substrate/contracts/messaging/input";
 
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import {
@@ -12,7 +12,6 @@ import {
   validateCreate,
   validateEmoji,
   validateExternalInvitations,
-  type ConversationKind,
   type Viewer,
 } from "./policy";
 import { describe, expect, test } from "bun:test";

@@ -1,3 +1,5 @@
+import type { ConversationKind } from "@substrate/contracts/messaging/input";
+
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { PaneState } from "@/components/feedback/pane-state";
 import { StaleNotice } from "@/components/feedback/stale-notice";
@@ -22,7 +24,7 @@ import { Hash, LockKeyhole, UserPlus, Users } from "lucide-react";
 
 export interface ManagedConversationRow {
   id: string;
-  kind: "dm" | "group" | "channel";
+  kind: ConversationKind;
   name: string | null;
   private: boolean;
   ownerName: string;

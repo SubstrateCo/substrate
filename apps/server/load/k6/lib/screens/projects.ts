@@ -1,8 +1,10 @@
+import type { PermissionLevel } from "@substrate/contracts/tasks";
+
 import { cached, invalidate } from "../client-cache.ts";
 import { call } from "../http.ts";
 import { keys, type HintTarget, type QueryKey } from "../keys.ts";
 import type { World } from "../world.ts";
-import type { Level, ProjectDetail } from "./tasks.ts";
+import type { ProjectDetail } from "./tasks.ts";
 import { boards } from "./tasks.ts";
 
 /**
@@ -14,7 +16,7 @@ import { boards } from "./tasks.ts";
 type ProjectWrite =
   | { action: "createProject"; name: string; description?: string }
   | { action: "updateProject"; projectEntityId: string; name: string; description: string }
-  | { action: "share"; projectEntityId: string; actorEntityId: string; level: Level }
+  | { action: "share"; projectEntityId: string; actorEntityId: string; level: PermissionLevel }
   | { action: "revoke"; projectEntityId: string; actorEntityId: string };
 
 function targets(org: string, input: ProjectWrite, id: string): (QueryKey | HintTarget)[] {

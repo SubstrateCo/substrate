@@ -1,12 +1,9 @@
+import type { PermissionLevel } from "@substrate/contracts/tasks";
+
 import { useId } from "react";
 
 import { TaskAssigneeAvatar } from "../../task-cues/task-assignee-avatar";
-import {
-  projectPermissionLabels,
-  projectPermissionOptions,
-  type ProjectDetail,
-  type ProjectPermission,
-} from "../../types";
+import { projectPermissionLabels, projectPermissionOptions, type ProjectDetail } from "../../types";
 import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
 import {
   Select,
@@ -34,7 +31,7 @@ export function ProjectMemberRow({
   canManage: boolean;
   lastOwner: boolean;
   pending: boolean;
-  onChange: (level: ProjectPermission) => void;
+  onChange: (level: PermissionLevel) => void;
   onRemove: () => void;
 }) {
   const labelId = useId();

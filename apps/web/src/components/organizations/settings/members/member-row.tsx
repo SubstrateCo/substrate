@@ -1,3 +1,5 @@
+import type { OrganizationRole } from "@substrate/contracts/auth/permissions";
+
 import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
@@ -9,12 +11,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import {
-  organizationRoles,
-  primaryRole,
-  roleLabel,
-  type OrganizationRole,
-} from "@/lib/organizations/member-policy";
+import { organizationRoles, primaryRole, roleLabel } from "@/lib/organizations/member-policy";
 import { cn } from "cn";
 import { UserMinus } from "lucide-react";
 

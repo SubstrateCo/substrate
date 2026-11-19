@@ -1,3 +1,5 @@
+import type { ConversationKind } from "@substrate/contracts/messaging/input";
+
 import { invalidate, mount, navigate, unmount } from "../client-cache.ts";
 import { call } from "../http.ts";
 import { keys } from "../keys.ts";
@@ -12,7 +14,7 @@ import type { World } from "../world.ts";
 
 export interface SharingDetails {
   host: boolean;
-  kind: "dm" | "group" | "channel";
+  kind: ConversationKind;
   connections: { organizationId: string; disconnectedAt: string | null }[];
   invitations: { id: string; email: string; status: string; senderOrganizationId: string }[];
   participants: { actorId: string; organizationId: string }[];

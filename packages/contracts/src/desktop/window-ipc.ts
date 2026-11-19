@@ -7,3 +7,4 @@ export const methods = {
   setTheme: { input: z.enum(["light", "dark", "system"]) },
 };
 export type WindowMethods = BridgeAPI<typeof methods>;
+export type Theme = Parameters<WindowMethods["setTheme"]>[0];

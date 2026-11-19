@@ -1,3 +1,5 @@
+import type { NotificationFilter } from "@substrate/contracts/context/notification-groups";
+
 import { useInfiniteQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -20,7 +22,7 @@ export function NotificationList({
   organizationId: string;
   onClose?: () => void;
 }) {
-  const [filter, setFilter] = useState<"all" | "unread">("all");
+  const [filter, setFilter] = useState<NotificationFilter>("all");
   const feed = useInfiniteQuery(notificationGroupsOptions(organizationId, filter));
   const resource = resourceState(feed);
   const navigate = useNavigate();

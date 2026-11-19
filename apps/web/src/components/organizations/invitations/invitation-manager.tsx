@@ -1,10 +1,9 @@
+import type { OrganizationRole } from "@substrate/contracts/auth/permissions";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
-import {
-  InvitationManager as InvitationManagerView,
-  type InvitationRole,
-} from "@/components/organizations/invitations/invitation-manager-view";
+import { InvitationManager as InvitationManagerView } from "@/components/organizations/invitations/invitation-manager-view";
 import { useExpiryTime } from "@/hooks/use-expiry-time";
 import { resourceState } from "@/lib/resource-state";
 import { useInvitationMutations } from "@/queries/organizations/invitation-mutations";
@@ -24,7 +23,7 @@ export function InvitationManager({
   const { invite, cancel } = useInvitationMutations(organizationId);
   const { mutate: sendInvite, reset: resetInvite } = invite;
   const { mutate: cancelInvite, reset: resetCancel } = cancel;
-  const onInvite = (email: string, role: InvitationRole, resend?: boolean) => {
+  const onInvite = (email: string, role: OrganizationRole, resend?: boolean) => {
     resetCancel();
     sendInvite(
       { email, role, resend },

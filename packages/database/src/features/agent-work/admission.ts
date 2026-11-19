@@ -11,6 +11,7 @@ import {
   type AgentWakeSourceRef,
 } from "@substrate/contracts/agent-work";
 import type { AgentCallerPolicy } from "@substrate/contracts/agents";
+import type { ConversationKind } from "@substrate/contracts/messaging/input";
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
@@ -49,7 +50,7 @@ export type MessageTrigger = {
   organizationId: string;
   author: { kind: "human"; userId: string } | { kind: "agent"; actorEntityId: string };
   message: { id: string; conversationId: string; threadId: string | null; body: string };
-  conversationKind: "dm" | "group" | "channel";
+  conversationKind: ConversationKind;
 };
 
 /** The owner decided an agent's request: an answer, or a proposal result. */

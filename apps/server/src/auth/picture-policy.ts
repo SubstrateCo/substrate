@@ -1,4 +1,8 @@
-import { managedPicture, profilePicturePath } from "@substrate/contracts/files/pictures";
+import {
+  managedPicture,
+  profilePicturePath,
+  type PictureKind,
+} from "@substrate/contracts/files/pictures";
 import { AccessDeniedError } from "@substrate/database";
 import type { StorageRepository } from "@substrate/database/storage";
 
@@ -28,7 +32,7 @@ export function protectUserPicture<T extends object>(input: T, creating = false)
 }
 
 export interface PictureMutation {
-  purpose: "avatar" | "organization-logo";
+  purpose: Exclude<PictureKind, "project-icon">;
   url: string | null;
   organizationId: string | undefined;
 }

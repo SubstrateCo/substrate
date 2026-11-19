@@ -1,3 +1,5 @@
+import type { InteractionKind } from "@substrate/contracts/context/interactions";
+
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
@@ -63,9 +65,7 @@ function PublicationEditor({
   const related = useQuery(relatedContextOptions(organizationId, contactEntityId));
   const mutation = useInteractionMutation(organizationId);
   const [messageId, setMessageId] = useState("");
-  const [kind, setKind] = useState<"message" | "email" | "meeting" | "call" | "note" | "other">(
-    "message",
-  );
+  const [kind, setKind] = useState<InteractionKind>("message");
   const [consent, setConsent] = useState(false);
   const seen = new Set<string>();
   const sources = (resourceState(related).data ?? []).filter((row) => {
@@ -197,4 +197,4 @@ const publicationKinds = [
   { value: "call", label: "Call" },
   { value: "note", label: "Internal note" },
   { value: "other", label: "Other" },
-] satisfies { value: "message" | "email" | "meeting" | "call" | "note" | "other"; label: string }[];
+] satisfies { value: InteractionKind; label: string }[];

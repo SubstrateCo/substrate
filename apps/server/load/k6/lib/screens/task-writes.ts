@@ -1,3 +1,5 @@
+import type { TaskPriority, TaskStatus } from "@substrate/contracts/tasks";
+
 import { cached, invalidate, mount, unmount } from "../client-cache.ts";
 import { call } from "../http.ts";
 import { keys, type HintTarget, type QueryKey } from "../keys.ts";
@@ -11,8 +13,6 @@ import {
   settleTask,
   type ProjectDetail,
   type Task,
-  type TaskPriority,
-  type TaskStatus,
 } from "./tasks.ts";
 
 /** The task fields a form or an inline control can send. */

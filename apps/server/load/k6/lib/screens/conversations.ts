@@ -1,3 +1,5 @@
+import type { ConversationKind } from "@substrate/contracts/messaging/input";
+
 import { invalidate, mount, removeInactive, settleInactive, unmount } from "../client-cache.ts";
 import { call } from "../http.ts";
 import { keys } from "../keys.ts";
@@ -33,7 +35,7 @@ const searches = (org: string) =>
 /** Creates a channel, group or DM (create-conversation-dialog.tsx). Resolves its ID. */
 export async function createConversation(
   world: World,
-  input: { kind: "dm" | "group" | "channel"; name?: string; private?: boolean; emails: string[] },
+  input: { kind: ConversationKind; name?: string; private?: boolean; emails: string[] },
 ) {
   const org = world.organizationId;
   const created = await call<{ id: string }>("messaging.conversations.create", {

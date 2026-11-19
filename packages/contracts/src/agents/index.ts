@@ -23,6 +23,7 @@ export {
   saveCallerPolicyInput,
   type AgentCallerInput,
   type AgentCallerPolicy,
+  type AgentCallMode,
   type AgentCallers,
   type AgentCallerView,
   type SaveCallerPolicyInput,

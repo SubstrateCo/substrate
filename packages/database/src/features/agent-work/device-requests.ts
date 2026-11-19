@@ -4,6 +4,7 @@ import {
   type AgentRequestDelivery,
   type AgentRequestOpened,
   type AgentRequestPayload,
+  type OpenRequestKind,
 } from "@substrate/contracts/agent-work";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
@@ -22,7 +23,7 @@ export interface OpenRequestInput {
   sessionKey: string;
   turnId: string;
   epoch: number;
-  kind: "permission" | "question";
+  kind: OpenRequestKind;
   mode: "blocking";
   nativeRequestId: string;
   anchorMessageId?: string;

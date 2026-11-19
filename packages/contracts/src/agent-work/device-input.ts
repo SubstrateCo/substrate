@@ -74,10 +74,13 @@ export const openRequestInput = z.strictObject({
   payload: z.discriminatedUnion("type", [approvalPayload, questionsPayload]),
 });
 
+export type OpenRequestKind = z.output<typeof openRequestInput>["kind"];
+
 export const closeRequestInput = z.strictObject({
   ...device,
   requestId: id,
   status: z.enum(["delivered", "cancelled", "expired", "orphaned"]),
 });
+export type CloseRequestStatus = z.output<typeof closeRequestInput>["status"];
 
 export const requestAnswersInput = z.strictObject(device);

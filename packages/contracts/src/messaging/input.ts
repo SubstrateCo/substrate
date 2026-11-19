@@ -1,5 +1,5 @@
-import { attachmentFileIds } from "../files/attachments";
-import { organizationId } from "../workspace";
+import { attachmentFileIds } from "../files/attachments.ts";
+import { organizationId } from "../workspace.ts";
 import { z } from "zod";
 
 /** Input limits. The server validates them here, and the database service applies the same. */
@@ -7,6 +7,8 @@ export const messagingLimits = { recipients: 30, agents: 20, body: 20_000, emoji
 
 const id = z.uuid();
 const emails = z.array(z.email().max(320)).max(messagingLimits.recipients);
+export const conversationKind = z.enum(["dm", "group", "channel"]);
+export type ConversationKind = z.infer<typeof conversationKind>;
 
 export const workspaceInput = z.object({ organizationId });
 export const conversationListInput = workspaceInput.extend({ conversationId: id.optional() });
@@ -17,7 +19,7 @@ export const messageListInput = workspaceInput.extend({
   aroundMessageId: id.optional(),
 });
 export const conversationInput = workspaceInput.extend({
-  kind: z.enum(["dm", "group", "channel"]),
+  kind: conversationKind,
   name: z.string().trim().min(1).max(80).optional(),
   private: z.boolean().optional(),
   emails: emails.optional(),

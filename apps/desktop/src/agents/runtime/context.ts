@@ -5,6 +5,7 @@ import type {
   HarnessCommand,
   HarnessCommandResult,
   HarnessKind,
+  TurnKind,
   Usage,
 } from "@substrate/contracts/harness";
 
@@ -64,7 +65,7 @@ export interface LiveTurn {
   userAgentId: string;
   folderKey: string;
   harness: HarnessKind;
-  kind: "interactive" | "unattended";
+  kind: TurnKind;
   generation: number;
   epoch: number;
   handoff: boolean;

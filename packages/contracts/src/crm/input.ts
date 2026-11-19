@@ -1,4 +1,4 @@
-import { taskStatusValues, taskPriorityValues } from "../tasks/status.ts";
+import { taskStatusValues, taskPriorityValues, permissionLevels } from "../tasks/status.ts";
 import { organizationId } from "../workspace.ts";
 import { crmReportFilters } from "./report-input.ts";
 import { z } from "zod";
@@ -10,6 +10,7 @@ export const crmList = crmWorkspace.extend({
   search: z.string().trim().max(200).optional(),
   archived: z.enum(["active", "archived", "all"]).default("active"),
 });
+export type RecordArchiveFilter = z.output<typeof crmList>["archived"];
 export const crmRecord = crmWorkspace.extend({ entityId: z.uuid() });
 export const crmContact = crmWorkspace.extend({ contactEntityId: z.uuid() });
 export const crmTimeline = crmRecord
@@ -23,6 +24,7 @@ export const crmTimeline = crmRecord
     (value) => Boolean(value.beforeOccurredAt) === Boolean(value.beforeEntityId),
     "Supply both timeline cursor fields.",
   );
+export type CrmTimelineMode = z.output<typeof crmTimeline>["mode"];
 export const crmReport = crmWorkspace.extend({
   ...crmReportFilters.shape,
   from: z.iso.datetime(),
@@ -127,7 +129,8 @@ export const crmWrite = z.discriminatedUnion("action", [
   crmRecord.extend({
     action: z.literal("share"),
     actorEntityId: z.uuid(),
-    level: z.enum(["view", "comment", "edit", "owner"]),
+    level: z.enum(permissionLevels),
   }),
 ]);
 export type CrmWrite = z.output<typeof crmWrite>;
+export type DealOutcome = Extract<CrmWrite, { action: "transitionDeal" }>["outcome"];

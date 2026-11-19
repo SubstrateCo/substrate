@@ -1,3 +1,4 @@
+import type { AgentCallMode } from "@substrate/contracts/agents";
 import { managedPicture, managedPicturePath } from "@substrate/contracts/files/pictures";
 
 import type { DatabaseExecutor } from "../../client";
@@ -30,7 +31,7 @@ interface MessagingProfile {
     harness: string | null;
     model: string | null;
     /** How people other than the owner may call the agent, or null when only the owner may. */
-    callMode: "anyone" | "ask" | null;
+    callMode: AgentCallMode | null;
   } | null;
 }
 

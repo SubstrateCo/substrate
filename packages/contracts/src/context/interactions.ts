@@ -11,6 +11,7 @@ export const interactionFields = z.object({
   endedAt: z.iso.datetime().nullable().optional(),
   summary: z.string().trim().min(1).max(10000),
 });
+export type InteractionKind = z.output<typeof interactionFields>["kind"];
 export const interactionWrite = z.discriminatedUnion("action", [
   workspace.extend({ action: z.literal("createInteraction"), ...interactionFields.shape }),
   workspace.extend({

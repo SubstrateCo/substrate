@@ -1,3 +1,5 @@
+import type { OrganizationRole } from "@substrate/contracts/auth/permissions";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
@@ -15,7 +17,7 @@ export function useInvitationMutations(organizationId: string) {
       resend = false,
     }: {
       email: string;
-      role: "owner" | "admin" | "member";
+      role: OrganizationRole;
       resend?: boolean;
     }) => {
       const result = await authClient.organization.inviteMember({

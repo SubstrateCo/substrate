@@ -1,3 +1,5 @@
+import type { NotificationFilter } from "@substrate/contracts/context/notification-groups";
+
 import { Fragment, type KeyboardEvent, type MouseEvent, type ReactNode } from "react";
 
 import { ContentNotice } from "../../feedback/content-notice";
@@ -67,8 +69,8 @@ export function NotificationList({
   state: ResourceStatus;
   loading: boolean;
   error?: Error | null;
-  filter: "all" | "unread";
-  onFilter: (filter: "all" | "unread") => void;
+  filter: NotificationFilter;
+  onFilter: (filter: NotificationFilter) => void;
   hasMore: boolean;
   loadingMore: boolean;
   onMore: () => void;

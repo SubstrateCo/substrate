@@ -1,3 +1,5 @@
+import type { ConversationKind } from "@substrate/contracts/messaging/input";
+
 import { actors, actorType } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { organization } from "../../core/organizations/schema";
@@ -26,7 +28,7 @@ export const messagingConversations = pgTable(
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
-    kind: text("kind").$type<"dm" | "group" | "channel">().notNull(),
+    kind: text("kind").$type<ConversationKind>().notNull(),
     taskEntityId: uuid("task_entity_id"),
     dmKey: text("dm_key"),
     name: text("name"),

@@ -1,3 +1,5 @@
+import type { ContactIdentifierType } from "@substrate/contracts/contacts/input";
+
 import { useState } from "react";
 
 import type { getContact } from "@/api/contacts/requests";
@@ -130,7 +132,7 @@ function ContactMethodEditor({
   onClose: () => void;
 }) {
   const mutation = useRecordMutation(organizationId, "contacts");
-  const [type, setType] = useState<"email" | "phone">(record?.type ?? "email");
+  const [type, setType] = useState<ContactIdentifierType>(record?.type ?? "email");
   return (
     <Dialog
       open

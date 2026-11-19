@@ -1,4 +1,4 @@
-import { taskStatusValues } from "@substrate/contracts/tasks";
+import { taskStatusValues, type TaskPriority } from "@substrate/contracts/tasks";
 
 import { actors } from "../../core/actors/schema";
 import { entityIdentity } from "../../core/entities/identity";
@@ -17,10 +17,7 @@ export const tasks = pgTable(
     title: text("title").notNull(),
     description: text("description").default("").notNull(),
     status: text("status", { enum: taskStatusValues }).default("not_started").notNull(),
-    priority: text("priority")
-      .$type<"none" | "low" | "medium" | "high" | "urgent">()
-      .default("none")
-      .notNull(),
+    priority: text("priority").$type<TaskPriority>().default("none").notNull(),
     assigneeActorEntityId: uuid("assignee_actor_entity_id"),
     dueDate: date("due_date"),
   },

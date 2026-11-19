@@ -1,3 +1,4 @@
+import type { ConversationKind } from "@substrate/contracts/messaging/input";
 import { taskStatusLabels, type TaskStatus } from "@substrate/contracts/tasks";
 
 import { Link } from "@tanstack/react-router";
@@ -31,7 +32,7 @@ export type SearchResultItem = {
   projectName?: string;
   status?: TaskStatus;
   // Conversation, channel, and message results.
-  conversationKind?: "dm" | "group" | "channel";
+  conversationKind?: ConversationKind;
   conversationName?: string;
   private?: boolean;
   // Message results only: one line with references resolved for the viewer.

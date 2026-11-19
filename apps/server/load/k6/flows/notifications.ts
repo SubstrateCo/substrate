@@ -1,3 +1,5 @@
+import type { NotificationFilter } from "@substrate/contracts/context/notification-groups";
+
 import { unmount } from "../lib/client-cache.ts";
 import { config } from "../lib/config.ts";
 import { keys } from "../lib/keys.ts";
@@ -9,7 +11,6 @@ import {
   markNotificationsRead,
   showNotifications,
   type NotificationEvent,
-  type NotificationFilter,
 } from "../lib/screens/notifications.ts";
 import { openProject, openTask, showTasks } from "../lib/screens/tasks.ts";
 import type { World } from "../lib/world.ts";

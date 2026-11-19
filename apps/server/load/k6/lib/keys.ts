@@ -1,3 +1,5 @@
+import type { NotificationFilter } from "@substrate/contracts/context/notification-groups";
+import type { RealtimeScope } from "@substrate/contracts/realtime";
 /**
  * Query keys of the web client (apps/web/src/queries/keys.ts), the subset the load test mounts.
  * The prefixes match the web's, so a hint invalidates the same queries as in the app.
@@ -114,7 +116,7 @@ export const keys = {
     key[keys.messagePages("org", "conversation").length]?.split(",") ?? [],
   notifications: (org: string) => [...context(org), "notifications"],
   notificationUnread: (org: string) => [...keys.notifications(org), "unread-status"],
-  notificationGroups: (org: string, filter: "all" | "unread") => [
+  notificationGroups: (org: string, filter: NotificationFilter) => [
     ...keys.notifications(org),
     "groups",
     filter,
@@ -164,7 +166,7 @@ export interface ChangeEvent {
   organizationId: string | null;
   domain: string;
   conversationId?: string;
-  scope?: "messages" | "reactions" | "read";
+  scope?: RealtimeScope;
   messageId?: string;
   /** null: the main timeline; absent: unknown. */
   threadId?: string | null;

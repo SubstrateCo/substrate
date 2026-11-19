@@ -1,10 +1,12 @@
+import type { PermissionLevel } from "@substrate/contracts/tasks";
+
 import { revalidateLogic, useForm, useSelector } from "@tanstack/react-form";
 
 import type { ReactNode } from "react";
 
 import { TaskAssigneeAvatar } from "../../task-cues/task-assignee-avatar";
 import { TaskSelect } from "../../task-select";
-import { projectPermissionOptions, type ProjectDetail, type ProjectPermission } from "../../types";
+import { projectPermissionOptions, type ProjectDetail } from "../../types";
 import type { FormDialogEditor } from "@/components/feedback/form-dialog";
 import {
   Command,
@@ -17,7 +19,7 @@ import {
 import { Check } from "lucide-react";
 import { z } from "zod";
 
-type ProjectAccessDraft = { actorEntityId: string; level: ProjectPermission };
+type ProjectAccessDraft = { actorEntityId: string; level: PermissionLevel };
 
 /** Choose a workspace person and a level. Sharing happens only when the person confirms. */
 export function ProjectAccessForm({
@@ -30,7 +32,7 @@ export function ProjectAccessForm({
   detail: ProjectDetail;
   pending: boolean;
   error?: Error | null;
-  onShare: (actorEntityId: string, name: string, level: ProjectPermission) => void;
+  onShare: (actorEntityId: string, name: string, level: PermissionLevel) => void;
   renderDialog: (editor: FormDialogEditor) => ReactNode;
 }) {
   // Agents use their owner's access, so only people can be shared with.

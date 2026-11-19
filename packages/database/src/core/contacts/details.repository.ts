@@ -1,3 +1,5 @@
+import type { ContactIdentifierType } from "@substrate/contracts/contacts/input";
+
 import { AccessDeniedError, ConflictError, violatedConstraint } from "../../errors";
 import { RepositoryContext, pageSize } from "../repository-context";
 import { contactAddresses, contactUrls } from "./details.schema";
@@ -61,7 +63,7 @@ export function contactDetailsRepository(context: RepositoryContext) {
     ctx: RepositoryContext,
     table: typeof contactIdentifiers | typeof contactAddresses | typeof contactUrls,
     contactId: string,
-    type?: "email" | "phone",
+    type?: ContactIdentifierType,
   ) {
     await ctx.db
       .update(table)

@@ -1,6 +1,8 @@
+import type { PermissionLevel } from "@substrate/contracts/tasks";
+
 import { useRef, useState } from "react";
 
-import type { ProjectDetail, ProjectPermission } from "../../types";
+import type { ProjectDetail } from "../../types";
 import { ProjectAccessForm } from "./project-access-form";
 import { ProjectMemberRow } from "./project-member-row";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
@@ -12,7 +14,7 @@ import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
 import { UserPlus } from "lucide-react";
 
 const permissionRank = { view: 0, comment: 1, edit: 2, owner: 3 };
-const grantVerbs: Record<ProjectPermission, string> = {
+const grantVerbs: Record<PermissionLevel, string> = {
   view: "view",
   comment: "comment on",
   edit: "edit",
@@ -22,9 +24,9 @@ const grantVerbs: Record<ProjectPermission, string> = {
 export type AccessChange = {
   actorEntityId: string;
   name: string;
-  level: ProjectPermission;
+  level: PermissionLevel;
   /** The level before the change, so a downgrade can be undone. */
-  previous?: ProjectPermission;
+  previous?: PermissionLevel;
 };
 
 /**
@@ -58,7 +60,7 @@ export function ProjectSharing({
   const [review, setReview] = useState<{
     actorEntityId: string;
     name: string;
-    level: ProjectPermission | null;
+    level: PermissionLevel | null;
   } | null>(null);
   const addButton = useRef<HTMLButtonElement>(null);
   const reviewFocus = useFocusReturn(addButton);
@@ -70,7 +72,7 @@ export function ProjectSharing({
       actor.type === "human" &&
       !detail.members.some((member) => member.actorEntityId === actor.entityId),
   );
-  const openReview = (actorEntityId: string, name: string, level: ProjectPermission | null) => {
+  const openReview = (actorEntityId: string, name: string, level: PermissionLevel | null) => {
     reviewFocus.remember();
     onClearError();
     setReview({ actorEntityId, name, level });

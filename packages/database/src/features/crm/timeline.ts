@@ -1,3 +1,5 @@
+import type { CrmTimelineMode } from "@substrate/contracts/crm/input";
+
 import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
 import { contactInteractions } from "../../core/contacts/interactions.schema";
 import { entityLinks } from "../../core/links/schema";
@@ -12,7 +14,7 @@ type Options = {
   limit?: number;
   beforeOccurredAt?: string;
   beforeEntityId?: string;
-  mode?: "participants" | "linked";
+  mode?: CrmTimelineMode;
 };
 export async function timeline(
   context: RepositoryContext,

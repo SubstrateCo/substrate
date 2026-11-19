@@ -1,3 +1,5 @@
+import type { DealOutcome } from "@substrate/contracts/crm/input";
+
 import { useState } from "react";
 
 import { CrmSelect } from "./crm-select";
@@ -35,13 +37,13 @@ export function DealTransition({
   onClose: () => void;
   onSubmit: (
     stageId: string,
-    outcome: "open" | "won" | "lost",
+    outcome: DealOutcome,
     lostReason: string | null,
     requestId: string,
   ) => void;
 }) {
   const [stageId, setStageId] = useState(initialStageId);
-  const [outcome, setOutcome] = useState<"open" | "won" | "lost">(() => {
+  const [outcome, setOutcome] = useState<DealOutcome>(() => {
     if (initialOutcome === "won" || initialOutcome === "lost") return initialOutcome;
     return "open";
   });

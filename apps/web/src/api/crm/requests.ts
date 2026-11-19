@@ -1,4 +1,4 @@
-import type { CrmWrite } from "@substrate/contracts/crm/input";
+import type { CrmTimelineMode, CrmWrite } from "@substrate/contracts/crm/input";
 
 import { api, type ApiInput } from "../client";
 import type { RecordListInput } from "../records/input";
@@ -30,7 +30,7 @@ export const getCrmTimeline = ({
 }: ApiInput<{
   organizationId: string;
   entityId: string;
-  mode: "participants" | "linked";
+  mode: CrmTimelineMode;
   beforeOccurredAt?: string;
   beforeEntityId?: string;
 }>) => readResult(api.crm.timeline.$get({ query: { ...data, limit: "50" } }, { init: { signal } }));

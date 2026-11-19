@@ -1,9 +1,11 @@
+import type { ConversationKind } from "@substrate/contracts/messaging/input";
+
 import { createConversationDraftSchema } from "./create-conversation-validation";
 import { expect, test } from "bun:test";
 
 const person = (email: string) => ({ email });
 type Draft = { name?: string; recipients?: { email: string }[] };
-const messages = (kind: "dm" | "group" | "channel", draft: Draft) =>
+const messages = (kind: ConversationKind, draft: Draft) =>
   createConversationDraftSchema(kind)
     .safeParse({ name: "", recipients: [], isPrivate: false, ...draft })
     .error?.issues.map((issue) => issue.message) ?? [];

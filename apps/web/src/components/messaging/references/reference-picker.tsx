@@ -1,3 +1,4 @@
+import type { AgentCallMode } from "@substrate/contracts/agents";
 import { taskStatusLabels, type TaskStatus } from "@substrate/contracts/tasks";
 
 import { useContext, useEffect, useId, useRef, useState } from "react";
@@ -26,7 +27,7 @@ function optionDescription(item: {
   conversationName?: string;
   projectName?: string;
   status?: TaskStatus;
-  callMode?: "anyone" | "ask";
+  callMode?: AgentCallMode;
 }) {
   if (item.callMode === "ask") return "Calls need the owner’s approval";
   if (item.callMode === "anyone") return "Available to call";
@@ -59,7 +60,7 @@ export function ReferencePicker({
     /** Tasks only: tells tasks with the same title apart. */
     projectName?: string;
     status?: TaskStatus;
-    callMode?: "anyone" | "ask";
+    callMode?: AgentCallMode;
   }[];
   loading?: boolean;
   error?: Error | null;

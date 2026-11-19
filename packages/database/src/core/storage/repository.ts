@@ -1,5 +1,6 @@
 import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
 import type { CreateUploadInput } from "@substrate/contracts/files/input";
+import type { PictureKind } from "@substrate/contracts/files/pictures";
 
 import type { Database, DatabaseExecutor } from "../../client";
 import { AccessDeniedError, ConflictError, violatedConstraint } from "../../errors";
@@ -43,12 +44,12 @@ export function createStorageRepository(
 ) {
   return {
     ...createStorageCleanup(db, fileReferences),
-    requirePictureAccess(scope: StorageScope, purpose: "avatar" | "organization-logo") {
+    requirePictureAccess(scope: StorageScope, purpose: Exclude<PictureKind, "project-icon">) {
       return requireScope(db, scope, purpose);
     },
     async canReadPicture(
       scope: StorageScope,
-      purpose: "avatar" | "organization-logo",
+      purpose: Exclude<PictureKind, "project-icon">,
       ownerId: string,
     ) {
       if (purpose === "avatar" && ownerId === scope.userId) return true;

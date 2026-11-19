@@ -1,3 +1,5 @@
+import type { PictureKind } from "@substrate/contracts/files/pictures";
+
 import { pictureImages } from "../k6/lib/picture-bytes";
 import { api, json, parallel, type Account } from "./client";
 import type { APIRequestContext } from "@playwright/test";
@@ -13,7 +15,7 @@ const image = (index: number) =>
 
 async function upload(
   client: APIRequestContext,
-  purpose: "avatar" | "organization-logo" | "project-icon",
+  purpose: PictureKind,
   index: number,
   fields: Record<string, string> = {},
 ) {

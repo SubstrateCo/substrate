@@ -1,5 +1,7 @@
+import type { AgentCallMode } from "@substrate/contracts/agents";
 import type { ContextSearchBatchKind, ContextSearchKind } from "@substrate/contracts/context/input";
 import { managedPicture, managedPicturePath } from "@substrate/contracts/files/pictures";
+import type { ConversationKind } from "@substrate/contracts/messaging/input";
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
 import { joinActorAccount, joinedActorName } from "../../core/actors/joined-profile";
@@ -64,7 +66,7 @@ interface SearchResult {
   threadId?: string | null;
   conversationName?: string;
   // Conversation results, and message and thread results for their conversation.
-  conversationKind?: "dm" | "group" | "channel";
+  conversationKind?: ConversationKind;
   // Message and thread results only: one line of plain text with references resolved for the
   // viewer, the author's name, and when it was sent.
   excerpt?: string;
@@ -73,7 +75,7 @@ interface SearchResult {
   // Agent results only: the viewer's own agent definition.
   agentId?: string;
   // Agent results only: another person's agent that the viewer may call, and how.
-  callMode?: "anyone" | "ask";
+  callMode?: AgentCallMode;
   // Conversation and channel results only.
   private?: boolean;
   membership?: ChannelMembership;
@@ -668,4 +670,5 @@ export async function contextSearch(
     return excerpt === undefined ? row : { ...row, excerpt };
   });
 }
+
 import type { SessionIdentity } from "../../core/session/identity";

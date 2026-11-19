@@ -5,6 +5,7 @@ import {
   type AgentRequestDelivery,
   type AgentSourcesResult,
   type AgentWakeView,
+  type CloseRequestStatus,
   type openRequestInput,
   type publishStatusInput,
   type sourcesInput,
@@ -63,7 +64,7 @@ export interface AgentWorkServer {
   closeRequest(
     organizationId: string,
     requestId: string,
-    status: "delivered" | "cancelled" | "expired" | "orphaned",
+    status: CloseRequestStatus,
   ): Promise<void>;
   requestAnswers(organizationId: string): Promise<AgentRequestDelivery[]>;
   /** The owner's direct conversation with the agent, created when missing. */

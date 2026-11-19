@@ -1,3 +1,5 @@
+import type { InteractionKind } from "@substrate/contracts/context/interactions";
+
 import { useState } from "react";
 
 import { CrmSelect } from "@/components/crm/crm-select";
@@ -25,15 +27,9 @@ export function InteractionEditor({
   pending: boolean;
   error: Error | null;
   onClose: () => void;
-  onSubmit: (draft: {
-    kind: "email" | "meeting" | "call" | "message" | "note" | "other";
-    occurredAt: string;
-    summary: string;
-  }) => void;
+  onSubmit: (draft: { kind: InteractionKind; occurredAt: string; summary: string }) => void;
 }) {
-  const [kind, setKind] = useState<"email" | "meeting" | "call" | "message" | "note" | "other">(
-    "call",
-  );
+  const [kind, setKind] = useState<InteractionKind>("call");
   return (
     <Dialog
       open
@@ -109,4 +105,4 @@ const kinds = [
   { value: "message", label: "Message" },
   { value: "note", label: "Internal note" },
   { value: "other", label: "Other" },
-] satisfies { value: "email" | "meeting" | "call" | "message" | "note" | "other"; label: string }[];
+] satisfies { value: InteractionKind; label: string }[];

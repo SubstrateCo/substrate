@@ -1,4 +1,5 @@
-export type Theme = "light" | "dark" | "system";
+import type { Theme } from "@substrate/contracts/desktop/window-ipc";
+
 type ColorScheme = "light" | "dark";
 
 function storedTheme(storageKey: string): Theme {

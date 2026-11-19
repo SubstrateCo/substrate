@@ -1,3 +1,5 @@
+import type { CrmTimelineMode } from "@substrate/contracts/crm/input";
+
 import { queryOptions } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
@@ -75,7 +77,7 @@ export const crmSettingsOptions = (organizationId: string) =>
 export const crmTimelineOptions = (
   organizationId: string,
   entityId: string,
-  mode: "participants" | "linked",
+  mode: CrmTimelineMode,
   before: { beforeOccurredAt: string; beforeEntityId: string } | null,
 ) =>
   queryOptions({

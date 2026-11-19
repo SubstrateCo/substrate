@@ -1,3 +1,4 @@
+import type { ConversationKind } from "@substrate/contracts/messaging/input";
 import type { RealtimeHint } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
@@ -14,7 +15,7 @@ export function routeWake(
   db: DatabaseExecutor,
   scope: SessionIdentity,
   message: typeof messagingMessages.$inferSelect,
-  conversationKind: "dm" | "group" | "channel",
+  conversationKind: ConversationKind,
 ): Promise<RealtimeHint[]> {
   return admit(db, [
     {

@@ -1,4 +1,5 @@
 import { taskTools } from "../harness/tools/tasks.ts";
+import { conversationKind } from "../messaging/input.ts";
 import { z } from "zod";
 
 const id = z.uuid();
@@ -46,7 +47,7 @@ export const proposalTargetBasis = z.discriminatedUnion("type", [
     type: z.literal("reply_elsewhere"),
     conversationId: id,
     threadId: id.nullable(),
-    kind: z.enum(["dm", "group", "channel"]),
+    kind: conversationKind,
     private: z.boolean(),
   }),
   z.strictObject({

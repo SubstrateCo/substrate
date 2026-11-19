@@ -1,4 +1,7 @@
-import { notificationPosition } from "@substrate/contracts/context/notification-groups";
+import {
+  notificationPosition,
+  type NotificationFilter,
+} from "@substrate/contracts/context/notification-groups";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
@@ -56,7 +59,7 @@ export function createNotificationGroups(
 ) {
   const { db } = ctx;
   return {
-    async groups({ after, limit, filter }: Page & { filter: "all" | "unread" }) {
+    async groups({ after, limit, filter }: Page & { filter: NotificationFilter }) {
       const rows = await db.execute<{
         id: string;
         at: string;

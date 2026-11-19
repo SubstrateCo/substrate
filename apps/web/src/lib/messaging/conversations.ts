@@ -1,3 +1,5 @@
+import type { ConversationKind } from "@substrate/contracts/messaging/input";
+
 import type { listConversations } from "@/api/messaging/requests";
 
 /**
@@ -30,7 +32,7 @@ export function conversationName(
 }
 
 export type ConversationVisibility = {
-  kind: "dm" | "group" | "channel";
+  kind: ConversationKind;
   /** Private channels, DMs, and groups are private. Only a public channel has a "#" name. */
   private?: boolean;
 };

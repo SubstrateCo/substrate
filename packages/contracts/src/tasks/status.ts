@@ -13,6 +13,7 @@ export type TaskPriority = (typeof taskPriorityValues)[number];
 
 /** Entity grant levels, weakest first. The database enum uses this order. */
 export const permissionLevels = ["view", "comment", "edit", "owner"] as const;
+export type PermissionLevel = (typeof permissionLevels)[number];
 
 export const taskStatusLabels: Record<TaskStatus, string> = {
   not_started: "Not started",

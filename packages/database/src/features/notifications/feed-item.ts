@@ -1,3 +1,5 @@
+import type { ConversationKind } from "@substrate/contracts/messaging/input";
+
 export interface FeedRow {
   id: string;
   kind: "assignment" | "mention" | "reply" | "message";
@@ -12,7 +14,7 @@ export interface FeedRow {
   /** The visible conversation, as the recipient sees it, and the message excerpt. */
   conversation: {
     name: string;
-    kind: "dm" | "group" | "channel";
+    kind: ConversationKind;
     private: boolean;
     excerpt: string;
   } | null;

@@ -1,3 +1,5 @@
+import type { NotificationFilter } from "@substrate/contracts/context/notification-groups";
+
 import { cached, invalidate, mount, navigate, unmount } from "../client-cache.ts";
 import { trace } from "../debug.ts";
 import { call } from "../http.ts";
@@ -25,7 +27,6 @@ interface Page<T> {
   items: T[];
   nextCursor: string | null;
 }
-export type NotificationFilter = "all" | "unread";
 const groupQueries = new Map<string, { key: QueryKey; filter: NotificationFilter }>();
 const eventQueries = new Map<string, { key: QueryKey; groupKey: string }>();
 

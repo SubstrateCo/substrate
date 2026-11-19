@@ -30,5 +30,6 @@ const page = z.object({
 export const notificationGroupsInput = page.extend({
   filter: z.enum(["all", "unread"]).default("all"),
 });
+export type NotificationFilter = z.output<typeof notificationGroupsInput>["filter"];
 export const notificationGroupEventsInput = page.extend({ groupKey });
 export const notificationGroupReadInput = z.object({ organizationId, groupKey, through: cursor });

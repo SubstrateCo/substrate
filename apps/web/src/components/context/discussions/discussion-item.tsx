@@ -1,3 +1,5 @@
+import type { ConversationKind } from "@substrate/contracts/messaging/input";
+
 import { Link } from "@tanstack/react-router";
 
 import { useCallback, useId, useState } from "react";
@@ -17,7 +19,7 @@ export type Discussion = {
   purpose: "source" | "mention" | "association";
   link: RecordLink;
   conversationName: string | null;
-  conversationKind?: "channel" | "dm" | "group";
+  conversationKind?: ConversationKind;
   private?: boolean;
   authorName: string | null;
   authorImage?: string | null;

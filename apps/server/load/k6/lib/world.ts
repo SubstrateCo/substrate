@@ -1,3 +1,5 @@
+import type { ConversationKind } from "@substrate/contracts/messaging/input";
+
 import type { LoadUser } from "../../types.ts";
 import type { LinkableWork } from "./screens/connected-work.ts";
 
@@ -13,7 +15,7 @@ interface ConversationMember {
 
 export interface Conversation {
   id: string;
-  kind: "dm" | "group" | "channel";
+  kind: ConversationKind;
   name: string;
   private: boolean;
   joined: boolean;

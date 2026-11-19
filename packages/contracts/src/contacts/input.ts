@@ -37,6 +37,7 @@ export const contactIdentifierFields = z.object({
     .optional(),
   countryCode: z.string().length(2).optional(),
 });
+export type ContactIdentifierType = z.output<typeof contactIdentifierFields>["type"];
 const addressText = z.string().trim().min(1).max(1000).nullable().optional();
 export const contactAddressFields = z.object({
   ...detailFields,

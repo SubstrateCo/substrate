@@ -1,4 +1,5 @@
 import { contactWrite } from "@substrate/contracts/contacts/input";
+import type { DealOutcome } from "@substrate/contracts/crm/input";
 import { crmWrite } from "@substrate/contracts/crm/input";
 import { tasksWrite } from "@substrate/contracts/tasks/input";
 
@@ -92,7 +93,7 @@ test("CRM provisioning resumes per-user fixtures without duplicate customers, de
   const deals: {
     entityId: string;
     title: string;
-    outcome: "open" | "won" | "lost";
+    outcome: DealOutcome;
     version: number;
     stageId: string;
   }[] = [];

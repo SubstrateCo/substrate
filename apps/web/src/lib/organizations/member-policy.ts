@@ -1,6 +1,4 @@
-import { roles } from "@substrate/contracts/auth/permissions";
-
-export type OrganizationRole = keyof typeof roles;
+import { roles, type OrganizationRole } from "@substrate/contracts/auth/permissions";
 
 const roleOptions = {
   member: {

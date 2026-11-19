@@ -1,4 +1,7 @@
-import { notificationPosition } from "@substrate/contracts/context/notification-groups";
+import {
+  notificationPosition,
+  type NotificationFilter,
+} from "@substrate/contracts/context/notification-groups";
 
 import {
   infiniteQueryOptions,
@@ -21,7 +24,7 @@ export const notificationUnreadOptions = (organizationId: string) =>
     retry: false,
   });
 
-export const notificationGroupsOptions = (organizationId: string, filter: "all" | "unread") =>
+export const notificationGroupsOptions = (organizationId: string, filter: NotificationFilter) =>
   infiniteQueryOptions({
     queryKey: queryKeys.notificationGroups(organizationId, filter),
     // SAFETY: The first page has no cursor; later pages use the server's cursor.

@@ -1,10 +1,8 @@
-import { messagingLimits } from "@substrate/contracts/messaging/input";
+import { messagingLimits, type ConversationKind } from "@substrate/contracts/messaging/input";
 
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 
 // Pure messaging rules. Callers load the facts; set-based visibility stays in SQL (access.ts).
-
-export type ConversationKind = "dm" | "group" | "channel";
 
 export interface Viewer {
   userId: string;
