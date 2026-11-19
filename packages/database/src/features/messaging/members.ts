@@ -1,6 +1,9 @@
-import { managedPicture } from "@substrate/contracts/files/pictures";
-
 import type { DatabaseExecutor } from "../../client";
+import {
+  joinActorProfile,
+  joinedActorName,
+  joinedActorPicture,
+} from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
@@ -82,36 +85,27 @@ export async function activeMembers(
   conversationIds: string[],
   scope: SessionIdentity,
 ) {
-  const name = sql<string>`case when ${actors.type} = 'agent' then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`;
+  const name = joinedActorName();
   const rows = conversationIds.length
-    ? await db
-        .select({
-          conversationId: messagingParticipants.conversationId,
-          actorId: actors.entityId,
-          type: actors.type,
-          userId: actors.userId,
-          agentId: sql<
-            string | null
-          >`case when ${userAgents.userId} = ${scope.userId} then ${userAgents.id} end`,
-          name,
-          image: sql<string | null>`case when ${actors.type} = 'agent' then
-            case when ${userAgents.userId} = ${scope.userId} then '/api/v1/files/' || ${userAgents.imageFileId}::text || '/content' end
-            else case when ${member.id} is not null then ${user.image} end end`.mapWith(
-            (value: string | null) => {
-              const parsed = managedPicture.safeParse(value);
-              return parsed.success ? parsed.data : null;
-            },
-          ),
-          organizationId: messagingParticipants.organizationId,
-        })
-        .from(messagingParticipants)
-        .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
-        .leftJoin(user, eq(user.id, actors.userId))
-        .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-        .leftJoin(
-          member,
-          and(eq(member.userId, actors.userId), eq(member.organizationId, scope.organizationId)),
-        )
+    ? await joinActorProfile(
+        db
+          .select({
+            conversationId: messagingParticipants.conversationId,
+            actorId: actors.entityId,
+            type: actors.type,
+            userId: actors.userId,
+            agentId: sql<
+              string | null
+            >`case when ${userAgents.userId} = ${scope.userId} then ${userAgents.id} end`,
+            name,
+            image: joinedActorPicture(scope.userId),
+            organizationId: messagingParticipants.organizationId,
+          })
+          .from(messagingParticipants)
+          .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+          .$dynamic(),
+        scope.organizationId,
+      )
         .innerJoin(
           messagingConversations,
           eq(messagingConversations.id, messagingParticipants.conversationId),

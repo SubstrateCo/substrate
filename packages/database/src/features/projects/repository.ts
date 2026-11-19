@@ -10,6 +10,7 @@ import {
   viewerActorJoins,
   visibleActorCondition,
 } from "../../core/actors/access";
+import { joinedActorName } from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
@@ -33,8 +34,7 @@ import { type SelectedFields } from "drizzle-orm/pg-core";
 
 export function projectRepository(context: RepositoryContext) {
   const { db, scope } = context;
-  const name = sql<string>`case when ${actors.type} = 'agent'
-    then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`;
+  const name = joinedActorName();
   // This uncorrelated lookup also supports contexts that contain only an ActorScope.
   const viewerUserId =
     scope.userId !== undefined

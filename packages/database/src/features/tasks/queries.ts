@@ -1,8 +1,7 @@
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
+import { joinActorAccount, joinedActorName } from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
-import { userAgents } from "../../core/actors/user-agents.schema";
-import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
@@ -25,8 +24,7 @@ interface QueryPage {
   ascending?: boolean;
 }
 
-const assigneeDisplayName = sql<string>`case when ${actors.type} = 'agent'
-  then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`;
+const assigneeDisplayName = joinedActorName();
 
 export async function queryTasks(
   ctx: RepositoryContext,
@@ -43,23 +41,24 @@ export async function queryTasks(
   if (input.parentTaskEntityId === null) parentFilter = isNull(tasks.parentTaskEntityId);
   else if (input.parentTaskEntityId)
     parentFilter = eq(tasks.parentTaskEntityId, input.parentTaskEntityId);
-  const query = ctx.db
-    .select({
-      task: tasks,
-      assignee: { id: actors.entityId, name: assigneeDisplayName, type: actors.type },
-      updatedAt: entities.updatedAt,
-    })
-    .from(tasks)
-    .innerJoin(entities, eq(entities.entityId, tasks.entityId))
-    .leftJoin(
-      actors,
-      and(
-        eq(actors.entityId, tasks.assigneeActorEntityId),
-        eq(actors.organizationId, ctx.scope.organizationId),
-      ),
-    )
-    .leftJoin(user, eq(user.id, actors.userId))
-    .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+  const query = joinActorAccount(
+    ctx.db
+      .select({
+        task: tasks,
+        assignee: { id: actors.entityId, name: assigneeDisplayName, type: actors.type },
+        updatedAt: entities.updatedAt,
+      })
+      .from(tasks)
+      .innerJoin(entities, eq(entities.entityId, tasks.entityId))
+      .leftJoin(
+        actors,
+        and(
+          eq(actors.entityId, tasks.assigneeActorEntityId),
+          eq(actors.organizationId, ctx.scope.organizationId),
+        ),
+      )
+      .$dynamic(),
+  )
     .where(
       and(
         liveProjectTasks(ctx.scope, input.projectEntityId),
@@ -127,34 +126,35 @@ export async function queryTaskDetail(
     .where(and(references, eq(messageEntityReferences.purpose, "source")))
     .orderBy(asc(messageEntityReferences.createdAt))
     .limit(1);
-  const [row] = await db
-    .select({
-      assignee: { id: actors.entityId, name: assigneeDisplayName, type: actors.type },
-      projectName: projects.name,
-      createdAt: entities.createdAt,
-      updatedAt: entities.updatedAt,
-      parent: { id: parent.entityId, title: parent.title },
-      subtaskCount: sql<number>`(${subtaskCount})`.mapWith(Number),
-      discussionConversationId: sql<string | null>`(${discussion})`,
-      linkedMessageCount: sql<number>`(${linked})`.mapWith(Number),
-      source: sql<{
-        id: string;
-        conversationId: string;
-        threadId: string | null;
-      } | null>`(${source})`,
-    })
-    .from(tasks)
-    .innerJoin(entities, eq(entities.entityId, tasks.entityId))
-    .innerJoin(projects, eq(projects.entityId, tasks.projectEntityId))
-    .leftJoin(
-      actors,
-      and(
-        eq(actors.entityId, tasks.assigneeActorEntityId),
-        eq(actors.organizationId, scope.organizationId),
-      ),
-    )
-    .leftJoin(user, eq(user.id, actors.userId))
-    .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+  const [row] = await joinActorAccount(
+    db
+      .select({
+        assignee: { id: actors.entityId, name: assigneeDisplayName, type: actors.type },
+        projectName: projects.name,
+        createdAt: entities.createdAt,
+        updatedAt: entities.updatedAt,
+        parent: { id: parent.entityId, title: parent.title },
+        subtaskCount: sql<number>`(${subtaskCount})`.mapWith(Number),
+        discussionConversationId: sql<string | null>`(${discussion})`,
+        linkedMessageCount: sql<number>`(${linked})`.mapWith(Number),
+        source: sql<{
+          id: string;
+          conversationId: string;
+          threadId: string | null;
+        } | null>`(${source})`,
+      })
+      .from(tasks)
+      .innerJoin(entities, eq(entities.entityId, tasks.entityId))
+      .innerJoin(projects, eq(projects.entityId, tasks.projectEntityId))
+      .leftJoin(
+        actors,
+        and(
+          eq(actors.entityId, tasks.assigneeActorEntityId),
+          eq(actors.organizationId, scope.organizationId),
+        ),
+      )
+      .$dynamic(),
+  )
     .leftJoin(
       parent,
       and(
@@ -177,20 +177,21 @@ export async function queryTaskActivity(
 ) {
   const { entity } = await ctx.requireAccess(taskEntityId, "view");
   if (entity.entityType !== "task") throw new AccessDeniedError();
-  const query = ctx.db
-    .select({
-      id: taskActivity.id,
-      actor: { id: actors.entityId, name: assigneeDisplayName, type: actors.type },
-      action: taskActivity.action,
-      createdAt: taskActivity.createdAt,
-      sourceMessageId: messagingMessages.id,
-      conversationId: messagingConversations.id,
-      threadId: messagingMessages.threadId,
-    })
-    .from(taskActivity)
-    .innerJoin(actors, eq(actors.entityId, taskActivity.actorEntityId))
-    .leftJoin(user, eq(user.id, actors.userId))
-    .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+  const query = joinActorAccount(
+    ctx.db
+      .select({
+        id: taskActivity.id,
+        actor: { id: actors.entityId, name: assigneeDisplayName, type: actors.type },
+        action: taskActivity.action,
+        createdAt: taskActivity.createdAt,
+        sourceMessageId: messagingMessages.id,
+        conversationId: messagingConversations.id,
+        threadId: messagingMessages.threadId,
+      })
+      .from(taskActivity)
+      .innerJoin(actors, eq(actors.entityId, taskActivity.actorEntityId))
+      .$dynamic(),
+  )
     .leftJoin(messagingMessages, eq(messagingMessages.id, taskActivity.sourceMessageId))
     .leftJoin(
       messagingConversations,

@@ -1,7 +1,6 @@
 import type { DatabaseExecutor } from "../../client";
+import { joinActorAccount, joinedActorName } from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
-import { userAgents } from "../../core/actors/user-agents.schema";
-import { user } from "../../core/authentication/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { approvedParticipant } from "./access";
 import { messagingConversations, messagingParticipants } from "./schema";
@@ -17,26 +16,26 @@ export function conversationDisplayName(
   viewer: { userId: string; excludeActorId?: string },
   conversation: typeof messagingConversations = messagingConversations,
 ) {
-  const memberName = sql<string>`case when ${actors.type} = 'agent' then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`;
-  const others = db
-    .select({
-      names: sql<
-        string | null
-      >`string_agg(${memberName}, ', ' order by ${actors.type}, ${memberName}, ${actors.entityId})`,
-    })
-    .from(messagingParticipants)
-    .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
-    .leftJoin(user, eq(user.id, actors.userId))
-    .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-    .where(
-      and(
-        eq(messagingParticipants.conversationId, conversation.id),
-        isNull(messagingParticipants.leftAt),
-        approvedParticipant(db, conversation),
-        sql`${actors.userId} is distinct from ${viewer.userId}`,
-        viewer.excludeActorId ? ne(actors.entityId, viewer.excludeActorId) : undefined,
-      ),
-    );
+  const memberName = joinedActorName();
+  const others = joinActorAccount(
+    db
+      .select({
+        names: sql<
+          string | null
+        >`string_agg(${memberName}, ', ' order by ${actors.type}, ${memberName}, ${actors.entityId})`,
+      })
+      .from(messagingParticipants)
+      .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+      .$dynamic(),
+  ).where(
+    and(
+      eq(messagingParticipants.conversationId, conversation.id),
+      isNull(messagingParticipants.leftAt),
+      approvedParticipant(db, conversation),
+      sql`${actors.userId} is distinct from ${viewer.userId}`,
+      viewer.excludeActorId ? ne(actors.entityId, viewer.excludeActorId) : undefined,
+    ),
+  );
   return sql<string>`coalesce((select ${tasks.title} from ${tasks}
     where ${tasks.entityId} = ${conversation.taskEntityId} and ${tasks.organizationId} = ${conversation.organizationId}),
     ${conversation.name}, ${others}, 'Direct conversation')`;
