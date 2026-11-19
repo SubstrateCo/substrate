@@ -4,6 +4,7 @@ import { SettingsPanel } from "@/components/layout/settings-page";
 import { NameSettingsCard } from "@/components/settings/name-settings-card";
 import { AccountEmailCard } from "@/components/settings/profile/account-email-card";
 import { PictureSettings } from "@/components/settings/profile/picture-settings";
+import { pictureMutationProps } from "@/components/upload/picture-mutation-props";
 import { resourceState } from "@/lib/resource-state";
 import { useUpdateProfileName } from "@/queries/auth/profile";
 import { sessionQueryOptions } from "@/queries/auth/session";
@@ -11,7 +12,7 @@ import { usePictureMutations } from "@/queries/files/mutations";
 
 export function UserProfile() {
   const session = useQuery({ ...sessionQueryOptions(), staleTime: Infinity });
-  const { upload, remove } = usePictureMutations({ kind: "avatar" });
+  const pictureMutations = usePictureMutations({ kind: "avatar" });
   const rename = useUpdateProfileName();
   const resource = resourceState(session);
   const user = resource.data?.user;
@@ -28,11 +29,7 @@ export function UserProfile() {
         value={user?.image}
         name={user?.name}
         disabled={session.isPending}
-        uploading={upload.isPending}
-        uploadError={upload.error}
-        onUpload={(input, options) => upload.mutate(input, options)}
-        removing={remove.isPending}
-        onRemove={(options) => remove.mutate(undefined, options)}
+        {...pictureMutationProps(pictureMutations)}
       />
       {user && (
         <>
