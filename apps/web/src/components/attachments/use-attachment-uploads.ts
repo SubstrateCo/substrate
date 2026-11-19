@@ -8,12 +8,11 @@ import {
   type AttachmentUploadDraft,
   type AttachmentUploadEvent,
 } from "./attachment-upload-machine";
-import { useAttachmentUpload } from "@/queries/attachments/mutations";
+import { uploadAttachment } from "@/api/files/attachments";
 
 export type AttachmentDraft = Omit<AttachmentUploadDraft, "attempt">;
 
 export function useAttachmentUploads(existingCount = 0) {
-  const { mutateAsync: upload } = useAttachmentUpload();
   const [items, setItems] = useState<AttachmentUploadDraft[]>([]);
   const current = useRef(items);
   const controllers = useRef(new Map<string, AbortController>());
@@ -40,11 +39,9 @@ export function useAttachmentUploads(existingCount = 0) {
           ),
         );
     };
-    void upload({
-      file: item.file,
-      signal: controller.signal,
-      onProgress: (progress) => update({ type: "progress", attempt: item.attempt, progress }),
-    })
+    void uploadAttachment(item.file, controller.signal, (progress) =>
+      update({ type: "progress", attempt: item.attempt, progress }),
+    )
       .then((fileId) => update({ type: "complete", attempt: item.attempt, fileId }))
       .catch(() => update({ type: "fail", attempt: item.attempt }))
       .finally(() => {

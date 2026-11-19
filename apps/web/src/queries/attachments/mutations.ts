@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import {
   attachTaskFiles,
   removeTaskAttachment,
-  uploadAttachment,
   type TaskAttachmentTarget,
 } from "@/api/files/attachments";
 import { taskAttachmentsOptions } from "@/queries/files/attachments";
@@ -21,18 +20,4 @@ export function useTaskAttachmentMutations(target: TaskAttachmentTarget) {
     onSuccess,
   });
   return { add, remove };
-}
-
-export function useAttachmentUpload() {
-  return useMutation({
-    mutationFn: ({
-      file,
-      signal,
-      onProgress,
-    }: {
-      file: File;
-      signal: AbortSignal;
-      onProgress: (percent: number) => void;
-    }) => uploadAttachment(file, signal, onProgress),
-  });
 }
