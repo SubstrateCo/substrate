@@ -8,7 +8,7 @@ import { desktop } from "@/lib/desktop/identity";
 
 export function DesktopFrame({ children }: { children: ReactNode }) {
   const bridge = windowBridge();
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const [fullscreen, setFullscreen] = useState(false);
   const [titleBarTarget, setTitleBarTarget] = useState<HTMLDivElement | null>(null);
 
@@ -28,12 +28,12 @@ export function DesktopFrame({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!bridge) return;
     const sync = () => {
-      void bridge.setTheme(theme);
+      void bridge.setTheme(resolvedTheme);
     };
     sync();
     window.addEventListener("resize", sync);
     return () => window.removeEventListener("resize", sync);
-  }, [bridge, theme]);
+  }, [bridge, resolvedTheme]);
 
   if (!bridge) return children;
   const frameStyle: CSSProperties & Record<`--${string}`, string> = {

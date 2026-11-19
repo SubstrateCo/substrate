@@ -13,11 +13,14 @@ import {
 const height = 40;
 
 function overlayOptions() {
+  const dark =
+    nativeTheme.themeSource === "dark" ||
+    (nativeTheme.themeSource === "system" && nativeTheme.shouldUseDarkColors);
   return {
     // Fully transparent black does not render correctly on Linux.
     color: "#01000000",
     height,
-    symbolColor: nativeTheme.shouldUseDarkColors ? "#f8fafc" : "#1f2937",
+    symbolColor: dark ? "#f8fafc" : "#000000",
   };
 }
 
@@ -40,6 +43,9 @@ export function registerWindowBridge(rendererURL: string) {
       isFullscreen: () => window.isFullScreen(),
       setTheme: (theme) => {
         nativeTheme.themeSource = theme;
+        if (process.platform !== "darwin") {
+          window.setTitleBarOverlay(overlayOptions());
+        }
       },
     })(method, value);
   });
