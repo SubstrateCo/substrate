@@ -1,13 +1,7 @@
+import { ErrorStateHeader } from "@/components/feedback/error-state-header";
 import { Button } from "@/components/ui/button";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "@/components/ui/empty";
-import { CircleAlert, RefreshCw } from "lucide-react";
+import { Empty, EmptyContent } from "@/components/ui/empty";
+import { RefreshCw } from "lucide-react";
 
 // Error view for a PageSidebar. Render it in place of PageSidebarContent to center it
 // in the free space, or inside PageSidebarContent to show it above stale items.
@@ -34,15 +28,7 @@ export function PageSidebarErrorState({
       className="flex min-h-0 flex-1 flex-col overflow-y-auto"
     >
       <Empty role="alert" variant="pane">
-        <EmptyHeader>
-          <EmptyMedia variant="error">
-            <CircleAlert aria-hidden="true" />
-          </EmptyMedia>
-          <EmptyTitle>
-            <h2>{title}</h2>
-          </EmptyTitle>
-          <EmptyDescription className="wrap-break-word">{message}</EmptyDescription>
-        </EmptyHeader>
+        <ErrorStateHeader title={title} description={message} />
         {onRetry && (
           <EmptyContent>
             <Button type="button" variant="outline" size="sm" onClick={onRetry}>

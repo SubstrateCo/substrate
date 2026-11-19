@@ -1,5 +1,5 @@
 import { useTheme } from "@/components/theme/theme-provider";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "cn";
 import {
   CircleCheckIcon,

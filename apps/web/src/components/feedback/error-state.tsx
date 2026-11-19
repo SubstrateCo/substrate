@@ -1,12 +1,6 @@
 import { Button } from "../ui/button";
-import {
-  Empty,
-  EmptyContent,
-  EmptyDescription,
-  EmptyHeader,
-  EmptyMedia,
-  EmptyTitle,
-} from "../ui/empty";
+import { Empty, EmptyContent } from "../ui/empty";
+import { ErrorStateHeader } from "./error-state-header";
 import { CircleAlert, RefreshCw } from "lucide-react";
 
 export function ErrorState({
@@ -42,15 +36,7 @@ export function ErrorState({
 
   return (
     <Empty role="alert" variant="pane" className="min-h-48">
-      <EmptyHeader>
-        <EmptyMedia variant="error">
-          <CircleAlert aria-hidden="true" />
-        </EmptyMedia>
-        <EmptyTitle>
-          <h2>{title}</h2>
-        </EmptyTitle>
-        <EmptyDescription className="wrap-break-word">{description}</EmptyDescription>
-      </EmptyHeader>
+      <ErrorStateHeader title={title} description={description} />
       {onRetry && (
         <EmptyContent>
           <Button type="button" variant="outline" size="default" onClick={onRetry}>

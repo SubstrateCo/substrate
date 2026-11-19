@@ -1,9 +1,15 @@
 import * as React from "react";
 
-import { Button, buttonVariants } from "@/components/ui/button";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "cn";
 import { ChevronLeftIcon, ChevronRightIcon, ChevronDownIcon } from "lucide-react";
 import { DayPicker, getDefaultClassNames, type DayButton } from "react-day-picker";
+
+const rtlNavigationClasses = [
+  String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
+  String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
+];
 
 function Calendar({
   className,
@@ -25,8 +31,7 @@ function Calendar({
       showOutsideDays={showOutsideDays}
       className={cn(
         "group/calendar bg-background p-2 in-data-[slot=card-content]:bg-transparent in-data-[slot=popover-content]:bg-transparent",
-        String.raw`rtl:**:[.rdp-button\_next>svg]:rotate-180`,
-        String.raw`rtl:**:[.rdp-button\_previous>svg]:rotate-180`,
+        rtlNavigationClasses,
         className,
       )}
       captionLayout={captionLayout}
