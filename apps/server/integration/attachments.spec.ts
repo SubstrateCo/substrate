@@ -133,11 +133,16 @@ test("message attachments publish only completed uploads and require conversatio
     messageId: sent.id,
     attachmentId: sent.attachments[0]!.id,
   };
-  expect(
-    (
-      await b.request.get(`${root}/attachments/messages/content`, { params, maxRedirects: 0 })
-    ).status(),
-  ).toBe(200);
+  const download = await b.request.get(`${root}/attachments/messages/content`, {
+    params,
+    maxRedirects: 0,
+  });
+  expect(download.status()).toBe(200);
+  expect(download.headers()).toMatchObject({
+    "cache-control": "private, no-store",
+    "x-content-type-options": "nosniff",
+    "content-disposition": `attachment; filename="download"; filename*=UTF-8''private-message.txt`,
+  });
   expect(
     (await b.request.get(`${root}/${upload.uploadId}/content`, { maxRedirects: 0 })).status(),
   ).toBe(404);
