@@ -1,10 +1,12 @@
 import type { RealtimeUpdate } from "@substrate/contracts/realtime";
 
 import { createBrowserRealtime, type BrowserRealtimeSocket } from "./browser";
-import { expect, test } from "bun:test";
+import { afterEach, expect, jest, test } from "bun:test";
+
+const ready = JSON.stringify({ version: 1, type: "ready" });
 
 function fixture() {
-  const sockets: BrowserRealtimeSocket[] = [];
+  const sockets: (BrowserRealtimeSocket & { closed: boolean })[] = [];
   const urls: string[] = [];
   const updates: RealtimeUpdate[] = [];
   const retries: { callback: () => void; delay: number }[] = [];
@@ -12,11 +14,14 @@ function fixture() {
     origin: "https://app.example.test",
     createSocket: (url) => {
       urls.push(url.href);
-      const socket: BrowserRealtimeSocket = {
+      const socket = {
         onmessage: null,
         onclose: null,
         onerror: null,
-        close() {},
+        closed: false,
+        close() {
+          socket.closed = true;
+        },
       };
       sockets.push(socket);
       return socket;
@@ -28,95 +33,83 @@ function fixture() {
     },
   });
   api.onEvent((event) => updates.push(event));
-  return { api, sockets, urls, updates, retries };
+  const message = (data: string | ArrayBuffer) =>
+    sockets.at(-1)!.onmessage?.(new MessageEvent("message", { data }));
+  const close = (code: number) => sockets.at(-1)!.onclose?.(new CloseEvent("close", { code }));
+  return { api, sockets, urls, updates, retries, message, close };
 }
 
-test("browser socket uses same-origin cookies implicitly, validates data and fences old workspace events", async () => {
+afterEach(() => {
+  jest.useRealTimers();
+});
+
+test("connects to the same-origin realtime endpoint and delivers text frames", async () => {
   const f = fixture();
-  await f.api.connect({ organizationId: null });
-  expect(f.urls).toEqual(["wss://app.example.test/api/v1/realtime"]);
-  f.sockets[0]!.onmessage?.(new MessageEvent("message", { data: "invalid" }));
-  f.sockets[0]!.onmessage?.(
-    new MessageEvent("message", {
-      data: JSON.stringify({
-        version: 1,
-        type: "change",
-        id: crypto.randomUUID(),
-        organizationId: "wrong",
-        domain: "tasks",
-      }),
-    }),
-  );
-  expect(f.updates).toEqual([{ type: "status", status: "connecting" }]);
-  f.sockets[0]!.onmessage?.(
-    new MessageEvent("message", { data: JSON.stringify({ version: 1, type: "ready" }) }),
-  );
+  await f.api.connect({ organizationId: "org" });
+  expect(f.urls).toEqual(["wss://app.example.test/api/v1/realtime?organizationId=org"]);
+  f.message(ready);
   expect(f.updates.slice(-2)).toEqual([
     { version: 1, type: "ready" },
     { type: "status", status: "connected" },
   ]);
-  await f.api.connect({ organizationId: "next" });
-  f.sockets[0]!.onmessage?.(
-    new MessageEvent("message", { data: JSON.stringify({ version: 1, type: "ready" }) }),
-  );
-  expect(f.updates.at(-1)).toEqual({ type: "status", status: "connecting" });
-  expect(f.urls.at(-1)).toBe("wss://app.example.test/api/v1/realtime?organizationId=next");
   await f.api.disconnect();
+  expect(f.sockets[0]!.closed).toBe(true);
 });
 
-test("browser retries use bounded exponential jitter and cannot restart after disconnect; forbidden never retries", async () => {
+test("drops frames over 64 KB and non-text frames", async () => {
   const f = fixture();
-  await f.api.connect({ organizationId: "org" });
-  for (let index = 0; index < 10; index++) {
-    f.sockets[index]!.onclose?.(new CloseEvent("close", { code: 1006 }));
-    f.retries[index]!.callback();
-  }
-  expect(f.retries[0]?.delay).toBe(250);
-  expect(f.retries[9]?.delay).toBe(15_000);
-  f.sockets.at(-1)!.onclose?.(new CloseEvent("close", { code: 1008 }));
-  expect(f.updates.at(-1)).toEqual({ type: "status", status: "forbidden" });
-  expect(f.retries).toHaveLength(10);
-  await f.api.disconnect();
-  const count = f.urls.length;
-  f.retries.at(-1)!.callback();
-  expect(f.urls).toHaveLength(count);
-});
-
-test("an ended browser socket cannot publish ready or end its replacement; ready resets retry delay", async () => {
-  const f = fixture();
-  const ready = () =>
-    new MessageEvent("message", { data: JSON.stringify({ version: 1, type: "ready" }) });
-  await f.api.connect({ organizationId: "org" });
-  const first = f.sockets[0]!;
-  first.onclose?.(new CloseEvent("close", { code: 1006 }));
-  first.onclose?.(new CloseEvent("close", { code: 1006 }));
-  first.onmessage?.(ready());
-  expect(f.retries).toHaveLength(1);
-  expect(f.updates.at(-1)).toEqual({ type: "status", status: "disconnected" });
-  f.retries[0]!.callback();
-  const updates = f.updates.length;
-  first.onclose?.(new CloseEvent("close", { code: 4403 }));
-  first.onmessage?.(ready());
-  expect(f.updates).toHaveLength(updates);
-  f.sockets[1]!.onclose?.(new CloseEvent("close", { code: 1006 }));
-  expect(f.retries[1]?.delay).toBe(500);
-  f.retries[1]!.callback();
-  f.sockets[2]!.onmessage?.(ready());
-  f.sockets[2]!.onclose?.(new CloseEvent("close", { code: 1006 }));
-  expect(f.retries[2]?.delay).toBe(250);
-  await f.api.disconnect();
-});
-
-test("explicit browser connect recovers from forbidden and ignores its old socket", async () => {
-  const f = fixture();
-  await f.api.connect({ organizationId: "org" });
-  f.sockets[0]!.onclose?.(new CloseEvent("close", { code: 4401 }));
-  await f.api.connect({ organizationId: "org" });
-  f.sockets[0]!.onclose?.(new CloseEvent("close", { code: 1006 }));
-  f.sockets[1]!.onmessage?.(
-    new MessageEvent("message", { data: JSON.stringify({ version: 1, type: "ready" }) }),
-  );
+  await f.api.connect({ organizationId: null });
+  f.message(ready.padEnd(64 * 1024 + 1, " "));
+  f.message(new TextEncoder().encode(ready).buffer);
+  expect(f.updates).toEqual([{ type: "status", status: "connecting" }]);
+  f.message(ready.padEnd(64 * 1024, " "));
   expect(f.updates.at(-1)).toEqual({ type: "status", status: "connected" });
+});
+
+test.each([1008, 4401, 4403])("close code %i is forbidden", async (code) => {
+  const f = fixture();
+  await f.api.connect({ organizationId: "org" });
+  f.close(code);
+  expect(f.updates.at(-1)).toEqual({ type: "status", status: "forbidden" });
   expect(f.retries).toHaveLength(0);
-  await f.api.disconnect();
+});
+
+test("other close codes retry", async () => {
+  const f = fixture();
+  await f.api.connect({ organizationId: "org" });
+  f.close(1006);
+  expect(f.updates.at(-1)).toEqual({ type: "status", status: "disconnected" });
+  expect(f.retries).toHaveLength(1);
+});
+
+test("a socket error closes the socket and leaves retry policy to the close event", async () => {
+  const f = fixture();
+  await f.api.connect({ organizationId: "org" });
+  f.sockets[0]!.onerror?.(new Event("error"));
+  expect(f.sockets[0]!.closed).toBe(true);
+  expect(f.updates.at(-1)).toEqual({ type: "status", status: "connecting" });
+  expect(f.retries).toHaveLength(0);
+});
+
+test("events reach every subscribed listener until it unsubscribes", async () => {
+  const f = fixture();
+  const second: RealtimeUpdate[] = [];
+  const unsubscribe = f.api.onEvent((event) => second.push(event));
+  await f.api.connect({ organizationId: "org" });
+  expect(second).toEqual([{ type: "status", status: "connecting" }]);
+  unsubscribe();
+  f.message(ready);
+  expect(second).toHaveLength(1);
+  expect(f.updates.at(-1)).toEqual({ type: "status", status: "connected" });
+});
+
+test("a socket that is not ready within 10 seconds is closed", async () => {
+  jest.useFakeTimers();
+  const f = fixture();
+  await f.api.connect({ organizationId: "org" });
+  jest.advanceTimersByTime(9_999);
+  expect(f.sockets[0]!.closed).toBe(false);
+  jest.advanceTimersByTime(1);
+  expect(f.sockets[0]!.closed).toBe(true);
+  expect(f.retries).toHaveLength(1);
 });

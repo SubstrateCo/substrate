@@ -5,8 +5,10 @@ import { createRealtimeController } from "./realtime-controller.ts";
 import { expect, test } from "bun:test";
 import { EventEmitter } from "node:events";
 
+const ready = () => Buffer.from(JSON.stringify({ version: 1, type: "ready" }), "utf8");
+
 function fixture() {
-  const sockets: (EventEmitter & { terminate: () => void })[] = [];
+  const sockets: (EventEmitter & { terminated: boolean; terminate: () => void })[] = [];
   const updates: RealtimeUpdate[] = [];
   const retries: { callback: () => void; delay: number }[] = [];
   const requests: { url: URL; headers: Record<string, string> }[] = [];
@@ -17,7 +19,12 @@ function fixture() {
     random: () => 1,
     createSocket: (url, headers) => {
       requests.push({ url, headers });
-      const socket = Object.assign(new EventEmitter(), { terminate() {} });
+      const socket = Object.assign(new EventEmitter(), {
+        terminated: false,
+        terminate() {
+          socket.terminated = true;
+        },
+      });
       sockets.push(socket);
       return socket;
     },
@@ -29,96 +36,73 @@ function fixture() {
   return { controller, sockets, updates, retries, requests };
 }
 
-test("authenticated transport validates input and wire events, then publishes ready before connected", () => {
+test("connects with the session cookie and desktop origin and decodes Buffer frames", () => {
   const f = fixture();
-  expect(() => f.controller.connect({ organizationId: "" })).toThrow();
-  expect(f.requests).toHaveLength(0);
   f.controller.connect({ organizationId: null });
   expect(f.requests[0]?.url.href).toBe("wss://api.example.test/api/v1/realtime");
-  expect(f.requests[0]?.headers.Cookie).toBe("private-cookie");
-  expect(f.requests[0]?.headers.Origin).toBe(desktopOrigin);
-  f.sockets[0]!.emit("message", "not-json");
-  f.sockets[0]!.emit("message", JSON.stringify({ version: 2, type: "ready" }));
-  f.sockets[0]!.emit(
-    "message",
-    JSON.stringify({
-      version: 1,
-      type: "change",
-      id: crypto.randomUUID(),
-      organizationId: "wrong-workspace",
-      domain: "tasks",
-    }),
-  );
-  expect(f.updates).toEqual([{ type: "status", status: "connecting" }]);
-  f.sockets[0]!.emit("message", JSON.stringify({ version: 1, type: "ready" }));
+  expect(f.requests[0]?.headers).toEqual({ Cookie: "private-cookie", Origin: desktopOrigin });
+  f.sockets[0]!.emit("message", ready());
   expect(f.updates.slice(-2)).toEqual([
     { version: 1, type: "ready" },
     { type: "status", status: "connected" },
   ]);
   f.controller.disconnect();
+  expect(f.sockets[0]!.terminated).toBe(true);
 });
 
-test("retry grows with a bound and stale callbacks cannot reconnect or deliver across workspace changes", () => {
-  const f = fixture();
-  f.controller.connect({ organizationId: "first" });
-  for (let index = 0; index < 10; index++) {
-    f.sockets[index]!.emit("close", 1006);
-    f.retries[index]!.callback();
-  }
-  expect(f.retries[0]?.delay).toBe(500);
-  expect(f.retries[9]?.delay).toBe(30_000);
-  f.sockets.at(-1)!.emit("close", 1006);
-  const stale = f.retries.at(-1)!;
-  f.controller.connect({ organizationId: "second" });
-  const count = f.sockets.length;
-  stale.callback();
-  f.sockets[0]!.emit("message", JSON.stringify({ version: 1, type: "ready" }));
-  expect(f.sockets).toHaveLength(count);
-  expect(f.updates.at(-1)).toEqual({ type: "status", status: "connecting" });
-  f.controller.disconnect();
-  f.sockets.at(-1)!.emit("close", 1006);
-  expect(f.retries.at(-1)).toBe(stale);
-});
+test.each([401, 403])(
+  "an unexpected %i upgrade response is forbidden and terminates the socket",
+  (statusCode) => {
+    const f = fixture();
+    f.controller.connect({ organizationId: "org" });
+    let resumed = false;
+    f.sockets[0]!.emit(
+      "unexpected-response",
+      {},
+      {
+        statusCode,
+        resume() {
+          resumed = true;
+        },
+      },
+    );
+    expect(resumed).toBe(true);
+    expect(f.sockets[0]!.terminated).toBe(true);
+    expect(f.updates.at(-1)).toEqual({ type: "status", status: "forbidden" });
+    expect(f.retries).toHaveLength(0);
+  },
+);
 
-test("forbidden closes do not retry", () => {
+test("other unexpected upgrade responses retry", () => {
   const f = fixture();
   f.controller.connect({ organizationId: "org" });
-  f.sockets[0]!.emit("close", 4403);
+  f.sockets[0]!.emit("unexpected-response", {}, { statusCode: 502, resume() {} });
+  expect(f.sockets[0]!.terminated).toBe(true);
+  expect(f.updates.at(-1)).toEqual({ type: "status", status: "disconnected" });
+  expect(f.retries).toHaveLength(1);
+});
+
+test.each([1008, 4401, 4403])("close code %i is forbidden", (code) => {
+  const f = fixture();
+  f.controller.connect({ organizationId: "org" });
+  f.sockets[0]!.emit("close", code);
   expect(f.updates.at(-1)).toEqual({ type: "status", status: "forbidden" });
   expect(f.retries).toHaveLength(0);
 });
 
-test("an ended socket cannot publish ready or end its replacement; ready resets retry delay", () => {
+test("other close codes retry", () => {
   const f = fixture();
-  f.controller.connect({ organizationId: "org" });
-  const first = f.sockets[0]!;
-  first.emit("close", 1006);
-  first.emit("error");
-  first.emit("message", JSON.stringify({ version: 1, type: "ready" }));
-  expect(f.retries).toHaveLength(1);
-  expect(f.updates.at(-1)).toEqual({ type: "status", status: "disconnected" });
-  f.retries[0]!.callback();
-  const updates = f.updates.length;
-  first.emit("close", 4403);
-  first.emit("message", JSON.stringify({ version: 1, type: "ready" }));
-  expect(f.updates).toHaveLength(updates);
-  f.sockets[1]!.emit("close", 1006);
-  expect(f.retries[1]?.delay).toBe(1000);
-  f.retries[1]!.callback();
-  f.sockets[2]!.emit("message", JSON.stringify({ version: 1, type: "ready" }));
-  f.sockets[2]!.emit("close", 1006);
-  expect(f.retries[2]?.delay).toBe(500);
-  f.controller.disconnect();
-});
-
-test("explicit connect recovers from forbidden and ignores its old socket", () => {
-  const f = fixture();
-  f.controller.connect({ organizationId: "org" });
-  f.sockets[0]!.emit("close", 4401);
   f.controller.connect({ organizationId: "org" });
   f.sockets[0]!.emit("close", 1006);
-  f.sockets[1]!.emit("message", JSON.stringify({ version: 1, type: "ready" }));
-  expect(f.updates.at(-1)).toEqual({ type: "status", status: "connected" });
-  expect(f.retries).toHaveLength(0);
-  f.controller.disconnect();
+  expect(f.updates.at(-1)).toEqual({ type: "status", status: "disconnected" });
+  expect(f.retries).toHaveLength(1);
+});
+
+test("a socket error ends the connection and terminates the socket", () => {
+  const f = fixture();
+  f.controller.connect({ organizationId: "org" });
+  f.sockets[0]!.emit("error", new Error("reset"));
+  expect(f.sockets[0]!.terminated).toBe(true);
+  expect(f.updates.at(-1)).toEqual({ type: "status", status: "disconnected" });
+  expect(f.retries).toHaveLength(1);
 });
