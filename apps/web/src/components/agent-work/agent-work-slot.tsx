@@ -26,17 +26,21 @@ export function AgentWorkProvider({
 }
 
 export function AgentWorkSlot({ messageId, fromAgent }: { messageId: string; fromAgent: boolean }) {
-  return useContext(AgentWorkContext)?.work({ id: messageId, fromAgent }) ?? null;
+  const render = useContext(AgentWorkContext);
+  return <>{render?.work({ id: messageId, fromAgent })}</>;
 }
 
 export function AgentWorkStatus({ messageId }: { messageId: string }) {
-  return useContext(AgentWorkContext)?.status(messageId) ?? null;
+  const render = useContext(AgentWorkContext);
+  return <>{render?.status(messageId)}</>;
 }
 
 export function AgentWorkBadge({ messageId }: { messageId: string }) {
-  return useContext(AgentWorkContext)?.badge(messageId) ?? null;
+  const render = useContext(AgentWorkContext);
+  return <>{render?.badge(messageId)}</>;
 }
 
 export function AgentWorkNotice({ threadId }: { threadId: string | null }) {
-  return useContext(AgentWorkContext)?.notice(threadId) ?? null;
+  const render = useContext(AgentWorkContext);
+  return <>{render?.notice(threadId)}</>;
 }

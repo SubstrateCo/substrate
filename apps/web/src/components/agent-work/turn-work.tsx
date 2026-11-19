@@ -21,7 +21,7 @@ type TurnProps = {
 /** One turn's status line, with its own clock so only this text renders each second. */
 export function TurnLabel({ turn, openRequest }: Pick<TurnProps, "turn" | "openRequest">) {
   const now = useNow(liveTurnStatuses.includes(turn.status));
-  return turnLabel(turn, now, openRequest);
+  return <>{turnLabel(turn, now, openRequest)}</>;
 }
 
 /** One turn's status tag, with its own clock so a live turn does not render the whole list. */

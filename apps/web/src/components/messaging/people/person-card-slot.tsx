@@ -23,5 +23,5 @@ export function PersonCardTarget({
   children: ReactElement;
 }) {
   const render = useContext(PersonCardContext);
-  return render && actorId ? render(actorId, name, children) : children;
+  return <>{render && actorId ? render(actorId, name, children) : children}</>;
 }
