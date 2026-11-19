@@ -15,7 +15,7 @@ ruleTester.run("no-pressed-outline", noPressedOutline, {
       errors: [
         {
           message:
-            'An outline <Button> with aria-pressed has no selected look, so people cannot tell which option is on once focus moves away. For one choice among 2–4 short options use <SegmentedControl> from "@/components/forms/segmented-control"; for a single on/off control use Toggle from "@/components/ui/toggle". See apps/web/DESIGN.md § 1 Primitives.',
+            'An outline <Button> with aria-pressed has no selected look, so people cannot tell which option is on once focus moves away. For one choice among 2–4 short options use <SegmentedControl> from "@/components/forms/segmented-control"; for a single on/off control use Toggle from "@/components/ui/toggle-group". See apps/web/DESIGN.md § 1 Primitives.',
         },
       ],
     },
