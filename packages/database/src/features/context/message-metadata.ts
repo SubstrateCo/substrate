@@ -121,17 +121,17 @@ export async function messageWorkLinks(ctx: RepositoryContext, messageIds: strin
   return byMessage;
 }
 
-export async function messagePeople(
-  db: DatabaseExecutor,
-  scope: SessionIdentity,
+// Mentioned IDs per message, and their union per conversation for messages that mention any.
+function collectMentions(
   messages: { id: string; body: string; conversationId: string }[],
+  kind: "person" | "agent",
 ) {
   const tokens = new Map<string, Set<string>>();
   const conversationTokens = new Map<string, Set<string>>();
   for (const message of messages) {
     const ids = new Set(
       messageReferences(message.body)
-        .filter((item) => item.kind === "person")
+        .filter((item) => item.kind === kind)
         .map((item) => item.id),
     );
     tokens.set(message.id, ids);
@@ -140,6 +140,15 @@ export async function messagePeople(
     for (const id of ids) combined.add(id);
     conversationTokens.set(message.conversationId, combined);
   }
+  return { tokens, conversationTokens };
+}
+
+export async function messagePeople(
+  db: DatabaseExecutor,
+  scope: SessionIdentity,
+  messages: { id: string; body: string; conversationId: string }[],
+) {
+  const { tokens, conversationTokens } = collectMentions(messages, "person");
   const people = conversationTokens.size
     ? await db
         .select({
@@ -191,20 +200,7 @@ export async function messageAgents(
   scope: SessionIdentity,
   messages: { id: string; body: string; conversationId: string }[],
 ) {
-  const tokens = new Map<string, Set<string>>();
-  const conversationTokens = new Map<string, Set<string>>();
-  for (const message of messages) {
-    const ids = new Set(
-      messageReferences(message.body)
-        .filter((item) => item.kind === "agent")
-        .map((item) => item.id),
-    );
-    tokens.set(message.id, ids);
-    if (!ids.size) continue;
-    const combined = conversationTokens.get(message.conversationId) ?? new Set<string>();
-    for (const id of ids) combined.add(id);
-    conversationTokens.set(message.conversationId, combined);
-  }
+  const { tokens, conversationTokens } = collectMentions(messages, "agent");
   const agents = conversationTokens.size
     ? await db
         .select({

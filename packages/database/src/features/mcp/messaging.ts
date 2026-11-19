@@ -1,5 +1,6 @@
 import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
 
+import { joinActorAccount } from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
@@ -129,22 +130,18 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
         body: sql<string>`case when ${messagingMessages.deletedAt} is not null then 'Message deleted' else ${messagingMessages.body} end`,
         createdAt: messagingMessages.createdAt,
       };
-      const author = eq(actors.entityId, messagingMessages.authorActorEntityId);
+      const authored = () =>
+        joinActorAccount(
+          db
+            .select(columns)
+            .from(messagingMessages)
+            .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
+            .$dynamic(),
+        );
       const inConversation = eq(messagingMessages.conversationId, message.conversationId);
-      const [root] = await db
-        .select(columns)
-        .from(messagingMessages)
-        .innerJoin(actors, author)
-        .leftJoin(user, eq(user.id, actors.userId))
-        .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-        .where(and(inConversation, eq(messagingMessages.id, rootId)));
+      const [root] = await authored().where(and(inConversation, eq(messagingMessages.id, rootId)));
       if (!root) throw new AccessDeniedError();
-      const rows = await db
-        .select(columns)
-        .from(messagingMessages)
-        .innerJoin(actors, author)
-        .leftJoin(user, eq(user.id, actors.userId))
-        .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+      const rows = await authored()
         .where(and(inConversation, eq(messagingMessages.threadId, rootId)))
         .orderBy(asc(messagingMessages.createdAt), asc(messagingMessages.id))
         .offset(p.offset)
