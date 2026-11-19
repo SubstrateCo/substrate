@@ -11,6 +11,8 @@ export {
 export { realtimeConnectInput, channel as realtimeChannel } from "./ipc.ts";
 export { realtimeConnectionMachine } from "./connection-machine.ts";
 export type { RealtimeConnectionState, RealtimeConnectionEvent } from "./connection-machine.ts";
+export { createRealtimeConnection } from "./connection.ts";
+export type { RealtimeTransport, RealtimeTransportHandlers } from "./connection.ts";
 export type {
   RealtimeAudience,
   RealtimeDomain,

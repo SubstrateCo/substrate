@@ -1,12 +1,5 @@
 import { desktopOrigin } from "@substrate/contracts/desktop/links";
-import {
-  realtimeConnectInput,
-  realtimeConnectionMachine,
-  realtimeEvent,
-  type RealtimeConnectionEvent,
-  type RealtimeConnectionState,
-  type RealtimeUpdate,
-} from "@substrate/contracts/realtime";
+import { createRealtimeConnection, type RealtimeUpdate } from "@substrate/contracts/realtime";
 
 import type { ClientRequest, IncomingMessage } from "node:http";
 import WebSocket from "ws";
@@ -29,8 +22,8 @@ export function createRealtimeController({
   emit,
   createSocket = (url, headers) =>
     new WebSocket(url, { headers, maxPayload: 64 * 1024, handshakeTimeout: 10_000 }),
-  random = Math.random,
-  schedule = (callback, delay) => setTimeout(callback, delay),
+  random,
+  schedule,
 }: {
   backend: string;
   getCookie: () => string;
@@ -39,95 +32,25 @@ export function createRealtimeController({
   random?: () => number;
   schedule?: (callback: () => void, delay: number) => ReturnType<typeof setTimeout>;
 }) {
-  let epoch = 0;
-  let attempt = 0;
-  let state: RealtimeConnectionState = "disconnected";
-  let socket: RealtimeSocket | undefined;
-  let retry: ReturnType<typeof setTimeout> | undefined;
-  function transition(event: RealtimeConnectionEvent) {
-    const next = realtimeConnectionMachine.next(state, event);
-    if (next === null) return false;
-    state = next;
-    return true;
-  }
-  function stop() {
-    epoch++;
-    transition("disconnect");
-    clearTimeout(retry);
-    retry = undefined;
-    const previous = socket;
-    socket = undefined;
-    previous?.terminate();
-  }
-  return {
-    disconnect() {
-      stop();
-      emit({ type: "status", status: "disconnected" });
+  return createRealtimeConnection({
+    origin: backend,
+    emit,
+    random,
+    schedule,
+    open(url, { message, end }) {
+      const socket = createSocket(url, { Cookie: getCookie(), Origin: desktopOrigin });
+      socket.on("message", (data) => message(data.toString("utf8")));
+      socket.on("unexpected-response", (_request, response) => {
+        response.resume();
+        end(response.statusCode === 401 || response.statusCode === 403);
+        socket.terminate();
+      });
+      socket.on("close", (code) => end(code === 1008 || code === 4401 || code === 4403));
+      socket.on("error", () => {
+        end();
+        socket.terminate();
+      });
+      return { close: () => socket.terminate() };
     },
-    connect(value: { organizationId: string | null }) {
-      const { organizationId } = realtimeConnectInput.strict().parse(value);
-      stop();
-      const generation = epoch;
-      let attempts = 0;
-      function open() {
-        if (generation !== epoch || !transition("connect")) return;
-        const currentAttempt = ++attempt;
-        emit({ type: "status", status: "connecting" });
-        const url = new URL("/api/v1/realtime", backend);
-        url.protocol = url.protocol === "https:" ? "wss:" : "ws:";
-        if (organizationId !== null) url.searchParams.set("organizationId", organizationId);
-        let current: RealtimeSocket;
-        function end(forbidden = false) {
-          if (generation !== epoch || currentAttempt !== attempt) return;
-          if (!transition(forbidden ? "forbidden" : "lost")) return;
-          emit({ type: "status", status: forbidden ? "forbidden" : "disconnected" });
-          if (!forbidden) {
-            const delay =
-              Math.min(30_000, 500 * 2 ** Math.min(attempts++, 6)) * (0.5 + random() * 0.5);
-            retry = schedule(open, delay);
-          }
-        }
-        try {
-          current = createSocket(url, { Cookie: getCookie(), Origin: desktopOrigin });
-          socket = current;
-        } catch {
-          end();
-          return;
-        }
-        current.on("message", (data) => {
-          if (
-            generation !== epoch ||
-            currentAttempt !== attempt ||
-            !realtimeConnectionMachine.canFire(state, "ready")
-          )
-            return;
-          try {
-            const result = realtimeEvent.safeParse(JSON.parse(data.toString("utf8")));
-            if (!result.success) return;
-            if (result.data.type === "change" && result.data.organizationId !== organizationId)
-              return;
-            emit(result.data);
-            if (result.data.type === "ready") {
-              if (!transition("ready")) return;
-              attempts = 0;
-              emit({ type: "status", status: "connected" });
-            }
-          } catch {
-            /* Ignore malformed wire data. */
-          }
-        });
-        current.on("unexpected-response", (_request, response) => {
-          response.resume();
-          end(response.statusCode === 401 || response.statusCode === 403);
-          current.terminate();
-        });
-        current.on("close", (code) => end(code === 1008 || code === 4401 || code === 4403));
-        current.on("error", () => {
-          end();
-          current.terminate();
-        });
-      }
-      open();
-    },
-  };
+  });
 }
