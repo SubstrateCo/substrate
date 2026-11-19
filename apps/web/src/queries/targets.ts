@@ -40,7 +40,17 @@ function showsLinks(query: Query) {
   return pages === undefined || pages.some((page) => page.links.length > 0);
 }
 
-function linksWork(query: Query, ids: string[]) {
+/** Build the membership lookup once for all cached queries. Single-record writes need no Set. */
+export function entityIdMatcher(ids: readonly string[]): (id: string) => boolean {
+  if (ids.length === 1) {
+    const [only] = ids;
+    return (id) => id === only;
+  }
+  const set = new Set(ids);
+  return (id) => set.has(id);
+}
+
+function linksWork(query: Query, matchesId: (id: string) => boolean) {
   // SAFETY: linksTo targets only match message context pages, which cache this shape.
   const pages = query.state.data as MessagePageContext[] | undefined;
   return (
@@ -48,8 +58,7 @@ function linksWork(query: Query, ids: string[]) {
     pages.some((page) =>
       page.links.some(
         (link) =>
-          ids.includes(link.entityId) ||
-          (!!link.projectEntityId && ids.includes(link.projectEntityId)),
+          matchesId(link.entityId) || (!!link.projectEntityId && matchesId(link.projectEntityId)),
       ),
     )
   );
@@ -61,7 +70,11 @@ function showsConversation(query: Query, conversationId: string) {
   return rows === undefined || rows.some((row) => row.conversationId === conversationId);
 }
 
-function discussesWork(query: Query, work: NonNullable<QueryTarget["discussesWork"]>) {
+function discussesWork(
+  query: Query,
+  projectId: string,
+  matchesTask: ((id: string) => boolean) | undefined,
+) {
   if (!Array.isArray(query.state.data)) return query.state.data === undefined;
   // SAFETY: conversation lists have task metadata; other lists under this prefix omit task.
   const rows = query.state.data as {
@@ -69,10 +82,7 @@ function discussesWork(query: Query, work: NonNullable<QueryTarget["discussesWor
   }[];
   return rows.some(
     ({ task }) =>
-      task &&
-      (work.taskIds
-        ? work.taskIds.includes(task.taskEntityId)
-        : task.projectEntityId === work.projectId),
+      task && (matchesTask ? matchesTask(task.taskEntityId) : task.projectEntityId === projectId),
   );
 }
 
@@ -89,6 +99,8 @@ export function queryTargetFilter(
     discussesWork: work,
     ...filter
   } = target;
+  const matchesLink = linksTo && entityIdMatcher(linksTo);
+  const matchesTask = work?.taskIds && entityIdMatcher(work.taskIds);
   return {
     ...filter,
     predicate: (query: Query) =>
@@ -96,8 +108,8 @@ export function queryTargetFilter(
       (!withMessage || queryKeys.messagePageIds(query.queryKey).includes(withMessage)) &&
       (!inConversation || showsConversation(query, inConversation)) &&
       (!withId || query.queryKey.slice(filter.queryKey.length).includes(withId)) &&
-      (!linksTo || linksWork(query, linksTo)) &&
-      (!work || discussesWork(query, work)) &&
+      (!matchesLink || linksWork(query, matchesLink)) &&
+      (!work || discussesWork(query, work.projectId, matchesTask)) &&
       predicate(query),
   };
 }

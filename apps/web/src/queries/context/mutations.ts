@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
-import { invalidateTargets, searchTargets } from "../targets";
+import { entityIdMatcher, invalidateTargets, searchTargets } from "../targets";
 import type { MessagePageContext } from "@/api/context/links";
 
 export function staleSearches(client: QueryClient, organizationId: string) {
@@ -35,11 +35,12 @@ export function invalidateWorkLabels(
   organizationId: string,
   entityIds: string[],
 ) {
+  const matchesId = entityIdMatcher(entityIds);
   return client.invalidateQueries({
     queryKey: queryKeys.messagePages(organizationId),
     predicate: ({ queryKey }) => {
       const matches = (links: MessagePageContext["links"]) =>
-        links.some((link) => entityIds.includes(link.entityId));
+        links.some((link) => matchesId(link.entityId));
       return (client.getQueryData<MessagePageContext[]>(queryKey) ?? []).some((item) =>
         matches(item.links),
       );

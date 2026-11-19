@@ -22,21 +22,18 @@ export function useDesktopSignIn() {
       const controller = new AbortController();
       pending.current = controller;
       setOpening(true);
-      try {
-        await requestDesktopSignIn(
-          {
-            requestAuth: window.requestAuth!,
-            onAuthenticated: window.onAuthenticated!,
-            onAuthError: window.onAuthError!,
-          },
-          controller.signal,
-          () => {
-            if (!controller.signal.aborted) setOpening(false);
-          },
-        );
-      } finally {
+      const finishOpening = () => {
         if (pending.current === controller && !controller.signal.aborted) setOpening(false);
-      }
+      };
+      await requestDesktopSignIn(
+        {
+          requestAuth: window.requestAuth!,
+          onAuthenticated: window.onAuthenticated!,
+          onAuthError: window.onAuthError!,
+        },
+        controller.signal,
+        finishOpening,
+      ).finally(finishOpening);
     },
   });
   return { ...mutation, opening };
