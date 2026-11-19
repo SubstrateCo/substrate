@@ -7,7 +7,8 @@ import {
   MessageReactions,
   MessageToolbar,
 } from "@/components/messaging/messages/message-interactions";
-import { PersonCardTarget, useHasPersonCard } from "@/components/messaging/people/person-card-slot";
+import { useHasPersonCard } from "@/components/messaging/people/person-card-context";
+import { PersonCardTarget } from "@/components/messaging/people/person-card-slot";
 import { Timestamp } from "@/components/time/timestamp";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/people/initials";
@@ -44,7 +45,6 @@ export function MessageItem({
   renderReaction?: (reaction: Message["reactions"][number]) => ReactNode;
   children?: ReactNode;
 }) {
-  const hasPersonCard = useHasPersonCard();
   const name = message.authorName || "Unknown member";
   return (
     <article
@@ -74,28 +74,7 @@ export function MessageItem({
         </span>
       )}
       <div className="min-w-0 flex-1">
-        {!grouped && (
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
-            <PersonCardTarget actorId={message.authorActorEntityId} name={name}>
-              <span
-                className={cn(
-                  "text-sm font-semibold",
-                  hasPersonCard && "rounded-sm underline-offset-2 hover:underline",
-                )}
-              >
-                {name}
-              </span>
-            </PersonCardTarget>
-            {message.authorType === "agent" && <Tag>Agent</Tag>}
-            {message.authorExternal && <Tag>External</Tag>}
-            <Timestamp
-              value={message.createdAt}
-              format="time"
-              className="text-xs text-muted-foreground"
-            />
-            {status && <span className="flex min-w-0 self-center">{status}</span>}
-          </div>
-        )}
+        {!grouped && <MessageByline message={message} name={name} status={status} />}
         {message.deletedAt ? (
           <p className="text-sm text-muted-foreground italic">Message deleted</p>
         ) : (
@@ -121,5 +100,39 @@ export function MessageItem({
         actions={actions}
       />
     </article>
+  );
+}
+
+function MessageByline({
+  message,
+  name,
+  status,
+}: {
+  message: Message;
+  name: string;
+  status?: ReactNode;
+}) {
+  const hasPersonCard = useHasPersonCard();
+  return (
+    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+      <PersonCardTarget actorId={message.authorActorEntityId} name={name}>
+        <span
+          className={cn(
+            "text-sm font-semibold",
+            hasPersonCard && "rounded-sm underline-offset-2 hover:underline",
+          )}
+        >
+          {name}
+        </span>
+      </PersonCardTarget>
+      {message.authorType === "agent" && <Tag>Agent</Tag>}
+      {message.authorExternal && <Tag>External</Tag>}
+      <Timestamp
+        value={message.createdAt}
+        format="time"
+        className="text-xs text-muted-foreground"
+      />
+      {status && <span className="flex min-w-0 self-center">{status}</span>}
+    </div>
   );
 }

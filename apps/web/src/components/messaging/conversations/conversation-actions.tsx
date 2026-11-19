@@ -44,13 +44,15 @@ export function ConversationActions({
   });
   // Running text: a public channel reads "#name", as in the composer and search.
   const name = conversationLabel({ ...conversation, name: conversationName(conversation) });
-  const owner = !!userId && conversation.createdBy === userId && !!conversation.canManage;
   const people = humanMembers(conversation.members);
-  const others = people.filter((person) => person.userId !== userId);
   const canLeave = conversation.kind !== "dm" && !!conversation.joined;
-  const leaveLabel = conversation.kind === "channel" ? "Leave channel" : "Leave group";
-  const deleteLabel = conversation.kind === "channel" ? "Delete channel" : "Delete group";
-  const publicChannel = conversation.kind === "channel" && !conversation.private;
+  const { leaveLabel, deleteLabel } =
+    conversation.kind === "channel"
+      ? { leaveLabel: "Leave channel", deleteLabel: "Delete channel" }
+      : { leaveLabel: "Leave group", deleteLabel: "Delete group" };
+  const ownershipActions = conversation.canManage
+    ? { onTransfer: () => open("transfer"), onDelete: () => open("delete") }
+    : undefined;
 
   return (
     <>
@@ -60,8 +62,7 @@ export function ConversationActions({
         onSharing={conversation.canShare ? () => open("sharing") : undefined}
         onAgents={canLeave && userId ? () => open("agents") : undefined}
         onLeave={canLeave ? () => open("leave") : undefined}
-        onTransfer={conversation.canManage ? () => open("transfer") : undefined}
-        onDelete={conversation.canManage ? () => open("delete") : undefined}
+        {...ownershipActions}
       />
       {dialog === "sharing" && (
         <SharingManager
@@ -82,13 +83,13 @@ export function ConversationActions({
           onRestoreFocus={restoreFocus}
         />
       )}
-      {dialog === "leave" && owner && others.length > 0 && (
-        <OwnerDialog
-          mode="leave"
+      {dialog === "leave" && (
+        <LeaveConversation
+          conversation={conversation}
+          userId={userId}
           name={name}
           leaveLabel={leaveLabel}
-          publicChannel={publicChannel}
-          candidates={others}
+          people={people}
           pending={leave.isPending}
           error={leave.error}
           onClose={close}
@@ -96,24 +97,6 @@ export function ConversationActions({
           onConfirm={(newOwnerUserId) =>
             leave.mutate(
               { conversationId: conversation.id, newOwnerUserId },
-              { onSuccess: () => toast.success(`You left ${name}`) },
-            )
-          }
-        />
-      )}
-      {dialog === "leave" && !(owner && others.length > 0) && (
-        <LeaveConversationDialog
-          name={name}
-          leaveLabel={leaveLabel}
-          publicChannel={publicChannel}
-          lastMember={owner}
-          pending={leave.isPending}
-          error={leave.error}
-          onClose={close}
-          onRestoreFocus={restoreFocus}
-          onConfirm={() =>
-            leave.mutate(
-              { conversationId: conversation.id },
               { onSuccess: () => toast.success(`You left ${name}`) },
             )
           }
@@ -156,5 +139,41 @@ export function ConversationActions({
         />
       )}
     </>
+  );
+}
+
+function LeaveConversation({
+  conversation,
+  userId,
+  name,
+  leaveLabel,
+  people,
+  pending,
+  error,
+  onClose,
+  onRestoreFocus,
+  onConfirm,
+}: {
+  conversation: Conversation;
+  userId?: string;
+  name: string;
+  leaveLabel: string;
+  people: ReturnType<typeof humanMembers>;
+  pending: boolean;
+  error: Error | null;
+  onClose: () => void;
+  onRestoreFocus: () => void;
+  onConfirm: (newOwnerUserId?: string) => void;
+}) {
+  const owner = !!userId && conversation.createdBy === userId && !!conversation.canManage;
+  const candidates = people.filter((person) => person.userId !== userId);
+  const publicChannel = conversation.kind === "channel" && !conversation.private;
+  const dialogProps = { name, leaveLabel, publicChannel, pending, error, onClose, onRestoreFocus };
+  if (owner && candidates.length > 0)
+    return (
+      <OwnerDialog {...dialogProps} mode="leave" candidates={candidates} onConfirm={onConfirm} />
+    );
+  return (
+    <LeaveConversationDialog {...dialogProps} lastMember={owner} onConfirm={() => onConfirm()} />
   );
 }

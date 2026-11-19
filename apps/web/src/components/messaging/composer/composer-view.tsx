@@ -7,11 +7,12 @@ import { InputGroup, InputGroupAddon } from "../../ui/input-group";
 import { Popover, PopoverAnchor, PopoverContent } from "../../ui/popover";
 import type { WorkspaceReference } from "../references/entity-reference";
 import { ReferenceEditor } from "../references/reference-editor";
-import { ReferencePickerAccessibility } from "../references/reference-picker";
+import { ReferencePickerAccessibility } from "../references/reference-picker-context";
 import { referenceQuery } from "../references/reference-query";
 import type { ReferenceQuery } from "../references/reference-query";
-import { ComposerDraftReferences } from "./composer-drafts";
-import { ComposerToolbar, composerFormats } from "./composer-toolbar";
+import { ComposerDraftReferences } from "./composer-draft-context";
+import { composerFormats } from "./composer-formats";
+import { ComposerToolbar } from "./composer-toolbar";
 import { EmojiPicker } from "./emoji-picker";
 import { FormMessage } from "@/components/feedback/form-message";
 import {
@@ -56,7 +57,6 @@ export function Composer({
       hasAttachments,
       attachmentsReady,
     });
-  const limitId = useId();
   const [references, setReferences] = useState(false);
   const [pickerAccessibility, setPickerAccessibility] = useState<{
     listId: string;
@@ -97,8 +97,6 @@ export function Composer({
     );
     closeReferences();
   };
-  const overBy = draft.length - messageMaxLength;
-  const nearLimit = draft.length > messageMaxLength - 1000;
   return (
     <form
       className="@container relative w-full p-3 pt-1"
@@ -217,41 +215,12 @@ export function Composer({
                 <ComposerToolbar pending={pending} onInsert={insert} />
                 <EmojiPicker onSelect={(emoji) => insert(emoji)} disabled={pending} />
                 {attachmentControls}
-                <span className="ml-auto flex min-w-0 items-center gap-3 pl-2">
-                  {nearLimit && (
-                    <span
-                      id={limitId}
-                      aria-live="polite"
-                      className={cn(
-                        "truncate text-xs font-normal tabular-nums",
-                        overBy > 0 ? "text-destructive" : "text-muted-foreground",
-                      )}
-                    >
-                      {overBy > 0
-                        ? `Remove ${overBy.toLocaleString("en-US")} ${overBy === 1 ? "character" : "characters"} to send`
-                        : `${(messageMaxLength - draft.length).toLocaleString("en-US")} characters left`}
-                    </span>
-                  )}
-                  {!nearLimit && (
-                    <span className="hidden truncate text-xs font-normal text-muted-foreground opacity-0 transition-opacity group-focus-within/composer:opacity-100 motion-reduce:transition-none @lg:inline">
-                      <strong className="font-medium">Enter</strong> to send ·{" "}
-                      <strong className="font-medium">Shift+Enter</strong> for a new line ·{" "}
-                      <strong className="font-medium">@</strong> to reference
-                    </span>
-                  )}
-                  <PendingButton
-                    type="submit"
-                    size="sm"
-                    className="min-w-16"
-                    aria-describedby={nearLimit ? limitId : undefined}
-                    disabled={(!draft.trim() && !hasAttachments) || !attachmentsReady || overBy > 0}
-                    pending={pending}
-                    pendingLabel="Sending…"
-                  >
-                    <Send className="size-3.5" />
-                    Send
-                  </PendingButton>
-                </span>
+                <ComposerSendControls
+                  draft={draft}
+                  hasAttachments={hasAttachments}
+                  attachmentsReady={attachmentsReady}
+                  pending={pending}
+                />
               </div>
             </InputGroupAddon>
           </InputGroup>
@@ -270,5 +239,57 @@ export function Composer({
         )}
       </Field>
     </form>
+  );
+}
+
+function ComposerSendControls({
+  draft,
+  hasAttachments,
+  attachmentsReady,
+  pending,
+}: {
+  draft: string;
+  hasAttachments: boolean;
+  attachmentsReady: boolean;
+  pending: boolean;
+}) {
+  const limitId = useId();
+  const overBy = draft.length - messageMaxLength;
+  const nearLimit = overBy > -1000;
+  return (
+    <span className="ml-auto flex min-w-0 items-center gap-3 pl-2">
+      {nearLimit ? (
+        <span
+          id={limitId}
+          aria-live="polite"
+          className={cn(
+            "truncate text-xs font-normal tabular-nums",
+            overBy > 0 ? "text-destructive" : "text-muted-foreground",
+          )}
+        >
+          {overBy > 0
+            ? `Remove ${overBy.toLocaleString("en-US")} ${overBy === 1 ? "character" : "characters"} to send`
+            : `${(messageMaxLength - draft.length).toLocaleString("en-US")} characters left`}
+        </span>
+      ) : (
+        <span className="hidden truncate text-xs font-normal text-muted-foreground opacity-0 transition-opacity group-focus-within/composer:opacity-100 motion-reduce:transition-none @lg:inline">
+          <strong className="font-medium">Enter</strong> to send ·{" "}
+          <strong className="font-medium">Shift+Enter</strong> for a new line ·{" "}
+          <strong className="font-medium">@</strong> to reference
+        </span>
+      )}
+      <PendingButton
+        type="submit"
+        size="sm"
+        className="min-w-16"
+        aria-describedby={nearLimit ? limitId : undefined}
+        disabled={(!draft.trim() && !hasAttachments) || !attachmentsReady || overBy > 0}
+        pending={pending}
+        pendingLabel="Sending…"
+      >
+        <Send className="size-3.5" />
+        Send
+      </PendingButton>
+    </span>
   );
 }

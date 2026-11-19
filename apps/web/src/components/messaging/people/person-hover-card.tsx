@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { useState, type ReactElement } from "react";
+import { useEffect, useRef, useState, type ReactElement } from "react";
 
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { PersonCard } from "@/components/messaging/people/person-card-view";
-import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDirectMessage } from "@/queries/messaging/conversations";
 import { messagingProfileOptions } from "@/queries/messaging/profiles";
 import { MessageSquare } from "lucide-react";
@@ -25,28 +25,86 @@ export function PersonHoverCard({
   name: string;
   children: ReactElement;
 }) {
-  const [open, setOpen] = useState(false);
+  const { mode, onOpenChange, enter, leave, clearTimer, activated } = usePersonCardDisclosure();
+  const content = useRef<HTMLDivElement>(null);
   return (
-    <HoverCard open={open} onOpenChange={setOpen} openDelay={400} closeDelay={150}>
-      <HoverCardTrigger asChild>
-        <span
-          tabIndex={0}
-          className="rounded-sm focus-visible:outline-2 focus-visible:outline-ring"
+    <Popover open={mode !== "closed"} onOpenChange={onOpenChange}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="max-w-full rounded-sm text-left align-baseline focus-visible:outline-2 focus-visible:outline-ring"
+          onPointerEnter={(event) => {
+            if (event.pointerType === "mouse") enter();
+          }}
+          onPointerLeave={leave}
+          onClick={(event) => {
+            if (mode !== "preview") return;
+            // Activate the visible preview rather than toggling it closed.
+            event.preventDefault();
+            onOpenChange(true);
+            content.current?.focus();
+          }}
         >
           {children}
-        </span>
-      </HoverCardTrigger>
-      <HoverCardContent side="bottom" align="start" collisionPadding={8} className="w-76">
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        ref={content}
+        aria-label={`${name} profile`}
+        side="bottom"
+        align="start"
+        collisionPadding={8}
+        className="w-76"
+        onPointerEnter={clearTimer}
+        onPointerLeave={leave}
+        onOpenAutoFocus={(event) => {
+          if (!activated.current) event.preventDefault();
+        }}
+        onCloseAutoFocus={(event) => {
+          if (!activated.current) event.preventDefault();
+        }}
+      >
         <PersonHoverCardBody
           organizationId={organizationId}
           conversationId={conversationId}
           actorId={actorId}
           name={name}
-          onClose={() => setOpen(false)}
+          onClose={() => onOpenChange(false)}
         />
-      </HoverCardContent>
-    </HoverCard>
+      </PopoverContent>
+    </Popover>
   );
+}
+
+function usePersonCardDisclosure() {
+  const [mode, setMode] = useState<"closed" | "preview" | "activated">("closed");
+  const activated = useRef(false);
+  const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const clearTimer = () => clearTimeout(timer.current);
+  useEffect(() => () => clearTimeout(timer.current), []);
+  return {
+    mode,
+    activated,
+    clearTimer,
+    onOpenChange: (open: boolean) => {
+      clearTimer();
+      if (open) activated.current = true;
+      setMode(open ? "activated" : "closed");
+    },
+    enter: () => {
+      clearTimer();
+      if (mode !== "closed") return;
+      timer.current = setTimeout(() => {
+        activated.current = false;
+        setMode("preview");
+      }, 400);
+    },
+    leave: () => {
+      clearTimer();
+      if (mode !== "preview") return;
+      timer.current = setTimeout(() => setMode("closed"), 150);
+    },
+  };
 }
 
 /** The card's content. It mounts only while the card is open, so closed cards hold no queries. */

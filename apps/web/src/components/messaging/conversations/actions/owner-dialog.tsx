@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { leaveConsequence } from "./leave-conversation-dialog";
+import { leaveConsequence } from "./leave-consequence";
 import { OwnerSelect } from "./owner-select";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 

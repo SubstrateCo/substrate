@@ -1,20 +1,17 @@
 import { taskStatusLabels, type TaskStatus } from "@substrate/contracts/tasks";
 
-import { createContext, useContext, useEffect, useId, useRef, useState } from "react";
+import { useContext, useEffect, useId, useRef, useState } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import type { WorkspaceReference } from "./entity-reference";
+import { ReferencePickerAccessibility } from "./reference-picker-context";
 import { ReferencePickerOption } from "./reference-picker-option";
 
 export type ReferenceKind = "task" | "project" | "person" | "agent" | "channel" | "thread";
 /** A picker tab: one kind, or "all" for a mixed list. */
 export type ReferenceTab = ReferenceKind | "all";
-export const ReferencePickerAccessibility = createContext<
-  ((value: { listId: string; selectedId?: string } | null) => void) | null
->(null);
-
 const kindLabels: Record<ReferenceTab, string> = {
   all: "All",
   person: "People",

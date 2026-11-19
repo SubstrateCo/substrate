@@ -1,24 +1,17 @@
 import { partialMatchKey, useQueryClient } from "@tanstack/react-query";
 
-import { createContext, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
+import {
+  ComposerDraftReferences,
+  ComposerDrafts,
+  ComposerSendRequests,
+} from "./composer-draft-context";
 import { isAccessFailure } from "@/api/access-failure";
 import type { WorkspaceReference } from "@/components/messaging/references/entity-reference";
 import { retainConversationDraft } from "@/lib/messaging/composer-draft-access";
 import type { Conversation } from "@/lib/messaging/conversations";
 import { queryKeys } from "@/queries/keys";
-
-export const ComposerDrafts = createContext<{
-  get: (key: string) => string | undefined;
-  set: (key: string, value: string) => void;
-  clear: (key: string, expected: string) => void;
-} | null>(null);
-export const ComposerDraftReferences = createContext<Map<string, WorkspaceReference[]> | null>(
-  null,
-);
-export const ComposerSendRequests = createContext<Map<string, { id: string; body: string }> | null>(
-  null,
-);
 
 export function ComposerDraftProvider({
   organizationId,

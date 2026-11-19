@@ -20,42 +20,22 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
   const { value: selected, open, close, restoreFocus } = useStateDialog<string>();
   const blocked = isAccessFailure(conversations.error) || isAccessFailure(inbox.error);
   if (blocked && selected !== undefined) close();
+  const retry = () => {
+    void conversations.refetch();
+    void inbox.refetch();
+  };
   return (
     <SettingsPanel
       title="External collaboration"
       description="Approve partner channels, manage invitations, or disconnect organizations."
     >
-      {(conversations.isPending || inbox.isPending) && (
-        <LoadingState label="Loading collaboration…" rows={2} />
-      )}
-      {(conversations.error || inbox.error) && !blocked && conversations.data && inbox.data && (
-        <StaleNotice
-          onRetry={() => {
-            void conversations.refetch();
-            void inbox.refetch();
-          }}
-        >
-          This information may be out of date.
-        </StaleNotice>
-      )}
-      {(conversations.error || inbox.error) && (blocked || !conversations.data || !inbox.data) && (
-        <ErrorState
-          title="Couldn’t load collaboration"
-          description={
-            blocked
-              ? "You no longer have access to collaboration settings."
-              : "This information may be out of date."
-          }
-          onRetry={
-            blocked
-              ? undefined
-              : () => {
-                  void conversations.refetch();
-                  void inbox.refetch();
-                }
-          }
-        />
-      )}
+      <CollaborationLoadNotice
+        loading={conversations.isPending || inbox.isPending}
+        failed={!!(conversations.error || inbox.error)}
+        blocked={blocked}
+        hasLists={!!(conversations.data && inbox.data)}
+        onRetry={retry}
+      />
       {!blocked && (
         <SettingsCard title="Requests">
           {inbox.data?.length === 0 && <SettingsNote>No pending requests.</SettingsNote>}
@@ -114,5 +94,42 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
         />
       )}
     </SettingsPanel>
+  );
+}
+
+function CollaborationLoadNotice({
+  loading,
+  failed,
+  blocked,
+  hasLists,
+  onRetry,
+}: {
+  loading: boolean;
+  failed: boolean;
+  blocked: boolean;
+  hasLists: boolean;
+  onRetry: () => void;
+}) {
+  let notice;
+  if (failed)
+    notice =
+      !blocked && hasLists ? (
+        <StaleNotice onRetry={onRetry}>This information may be out of date.</StaleNotice>
+      ) : (
+        <ErrorState
+          title="Couldn’t load collaboration"
+          description={
+            blocked
+              ? "You no longer have access to collaboration settings."
+              : "This information may be out of date."
+          }
+          onRetry={blocked ? undefined : onRetry}
+        />
+      );
+  return (
+    <>
+      {loading && <LoadingState label="Loading collaboration…" rows={2} />}
+      {notice}
+    </>
   );
 }

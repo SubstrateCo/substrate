@@ -1,13 +1,7 @@
 import { Button } from "../../ui/button";
 import { Kbd, KbdGroup } from "../../ui/kbd";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
-import { Bold, Code, Italic } from "lucide-react";
-
-export const composerFormats = [
-  { label: "Bold text", tooltip: "Bold", key: "b", icon: Bold, prefix: "**", suffix: "**" },
-  { label: "Italic text", tooltip: "Italic", key: "i", icon: Italic, prefix: "_", suffix: "_" },
-  { label: "Code text", tooltip: "Code", key: "e", icon: Code, prefix: "`", suffix: "`" },
-];
+import { composerFormats } from "./composer-formats";
 
 export function ComposerToolbar({
   pending,

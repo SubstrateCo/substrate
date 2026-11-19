@@ -1,6 +1,6 @@
 import { getRouteApi } from "@tanstack/react-router";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type RefObject } from "react";
 
 import { LinkMessageWork } from "../../context/links/link-message-work";
 import { MessageContext, type MessageContextState } from "../../context/references/message-context";
@@ -59,8 +59,6 @@ export function MessageItem({
   context: MessageContextState;
   canPost?: boolean;
 }) {
-  const recordUrl = useRecordUrl();
-  const copyText = useCopyText();
   const linked = dashboard.useSearch({ select: (search) => search.messageId === message.id });
   // A thread's root heads its own pane, so it is not marked as the link target there.
   const highlighted = linked && !threadRoot;
@@ -139,71 +137,22 @@ export function MessageItem({
             </>
           }
           actions={
-            <>
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        ref={actionsTrigger}
-                        type="button"
-                        size="icon-sm"
-                        variant="ghost"
-                        aria-label="More message actions"
-                      >
-                        <Ellipsis aria-hidden="true" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>More message actions</TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent align="end">
-                  {!!message.reactions.length && (
-                    <DropdownMenuItem
-                      onSelect={() => {
-                        reactionsTrigger.current = actionsTrigger.current;
-                        setReactionsEmoji("");
-                      }}
-                    >
-                      <Smile aria-hidden="true" /> View reactions
-                    </DropdownMenuItem>
-                  )}
-                  {canPost && !message.deletedAt && (
-                    <DropdownMenuItem onSelect={() => setLinking(true)}>
-                      <Link2 aria-hidden="true" /> Link work or CRM
-                    </DropdownMenuItem>
-                  )}
-                  <DropdownMenuItem
-                    onSelect={() => {
-                      const link = messageLink(organizationId, message.conversationId, message.id);
-                      copyText.mutate(recordUrl(link), {
-                        onSuccess: () => toast.success("Link copied"),
-                        onError: () => toast.error("Couldn’t copy link"),
-                      });
-                    }}
-                  >
-                    <Copy aria-hidden="true" /> Copy message link
-                  </DropdownMenuItem>
-                  {canPost && message.canModify && (
-                    <>
-                      <DropdownMenuItem onSelect={() => setEditing(true)}>
-                        <Pencil aria-hidden="true" /> Edit message
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onSelect={() => {
-                          remove.reset();
-                          setDeleting(true);
-                        }}
-                      >
-                        <Trash2 aria-hidden="true" /> Delete message
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </>
+            <MessageActionsMenu
+              organizationId={organizationId}
+              message={message}
+              canPost={canPost}
+              trigger={actionsTrigger}
+              onReactions={() => {
+                reactionsTrigger.current = actionsTrigger.current;
+                setReactionsEmoji("");
+              }}
+              onLink={() => setLinking(true)}
+              onEdit={() => setEditing(true)}
+              onDelete={() => {
+                remove.reset();
+                setDeleting(true);
+              }}
+            />
           }
           avatarBadge={<AgentWorkBadge messageId={message.id} />}
           status={
@@ -265,5 +214,82 @@ export function MessageItem({
         </MessageItemView>
       </PersonCardProvider>
     </LinkedMessage>
+  );
+}
+
+function MessageActionsMenu({
+  organizationId,
+  message,
+  canPost,
+  trigger,
+  onReactions,
+  onLink,
+  onEdit,
+  onDelete,
+}: {
+  organizationId: string;
+  message: Message;
+  canPost: boolean;
+  trigger: RefObject<HTMLButtonElement | null>;
+  onReactions: () => void;
+  onLink: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const recordUrl = useRecordUrl();
+  const copyText = useCopyText();
+  return (
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              ref={trigger}
+              type="button"
+              size="icon-sm"
+              variant="ghost"
+              aria-label="More message actions"
+            >
+              <Ellipsis aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>More message actions</TooltipContent>
+      </Tooltip>
+      <DropdownMenuContent align="end">
+        {!!message.reactions.length && (
+          <DropdownMenuItem onSelect={onReactions}>
+            <Smile aria-hidden="true" /> View reactions
+          </DropdownMenuItem>
+        )}
+        {canPost && !message.deletedAt && (
+          <DropdownMenuItem onSelect={onLink}>
+            <Link2 aria-hidden="true" /> Link work or CRM
+          </DropdownMenuItem>
+        )}
+        <DropdownMenuItem
+          onSelect={() => {
+            const link = messageLink(organizationId, message.conversationId, message.id);
+            copyText.mutate(recordUrl(link), {
+              onSuccess: () => toast.success("Link copied"),
+              onError: () => toast.error("Couldn't copy link"),
+            });
+          }}
+        >
+          <Copy aria-hidden="true" /> Copy message link
+        </DropdownMenuItem>
+        {canPost && message.canModify && (
+          <>
+            <DropdownMenuItem onSelect={onEdit}>
+              <Pencil aria-hidden="true" /> Edit message
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem variant="destructive" onSelect={onDelete}>
+              <Trash2 aria-hidden="true" /> Delete message
+            </DropdownMenuItem>
+          </>
+        )}
+      </DropdownMenuContent>
+    </DropdownMenu>
   );
 }

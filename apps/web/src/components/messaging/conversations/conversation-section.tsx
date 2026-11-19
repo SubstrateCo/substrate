@@ -116,22 +116,30 @@ export function ConversationSection({
                 />
               ))}
             </div>
-            {!loading && items.length === 0 && section !== "partner" && (
-              <div className="flex items-center justify-between gap-2 px-2 py-1">
-                <p className="text-xs text-muted-foreground">{emptyLabels[section]}</p>
-                <Button
-                  type="button"
-                  variant="link"
-                  size="xs"
-                  onClick={() => onCreate(section === "channel" ? "channel" : "dm")}
-                >
-                  Start one
-                </Button>
-              </div>
+            {!loading && items.length === 0 && (
+              <EmptySection section={section} onCreate={onCreate} />
             )}
           </div>
         </CollapsibleContent>
       </section>
     </Collapsible>
+  );
+}
+
+function EmptySection({
+  section,
+  onCreate,
+}: {
+  section: keyof typeof sectionLabels;
+  onCreate: (kind: Conversation["kind"]) => void;
+}) {
+  if (section === "partner") return null;
+  return (
+    <div className="flex items-center justify-between gap-2 px-2 py-1">
+      <p className="text-xs text-muted-foreground">{emptyLabels[section]}</p>
+      <Button type="button" variant="link" size="xs" onClick={() => onCreate(section)}>
+        Start one
+      </Button>
+    </div>
   );
 }

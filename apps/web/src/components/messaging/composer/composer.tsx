@@ -5,7 +5,7 @@ import { AttachFilesButton, AttachmentDraftList } from "@/components/attachments
 import { FileDropZone } from "@/components/attachments/file-drop-zone";
 import { useAttachmentUploads } from "@/components/attachments/use-attachment-uploads";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
-import { ComposerSendRequests } from "@/components/messaging/composer/composer-drafts";
+import { ComposerSendRequests } from "@/components/messaging/composer/composer-draft-context";
 import { Composer as ComposerView } from "@/components/messaging/composer/composer-view";
 import { useSendMessage } from "@/queries/messaging/messages";
 

@@ -56,19 +56,11 @@ export function ConversationPane({
   const activeThreadId = messageId && !target.error ? target.data?.root.id : undefined;
   const [addingMembers, setAddingMembers] = useState(false);
   const [removingMember, setRemovingMember] = useState<HeaderMember | null>(null);
-  const { messages, history, loadOlder } = useMessageHistory({
+  const { messages, history, loadOlder, timeline } = useConversationTimeline({
     organizationId,
     conversationId: conversation.id,
     aroundMessageId: target.data?.root.id,
   });
-  const timeline = messages.data ?? [];
-  useConversationRead(
-    organizationId,
-    conversation.id,
-    !messages.error && !messages.isPlaceholderData && !history.hasPrevious
-      ? timeline.at(-1)?.id
-      : undefined,
-  );
   const resource = resourceState(messages);
   let messageContent;
   if (target.error)
@@ -83,7 +75,7 @@ export function ConversationPane({
         conversationId={conversation.id}
         olderPage={history.hasPrevious}
         canPost={conversation.canPost}
-        header={<OlderMessages {...history} onOlder={() => loadOlder(messages.data?.[0]?.id)} />}
+        header={<OlderMessages {...history} onOlder={() => loadOlder(timeline[0]?.id)} />}
         footer={<JumpToLatest {...history} />}
         onThread={(id) => {
           void navigate({
@@ -120,7 +112,7 @@ export function ConversationPane({
         onClose={() => transcript()}
       />
     );
-  else if (activeThreadId && !target.error)
+  else if (activeThreadId)
     aside = (
       <ThreadPane
         key={activeThreadId}
@@ -132,7 +124,7 @@ export function ConversationPane({
         })}
         threadId={activeThreadId}
         contextMessageIds={timeline.map((message) => message.id)}
-        root={target.data?.root ?? messages.data?.find((message) => message.id === activeThreadId)}
+        root={target.data?.root}
         targetMessage={target.data?.message}
         canPost={conversation.canPost}
         onClose={() => {
@@ -164,13 +156,7 @@ export function ConversationPane({
           )
         }
         memberAction={(member) =>
-          !task &&
-          conversation.canManage &&
-          conversation.kind !== "dm" &&
-          member.type === "human" &&
-          member.organizationId === conversation.organizationId &&
-          member.userId !== userId &&
-          member.userId !== conversation.createdBy ? (
+          canRemoveMember(conversation, userId, member) ? (
             <RemoveMemberAction member={member} onRemove={() => setRemovingMember(member)} />
           ) : null
         }
@@ -209,20 +195,7 @@ export function ConversationPane({
           )
         }
         composer={
-          <>
-            <AgentWorkNotice threadId={null} />
-            {conversation.canPost ? (
-              <Composer
-                organizationId={organizationId}
-                conversationId={conversation.id}
-                label={`Message ${conversationLabel({ ...conversation, name: conversationName(conversation) })}`}
-              />
-            ) : (
-              <p className="px-4 py-3 text-sm text-muted-foreground">
-                Can view this discussion. Comment access is required to send messages.
-              </p>
-            )}
-          </>
+          <ConversationComposer organizationId={organizationId} conversation={conversation} />
         }
         thread={aside}
       />
@@ -236,5 +209,55 @@ export function ConversationPane({
         />
       )}
     </ConversationAgentWork>
+  );
+}
+
+function useConversationTimeline(options: Parameters<typeof useMessageHistory>[0]) {
+  const { messages, history, loadOlder } = useMessageHistory(options);
+  const timeline = messages.data ?? [];
+  // Only mark the conversation read when the current result reaches its newest message.
+  const canMarkRead = !messages.error && !messages.isPlaceholderData && !history.hasPrevious;
+  useConversationRead(
+    options.organizationId,
+    options.conversationId,
+    canMarkRead ? timeline.at(-1)?.id : undefined,
+  );
+  return { messages, history, loadOlder, timeline };
+}
+
+function canRemoveMember(conversation: Conversation, userId: string, member: HeaderMember) {
+  return (
+    !conversation.task &&
+    conversation.canManage &&
+    conversation.kind !== "dm" &&
+    member.type === "human" &&
+    member.organizationId === conversation.organizationId &&
+    member.userId !== userId &&
+    member.userId !== conversation.createdBy
+  );
+}
+
+function ConversationComposer({
+  organizationId,
+  conversation,
+}: {
+  organizationId: string;
+  conversation: Conversation;
+}) {
+  return (
+    <>
+      <AgentWorkNotice threadId={null} />
+      {conversation.canPost ? (
+        <Composer
+          organizationId={organizationId}
+          conversationId={conversation.id}
+          label={`Message ${conversationLabel({ ...conversation, name: conversationName(conversation) })}`}
+        />
+      ) : (
+        <p className="px-4 py-3 text-sm text-muted-foreground">
+          Can view this discussion. Comment access is required to send messages.
+        </p>
+      )}
+    </>
   );
 }

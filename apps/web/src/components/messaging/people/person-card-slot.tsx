@@ -1,8 +1,6 @@
-import { createContext, useContext, type ReactElement, type ReactNode } from "react";
+import { useContext, type ReactElement, type ReactNode } from "react";
 
-type PersonCardRenderer = (actorId: string, name: string, trigger: ReactElement) => ReactNode;
-
-const PersonCardContext = createContext<PersonCardRenderer | null>(null);
+import { PersonCardContext, type PersonCardRenderer } from "./person-card-context";
 
 // Connected containers supply the card. Views mark the names that may open it.
 export function PersonCardProvider({
@@ -13,10 +11,6 @@ export function PersonCardProvider({
   children: ReactNode;
 }) {
   return <PersonCardContext.Provider value={render}>{children}</PersonCardContext.Provider>;
-}
-
-export function useHasPersonCard() {
-  return useContext(PersonCardContext) !== null;
 }
 
 export function PersonCardTarget({

@@ -80,7 +80,7 @@ export function SharingManager({
   } = useStateDialog<Confirmation>(confirmFallback);
   const action = useSharingAction(organizationId, conversationId);
   if (blocked && confirmation) closeConfirmation();
-  const copy = confirmation && !blocked && confirmCopy[confirmation.kind];
+  const retry = () => void details.refetch();
   return (
     <>
       <SharingInvitationForm
@@ -94,24 +94,13 @@ export function SharingManager({
         onInvite={(email, onSuccess) => action.mutate({ kind: "invite", email }, { onSuccess })}
         error={action.variables?.kind === "invite" ? action.error : undefined}
       >
-        {details.isPending && <LoadingState label="Loading sharing…" rows={2} />}
-        {details.error && !data && (
-          <ErrorState
-            title="Sharing unavailable"
-            description={
-              blocked
-                ? "Only the people who manage this conversation, and organization admins, can manage sharing."
-                : "We couldn’t load sharing. Check your connection and try again."
-            }
-            // Missing permission does not change by asking again.
-            onRetry={blocked ? undefined : () => void details.refetch()}
-          />
-        )}
-        {details.error && data && (
-          <StaleNotice onRetry={() => void details.refetch()}>
-            This list is from earlier and may be out of date.
-          </StaleNotice>
-        )}
+        <SharingLoadNotice
+          loading={details.isPending}
+          error={details.error}
+          blocked={blocked}
+          hasData={!!data}
+          onRetry={retry}
+        />
         {data && (
           <>
             <SharingDetailsView
@@ -160,16 +149,11 @@ export function SharingManager({
           </>
         )}
       </SharingInvitationForm>
-      {confirmation && copy && (
-        <ConfirmDialog
-          title={copy.title(confirmation.name)}
-          description={copy.description}
-          confirmLabel={copy.confirm}
-          pendingLabel={copy.pending}
-          destructive
+      {!blocked && confirmation && (
+        <SharingConfirmation
+          confirmation={confirmation}
           pending={action.isPending}
           error={action.error}
-          errorDescription="We couldn’t change access. Try again."
           onClose={closeConfirmation}
           onRestoreFocus={restoreConfirmFocus}
           onConfirm={() =>
@@ -178,7 +162,7 @@ export function SharingManager({
               {
                 onSuccess: () => {
                   closeConfirmation();
-                  toast.success(copy.done(confirmation.name));
+                  toast.success(confirmCopy[confirmation.kind].done(confirmation.name));
                 },
               },
             )
@@ -186,5 +170,70 @@ export function SharingManager({
         />
       )}
     </>
+  );
+}
+
+function SharingLoadNotice({
+  loading,
+  error,
+  blocked,
+  hasData,
+  onRetry,
+}: {
+  loading: boolean;
+  error: Error | null;
+  blocked: boolean;
+  hasData: boolean;
+  onRetry: () => void;
+}) {
+  if (loading) return <LoadingState label="Loading sharing…" rows={2} />;
+  if (!error) return null;
+  if (hasData)
+    return (
+      <StaleNotice onRetry={onRetry}>This list is from earlier and may be out of date.</StaleNotice>
+    );
+  return (
+    <ErrorState
+      title="Sharing unavailable"
+      description={
+        blocked
+          ? "Only the people who manage this conversation, and organization admins, can manage sharing."
+          : "We couldn’t load sharing. Check your connection and try again."
+      }
+      onRetry={blocked ? undefined : onRetry}
+    />
+  );
+}
+
+function SharingConfirmation({
+  confirmation,
+  pending,
+  error,
+  onClose,
+  onRestoreFocus,
+  onConfirm,
+}: {
+  confirmation: Confirmation;
+  pending: boolean;
+  error: Error | null;
+  onClose: () => void;
+  onRestoreFocus: () => void;
+  onConfirm: () => void;
+}) {
+  const copy = confirmCopy[confirmation.kind];
+  return (
+    <ConfirmDialog
+      title={copy.title(confirmation.name)}
+      description={copy.description}
+      confirmLabel={copy.confirm}
+      pendingLabel={copy.pending}
+      destructive
+      pending={pending}
+      error={error}
+      errorDescription="We couldn’t change access. Try again."
+      onClose={onClose}
+      onRestoreFocus={onRestoreFocus}
+      onConfirm={onConfirm}
+    />
   );
 }

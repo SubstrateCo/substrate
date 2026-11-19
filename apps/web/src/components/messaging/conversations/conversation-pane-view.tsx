@@ -13,23 +13,7 @@ import {
 } from "@/lib/messaging/conversations";
 import type { ResourceStatus } from "@/lib/resource-state";
 
-export function ConversationPane({
-  conversation,
-  viewerId,
-  state,
-  error,
-  onRetry,
-  addingMembers = false,
-  onToggleMembers,
-  membersForm,
-  messages,
-  composer,
-  thread,
-  actions,
-  leftNotice,
-  memberAction,
-  taskLink,
-}: {
+type ConversationPaneProps = {
   actions?: ReactNode;
   leftNotice?: ReactNode;
   memberAction?: (member: HeaderMember) => ReactNode;
@@ -46,64 +30,54 @@ export function ConversationPane({
   messages?: ReactNode;
   composer: ReactNode;
   thread?: ReactNode;
-}) {
+};
+
+export function ConversationPane({
+  conversation,
+  viewerId,
+  state,
+  error,
+  onRetry,
+  addingMembers = false,
+  onToggleMembers,
+  membersForm,
+  messages,
+  composer,
+  thread,
+  actions,
+  leftNotice,
+  memberAction,
+  taskLink,
+}: ConversationPaneProps) {
   const title = conversation ? conversationName(conversation) : "Conversation unavailable";
   const blocked = state === "error" || state === "unavailable";
   const initialLoading = state === "loading";
   const showThread = !blocked && !initialLoading && !!thread;
-  let kind: "private" | "public" | "group" | "dm" | undefined;
-  if (conversation?.kind === "channel") kind = conversation.private ? "private" : "public";
-  if (conversation && conversation.kind !== "channel") kind = conversation.kind;
-  const members = conversation?.members ?? [];
-  let emptyTitle = `Your conversation with ${title}`;
-  if (conversation?.kind === "channel")
-    emptyTitle = `Welcome to ${conversationLabel({ kind: "channel", private: conversation.private, name: title })}`;
-  if (taskLink) emptyTitle = "Task discussion";
   return (
     <PageLayout id="conversation" aria-label="Conversation">
       <PageContent>
         <section aria-label={title} className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface">
-          <ConversationHeader
+          <PaneHeader
             title={title}
-            taskLink={!blocked ? taskLink : undefined}
-            kind={kind}
+            blocked={blocked}
+            taskLink={taskLink}
+            conversation={conversation}
             viewerId={viewerId}
-            members={taskLink ? [] : members}
-            memberAction={!blocked ? memberAction : undefined}
-            organizations={taskLink ? [] : (conversation?.organizations ?? [])}
+            memberAction={memberAction}
             addingMembers={addingMembers}
-            onToggleMembers={
-              !blocked &&
-              !taskLink &&
-              conversation &&
-              conversation.kind !== "dm" &&
-              conversation.canManage
-                ? onToggleMembers
-                : undefined
-            }
-            actions={!blocked && actions}
+            onToggleMembers={onToggleMembers}
+            actions={actions}
           />
           {!blocked && !taskLink && addingMembers && membersForm}
-          {state === "stale" && <StaleNotice>Messages may be out of date.</StaleNotice>}
-          {blocked && (
-            <PaneState
-              label="Conversation unavailable"
-              error={error}
-              onRetry={state === "unavailable" ? undefined : onRetry}
-            />
-          )}
-          {!blocked && initialLoading && <PaneState label="Loading messages…" />}
-          {!blocked && !initialLoading && messages}
-          {!blocked && !initialLoading && !messages && conversation && (
-            <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center overflow-y-auto p-4 wrap-anywhere">
-              <ContentNotice
-                title={emptyTitle}
-                description={
-                  taskLink ? "No messages yet." : "No messages yet. Send the first message below."
-                }
-              />
-            </div>
-          )}
+          <PaneMessages
+            title={title}
+            conversation={conversation}
+            taskLink={taskLink}
+            state={state}
+            error={error}
+            onRetry={onRetry}
+            messages={messages}
+          />
           {!blocked && (
             <div className="mt-auto shrink-0">
               {conversation && !conversation.joined && leftNotice}
@@ -114,5 +88,103 @@ export function ConversationPane({
       </PageContent>
       {showThread && thread}
     </PageLayout>
+  );
+}
+
+function PaneHeader({
+  title,
+  blocked,
+  taskLink,
+  conversation,
+  viewerId,
+  memberAction,
+  addingMembers,
+  onToggleMembers,
+  actions,
+}: Pick<
+  ConversationPaneProps,
+  "taskLink" | "conversation" | "viewerId" | "memberAction" | "onToggleMembers" | "actions"
+> & {
+  title: string;
+  blocked: boolean;
+  addingMembers: boolean;
+}) {
+  let kind: "private" | "public" | "group" | "dm" | undefined;
+  if (conversation?.kind === "channel") kind = conversation.private ? "private" : "public";
+  else kind = conversation?.kind;
+  const canAddMembers =
+    !blocked && !taskLink && conversation?.kind !== "dm" && conversation?.canManage;
+  return (
+    <ConversationHeader
+      title={title}
+      taskLink={!blocked ? taskLink : undefined}
+      kind={kind}
+      viewerId={viewerId}
+      members={taskLink ? [] : (conversation?.members ?? [])}
+      memberAction={!blocked ? memberAction : undefined}
+      organizations={taskLink ? [] : (conversation?.organizations ?? [])}
+      addingMembers={addingMembers}
+      onToggleMembers={canAddMembers ? onToggleMembers : undefined}
+      actions={!blocked && actions}
+    />
+  );
+}
+
+function PaneMessages({
+  title,
+  conversation,
+  taskLink,
+  state,
+  error,
+  onRetry,
+  messages,
+}: Pick<
+  ConversationPaneProps,
+  "conversation" | "taskLink" | "state" | "error" | "onRetry" | "messages"
+> & {
+  title: string;
+}) {
+  if (state === "error" || state === "unavailable")
+    return (
+      <PaneState
+        label="Conversation unavailable"
+        error={error}
+        onRetry={state === "unavailable" ? undefined : onRetry}
+      />
+    );
+  if (state === "loading") return <PaneState label="Loading messages…" />;
+  return (
+    <>
+      {state === "stale" && <StaleNotice>Messages may be out of date.</StaleNotice>}
+      {messages}
+      {!messages && conversation && (
+        <EmptyConversation title={title} conversation={conversation} taskDiscussion={!!taskLink} />
+      )}
+    </>
+  );
+}
+
+function EmptyConversation({
+  title,
+  conversation,
+  taskDiscussion,
+}: {
+  title: string;
+  conversation: Conversation;
+  taskDiscussion: boolean;
+}) {
+  let emptyTitle = `Your conversation with ${title}`;
+  if (taskDiscussion) emptyTitle = "Task discussion";
+  else if (conversation.kind === "channel")
+    emptyTitle = `Welcome to ${conversationLabel({ kind: "channel", private: conversation.private, name: title })}`;
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center overflow-y-auto p-4 wrap-anywhere">
+      <ContentNotice
+        title={emptyTitle}
+        description={
+          taskDiscussion ? "No messages yet." : "No messages yet. Send the first message below."
+        }
+      />
+    </div>
   );
 }

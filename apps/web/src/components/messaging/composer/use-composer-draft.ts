@@ -1,6 +1,6 @@
 import { useContext, useEffect, useLayoutEffect, useRef, useState } from "react";
 
-import { ComposerDrafts } from "@/components/messaging/composer/composer-drafts";
+import { ComposerDrafts } from "@/components/messaging/composer/composer-draft-context";
 import type { ReferenceEditorHandle } from "@/components/messaging/references/reference-editor";
 
 export const messageMaxLength = 20000;

@@ -68,7 +68,6 @@ export function MessagingWorkspace({
     close,
     restoreFocus,
   } = useStateDialog<Conversation["kind"]>(focusSidebar);
-  const hasContent = Children.toArray(children).length > 0;
   const blocked = state === "error" || state === "unavailable";
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -104,20 +103,56 @@ export function MessagingWorkspace({
           onCreate={create}
         />
         <PageContent>
-          {blocked && (
-            <PaneState
-              label="Workspace unavailable"
-              error={error}
-              onRetry={state === "unavailable" ? undefined : onRetry}
-            />
-          )}
-          {state === "stale" && <StaleNotice>Conversations may be out of date.</StaleNotice>}
-          {!blocked && hasContent && children}
-          {!blocked && !hasContent && loading && <PaneState label="Loading your conversations…" />}
-          {!blocked && !hasContent && !loading && <WorkspaceEmpty onCreate={create} />}
+          <WorkspaceContent
+            state={state}
+            error={error}
+            onRetry={onRetry}
+            loading={loading}
+            onCreate={create}
+          >
+            {children}
+          </WorkspaceContent>
         </PageContent>
       </PageLayout>
       {creating && renderCreate(creating, { onClose: close, onRestoreFocus: restoreFocus })}
     </div>
+  );
+}
+
+function WorkspaceContent({
+  state,
+  error,
+  onRetry,
+  loading,
+  onCreate,
+  children,
+}: {
+  state: ResourceStatus;
+  error?: Error | null;
+  onRetry: () => void;
+  loading: boolean;
+  onCreate: (kind: Conversation["kind"]) => void;
+  children?: ReactNode;
+}) {
+  if (state === "error" || state === "unavailable")
+    return (
+      <PaneState
+        label="Workspace unavailable"
+        error={error}
+        onRetry={state === "unavailable" ? undefined : onRetry}
+      />
+    );
+  const hasContent = Children.toArray(children).length > 0;
+  return (
+    <>
+      {state === "stale" && <StaleNotice>Conversations may be out of date.</StaleNotice>}
+      {hasContent && children}
+      {!hasContent &&
+        (loading ? (
+          <PaneState label="Loading your conversations…" />
+        ) : (
+          <WorkspaceEmpty onCreate={onCreate} />
+        ))}
+    </>
   );
 }
