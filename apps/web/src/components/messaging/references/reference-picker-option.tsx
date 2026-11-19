@@ -2,9 +2,9 @@ import type { TaskStatus } from "@substrate/contracts/tasks";
 
 import { Button } from "../../ui/button";
 import type { ReferenceKind } from "./reference-picker";
-import { plainReferenceText } from "./reference-token";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
+import { plainReferenceText } from "@/lib/messaging/reference-token";
 import { FolderKanban, Hash, ListTodo, MessagesSquare, UserRound } from "lucide-react";
 
 export function ReferencePickerOption({

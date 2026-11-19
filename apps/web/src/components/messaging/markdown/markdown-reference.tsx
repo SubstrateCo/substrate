@@ -4,7 +4,7 @@ import {
   EntityReference,
   type WorkspaceReference,
 } from "@/components/messaging/references/entity-reference";
-import { referenceKey } from "@/components/messaging/references/reference-token";
+import { referenceKey } from "@/lib/messaging/reference-token";
 import type { ExtraProps } from "react-markdown";
 
 export function MarkdownReference({

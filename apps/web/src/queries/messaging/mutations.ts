@@ -4,7 +4,7 @@ import { staleSearches } from "../context/mutations";
 import { queryKeys } from "../keys";
 import type { getRelatedContext } from "@/api/context/links";
 import type { getProject } from "@/api/tasks/requests";
-import { referenceTokenPattern } from "@/components/messaging/references/reference-token";
+import { referenceTokenPattern } from "@/lib/messaging/reference-token";
 
 export function invalidateDirectMessage(client: QueryClient, organizationId: string) {
   return Promise.all([

@@ -17,7 +17,7 @@ import {
   queryTargetFilter,
   type QueryTarget,
 } from "../targets";
-import { isAccessFailure } from "@/components/feedback/request-failure";
+import { isAccessFailure } from "@/api/access-failure";
 
 interface RealtimeQueryTarget extends QueryTarget {
   // Skips harness reads that have not failed. See keepsHarnessRead.

@@ -1,4 +1,4 @@
-import { referenceTokenPattern } from "./reference-token";
+import { referenceTokenPattern } from "@/lib/messaging/reference-token";
 import { getTextBetween, type JSONContent } from "@tiptap/core";
 import type { Node } from "@tiptap/pm/model";
 

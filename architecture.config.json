@@ -45,7 +45,7 @@
     },
     {
       "name": "http",
-      "files": ["apps/server/src/shared/http.ts"]
+      "files": ["apps/server/src/shared/{http,content-disposition}.ts"]
     },
     {
       "name": "middleware",

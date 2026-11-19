@@ -5,12 +5,12 @@ import {
   referenceDraftText,
   referenceEditorPosition,
 } from "./reference-editor-document";
-import { referenceKey } from "./reference-token";
 import type { WorkspaceReference } from "@/components/messaging/references/entity-reference";
 import {
   ReferencesContext,
   WorkspaceReferenceNode,
 } from "@/components/messaging/references/workspace-reference-node";
+import { referenceKey } from "@/lib/messaging/reference-token";
 import { closeHistory } from "@tiptap/pm/history";
 import { Selection, TextSelection } from "@tiptap/pm/state";
 import { EditorContent, useEditor } from "@tiptap/react";

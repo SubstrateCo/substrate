@@ -2,7 +2,7 @@ import { partialMatchKey, useQueryClient } from "@tanstack/react-query";
 
 import { createContext, useEffect, useState, type ReactNode } from "react";
 
-import { isAccessFailure } from "@/components/feedback/request-failure";
+import { isAccessFailure } from "@/api/access-failure";
 import type { WorkspaceReference } from "@/components/messaging/references/entity-reference";
 import { retainConversationDraft } from "@/lib/messaging/composer-draft-access";
 import type { Conversation } from "@/lib/messaging/conversations";

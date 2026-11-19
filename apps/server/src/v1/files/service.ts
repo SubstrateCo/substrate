@@ -7,7 +7,6 @@ import {
 
 import { ServiceError, serviceResult } from "../../shared/service-result";
 import { ObjectNotFoundError, type ObjectStorage } from "../../storage/types";
-import { fileDisposition } from "./disposition";
 import { normalizePicture } from "./image";
 import { createHash } from "node:crypto";
 
@@ -80,8 +79,13 @@ export function createFileService(deps: FileServiceDependencies) {
       return serviceResult(async () => {
         const file = await repository.getReadable(scope, id);
         if (!file) throw new ServiceError("NOT_FOUND", "File not found or access denied.");
-        const disposition = file.purpose === "file" ? fileDisposition(file.filename) : "inline";
-        return { url: await storage.signDownload(file.objectKey, disposition) };
+        const url = await storage.signDownload(
+          file.objectKey,
+          file.purpose === "file"
+            ? { kind: "attachment", filename: file.filename }
+            : { kind: "inline" },
+        );
+        return { url };
       });
     },
     deleteFile(scope: StorageScope, id: string) {

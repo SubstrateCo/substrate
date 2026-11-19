@@ -1,11 +1,11 @@
 import type { CrmActivity } from "@substrate/contracts/crm/activity";
 
 import { activityActionLabel, activityFieldLabel } from "./activity-labels";
+import { isAccessFailure } from "@/api/access-failure";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
-import { isAccessFailure } from "@/components/feedback/request-failure";
 import { Tag } from "@/components/feedback/tag";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";

@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { isInvitationUnavailable } from "@/api/access-failure";
 import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
-import { isInvitationUnavailable } from "@/components/feedback/request-failure";
 import { AcceptInvitationScreen as AcceptInvitationScreenView } from "@/components/organizations/invitations/accept-invitation-screen-view";
 import { InvitationAcceptedView } from "@/components/organizations/invitations/invitation-accepted-view";
 import { useExpiryTime } from "@/hooks/use-expiry-time";

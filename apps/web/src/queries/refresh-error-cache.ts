@@ -1,6 +1,6 @@
 import { QueryCache } from "@tanstack/react-query";
 
-import { isAccessFailure } from "@/components/feedback/request-failure";
+import { isAccessFailure } from "@/api/access-failure";
 import { toast } from "sonner";
 
 interface QueryMeta extends Record<string, string | undefined> {

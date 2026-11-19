@@ -1,4 +1,5 @@
 import { environment, type ServerEnvironment } from "../environment";
+import { fileDisposition } from "../shared/content-disposition";
 import { ObjectNotFoundError, type ObjectStorage } from "./types";
 import {
   S3Client,
@@ -101,15 +102,16 @@ export function createS3Storage(
       }
     },
     signDownload(key, disposition) {
+      const isAttachment = disposition.kind === "attachment";
       return getSignedUrl(
         client,
         new GetObjectCommand({
           Bucket,
           Key: key,
-          ResponseContentDisposition: disposition,
-          ResponseContentType: disposition.startsWith("attachment;")
-            ? "application/octet-stream"
-            : undefined,
+          ResponseContentDisposition: isAttachment
+            ? fileDisposition(disposition.filename)
+            : "inline",
+          ResponseContentType: isAttachment ? "application/octet-stream" : undefined,
           ResponseCacheControl: "private, no-store",
         }),
         { expiresIn: 60 },

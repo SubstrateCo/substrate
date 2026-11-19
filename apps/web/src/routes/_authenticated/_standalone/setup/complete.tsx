@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { isAccessFailure } from "@/components/feedback/request-failure";
+import { isAccessFailure } from "@/api/access-failure";
 import { SetupCompleteScreen } from "@/components/onboarding/setup-complete-screen";
 import { isDesktop } from "@/lib/desktop/auth";
 import { currentOrganizationQueryOptions } from "@/queries/organizations/options";

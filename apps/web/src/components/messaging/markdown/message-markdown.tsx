@@ -1,7 +1,7 @@
 import type { WorkspaceReference } from "../references/entity-reference";
-import { referenceKey } from "../references/reference-token";
 import { remarkWorkspaceReferences } from "./remark-workspace-references";
 import { MarkdownReference } from "@/components/messaging/markdown/markdown-reference";
+import { referenceKey } from "@/lib/messaging/reference-token";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import "./message-markdown.css";

@@ -5,7 +5,7 @@ import {
   type WorkspaceReference,
 } from "@/components/messaging/references/entity-reference";
 import { referenceToken } from "@/components/messaging/references/reference-editor-document";
-import { referenceKey } from "@/components/messaging/references/reference-token";
+import { referenceKey } from "@/lib/messaging/reference-token";
 import { Node } from "@tiptap/core";
 import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
 

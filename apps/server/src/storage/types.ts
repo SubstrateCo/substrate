@@ -3,6 +3,8 @@ export class ObjectNotFoundError extends Error {
   override name = "ObjectNotFoundError";
 }
 
+type DownloadDisposition = { kind: "inline" } | { kind: "attachment"; filename: string };
+
 export interface ObjectStorage {
   signUpload(
     key: string,
@@ -12,6 +14,6 @@ export interface ObjectStorage {
   read(key: string, maxBytes: number): Promise<Uint8Array>;
   put(key: string, bytes: Uint8Array, contentType: string): Promise<void>;
   putImmutable(key: string, bytes: Uint8Array, contentType: string): Promise<void>;
-  signDownload(key: string, disposition: string): Promise<string>;
+  signDownload(key: string, disposition: DownloadDisposition): Promise<string>;
   removeMany(keys: string[]): Promise<string[]>;
 }

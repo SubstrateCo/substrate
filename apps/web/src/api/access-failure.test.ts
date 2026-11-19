@@ -1,6 +1,6 @@
-import { isAccessFailure, isInvitationUnavailable } from "./request-failure";
-import { AuthError } from "@/api/auth/error";
-import { ApiError } from "@/api/result";
+import { isAccessFailure, isInvitationUnavailable } from "./access-failure";
+import { AuthError } from "./auth/error";
+import { ApiError } from "./result";
 import { describe, expect, test } from "bun:test";
 
 describe("request failure recovery", () => {

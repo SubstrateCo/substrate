@@ -4,10 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 
 import type { ReactNode } from "react";
 
+import { isAccessFailure } from "@/api/access-failure";
 import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
 import { WorkspaceSearchProvider } from "@/components/context/search/workspace-search-context";
 import { WorkspaceTools } from "@/components/context/search/workspace-tools";
-import { isAccessFailure } from "@/components/feedback/request-failure";
 import { OrganizationSwitcher } from "@/components/organizations/switcher/organization-switcher";
 import { useAppShortcuts } from "@/components/workspace/use-app-shortcuts";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";

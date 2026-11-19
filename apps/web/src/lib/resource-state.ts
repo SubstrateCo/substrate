@@ -1,4 +1,4 @@
-import { isAccessFailure } from "@/components/feedback/request-failure";
+import { isAccessFailure } from "@/api/access-failure";
 
 export type ResourceStatus = "loading" | "unavailable" | "error" | "stale" | "ready";
 export type ResourceState<T> = {

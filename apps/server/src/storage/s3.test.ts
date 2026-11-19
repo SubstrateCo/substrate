@@ -3,6 +3,29 @@ import { ObjectNotFoundError } from "./types";
 import { expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
 
+test("signed downloads preserve attachment filenames and serve pictures inline", async () => {
+  const storage = createS3Storage({
+    endpoint: "https://s3.test",
+    region: "us-east-1",
+    bucket: "test",
+    accessKeyId: "test",
+    secretAccessKey: "test",
+  });
+  const attachment = new URL(
+    await storage.signDownload("file", { kind: "attachment", filename: "résumé (final).txt" }),
+  );
+  expect(attachment.searchParams.get("response-content-disposition")).toBe(
+    "attachment; filename=\"download\"; filename*=UTF-8''r%C3%A9sum%C3%A9%20%28final%29.txt",
+  );
+  expect(attachment.searchParams.get("response-content-type")).toBe("application/octet-stream");
+  expect(attachment.searchParams.get("response-cache-control")).toBe("private, no-store");
+
+  const inline = new URL(await storage.signDownload("picture", { kind: "inline" }));
+  expect(inline.searchParams.get("response-content-disposition")).toBe("inline");
+  expect(inline.searchParams.has("response-content-type")).toBe(false);
+  expect(inline.searchParams.get("response-cache-control")).toBe("private, no-store");
+});
+
 test("read enforces byte limits", async () => {
   const server = Bun.serve({
     hostname: "127.0.0.1",

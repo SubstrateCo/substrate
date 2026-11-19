@@ -1,7 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { redirect } from "@tanstack/react-router";
 
-import { isAccessFailure } from "@/components/feedback/request-failure";
+import { isAccessFailure } from "@/api/access-failure";
 import { currentOrganizationQueryOptions } from "@/queries/organizations/options";
 
 /**

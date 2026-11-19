@@ -2,7 +2,6 @@ import type { AgentRequestView } from "@substrate/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
 
-import { plainReferenceText } from "@/components/messaging/references/reference-token";
 import {
   proposalTarget,
   type ProposalLookups,
@@ -10,6 +9,7 @@ import {
   type ProposalTarget,
 } from "@/lib/agent-work/proposal-target";
 import { conversationName } from "@/lib/messaging/conversations";
+import { plainReferenceText } from "@/lib/messaging/reference-token";
 import { messageTargetOptions } from "@/queries/context/links";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 import { projectQueryOptions, taskLocationQueryOptions } from "@/queries/tasks/options";

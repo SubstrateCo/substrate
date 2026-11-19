@@ -2,7 +2,7 @@ import type { StorageRepository } from "@substrate/database/storage";
 
 import { ObjectNotFoundError, type ObjectStorage } from "../../storage/types";
 import { createFileService } from "./service";
-import { describe, expect, test } from "bun:test";
+import { describe, expect, mock, test } from "bun:test";
 import { rejects } from "node:assert/strict";
 import sharp from "sharp";
 
@@ -74,7 +74,7 @@ function fixture() {
     putImmutable: async (key, bytes) => {
       if (!objects.has(key)) objects.set(key, bytes.slice());
     },
-    signDownload: async (_key, disposition) => `https://s3.test/content?disposition=${disposition}`,
+    signDownload: async () => "https://s3.test/content",
     removeMany: async (keys) => {
       removedBatches.push(keys);
       for (const key of keys) objects.delete(key);
@@ -156,8 +156,23 @@ describe("file workflow", () => {
     expect(final!.size).toBe(5);
     expect(final!.objectKey).not.toBe(f.upload.temporaryKey);
     expect(final!.objectKey).toBe(`objects/organizations/org/file/${f.id}/${final!.sha256}`);
-    const content = await f.service.content(f.scope, f.id);
-    expect(content.success && content.data.url).toContain("attachment;");
+  });
+
+  test("file downloads pass the original filename to the storage adapter", async () => {
+    const f = fixture();
+    const signDownload = mock(async () => "https://s3.test/content");
+    f.storage.signDownload = signDownload;
+    f.upload.filename = "résumé (final).txt";
+    expect((await f.service.completeUpload(f.scope, f.id)).success).toBe(true);
+    const { completed } = await f.repository.getUpload(f.scope, f.id);
+    expect(await f.service.content(f.scope, f.id)).toEqual({
+      success: true,
+      data: { url: "https://s3.test/content" },
+    });
+    expect(signDownload).toHaveBeenCalledWith(completed!.objectKey, {
+      kind: "attachment",
+      filename: "résumé (final).txt",
+    });
   });
 
   test("parallel completion converges on one identity", async () => {

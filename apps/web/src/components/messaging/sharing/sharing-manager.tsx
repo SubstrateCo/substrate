@@ -3,12 +3,12 @@ import { useQuery } from "@tanstack/react-query";
 import { useRef } from "react";
 
 import { SharingInvitationForm } from "./sharing-invitation-form";
+import { isAccessFailure } from "@/api/access-failure";
 import type { SharingDetails } from "@/api/messaging/sharing";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
-import { isAccessFailure } from "@/components/feedback/request-failure";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { SharingDetailsView } from "@/components/messaging/sharing/sharing-details-view";

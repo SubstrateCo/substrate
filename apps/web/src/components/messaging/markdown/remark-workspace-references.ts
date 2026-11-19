@@ -1,4 +1,4 @@
-import { referenceTokenPattern } from "../references/reference-token";
+import { referenceTokenPattern } from "@/lib/messaging/reference-token";
 
 type MarkdownNode = {
   type: string;

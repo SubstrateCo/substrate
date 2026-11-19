@@ -7,9 +7,9 @@ import type { ReactNode } from "react";
 import { Spinner } from "../../ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { ReferenceKind } from "./reference-picker";
-import { plainReferenceText } from "./reference-token";
 import { PersonCardTarget, useHasPersonCard } from "@/components/messaging/people/person-card-slot";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
+import { plainReferenceText } from "@/lib/messaging/reference-token";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import {
   AtSign,

@@ -68,7 +68,9 @@ export function createPictureService(deps: PictureDependencies) {
       return serviceResult(async () => {
         if (!(await canRead(scope, purpose, owner)))
           throw new ServiceError("NOT_FOUND", "Picture not found or access denied.");
-        return { url: await deps.storage.signDownload(objectKey(purpose, owner), "inline") };
+        return {
+          url: await deps.storage.signDownload(objectKey(purpose, owner), { kind: "inline" }),
+        };
       });
     },
   };

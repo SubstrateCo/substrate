@@ -4,11 +4,11 @@ import type { MouseEvent } from "react";
 
 import { NotificationItem, type Notification } from "./notification-item";
 import { notificationPresentation } from "./notification-presentation";
+import { isAccessFailure } from "@/api/access-failure";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
-import { isAccessFailure } from "@/components/feedback/request-failure";
 import { notificationGroupEventsOptions } from "@/queries/context/notification-groups";
 
 export function NotificationGroupEvents({

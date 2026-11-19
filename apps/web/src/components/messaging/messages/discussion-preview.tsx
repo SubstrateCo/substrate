@@ -4,9 +4,9 @@ import type { Message } from "@/api/messaging/requests";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
-import { plainReferenceText } from "@/components/messaging/references/reference-token";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
+import { plainReferenceText } from "@/lib/messaging/reference-token";
 
 const previewLimit = 5;
 

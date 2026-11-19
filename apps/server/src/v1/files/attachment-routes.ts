@@ -5,10 +5,10 @@ import {
   messageAttachmentRequest,
 } from "@substrate/contracts/files/attachments";
 
+import { fileDisposition } from "../../shared/content-disposition";
 import { respond, v } from "../../shared/http";
 import type { ScopeEnv, Scopes } from "../../shared/scope";
 import type { AttachmentService } from "./attachments";
-import { fileDisposition } from "./disposition";
 import { Hono } from "hono";
 
 export function createAttachmentRoutes(services: AttachmentService, scopes: Scopes) {

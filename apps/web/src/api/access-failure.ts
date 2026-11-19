@@ -1,7 +1,7 @@
 import { serviceErrorKind } from "@substrate/contracts/result";
 
-import { AuthError, isAuthAccessFailure, isAuthInvitationUnavailable } from "@/api/auth/error";
-import { ApiError } from "@/api/result";
+import { AuthError, isAuthAccessFailure, isAuthInvitationUnavailable } from "./auth/error";
+import { ApiError } from "./result";
 
 export function isAccessFailure(error: Error | null | undefined): boolean {
   if (!error) return false;

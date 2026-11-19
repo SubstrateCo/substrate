@@ -1,7 +1,7 @@
+import { isAccessFailure } from "@/api/access-failure";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
-import { isAccessFailure } from "@/components/feedback/request-failure";
 import { Unlink } from "lucide-react";
 
 export function CrmResourceState({
