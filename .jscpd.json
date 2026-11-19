@@ -11,6 +11,7 @@
     "**/*.gen.ts",
     "**/*.test.ts",
     "**/*.test.tsx",
+    "**/*.spec.ts",
     "**/test-support/**",
     "apps/web/e2e/**",
     "apps/web/src/components/ui/**",
