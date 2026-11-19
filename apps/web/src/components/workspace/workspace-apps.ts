@@ -1,4 +1,4 @@
-import type { AppHotkeyId } from "@tanstack/react-hotkeys";
+import type { HotkeySequence } from "@tanstack/react-hotkeys";
 import type { LinkProps } from "@tanstack/react-router";
 
 import {
@@ -12,14 +12,10 @@ import {
 } from "lucide-react";
 
 type WorkspaceApp = {
-  id: string;
   label: string;
   icon: LucideIcon;
   to: NonNullable<LinkProps["to"]>;
-  /** The app shortcut that opens this app, declared in `app-hotkeys.ts`. */
-  hotkey: AppHotkeyId;
-  /** Rail position. Bottom apps sit above the user menu. */
-  placement: "top" | "bottom";
+  hotkey: HotkeySequence;
 };
 
 /** The apps in the rail, in rail order. Each app's route decides when it is active. */
@@ -29,42 +25,37 @@ export const workspaceApps = [
     label: "Messages",
     icon: MessageSquare,
     to: "/dashboard",
-    hotkey: "app.messages",
-    placement: "top",
+    hotkey: ["G", "M"],
   },
   {
     id: "tasks",
     label: "Tasks",
     icon: ListTodo,
     to: "/tasks",
-    hotkey: "app.tasks",
-    placement: "top",
+    hotkey: ["G", "T"],
   },
-  { id: "crm", label: "CRM", icon: Handshake, to: "/crm", hotkey: "app.crm", placement: "top" },
+  { id: "crm", label: "CRM", icon: Handshake, to: "/crm", hotkey: ["G", "C"] },
   {
     id: "agents",
     label: "Agents",
     icon: Bot,
     to: "/agents",
-    hotkey: "app.agents",
-    placement: "top",
+    hotkey: ["G", "A"],
   },
   {
     id: "contacts",
     label: "Contacts",
     icon: Users,
     to: "/contacts",
-    hotkey: "app.contacts",
-    placement: "top",
+    hotkey: ["G", "P"],
   },
-  {
-    id: "notifications",
-    label: "Notifications",
-    icon: Bell,
-    to: "/notifications",
-    hotkey: "app.notifications",
-    placement: "bottom",
-  },
-] as const satisfies ReadonlyArray<WorkspaceApp>;
+] as const satisfies ReadonlyArray<WorkspaceApp & { id: string }>;
+
+export const notificationsApp = {
+  label: "Notifications",
+  icon: Bell,
+  to: "/notifications",
+  hotkey: ["G", "N"],
+} as const satisfies WorkspaceApp;
 
 export type WorkspaceAppId = (typeof workspaceApps)[number]["id"];

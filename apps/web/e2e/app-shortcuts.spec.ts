@@ -64,6 +64,11 @@ test("app shortcuts leave the search field and its own shortcuts alone", async (
   await expect(page).toHaveURL(/\/tasks/);
   await page.keyboard.press("ControlOrMeta+k");
   await expect(input).toBeFocused();
+
+  await types.getByRole("tab", { name: "All", exact: true }).focus();
+  await page.keyboard.press("Escape");
+  await expect(types).toBeHidden();
+  await expect(input).toBeFocused();
 });
 
 test("app shortcuts do not fire inside an open dialog", async ({ account, client }) => {
@@ -72,7 +77,7 @@ test("app shortcuts do not fire inside an open dialog", async ({ account, client
   await visit(user);
   await page.getByRole("button", { name: `Signed in as ${account.name}`, exact: true }).click();
   const menu = page.getByRole("dialog");
-  await expect(menu.getByRole("link", { name: "User settings", exact: true })).toBeVisible();
+  await menu.getByRole("link", { name: "User settings", exact: true }).focus();
   await page.keyboard.press("g");
   await page.keyboard.press("t");
   await expect(menu).toBeVisible();

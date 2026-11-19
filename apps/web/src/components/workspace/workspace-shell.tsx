@@ -3,7 +3,7 @@ import { useContext, type ReactNode } from "react";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
 import { UserMenu } from "./user-menu";
-import { workspaceApps, type WorkspaceAppId } from "./workspace-apps";
+import { notificationsApp, workspaceApps, type WorkspaceAppId } from "./workspace-apps";
 import { RealtimeContainerContext } from "@/components/realtime/realtime-container-context";
 import { WorkspaceAppButton } from "@/components/workspace/workspace-app-button";
 
@@ -48,21 +48,7 @@ export function WorkspaceShell({
   > = {
     messages: { unread: hasUnreadMessages, unreadLabel: "unread messages" },
     agents: { unread: agentsNeedYou, unreadLabel: "needs you", dotTone: "warning" },
-    notifications: { unread: hasUnreadNotifications },
   };
-  const appButtons = (placement: "top" | "bottom") =>
-    workspaceApps
-      .filter((app) => app.placement === placement)
-      .map((app) => (
-        <WorkspaceAppButton
-          key={app.id}
-          label={app.label}
-          icon={app.icon}
-          to={app.to}
-          hotkey={app.hotkey}
-          {...badges[app.id]}
-        />
-      ));
   return (
     <main data-workspace-shell className="flex h-(--app-height) min-h-0 overflow-hidden bg-rail">
       <nav
@@ -70,9 +56,11 @@ export function WorkspaceShell({
         className="z-20 flex w-14 shrink-0 flex-col items-center gap-3 bg-rail py-3 text-rail-foreground"
       >
         {switcher}
-        {appButtons("top")}
+        {workspaceApps.map(({ id, ...app }) => (
+          <WorkspaceAppButton key={id} {...app} {...badges[id]} />
+        ))}
         <div className="mt-auto flex flex-col items-center gap-3">
-          {appButtons("bottom")}
+          <WorkspaceAppButton {...notificationsApp} unread={hasUnreadNotifications} />
           <UserMenu
             name={name}
             image={image}

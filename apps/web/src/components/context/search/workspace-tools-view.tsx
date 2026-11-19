@@ -4,7 +4,6 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNod
 
 import { Command, CommandInput } from "../../ui/command";
 import { Kbd, KbdGroup } from "../../ui/kbd";
-import { appHotkeys } from "@/lib/hotkeys/app-hotkeys";
 
 export function WorkspaceTools({
   renderSearch,
@@ -51,22 +50,18 @@ export function WorkspaceTools({
     document.addEventListener("pointerdown", dismiss);
     return () => document.removeEventListener("pointerdown", dismiss);
   }, []);
-  useHotkey(appHotkeys["search.open"], () => {
+  useHotkey("Mod+K", () => {
     input.current?.focus();
     setOpen(true);
   });
-  // Escape closes the panel, like other overlays. It is not an app shortcut.
-  const onEscape = useEffectEvent((event: KeyboardEvent) => {
-    if (event.key === "Escape" && open && !event.defaultPrevented) {
-      event.preventDefault();
-      close();
-    }
+  useHotkey("Escape", close, {
+    enabled: open,
+    target: window,
+    ignoreDefaultPrevented: true,
+    ignoreInputs: false,
+    preventDefault: true,
+    stopPropagation: false,
   });
-  useEffect(() => {
-    const handle = (event: KeyboardEvent) => onEscape(event);
-    window.addEventListener("keydown", handle);
-    return () => window.removeEventListener("keydown", handle);
-  }, []);
   return (
     <div
       ref={container}

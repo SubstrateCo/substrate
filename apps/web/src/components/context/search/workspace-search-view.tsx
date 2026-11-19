@@ -6,7 +6,6 @@ import { Kbd } from "../../ui/kbd";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import type { SearchResultItem } from "./search-result";
 import { SearchResults } from "@/components/context/search/search-results";
-import { appHotkeys } from "@/lib/hotkeys/app-hotkeys";
 
 // "channel" lists channels only, with membership. DMs and group messages appear under "all".
 export type SearchKind = "all" | "task" | "project" | "message" | "channel";
@@ -79,8 +78,8 @@ export function WorkspaceSearch({
     onKindChange(kinds[(kinds.indexOf(kind) + step + kinds.length) % kinds.length]!);
   useHotkeys(
     [
-      { hotkey: appHotkeys["search.nextType"], callback: () => switchKind(1) },
-      { hotkey: appHotkeys["search.previousType"], callback: () => switchKind(-1) },
+      { hotkey: "Control+Tab", callback: () => switchKind(1) },
+      { hotkey: "Control+Shift+Tab", callback: () => switchKind(-1) },
     ],
     { target: container },
   );

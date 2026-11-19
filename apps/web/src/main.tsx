@@ -1,4 +1,3 @@
-import { HotkeysProvider } from "@tanstack/react-hotkeys";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { RouterProvider } from "@tanstack/react-router";
 
@@ -12,7 +11,6 @@ import { ThemeProvider } from "@/components/theme/theme-provider";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { schemaIssueMessage } from "@/lib/forms/validation-messages";
-import { appHotkeys } from "@/lib/hotkeys/app-hotkeys";
 import { z } from "zod";
 import "./styles.css";
 
@@ -28,12 +26,10 @@ createRoot(document.getElementById("root")!).render(
       <ThemeProvider>
         {/* Above the router, so root error and not-found screens keep tooltips. */}
         <TooltipProvider delayDuration={350}>
-          <HotkeysProvider appHotkeys={appHotkeys}>
-            <DesktopFrame>
-              <RouterProvider router={router} />
-              <Toaster position="bottom-right" closeButton />
-            </DesktopFrame>
-          </HotkeysProvider>
+          <DesktopFrame>
+            <RouterProvider router={router} />
+            <Toaster position="bottom-right" closeButton />
+          </DesktopFrame>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
