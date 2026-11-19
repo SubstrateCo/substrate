@@ -19,6 +19,56 @@ import { messageLink } from "@/lib/navigation/record-links";
 import { turnEventsOptions } from "@/queries/agent-work/local";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 
+function transcriptDetails(
+  turn: AgentTurnView | undefined,
+  now: ReturnType<typeof useNow>,
+  requests: readonly AgentRequestView[],
+  organizationId: string,
+  canOpenConversation: (conversationId: string) => boolean,
+) {
+  if (!turn) return {};
+  const openRequest = requests.find((entry) => entry.turnId === turn.id && isOpenRequest(entry));
+  const sources = turn.sourceMessages.map((source) => (
+    <RecordName
+      key={source.messageId}
+      kind="conversation"
+      record={
+        canOpenConversation(source.conversationId)
+          ? {
+              access: "visible",
+              label: "The message",
+              link: messageLink(organizationId, source.conversationId, source.messageId),
+            }
+          : { access: "hidden" }
+      }
+    />
+  ));
+  const outputs = turn.outputs.flatMap((entry) => {
+    if (entry.kind !== "message") return [];
+    return [
+      <RecordName
+        key={entry.id}
+        kind="conversation"
+        record={
+          canOpenConversation(entry.conversationId)
+            ? { access: "visible", label: "The reply", link: outputLink(organizationId, entry) }
+            : { access: "hidden" }
+        }
+      />,
+    ];
+  });
+  return {
+    tone: turnTone(turn, openRequest),
+    label: turnLabel(turn, now, openRequest),
+    startedAt: turn.startedAt ?? turn.createdAt,
+    session: sessionKindLabels[turn.sessionKind],
+    usage: usageLabel(turn.usage),
+    diagnostic: turn.error?.trim() || undefined,
+    sources: sources.length ? sources : undefined,
+    outputs: outputs.length ? outputs : undefined,
+  };
+}
+
 /**
  * One turn's transcript from the home desktop, with its sources and outputs. Links check the
  * viewer's conversations now; a conversation the viewer can no longer open shows a placeholder.
@@ -54,51 +104,13 @@ export function TurnTranscript({
   const conversations = useQuery(conversationsQueryOptions(organizationId));
   const { onStop, stopping } = useStopTurn(userId, organizationId, turn);
   const now = useNow(live);
-  const open = (conversationId: string) =>
+  const canOpenConversation = (conversationId: string) =>
     conversations.data?.some((conversation) => conversation.id === conversationId) ?? false;
   const request = (id: string) => requests.find((entry) => entry.id === id);
-  const openRequest =
-    turn && requests.find((entry) => entry.turnId === turn.id && isOpenRequest(entry));
-  const sources = turn?.sourceMessages.map((source) => (
-    <RecordName
-      key={source.messageId}
-      kind="conversation"
-      record={
-        open(source.conversationId)
-          ? {
-              access: "visible",
-              label: "The message",
-              link: messageLink(organizationId, source.conversationId, source.messageId),
-            }
-          : { access: "hidden" }
-      }
-    />
-  ));
-  const outputs = turn?.outputs.flatMap((entry) => {
-    if (entry.kind !== "message") return [];
-    return [
-      <RecordName
-        key={entry.id}
-        kind="conversation"
-        record={
-          open(entry.conversationId)
-            ? { access: "visible", label: "The reply", link: outputLink(organizationId, entry) }
-            : { access: "hidden" }
-        }
-      />,
-    ];
-  });
   return (
     <TurnTranscriptView
       name={agentName}
-      tone={turn && turnTone(turn, openRequest)}
-      label={turn && turnLabel(turn, now, openRequest)}
-      startedAt={turn?.startedAt ?? turn?.createdAt}
-      session={turn && sessionKindLabels[turn.sessionKind]}
-      usage={turn && usageLabel(turn.usage)}
-      diagnostic={turn?.error?.trim() || undefined}
-      sources={sources?.length ? sources : undefined}
-      outputs={outputs?.length ? outputs : undefined}
+      {...transcriptDetails(turn, now, requests, organizationId, canOpenConversation)}
       unavailable={unavailable}
       loading={turnLoading || events.isPending}
       error={turnError ?? events.error}
@@ -113,7 +125,7 @@ export function TurnTranscript({
           <TurnTimeline
             entries={transcriptEntries(events.data, live)}
             outputLink={({ output }) =>
-              output.kind === "message" && open(output.conversationId)
+              output.kind === "message" && canOpenConversation(output.conversationId)
                 ? outputLink(organizationId, output)
                 : undefined
             }

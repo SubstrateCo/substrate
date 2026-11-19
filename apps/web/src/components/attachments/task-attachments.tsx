@@ -5,7 +5,7 @@ import { useRef, useState } from "react";
 import { AttachmentList } from "./attachment-list";
 import { AttachFilesButton, AttachmentDraftList } from "./attachment-picker";
 import { FileDropZone } from "./file-drop-zone";
-import { useAttachmentUploads } from "./use-attachment-uploads";
+import { useAttachmentUploads, type AttachmentUploads } from "./use-attachment-uploads";
 import { taskAttachmentUrl, type TaskAttachmentTarget } from "@/api/files/attachments";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FormMessage } from "@/components/feedback/form-message";
@@ -16,6 +16,62 @@ import { Button } from "@/components/ui/button";
 import { useTaskAttachmentMutations } from "@/queries/attachments/mutations";
 import { taskAttachmentsOptions } from "@/queries/files/attachments";
 import { Trash2 } from "lucide-react";
+
+function TaskAttachmentDrafts({
+  uploads,
+  canAttach,
+  pending,
+  error,
+  onAttach,
+}: {
+  uploads: AttachmentUploads;
+  canAttach: boolean;
+  pending: boolean;
+  error: Error | null;
+  onAttach: () => void;
+}) {
+  return (
+    <>
+      <AttachmentDraftList uploads={uploads} disabled={pending} />
+      {!!uploads.items.length && (
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" size="sm" disabled={pending} onClick={() => uploads.clear()}>
+            Cancel
+          </Button>
+          <PendingButton
+            size="sm"
+            pending={pending}
+            pendingLabel="Attaching…"
+            disabled={!canAttach || !uploads.ready}
+            onClick={onAttach}
+          >
+            Attach files to task
+          </PendingButton>
+        </div>
+      )}
+      <FormMessage
+        error={error}
+        errorDescription="Couldn’t attach these files. Your selection is still here. Try again."
+      />
+    </>
+  );
+}
+
+function TaskAttachmentEmptyState({
+  canEdit,
+  hasDrafts,
+}: {
+  canEdit: boolean;
+  hasDrafts: boolean;
+}) {
+  if (!canEdit) return <p className="text-sm text-muted-foreground">No attachments</p>;
+  if (hasDrafts) return null;
+  return (
+    <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+      Drop files here, or choose Attach files. Up to 10 files, 5 MiB each.
+    </p>
+  );
+}
 
 export function TaskAttachments({
   target,
@@ -32,12 +88,10 @@ export function TaskAttachments({
   const uploads = useAttachmentUploads(query.data?.length ?? 0);
   const [removing, setRemoving] = useState<{ id: string; filename: string } | null>(null);
   const { add, remove } = useTaskAttachmentMutations(target);
+  const canAttach = canEdit && query.isSuccess;
+  const canPick = canAttach && !add.isPending;
   return (
-    <FileDropZone
-      label="Task attachments"
-      disabled={!canEdit || add.isPending || !query.isSuccess}
-      onFiles={uploads.add}
-    >
+    <FileDropZone label="Task attachments" disabled={!canPick} onFiles={uploads.add}>
       <UnsavedChangesGuard
         dirty={uploads.items.length > 0}
         name="Task attachments"
@@ -48,9 +102,7 @@ export function TaskAttachments({
           <h3 ref={heading} tabIndex={-1} className="text-sm font-medium">
             Attachments
           </h3>
-          {canEdit && (
-            <AttachFilesButton disabled={!query.isSuccess || add.isPending} onFiles={uploads.add} />
-          )}
+          {canEdit && <AttachFilesButton disabled={!canPick} onFiles={uploads.add} />}
         </div>
         {query.isPending && (
           <p className="text-sm text-muted-foreground" role="status">
@@ -83,39 +135,15 @@ export function TaskAttachments({
             }
           />
         )}
-        {canEdit && query.isSuccess && !query.data.length && !uploads.items.length && (
-          <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
-            Drop files here, or choose Attach files. Up to 10 files, 5 MiB each.
-          </p>
+        {query.isSuccess && !query.data.length && (
+          <TaskAttachmentEmptyState canEdit={canEdit} hasDrafts={uploads.items.length > 0} />
         )}
-        {!canEdit && query.isSuccess && !query.data.length && (
-          <p className="text-sm text-muted-foreground">No attachments</p>
-        )}
-        <AttachmentDraftList uploads={uploads} disabled={add.isPending} />
-        {!!uploads.items.length && (
-          <div className="flex justify-end gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={add.isPending}
-              onClick={() => uploads.clear()}
-            >
-              Cancel
-            </Button>
-            <PendingButton
-              size="sm"
-              pending={add.isPending}
-              pendingLabel="Attaching…"
-              disabled={!canEdit || !query.isSuccess || !uploads.ready}
-              onClick={() => add.mutate(uploads.fileIds, { onSuccess: () => uploads.clear() })}
-            >
-              Attach files to task
-            </PendingButton>
-          </div>
-        )}
-        <FormMessage
+        <TaskAttachmentDrafts
+          uploads={uploads}
+          canAttach={canAttach}
+          pending={add.isPending}
           error={add.error}
-          errorDescription="Couldn’t attach these files. Your selection is still here. Try again."
+          onAttach={() => add.mutate(uploads.fileIds, { onSuccess: () => uploads.clear() })}
         />
       </div>
       {removing && (

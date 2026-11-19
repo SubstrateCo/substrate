@@ -20,6 +20,41 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+function TranscriptDetails({
+  startedAt,
+  session,
+  sources,
+  outputs,
+  usage,
+  diagnostic,
+}: {
+  startedAt?: string;
+  session?: string;
+  sources?: ReactNode;
+  outputs?: ReactNode;
+  usage?: string;
+  diagnostic?: string;
+}) {
+  return (
+    <dl className="grid gap-1.5 border-b px-5 py-3 text-xs">
+      {startedAt && (
+        <Detail label="Started">
+          <Timestamp value={startedAt} format="datetime" />
+        </Detail>
+      )}
+      {session && <Detail label="Session">{session}</Detail>}
+      {sources && <Detail label="From">{sources}</Detail>}
+      {outputs && <Detail label="Output">{outputs}</Detail>}
+      <Detail label="Usage">{usage ?? "Unavailable"}</Detail>
+      {diagnostic && (
+        <Detail label="Error">
+          <TechnicalDetails>{diagnostic}</TechnicalDetails>
+        </Detail>
+      )}
+    </dl>
+  );
+}
+
 /** A turn's full record in its own side panel. */
 export function TurnTranscriptView({
   name,
@@ -71,22 +106,14 @@ export function TurnTranscriptView({
   else if (timeline)
     body = (
       <div className="min-h-0 flex-1 overflow-y-auto">
-        <dl className="grid gap-1.5 border-b px-5 py-3 text-xs">
-          {startedAt && (
-            <Detail label="Started">
-              <Timestamp value={startedAt} format="datetime" />
-            </Detail>
-          )}
-          {session && <Detail label="Session">{session}</Detail>}
-          {sources && <Detail label="From">{sources}</Detail>}
-          {outputs && <Detail label="Output">{outputs}</Detail>}
-          <Detail label="Usage">{usage ?? "Unavailable"}</Detail>
-          {diagnostic && (
-            <Detail label="Error">
-              <TechnicalDetails>{diagnostic}</TechnicalDetails>
-            </Detail>
-          )}
-        </dl>
+        <TranscriptDetails
+          startedAt={startedAt}
+          session={session}
+          sources={sources}
+          outputs={outputs}
+          usage={usage}
+          diagnostic={diagnostic}
+        />
         {timeline}
       </div>
     );

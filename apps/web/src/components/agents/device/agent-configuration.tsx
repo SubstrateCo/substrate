@@ -3,15 +3,17 @@ import {
   startupSkills,
   type HarnessKind,
   type HarnessMcpServer,
+  type HarnessSkill,
 } from "@substrate/contracts/harness";
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { CatalogRow } from "../catalog/catalog-row";
 import type { AgentSection } from "../editors/agent-form";
-import { openingName, SkillEditor } from "../editors/skill-editor";
+import { SkillEditor } from "../editors/skill-editor";
+import { openingName } from "../editors/skill-name";
 import { McpServerRow, StartupSkills } from "./startup-configuration";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -33,6 +35,135 @@ import { toast } from "sonner";
 function serverDetail(server: HarnessMcpServer) {
   if (server.transport === "stdio") return `Runs ${server.command}`;
   return `Connects to ${new URL(server.url).host}`;
+}
+
+function skillLists(scannedSkills: HarnessSkill[] | undefined, showDefaults: boolean) {
+  if (!scannedSkills) return { skills: [], managedSkills: showDefaults ? startupSkills : [] };
+  // Substrate rewrites its own skills on every sync, so they are not listed as editable.
+  const isStartupSkill = (skill: HarnessSkill) => startupSkillIds.includes(skill.id);
+  return {
+    skills: scannedSkills.filter((skill) => !isStartupSkill(skill)),
+    managedSkills: scannedSkills.filter(isStartupSkill),
+  };
+}
+
+function McpServersSection({
+  servers,
+  scanned,
+  defaults,
+  available,
+  harness,
+  refresh,
+  status,
+}: {
+  servers: readonly HarnessMcpServer[];
+  scanned: boolean;
+  defaults: boolean;
+  available: boolean;
+  harness: HarnessKind;
+  refresh: ReactNode;
+  status: ReactNode;
+}) {
+  return (
+    <SettingsSection
+      title="MCP servers"
+      description="Tool servers this agent can use, read from its configuration on its desktop."
+      actions={refresh}
+    >
+      {status}
+      {(defaults || scanned) && (
+        <SettingsList
+          description={
+            defaults
+              ? "Substrate adds the built-in server, which lets the agent read and post in this workspace."
+              : undefined
+          }
+        >
+          {defaults && <McpServerRow name="substrate" detail="Substrate workspace" builtIn />}
+          {servers.map((server) => (
+            <McpServerRow key={server.id} name={server.name} detail={serverDetail(server)} />
+          ))}
+          {scanned && !servers.length && !defaults && (
+            <li className="px-4 py-3 text-sm text-muted-foreground">No MCP servers.</li>
+          )}
+        </SettingsList>
+      )}
+      {available && (
+        <SettingsNote icon={<Info />}>
+          Substrate lists these servers but can’t add or edit them yet. Change them in{" "}
+          {harnessLabel(harness)}’s own configuration for this agent, then read the files again.
+        </SettingsNote>
+      )}
+    </SettingsSection>
+  );
+}
+
+function ConfigurationStatus({
+  available,
+  agentId,
+  section,
+  pending,
+  error,
+  onRetry,
+}: {
+  available: boolean;
+  agentId?: string;
+  section: AgentSection;
+  pending: boolean;
+  error: Error | null;
+  onRetry: () => void;
+}) {
+  return (
+    <>
+      {!available && (
+        <SettingsNote icon={<Laptop />}>
+          {agentId
+            ? `Open this agent in the Substrate desktop app to see the ${section === "skills" ? "skills" : "MCP servers"} in its folder.`
+            : "Save this agent to see its local configuration."}
+        </SettingsNote>
+      )}
+      {available && pending && <LoadingState label="Reading the agent’s files" variant="compact" />}
+      {error && <ErrorState compact title="Couldn’t read this agent’s files" onRetry={onRetry} />}
+    </>
+  );
+}
+
+function SkillList({
+  skills,
+  removing,
+  onEdit,
+  onDelete,
+}: {
+  skills: readonly HarnessSkill[];
+  removing: boolean;
+  onEdit: (id: string) => void;
+  onDelete: (skill: { id: string; name: string }) => void;
+}) {
+  return (
+    <SettingsList title="Your skills">
+      {skills.length ? (
+        skills.map((item) => {
+          // The list, the editor and the delete prompt all name the skill by its file name.
+          const name = openingName(item);
+          return (
+            <CatalogRow
+              key={item.id}
+              name={name}
+              mono
+              detail={item.description}
+              disabled={removing}
+              onEdit={() => onEdit(item.id)}
+              onDelete={() => onDelete({ id: item.id, name })}
+            />
+          );
+        })
+      ) : (
+        <li className="px-4 py-3 text-sm text-muted-foreground">
+          No skills of your own yet. Create one to teach this agent a repeatable task.
+        </li>
+      )}
+    </SettingsList>
+  );
 }
 
 export function AgentConfiguration({
@@ -59,13 +190,7 @@ export function AgentConfiguration({
   const configuration = useQuery(localConfigurationOptions(userId, local));
   const { save, remove, reset } = useAgentConfigurationMutations(local);
   const [resetting, setResetting] = useState(false);
-  // Substrate rewrites its own skills on every sync, so they are not listed as editable.
-  const isStartupSkill = (id: string) => startupSkillIds.includes(id);
-  const skills = configuration.data?.skills.filter((skill) => !isStartupSkill(skill.id)) ?? [];
-  const defaultSkills = !available && defaults ? startupSkills : [];
-  const managedSkills = configuration.data
-    ? configuration.data.skills.filter((skill) => isStartupSkill(skill.id))
-    : defaultSkills;
+  const { skills, managedSkills } = skillLists(configuration.data?.skills, !available && defaults);
   const servers = configuration.data?.mcpServers ?? [];
   const skill = skills.find((item) => item.id === editing?.id);
   const refresh = (
@@ -86,25 +211,14 @@ export function AgentConfiguration({
     </Tooltip>
   );
   const status = (
-    <>
-      {!available && (
-        <SettingsNote icon={<Laptop />}>
-          {agentId
-            ? `Open this agent in the Substrate desktop app to see the ${section === "skills" ? "skills" : "MCP servers"} in its folder.`
-            : "Save this agent to see its local configuration."}
-        </SettingsNote>
-      )}
-      {available && configuration.isPending && (
-        <LoadingState label="Reading the agent’s files" variant="compact" />
-      )}
-      {configuration.error && (
-        <ErrorState
-          compact
-          title="Couldn’t read this agent’s files"
-          onRetry={() => void configuration.refetch()}
-        />
-      )}
-    </>
+    <ConfigurationStatus
+      available={available}
+      agentId={agentId}
+      section={section}
+      pending={configuration.isPending}
+      error={configuration.error}
+      onRetry={() => void configuration.refetch()}
+    />
   );
   const content =
     section === "skills" ? (
@@ -147,65 +261,30 @@ export function AgentConfiguration({
           <StartupSkills skills={managedSkills} scanned={!!configuration.data} />
         )}
         {configuration.data && (
-          <SettingsList title="Your skills">
-            {skills.length ? (
-              skills.map((item) => (
-                <CatalogRow
-                  key={item.id}
-                  // The list, the editor and the delete prompt all name the skill by its file name.
-                  name={openingName(item)}
-                  mono
-                  detail={item.description}
-                  disabled={remove.isPending}
-                  onEdit={() => {
-                    rememberLauncher();
-                    setEditing({ id: item.id });
-                  }}
-                  onDelete={() => {
-                    rememberLauncher();
-                    setDeleting({ id: item.id, name: openingName(item) });
-                  }}
-                />
-              ))
-            ) : (
-              <li className="px-4 py-3 text-sm text-muted-foreground">
-                No skills of your own yet. Create one to teach this agent a repeatable task.
-              </li>
-            )}
-          </SettingsList>
+          <SkillList
+            skills={skills}
+            removing={remove.isPending}
+            onEdit={(id) => {
+              rememberLauncher();
+              setEditing({ id });
+            }}
+            onDelete={(skill) => {
+              rememberLauncher();
+              setDeleting(skill);
+            }}
+          />
         )}
       </SettingsSection>
     ) : (
-      <SettingsSection
-        title="MCP servers"
-        description="Tool servers this agent can use, read from its configuration on its desktop."
-        actions={refresh}
-      >
-        {status}
-        {(defaults || configuration.data) && (
-          <SettingsList
-            description={
-              defaults
-                ? "Substrate adds the built-in server, which lets the agent read and post in this workspace."
-                : undefined
-            }
-          >
-            {defaults && <McpServerRow name="substrate" detail="Substrate workspace" builtIn />}
-            {servers.map((server) => (
-              <McpServerRow key={server.id} name={server.name} detail={serverDetail(server)} />
-            ))}
-            {configuration.data && !servers.length && !defaults && (
-              <li className="px-4 py-3 text-sm text-muted-foreground">No MCP servers.</li>
-            )}
-          </SettingsList>
-        )}
-        {available && (
-          <SettingsNote icon={<Info />}>
-            Substrate lists these servers but can’t add or edit them yet. Change them in{" "}
-            {harnessLabel(harness)}’s own configuration for this agent, then read the files again.
-          </SettingsNote>
-        )}
-      </SettingsSection>
+      <McpServersSection
+        servers={servers}
+        scanned={!!configuration.data}
+        defaults={defaults}
+        available={available}
+        harness={harness}
+        refresh={refresh}
+        status={status}
+      />
     );
   return (
     <div ref={container} tabIndex={-1}>

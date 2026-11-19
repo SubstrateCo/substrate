@@ -25,6 +25,14 @@ type Choice = HarnessModel & { harness: HarnessKind; saved?: boolean };
 
 const defaultModelLabel = "Default model";
 
+function includeSavedModel(choices: Choice[], harness: HarnessKind, model: string | undefined) {
+  const saved = choices.find((choice) => choice.harness === harness && choice.id === model);
+  if (saved || !model) return saved;
+  const fallback = { id: model, name: model, harness, saved: true };
+  choices.push(fallback);
+  return fallback;
+}
+
 /** A short state in the picker footer, such as "Open the desktop app". */
 function PickerNote({
   icon,
@@ -44,6 +52,53 @@ function PickerNote({
       </div>
     </div>
   );
+}
+
+function ModelCatalogStatus({
+  available,
+  label,
+  unavailable,
+  loading,
+  error,
+  onRetry,
+}: {
+  available: boolean;
+  label: string;
+  unavailable: boolean;
+  loading: boolean;
+  error: Error | null;
+  onRetry: () => void;
+}) {
+  if (!available)
+    return (
+      <PickerNote icon={<Laptop aria-hidden="true" />}>
+        Open Substrate on your desktop to see {label}’s models. Until then, the agent uses the
+        default model.
+      </PickerNote>
+    );
+  if (error)
+    return (
+      <PickerNote
+        icon={<CircleAlert aria-hidden="true" className="text-destructive" />}
+        action={
+          <Button type="button" size="xs" variant="outline" className="w-fit" onClick={onRetry}>
+            <RefreshCw aria-hidden="true" />
+            Try again
+          </Button>
+        }
+      >
+        <span role="alert">We couldn’t load {label}’s models.</span>
+      </PickerNote>
+    );
+  if (unavailable)
+    return (
+      <PickerNote icon={<Laptop aria-hidden="true" />}>
+        {label} isn’t installed on this desktop. Install it, then refresh.
+      </PickerNote>
+    );
+  if (loading)
+    return <PickerNote icon={<Spinner aria-hidden="true" />}>Loading {label} models…</PickerNote>;
+  return null;
 }
 
 // T3 Code's grouped model rows, adapted to our native bridge and UI primitives.
@@ -81,10 +136,7 @@ export function ModelPicker({
   const choices: Choice[] = harnessOptions.flatMap((option, index) =>
     (catalogs[index]?.data?.models ?? []).map((item) => ({ ...item, harness: option.value })),
   );
-  if (model && !choices.some((choice) => choice.harness === harness && choice.id === model))
-    choices.push({ id: model, name: model, harness, saved: true });
-  const activeModel = choices.find((choice) => choice.harness === harness && choice.id === model);
-  const modelName = activeModel?.name ?? defaultModelLabel;
+  const modelName = includeSavedModel(choices, harness, model)?.name ?? defaultModelLabel;
   const label = harnessLabel(harness);
   const selectedLabel = harnessLabel(selectedHarness);
   const selectedIndex = harnessOptions.findIndex((option) => option.value === selectedHarness);
@@ -116,38 +168,6 @@ export function ModelPicker({
       if (query || harnessOptions[index]!.value === selectedHarness) void catalog.refetch();
     });
   }
-  let note: ReactNode = null;
-  if (!available)
-    note = (
-      <PickerNote icon={<Laptop aria-hidden="true" />}>
-        Open Substrate on your desktop to see {selectedLabel}’s models. Until then, the agent uses
-        the default model.
-      </PickerNote>
-    );
-  else if (selectedCatalog.error)
-    note = (
-      <PickerNote
-        icon={<CircleAlert aria-hidden="true" className="text-destructive" />}
-        action={
-          <Button type="button" size="xs" variant="outline" className="w-fit" onClick={refresh}>
-            <RefreshCw aria-hidden="true" />
-            Try again
-          </Button>
-        }
-      >
-        <span role="alert">We couldn’t load {selectedLabel}’s models.</span>
-      </PickerNote>
-    );
-  else if (selectedCatalog.data?.status === "unavailable")
-    note = (
-      <PickerNote icon={<Laptop aria-hidden="true" />}>
-        {selectedLabel} isn’t installed on this desktop. Install it, then refresh.
-      </PickerNote>
-    );
-  else if (selectedCatalog.isPending && selectedCatalog.fetchStatus === "fetching")
-    note = (
-      <PickerNote icon={<Spinner aria-hidden="true" />}>Loading {selectedLabel} models…</PickerNote>
-    );
   return (
     <Popover
       open={open}
@@ -287,7 +307,14 @@ export function ModelPicker({
           </Command>
         )}
         <div className="flex shrink-0 items-center justify-end gap-3 border-t px-3 py-2">
-          {note}
+          <ModelCatalogStatus
+            available={available}
+            label={selectedLabel}
+            unavailable={selectedUnavailable}
+            loading={selectedCatalog.isPending && selectedCatalog.fetchStatus === "fetching"}
+            error={selectedCatalog.error}
+            onRetry={refresh}
+          />
           <Button
             type="button"
             variant="ghost"

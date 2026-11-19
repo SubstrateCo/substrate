@@ -4,6 +4,7 @@ import type { HarnessSkill } from "@substrate/contracts/harness";
 
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
+import { openingName, toSkillName } from "./skill-name";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { FormTextField } from "@/components/forms/form-text-field";
@@ -20,26 +21,6 @@ const skillFields = saveSkillInput.omit({ id: true }).extend({
       "Use lowercase words separated by hyphens for the skill name.",
     ),
 });
-
-const skillName = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
-
-/** "Release notes" becomes "release-notes", so people can type words and get a valid name. */
-function toSkillName(value: string) {
-  return value
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-+|-+$/g, "")
-    .slice(0, 64)
-    .replace(/-+$/, "");
-}
-
-/** The name an existing skill opens with: always one the editor accepts. */
-export function openingName(skill?: HarnessSkill) {
-  if (!skill) return "";
-  if (skillName.test(skill.name)) return skill.name;
-  return skillName.test(skill.id) ? skill.id : toSkillName(skill.name);
-}
 
 const contentLimit = 100_000;
 

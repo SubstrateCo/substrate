@@ -14,11 +14,11 @@ export const agentSectionLabels: Record<AgentSettingsSection, string> = {
   run: "Run settings",
 };
 
+const sectionListFormatter = new Intl.ListFormat("en", { style: "long", type: "conjunction" });
+
 /** "General and Run settings": the sections a draft touches, for copy. */
 export function listSections(sections: readonly AgentSettingsSection[]) {
-  return new Intl.ListFormat("en", { style: "long", type: "conjunction" }).format(
-    sections.map((section) => agentSectionLabels[section]),
-  );
+  return sectionListFormatter.format(sections.map((section) => agentSectionLabels[section]));
 }
 
 export function isAgentSettingsSection(value: unknown): value is AgentSettingsSection {

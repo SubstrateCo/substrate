@@ -35,6 +35,32 @@ import { useNewTopic } from "@/queries/agent-work/mutations";
 import { agentStatusOptions, conversationRequestsOptions } from "@/queries/agent-work/server";
 import { toast } from "sonner";
 
+function messageWorkLookups(
+  turns: readonly AgentTurnView[],
+  items: readonly AgentInboxItemView[],
+  requests: readonly AgentRequestView[],
+  agentOf: (item: AgentInboxItemView) => string,
+) {
+  // The first open request of each turn.
+  const openRequests = new Map<string, AgentRequestView>();
+  for (const request of requests)
+    if (isOpenRequest(request) && !openRequests.has(request.turnId))
+      openRequests.set(request.turnId, request);
+  const outputs = new Set(
+    turns.flatMap((turn) =>
+      turn.outputs.flatMap((entry) => (entry.kind === "message" ? [entry.id] : [])),
+    ),
+  );
+  const itemsByAgent = new Map<string, AgentInboxItemView[]>();
+  for (const item of items) {
+    const agentId = agentOf(item);
+    const list = itemsByAgent.get(agentId);
+    if (list) list.push(item);
+    else itemsByAgent.set(agentId, [item]);
+  }
+  return { openRequest: (turnId: string) => openRequests.get(turnId), outputs, itemsByAgent };
+}
+
 /**
  * The owner's agent work in one conversation, for the channel and the thread pane. Callers see
  * only their own call status. The server returns requests and work status only to the owner,
@@ -93,25 +119,13 @@ export function ConversationAgentWork({
   const { placements, anchors } = turnPlacements(turns, conversation.id);
   const waitingItems = itemPlacements(items, turns, conversation.id);
   const { cards, backlinks } = requestPlacements(requests.data ?? [], anchors, conversation.id);
-  // The first open request of each turn.
-  const openRequests = new Map<string, AgentRequestView>();
-  for (const request of requests.data ?? [])
-    if (isOpenRequest(request) && !openRequests.has(request.turnId))
-      openRequests.set(request.turnId, request);
-  const openRequest = (turnId: string) => openRequests.get(turnId);
-  const outputs = new Set(
-    turns.flatMap((turn) =>
-      turn.outputs.flatMap((entry) => (entry.kind === "message" ? [entry.id] : [])),
-    ),
-  );
   const agentOf = (item: AgentInboxItemView) => sessions.get(item.sessionId)?.userAgentId ?? "";
-  const itemsByAgent = new Map<string, AgentInboxItemView[]>();
-  for (const item of items) {
-    const agentId = agentOf(item);
-    const list = itemsByAgent.get(agentId);
-    if (list) list.push(item);
-    else itemsByAgent.set(agentId, [item]);
-  }
+  const { openRequest, outputs, itemsByAgent } = messageWorkLookups(
+    turns,
+    items,
+    requests.data ?? [],
+    agentOf,
+  );
 
   const notice = (threadId: string | null) => {
     const lines: ComposerNoticeLine[] = [];

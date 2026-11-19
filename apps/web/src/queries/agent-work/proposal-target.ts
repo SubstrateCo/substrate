@@ -1,4 +1,4 @@
-import type { AgentRequestView } from "@substrate/contracts/agent-work";
+import type { AgentRequestView, ProposalAction } from "@substrate/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -27,6 +27,28 @@ function messageLabel(body: string) {
   return text.length > labelLength ? `${text.slice(0, labelLength - 1)}…` : text || "A message";
 }
 
+function useProposalProject(organizationId: string, action: ProposalAction | undefined) {
+  const updateTask = action?.type === "update_task";
+  const location = useQuery({
+    ...taskLocationQueryOptions(organizationId, updateTask ? action.input.taskId : ""),
+    enabled: updateTask,
+  });
+  // A create names its project. An update names only a task, so find its project first.
+  const projectId =
+    action?.type === "create_task" ? action.input.projectId : location.data?.projectEntityId;
+  const details = useQuery({
+    ...projectQueryOptions(organizationId, projectId ?? ""),
+    enabled: !!projectId,
+  });
+  const project = (id: string): ProposalProject | null | undefined =>
+    id === projectId ? state(details) : null;
+  // A task the viewer can't open has no location, so no project holds it.
+  const located = location.error ? null : state(details);
+  let projects: ProposalProject[] | undefined;
+  if (located !== undefined) projects = located ? [located] : [];
+  return { project, projects };
+}
+
 /**
  * The records a proposal names, resolved through the viewer's own reads. Each server read checks
  * access, so a record the viewer can't open resolves as hidden.
@@ -52,20 +74,7 @@ export function useProposalTarget(
     ),
     enabled: action?.type === "reply_elsewhere",
   });
-  // create_task names its project. update_task names only a task, so find the task's project.
-  const location = useQuery({
-    ...taskLocationQueryOptions(
-      organizationId,
-      action?.type === "update_task" ? action.input.taskId : "",
-    ),
-    enabled: action?.type === "update_task",
-  });
-  const projectId =
-    action?.type === "create_task" ? action.input.projectId : location.data?.projectEntityId;
-  const details = useQuery({
-    ...projectQueryOptions(organizationId, projectId ?? ""),
-    enabled: !!projectId,
-  });
+  const work = useProposalProject(organizationId, action);
   const target = useQuery({
     ...messageTargetOptions(
       organizationId,
@@ -76,23 +85,16 @@ export function useProposalTarget(
   });
   if (!action) return null;
 
-  const detail = (id: string): ProposalProject | null | undefined =>
-    id === projectId ? state(details) : null;
-  // A task the viewer can't open has no location, so no project holds it.
-  const located = location.error ? null : state(details);
-  let projects: ProposalProject[] | undefined;
-  if (located !== undefined) projects = located ? [located] : [];
   const lookups: ProposalLookups = {
     organizationId,
     sourceConversationId,
+    ...work,
     conversation: (id) => {
       const list = state(conversations);
       if (list === undefined) return undefined;
       const conversation = list?.find((entry) => entry.id === id);
       return conversation ? { name: conversationName(conversation) } : null;
     },
-    project: detail,
-    projects,
     message: (conversationId, messageId) => {
       if (message?.conversationId !== conversationId || message.messageId !== messageId)
         return null;
