@@ -2,6 +2,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import { useEffect, useRef, useState } from "react";
 
+import { authActionLifetime, authActionOptions } from "./action-options";
 import { requestDesktopSignIn } from "./desktop-sign-in";
 import { authClient } from "@/lib/auth/client";
 import "@/lib/desktop/auth";
@@ -16,7 +17,8 @@ export function useDesktopSignIn() {
     },
     [],
   );
-  const mutation = useMutation({
+  const signInOptions = {
+    ...authActionLifetime,
     mutationFn: async () => {
       pending.current?.abort();
       const controller = new AbortController();
@@ -35,16 +37,17 @@ export function useDesktopSignIn() {
         finishOpening,
       ).finally(finishOpening);
     },
-  });
+  };
+  const mutation = useMutation(signInOptions);
   return { ...mutation, opening };
 }
 
 export function useElectronTransfer() {
-  return useMutation({
-    mutationFn: async (query: ElectronAuthorization | undefined) => {
+  return useMutation(
+    authActionOptions(async (query: ElectronAuthorization | undefined) => {
       if (!query) throw new Error("Open sign-in from Substrate to try again.");
       const result = await authClient.electron.transferUser({ fetchOptions: { query } });
       if (result.error) throw new Error("Could not return to Substrate. Please try again.");
-    },
-  });
+    }),
+  );
 }

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
+import { authActionOptions } from "./action-options";
 import { signOutAndClear } from "./sign-out";
 import { authError } from "@/api/auth/error";
 import { authClient } from "@/lib/auth/client";
@@ -28,28 +29,30 @@ export function useEmailLogin() {
 }
 
 export function useEmailSignup() {
-  return useMutation({
-    mutationFn: async (input: {
-      name: string;
-      email: string;
-      password: string;
-      callbackURL: string;
-      query: ElectronAuthorization | undefined;
-    }) => {
-      const { query, ...account } = input;
-      const result = await authClient.signUp.email({ ...account, fetchOptions: { query } });
-      if (result.error) throw authError(result.error);
-    },
-  });
+  return useMutation(
+    authActionOptions(
+      async (input: {
+        name: string;
+        email: string;
+        password: string;
+        callbackURL: string;
+        query: ElectronAuthorization | undefined;
+      }) => {
+        const { query, ...account } = input;
+        const result = await authClient.signUp.email({ ...account, fetchOptions: { query } });
+        if (result.error) throw authError(result.error);
+      },
+    ),
+  );
 }
 
 export function useRequestPasswordReset(redirectTo: string) {
-  return useMutation({
-    mutationFn: async (email: string) => {
+  return useMutation(
+    authActionOptions(async (email: string) => {
       const result = await authClient.requestPasswordReset({ email, redirectTo });
       if (result.error) throw authError(result.error);
-    },
-  });
+    }),
+  );
 }
 
 export function useResetPassword(token: string) {
