@@ -249,23 +249,16 @@ export function AgentForm({
             }}
           />
         );
-        const formElement = (
-          <form
-            id={formId}
-            noValidate
-            onSubmit={(event) => {
-              event.preventDefault();
-              if (!busy) void form.handleSubmit();
-            }}
-          />
-        );
+        const submit = () => {
+          if (!busy) return form.handleSubmit();
+        };
 
         if (!agent)
           return renderCreate?.({
             formId,
             pending: busy,
             error,
-            onSubmit: () => form.handleSubmit(),
+            onSubmit: submit,
             fields: (
               <>
                 {nameField}
@@ -283,12 +276,16 @@ export function AgentForm({
 
         return (
           <div className="min-w-0">
-            {formElement}
-            {agentSettingsSections
-              .filter((name) => name !== "run")
-              .map((name) => (
-                <RegisterDraft key={name} name={name} dirty={unsaved.includes(name)} />
-              ))}
+            <form
+              id={formId}
+              noValidate
+              onSubmit={(event) => {
+                event.preventDefault();
+                void submit();
+              }}
+            />
+            <RegisterDraft name="general" dirty={generalChanged} />
+            <RegisterDraft name="instructions" dirty={instructionsChanged} />
             <UnsavedChangesGuard
               dirty={unsaved.length > 0}
               description={`Your changes in ${listSections(unsaved)} aren’t saved.`}

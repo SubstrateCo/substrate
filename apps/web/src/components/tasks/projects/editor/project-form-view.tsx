@@ -63,14 +63,19 @@ export function ProjectForm({
       </form.Field>
     </>
   );
-  const onFormSubmit = (event: { preventDefault: () => void }) => {
-    event.preventDefault();
-    if (!pending) void form.handleSubmit();
+  const submit = () => {
+    if (!pending) return form.handleSubmit();
   };
-  if (!project)
-    return renderCreate?.({ fields, pending, error, onSubmit: () => form.handleSubmit() });
+  if (!project) return renderCreate?.({ fields, pending, error, onSubmit: submit });
   return (
-    <form noValidate aria-label="Project details" onSubmit={onFormSubmit}>
+    <form
+      noValidate
+      aria-label="Project details"
+      onSubmit={(event) => {
+        event.preventDefault();
+        void submit();
+      }}
+    >
       <form.Subscribe selector={(state) => state.values}>
         {(values) => {
           const dirty = values.name !== project.name || values.description !== project.description;
