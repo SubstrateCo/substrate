@@ -1,9 +1,8 @@
 import { taskPriorityValues, taskStatusValues } from "@substrate/contracts/tasks";
 import type { TaskLinkRelation } from "@substrate/contracts/tasks/links";
 
-import { activeActorCondition } from "../../core/actors/access";
+import { activeActorCondition, viewerActorJoins } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
-import { entities } from "../../core/entities/schema";
 import { permissionLevel } from "../../core/permissions/schema";
 import {
   RepositoryContext,
@@ -24,8 +23,7 @@ import { taskLifecycle } from "./lifecycle";
 import { addTaskLink, linksOfTask, removeTaskLink } from "./links";
 import { queryTasks } from "./queries";
 import { tasks } from "./tasks.schema";
-import { and, eq, isNull, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { and, eq, sql } from "drizzle-orm";
 
 type Task = typeof tasks.$inferSelect;
 
@@ -132,28 +130,15 @@ export function taskRepository(context: RepositoryContext) {
     }
     const minimum = permissionLevel.enumValues.indexOf(level);
     if (minimum < 0) throw new AccessDeniedError();
-    const actorEntity = alias(entities, "task_viewer_entity");
+    const viewer = viewerActorJoins(scope, "task_viewer_entity");
     const [row] = await db
       .select({
         task: tasks,
         level: sql<PermissionLevel | null>`${context.accessLevel(tasks.entityId)}`,
       })
       .from(tasks)
-      .innerJoin(
-        actors,
-        and(
-          eq(actors.organizationId, scope.organizationId),
-          eq(actors.entityId, scope.actorEntityId),
-        ),
-      )
-      .innerJoin(
-        actorEntity,
-        and(
-          eq(actorEntity.organizationId, actors.organizationId),
-          eq(actorEntity.entityId, actors.entityId),
-          isNull(actorEntity.deletedAt),
-        ),
-      )
+      .innerJoin(actors, viewer.actorOn)
+      .innerJoin(viewer.entity, viewer.entityOn)
       .where(and(taskWhere(entityId), activeActorCondition()));
     if (!row?.level || permissionLevel.enumValues.indexOf(row.level) < minimum)
       throw new AccessDeniedError();

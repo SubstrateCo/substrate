@@ -5,7 +5,11 @@ import {
 } from "@substrate/contracts/files/pictures";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import { activeActorCondition, visibleActorCondition } from "../../core/actors/access";
+import {
+  activeActorCondition,
+  viewerActorJoins,
+  visibleActorCondition,
+} from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
@@ -25,7 +29,7 @@ import { tasks } from "../tasks/tasks.schema";
 import { queryProjects } from "./queries";
 import { projects } from "./schema";
 import { and, eq, inArray, isNull, or, sql, type SQLWrapper } from "drizzle-orm";
-import { alias, type SelectedFields } from "drizzle-orm/pg-core";
+import { type SelectedFields } from "drizzle-orm/pg-core";
 
 export function projectRepository(context: RepositoryContext) {
   const { db, scope } = context;
@@ -38,6 +42,11 @@ export function projectRepository(context: RepositoryContext) {
       : sql`(select coalesce(viewer.user_id, owner.user_id)
     from ${actors} viewer left join ${userAgents} owner on owner.id = viewer.user_agent_id
     where viewer.entity_id = ${scope.actorEntityId} and viewer.organization_id = ${scope.organizationId})`;
+  // Joined on `user`: whether the person is still a member here.
+  const organizationMember = and(
+    eq(member.userId, user.id),
+    eq(member.organizationId, scope.organizationId),
+  );
   // Read inside JSON aggregates; withPictures accepts only managed pictures afterwards.
   const image = sql<string | null>`case when ${actors.type} = 'agent' then
     case when ${userAgents.userId} = ${viewerUserId}
@@ -48,26 +57,13 @@ export function projectRepository(context: RepositoryContext) {
   // The project row and the actor's level. A row exists only when the actor is active and can
   // read the project, so the extra fields are never computed for a reader without access.
   function selectWithLevel<T extends SelectedFields>(entityId: string, fields: T) {
-    const actorEntity = alias(entities, "project_viewer_entity");
+    const viewer = viewerActorJoins(scope, "project_viewer_entity");
     const level = sql<PermissionLevel | null>`${context.accessLevel(projects.entityId)}`;
     return db
       .select({ ...fields, project: projects, level })
       .from(projects)
-      .innerJoin(
-        actors,
-        and(
-          eq(actors.organizationId, scope.organizationId),
-          eq(actors.entityId, scope.actorEntityId),
-        ),
-      )
-      .innerJoin(
-        actorEntity,
-        and(
-          eq(actorEntity.organizationId, actors.organizationId),
-          eq(actorEntity.entityId, actors.entityId),
-          isNull(actorEntity.deletedAt),
-        ),
-      )
+      .innerJoin(actors, viewer.actorOn)
+      .innerJoin(viewer.entity, viewer.entityOn)
       .where(and(projectWhere(entityId), activeActorCondition(), sql`${level} IS NOT NULL`));
   }
   async function get(entityId: string) {
@@ -111,10 +107,7 @@ export function projectRepository(context: RepositoryContext) {
       )
       .leftJoin(user, eq(user.id, actors.userId))
       .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-      .leftJoin(
-        member,
-        and(eq(member.userId, user.id), eq(member.organizationId, scope.organizationId)),
-      )
+      .leftJoin(member, organizationMember)
       .where(
         and(
           eq(entityGrants.organizationId, scope.organizationId),
@@ -152,10 +145,7 @@ export function projectRepository(context: RepositoryContext) {
       .innerJoin(entities, eq(entities.entityId, actors.entityId))
       .leftJoin(user, eq(user.id, actors.userId))
       .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-      .leftJoin(
-        member,
-        and(eq(member.userId, user.id), eq(member.organizationId, scope.organizationId)),
-      )
+      .leftJoin(member, organizationMember)
       .where(
         and(
           eq(actors.organizationId, scope.organizationId),

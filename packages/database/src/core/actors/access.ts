@@ -3,7 +3,8 @@ import { member } from "../organizations/schema";
 import type { ActorScope } from "../repository-context";
 import { actors } from "./schema";
 import { userAgents } from "./user-agents.schema";
-import { and, isNull, sql, type SQLWrapper } from "drizzle-orm";
+import { and, eq, isNull, sql, type SQLWrapper } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 // Callers also check the actor entity's organization and deletion state. Pass an alias of
 // `actors` when the query uses one.
@@ -30,6 +31,24 @@ export function activeActorCondition(
       )
     )`,
   );
+}
+
+// Join conditions for the scope's own actor and its live entity. Join `actors` on `actorOn` and
+// the returned `entity` alias on `entityOn`. Callers still apply activeActorCondition().
+export function viewerActorJoins(scope: ActorScope, entityAlias: string) {
+  const entity = alias(entities, entityAlias);
+  return {
+    entity,
+    actorOn: and(
+      eq(actors.organizationId, scope.organizationId),
+      eq(actors.entityId, scope.actorEntityId),
+    ),
+    entityOn: and(
+      eq(entity.organizationId, actors.organizationId),
+      eq(entity.entityId, actors.entityId),
+      isNull(entity.deletedAt),
+    ),
+  };
 }
 
 // Grants belong to people. A local agent uses its owner's human actor, so it can do what the

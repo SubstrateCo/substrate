@@ -13,18 +13,19 @@ type ActorInput = { organizationId: string } & (
   | { type: "agent"; userAgentId?: string }
 );
 
+async function isMember(tx: DatabaseExecutor, input: { organizationId: string; userId: string }) {
+  const [membership] = await tx
+    .select()
+    .from(member)
+    .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)));
+  return membership !== undefined;
+}
+
 // Trusted provisioning only: call from authenticated onboarding or organization-admin workflows.
 export function createActor(db: DatabaseExecutor, input: ActorInput) {
   return db.transaction(async (tx) => {
-    if (input.type === "human") {
-      const [membership] = await tx
-        .select()
-        .from(member)
-        .where(
-          and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)),
-        );
-      if (!membership) throw new ValidationError("Human actors require organization membership.");
-    }
+    if (input.type === "human" && !(await isMember(tx, input)))
+      throw new ValidationError("Human actors require organization membership.");
     const [entity] = await tx
       .insert(entities)
       .values(rootEntityValues(input.organizationId, "actor"))
@@ -108,11 +109,7 @@ export async function ensureUserAgentActor(
     );
   if (existing) return existing.actor;
   return db.transaction(async (tx) => {
-    const [membership] = await tx
-      .select()
-      .from(member)
-      .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)));
-    if (!membership) throw new AccessDeniedError();
+    if (!(await isMember(tx, input))) throw new AccessDeniedError();
     const [agent] = await tx
       .select()
       .from(userAgents)
@@ -151,11 +148,8 @@ export function ensureHumanActor(
   input: { organizationId: string; userId: string },
 ) {
   return db.transaction(async (tx) => {
-    const [membership] = await tx
-      .select()
-      .from(member)
-      .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)));
-    if (!membership) throw new ValidationError("Human actors require organization membership.");
+    if (!(await isMember(tx, input)))
+      throw new ValidationError("Human actors require organization membership.");
     const [existing] = await tx
       .select()
       .from(actors)
@@ -270,11 +264,7 @@ function provisionOwnedAgentActors(
   input: { organizationId: string; userId: string },
 ) {
   return db.transaction(async (tx) => {
-    const [membership] = await tx
-      .select()
-      .from(member)
-      .where(and(eq(member.organizationId, input.organizationId), eq(member.userId, input.userId)));
-    if (!membership) throw new AccessDeniedError();
+    if (!(await isMember(tx, input))) throw new AccessDeniedError();
     const agents = await tx
       .select({ id: userAgents.id })
       .from(userAgents)

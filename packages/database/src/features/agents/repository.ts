@@ -44,6 +44,18 @@ export function createAgentRepository(
   async function currentDevice() {
     return installationId ? findDevice(db, userId, installationId) : null;
   }
+  const ownAgent = (id: string) =>
+    and(eq(userAgents.id, id), eq(userAgents.userId, userId), isNull(userAgents.deletedAt));
+  async function updateOwnAgent(id: string, values: Partial<typeof userAgents.$inferInsert>) {
+    const [row] = await db
+      .update(userAgents)
+      .set(values)
+      .where(ownAgent(id))
+      .returning({ id: userAgents.id });
+    if (!row) throw new AccessDeniedError();
+    await changed();
+    return null;
+  }
   return {
     async list(): Promise<AgentCatalog> {
       const rows = await db
@@ -96,17 +108,7 @@ export function createAgentRepository(
       };
       // A new local agent lives on the desktop that created it.
       const [row] = id
-        ? await db
-            .update(userAgents)
-            .set(values)
-            .where(
-              and(
-                eq(userAgents.id, id),
-                eq(userAgents.userId, userId),
-                isNull(userAgents.deletedAt),
-              ),
-            )
-            .returning()
+        ? await db.update(userAgents).set(values).where(ownAgent(id)).returning()
         : await db
             .insert(userAgents)
             .values({ ...values, userId, homeDeviceId: (await currentDevice())?.id ?? null })
@@ -119,29 +121,14 @@ export function createAgentRepository(
     async setHomeDevice(id: string): Promise<null> {
       const device = await currentDevice();
       if (!device) throw new ValidationError("Open Substrate on the desktop that should run it.");
-      const [row] = await db
-        .update(userAgents)
-        .set({ homeDeviceId: device.id })
-        .where(
-          and(eq(userAgents.id, id), eq(userAgents.userId, userId), isNull(userAgents.deletedAt)),
-        )
-        .returning({ id: userAgents.id });
-      if (!row) throw new AccessDeniedError();
-      await changed();
-      return null;
+      return updateOwnAgent(id, { homeDeviceId: device.id });
     },
     async saveTriggers(input: SaveAgentTriggersInput): Promise<null> {
       return db.transaction(async (tx) => {
         const [agent] = await tx
           .select({ id: userAgents.id })
           .from(userAgents)
-          .where(
-            and(
-              eq(userAgents.id, input.agentId),
-              eq(userAgents.userId, userId),
-              isNull(userAgents.deletedAt),
-            ),
-          );
+          .where(ownAgent(input.agentId));
         if (!agent) throw new AccessDeniedError();
         // One row per kind: the last setting of a repeated kind wins.
         const triggers = [...new Map(input.triggers.map((trigger) => [trigger.kind, trigger]))];
@@ -176,13 +163,7 @@ export function createAgentRepository(
           const [row] = await tx
             .update(userAgents)
             .set({ imageFileId: fileId })
-            .where(
-              and(
-                eq(userAgents.id, id),
-                eq(userAgents.userId, userId),
-                isNull(userAgents.deletedAt),
-              ),
-            )
+            .where(ownAgent(id))
             .returning();
           if (!row) throw new AccessDeniedError();
           await changed(tx);
@@ -196,16 +177,7 @@ export function createAgentRepository(
         });
     },
     async deleteAgent(id: string): Promise<null> {
-      const [row] = await db
-        .update(userAgents)
-        .set({ deletedAt: new Date(), enabled: false, imageFileId: null })
-        .where(
-          and(eq(userAgents.id, id), eq(userAgents.userId, userId), isNull(userAgents.deletedAt)),
-        )
-        .returning({ id: userAgents.id });
-      if (!row) throw new AccessDeniedError();
-      await changed();
-      return null;
+      return updateOwnAgent(id, { deletedAt: new Date(), enabled: false, imageFileId: null });
     },
   };
 }
