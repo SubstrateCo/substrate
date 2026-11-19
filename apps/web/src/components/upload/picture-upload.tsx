@@ -1,8 +1,6 @@
 import type { PictureKind } from "@substrate/contracts/files/pictures";
 
-import { useMutation } from "@tanstack/react-query";
-
-import { useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
@@ -48,36 +46,71 @@ export function PictureUpload({
   name: owner,
 }: PictureUploadProps) {
   const [source, setSource] = useState<{ file: File; src: string } | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selection, setSelection] = useState<
+    { status: "idle" | "opening" } | { status: "failed"; error: string }
+  >({ status: "idle" });
+  const opening = useRef<AbortController | null>(null);
   const chooseButton = useRef<HTMLButtonElement | null>(null);
-  // Opening checks the image before the crop dialog shows it.
-  const open = useMutation({
-    mutationFn: async (file: File) => {
-      (await openPicture(file)).close();
-      return file;
+  useEffect(
+    () => () => {
+      opening.current?.abort();
+      opening.current = null;
     },
-    onSuccess: (file) => setSource({ file, src: URL.createObjectURL(file) }),
-  });
+    [],
+  );
+  const attachPreview = useCallback(
+    (section: HTMLElement | null) => {
+      if (!section || !selectedFile) return;
+      const src = URL.createObjectURL(selectedFile);
+      setSource({ file: selectedFile, src });
+      return () => URL.revokeObjectURL(src);
+    },
+    [selectedFile],
+  );
+  // Opening checks the image before the crop dialog shows it.
+  async function open(file: File) {
+    if (opening.current) return;
+    const controller = new AbortController();
+    opening.current = controller;
+    setSelection({ status: "opening" });
+    try {
+      (await openPicture(file, controller.signal)).close();
+      if (!controller.signal.aborted) {
+        setSelectedFile(file);
+        setSelection({ status: "idle" });
+      }
+    } catch (error) {
+      if (!controller.signal.aborted)
+        setSelection({
+          status: "failed",
+          error:
+            error instanceof Error ? pictureErrorMessage(error) : "This image could not be opened.",
+        });
+    }
+    if (opening.current === controller) opening.current = null;
+  }
   function closeSource() {
-    if (source) URL.revokeObjectURL(source.src);
-    setSource(null);
+    setSelectedFile((current) => (current === source?.file ? null : current));
+    setSource((current) => (current === source ? null : current));
   }
   const name = {
     avatar: "Profile picture",
     "organization-logo": "Organization logo",
     "project-icon": "Project icon",
   }[kind];
-  const busy = disabled || removing || uploading || !!source;
+  const busy = disabled || removing || uploading || !!selectedFile;
   return (
-    <section aria-label={name} className="min-w-0">
+    <section ref={attachPreview} aria-label={name} className="min-w-0">
       <FileUpload
         chooseButtonRef={chooseButton}
         accept={pictureAccept}
         maxSize={pictureMaxSize}
         disabled={busy}
-        pending={open.isPending}
+        pending={selection.status === "opening"}
         label={value ? "Replace picture" : "Choose picture"}
         description="Drop an image here. JPEG, PNG, or WebP, up to 5 MB."
-        error={open.error && pictureErrorMessage(open.error)}
+        error={selection.status === "failed" ? selection.error : null}
         preview={<CurrentPicture kind={kind} value={value} name={name} owner={owner} />}
         actions={
           value && (
@@ -91,7 +124,9 @@ export function PictureUpload({
                   aria-busy={removing}
                   aria-label={removing ? "Removing picture." : "Remove picture"}
                   onClick={() => {
-                    open.reset();
+                    opening.current?.abort();
+                    opening.current = null;
+                    setSelection({ status: "idle" });
                     onRemove({
                       onError: () =>
                         toast.error("We couldn’t remove this picture. Please try again."),
@@ -109,9 +144,9 @@ export function PictureUpload({
             </Tooltip>
           )
         }
-        onFiles={([file]) => open.mutate(file)}
+        onFiles={([file]) => void open(file)}
       />
-      {source && (
+      {source && source.file === selectedFile && (
         <ImageCropDialog
           file={source.file}
           src={source.src}

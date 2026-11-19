@@ -1,5 +1,3 @@
-import { useMutation } from "@tanstack/react-query";
-
 import { useEffect, useRef, useState } from "react";
 
 import { cropImage, type CropArea } from "@/components/upload/crop-image";
@@ -23,50 +21,63 @@ export function usePictureUpload({
   mode: "fit" | "fill";
 }) {
   const [committing, setCommitting] = useState(false);
+  const [crop, setCrop] = useState<
+    { status: "idle" | "cropping" } | { status: "failed" | "handed-off"; signal: AbortSignal }
+  >({ status: "idle" });
   // The dialog closes without asking while an upload runs only when its page goes away.
-  const attempt = useRef<{ controller: AbortController; committed: boolean } | null>(null);
+  const attempt = useRef<{
+    controller: AbortController;
+    cropping: boolean;
+    committed: boolean;
+  } | null>(null);
   useEffect(
     () => () => {
       if (!attempt.current?.committed) attempt.current?.controller.abort();
+      attempt.current = null;
     },
     [],
   );
-  const crop = useMutation({
-    mutationFn: async ({ controller }: { controller: AbortController }) => {
-      const blob = await cropImage(file, area, rotation, mode, controller.signal);
-      controller.signal.throwIfAborted();
-      return blob;
-    },
-  });
-  const pending = crop.isPending || uploading;
+  const pending = crop.status === "cropping" || uploading;
   // An upload error belongs to this dialog only after its crop was handed off.
-  const failure = crop.error ?? (crop.isSuccess ? uploadError : null);
   let error: string | null = null;
-  if (failure)
-    error = crop.variables?.controller.signal.aborted
+  if (crop.status === "failed" || (crop.status === "handed-off" && uploadError))
+    error = crop.signal.aborted
       ? "Upload cancelled. Your crop is still here."
       : "We couldn’t save this picture. Your crop is still here. Please try again.";
-  function confirm() {
-    if (pending) return;
-    const current = { controller: new AbortController(), committed: false };
+  async function confirm() {
+    if (pending || attempt.current?.cropping) return;
+    const controller = new AbortController();
+    const current = { controller, cropping: true, committed: false };
     attempt.current = current;
+    const { signal } = controller;
     setCommitting(false);
-    crop.mutate(
-      { controller: current.controller },
-      {
-        onSuccess: (blob) =>
-          onUpload(blob, {
-            signal: current.controller.signal,
-            onCommit: () => {
-              current.committed = true;
-              setCommitting(true);
-            },
-          }),
-      },
-    );
+    setCrop({ status: "cropping" });
+    try {
+      const blob = await cropImage(file, area, rotation, mode, signal);
+      if (attempt.current !== current) return;
+      signal.throwIfAborted();
+      onUpload(blob, {
+        signal,
+        onCommit: () => {
+          current.committed = true;
+          if (attempt.current === current) setCommitting(true);
+        },
+      });
+      setCrop({ status: "handed-off", signal });
+    } catch {
+      if (attempt.current === current) setCrop({ status: "failed", signal });
+    }
+    current.cropping = false;
   }
   function cancelUpload() {
     if (!attempt.current?.committed) attempt.current?.controller.abort();
   }
-  return { error, clearError: crop.reset, pending, committing, confirm, cancelUpload };
+  return {
+    error,
+    clearError: () => setCrop({ status: "idle" }),
+    pending,
+    committing,
+    confirm: () => void confirm(),
+    cancelUpload,
+  };
 }
