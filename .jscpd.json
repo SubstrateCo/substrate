@@ -1,0 +1,38 @@
+{
+  "path": ["apps", "packages", "tooling"],
+  "format": ["typescript", "tsx"],
+  "minTokens": 60,
+  "minLines": 6,
+  "mode": "mild",
+  "ignore": [
+    "**/node_modules/**",
+    "**/dist/**",
+    "**/*.d.ts",
+    "**/*.gen.ts",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/test-support/**",
+    "apps/web/e2e/**",
+    "apps/web/src/components/ui/**",
+    "packages/*/migrations/**",
+    "apps/server/load/**"
+  ],
+  "baseline": ".jscpd-baseline.json",
+  "reporters": ["console"],
+  "output": ".jscpd-report",
+  "noTips": true,
+  "boundaries": [
+    {
+      "name": "agent-admission",
+      "code": ["packages/database/src/features/agent-work/admission.ts"],
+      "notIn": ["apps/**", "packages/client-storage/**", "packages/harness-runtime/**"],
+      "disable": ["semantic"]
+    },
+    {
+      "name": "agent-work-machines",
+      "code": ["packages/contracts/src/agent-work/machines"],
+      "notIn": ["apps/**", "packages/database/**", "packages/client-storage/**"],
+      "disable": ["semantic"]
+    }
+  ]
+}
