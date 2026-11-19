@@ -103,26 +103,7 @@ function ProjectPaneContent({
     ready: !!detail,
   });
   const tabFocus = useFocusReturn(inspector);
-  if (!detail)
-    return (
-      <PageContent>
-        {state === "loading" ? (
-          <ProjectLoading />
-        ) : (
-          <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
-            <ErrorState
-              title={state === "unavailable" ? "Project unavailable" : "Couldn’t load project"}
-              description={
-                state === "unavailable"
-                  ? "This project was removed or you no longer have access."
-                  : undefined
-              }
-              onRetry={state === "unavailable" ? undefined : onRetry}
-            />
-          </div>
-        )}
-      </PageContent>
-    );
+  if (!detail) return <ProjectPaneState state={state} onRetry={onRetry} />;
   const { canEdit } = capabilities;
   const { selectedTaskId: openTaskId } = panel;
   const selected = detail.tasks.find((task) => task.entityId === openTaskId);
@@ -147,44 +128,11 @@ function ProjectPaneContent({
         >
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="shrink-0 border-b px-6 pt-5">
-              <PageHeader
-                title={
-                  <span className="inline-flex items-center gap-2">
-                    <ProjectIcon image={detail.project.image} className="size-6" />
-                    <span>{detail.project.name}</span>
-                  </span>
-                }
-                description={
-                  detail.project.description && (
-                    <span
-                      className="line-clamp-2 wrap-break-word whitespace-pre-wrap"
-                      title={detail.project.description}
-                    >
-                      {detail.project.description}
-                    </span>
-                  )
-                }
-                actions={
-                  <div role="group" aria-label="Project actions" className="flex gap-0.5">
-                    {headerActions}
-                    {canEdit && (
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            ref={newTaskButton}
-                            size="icon-sm"
-                            variant="ghost"
-                            aria-label="New task"
-                            onClick={() => panel.create()}
-                          >
-                            <Plus aria-hidden="true" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>New task</TooltipContent>
-                      </Tooltip>
-                    )}
-                  </div>
-                }
+              <ProjectPaneHeader
+                project={detail.project}
+                actions={headerActions}
+                newTaskButton={newTaskButton}
+                onCreateTask={canEdit ? panel.create : undefined}
               />
               <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pb-1">
                 <TabsList ref={tabsRef} variant="line" className="-ml-1.5">
@@ -268,28 +216,7 @@ function ProjectPaneContent({
             onSelectTask: panel.select,
           })
         ) : (
-          <>
-            <header className="flex h-12 shrink-0 items-center justify-end border-b px-4">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label="Close task"
-                    onClick={panel.close}
-                  >
-                    <X aria-hidden="true" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Close task</TooltipContent>
-              </Tooltip>
-            </header>
-            <ContentNotice
-              icon={Unlink}
-              title="Task unavailable"
-              description="This task was removed or you no longer have access. Choose another task."
-            />
-          </>
+          <UnavailableTask onClose={panel.close} />
         )}
       </TaskAside>
       {panel.creating &&
@@ -334,6 +261,103 @@ function ProjectPaneContent({
           }}
         />
       )}
+    </>
+  );
+}
+
+function ProjectPaneState({ state, onRetry }: { state: ResourceStatus; onRetry: () => void }) {
+  const unavailable = state === "unavailable";
+  return (
+    <PageContent>
+      {state === "loading" ? (
+        <ProjectLoading />
+      ) : (
+        <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
+          <ErrorState
+            title={unavailable ? "Project unavailable" : "Couldn’t load project"}
+            description={
+              unavailable ? "This project was removed or you no longer have access." : undefined
+            }
+            onRetry={unavailable ? undefined : onRetry}
+          />
+        </div>
+      )}
+    </PageContent>
+  );
+}
+
+function ProjectPaneHeader({
+  project,
+  actions,
+  newTaskButton,
+  onCreateTask,
+}: {
+  project: ProjectDetail["project"];
+  actions: ReactNode;
+  newTaskButton: RefObject<HTMLButtonElement | null>;
+  onCreateTask?: () => void;
+}) {
+  return (
+    <PageHeader
+      title={
+        <span className="inline-flex items-center gap-2">
+          <ProjectIcon image={project.image} className="size-6" />
+          <span>{project.name}</span>
+        </span>
+      }
+      description={
+        project.description && (
+          <span
+            className="line-clamp-2 wrap-break-word whitespace-pre-wrap"
+            title={project.description}
+          >
+            {project.description}
+          </span>
+        )
+      }
+      actions={
+        <div role="group" aria-label="Project actions" className="flex gap-0.5">
+          {actions}
+          {onCreateTask && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  ref={newTaskButton}
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label="New task"
+                  onClick={() => onCreateTask()}
+                >
+                  <Plus aria-hidden="true" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>New task</TooltipContent>
+            </Tooltip>
+          )}
+        </div>
+      }
+    />
+  );
+}
+
+function UnavailableTask({ onClose }: { onClose: () => void }) {
+  return (
+    <>
+      <header className="flex h-12 shrink-0 items-center justify-end border-b px-4">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button variant="ghost" size="icon-sm" aria-label="Close task" onClick={onClose}>
+              <X aria-hidden="true" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Close task</TooltipContent>
+        </Tooltip>
+      </header>
+      <ContentNotice
+        icon={Unlink}
+        title="Task unavailable"
+        description="This task was removed or you no longer have access. Choose another task."
+      />
     </>
   );
 }

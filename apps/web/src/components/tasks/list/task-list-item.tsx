@@ -47,7 +47,6 @@ export function TaskListItem({
   statusPending?: boolean;
 }) {
   const closed = task.status === "completed" || task.status === "canceled";
-  const assigneeName = task.assigneeActorEntityId ? (assignee?.name ?? "Former member") : undefined;
   return (
     <li
       data-selected={selected || undefined}
@@ -109,17 +108,30 @@ export function TaskListItem({
           )}
         </span>
       </button>
-      <span className="ml-2 flex w-6 shrink-0 justify-center">
-        {assignee ? (
-          <TaskAssigneeHoverCard assignee={assignee}>
-            <TaskAssigneeAvatar name={assignee.name} image={assignee.image} type={assignee.type} />
-          </TaskAssigneeHoverCard>
-        ) : (
-          <span aria-label={assigneeName ?? "Unassigned"}>
-            <TaskAssigneeAvatar name={assigneeName} />
-          </span>
-        )}
-      </span>
+      <TaskListAssignee assignee={assignee} assigned={Boolean(task.assigneeActorEntityId)} />
     </li>
+  );
+}
+
+function TaskListAssignee({
+  assignee,
+  assigned,
+}: {
+  assignee?: ProjectDetail["actors"][number];
+  assigned: boolean;
+}) {
+  const missingName = assigned ? "Former member" : undefined;
+  return (
+    <span className="ml-2 flex w-6 shrink-0 justify-center">
+      {assignee ? (
+        <TaskAssigneeHoverCard assignee={assignee}>
+          <TaskAssigneeAvatar name={assignee.name} image={assignee.image} type={assignee.type} />
+        </TaskAssigneeHoverCard>
+      ) : (
+        <span aria-label={missingName ?? "Unassigned"}>
+          <TaskAssigneeAvatar name={missingName} />
+        </span>
+      )}
+    </span>
   );
 }

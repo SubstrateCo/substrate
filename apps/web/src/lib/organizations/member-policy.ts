@@ -2,29 +2,28 @@ import { roles } from "@substrate/contracts/auth/permissions";
 
 export type OrganizationRole = keyof typeof roles;
 
+const roleOptions = {
+  member: {
+    label: "Member",
+    description: "Works in the channels and projects they are added to.",
+  },
+  admin: {
+    label: "Admin",
+    description: "Manages settings and conversations, and can remove members.",
+  },
+  owner: {
+    label: "Owner",
+    description: "Full control, including invitations, roles, and other owners.",
+  },
+} satisfies Record<OrganizationRole, { label: string; description: string }>;
+
+const roleOrder: readonly OrganizationRole[] = ["owner", "admin", "member"];
+
 export const organizationRoles: readonly {
   value: OrganizationRole;
   label: string;
   description: string;
-}[] = [
-  {
-    value: "member",
-    label: "Member",
-    description: "Works in the channels and projects they are added to.",
-  },
-  {
-    value: "admin",
-    label: "Admin",
-    description: "Manages settings and conversations, and can remove members.",
-  },
-  {
-    value: "owner",
-    label: "Owner",
-    description: "Full control, including invitations, roles, and other owners.",
-  },
-];
-
-const roleOrder: readonly OrganizationRole[] = ["owner", "admin", "member"];
+}[] = [...roleOrder].reverse().map((value) => ({ value, ...roleOptions[value] }));
 
 /** Better Auth stores roles as a comma-separated list. Returns the most powerful one. */
 export function primaryRole(role: string): OrganizationRole {
@@ -34,8 +33,7 @@ export function primaryRole(role: string): OrganizationRole {
 
 /** A human label for a stored role, such as "Admin". */
 export function roleLabel(role: string) {
-  const primary = primaryRole(role);
-  return organizationRoles.find((option) => option.value === primary)!.label;
+  return roleOptions[primaryRole(role)].label;
 }
 
 /**

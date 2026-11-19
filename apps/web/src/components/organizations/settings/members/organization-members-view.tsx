@@ -22,20 +22,7 @@ const roleCapabilities: Record<OrganizationRole, string> = {
   owner: "manage invitations, roles, and other owners.",
 };
 
-export function OrganizationMembers({
-  organizationName,
-  members,
-  state,
-  loading,
-  error,
-  onRetry,
-  inviteAction,
-  changing,
-  changeError,
-  onChangeRole,
-  onRemove,
-  onResetChange,
-}: {
+type OrganizationMembersProps = {
   organizationName?: string;
   members?: MemberRowData[];
   state: ResourceStatus;
@@ -49,7 +36,22 @@ export function OrganizationMembers({
   onChangeRole: (memberId: string, role: OrganizationRole, onDone: () => void) => void;
   onRemove: (memberId: string, onDone: () => void) => void;
   onResetChange: () => void;
-}) {
+};
+
+export function OrganizationMembers({
+  organizationName,
+  members,
+  state,
+  loading,
+  error,
+  onRetry,
+  inviteAction,
+  changing,
+  changeError,
+  onChangeRole,
+  onRemove,
+  onResetChange,
+}: OrganizationMembersProps) {
   const list = useRef<HTMLDivElement>(null);
   const {
     value: confirming,
@@ -58,12 +60,11 @@ export function OrganizationMembers({
     restoreFocus,
   } = useStateDialog<PendingChange>(list);
   const blocked = state === "unavailable";
-  const visibleMembers = members;
   const close = () => {
     closeConfirm();
     onResetChange();
   };
-  const count = visibleMembers?.length;
+  const count = members?.length;
   let description = "People in this organization and what they can do.";
   if (count !== undefined)
     description = `${count} ${count === 1 ? "person" : "people"} in ${organizationName || "this organization"}.`;
@@ -74,14 +75,14 @@ export function OrganizationMembers({
       actions={blocked ? undefined : inviteAction}
     >
       <div ref={list} tabIndex={-1}>
-        {loading && !members && <LoadingState label="Loading members." rows={3} />}
-        {error && (!members || blocked) && (
-          <ErrorState title="Couldn’t load members" onRetry={blocked ? undefined : onRetry} />
-        )}
-        {state === "stale" && (
-          <StaleNotice onRetry={onRetry}>This list may be out of date.</StaleNotice>
-        )}
-        {visibleMembers?.length === 0 && (
+        <MemberListStatus
+          hasData={members !== undefined}
+          loading={loading}
+          error={error}
+          state={state}
+          onRetry={onRetry}
+        />
+        {members?.length === 0 && (
           <div className="rounded-xl border">
             <ContentNotice
               icon={Users}
@@ -90,12 +91,12 @@ export function OrganizationMembers({
             />
           </div>
         )}
-        {!!visibleMembers?.length && (
+        {!!members?.length && (
           <ul
             aria-label="Members"
             className="@container divide-y overflow-hidden rounded-xl border bg-card"
           >
-            {visibleMembers.map((member) => (
+            {members.map((member) => (
               <MemberRow
                 key={member.id}
                 member={member}
@@ -107,35 +108,85 @@ export function OrganizationMembers({
           </ul>
         )}
       </div>
-      {!blocked && confirming?.kind === "role" && (
-        <ConfirmDialog
-          title={`Make ${confirming.member.name} ${confirming.role === "admin" ? "an" : "a"} ${roleLabel(confirming.role).toLowerCase()}?`}
-          description={`${confirming.member.name} is ${roleLabel(confirming.member.role).toLowerCase() === "admin" ? "an" : "a"} ${roleLabel(confirming.member.role).toLowerCase()} now. As ${confirming.role === "admin" ? "an" : "a"} ${confirming.role}, they can ${roleCapabilities[confirming.role]}`}
-          confirmLabel={`Make ${confirming.role}`}
-          pendingLabel="Changing"
-          pending={changing}
-          error={changeError}
-          errorDescription="We couldn’t change this role. Please try again."
+      {!blocked && confirming && (
+        <MemberChangeDialog
+          change={confirming}
+          changing={changing}
+          changeError={changeError}
           onClose={close}
           onRestoreFocus={restoreFocus}
-          onConfirm={() => onChangeRole(confirming.member.id, confirming.role, close)}
-        />
-      )}
-      {!blocked && confirming?.kind === "remove" && (
-        <ConfirmDialog
-          destructive
-          title={`Remove ${confirming.member.name}?`}
-          description="They lose access to this organization’s conversations, projects, and tasks right away. You can invite them again later."
-          confirmLabel="Remove member"
-          pendingLabel="Removing"
-          pending={changing}
-          error={changeError}
-          errorDescription="We couldn’t remove this member. Please try again."
-          onClose={close}
-          onRestoreFocus={restoreFocus}
-          onConfirm={() => onRemove(confirming.member.id, close)}
+          onChangeRole={onChangeRole}
+          onRemove={onRemove}
         />
       )}
     </SettingsPanel>
+  );
+}
+
+function MemberListStatus({
+  hasData,
+  loading,
+  error,
+  state,
+  onRetry,
+}: Pick<OrganizationMembersProps, "loading" | "error" | "state" | "onRetry"> & {
+  hasData: boolean;
+}) {
+  const blocked = state === "unavailable";
+  return (
+    <>
+      {loading && !hasData && <LoadingState label="Loading members." rows={3} />}
+      {error && (!hasData || blocked) && (
+        <ErrorState title="Couldn’t load members" onRetry={blocked ? undefined : onRetry} />
+      )}
+      {state === "stale" && (
+        <StaleNotice onRetry={onRetry}>This list may be out of date.</StaleNotice>
+      )}
+    </>
+  );
+}
+
+function MemberChangeDialog({
+  change,
+  changing,
+  changeError,
+  onClose,
+  onRestoreFocus,
+  onChangeRole,
+  onRemove,
+}: Pick<OrganizationMembersProps, "changing" | "changeError" | "onChangeRole" | "onRemove"> & {
+  change: PendingChange;
+  onClose: () => void;
+  onRestoreFocus: () => void;
+}) {
+  const { member } = change;
+  const common = { pending: changing, error: changeError, onClose, onRestoreFocus };
+  if (change.kind === "remove") {
+    return (
+      <ConfirmDialog
+        {...common}
+        destructive
+        title={`Remove ${member.name}?`}
+        description="They lose access to this organization’s conversations, projects, and tasks right away. You can invite them again later."
+        confirmLabel="Remove member"
+        pendingLabel="Removing"
+        errorDescription="We couldn’t remove this member. Please try again."
+        onConfirm={() => onRemove(member.id, onClose)}
+      />
+    );
+  }
+  const { role } = change;
+  const currentRole = roleLabel(member.role).toLowerCase();
+  const nextRole = `${role === "admin" ? "an" : "a"} ${roleLabel(role).toLowerCase()}`;
+  return (
+    <ConfirmDialog
+      {...common}
+      title={`Make ${member.name} ${nextRole}?`}
+      description={`${member.name} is ${currentRole === "admin" ? "an" : "a"} ${currentRole} now. As ${nextRole}, they can ${roleCapabilities[role]}`}
+      confirmLabel={`Make ${role}`}
+      pendingLabel="Changing"
+      errorDescription="We couldn’t change this role. Please try again."
+      onConfirm={() => onChangeRole(member.id, role, onClose)}
+    />
   );
 }

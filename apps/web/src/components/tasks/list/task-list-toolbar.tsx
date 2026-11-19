@@ -2,7 +2,7 @@ import type { ProjectDetail } from "../types";
 import type { TaskFilters, TaskSort } from "./task-filters";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { Button } from "@/components/ui/button";
-import { InputGroup, InputGroupAddon } from "@/components/ui/input-group";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowUpDown, Search, UserRound, X } from "lucide-react";
+import { ArrowUpDown, UserRound, X } from "lucide-react";
 
 const sortOptions: { value: TaskSort; label: string }[] = [
   { value: "default", label: "Task ID" },
@@ -54,26 +54,20 @@ export function TaskListToolbar({
       aria-label="Task filters"
       className="flex shrink-0 flex-wrap items-center gap-2 border-b px-6 py-2"
     >
-      <InputGroup className="max-w-52 min-w-40 flex-1">
-        <InputGroupAddon>
-          <Search aria-hidden="true" />
-        </InputGroupAddon>
-        <input
-          type="search"
-          data-slot="input-group-control"
-          aria-label="Filter tasks"
-          placeholder="Filter tasks"
-          value={filters.query}
-          onChange={(event) => set({ query: event.target.value })}
-          onKeyDown={(event) => {
-            if (event.key === "Escape" && filters.query) {
-              event.preventDefault();
-              set({ query: "" });
-            }
-          }}
-          className="h-full min-w-0 flex-1 bg-transparent pr-2.5 text-sm outline-none placeholder:text-muted-foreground"
-        />
-      </InputGroup>
+      <Input
+        className="max-w-52 min-w-40 flex-1"
+        type="search"
+        aria-label="Filter tasks"
+        placeholder="Filter tasks"
+        value={filters.query}
+        onChange={(event) => set({ query: event.target.value })}
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && filters.query) {
+            event.preventDefault();
+            set({ query: "" });
+          }
+        }}
+      />
       <SegmentedControl
         aria-label="Show tasks"
         value={filters.scope}

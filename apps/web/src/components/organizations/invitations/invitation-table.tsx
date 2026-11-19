@@ -4,7 +4,8 @@ import { RowAction, RowActions } from "../../layout/row-actions";
 import { DateTimeDisplay } from "../../table/date-time-cell";
 import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "../../table/index";
 import type { InvitationListItem } from "./invitation-manager-view";
-import { InvitationStatus, invitationState } from "./invitation-status";
+import { invitationState } from "./invitation-state";
+import { InvitationStatus } from "./invitation-status";
 import { roleLabel } from "@/lib/organizations/member-policy";
 import { MailX, Send } from "lucide-react";
 

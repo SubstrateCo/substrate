@@ -51,7 +51,7 @@ function MemberSummary({ members }: { members: ConversationMember[] }) {
           <span className="flex gap-0.5">
             {members.slice(0, shownAvatars).map((person) => (
               <PersonAvatar
-                key={`${person.type}-${person.name}`}
+                key={person.actorId}
                 name={person.name}
                 image={person.image}
                 agent={person.type === "agent"}
@@ -64,11 +64,8 @@ function MemberSummary({ members }: { members: ConversationMember[] }) {
       <PopoverContent align="start" collisionPadding={8}>
         <p className="px-2 text-sm font-medium">Members</p>
         <ul aria-label="Conversation members" className="max-h-64 space-y-1 overflow-y-auto">
-          {members.map((person, index) => (
-            <li
-              key={`${person.type}-${person.name}-${index}`}
-              className="flex items-center gap-2 rounded-md px-2 py-1"
-            >
+          {members.map((person) => (
+            <li key={person.actorId} className="flex items-center gap-2 rounded-md px-2 py-1">
               <PersonAvatar
                 name={person.name}
                 image={person.image}

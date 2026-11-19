@@ -1,6 +1,7 @@
 import { useId } from "react";
 
-import { assigneeLabel, AssigneePicker } from "../assignee/assignee-picker";
+import { assigneeLabel } from "../assignee/assignee-label";
+import { AssigneePicker } from "../assignee/assignee-picker";
 import { TaskDueDatePicker } from "../detail/task-due-date-picker";
 import { TaskAssigneeAvatar } from "../task-cues/task-assignee-avatar";
 import { taskPriorityOptions, taskStatusOptions } from "../task-cues/task-options";

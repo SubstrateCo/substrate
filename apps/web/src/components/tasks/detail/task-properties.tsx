@@ -3,7 +3,8 @@ import { taskStatusLabels } from "@substrate/contracts/tasks";
 import type { ReactNode } from "react";
 
 import { assignableActors } from "../assignee/assignable";
-import { assigneeLabel, AssigneePicker } from "../assignee/assignee-picker";
+import { assigneeLabel } from "../assignee/assignee-label";
+import { AssigneePicker } from "../assignee/assignee-picker";
 import { TaskAssigneeAvatar } from "../task-cues/task-assignee-avatar";
 import { taskPriorityLabels } from "../task-cues/task-labels";
 import { taskPriorityOptions, taskStatusOptions } from "../task-cues/task-options";
