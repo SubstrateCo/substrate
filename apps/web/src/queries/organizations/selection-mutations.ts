@@ -1,14 +1,36 @@
-import { useMutation, useQueryClient, type QueryClient } from "@tanstack/react-query";
+import {
+  mutationOptions,
+  useMutation,
+  useQueryClient,
+  type QueryClient,
+} from "@tanstack/react-query";
 
 import { authClient } from "@/lib/auth/client";
 import { activateOrganization } from "@/lib/auth/organization";
 import { unwrap } from "@/lib/auth/result";
 import { queryKeys } from "@/queries/keys";
 
+type WorkspaceActivation = { organizationId: string; destination?: string | null };
+
+export function organizationActivationOptions(activate = activateOrganization) {
+  // The document exit owns this cache boundary. Keeping a draft must not switch the session
+  // or refresh the current cache; leaving gives the new document its own cache.
+  const activateTarget = ({ organizationId, destination }: WorkspaceActivation) =>
+    activate(organizationId, destination);
+  return {
+    switchTo: (destination?: string | null) =>
+      mutationOptions({
+        mutationFn: (organizationId: string) => activateTarget({ organizationId, destination }),
+      }),
+    openLinked: mutationOptions({
+      mutationFn: (target: { organizationId: string; destination: string }) =>
+        activateTarget(target),
+    }),
+  };
+}
+
 export function useActivateOrganization(destination?: string | null) {
-  return useMutation({
-    mutationFn: (organizationId: string) => activateOrganization(organizationId, destination),
-  });
+  return useMutation(organizationActivationOptions().switchTo(destination));
 }
 
 export function createOrganizationMutationOptions(client: QueryClient) {

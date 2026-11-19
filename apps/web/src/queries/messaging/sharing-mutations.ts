@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { mutationOptions, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 import {
@@ -10,7 +10,7 @@ import {
   resendSharing,
   revokeSharing,
 } from "@/api/messaging/sharing";
-import { activateOrganization } from "@/lib/auth/organization";
+import { organizationActivationOptions } from "@/queries/organizations/selection-mutations";
 
 type SharingAction =
   | { kind: "invite"; email: string }
@@ -47,27 +47,33 @@ export function useSharingAction(organizationId: string, conversationId: string)
   });
 }
 
-export function useAcceptSharingInvitation(invitationId: string, organizationId: string) {
-  return useMutation({
-    mutationFn: () =>
-      acceptSharingInvitation({ data: { invitationId, organizationId, shareHistory: true } }),
+// The screen uses the decision result immediately. Committed access hints refresh the
+// invitation query through the authenticated layout, including approval by another user.
+function sharingDecisionOptions<TResult>(invitationId: string, mutationFn: () => Promise<TResult>) {
+  return mutationOptions({
+    mutationFn,
+    // Do not send competing decisions for the same invitation concurrently from this client.
+    scope: { id: `sharing-invitation:${invitationId}` },
+    gcTime: 0,
   });
+}
+
+export function useAcceptSharingInvitation(invitationId: string, organizationId: string) {
+  return useMutation(
+    sharingDecisionOptions(invitationId, () =>
+      acceptSharingInvitation({ data: { invitationId, organizationId, shareHistory: true } }),
+    ),
+  );
 }
 
 export function useDeclineSharingInvitation(invitationId: string) {
-  return useMutation({
-    mutationFn: () => declineSharingInvitation({ data: { invitationId } }),
-  });
+  return useMutation(
+    sharingDecisionOptions(invitationId, () =>
+      declineSharingInvitation({ data: { invitationId } }),
+    ),
+  );
 }
 
 export function useActivateSharingOrganization() {
-  return useMutation({
-    mutationFn: ({
-      organizationId,
-      destination,
-    }: {
-      organizationId: string;
-      destination: string;
-    }) => activateOrganization(organizationId, destination),
-  });
+  return useMutation(organizationActivationOptions().openLinked);
 }
