@@ -1,9 +1,7 @@
 import { contextEntityTypes } from "@substrate/contracts/context/input";
 import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
 
-import { actors } from "../../core/actors/schema";
-import { userAgents } from "../../core/actors/user-agents.schema";
-import { user } from "../../core/authentication/schema";
+import { joinActorAccount } from "../../core/actors/joined-profile";
 import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
 import type { RepositoryContext } from "../../core/repository-context";
@@ -11,9 +9,10 @@ import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";
 import { requireContextTarget } from "../context/access";
 import { messageEntityReferences } from "../context/schema";
+import { joinReferenceMessages } from "../context/service";
 import { requireContextTargetPage } from "../context/target-page";
 import { requireMessage, visibleConversations } from "../messaging/access";
-import { messagingConversations, messagingMessages } from "../messaging/schema";
+import { messagingMessages } from "../messaging/schema";
 import { excerpt, iso, messageRef } from "./formatting";
 import { pagination } from "./pagination";
 import { actorSelection } from "./tasks";
@@ -146,7 +145,7 @@ export async function listLinks(
   }
   const work = await requireContextTarget(ctx, input.target.id);
   if (work.entityType !== input.target.type) throw new AccessDeniedError();
-  const rows = await db
+  const messages = db
     .select({
       purpose: messageEntityReferences.purpose,
       linkedAt: messageEntityReferences.createdAt,
@@ -158,14 +157,8 @@ export async function listLinks(
       createdAt: messagingMessages.createdAt,
     })
     .from(messageEntityReferences)
-    .innerJoin(messagingMessages, eq(messagingMessages.id, messageEntityReferences.messageId))
-    .innerJoin(
-      messagingConversations,
-      eq(messagingConversations.id, messageEntityReferences.conversationId),
-    )
-    .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
-    .leftJoin(user, eq(user.id, actors.userId))
-    .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+    .$dynamic();
+  const rows = await joinActorAccount(joinReferenceMessages(messages))
     .where(
       and(
         ...references,

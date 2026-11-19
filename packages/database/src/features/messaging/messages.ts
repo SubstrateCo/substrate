@@ -1,9 +1,11 @@
-import { managedPicture } from "@substrate/contracts/files/pictures";
-
 import type { DatabaseExecutor } from "../../client";
+import {
+  joinActorProfile,
+  joinedActorName,
+  joinedActorPicture,
+} from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
-import { user } from "../../core/authentication/schema";
 import { effectsFor } from "../../core/effects";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
@@ -28,17 +30,8 @@ import { alias } from "drizzle-orm/pg-core";
 // selectMessages joins account, agent and viewer-organization membership once per author.
 function messageAuthorColumns(scope: SessionIdentity) {
   return {
-    authorName: sql<string>`case when ${actors.type} = 'agent'
-      then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
-    authorImage: sql<string | null>`case when ${actors.type} = 'agent' then
-      case when ${userAgents.userId} = ${scope.userId}
-        then '/api/v1/files/' || ${userAgents.imageFileId}::text || '/content' end
-      else case when ${member.id} is not null then ${user.image} end end`.mapWith(
-      (value: string | null) => {
-        const parsed = managedPicture.safeParse(value);
-        return parsed.success ? parsed.data : null;
-      },
-    ),
+    authorName: joinedActorName(),
+    authorImage: joinedActorPicture(scope.userId),
     authorType: sql<"human" | "agent">`${actors.type}`,
     authorExternal: sql<boolean>`${actors.type} <> 'agent' AND ${member.id} is null`,
   };
@@ -120,21 +113,18 @@ function messageView(message: typeof messagingMessages.$inferSelect, viewerActor
 
 // Messages with their author. Callers add the filters that authorize each message.
 export function selectMessages(db: DatabaseExecutor, scope: SessionIdentity) {
-  return db
-    .select({
-      message: messagingMessages,
-      ...messageAuthorColumns(scope),
-      authorOwnerUserId: userAgents.userId,
-    })
-    .from(messagingMessages)
-    .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
-    .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-    .leftJoin(user, eq(user.id, actors.userId))
-    .leftJoin(
-      member,
-      and(eq(member.userId, actors.userId), eq(member.organizationId, scope.organizationId)),
-    )
-    .$dynamic();
+  return joinActorProfile(
+    db
+      .select({
+        message: messagingMessages,
+        ...messageAuthorColumns(scope),
+        authorOwnerUserId: userAgents.userId,
+      })
+      .from(messagingMessages)
+      .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
+      .$dynamic(),
+    scope.organizationId,
+  );
 }
 
 // Adds attachments, reactions and reply counts to authorized messages of the given conversations.
@@ -386,7 +376,7 @@ export function messageOperations(
       const reply = alias(messagingMessages, "page_reply");
       // Aggregate each relationship independently, after limiting the page. Joining the raw
       // attachments, reactions and replies would multiply both rows and summary counts.
-      const rows = await db
+      const query = db
         .with(anchor, conversation, page)
         .select({
           validThread: conversation.validThread,
@@ -432,13 +422,11 @@ export function messageOperations(
         .leftJoin(page, sql`true`)
         .leftJoin(messagingMessages, eq(messagingMessages.id, page.id))
         .leftJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
-        .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-        .leftJoin(user, eq(user.id, actors.userId))
-        .leftJoin(
-          member,
-          and(eq(member.userId, actors.userId), eq(member.organizationId, scope.organizationId)),
-        )
-        .orderBy(desc(messagingMessages.createdAt), desc(messagingMessages.id));
+        .$dynamic();
+      const rows = await joinActorProfile(query, scope.organizationId).orderBy(
+        desc(messagingMessages.createdAt),
+        desc(messagingMessages.id),
+      );
       if (!rows.length) throw new AccessDeniedError();
       if (!rows[0]!.validThread)
         throw new ValidationError("Thread must be a root message in this conversation.");

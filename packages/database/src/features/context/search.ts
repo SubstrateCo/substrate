@@ -2,6 +2,7 @@ import type { ContextSearchBatchKind, ContextSearchKind } from "@substrate/contr
 import { managedPicture, managedPicturePath } from "@substrate/contracts/files/pictures";
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
+import { joinActorAccount, joinedActorName } from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
@@ -45,7 +46,7 @@ import {
   type SQL,
   type SQLWrapper,
 } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { alias, type PgSelectQueryBuilder } from "drizzle-orm/pg-core";
 
 type ChannelMembership = "joined" | "left" | "none";
 interface SearchResult {
@@ -77,6 +78,30 @@ interface SearchResult {
   private?: boolean;
   membership?: ChannelMembership;
   memberCount?: number;
+}
+
+// Columns shared by thread and message results. Needs joinMessageConversationAndAuthor.
+function messageResultColumns() {
+  return {
+    id: messagingMessages.id,
+    title: messagingMessages.body,
+    conversationId: messagingMessages.conversationId,
+    conversationKind: messagingConversations.kind,
+    private: messagingConversations.private,
+    authorName: joinedActorName(),
+    createdAt: messagingMessages.createdAt,
+  };
+}
+
+function joinMessageConversationAndAuthor<T extends PgSelectQueryBuilder>(query: T) {
+  return joinActorAccount(
+    query
+      .innerJoin(
+        messagingConversations,
+        eq(messagingConversations.id, messagingMessages.conversationId),
+      )
+      .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId)),
+  );
 }
 
 // Case-insensitive substring match for short fields such as names and titles. Three or more
@@ -429,26 +454,14 @@ export async function contextSearch(
     return rows.map((row) => ({ ...row, kind: "channel" as const, conversationId: row.id }));
   }
   if (kind === "thread") {
-    const rows = await db
+    const threads = db
       .select({
-        id: messagingMessages.id,
-        title: messagingMessages.body,
-        conversationId: messagingMessages.conversationId,
+        ...messageResultColumns(),
         conversationName: sql<string>`${messagingConversations.name}`,
-        conversationKind: messagingConversations.kind,
-        private: messagingConversations.private,
-        authorName: sql<string>`case when ${actors.type} = 'agent'
-          then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
-        createdAt: messagingMessages.createdAt,
       })
       .from(messagingMessages)
-      .innerJoin(
-        messagingConversations,
-        eq(messagingConversations.id, messagingMessages.conversationId),
-      )
-      .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
-      .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-      .leftJoin(user, eq(user.id, actors.userId))
+      .$dynamic();
+    const rows = await joinMessageConversationAndAuthor(threads)
       .where(
         and(
           visibleConversations(db, scope),
@@ -485,27 +498,15 @@ export async function contextSearch(
     );
   }
   if (searches("message")) {
-    const pending = db
+    const messages = db
       .select({
-        id: messagingMessages.id,
-        title: messagingMessages.body,
-        conversationId: messagingMessages.conversationId,
+        ...messageResultColumns(),
         threadId: messagingMessages.threadId,
         conversationName: conversationDisplayName(db, scope),
-        conversationKind: messagingConversations.kind,
-        private: messagingConversations.private,
-        authorName: sql<string>`case when ${actors.type} = 'agent'
-          then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
-        createdAt: messagingMessages.createdAt,
       })
       .from(messagingMessages)
-      .innerJoin(
-        messagingConversations,
-        eq(messagingConversations.id, messagingMessages.conversationId),
-      )
-      .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
-      .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-      .leftJoin(user, eq(user.id, actors.userId))
+      .$dynamic();
+    const pending = joinMessageConversationAndAuthor(messages)
       .where(
         and(
           visibleConversations(db, scope),

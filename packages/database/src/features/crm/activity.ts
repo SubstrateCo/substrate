@@ -8,14 +8,13 @@ import {
 } from "@substrate/contracts/crm/activity";
 
 import { actors } from "../../core/actors/schema";
-import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { crmActivityEvents } from "./activity.schema";
+import { crmActorView, joinCrmActorPerson } from "./actor-views";
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
 
 // Call only inside a domain-authorized mutation transaction. Never expose an append API.
 export async function recordCrmActivity(ctx: RepositoryContext, input: CrmActivityInput) {
@@ -83,8 +82,7 @@ export async function listCrmActivity(
   if (!["account", "contact", "deal"].includes(entity.entityType))
     throw new ValidationError("Choose a CRM record.");
   const { before, limit = 50 } = parsed.data;
-  const person = alias(actors, "crm_activity_person");
-  const rows = await ctx.db
+  const events = ctx.db
     .select({
       id: crmActivityEvents.id,
       entityId: crmActivityEvents.entityId,
@@ -104,16 +102,8 @@ export async function listCrmActivity(
         eq(actors.entityId, crmActivityEvents.actorEntityId),
       ),
     )
-    .leftJoin(userAgents, and(eq(actors.type, "agent"), eq(userAgents.id, actors.userAgentId)))
-    .leftJoin(
-      person,
-      and(
-        eq(person.organizationId, actors.organizationId),
-        eq(person.type, "human"),
-        eq(person.userId, sql`coalesce(${actors.userId}, ${userAgents.userId})`),
-      ),
-    )
-    .leftJoin(user, eq(user.id, person.userId))
+    .$dynamic();
+  const rows = await joinCrmActorPerson(events)
     .where(
       and(
         eq(crmActivityEvents.organizationId, ctx.scope.organizationId),
@@ -140,13 +130,7 @@ export async function listCrmActivity(
         action: row.action,
         changedFields: row.changedFields,
         createdAt: row.createdAt.toISOString(),
-        actor: {
-          type: row.actorType,
-          displayName:
-            row.actorType === "agent"
-              ? `Agent on behalf of ${row.personName ?? "a former member"}`
-              : (row.personName ?? "Former member"),
-        },
+        actor: crmActorView(row.actorType, row.personName),
       };
       if (row.relatedEntityId) item.relatedEntityId = row.relatedEntityId;
       return item;

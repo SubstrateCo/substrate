@@ -1,6 +1,9 @@
-import { managedPicture } from "@substrate/contracts/files/pictures";
-
 import type { DatabaseExecutor } from "../../client";
+import {
+  joinActorProfile,
+  joinedActorName,
+  joinedActorPicture,
+} from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
@@ -31,20 +34,11 @@ export function reactionOperations(
         if (!message) throw new AccessDeniedError();
         await loadConversation(tx, scope, message.conversationId);
         const limit = Math.min(50, Math.max(1, options.limit ?? 3));
-        const rows = await tx
+        const reactors = tx
           .select({
             actorId: actors.entityId,
-            name: sql<string>`case when ${actors.type} = 'agent'
-              then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
-            image: sql<string | null>`case when ${actors.type} = 'agent' then
-              case when ${userAgents.userId} = ${scope.userId}
-                then '/api/v1/files/' || ${userAgents.imageFileId}::text || '/content' end
-              else case when ${member.id} is not null then ${user.image} end end`.mapWith(
-              (value: string | null) => {
-                const parsed = managedPicture.safeParse(value);
-                return parsed.success ? parsed.data : null;
-              },
-            ),
+            name: joinedActorName(),
+            image: joinedActorPicture(scope.userId),
             type: actors.type,
             self: sql<boolean>`${actors.entityId} = ${actor.entityId}`,
             emojis: sql<
@@ -53,12 +47,8 @@ export function reactionOperations(
           })
           .from(messagingReactions)
           .innerJoin(actors, eq(actors.entityId, messagingReactions.actorEntityId))
-          .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-          .leftJoin(user, eq(user.id, actors.userId))
-          .leftJoin(
-            member,
-            and(eq(member.userId, actors.userId), eq(member.organizationId, scope.organizationId)),
-          )
+          .$dynamic();
+        const rows = await joinActorProfile(reactors, scope.organizationId)
           .where(
             and(
               eq(messagingReactions.messageId, messageId),

@@ -1,11 +1,12 @@
 import type { ContextEntityType } from "@substrate/contracts/context/input";
-import { managedPicture } from "@substrate/contracts/files/pictures";
 
 import type { DatabaseExecutor } from "../../client";
+import {
+  joinActorProfile,
+  joinedActorName,
+  joinedActorPicture,
+} from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
-import { userAgents } from "../../core/actors/user-agents.schema";
-import { user } from "../../core/authentication/schema";
-import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { previousRequest, recordRequest, requestFingerprint } from "../../core/requests/once";
 import type { SessionIdentity } from "../../core/session/identity";
@@ -27,7 +28,7 @@ import { messagePage } from "./message-page";
 import { messageEntityReferences } from "./schema";
 import { contextSearch } from "./search";
 import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { alias, type PgSelectQueryBuilder } from "drizzle-orm/pg-core";
 
 interface ReferenceMessage {
   messageId: string;
@@ -78,6 +79,29 @@ async function referenceEndpoints(
   return { conversation, work };
 }
 
+function hintReferenceChange(
+  ctx: RepositoryContext,
+  scope: SessionIdentity,
+  work: Awaited<ReturnType<typeof referenceEndpoints>>["work"],
+  messageId: string,
+  conversationId: string,
+) {
+  for (const hint of referenceChangeHints(
+    scope.organizationId,
+    [
+      work.projectEntityId === null
+        ? {
+            entityId: work.entityId,
+            entityType: work.entityType,
+            accessEntityId: work.accessEntityId,
+          }
+        : work,
+    ],
+    { id: messageId, conversationId },
+  ))
+    ctx.effects.hint(hint);
+}
+
 // Callers resolve the workspace context; this performs the message and work checks once.
 export async function attachReference(
   ctx: RepositoryContext,
@@ -104,24 +128,7 @@ export async function attachReference(
     await recordTaskActivity(ctx, work, ["Discussion linked"], source.messageId);
   if (rows.length && ["contact", "account", "deal"].includes(work.entityType))
     await recordCrmActivity(ctx, { entityId: work.entityId, action: "discussion_linked" });
-  if (rows.length)
-    for (const hint of referenceChangeHints(
-      scope.organizationId,
-      [
-        work.projectEntityId === null
-          ? {
-              entityId: work.entityId,
-              entityType: work.entityType,
-              accessEntityId: work.accessEntityId,
-            }
-          : work,
-      ],
-      {
-        id: source.messageId,
-        conversationId: conversation.id,
-      },
-    ))
-      ctx.effects.hint(hint);
+  if (rows.length) hintReferenceChange(ctx, scope, work, source.messageId, conversation.id);
   return rows.length > 0;
 }
 
@@ -161,24 +168,7 @@ export async function detachReference(
     await recordTaskActivity(ctx, work, ["Discussion unlinked"], source.messageId);
   if (rows.length && ["contact", "account", "deal"].includes(work.entityType))
     await recordCrmActivity(ctx, { entityId: work.entityId, action: "discussion_unlinked" });
-  if (rows.length)
-    for (const hint of referenceChangeHints(
-      scope.organizationId,
-      [
-        work.projectEntityId === null
-          ? {
-              entityId: work.entityId,
-              entityType: work.entityType,
-              accessEntityId: work.accessEntityId,
-            }
-          : work,
-      ],
-      {
-        id: source.messageId,
-        conversationId: conversation.id,
-      },
-    ))
-      ctx.effects.hint(hint);
+  if (rows.length) hintReferenceChange(ctx, scope, work, source.messageId, conversation.id);
   return rows.length > 0;
 }
 
@@ -203,6 +193,17 @@ export async function recordTaskSource(
     conversationId: source.conversationId,
   }))
     ctx.effects.hint(hint);
+}
+
+/** Joins each message reference to its message, conversation and author actor. */
+export function joinReferenceMessages<T extends PgSelectQueryBuilder>(query: T) {
+  return query
+    .innerJoin(messagingMessages, eq(messagingMessages.id, messageEntityReferences.messageId))
+    .innerJoin(
+      messagingConversations,
+      eq(messagingConversations.id, messageEntityReferences.conversationId),
+    )
+    .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId));
 }
 
 export function createContextRepository(context: RepositoryContext, scope: SessionIdentity) {
@@ -330,7 +331,7 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
               .from(tasks)
               .where(liveProjectTasks(scope, entityId))
           : undefined;
-      return db
+      const references = db
         .select({
           messageId: messagingMessages.id,
           conversationId: messagingConversations.id,
@@ -338,35 +339,16 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
           body: sql<string>`case when ${messagingMessages.deletedAt} is null then ${messagingMessages.body} else '' end`,
           deletedAt: messagingMessages.deletedAt,
           threadId: messagingMessages.threadId,
-          authorName: sql<string>`case when ${actors.type} = 'agent'
-            then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
-          authorImage: sql<string | null>`case when ${actors.type} = 'agent' then
-            case when ${userAgents.userId} = ${scope.userId}
-              then '/api/v1/files/' || ${userAgents.imageFileId}::text || '/content' end
-            else case when ${member.id} is not null then ${user.image} end end`.mapWith(
-            (value: string | null) => {
-              const parsed = managedPicture.safeParse(value);
-              return parsed.success ? parsed.data : null;
-            },
-          ),
+          authorName: joinedActorName(),
+          authorImage: joinedActorPicture(scope.userId),
           authorType: actors.type,
           createdAt: messagingMessages.createdAt,
           purpose: messageEntityReferences.purpose,
           replyCount: sql<number>`(select count(*)::int from ${messagingMessages} replies where replies.conversation_id = ${messagingMessages.conversationId} and replies.thread_id = coalesce(${messagingMessages.threadId}, ${messagingMessages.id}))`,
         })
         .from(messageEntityReferences)
-        .innerJoin(messagingMessages, eq(messagingMessages.id, messageEntityReferences.messageId))
-        .innerJoin(
-          messagingConversations,
-          eq(messagingConversations.id, messageEntityReferences.conversationId),
-        )
-        .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
-        .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-        .leftJoin(user, eq(user.id, actors.userId))
-        .leftJoin(
-          member,
-          and(eq(member.userId, actors.userId), eq(member.organizationId, scope.organizationId)),
-        )
+        .$dynamic();
+      return joinActorProfile(joinReferenceMessages(references), scope.organizationId)
         .where(
           and(
             eq(messageEntityReferences.organizationId, scope.organizationId),

@@ -1,12 +1,13 @@
-import { managedPicture } from "@substrate/contracts/files/pictures";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
+import {
+  joinActorProfile,
+  joinedActorName,
+  joinedActorPicture,
+} from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
-import { userAgents } from "../../core/actors/user-agents.schema";
-import { user } from "../../core/authentication/schema";
 import { effectsFor } from "../../core/effects";
-import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
@@ -32,33 +33,20 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
     async activity(taskEntityId: string) {
       const work = await requireWork(ctx, taskEntityId);
       if (work.entityType !== "task") throw new AccessDeniedError();
-      const rows = await db
+      const events = db
         .select({
           id: taskActivity.id,
           action: taskActivity.action,
-          actorName: sql<string>`case when ${actors.type} = 'agent'
-            then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
-          actorImage: sql<string | null>`case when ${actors.type} = 'agent' then
-            case when ${userAgents.userId} = ${scope.userId}
-              then '/api/v1/files/' || ${userAgents.imageFileId}::text || '/content' end
-            else case when ${member.id} is not null then ${user.image} end end`.mapWith(
-            (value: string | null) => {
-              const parsed = managedPicture.safeParse(value);
-              return parsed.success ? parsed.data : null;
-            },
-          ),
+          actorName: joinedActorName(),
+          actorImage: joinedActorPicture(scope.userId),
           actorType: actors.type,
           createdAt: taskActivity.createdAt,
           sourceMessageId: taskActivity.sourceMessageId,
         })
         .from(taskActivity)
         .innerJoin(actors, eq(actors.entityId, taskActivity.actorEntityId))
-        .leftJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-        .leftJoin(user, eq(user.id, actors.userId))
-        .leftJoin(
-          member,
-          and(eq(member.userId, actors.userId), eq(member.organizationId, scope.organizationId)),
-        )
+        .$dynamic();
+      const rows = await joinActorProfile(events, scope.organizationId)
         .where(
           and(
             eq(taskActivity.organizationId, scope.organizationId),
@@ -123,7 +111,7 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
       // Who acted: the message author, or whoever recorded the assignment event.
       const actor = alias(actors, "notice_actor");
       const noticeProject = alias(projects, "notice_project");
-      const rows = await db
+      const notices = db
         .select({
           id: notifications.id,
           kind: notifications.kind,
@@ -142,17 +130,9 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
           conversationPrivate: messagingConversations.private,
           threadId: messagingMessages.threadId,
           body: messagingMessages.body,
-          actorName: sql<string | null>`case when ${actor.type} = 'agent'
-            then coalesce(${userAgents.name}, 'Agent') else ${user.name} end`,
-          actorImage: sql<string | null>`case when ${actor.type} = 'agent' then
-            case when ${userAgents.userId} = ${scope.userId}
-              then '/api/v1/files/' || ${userAgents.imageFileId}::text || '/content' end
-            else case when ${member.id} is not null then ${user.image} end end`.mapWith(
-            (value: string | null) => {
-              const parsed = managedPicture.safeParse(value);
-              return parsed.success ? parsed.data : null;
-            },
-          ),
+          // Null when the notice has no actor.
+          actorName: sql<string | null>`${joinedActorName(actor)}`,
+          actorImage: joinedActorPicture(scope.userId, actor),
         })
         .from(notifications)
         .leftJoin(
@@ -200,12 +180,8 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
             sql`coalesce(${messagingMessages.authorActorEntityId}, ${taskActivity.actorEntityId})`,
           ),
         )
-        .leftJoin(userAgents, eq(userAgents.id, actor.userAgentId))
-        .leftJoin(user, eq(user.id, actor.userId))
-        .leftJoin(
-          member,
-          and(eq(member.userId, actor.userId), eq(member.organizationId, scope.organizationId)),
-        )
+        .$dynamic();
+      const rows = await joinActorProfile(notices, scope.organizationId, actor)
         .where(
           and(
             eq(notifications.organizationId, scope.organizationId),
