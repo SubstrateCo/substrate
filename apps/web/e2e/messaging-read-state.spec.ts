@@ -39,6 +39,27 @@ test("ordinary DMs alert outside messaging and opening them persists the read po
   await apps.getByRole("link", { name: "Messages, unread messages", exact: true }).click();
   const row = conversationButton(page, actors.sender.name);
   await expect(row.getByLabel("1 unread message", { exact: true })).toBeVisible();
+  const external = row.getByRole("img", {
+    name: "Includes people from another organization",
+    exact: true,
+  });
+  await expect(external).toBeVisible();
+  await expect
+    .poll(async () => {
+      const [name, globe, count] = await Promise.all([
+        row.getByText(actors.sender.name, { exact: true }).boundingBox(),
+        external.boundingBox(),
+        row.getByLabel("1 unread message", { exact: true }).boundingBox(),
+      ]);
+      return !!(
+        name &&
+        globe &&
+        count &&
+        Math.abs(globe.x - (name.x + name.width) - 8) < 1 &&
+        count.x >= globe.x + globe.width
+      );
+    })
+    .toBe(true);
   await row.click();
   await expect(page.getByRole("article").filter({ hasText: body })).toBeVisible();
   await expect(row.getByLabel("1 unread message", { exact: true })).toHaveCount(0);
