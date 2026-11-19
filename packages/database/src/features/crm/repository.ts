@@ -6,8 +6,6 @@ import { permissionActorEntityId } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { parseInput } from "../../core/contacts/inputs";
 import { contacts } from "../../core/contacts/schema";
-import { adminRoleCondition } from "../../core/organizations/roles";
-import { member } from "../../core/organizations/schema";
 import { RepositoryContext, pageSize } from "../../core/repository-context";
 import { previousRequest, recordRequest, requestFingerprint } from "../../core/requests/once";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
@@ -26,7 +24,7 @@ import {
   crmDeals,
   crmDealContacts,
 } from "./schema";
-import { settingsRepository } from "./settings";
+import { requireHumanCrmAdmin, settingsRepository } from "./settings";
 import { crmSharing } from "./sharing";
 import { timeline } from "./timeline";
 import { and, asc, eq, gt, ilike, inArray, isNull, isNotNull, sql } from "drizzle-orm";
@@ -204,23 +202,7 @@ export function crmRepository(context: RepositoryContext) {
       const ids = stages.flatMap((stage) => (stage.id ? [stage.id] : []));
       if (new Set(ids).size !== ids.length) throw new ValidationError("Stage IDs must be unique.");
       return context.transaction(async (ctx) => {
-        await ctx.requireActiveActor();
-        const [admin] = await ctx.db
-          .select({ id: actors.entityId })
-          .from(actors)
-          .innerJoin(
-            member,
-            and(eq(member.organizationId, actors.organizationId), eq(member.userId, actors.userId)),
-          )
-          .where(
-            and(
-              eq(actors.organizationId, org),
-              eq(actors.entityId, scope.actorEntityId),
-              eq(actors.type, "human"),
-              adminRoleCondition(member.role),
-            ),
-          );
-        if (!admin) throw new AccessDeniedError();
+        await requireHumanCrmAdmin(ctx);
         await ctx.db.execute(
           sql`select pg_advisory_xact_lock(hashtextextended(${`crm-pipeline:${org}`}, 0))`,
         );

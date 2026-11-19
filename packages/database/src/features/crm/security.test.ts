@@ -1,8 +1,22 @@
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
+import { rejection } from "../../testing/rejection";
 import { expect, test } from "bun:test";
 
 const f = setupDatabase();
+test("an admin owner's agent may change CRM settings but not configure stages", async () => {
+  const agent = await ownedAgent(f, "alice", "Pipeline assistant");
+  const agentRepos = f.forActor(agent.actorId);
+  const stages = await f.forActor(f.alice).crm.ensurePipeline();
+  await agentRepos.crm.updateSettings({ defaultCurrency: "USD" });
+  expect(
+    await rejection(
+      agentRepos.crm.configureStages(stages.map((stage) => ({ id: stage.id, name: "Renamed" }))),
+    ),
+  ).toMatchObject({ name: "AccessDeniedError" });
+  expect(await f.forActor(f.alice).crm.pipeline()).toEqual(stages);
+});
+
 test("transition results and retries do not reveal an unreadable account", async () => {
   const a = f.forActor(f.alice);
   const b = f.forActor(f.bob);
