@@ -13,6 +13,10 @@ import { actionRow } from "@/components/layout/row-actions";
 import { cn } from "cn";
 import type { LucideIcon } from "lucide-react";
 
+type AppTableRows<TData extends RowData> = ReturnType<
+  AppTableInstance<TData>["getRowModel"]
+>["rows"];
+
 export function AppTable<TData extends RowData>({
   table,
   name,
@@ -43,7 +47,7 @@ export function AppTable<TData extends RowData>({
 }) {
   const rows = table.getRowModel().rows;
   // With no rows, show only the notice: sortable headers over nothing are noise.
-  const empty = rows.length === 0 && !loading;
+  const hasRows = rows.length > 0;
   let emptyContent = (
     <ContentNotice title={emptyMessage} description={emptyDescription} icon={emptyIcon} />
   );
@@ -57,70 +61,96 @@ export function AppTable<TData extends RowData>({
   return (
     <table.AppTable>
       <div className="@container min-w-0 space-y-3">
-        {loading && rows.length > 0 && (
+        {loading && hasRows && (
           <span role="status" className="sr-only">
             {loadingMessage}
           </span>
         )}
-        {error && rows.length > 0 && (
+        {error && hasRows && (
           <ErrorState compact title={errorTitle} description={errorDescription} onRetry={onRetry} />
         )}
         {renderMobileRow && (
-          <div className="space-y-3 @min-[40rem]:hidden">
-            {rows.length === 0 ? (
-              emptyContent
-            ) : (
-              <ul aria-label={name} className="space-y-3">
-                {rows.map((row) => (
-                  <li
-                    key={row.id}
-                    className={cn(actionRow, "min-w-0 space-y-3 rounded-lg border p-3")}
-                  >
-                    {renderMobileRow(row.original)}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
-        {empty ? (
-          <div
-            className={`min-w-0 rounded-lg border${renderMobileRow ? " hidden @min-[40rem]:block" : ""}`}
-          >
+          <MobileTableRows name={name} rows={rows} renderRow={renderMobileRow}>
             {emptyContent}
-          </div>
-        ) : (
-          <div
-            className={`min-w-0 rounded-lg border${renderMobileRow ? " hidden @min-[40rem]:block" : ""}`}
-          >
+          </MobileTableRows>
+        )}
+        <div
+          className={cn(
+            "min-w-0 rounded-lg border",
+            renderMobileRow && "hidden @min-[40rem]:block",
+          )}
+        >
+          {hasRows || loading ? (
             <Table aria-label={name} aria-busy={loading}>
               <AppTableHeader table={table} />
-              <TableBody>
-                {rows.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={table.getAllLeafColumns().length}>{emptyContent}</TableCell>
-                  </TableRow>
-                ) : (
-                  rows.map((row) => (
-                    <TableRow key={row.id} className="group/row">
-                      {row.getAllCells().map((cell) => (
-                        <TableCell key={cell.id}>
-                          <table.AppCell cell={cell}>
-                            {(boundCell) => <boundCell.FlexRender />}
-                          </table.AppCell>
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
+              <AppTableBody table={table} rows={rows}>
+                {emptyContent}
+              </AppTableBody>
             </Table>
-          </div>
-        )}
-        {rows.length > 0 && table.getPageCount() > 1 && (
-          <TablePagination table={table} name={name} />
-        )}
+          ) : (
+            emptyContent
+          )}
+        </div>
+        {hasRows && table.getPageCount() > 1 && <TablePagination table={table} name={name} />}
       </div>
     </table.AppTable>
+  );
+}
+
+function MobileTableRows<TData extends RowData>({
+  name,
+  rows,
+  renderRow,
+  children,
+}: {
+  name: string;
+  rows: AppTableRows<TData>;
+  renderRow: (row: TData) => ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <div className="space-y-3 @min-[40rem]:hidden">
+      {rows.length === 0 ? (
+        children
+      ) : (
+        <ul aria-label={name} className="space-y-3">
+          {rows.map((row) => (
+            <li key={row.id} className={cn(actionRow, "min-w-0 space-y-3 rounded-lg border p-3")}>
+              {renderRow(row.original)}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+function AppTableBody<TData extends RowData>({
+  table,
+  rows,
+  children,
+}: {
+  table: AppTableInstance<TData>;
+  rows: AppTableRows<TData>;
+  children: ReactNode;
+}) {
+  return (
+    <TableBody>
+      {rows.length === 0 ? (
+        <TableRow>
+          <TableCell colSpan={table.getAllLeafColumns().length}>{children}</TableCell>
+        </TableRow>
+      ) : (
+        rows.map((row) => (
+          <TableRow key={row.id} className="group/row">
+            {row.getAllCells().map((cell) => (
+              <TableCell key={cell.id}>
+                <table.AppCell cell={cell}>{(boundCell) => <boundCell.FlexRender />}</table.AppCell>
+              </TableCell>
+            ))}
+          </TableRow>
+        ))
+      )}
+    </TableBody>
   );
 }

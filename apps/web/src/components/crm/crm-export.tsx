@@ -15,6 +15,21 @@ export type CrmExportProps = Pick<
   "organizationId" | "kind" | "archived" | "search"
 >;
 
+function downloadCsv(blob: Blob, filename: string) {
+  const link = document.createElement("a");
+  link.download = filename;
+  const url = URL.createObjectURL(blob);
+  try {
+    link.href = url;
+    document.body.append(link);
+    link.click();
+  } finally {
+    link.remove();
+    // Let Chromium begin the download before releasing its in-memory source.
+    window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+}
+
 export function CrmExport({ organizationId, kind, archived, search }: CrmExportProps) {
   const organization = useQuery(currentOrganizationQueryOptions(organizationId));
   const allowed =
@@ -35,18 +50,7 @@ export function CrmExport({ organizationId, kind, archived, search }: CrmExportP
         await readResult(Promise.resolve(response));
         return;
       }
-      const url = URL.createObjectURL(await response.blob());
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = kind === "contacts" ? "contacts.csv" : `crm-${kind}.csv`;
-      document.body.append(link);
-      try {
-        link.click();
-      } finally {
-        link.remove();
-        // Let Chromium begin the download before releasing its in-memory source.
-        window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-      }
+      downloadCsv(await response.blob(), kind === "contacts" ? "contacts.csv" : `crm-${kind}.csv`);
     },
   });
 

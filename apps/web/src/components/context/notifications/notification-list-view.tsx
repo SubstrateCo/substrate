@@ -134,44 +134,13 @@ export function NotificationList({
               onValueChange={onFilter}
             />
             <div className="flex flex-1 flex-col gap-4">
-              {state === "stale" && (
-                <StaleNotice onRetry={onRetry}>Notifications may be out of date.</StaleNotice>
-              )}
-              {failed && (
-                <ErrorState
-                  title={
-                    state === "unavailable"
-                      ? "Notifications unavailable"
-                      : "Couldn’t load notifications"
-                  }
-                  description={
-                    state === "unavailable"
-                      ? "Check that you still have access to this workspace."
-                      : undefined
-                  }
-                  onRetry={state === "unavailable" ? undefined : onRetry}
-                />
-              )}
+              <NotificationFeedNotice state={state} onRetry={onRetry} />
               {loading && <LoadingState label="Loading notifications" variant="compact" />}
               {empty && (
-                <div className="flex flex-1 items-center justify-center">
-                  <ContentNotice
-                    icon={Bell}
-                    title={filter === "unread" ? "You’re all caught up" : "No notifications yet"}
-                    description={
-                      filter === "unread"
-                        ? "Nothing new since you last looked."
-                        : "Mentions, replies, and tasks assigned to you will show up here."
-                    }
-                    action={
-                      filter === "unread" && (
-                        <Button variant="outline" size="sm" onClick={() => onFilter("all")}>
-                          Show all
-                        </Button>
-                      )
-                    }
-                  />
-                </div>
+                <EmptyNotificationFeed
+                  unreadOnly={filter === "unread"}
+                  onShowAll={() => onFilter("all")}
+                />
               )}
               {!failed && visible.length > 0 && (
                 <>
@@ -218,5 +187,59 @@ export function NotificationList({
         </div>
       </PageContent>
     </PageLayout>
+  );
+}
+
+function NotificationFeedNotice({
+  state,
+  onRetry,
+}: {
+  state: ResourceStatus;
+  onRetry: () => void;
+}) {
+  switch (state) {
+    case "stale":
+      return <StaleNotice onRetry={onRetry}>Notifications may be out of date.</StaleNotice>;
+    case "unavailable":
+      return (
+        <ErrorState
+          title="Notifications unavailable"
+          description="Check that you still have access to this workspace."
+        />
+      );
+    case "error":
+      return <ErrorState title="Couldn’t load notifications" onRetry={onRetry} />;
+    case "ready":
+    case "loading":
+      return null;
+  }
+}
+
+function EmptyNotificationFeed({
+  unreadOnly,
+  onShowAll,
+}: {
+  unreadOnly: boolean;
+  onShowAll: () => void;
+}) {
+  return (
+    <div className="flex flex-1 items-center justify-center">
+      <ContentNotice
+        icon={Bell}
+        title={unreadOnly ? "You’re all caught up" : "No notifications yet"}
+        description={
+          unreadOnly
+            ? "Nothing new since you last looked."
+            : "Mentions, replies, and tasks assigned to you will show up here."
+        }
+        action={
+          unreadOnly && (
+            <Button variant="outline" size="sm" onClick={onShowAll}>
+              Show all
+            </Button>
+          )
+        }
+      />
+    </div>
   );
 }

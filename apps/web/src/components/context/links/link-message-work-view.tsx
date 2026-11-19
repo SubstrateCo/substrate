@@ -21,14 +21,22 @@ import { LinkWorkItem } from "./link-work-item";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { Link2, Plus } from "lucide-react";
 
-const kindOptions = [
-  { value: "task", label: "Tasks" },
-  { value: "project", label: "Projects" },
-  { value: "contact", label: "Contacts" },
-  { value: "account", label: "Accounts" },
-  { value: "deal", label: "Deals" },
-  { value: "contact_interaction", label: "Interactions" },
-] as const;
+const kindLabels: Record<ContextEntityType, string> = {
+  task: "Tasks",
+  project: "Projects",
+  contact: "Contacts",
+  account: "Accounts",
+  deal: "Deals",
+  contact_interaction: "Interactions",
+};
+const kindOptions: ContextEntityType[] = [
+  "task",
+  "project",
+  "contact",
+  "account",
+  "deal",
+  "contact_interaction",
+];
 
 export type LinkableWork = {
   id: string;
@@ -75,7 +83,7 @@ export function LinkMessageWork({
   // Selection survives tab and search changes, so tasks and projects can be linked together.
   const [chosen, setChosen] = useState(() => new Map<string, LinkableWork>());
   const visible = results;
-  const kindLabel = kindOptions.find((option) => option.value === kind)!.label;
+  const kindLabel = kindLabels[kind];
   // Items that became linked, for example after a partial failure, leave the selection.
   const selection =
     state === "unavailable" ? [] : [...chosen.values()].filter((item) => !linkedIds.has(item.id));
@@ -116,14 +124,14 @@ export function LinkMessageWork({
               <Tabs
                 value={kind}
                 onValueChange={(value) => {
-                  const option = kindOptions.find((item) => item.value === value);
-                  if (option) onKindChange(option.value);
+                  const option = kindOptions.find((item) => item === value);
+                  if (option) onKindChange(option);
                 }}
               >
                 <TabsList aria-label="Record type" className="flex-wrap">
                   {kindOptions.map((option) => (
-                    <TabsTrigger key={option.value} value={option.value} disabled={pending}>
-                      {option.label}
+                    <TabsTrigger key={option} value={option} disabled={pending}>
+                      {kindLabels[option]}
                     </TabsTrigger>
                   ))}
                 </TabsList>
@@ -161,9 +169,7 @@ export function LinkMessageWork({
                       <span className="min-w-0 wrap-anywhere">
                         {item.title}{" "}
                         <span className="text-muted-foreground">
-                          ·{" "}
-                          {item.projectName ??
-                            kindOptions.find((option) => option.value === item.kind)!.label}
+                          · {item.projectName ?? kindLabels[item.kind]}
                         </span>
                       </span>{" "}
                       <span aria-hidden="true">×</span>
@@ -173,17 +179,14 @@ export function LinkMessageWork({
               )}
               <div className="rounded-lg border p-1">
                 <CommandList aria-label={kindLabel} className="h-72">
-                  {loading && !visible.length && (
-                    <LoadingState label="Searching work" variant="compact" />
-                  )}
-                  {error && <ErrorState compact title="Couldn’t search work" onRetry={onRetry} />}
-                  {!loading && !error && (
-                    <CommandEmpty>
-                      {query.trim()
-                        ? `No editable ${kindLabel.toLowerCase()} match “${query.trim()}”.`
-                        : `No editable ${kindLabel.toLowerCase()} found.`}
-                    </CommandEmpty>
-                  )}
+                  <LinkSearchStatus
+                    error={error}
+                    loading={loading}
+                    hasResults={visible.length > 0}
+                    query={query.trim()}
+                    kindLabel={kindLabel.toLowerCase()}
+                    onRetry={onRetry}
+                  />
                   {visible.map((item) => (
                     <LinkWorkItem
                       key={item.id}
@@ -223,5 +226,33 @@ export function LinkMessageWork({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function LinkSearchStatus({
+  error,
+  loading,
+  hasResults,
+  query,
+  kindLabel,
+  onRetry,
+}: {
+  error?: Error | null;
+  loading: boolean;
+  hasResults: boolean;
+  query: string;
+  kindLabel: string;
+  onRetry: () => void;
+}) {
+  return (
+    <>
+      {loading && !hasResults && <LoadingState label="Searching work" variant="compact" />}
+      {error && <ErrorState compact title="Couldn’t search work" onRetry={onRetry} />}
+      {!loading && !error && (
+        <CommandEmpty>
+          {query ? `No editable ${kindLabel} match “${query}”.` : `No editable ${kindLabel} found.`}
+        </CommandEmpty>
+      )}
+    </>
   );
 }

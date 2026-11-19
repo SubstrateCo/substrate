@@ -2,7 +2,8 @@ import type { CrmWrite } from "@substrate/contracts/crm/input";
 
 import { useId, useState } from "react";
 
-import { RecordPersonField, useRecordPeople } from "./record-people";
+import { RecordPersonField } from "./record-people";
+import { useRecordPeople } from "./record-people-directory";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";

@@ -30,33 +30,26 @@ export function WorkDiscussions({
   children?: ReactNode;
 }) {
   const [open, setOpen] = useState<boolean>();
-  const rows = items;
   const seen = new Set<string>();
-  const uniqueRows = rows.filter((item) => {
+  const uniqueRows = items.filter((item) => {
     const key = `${item.messageId}:${item.purpose}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
-  const list = !!uniqueRows.length && (
-    <ul className="space-y-2">
-      {uniqueRows.map((item) => (
-        <DiscussionItem key={`${item.messageId}:${item.purpose}`} item={item} />
-      ))}
-    </ul>
-  );
+  const list = <DiscussionList items={uniqueRows} />;
   const failure = error && (
     <ErrorState compact title="Couldn’t load discussions" onRetry={onRetry} />
   );
+  const empty = !loading && !error && !uniqueRows.length;
+  const showLoading = loading && !uniqueRows.length;
   if (variant === "page")
     return (
       <section aria-label={label} className="space-y-3">
         {children}
-        {loading && !rows.length && (
-          <LoadingState label="Loading discussions" variant="messages" rows={2} />
-        )}
+        {showLoading && <LoadingState label="Loading discussions" variant="messages" rows={2} />}
         {failure}
-        {!loading && !error && !rows.length && (
+        {empty && (
           <ContentNotice
             icon={MessagesSquare}
             title="No discussions yet"
@@ -66,7 +59,6 @@ export function WorkDiscussions({
         {list}
       </section>
     );
-  const empty = !loading && !error && !uniqueRows.length;
   if (empty)
     return (
       <section aria-label={label} className="space-y-1">
@@ -93,14 +85,23 @@ export function WorkDiscussions({
         <CollapsibleContent>
           <div className="space-y-2">
             {children}
-            {loading && !rows.length && (
-              <LoadingState label="Loading discussions" variant="compact" />
-            )}
+            {showLoading && <LoadingState label="Loading discussions" variant="compact" />}
             {failure}
             {list}
           </div>
         </CollapsibleContent>
       </section>
     </Collapsible>
+  );
+}
+
+function DiscussionList({ items }: { items: Discussion[] }) {
+  if (items.length === 0) return null;
+  return (
+    <ul className="space-y-2">
+      {items.map((item) => (
+        <DiscussionItem key={`${item.messageId}:${item.purpose}`} item={item} />
+      ))}
+    </ul>
   );
 }

@@ -1,4 +1,12 @@
-import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+  type KeyboardEvent,
+  type ReactNode,
+  type RefObject,
+} from "react";
 
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { FieldDescription, FieldError } from "@/components/ui/field";
@@ -14,6 +22,62 @@ import {
 import { Mail, X } from "lucide-react";
 
 const separators = new Set([",", ";", " "]);
+
+function suggestionsFor(
+  query: string,
+  people: readonly PickerPerson[],
+  selected: readonly PickedRecipient[],
+  allowEmail: boolean,
+): PickedRecipient[] {
+  const options = matchPeople(people, query, selected).map((person) => ({
+    email: person.email.toLowerCase(),
+    person,
+  }));
+  const typed = recipientFor(query, people, allowEmail);
+  if (typed && !typed.person && !selected.some((entry) => entry.email === typed.email)) {
+    return [...options, typed];
+  }
+  return options;
+}
+
+function pickerInputState({
+  selectedCount,
+  optionCount,
+  query,
+  open,
+  overflowing,
+  disabled,
+  invalid,
+  describedBy,
+  max,
+  limitText,
+  noticeId,
+}: {
+  selectedCount: number;
+  optionCount: number;
+  query: string;
+  open: boolean;
+  overflowing: boolean;
+  disabled: boolean;
+  invalid: boolean;
+  describedBy?: string;
+  max?: number;
+  limitText?: string;
+  noticeId: string;
+}) {
+  const full = max !== undefined && selectedCount >= max;
+  const notice = overflowing && !invalid ? (limitText ?? limitMessage(max ?? 1)) : undefined;
+  const expanded = open && !full && !disabled && (optionCount > 0 || !!query.trim());
+  return {
+    full,
+    notice,
+    expanded,
+    showInput: !full || query !== "",
+    showOptions: expanded && optionCount > 0,
+    description:
+      [describedBy, notice ? noticeId : undefined].filter(Boolean).join(" ") || undefined,
+  };
+}
 
 /**
  * A token input for choosing people. It suggests `people` by name or email, shows each choice as
@@ -78,23 +142,21 @@ export function PeoplePicker({
   // Where focus goes once the chips have changed: the input may not exist until then.
   const focusAfterChange = useRef<"input" | "chip">(undefined);
   const scrollToActive = useRef(false);
-  const full = max !== undefined && value.length >= max;
   const noticeId = `${listId}-limit`;
-  const notice = overflowing && !invalid ? (limitText ?? limitMessage(max ?? 1)) : undefined;
-  const typed = recipientFor(query, people, allowEmail);
-  const invite =
-    typed && !typed.person && !value.some((entry) => entry.email === typed.email)
-      ? typed
-      : undefined;
-  const options: PickedRecipient[] = [
-    ...matchPeople(people, query, value).map((person) => ({
-      email: person.email.toLowerCase(),
-      person,
-    })),
-    ...(invite ? [invite] : []),
-  ];
-  const expanded = open && !full && !disabled && (options.length > 0 || !!query.trim());
-  const showOptions = expanded && options.length > 0;
+  const options = suggestionsFor(query, people, value, allowEmail);
+  const { full, notice, expanded, showInput, showOptions, description } = pickerInputState({
+    selectedCount: value.length,
+    optionCount: options.length,
+    query,
+    open,
+    overflowing,
+    disabled,
+    invalid,
+    describedBy,
+    max,
+    limitText,
+    noticeId,
+  });
   const activeIndex = Math.min(active, options.length - 1);
   const optionId = (index: number) => `${listId}-${index}`;
 
@@ -208,7 +270,7 @@ export function PeoplePicker({
             onRemove={() => remove(recipient.email)}
           />
         ))}
-        {(!full || query !== "") && (
+        {showInput && (
           <input
             ref={input}
             id={id}
@@ -224,9 +286,7 @@ export function PeoplePicker({
             aria-controls={showOptions ? listId : undefined}
             aria-activedescendant={showOptions ? optionId(activeIndex) : undefined}
             aria-invalid={invalid || undefined}
-            aria-describedby={
-              [describedBy, notice ? noticeId : undefined].filter(Boolean).join(" ") || undefined
-            }
+            aria-describedby={description}
             className="h-6 min-w-32 flex-1 bg-transparent px-1.5 text-base outline-none placeholder:text-muted-foreground md:text-sm"
             onChange={(event) => {
               setText(event.target.value);
@@ -249,51 +309,85 @@ export function PeoplePicker({
         )}
       </div>
       {notice && <FieldError id={noticeId}>{notice}</FieldError>}
-      {showOptions && (
-        <div
-          ref={list}
-          id={listId}
-          role="listbox"
-          aria-label="Suggested people"
-          className="grid max-h-56 gap-0.5 overflow-y-auto rounded-lg border bg-popover p-1"
-          // Keep focus in the input while choosing with the pointer.
-          onMouseDown={(event) => event.preventDefault()}
+      {expanded && (
+        <PeopleSuggestions
+          list={list}
+          listId={listId}
+          options={options}
+          optionId={optionId}
+          allowEmail={allowEmail}
+          activeIndex={activeIndex}
+          onHover={setActive}
+          onChoose={choose}
+        />
+      )}
+    </div>
+  );
+}
+
+function PeopleSuggestions({
+  list,
+  listId,
+  options,
+  optionId,
+  allowEmail,
+  activeIndex,
+  onHover,
+  onChoose,
+}: {
+  list: RefObject<HTMLDivElement | null>;
+  listId: string;
+  options: PickedRecipient[];
+  optionId: (index: number) => string;
+  allowEmail: boolean;
+  activeIndex: number;
+  onHover: (index: number) => void;
+  onChoose: (option: PickedRecipient, keepOpen: boolean) => void;
+}) {
+  if (!options.length)
+    return (
+      <FieldDescription role="status">
+        {allowEmail
+          ? "No one here matches. Type a full email address to invite someone."
+          : "No one here matches."}
+      </FieldDescription>
+    );
+  return (
+    <div
+      ref={list}
+      id={listId}
+      role="listbox"
+      aria-label="Suggested people"
+      className="grid max-h-56 gap-0.5 overflow-y-auto rounded-lg border bg-popover p-1"
+      // Keep focus in the input while choosing with the pointer.
+      onMouseDown={(event) => event.preventDefault()}
+    >
+      {options.map((option, index) => (
+        <Option
+          key={option.email}
+          id={optionId(index)}
+          active={index === activeIndex}
+          onHover={() => onHover(index)}
+          onChoose={(keepOpen) => onChoose(option, keepOpen)}
         >
-          {options.map((option, index) => (
-            <Option
-              key={option.email}
-              id={optionId(index)}
-              active={index === activeIndex}
-              onHover={() => setActive(index)}
-              onChoose={(keepOpen) => choose(option, keepOpen)}
-            >
-              {option.person ? (
-                <>
-                  <PersonAvatar name={option.person.name} image={option.person.image} />
-                  <span className="truncate font-medium">{option.person.name}</span>
-                  <span className="min-w-0 truncate text-muted-foreground">{option.email}</span>
-                </>
-              ) : (
-                <>
-                  <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                    <Mail aria-hidden="true" className="size-3.5" />
-                  </span>
-                  <span className="truncate">
-                    Invite <span className="font-medium">{option.email}</span>
-                  </span>
-                </>
-              )}
-            </Option>
-          ))}
-        </div>
-      )}
-      {expanded && !options.length && (
-        <FieldDescription role="status">
-          {allowEmail
-            ? "No one here matches. Type a full email address to invite someone."
-            : "No one here matches."}
-        </FieldDescription>
-      )}
+          {option.person ? (
+            <>
+              <PersonAvatar name={option.person.name} image={option.person.image} />
+              <span className="truncate font-medium">{option.person.name}</span>
+              <span className="min-w-0 truncate text-muted-foreground">{option.email}</span>
+            </>
+          ) : (
+            <>
+              <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+                <Mail aria-hidden="true" className="size-3.5" />
+              </span>
+              <span className="truncate">
+                Invite <span className="font-medium">{option.email}</span>
+              </span>
+            </>
+          )}
+        </Option>
+      ))}
     </div>
   );
 }

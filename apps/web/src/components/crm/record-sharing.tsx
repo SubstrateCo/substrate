@@ -5,7 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useId, useState } from "react";
 
 import { RecordGrants } from "./record-grants";
-import { RecordPersonField, useRecordPeople } from "./record-people";
+import { RecordPersonField } from "./record-people";
+import { useRecordPeople } from "./record-people-directory";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { FormMessage } from "@/components/feedback/form-message";

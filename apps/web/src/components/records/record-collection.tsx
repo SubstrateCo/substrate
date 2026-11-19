@@ -28,6 +28,73 @@ import {
 import { useRecordMutation } from "@/queries/records/mutations";
 import { Plus } from "lucide-react";
 
+const pageSize = 100;
+
+function useCollectionQueries(
+  organizationId: string,
+  kind: CrmKind,
+  { query: search, pending }: ReturnType<typeof useSearchDebounce>,
+  archived: boolean,
+  afterEntityId: string | undefined,
+  creating: boolean,
+) {
+  const scopedFilters = (section: CrmKind) =>
+    kind === section
+      ? ([search, archived, afterEntityId] as const)
+      : (["", false, undefined] as const);
+  const accounts = useQuery({
+    ...accountsOptions(organizationId, ...scopedFilters("accounts")),
+    enabled: !pending && (kind === "accounts" || creating),
+  });
+  const contacts = useQuery({
+    ...contactsOptions(organizationId, ...scopedFilters("contacts")),
+    enabled: !pending && (kind === "contacts" || creating),
+  });
+  const deals = useQuery({
+    ...dealsOptions(organizationId, search, archived, afterEntityId),
+    enabled: kind === "deals" && !pending,
+  });
+  const pipeline = useQuery({ ...pipelineOptions(organizationId), enabled: kind === "deals" });
+  const settings = useQuery({ ...crmSettingsOptions(organizationId), enabled: kind === "deals" });
+  return { accounts, contacts, deals, pipeline, settings };
+}
+
+function collectionRecords(
+  kind: CrmKind,
+  { accounts, contacts, deals, pipeline, settings }: ReturnType<typeof useCollectionQueries>,
+) {
+  const stages = (pipeline.data ?? []).filter((stage) => !stage.retired);
+  const accountState = resourceState(accounts);
+  const contactState = resourceState(contacts);
+  const dealState = resourceState(deals);
+  const accountRows = (accountState.data ?? []).map((row) => ({
+    entityId: row.entityId,
+    name: row.name,
+    description: row.domain,
+  }));
+  const contactRows = (contactState.data ?? []).map(({ contact: row }) => ({
+    entityId: row.entityId,
+    name: row.displayName,
+    description: row.notes,
+  }));
+  const dealRows = (dealState.data ?? []).map((row) => ({
+    ...row,
+    name: row.title,
+    stageName: stages.find((stage) => stage.id === row.stageId)?.name,
+  }));
+  return {
+    query: { accounts, contacts, deals }[kind],
+    state: { accounts: accountState, contacts: contactState, deals: dealState }[kind],
+    rows: { accounts: accountRows, contacts: contactRows, deals: dealRows }[kind],
+    accountRows,
+    contactRows,
+    stages,
+    canCreate:
+      kind !== "deals" ||
+      (!pipeline.isPending && !pipeline.error && !settings.isPending && !settings.error),
+  };
+}
+
 export function RecordCollection({
   organizationId,
   kind,
@@ -41,58 +108,23 @@ export function RecordCollection({
   const [view, setView] = useState<"pipeline" | "list">("pipeline");
   const [creating, setCreating] = useState(false);
   const [cursors, setCursors] = useState<string[]>([]);
-  const afterEntityId = cursors.at(-1);
   const navigate = useNavigate();
   const mutation = useRecordMutation(organizationId, kind);
-  const accounts = useQuery({
-    ...accountsOptions(
-      organizationId,
-      kind === "accounts" ? debounced.query : "",
-      kind === "accounts" && archived,
-      kind === "accounts" ? afterEntityId : undefined,
-    ),
-    enabled: !debounced.pending && (kind === "accounts" || creating),
-  });
-  const contacts = useQuery({
-    ...contactsOptions(
-      organizationId,
-      kind === "contacts" ? debounced.query : "",
-      kind === "contacts" && archived,
-      kind === "contacts" ? afterEntityId : undefined,
-    ),
-    enabled: !debounced.pending && (kind === "contacts" || creating),
-  });
-  const deals = useQuery({
-    ...dealsOptions(organizationId, debounced.query, archived, afterEntityId),
-    enabled: kind === "deals" && !debounced.pending,
-  });
-  const pipeline = useQuery({ ...pipelineOptions(organizationId), enabled: kind === "deals" });
-  const settings = useQuery({ ...crmSettingsOptions(organizationId), enabled: kind === "deals" });
-  const query = { accounts, contacts, deals }[kind];
-  const state = {
-    accounts: resourceState(accounts),
-    contacts: resourceState(contacts),
-    deals: resourceState(deals),
-  }[kind];
-  const stages = (pipeline.data ?? []).filter((stage) => !stage.retired);
-  const rows = {
-    accounts: (resourceState(accounts).data ?? []).map((row) => ({
-      entityId: row.entityId,
-      name: row.name,
-      description: row.domain,
-    })),
-    contacts: (resourceState(contacts).data ?? []).map(({ contact: row }) => ({
-      entityId: row.entityId,
-      name: row.displayName,
-      description: row.notes,
-    })),
-    deals: (resourceState(deals).data ?? []).map((row) => ({
-      ...row,
-      name: row.title,
-      stageName: stages.find((stage) => stage.id === row.stageId)?.name,
-    })),
-  }[kind];
+  const queries = useCollectionQueries(
+    organizationId,
+    kind,
+    debounced,
+    archived,
+    cursors.at(-1),
+    creating,
+  );
+  const { deals, pipeline, settings } = queries;
+  const { query, state, rows, accountRows, contactRows, stages, canCreate } = collectionRecords(
+    kind,
+    queries,
+  );
   const singular = singularLabels[kind];
+  const dealPipelineView = kind === "deals" && view === "pipeline";
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
       <PageHeader
@@ -114,10 +146,7 @@ export function RecordCollection({
             />
             <Button
               size="sm"
-              disabled={
-                kind === "deals" &&
-                (pipeline.isPending || !!pipeline.error || settings.isPending || !!settings.error)
-              }
+              disabled={!canCreate}
               onClick={() => {
                 mutation.reset();
                 setCreating(true);
@@ -187,7 +216,7 @@ export function RecordCollection({
       )}
       {state.data &&
         !state.error &&
-        (kind === "deals" && view === "pipeline" && !archived ? (
+        (dealPipelineView && !archived ? (
           <DealPipeline
             organizationId={organizationId}
             stages={stages}
@@ -197,46 +226,30 @@ export function RecordCollection({
           <RecordList organizationId={organizationId} kind={kind} rows={rows} />
         ))}
       {!query.error && (
-        <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-          <span>
-            Page {cursors.length + 1} · up to 100 records
-            {kind === "deals" && view === "pipeline" ? " · open deals on this page" : ""}
-          </span>
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={!cursors.length || query.isFetching}
-              onClick={() => setCursors((previous) => previous.slice(0, -1))}
-            >
-              Previous
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={rows.length < 100 || query.isFetching}
-              onClick={() => {
-                const last = rows.at(-1);
-                if (last) setCursors((previous) => [...previous, last.entityId]);
-              }}
-            >
-              Next
-            </Button>
-          </div>
-        </div>
+        <RecordPagination
+          page={cursors.length + 1}
+          rowCount={rows.length}
+          fetching={query.isFetching}
+          dealPipelineView={dealPipelineView}
+          onPrevious={() => setCursors((previous) => previous.slice(0, -1))}
+          onNext={() => {
+            const last = rows.at(-1);
+            if (last) setCursors((previous) => [...previous, last.entityId]);
+          }}
+        />
       )}
       {creating && (
         <RecordEditor
           kind={kind}
           organizationId={organizationId}
           defaultCurrency={settings.data?.defaultCurrency}
-          accounts={(resourceState(accounts).data ?? []).map((row) => ({
+          accounts={accountRows.map((row) => ({
             value: row.entityId,
             label: row.name,
           }))}
-          contacts={(resourceState(contacts).data ?? []).map(({ contact: row }) => ({
+          contacts={contactRows.map((row) => ({
             value: row.entityId,
-            label: row.displayName,
+            label: row.name,
           }))}
           stages={stages.map((stage) => ({ value: stage.id, label: stage.name }))}
           pending={mutation.isPending}
@@ -257,6 +270,44 @@ export function RecordCollection({
           }
         />
       )}
+    </div>
+  );
+}
+
+function RecordPagination({
+  page,
+  rowCount,
+  fetching,
+  dealPipelineView,
+  onPrevious,
+  onNext,
+}: {
+  page: number;
+  rowCount: number;
+  fetching: boolean;
+  dealPipelineView: boolean;
+  onPrevious: () => void;
+  onNext: () => void;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
+      <span>
+        Page {page} · up to {pageSize} records
+        {dealPipelineView ? " · open deals on this page" : ""}
+      </span>
+      <div className="flex gap-2">
+        <Button variant="outline" size="sm" disabled={page === 1 || fetching} onClick={onPrevious}>
+          Previous
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={rowCount < pageSize || fetching}
+          onClick={onNext}
+        >
+          Next
+        </Button>
+      </div>
     </div>
   );
 }

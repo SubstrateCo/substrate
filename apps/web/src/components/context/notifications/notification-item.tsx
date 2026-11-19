@@ -92,9 +92,7 @@ export function NotificationItem({
   const [expanded, setExpanded] = useState(false);
   const Icon = kindIcons[item.kind];
   const actor = item.actorName ?? "Someone";
-  const actors = `${actor}${item.otherActorCount ? ` and ${item.otherActorCount} ${item.otherActorCount === 1 ? "other" : "others"}` : ""}`;
-  const { verb, object } = sentence(item);
-  const detail = item.source.kind === "project" ? item.source.name : item.excerpt;
+  const canExpand = !!renderEvents && item.count !== undefined && item.count > 1;
   return (
     <Collapsible asChild open={expanded} onOpenChange={setExpanded}>
       <li>
@@ -118,34 +116,10 @@ export function NotificationItem({
             </span>
           </span>
           <div className="min-w-0 flex-1">
-            <p className="flex min-w-0 items-baseline gap-2 text-sm">
-              <Link
-                {...item.link}
-                // One name for the row; a visually hidden span would add a stray space before ", unread".
-                aria-label={`${actors} ${verb} ${object}${item.read ? "" : ", unread"}`}
-                onClick={onOpen}
-                className="min-w-0 flex-1 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <span className={cn(item.read ? "font-medium" : "font-semibold")}>{actors}</span>{" "}
-                <span className="text-muted-foreground">{verb}</span>{" "}
-                <span className={cn(item.read ? "font-medium" : "font-semibold")}>
-                  <LockedPlace item={item} object={object} />
-                </span>
-              </Link>
-            </p>
-            {detail && (
-              <p
-                className={cn(
-                  "mt-0.5 line-clamp-2 text-sm wrap-anywhere",
-                  item.read ? "text-muted-foreground" : "text-foreground/80",
-                )}
-              >
-                {detail}
-              </p>
-            )}
+            <NotificationSummary item={item} actor={actor} onOpen={onOpen} />
             {item.count !== undefined && (
               <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                {item.count > 1 && renderEvents ? (
+                {canExpand ? (
                   <CollapsibleTrigger asChild>
                     <Button
                       variant="disclosure"
@@ -184,7 +158,7 @@ export function NotificationItem({
             )}
           </div>
         </div>
-        {renderEvents && item.count !== undefined && item.count > 1 && (
+        {canExpand && (
           <CollapsibleContent>
             <div className="mt-1 mb-3 ml-12 border-l border-border pl-3">
               {expanded && renderEvents()}
@@ -193,5 +167,50 @@ export function NotificationItem({
         )}
       </li>
     </Collapsible>
+  );
+}
+
+function NotificationSummary({
+  item,
+  actor,
+  onOpen,
+}: {
+  item: Notification;
+  actor: string;
+  onOpen: (event: MouseEvent<HTMLAnchorElement>) => void;
+}) {
+  const others = item.otherActorCount;
+  const actors = others ? `${actor} and ${others} ${others === 1 ? "other" : "others"}` : actor;
+  const { verb, object } = sentence(item);
+  const detail = item.source.kind === "project" ? item.source.name : item.excerpt;
+  const nameWeight = item.read ? "font-medium" : "font-semibold";
+  return (
+    <>
+      <p className="flex min-w-0 items-baseline gap-2 text-sm">
+        <Link
+          {...item.link}
+          // One name for the row; a visually hidden span would add a stray space before ", unread".
+          aria-label={`${actors} ${verb} ${object}${item.read ? "" : ", unread"}`}
+          onClick={onOpen}
+          className="min-w-0 flex-1 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+        >
+          <span className={nameWeight}>{actors}</span>{" "}
+          <span className="text-muted-foreground">{verb}</span>{" "}
+          <span className={nameWeight}>
+            <LockedPlace item={item} object={object} />
+          </span>
+        </Link>
+      </p>
+      {detail && (
+        <p
+          className={cn(
+            "mt-0.5 line-clamp-2 text-sm wrap-anywhere",
+            item.read ? "text-muted-foreground" : "text-foreground/80",
+          )}
+        >
+          {detail}
+        </p>
+      )}
+    </>
   );
 }

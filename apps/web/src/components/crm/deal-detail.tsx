@@ -12,6 +12,7 @@ import { InteractionRollup } from "./interaction-rollup";
 import { RecordArchive } from "./record-archive";
 import { RecordDetailView, DetailProperty } from "./record-detail-view";
 import { RecordEditor, type RecordDraft } from "./record-editor";
+import type { getDeal } from "@/api/crm/requests";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ export function DealDetail({
         onRetry={() => void query.refetch()}
       />
     );
-  const { deal, account, contacts: participants, level } = data;
+  const { deal, contacts: participants, level } = data;
   const canEdit = level === "edit" || level === "owner";
   const archived = !!deal.archivedAt;
   const stages = (pipeline.data ?? [])
@@ -95,54 +96,11 @@ export function DealDetail({
           )
         }
         properties={
-          <>
-            <DetailProperty label="Stage">{stageName(deal.stageId)}</DetailProperty>
-            <DetailProperty label="Outcome">{outcomeLabel(deal.outcome)}</DetailProperty>
-            <DetailProperty label="Amount">{dealAmount(deal.amount, deal.currency)}</DetailProperty>
-            <DetailProperty label="Expected close">
-              {deal.expectedCloseDate ? formatDueDate(deal.expectedCloseDate)?.label : "Not set"}
-            </DetailProperty>
-            {deal.closedAt && (
-              <DetailProperty label="Actual close">
-                <Timestamp value={deal.closedAt} format="datetime" />
-              </DetailProperty>
-            )}
-            {deal.lostReason && (
-              <DetailProperty label="Lost reason">{deal.lostReason}</DetailProperty>
-            )}
-            {deal.accountEntityId && (
-              <DetailProperty label="Account">
-                <Link
-                  {...crmLink(organizationId, "accounts", account.entityId)}
-                  className="underline underline-offset-4"
-                >
-                  {account.name}
-                </Link>
-              </DetailProperty>
-            )}
-            {participants.length > 0 && (
-              <DetailProperty label="Contacts">
-                <ul className="space-y-1">
-                  {participants.map(({ contact, isPrimary }) => (
-                    <li key={contact.entityId}>
-                      <Link
-                        {...contactLink(organizationId, contact.entityId)}
-                        className="underline underline-offset-4"
-                      >
-                        {contact.displayName}
-                      </Link>
-                      {isPrimary && (
-                        <span className="ml-2 text-xs text-muted-foreground">Primary</span>
-                      )}
-                    </li>
-                  ))}
-                </ul>
-              </DetailProperty>
-            )}
-            <DetailProperty label="Access">
-              {accessLabel(level)}. Related records keep their own access.
-            </DetailProperty>
-          </>
+          <DealProperties
+            organizationId={organizationId}
+            data={data}
+            stage={stageName(deal.stageId)}
+          />
         }
       >
         <FollowUps
@@ -215,6 +173,63 @@ export function DealDetail({
           }
         />
       )}
+    </>
+  );
+}
+
+function DealProperties({
+  organizationId,
+  data: { deal, account, contacts, level },
+  stage,
+}: {
+  organizationId: string;
+  data: Awaited<ReturnType<typeof getDeal>>;
+  stage: string;
+}) {
+  return (
+    <>
+      <DetailProperty label="Stage">{stage}</DetailProperty>
+      <DetailProperty label="Outcome">{outcomeLabel(deal.outcome)}</DetailProperty>
+      <DetailProperty label="Amount">{dealAmount(deal.amount, deal.currency)}</DetailProperty>
+      <DetailProperty label="Expected close">
+        {deal.expectedCloseDate ? formatDueDate(deal.expectedCloseDate)?.label : "Not set"}
+      </DetailProperty>
+      {deal.closedAt && (
+        <DetailProperty label="Actual close">
+          <Timestamp value={deal.closedAt} format="datetime" />
+        </DetailProperty>
+      )}
+      {deal.lostReason && <DetailProperty label="Lost reason">{deal.lostReason}</DetailProperty>}
+      {deal.accountEntityId && (
+        <DetailProperty label="Account">
+          <Link
+            {...crmLink(organizationId, "accounts", account.entityId)}
+            className="underline underline-offset-4"
+          >
+            {account.name}
+          </Link>
+        </DetailProperty>
+      )}
+      {contacts.length > 0 && (
+        <DetailProperty label="Contacts">
+          <ul className="space-y-1">
+            {contacts.map(({ contact, isPrimary }) => (
+              <li key={contact.entityId}>
+                <Link
+                  {...contactLink(organizationId, contact.entityId)}
+                  className="underline underline-offset-4"
+                >
+                  {contact.displayName}
+                </Link>
+                {isPrimary && <span className="ml-2 text-xs text-muted-foreground">Primary</span>}
+              </li>
+            ))}
+          </ul>
+        </DetailProperty>
+      )}
+      <DetailProperty label="Access">
+        {accessLabel(level)}. Related records keep their own access.
+      </DetailProperty>
     </>
   );
 }

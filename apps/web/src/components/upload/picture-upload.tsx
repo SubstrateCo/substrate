@@ -66,42 +66,19 @@ export function PictureUpload({
     "organization-logo": "Organization logo",
     "project-icon": "Project icon",
   }[kind];
-  const fallback = owner?.trim() ? (
-    <span className="text-lg font-medium text-muted-foreground">{initials(owner)}</span>
-  ) : (
-    <ImageIcon
-      className="size-7 text-muted-foreground"
-      aria-label={value ? `${name} unavailable` : `No ${name.toLowerCase()}`}
-    />
-  );
+  const busy = disabled || removing || uploading || !!source;
   return (
     <section aria-label={name} className="min-w-0">
       <FileUpload
         chooseButtonRef={chooseButton}
         accept={pictureAccept}
         maxSize={pictureMaxSize}
-        disabled={disabled || removing || uploading || !!source}
+        disabled={busy}
         pending={open.isPending}
         label={value ? "Replace picture" : "Choose picture"}
         description="Drop an image here. JPEG, PNG, or WebP, up to 5 MB."
         error={open.error && pictureErrorMessage(open.error)}
-        preview={
-          kind === "avatar" ? (
-            <Avatar variant="picture" className="size-16 shrink-0">
-              <AvatarImage src={value ?? undefined} alt={name} className="object-contain" />
-              <AvatarFallback>{fallback}</AvatarFallback>
-            </Avatar>
-          ) : (
-            <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
-              <PicturePreview
-                src={value}
-                alt={name}
-                className="size-full object-contain"
-                fallback={fallback}
-              />
-            </div>
-          )
-        }
+        preview={<CurrentPicture kind={kind} value={value} name={name} owner={owner} />}
         actions={
           value && (
             <Tooltip>
@@ -110,7 +87,7 @@ export function PictureUpload({
                   type="button"
                   variant="destructive-ghost"
                   size="icon"
-                  disabled={disabled || !!source || removing || uploading}
+                  disabled={busy}
                   aria-busy={removing}
                   aria-label={removing ? "Removing picture." : "Remove picture"}
                   onClick={() => {
@@ -152,5 +129,39 @@ export function PictureUpload({
         />
       )}
     </section>
+  );
+}
+
+function CurrentPicture({
+  kind,
+  value,
+  name,
+  owner,
+}: Pick<PictureUploadProps, "kind" | "value"> & { name: string; owner?: string }) {
+  const fallback = owner?.trim() ? (
+    <span className="text-lg font-medium text-muted-foreground">{initials(owner)}</span>
+  ) : (
+    <ImageIcon
+      className="size-7 text-muted-foreground"
+      aria-label={value ? `${name} unavailable` : `No ${name.toLowerCase()}`}
+    />
+  );
+  if (kind === "avatar") {
+    return (
+      <Avatar variant="picture" className="size-16 shrink-0">
+        <AvatarImage src={value ?? undefined} alt={name} className="object-contain" />
+        <AvatarFallback>{fallback}</AvatarFallback>
+      </Avatar>
+    );
+  }
+  return (
+    <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
+      <PicturePreview
+        src={value}
+        alt={name}
+        className="size-full object-contain"
+        fallback={fallback}
+      />
+    </div>
   );
 }

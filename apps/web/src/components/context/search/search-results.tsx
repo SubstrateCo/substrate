@@ -33,55 +33,40 @@ export function SearchResults({
   loadingMore: boolean;
   onMore: () => void;
 }) {
-  const visible = results;
   const trimmed = query.trim();
   let heading = trimmed ? "Results" : "Jump to";
   if (browsing) heading = "Browse channels";
   const errorState = <ErrorState compact title="Couldn’t search workspace" onRetry={onRetry} />;
+  if (results.length === 0) {
+    let notice = <NoSearchResults query={trimmed} browsing={browsing} filtered={filtered} />;
+    if (error) notice = errorState;
+    else if (loading)
+      notice = <LoadingState label="Searching workspace" variant="compact" rows={2} />;
+    return (
+      <CommandList label="Search results" className="max-h-96 min-h-0">
+        {/* Loading, error, and empty states share one height, so the panel does not resize. */}
+        <div className="flex h-36 flex-col justify-center px-3">{notice}</div>
+      </CommandList>
+    );
+  }
   return (
     <CommandList label="Search results" className="max-h-96 min-h-0">
-      {!visible.length && (
-        // Loading, error, and empty states share one height, so the panel does not resize.
-        <div className="flex h-36 flex-col justify-center px-3">
-          {error && errorState}
-          {!error && loading && (
-            <LoadingState label="Searching workspace" variant="compact" rows={2} />
-          )}
-          {!error && !loading && (
-            <div className="space-y-1 text-center text-sm">
-              <p className="font-medium wrap-anywhere">
-                {browsing && "No channels yet"}
-                {!browsing && (trimmed ? `No results for “${trimmed}”` : "Nothing here yet")}
-              </p>
-              {!browsing && trimmed && (
-                <p className="text-muted-foreground">
-                  {filtered
-                    ? "Try All to search every type."
-                    : "Check the spelling or try fewer words."}
-                </p>
-              )}
-            </div>
-          )}
-        </div>
-      )}
-      {visible.length > 0 && error && <div className="px-3">{errorState}</div>}
-      {visible.length > 0 && (
-        <CommandGroup heading={heading}>
-          {visible.map((item) =>
-            item.kind === "channel" ? (
-              <ChannelSearchResult
-                key={item.id}
-                item={item}
-                joining={joiningId === item.id}
-                onJoin={() => onJoin(item.id)}
-              />
-            ) : (
-              <SearchResult key={item.id} item={item} query={trimmed} />
-            ),
-          )}
-        </CommandGroup>
-      )}
-      {visible.length > 0 && hasMore && (
+      {error && <div className="px-3">{errorState}</div>}
+      <CommandGroup heading={heading}>
+        {results.map((item) =>
+          item.kind === "channel" ? (
+            <ChannelSearchResult
+              key={item.id}
+              item={item}
+              joining={joiningId === item.id}
+              onJoin={() => onJoin(item.id)}
+            />
+          ) : (
+            <SearchResult key={item.id} item={item} query={trimmed} />
+          ),
+        )}
+      </CommandGroup>
+      {hasMore && (
         <div className="px-2 pb-2 text-center">
           <PendingButton
             variant="ghost"
@@ -94,13 +79,34 @@ export function SearchResults({
           </PendingButton>
         </div>
       )}
-      {visible.length > 0 && (
-        // A fade over the last 16px, so a row cut by the list's edge reads as "more below".
-        <div
-          aria-hidden="true"
-          className="pointer-events-none sticky bottom-0 -mt-4 h-4 bg-linear-to-t from-popover to-transparent"
-        />
-      )}
+      {/* A fade over the last 16px, so a row cut by the list's edge reads as "more below". */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none sticky bottom-0 -mt-4 h-4 bg-linear-to-t from-popover to-transparent"
+      />
     </CommandList>
+  );
+}
+
+function NoSearchResults({
+  query,
+  browsing,
+  filtered,
+}: {
+  query: string;
+  browsing: boolean;
+  filtered: boolean;
+}) {
+  let title = query ? `No results for “${query}”` : "Nothing here yet";
+  if (browsing) title = "No channels yet";
+  return (
+    <div className="space-y-1 text-center text-sm">
+      <p className="font-medium wrap-anywhere">{title}</p>
+      {!browsing && query && (
+        <p className="text-muted-foreground">
+          {filtered ? "Try All to search every type." : "Check the spelling or try fewer words."}
+        </p>
+      )}
+    </div>
   );
 }

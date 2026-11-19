@@ -1,4 +1,4 @@
-import { useRecordPeople } from "./record-people";
+import { useRecordPeople } from "./record-people-directory";
 
 export function RecordResponsible({
   organizationId,

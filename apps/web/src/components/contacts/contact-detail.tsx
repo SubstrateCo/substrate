@@ -48,6 +48,7 @@ export function ContactDetail({
   const { profile, affiliations, level } = data;
   const canEdit = level === "edit" || level === "owner";
   const archived = !!data.archivedAt;
+  const canChange = canEdit && !archived;
   const open = (next: NonNullable<typeof dialog>) => {
     mutation.reset();
     setDialog(next);
@@ -66,8 +67,7 @@ export function ContactDetail({
         onEdit={() => open("edit")}
         onArchive={() => open("archive")}
         actions={
-          canEdit &&
-          !archived && (
+          canChange && (
             <Button size="sm" onClick={() => open("interaction")}>
               <Plus aria-hidden />
               New interaction
@@ -97,7 +97,7 @@ export function ContactDetail({
         <section className="space-y-3" aria-label="Contact accounts">
           <div className="flex items-center justify-between gap-3">
             <h2 className="text-sm font-medium">Accounts</h2>
-            {canEdit && !archived && (
+            {canChange && (
               <Button variant="outline" size="sm" onClick={() => open("affiliation")}>
                 <Plus aria-hidden />
                 Link account
@@ -132,21 +132,17 @@ export function ContactDetail({
           organizationId={organizationId}
           contactEntityId={entityId}
           identifiers={data.identifiers}
-          canEdit={canEdit && !archived}
+          canEdit={canChange}
         />
         <InteractionHistory
           organizationId={organizationId}
           contactEntityId={entityId}
-          canEdit={canEdit && !archived}
+          canEdit={canChange}
           canDelete={level === "owner" && !archived}
         />
-        <FollowUps
-          organizationId={organizationId}
-          entityId={entityId}
-          canCreate={canEdit && !archived}
-        />
+        <FollowUps organizationId={organizationId} entityId={entityId} canCreate={canChange} />
         <WorkDiscussions organizationId={organizationId} entityId={entityId}>
-          {canEdit && !archived && (
+          {canChange && (
             <PublishInteraction organizationId={organizationId} contactEntityId={entityId} />
           )}
         </WorkDiscussions>

@@ -146,33 +146,8 @@ export function RecordEditor({
         </DialogHeader>
         <NativeForm pending={pending} onSubmit={submit}>
           <DialogBody>
-            <NativeField
-              id="crm-name"
-              name="name"
-              label={kind === "deals" ? "Title" : "Name"}
-              defaultValue={record?.name ?? record?.displayName ?? record?.title ?? ""}
-              required
-              maxLength={kind === "contacts" ? 1000 : 300}
-            />
-            {kind === "accounts" && (
-              <div className="grid grid-cols-2 gap-4">
-                <NativeField
-                  id="crm-website"
-                  name="website"
-                  label="Website"
-                  type="url"
-                  defaultValue={record?.website ?? ""}
-                  placeholder="https://example.com"
-                />
-                <NativeField
-                  id="crm-domain"
-                  name="domain"
-                  label="Domain"
-                  defaultValue={record?.domain ?? ""}
-                  placeholder="example.com"
-                />
-              </div>
-            )}
+            <RecordNameField kind={kind} record={record} />
+            {kind === "accounts" && <AccountFields record={record} />}
             {kind === "deals" && (
               <>
                 <div className="grid grid-cols-2 gap-4">
@@ -200,35 +175,7 @@ export function RecordEditor({
                   options={stages}
                   disabled={!!record}
                 />
-                <div className="grid grid-cols-3 gap-4">
-                  <NativeField
-                    id="crm-amount"
-                    name="amount"
-                    label="Amount"
-                    inputMode="decimal"
-                    pattern="[0-9]{1,15}(\.[0-9]{1,4})?"
-                    title="Use a positive amount or zero with up to four decimal places."
-                    defaultValue={record?.amount ?? ""}
-                  />
-                  <NativeField
-                    id="crm-currency"
-                    name="currency"
-                    label="Currency"
-                    pattern="[A-Z]{3}"
-                    title="Use a three-letter currency code, like USD."
-                    maxLength={3}
-                    defaultValue={(record ? record.currency : defaultCurrency) ?? ""}
-                    placeholder="Not set"
-                    description="Used only when an amount is entered."
-                  />
-                  <NativeField
-                    id="crm-close"
-                    name="closeDate"
-                    label="Expected close"
-                    type="date"
-                    defaultValue={record?.expectedCloseDate ?? ""}
-                  />
-                </div>
+                <DealTermsFields record={record} defaultCurrency={defaultCurrency} />
               </>
             )}
             <NativeField
@@ -254,5 +201,80 @@ export function RecordEditor({
         </NativeForm>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function RecordNameField({ kind, record }: { kind: CrmKind; record?: RecordDraft }) {
+  return (
+    <NativeField
+      id="crm-name"
+      name="name"
+      label={kind === "deals" ? "Title" : "Name"}
+      defaultValue={record?.name ?? record?.displayName ?? record?.title ?? ""}
+      required
+      maxLength={kind === "contacts" ? 1000 : 300}
+    />
+  );
+}
+
+function AccountFields({ record }: { record?: RecordDraft }) {
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      <NativeField
+        id="crm-website"
+        name="website"
+        label="Website"
+        type="url"
+        defaultValue={record?.website ?? ""}
+        placeholder="https://example.com"
+      />
+      <NativeField
+        id="crm-domain"
+        name="domain"
+        label="Domain"
+        defaultValue={record?.domain ?? ""}
+        placeholder="example.com"
+      />
+    </div>
+  );
+}
+
+function DealTermsFields({
+  record,
+  defaultCurrency,
+}: {
+  record?: RecordDraft;
+  defaultCurrency?: string | null;
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-4">
+      <NativeField
+        id="crm-amount"
+        name="amount"
+        label="Amount"
+        inputMode="decimal"
+        pattern="[0-9]{1,15}(\.[0-9]{1,4})?"
+        title="Use a positive amount or zero with up to four decimal places."
+        defaultValue={record?.amount ?? ""}
+      />
+      <NativeField
+        id="crm-currency"
+        name="currency"
+        label="Currency"
+        pattern="[A-Z]{3}"
+        title="Use a three-letter currency code, like USD."
+        maxLength={3}
+        defaultValue={(record ? record.currency : defaultCurrency) ?? ""}
+        placeholder="Not set"
+        description="Used only when an amount is entered."
+      />
+      <NativeField
+        id="crm-close"
+        name="closeDate"
+        label="Expected close"
+        type="date"
+        defaultValue={record?.expectedCloseDate ?? ""}
+      />
+    </div>
   );
 }
