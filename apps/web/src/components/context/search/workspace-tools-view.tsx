@@ -33,6 +33,8 @@ export function WorkspaceTools({
   }
   const input = useRef<HTMLInputElement>(null);
   const container = useRef<HTMLDivElement>(null);
+  const results = useRef<HTMLDivElement>(null);
+  const activationTimeout = useRef<number | undefined>(undefined);
   const desktop = !!desktopPlatform();
   const isMac = desktopPlatform() === "darwin";
   const close = useCallback(() => {
@@ -45,10 +47,25 @@ export function WorkspaceTools({
   const onPointerDown = useEffectEvent((event: PointerEvent) => {
     if (event.target instanceof Node && !container.current?.contains(event.target)) setOpen(false);
   });
+  const onResultClick = useEffectEvent((event: MouseEvent) => {
+    const link = event.target instanceof Element ? event.target.closest("a[href]") : null;
+    if (!link || !results.current?.contains(link)) return;
+    // Observe native link activation, including Enter and clicks stopped by a result.
+    // Dismiss after the router handler and the browser's default action have had their turn.
+    window.clearTimeout(activationTimeout.current);
+    activationTimeout.current = window.setTimeout(() => setOpen(false));
+  });
   useEffect(() => {
     const dismiss = (event: PointerEvent) => onPointerDown(event);
+    const observeActivation = (event: MouseEvent) => onResultClick(event);
+    const search = container.current;
     document.addEventListener("pointerdown", dismiss);
-    return () => document.removeEventListener("pointerdown", dismiss);
+    search?.addEventListener("click", observeActivation, true);
+    return () => {
+      document.removeEventListener("pointerdown", dismiss);
+      search?.removeEventListener("click", observeActivation, true);
+      window.clearTimeout(activationTimeout.current);
+    };
   }, []);
   useHotkey("Mod+K", () => {
     input.current?.focus();
@@ -66,12 +83,6 @@ export function WorkspaceTools({
     <div
       ref={container}
       data-workspace-search
-      onClickCapture={(event) => {
-        // Close after the click is handled. Unmounting the link first would skip its router
-        // handler, and the browser would follow the href and reload the app.
-        if (event.target instanceof Element && event.target.closest("a[href]"))
-          window.setTimeout(() => setOpen(false));
-      }}
       className={
         desktop
           ? "relative z-10 min-w-0 text-sm font-normal text-foreground [&_[data-slot=command-input-wrapper]]:h-7 [&_[data-slot=command-input-wrapper]]:rounded-md [&_[data-slot=command-input-wrapper]]:border-rail-foreground/12 [&_[data-slot=command-input-wrapper]]:bg-surface/65 [&_[data-slot=command-input-wrapper]]:px-2 [&_[data-slot=command-input-wrapper]]:shadow-none dark:[&_[data-slot=command-input-wrapper]]:bg-popover [&_[data-slot=command-input]]:text-xs [&_[data-slot=command]]:bg-transparent"
@@ -110,6 +121,7 @@ export function WorkspaceTools({
           </CommandInput>
           {open && (
             <div
+              ref={results}
               data-workspace-search-results
               className={
                 desktop
