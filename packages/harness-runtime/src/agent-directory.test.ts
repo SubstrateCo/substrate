@@ -28,16 +28,10 @@ test("agents in the same organization have separate working folders and native c
       ...scope,
       skill: { id: "review", name: "review", description: "", content: "Agent A only" },
     });
-    await host.saveMcpServer({
-      ...scope,
-      server: { id: "tools", name: "tools", transport: "http", url: "https://tools.example/mcp" },
-    });
     const first = await host.scanConfiguration(scope);
     const second = await host.scanConfiguration({ ...scope, agentId: "agent-b" });
     expect(first.skills.map((skill) => skill.id)).toEqual(["review"]);
-    expect(first.mcpServers.map((server) => server.id)).toEqual(["tools"]);
     expect(second.skills).toEqual([]);
-    expect(second.mcpServers).toEqual([]);
     expect(
       await Bun.file(
         join(root, "orgs", "org-a", "agent-a", ".opencode", "skills", "review", "SKILL.md"),
@@ -48,7 +42,6 @@ test("agents in the same organization have separate working folders and native c
     const otherOrganization = await host.scanConfiguration({ ...scope, organizationId: "org-b" });
     expect(await readdir(join(root, "orgs", "org-b"))).toContain("agent-a");
     expect(otherOrganization.skills).toEqual([]);
-    expect(otherOrganization.mcpServers).toEqual([]);
     for (const agentId of ["../agent-b", "missing-agent"]) {
       await rejects(host.scanConfiguration({ ...scope, agentId }), {
         code: agentId === "missing-agent" ? "agent-not-found" : "invalid-id",

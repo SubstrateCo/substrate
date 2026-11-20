@@ -1,9 +1,11 @@
 import type { HarnessKind, HarnessModel } from "@substrate/contracts/harness";
 
-import { useQueries } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 
 import { useState, type ReactNode } from "react";
 
+import type { StartSignIn } from "../sign-in/harness-account";
+import { PickerSignIn } from "../sign-in/harness-account-view";
 import { HarnessIcon } from "./harness-icon";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { Button } from "@/components/ui/button";
@@ -17,7 +19,8 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
-import { harnessLabel, harnessOptions } from "@/lib/agents/harness-meta";
+import { harnessLabel, harnessOptions, visibleHarnessOptions } from "@/lib/agents/harness-meta";
+import { harnessStatusQueryOptions } from "@/queries/agents/harness-status";
 import { harnessModelsQueryOptions } from "@/queries/agents/models";
 import { Check, ChevronsUpDown, CircleAlert, Laptop, RefreshCw } from "lucide-react";
 
@@ -106,6 +109,7 @@ function useModelCatalogs({
   organizationId,
   agentId,
   open,
+  harness,
   browseHarness,
   searching,
 }: {
@@ -113,11 +117,18 @@ function useModelCatalogs({
   organizationId?: string | null;
   agentId?: string;
   open: boolean;
+  harness: HarnessKind;
   browseHarness: HarnessKind;
   searching: boolean;
 }) {
   const available = !!harnessBridge() && !!organizationId;
-  const includesHarness = (harness: HarnessKind) => searching || harness === browseHarness;
+  const status = useQuery({
+    ...harnessStatusQueryOptions(userId, organizationId ?? ""),
+    enabled: available,
+  });
+  const options = visibleHarnessOptions(status.data, harness);
+  const includesHarness = (value: HarnessKind) =>
+    options.some((option) => option.value === value) && (searching || value === browseHarness);
   const catalogs = useQueries({
     queries: harnessOptions.map((option) => ({
       ...harnessModelsQueryOptions(userId, organizationId ?? "", option.value, agentId),
@@ -130,10 +141,12 @@ function useModelCatalogs({
   const selected = catalogs[harnessOptions.findIndex((option) => option.value === browseHarness)];
   const groups = harnessOptions.filter(
     (option, index) =>
-      catalogs[index]?.data?.status !== "unavailable" && includesHarness(option.value),
+      // Unavailable and signed-out harnesses have no models to list.
+      (catalogs[index]?.data?.status ?? "ready") === "ready" && includesHarness(option.value),
   );
   return {
     available,
+    options,
     choices,
     groups,
     selected,
@@ -157,6 +170,7 @@ export function ModelPicker({
   model,
   disabled,
   onChange,
+  onSignIn,
 }: {
   id?: string;
   userId: string;
@@ -166,6 +180,8 @@ export function ModelPicker({
   model?: string;
   disabled: boolean;
   onChange: (harness: HarnessKind, model: string | undefined) => void;
+  /** Starts a sign-in for a harness that needs one. Absent outside the desktop app. */
+  onSignIn?: StartSignIn;
 }) {
   const [open, setOpen] = useState(false);
   const [browseOverride, setBrowseOverride] = useState<HarnessKind>();
@@ -174,6 +190,7 @@ export function ModelPicker({
   const query = search.trim();
   const {
     available,
+    options,
     choices,
     groups,
     selected: selectedCatalog,
@@ -184,6 +201,7 @@ export function ModelPicker({
     organizationId,
     agentId,
     open,
+    harness,
     browseHarness,
     searching: !!query,
   });
@@ -191,8 +209,10 @@ export function ModelPicker({
   const label = harnessLabel(harness);
   const selectedLabel = harnessLabel(browseHarness);
   const selectedUnavailable = selectedCatalog.data?.status === "unavailable";
+  const selectedSignIn = selectedCatalog.data?.status === "sign-in";
   const customAllowed =
     !selectedUnavailable &&
+    !selectedSignIn &&
     query.length > 0 &&
     (browseHarness !== "opencode" || /^[^/\s]+\/\S+$/.test(query));
   function key(choice: Choice) {
@@ -247,11 +267,24 @@ export function ModelPicker({
           <SegmentedControl
             aria-label="Runtime"
             value={browseHarness}
-            options={harnessOptions}
+            options={options}
             onValueChange={chooseHarness}
           />
         </div>
-        {!selectedUnavailable && (
+        {selectedSignIn && (
+          <PickerSignIn
+            label={selectedLabel}
+            methods={selectedCatalog.data?.auth?.methods ?? []}
+            onSignIn={
+              onSignIn &&
+              ((method) => {
+                setOpen(false);
+                onSignIn(browseHarness, method);
+              })
+            }
+          />
+        )}
+        {!selectedUnavailable && !selectedSignIn && (
           <Command
             key={`${open}/${browseHarness}`}
             className="min-h-0 flex-1"

@@ -1,5 +1,5 @@
 /** Change this whenever runtimePolicy changes. A new version rotates every session's epoch. */
-export const POLICY_VERSION = 4;
+export const POLICY_VERSION = 5;
 
 /** Runtime rules for every turn. Turn input never repeats them. */
 export const runtimePolicy = `# How you work in Substrate

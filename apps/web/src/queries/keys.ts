@@ -17,6 +17,9 @@ export const queryKeys = {
   harnessModels: (userId: string, organizationId: string, harness: string, agentId?: string) =>
     [...queryKeys.allHarnessModels(userId), organizationId, harness, agentId ?? ""] as const,
   allHarnessStatus: (userId: string) => [...queryKeys.user(userId), "harness-status"] as const,
+  allHarnessSignIns: (userId: string) => [...queryKeys.user(userId), "harness-sign-in"] as const,
+  harnessSignIn: (userId: string, organizationId: string, loginId: string) =>
+    [...queryKeys.allHarnessSignIns(userId), organizationId, loginId] as const,
   harnessStatus: (userId: string, organizationId: string) =>
     [...queryKeys.allHarnessStatus(userId), organizationId] as const,
   localAgentConfigurations: (userId: string) =>
@@ -212,6 +215,7 @@ export function isHarnessKey(queryKey: QueryKey, userId: string) {
     queryKeys.allHarnessStatus(userId),
     queryKeys.allHarnessModels(userId),
     queryKeys.localAgentConfigurations(userId),
+    queryKeys.allHarnessSignIns(userId),
   ].some((prefix) => partialMatchKey(queryKey, prefix));
 }
 

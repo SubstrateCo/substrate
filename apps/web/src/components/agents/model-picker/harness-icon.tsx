@@ -1,12 +1,11 @@
 import type { HarnessKind } from "@substrate/contracts/harness";
 
-import antigravity from "./icons/antigravity.svg";
 import claude from "./icons/claude.svg";
 import codex from "./icons/codex.svg";
 import opencodeDark from "./icons/opencode-dark.svg";
 import opencodeLight from "./icons/opencode-light.svg";
 
-const icons = { claude, codex, antigravity };
+const icons = { claude, codex };
 
 /** A runtime's mark, with a smaller size for model metadata. */
 export function HarnessIcon({

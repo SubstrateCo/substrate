@@ -325,6 +325,7 @@ export function createTurnExecutor(
       epoch: session.epoch,
       requireResume,
       prefix: managed.value,
+      mcpServers: await context.store.mcpServers.list(context.organizationId, session.agentId),
     };
     if (session.nativeSessionId) open.nativeSessionId = session.nativeSessionId;
     if (!(await stillAssigned(turn.id))) return;

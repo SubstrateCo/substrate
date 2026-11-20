@@ -1,7 +1,4 @@
-import type { HarnessKind } from "@substrate/contracts/harness";
-
 import { HarnessError } from "./errors.ts";
-import { harnessDefinitions } from "./registry.ts";
 import { spawn } from "node:child_process";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 import type { EventEmitter } from "node:events";
@@ -17,13 +14,20 @@ export type NativeProcess = ChildProcessWithoutNullStreams &
     close: [number | null, NodeJS.Signals | null];
   }>;
 
-export async function resolveExecutable(kind: HarnessKind): Promise<string> {
-  const candidates = (process.env.PATH ?? "")
+/**
+ * Finds a native executable on PATH. On Windows only .exe and .com files count: shell:false
+ * cannot start a .cmd shim.
+ */
+export async function findExecutable(
+  name: string,
+  path = process.env.PATH ?? "",
+): Promise<string | undefined> {
+  const candidates = path
     .split(delimiter)
     .filter(Boolean)
     .flatMap((directory) =>
       (process.platform === "win32" ? [".exe", ".com", ""] : [""]).map((extension) =>
-        join(directory, harnessDefinitions[kind].executable + extension),
+        join(directory, name + extension),
       ),
     );
   for (const candidate of candidates) {
@@ -40,10 +44,7 @@ export async function resolveExecutable(kind: HarnessKind): Promise<string> {
       /* Not at this PATH entry; try the next one. */
     }
   }
-  throw new HarnessError(
-    "binary-not-found",
-    `Install ${harnessDefinitions[kind].executable} and sign in with its native CLI. Windows requires a native executable, not a .cmd shim.`,
-  );
+  return undefined;
 }
 
 export function launch(
@@ -88,31 +89,6 @@ export async function stopProcess(child: NativeProcess): Promise<void> {
     killer.once("exit", () => {
       clearTimeout(timer);
       resolve();
-    });
-  });
-}
-
-export async function antigravityAcpAvailable(executable: string): Promise<boolean> {
-  const child = launch(executable, ["acp", "--help"], process.cwd());
-  return new Promise((resolve) => {
-    let output = "";
-    const timer = setTimeout(() => {
-      void stopProcess(child);
-      resolve(false);
-    }, 10_000);
-    child.stdout.on("data", (chunk: Buffer) => {
-      output = (output + chunk.toString()).slice(0, 64 * 1024);
-    });
-    child.stderr.on("data", (chunk: Buffer) => {
-      output = (output + chunk.toString()).slice(0, 64 * 1024);
-    });
-    child.once("error", () => {
-      clearTimeout(timer);
-      resolve(false);
-    });
-    child.once("exit", (code) => {
-      clearTimeout(timer);
-      resolve(code === 0 && output.includes("--process-per-session"));
     });
   });
 }

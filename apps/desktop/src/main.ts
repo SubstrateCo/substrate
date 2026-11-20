@@ -310,6 +310,11 @@ function main() {
           resetDefaults: (input) => composed.harness.run("resetDefaults", input),
           saveMcpServer: (input) => composed.harness.run("saveMcpServer", input),
           deleteMcpServer: (input) => composed.harness.run("deleteMcpServer", input),
+          signIn: (input) => composed.harness.run("signIn", input),
+          readSignIn: (input) => composed.harness.run("readSignIn", input),
+          sendSignInInput: (input) => composed.harness.run("sendSignInInput", input),
+          cancelSignIn: (input) => composed.harness.run("cancelSignIn", input),
+          signOut: (input) => composed.harness.run("signOut", input),
         });
         ipcMain.handle(harnessIPC.channel, (event, method, value) => {
           if (!trustedSender(event, mainWindow?.webContents, rendererURL))

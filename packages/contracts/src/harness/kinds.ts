@@ -1,7 +1,6 @@
 /** Project instructions file each harness loads from its agent folder. */
 export const harnessInstructionsFiles = {
   opencode: "AGENTS.md",
-  antigravity: "AGENTS.md",
   claude: "CLAUDE.md",
   codex: "AGENTS.md",
 } as const;

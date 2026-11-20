@@ -3,13 +3,15 @@ import { cp, lstat, mkdir, realpath, symlink, unlink, writeFile } from "node:fs/
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+// ACP adapters run as their own Node processes, so they ship as real package folders.
+// @modelcontextprotocol/server stays external with the ACP SDK: its fromMcpServer must get an
+// McpServer from the same copy it imports, not one bundled into the worker.
 const harnessWorkerExternals = [
   "@agentclientprotocol/sdk",
-  "@anthropic-ai/claude-agent-sdk",
   "@modelcontextprotocol/sdk",
-  "@opencode/client",
-  "jsonc-parser",
-  "smol-toml",
+  "@modelcontextprotocol/server",
+  "@agentclientprotocol/claude-agent-acp",
+  "@agentclientprotocol/codex-acp",
 ] as const;
 
 export async function stageHarnessProductionAssets(outdir: string) {
@@ -75,11 +77,10 @@ export async function bundleHarnessWorker(
       const source = await realpath(join(dependencies, name));
       const target = join(destination, name);
       await mkdir(dirname(target), { recursive: true });
-      try {
-        await symlink(source, target, process.platform === "win32" ? "junction" : "dir");
-      } catch (error) {
-        if ((await realpath(target)) !== source) throw error;
-      }
+      if ((await realpath(target).catch(() => undefined)) === source) continue;
+      // A link from before a dependency upgrade points at the old, maybe deleted, version.
+      if (await lstat(target).catch(() => undefined)) await unlink(target);
+      await symlink(source, target, process.platform === "win32" ? "junction" : "dir");
     }
   }
 }

@@ -5,6 +5,8 @@ import { createHarnessController } from "./harness-controller.ts";
 import { fixture } from "./test-support.ts";
 import { describe, expect, test } from "bun:test";
 
+const noMcpServers = { list: async () => [], save: async () => {}, delete: async () => {} };
+
 const open = {
   type: "open" as const,
   organizationId: "org-1",
@@ -13,6 +15,7 @@ const open = {
   folder: "main" as const,
   epoch: 0,
   prefix: "",
+  mcpServers: [],
 };
 
 describe("desktop harness authority", () => {
@@ -43,6 +46,7 @@ describe("desktop harness authority", () => {
       ...connection,
       authority: new DesktopSessionAuthority(connection),
       accountsDirectory: "accounts",
+      mcpServers: noMcpServers,
       createWorker: () => {
         created++;
         return {
@@ -335,6 +339,7 @@ describe("desktop harness authority", () => {
       ...connection,
       authority: new DesktopSessionAuthority(connection),
       accountsDirectory: "accounts",
+      mcpServers: noMcpServers,
       createWorker: () => {
         created = true;
         throw new Error("Unexpected process");

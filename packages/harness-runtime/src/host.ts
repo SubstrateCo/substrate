@@ -18,27 +18,23 @@ import {
 import type { LocalToolProxy, WorkspaceApiProxy } from "@substrate/contracts/harness/mcp";
 import { leaseTools } from "@substrate/contracts/harness/tools";
 
+import { detectAgent, requireAgent } from "./acp/detect.ts";
+import { openAcpPeer } from "./acp/index.ts";
 import type { AdapterContext, EventScope, NativeAdapter } from "./adapters/types.ts";
 import { materialize, writeDefaultFiles } from "./config.ts";
 import { HarnessError } from "./errors.ts";
 import { createStartupMcp, type McpLease } from "./mcp.ts";
 import { readProfileMemory } from "./memory.ts";
 import { discoverModels } from "./models/discover.ts";
-import {
-  deleteNativeSkill,
-  editNativeServer,
-  saveNativeSkill,
-  scanNativeServers,
-  scanNativeSkills,
-} from "./native-config.ts";
+import { deleteNativeSkill, saveNativeSkill, scanNativeSkills } from "./native-config.ts";
 import { agentDirectory, helperDirectory, safeId, safePath } from "./paths.ts";
-import { binaryVersion, resolveExecutable } from "./process.ts";
 import { connectHarness, harnessDefinitions } from "./registry.ts";
 import {
   nativeSessionMachine,
   transitionSession,
   type NativeSessionState,
 } from "./session-machine.ts";
+import { createSignIns, type SignInOptions, type SignIns } from "./sign-in.ts";
 import { mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -86,6 +82,8 @@ export interface HarnessHostOptions {
   connect?: ConnectNative;
   /** Test seam. Defaults to the system clock. */
   clock?: HostClock;
+  /** Test seam. Defaults to ACP peers of detected agents. */
+  signIn?: Partial<Omit<SignInOptions, "cwd">>;
 }
 
 /** The host plus what the desktop needs to build a managed prefix. */
@@ -97,6 +95,14 @@ export interface RuntimeHarnessHost extends HarnessHost {
    * configured last. Each live turn ends with turn.completed before its session.closed.
    */
   closeOrganization(organizationId: string): Promise<void>;
+  /** Starts the agent's sign-in method. Credentials stay in the agent's own store. */
+  signIn: SignIns["start"];
+  /** Output and status of a sign-in since a cursor. */
+  readSignIn(input: Parameters<SignIns["read"]>[0]): Promise<ReturnType<SignIns["read"]>>;
+  /** Sends one line to a terminal sign-in. */
+  sendSignInInput(input: Parameters<SignIns["write"]>[0]): Promise<void>;
+  cancelSignIn: SignIns["cancel"];
+  signOut: SignIns["signOut"];
 }
 
 /** Bounds native interrupt waits and cleanup waits for cancelled opens. */
@@ -132,6 +138,8 @@ interface LiveSession extends SessionLifecycle {
   agent: HarnessAgent;
   adapter: NativeAdapter;
   epoch: number;
+  /** The user-added MCP servers, as JSON, that the native session was set up with. */
+  mcpServers: string;
   turn?: LiveTurn;
   idleSince: number;
 }
@@ -165,6 +173,12 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
   let disposal: Promise<void> | undefined;
   const modelDiscovery = new AbortController();
   const connectNative: ConnectNative = options.connect ?? connectHarness;
+  const signIns = createSignIns({
+    cwd: accountDirectory,
+    openPeer: openAcpPeer,
+    requireAgent,
+    ...options.signIn,
+  });
   const assertOpen = () => {
     if (disposed) throw new HarnessError("disposed", "Harness host is disposed.");
   };
@@ -265,7 +279,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
     // The instructions file follows the agent at each open, not only at first write.
     await writeDefaultFiles(folder, command.organizationId, agent, {
       replace: true,
-      managedPrefix: definition.prefixInInstructions ? command.prefix : undefined,
+      managedPrefix: definition.prefixChannel === "instructions" ? command.prefix : undefined,
     });
     const lease = agent.useStartupDefaults
       ? mcp.issue({
@@ -285,8 +299,8 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
       const context: AdapterContext = {
         model: agent.model,
         directory: folder,
-        executable: options.connect ? agent.harness : await resolveExecutable(agent.harness),
         lease,
+        mcpServers: command.mcpServers,
         emit: (body: HarnessEventBody, eventScope: EventScope = "turn") =>
           emit(scope, body, eventScope === "turn" ? holder.live?.turn : undefined),
       };
@@ -323,11 +337,14 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         agent,
         adapter,
         epoch: command.epoch,
+        mcpServers: JSON.stringify(command.mcpServers),
         lease,
         idleSince: clock.now(),
       });
       holder.live = live;
       sessions.set(ref.id, live);
+      // A native exit closes the session at once; a close already in progress keeps its reason.
+      void adapter.closed?.then(() => closeSession(live, "native_exited")).catch(() => {});
       if (live.state === "closing" || disposed) {
         await closeSession(live, "closed");
         throw new HarnessError(
@@ -430,8 +447,10 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         JSON.stringify(existing.ref.folder) !== JSON.stringify(command.folder)
       )
         throw new HarnessError("session-conflict", "Session belongs to another agent folder.");
+      // Changed MCP servers apply at session setup, so the session reopens (and resumes) with them.
       const stale =
         existing.epoch !== command.epoch ||
+        existing.mcpServers !== JSON.stringify(command.mcpServers) ||
         (command.nativeSessionId !== undefined &&
           command.nativeSessionId !== existing.ref.nativeSessionId);
       if (!stale && (existing.state === "idle" || existing.state === "running")) {
@@ -590,7 +609,6 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
       return {
         ...scope,
         skills: await scanNativeSkills(root, scope.harness),
-        mcpServers: await scanNativeServers(root, scope.harness),
       };
     },
     async saveSkill(input) {
@@ -608,26 +626,14 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         throw new HarnessError("agent-not-found", "Agent is not configured for this harness.");
       await writeDefaultFiles(root, scope.organizationId, agent, { replace: true });
     },
-    async saveMcpServer(input) {
-      await editNativeServer(await directory(input), input.harness, input.server.id, input.server);
-    },
-    async deleteMcpServer(input) {
-      await editNativeServer(await directory(input), input.harness, input.id);
-    },
     async inspect() {
       assertOpen();
       return Promise.all(
         harnessKinds.map(async (harness) => {
-          try {
-            const executable = await resolveExecutable(harness);
-            const version = await binaryVersion(executable);
-            const definition = harnessDefinitions[harness];
-            const available =
-              !("available" in definition) || (await definition.available(executable));
-            return { harness, available, version };
-          } catch {
-            return { harness, available: false };
-          }
+          const launch = await detectAgent(harness).catch(() => undefined);
+          return launch
+            ? { harness, available: true, version: launch.version }
+            : { harness, available: false };
         }),
       );
     },
@@ -669,6 +675,30 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
       const failure = results.find((entry) => entry.status === "rejected");
       if (failure?.status === "rejected") throw failure.reason;
     },
+    async signIn(input) {
+      assertOpen();
+      if (!harnessKinds.includes(input.harness))
+        throw new HarnessError("invalid-harness", "Unknown harness.");
+      return signIns.start(input);
+    },
+    async readSignIn(input) {
+      assertOpen();
+      return signIns.read(input);
+    },
+    async sendSignInInput(input) {
+      assertOpen();
+      signIns.write(input);
+    },
+    async cancelSignIn(input) {
+      assertOpen();
+      await signIns.cancel(input);
+    },
+    async signOut(input) {
+      assertOpen();
+      if (!harnessKinds.includes(input.harness))
+        throw new HarnessError("invalid-harness", "Unknown harness.");
+      await signIns.signOut(input);
+    },
     async execute<C extends HarnessCommand>(command: C): Promise<HarnessCommandResult<C>> {
       assertOpen();
       // SAFETY: run() returns the result type of the command variant it was called with.
@@ -686,6 +716,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
       disposed = true;
       stopReaper();
       modelDiscovery.abort();
+      void signIns.dispose();
       disposal = (async () => {
         const pending = [...opening.values()];
         for (const entry of pending) cancelOpening(entry.lifecycle);

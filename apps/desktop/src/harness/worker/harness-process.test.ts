@@ -35,6 +35,7 @@ function open(sessionId: string) {
     folder: "main" as const,
     epoch: 0,
     prefix: "",
+    mcpServers: [],
   };
 }
 

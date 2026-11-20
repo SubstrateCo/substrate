@@ -1,5 +1,9 @@
-import type { IpcValue } from "@substrate/contracts/desktop/ipc";
-import type { HarnessErrorCode } from "@substrate/contracts/harness";
+import type {
+  HarnessAgent,
+  HarnessErrorCode,
+  HarnessMcpServer,
+  HarnessSignInState,
+} from "@substrate/contracts/harness";
 import type { LocalToolProxy } from "@substrate/contracts/harness/mcp";
 
 import { DesktopSessionAuthority } from "../../session/desktop-session-authority.ts";
@@ -24,14 +28,21 @@ const sessionRef = {
   resumed: false,
 };
 
+/** The sign-in that the fixture's worker reports. */
+export const signInId = "6f1c2b9e-3d4a-4f5b-8c7d-9e0f1a2b3c4d";
+
 export function fixture(
   beforeScan?: () => Promise<void>,
-  nativeMcpServers: IpcValue[] = [],
+  storedMcpServers: HarnessMcpServer[] = [],
   options: {
+    /** The catalog's agents. */
+    agents?: HarnessAgent[];
     failExecute?: HarnessErrorCode;
     /** Holds every execute command except interrupt until resolved. */
     holdExecute?: Promise<void>;
     localToolHandler?: LocalToolProxy;
+    /** What the worker answers for signIn and readSignIn, before main parses it. */
+    signInState?: Partial<HarnessSignInState>;
   } = {},
 ) {
   let session = {
@@ -64,15 +75,35 @@ export function fixture(
       requests.push("catalog");
       catalogRequests++;
       if (catalogFails) return new Response("Bad gateway", { status: 502 });
-      return Response.json({ success: true, data: { agents: [], runSettings: [] } });
+      return Response.json({
+        success: true,
+        data: { agents: options.agents ?? [], runSettings: [] },
+      });
     },
   };
   const authority = new DesktopSessionAuthority(connection);
+  /** Local MCP servers by organization and agent. */
+  const mcpServers = new Map<string, HarnessMcpServer[]>([["org-1/agent-1", storedMcpServers]]);
   const controller = createHarnessController({
     ...connection,
     authority,
     accountsDirectory: "accounts",
     localToolHandler: options.localToolHandler,
+    mcpServers: {
+      list: async (organizationId, agentId) => mcpServers.get(`${organizationId}/${agentId}`) ?? [],
+      save: async (organizationId, agentId, server) => {
+        const key = `${organizationId}/${agentId}`;
+        const servers = (mcpServers.get(key) ?? []).filter((entry) => entry.id !== server.id);
+        mcpServers.set(key, [...servers, server]);
+      },
+      delete: async (organizationId, agentId, id) => {
+        const key = `${organizationId}/${agentId}`;
+        mcpServers.set(
+          key,
+          (mcpServers.get(key) ?? []).filter((entry) => entry.id !== id),
+        );
+      },
+    },
     createWorker: (directory, _proxy, local) => {
       directories.push(directory);
       localTools = local;
@@ -88,6 +119,17 @@ export function fixture(
             return command.type === "open" ? sessionRef : undefined;
           }
           if (method === "readProfile") return "- Owner prefers mornings.\n";
+          if (method === "signIn" || method === "readSignIn")
+            return {
+              loginId: signInId,
+              harness: "claude",
+              type: "terminal",
+              status: "running",
+              output: "Open https://claude.ai/device",
+              cursor: 29,
+              command: "C:\\Users\\me\\agent.exe",
+              ...options.signInState,
+            };
           if (method === "listModels")
             return {
               harness: "codex",
@@ -102,7 +144,6 @@ export function fixture(
               agentId: "agent-1",
               harness: "codex",
               skills: [],
-              mcpServers: nativeMcpServers,
             };
           }
           return method === "inspect"
@@ -124,6 +165,7 @@ export function fixture(
   return {
     controller,
     calls,
+    mcpServers,
     directories,
     setSession: (value: typeof session) => {
       session = value;

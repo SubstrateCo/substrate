@@ -1,4 +1,3 @@
-import type { HarnessKind } from "../harness/kinds.ts";
 import { z } from "zod";
 
 const text = (max: number) => z.string().max(max);
@@ -137,76 +136,75 @@ export function responseMatchesPayload(
   }
 }
 
-// Native request fields are lenient: a field of an unexpected type is dropped, and fields this
+// ACP request fields are lenient: a field of an unexpected type is dropped, and fields this
 // module does not read stay as they are, for display.
-const nativeText = z.string().optional().catch(undefined);
-const nativeFlag = z.boolean().optional().catch(undefined);
-const nativeChoice = z
-  .looseObject({ label: nativeText, description: nativeText, value: nativeText })
+const acpText = z.string().nullish().catch(undefined);
+const acpTexts = z.array(z.string()).nullish().catch(undefined);
+const acpEnumOption = z
+  .looseObject({ const: acpText, title: acpText, description: acpText })
   .catch({});
-const nativeChoices = z.array(nativeChoice).optional().catch(undefined);
-const nativeQuestion = z
+const acpEnumOptions = z.array(acpEnumOption).nullish().catch(undefined);
+const acpProperty = z
   .looseObject({
-    id: nativeText,
-    question: nativeText,
-    header: nativeText,
-    multiSelect: nativeFlag,
-    options: nativeChoices,
+    type: acpText,
+    title: acpText,
+    description: acpText,
+    enum: acpTexts,
+    oneOf: acpEnumOptions,
+    items: z
+      .looseObject({ type: acpText, enum: acpTexts, anyOf: acpEnumOptions })
+      .nullish()
+      .catch(undefined),
   })
   .catch({});
-const nativeQuestions = z.array(nativeQuestion).optional().catch(undefined);
-const nativeField = z
-  .looseObject({
-    key: nativeText,
-    hidden: nativeFlag,
-    type: nativeText,
-    title: nativeText,
-    description: nativeText,
-    custom: nativeFlag,
-    options: nativeChoices,
-  })
+const acpPermissionOption = z
+  .looseObject({ optionId: acpText, name: acpText, kind: acpText })
   .catch({});
-const nativeOption = z
-  .looseObject({ optionId: nativeText, kind: nativeText, name: nativeText })
-  .catch({});
-const nativeShown = z.json().optional().catch(undefined);
 
-/** A native harness request as the adapter emitted it. Parse it once when it arrives. */
-export const nativeRequestData = z
+/**
+ * An ACP request as the adapter emitted it: `session/request_permission` params for permission
+ * requests, `elicitation/create` params for input requests. Parse it once when it arrives.
+ */
+const acpToolCall = z
   .looseObject({
-    input: z
-      .looseObject({ command: nativeText, file_path: nativeText, questions: nativeQuestions })
+    title: acpText,
+    rawInput: z.json().optional().catch(undefined),
+    locations: z
+      .array(z.looseObject({ path: acpText }).catch({}))
+      .nullish()
+      .catch(undefined),
+  })
+  .optional()
+  .catch(undefined);
+export const acpRequestData = z
+  .looseObject({
+    /** v1 permission subject. */
+    toolCall: acpToolCall,
+    /** v2 permission prompt: its own title, description, and a tool call or command subject. */
+    title: acpText,
+    description: acpText,
+    subject: z
+      .looseObject({ type: acpText, toolCall: acpToolCall, command: acpText })
+      .nullish()
+      .catch(undefined),
+    options: z.array(acpPermissionOption).optional().catch(undefined),
+    mode: acpText,
+    message: acpText,
+    requestedSchema: z
+      .looseObject({
+        title: acpText,
+        properties: z.record(z.string(), acpProperty).nullish().catch(undefined),
+        required: acpTexts,
+      })
       .optional()
       .catch(undefined),
-    toolName: nativeText,
-    command: nativeText,
-    reason: nativeText,
-    message: nativeText,
-    title: nativeText,
-    permission: nativeText,
-    patterns: nativeShown,
-    metadata: nativeShown,
-    questions: nativeQuestions,
-    fields: z.array(nativeField).optional().catch(undefined),
-    options: z.array(nativeOption).optional().catch(undefined),
-    toolCall: z.looseObject({ title: nativeText }).optional().catch(undefined),
   })
   .catch({});
-export type NativeRequestData = z.output<typeof nativeRequestData>;
-type Choice = z.output<typeof nativeChoice>;
+export type AcpRequestData = z.output<typeof acpRequestData>;
 
-const string = (value: string | undefined) => (value?.trim() ? value : null);
+const string = (value: string | null | undefined) => (value?.trim() ? value : null);
 const clip = (value: string, max: number) =>
   value.length > max ? value.slice(0, max - 1) + "…" : value;
-/** Native values that a request shows as detail text. */
-type Shown =
-  | NativeRequestData
-  | NonNullable<NativeRequestData["input"]>
-  | NonNullable<NativeRequestData["toolCall"]>
-  | z.core.util.JSONType
-  | undefined;
-const json = (value: Shown) =>
-  clip(value === undefined ? "" : JSON.stringify(value, null, 2), 8000);
 
 function approve(
   title: string,
@@ -221,224 +219,216 @@ function approve(
   };
 }
 
-const allowDeny = [
-  { id: "allow", label: "Approve", style: "approve" as const },
-  { id: "deny", label: "Decline", style: "deny" as const },
-];
+/** A form without fields only asks the owner to accept or decline. */
 const acceptDecline = [
   { id: "accept", label: "Approve", style: "approve" as const },
   { id: "decline", label: "Decline", style: "deny" as const },
   { id: "cancel", label: "Stop the turn", style: "neutral" as const },
 ];
 
-function questionOptions(value: Choice[] | undefined) {
-  return (value ?? [])
-    .map((entry) => {
-      const label = string(entry.label);
-      return label
-        ? {
-            label: clip(label, 500),
-            description: string(entry.description)?.slice(0, 2000) ?? null,
-          }
-        : null;
-    })
-    .filter((option) => option !== null)
-    .slice(0, 20);
+/**
+ * The first allow_once option approves and the first reject_once option denies, so the owner's
+ * primary buttons and an expiry pick one-time decisions. Other kinds, such as allow_always, are
+ * secondary choices.
+ */
+function permissionOptions(data: AcpRequestData) {
+  const options = (data.options ?? []).flatMap((option) => {
+    const id = string(option.optionId);
+    if (!id || id.length > 100) return [];
+    return [{ id, label: clip(string(option.name) ?? id, 100), kind: string(option.kind) ?? "" }];
+  });
+  const pick = (once: string, prefix: string) =>
+    options.find((option) => option.kind === once) ??
+    options.find((option) => option.kind.startsWith(prefix));
+  const allow = pick("allow_once", "allow_");
+  const reject = pick("reject_once", "reject_");
+  return options.slice(0, 6).map(({ id, label }) => {
+    let style: "approve" | "deny" | "neutral" = "neutral";
+    if (id === allow?.id) style = "approve";
+    else if (id === reject?.id) style = "deny";
+    return { id, label, style };
+  });
 }
 
-function opencodeFields(form: NativeRequestData) {
-  return (form.fields ?? []).filter(
-    (field) => string(field.key) && field.hidden !== true && field.type !== "external",
-  );
+/** Tool input that runs a command shows the command. */
+const commandInput = z.looseObject({ command: z.string().trim().min(1) });
+
+function permissionDetail(call: NonNullable<AcpRequestData["toolCall"]>) {
+  const input = call.rawInput;
+  const command = commandInput.safeParse(input);
+  if (command.success) return command.data.command;
+  const paths = (call.locations ?? []).flatMap((location) => string(location.path) ?? []);
+  if (paths.length) return paths.join("\n");
+  return input === undefined ? null : JSON.stringify(input, null, 2);
 }
 
-/** Converts a native harness request into the shared request shape, or null when unsupported. */
-export function normalizeHarnessRequest(
-  harness: HarnessKind,
-  kind: "permission" | "input",
-  value: NativeRequestData,
-): AgentRequestPayload | null {
-  switch (harness) {
-    case "claude": {
-      const input = value.input ?? {};
-      const tool = string(value.toolName) ?? "a tool";
-      if (kind === "permission")
-        return approve(
-          `Allow ${tool}?`,
-          string(input.command) ?? string(input.file_path) ?? json(input),
-          allowDeny,
-        );
-      const questions = (input.questions ?? []).flatMap((entry) => {
-        const question = string(entry.question);
-        return question
+type FormChoice = { label: string; value: string; description: string | null };
+type FormField = {
+  key: string;
+  required: boolean;
+  type: "string" | "number" | "integer" | "boolean" | "array";
+  title: string | null;
+  description: string | null;
+  /** Enum choices. Empty for free text. */
+  choices: FormChoice[];
+};
+
+function formChoices(
+  values: string[] | null | undefined,
+  titled: z.output<typeof acpEnumOptions>,
+): FormChoice[] {
+  const choices = titled?.length
+    ? titled.flatMap((option) => {
+        const value = string(option.const);
+        return value
           ? [
               {
-                id: clip(question, 2000),
-                header: clip(string(entry.header) ?? "", 200),
-                question: clip(question, 2000),
-                options: questionOptions(entry.options),
-                multiSelect: entry.multiSelect === true,
-                allowCustom: true,
+                label: clip(string(option.title) ?? value, 500),
+                value,
+                description: string(option.description)?.slice(0, 2000) ?? null,
               },
             ]
           : [];
-      });
-      return questions.length
-        ? {
-            type: "questions",
-            title: "The agent has a question",
-            questions: questions.slice(0, 10),
-          }
-        : null;
-    }
-    case "codex": {
-      if (kind === "permission")
-        return approve(
-          string(value.command) ? "Allow this command?" : "Allow these changes?",
-          string(value.command) ?? string(value.reason) ?? json(value),
-          acceptDecline,
-        );
-      const questions = (value.questions ?? []).flatMap((entry) => {
-        const id = string(entry.id);
-        const question = string(entry.question);
-        return id && question
-          ? [
-              {
-                id: clip(id, 2000),
-                header: clip(string(entry.header) ?? "", 200),
-                question: clip(question, 2000),
-                options: questionOptions(entry.options),
-                multiSelect: false,
-                allowCustom: true,
-              },
-            ]
-          : [];
-      });
-      if (questions.length)
-        return {
-          type: "questions",
-          title: "The agent has a question",
-          questions: questions.slice(0, 10),
-        };
-      // MCP elicitation: accept, decline, or cancel.
-      return approve(string(value.message) ?? "A tool requests input", json(value), acceptDecline);
-    }
-    case "opencode": {
-      if (kind === "permission")
-        return approve(
-          string(value.title) ?? `Allow ${string(value.permission) ?? "this action"}?`,
-          json(value.patterns ?? value.metadata ?? value),
-          [
-            { id: "once", label: "Approve once", style: "approve" },
-            { id: "always", label: "Always allow", style: "neutral" },
-            { id: "reject", label: "Decline", style: "deny" },
-          ],
-        );
-      const questions = opencodeFields(value).map((field) => {
-        const key = string(field.key)!;
-        const options =
-          field.type === "boolean"
-            ? [
-                { label: "Yes", description: null },
-                { label: "No", description: null },
-              ]
-            : (field.options ?? [])
-                .flatMap((option) => {
-                  const label = string(option.label) ?? string(option.value);
-                  return label
-                    ? [{ label: clip(label, 500), description: string(option.description) }]
-                    : [];
-                })
-                .slice(0, 20);
-        return {
-          id: clip(key, 2000),
-          header: clip(string(field.title) ?? key, 200),
-          question: clip(string(field.description) ?? string(field.title) ?? key, 2000),
-          options,
-          multiSelect: field.type === "multiselect",
-          allowCustom: field.type !== "boolean" && (options.length === 0 || field.custom === true),
-        };
-      });
-      return questions.length
-        ? {
-            type: "questions",
-            title: clip(string(value.title) ?? "The agent has a question", 300),
-            questions: questions.slice(0, 10),
-          }
-        : null;
-    }
-    case "antigravity": {
-      const options = (value.options ?? [])
-        .flatMap((option) => {
-          const id = string(option.optionId);
-          if (!id) return [];
-          const optionKind = string(option.kind) ?? "";
-          let style: "approve" | "deny" | "neutral" = "neutral";
-          if (optionKind.startsWith("allow")) style = "approve";
-          else if (optionKind.startsWith("reject")) style = "deny";
-          return [{ id: clip(id, 100), label: clip(string(option.name) ?? id, 100), style }];
-        })
-        .slice(0, 6);
-      const call = value.toolCall ?? {};
-      return options.length
-        ? approve(string(call.title) ?? "Allow this action?", json(call), options)
-        : null;
-    }
-  }
-}
-
-/** What each native adapter's respond() accepts. The adapter validates it again. */
-export type NativeHarnessResponse =
-  | string
-  | { action: string }
-  | { answers: Record<string, { answers: string[] }> }
-  | Record<string, string | number | boolean | string[]>
-  | undefined;
-
-/** Converts a shared answer to the value the native adapter's respond() accepts. */
-export function nativeHarnessResponse(
-  harness: HarnessKind,
-  kind: "permission" | "input",
-  data: NativeRequestData,
-  response: AgentRequestResponse,
-): NativeHarnessResponse {
-  if (response.type === "approval") {
-    if (harness === "codex" && kind === "input") return { action: response.optionId };
-    return response.optionId;
-  }
-  const { answers } = response;
-  switch (harness) {
-    case "claude":
-      return Object.fromEntries(
-        Object.entries(answers).map(([id, values]) => [id, values.join(", ")]),
+      })
+    : (values ?? []).flatMap((value) =>
+        string(value) ? [{ label: clip(value, 500), value, description: null }] : [],
       );
-    case "codex":
-      return {
-        answers: Object.fromEntries(
-          Object.entries(answers).map(([id, values]) => [id, { answers: values }]),
-        ),
-      };
-    case "opencode": {
-      const fields = new Map(opencodeFields(data).map((field) => [string(field.key)!, field]));
-      const result: Record<string, string | number | boolean | string[]> = {};
-      for (const [key, values] of Object.entries(answers)) {
-        const field = fields.get(key);
-        if (!field || !values.length) continue;
-        if (field.type === "multiselect") result[key] = values;
-        else if (field.type === "boolean") result[key] = values[0] === "Yes";
-        else if (field.type === "number" || field.type === "integer")
-          result[key] = Number(values[0]);
-        else {
-          // Selected labels map back to option values.
-          const option = (field.options ?? []).find((entry) => entry.label === values[0]);
-          result[key] = string(option?.value) ?? values[0]!;
-        }
-      }
-      return result;
-    }
-    case "antigravity":
-      return undefined;
+  return choices.slice(0, 20);
+}
+
+/**
+ * The fields of a form elicitation, or null when it cannot be shown: URL mode, more than ten
+ * fields, or a required field of an unknown type. Unknown optional fields are skipped.
+ */
+function formFields(data: AcpRequestData): FormField[] | null {
+  if (data.mode && data.mode !== "form") return null;
+  const schema = data.requestedSchema;
+  if (!schema) return null;
+  const required = new Set(schema.required ?? []);
+  const fields: FormField[] = [];
+  for (const [key, property] of Object.entries(schema.properties ?? {})) {
+    const field = {
+      key,
+      required: required.has(key),
+      title: string(property.title),
+      description: string(property.description),
+    };
+    const type = property.type;
+    if (key.length > 2000 || !key.trim()) {
+      if (field.required) return null;
+    } else if (type === "string")
+      fields.push({ ...field, type, choices: formChoices(property.enum, property.oneOf) });
+    else if (type === "number" || type === "integer" || type === "boolean")
+      fields.push({ ...field, type, choices: [] });
+    else if (type === "array" && property.items) {
+      const choices = formChoices(property.items.enum, property.items.anyOf);
+      if (choices.length) fields.push({ ...field, type, choices });
+      else if (field.required) return null;
+    } else if (field.required) return null;
   }
+  return fields.length > 10 ? null : fields;
+}
+
+const yesNo = [
+  { label: "Yes", description: null },
+  { label: "No", description: null },
+];
+
+/** Converts an ACP request into the shared request shape, or null when it cannot be shown. */
+export function normalizeAcpRequest(
+  kind: "permission" | "input",
+  data: AcpRequestData,
+): AgentRequestPayload | null {
+  if (kind === "permission") {
+    const options = permissionOptions(data);
+    if (!options.length) return null;
+    const call = data.toolCall ?? data.subject?.toolCall ?? {};
+    const detail =
+      string(data.subject?.command) ?? permissionDetail(call) ?? string(data.description);
+    return approve(
+      string(data.title) ?? string(call.title) ?? "Allow this action?",
+      detail,
+      options,
+    );
+  }
+  const fields = formFields(data);
+  if (!fields) return null;
+  const title = string(data.message) ?? string(data.requestedSchema?.title);
+  if (!fields.length) return approve(title ?? "The agent asks to continue", null, acceptDecline);
+  return {
+    type: "questions",
+    title: clip(title ?? "The agent has a question", 300),
+    questions: fields.map((field) => ({
+      id: field.key,
+      header: clip(field.title ?? field.key, 200),
+      question: clip(field.description ?? field.title ?? field.key, 2000),
+      options:
+        field.type === "boolean"
+          ? yesNo
+          : field.choices.map(({ label, description }) => ({ label, description })),
+      multiSelect: field.type === "array",
+      allowCustom: field.type !== "boolean" && field.choices.length === 0,
+    })),
+  };
+}
+
+type ElicitationValue = string | number | boolean | string[];
+
+/**
+ * What the ACP adapter's respond() accepts: the selected permission optionId (null cancels the
+ * request), or an elicitation response. The adapter validates it again.
+ */
+export type AcpResponse =
+  | string
+  | null
+  | { action: "accept"; content: Record<string, ElicitationValue> }
+  | { action: string };
+
+function fieldValue(field: FormField, values: string[]): ElicitationValue | undefined {
+  const chosen = (label: string) => field.choices.find((choice) => choice.label === label)?.value;
+  const first = values.at(0);
+  if (first === undefined) return undefined;
+  switch (field.type) {
+    case "array": {
+      const selected = values.flatMap((label) => chosen(label) ?? []);
+      return selected.length ? selected : undefined;
+    }
+    case "boolean":
+      if (first === "Yes") return true;
+      return first === "No" ? false : undefined;
+    case "number":
+    case "integer": {
+      if (!first.trim()) return undefined;
+      const number = Number(first);
+      if (!Number.isFinite(number)) return undefined;
+      return field.type === "integer" && !Number.isInteger(number) ? undefined : number;
+    }
+    case "string":
+      return field.choices.length ? chosen(first) : first;
+  }
+}
+
+/**
+ * Converts a shared answer to the value the ACP adapter's respond() accepts. Empty answers, as on
+ * expiry, and answers that miss a required field decline the form.
+ */
+export function acpRequestResponse(
+  kind: "permission" | "input",
+  data: AcpRequestData,
+  response: AgentRequestResponse,
+): AcpResponse {
+  if (response.type === "approval")
+    return kind === "permission" ? response.optionId : { action: response.optionId };
+  if (kind === "permission") return null;
+  const fields = formFields(data) ?? [];
+  if (!Object.keys(response.answers).length) return { action: "decline" };
+  const content: Record<string, ElicitationValue> = {};
+  for (const field of fields) {
+    const value = fieldValue(field, response.answers[field.key] ?? []);
+    if (value !== undefined) content[field.key] = value;
+    else if (field.required) return { action: "decline" };
+  }
+  return { action: "accept", content };
 }
 
 /**

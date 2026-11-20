@@ -66,17 +66,17 @@ for (const harness of harnessKinds) {
 }
 
 test("sync keeps the user's instructions but rewrites edited or missing Substrate skills", async () => {
-  const config = configuration(agent("antigravity"));
+  const config = configuration(agent("codex"));
   await materialize(root, config);
   const directory = await agentDirectory(root, "org-a", "agent-a");
   const [edited, removed] = startupSkills;
   await writeFile(join(directory, "AGENTS.md"), "User prompt");
-  await saveNativeSkill(directory, "antigravity", { ...edited!, content: "Stale tool names." });
+  await saveNativeSkill(directory, "codex", { ...edited!, content: "Stale tool names." });
   await unlink(join(directory, `.agents/skills/${removed!.id}/SKILL.md`));
   config.agents[0].instructions = "Check linked source records.";
   await materialize(root, config);
   expect(await read(directory, "AGENTS.md")).toBe("User prompt");
-  expect(byId(await scanNativeSkills(directory, "antigravity"))).toEqual(byId(startupSkills));
+  expect(byId(await scanNativeSkills(directory, "codex"))).toEqual(byId(startupSkills));
 });
 
 test("disabling or removing an agent leaves its files in place", async () => {

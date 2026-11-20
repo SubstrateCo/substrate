@@ -4,6 +4,7 @@ import { epochRepository } from "./epochs.ts";
 import { eventRepository } from "./events.ts";
 import { helperRepository } from "./helpers.ts";
 import { inboxRepository } from "./inbox.ts";
+import { mcpServerRepository } from "./mcp-servers.ts";
 import { outputRepository } from "./outputs.ts";
 import { routineRepository } from "./routines.ts";
 import { sessionRepository } from "./sessions.ts";
@@ -61,6 +62,7 @@ export class AgentWorkStore {
   readonly routines: ReturnType<typeof routineRepository>;
   readonly helpers: ReturnType<typeof helperRepository>;
   readonly epochs: ReturnType<typeof epochRepository>;
+  readonly mcpServers: ReturnType<typeof mcpServerRepository>;
   readonly views: ReturnType<typeof viewRepository>;
   readonly close: () => void;
 
@@ -73,6 +75,7 @@ export class AgentWorkStore {
     this.routines = routineRepository(run);
     this.helpers = helperRepository(run);
     this.epochs = epochRepository(run);
+    this.mcpServers = mcpServerRepository(run);
     this.views = viewRepository(run);
     this.close = close;
   }

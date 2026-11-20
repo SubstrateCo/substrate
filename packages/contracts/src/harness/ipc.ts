@@ -3,7 +3,7 @@ import { harnessKinds } from "./kinds.ts";
 import { harnessIdSchema } from "./local.ts";
 import { harnessMcpServerSchema, harnessSkillSchema } from "./local.ts";
 import type { HarnessInspection, HarnessLocalConfiguration } from "./local.ts";
-import type { HarnessModelCatalog } from "./models.ts";
+import type { HarnessModelCatalog, HarnessSignInState } from "./models.ts";
 import { z } from "zod";
 
 export const channel = "substrate:harness";
@@ -17,10 +17,31 @@ export const rendererLocalSchemas = {
   resetDefaults: z.strictObject({ harness, agentId: id }),
   saveMcpServer: z.union(
     harnessMcpServerSchema.options.map((schema) =>
-      schema.extend({ harness, agentId: id, id: id.optional() }),
+      schema.extend({ agentId: id, id: id.optional() }),
     ),
   ),
-  deleteMcpServer: z.strictObject({ harness, agentId: id, id }),
+  deleteMcpServer: z.strictObject({ agentId: id, id }),
+};
+const loginId = z.uuid();
+/**
+ * Sign-in to a native agent. Credentials stay in the agent's own store; Substrate only starts the
+ * agent's advertised method and relays a terminal login's output and input lines.
+ */
+export const rendererSignInSchemas = {
+  signIn: z.strictObject({ harness, methodId: z.string().min(1).max(200) }),
+  readSignIn: z.strictObject({
+    loginId,
+    cursor: z.number().int().min(0).max(Number.MAX_SAFE_INTEGER),
+  }),
+  sendSignInInput: z.strictObject({
+    loginId,
+    text: z
+      .string()
+      .max(4096)
+      .refine((value) => !/[\r\n\0]/.test(value)),
+  }),
+  cancelSignIn: z.strictObject({ loginId }),
+  signOut: z.strictObject({ harness }),
 };
 export const methods = {
   status: {
@@ -49,6 +70,14 @@ export const methods = {
   resetDefaults: { input: rendererLocalSchemas.resetDefaults },
   saveMcpServer: { input: rendererLocalSchemas.saveMcpServer },
   deleteMcpServer: { input: rendererLocalSchemas.deleteMcpServer },
+  signIn: { input: rendererSignInSchemas.signIn, output: bridgeOutput<HarnessSignInState>() },
+  readSignIn: {
+    input: rendererSignInSchemas.readSignIn,
+    output: bridgeOutput<HarnessSignInState>(),
+  },
+  sendSignInInput: { input: rendererSignInSchemas.sendSignInInput },
+  cancelSignIn: { input: rendererSignInSchemas.cancelSignIn },
+  signOut: { input: rendererSignInSchemas.signOut },
 };
 export type HarnessAPI = BridgeAPI<typeof methods>;
 export type LocalHarnessMethod = keyof typeof rendererLocalSchemas;
@@ -57,5 +86,17 @@ export const localHarnessMethods = Object.keys(rendererLocalSchemas) as [
   LocalHarnessMethod,
   ...LocalHarnessMethod[],
 ];
-export const harnessMethods = ["status", "synchronize", ...localHarnessMethods] as const;
+export type SignInHarnessMethod = keyof typeof rendererSignInSchemas;
+// SAFETY: schema keys are the nonempty allowlist of renderer sign-in operations.
+export const signInHarnessMethods = Object.keys(rendererSignInSchemas) as [
+  SignInHarnessMethod,
+  ...SignInHarnessMethod[],
+];
+// SAFETY: the array holds exactly these literals; a tuple type allows only one rest element.
+export const harnessMethods = [
+  "status",
+  "synchronize",
+  ...localHarnessMethods,
+  ...signInHarnessMethods,
+] as ["status", "synchronize", ...(LocalHarnessMethod | SignInHarnessMethod)[]];
 export type HarnessMethod = (typeof harnessMethods)[number];

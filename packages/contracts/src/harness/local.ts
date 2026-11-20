@@ -25,10 +25,15 @@ const environment = z
     nonSecret,
   )
   .optional();
-/** Configuration only. Credentials remain in each native harness's credential store. */
+// Substrate's own MCP server is added at execution time.
+const serverId = harnessIdSchema.refine((id) => id !== "substrate");
+/**
+ * A user-added MCP server. Substrate stores it per agent and passes it to the harness on each
+ * session setup. Configuration only: credentials remain in each native harness's credential store.
+ */
 export const harnessMcpServerSchema = z.discriminatedUnion("transport", [
   z.strictObject({
-    id: harnessIdSchema,
+    id: serverId,
     name,
     transport: z.literal("stdio"),
     command: nonSecret.pipe(z.string().min(1).max(2000)),
@@ -36,7 +41,7 @@ export const harnessMcpServerSchema = z.discriminatedUnion("transport", [
     environment,
   }),
   z.strictObject({
-    id: harnessIdSchema,
+    id: serverId,
     name,
     transport: z.literal("http"),
     url: z
@@ -56,18 +61,18 @@ export const harnessMcpServerSchema = z.discriminatedUnion("transport", [
     environment: z.record(z.string(), z.never()).optional(),
   }),
 ]);
-// Native credential-bearing entries are read-only; they must be edited in the native harness.
-const scannedMcpServerSchema = z.union(
-  harnessMcpServerSchema.options.map((schema) =>
-    schema.strip().extend({ readOnly: z.boolean().optional() }),
-  ),
-);
-export const harnessLocalConfigurationSchema = z.object({
+/** At most this many user-added MCP servers per agent. */
+export const maxHarnessMcpServers = 50;
+/** What the harness host reads from an agent folder. */
+export const harnessNativeConfigurationSchema = z.object({
   organizationId: z.string(),
   agentId: z.string(),
   harness: z.enum(harnessKinds),
   skills: z.array(harnessSkillSchema.strip()),
-  mcpServers: z.array(scannedMcpServerSchema),
+});
+/** The agent folder's skills, plus the agent's MCP servers from Substrate's local storage. */
+export const harnessLocalConfigurationSchema = harnessNativeConfigurationSchema.extend({
+  mcpServers: z.array(harnessMcpServerSchema).max(maxHarnessMcpServers),
 });
 export const harnessInspectionSchema = z.object({
   harness: z.enum(harnessKinds),
@@ -75,6 +80,7 @@ export const harnessInspectionSchema = z.object({
   version: z.string().optional(),
 });
 export type HarnessSkill = z.infer<typeof harnessSkillSchema>;
-export type HarnessMcpServer = z.infer<typeof scannedMcpServerSchema>;
+export type HarnessMcpServer = z.infer<typeof harnessMcpServerSchema>;
+export type HarnessNativeConfiguration = z.infer<typeof harnessNativeConfigurationSchema>;
 export type HarnessLocalConfiguration = z.infer<typeof harnessLocalConfigurationSchema>;
 export type HarnessInspection = z.infer<typeof harnessInspectionSchema>;

@@ -9,6 +9,7 @@ import type {
 } from "@substrate/contracts/harness/mcp";
 import type { RealtimeUpdate } from "@substrate/contracts/realtime";
 
+import type { LocalMcpServers } from "../harness/controller/local-configuration.ts";
 import {
   DesktopSessionAuthority,
   HarnessAccessDenied,
@@ -215,7 +216,31 @@ export function createAgentWorkService(options: {
     return current.runtime;
   }
 
+  /** The local store of the verified organization. */
+  async function organizationStore(organizationId: string) {
+    const current = available(await ensure());
+    if (current?.organizationId !== organizationId)
+      throw new Error("Agent work is unavailable. Sign in and try again.");
+    return current.store;
+  }
+
+  /** The agents' user-added MCP servers. The runtime sends them with each open command. */
+  const mcpServers: LocalMcpServers = {
+    list: async (organizationId, agentId) =>
+      (await organizationStore(organizationId)).mcpServers.list(organizationId, agentId),
+    save: async (organizationId, agentId, server) =>
+      (await organizationStore(organizationId)).mcpServers.save(
+        organizationId,
+        agentId,
+        server,
+        Date.now(),
+      ),
+    delete: async (organizationId, agentId, id) =>
+      (await organizationStore(organizationId)).mcpServers.delete(organizationId, agentId, id),
+  };
+
   return {
+    mcpServers,
     start() {
       if (transition("start")) void ensure();
       else transition("restart");

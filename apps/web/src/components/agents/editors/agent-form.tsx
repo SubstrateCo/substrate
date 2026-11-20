@@ -8,6 +8,7 @@ import { useId, type ReactNode } from "react";
 
 import { HarnessAvailability } from "../model-picker/harness-availability";
 import { ModelPicker } from "../model-picker/model-picker";
+import { HarnessAccount } from "../sign-in/harness-account";
 import { AgentInstructions } from "./agent-instructions";
 import { UnsavedSectionsBar } from "./unsaved-sections-bar";
 import {
@@ -184,25 +185,37 @@ export function AgentForm({
           <form.Subscribe selector={(state) => [state.values.harness, state.values.model] as const}>
             {([harness, model]) => (
               <div className="grid min-w-0 gap-2">
-                <ModelPicker
-                  key={`${userId}/${organizationId}`}
-                  id={`${formId}-model`}
+                <HarnessAccount
                   userId={userId}
                   organizationId={organizationId}
                   agentId={agent?.id}
                   harness={harness}
-                  model={model}
-                  disabled={busy}
-                  onChange={(nextHarness, nextModel) => {
-                    form.setFieldValue("harness", nextHarness);
-                    form.setFieldValue("model", nextModel);
-                  }}
-                />
-                <HarnessAvailability
-                  userId={userId}
-                  organizationId={organizationId}
-                  harness={harness}
-                />
+                >
+                  {(signIn) => (
+                    <>
+                      <ModelPicker
+                        key={`${userId}/${organizationId}`}
+                        id={`${formId}-model`}
+                        userId={userId}
+                        organizationId={organizationId}
+                        agentId={agent?.id}
+                        harness={harness}
+                        model={model}
+                        disabled={busy}
+                        onSignIn={signIn}
+                        onChange={(nextHarness, nextModel) => {
+                          form.setFieldValue("harness", nextHarness);
+                          form.setFieldValue("model", nextModel);
+                        }}
+                      />
+                      <HarnessAvailability
+                        userId={userId}
+                        organizationId={organizationId}
+                        harness={harness}
+                      />
+                    </>
+                  )}
+                </HarnessAccount>
               </div>
             )}
           </form.Subscribe>

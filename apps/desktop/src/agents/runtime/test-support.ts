@@ -34,6 +34,15 @@ import { join } from "node:path";
 export const agentId = "00000000-0000-4000-8000-0000000000a1";
 export const organizationId = "org-1";
 export const installationId = "00000000-0000-4000-8000-0000000000d1";
+/** ACP `session/request_permission` params with one allow and one reject option. */
+export const permissionRequest = {
+  sessionId: "native",
+  toolCall: { toolCallId: "call-1", title: "ls", rawInput: { command: "ls" } },
+  options: [
+    { optionId: "allow", name: "Allow", kind: "allow_once" },
+    { optionId: "deny", name: "Reject", kind: "reject_once" },
+  ],
+};
 
 const noCapabilities: AdapterCapabilities = {
   steer: false,

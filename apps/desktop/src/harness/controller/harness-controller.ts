@@ -4,13 +4,21 @@ import {
   harnessInspectionSchema,
   harnessLocalConfigurationSchema,
   harnessModelCatalogSchema,
+  harnessNativeConfigurationSchema,
   harnessSessionRefSchema,
+  harnessSignInStateSchema,
   commandSchema,
   type HarnessCommand,
   type HarnessCommandResult,
   type HarnessErrorCode,
 } from "@substrate/contracts/harness";
-import { harnessMethods, localHarnessMethods } from "@substrate/contracts/harness/ipc";
+import {
+  harnessMethods,
+  localHarnessMethods,
+  rendererLocalSchemas,
+  rendererSignInSchemas,
+  signInHarnessMethods,
+} from "@substrate/contracts/harness/ipc";
 import type { HarnessAPI, HarnessMethod } from "@substrate/contracts/harness/ipc";
 import {
   localToolRequest,
@@ -26,12 +34,17 @@ import {
 } from "../../session/desktop-session-authority.ts";
 import { createMcpApiProxy } from "../mcp/mcp-api-proxy.ts";
 import { HarnessWorkerError, type HarnessWorker } from "../worker/protocol.ts";
-import { prepareLocalInput } from "./local-configuration.ts";
+import {
+  prepareLocalInput,
+  prepareMcpServerSave,
+  type LocalMcpServers,
+} from "./local-configuration.ts";
 import { join } from "node:path";
 import { z } from "zod";
 
 const methodSchema = z.enum(harnessMethods);
 const localMethodSchema = z.enum(localHarnessMethods);
+const signInMethodSchema = z.enum(signInHarnessMethods);
 const interruptReceiptSchema = z.object({ stillQueuedInputIds: z.array(z.string()).optional() });
 
 /** A native command failed after authorization passed. Other sessions keep running. */
@@ -64,6 +77,8 @@ export function createHarnessController(options: {
   fetchAPI: (url: string, init: RequestInit) => Promise<Response>;
   authority: DesktopSessionAuthority;
   localToolHandler?: LocalToolProxy;
+  /** The account's local storage of user-added MCP servers. */
+  mcpServers: LocalMcpServers;
   onResult?: Parameters<typeof createMcpApiProxy>[0]["onResult"];
   createWorker: (
     accountDirectory: string,
@@ -125,6 +140,90 @@ export function createHarnessController(options: {
     };
   }
 
+  /** An agent of the verified organization's catalog, as main configured the worker with. */
+  async function requireAgent(agentId: string) {
+    const { agents } = await authority.catalog();
+    if (!agents.some((agent) => agent.id === agentId)) throw new Error("Agent not found.");
+  }
+
+  /**
+   * Skills live in the agent folder, which the worker serves. MCP servers live in main's local
+   * storage, and the worker receives them with each open command.
+   */
+  async function runLocal(
+    target: HarnessWorker,
+    method: z.infer<typeof localMethodSchema>,
+    value: IpcValue,
+    organizationId: string,
+  ) {
+    switch (method) {
+      case "saveMcpServer": {
+        const { agentId, server } = prepareMcpServerSave(value);
+        await requireAgent(agentId);
+        return options.mcpServers.save(organizationId, agentId, server);
+      }
+      case "deleteMcpServer": {
+        const { agentId, id } = rendererLocalSchemas.deleteMcpServer.parse(value);
+        await requireAgent(agentId);
+        return options.mcpServers.delete(organizationId, agentId, id);
+      }
+      case "scanConfiguration": {
+        const input = prepareLocalInput(method, value, organizationId);
+        const native = harnessNativeConfigurationSchema.parse(await target.request(method, input));
+        return harnessLocalConfigurationSchema.parse({
+          ...native,
+          mcpServers: await options.mcpServers.list(organizationId, input.agentId),
+        });
+      }
+      case "listModels": {
+        const input = prepareLocalInput(method, value, organizationId);
+        const catalog = harnessModelCatalogSchema.parse(await target.request(method, input));
+        if (catalog.harness !== input.harness) throw new Error("Invalid model catalog.");
+        return catalog;
+      }
+      case "saveSkill":
+        return target.request(method, prepareLocalInput(method, value, organizationId));
+      case "deleteSkill":
+        return target.request(method, prepareLocalInput(method, value, organizationId));
+      case "resetDefaults":
+        return target.request(method, prepareLocalInput(method, value, organizationId));
+    }
+  }
+
+  /**
+   * Sign-in is per native agent on this desktop, not per organization. The agent keeps the
+   * credentials; main relays only the method ID, status, terminal text, and input lines.
+   */
+  async function runSignIn(
+    target: HarnessWorker,
+    method: z.infer<typeof signInMethodSchema>,
+    value: IpcValue,
+  ) {
+    switch (method) {
+      case "signIn": {
+        const input = rendererSignInSchemas.signIn.parse(value);
+        const state = harnessSignInStateSchema.parse(await target.request(method, input));
+        if (state.harness !== input.harness) throw new Error("Invalid sign-in state.");
+        return state;
+      }
+      case "readSignIn": {
+        const input = rendererSignInSchemas.readSignIn.parse(value);
+        const state = harnessSignInStateSchema.parse(await target.request(method, input));
+        if (state.loginId !== input.loginId) throw new Error("Invalid sign-in state.");
+        return state;
+      }
+      case "sendSignInInput":
+        await target.request(method, rendererSignInSchemas.sendSignInInput.parse(value));
+        return;
+      case "cancelSignIn":
+        await target.request(method, rendererSignInSchemas.cancelSignIn.parse(value));
+        return;
+      case "signOut":
+        await target.request(method, rendererSignInSchemas.signOut.parse(value));
+        return;
+    }
+  }
+
   async function perform(method: HarnessMethod, value?: IpcValue) {
     const session = capture();
     try {
@@ -156,21 +255,20 @@ export function createHarnessController(options: {
         sync.assertCurrent(auth.identity);
         return { connected: true, organizationId: auth.organizationId };
       }
-      const localMethod = localMethodSchema.safeParse(method);
-      if (localMethod.success) {
-        const input = prepareLocalInput(localMethod.data, value, auth.organizationId);
+      const signInMethod = signInMethodSchema.safeParse(method);
+      if (signInMethod.success) {
         if (!worker || identity !== auth.identity) throw new Error("Organization unavailable.");
         const local = capture();
-        const result = await worker.request(localMethod.data, input);
+        const result = await runSignIn(worker, signInMethod.data, value);
         local.assertCurrent(auth.identity);
-        if (method === "scanConfiguration") {
-          return harnessLocalConfigurationSchema.parse(result);
-        }
-        if (method === "listModels") {
-          const catalog = harnessModelCatalogSchema.parse(result);
-          if (catalog.harness !== input.harness) throw new Error("Invalid model catalog.");
-          return catalog;
-        }
+        return result;
+      }
+      const localMethod = localMethodSchema.safeParse(method);
+      if (localMethod.success) {
+        if (!worker || identity !== auth.identity) throw new Error("Organization unavailable.");
+        const local = capture();
+        const result = await runLocal(worker, localMethod.data, value, auth.organizationId);
+        local.assertCurrent(auth.identity);
         return result;
       }
       if (!worker || identity !== auth.identity) return { connected: false };
@@ -254,7 +352,9 @@ export function createHarnessController(options: {
       }
       // SAFETY: perform() returns the contract's output shape for each method; the bridge parses it again.
       const result = queue.then(() => perform(parsed.data, value)) as Promise<HarnessResult<M>>;
-      if (parsed.data !== "listModels") queue = result.then(ignore, ignore);
+      // Model discovery and sign-in can take minutes; other renderer work does not wait for them.
+      if (parsed.data !== "listModels" && !signInMethodSchema.safeParse(parsed.data).success)
+        queue = result.then(ignore, ignore);
       if (parsed.data === "synchronize") {
         // SAFETY: this run is a synchronize run.
         syncing = result as Promise<HarnessResult<"synchronize">>;

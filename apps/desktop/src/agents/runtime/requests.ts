@@ -1,13 +1,13 @@
 import {
+  acpRequestData,
+  acpRequestResponse,
   blockingRequestTimeoutMs,
   denyResponse,
   liveTurnStatuses,
-  nativeHarnessResponse,
-  nativeRequestData,
-  normalizeHarnessRequest,
+  normalizeAcpRequest,
+  type AcpRequestData,
   type AgentRequestPayload,
   type AgentRequestResponse,
-  type NativeRequestData,
 } from "@substrate/contracts/agent-work";
 import type { HarnessEventBody } from "@substrate/contracts/harness";
 
@@ -22,7 +22,7 @@ interface OpenRequest {
   sessionId: string;
   userAgentId: string;
   kind: RequestOpened["kind"];
-  data: NativeRequestData;
+  data: AcpRequestData;
   payload: AgentRequestPayload;
   live: LiveTurn;
   timer: () => void;
@@ -48,7 +48,7 @@ export function createRequestBridge(context: RuntimeContext) {
       organizationId: context.organizationId,
       sessionId: request.sessionId,
       requestId: request.nativeRequestId,
-      response: nativeHarnessResponse(request.live.harness, request.kind, request.data, response),
+      response: acpRequestResponse(request.kind, request.data, response),
     });
   }
 
@@ -88,8 +88,8 @@ export function createRequestBridge(context: RuntimeContext) {
 
   return {
     async opened(live: LiveTurn, event: Pick<RequestOpened, "requestId" | "kind" | "data">) {
-      const data = nativeRequestData.parse(event.data);
-      const payload = normalizeHarnessRequest(live.harness, event.kind, data);
+      const data = acpRequestData.parse(event.data);
+      const payload = normalizeAcpRequest(event.kind, data);
       const now = context.now();
       if (!payload) {
         await context.store.events.append(

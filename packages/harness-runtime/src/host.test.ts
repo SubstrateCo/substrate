@@ -124,6 +124,7 @@ const open = {
   folder: "main" as const,
   epoch: 0,
   prefix: "# Managed policy\n",
+  mcpServers: [],
 };
 const turn = {
   type: "turn" as const,
@@ -259,6 +260,8 @@ test("an open of a session that closes after its live turn waits with session-cl
 test("open rewrites the instructions file with the managed prefix and reports failed resumes", async () => {
   const f = await host();
   try {
+    // OpenCode takes the managed prefix through its instructions file.
+    await f.host.configure({ organizationId: "org-a", agents: [agent({ harness: "opencode" })] });
     const ref = await f.host.execute({ ...open, nativeSessionId: "lost" });
     expect(ref).toMatchObject({ nativeSessionId: "native-new", resumed: false });
     const instructions = await readFile(join(root, "orgs", "org-a", agentId, "AGENTS.md"), "utf8");
@@ -348,6 +351,28 @@ test("open with another epoch or native session replaces the open session", asyn
       ["session-a", "closed"],
       ["session-a", "closed"],
     ]);
+  } finally {
+    await f.host.dispose();
+  }
+});
+
+test("the agent's MCP servers reach the adapter, and a change reopens and resumes the session", async () => {
+  const f = await host();
+  const server = {
+    id: "tools",
+    name: "Tools",
+    transport: "http" as const,
+    url: "https://tools.example/mcp",
+  };
+  try {
+    await f.host.execute({ ...open, nativeSessionId: "native-1", mcpServers: [server] });
+    expect(f.native.state.context?.mcpServers).toEqual([server]);
+    await f.host.execute({ ...open, nativeSessionId: "native-1", mcpServers: [server] });
+    expect(f.native.state.resumes).toEqual(["native-1"]);
+    await f.host.execute({ ...open, nativeSessionId: "native-1" });
+    expect(f.native.state.resumes).toEqual(["native-1", "native-1"]);
+    expect(f.native.state.context?.mcpServers).toEqual([]);
+    expect(closedEvents(f.events)).toEqual([["session-a", "closed"]]);
   } finally {
     await f.host.dispose();
   }
@@ -594,6 +619,56 @@ test("a failed disconnect still ends its turn, revokes MCP and allows a fresh op
     expect(f.events.filter((event) => event.type === "turn.completed")).toHaveLength(2);
   } finally {
     fail = false;
+    await f.host.dispose();
+  }
+});
+
+test("a native exit ends the live turn and closes the session with native_exited", async () => {
+  const native = fakeNative();
+  const exited = Promise.withResolvers<void>();
+  const f = await host({
+    connect: async (...args) => ({ ...(await native.connect(...args)), closed: exited.promise }),
+  });
+  try {
+    await f.host.execute(open);
+    await f.host.execute(turn);
+    exited.resolve();
+    await Bun.sleep(0);
+    expect(f.events.map((event) => event.type)).toEqual([
+      "turn.started",
+      "turn.completed",
+      "session.closed",
+    ]);
+    expect(f.events[1]).toMatchObject({ turnId, result: { status: "failed" } });
+    expect(closedEvents(f.events)).toEqual([["session-a", "native_exited"]]);
+    await rejects(f.host.execute(turn), { code: "not-connected" });
+  } finally {
+    await f.host.dispose();
+  }
+});
+
+test("a native exit after the host closed the session keeps the host's reason", async () => {
+  const native = fakeNative();
+  const exited = Promise.withResolvers<void>();
+  const f = await host({
+    connect: async (...args) => {
+      const adapter = await native.connect(...args);
+      return {
+        ...adapter,
+        closed: exited.promise,
+        disconnect: async () => {
+          exited.resolve();
+          await adapter.disconnect();
+        },
+      };
+    },
+  });
+  try {
+    await f.host.execute(open);
+    await f.host.execute({ ...open, type: "close" });
+    await Bun.sleep(0);
+    expect(closedEvents(f.events)).toEqual([["session-a", "closed"]]);
+  } finally {
     await f.host.dispose();
   }
 });

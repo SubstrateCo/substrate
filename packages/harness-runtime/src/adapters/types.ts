@@ -2,6 +2,7 @@ import type {
   AdapterCapabilities,
   HarnessAgent,
   HarnessEventBody,
+  HarnessMcpServer,
   InterruptReceipt,
   TurnInput,
   TurnKind,
@@ -20,30 +21,22 @@ export type EventScope = "turn" | "session";
 export interface AdapterContext {
   model?: HarnessAgent["model"];
   directory: string;
-  executable: string;
   /**
    * Stable MCP endpoint and token for the native session's configuration. The host binds the
    * current turn's context to it at each turn and unbinds it when the turn ends, so calls made
    * outside a turn fail.
    */
   lease?: McpLease;
+  /** Substrate-owned user MCP servers. The adapter passes them on every session setup. */
+  mcpServers?: HarnessMcpServer[];
   /** The host adds sessionId, organizationId, turnId, generation and timestamp. */
   emit(event: HarnessEventBody, scope?: EventScope): void;
-}
-
-/** The context of an adapter that delivers the managed prefix through a native channel. */
-export interface NativePrefixContext extends AdapterContext {
-  /** Managed policy prefix for this epoch. It stays byte-stable within the epoch. */
-  prefix: string;
 }
 
 /** Per-turn options. unattended turns use the no-ask profile: every native prompt is denied. */
 export interface TurnOptions {
   mode: TurnKind;
 }
-
-/** The message a no-ask profile returns to the model for each denied prompt. */
-export const unattendedDenial = "Not allowed in background work; use propose or ask";
 
 export interface NativeAdapter {
   readonly capabilities: AdapterCapabilities;
@@ -56,4 +49,9 @@ export interface NativeAdapter {
   /** The host has checked that the response is JSON. The adapter parses its shape. */
   respond(requestId: string, response: JsonValue | undefined): Promise<void>;
   disconnect(): Promise<void>;
+  /**
+   * Resolves when the native process or connection ends by itself. The host then closes the
+   * session with session.closed { native_exited }.
+   */
+  readonly closed?: Promise<void>;
 }

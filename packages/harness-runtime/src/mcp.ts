@@ -1,5 +1,6 @@
 import type {
   LocalToolProxy,
+  OffloadedOutput,
   TurnContext,
   WorkspaceApiProxy,
   WorkspaceApiResult,
@@ -8,6 +9,7 @@ import {
   mcpTools,
   type LocalToolName,
   type McpInput,
+  type McpOutput,
   type McpToolName,
   type ToolDefinition,
 } from "@substrate/contracts/harness/tools";
@@ -35,6 +37,26 @@ export interface McpLeaseOptions {
   agentFolder: string;
 }
 
+/** A tools/call result. Both MCP SDK generations accept this shape. */
+export type McpToolResult = {
+  isError?: boolean;
+  content: { type: "text"; text: string }[];
+  structuredContent?: McpOutput<McpToolName> | OffloadedOutput;
+};
+
+/**
+ * The transport-agnostic side of one lease: its tool set, routing, output offload and turn
+ * binding. The loopback HTTP server and the MCP-over-ACP provider (acp/mcp-provider.ts) both
+ * serve this, so a session sees the same tools and the same NO_TURN rule on either transport.
+ */
+export interface McpToolEndpoint {
+  readonly tools: readonly McpToolName[];
+  /** False once the lease is revoked or expired. A use renews an unexpired lease. */
+  touch(): boolean;
+  /** Input must already match the tool's input schema; both MCP servers validate it first. */
+  call(name: McpToolName, input: McpInput<McpToolName>): Promise<McpToolResult>;
+}
+
 /**
  * A stable MCP endpoint for one native session. Calls succeed only while a turn is bound: the
  * host binds the turn context at each turn and unbinds it when the turn ends.
@@ -45,9 +67,42 @@ export interface McpLease {
   organizationId: string;
   agentId: string;
   sessionId: string;
+  /**
+   * The lease's tools for in-process transports. Set on every lease from createStartupMcp;
+   * absent on test doubles, which then reach agents only over HTTP.
+   */
+  endpoint?: McpToolEndpoint;
   bind(context: TurnContext): void;
   unbind(): void;
   revoke(): void;
+}
+
+export const mcpServerInfo = { name: "substrate", version: "1.0.0" };
+
+export const mcpInstructions =
+  "Substrate connects workspace search, messages, tasks, CRM, and record links. " +
+  "Use your harness's tool discovery to discover relevant operations when their schemas are not loaded; " +
+  "do not assume a capability is unavailable just because its tool is not listed in context. " +
+  "Load the relevant domain skills for workflow guidance. Only tools offered to this session are available; " +
+  "discovery does not grant record access or permission to write.";
+
+/** registerTool config for both MCP SDK generations. */
+export function mcpToolConfig(name: McpToolName) {
+  const tool = mcpTools[name];
+  const hints: ToolDefinition = tool;
+  // No outputSchema: a large result is replaced by an offload reference of another shape.
+  return {
+    title: tool.title,
+    description: tool.description,
+    inputSchema: tool.input,
+    annotations: {
+      title: tool.title,
+      readOnlyHint: hints.readOnly,
+      destructiveHint: hints.destructive ?? false,
+      idempotentHint: hints.readOnly || (hints.idempotent ?? false),
+      openWorldHint: false,
+    },
+  };
 }
 
 export interface StartupMcpHandlers {
@@ -65,6 +120,7 @@ interface LeaseState {
   context?: TurnContext;
   /** Output files per tool in the bound turn. */
   outputs: Map<string, number>;
+  endpoint: McpToolEndpoint;
 }
 
 /** What an agent should do next for each workspace API error code. */
@@ -110,6 +166,85 @@ async function runMemoryTool(
   }
 }
 
+const unavailable: McpToolResult = {
+  isError: true,
+  content: [
+    {
+      type: "text",
+      text: "Workspace operation unavailable. Check the session, workspace and agent access before retrying.",
+    },
+  ],
+};
+
+/** Runs one tool call for a lease. live: the lease is still issued and unexpired. */
+async function callTool(
+  lease: LeaseState,
+  handlers: StartupMcpHandlers,
+  live: () => boolean,
+  name: McpToolName,
+  input: McpInput<McpToolName>,
+): Promise<McpToolResult> {
+  try {
+    if (!live()) throw new Error("Credential revoked or expired");
+    if (!lease.options.tools.includes(name)) throw new Error("Tool not offered on this lease");
+    // The turn is captured when the call starts; a call in flight at turn end completes.
+    const turn = lease.context;
+    const { organizationId, agentId, sessionId } = lease.options;
+    if (!turn)
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              code: "NO_TURN",
+              message: "No turn is running for this session.",
+              hint: errorHint("NO_TURN"),
+            }),
+          },
+        ],
+      };
+    let result: WorkspaceApiResult;
+    if (memoryTools.has(name)) result = await runMemoryTool(name, lease.options.agentFolder, input);
+    else if (isLocalTool(name)) {
+      if (!handlers.local) throw new Error("Local tools unavailable");
+      result = await handlers.local({
+        tool: name,
+        sessionId,
+        organizationId,
+        agentId,
+        turn,
+        input,
+      });
+    } else {
+      if (!handlers.workspace) throw new Error("Workspace API unavailable");
+      result = await handlers.workspace({ tool: name, organizationId, agentId, turn, input });
+    }
+    if (!live()) throw new Error("Credential revoked or expired");
+    if (!result.success)
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({ ...result.error, hint: errorHint(result.error.code) }),
+          },
+        ],
+      };
+    const data = mcpTools[name].output.parse(result.data);
+    const sequence = (lease.outputs.get(name) ?? 0) + 1;
+    const offloaded = await offloadOutput(lease.options.folder, turn.turnId, name, sequence, data);
+    if (offloaded) lease.outputs.set(name, sequence);
+    const structured = offloaded ?? data;
+    return {
+      structuredContent: structured,
+      content: [{ type: "text", text: JSON.stringify(structured) }],
+    };
+  } catch {
+    return unavailable;
+  }
+}
+
 export async function createStartupMcp(
   handlers: StartupMcpHandlers = {},
   options: { leaseTtlMs?: number } = {},
@@ -140,12 +275,11 @@ export async function createStartupMcp(
         timingSafeEqual(Buffer.from(key), Buffer.from(candidate)),
     );
     const lease = token ? leases.get(token) : undefined;
-    if (!token || !lease || !valid(lease)) {
+    // Use renews the lease while its session stays open.
+    if (!token || !lease || !lease.endpoint.touch()) {
       response.writeHead(401).end();
       return;
     }
-    // Use renews the lease while its session stays open.
-    lease.expires = Date.now() + ttl;
     if (request.method !== "POST") {
       response.writeHead(405, { Allow: "POST" }).end();
       return;
@@ -169,119 +303,12 @@ export async function createStartupMcp(
       response.writeHead(400).end();
       return;
     }
-    const live = () => leases.get(token) === lease && valid(lease);
-    const mcp = new McpServer(
-      { name: "substrate", version: "1.0.0" },
-      {
-        instructions:
-          "Substrate connects workspace search, messages, tasks, CRM, and record links. " +
-          "Use your harness's tool discovery to discover relevant operations when their schemas are not loaded; " +
-          "do not assume a capability is unavailable just because its tool is not listed in context. " +
-          "Load the relevant domain skills for workflow guidance. Only tools offered to this session are available; " +
-          "discovery does not grant record access or permission to write.",
-      },
-    );
-    for (const name of lease.options.tools) {
-      const tool = mcpTools[name];
-      const hints: ToolDefinition = tool;
-      // No outputSchema: a large result is replaced by an offload reference of another shape.
-      mcp.registerTool(
-        name,
-        {
-          title: tool.title,
-          description: tool.description,
-          inputSchema: tool.input,
-          annotations: {
-            title: tool.title,
-            readOnlyHint: hints.readOnly,
-            destructiveHint: hints.destructive ?? false,
-            idempotentHint: hints.readOnly || (hints.idempotent ?? false),
-            openWorldHint: false,
-          },
-        },
-        async (input: McpInput<McpToolName>) => {
-          try {
-            if (!live()) throw new Error("Credential revoked or expired");
-            // The turn is captured when the call starts; a call in flight at turn end completes.
-            const turn = lease.context;
-            const { organizationId, agentId, sessionId } = lease.options;
-            if (!turn)
-              return {
-                isError: true,
-                content: [
-                  {
-                    type: "text" as const,
-                    text: JSON.stringify({
-                      code: "NO_TURN",
-                      message: "No turn is running for this session.",
-                      hint: errorHint("NO_TURN"),
-                    }),
-                  },
-                ],
-              };
-            let result: WorkspaceApiResult;
-            if (memoryTools.has(name))
-              result = await runMemoryTool(name, lease.options.agentFolder, input);
-            else if (isLocalTool(name)) {
-              if (!handlers.local) throw new Error("Local tools unavailable");
-              result = await handlers.local({
-                tool: name,
-                sessionId,
-                organizationId,
-                agentId,
-                turn,
-                input,
-              });
-            } else {
-              if (!handlers.workspace) throw new Error("Workspace API unavailable");
-              result = await handlers.workspace({
-                tool: name,
-                organizationId,
-                agentId,
-                turn,
-                input,
-              });
-            }
-            if (!live()) throw new Error("Credential revoked or expired");
-            if (!result.success)
-              return {
-                isError: true,
-                content: [
-                  {
-                    type: "text" as const,
-                    text: JSON.stringify({ ...result.error, hint: errorHint(result.error.code) }),
-                  },
-                ],
-              };
-            const data = tool.output.parse(result.data);
-            const sequence = (lease.outputs.get(name) ?? 0) + 1;
-            const offloaded = await offloadOutput(
-              lease.options.folder,
-              turn.turnId,
-              name,
-              sequence,
-              data,
-            );
-            if (offloaded) lease.outputs.set(name, sequence);
-            const structured = offloaded ?? data;
-            return {
-              structuredContent: structured,
-              content: [{ type: "text" as const, text: JSON.stringify(structured) }],
-            };
-          } catch {
-            return {
-              isError: true,
-              content: [
-                {
-                  type: "text" as const,
-                  text: "Workspace operation unavailable. Check the session, workspace and agent access before retrying.",
-                },
-              ],
-            };
-          }
-        },
+    const mcp = new McpServer(mcpServerInfo, { instructions: mcpInstructions });
+    const { endpoint } = lease;
+    for (const name of endpoint.tools)
+      mcp.registerTool(name, mcpToolConfig(name), (input: McpInput<McpToolName>) =>
+        endpoint.call(name, input),
       );
-    }
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
       enableJsonResponse: true,
@@ -317,10 +344,21 @@ export async function createStartupMcp(
   return {
     issue(options: McpLeaseOptions): McpLease {
       const token = randomBytes(32).toString("hex");
+      const tools = [...options.tools];
+      const live = () => leases.get(token) === state && valid(state);
       const state: LeaseState = {
-        options: { ...options, tools: [...options.tools] },
+        options: { ...options, tools },
         expires: Date.now() + ttl,
         outputs: new Map<string, number>(),
+        endpoint: {
+          tools,
+          touch() {
+            if (!live()) return false;
+            state.expires = Date.now() + ttl;
+            return true;
+          },
+          call: (name, input) => callTool(state, handlers, live, name, input),
+        },
       };
       leases.set(token, state);
       return {
@@ -329,6 +367,7 @@ export async function createStartupMcp(
         organizationId: options.organizationId,
         agentId: options.agentId,
         sessionId: options.sessionId,
+        endpoint: state.endpoint,
         bind(context) {
           state.context = context;
           state.outputs.clear();

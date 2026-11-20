@@ -1,4 +1,5 @@
 import {
+  maxHarnessMcpServers,
   startupSkillIds,
   startupSkills,
   type HarnessKind,
@@ -12,6 +13,7 @@ import { useRef, useState, type ReactNode } from "react";
 
 import { CatalogRow } from "../catalog/catalog-row";
 import type { AgentSection } from "../editors/agent-form";
+import { McpServerEditor } from "../editors/mcp-server-editor";
 import { SkillEditor } from "../editors/skill-editor";
 import { openingName } from "../editors/skill-name";
 import { McpServerRow, StartupSkills } from "./startup-configuration";
@@ -22,13 +24,13 @@ import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { SettingsList, SettingsNote, SettingsSection } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { harnessLabel } from "@/lib/agents/harness-meta";
+import { mcpServerLimitReached } from "@/lib/agents/mcp-server-draft";
 import { useAgentConfigurationMutations } from "@/queries/agents/configuration-mutations";
 import {
   localAgentConfiguration,
   localConfigurationOptions,
 } from "@/queries/agents/local-configuration";
-import { Info, Laptop, Plus, RefreshCw, RotateCcw } from "lucide-react";
+import { Blocks, Info, Laptop, Plus, RefreshCw, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 
 /** How the agent reaches a server: the command it runs or the host it calls. */
@@ -52,46 +54,78 @@ function McpServersSection({
   scanned,
   defaults,
   available,
-  harness,
   refresh,
   status,
+  busy,
+  onCreate,
+  onEdit,
+  onDelete,
 }: {
   servers: readonly HarnessMcpServer[];
   scanned: boolean;
   defaults: boolean;
   available: boolean;
-  harness: HarnessKind;
   refresh: ReactNode;
   status: ReactNode;
+  /** A save or delete is running. */
+  busy: boolean;
+  onCreate: () => void;
+  onEdit: (server: HarnessMcpServer) => void;
+  onDelete: (server: HarnessMcpServer) => void;
 }) {
+  const full = mcpServerLimitReached(servers);
   return (
     <SettingsSection
       title="MCP servers"
-      description="Tool servers this agent can use, read from its configuration on its desktop."
-      actions={refresh}
+      description="Tool servers this agent can use. Substrate keeps them on its desktop and gives them to the agent at the start of each session."
+      actions={
+        <>
+          {refresh}
+          <Button
+            type="button"
+            size="sm"
+            disabled={!available || !scanned || full || busy}
+            onClick={onCreate}
+          >
+            <Plus />
+            New server
+          </Button>
+        </>
+      }
     >
       {status}
-      {(defaults || scanned) && (
-        <SettingsList
-          description={
-            defaults
-              ? "Substrate adds the built-in server, which lets the agent read and post in this workspace."
-              : undefined
-          }
-        >
-          {defaults && <McpServerRow name="substrate" detail="Substrate workspace" builtIn />}
-          {servers.map((server) => (
-            <McpServerRow key={server.id} name={server.name} detail={serverDetail(server)} />
-          ))}
-          {scanned && !servers.length && !defaults && (
-            <li className="px-4 py-3 text-sm text-muted-foreground">No MCP servers.</li>
+      {defaults && (
+        <SettingsList description="Substrate adds the built-in server, which lets the agent read and post in this workspace.">
+          <McpServerRow name="substrate" detail="Substrate workspace" builtIn />
+        </SettingsList>
+      )}
+      {scanned && (
+        <SettingsList title="Your servers">
+          {servers.length ? (
+            servers.map((server) => (
+              <CatalogRow
+                key={server.id}
+                name={server.name}
+                detail={serverDetail(server)}
+                picture={
+                  <Blocks aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                }
+                disabled={busy}
+                onEdit={() => onEdit(server)}
+                onDelete={() => onDelete(server)}
+              />
+            ))
+          ) : (
+            <li className="px-4 py-3 text-sm text-muted-foreground">
+              No servers of your own yet. Add one to give this agent more tools.
+            </li>
           )}
         </SettingsList>
       )}
-      {available && (
+      {full && (
         <SettingsNote icon={<Info />}>
-          Substrate lists these servers but can’t add or edit them yet. Change them in{" "}
-          {harnessLabel(harness)}’s own configuration for this agent, then read the files again.
+          This agent has {maxHarnessMcpServers} servers, the most it can have. Delete one to add
+          another.
         </SettingsNote>
       )}
     </SettingsSection>
@@ -188,7 +222,9 @@ export function AgentConfiguration({
   const container = useRef<HTMLDivElement>(null);
   const { remember: rememberLauncher, restore: restoreFocus } = useFocusReturn(container);
   const configuration = useQuery(localConfigurationOptions(userId, local));
-  const { save, remove, reset } = useAgentConfigurationMutations(local);
+  const { save, remove, reset, saveServer, removeServer } = useAgentConfigurationMutations(local);
+  const [editingServer, setEditingServer] = useState<{ server?: HarnessMcpServer }>();
+  const [deletingServer, setDeletingServer] = useState<HarnessMcpServer>();
   const [resetting, setResetting] = useState(false);
   const { skills, managedSkills } = skillLists(configuration.data?.skills, !available && defaults);
   const servers = configuration.data?.mcpServers ?? [];
@@ -281,9 +317,21 @@ export function AgentConfiguration({
         scanned={!!configuration.data}
         defaults={defaults}
         available={available}
-        harness={harness}
         refresh={refresh}
         status={status}
+        busy={saveServer.isPending || removeServer.isPending}
+        onCreate={() => {
+          rememberLauncher();
+          setEditingServer({});
+        }}
+        onEdit={(server) => {
+          rememberLauncher();
+          setEditingServer({ server });
+        }}
+        onDelete={(server) => {
+          rememberLauncher();
+          setDeletingServer(server);
+        }}
       />
     );
   return (
@@ -307,6 +355,52 @@ export function AgentConfiguration({
               },
             })
           }
+        />
+      )}
+      {editingServer && (
+        <McpServerEditor
+          server={editingServer.server}
+          servers={servers}
+          pending={saveServer.isPending}
+          error={saveServer.error}
+          onRestoreFocus={restoreFocus}
+          onClose={() => {
+            setEditingServer(undefined);
+            saveServer.reset();
+          }}
+          onSave={(server) =>
+            saveServer.mutate(server, {
+              onSuccess: () => {
+                toast.success(editingServer.server ? "Server saved." : "Server added.");
+                setEditingServer(undefined);
+              },
+            })
+          }
+        />
+      )}
+      {deletingServer && (
+        <ConfirmDialog
+          title={`Delete ${deletingServer.name}?`}
+          description="This removes the server from this agent on this desktop. New sessions won’t use it. You can’t undo this."
+          confirmLabel="Delete server"
+          pendingLabel="Deleting."
+          errorDescription="We couldn’t delete this server. Try again."
+          destructive
+          pending={removeServer.isPending}
+          error={removeServer.error}
+          onRestoreFocus={restoreFocus}
+          onConfirm={() =>
+            removeServer.mutate(deletingServer.id, {
+              onSuccess: () => {
+                toast.success("Server deleted.");
+                setDeletingServer(undefined);
+              },
+            })
+          }
+          onClose={() => {
+            setDeletingServer(undefined);
+            removeServer.reset();
+          }}
         />
       )}
       {resetting && (

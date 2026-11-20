@@ -2,7 +2,14 @@ import { sessionKeys } from "@substrate/contracts/agent-work";
 import type { HarnessCommand } from "@substrate/contracts/harness";
 import type { LocalToolName } from "@substrate/contracts/harness/tools";
 
-import { agentId, CodeError, openStore, organizationId, runtimeFixture } from "./test-support.ts";
+import {
+  agentId,
+  CodeError,
+  openStore,
+  organizationId,
+  permissionRequest,
+  runtimeFixture,
+} from "./test-support.ts";
 import { afterEach, expect, test } from "bun:test";
 
 let fixture: Awaited<ReturnType<typeof runtimeFixture>> | undefined;
@@ -435,9 +442,13 @@ test("a blocking request opens on the server, gets the owner's answer, and expir
   await f.runtime.sync();
   await f.advance(600);
   const turn = f.turns()[0]!;
-  const data = { toolName: "Bash", input: { command: "ls" } };
   await f.emit(turn.turnId, { type: "turn.started" });
-  await f.emit(turn.turnId, { type: "request.opened", requestId: "n1", kind: "permission", data });
+  await f.emit(turn.turnId, {
+    type: "request.opened",
+    requestId: "n1",
+    kind: "permission",
+    data: permissionRequest,
+  });
   const opened = f.posts.find((post) => post.method === "openRequest")!.body;
   expect(opened).toMatchObject({ turnId: turn.turnId, nativeRequestId: "n1", mode: "blocking" });
   expect((await f.store.turns.get(turn.turnId))!.status).toBe("waiting");
@@ -453,7 +464,12 @@ test("a blocking request opens on the server, gets the owner's answer, and expir
   await f.settle();
   expect(f.commands.at(-1)).toMatchObject({ type: "respond", requestId: "n1", response: "allow" });
 
-  await f.emit(turn.turnId, { type: "request.opened", requestId: "n2", kind: "permission", data });
+  await f.emit(turn.turnId, {
+    type: "request.opened",
+    requestId: "n2",
+    kind: "permission",
+    data: permissionRequest,
+  });
   await f.advance(10 * 60_000);
   expect(f.commands.at(-1)).toMatchObject({ type: "respond", requestId: "n2", response: "deny" });
   expect(
@@ -478,7 +494,7 @@ test("a burst of agent-work hints pulls once, and pulls answers only while a req
     type: "request.opened",
     requestId: "n1",
     kind: "permission",
-    data: { toolName: "Bash", input: { command: "ls" } },
+    data: permissionRequest,
   });
   f.answer({
     requestId: "server-1",
@@ -562,6 +578,25 @@ test("turns synchronize agent folders once, and again after agents change or the
   await f.message();
   await f.advance(60_000);
   expect(f.synchronizations.count).toBe(3);
+});
+
+test("the agent's stored MCP servers are sent with the open command", async () => {
+  const f = await started();
+  const server = {
+    id: "tools",
+    name: "Tools",
+    transport: "http" as const,
+    url: "https://tools.example/mcp",
+  };
+  await f.store.mcpServers.save(organizationId, agentId, server, 0);
+  await f.store.mcpServers.save("org-2", agentId, { ...server, id: "other" }, 0);
+  f.ownerMessage();
+  await f.runtime.sync();
+  await f.advance(600);
+  const open = f.commands.find(
+    (command): command is Extract<HarnessCommand, { type: "open" }> => command.type === "open",
+  )!;
+  expect(open.mcpServers).toEqual([server]);
 });
 
 test("a helper runs in its own folder and its finish wakes the parent with the report", async () => {

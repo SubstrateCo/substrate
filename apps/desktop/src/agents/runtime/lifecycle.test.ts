@@ -8,6 +8,7 @@ import {
   installationId,
   openStore,
   organizationId,
+  permissionRequest,
   runtimeFixture,
   type HostResult,
   type RuntimeFixture,
@@ -427,8 +428,12 @@ test("a blocking request that the server cannot open is denied at once", async (
   const turn = lastTurn(f);
   await f.emit(turn.turnId, { type: "turn.started" });
   f.outage.openRequest = true;
-  const data = { toolName: "Bash", input: { command: "ls" } };
-  await f.emit(turn.turnId, { type: "request.opened", requestId: "n1", kind: "permission", data });
+  await f.emit(turn.turnId, {
+    type: "request.opened",
+    requestId: "n1",
+    kind: "permission",
+    data: permissionRequest,
+  });
   expect(f.commands.at(-1)).toMatchObject({ type: "respond", requestId: "n1", response: "deny" });
   expect((await f.store.turns.get(turn.turnId))!.status).toBe("running");
 });
@@ -440,12 +445,11 @@ test("a request that opens on the server after its turn ended is closed", async 
   await f.emit(turn.turnId, { type: "turn.started" });
   const opening = deferred<{ id: string; status: string }>();
   f.hooks.openRequest = () => opening.promise;
-  const data = { toolName: "Bash", input: { command: "ls" } };
   f.runtime.onHarnessEvent({
     type: "request.opened",
     requestId: "n1",
     kind: "permission",
-    data,
+    data: permissionRequest,
     sessionId: turn.sessionId,
     organizationId,
     turnId: turn.turnId,
@@ -480,7 +484,7 @@ test("after a restart, server requests of interrupted turns are closed as orphan
       type: "request.opened",
       requestId: "n1",
       kind: "permission",
-      data: { toolName: "Bash", input: { command: "ls" } },
+      data: permissionRequest,
     });
     await before.close();
 

@@ -19,6 +19,24 @@ function errorCode(cause: unknown) {
   return isHarnessErrorCode(code) ? code : "harness-error";
 }
 
+/** Methods that run at once instead of waiting behind configuration work. */
+const immediateMethods = [
+  "execute",
+  "listModels",
+  "readProfile",
+  "signIn",
+  "readSignIn",
+  "sendSignInInput",
+  "cancelSignIn",
+  "signOut",
+] as const;
+
+function isImmediate(
+  request: HarnessWorkerRequest,
+): request is Extract<HarnessWorkerRequest, { method: (typeof immediateMethods)[number] }> {
+  return immediateMethods.some((method) => method === request.method);
+}
+
 // This dedicated process receives messages only from the trusted main-process controller.
 const port = process.parentPort;
 let host: RuntimeHarnessHost | undefined;
@@ -60,11 +78,8 @@ port.on(
     }
     // Session commands, model discovery and profile reads do not wait behind configuration
     // work. The host orders commands per session; interrupt and respond reach a live turn at once.
-    if (
-      data.method === "execute" ||
-      data.method === "listModels" ||
-      data.method === "readProfile"
-    ) {
+    // Sign-in reads and input also do not wait: a terminal login streams while other work runs.
+    if (isImmediate(data)) {
       const current = host;
       if (!current) {
         void reply(data.id, async () => {
@@ -72,11 +87,32 @@ port.on(
         });
         return;
       }
-      if (data.method === "execute") void reply(data.id, () => current.execute(data.value));
-      else if (data.method === "listModels")
-        void reply(data.id, () => current.listModels(data.value));
-      else void reply(data.id, () => current.readProfile(data.value));
-      return;
+      switch (data.method) {
+        case "execute":
+          void reply(data.id, () => current.execute(data.value));
+          return;
+        case "listModels":
+          void reply(data.id, () => current.listModels(data.value));
+          return;
+        case "readProfile":
+          void reply(data.id, () => current.readProfile(data.value));
+          return;
+        case "signIn":
+          void reply(data.id, () => current.signIn(data.value));
+          return;
+        case "readSignIn":
+          void reply(data.id, () => current.readSignIn(data.value));
+          return;
+        case "sendSignInInput":
+          void reply(data.id, () => current.sendSignInInput(data.value));
+          return;
+        case "cancelSignIn":
+          void reply(data.id, () => current.cancelSignIn(data.value));
+          return;
+        case "signOut":
+          void reply(data.id, () => current.signOut(data.value));
+          return;
+      }
     }
     queue = queue.then(() =>
       reply(data.id, async () => {
@@ -104,10 +140,6 @@ port.on(
             return host.deleteSkill(data.value);
           case "resetDefaults":
             return host.resetDefaults(data.value);
-          case "saveMcpServer":
-            return host.saveMcpServer(data.value);
-          case "deleteMcpServer":
-            return host.deleteMcpServer(data.value);
           default:
             throw new Error("Unsupported harness operation.", { cause: data satisfies never });
         }

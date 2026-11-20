@@ -26,7 +26,7 @@ export const userAgents = pgTable(
       .references(() => user.id, { onDelete: "cascade" }),
     name: text("name").notNull(),
     instructions: text("instructions").notNull(),
-    harness: text("harness", { enum: ["opencode", "antigravity", "claude", "codex"] }).notNull(),
+    harness: text("harness", { enum: ["opencode", "claude", "codex"] }).notNull(),
     model: text("model"),
     imageFileId: uuid("image_file_id"),
     picturePurpose: text("picture_purpose").notNull().default("avatar"),

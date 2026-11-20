@@ -20,10 +20,13 @@ export {
   harnessInspectionSchema,
   harnessLocalConfigurationSchema,
   harnessMcpServerSchema,
+  harnessNativeConfigurationSchema,
   harnessSkillSchema,
+  maxHarnessMcpServers,
   type HarnessInspection,
   type HarnessLocalConfiguration,
   type HarnessMcpServer,
+  type HarnessNativeConfiguration,
   type HarnessSkill,
 } from "./local.ts";
 export type {
@@ -52,9 +55,15 @@ export {
 } from "./turn-context.ts";
 export { POLICY_VERSION, managedPrefix, runtimePolicy, type ManagedPrefixInput } from "./policy.ts";
 export {
+  harnessAuthMethodSchema,
   harnessModelCatalogSchema,
+  harnessSignInStateSchema,
+  harnessSignInStatuses,
+  type HarnessAuthMethod,
   type HarnessModel,
   type HarnessModelCatalog,
+  type HarnessSignInState,
+  type HarnessSignInStatus,
 } from "./models.ts";
 export { commandSchema, harnessFolderSchema, harnessEventSchema } from "./runtime.ts";
 export { desktopAgentCatalogSchema } from "./catalog.ts";

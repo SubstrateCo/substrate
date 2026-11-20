@@ -48,6 +48,7 @@ export function composeDesktop(options: {
     ...options,
     authority,
     localToolHandler: (request) => agentWork.handleLocalTool(request),
+    mcpServers: agentWork.mcpServers,
     onResult: (request, result) => agentWork.observeToolCall(request, result),
     createWorker: (directory, proxy, localTools) =>
       createHarnessProcess(

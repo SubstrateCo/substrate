@@ -1,12 +1,7 @@
 import type { HarnessConfiguration } from "./agent.ts";
 import { harnessKinds, type HarnessKind } from "./kinds.ts";
-import type {
-  HarnessInspection,
-  HarnessLocalConfiguration,
-  HarnessMcpServer,
-  HarnessSkill,
-} from "./local.ts";
-import { harnessIdSchema } from "./local.ts";
+import type { HarnessInspection, HarnessNativeConfiguration, HarnessSkill } from "./local.ts";
+import { harnessIdSchema, harnessMcpServerSchema, maxHarnessMcpServers } from "./local.ts";
 import type { HarnessModelCatalog } from "./models.ts";
 import { turnContextSchema, turnKinds } from "./turn-context.ts";
 import { z } from "zod";
@@ -94,6 +89,8 @@ export const commandSchema = z.discriminatedUnion("type", [
     epoch: z.number().int().min(0),
     requireResume: z.boolean().optional(),
     prefix: z.string().max(100_000),
+    /** The agent's user-added MCP servers, passed to the harness at session setup. */
+    mcpServers: z.array(harnessMcpServerSchema).max(maxHarnessMcpServers),
   }),
   z.strictObject({
     type: z.literal("turn"),
@@ -176,7 +173,7 @@ const harnessEventBodySchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("error"), code: z.string(), message: z.string() }),
   z.object({
     type: z.literal("session.closed"),
-    reason: z.enum(["idle", "closed", "worker_exited", "configuration"]),
+    reason: z.enum(["idle", "closed", "worker_exited", "native_exited", "configuration"]),
   }),
 ]);
 export type HarnessEventBody = z.infer<typeof harnessEventBodySchema>;
@@ -197,13 +194,12 @@ export interface HarnessHost {
     scope: Omit<HarnessLocalScope, "agentId"> & { agentId?: string },
   ): Promise<HarnessModelCatalog>;
   configure(configuration: HarnessConfiguration): Promise<void>;
-  scanConfiguration(scope: HarnessLocalScope): Promise<HarnessLocalConfiguration>;
+  /** Skills in the agent folder. MCP servers live in Substrate's local storage, not here. */
+  scanConfiguration(scope: HarnessLocalScope): Promise<HarnessNativeConfiguration>;
   saveSkill(input: HarnessLocalScope & { skill: HarnessSkill }): Promise<void>;
   deleteSkill(input: HarnessLocalScope & { id: string }): Promise<void>;
   /** Overwrites the Substrate default instructions, profile, and skill files. Other files stay. */
   resetDefaults(scope: HarnessLocalScope): Promise<void>;
-  saveMcpServer(input: HarnessLocalScope & { server: HarnessMcpServer }): Promise<void>;
-  deleteMcpServer(input: HarnessLocalScope & { id: string }): Promise<void>;
   inspect(): Promise<HarnessInspection[]>;
   execute<C extends HarnessCommand>(command: C): Promise<HarnessCommandResult<C>>;
   subscribe(listener: (event: HarnessEvent) => void): () => void;
