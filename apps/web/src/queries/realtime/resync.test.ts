@@ -1,8 +1,13 @@
+import { advanceTimersAsync } from "@substrate/contracts/testing/timers";
+
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 import { createRealtimeCache } from "./cache";
-import { expect, test } from "bun:test";
+import { afterEach, beforeEach, expect, vi, test } from "bun:test";
+
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
 
 test("overlapping timer, focus and visibility reconciliations share one recovery read", async () => {
   const client = new QueryClient();
@@ -71,7 +76,7 @@ test("resync reads each active query once", async () => {
     revalidate: async () => {},
   });
   try {
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await advanceTimersAsync(0);
     reads.clear();
     await cache.resync();
     expect(Object.fromEntries(reads)).toEqual({ messages: 1, session: 1, release: 1 });

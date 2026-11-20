@@ -1,3 +1,5 @@
+import { advanceTimersAsync } from "@substrate/contracts/testing/timers";
+
 import { QueryClient, QueryObserver, type QueryKey } from "@tanstack/react-query";
 
 import { staleSearches } from "./context/mutations";
@@ -8,7 +10,10 @@ import {
   invalidateSentMessage,
 } from "./messaging/mutations";
 import { invalidateTasksWrite } from "./tasks/mutations";
-import { expect, test } from "bun:test";
+import { afterEach, beforeEach, expect, vi, test } from "bun:test";
+
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
 
 const taskId = "00000000-0000-4000-8000-000000000001";
 const context = queryKeys.context("org");
@@ -318,7 +323,7 @@ test("a blocked search does not block a local mutation or erase stale-only inval
     await staleSearches(client, "org");
     expect(client.getQueryState(key)?.fetchStatus).toBe("fetching");
     initial.resolve(["old result"]);
-    await Bun.sleep(0);
+    await advanceTimersAsync(0);
     expect(reads).toBe(1);
     expect(client.getQueryState(key)?.isInvalidated).toBe(true);
     expect(client.getQueryData(key)).toEqual(["old result"]);

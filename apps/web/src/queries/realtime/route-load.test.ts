@@ -1,8 +1,13 @@
+import { advanceTimersAsync } from "@substrate/contracts/testing/timers";
+
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 import { createRealtimeCache } from "./cache";
-import { expect, test } from "bun:test";
+import { afterEach, beforeEach, expect, vi, test } from "bun:test";
+
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
 
 for (const trigger of ["ready", "profile", "session"] as const) {
   test(`${trigger} preserves a route promise shared with a cached header observer`, async () => {
@@ -53,12 +58,12 @@ for (const trigger of ["ready", "profile", "session"] as const) {
               id: crypto.randomUUID(),
             },
       );
-      await new Promise((resolve) => setTimeout(resolve, 25));
+      await advanceTimersAsync(25);
       initial.resolve(["original session"]);
       expect(await outcome).toEqual({ status: "resolved", data: ["original session"] });
       expect(aborted).toBe(false);
       await resync;
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await advanceTimersAsync(0);
       expect(reads).toBe(2);
       expect(client.getQueryData(queryKeys.session)).toEqual(["current session"]);
       expect(observer.getCurrentResult().fetchStatus).toBe("idle");
@@ -115,11 +120,11 @@ for (const trigger of ["ready", "organization"] as const) {
               id: crypto.randomUUID(),
             },
       );
-      await new Promise((resolve) => setTimeout(resolve, 25));
+      await advanceTimersAsync(25);
       initial.resolve(["original snapshot"]);
       expect(await outcome).toEqual({ status: "resolved", data: ["original snapshot"] });
       await resync;
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await advanceTimersAsync(0);
       expect(reads).toBe(2);
       expect(client.getQueryData(key)).toEqual(["current"]);
       expect(client.getQueryState(key)?.fetchStatus).toBe("idle");
@@ -156,7 +161,7 @@ test("a late unobserved loader cannot refresh or revalidate a disposed generatio
   });
   try {
     const resync = cache.receive({ version: 1, type: "ready" });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await advanceTimersAsync(0);
     cache.dispose();
     initial.resolve(["original snapshot"]);
     expect(await routeLoad).toEqual(["original snapshot"]);
@@ -189,7 +194,7 @@ test("refresh preserves genuine loader failure rather than hiding it", async () 
   });
   try {
     const resync = cache.receive({ version: 1, type: "ready" }).catch((error: Error) => error);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await advanceTimersAsync(0);
     initial.reject(failure);
     expect(await outcome).toBe(failure);
     expect(await resync).toBe(failure);

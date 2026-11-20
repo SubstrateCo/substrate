@@ -1,11 +1,15 @@
 import type { RealtimeEvent } from "@substrate/contracts/realtime";
+import { advanceTimersAsync } from "@substrate/contracts/testing/timers";
 
 import { QueryClient, QueryObserver, type QueryKey } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 import { queryTargetFilter } from "../targets";
 import { createRealtimeCache, realtimeQueryTargets } from "./cache";
-import { expect, test } from "bun:test";
+import { afterEach, beforeEach, expect, vi, test } from "bun:test";
+
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
 
 function change(
   domain: Extract<RealtimeEvent, { type: "change" }>["domain"],
@@ -58,14 +62,14 @@ test("a task hint during an in-flight read stays stale when its panel becomes hi
   });
   try {
     await cache.receive(change("tasks"));
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await advanceTimersAsync(25);
     observer.setOptions({ ...options, enabled: false });
     first.resolve(["old snapshot"]);
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await advanceTimersAsync(25);
     expect(reads).toBe(1);
     expect(client.getQueryState(key)?.isInvalidated).toBe(true);
     observer.setOptions({ ...options, enabled: true });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await advanceTimersAsync(0);
     expect(client.getQueryData(key)).toEqual(["fresh"]);
     expect(reads).toBe(2);
   } finally {
@@ -101,9 +105,9 @@ for (const domain of ["context", "profile"] as const) {
         if (overlap === "before") await cache.receive(change(domain));
         await cache.receive(change("tasks"));
         if (overlap === "after") await cache.receive(change(domain));
-        await Bun.sleep(25);
+        await advanceTimersAsync(25);
         first.resolve(["old snapshot"]);
-        await Bun.sleep(25);
+        await advanceTimersAsync(25);
         const refresh = domain === "profile" && overlap !== "none";
         expect(reads).toBe(refresh ? 2 : 1);
         expect(client.getQueryState(key)?.isInvalidated).toBe(!refresh);
@@ -441,17 +445,17 @@ test("a new-message hint reads history once and loaded message context not at al
     batchMs: 5,
   });
   try {
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await advanceTimersAsync(0);
     await cache.receive({
       ...change("messaging"),
       conversationId: "conversation",
       scope: "messages",
     });
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await advanceTimersAsync(25);
     // A new message has no reactions yet.
     expect(reads).toEqual({ messages: 2, pages: 1, reactions: 1 });
     await cache.receive({ ...change("messaging"), conversationId: "conversation" });
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await advanceTimersAsync(25);
     expect(reads).toEqual({ messages: 3, pages: 2, reactions: 2 });
   } finally {
     cache.dispose();
@@ -734,10 +738,10 @@ test("conversation hints refresh root and reply targets without crossing convers
   });
   try {
     await cache.receive({ ...change("messaging", "foreign"), conversationId: "viewed" });
-    await Bun.sleep(25);
+    await advanceTimersAsync(25);
     expect(reads).toEqual([0, 0, 0, 0]);
     await cache.receive({ ...change("messaging"), conversationId: "viewed" });
-    await Bun.sleep(25);
+    await advanceTimersAsync(25);
     expect(observers.map((observer) => observer.getCurrentResult().data)).toEqual([
       "fresh",
       "fresh",
@@ -746,7 +750,7 @@ test("conversation hints refresh root and reply targets without crossing convers
     ]);
     expect(reads).toEqual([1, 1, 0, 0]);
     await cache.receive(change("messaging"));
-    await Bun.sleep(25);
+    await advanceTimersAsync(25);
     expect(reads).toEqual([2, 2, 1, 0]);
   } finally {
     cache.dispose();
@@ -780,15 +784,15 @@ test("conversation hints refresh only matching mounted context pages, with a bro
   });
   try {
     await cache.receive({ ...change("messaging"), conversationId: "other" });
-    await Bun.sleep(25);
+    await advanceTimersAsync(25);
     expect(reads).toEqual([0, 1]);
     expect(observers[0]!.getCurrentResult().data).toEqual(["old"]);
     await cache.receive({ ...change("messaging"), conversationId: "viewed" });
-    await Bun.sleep(25);
+    await advanceTimersAsync(25);
     expect(reads).toEqual([1, 1]);
     expect(observers[0]!.getCurrentResult().data).toEqual(["fresh"]);
     await cache.receive(change("messaging"));
-    await Bun.sleep(25);
+    await advanceTimersAsync(25);
     expect(reads).toEqual([2, 2]);
   } finally {
     cache.dispose();
@@ -828,7 +832,7 @@ test("task activity and related context refresh; message changes refresh active 
       batchMs: 5,
     });
     await cache.receive(change(domain));
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await advanceTimersAsync(25);
     expect(client.getQueryState(keys.activity)?.isInvalidated).toBe(domain !== "messaging");
     expect(client.getQueryState(keys.related)?.isInvalidated).toBe(true);
     expect(client.getQueryState(keys.search)?.isInvalidated).toBe(domain !== "messaging");
@@ -913,7 +917,7 @@ test("context changes refetch known context families only, leaving notifications
     await client.invalidateQueries({ queryKey: context });
     reads.fill(0);
     await cache.receive(change("context"));
-    await Bun.sleep(25);
+    await advanceTimersAsync(25);
     expect(reads).toEqual([1, 1, 1, 1, 0, 0, 0, 0, 0, 0, 0, 0]);
     expect(client.getQueryState(keys[5]!)?.isInvalidated).toBe(true);
     expect(client.getQueryState(keys[6]!)?.isInvalidated).toBe(true);
@@ -940,13 +944,13 @@ test("task edits refresh titles shown by message links and existing notification
     batchMs: 5,
   });
   await cache.receive(change("tasks"));
-  await new Promise((resolve) => setTimeout(resolve, 25));
+  await advanceTimersAsync(25);
   expect(client.getQueryState(linked)?.isInvalidated).toBe(true);
   expect(client.getQueryState(notifications)?.isInvalidated).toBe(true);
   expect(client.getQueryState(plain)?.isInvalidated).toBe(false);
   // Reference changes can add links, so they still refresh every page.
   await cache.receive(change("context"));
-  await new Promise((resolve) => setTimeout(resolve, 25));
+  await advanceTimersAsync(25);
   expect(client.getQueryState(plain)?.isInvalidated).toBe(true);
   cache.dispose();
   client.clear();
@@ -985,7 +989,7 @@ test("a task hint refreshes one mounted fifty-message context page, and access r
   try {
     title = "Updated work title";
     await cache.receive(change("tasks"));
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await advanceTimersAsync(25);
     expect(reads).toBe(2);
     expect(client.getQueryData(key)).toEqual(
       Array.from({ length: 50 }, () => ({ links: [{ entityId: "task", title }] })),
@@ -1018,11 +1022,11 @@ test("duplicate changes coalesce and ready resyncs cached state", async () => {
   const event = change("tasks");
   await cache.receive(event);
   await cache.receive(event);
-  await new Promise((resolve) => setTimeout(resolve, 25));
+  await advanceTimersAsync(25);
   expect(client.getQueryState(key)?.isInvalidated).toBe(true);
   client.setQueryData(key, ["new"]);
   await cache.receive(event);
-  await new Promise((resolve) => setTimeout(resolve, 25));
+  await advanceTimersAsync(25);
   expect(client.getQueryState(key)?.isInvalidated).toBe(false);
   await cache.receive({ version: 1, type: "ready" });
   expect(client.getQueryState(key)?.isInvalidated).toBe(true);
@@ -1071,14 +1075,14 @@ test("changes during a slow refresh share one follow-up snapshot", async () => {
   try {
     snapshot++;
     await cache.receive(change("messaging"));
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await advanceTimersAsync(25);
     for (let index = 0; index < 4; index++) {
       snapshot++;
       await cache.receive(change("messaging"));
-      await new Promise((resolve) => setTimeout(resolve, 25));
+      await advanceTimersAsync(25);
     }
     first.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await advanceTimersAsync(25);
     expect(client.getQueryData(key)).toBe(snapshot);
     expect(client.getQueryData(threadKey)).toBe(snapshot);
     expect(reads).toBe(2);
@@ -1123,9 +1127,9 @@ for (const scenario of ["after", "settled", "before", "none"] as const) {
       if (scenario === "before") localRead();
       await cache.receive(change("messaging"));
       if (scenario === "after" || scenario === "settled") localRead();
-      await Bun.sleep(25);
+      await advanceTimersAsync(25);
       blocked.resolve();
-      await Bun.sleep(20);
+      await advanceTimersAsync(20);
       expect(reads).toBe(scenario === "before" ? 2 : 1);
       expect(client.getQueryData(key)).toBe("fresh");
       expect(client.getQueryState(key)?.isInvalidated).toBe(false);

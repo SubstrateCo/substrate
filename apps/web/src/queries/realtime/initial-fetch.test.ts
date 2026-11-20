@@ -1,8 +1,13 @@
+import { advanceTimersAsync } from "@substrate/contracts/testing/timers";
+
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 import { createRealtimeCache } from "./cache";
-import { expect, test } from "bun:test";
+import { afterEach, beforeEach, expect, vi, test } from "bun:test";
+
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
 
 test("ready resync ignores a canceled page that has been replaced by another visible page", async () => {
   const client = new QueryClient();
@@ -94,10 +99,10 @@ for (const trigger of ["tasks", "ready", "messaging"] as const) {
               id: crypto.randomUUID(),
             },
       );
-      await new Promise((resolve) => setTimeout(resolve, 25));
+      await advanceTimersAsync(25);
       initial.resolve(["obsolete project"]);
       await received;
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await advanceTimersAsync(0);
       expect(reads).toBe(2);
       expect(aborted).toBe(false);
       expect(client.getQueryData(key)).toEqual(["current project"]);
@@ -144,10 +149,10 @@ for (const domain of ["messaging", "context"] as const) {
         organizationId: "org",
         id: crypto.randomUUID(),
       });
-      await new Promise((resolve) => setTimeout(resolve, 25));
+      await advanceTimersAsync(25);
       initial.resolve(["retained result"]);
       await received;
-      await new Promise((resolve) => setTimeout(resolve, 0));
+      await advanceTimersAsync(0);
       expect(reads).toBe(1);
       expect(client.getQueryData(key)).toEqual(["retained result"]);
       expect(client.getQueryState(key)?.isInvalidated).toBe(true);
@@ -188,11 +193,11 @@ test("refresh retains loaded content until the replacement request completes", a
       organizationId: "org",
       id: crypto.randomUUID(),
     });
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await advanceTimersAsync(25);
     expect(client.getQueryData(key)).toEqual(["loaded project"]);
     expect(observer.getCurrentResult().fetchStatus).toBe("fetching");
     replacement.resolve(["current project"]);
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await advanceTimersAsync(0);
     expect(client.getQueryData(key)).toEqual(["current project"]);
     expect(observer.getCurrentResult().fetchStatus).toBe("idle");
   } finally {
@@ -274,7 +279,7 @@ test("a plain thread reply refreshes related discussion counts without reference
       conversationId: "conversation",
       id: crypto.randomUUID(),
     });
-    await new Promise((resolve) => setTimeout(resolve, 25));
+    await advanceTimersAsync(25);
     expect(reads).toBe(1);
     expect(client.getQueryData(key)).toEqual({ replyCount: 1 });
   } finally {
@@ -308,7 +313,7 @@ test("ready keeps harness reads that have not failed and retries failed ones", a
     revalidate: async () => {},
   });
   try {
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await advanceTimersAsync(0);
     await cache.receive({ version: 1, type: "ready" });
     expect(reads).toEqual({ loaded: 1, failed: 2 });
     expect(client.getQueryData(failedKey)).toEqual(["model"]);

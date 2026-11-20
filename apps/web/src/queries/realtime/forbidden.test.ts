@@ -1,8 +1,13 @@
+import { advanceTimersAsync } from "@substrate/contracts/testing/timers";
+
 import { QueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 import { createRealtimeCache } from "./cache";
-import { expect, test } from "bun:test";
+import { afterEach, beforeEach, expect, vi, test } from "bun:test";
+
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
 
 test("forbidden without an access event evicts private workspace, session, and account data before routing", async () => {
   const client = new QueryClient();
@@ -54,7 +59,7 @@ test("disposed generation cannot invalidate or route for delayed events", async 
   });
   cache.dispose();
   await cache.receive({ version: 1, type: "ready" });
-  await new Promise((resolve) => setTimeout(resolve, 80));
+  await advanceTimersAsync(80);
   expect(client.getQueryState(key)?.isInvalidated).toBe(false);
   expect(routed).toBe(false);
   client.clear();

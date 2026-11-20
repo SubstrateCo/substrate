@@ -43,6 +43,7 @@
     "./desktop/window": "./src/desktop/window.ts",
     "./paths": "./src/paths.ts",
     "./result": "./src/result.ts",
+    "./testing/timers": "./src/testing/timers.ts",
     "./state-machine": "./src/state-machine.ts"
   },
   "scripts": {

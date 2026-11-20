@@ -1,8 +1,13 @@
+import { advanceTimersAsync } from "@substrate/contracts/testing/timers";
+
 import { QueryClient, QueryObserver } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 import { createRealtimeCache } from "./cache";
-import { expect, test } from "bun:test";
+import { afterEach, beforeEach, expect, vi, test } from "bun:test";
+
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
 
 const access = () =>
   ({
@@ -153,10 +158,10 @@ test("a later revocation cancels a slow access reset and cannot be overwritten b
   });
   try {
     const first = cache.receive(access());
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await advanceTimersAsync(0);
     expect(reads).toBe(1);
     const second = cache.receive(access());
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await advanceTimersAsync(0);
     expect(reads).toBe(2);
     expect(observer.getCurrentResult().data).toBeUndefined();
     oldGrant.resolve(["obsolete granted project"]);
@@ -189,11 +194,11 @@ test("an access event during route revalidation clears newly loaded private data
   });
   try {
     const first = cache.receive(access());
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await advanceTimersAsync(0);
     expect(routes).toBe(1);
     client.setQueryData(key, ["new private snapshot"]);
     const second = cache.receive(access());
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await advanceTimersAsync(0);
     expect(client.getQueryData(key)).toBeUndefined();
     route.resolve();
     await Promise.all([first, second]);

@@ -1,9 +1,14 @@
+import { advanceTimersAsync } from "@substrate/contracts/testing/timers";
+
 import { QueryClient, QueryObserver, type QueryKey } from "@tanstack/react-query";
 
 import { messagePageOptions } from "../context/links";
 import { queryKeys } from "../keys";
 import { createRealtimeCache } from "./cache";
-import { expect, test } from "bun:test";
+import { afterEach, beforeEach, expect, vi, test } from "bun:test";
+
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
 
 test("access reset clears the previous history page used as message placeholder data", async () => {
   const client = new QueryClient();
@@ -44,7 +49,7 @@ test("access reset clears the previous history page used as message placeholder 
       organizationId: "org",
       domain: "access",
     });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await advanceTimersAsync(0);
     expect(observer.getCurrentResult().data).toBeUndefined();
     expect(previousQuery.state.data).toBeUndefined();
     authorized.resolve([]);
@@ -98,7 +103,7 @@ test("access reset clears a previous message context page kept as placeholder da
       organizationId: "org",
       domain: "access",
     });
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await advanceTimersAsync(0);
     expect(observer.getCurrentResult().data).toBeUndefined();
     loading.resolve([]);
     await reset;
