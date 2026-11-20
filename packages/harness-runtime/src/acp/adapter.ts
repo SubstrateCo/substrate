@@ -7,7 +7,7 @@ import type {
 } from "@substrate/contracts/harness";
 
 import { PendingRequests } from "../adapters/requests.ts";
-import { toolInput, toolLabel } from "../adapters/tool-label.ts";
+import { toolCallLabel, toolInput, type ToolCall } from "../adapters/tool-label.ts";
 import type { AdapterContext, NativeAdapter, TurnOptions } from "../adapters/types.ts";
 import { HarnessError, unsupported } from "../errors.ts";
 import type { JsonValue } from "../json.ts";
@@ -76,13 +76,13 @@ function userServer(server: HarnessMcpServer): AcpMcpServer {
   };
 }
 
-/** An identifier-like title is a raw tool name, such as mcp__substrate__list_tasks. */
-function toolTitle(update: Extract<AcpUpdate, { type: "tool" }>) {
-  const input = toolInput.parse(update.rawInput);
-  if (update.name) return toolLabel(update.name, input);
-  const title = update.title?.trim();
-  if (!title) return "Tool";
-  return /^[\w.-]+$/.test(title) ? toolLabel(title, input) : title.slice(0, 120);
+/** servers: the session's MCP server names, so server.tool titles read as MCP tools. */
+function toolTitle(update: Extract<AcpUpdate, { type: "tool" }>, servers: readonly string[]) {
+  const call: ToolCall = { input: toolInput.parse(update.rawInput) };
+  if (update.name) call.name = update.name;
+  if (update.title) call.title = update.title;
+  if (update.kind) call.kind = update.kind;
+  return toolCallLabel(call, servers);
 }
 
 /** Maps one ACP session onto host turns. */
@@ -163,7 +163,10 @@ class AcpSession {
               type: "item.started",
               itemId: update.toolCallId,
               itemType: update.kind ?? "tool",
-              title: toolTitle(update),
+              title: toolTitle(
+                update,
+                (this.context.mcpServers ?? []).map((server) => server.name),
+              ),
             },
             this.scope(),
           );
