@@ -5,7 +5,7 @@ const maxImagePixels = 32_000_000;
 const maxImageDimension = 8192;
 
 /** A picture the user must replace. Its message is reviewed copy that the UI can show. */
-export class PictureError extends Error {}
+class PictureError extends Error {}
 
 /** Shows a picture's own limit, or a fallback for any other failure. */
 export function pictureErrorMessage(error: Error) {
