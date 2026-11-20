@@ -33,14 +33,18 @@ export function requestActionMutationOptions(
   client: QueryClient,
   userId: string,
   organizationId: string,
+  requests = { respondToRequest, approveProposal, declineProposal },
 ) {
   return mutationOptions({
     mutationFn: (input: RequestAction) => {
       const { requestId } = input;
       if (input.kind === "respond")
-        return respondToRequest({ data: { organizationId, requestId, response: input.response } });
-      if (input.kind === "approve") return approveProposal({ data: { organizationId, requestId } });
-      return declineProposal({ data: { organizationId, requestId } });
+        return requests.respondToRequest({
+          data: { organizationId, requestId, response: input.response },
+        });
+      if (input.kind === "approve")
+        return requests.approveProposal({ data: { organizationId, requestId } });
+      return requests.declineProposal({ data: { organizationId, requestId } });
     },
     // A conflict means another device answered first. Refresh to show that answer.
     onSettled: (_data, _error, input) =>

@@ -13,19 +13,19 @@ declare module "@tanstack/react-query" {
   }
 }
 
-export function createRefreshErrorCache() {
+export function createRefreshErrorCache(notifier: Pick<typeof toast, "error" | "dismiss"> = toast) {
   const notified = new WeakSet<object>();
   return new QueryCache({
     onError: (error, query) => {
       const message = query.meta?.refreshError;
       if (!message || query.state.data === undefined) return;
       if (isAccessFailure(error)) {
-        if (notified.delete(query)) toast.dismiss(query.queryHash);
+        if (notified.delete(query)) notifier.dismiss(query.queryHash);
         return;
       }
       if (notified.has(query)) return;
       notified.add(query);
-      toast.error(message, {
+      notifier.error(message, {
         id: query.queryHash,
         description: "Your loaded content is still available.",
         action: {
@@ -38,7 +38,7 @@ export function createRefreshErrorCache() {
     },
     onSuccess: (_, query) => {
       if (!notified.delete(query)) return;
-      toast.dismiss(query.queryHash);
+      notifier.dismiss(query.queryHash);
     },
   });
 }

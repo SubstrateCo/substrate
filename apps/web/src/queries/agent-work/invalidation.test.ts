@@ -5,7 +5,17 @@ import { queryTargetFilter, type QueryTarget } from "../targets";
 import { agentWorkInvalidations } from "./invalidation";
 import { localWorkMutationOptions, requestActionMutationOptions } from "./mutations";
 import { bridgeChangeTargets } from "./sync";
-import { describe, expect, spyOn, test } from "bun:test";
+import { ApiError } from "@/api/result";
+import { describe, expect, test } from "bun:test";
+
+type Requests = NonNullable<Parameters<typeof requestActionMutationOptions>[3]>;
+
+/** Server requests that all settle with `settle`. */
+const requests = (settle: () => Promise<void>): Requests => ({
+  respondToRequest: settle,
+  approveProposal: settle,
+  declineProposal: settle,
+});
 
 const target = crypto.randomUUID();
 
@@ -48,9 +58,6 @@ describe("agent-work mutation invalidation", () => {
     const reads = keys.map(() => 0);
     let canceled = 0;
     const response = Promise.withResolvers<{ links: unknown[] }[]>();
-    const fetch = spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      Response.json({ success: true, data: null }),
-    );
     const stops = keys.map((queryKey, index) =>
       new QueryObserver(client, {
         queryKey,
@@ -66,7 +73,12 @@ describe("agent-work mutation invalidation", () => {
     try {
       const pending = new MutationObserver(
         client,
-        requestActionMutationOptions(client, "user", "org"),
+        requestActionMutationOptions(
+          client,
+          "user",
+          "org",
+          requests(async () => {}),
+        ),
       ).mutate({
         kind: "approve",
         requestId: "request",
@@ -78,7 +90,6 @@ describe("agent-work mutation invalidation", () => {
       expect(canceled).toBe(0);
       for (const key of keys) expect(client.getQueryData(key)).toEqual([{ links: [] }]);
     } finally {
-      fetch.mockRestore();
       response.resolve([]);
       stops.forEach((stop) => stop());
       client.clear();
@@ -90,16 +101,17 @@ describe("agent-work mutation invalidation", () => {
     const key = queryKeys.agentWorkRequests("user", "org", "conversation");
     const otherOwner = queryKeys.agentWorkRequests("other-user", "org", "conversation");
     for (const cachedKey of [key, otherOwner]) client.setQueryData(cachedKey, []);
-    const fetch = spyOn(globalThis, "fetch").mockResolvedValueOnce(
-      Response.json(
-        { success: false, error: { code: "CONFLICT", message: "Already answered." } },
-        { status: 409 },
-      ),
-    );
     try {
       const action = new MutationObserver(
         client,
-        requestActionMutationOptions(client, "user", "org"),
+        requestActionMutationOptions(
+          client,
+          "user",
+          "org",
+          requests(async () => {
+            throw new ApiError("CONFLICT", "Already answered.", 409);
+          }),
+        ),
       );
       const result = await action
         .mutate({ kind: "decline", requestId: "request" })
@@ -108,7 +120,6 @@ describe("agent-work mutation invalidation", () => {
       expect(client.getQueryState(key)?.isInvalidated).toBe(true);
       expect(client.getQueryState(otherOwner)?.isInvalidated).toBe(false);
     } finally {
-      fetch.mockRestore();
       client.clear();
     }
   });

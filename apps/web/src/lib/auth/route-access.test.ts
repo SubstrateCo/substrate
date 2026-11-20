@@ -1,18 +1,12 @@
 import { QueryClient } from "@tanstack/react-query";
 
 import { requireVerifiedSession } from "./route-access";
-import * as sessionAPI from "@/api/auth/session";
+import type { getSession } from "@/api/auth/session";
+import { sessionQueryOptions } from "@/queries/auth/session";
 import { queryKeys } from "@/queries/keys";
-import { afterEach, expect, spyOn, test } from "bun:test";
+import { expect, test } from "bun:test";
 
-let sessionSpy: ReturnType<typeof spyOn<typeof sessionAPI, "getSession">> | undefined;
-afterEach(() => {
-  sessionSpy?.mockRestore();
-});
-
-const session = (
-  emailVerified: boolean,
-): NonNullable<Awaited<ReturnType<typeof sessionAPI.getSession>>> => ({
+const session = (emailVerified: boolean): NonNullable<Awaited<ReturnType<typeof getSession>>> => ({
   user: {
     id: "user",
     email: "user@example.com",
@@ -31,18 +25,28 @@ const session = (
   },
 });
 
+/** Session query options whose loader counts its reads. */
+function countedSession(read: () => ReturnType<typeof session>) {
+  const counter = { reads: 0 };
+  const options = sessionQueryOptions(async () => {
+    counter.reads++;
+    return read();
+  });
+  return { options, counter };
+}
+
 test("workspace navigations reuse a verified session instead of refetching it", async () => {
   const client = new QueryClient();
-  sessionSpy = spyOn(sessionAPI, "getSession").mockResolvedValue(session(true));
+  const { options, counter } = countedSession(() => session(true));
   try {
-    await requireVerifiedSession(client, "/dashboard");
-    await requireVerifiedSession(client, "/tasks");
-    expect((await requireVerifiedSession(client, "/notifications")).user.id).toBe("user");
-    expect(sessionSpy).toHaveBeenCalledTimes(1);
+    await requireVerifiedSession(client, "/dashboard", options);
+    await requireVerifiedSession(client, "/tasks", options);
+    expect((await requireVerifiedSession(client, "/notifications", options)).user.id).toBe("user");
+    expect(counter.reads).toBe(1);
     // Realtime session events invalidate the cached session; the next navigation rechecks it.
     await client.invalidateQueries({ queryKey: queryKeys.session });
-    await requireVerifiedSession(client, "/dashboard");
-    expect(sessionSpy).toHaveBeenCalledTimes(2);
+    await requireVerifiedSession(client, "/dashboard", options);
+    expect(counter.reads).toBe(2);
   } finally {
     client.clear();
   }
@@ -51,15 +55,17 @@ test("workspace navigations reuse a verified session instead of refetching it", 
 test("an unverified session is rechecked on each navigation, so verification elsewhere is seen", async () => {
   const client = new QueryClient();
   let verified = false;
-  sessionSpy = spyOn(sessionAPI, "getSession").mockImplementation(async () => session(verified));
+  const { options, counter } = countedSession(() => session(verified));
   try {
-    const denied = await requireVerifiedSession(client, "/dashboard").catch(
+    const denied = await requireVerifiedSession(client, "/dashboard", options).catch(
       (redirect: { options: { to?: string } }) => redirect.options.to,
     );
     expect(denied).toBe("/verify-email");
     verified = true;
-    expect((await requireVerifiedSession(client, "/dashboard")).user.emailVerified).toBe(true);
-    expect(sessionSpy).toHaveBeenCalledTimes(2);
+    expect((await requireVerifiedSession(client, "/dashboard", options)).user.emailVerified).toBe(
+      true,
+    );
+    expect(counter.reads).toBe(2);
   } finally {
     client.clear();
   }

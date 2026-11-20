@@ -41,10 +41,15 @@ export async function confirmDiscardDrafts() {
  * between their answer and the exit, such as a sign-out; when it throws, the document stays.
  * `null` reloads the current address. Resolves `false` when they chose to keep editing.
  */
-export async function leaveDocument(destination: string | null, prepare?: () => Promise<void>) {
+export async function leaveDocument(
+  destination: string | null,
+  prepare?: () => Promise<void>,
+  location?: Pick<Location, "assign" | "reload">,
+) {
   if (!(await confirmDiscardDrafts())) return false;
   await prepare?.();
-  if (destination === null) window.location.reload();
-  else window.location.assign(destination);
+  const document = location ?? window.location;
+  if (destination === null) document.reload();
+  else document.assign(destination);
   return true;
 }

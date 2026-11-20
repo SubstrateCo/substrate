@@ -20,14 +20,23 @@ export function checkImageDimensions(width: number, height: number) {
   }
 }
 
-export async function openPicture(file: File, signal?: AbortSignal) {
+type DecodePicture = (file: File) => Promise<ImageBitmap>;
+
+const decodePicture: DecodePicture = (file) =>
+  createImageBitmap(file, { imageOrientation: "from-image" });
+
+export async function openPicture(
+  file: File,
+  signal?: AbortSignal,
+  decode: DecodePicture = decodePicture,
+) {
   signal?.throwIfAborted();
   const error = await validatePicture(file);
   signal?.throwIfAborted();
   if (error) throw new PictureError(error);
   let image: ImageBitmap;
   try {
-    image = await createImageBitmap(file, { imageOrientation: "from-image" });
+    image = await decode(file);
   } catch {
     signal?.throwIfAborted();
     throw new PictureError(
@@ -51,8 +60,9 @@ export async function cropImage(
   rotation: number,
   mode: "fit" | "fill",
   signal?: AbortSignal,
+  decode?: DecodePicture,
 ): Promise<Blob> {
-  const image = await openPicture(file, signal);
+  const image = await openPicture(file, signal, decode);
   try {
     signal?.throwIfAborted();
     const quarterTurn = ((rotation % 360) + 360) % 360;

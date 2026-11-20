@@ -8,11 +8,12 @@ import { sessionQueryOptions } from "@/queries/auth/session";
 export async function requireVerifiedSession(
   queryClient: QueryClient,
   destination: string,
+  options = sessionQueryOptions(),
 ): Promise<NonNullable<Awaited<ReturnType<typeof getSession>>>> {
   // Realtime session and access events, reconnect resyncs, and full-document auth changes keep a
   // verified session current. Recheck a missing or unverified one, since no event reports email verification.
   const session = await queryClient.query({
-    ...sessionQueryOptions(),
+    ...options,
     staleTime: (query) => (query.state.data?.user.emailVerified ? Infinity : 0),
   });
   const access = verifiedSessionAccess(session, destination);

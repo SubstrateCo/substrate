@@ -1,24 +1,30 @@
 import { QueryClient } from "@tanstack/react-query";
 
 import { createRefreshErrorCache } from "./refresh-error-cache";
-import { afterAll, afterEach, expect, spyOn, test } from "bun:test";
-import { toast } from "sonner";
+import { expect, test } from "bun:test";
 
-const notify = spyOn(toast, "error").mockReturnValue("refresh-toast");
-const dismiss = spyOn(toast, "dismiss").mockReturnValue("refresh-toast");
+type Notifier = NonNullable<Parameters<typeof createRefreshErrorCache>[0]>;
 
-afterAll(() => {
-  notify.mockRestore();
-  dismiss.mockRestore();
-});
-
-afterEach(() => {
-  notify.mockClear();
-  dismiss.mockClear();
-});
+/** Records the toasts the cache would show and dismiss. */
+function recordingNotifier() {
+  const shown: Parameters<Notifier["error"]>[] = [];
+  const dismissed: Parameters<Notifier["dismiss"]>[0][] = [];
+  const notifier: Notifier = {
+    error: (...args) => {
+      shown.push(args);
+      return "refresh-toast";
+    },
+    dismiss: (id) => {
+      dismissed.push(id);
+      return "refresh-toast";
+    },
+  };
+  return { notifier, shown, dismissed };
+}
 
 test("refresh feedback is opt-in, requires cached data, and excludes access failures", async () => {
-  const client = new QueryClient({ queryCache: createRefreshErrorCache() });
+  const { notifier, shown } = recordingNotifier();
+  const client = new QueryClient({ queryCache: createRefreshErrorCache(notifier) });
   try {
     for (const scenario of ["initial", "unmarked", "access"] as const) {
       const queryKey = [scenario];
@@ -38,14 +44,15 @@ test("refresh feedback is opt-in, requires cached data, and excludes access fail
         .catch((error: Error) => error);
       expect(failure).toBeInstanceOf(Error);
     }
-    expect(notify).not.toHaveBeenCalled();
+    expect(shown).toEqual([]);
   } finally {
     client.clear();
   }
 });
 
 test("poll failures notify once per outage and recovery resets feedback", async () => {
-  const client = new QueryClient({ queryCache: createRefreshErrorCache() });
+  const { notifier, shown, dismissed } = recordingNotifier();
+  const client = new QueryClient({ queryCache: createRefreshErrorCache(notifier) });
   let unavailable = true;
   const read = async () => {
     if (unavailable) throw new Error("Internal connection details");
@@ -63,25 +70,26 @@ test("poll failures notify once per outage and recovery resets feedback", async 
       const failure = await client.query(options).catch((error: Error) => error);
       expect(failure).toBeInstanceOf(Error);
     }
-    expect(notify).toHaveBeenCalledTimes(1);
-    expect(notify.mock.calls[0]?.[0]).toBe("Couldn’t refresh project");
-    expect(notify.mock.calls[0]?.[1]?.action).toMatchObject({ label: "Retry" });
+    expect(shown).toHaveLength(1);
+    expect(shown[0]?.[0]).toBe("Couldn’t refresh project");
+    expect(shown[0]?.[1]?.action).toMatchObject({ label: "Retry" });
 
     unavailable = false;
     await client.query(options);
-    expect(dismiss).toHaveBeenCalledWith(JSON.stringify(options.queryKey));
+    expect(dismissed).toEqual([JSON.stringify(options.queryKey)]);
 
     unavailable = true;
     const failure = await client.query(options).catch((error: Error) => error);
     expect(failure).toBeInstanceOf(Error);
-    expect(notify).toHaveBeenCalledTimes(2);
+    expect(shown).toHaveLength(2);
   } finally {
     client.clear();
   }
 });
 
 test("access loss dismisses feedback that says cached content is available", async () => {
-  const client = new QueryClient({ queryCache: createRefreshErrorCache() });
+  const { notifier, shown, dismissed } = recordingNotifier();
+  const client = new QueryClient({ queryCache: createRefreshErrorCache(notifier) });
   const queryKey = ["project-access-loss"];
   client.setQueryData(queryKey, ["private project"]);
   try {
@@ -98,8 +106,8 @@ test("access loss dismisses feedback that says cached content is available", asy
         })
         .catch(() => {});
     }
-    expect(notify).toHaveBeenCalledTimes(1);
-    expect(dismiss).toHaveBeenCalledWith(JSON.stringify(queryKey));
+    expect(shown).toHaveLength(1);
+    expect(dismissed).toEqual([JSON.stringify(queryKey)]);
   } finally {
     client.clear();
   }

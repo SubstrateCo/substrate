@@ -77,22 +77,13 @@ for (const kind of ["avatar", "organization-logo"] as const) {
       ]) {
         queryClient.setQueryData(key, { picture: "old" });
       }
-      fetchSpy = spyOn(globalThis, "fetch");
-      if (action === "upload") {
-        fetchSpy.mockResolvedValueOnce(
-          Response.json({
-            success: true,
-            data: {
-              url: "/api/v1/files/pictures/avatar/alice?v=one",
-            },
-          }),
-        );
-      }
-      fetchSpy.mockRejectedValueOnce(new Error("Commit response lost"));
+      const lost = async (): Promise<never> => {
+        throw new Error("Commit response lost");
+      };
       const options = pictureMutationOptions(
         queryClient,
         kind === "avatar" ? { kind } : { kind, organizationId: "active" },
-        testPictureApi,
+        { uploadPicture: lost, removePicture: lost },
       );
       const mutation =
         action === "upload"
