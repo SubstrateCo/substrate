@@ -8,6 +8,7 @@ export const messagePageOptions = (
   organizationId: string,
   conversationId: string,
   messageIds: string[],
+  getPage = getMessagePage,
 ) =>
   queryOptions({
     queryKey: queryKeys.messagePage(organizationId, conversationId, messageIds),
@@ -40,7 +41,7 @@ export const messagePageOptions = (
       const missing = messageIds.filter((id) => !cached.has(id));
       const fetched = new Map(
         (missing.length > 0
-          ? await getMessagePage({ data: { organizationId, messageIds: missing }, signal })
+          ? await getPage({ data: { organizationId, messageIds: missing }, signal })
           : []
         ).map((row) => [row.messageId, replaceEqualDeep(previous.get(row.messageId), row)]),
       );
@@ -65,10 +66,11 @@ export const messageTargetOptions = (
   organizationId: string,
   conversationId: string,
   messageId: string,
+  load = loadMessageTarget,
 ) =>
   queryOptions({
     queryKey: [...queryKeys.messageTargets(organizationId, conversationId), messageId],
     // Shares one request with the other targets read at the same time.
-    queryFn: () => loadMessageTarget(organizationId, conversationId, messageId),
+    queryFn: () => load(organizationId, conversationId, messageId),
     retry: false,
   });

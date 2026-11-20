@@ -1,14 +1,9 @@
 import { MutationObserver, QueryClient } from "@tanstack/react-query";
 
 import { pictureMutationOptions } from "./mutations";
-import { testPictureApi } from "@/api/files/pictures.test-support";
+import { fakePictureServer, jsonBody } from "@/api/files/pictures.test-support";
 import { queryKeys } from "@/queries/keys";
-import { afterEach, expect, spyOn, test } from "bun:test";
-
-let fetchSpy: ReturnType<typeof spyOn<typeof globalThis, "fetch">> | undefined;
-afterEach(() => {
-  fetchSpy?.mockRestore();
-});
+import { expect, test } from "bun:test";
 
 test("agent pictures refresh only their owner's catalog", async () => {
   const client = new QueryClient();
@@ -124,25 +119,27 @@ for (const action of ["upload", "remove"] as const) {
     const queryClient = new QueryClient();
     queryClient.setQueryData(queryKeys.organizationDetail("organization-a"), { logo: "old-a" });
     queryClient.setQueryData(queryKeys.organizationDetail("organization-b"), { logo: "old-b" });
-    const options = pictureMutationOptions(
-      queryClient,
-      { kind: "organization-logo", organizationId: "organization-a" },
-      testPictureApi,
-    );
-    fetchSpy = spyOn(globalThis, "fetch");
-    if (action === "upload") {
-      fetchSpy.mockResolvedValueOnce(
-        Response.json({
-          success: true,
-          data: { url: "/api/v1/files/pictures/organization-logo/organization-a?v=one" },
-        }),
-      );
-    }
-    fetchSpy.mockResolvedValueOnce(
+    const denied = () =>
       Response.json(
         { code: "FORBIDDEN", message: "Active organization changed." },
         { status: 403 },
-      ),
+      );
+    const { requests, pictures } = fakePictureServer(
+      ...(action === "upload"
+        ? [
+            () =>
+              Response.json({
+                success: true,
+                data: { url: "/api/v1/files/pictures/organization-logo/organization-a?v=one" },
+              }),
+            denied,
+          ]
+        : [denied]),
+    );
+    const options = pictureMutationOptions(
+      queryClient,
+      { kind: "organization-logo", organizationId: "organization-a" },
+      pictures,
     );
     const mutation =
       action === "upload"
@@ -158,8 +155,7 @@ for (const action of ["upload", "remove"] as const) {
         expect(error).toMatchObject({ code: "FORBIDDEN", status: 403 });
       },
     );
-    const [, commit] = fetchSpy.mock.calls.at(-1)!;
-    expect(await new Response(commit?.body).json()).toEqual({
+    expect(await jsonBody(requests.at(-1))).toEqual({
       organizationId: "organization-a",
       data: {
         logo:
@@ -169,7 +165,7 @@ for (const action of ["upload", "remove"] as const) {
       },
     });
     if (action === "upload") {
-      const body = fetchSpy.mock.calls[0]?.[1]?.body;
+      const body = requests[0]?.init?.body;
       if (!(body instanceof FormData)) throw new Error("Expected multipart upload.");
       expect(body.get("organizationId")).toBe("organization-a");
     }

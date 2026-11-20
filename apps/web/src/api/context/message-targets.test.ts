@@ -1,61 +1,44 @@
 import { QueryClient } from "@tanstack/react-query";
 
 import { ApiError } from "../result";
+import type { getMessageTargets, MessageTarget } from "./links";
+import { createMessageTargetLoader } from "./message-targets";
 import { messageTargetOptions } from "@/queries/context/links";
-import { afterEach, expect, spyOn, test } from "bun:test";
-import { z } from "zod";
+import { expect, test } from "bun:test";
 
-let fetchSpy: ReturnType<typeof spyOn<typeof globalThis, "fetch">> | undefined;
-afterEach(() => {
-  fetchSpy?.mockRestore();
-});
-
-const requestBody = z.object({
-  organizationId: z.string(),
-  targets: z.array(z.object({ conversationId: z.string(), messageId: z.string() })),
-});
-type Batch = z.infer<typeof requestBody>;
+type Batch = Parameters<typeof getMessageTargets>[0]["data"];
 
 const view = (conversationId: string, id: string) => ({ id, conversationId, body: id });
 
 // Fakes the server, which leaves out the targets the viewer can't open, and records each batch.
 const fakeServer = (hidden: string[] = [], fail = false) => {
   const requests: Batch[] = [];
-  fetchSpy?.mockRestore();
-  fetchSpy = spyOn(globalThis, "fetch").mockImplementation(
-    Object.assign(
-      async (_input: RequestInfo | URL, init?: RequestInit) => {
-        const body = requestBody.parse(await new Response(init?.body).json());
-        requests.push(body);
-        if (fail)
-          return Response.json(
-            { success: false, error: { code: "INTERNAL_ERROR", message: "Down." } },
-            { status: 500 },
-          );
-        return Response.json({
-          success: true,
-          data: body.targets
-            .filter((target) => !hidden.includes(target.messageId))
-            .map(({ conversationId, messageId }) => ({
-              message: view(conversationId, messageId),
-              root: view(conversationId, messageId),
-            })),
-        });
-      },
-      { preconnect: globalThis.fetch.preconnect },
-    ),
-  );
-  return requests;
+  const request: typeof getMessageTargets = async ({ data }) => {
+    requests.push(data);
+    if (fail) throw new ApiError("INTERNAL_ERROR", "Down.", 500);
+    return data.targets
+      .filter((target) => !hidden.includes(target.messageId))
+      .map(
+        ({ conversationId, messageId }) =>
+          // SAFETY: the loader reads only message.id and message.conversationId; the test reads
+          // nothing else from a target.
+          ({
+            message: view(conversationId, messageId),
+            root: view(conversationId, messageId),
+          }) as MessageTarget,
+      );
+  };
+  const loadTarget = createMessageTargetLoader(request);
+  const load = (client: QueryClient, organizationId: string, conversationId: string, id: string) =>
+    client.query(messageTargetOptions(organizationId, conversationId, id, loadTarget));
+  return { requests, load };
 };
-
-const load = (client: QueryClient, organizationId: string, conversationId: string, id: string) =>
-  client.query(messageTargetOptions(organizationId, conversationId, id));
 
 const reason = (result: PromiseSettledResult<unknown> | undefined) =>
   result?.status === "rejected" ? result.reason : undefined;
 
 test("concurrent message targets share one request per organization and keep their own keys", async () => {
-  const requests = fakeServer(["hidden"]);
+  const { requests, load } = fakeServer(["hidden"]);
   const client = new QueryClient();
   const results = await Promise.allSettled([
     load(client, "org", "c1", "a"),
@@ -93,15 +76,15 @@ test("concurrent message targets share one request per organization and keep the
 });
 
 test("more than fifty targets split into server-sized batches; a failed batch fails its targets", async () => {
-  const requests = fakeServer();
+  const { requests, load } = fakeServer();
   const client = new QueryClient();
   const ids = Array.from({ length: 51 }, (_, index) => `m${index}`);
   await Promise.all(ids.map((id) => load(client, "org", "c", id)));
   expect(requests.map((request) => request.targets.length)).toEqual([50, 1]);
-  fakeServer([], true);
+  const down = fakeServer([], true);
   const failed = await Promise.allSettled([
-    load(client, "org", "c", "x"),
-    load(client, "org", "c", "y"),
+    down.load(client, "org", "c", "x"),
+    down.load(client, "org", "c", "y"),
   ]);
   expect(failed.map((result) => result.status)).toEqual(["rejected", "rejected"]);
   expect(reason(failed[0])).toMatchObject({ code: "INTERNAL_ERROR" });
