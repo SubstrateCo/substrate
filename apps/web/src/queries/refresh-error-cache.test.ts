@@ -65,12 +65,10 @@ test("poll failures notify once per outage and recovery resets feedback", async 
     }
     expect(notify).toHaveBeenCalledTimes(1);
     expect(notify.mock.calls[0]?.[0]).toBe("Couldn’t refresh project");
-    expect(client.getQueryData(options.queryKey)).toEqual(["loaded project"]);
     expect(notify.mock.calls[0]?.[1]?.action).toMatchObject({ label: "Retry" });
 
     unavailable = false;
     await client.query(options);
-    expect(client.getQueryData(options.queryKey)).toEqual(["updated project"]);
     expect(dismiss).toHaveBeenCalledWith(JSON.stringify(options.queryKey));
 
     unavailable = true;

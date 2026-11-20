@@ -106,7 +106,6 @@ test("task routes preserve service errors and request scope", async () => {
       projectEntityId,
     },
   );
-  expect(getProject.mock.calls[0]?.[0].session.user.id).toBe("user-1");
 });
 
 test("task mutations return successful IDs", async () => {

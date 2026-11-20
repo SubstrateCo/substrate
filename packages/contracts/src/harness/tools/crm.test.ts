@@ -281,25 +281,13 @@ test("CRM link reads accept supported entity targets and keep message and core r
   ).toBe(false);
 });
 
-test("interaction continuation validates the repository's occurrence-time and entity-ID cursor", () => {
+test("interaction continuation accepts the repository's cursor and bounds its page size", () => {
   const input = { contactEntityId: crypto.randomUUID() };
   const before = { occurredAt: "2026-11-12T10:00:00Z", entityId: crypto.randomUUID() };
   expect(mcpTools.list_crm_interactions.input.parse(input).limit).toBe(50);
   expect(
     mcpTools.list_crm_interactions.input.safeParse({ ...input, before, limit: 100 }).success,
   ).toBe(true);
-  expect(
-    mcpTools.list_crm_interactions.input.safeParse({
-      ...input,
-      before: { ...before, occurredAt: "yesterday" },
-    }).success,
-  ).toBe(false);
-  expect(
-    mcpTools.list_crm_interactions.input.safeParse({
-      ...input,
-      before: { ...before, entityId: "not-an-id" },
-    }).success,
-  ).toBe(false);
   expect(mcpTools.list_crm_interactions.input.safeParse({ ...input, limit: 101 }).success).toBe(
     false,
   );

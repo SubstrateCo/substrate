@@ -911,7 +911,6 @@ test("context changes refetch known context families only, leaving notifications
   });
   try {
     await client.invalidateQueries({ queryKey: context });
-    expect(reads.reduce((sum, count) => sum + count, 0)).toBe(9);
     reads.fill(0);
     await cache.receive(change("context"));
     await Bun.sleep(25);

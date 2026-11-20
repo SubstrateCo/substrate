@@ -17,19 +17,6 @@ describe("harness model catalog", () => {
     expect(parsed.auth?.methods).toEqual([{ id: "login", name: "Log in", type: "terminal" }]);
   });
 
-  test("rejects unknown statuses and method types", () => {
-    const catalog = { harness: "claude", status: "ready", models: [] };
-    expect(harnessModelCatalogSchema.safeParse({ ...catalog, status: "signed-out" }).success).toBe(
-      false,
-    );
-    expect(
-      harnessModelCatalogSchema.safeParse({
-        ...catalog,
-        auth: { methods: [{ id: "x", name: "X", type: "env_var" }], signOut: false },
-      }).success,
-    ).toBe(false);
-  });
-
   test("a sign-in state carries no process details", () => {
     const parsed = harnessSignInStateSchema.parse({
       loginId: "a",

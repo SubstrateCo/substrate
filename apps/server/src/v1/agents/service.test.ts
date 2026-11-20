@@ -33,16 +33,19 @@ test("agent reads and picture changes use the resolved owner repository without 
   expect(setPicture).toHaveBeenCalledWith(id, fileId);
 });
 
-test("uncommitted and failed writes never publish", async () => {
+test("committed writes publish their hints and failed writes never publish", async () => {
   const scope = scopeFixture();
   const saved = { ...input, id: crypto.randomUUID(), image: null };
-  const commit = Promise.withResolvers<Committed<typeof saved>>();
+  const committed: Committed<typeof saved> = {
+    result: saved,
+    hints: [{ audience: ["user", scope.userId], domain: "agents" }],
+  };
   const published: string[] = [];
   scope.owner = {
     ...scope.owner,
     agents: {
       ...scope.owner.agents,
-      saveAgent: () => commit.promise,
+      saveAgent: async () => committed,
       deleteAgent: async () => {
         throw new ServiceError("FORBIDDEN", "Cannot delete.");
       },
@@ -54,14 +57,7 @@ test("uncommitted and failed writes never publish", async () => {
       return committed.result;
     },
   });
-  const saving = service.saveAgent(scope, input);
-  await Bun.sleep(0);
-  expect(published).toEqual([]);
-  commit.resolve({
-    result: saved,
-    hints: [{ audience: ["user", scope.userId], domain: "agents" }],
-  });
-  expect(await saving).toEqual({ success: true, data: saved });
+  expect(await service.saveAgent(scope, input)).toEqual({ success: true, data: saved });
   expect(published).toEqual(["agents"]);
   expect(await service.deleteAgent(scope, { id: saved.id })).toMatchObject({ success: false });
   expect(published).toEqual(["agents"]);

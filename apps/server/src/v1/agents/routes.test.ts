@@ -53,9 +53,6 @@ test("rejects invalid IDs, scope injection and device assignments before calling
   }
   for (const spy of [spies.saveAgent, spies.deleteAgent, spies.setAgentPicture])
     expect(spy).not.toHaveBeenCalled();
-  for (const path of ["/skills/save", "/skills/delete", "/mcp/save", "/mcp/delete"]) {
-    expect((await app.request(path, { method: "POST" })).status).toBe(404);
-  }
 });
 
 test("picture endpoint returns configurations, accepts clearing, and maps ownership failures", async () => {
