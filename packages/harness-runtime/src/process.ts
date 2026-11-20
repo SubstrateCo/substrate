@@ -14,37 +14,68 @@ export type NativeProcess = ChildProcessWithoutNullStreams &
     close: [number | null, NodeJS.Signals | null];
   }>;
 
-/**
- * Finds a native executable on PATH. On Windows only .exe and .com files count: shell:false
- * cannot start a .cmd shim.
- */
-export async function findExecutable(
-  name: string,
-  path = process.env.PATH ?? "",
-): Promise<string | undefined> {
-  const candidates = path
-    .split(delimiter)
+/** Windows command extensions in lookup order: PATHEXT, then .PS1 for PowerShell-only shims. */
+export function windowsCommandExtensions(pathext: string | undefined): string[] {
+  const parsed = (pathext ?? "")
+    .split(";")
+    .map((entry) => entry.trim().toLowerCase())
     .filter(Boolean)
-    .flatMap((directory) =>
-      (process.platform === "win32" ? [".exe", ".com", ""] : [""]).map((extension) =>
-        join(directory, name + extension),
-      ),
-    );
-  for (const candidate of candidates) {
-    try {
-      await access(candidate);
-      const resolved = await realpath(candidate);
-      if (
-        process.platform === "win32" &&
-        ![".exe", ".com"].includes(extname(resolved).toLowerCase())
-      )
-        continue;
-      return resolved;
-    } catch {
-      /* Not at this PATH entry; try the next one. */
+    .map((entry) => (entry.startsWith(".") ? entry : `.${entry}`));
+  const extensions = parsed.length > 0 ? parsed : [".com", ".exe", ".bat", ".cmd"];
+  return [...new Set([...extensions, ".ps1"])];
+}
+
+/** Native Windows programs that shell:false can start. */
+export function isWindowsNative(file: string): boolean {
+  return [".exe", ".com"].includes(extname(file).toLowerCase());
+}
+
+/**
+ * Every file named `name` on PATH, in lookup order, with symlinks resolved. On Windows each
+ * folder is tried with every command extension, and a file without one never counts. Launcher
+ * scripts such as npm's .cmd shims are included: callers decide whether they can follow them.
+ */
+export async function findCommands(
+  name: string,
+  path: string,
+  options: { platform?: NodeJS.Platform; pathext?: string } = {},
+): Promise<string[]> {
+  const windows = (options.platform ?? process.platform) === "win32";
+  const extensions = windows ? windowsCommandExtensions(options.pathext) : [""];
+  const found: string[] = [];
+  for (const directory of path.split(windows ? ";" : delimiter)) {
+    const folder = directory.trim().replace(/^"+|"+$/g, "");
+    if (!folder) continue;
+    for (const extension of extensions) {
+      try {
+        const candidate = join(folder, name + extension);
+        await access(candidate);
+        const resolved = await realpath(candidate);
+        if (windows && !extensions.includes(extname(resolved).toLowerCase())) continue;
+        if (!found.includes(resolved)) found.push(resolved);
+      } catch {
+        /* Not at this PATH entry; try the next one. */
+      }
     }
   }
-  return undefined;
+  return found;
+}
+
+/** base with overrides applied. Windows variable names ignore case, so one PATH replaces Path. */
+export function overrideEnvironment(
+  base: NodeJS.ProcessEnv,
+  overrides: NodeJS.ProcessEnv | undefined,
+  platform: NodeJS.Platform = process.platform,
+): NodeJS.ProcessEnv {
+  if (!overrides) return { ...base };
+  const replaced =
+    platform === "win32"
+      ? new Set(Object.keys(overrides).map((key) => key.toLowerCase()))
+      : new Set(Object.keys(overrides));
+  const kept = Object.entries(base).filter(
+    ([key]) => !replaced.has(platform === "win32" ? key.toLowerCase() : key),
+  );
+  return { ...Object.fromEntries(kept), ...overrides };
 }
 
 export function launch(
@@ -56,7 +87,7 @@ export function launch(
   // SAFETY: spawn with stdio:pipe returns all three streams, and native ChildProcess implements the listed EventEmitter methods.
   return spawn(executable, args, {
     cwd,
-    env: { ...process.env, ...env },
+    env: overrideEnvironment(process.env, env),
     shell: false,
     windowsHide: true,
     stdio: "pipe",

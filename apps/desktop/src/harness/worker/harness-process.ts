@@ -68,6 +68,9 @@ export function createHarnessProcess(
     [
       "PATH",
       "Path",
+      "PATHEXT",
+      // The harness reads the user's login-shell PATH through it.
+      "SHELL",
       "SystemRoot",
       "WINDIR",
       "TEMP",

@@ -1,17 +1,23 @@
 import { harnessKinds, type HarnessKind } from "@substrate/contracts/harness";
 
 import { HarnessError } from "../errors.ts";
-import { binaryVersion, findExecutable } from "../process.ts";
+import { binaryVersion, findCommands, isWindowsNative } from "../process.ts";
+import { searchPath } from "../shell-path.ts";
 import type { AcpLaunch } from "./api.ts";
 import { acpManifest, type AcpManifestEntry } from "./manifest.ts";
+import { followNpmShim } from "./npm-shim.ts";
 import { readFile, realpath } from "node:fs/promises";
 import { createRequire } from "node:module";
-import { dirname, resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 import { z } from "zod";
 
 /** The process environment that detection reads. Tests replace it. */
 export interface DetectEnvironment {
   env: Record<string, string | undefined>;
+  platform: NodeJS.Platform;
+  arch: string;
+  /** The PATH to search, repaired for GUI launches. Agents receive it as their PATH. */
+  searchPath(): Promise<string>;
   /** Runs JavaScript adapter scripts: Electron with ELECTRON_RUN_AS_NODE, or Bun in tests. */
   execPath: string;
   /** The package.json path of a bundled adapter, or undefined when it is not shipped. */
@@ -22,6 +28,9 @@ const require = createRequire(import.meta.url);
 
 const defaultEnvironment = (): DetectEnvironment => ({
   env: process.env,
+  platform: process.platform,
+  arch: process.arch,
+  searchPath,
   execPath: process.execPath,
   resolvePackage: (name) => {
     try {
@@ -86,15 +95,39 @@ const packageManifestSchema = z
     }),
   );
 
+/**
+ * The first native executable for the CLI on PATH. On Windows an npm launcher shim is followed to
+ * the native executable that its package installs; a shim without one is skipped.
+ */
+async function locateCli(
+  name: string,
+  path: string,
+  environment: DetectEnvironment,
+): Promise<{ command: string } | { reason: string }> {
+  const { platform } = environment;
+  let reason = `${name} is not on PATH.`;
+  for (const match of await findCommands(name, path, {
+    platform,
+    pathext: environment.env.PATHEXT,
+  })) {
+    if (platform !== "win32" || isWindowsNative(match)) return { command: match };
+    const command = await followNpmShim(name, match, environment.arch);
+    if (command) return { command };
+    reason = `${name} on PATH is the launcher script ${basename(match)}, and no native ${name}.exe was found in its package. Install the native ${name} CLI.`;
+  }
+  return { reason };
+}
+
 /** The user's CLI on PATH and its version, or the reason it is not usable. */
 async function detectCli(
   entry: AcpManifestEntry,
+  path: string,
   environment: DetectEnvironment,
 ): Promise<{ command: string; version: string } | { reason: string }> {
-  const { env } = environment;
   const name = entry.locate.cli;
-  const command = await findExecutable(name, env.PATH ?? env.Path ?? "");
-  if (!command) return { reason: `${name} is not on PATH.` };
+  const located = await locateCli(name, path, environment);
+  if ("reason" in located) return located;
+  const { command } = located;
   let version: string | undefined;
   try {
     version = parseVersion(await binaryVersion(command));
@@ -126,13 +159,20 @@ export async function inspectAgent(
   environment: DetectEnvironment = defaultEnvironment(),
 ): Promise<AgentDetection> {
   const entry: AcpManifestEntry = acpManifest[harness];
-  const cli = await detectCli(entry, environment);
+  const path = await environment.searchPath();
+  const cli = await detectCli(entry, path, environment);
   if ("reason" in cli) return { harness, reason: cli.reason };
   const { locate } = entry;
   if (locate.kind === "native")
     return {
       harness,
-      launch: { harness, command: cli.command, args: [...locate.args], version: cli.version },
+      launch: {
+        harness,
+        command: cli.command,
+        args: [...locate.args],
+        env: { PATH: path },
+        version: cli.version,
+      },
     };
   const script = await adapterScript(locate, environment);
   if (!script) return { harness, reason: `The bundled ${locate.package} adapter is missing.` };
@@ -142,7 +182,7 @@ export async function inspectAgent(
       harness,
       command: environment.execPath,
       args: [script],
-      env: { ELECTRON_RUN_AS_NODE: "1", [locate.cliEnv]: cli.command },
+      env: { PATH: path, ELECTRON_RUN_AS_NODE: "1", [locate.cliEnv]: cli.command },
       version: cli.version,
     },
   };
