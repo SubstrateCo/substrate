@@ -1,4 +1,5 @@
 import type { AgentWorkAPI } from "@substrate/contracts/agent-work/desktop";
+import type { DesktopUpdatesAPI } from "@substrate/contracts/desktop/updates-ipc";
 import type { DesktopSettingsAPI, DesktopWindowAPI } from "@substrate/contracts/desktop/window";
 import type { HarnessAPI } from "@substrate/contracts/harness/desktop";
 import type { RealtimeAPI } from "@substrate/contracts/realtime";
@@ -12,6 +13,7 @@ declare global {
     readonly substrateWindow?: DesktopWindowAPI;
     readonly substrateDesktopSettings?: DesktopSettingsAPI;
     readonly substrateRealtime?: RealtimeAPI;
+    readonly substrateUpdates?: DesktopUpdatesAPI;
   }
 }
 
@@ -20,6 +22,7 @@ export const agentWorkBridge = () => window.substrateAgentWork;
 export const windowBridge = () => window.substrateWindow;
 export const desktopSettingsBridge = () => window.substrateDesktopSettings;
 export const realtimeBridge = () => window.substrateRealtime;
+export const updatesBridge = () => window.substrateUpdates;
 export const desktopPlatform = () => windowBridge()?.platform;
 export const hasDesktopAuth = () => Boolean(window.requestAuth);
 

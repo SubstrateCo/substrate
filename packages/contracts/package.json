@@ -17,6 +17,7 @@
     "./desktop/ipc": "./src/desktop/ipc.ts",
     "./desktop/window-ipc": "./src/desktop/window-ipc.ts",
     "./desktop/settings-ipc": "./src/desktop/settings-ipc.ts",
+    "./desktop/updates-ipc": "./src/desktop/updates-ipc.ts",
     "./realtime/ipc": "./src/realtime/ipc.ts",
     "./harness/mcp": "./src/harness/mcp.ts",
     "./harness/tools": "./src/harness/tools/index.ts",

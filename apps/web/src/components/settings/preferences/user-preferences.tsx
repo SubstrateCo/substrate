@@ -1,3 +1,4 @@
+import { DesktopUpdateSettings } from "@/components/desktop-updates/desktop-update-settings";
 import { SettingsPanel } from "@/components/layout/settings-page";
 import { SettingsCard, SettingsRow } from "@/components/layout/settings-section";
 import { DesktopPreferences } from "@/components/settings/preferences/desktop-preferences";
@@ -14,6 +15,7 @@ export function UserPreferences() {
         />
       </SettingsCard>
       <DesktopPreferences />
+      <DesktopUpdateSettings />
     </SettingsPanel>
   );
 }

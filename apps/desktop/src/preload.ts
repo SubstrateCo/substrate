@@ -6,6 +6,7 @@ import {
 import * as agentWorkIPC from "@substrate/contracts/agent-work/ipc";
 import { exposeBridge } from "@substrate/contracts/desktop/ipc";
 import * as settingsIPC from "@substrate/contracts/desktop/settings-ipc";
+import * as updatesIPC from "@substrate/contracts/desktop/updates-ipc";
 import {
   desktopSettingsChannel,
   fullscreenChannel,
@@ -58,6 +59,16 @@ if (process.isMainFrame && window.location.origin === origin) {
     ipcRenderer.invoke.bind(ipcRenderer),
   );
   contextBridge.exposeInMainWorld("substrateDesktopSettings", settings);
+  const updates: updatesIPC.DesktopUpdatesAPI = {
+    ...exposeBridge(updatesIPC.channel, updatesIPC.methods, ipcRenderer.invoke.bind(ipcRenderer)),
+    onChange: (callback) => {
+      const listener = (_event: Electron.IpcRendererEvent, value: updatesIPC.DesktopUpdateStatus) =>
+        callback(value);
+      ipcRenderer.on(updatesIPC.statusChannel, listener);
+      return () => ipcRenderer.removeListener(updatesIPC.statusChannel, listener);
+    },
+  };
+  contextBridge.exposeInMainWorld("substrateUpdates", updates);
   const api = exposeBridge(
     harnessIPC.channel,
     harnessIPC.methods,

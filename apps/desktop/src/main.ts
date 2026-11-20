@@ -20,6 +20,7 @@ import { desktopAPITransport } from "./transport/api-transport.ts";
 import { configureProtocols } from "./transport/protocols.ts";
 import { publicConfigSchema, resolvePublicConfig } from "./transport/public-config.ts";
 import { emitToRenderer } from "./transport/realtime-events.ts";
+import { setupDesktopUpdates } from "./updates/desktop-updates.ts";
 import { app, BrowserWindow, ipcMain, Menu, Notification, session, Tray } from "electron";
 import { readFileSync } from "node:fs";
 import { hostname } from "node:os";
@@ -202,6 +203,16 @@ function main() {
       if (process.platform !== "darwin") app.quit();
     });
     let shutdownComplete = false;
+    // The update installer replaces the app as soon as it quits. Finish the same shutdown first,
+    // so before-quit does not hold the old version open while the installer runs.
+    async function shutdownForUpdate() {
+      quitting = true;
+      try {
+        await services?.shutdown();
+      } finally {
+        shutdownComplete = true;
+      }
+    }
     app.on("before-quit", (event) => {
       quitting = true;
       if (shutdownComplete || !services) return;
@@ -345,6 +356,13 @@ function main() {
           ]),
         );
         createWindow();
+        setupDesktopUpdates({
+          enabled: !smokeTest,
+          getWindow: () => mainWindow,
+          showWindow,
+          rendererURL,
+          prepareInstall: shutdownForUpdate,
+        }).start();
         app.on("activate", () => {
           if (BrowserWindow.getAllWindows().length === 0) createWindow();
           else mainWindow?.show();

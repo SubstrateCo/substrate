@@ -1,0 +1,224 @@
+# Builds the desktop app for Windows (NSIS, x64) and macOS (arm64) and publishes the installers
+# and update feeds (latest.yml, latest-mac.yml) to a public releases repository. Installed apps
+# read updates anonymously from that repository with electron-updater.
+#
+# Repository variables:
+#   SUBSTRATE_API_URL, SUBSTRATE_WEB_URL, S3_ENDPOINT  Public HTTPS origins built into the app.
+#   DESKTOP_RELEASES_OWNER, DESKTOP_RELEASES_REPO      Optional. Default SubstrateCo/substrate-releases.
+# Repository secrets:
+#   RELEASES_GITHUB_TOKEN  Fine-grained token with Contents: read and write on the releases repo.
+#   Signing (optional, see the package steps): WINDOWS_CSC_LINK, WINDOWS_CSC_KEY_PASSWORD,
+#   MAC_CSC_LINK, MAC_CSC_KEY_PASSWORD, APPLE_ID, APPLE_APP_SPECIFIC_PASSWORD, APPLE_TEAM_ID.
+name: Desktop release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: App version without a "v", for example 0.2.0
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# One release at a time, so two runs never race on the same draft.
+concurrency:
+  group: desktop-release
+  cancel-in-progress: false
+
+env:
+  BUN_VERSION: 1.4.4
+  VERSION: ${{ inputs.version }}
+  SUBSTRATE_RELEASES_OWNER: ${{ vars.DESKTOP_RELEASES_OWNER || 'SubstrateCo' }}
+  SUBSTRATE_RELEASES_REPO: ${{ vars.DESKTOP_RELEASES_REPO || 'substrate-releases' }}
+
+jobs:
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check inputs and settings
+        env:
+          SUBSTRATE_API_URL: ${{ vars.SUBSTRATE_API_URL }}
+          SUBSTRATE_WEB_URL: ${{ vars.SUBSTRATE_WEB_URL }}
+          S3_ENDPOINT: ${{ vars.S3_ENDPOINT }}
+          HAS_RELEASES_TOKEN: ${{ secrets.RELEASES_GITHUB_TOKEN != '' }}
+        run: |
+          failed=0
+          if ! [[ "$VERSION" =~ ^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$ ]]; then
+            echo "::error::Version must look like 1.2.3 (no \"v\" and no pre-release suffix). Got: $VERSION"
+            failed=1
+          fi
+          for name in SUBSTRATE_API_URL SUBSTRATE_WEB_URL S3_ENDPOINT; do
+            value="${!name}"
+            if [ -z "$value" ]; then
+              echo "::error::Set the repository variable $name (Settings > Secrets and variables > Actions > Variables)."
+              failed=1
+            elif ! [[ "$value" =~ ^https://[^/[:space:]]+/?$ ]]; then
+              echo "::error::$name must be an HTTPS origin without a path, for example https://api.example.com. Got: $value"
+              failed=1
+            fi
+          done
+          if ! [[ "$SUBSTRATE_RELEASES_OWNER/$SUBSTRATE_RELEASES_REPO" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
+            echo "::error::DESKTOP_RELEASES_OWNER and DESKTOP_RELEASES_REPO must name a GitHub repository."
+            failed=1
+          fi
+          if [ "$HAS_RELEASES_TOKEN" != "true" ]; then
+            echo "::error::Set the repository secret RELEASES_GITHUB_TOKEN (contents: write on $SUBSTRATE_RELEASES_OWNER/$SUBSTRATE_RELEASES_REPO)."
+            failed=1
+          fi
+          exit "$failed"
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - name: Typecheck the desktop app
+        run: bun run --filter @substrate/desktop typecheck
+      - name: Test the desktop app
+        working-directory: apps/desktop
+        run: bun run test
+
+  prepare:
+    name: Create draft release
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ secrets.RELEASES_GITHUB_TOKEN }}
+    steps:
+      # Both package jobs upload to this one draft. electron-builder reuses a draft with the
+      # same tag, but two jobs that start together could each create their own.
+      - name: Create or reuse the draft
+        run: |
+          tag="v$VERSION"
+          repo="$SUBSTRATE_RELEASES_OWNER/$SUBSTRATE_RELEASES_REPO"
+          release=$(gh api --paginate "repos/$repo/releases?per_page=100" \
+            --jq ".[] | select(.tag_name == \"$tag\") | {id, draft}" | head -n 1)
+          if [ -z "$release" ]; then
+            gh api -X POST "repos/$repo/releases" \
+              -f tag_name="$tag" -f name="Substrate $VERSION" -F draft=true \
+              -f body="Substrate $VERSION for Windows and macOS (Apple silicon)." > /dev/null
+            echo "Created draft release $tag in $repo."
+          elif [ "$(echo "$release" | jq -r .draft)" = "true" ]; then
+            echo "Reusing draft release $tag in $repo."
+          else
+            echo "::error::Release $tag is already published in $repo. Choose a new version."
+            exit 1
+          fi
+
+  package:
+    name: Package (${{ matrix.platform }})
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Each job packages on its own OS and CPU, so Electron and any staged native files match.
+          - platform: windows
+            os: windows-latest
+          - platform: macos
+            os: macos-14
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    env:
+      SUBSTRATE_API_URL: ${{ vars.SUBSTRATE_API_URL }}
+      SUBSTRATE_WEB_URL: ${{ vars.SUBSTRATE_WEB_URL }}
+      S3_ENDPOINT: ${{ vars.S3_ENDPOINT }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+      - run: bun install --frozen-lockfile
+      - name: Set the app version
+        run: |
+          bun -e '
+            const path = "apps/desktop/package.json";
+            const manifest = await Bun.file(path).json();
+            manifest.version = process.env.VERSION;
+            await Bun.write(path, JSON.stringify(manifest, null, 2) + "\n");
+          '
+      - name: Build the app
+        working-directory: apps/desktop
+        run: bun run build
+
+      - name: Package and upload (Windows)
+        if: matrix.platform == 'windows'
+        working-directory: apps/desktop
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_GITHUB_TOKEN }}
+          # Signing hook. Add these secrets to sign the installer; without them it is unsigned
+          # and SmartScreen warns on first install.
+          CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.WINDOWS_CSC_KEY_PASSWORD }}
+        run: |
+          if [ -z "$CSC_LINK" ]; then
+            unset CSC_LINK CSC_KEY_PASSWORD
+            echo "::warning::WINDOWS_CSC_LINK is not set. The Windows installer is unsigned."
+          fi
+          bunx electron-builder --win nsis --publish always \
+            -c.publish.owner="$SUBSTRATE_RELEASES_OWNER" -c.publish.repo="$SUBSTRATE_RELEASES_REPO"
+
+      - name: Package and upload (macOS)
+        if: matrix.platform == 'macos'
+        working-directory: apps/desktop
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_GITHUB_TOKEN }}
+          # Signing hook. Add MAC_CSC_LINK (base64 .p12 of a Developer ID Application
+          # certificate) and its password to sign; add the APPLE_* secrets to notarize.
+          CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
+          CSC_KEY_PASSWORD: ${{ secrets.MAC_CSC_KEY_PASSWORD }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          signing=()
+          if [ -z "$CSC_LINK" ]; then
+            unset CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+            export CSC_IDENTITY_AUTO_DISCOVERY=false
+            # Apple silicon runs only signed code, so sign ad hoc. Hardened runtime would refuse
+            # the ad-hoc-signed Electron framework, so it is off until a real certificate exists.
+            signing=(-c.mac.identity=- -c.mac.hardenedRuntime=false)
+            echo "::warning::MAC_CSC_LINK is not set. The macOS app is ad-hoc signed and not notarized."
+          elif [ -z "$APPLE_ID" ]; then
+            unset APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID
+          fi
+          bunx electron-builder --mac --publish always \
+            -c.publish.owner="$SUBSTRATE_RELEASES_OWNER" -c.publish.repo="$SUBSTRATE_RELEASES_REPO" \
+            "${signing[@]}"
+
+  publish:
+    name: Publish release
+    needs: package
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      GH_TOKEN: ${{ secrets.RELEASES_GITHUB_TOKEN }}
+    steps:
+      # Installed apps see a release only after it is published, so publish only when both
+      # platforms uploaded their installers and update feeds.
+      - name: Check assets and publish
+        run: |
+          tag="v$VERSION"
+          repo="$SUBSTRATE_RELEASES_OWNER/$SUBSTRATE_RELEASES_REPO"
+          release=$(gh api --paginate "repos/$repo/releases?per_page=100" \
+            --jq ".[] | select(.tag_name == \"$tag\" and .draft) | .id" | head -n 1)
+          if [ -z "$release" ]; then
+            echo "::error::Draft release $tag was not found in $repo."
+            exit 1
+          fi
+          assets=$(gh api --paginate "repos/$repo/releases/$release/assets?per_page=100" --jq '.[].name')
+          for name in latest.yml latest-mac.yml Substrate-Setup.exe Substrate-mac-arm64.dmg Substrate-mac-arm64.zip; do
+            if ! grep -qxF "$name" <<< "$assets"; then
+              echo "::error::Release $tag is missing $name."
+              exit 1
+            fi
+          done
+          gh api -X PATCH "repos/$repo/releases/$release" -F draft=false -f make_latest=true > /dev/null
+          echo "Published https://github.com/$repo/releases/tag/$tag"
