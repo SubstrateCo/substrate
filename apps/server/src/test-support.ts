@@ -57,6 +57,7 @@ export function createTestServices() {
     // SAFETY: Construction does no I/O. Tests replace services or repositories before calling them.
     storage: {} as ObjectStorage,
     publish: async (committed) => committed.result,
+    apiURL: "http://localhost:3001",
   });
 }
 

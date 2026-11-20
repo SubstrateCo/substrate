@@ -26,6 +26,8 @@ export function OrganizationSelection({
   onSelect,
   signOut,
   createForm,
+  invitations,
+  hasInvitations = false,
 }: {
   organizations?: { id: string; name: string }[];
   state: ResourceStatus;
@@ -37,6 +39,10 @@ export function OrganizationSelection({
   onSelect: (id: string) => void;
   signOut: ReactNode;
   createForm: ReactNode;
+  /** The user's pending invitations, shown first because they need an answer. */
+  invitations?: ReactNode;
+  /** Whether the user has an invitation they can still accept. */
+  hasInvitations?: boolean;
 }) {
   const retryOrigin = useRef<Element | null>(null);
   const firstChoice = useRef<HTMLButtonElement | null>(null);
@@ -54,13 +60,18 @@ export function OrganizationSelection({
   }, [loading, loadError, organizations]);
 
   const listed = organizations ?? [];
-  // With workspaces to open, creating another is a secondary, collapsed step.
-  const showCreate = creating || (!loading && listed.length === 0);
+  // With workspaces to open or invitations to answer, creating one is a secondary, collapsed step.
+  const collapsible = listed.length > 0 || hasInvitations;
+  const showCreate = creating || (!loading && !collapsible);
+  const description =
+    hasInvitations && !loading && listed.length === 0
+      ? "Join a workspace you were invited to, or create one for your team."
+      : "Open a workspace you belong to, or create one for your team.";
 
   return (
     <AuthFrame
       title="Choose a workspace"
-      description="Open a workspace you belong to, or create one for your team."
+      description={description}
       actions={
         <>
           <AuthNavLink href="/settings/user/invitations">Your invitations</AuthNavLink>
@@ -68,6 +79,7 @@ export function OrganizationSelection({
         </>
       }
     >
+      {invitations}
       {state === "loading" && !organizations?.length && (
         <div role="status" aria-label="Loading workspaces">
           <ul aria-hidden="true" className="-mx-2.5 max-h-72 space-y-0.5 overflow-y-auto">
@@ -92,7 +104,7 @@ export function OrganizationSelection({
           }}
         />
       )}
-      {!loading && !loadError && organizations?.length === 0 && (
+      {!loading && !loadError && organizations?.length === 0 && !hasInvitations && (
         <ContentNotice
           icon={Building2}
           title="No workspaces yet"
@@ -143,7 +155,7 @@ export function OrganizationSelection({
           </CollapsibleTrigger>
         )}
         <CollapsibleContent>
-          {listed.length > 0 && <Separator />}
+          {collapsible && <Separator />}
           <section className="space-y-4 pt-4" aria-labelledby="create-workspace-title">
             <div className="flex items-center justify-between gap-2">
               <h2
@@ -154,7 +166,7 @@ export function OrganizationSelection({
               >
                 Create a workspace
               </h2>
-              {listed.length > 0 && (
+              {collapsible && (
                 <Button
                   type="button"
                   variant="ghost"

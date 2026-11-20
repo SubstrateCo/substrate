@@ -19,7 +19,7 @@ type PendingChange =
 
 const roleCapabilities: Record<OrganizationRole, string> = {
   member: "work in the channels and projects they are added to.",
-  admin: "manage settings and conversations, and remove members.",
+  admin: "manage settings and conversations, invite people, and remove members.",
   owner: "manage invitations, roles, and other owners.",
 };
 
@@ -30,7 +30,7 @@ type OrganizationMembersProps = {
   loading: boolean;
   error?: Error | null;
   onRetry: () => void;
-  /** A link to invitations, for owners. */
+  /** A link to invitations, for people who may invite. */
   inviteAction?: ReactNode;
   changing: boolean;
   changeError?: Error | null;

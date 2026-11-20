@@ -6,16 +6,18 @@ import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
 import { DesktopInstall } from "@/components/onboarding/desktop-install";
 import { InvitationManager } from "@/components/organizations/invitations/invitation-manager";
 import { Separator } from "@/components/ui/separator";
+import { invitationRoles } from "@/lib/organizations/member-policy";
 
 export function SetupCompleteScreen({
   organizationId,
   name,
-  canInvite,
+  role,
   conversationId,
 }: {
   organizationId: string;
   name: string;
-  canInvite: boolean;
+  /** The viewer's stored role in the organization. */
+  role: string;
   conversationId?: string;
 }) {
   const router = useRouter();
@@ -40,10 +42,10 @@ export function SetupCompleteScreen({
       }
     >
       <DesktopInstall destination={destination} browserHref={destination} />
-      {canInvite && (
+      {invitationRoles(role).length > 0 && (
         <>
           <Separator />
-          <InvitationManager organizationId={organizationId} />
+          <InvitationManager organizationId={organizationId} viewerRole={role} />
         </>
       )}
     </AuthFrame>

@@ -209,7 +209,7 @@ function standalone(
     sharing: domain("sharing", ["list", "listConversations", "inbox"]),
     feed: domain("feed", ["activity", "list", "groups", "groupEvents", "hasUnread"]),
     files: domain("files", ["listTask", "taskContent", "messageContent"]),
-    organizations: domain("organizations", ["summary", "people"]),
+    organizations: domain("organizations", ["summary", "people", "pendingInvitation"]),
     agentWork: domain("agentWork", [
       "listConversationRequests",
       "listNeedsYou",

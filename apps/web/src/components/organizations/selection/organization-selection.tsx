@@ -1,22 +1,36 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { CreateOrganizationForm } from "./create-organization-form";
+import { PendingInvitations } from "./pending-invitations-view";
 import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { useDeclineInvitationConfirm } from "@/components/organizations/invitations/use-decline-invitation";
 import { OrganizationSelection as OrganizationSelectionView } from "@/components/organizations/selection/organization-selection-view";
+import { useExpiryTime } from "@/hooks/use-expiry-time";
 import { resourceState } from "@/lib/resource-state";
+import { userInvitationsQueryOptions } from "@/queries/organizations/invitations";
 import { organizationsQueryOptions } from "@/queries/organizations/options";
 import { useActivateOrganization } from "@/queries/organizations/selection-mutations";
 import { toast } from "sonner";
 
 export function OrganizationSelection({ destination = "/dashboard" }: { destination?: string }) {
   const organizations = useQuery(organizationsQueryOptions());
+  const invitations = useQuery(userInvitationsQueryOptions());
+  const now = useExpiryTime(invitations.data?.map((item) => item.expiresAt));
   const select = useActivateOrganization(destination);
+  const decline = useDeclineInvitationConfirm();
+  // A failed invitation list stays out of the way; "Your invitations" shows the error.
+  const pending = (resourceState(invitations).data ?? []).map((item) => ({
+    ...item,
+    expired: new Date(item.expiresAt).getTime() <= now,
+    href: `/accept-invitation/${encodeURIComponent(item.id)}`,
+  }));
   return (
     <OrganizationSelectionView
       organizations={resourceState(organizations).data}
       state={resourceState(organizations).status}
-      loading={organizations.isPending}
+      // Wait for both lists, so the create form does not collapse when invitations arrive.
+      loading={organizations.isPending || invitations.isPending}
       openingId={select.isPending ? select.variables : undefined}
       loadError={organizations.error}
       onRetry={() => void organizations.refetch()}
@@ -24,12 +38,23 @@ export function OrganizationSelection({ destination = "/dashboard" }: { destinat
         select.mutate(id, {
           onError: (error) =>
             toast.error(
-              actionErrorMessage(error, "We couldn’t open this workspace. Try selecting it again."),
+              actionErrorMessage(error, "We couldn't open this workspace. Try selecting it again."),
             ),
         })
       }
       signOut={<SignOutButton />}
       createForm={<CreateOrganizationForm destination={destination} />}
+      hasInvitations={pending.some((invitation) => !invitation.expired)}
+      invitations={
+        <>
+          <PendingInvitations
+            invitations={pending}
+            decliningId={decline.pendingId}
+            onDecline={decline.request}
+          />
+          {decline.dialog}
+        </>
+      }
     />
   );
 }

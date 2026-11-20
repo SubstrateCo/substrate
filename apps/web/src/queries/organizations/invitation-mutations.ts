@@ -8,7 +8,9 @@ import { authClient } from "@/lib/auth/client";
 
 export function useInvitationMutations(organizationId: string) {
   const client = useQueryClient();
-  const onSuccess = () =>
+  // A failed request may still have changed an invitation, such as one saved before its email
+  // failed, so the list refreshes either way.
+  const onSettled = () =>
     client.invalidateQueries({ queryKey: queryKeys.invitations(organizationId) });
   const invite = useMutation({
     mutationFn: async ({
@@ -28,14 +30,14 @@ export function useInvitationMutations(organizationId: string) {
       });
       if (result.error) throw authError(result.error);
     },
-    onSuccess,
+    onSettled,
   });
   const cancel = useMutation({
     mutationFn: async (invitationId: string) => {
       const result = await authClient.organization.cancelInvitation({ invitationId });
       if (result.error) throw authError(result.error);
     },
-    onSuccess,
+    onSettled,
   });
   return { invite, cancel };
 }

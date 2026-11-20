@@ -8,7 +8,12 @@ import { useNativeValidation } from "../../forms/use-native-validation";
 import { Field, FieldDescription, FieldError, FieldLabel } from "../../ui/field";
 import { Input } from "../../ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
-import { organizationRoles } from "@/lib/organizations/member-policy";
+
+export type InvitationRoleOption = {
+  value: OrganizationRole;
+  label: string;
+  description: string;
+};
 
 // On wide screens the fields share one subgrid: labels, then controls, then errors and hints.
 // The button sits on the control row, so an error under the email never moves it.
@@ -17,21 +22,25 @@ const emailColumn = "@lg:col-span-6";
 const roleColumn = "@lg:col-span-3";
 
 export function InvitationForm({
+  roles,
   sending,
   disabled,
   onInvite,
 }: {
+  /** The roles the viewer may invite with, starting with the default. Never empty. */
+  roles: readonly InvitationRoleOption[];
   sending: boolean;
   disabled: boolean;
   onInvite: (email: string, role: OrganizationRole) => void;
 }) {
   const id = useId();
   const inviteButton = useRef<HTMLButtonElement>(null);
-  const [role, setRole] = useState<OrganizationRole>("member");
+  const [selectedRole, setRole] = useState<OrganizationRole>("member");
   // Owner invitations grant full control, so they are confirmed first.
   const [ownerInvite, setOwnerInvite] = useState<string>();
   const validation = useNativeValidation();
-  const roleOption = organizationRoles.find((option) => option.value === role)!;
+  const roleOption = roles.find((option) => option.value === selectedRole) ?? roles[0]!;
+  const role = roleOption.value;
   return (
     <>
       <form
@@ -69,7 +78,7 @@ export function InvitationForm({
           <Select
             value={role}
             onValueChange={(value) => {
-              const option = organizationRoles.find((candidate) => candidate.value === value);
+              const option = roles.find((candidate) => candidate.value === value);
               if (option) setRole(option.value);
             }}
           >
@@ -81,7 +90,7 @@ export function InvitationForm({
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {organizationRoles.map((option) => (
+              {roles.map((option) => (
                 <SelectItem key={option.value} value={option.value}>
                   {option.label}
                 </SelectItem>

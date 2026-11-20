@@ -1,3 +1,5 @@
+import { useMemo } from "react";
+
 import { DateTimeDisplay } from "../../table/date-time-cell";
 import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "../../table/index";
 import { Button } from "../../ui/button";
@@ -18,23 +20,44 @@ type InvitationRow = UserInvitation & { expired: boolean };
 const column = createAppColumnHelper<InvitationRow>();
 const emptyInvitations: UserInvitation[] = [];
 
-function ReviewInvitationAction({ href, organization }: { href: string; organization: string }) {
+function InvitationActions({
+  invitation,
+  declining,
+  onDecline,
+}: {
+  invitation: InvitationRow;
+  declining: boolean;
+  onDecline: (invitation: UserInvitation) => void;
+}) {
+  const organization = invitation.organizationName || "this organization";
   return (
-    <Button asChild variant="outline" size="sm">
-      <a href={href} aria-label={`Review invitation to ${organization}`}>
-        Review
-        <ArrowUpRight aria-hidden="true" />
-      </a>
-    </Button>
+    <div className="flex gap-2">
+      <Button
+        type="button"
+        variant="ghost"
+        size="sm"
+        disabled={declining}
+        aria-label={`Decline invitation to ${organization}`}
+        onClick={() => onDecline(invitation)}
+      >
+        Decline
+      </Button>
+      <Button asChild variant="outline" size="sm">
+        <a href={invitation.href} aria-label={`Review invitation to ${organization}`}>
+          Review
+          <ArrowUpRight aria-hidden="true" />
+        </a>
+      </Button>
+    </div>
   );
 }
 
-const columns = column.columns([
+const baseColumns = column.columns([
   column.accessor((invitation) => invitation.organizationName || "Organization", {
     id: "organization",
     header: "Organization",
     cell: ({ row }) => (
-      <span className="block max-w-56 wrap-anywhere whitespace-normal">
+      <span className="block wrap-anywhere whitespace-normal">
         {row.original.organizationName || "Organization"}
       </span>
     ),
@@ -49,19 +72,6 @@ const columns = column.columns([
     id: "expiresAt",
     header: "Expires",
   }),
-  column.display({
-    id: "actions",
-    header: () => <span className="sr-only">Actions</span>,
-    cell: ({ row }) =>
-      !row.original.expired && (
-        <div className="flex justify-end">
-          <ReviewInvitationAction
-            href={row.original.href}
-            organization={row.original.organizationName || "this organization"}
-          />
-        </div>
-      ),
-  }),
 ]);
 
 export function UserInvitationsTable({
@@ -70,13 +80,39 @@ export function UserInvitationsTable({
   error,
   onRetry,
   now,
+  decliningId,
+  onDecline,
 }: {
   invitations?: UserInvitation[];
   loading: boolean;
   error: Error | null;
   onRetry: () => void;
   now: number;
+  /** The invitation being declined, while it is declined. */
+  decliningId?: string;
+  onDecline: (invitation: UserInvitation) => void;
 }) {
+  const columns = useMemo(
+    () =>
+      column.columns([
+        ...baseColumns,
+        column.display({
+          id: "actions",
+          header: () => <span className="sr-only">Actions</span>,
+          cell: ({ row }) =>
+            !row.original.expired && (
+              <div className="flex justify-end">
+                <InvitationActions
+                  invitation={row.original}
+                  declining={decliningId === row.original.id}
+                  onDecline={onDecline}
+                />
+              </div>
+            ),
+        }),
+      ]),
+    [decliningId, onDecline],
+  );
   const data = invitations.map((invitation) => ({
     ...invitation,
     expired: new Date(invitation.expiresAt).getTime() <= now,
@@ -120,9 +156,10 @@ export function UserInvitationsTable({
               </dd>
             </dl>
             {!invitation.expired && (
-              <ReviewInvitationAction
-                href={invitation.href}
-                organization={invitation.organizationName || "this organization"}
+              <InvitationActions
+                invitation={invitation}
+                declining={decliningId === invitation.id}
+                onDecline={onDecline}
               />
             )}
           </>

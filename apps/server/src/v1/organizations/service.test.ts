@@ -13,7 +13,10 @@ test("settings access grants only owner or admin access in the resolved workspac
     [null, null],
   ] as const) {
     expect(
-      await createOrganizationService().settingsAccess({ session: sessionFixture(), role }),
+      await createOrganizationService({ apiURL: "https://api.example.com" }).settingsAccess({
+        session: sessionFixture(),
+        role,
+      }),
     ).toEqual({ success: true, data: expected });
   }
 });

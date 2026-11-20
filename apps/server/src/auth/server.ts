@@ -17,6 +17,7 @@ import { isTrustedOrigin } from "../shared/origin";
 import { createOrganizationLifecycle } from "./organization-lifecycle";
 import {
   organizationBody,
+  invitationEmailFailure,
   organizationResult,
   rememberedOrganization,
   rethrowInvitationLookupError,
@@ -63,6 +64,10 @@ export function createAuth(deps: {
     });
     await publishMembershipChange(input);
   };
+
+  // Better Auth logs and drops errors from sendInvitationEmail, so the failure is noted per request
+  // and reported by the after hook. The invitation itself is already saved.
+  const failedInvitationEmails = new WeakSet<Request>();
 
   const handleOrganizationLifecycle = createOrganizationLifecycle({
     clearMembershipSharing: async (userId, organizationId) => {
@@ -156,6 +161,8 @@ export function createAuth(deps: {
           returned: ctx.context.returned,
           session: ctx.context.session ?? null,
         });
+        if (ctx.request && failedInvitationEmails.delete(ctx.request))
+          throw invitationEmailFailure();
         const body = organizationBody.safeParse(ctx.body ?? {});
         const result = organizationResult.safeParse(ctx.context.returned);
         if (!body.success || !result.success) return;
@@ -208,11 +215,19 @@ export function createAuth(deps: {
           afterCancelInvitation: publishInvitationChange,
         },
         sendInvitationEmail: async ({ id, email, organization }, request) => {
-          await mail.organizationInvitation(
-            email,
-            { id, organizationName: organization.name },
-            request,
-          );
+          try {
+            await mail.organizationInvitation(
+              email,
+              { id, organizationName: organization.name },
+              request,
+            );
+          } catch (error) {
+            console.error(
+              "Invitation email failed",
+              error instanceof Error ? error.name : "Unknown error",
+            );
+            if (request) failedInvitationEmails.add(request);
+          }
         },
       }),
     ],

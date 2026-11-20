@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 
+import { CopyButton } from "../../feedback/copy-button";
 import { RowAction, RowActions } from "../../layout/row-actions";
 import { DateTimeDisplay } from "../../table/date-time-cell";
 import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "../../table/index";
@@ -17,15 +18,28 @@ function InvitationActions({
   busy,
   onInvite,
   onCancel,
+  onCopyLink,
 }: {
   invitation: InvitationListItem;
   busy: boolean;
   onInvite: (email: string, role: InvitationListItem["role"], resend?: boolean) => void;
   onCancel: (id: string) => void;
+  onCopyLink: (id: string) => Promise<void>;
 }) {
   if (invitation.status !== "pending") return null;
   return (
     <RowActions label="Invitation actions">
+      {!invitation.expired && (
+        // oxlint-disable-next-line design/icon-button-name, design/icon-button-tooltip -- CopyButton uses `label` as its aria-label and tooltip.
+        <CopyButton
+          grouped
+          size="icon-sm"
+          label={`Copy invite link for ${invitation.email}`}
+          successMessage="Invite link copied"
+          errorMessage="Couldn’t copy the invite link"
+          onCopy={() => onCopyLink(invitation.id)}
+        />
+      )}
       <RowAction
         label={`Resend invitation to ${invitation.email}`}
         disabled={busy}
@@ -53,6 +67,7 @@ export function InvitationTable({
   onRetry,
   onInvite,
   onCancel,
+  onCopyLink,
 }: {
   invitations?: InvitationListItem[];
   loading: boolean;
@@ -61,6 +76,7 @@ export function InvitationTable({
   onRetry: () => void;
   onInvite: (email: string, role: InvitationListItem["role"], resend?: boolean) => void;
   onCancel: (id: string) => void;
+  onCopyLink: (id: string) => Promise<void>;
 }) {
   const columns = useMemo(
     () =>
@@ -68,9 +84,7 @@ export function InvitationTable({
         column.accessor("email", {
           header: "Email",
           cell: ({ row }) => (
-            <span className="block max-w-56 wrap-anywhere whitespace-normal">
-              {row.original.email}
-            </span>
+            <span className="block wrap-anywhere whitespace-normal">{row.original.email}</span>
           ),
         }),
         column.accessor((invitation) => roleLabel(invitation.role), { id: "role", header: "Role" }),
@@ -97,11 +111,12 @@ export function InvitationTable({
               busy={busy}
               onInvite={onInvite}
               onCancel={onCancel}
+              onCopyLink={onCopyLink}
             />
           ),
         }),
       ]),
-    [busy, onInvite, onCancel],
+    [busy, onInvite, onCancel, onCopyLink],
   );
   const table = useAppTable({
     columns,
@@ -142,6 +157,7 @@ export function InvitationTable({
             busy={busy}
             onInvite={onInvite}
             onCancel={onCancel}
+            onCopyLink={onCopyLink}
           />
         </>
       )}

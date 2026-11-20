@@ -30,7 +30,7 @@ const publish = createCommittedPublisher({
 const sharingMail = createSharingMail({ db, mail, publish });
 const auth = createAuth({ db, mail, publish, realtime: createAuthPublisher(db, publish) });
 const storage = createS3Storage();
-const services = createServices({ db, storage, publish });
+const services = createServices({ db, storage, publish, apiURL: environment.apiURL });
 const scopes = createScopes({
   api: auth.api,
   repositories: createRepositories(db),

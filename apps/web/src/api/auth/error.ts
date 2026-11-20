@@ -61,3 +61,8 @@ export class AuthError extends Error {
 export function authError(error: AuthFailure): AuthError {
   return new AuthError(error);
 }
+
+/** The invitation was saved, but its email did not send. Its link still works. */
+export function isInvitationEmailFailure(error: Error): boolean {
+  return error instanceof AuthError && error.code === "INVITATION_EMAIL_FAILED";
+}

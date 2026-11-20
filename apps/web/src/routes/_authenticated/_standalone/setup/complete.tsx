@@ -16,11 +16,7 @@ export const Route = createFileRoute("/_authenticated/_standalone/setup/complete
       const organization = await context.queryClient.query(
         currentOrganizationQueryOptions(organizationId),
       );
-      return {
-        organizationId,
-        name: organization.name,
-        canInvite: organization.role.split(",").includes("owner"),
-      };
+      return { organizationId, name: organization.name, role: organization.role };
     } catch (error) {
       if (error instanceof Error && isAccessFailure(error)) throw redirect({ to: "/onboarding" });
       throw error;
@@ -30,12 +26,12 @@ export const Route = createFileRoute("/_authenticated/_standalone/setup/complete
 });
 
 function SetupComplete() {
-  const { organizationId, name, canInvite } = Route.useRouteContext();
+  const { organizationId, name, role } = Route.useRouteContext();
   return (
     <SetupCompleteScreen
       organizationId={organizationId}
       name={name}
-      canInvite={canInvite}
+      role={role}
       conversationId={Route.useSearch().conversationId}
     />
   );

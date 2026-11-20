@@ -28,10 +28,13 @@ export function AcceptInvitationScreen({
   onRetry,
   available,
   onAccept,
+  declining = false,
+  onDecline,
+  declineDialog,
   signOut,
   workspacesHref,
 }: {
-  invitation?: { organizationName: string; role: string; email: string };
+  invitation?: { organizationName: string; role: string; email: string; inviterEmail?: string };
   loading?: boolean;
   pending?: boolean;
   error?: Error | null;
@@ -40,6 +43,10 @@ export function AcceptInvitationScreen({
   onRetry?: () => void;
   available: boolean;
   onAccept: () => void;
+  declining?: boolean;
+  onDecline: () => void;
+  /** The decline confirmation, while it is open. */
+  declineDialog?: ReactNode;
   signOut: ReactNode;
   workspacesHref: string;
 }) {
@@ -99,6 +106,11 @@ export function AcceptInvitationScreen({
           <p className="text-sm wrap-anywhere text-muted-foreground">
             Invited email: {ready.email}
           </p>
+          {ready.inviterEmail && (
+            <p className="text-sm wrap-anywhere text-muted-foreground">
+              Invited by: {ready.inviterEmail}
+            </p>
+          )}
           <>
             <FormMessage
               error={error}
@@ -109,10 +121,22 @@ export function AcceptInvitationScreen({
               size="lg"
               pending={pending}
               pendingLabel="Joining."
+              disabled={declining}
               onClick={onAccept}
             >
               Accept invitation
             </PendingButton>
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full"
+              size="lg"
+              disabled={pending || declining}
+              onClick={onDecline}
+            >
+              Decline invitation
+            </Button>
+            {declineDialog}
           </>
         </>
       )}

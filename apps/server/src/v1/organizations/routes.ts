@@ -1,4 +1,4 @@
-import { organizationWorkspace } from "@substrate/contracts/organizations/input";
+import { invitationParams, organizationWorkspace } from "@substrate/contracts/organizations/input";
 
 import { respond, v } from "../../shared/http";
 import type { ScopeEnv, Scopes, SettingsScope } from "../../shared/scope";
@@ -17,6 +17,14 @@ export function createOrganizationRoutes(service: OrganizationService, scopes: S
     )
     .get("/people", v("query", organizationWorkspace), scopes.workspace("query"), async (c) =>
       respond(c, await service.people(c.var.scope)),
+    )
+    .get(
+      "/invitations/:invitationId/link",
+      v("param", invitationParams),
+      v("query", organizationWorkspace),
+      scopes.workspace("query"),
+      async (c) =>
+        respond(c, await service.invitationLink(c.var.scope, c.req.valid("param").invitationId)),
     );
   return new Hono().route("/", settings).route("/", workspace);
 }

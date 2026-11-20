@@ -16,7 +16,8 @@ export const owner = ac.newRole({
 export const admin = ac.newRole({
   organization: ["update"],
   member: ["delete"],
-  invitation: [],
+  // Better Auth stops anyone who is not an owner (the creator role) from inviting owners.
+  invitation: ["create", "cancel"],
 });
 
 export const member = ac.newRole({

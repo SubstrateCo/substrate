@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 
 import { OrganizationMembers as OrganizationMembersView } from "./organization-members-view";
 import { Button } from "@/components/ui/button";
-import { memberActions, primaryRole } from "@/lib/organizations/member-policy";
+import { invitationRoles, memberActions, primaryRole } from "@/lib/organizations/member-policy";
 import { resourceState } from "@/lib/resource-state";
 import { sessionQueryOptions } from "@/queries/auth/session";
 import { useOrganizationMutations } from "@/queries/organizations/mutations";
@@ -53,7 +53,7 @@ export function OrganizationMembers({ organizationId }: { organizationId: string
       error={organization.error}
       onRetry={() => void organization.refetch()}
       inviteAction={
-        primaryRole(viewerRole) === "owner" && (
+        invitationRoles(viewerRole).length > 0 && (
           <Button asChild variant="outline">
             <Link to="/settings/organization/invitations">
               <UserPlus aria-hidden="true" />

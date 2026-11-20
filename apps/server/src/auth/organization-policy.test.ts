@@ -36,14 +36,15 @@ describe("organization policy", () => {
     }
   });
 
-  test("only owners can send or cancel invitations", () => {
+  test("only owners and admins can send or cancel invitations", () => {
     for (const role of [roles.admin, roles.member]) {
-      expect(role.authorize({ invitation: ["create"] }).success).toBe(false);
-      expect(role.authorize({ invitation: ["cancel"] }).success).toBe(false);
       expect(role.authorize({ member: ["create"] }).success).toBe(false);
       expect(role.authorize({ member: ["update"] }).success).toBe(false);
     }
-    expect(roles.owner.authorize({ invitation: ["create", "cancel"] }).success).toBe(true);
+    expect(roles.member.authorize({ invitation: ["create"] }).success).toBe(false);
+    expect(roles.member.authorize({ invitation: ["cancel"] }).success).toBe(false);
+    for (const role of [roles.owner, roles.admin])
+      expect(role.authorize({ invitation: ["create", "cancel"] }).success).toBe(true);
   });
 
   test("only remembers successful organization changes", () => {

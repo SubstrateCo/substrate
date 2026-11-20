@@ -6,7 +6,7 @@ import { ConfirmDialog } from "../../feedback/confirm-dialog";
 import { ContentNotice } from "../../feedback/content-notice";
 import { GroupTitle, SettingsCard } from "../../layout/settings-section";
 import { Spinner } from "../../ui/spinner";
-import { InvitationForm } from "./invitation-form";
+import { InvitationForm, type InvitationRoleOption } from "./invitation-form";
 import { InvitationTable } from "./invitation-table";
 import { FormMessage } from "@/components/feedback/form-message";
 import { Send } from "lucide-react";
@@ -27,6 +27,7 @@ const inviteDescription = "Invite people by email. They join with the role you p
  * a page header; otherwise the section brings its own heading, as in setup.
  */
 export function InvitationManager({
+  roles,
   invitations,
   loading = false,
   sending = false,
@@ -37,7 +38,10 @@ export function InvitationManager({
   onRetry,
   onInvite,
   onCancel,
+  onCopyLink,
 }: {
+  /** The roles the viewer may invite with. */
+  roles: readonly InvitationRoleOption[];
   invitations?: InvitationListItem[];
   loading?: boolean;
   sending?: boolean;
@@ -48,25 +52,24 @@ export function InvitationManager({
   onRetry: () => void;
   onInvite: (email: string, role: OrganizationRole, resend?: boolean) => void;
   onCancel: (id: string) => void;
+  /** Copies an invitation's link to the clipboard. Rejects when it could not. */
+  onCopyLink: (id: string) => Promise<void>;
 }) {
   const busy = sending || canceling;
   const [confirming, setConfirming] = useState<InvitationListItem>();
   const form = (
     <div className="@container">
-      <InvitationForm sending={sending} disabled={busy} onInvite={onInvite} />
+      <InvitationForm roles={roles} sending={sending} disabled={busy} onInvite={onInvite} />
       <FormMessage
         error={error}
         errorDescription="We couldn’t update this invitation. Check the email and try again."
       />
     </div>
   );
+  // The table brings its own border, so the list is never framed in a second card.
   const sent = (
-    <section
-      aria-label={framed ? "Sent invitations" : undefined}
-      aria-labelledby={framed ? undefined : "sent-invitations-title"}
-      className="space-y-3"
-    >
-      {!framed && <GroupTitle id="sent-invitations-title" title="Sent invitations" />}
+    <section aria-labelledby="sent-invitations-title" className="space-y-3">
+      <GroupTitle id="sent-invitations-title" title="Sent invitations" />
       {canceling && (
         <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
           <Spinner aria-hidden="true" role="presentation" />
@@ -87,6 +90,7 @@ export function InvitationManager({
           busy={busy}
           onRetry={onRetry}
           onInvite={onInvite}
+          onCopyLink={onCopyLink}
           onCancel={(id) => setConfirming(invitations?.find((invitation) => invitation.id === id))}
         />
       )}
@@ -114,7 +118,7 @@ export function InvitationManager({
         <SettingsCard title="Invite people" description={inviteDescription}>
           {form}
         </SettingsCard>
-        <SettingsCard title="Sent invitations">{sent}</SettingsCard>
+        {sent}
       </>
     );
   return (

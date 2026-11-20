@@ -31,6 +31,7 @@ export function createServices(deps: {
   db: Database;
   storage: ObjectStorage;
   publish: CommittedPublisher;
+  apiURL: string;
 }) {
   const repository = createStorageRepository(deps.db, attachmentReferences);
   return {
@@ -60,7 +61,7 @@ export function createServices(deps: {
     agentWork: createAgentWorkService(deps),
     devices: createDeviceService(deps),
     mcp: createMcpService(deps),
-    organizations: createOrganizationService(),
+    organizations: createOrganizationService(deps),
   };
 }
 export type Services = ReturnType<typeof createServices>;

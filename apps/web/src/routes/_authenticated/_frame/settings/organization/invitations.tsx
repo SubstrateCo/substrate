@@ -11,7 +11,7 @@ function Section() {
   return (
     <OrganizationInvitations
       organizationId={organizationSettings.organizationId}
-      isOwner={organizationSettings.isOwner}
+      viewerRole={organizationSettings.role}
     />
   );
 }

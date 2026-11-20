@@ -14,6 +14,8 @@ export const Route = createFileRoute("/_authenticated/_frame/settings/organizati
     );
     const access = organizationSettingsAccess(organization.role);
     if (!access.allowed) throw redirect({ to: "/dashboard" });
-    return { organizationSettings: { organizationId, isOwner: access.isOwner } };
+    return {
+      organizationSettings: { organizationId, isOwner: access.isOwner, role: organization.role },
+    };
   },
 });
