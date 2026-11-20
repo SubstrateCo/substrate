@@ -36,11 +36,23 @@ const method = (args: string[], env?: Record<string, string>): AcpAuthMethod => 
 
 function run(args: string[], env?: Record<string, string>) {
   const chunks: string[] = [];
+  const waiters: { text: string; resolve(): void }[] = [];
+  const output = () => chunks.join("");
   const login = startTerminalLogin(launch, method(args, env), {
     cwd: tmpdir(),
-    onOutput: (text) => chunks.push(text),
+    onOutput: (text) => {
+      chunks.push(text);
+      for (const waiter of waiters.splice(0))
+        if (output().includes(waiter.text)) waiter.resolve();
+        else waiters.push(waiter);
+    },
   });
-  return { login, output: () => chunks.join("") };
+  /** Resolves once the output contains text. */
+  const printed = (text: string) =>
+    output().includes(text)
+      ? Promise.resolve()
+      : new Promise<void>((resolve) => waiters.push({ text, resolve }));
+  return { login, output, printed };
 }
 
 describe("terminal login environment", () => {
@@ -100,8 +112,8 @@ describe("terminal login process", () => {
   });
 
   test("an input line reaches the login command", async () => {
-    const { login, output } = run(["code"]);
-    while (!output().includes("paste the code")) await Bun.sleep(10);
+    const { login, printed } = run(["code"]);
+    await printed("paste the code");
     login.write("123-456");
     expect(await login.done).toBe(true);
     expect(() => login.write("two\nlines")).toThrow();

@@ -103,12 +103,17 @@ export interface FakeAgentRecord {
   steers: string[];
   /** Inner MCP outcomes, or the outer ACP error of a failed `mcp/message`. */
   mcp: (McpOutcome | { acpError: { code: number; message: string } })[];
+  /** Wait steps the agent has reached, in order. */
+  waits: ("waitForCancel" | "waitForSteer")[];
 }
+
+/** Called after the fake adds a call or a wait to its record. */
+export type FakeRecordChanged = () => void;
 
 const acpError = z.object({ code: z.number(), message: z.string() });
 
 function newRecord(): FakeAgentRecord {
-  return { calls: [], permissions: [], elicitations: [], steers: [], mcp: [] };
+  return { calls: [], permissions: [], elicitations: [], steers: [], mcp: [], waits: [] };
 }
 
 const steerRequest = z.object({
@@ -129,6 +134,7 @@ function fakeAgentApp(
   script: FakeAgentScript,
   record: FakeAgentRecord,
   exit: (code: number) => void,
+  changed: FakeRecordChanged,
 ) {
   const supported = script.protocolVersions ?? [1];
   let authed = !script.requireAuth;
@@ -147,8 +153,14 @@ function fakeAgentApp(
         ),
       ),
     );
-  const log = <Params extends object>(method: string, params: Params) =>
+  const log = <Params extends object>(method: string, params: Params) => {
     record.calls.push({ method, params });
+    changed();
+  };
+  const wait = (step: FakeAgentRecord["waits"][number]) => {
+    record.waits.push(step);
+    changed();
+  };
   const send = (client: AgentContext, sessionId: string, update: SessionUpdate) =>
     client.notify("session/update", { sessionId, update });
   const announceCommands = (client: AgentContext, sessionId: string) => {
@@ -241,8 +253,11 @@ function fakeAgentApp(
                 : { code: 0, message: String(error) },
             });
           }
-        } else if ("waitForCancel" in step) await cancel.promise;
-        else if ("waitForSteer" in step) {
+        } else if ("waitForCancel" in step) {
+          wait("waitForCancel");
+          await cancel.promise;
+        } else if ("waitForSteer" in step) {
+          wait("waitForSteer");
           await Promise.race([steered.promise, cancel.promise]);
           steered = Promise.withResolvers<void>();
         } else if ("exit" in step) {
@@ -372,10 +387,11 @@ function connectFakeAgent(
   script: FakeAgentScript,
   record: FakeAgentRecord,
   exit: (code: number) => void,
+  changed: FakeRecordChanged,
   stream: Stream,
 ): FakeConnection {
   const supported = script.protocolVersions ?? [1];
-  if (!supported.includes(2)) return fakeAgentApp(script, record, exit).connect(stream);
+  if (!supported.includes(2)) return fakeAgentApp(script, record, exit, changed).connect(stream);
   const opened: { close(): void }[] = [];
   const tracked = (app: { connect(stream: Stream): { close(): void } }): AgentConnector => ({
     connect: (routed) => {
@@ -384,19 +400,31 @@ function connectFakeAgent(
       return connection;
     },
   });
-  const router = agentProtocolRouter().withV2(tracked(fakeAgentAppV2(script, record, exit)));
-  if (supported.includes(1)) router.withV1(tracked(fakeAgentApp(script, record, exit)));
+  const router = agentProtocolRouter().withV2(
+    tracked(fakeAgentAppV2(script, record, exit, changed)),
+  );
+  if (supported.includes(1)) router.withV1(tracked(fakeAgentApp(script, record, exit, changed)));
   const routed = router.connect(stream);
   return { close: () => opened.forEach((connection) => connection.close()), closed: routed.closed };
 }
 
 export interface FakeAgent extends AcpProcess {
   record: FakeAgentRecord;
+  /** Resolves once the record satisfies check, at once if it already does. */
+  until(check: (record: FakeAgentRecord) => boolean): Promise<void>;
 }
 
 /** Starts the fake agent in-process. Its shape matches a spawned agent process. */
 export function startFakeAgent(script: FakeAgentScript): FakeAgent {
   const record = newRecord();
+  const waiters = new Set<{ check(record: FakeAgentRecord): boolean; resolve(): void }>();
+  const changed = () => {
+    for (const waiter of waiters)
+      if (waiter.check(record)) {
+        waiters.delete(waiter);
+        waiter.resolve();
+      }
+  };
   const toAgent = new TransformStream<Uint8Array, Uint8Array>();
   const toClient = new TransformStream<Uint8Array, Uint8Array>();
   const exited = Promise.withResolvers<Error>();
@@ -408,10 +436,13 @@ export function startFakeAgent(script: FakeAgentScript): FakeAgent {
     script,
     record,
     end,
+    changed,
     ndJsonStream(toClient.writable, toAgent.readable),
   );
   return {
     record,
+    until: (check) =>
+      check(record) ? Promise.resolve() : new Promise((resolve) => waiters.add({ check, resolve })),
     transport: { output: toAgent.writable, input: toClient.readable },
     exited: exited.promise,
     stop: async () => end(0),
@@ -426,6 +457,7 @@ if (process.env.FAKE_ACP_SCRIPT !== undefined) {
     script,
     record,
     (code) => process.exit(code),
+    () => {},
     ndJsonStream(
       Writable.toWeb(process.stdout),
       // SAFETY: Node stdin emits Buffer (a Uint8Array); Node and DOM stream types differ only in ambient declarations here.

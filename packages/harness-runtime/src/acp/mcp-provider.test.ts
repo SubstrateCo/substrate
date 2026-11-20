@@ -33,15 +33,19 @@ let host: Awaited<ReturnType<typeof createStartupMcp>>;
 let calls: WorkspaceApiRequest[];
 /** Makes workspace calls never settle, as a stalled server request would. */
 let stallWorkspace: boolean;
+/** Resolves on the first workspace call. */
+let workspaceCalled: PromiseWithResolvers<void>;
 
 beforeEach(async () => {
   await mkdir(join(tmpdir(), "opencode"), { recursive: true });
   folder = await mkdtemp(join(tmpdir(), "opencode", "acp-mcp-test-"));
   calls = [];
   stallWorkspace = false;
+  workspaceCalled = Promise.withResolvers<void>();
   host = await createStartupMcp({
     workspace: async (call) => {
       calls.push(call);
+      workspaceCalled.resolve();
       if (stallWorkspace) await new Promise<never>(() => {});
       return { success: true, data: { items: [], nextCursor: null } };
     },
@@ -168,7 +172,7 @@ test("disconnect finishes while an MCP-over-ACP request is still in flight", asy
   );
   lease.bind(turn);
   void f.run();
-  while (!calls.length) await new Promise((resolve) => setTimeout(resolve, 5));
+  await workspaceCalled.promise;
   const outcome = await Promise.race([
     f.adapter.disconnect().then(() => "disconnected"),
     new Promise((resolve) => setTimeout(() => resolve("still waiting"), 8_000)),
@@ -194,8 +198,16 @@ test("disconnect finishes while the agent holds an MCP subscription stream open"
     },
     lease,
   );
+  // The provider touches the lease when the subscriptions/listen request reaches it.
+  const reached = Promise.withResolvers<void>();
+  const endpoint = lease.endpoint!;
+  const touch = endpoint.touch.bind(endpoint);
+  endpoint.touch = () => {
+    reached.resolve();
+    return touch();
+  };
   void f.run();
-  await new Promise((resolve) => setTimeout(resolve, 300));
+  await reached.promise;
   const outcome = await Promise.race([
     f.adapter.disconnect().then(() => "disconnected"),
     new Promise((resolve) => setTimeout(() => resolve("still waiting"), 8_000)),

@@ -9,7 +9,7 @@ import { leaseTools, type McpToolName } from "@substrate/contracts/harness/tools
 import { createStartupMcp, type McpLeaseOptions, type StartupMcpHandlers } from "./mcp.ts";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
-import { afterEach, beforeEach, expect, test } from "bun:test";
+import { afterEach, beforeEach, expect, setSystemTime, test } from "bun:test";
 import { rejects } from "node:assert/strict";
 import { mkdir, mkdtemp, readdir, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -339,10 +339,12 @@ test("loopback MCP rejects revoked, browser and rebound requests", async () => {
 test("a lease never expires under a bound turn and expires only after it stays unbound", async () => {
   const host = await createStartupMcp(
     { workspace: async () => ({ success: true, data: { items: [], nextCursor: null } }) },
-    { leaseTtlMs: 30 },
+    { leaseTtlMs: 60_000 },
   );
   const lease = host.issue(leaseOptions());
   const client = new Client({ name: "mcp-test", version: "1" });
+  // Moves Date.now() only; the HTTP server keeps its real timers.
+  const start = Date.now();
   try {
     await client.connect(
       new StreamableHTTPClientTransport(new URL(lease.url), {
@@ -350,10 +352,10 @@ test("a lease never expires under a bound turn and expires only after it stays u
       }),
     );
     lease.bind(turn);
-    await Bun.sleep(80);
+    setSystemTime(start + 120_000);
     expect((await client.callTool({ name: "list_projects", arguments: {} })).isError).toBeFalsy();
     lease.unbind();
-    await Bun.sleep(80);
+    setSystemTime(start + 240_000);
     const expired = await fetch(lease.url, {
       method: "POST",
       headers: { Authorization: `Bearer ${lease.token}` },
@@ -361,6 +363,7 @@ test("a lease never expires under a bound turn and expires only after it stays u
     });
     expect(expired.status).toBe(401);
   } finally {
+    setSystemTime();
     await client.close();
     await host.close();
   }

@@ -312,7 +312,7 @@ test("steering joins the live turn through the extension and marks the input con
     code: "turn-not-live",
   });
   const done = f.adapter.turn({ inputIds: ["a"], text: "go" }, { mode: "interactive" });
-  await Bun.sleep(10);
+  await f.agent.until((record) => record.waits.includes("waitForSteer"));
   await f.adapter.steer!({ inputId: "b", text: "also this" });
   expect(await done).toMatchObject({ status: "completed", consumedInputIds: ["a", "b"] });
   expect(f.agent.record.steers).toEqual(["also this"]);

@@ -211,11 +211,17 @@ test("a prompt during the turn steers it natively; without a turn nothing is sen
   await f.live.close();
 });
 
-/** A turn that waits in a permission request until the test sends a steer. */
-function heldSteer(steer: () => Promise<AcpSteerOutcome>): AcpDriverHandlers["request"] {
+/** A turn that waits in a permission request until the agent holds the test's steer. */
+function heldSteer(
+  steer: () => Promise<AcpSteerOutcome>,
+  agent: () => FakeAgent,
+): AcpDriverHandlers["request"] {
   return async (request) => {
     void steer();
-    await new Promise((resolve) => setTimeout(resolve, 50));
+    // The turn's prompt and the steer's prompt.
+    await agent().until(
+      (record) => record.calls.filter((call) => call.method === "session/prompt").length === 2,
+    );
     return request.parse("allow");
   };
 }
@@ -229,7 +235,12 @@ test("a steer still held when the turn goes idle is withdrawn and reports prompt
       v2: { holdPrompts: true, honorCancelRequest: true },
       defaultTurn: [{ permission: { toolCallId: "t1" } }],
     },
-    driven(heldSteer(() => (steered = f.connection.steer(sessionId, "more")))).handlers,
+    driven(
+      heldSteer(
+        () => (steered = f.connection.steer(sessionId, "more")),
+        () => f.agent(),
+      ),
+    ).handlers,
   );
   sessionId = (await f.connection.newSession(open, AbortSignal.timeout(5000))).sessionId;
   expect(await f.connection.prompt(sessionId, "go")).toMatchObject({ stopReason: "end_turn" });
@@ -239,7 +250,12 @@ test("a steer still held when the turn goes idle is withdrawn and reports prompt
 });
 
 test("a held steer the agent inserts after the idle extends the turn to the next idle", async () => {
-  const d = driven(heldSteer(() => (steered = f.connection.steer(sessionId, "more"))));
+  const d = driven(
+    heldSteer(
+      () => (steered = f.connection.steer(sessionId, "more")),
+      () => f.agent(),
+    ),
+  );
   let steered: Promise<AcpSteerOutcome> = Promise.resolve("promptRequired");
   let sessionId = "";
   const f = await connect(
@@ -385,9 +401,7 @@ test("the adapter runs a v2 turn, a native steer and an interrupt end to end", a
   );
   expect(adapter.capabilities).toMatchObject({ steer: true, steerEvidence: true });
   const done = adapter.turn({ inputIds: ["a"], text: "go" }, { mode: "interactive" });
-  while (!agent!.record.calls.some((call) => call.method === "session/prompt"))
-    await new Promise((resolve) => setTimeout(resolve, 5));
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  await agent!.until((record) => record.waits.includes("waitForSteer"));
   await adapter.steer!({ inputId: "b", text: "more" });
   expect(await done).toEqual({ status: "completed", consumedInputIds: ["a", "b"] });
   expect(events.map((event) => event.body)).toContainEqual({
@@ -396,7 +410,7 @@ test("the adapter runs a v2 turn, a native steer and an interrupt end to end", a
   });
 
   const stopped = adapter.turn({ inputIds: ["c"], text: "stop" }, { mode: "interactive" });
-  await new Promise((resolve) => setTimeout(resolve, 20));
+  await agent!.until((record) => record.waits.includes("waitForCancel"));
   await adapter.interrupt();
   expect(await stopped).toMatchObject({ status: "interrupted" });
   await adapter.disconnect();

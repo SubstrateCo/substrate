@@ -116,6 +116,25 @@ async function host(
   return { host: created, native, events };
 }
 
+/** Resolves with the next host event that matches. Call it before the action that emits it. */
+function nextEvent(
+  f: { host: Awaited<ReturnType<typeof createHarnessHost>> },
+  predicate: (event: HarnessEvent) => boolean,
+) {
+  return new Promise<HarnessEvent>((resolve) => {
+    const unsubscribe = f.host.subscribe((event) => {
+      if (!predicate(event)) return;
+      unsubscribe();
+      resolve(event);
+    });
+  });
+}
+
+/** For negative checks only: lets every queued promise job run before asserting nothing happened. */
+function flushMicrotasks() {
+  return new Promise<void>((resolve) => setImmediate(resolve));
+}
+
 const open = {
   type: "open" as const,
   organizationId: "org-a",
@@ -154,8 +173,9 @@ test("MCP calls are accepted only while a turn is bound to the session", async (
     await f.host.execute(turn);
     expect((await call()).isError).toBeFalsy();
     expect(calls.map((entry) => entry.turn)).toEqual([context]);
+    const completed = nextEvent(f, (event) => event.type === "turn.completed");
     f.native.state.finish!({ status: "completed", consumedInputIds: ["item-1"] });
-    await Bun.sleep(0);
+    await completed;
     expect((await call()).isError).toBe(true);
     expect(calls).toHaveLength(1);
   } finally {
@@ -189,8 +209,9 @@ test("steered calls join the bound MCP context and do not leak into the next tur
     });
     await client.callTool({ name: "list_projects", arguments: {} });
     expect(calls.at(-1)?.turn.invocationIds).toEqual([invocationId]);
+    const completed = nextEvent(f, (event) => event.type === "turn.completed");
     f.native.state.finish!({ status: "completed" });
-    await Bun.sleep(0);
+    await completed;
     const nextTurnId = crypto.randomUUID();
     await f.host.execute({
       ...turn,
@@ -212,8 +233,9 @@ test("turn events carry the turn; session-scoped native output and the result do
     await f.host.execute(turn);
     f.native.state.context!.emit({ type: "text", text: "ours" });
     f.native.state.context!.emit({ type: "text", text: "native" }, "session");
+    const completed = nextEvent(f, (event) => event.type === "turn.completed");
     f.native.state.finish!({ status: "completed", consumedInputIds: ["item-1"] });
-    await Bun.sleep(0);
+    await completed;
     f.native.state.context!.emit({ type: "text", text: "after" });
     expect(f.events.map((event) => [event.type, event.turnId])).toEqual([
       ["turn.started", turnId],
@@ -298,12 +320,17 @@ test("helper sessions open in their own folder", async () => {
 });
 
 test("the reaper closes idle sessions but keeps sessions with a live turn", async () => {
-  const f = await host({ keepAliveMs: 30 });
+  const clock = manualClock();
+  const f = await host({ keepAliveMs: 30, clock: clock.clock });
   try {
     await f.host.execute(open);
     await f.host.execute({ ...open, sessionId: "session-b" });
     await f.host.execute({ ...turn, sessionId: "session-b" });
-    await Bun.sleep(120);
+    const reaped = nextEvent(f, (event) => event.type === "session.closed");
+    // The reaper runs every 10 ms for a 30 ms keep-alive; step well past it.
+    for (let step = 0; step < 12; step++) clock.advance(10);
+    await reaped;
+    await flushMicrotasks();
     const closed = f.events.filter((event) => event.type === "session.closed");
     expect(closed.map((event) => [event.sessionId, event.reason])).toEqual([["session-a", "idle"]]);
   } finally {
@@ -390,8 +417,12 @@ test("configure closes changed idle sessions at once and live ones after their t
     });
     expect(closedEvents(f.events)).toEqual([["session-a", "configuration"]]);
     expect(f.events.some((event) => event.type === "turn.completed")).toBe(false);
+    const closedB = nextEvent(
+      f,
+      (event) => event.type === "session.closed" && event.sessionId === "session-b",
+    );
     f.native.state.finish!({ status: "completed", consumedInputIds: ["item-1"] });
-    await Bun.sleep(10);
+    await closedB;
     expect(closedEvents(f.events)).toEqual([
       ["session-a", "configuration"],
       ["session-b", "configuration"],
@@ -432,10 +463,12 @@ test("closeOrganization ends and closes that organization's sessions, whatever i
 });
 
 test("an interrupt the harness never confirms still ends the turn as interrupted", async () => {
-  const f = await host({ interruptGraceMs: 20 });
+  const clock = manualClock();
+  const f = await host({ interruptGraceMs: 20, clock: clock.clock });
   try {
     await f.host.execute(open);
     await f.host.execute(turn);
+    const closed = nextEvent(f, (event) => event.type === "session.closed");
     expect(
       await f.host.execute({
         type: "interrupt",
@@ -444,7 +477,11 @@ test("an interrupt the harness never confirms still ends the turn as interrupted
         turnId,
       }),
     ).toEqual({});
-    await Bun.sleep(80);
+    clock.advance(19);
+    await flushMicrotasks();
+    expect(f.events.some((event) => event.type === "turn.completed")).toBe(false);
+    clock.advance(1);
+    await closed;
     const terminal = f.events.filter((event) => event.type === "turn.completed");
     expect(terminal).toHaveLength(1);
     expect(terminal[0]).toMatchObject({ turnId, result: { status: "interrupted" } });
@@ -481,7 +518,7 @@ test("reopen waits for disconnect and repeated closes share terminal cleanup", a
     await disconnecting.promise;
     const again = f.host.execute({ ...open, type: "close" });
     const reopened = f.host.execute(open);
-    await Bun.sleep(0);
+    await flushMicrotasks();
     expect(native.state.resumes).toHaveLength(1);
     expect(f.events.filter((event) => event.type === "session.closed")).toHaveLength(0);
     release.resolve();
@@ -568,7 +605,7 @@ test("concurrent disposals wait for pending opens and their native cleanup", asy
   const second = f.host.dispose().then(() => {
     disposed++;
   });
-  await Bun.sleep(0);
+  await flushMicrotasks();
   const beforeRelease = disposed;
   release.resolve();
   await Promise.all([first, second]);
@@ -614,8 +651,9 @@ test("a failed disconnect still ends its turn, revokes MCP and allows a fresh op
     fail = false;
     await f.host.execute(open);
     await f.host.execute(turn);
+    const completed = nextEvent(f, (event) => event.type === "turn.completed");
     native.state.finish!({ status: "completed" });
-    await Bun.sleep(0);
+    await completed;
     expect(f.events.filter((event) => event.type === "turn.completed")).toHaveLength(2);
   } finally {
     fail = false;
@@ -632,8 +670,9 @@ test("a native exit ends the live turn and closes the session with native_exited
   try {
     await f.host.execute(open);
     await f.host.execute(turn);
+    const closed = nextEvent(f, (event) => event.type === "session.closed");
     exited.resolve();
-    await Bun.sleep(0);
+    await closed;
     expect(f.events.map((event) => event.type)).toEqual([
       "turn.started",
       "turn.completed",
@@ -666,7 +705,7 @@ test("a native exit after the host closed the session keeps the host's reason", 
   try {
     await f.host.execute(open);
     await f.host.execute({ ...open, type: "close" });
-    await Bun.sleep(0);
+    await flushMicrotasks();
     expect(closedEvents(f.events)).toEqual([["session-a", "closed"]]);
   } finally {
     await f.host.dispose();
@@ -808,11 +847,9 @@ for (const action of ["close", "organization", "dispose"] as const) {
           return result;
         });
       clock.advance(1_999);
-      await Bun.sleep(0);
+      await flushMicrotasks();
       expect(finished).toBe(false);
       clock.advance(1);
-      await Bun.sleep(0);
-      expect(finished).toBe(true);
       expect(await outcome).toMatchObject({ code: "request-timeout" });
       expect(disconnected).toBe(false);
       if (action !== "dispose") {
@@ -877,17 +914,9 @@ for (const action of ["close", "organization", "dispose"] as const) {
         if (action === "close") closing = f.host.execute({ ...open, type: "close" });
         else if (action === "organization") closing = f.host.closeOrganization("org-a");
         else closing = f.host.dispose();
-        let finished = false;
-        const outcome = closing
-          .catch((error: Error) => error)
-          .then((result) => {
-            finished = true;
-            return result;
-          });
+        const outcome = closing.catch((error: Error) => error);
         if (failure) releaseDisconnect.reject(new Error("overlap disconnect failed"));
         else clock.advance(2_000);
-        await Bun.sleep(0);
-        expect(finished).toBe(true);
         const expected = failure
           ? { message: "overlap disconnect failed" }
           : { code: "request-timeout" };

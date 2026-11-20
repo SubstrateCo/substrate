@@ -2,7 +2,12 @@
  * The v2 side of the fake ACP agent, built with the SDK's experimental v2 agent() app.
  * fake-agent.ts routes a connection here when the script's protocolVersions includes 2.
  */
-import type { FakeAgentRecord, FakeAgentScript, FakeStep } from "./fake-agent.ts";
+import type {
+  FakeAgentRecord,
+  FakeAgentScript,
+  FakeRecordChanged,
+  FakeStep,
+} from "./fake-agent.ts";
 import {
   agent,
   isMcpServerAcp,
@@ -91,6 +96,7 @@ export function fakeAgentAppV2(
   script: FakeAgentScript,
   record: FakeAgentRecord,
   exit: (code: number) => void,
+  changed: FakeRecordChanged,
 ) {
   const options = script.v2 ?? {};
   let authed = !script.requireAuth;
@@ -111,8 +117,14 @@ export function fakeAgentAppV2(
         ),
       ),
     );
-  const log = <Params extends object>(method: string, params: Params) =>
+  const log = <Params extends object>(method: string, params: Params) => {
     record.calls.push({ method, params });
+    changed();
+  };
+  const wait = (step: FakeAgentRecord["waits"][number]) => {
+    record.waits.push(step);
+    changed();
+  };
   const send = (client: AgentContext, sessionId: string, update: SessionUpdate) =>
     client.notify("session/update", { sessionId, update });
   const state = (client: AgentContext, sessionId: string, update: StateUpdate) =>
@@ -231,9 +243,13 @@ export function fakeAgentAppV2(
     } else if ("mcp" in entry) {
       const serverId = acpServers.get(sessionId)?.get(entry.mcp.server) ?? entry.mcp.server;
       record.mcp.push(await caller.request(client, serverId, entry.mcp.method, entry.mcp.params));
-    } else if ("waitForCancel" in entry) await run.stopped;
-    else if ("waitForSteer" in entry) await steered();
-    else if ("exit" in entry) {
+    } else if ("waitForCancel" in entry) {
+      wait("waitForCancel");
+      await run.stopped;
+    } else if ("waitForSteer" in entry) {
+      wait("waitForSteer");
+      await steered();
+    } else if ("exit" in entry) {
       exit(entry.exit);
       await new Promise(() => {});
     }

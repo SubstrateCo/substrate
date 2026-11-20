@@ -8,6 +8,7 @@ const launch: AcpLaunch = { harness: "claude", command: "agent", args: [], versi
 
 function fakePeer(methods: AcpAuthMethod[], options: { logout?: boolean } = {}) {
   const authenticated = Promise.withResolvers<void>();
+  const closed = Promise.withResolvers<void>();
   const calls: string[] = [];
   const peer: AcpPeer = {
     launch,
@@ -35,10 +36,11 @@ function fakePeer(methods: AcpAuthMethod[], options: { logout?: boolean } = {}) 
     },
     close: async () => {
       calls.push("close");
+      closed.resolve();
     },
   };
   const openPeer: OpenAcpPeer = async () => peer;
-  return { openPeer, calls, authenticated };
+  return { openPeer, calls, authenticated, closed };
 }
 
 function manualTerminal() {
@@ -81,7 +83,8 @@ describe("native sign-in", () => {
     const started = await signIns.start({ harness: "claude", methodId: "oauth" });
     expect(started).toMatchObject({ type: "agent", status: "running" });
     peer.authenticated.resolve();
-    await Bun.sleep(0);
+    // Sign-in closes the peer after it records the outcome.
+    await peer.closed.promise;
     expect(signIns.read({ loginId: started.loginId, cursor: 0 }).status).toBe("succeeded");
     expect(peer.calls).toEqual(["authenticate:oauth", "close"]);
   });
@@ -112,7 +115,8 @@ describe("native sign-in", () => {
     signIns.write({ loginId, text: "123-456" });
     expect(terminal.lines).toEqual(["123-456"]);
     terminal.exit.resolve(true);
-    await Bun.sleep(0);
+    // Sign-in subscribed to the exit first, so its handler has run once this await resumes.
+    await terminal.exit.promise;
     expect(signIns.read({ loginId, cursor: 0 }).status).toBe("succeeded");
     expect(() => signIns.write({ loginId, text: "late" })).toThrow();
   });
@@ -127,7 +131,6 @@ describe("native sign-in", () => {
     });
     const { loginId } = await signIns.start({ harness: "claude", methodId: "login" });
     await signIns.cancel({ loginId });
-    await Bun.sleep(0);
     expect(signIns.read({ loginId, cursor: 0 }).status).toBe("cancelled");
   });
 
