@@ -14,9 +14,31 @@ const harnessWorkerExternals = [
   "@agentclientprotocol/codex-acp",
 ] as const;
 
+// The adapters' bundled agent CLIs. Substrate always launches an adapter with its cliEnv set to
+// the user's CLI (inspectAgent in packages/harness-runtime/src/acp/detect.ts), and the adapters resolve these
+// packages only when that variable is unset, at spawn time rather than at module load:
+// - codex-acp dist/index.js:28495 and :57067 resolve @openai/codex/bin/codex.js only without
+//   CODEX_PATH. Excluding @openai/codex also drops its platform binaries.
+// - claude-agent-acp dist/claude-cli.js:20 returns CLAUDE_CODE_EXECUTABLE before
+//   installedClaudeCliPath resolves the SDK's platform binary, and dist/v1/acp-agent.js:7682
+//   and dist/v2/agent.js:880 pass that path to the SDK as pathToClaudeCodeExecutable. The SDK itself stays: the adapter
+//   imports it at module load.
+const harnessWorkerExcludedPackages = [
+  "@openai/codex",
+  "@anthropic-ai/claude-agent-sdk-darwin-arm64",
+  "@anthropic-ai/claude-agent-sdk-darwin-x64",
+  "@anthropic-ai/claude-agent-sdk-linux-arm64",
+  "@anthropic-ai/claude-agent-sdk-linux-arm64-musl",
+  "@anthropic-ai/claude-agent-sdk-linux-x64",
+  "@anthropic-ai/claude-agent-sdk-linux-x64-musl",
+  "@anthropic-ai/claude-agent-sdk-win32-arm64",
+  "@anthropic-ai/claude-agent-sdk-win32-x64",
+] as const;
+
 export async function stageHarnessProductionAssets(outdir: string) {
   return stageInstalledPackages({
     names: harnessWorkerExternals,
+    exclude: harnessWorkerExcludedPackages,
     fromDirectory: fileURLToPath(new URL("../../../packages/harness-runtime/", import.meta.url)),
     nodeModulesDirectory: join(outdir, "node_modules"),
   });

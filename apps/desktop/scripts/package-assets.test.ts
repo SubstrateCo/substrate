@@ -130,6 +130,49 @@ test("installed asset-only optional packages are included; missing optional pack
   expect(access(join(f.output, "absentPeer"))).rejects.toThrow();
 });
 
+test("excluded packages are skipped with their own dependencies while the rest of the graph is staged", async () => {
+  const f = await fixture();
+  const adapter = await installed(f.source, "adapter", {
+    dependencies: { "bundled-cli": "1", sdk: "1" },
+  });
+  const cli = await installed(adapter, "bundled-cli", {
+    optionalDependencies: { "bundled-cli-win32": "1" },
+  });
+  await asset(await installed(cli, "bundled-cli-win32"), "codex.exe", "native executable");
+  const sdk = await installed(f.source, "sdk", {
+    dependencies: { parser: "1" },
+    optionalDependencies: { "sdk-win32": "1" },
+  });
+  await installed(f.source, "parser");
+  await asset(await installed(sdk, "sdk-win32"), "claude.exe", "native executable");
+  await stageInstalledPackages({
+    names: ["adapter"],
+    fromDirectory: f.source,
+    nodeModulesDirectory: f.output,
+    exclude: ["bundled-cli", "sdk-win32"],
+  });
+  const require = createRequire(join(f.output, "adapter", "package.json"));
+  expect(require.resolve("sdk")).toBe(join(f.output, "sdk/lib/index.js"));
+  expect(createRequire(require.resolve("sdk")).resolve("parser")).toBe(
+    join(f.output, "parser/lib/index.js"),
+  );
+  for (const name of ["bundled-cli", "bundled-cli-win32", "sdk-win32"])
+    expect(() => require.resolve(`${name}/package.json`)).toThrow();
+});
+
+test("an excluded top-level package fails staging rather than shipping without it", async () => {
+  const f = await fixture();
+  await installed(f.source, "adapter");
+  expect(
+    stageInstalledPackages({
+      names: ["adapter"],
+      fromDirectory: f.source,
+      nodeModulesDirectory: f.output,
+      exclude: ["adapter"],
+    }),
+  ).rejects.toThrow("Harness package is both staged and excluded: adapter.");
+});
+
 test("missing required dependencies and peers fail staging rather than shipping an incomplete graph", async () => {
   const f = await fixture();
   await installed(f.source, "sdk", { dependencies: { missing: "1" } });

@@ -67,13 +67,19 @@ async function installedPackage(name: string, fromDirectory: string): Promise<st
   return undefined;
 }
 
-/** Copy the installed graph, preserving package-relative CLI, native, and WASM assets. */
+/**
+ * Copy the installed graph, preserving package-relative CLI, native, and WASM assets.
+ * `exclude` names packages that are never staged, wherever they appear in the graph, along with
+ * their own dependencies. Only list packages that nothing imports at module load.
+ */
 export async function stageInstalledPackages(options: {
   names: readonly string[];
   fromDirectory: string;
   nodeModulesDirectory: string;
+  exclude?: readonly string[];
 }) {
   const top = options.nodeModulesDirectory;
+  const excluded = new Set(options.exclude);
   // For each node_modules directory, the package source that Node resolves for a name from there.
   const visible = new Map<string, Map<string, string>>();
   function reserve(directories: readonly string[], name: string, source: string) {
@@ -94,6 +100,7 @@ export async function stageInstalledPackages(options: {
     ancestors: ReadonlySet<string>,
     optional: boolean,
   ) {
+    if (excluded.has(name)) return;
     const source = await installedPackage(name, from);
     if (!source) {
       if (optional) return;
@@ -166,6 +173,8 @@ export async function stageInstalledPackages(options: {
   // Reserve every top-level package first so a dependency cannot take its place.
   const roots = new Map<string, string>();
   for (const name of new Set(options.names)) {
+    if (excluded.has(name))
+      throw new Error(`Harness package is both staged and excluded: ${name}.`);
     const source = await installedPackage(name, options.fromDirectory);
     if (!source)
       throw new Error(
