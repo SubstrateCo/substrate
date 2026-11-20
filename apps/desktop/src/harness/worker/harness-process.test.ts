@@ -1,16 +1,30 @@
 import type { IpcValue } from "@substrate/contracts/desktop/ipc";
 import type { HarnessEvent } from "@substrate/contracts/harness";
+import { advanceTimersAsync } from "@substrate/contracts/testing/timers";
 
 import { createHarnessProcess } from "./harness-process.ts";
-import { expect, test } from "bun:test";
+import { afterEach, expect, test, vi } from "bun:test";
 import { rejects } from "node:assert/strict";
 import { EventEmitter } from "node:events";
 
+type Sent = { id: number; method: string; value?: unknown };
+
 class FakeChild extends EventEmitter {
-  readonly sent: { id: number; method: string; value?: unknown }[] = [];
+  readonly sent: Sent[] = [];
+  private waiters: { method: string; resolve: (message: Sent) => void }[] = [];
   killed = false;
-  postMessage(message: { id: number; method: string; value?: unknown }) {
+  postMessage(message: Sent) {
     this.sent.push(message);
+    for (const waiter of this.waiters.filter((entry) => entry.method === message.method)) {
+      this.waiters.splice(this.waiters.indexOf(waiter), 1);
+      waiter.resolve(message);
+    }
+  }
+  /** Resolves with the next request for method that reaches the worker. */
+  posted(method: string) {
+    const message = Promise.withResolvers<Sent>();
+    this.waiters.push({ method, resolve: message.resolve });
+    return message.promise;
   }
   kill() {
     if (this.killed) return;
@@ -25,6 +39,10 @@ class FakeChild extends EventEmitter {
 }
 
 const turnId = "0d6f4c3e-8b4f-4c39-9d7e-3f1c2a5b6e71";
+
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 function open(sessionId: string) {
   return {
@@ -66,8 +84,9 @@ async function started(timeouts?: { commandMs?: number; requestMs?: number }) {
   child.answer("initialize");
   const current = child;
   async function openSession(sessionId: string) {
+    const sent = current.posted("execute");
     const pending = worker.request("execute", open(sessionId));
-    await Bun.sleep(0);
+    await sent;
     current.answer("execute", { id: sessionId });
     await pending;
   }
@@ -93,8 +112,9 @@ test("worker exit closes every open session with its live turn", async () => {
   f.child.emit("message", {
     event: event("session-3", { type: "session.closed", reason: "idle" }),
   });
+  const sent = f.child.posted("execute");
   const pending = f.worker.request("execute", open("session-4"));
-  await Bun.sleep(0);
+  await sent;
   f.child.emit("exit", 1);
   await rejects(pending, { code: "worker-stopped" });
   expect(closed(f.events)).toEqual([
@@ -110,6 +130,7 @@ test("worker exit closes every open session with its live turn", async () => {
 });
 
 test("a slow session command fails alone; the worker and its sessions keep running", async () => {
+  vi.useFakeTimers();
   const f = await started({ commandMs: 20 });
   await f.openSession("session-1");
   const compact = f.worker.request("execute", {
@@ -117,19 +138,25 @@ test("a slow session command fails alone; the worker and its sessions keep runni
     organizationId: "org-1",
     sessionId: "session-1",
   });
-  await rejects(compact, { code: "timeout" });
+  const failed = rejects(compact, { code: "timeout" });
+  await advanceTimersAsync(20);
+  await failed;
   expect(f.child.killed).toBe(false);
   expect(closed(f.events)).toEqual([]);
+  const sent = f.child.posted("inspect");
   const status = f.worker.request("inspect");
-  await Bun.sleep(0);
+  await sent;
   f.child.answer("inspect", []);
   expect(await status).toEqual([]);
 });
 
 test("a hung worker request stops the worker and closes its sessions", async () => {
+  vi.useFakeTimers();
   const f = await started({ requestMs: 20 });
   await f.openSession("session-1");
-  await rejects(f.worker.request("inspect"), { code: "worker-stopped" });
+  const stopped = rejects(f.worker.request("inspect"), { code: "worker-stopped" });
+  await advanceTimersAsync(20);
+  await stopped;
   expect(f.child.killed).toBe(true);
   expect(closed(f.events)).toEqual([["session-1", "worker_exited", null, null]]);
 });
@@ -144,10 +171,10 @@ test("dispose closes every open session", async () => {
 for (const code of ["resume-failed", "not-initialized", "ENOENT", "toString", undefined])
   test(`worker failures forward only registered codes: ${code ?? "missing"}`, async () => {
     const f = await started();
+    const sent = f.child.posted("inspect");
     const pending = f.worker.request("inspect");
-    await Bun.sleep(0);
-    const request = f.child.sent.filter((entry) => entry.method === "inspect").at(-1);
-    f.child.emit("message", { id: request!.id, error: "Native details", code });
+    const request = await sent;
+    f.child.emit("message", { id: request.id, error: "Native details", code });
     await rejects(pending, {
       code: code === "resume-failed" || code === "not-initialized" ? code : "harness-error",
       message: "Harness operation failed.",

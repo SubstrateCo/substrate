@@ -76,8 +76,17 @@ export function createAgentWorkService(options: {
   migrationsDirectory?: string;
   notify(change: AgentWorkChange): void;
   log?: (message: string) => void;
+  /** Test seam. Defaults to `AgentWorkStore.open`. */
+  openStore?: (path: string, migrationsDirectory?: string) => Promise<AgentWorkStore>;
+  /** Test seam. Defaults to `createAgentWorkRuntime`. */
+  createRuntime?: typeof createAgentWorkRuntime;
 }) {
   const log = options.log ?? (() => {});
+  const openStore =
+    options.openStore ??
+    ((path: string, migrationsDirectory?: string) =>
+      AgentWorkStore.open(path, migrationsDirectory));
+  const createRuntime = options.createRuntime ?? createAgentWorkRuntime;
   const authority = options.authority;
   const sessionChanged = () => {
     authority.invalidate();
@@ -131,16 +140,13 @@ export function createAgentWorkService(options: {
     if (active) await retire(active);
     if (!accepting() || generation !== authority.generation) return undefined;
     const accountDirectory = join(options.accountsDirectory, auth.accountKey);
-    const store = await AgentWorkStore.open(
-      await storePath(accountDirectory),
-      options.migrationsDirectory,
-    );
+    const store = await openStore(await storePath(accountDirectory), options.migrationsDirectory);
     if (!accepting() || generation !== authority.generation) {
       store.close();
       return undefined;
     }
     agents.invalidate();
-    const runtime = createAgentWorkRuntime(
+    const runtime = createRuntime(
       {
         organizationId: auth.organizationId,
         installationId: options.installationId,

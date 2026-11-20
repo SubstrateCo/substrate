@@ -250,14 +250,28 @@ describe("desktop harness authority", () => {
   test("interrupt is not queued behind a pending command", async () => {
     const hold = Promise.withResolvers<void>();
     const scan = Promise.withResolvers<void>();
-    const f = fixture(() => scan.promise, [], { holdExecute: hold.promise });
+    const executing = Promise.withResolvers<void>();
+    const scanStarted = Promise.withResolvers<void>();
+    const f = fixture(
+      () => {
+        scanStarted.resolve();
+        return scan.promise;
+      },
+      [],
+      {
+        holdExecute: () => {
+          executing.resolve();
+          return hold.promise;
+        },
+      },
+    );
     await f.controller.run("synchronize");
     const opening = f.controller.execute(open);
     const scanning = f.controller.run("scanConfiguration", {
       harness: "codex",
       agentId: "agent-1",
     });
-    await Bun.sleep(0);
+    await Promise.all([executing.promise, scanStarted.promise]);
     expect(
       await f.controller.execute({
         type: "interrupt",

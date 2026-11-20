@@ -38,8 +38,8 @@ export function fixture(
     /** The catalog's agents. */
     agents?: HarnessAgent[];
     failExecute?: HarnessErrorCode;
-    /** Holds every execute command except interrupt until resolved. */
-    holdExecute?: Promise<void>;
+    /** Holds every execute command except interrupt until its promise resolves. */
+    holdExecute?: () => Promise<void>;
     localToolHandler?: LocalToolProxy;
     /** What the worker answers for signIn and readSignIn, before main parses it. */
     signInState?: Partial<HarnessSignInState>;
@@ -115,7 +115,7 @@ export function fixture(
             const command = value as { type: string };
             if (options.failExecute) throw new HarnessWorkerError(options.failExecute);
             if (command.type === "interrupt") return { stillQueuedInputIds: [] };
-            await options.holdExecute;
+            await options.holdExecute?.();
             return command.type === "open" ? sessionRef : undefined;
           }
           if (method === "readProfile") return "- Owner prefers mornings.\n";

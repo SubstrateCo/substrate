@@ -1,12 +1,13 @@
 import { AgentWorkStore } from "@substrate/client-storage/agent-work";
 import type { LocalToolRequest } from "@substrate/contracts/harness/mcp";
 import type { RealtimeDomain, RealtimeUpdate } from "@substrate/contracts/realtime";
+import { advanceTimersAsync } from "@substrate/contracts/testing/timers";
 
 import { DesktopSessionAuthority } from "../session/desktop-session-authority.ts";
-import * as runtimeModule from "./runtime/runtime.ts";
+import { createAgentWorkRuntime } from "./runtime/runtime.ts";
 import { agentId, organizationId, runtimeFixture } from "./runtime/test-support.ts";
 import { createAgentWorkService } from "./service.ts";
-import { afterEach, expect, jest, spyOn, test } from "bun:test";
+import { afterEach, expect, jest, test } from "bun:test";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -57,8 +58,34 @@ function change(domain: RealtimeDomain): RealtimeUpdate {
   };
 }
 
-async function settle() {
+/** Lets background work run, for checks that something did not happen. */
+async function flush() {
   for (let index = 0; index < 40; index++) await new Promise((resolve) => setImmediate(resolve));
+}
+
+/** Opens the real store once and holds it at the gate; counts closes of that store. */
+function heldOpen(pending: ReturnType<typeof gate>) {
+  let held = false;
+  let closed = 0;
+  return {
+    closed: () => closed,
+    openStore: async (path: string, migrationsDirectory?: string): Promise<AgentWorkStore> => {
+      const store = await AgentWorkStore.open(path, migrationsDirectory);
+      if (held) return store;
+      held = true;
+      await pending.wait();
+      // Everything except close delegates to the real store.
+      const counted: AgentWorkStore = Object.create(store, {
+        close: {
+          value: () => {
+            closed++;
+            store.close();
+          },
+        },
+      });
+      return counted;
+    },
+  };
 }
 
 let cleanup: (() => Promise<void>) | undefined;
@@ -69,10 +96,14 @@ afterEach(async () => {
 });
 
 /** The service on a real store with a fake backend that counts requests per path. */
-async function serviceFixture() {
+async function serviceFixture(
+  overrides: Pick<Parameters<typeof createAgentWorkService>[0], "openStore" | "createRuntime"> = {},
+) {
   await mkdir(join(tmpdir(), "opencode"), { recursive: true });
   const root = await mkdtemp(join(tmpdir(), "opencode", "agent-work-service-"));
   const requests: string[] = [];
+  /** Waiters for the next request to a path. */
+  const waiters: { path: string; resolve: () => void }[] = [];
   /** Paths that answer UNAUTHENTICATED once, as when the session ended. */
   const deniedOnce = new Set<string>();
   let sessionStatus = 200;
@@ -107,6 +138,10 @@ async function serviceFixture() {
     async fetchAPI(url: string, init: RequestInit) {
       const path = new URL(url).pathname;
       requests.push(path);
+      for (const waiter of waiters.filter((entry) => entry.path === path)) {
+        waiters.splice(waiters.indexOf(waiter), 1);
+        waiter.resolve();
+      }
       if (deniedOnce.delete(path))
         return Response.json(
           { success: false, error: { code: "UNAUTHENTICATED", message: "Sign in." } },
@@ -138,10 +173,8 @@ async function serviceFixture() {
       return ok(null);
     },
   };
-  const service = createAgentWorkService({
-    ...serviceOptions,
-    authority: new DesktopSessionAuthority(serviceOptions),
-  });
+  const authority = new DesktopSessionAuthority(serviceOptions);
+  const service = createAgentWorkService({ ...serviceOptions, ...overrides, authority });
   cleanup = async () => {
     sessionGate?.release();
     registrationGate?.release();
@@ -156,6 +189,21 @@ async function serviceFixture() {
     closedOrganizations,
     registeredOrganizations,
     pulledOrganizations,
+    /** Resolves at the next request to path. */
+    requested(path: string) {
+      const request = Promise.withResolvers<void>();
+      waiters.push({ path, resolve: request.resolve });
+      return request.promise;
+    },
+    /** Resolves at the next session invalidation. */
+    invalidated() {
+      const invalidation = Promise.withResolvers<void>();
+      const unsubscribe = authority.onChange(() => {
+        unsubscribe();
+        invalidation.resolve();
+      });
+      return invalidation.promise;
+    },
     organization(id: string) {
       organizationId = id;
     },
@@ -194,19 +242,22 @@ test("calls cannot open agent work before start or after stop", async () => {
 /** Keep live-turn behavior real while testing the service's session and lifecycle boundary. */
 async function liveServiceFixture() {
   const runtime = await runtimeFixture();
-  const factory = spyOn(runtimeModule, "createAgentWorkRuntime").mockReturnValueOnce(
-    runtime.runtime,
-  );
-  const f = await serviceFixture();
+  let created = false;
+  const f = await serviceFixture({
+    // The first runtime is the fixture's; later ones are real.
+    createRuntime(...args) {
+      if (created) return createAgentWorkRuntime(...args);
+      created = true;
+      return runtime.runtime;
+    },
+  });
   const serviceCleanup = cleanup;
   cleanup = async () => {
-    factory.mockRestore();
     await serviceCleanup?.();
     await runtime.close();
   };
   f.service.start();
   await f.service.call("agents");
-  factory.mockRestore();
   await runtime.message();
   return { ...f, runtime };
 }
@@ -305,7 +356,7 @@ test("stop waits for runtime startup and closes it only once", async () => {
     stopped = true;
   });
   const second = f.service.stop();
-  await settle();
+  await flush();
   expect(stopped).toBe(false);
   pending.release();
   await Promise.all([first, second]);
@@ -317,7 +368,6 @@ test("start during stop waits for retirement before opening another runtime", as
   const f = await serviceFixture();
   f.service.start();
   await f.service.call("agents");
-  await settle();
   const pending = f.holdClose();
   const stopping = f.service.stop();
   await pending.entered;
@@ -403,50 +453,27 @@ test("a workspace change during retirement cannot publish the superseded workspa
 });
 
 test("stop closes a store whose open completes late without starting its runtime", async () => {
-  const f = await serviceFixture();
   const pending = gate();
-  const open = AgentWorkStore.open.bind(AgentWorkStore);
-  let closed = 0;
-  const opening = spyOn(AgentWorkStore, "open").mockImplementationOnce(async (...args) => {
-    const store = await open(...args);
-    const close = store.close.bind(store);
-    spyOn(store, "close").mockImplementation(() => {
-      closed++;
-      close();
-    });
-    await pending.wait();
-    return store;
-  });
+  const opening = heldOpen(pending);
+  const f = await serviceFixture({ openStore: opening.openStore });
   try {
     f.service.start();
     await pending.entered;
     const stopping = f.service.stop();
     pending.release();
     await stopping;
-    expect(closed).toBe(1);
+    expect(opening.closed()).toBe(1);
     expect(f.registeredOrganizations).toEqual([]);
     await expectUnavailable(f.service);
   } finally {
     pending.release();
-    opening.mockRestore();
   }
 });
 
 test("a workspace change during store open closes the stale store before replacement", async () => {
-  const f = await serviceFixture();
   const pending = gate();
-  const open = AgentWorkStore.open.bind(AgentWorkStore);
-  let closed = 0;
-  const opening = spyOn(AgentWorkStore, "open").mockImplementationOnce(async (...args) => {
-    const store = await open(...args);
-    const close = store.close.bind(store);
-    spyOn(store, "close").mockImplementation(() => {
-      closed++;
-      close();
-    });
-    await pending.wait();
-    return store;
-  });
+  const opening = heldOpen(pending);
+  const f = await serviceFixture({ openStore: opening.openStore });
   try {
     f.service.start();
     await pending.entered;
@@ -454,12 +481,11 @@ test("a workspace change during store open closes the stale store before replace
     f.service.onRealtime(change("organization"));
     pending.release();
     await f.service.call("agents");
-    expect(closed).toBe(1);
+    expect(opening.closed()).toBe(1);
     expect(f.registeredOrganizations).toEqual(["org-2"]);
     expect(f.pulledOrganizations.every((id) => id === "org-2")).toBe(true);
   } finally {
     pending.release();
-    opening.mockRestore();
   }
 });
 
@@ -467,7 +493,7 @@ test("agent work reuses the verified session until a session, access or organiza
   const f = await serviceFixture();
   f.service.start();
   await f.service.call("agents");
-  await settle();
+  await flush();
   expect(f.sessionChecks()).toBe(1);
 
   // Renderer reads and agent-work hints use the session that was already verified.
@@ -475,7 +501,7 @@ test("agent work reuses the verified session until a session, access or organiza
     await f.service.call("agents");
     f.service.onRealtime(change("agent-work"));
   }
-  await settle();
+  await flush();
   expect(f.sessionChecks()).toBe(1);
 
   for (const domain of ["session", "access", "organization"] as const) {
@@ -484,7 +510,7 @@ test("agent work reuses the verified session until a session, access or organiza
   }
   f.service.onRealtime({ version: 1, type: "ready" });
   await f.service.call("agents");
-  await settle();
+  await flush();
   expect(f.sessionChecks()).toBe(5);
   expect(f.memberChecks()).toBe(5);
 });
@@ -495,7 +521,6 @@ test("confirmed session denial blocks access to the previous local runtime", asy
   await f.service.call("agents");
   f.sessionStatus(401);
   f.service.onRealtime(change("session"));
-  await settle();
   await Promise.resolve(expect(f.service.call("agents")).rejects.toThrow("Sign in"));
 });
 
@@ -505,7 +530,6 @@ test("a server outage preserves the recoverable local runtime", async () => {
   const before = await f.service.call("agents");
   f.sessionStatus(503);
   f.service.onRealtime(change("session"));
-  await settle();
   expect(await f.service.call("agents")).toEqual(before);
 });
 
@@ -514,15 +538,15 @@ test("a server call denied with UNAUTHENTICATED verifies the session again", asy
   const f = await serviceFixture();
   f.service.start();
   await f.service.call("agents");
-  await settle();
+  await flush();
   expect(f.sessionChecks()).toBe(1);
 
   f.deniedOnce.add("/api/v1/agent-work/device/wakes/pull");
+  const invalidated = f.invalidated();
   f.service.onRealtime(change("agent-work"));
   // Agent-work hints pull after a short window.
-  await settle();
-  jest.advanceTimersByTime(300);
-  await settle();
+  await advanceTimersAsync(300);
+  await invalidated;
   expect(f.deniedOnce.size).toBe(0);
   await f.service.call("agents");
   expect(f.sessionChecks()).toBe(2);
@@ -533,7 +557,7 @@ test("a wake for an unknown agent reads the catalog from the server again", asyn
   const f = await serviceFixture();
   f.service.start();
   await f.service.call("agents");
-  await settle();
+  await flush();
   const before = f.catalogReads();
   expect(before).toBeGreaterThan(0);
 
@@ -553,10 +577,10 @@ test("a wake for an unknown agent reads the catalog from the server again", asyn
     createdAt: new Date().toISOString(),
     request: null,
   });
+  const catalogRead = f.requested("/api/v1/agents/list");
   f.service.onRealtime(change("agent-work"));
-  await settle();
-  jest.advanceTimersByTime(300);
-  await settle();
+  await advanceTimersAsync(300);
+  await catalogRead;
   expect(f.wakes).toHaveLength(0);
   expect(f.catalogReads()).toBe(before + 1);
 });
