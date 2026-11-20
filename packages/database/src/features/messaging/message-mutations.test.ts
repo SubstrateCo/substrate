@@ -2,6 +2,7 @@ import { AccessDeniedError, ConflictError } from "../../errors";
 import { member, notifications, taskActivity, user } from "../../schema";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
+import { waitForLockWaiters } from "../../testing/locks";
 import { createAcceptedMessagingService } from "../../testing/messaging";
 import { rejection } from "../../testing/rejection";
 import { messageEntityReferences } from "../context/schema";
@@ -69,9 +70,7 @@ test("deletion waits for an open reaction and removes it after the reaction comm
   try {
     await held.promise;
     deleting = f.messaging("alice").deleteMessage(message.id);
-    expect(
-      await Promise.race([deleting.then(() => "done"), Bun.sleep(200).then(() => "blocked")]),
-    ).toBe("blocked");
+    await waitForLockWaiters(1);
   } finally {
     release.resolve();
     await Promise.all([open, deleting]);
@@ -109,9 +108,7 @@ test("reactions and edits waiting for deletion cannot restore deleted message st
       rejection(f.messaging("alice").editMessage(message.id, "restore")),
       rejection(context.attach(message.id, project.entityId)),
     ]);
-    expect(
-      await Promise.race([pending.then(() => "done"), Bun.sleep(200).then(() => "blocked")]),
-    ).toBe("blocked");
+    await waitForLockWaiters(3);
   } finally {
     release.resolve();
     await open;

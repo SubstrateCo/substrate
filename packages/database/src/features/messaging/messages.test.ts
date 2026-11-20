@@ -5,6 +5,7 @@ import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { user, member } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { waitForLockWaiters } from "../../testing/locks";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { messagingMessages, messagingReactions } from "./schema";
@@ -70,7 +71,8 @@ test("concurrent sends with one request create one message and both return it", 
   const changed = rejection(
     service("alice").sendMessage(channel.id, "changed", undefined, requestId),
   );
-  await Bun.sleep(200);
+  // Both sends wait on the uncommitted message's request ID.
+  await waitForLockWaiters(2);
   release.resolve();
   const [first, second] = await Promise.all([open, retry]);
   expect(await changed).toBeInstanceOf(ConflictError);
@@ -575,7 +577,7 @@ test("posts, reactions and reads do not wait for an open post, while leaving wai
       .then(() => {
         left = true;
       });
-    await Bun.sleep(200);
+    await waitForLockWaiters(1);
     expect(left).toBe(false);
     release.resolve();
     await Promise.all([open, leaving]);

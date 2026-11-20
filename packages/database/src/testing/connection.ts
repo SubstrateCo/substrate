@@ -19,8 +19,12 @@ export function discardEffects<T extends DatabaseExecutor>(db: T) {
 
 const connection = createDatabase({ connectionString: testDatabaseURL().href, maxConnections: 4 });
 export const testDatabase = discardEffects(connection.db);
+// Lock checks get their own connection: the work they watch can hold every pooled connection.
+const monitor = createDatabase({ connectionString: testDatabaseURL().href, maxConnections: 1 });
+export const monitorDatabase = monitor.db;
 // A query that never ends must not hold the run open; close its connection after 5 s.
-export const closeTestDatabase = () => connection.db.$client.end({ timeout: 5 });
+export const closeTestDatabase = () =>
+  Promise.all([connection.db.$client.end({ timeout: 5 }), monitor.db.$client.end({ timeout: 5 })]);
 
 // Deleting children before their parents satisfies every foreign key. On small tables this is much
 // faster than TRUNCATE, which replaces the files of every table and index.
