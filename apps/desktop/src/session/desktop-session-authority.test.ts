@@ -33,14 +33,12 @@ test("invalidation rejects an old verification and drops the catalog cache", asy
   const gate = Promise.withResolvers<void>();
   let delayed = true;
   let catalogCalls = 0;
-  let sessionCalls = 0;
+  const cookieCache: (string | null)[] = [];
   const authority = new DesktopSessionAuthority({
     backend: "https://api.example.com",
     fetchAPI: async (url) => {
       if (new URL(url).pathname === "/api/auth/get-session") {
-        expect(new URL(url).searchParams.get("disableCookieCache")).toBe(
-          sessionCalls++ === 0 ? null : "true",
-        );
+        cookieCache.push(new URL(url).searchParams.get("disableCookieCache"));
         if (delayed) await gate.promise;
         return Response.json({
           user: { id: "user", emailVerified: true },
@@ -62,6 +60,10 @@ test("invalidation rejects an old verification and drops the catalog cache", asy
   gate.resolve();
   await rejects(old, /Session changed\./);
   expect((await authority.verify()).organizationId).toBe("org");
+  // The first read may use the cookie cache. Reads after an invalidation must bypass it.
+  expect(cookieCache[0]).toBeNull();
+  expect(cookieCache.length).toBeGreaterThan(1);
+  expect(cookieCache.slice(1).every((value) => value === "true")).toBe(true);
   await authority.catalog();
   await authority.catalog();
   expect(catalogCalls).toBe(1);

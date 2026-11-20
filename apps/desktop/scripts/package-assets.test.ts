@@ -1,6 +1,7 @@
 import { writeHarnessWorkerLoader } from "./harness-worker.ts";
 import { stageInstalledPackages } from "./package-assets.ts";
 import { afterEach, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 import { access, mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -91,7 +92,7 @@ test("stages scoped packages, dependency and peer graphs, and companion assets w
   expect(JSON.parse(await readFile(join(f.output, "protocol/package.json"), "utf8")).name).toBe(
     "protocol",
   );
-  expect(access(join(staged, "node_modules/undeclared"))).rejects.toThrow();
+  await rejects(access(join(staged, "node_modules/undeclared")));
 });
 
 test("cycles reuse the staged ancestor instead of recursively duplicating it", async () => {
@@ -107,7 +108,7 @@ test("cycles reuse the staged ancestor instead of recursively duplicating it", a
   expect(createRequire(join(beta, "package.json")).resolve("alpha/package.json")).toBe(
     join(f.output, "alpha/package.json"),
   );
-  expect(access(join(beta, "node_modules/alpha"))).rejects.toThrow();
+  await rejects(access(join(beta, "node_modules/alpha")));
 });
 
 test("installed asset-only optional packages are included; missing optional packages and peers are skipped", async () => {
@@ -126,8 +127,8 @@ test("installed asset-only optional packages are included; missing optional pack
     nodeModulesDirectory: f.output,
   });
   expect(await readFile(join(f.output, "binary/vendor/cli.exe"), "utf8")).toBe("native executable");
-  expect(access(join(f.output, "missing"))).rejects.toThrow();
-  expect(access(join(f.output, "absentPeer"))).rejects.toThrow();
+  await rejects(access(join(f.output, "missing")));
+  await rejects(access(join(f.output, "absentPeer")));
 });
 
 test("excluded packages are skipped with their own dependencies while the rest of the graph is staged", async () => {
@@ -243,7 +244,7 @@ test("a shared dependency is copied once at the top level and conflicting versio
       ),
     ).version;
   for (const path of ["nested/node_modules/shared", "outer/node_modules/shared"])
-    expect(access(join(f.output, path))).rejects.toThrow();
+    await rejects(access(join(f.output, path)));
   for (const from of ["nested", "outer", "outer/node_modules/nested"])
     expect(await resolved(from, "shared")).toBe("1.0.0");
   expect(await resolved("outer", "nested")).toBe("2.0.0");

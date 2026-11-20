@@ -3,6 +3,7 @@ import type { SignInHarnessMethod } from "@substrate/contracts/harness/ipc";
 
 import { fixture, signInId } from "./test-support.ts";
 import { describe, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 
 describe("desktop harness sign-in", () => {
   test("starts with only the harness and method ID and returns only the sign-in state", async () => {
@@ -46,9 +47,7 @@ describe("desktop harness sign-in", () => {
       ["signIn", { harness: "claude", methodId: "login", args: ["--evil"] }],
       ["signOut", { harness: "unknown" }],
     ];
-    for (const [method, value] of malformed)
-      expect(f.controller.run(method, value)).rejects.toThrow();
-    await Bun.sleep(0);
+    for (const [method, value] of malformed) await rejects(f.controller.run(method, value));
     expect(f.calls.map((call) => call.method)).toEqual(["configure"]);
   });
 
@@ -57,13 +56,14 @@ describe("desktop harness sign-in", () => {
       signInState: { loginId: "0b0e4c1a-0000-4000-8000-000000000000" },
     });
     await f.controller.run("synchronize");
-    expect(f.controller.run("readSignIn", { loginId: signInId, cursor: 0 })).rejects.toThrow();
+    await rejects(f.controller.run("readSignIn", { loginId: signInId, cursor: 0 }));
   });
 
   test("needs a synchronized worker", async () => {
     const f = fixture();
-    expect(f.controller.run("signIn", { harness: "claude", methodId: "login" })).rejects.toThrow(
-      "Harness unavailable",
+    await rejects(
+      f.controller.run("signIn", { harness: "claude", methodId: "login" }),
+      /Harness unavailable/,
     );
   });
 });

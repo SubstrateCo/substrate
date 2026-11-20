@@ -4,6 +4,7 @@ import { DesktopSessionAuthority } from "../../session/desktop-session-authority
 import { createHarnessController } from "./harness-controller.ts";
 import { fixture } from "./test-support.ts";
 import { describe, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 
 const noMcpServers = { list: async () => [], save: async () => {}, delete: async () => {} };
 
@@ -61,7 +62,7 @@ describe("desktop harness authority", () => {
     await catalogStarted.promise;
     organizationId = "org-2";
     catalogGate.resolve();
-    expect(pending).rejects.toThrow("Harness unavailable");
+    await rejects(pending, /Harness unavailable/);
     await pending.catch(() => undefined);
     expect(created).toBe(0);
     expect(calls).toEqual([]);
@@ -118,10 +119,8 @@ describe("desktop harness authority", () => {
   });
   test("rejects renderer-selected organizations before fetching a catalog", async () => {
     const f = fixture();
-    expect(f.controller.run("synchronize", "other-org")).rejects.toThrow(
-      "Invalid harness operation",
-    );
-    expect(f.controller.run("status", {})).rejects.toThrow("Invalid harness operation");
+    await rejects(f.controller.run("synchronize", "other-org"), /Invalid harness operation/);
+    await rejects(f.controller.run("status", {}), /Invalid harness operation/);
     expect(f.catalogRequests()).toBe(0);
     expect(f.directories).toEqual([]);
   });
@@ -160,7 +159,7 @@ describe("desktop harness authority", () => {
       session: { activeOrganizationId: "org-1" },
     });
     f.controller.refreshAuthority();
-    expect(f.controller.execute(open)).rejects.toThrow("Harness unavailable");
+    await rejects(f.controller.execute(open), /Harness unavailable/);
     await f.controller.execute(open).catch(() => undefined);
     expect(f.disposed()).toBe(1);
     expect(f.calls.map((call) => call.method)).toEqual(["configure"]);
@@ -171,13 +170,13 @@ describe("desktop harness authority", () => {
       await f.controller.run("synchronize");
       f.setOutage(outage);
       f.controller.refreshAuthority();
-      expect(f.controller.execute(open)).rejects.toMatchObject({ code: "harness-unavailable" });
+      await rejects(f.controller.execute(open), { code: "harness-unavailable" });
       await f.controller.execute(open).catch(() => undefined);
-      expect(f.controller.run("synchronize")).rejects.toMatchObject({
+      await rejects(f.controller.run("synchronize"), {
         code: "harness-unavailable",
       });
       await f.controller.run("synchronize").catch(() => undefined);
-      expect(f.controller.run("status")).rejects.toMatchObject({ code: "harness-unavailable" });
+      await rejects(f.controller.run("status"), { code: "harness-unavailable" });
       await f.controller.run("status").catch(() => undefined);
       expect(f.disposed()).toBe(0);
       f.setOutage(undefined);
@@ -189,7 +188,7 @@ describe("desktop harness authority", () => {
     const f = fixture();
     await f.controller.run("synchronize");
     f.failCatalog(true);
-    expect(f.controller.run("synchronize")).rejects.toThrow("Harness unavailable");
+    await rejects(f.controller.run("synchronize"), /Harness unavailable/);
     await f.controller.run("synchronize").catch(() => undefined);
     expect(f.disposed()).toBe(0);
     f.failCatalog(false);
@@ -201,9 +200,9 @@ describe("desktop harness authority", () => {
   test("a stopped worker is replaced at the next synchronization", async () => {
     const f = fixture(undefined, [], { failExecute: "worker-stopped" });
     await f.controller.run("synchronize");
-    expect(f.controller.execute(open)).rejects.toMatchObject({ code: "worker-stopped" });
+    await rejects(f.controller.execute(open), { code: "worker-stopped" });
     await f.controller.execute(open).catch(() => undefined);
-    expect(f.controller.execute(open)).rejects.toMatchObject({ code: "not-connected" });
+    await rejects(f.controller.execute(open), { code: "not-connected" });
     await f.controller.execute(open).catch(() => undefined);
     await f.controller.run("synchronize");
     expect(f.directories).toHaveLength(2);
@@ -222,7 +221,7 @@ describe("desktop harness authority", () => {
   test("blocks commands for another organization before the worker", async () => {
     const f = fixture();
     await f.controller.run("synchronize");
-    expect(f.controller.execute({ ...open, organizationId: "other-org" })).rejects.toMatchObject({
+    await rejects(f.controller.execute({ ...open, organizationId: "other-org" }), {
       code: "organization-unavailable",
     });
     expect(f.calls.map((call) => call.method)).toEqual(["configure"]);
@@ -235,7 +234,7 @@ describe("desktop harness authority", () => {
       session: { activeOrganizationId: "org-2" },
     });
     f.controller.refreshAuthority();
-    expect(f.controller.execute(open)).rejects.toMatchObject({ code: "organization-unavailable" });
+    await rejects(f.controller.execute(open), { code: "organization-unavailable" });
     await f.controller.execute(open).catch(() => undefined);
     await f.controller.closeOrganization("org-1");
     expect(f.calls.at(-1)).toEqual({ method: "closeOrganization", value: "org-1" });
@@ -244,7 +243,7 @@ describe("desktop harness authority", () => {
   test("a failed native command reports its code and keeps the worker", async () => {
     const f = fixture(undefined, [], { failExecute: "resume-failed" });
     await f.controller.run("synchronize");
-    expect(f.controller.execute(open)).rejects.toMatchObject({ code: "resume-failed" });
+    await rejects(f.controller.execute(open), { code: "resume-failed" });
     await f.controller.execute(open).catch(() => undefined);
     expect(f.disposed()).toBe(0);
   });
@@ -297,7 +296,7 @@ describe("desktop harness authority", () => {
       input: {},
     };
     expect(await local(request)).toEqual({ success: true, data: { items: [] } });
-    expect(local({ ...request, input: { unexpected: true } })).rejects.toThrow();
+    await rejects(local({ ...request, input: { unexpected: true } }));
     expect(received).toEqual([request]);
   });
   test("readProfile reads only the verified organization", async () => {
@@ -349,7 +348,7 @@ describe("desktop harness authority", () => {
     await Promise.resolve();
     controller.disconnect();
     release();
-    expect(pending).rejects.toThrow("Harness unavailable");
+    await rejects(pending, /Harness unavailable/);
     expect(created).toBe(false);
   });
 });

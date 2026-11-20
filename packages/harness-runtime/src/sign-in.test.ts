@@ -2,6 +2,7 @@ import type { AcpAuthMethod, AcpLaunch, AcpPeer, OpenAcpPeer } from "./acp/api.t
 import type { TerminalLogin } from "./acp/terminal-login.ts";
 import { createSignIns } from "./sign-in.ts";
 import { describe, expect, test } from "bun:test";
+import { rejects } from "node:assert/strict";
 
 const launch: AcpLaunch = { harness: "claude", command: "agent", args: [], version: "1.0.0" };
 
@@ -92,7 +93,7 @@ describe("native sign-in", () => {
       openPeer: peer.openPeer,
       requireAgent: async () => launch,
     });
-    expect(signIns.start({ harness: "claude", methodId: "made-up" })).rejects.toThrow();
+    await rejects(signIns.start({ harness: "claude", methodId: "made-up" }));
   });
 
   test("terminal output reads from a cursor and input reaches the command", async () => {
@@ -137,7 +138,7 @@ describe("native sign-in", () => {
       openPeer: without.openPeer,
       requireAgent: async () => launch,
     });
-    expect(signIns.signOut({ harness: "claude" })).rejects.toThrow();
+    await rejects(signIns.signOut({ harness: "claude" }));
     const withLogout = fakePeer([agentMethod], { logout: true });
     await createSignIns({
       cwd: ".",
