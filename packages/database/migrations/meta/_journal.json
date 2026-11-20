@@ -5,99 +5,15 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1794495382081,
+      "when": 1795179955613,
       "tag": "0000_initial",
       "breakpoints": true
     },
     {
       "idx": 1,
       "version": "7",
-      "when": 1794495389324,
+      "when": 1795179956456,
       "tag": "0001_message_content",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1794507435341,
-      "tag": "0002_icy_abomination",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1794508880756,
-      "tag": "0003_living_wonder_man",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1794510949704,
-      "tag": "0004_uneven_serpent_society",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1794511174195,
-      "tag": "0005_married_shape",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1794511352627,
-      "tag": "0006_abnormal_captain_stacy",
-      "breakpoints": true
-    },
-    {
-      "idx": 7,
-      "version": "7",
-      "when": 1794511483729,
-      "tag": "0007_futuristic_shape",
-      "breakpoints": true
-    },
-    {
-      "idx": 8,
-      "version": "7",
-      "when": 1794511778670,
-      "tag": "0008_robust_pyro",
-      "breakpoints": true
-    },
-    {
-      "idx": 9,
-      "version": "7",
-      "when": 1794512112851,
-      "tag": "0009_nebulous_tony_stark",
-      "breakpoints": true
-    },
-    {
-      "idx": 10,
-      "version": "7",
-      "when": 1794512733730,
-      "tag": "0010_worthless_alex_power",
-      "breakpoints": true
-    },
-    {
-      "idx": 11,
-      "version": "7",
-      "when": 1794513828803,
-      "tag": "0011_equal_meltdown",
-      "breakpoints": true
-    },
-    {
-      "idx": 12,
-      "version": "7",
-      "when": 1794588518649,
-      "tag": "0012_simplify_links",
-      "breakpoints": true
-    },
-    {
-      "idx": 13,
-      "version": "7",
-      "when": 1794588540876,
-      "tag": "0013_idempotent_requests",
       "breakpoints": true
     }
   ]

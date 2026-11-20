@@ -1,5 +1,5 @@
 {
-  "id": "f5207437-20dc-42ab-9cbf-d5cd9e366ef0",
+  "id": "7640befe-8a3e-4975-868a-03ba349f771f",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1247,6 +1247,13 @@
       "name": "contact_identifiers",
       "schema": "",
       "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
         "organization_id": {
           "name": "organization_id",
           "type": "text",
@@ -1271,9 +1278,143 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "normalized_value": {
+          "name": "normalized_value",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "extension": {
+          "name": "extension",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_primary": {
+          "name": "is_primary",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
         }
       },
-      "indexes": {},
+      "indexes": {
+        "contact_identifiers_value_unique": {
+          "name": "contact_identifiers_value_unique",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "contact_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "coalesce(\"normalized_value\", \"value\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "coalesce(\"extension\", '')",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "contact_identifiers_primary_unique": {
+          "name": "contact_identifiers_primary_unique",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "contact_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"contact_identifiers\".\"is_primary\"",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "contact_identifiers_lookup_idx": {
+          "name": "contact_identifiers_lookup_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "normalized_value",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
       "foreignKeys": {
         "contact_identifiers_organization_id_contact_entity_id_contacts_organization_id_entity_id_fk": {
           "name": "contact_identifiers_organization_id_contact_entity_id_contacts_organization_id_entity_id_fk",
@@ -1291,23 +1432,17 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {
-        "contact_identifiers_organization_id_contact_entity_id_type_value_pk": {
-          "name": "contact_identifiers_organization_id_contact_entity_id_type_value_pk",
-          "columns": [
-            "organization_id",
-            "contact_entity_id",
-            "type",
-            "value"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
         "contact_identifiers_value_check": {
           "name": "contact_identifiers_value_check",
           "value": "length(trim(\"contact_identifiers\".\"value\")) > 0"
+        },
+        "contact_identifiers_extension_check": {
+          "name": "contact_identifiers_extension_check",
+          "value": "\"contact_identifiers\".\"extension\" IS NULL OR (\"contact_identifiers\".\"type\" = 'phone' AND \"contact_identifiers\".\"extension\" ~ '^[0-9]+$')"
         }
       },
       "isRLSEnabled": false
@@ -1344,6 +1479,48 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "given_name": {
+          "name": "given_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "middle_name": {
+          "name": "middle_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "family_name": {
+          "name": "family_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name_prefix": {
+          "name": "name_prefix",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "name_suffix": {
+          "name": "name_suffix",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "nickname": {
+          "name": "nickname",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
@@ -1382,6 +1559,510 @@
         "contacts_name_check": {
           "name": "contacts_name_check",
           "value": "length(trim(\"contacts\".\"display_name\")) > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.contact_addresses": {
+      "name": "contact_addresses",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contact_entity_id": {
+          "name": "contact_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_primary": {
+          "name": "is_primary",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "street_address": {
+          "name": "street_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "extended_address": {
+          "name": "extended_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "city": {
+          "name": "city",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "region": {
+          "name": "region",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "postal_code": {
+          "name": "postal_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "country_code": {
+          "name": "country_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "formatted_address": {
+          "name": "formatted_address",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "contact_addresses_contact_idx": {
+          "name": "contact_addresses_contact_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "contact_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "contact_addresses_primary_unique": {
+          "name": "contact_addresses_primary_unique",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "contact_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"contact_addresses\".\"is_primary\"",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "contact_addresses_organization_id_contact_entity_id_contacts_organization_id_entity_id_fk": {
+          "name": "contact_addresses_organization_id_contact_entity_id_contacts_organization_id_entity_id_fk",
+          "tableFrom": "contact_addresses",
+          "tableTo": "contacts",
+          "columnsFrom": [
+            "organization_id",
+            "contact_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "contact_addresses_nonempty_check": {
+          "name": "contact_addresses_nonempty_check",
+          "value": "length(trim(concat_ws('', \"contact_addresses\".\"street_address\", \"contact_addresses\".\"extended_address\", \"contact_addresses\".\"city\", \"contact_addresses\".\"region\", \"contact_addresses\".\"postal_code\", \"contact_addresses\".\"country_code\", \"contact_addresses\".\"formatted_address\"))) > 0"
+        },
+        "contact_addresses_country_check": {
+          "name": "contact_addresses_country_check",
+          "value": "\"contact_addresses\".\"country_code\" IS NULL OR \"contact_addresses\".\"country_code\" ~ '^[A-Z]{2}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.contact_urls": {
+      "name": "contact_urls",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contact_entity_id": {
+          "name": "contact_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_primary": {
+          "name": "is_primary",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "url": {
+          "name": "url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "contact_urls_value_unique": {
+          "name": "contact_urls_value_unique",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "contact_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "url",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "contact_urls_primary_unique": {
+          "name": "contact_urls_primary_unique",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "contact_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"contact_urls\".\"is_primary\"",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "contact_urls_organization_id_contact_entity_id_contacts_organization_id_entity_id_fk": {
+          "name": "contact_urls_organization_id_contact_entity_id_contacts_organization_id_entity_id_fk",
+          "tableFrom": "contact_urls",
+          "tableTo": "contacts",
+          "columnsFrom": [
+            "organization_id",
+            "contact_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "contact_urls_scheme_check": {
+          "name": "contact_urls_scheme_check",
+          "value": "\"contact_urls\".\"url\" ~ '^https?://'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.contact_interactions": {
+      "name": "contact_interactions",
+      "schema": "",
+      "columns": {
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_type": {
+          "name": "entity_type",
+          "type": "entity_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contact_entity_id": {
+          "name": "contact_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "kind": {
+          "name": "kind",
+          "type": "contact_interaction_kind",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "occurred_at": {
+          "name": "occurred_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ended_at": {
+          "name": "ended_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "origin": {
+          "name": "origin",
+          "type": "contact_interaction_origin",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_by_actor_entity_id": {
+          "name": "created_by_actor_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "contact_interactions_timeline_idx": {
+          "name": "contact_interactions_timeline_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "contact_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurred_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "entity_id",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "contact_interactions_organization_id_entity_id_entity_type_entities_organization_id_entity_id_entity_type_fk": {
+          "name": "contact_interactions_organization_id_entity_id_entity_type_entities_organization_id_entity_id_entity_type_fk",
+          "tableFrom": "contact_interactions",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "organization_id",
+            "entity_id",
+            "entity_type"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id",
+            "entity_type"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "contact_interactions_organization_id_contact_entity_id_contacts_organization_id_entity_id_fk": {
+          "name": "contact_interactions_organization_id_contact_entity_id_contacts_organization_id_entity_id_fk",
+          "tableFrom": "contact_interactions",
+          "tableTo": "contacts",
+          "columnsFrom": [
+            "organization_id",
+            "contact_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "contact_interactions_organization_id_entity_id_contact_entity_id_entities_organization_id_entity_id_access_entity_id_fk": {
+          "name": "contact_interactions_organization_id_entity_id_contact_entity_id_entities_organization_id_entity_id_access_entity_id_fk",
+          "tableFrom": "contact_interactions",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "organization_id",
+            "entity_id",
+            "contact_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id",
+            "access_entity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "contact_interactions_organization_id_created_by_actor_entity_id_actors_organization_id_entity_id_fk": {
+          "name": "contact_interactions_organization_id_created_by_actor_entity_id_actors_organization_id_entity_id_fk",
+          "tableFrom": "contact_interactions",
+          "tableTo": "actors",
+          "columnsFrom": [
+            "organization_id",
+            "created_by_actor_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "contact_interactions_org_entity_contact_unique": {
+          "name": "contact_interactions_org_entity_contact_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "entity_id",
+            "contact_entity_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "contact_interactions_type_check": {
+          "name": "contact_interactions_type_check",
+          "value": "\"contact_interactions\".\"entity_type\"::text = 'contact_interaction'"
+        },
+        "contact_interactions_summary_check": {
+          "name": "contact_interactions_summary_check",
+          "value": "length(trim(\"contact_interactions\".\"summary\")) > 0"
+        },
+        "contact_interactions_time_check": {
+          "name": "contact_interactions_time_check",
+          "value": "\"contact_interactions\".\"ended_at\" IS NULL OR \"contact_interactions\".\"ended_at\" >= \"contact_interactions\".\"occurred_at\""
         }
       },
       "isRLSEnabled": false
@@ -1521,6 +2202,13 @@
       "name": "entity_links",
       "schema": "",
       "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
         "organization_id": {
           "name": "organization_id",
           "type": "text",
@@ -1630,9 +2318,11 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {
-        "entity_links_organization_id_source_entity_id_target_entity_id_relation_type_pk": {
-          "name": "entity_links_organization_id_source_entity_id_target_entity_id_relation_type_pk",
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "entity_links_pair_unique": {
+          "name": "entity_links_pair_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "organization_id",
             "source_entity_id",
@@ -1641,12 +2331,130 @@
           ]
         }
       },
-      "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
         "entity_links_no_self_link": {
           "name": "entity_links_no_self_link",
           "value": "\"entity_links\".\"source_entity_id\" <> \"entity_links\".\"target_entity_id\""
+        },
+        "entity_links_related_order": {
+          "name": "entity_links_related_order",
+          "value": "\"entity_links\".\"relation_type\"::text <> 'related_to' OR \"entity_links\".\"source_entity_id\" < \"entity_links\".\"target_entity_id\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.idempotent_requests": {
+      "name": "idempotent_requests",
+      "schema": "",
+      "columns": {
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_entity_id": {
+          "name": "actor_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "operation": {
+          "name": "operation",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "request_id": {
+          "name": "request_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "fingerprint": {
+          "name": "fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "idempotent_requests_organization_id_organization_id_fk": {
+          "name": "idempotent_requests_organization_id_organization_id_fk",
+          "tableFrom": "idempotent_requests",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "idempotent_request_actor_fk": {
+          "name": "idempotent_request_actor_fk",
+          "tableFrom": "idempotent_requests",
+          "tableTo": "actors",
+          "columnsFrom": [
+            "organization_id",
+            "actor_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "idempotent_request_entity_fk": {
+          "name": "idempotent_request_entity_fk",
+          "tableFrom": "idempotent_requests",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "organization_id",
+            "entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "idempotent_requests_organization_id_actor_entity_id_operation_request_id_pk": {
+          "name": "idempotent_requests_organization_id_actor_entity_id_operation_request_id_pk",
+          "columns": [
+            "organization_id",
+            "actor_entity_id",
+            "operation",
+            "request_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "idempotent_request_operation": {
+          "name": "idempotent_request_operation",
+          "value": "operation in ('account', 'deal', 'deal_transition', 'crm_from_message', 'crm_follow_up', 'task_from_message')"
         }
       },
       "isRLSEnabled": false
@@ -4017,155 +4825,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.task_links": {
-      "name": "task_links",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "organization_id": {
-          "name": "organization_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source_task_entity_id": {
-          "name": "source_task_entity_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "target_task_entity_id": {
-          "name": "target_task_entity_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by_actor_entity_id": {
-          "name": "created_by_actor_entity_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "task_links_target_idx": {
-          "name": "task_links_target_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "target_task_entity_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "task_links_source_fk": {
-          "name": "task_links_source_fk",
-          "tableFrom": "task_links",
-          "tableTo": "tasks",
-          "columnsFrom": [
-            "organization_id",
-            "source_task_entity_id"
-          ],
-          "columnsTo": [
-            "organization_id",
-            "entity_id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "task_links_target_fk": {
-          "name": "task_links_target_fk",
-          "tableFrom": "task_links",
-          "tableTo": "tasks",
-          "columnsFrom": [
-            "organization_id",
-            "target_task_entity_id"
-          ],
-          "columnsTo": [
-            "organization_id",
-            "entity_id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "task_links_creator_fk": {
-          "name": "task_links_creator_fk",
-          "tableFrom": "task_links",
-          "tableTo": "actors",
-          "columnsFrom": [
-            "organization_id",
-            "created_by_actor_entity_id"
-          ],
-          "columnsTo": [
-            "organization_id",
-            "entity_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "task_links_pair_unique": {
-          "name": "task_links_pair_unique",
-          "nullsNotDistinct": false,
-          "columns": [
-            "organization_id",
-            "source_task_entity_id",
-            "target_task_entity_id",
-            "kind"
-          ]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {
-        "task_links_kind_check": {
-          "name": "task_links_kind_check",
-          "value": "\"task_links\".\"kind\" IN ('blocks', 'relates_to', 'duplicates')"
-        },
-        "task_links_self_check": {
-          "name": "task_links_self_check",
-          "value": "\"task_links\".\"source_task_entity_id\" <> \"task_links\".\"target_task_entity_id\""
-        },
-        "task_links_relates_order_check": {
-          "name": "task_links_relates_order_check",
-          "value": "\"task_links\".\"kind\" <> 'relates_to' OR \"task_links\".\"source_task_entity_id\" < \"task_links\".\"target_task_entity_id\""
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.message_entity_references": {
       "name": "message_entity_references",
       "schema": "",
@@ -4338,267 +4997,13 @@
       "checkConstraints": {
         "message_reference_type_check": {
           "name": "message_reference_type_check",
-          "value": "\"message_entity_references\".\"entity_type\" IN ('task', 'project')"
+          "value": "\"message_entity_references\".\"entity_type\"::text IN ('task', 'project', 'contact', 'account', 'deal', 'contact_interaction')"
         },
         "message_reference_purpose_check": {
           "name": "message_reference_purpose_check",
           "value": "\"message_entity_references\".\"purpose\" IN ('source', 'mention', 'association')"
         }
       },
-      "isRLSEnabled": false
-    },
-    "public.message_messaging_references": {
-      "name": "message_messaging_references",
-      "schema": "",
-      "columns": {
-        "organization_id": {
-          "name": "organization_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "conversation_id": {
-          "name": "conversation_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "message_id": {
-          "name": "message_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "kind": {
-          "name": "kind",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "target_id": {
-          "name": "target_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "target_conversation_id": {
-          "name": "target_conversation_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "target_thread_id": {
-          "name": "target_thread_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "thread_root": {
-          "name": "thread_root",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": true
-        }
-      },
-      "indexes": {
-        "messaging_reference_target_idx": {
-          "name": "messaging_reference_target_idx",
-          "columns": [
-            {
-              "expression": "organization_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "target_conversation_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "target_thread_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "message_messaging_references_organization_id_conversation_id_messaging_conversations_organization_id_id_fk": {
-          "name": "message_messaging_references_organization_id_conversation_id_messaging_conversations_organization_id_id_fk",
-          "tableFrom": "message_messaging_references",
-          "tableTo": "messaging_conversations",
-          "columnsFrom": [
-            "organization_id",
-            "conversation_id"
-          ],
-          "columnsTo": [
-            "organization_id",
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "message_messaging_references_conversation_id_message_id_messaging_messages_conversation_id_id_fk": {
-          "name": "message_messaging_references_conversation_id_message_id_messaging_messages_conversation_id_id_fk",
-          "tableFrom": "message_messaging_references",
-          "tableTo": "messaging_messages",
-          "columnsFrom": [
-            "conversation_id",
-            "message_id"
-          ],
-          "columnsTo": [
-            "conversation_id",
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "message_messaging_references_organization_id_target_conversation_id_messaging_conversations_organization_id_id_fk": {
-          "name": "message_messaging_references_organization_id_target_conversation_id_messaging_conversations_organization_id_id_fk",
-          "tableFrom": "message_messaging_references",
-          "tableTo": "messaging_conversations",
-          "columnsFrom": [
-            "organization_id",
-            "target_conversation_id"
-          ],
-          "columnsTo": [
-            "organization_id",
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "message_messaging_references_target_conversation_id_target_thread_id_thread_root_messaging_messages_conversation_id_id_is_root_fk": {
-          "name": "message_messaging_references_target_conversation_id_target_thread_id_thread_root_messaging_messages_conversation_id_id_is_root_fk",
-          "tableFrom": "message_messaging_references",
-          "tableTo": "messaging_messages",
-          "columnsFrom": [
-            "target_conversation_id",
-            "target_thread_id",
-            "thread_root"
-          ],
-          "columnsTo": [
-            "conversation_id",
-            "id",
-            "is_root"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "message_messaging_references_message_id_kind_target_id_pk": {
-          "name": "message_messaging_references_message_id_kind_target_id_pk",
-          "columns": [
-            "message_id",
-            "kind",
-            "target_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "messaging_reference_target_check": {
-          "name": "messaging_reference_target_check",
-          "value": "\n      (\"message_messaging_references\".\"kind\" = 'channel' AND \"message_messaging_references\".\"target_id\" = \"message_messaging_references\".\"target_conversation_id\" AND \"message_messaging_references\".\"target_thread_id\" IS NULL)\n      OR (\"message_messaging_references\".\"kind\" = 'thread' AND \"message_messaging_references\".\"target_thread_id\" IS NOT NULL AND \"message_messaging_references\".\"target_id\" = \"message_messaging_references\".\"target_thread_id\")\n    "
-        },
-        "messaging_reference_root_check": {
-          "name": "messaging_reference_root_check",
-          "value": "\"message_messaging_references\".\"thread_root\""
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.source_task_requests": {
-      "name": "source_task_requests",
-      "schema": "",
-      "columns": {
-        "organization_id": {
-          "name": "organization_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "actor_entity_id": {
-          "name": "actor_entity_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "request_id": {
-          "name": "request_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "fingerprint": {
-          "name": "fingerprint",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "task_entity_id": {
-          "name": "task_entity_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "source_task_requests_organization_id_actor_entity_id_actors_organization_id_entity_id_fk": {
-          "name": "source_task_requests_organization_id_actor_entity_id_actors_organization_id_entity_id_fk",
-          "tableFrom": "source_task_requests",
-          "tableTo": "actors",
-          "columnsFrom": [
-            "organization_id",
-            "actor_entity_id"
-          ],
-          "columnsTo": [
-            "organization_id",
-            "entity_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "source_task_requests_organization_id_task_entity_id_tasks_organization_id_entity_id_fk": {
-          "name": "source_task_requests_organization_id_task_entity_id_tasks_organization_id_entity_id_fk",
-          "tableFrom": "source_task_requests",
-          "tableTo": "tasks",
-          "columnsFrom": [
-            "organization_id",
-            "task_entity_id"
-          ],
-          "columnsTo": [
-            "organization_id",
-            "entity_id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "source_task_requests_organization_id_actor_entity_id_request_id_pk": {
-          "name": "source_task_requests_organization_id_actor_entity_id_request_id_pk",
-          "columns": [
-            "organization_id",
-            "actor_entity_id",
-            "request_id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.task_activity": {
@@ -6658,6 +7063,892 @@
       "policies": {},
       "checkConstraints": {},
       "isRLSEnabled": false
+    },
+    "public.crm_accounts": {
+      "name": "crm_accounts",
+      "schema": "",
+      "columns": {
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_type": {
+          "name": "entity_type",
+          "type": "entity_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "website": {
+          "name": "website",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "domain": {
+          "name": "domain",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "owner_actor_entity_id": {
+          "name": "owner_actor_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "crm_accounts_organization_id_entity_id_entity_type_entities_organization_id_entity_id_entity_type_fk": {
+          "name": "crm_accounts_organization_id_entity_id_entity_type_entities_organization_id_entity_id_entity_type_fk",
+          "tableFrom": "crm_accounts",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "organization_id",
+            "entity_id",
+            "entity_type"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id",
+            "entity_type"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "crm_accounts_organization_id_owner_actor_entity_id_actors_organization_id_entity_id_fk": {
+          "name": "crm_accounts_organization_id_owner_actor_entity_id_actors_organization_id_entity_id_fk",
+          "tableFrom": "crm_accounts",
+          "tableTo": "actors",
+          "columnsFrom": [
+            "organization_id",
+            "owner_actor_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "crm_accounts_organization_id_entity_id_unique": {
+          "name": "crm_accounts_organization_id_entity_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "entity_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "crm_account_type": {
+          "name": "crm_account_type",
+          "value": "\"crm_accounts\".\"entity_type\"::text = 'account'"
+        },
+        "crm_account_name": {
+          "name": "crm_account_name",
+          "value": "length(trim(\"crm_accounts\".\"name\")) between 1 and 300"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.crm_affiliations": {
+      "name": "crm_affiliations",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contact_entity_id": {
+          "name": "contact_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_entity_id": {
+          "name": "account_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "is_primary": {
+          "name": "is_primary",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {
+        "crm_affiliations_account_idx": {
+          "name": "crm_affiliations_account_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "account_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "crm_affiliations_organization_id_contact_entity_id_contacts_organization_id_entity_id_fk": {
+          "name": "crm_affiliations_organization_id_contact_entity_id_contacts_organization_id_entity_id_fk",
+          "tableFrom": "crm_affiliations",
+          "tableTo": "contacts",
+          "columnsFrom": [
+            "organization_id",
+            "contact_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "crm_affiliations_organization_id_account_entity_id_crm_accounts_organization_id_entity_id_fk": {
+          "name": "crm_affiliations_organization_id_account_entity_id_crm_accounts_organization_id_entity_id_fk",
+          "tableFrom": "crm_affiliations",
+          "tableTo": "crm_accounts",
+          "columnsFrom": [
+            "organization_id",
+            "account_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "crm_affiliations_organization_id_contact_entity_id_account_entity_id_unique": {
+          "name": "crm_affiliations_organization_id_contact_entity_id_account_entity_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "contact_entity_id",
+            "account_entity_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.crm_contact_profiles": {
+      "name": "crm_contact_profiles",
+      "schema": "",
+      "columns": {
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contact_entity_id": {
+          "name": "contact_entity_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "crm_contact_profiles_organization_id_contact_entity_id_contacts_organization_id_entity_id_fk": {
+          "name": "crm_contact_profiles_organization_id_contact_entity_id_contacts_organization_id_entity_id_fk",
+          "tableFrom": "crm_contact_profiles",
+          "tableTo": "contacts",
+          "columnsFrom": [
+            "organization_id",
+            "contact_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.crm_deal_contacts": {
+      "name": "crm_deal_contacts",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "deal_entity_id": {
+          "name": "deal_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "contact_entity_id": {
+          "name": "contact_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_primary": {
+          "name": "is_primary",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "crm_deal_contacts_organization_id_deal_entity_id_crm_deals_organization_id_entity_id_fk": {
+          "name": "crm_deal_contacts_organization_id_deal_entity_id_crm_deals_organization_id_entity_id_fk",
+          "tableFrom": "crm_deal_contacts",
+          "tableTo": "crm_deals",
+          "columnsFrom": [
+            "organization_id",
+            "deal_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "crm_deal_contacts_organization_id_contact_entity_id_contacts_organization_id_entity_id_fk": {
+          "name": "crm_deal_contacts_organization_id_contact_entity_id_contacts_organization_id_entity_id_fk",
+          "tableFrom": "crm_deal_contacts",
+          "tableTo": "contacts",
+          "columnsFrom": [
+            "organization_id",
+            "contact_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "crm_deal_contacts_organization_id_deal_entity_id_contact_entity_id_unique": {
+          "name": "crm_deal_contacts_organization_id_deal_entity_id_contact_entity_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "deal_entity_id",
+            "contact_entity_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.crm_deals": {
+      "name": "crm_deals",
+      "schema": "",
+      "columns": {
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_type": {
+          "name": "entity_type",
+          "type": "entity_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "account_entity_id": {
+          "name": "account_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "owner_actor_entity_id": {
+          "name": "owner_actor_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "stage_id": {
+          "name": "stage_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'open'"
+        },
+        "amount": {
+          "name": "amount",
+          "type": "numeric(19, 4)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "currency": {
+          "name": "currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "expected_close_date": {
+          "name": "expected_close_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "closed_at": {
+          "name": "closed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "stage_entered_at": {
+          "name": "stage_entered_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "summary": {
+          "name": "summary",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "lost_reason": {
+          "name": "lost_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "crm_deals_stage_idx": {
+          "name": "crm_deals_stage_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "stage_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "crm_deals_organization_id_entity_id_entity_type_entities_organization_id_entity_id_entity_type_fk": {
+          "name": "crm_deals_organization_id_entity_id_entity_type_entities_organization_id_entity_id_entity_type_fk",
+          "tableFrom": "crm_deals",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "organization_id",
+            "entity_id",
+            "entity_type"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id",
+            "entity_type"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "crm_deals_organization_id_account_entity_id_crm_accounts_organization_id_entity_id_fk": {
+          "name": "crm_deals_organization_id_account_entity_id_crm_accounts_organization_id_entity_id_fk",
+          "tableFrom": "crm_deals",
+          "tableTo": "crm_accounts",
+          "columnsFrom": [
+            "organization_id",
+            "account_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "crm_deals_organization_id_owner_actor_entity_id_actors_organization_id_entity_id_fk": {
+          "name": "crm_deals_organization_id_owner_actor_entity_id_actors_organization_id_entity_id_fk",
+          "tableFrom": "crm_deals",
+          "tableTo": "actors",
+          "columnsFrom": [
+            "organization_id",
+            "owner_actor_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "crm_deals_organization_id_stage_id_crm_stages_organization_id_id_fk": {
+          "name": "crm_deals_organization_id_stage_id_crm_stages_organization_id_id_fk",
+          "tableFrom": "crm_deals",
+          "tableTo": "crm_stages",
+          "columnsFrom": [
+            "organization_id",
+            "stage_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "crm_deals_organization_id_entity_id_unique": {
+          "name": "crm_deals_organization_id_entity_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "entity_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "crm_deal_type": {
+          "name": "crm_deal_type",
+          "value": "\"crm_deals\".\"entity_type\"::text = 'deal'"
+        },
+        "crm_deal_money": {
+          "name": "crm_deal_money",
+          "value": "(\"crm_deals\".\"amount\" is null and \"crm_deals\".\"currency\" is null) or (\"crm_deals\".\"amount\" is not null and \"crm_deals\".\"currency\" is not null and \"crm_deals\".\"amount\" >= 0 and \"crm_deals\".\"currency\" ~ '^[A-Z]{3}$')"
+        },
+        "crm_deal_outcome": {
+          "name": "crm_deal_outcome",
+          "value": "\"crm_deals\".\"outcome\" in ('open','won','lost') and ((\"crm_deals\".\"outcome\" = 'open') = (\"crm_deals\".\"closed_at\" is null))"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.crm_stages": {
+      "name": "crm_stages",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "position": {
+          "name": "position",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "retired": {
+          "name": "retired",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "crm_stages_organization_id_organization_id_fk": {
+          "name": "crm_stages_organization_id_organization_id_fk",
+          "tableFrom": "crm_stages",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "crm_stages_organization_id_id_unique": {
+          "name": "crm_stages_organization_id_id_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.crm_settings": {
+      "name": "crm_settings",
+      "schema": "",
+      "columns": {
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "default_currency": {
+          "name": "default_currency",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "crm_settings_organization_id_organization_id_fk": {
+          "name": "crm_settings_organization_id_organization_id_fk",
+          "tableFrom": "crm_settings",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "crm_settings_currency": {
+          "name": "crm_settings_currency",
+          "value": "\"crm_settings\".\"default_currency\" is null or \"crm_settings\".\"default_currency\" ~ '^[A-Z]{3}$'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.crm_activity_events": {
+      "name": "crm_activity_events",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_type": {
+          "name": "entity_type",
+          "type": "entity_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "actor_entity_id": {
+          "name": "actor_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "action": {
+          "name": "action",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "changed_fields": {
+          "name": "changed_fields",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'[]'::jsonb"
+        },
+        "related_entity_id": {
+          "name": "related_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "crm_activity_page_idx": {
+          "name": "crm_activity_page_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "created_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "crm_activity_events_organization_id_organization_id_fk": {
+          "name": "crm_activity_events_organization_id_organization_id_fk",
+          "tableFrom": "crm_activity_events",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "crm_activity_entity_fk": {
+          "name": "crm_activity_entity_fk",
+          "tableFrom": "crm_activity_events",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "organization_id",
+            "entity_id",
+            "entity_type"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id",
+            "entity_type"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "crm_activity_actor_fk": {
+          "name": "crm_activity_actor_fk",
+          "tableFrom": "crm_activity_events",
+          "tableTo": "actors",
+          "columnsFrom": [
+            "organization_id",
+            "actor_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "crm_activity_related_fk": {
+          "name": "crm_activity_related_fk",
+          "tableFrom": "crm_activity_events",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "organization_id",
+            "related_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "crm_activity_entity_type": {
+          "name": "crm_activity_entity_type",
+          "value": "\"crm_activity_events\".\"entity_type\"::text in ('account', 'contact', 'deal')"
+        },
+        "crm_activity_action": {
+          "name": "crm_activity_action",
+          "value": "\"crm_activity_events\".\"action\" in ('created', 'updated', 'stage_changed', 'owner_changed', 'discussion_linked', 'discussion_unlinked', 'context_linked', 'context_unlinked', 'interaction_created', 'interaction_updated', 'interaction_deleted', 'follow_up_created', 'shared', 'unshared', 'archived', 'restored')"
+        },
+        "crm_activity_fields": {
+          "name": "crm_activity_fields",
+          "value": "jsonb_typeof(\"crm_activity_events\".\"changed_fields\") = 'array' and \"crm_activity_events\".\"changed_fields\" <@ '[\"name\",\"website\",\"domain\",\"summary\",\"displayName\",\"givenName\",\"familyName\",\"notes\",\"middleName\",\"namePrefix\",\"nameSuffix\",\"nickname\",\"title\",\"account\",\"contacts\",\"primaryContact\",\"stage\",\"amount\",\"currency\",\"expectedCloseDate\",\"outcome\",\"lostReason\",\"owner\",\"identifier\",\"address\",\"url\",\"affiliation\",\"role\",\"kind\",\"occurredAt\",\"endedAt\",\"sharing\"]'::jsonb"
+        }
+      },
+      "isRLSEnabled": false
     }
   },
   "enums": {
@@ -6667,21 +7958,11 @@
       "values": [
         "actor",
         "contact",
-        "company",
+        "contact_interaction",
         "project",
         "task",
-        "file",
-        "folder",
-        "pipeline",
-        "deal",
-        "email_account",
-        "email_conversation",
-        "email_message",
-        "channel",
-        "thread",
-        "message",
-        "calendar",
-        "calendar_event"
+        "account",
+        "deal"
       ]
     },
     "public.actor_type": {
@@ -6700,6 +7981,26 @@
         "phone"
       ]
     },
+    "public.contact_interaction_kind": {
+      "name": "contact_interaction_kind",
+      "schema": "public",
+      "values": [
+        "email",
+        "meeting",
+        "call",
+        "message",
+        "note",
+        "other"
+      ]
+    },
+    "public.contact_interaction_origin": {
+      "name": "contact_interaction_origin",
+      "schema": "public",
+      "values": [
+        "manual",
+        "message_publication"
+      ]
+    },
     "public.permission_level": {
       "name": "permission_level",
       "schema": "public",
@@ -6715,7 +8016,8 @@
       "schema": "public",
       "values": [
         "related_to",
-        "mentions"
+        "blocks",
+        "duplicates"
       ]
     }
   },
