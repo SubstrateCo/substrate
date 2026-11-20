@@ -1,35 +1,19 @@
 import { failure, publicFailure } from "@substrate/contracts/result";
 
-import { createTestScopes, createTestServices } from "../../test-support";
+import {
+  createTestScopes,
+  createTestServices,
+  createUnreachableServices,
+} from "../../test-support";
 import { createAgentWorkRoutes } from "./routes";
 import { expect, mock, test } from "bun:test";
 
 test("agent-work validates all owner and device inputs before calling services", async () => {
-  const services = createTestServices();
-  const work = {
-    listConversationRequests: mock(services.agentWork.listConversationRequests),
-    listNeedsYou: mock(services.agentWork.listNeedsYou),
-    listStatus: mock(services.agentWork.listStatus),
-    respondToRequest: mock(services.agentWork.respondToRequest),
-    approveProposal: mock(services.agentWork.approveProposal),
-    declineProposal: mock(services.agentWork.declineProposal),
-    listInvocations: mock(services.agentWork.listInvocations),
-    decideInvocation: mock(services.agentWork.decideInvocation),
-    listCallsLog: mock(services.agentWork.listCallsLog),
-    listMyCalls: mock(services.agentWork.listMyCalls),
-  };
-  const device = {
-    registerDevice: mock(services.devices.registerDevice),
-    deviceHeartbeat: mock(services.devices.deviceHeartbeat),
-    pullWakes: mock(services.devices.pullWakes),
-    ackWakes: mock(services.devices.ackWakes),
-    loadSources: mock(services.devices.loadSources),
-    publishStatus: mock(services.devices.publishStatus),
-    openRequest: mock(services.devices.openRequest),
-    closeRequest: mock(services.devices.closeRequest),
-    requestAnswers: mock(services.devices.requestAnswers),
-  };
-  const app = createAgentWorkRoutes(work, device, createTestScopes());
+  const app = createAgentWorkRoutes(
+    createUnreachableServices(),
+    createUnreachableServices(),
+    createTestScopes(),
+  );
   for (const [method, path] of [
     ["GET", "/requests"],
     ["GET", "/needs-you"],
@@ -59,8 +43,6 @@ test("agent-work validates all owner and device inputs before calling services",
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual(publicFailure("INVALID_INPUT", "Invalid request input."));
   }
-  for (const spy of [...Object.values(work), ...Object.values(device)])
-    expect(spy).not.toHaveBeenCalled();
 });
 
 test("owner decisions preserve request IDs, scope and domain denials", async () => {

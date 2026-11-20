@@ -5,8 +5,17 @@ import type { RealtimeReceiver } from "@substrate/database/realtime";
 import { createRealtimeHub } from "./hub";
 import type { Change, HubDependencies, Transport } from "./hub";
 import { testReceiver } from "./test-support";
-import { expect, test } from "bun:test";
+import { afterEach, expect, setSystemTime, test } from "bun:test";
 import { rejects } from "node:assert/strict";
+
+afterEach(() => {
+  setSystemTime();
+});
+
+// Freezes the clock past every check made so far, so sessions with a short check interval are stale.
+function expireSessionChecks() {
+  setSystemTime(new Date(Date.now() + 5));
+}
 
 function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
   const sessions = new Map<string, RealtimeReceiver>();
@@ -37,6 +46,7 @@ function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
     let buffered = 0;
     let terminated = false;
     let pings = 0;
+    const pinged = Promise.withResolvers<void>();
     const transport: Transport = {
       send: (data) => {
         events.push(JSON.parse(data));
@@ -50,6 +60,7 @@ function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
       },
       ping: () => {
         pings++;
+        pinged.resolve();
       },
       bufferedAmount: () => buffered,
     };
@@ -69,6 +80,8 @@ function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
       get pings() {
         return pings;
       },
+      // Settles on the first ping.
+      pinged: pinged.promise,
     };
   }
   const publish = (audience: Change["audience"], domain: Change["domain"] = "messaging") =>
@@ -237,7 +250,7 @@ test("a change checks only the stale sessions of its recipients", async () => {
   const member = await f.connect("member", "org");
   const others = [];
   for (let index = 0; index < 5; index++) others.push(await f.connect(`other-${index}`, "org"));
-  await Bun.sleep(5);
+  expireSessionChecks();
   const checked: string[] = [];
   const authenticate = f.deps.authenticate.bind(f.deps);
   f.deps.authenticate = async (headers, organizationId) => {
@@ -264,7 +277,7 @@ test("a batch checks each stale session once, resolves each audience once and ke
   };
   const first = await f.connect("first");
   const second = await f.connect("second");
-  await Bun.sleep(5);
+  expireSessionChecks();
   const checks = f.checks;
   const audience = realtimeKeys.organization("org");
   await f.hub.publish(
@@ -287,17 +300,25 @@ test("session checks during delivery run with bounded concurrency", async () => 
   const f = fixture({ sessionCheckMs: 1, maxConcurrentChecks: 2 });
   const peers = [];
   for (let index = 0; index < 6; index++) peers.push(await f.connect(`user-${index}`));
-  await Bun.sleep(5);
+  expireSessionChecks();
   const authenticate = f.deps.authenticate.bind(f.deps);
+  const gate = Promise.withResolvers<void>();
+  const saturated = Promise.withResolvers<void>();
   let active = 0;
   let peak = 0;
   f.deps.authenticate = async (headers, organizationId) => {
     peak = Math.max(peak, ++active);
-    await Bun.sleep(1);
+    if (active === 2) saturated.resolve();
+    await gate.promise;
     active--;
     return authenticate(headers, organizationId);
   };
-  await f.publish(realtimeKeys.organization("org"));
+  const delivery = f.publish(realtimeKeys.organization("org"));
+  await saturated.promise;
+  // Two checks wait on the gate; the others must wait for a free slot.
+  expect(active).toBe(2);
+  gate.resolve();
+  await delivery;
   expect(peak).toBe(2);
   for (const peer of peers) expect(peer.events).toHaveLength(2);
   f.hub.stop();
@@ -342,7 +363,7 @@ test("a slow heartbeat session check does not delay pings to other connections",
   const f = fixture({ sessionCheckMs: 1 });
   const slow = await f.connect("slow");
   const fast = await f.connect("fast");
-  await Bun.sleep(5);
+  expireSessionChecks();
   const gate = Promise.withResolvers<void>();
   const authenticate = f.deps.authenticate.bind(f.deps);
   f.deps.authenticate = async (headers, organizationId) => {
@@ -350,7 +371,8 @@ test("a slow heartbeat session check does not delay pings to other connections",
     return authenticate(headers, organizationId);
   };
   const tick = f.hub.tick();
-  await Bun.sleep(5);
+  // The fast peer pings while the slow check still waits on the gate.
+  await fast.pinged;
   expect(fast.pings).toBe(1);
   expect(slow.pings).toBe(0);
   gate.resolve();
@@ -424,9 +446,13 @@ test("shutdown while authorization is pending prevents a late delivery", async (
   const f = fixture();
   const viewer = await f.connect();
   const gate = Promise.withResolvers<boolean>();
-  f.deps.recipients = () => gate.promise.then((allowed) => () => allowed);
+  const resolving = Promise.withResolvers<void>();
+  f.deps.recipients = () => {
+    resolving.resolve();
+    return gate.promise.then((allowed) => () => allowed);
+  };
   const pending = f.publish(realtimeKeys.user("user"));
-  await Bun.sleep(0);
+  await resolving.promise;
   f.hub.stop();
   gate.resolve(true);
   await pending;

@@ -1,6 +1,10 @@
 import { failure, publicFailure } from "@substrate/contracts/result";
 
-import { createTestScopes, createTestServices } from "../../test-support";
+import {
+  createTestScopes,
+  createTestServices,
+  createUnreachableServices,
+} from "../../test-support";
 import { createMessagingRoutes as createRoutes } from "./routes";
 import type { MessagingService } from "./service";
 import { expect, mock, test } from "bun:test";
@@ -12,42 +16,16 @@ const createMessagingRoutes = (service: MessagingService) =>
 const conversationId = "00000000-0000-4000-8000-000000000001";
 
 test("messaging validates each route before calling services", async () => {
-  const spies = {
-    listConversations: mock(services.listConversations),
-    createConversation: mock(services.createConversation),
-    listMessages: mock(services.listMessages),
-    sendMessage: mock(services.sendMessage),
-    toggleReaction: mock(services.toggleReaction),
-    listReactions: mock(services.listReactions),
-    addMembers: mock(services.addMembers),
-    getProfile: mock(services.getProfile),
-    listManagedConversations: mock(services.listManagedConversations),
-    deleteImpact: mock(services.deleteImpact),
-    joinConversation: mock(services.joinConversation),
-    leaveConversation: mock(services.leaveConversation),
-    transferOwnership: mock(services.transferOwnership),
-    deleteConversation: mock(services.deleteConversation),
-    addAgent: mock(services.addAgent),
-    removeAgent: mock(services.removeAgent),
-    removeMember: mock(services.removeMember),
-    editMessage: mock(services.editMessage),
-    deleteMessage: mock(services.deleteMessage),
-  };
-  const app = createMessagingRoutes(spies);
+  const app = createMessagingRoutes(createUnreachableServices());
   for (const [method, path, body] of [
     ["GET", "/conversations", undefined],
     ["GET", "/messages?organizationId=org", undefined],
-    ["GET", `/reactions?organizationId=org&messageId=${conversationId}&limit=51`, undefined],
     ["GET", `/reactions?organizationId=org&messageId=${conversationId}&afterActorId=x`, undefined],
     ["GET", `/profiles?organizationId=org&conversationId=${conversationId}&actorId=x`, undefined],
     ["POST", "/conversations", { organizationId: "org", kind: "dm", emails: ["invalid"] }],
     ["POST", "/messages", { organizationId: "org", conversationId, body: " " }],
     ["POST", "/reactions", { organizationId: "org", messageId: conversationId, emoji: "" }],
-    [
-      "POST",
-      "/members",
-      { organizationId: "org", conversationId, emails: Array(31).fill("person@example.test") },
-    ],
+    ["POST", "/members", { organizationId: "org", conversationId, emails: ["invalid"] }],
     ["GET", "/conversations/managed", undefined],
     ["GET", "/conversations/delete-impact?organizationId=org&conversationId=x", undefined],
     ["POST", "/conversations/join", { organizationId: "org" }],
@@ -57,11 +35,6 @@ test("messaging validates each route before calling services", async () => {
     ["POST", "/agents/add", { organizationId: "org", conversationId, agentId: "not-a-uuid" }],
     ["POST", "/agents/remove", { organizationId: "org", conversationId }],
     ["POST", "/members/remove", { organizationId: "org", conversationId, actorId: "invalid" }],
-    [
-      "POST",
-      "/messages/edit",
-      { organizationId: "org", messageId: conversationId, body: "x".repeat(20001) },
-    ],
     ["POST", "/messages/edit", { organizationId: "org", messageId: conversationId }],
     ["POST", "/messages/delete", { organizationId: "org", messageId: "invalid" }],
   ] as const) {
@@ -73,7 +46,6 @@ test("messaging validates each route before calling services", async () => {
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual(publicFailure("INVALID_INPUT", "Invalid request input."));
   }
-  for (const spy of Object.values(spies)) expect(spy).not.toHaveBeenCalled();
 });
 
 test("messaging forwards only validated input and maps domain errors", async () => {

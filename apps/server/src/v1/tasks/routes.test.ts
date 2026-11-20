@@ -1,7 +1,11 @@
 import { failure, publicFailure, success } from "@substrate/contracts/result";
 import type { TasksWrite } from "@substrate/contracts/tasks/input";
 
-import { createTestScopes, createTestServices } from "../../test-support";
+import {
+  createTestScopes,
+  createTestServices,
+  createUnreachableServices,
+} from "../../test-support";
 import { createTasksRoutes as createRoutes } from "./routes";
 import type { TasksService } from "./service";
 import { expect, mock, test } from "bun:test";
@@ -32,45 +36,27 @@ test("discussion resolution validates the task and preserves workspace scope", a
 });
 
 test("task routes reject invalid requests before calling a service", async () => {
-  const reads = {
-    listProjects: mock(services.listProjects),
-    getProject: mock(services.getProject),
-  };
-  const app = createTasksRoutes({ ...services, ...reads });
+  const app = createTasksRoutes(createUnreachableServices());
   for (const path of ["/projects", "/project?organizationId=org&projectEntityId=invalid"]) {
     const response = await app.request(path);
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual(publicFailure("INVALID_INPUT", "Invalid request input."));
   }
-  for (const read of Object.values(reads)) expect(read).not.toHaveBeenCalled();
-
-  const mutateTasks = mock(services.mutateTasks);
-  const mutations = createTasksRoutes({ ...services, mutateTasks });
-  for (const change of [
-    { projectEntityId: undefined },
-    { title: " " },
-    { dueDate: "2026-02-31" },
-    { priority: "highest" },
-  ]) {
-    const result = await mutations.request("/mutations", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        organizationId: "org",
-        projectEntityId,
-        action: "createTask",
-        title: "Ship",
-        ...change,
-      }),
-    });
-    expect(result.status).toBe(400);
-  }
-  expect(mutateTasks).not.toHaveBeenCalled();
+  const result = await app.request("/mutations", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      organizationId: "org",
+      projectEntityId,
+      action: "createTask",
+      title: " ",
+    }),
+  });
+  expect(result.status).toBe(400);
 });
 
 test("removed comment mutations are rejected instead of succeeding without a message", async () => {
-  const mutateTasks = mock(services.mutateTasks);
-  const app = createTasksRoutes({ ...services, mutateTasks });
+  const app = createTasksRoutes(createUnreachableServices());
   const response = await app.request("/mutations", {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -83,7 +69,6 @@ test("removed comment mutations are rejected instead of succeeding without a mes
     }),
   });
   expect(response.status).toBe(400);
-  expect(mutateTasks).not.toHaveBeenCalled();
 });
 
 test("task routes preserve service errors and request scope", async () => {

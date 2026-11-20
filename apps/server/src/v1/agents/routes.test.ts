@@ -1,7 +1,11 @@
 import { failure, publicFailure, success } from "@substrate/contracts/result";
 
 import type { UserScope } from "../../shared/scope";
-import { createTestScopes, createTestServices } from "../../test-support";
+import {
+  createTestScopes,
+  createTestServices,
+  createUnreachableServices,
+} from "../../test-support";
 import { createAgentsRoutes as createRoutes } from "./routes";
 import type { AgentService } from "./service";
 import { expect, mock, test } from "bun:test";
@@ -10,13 +14,7 @@ const services = createTestServices().agents;
 const createAgentsRoutes = (service: AgentService) => createRoutes(service, createTestScopes());
 
 test("rejects invalid IDs, scope injection and device assignments before calling services", async () => {
-  const spies = {
-    ...services,
-    saveAgent: mock(services.saveAgent),
-    deleteAgent: mock(services.deleteAgent),
-    setAgentPicture: mock(services.setAgentPicture),
-  };
-  const app = createAgentsRoutes(spies);
+  const app = createAgentsRoutes(createUnreachableServices());
   for (const [path, input] of [
     ["/actors/save", { userId: "other" }],
     ["/actors/delete", { id: "invalid" }],
@@ -51,8 +49,6 @@ test("rejects invalid IDs, scope injection and device assignments before calling
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual(publicFailure("INVALID_INPUT", "Invalid request input."));
   }
-  for (const spy of [spies.saveAgent, spies.deleteAgent, spies.setAgentPicture])
-    expect(spy).not.toHaveBeenCalled();
 });
 
 test("picture endpoint returns configurations, accepts clearing, and maps ownership failures", async () => {

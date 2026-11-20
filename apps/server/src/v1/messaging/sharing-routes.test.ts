@@ -1,26 +1,16 @@
 import { failure, publicFailure } from "@substrate/contracts/result";
 
 import { sessionFixture } from "../../auth/test-support";
-import { createTestScopes, createTestServices } from "../../test-support";
+import {
+  createTestScopes,
+  createTestServices,
+  createUnreachableServices,
+} from "../../test-support";
 import { createSharingRoutes } from "./sharing-routes";
 import { expect, mock, test } from "bun:test";
 
 test("sharing validates every route before resolving scope or calling services", async () => {
-  const services = createTestServices().sharing;
-  const spies = {
-    getInvitation: mock(services.getInvitation),
-    acceptInvitation: mock(services.acceptInvitation),
-    declineInvitation: mock(services.declineInvitation),
-    invite: mock(services.invite),
-    revoke: mock(services.revoke),
-    resend: mock(services.resend),
-    disconnect: mock(services.disconnect),
-    remove: mock(services.remove),
-    list: mock(services.list),
-    conversations: mock(services.conversations),
-    inbox: mock(services.inbox),
-  };
-  const app = createSharingRoutes(spies, createTestScopes());
+  const app = createSharingRoutes(createUnreachableServices(), createTestScopes());
   for (const [method, path] of [
     ["GET", "/invitation"],
     ["POST", "/accept"],
@@ -42,7 +32,6 @@ test("sharing validates every route before resolving scope or calling services",
     expect(response.status).toBe(400);
     expect(await response.json()).toEqual(publicFailure("INVALID_INPUT", "Invalid request input."));
   }
-  for (const spy of Object.values(spies)) expect(spy).not.toHaveBeenCalled();
 });
 
 test("sharing decline needs only the verified owner, not an active workspace", async () => {

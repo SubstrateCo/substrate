@@ -1,24 +1,26 @@
 import { AccessDeniedError, ConflictError, ValidationError } from "@substrate/database";
 
-import { serviceResult, ServiceError } from "./service-result";
+import { createServiceResult, ServiceError } from "./service-result";
 import { APIError } from "better-auth/api";
-import { describe, expect, spyOn, test } from "bun:test";
+import { describe, expect, test } from "bun:test";
+
+function recorded() {
+  const logs: string[][] = [];
+  return { logs, serviceResult: createServiceResult((...line) => logs.push(line)) };
+}
+const { serviceResult } = recorded();
 
 describe("service results", () => {
   test("cancellation is not logged or converted into a service failure", async () => {
     const controller = new AbortController();
-    const log = spyOn(console, "error").mockImplementation(() => {});
-    try {
-      const result = serviceResult(async () => {
-        controller.abort();
-        controller.signal.throwIfAborted();
-        return null;
-      }, controller.signal);
-      expect(await result.catch((error) => error)).toBe(controller.signal.reason);
-      expect(log).not.toHaveBeenCalled();
-    } finally {
-      log.mockRestore();
-    }
+    const { logs, serviceResult } = recorded();
+    const result = serviceResult(async () => {
+      controller.abort();
+      controller.signal.throwIfAborted();
+      return null;
+    }, controller.signal);
+    expect(await result.catch((error) => error)).toBe(controller.signal.reason);
+    expect(logs).toEqual([]);
   });
 
   test("keeps successful domain data in the result", async () => {
@@ -51,18 +53,13 @@ describe("service results", () => {
   });
 
   test("trusts database error classes, not an error that only shares their name", async () => {
-    const log = spyOn(console, "error").mockImplementation(() => {});
-    try {
-      const foreign = Object.assign(new Error("relation users: private detail"), {
-        name: "ValidationError",
-      });
-      const result = await serviceResult(async () => {
-        throw foreign;
-      });
-      expect(result).toMatchObject({ success: false, error: { code: "INTERNAL_ERROR" } });
-    } finally {
-      log.mockRestore();
-    }
+    const foreign = Object.assign(new Error("relation users: private detail"), {
+      name: "ValidationError",
+    });
+    const result = await serviceResult(async () => {
+      throw foreign;
+    });
+    expect(result).toMatchObject({ success: false, error: { code: "INTERNAL_ERROR" } });
   });
 
   test("preserves structured recovery reasons", async () => {
@@ -82,21 +79,17 @@ describe("service results", () => {
   });
 
   test("does not expose unexpected errors or their messages in logs", async () => {
-    const log = spyOn(console, "error").mockImplementation(() => {});
-    try {
-      const result = await serviceResult(async () => {
-        throw new Error("postgres://private-credential");
-      });
-      expect(result).toEqual({
-        success: false,
-        error: {
-          code: "INTERNAL_ERROR",
-          message: "The operation is unavailable. Please try again.",
-        },
-      });
-      expect(log).toHaveBeenCalledWith("Service operation failed", "Error");
-    } finally {
-      log.mockRestore();
-    }
+    const { logs, serviceResult } = recorded();
+    const result = await serviceResult(async () => {
+      throw new Error("postgres://private-credential");
+    });
+    expect(result).toEqual({
+      success: false,
+      error: {
+        code: "INTERNAL_ERROR",
+        message: "The operation is unavailable. Please try again.",
+      },
+    });
+    expect(logs).toEqual([["Service operation failed", "Error"]]);
   });
 });

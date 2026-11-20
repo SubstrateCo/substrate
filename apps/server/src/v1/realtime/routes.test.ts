@@ -201,8 +201,15 @@ test("raw Bun pong callbacks keep a live peer eligible for the next heartbeat", 
   const f = fixture();
   const peer = f.connect();
   await peer.next();
+  const ponged = Promise.withResolvers<void>();
+  const pong = f.hub.pong.bind(f.hub);
+  f.hub.pong = (connection) => {
+    pong(connection);
+    ponged.resolve();
+  };
   await f.hub.tick(1);
-  await Bun.sleep(20);
+  // The client answers the ping automatically; wait until its pong reaches the hub.
+  await ponged.promise;
   const row: Change = {
     id: crypto.randomUUID(),
     domain: "tasks",
