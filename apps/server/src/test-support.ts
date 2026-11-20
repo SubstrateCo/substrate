@@ -60,23 +60,6 @@ export function createTestServices() {
   });
 }
 
-/**
- * A service whose every method rejects. A route that calls it answers 500, so boundary tests that
- * expect 400 fail if validation lets a request through.
- */
-export function createUnreachableServices<T extends object>(): T {
-  // SAFETY: Every method read returns a function that rejects, so no caller can use a result.
-  return new Proxy({} as T, {
-    get: (_target, name) =>
-      // Not a thenable, so the proxy can be awaited or returned from async code.
-      name === "then"
-        ? undefined
-        : async () => {
-            throw new Error(`unexpected service call: ${String(name)}`);
-          },
-  });
-}
-
 export function appFixture(): AppDependencies {
   return {
     auth: { handler: async () => new Response(null, { status: 404 }) },

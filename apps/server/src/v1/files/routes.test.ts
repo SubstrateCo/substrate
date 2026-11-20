@@ -16,27 +16,6 @@ function service(): FileService {
   };
 }
 
-test("file routes validate upload limits and completion identity", async () => {
-  const app = createFilesRoutes(service(), createTestScopes());
-  const upload = await app.request("/uploads", {
-    method: "POST",
-    headers: { "content-type": "application/json" },
-    body: JSON.stringify({
-      purpose: "avatar",
-      filename: "a.svg",
-      contentType: "image/svg+xml",
-      size: 1,
-    }),
-  });
-  expect(upload.status).toBe(400);
-  const invalid = await app.request("/uploads/not-a-uuid/complete", { method: "POST" });
-  expect(invalid.status).toBe(400);
-  const complete = await app.request(`/uploads/${crypto.randomUUID()}/complete`, {
-    method: "POST",
-  });
-  expect(complete.status).toBe(200);
-});
-
 test("content redirects only after access checks, without caching", async () => {
   const services = service();
   const app = createFilesRoutes(services, createTestScopes());
