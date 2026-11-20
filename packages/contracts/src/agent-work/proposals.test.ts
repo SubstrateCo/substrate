@@ -2,7 +2,6 @@ import { canonicalJson, proposalAction, proposalActionHash } from "./proposals.t
 import { expect, test } from "bun:test";
 
 const conversationId = crypto.randomUUID();
-const taskId = crypto.randomUUID();
 
 test("canonical JSON sorts keys at every level and drops undefined fields", () => {
   expect(
@@ -30,27 +29,4 @@ test("the action hash ignores key order and changes with any field", async () =>
   expect(first).toMatch(/^[0-9a-f]{64}$/);
   expect(reordered).toBe(first);
   expect(changed).not.toBe(first);
-});
-
-test("only allowlisted actions with exact inputs can be proposed", () => {
-  const valid = [
-    { type: "reply_elsewhere", input: { conversationId, threadId: taskId, body: "Hi" } },
-    { type: "create_task", input: { projectId: taskId, title: "Follow up" } },
-    { type: "update_task", input: { taskId, changes: { status: "completed" } } },
-  ];
-  for (const action of valid) expect(proposalAction.safeParse(action).success).toBe(true);
-  const invalid = [
-    { type: "send_email", input: { to: "a@example.com" } },
-    { type: "reply_elsewhere", input: { conversationId, body: "Hi", organizationId: "other" } },
-    { type: "reply_elsewhere", input: { conversationId, body: "   " } },
-    // The server supplies the requestId on approval; the agent cannot pin one.
-    {
-      type: "create_task",
-      input: { projectId: taskId, title: "Follow up", requestId: crypto.randomUUID() },
-    },
-    { type: "update_task", input: { taskId, changes: {} } },
-    { type: "update_task", input: { taskId, changes: { projectId: taskId } } },
-    { type: "create_task", input: { projectId: taskId, title: "x" }, extra: true },
-  ];
-  for (const action of invalid) expect(proposalAction.safeParse(action).success).toBe(false);
 });

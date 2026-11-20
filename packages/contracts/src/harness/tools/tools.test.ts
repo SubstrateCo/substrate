@@ -1,6 +1,7 @@
 import { sessionKeys } from "../../agent-work/wakes.ts";
 import { leaseTools, localToolCall, mcpCall, mcpTools } from "./index.ts";
 import { expect, test } from "bun:test";
+import { z } from "zod";
 
 const turn = {
   turnId: crypto.randomUUID(),
@@ -19,6 +20,18 @@ test("local tools never reach the server and server calls need a turn", () => {
     true,
   );
   expect(localToolCall.safeParse({ ...scope, tool: "get_me", sessionId: "s" }).success).toBe(false);
+});
+
+function rejectsUnknownKeys(schema: z.core.$ZodType): boolean {
+  if (schema instanceof z.ZodUnion) return schema.options.every(rejectsUnknownKeys);
+  return schema instanceof z.ZodObject && schema.def.catchall?._zod.def.type === "never";
+}
+
+test("every tool input rejects unknown keys, so a model cannot supply trusted context", () => {
+  const loose = Object.entries(mcpTools)
+    .filter(([, tool]) => !rejectsUnknownKeys(tool.input))
+    .map(([name]) => name);
+  expect(loose).toEqual([]);
 });
 
 test("helpers can only report, and only helpers can report", () => {
@@ -43,4 +56,15 @@ test("tools reject reversed windows and empty changes", () => {
   expect(
     mcpTools.update_task.input.safeParse({ taskId: crypto.randomUUID(), changes: {} }).success,
   ).toBe(false);
+});
+
+test("entity links need an entity target and take no message kind filter", () => {
+  const list = (input: z.input<typeof mcpTools.list_links.input>) =>
+    mcpTools.list_links.input.safeParse(input).success;
+  const account = { type: "account", id: crypto.randomUUID() } as const;
+  const message = { type: "message", id: crypto.randomUUID() } as const;
+  expect(list({ target: account, source: "entities" })).toBe(true);
+  expect(list({ target: message, source: "messages" })).toBe(true);
+  expect(list({ target: message, source: "entities" })).toBe(false);
+  expect(list({ target: account, source: "entities", kind: "attachment" })).toBe(false);
 });
