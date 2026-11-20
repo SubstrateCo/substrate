@@ -125,7 +125,7 @@ function promptText(prompt: { type: string; text?: string }[]) {
   return prompt.map((block) => (block.type === "text" ? (block.text ?? "") : "")).join("");
 }
 
-export function fakeAgentApp(
+function fakeAgentApp(
   script: FakeAgentScript,
   record: FakeAgentRecord,
   exit: (code: number) => void,

@@ -10,7 +10,7 @@ import { rendererLocalSchemas, type LocalHarnessMethod } from "@substrate/contra
 import type { z } from "zod";
 
 /** Renderer-local methods for MCP servers. Main keeps them in local storage, not agent folders. */
-export type McpServerMethod = "saveMcpServer" | "deleteMcpServer";
+type McpServerMethod = "saveMcpServer" | "deleteMcpServer";
 /** Renderer-local methods that the harness worker serves from the agent folder. */
 export type NativeLocalMethod = Exclude<LocalHarnessMethod, McpServerMethod>;
 

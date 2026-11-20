@@ -19,7 +19,7 @@ export interface AcpProcess {
   stop(): Promise<void>;
 }
 
-export type AcpSpawn = (launch: AcpLaunch, cwd: string) => AcpProcess;
+type AcpSpawn = (launch: AcpLaunch, cwd: string) => AcpProcess;
 
 export interface AcpConnectDeps {
   spawn?: AcpSpawn;
@@ -42,12 +42,7 @@ const registeredDrivers = new Map<AcpProtocolVersion, ProtocolDriver>([
 ]);
 const negotiatedVersions = new Map<string, AcpProtocolVersion>();
 
-/** Registers the driver for one protocol version, replacing any earlier one. */
-export function registerProtocolDriver(driver: ProtocolDriver): void {
-  registeredDrivers.set(driver.version, driver);
-}
-
-export function spawnAcp(agent: AcpLaunch, cwd: string): AcpProcess {
+function spawnAcp(agent: AcpLaunch, cwd: string): AcpProcess {
   const child = launch(agent.command, agent.args, cwd, agent.env);
   child.stderr.resume();
   const exited = new Promise<Error>((resolve) => {

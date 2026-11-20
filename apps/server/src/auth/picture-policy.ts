@@ -39,6 +39,7 @@ export interface PictureMutation {
 
 /** Reads a picture change from a raw Better Auth request before the endpoint runs. */
 export function readPictureMutation({
+  // oxlint-disable-next-line deslop/prefer-literal-union -- Better Auth hooks pass every endpoint path; unrelated paths must be ignored.
   path,
   body,
 }: {

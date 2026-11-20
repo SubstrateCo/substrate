@@ -18,7 +18,7 @@ export type HarnessAccountState =
  * Sign in with the agent's only method, or choose one of several. Primary inside the model picker,
  * outline beside other settings.
  */
-export function SignInButton({
+function SignInButton({
   label,
   methods,
   disabled,

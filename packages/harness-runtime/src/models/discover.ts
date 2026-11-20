@@ -17,7 +17,7 @@ import { openAcpPeer } from "../acp/index.ts";
 import { HarnessError } from "../errors.ts";
 
 /** Models from the agent's "model" select option. The current value is the default. */
-export function acpModels(options: AcpConfigOption[]): HarnessModel[] {
+function acpModels(options: AcpConfigOption[]): HarnessModel[] {
   const option = options.find((entry) => entry.category === "model" && entry.type === "select");
   if (!option) return [];
   return option.values.map((value) => {
@@ -29,7 +29,7 @@ export function acpModels(options: AcpConfigOption[]): HarnessModel[] {
 }
 
 /** What the renderer may know about the agent's sign-in: names and types, no launch details. */
-export function acpAuth(peer: Pick<AcpPeer, "authMethods" | "capabilities">) {
+function acpAuth(peer: Pick<AcpPeer, "authMethods" | "capabilities">) {
   return {
     methods: peer.authMethods.slice(0, 20).map((method) => {
       const entry: HarnessAuthMethod = { id: method.id, name: method.name, type: method.type };

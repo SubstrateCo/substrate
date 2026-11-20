@@ -1,5 +1,5 @@
 import { addAgent, createAgent } from "./test-support/agent-work";
-import { conversation, test, visit } from "./test-support/fixtures";
+import { conversation, test } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
 
 test("caller settings keep their layout while the owner's real settings load", async ({
@@ -24,7 +24,18 @@ test("caller settings keep their layout while the owner's real settings load", a
   });
 
   try {
-    await visit(user, undefined, "/agents", { agentId: agent.id, section: "run" });
+    const since = user.events.length;
+    const search = new URLSearchParams({
+      workspaceId: user.actor.organizationId,
+      agentId: agent.id,
+      section: "run",
+    });
+    await user.page.goto(`/agents?${search}`);
+    await user.waitForEvent(
+      since,
+      (event) => event.type === "ready",
+      "The real authenticated WebSocket completes its ready handshake",
+    );
     const result = await ready.promise;
     expect(result.error).toBeUndefined();
     expect(result.status).toBe(200);
@@ -45,4 +56,10 @@ test("caller settings keep their layout while the owner's real settings load", a
   await expect(settings.getByRole("radio", { name: "Only me" })).toBeChecked();
   await expect(settings.getByRole("radio", { name: "Ask me first" })).toBeEnabled();
   await expect(user.page.getByRole("region", { name: "Allowed callers" })).toBeVisible();
+  // The initial cache refresh can finish only after the held caller-settings response is released.
+  await expect(
+    user.page.getByText(
+      /Reconnecting to live updates|Live updates disconnected|some data failed to refresh/,
+    ),
+  ).toHaveCount(0);
 });

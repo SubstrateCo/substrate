@@ -47,10 +47,7 @@ interface LiveTurn {
 }
 
 /** substrate: the lease's MCP-over-ACP declaration; without it the lease goes over HTTP. */
-export function acpMcpServers(
-  context: AdapterContext,
-  substrate?: AcpMcpServerAcp,
-): AcpMcpServer[] {
+function acpMcpServers(context: AdapterContext, substrate?: AcpMcpServerAcp): AcpMcpServer[] {
   const servers: AcpMcpServer[] = [];
   if (substrate) servers.push(substrate);
   else if (context.lease)

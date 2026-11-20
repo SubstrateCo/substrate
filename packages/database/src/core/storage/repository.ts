@@ -20,6 +20,7 @@ export interface StorageScope {
 async function requireScope(
   db: DatabaseExecutor,
   scope: StorageScope,
+  // oxlint-disable-next-line deslop/prefer-literal-union -- Persisted upload purposes are strings; all non-avatar uploads need organization access.
   purpose: string,
   manage = true,
 ) {

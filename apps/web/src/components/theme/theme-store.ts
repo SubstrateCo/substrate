@@ -27,6 +27,7 @@ export function createThemeStore(storageKey: string) {
 
   return {
     getSnapshot: () => snapshot,
+    // oxlint-disable-next-line deslop/prefer-literal-union -- This boundary validates string values supplied by UI controls.
     setTheme: (theme: string) => {
       if (theme !== "light" && theme !== "dark" && theme !== "system") return;
       try {

@@ -1,3 +1,4 @@
+import type { EndpointName } from "../endpoints.ts";
 import type { World } from "../world.ts";
 import { beforeEach, expect, mock, test } from "bun:test";
 
@@ -16,7 +17,7 @@ let shownMessage = "message";
 const staleReads: string[] = [];
 const message = { id: "message", conversationId: "conversation", authorImage: null };
 mock.module("../http.ts", () => ({
-  async call(endpoint: string) {
+  async call(endpoint: EndpointName) {
     if (
       endpoint === "messaging.conversations.leave" ||
       endpoint === "messaging.conversations.delete"

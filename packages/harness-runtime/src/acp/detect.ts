@@ -1,4 +1,4 @@
-import { harnessKinds, type HarnessKind } from "@substrate/contracts/harness";
+import type { HarnessKind } from "@substrate/contracts/harness";
 
 import { HarnessError } from "../errors.ts";
 import { binaryVersion, findCommands, isWindowsNative } from "../process.ts";
@@ -194,10 +194,6 @@ export async function detectAgent(
   environment?: DetectEnvironment,
 ): Promise<AcpLaunch | undefined> {
   return (await inspectAgent(harness, environment)).launch;
-}
-
-export function detectAgents(environment?: DetectEnvironment): Promise<AgentDetection[]> {
-  return Promise.all(harnessKinds.map((harness) => inspectAgent(harness, environment)));
 }
 
 /** The launch of a detected agent, or binary-not-found. */

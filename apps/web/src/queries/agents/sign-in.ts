@@ -12,7 +12,7 @@ const outputLimit = 200_000;
 const pollMs = 500;
 
 /** Joins the next read onto the output read so far. */
-export function appendSignInOutput(
+function appendSignInOutput(
   previous: HarnessSignInState | undefined,
   next: HarnessSignInState,
 ): HarnessSignInState {

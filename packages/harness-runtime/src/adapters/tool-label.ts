@@ -37,7 +37,7 @@ function unquote(value: string) {
 }
 
 /** The script inside a shell wrapper: pwsh -Command "bun test", bash -lc 'ls', cmd /c dir. */
-export function unwrapShell(command: string): string {
+function unwrapShell(command: string): string {
   const trimmed = command.trim();
   const first = /^(?:"[^"]*"|'[^']*'|\S+)/.exec(trimmed)?.[0];
   const flag = first && shellFlags.get(executableName(first));

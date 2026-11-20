@@ -50,7 +50,7 @@ const npmLayouts = new Map([
  * - @openai/codex bin/codex.js runs <platform package>/vendor/<triple>/bin/codex.exe and falls
  *   back to its own vendor folder.
  */
-export function npmNativeCandidates(cli: string, arch: string): string[][] {
+function npmNativeCandidates(cli: string, arch: string): string[][] {
   return npmLayouts.get(cli)?.(arch) ?? [];
 }
 

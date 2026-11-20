@@ -124,6 +124,7 @@ interface LeaseState {
 }
 
 /** What an agent should do next for each workspace API error code. */
+// oxlint-disable-next-line deslop/prefer-literal-union -- Workspace errors use an open string code; unknown codes need the default hint.
 function errorHint(code: string) {
   switch (code) {
     case "NOT_FOUND":

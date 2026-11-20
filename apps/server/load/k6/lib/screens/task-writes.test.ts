@@ -1,3 +1,4 @@
+import type { EndpointName } from "../endpoints.ts";
 import type { World } from "../world.ts";
 import type { ProjectDetail, Task } from "./tasks.ts";
 import { beforeEach, expect, mock, test } from "bun:test";
@@ -35,7 +36,7 @@ const board = (id: string): ProjectDetail => ({
 });
 
 mock.module("../http.ts", () => ({
-  async call(endpoint: string, input: Record<string, string> = {}) {
+  async call(endpoint: EndpointName, input: Record<string, string> = {}) {
     if (endpoint === "tasks.mutations") {
       writes++;
       if (rejectWrite) return null;

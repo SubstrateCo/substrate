@@ -116,9 +116,7 @@ export interface AcpDriverHandlers {
 }
 
 /** A new value for a config option, matching the option's type. */
-export type AcpConfigValue =
-  | { type: "select"; value: string }
-  | { type: "boolean"; value: boolean };
+type AcpConfigValue = { type: "select"; value: string } | { type: "boolean"; value: boolean };
 
 export interface AcpPromptResult {
   /** "cancelled" means the turn ended because of session/cancel. */

@@ -9,6 +9,8 @@
       // Bun's custom bundlers and Electron load these outside the import graph.
       "entry": ["src/preload.ts", "src/harness/worker/harness-worker.ts"],
       "project": ["src/**/*.{js,ts}", "scripts/**/*.{js,ts}"],
+      // package-assets tests resolve a synthetic package from a temporary fixture.
+      "ignoreDependencies": ["sdk"],
     },
     "apps/server": {
       // Runtime scripts and the public API export are discovered from package.json.
@@ -63,6 +65,11 @@
     "packages/harness-runtime": {
       "entry": [],
       "project": ["src/**/*.ts"],
+      // Located from the ACP manifest and shipped as executable adapters, not imported.
+      "ignoreDependencies": [
+        "@agentclientprotocol/claude-agent-acp",
+        "@agentclientprotocol/codex-acp",
+      ],
     },
   },
 }

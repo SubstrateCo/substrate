@@ -16,12 +16,12 @@ const captureStart = "__SUBSTRATE_PATH_START__";
 const captureEnd = "__SUBSTRATE_PATH_END__";
 const captureCommand = `printf '%s\\n' '${captureStart}'; printenv PATH || true; printf '%s\\n' '${captureEnd}'`;
 
-export function pathDelimiter(platform: NodeJS.Platform): string {
+function pathDelimiter(platform: NodeJS.Platform): string {
   return platform === "win32" ? ";" : ":";
 }
 
 /** The inherited PATH. Windows stores it as Path, and lookups there ignore case. */
-export function inheritedPath(env: Record<string, string | undefined>): string {
+function inheritedPath(env: Record<string, string | undefined>): string {
   return env.PATH ?? env.Path ?? env.path ?? "";
 }
 
@@ -57,7 +57,7 @@ export function extractCapturedPath(output: string): string | undefined {
 }
 
 /** The login shells to ask, in order: $SHELL, the user database shell, then the platform default. */
-export function loginShellCandidates(probe: ShellPathProbe): string[] {
+function loginShellCandidates(probe: ShellPathProbe): string[] {
   const candidates = [probe.env.SHELL?.trim(), probe.userShell?.trim()];
   if (probe.platform === "darwin") candidates.push("/bin/zsh");
   if (probe.platform === "linux") candidates.push("/bin/bash");
@@ -115,7 +115,7 @@ async function registryPath(probe: ShellPathProbe): Promise<string[]> {
 }
 
 /** Folders where Windows package managers put user CLIs, even when PATH misses them. */
-export function knownWindowsCliDirectories(env: Record<string, string | undefined>): string[] {
+function knownWindowsCliDirectories(env: Record<string, string | undefined>): string[] {
   const appData = env.APPDATA?.trim();
   const localAppData = env.LOCALAPPDATA?.trim();
   const userProfile = env.USERPROFILE?.trim();

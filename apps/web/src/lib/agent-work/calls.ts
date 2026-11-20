@@ -6,6 +6,7 @@ const dropReasons: Record<AgentInvocationDropReason, string> = {
 };
 
 /** Audit results may be absent on older dropped calls. */
+// oxlint-disable-next-line deslop/prefer-literal-union -- Audit results contain other codes; only recognized drop reasons get labels.
 export function callDropReason(reason: string | null) {
   if (reason === "revoked" || reason === "desktop_needs_update") return dropReasons[reason];
   return null;

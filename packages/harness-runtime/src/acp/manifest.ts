@@ -8,7 +8,7 @@ import type { AcpPrefixChannel } from "./api.ts";
  * - adapter: Substrate ships the ACP adapter as a dependency and points it at the user's CLI
  *   through an environment variable. The user installs only the CLI.
  */
-export type AcpLocate =
+type AcpLocate =
   | { kind: "native"; cli: string; args: string[] }
   | { kind: "adapter"; cli: string; package: string; bin: string; cliEnv: string };
 

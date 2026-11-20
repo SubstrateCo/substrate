@@ -20,6 +20,7 @@ import {
 
 export function DealTransition({
   stageId: initialStageId,
+  // oxlint-disable-next-line deslop/prefer-literal-union -- Persisted outcomes are strings; normalize unknown values to open.
   outcome: initialOutcome,
   lostReason: initialLostReason,
   stages,
