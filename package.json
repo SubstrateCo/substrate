@@ -27,7 +27,7 @@
     "dup:baseline": "jscpd --update-baseline --reporters silent",
     "format": "oxfmt --write .",
     "typecheck": "bun check && turbo run typecheck",
-    "test": "turbo run test",
+    "test": "bun --env-file=.env scripts/check-test-services.ts && turbo run test",
     "db:generate": "bun run --filter @substrate/database db:generate",
     "db:migrate": "bun run --filter @substrate/database db:migrate",
     "db:seed": "bun --env-file=.env apps/server/scripts/seed-dev.ts"
