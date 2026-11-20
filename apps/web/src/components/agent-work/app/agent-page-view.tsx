@@ -45,14 +45,16 @@ export function AgentPageView({
   unsaved = [],
   onSectionChange,
   children,
+  loading = false,
 }: {
-  name: string;
+  name: ReactNode;
   status?: WorkStatus;
   section: AgentPageSection;
   /** Sections with unsaved changes; the section list marks them. */
   unsaved?: readonly AgentPageSection[];
   onSectionChange: (section: AgentPageSection) => void;
   children: ReactNode;
+  loading?: boolean;
 }) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
@@ -74,6 +76,7 @@ export function AgentPageView({
             value={section}
             marked={unsaved}
             onChange={onSectionChange}
+            disabled={loading}
           />
           <div className="@container/content w-full max-w-4xl min-w-0 flex-1">{children}</div>
         </div>

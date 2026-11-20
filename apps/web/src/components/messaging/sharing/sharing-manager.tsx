@@ -8,10 +8,12 @@ import type { SharingDetails } from "@/api/messaging/sharing";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
-import { LoadingState } from "@/components/feedback/loading-state";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
-import { SharingDetailsView } from "@/components/messaging/sharing/sharing-details-view";
+import {
+  SharingDetailsLoading,
+  SharingDetailsView,
+} from "@/components/messaging/sharing/sharing-details-view";
 import { useExpiryTime } from "@/hooks/use-expiry-time";
 import { sharingOptions } from "@/queries/messaging/sharing";
 import { useSharingAction } from "@/queries/messaging/sharing-mutations";
@@ -186,7 +188,7 @@ function SharingLoadNotice({
   hasData: boolean;
   onRetry: () => void;
 }) {
-  if (loading) return <LoadingState label="Loading sharing…" rows={2} />;
+  if (loading && !hasData) return <SharingDetailsLoading />;
   if (!error) return null;
   if (hasData)
     return (

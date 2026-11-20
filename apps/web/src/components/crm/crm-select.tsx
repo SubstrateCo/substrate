@@ -6,6 +6,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function CrmSelect({
   label,
@@ -27,8 +28,7 @@ export function CrmSelect({
   emptyLabel?: string;
 }) {
   return (
-    <Field>
-      <FieldLabel htmlFor={`crm-${name ?? label}`}>{label}</FieldLabel>
+    <CrmSelectField label={label} id={`crm-${name ?? label}`}>
       <Select
         name={name}
         value={value || "none"}
@@ -47,6 +47,33 @@ export function CrmSelect({
           ))}
         </SelectContent>
       </Select>
+    </CrmSelectField>
+  );
+}
+
+export function CrmSelectLoading({ label }: { label: string }) {
+  return (
+    <CrmSelectField label={label} hidden>
+      <Skeleton className="h-9 w-full" />
+    </CrmSelectField>
+  );
+}
+
+function CrmSelectField({
+  label,
+  id,
+  hidden,
+  children,
+}: {
+  label: string;
+  id?: string;
+  hidden?: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Field aria-hidden={hidden}>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
+      {children}
     </Field>
   );
 }

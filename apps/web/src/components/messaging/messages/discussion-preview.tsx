@@ -2,10 +2,11 @@ import type { ReactNode } from "react";
 
 import type { Message } from "@/api/messaging/requests";
 import { ErrorState } from "@/components/feedback/error-state";
-import { LoadingState } from "@/components/feedback/loading-state";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
+import { Skeleton } from "@/components/ui/skeleton";
 import { plainReferenceText } from "@/lib/messaging/reference-token";
 
 const previewLimit = 5;
@@ -32,7 +33,24 @@ export function DiscussionPreview({
           <span className="text-xs text-muted-foreground">Latest {latest.length}</span>
         )}
       </div>
-      {loading && <LoadingState label="Loading discussion" variant="compact" />}
+      {loading && latest.length === 0 && (
+        <div role="status" aria-label="Loading discussion">
+          <ol aria-hidden="true" className="space-y-4">
+            {[0, 1].map((index) => (
+              <DiscussionRow
+                key={index}
+                avatar={
+                  <div className="mt-0.5 size-6 shrink-0 overflow-hidden rounded-full">
+                    <Skeleton className="size-full" />
+                  </div>
+                }
+                byline={<SkeletonText width="6rem" />}
+                body={<SkeletonText width="12rem" />}
+              />
+            ))}
+          </ol>
+        </div>
+      )}
       {error && <ErrorState compact title="Couldn’t load discussion" onRetry={onRetry} />}
       {!loading && !error && !latest.length && (
         <p className="text-sm text-muted-foreground">No messages yet. Start the conversation.</p>
@@ -40,15 +58,18 @@ export function DiscussionPreview({
       {latest.length > 0 && (
         <ol className="space-y-4">
           {latest.map((message) => (
-            <li key={message.id} className="flex min-w-0 gap-2">
-              <PersonAvatar
-                name={message.authorName || "Unknown member"}
-                image={message.authorImage}
-                agent={message.authorType === "agent"}
-                className="mt-0.5 shrink-0"
-              />
-              <div className="min-w-0 flex-1">
-                <div className="flex min-w-0 items-baseline gap-2">
+            <DiscussionRow
+              key={message.id}
+              avatar={
+                <PersonAvatar
+                  name={message.authorName || "Unknown member"}
+                  image={message.authorImage}
+                  agent={message.authorType === "agent"}
+                  className="mt-0.5 shrink-0"
+                />
+              }
+              byline={
+                <>
                   <span className="truncate text-xs font-medium">
                     {message.authorName || "Unknown member"}
                   </span>
@@ -56,8 +77,10 @@ export function DiscussionPreview({
                     value={message.createdAt}
                     className="shrink-0 text-xs text-muted-foreground"
                   />
-                </div>
-                {message.deletedAt ? (
+                </>
+              }
+              body={
+                message.deletedAt ? (
                   <p className="text-sm text-muted-foreground italic">Message deleted</p>
                 ) : (
                   <div className="line-clamp-3 max-h-16 overflow-hidden wrap-anywhere">
@@ -67,13 +90,33 @@ export function DiscussionPreview({
                       )}
                     />
                   </div>
-                )}
-              </div>
-            </li>
+                )
+              }
+            />
           ))}
         </ol>
       )}
       {conversationLink}
     </section>
+  );
+}
+
+function DiscussionRow({
+  avatar,
+  byline,
+  body,
+}: {
+  avatar: ReactNode;
+  byline: ReactNode;
+  body: ReactNode;
+}) {
+  return (
+    <li className="flex min-w-0 gap-2">
+      {avatar}
+      <div className="min-w-0 flex-1">
+        <div className="flex min-w-0 items-baseline gap-2">{byline}</div>
+        {body}
+      </div>
+    </li>
   );
 }

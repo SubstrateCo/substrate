@@ -2,6 +2,7 @@ import type { ConversationKind } from "@substrate/contracts/messaging/input";
 
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { PaneState } from "@/components/feedback/pane-state";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { Tag } from "@/components/feedback/tag";
 import { RowActions } from "@/components/layout/row-actions";
@@ -112,8 +113,8 @@ export function ManagedConversations({
         onRetry={state === "unavailable" ? undefined : onRetry}
       />
     );
-  if (loading && !rows) return <PaneState label="Loading conversations." />;
-  if (!rows?.length && !error)
+  const loadingRows = loading && !rows;
+  if (!loadingRows && !rows?.length && !error)
     return (
       <div className="rounded-xl border">
         <ContentNotice
@@ -128,7 +129,11 @@ export function ManagedConversations({
       {state === "stale" && (
         <StaleNotice onRetry={onRetry}>This list may be out of date.</StaleNotice>
       )}
-      <div className="overflow-hidden rounded-xl border bg-card">
+      <div
+        className="overflow-hidden rounded-xl border bg-card"
+        role={loadingRows ? "status" : undefined}
+        aria-label={loadingRows ? "Loading conversations" : undefined}
+      >
         <Table aria-label="Channels and group messages">
           <TableHeader>
             <TableRow>
@@ -141,23 +146,30 @@ export function ManagedConversations({
             </TableRow>
           </TableHeader>
           <TableBody>
+            {loadingRows &&
+              [0, 1, 2].map((key) => (
+                <ManagedConversationCells
+                  key={key}
+                  hidden
+                  conversation={<SkeletonText width="10rem" />}
+                  owner={<SkeletonText width="7rem" />}
+                  members={<SkeletonText width="8rem" />}
+                />
+              ))}
             {rows?.map((row) => {
               const name = row.name ?? "Group message";
               return (
-                <TableRow key={row.id} className="group/row">
-                  <TableCell className="max-w-64">
+                <ManagedConversationCells
+                  key={row.id}
+                  conversation={
                     <span className="flex min-w-0 items-center gap-2">
                       <KindIcon row={row} />
                       <span className="truncate font-medium">{name}</span>
                     </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="text-muted-foreground">{row.ownerName}</span>
-                  </TableCell>
-                  <TableCell>
-                    <MemberSummary members={row.members} />
-                  </TableCell>
-                  <TableCell>
+                  }
+                  owner={<span className="text-muted-foreground">{row.ownerName}</span>}
+                  members={<MemberSummary members={row.members} />}
+                  actions={
                     <RowActions label={`${name} actions`} className="justify-end">
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -178,13 +190,36 @@ export function ManagedConversations({
                         onDelete={() => onDelete(row.id)}
                       />
                     </RowActions>
-                  </TableCell>
-                </TableRow>
+                  }
+                />
               );
             })}
           </TableBody>
         </Table>
       </div>
     </div>
+  );
+}
+
+function ManagedConversationCells({
+  conversation,
+  owner,
+  members,
+  actions,
+  hidden,
+}: {
+  conversation: React.ReactNode;
+  owner: React.ReactNode;
+  members: React.ReactNode;
+  actions?: React.ReactNode;
+  hidden?: boolean;
+}) {
+  return (
+    <TableRow className="group/row" aria-hidden={hidden}>
+      <TableCell className="max-w-64">{conversation}</TableCell>
+      <TableCell>{owner}</TableCell>
+      <TableCell>{members}</TableCell>
+      <TableCell>{actions}</TableCell>
+    </TableRow>
   );
 }

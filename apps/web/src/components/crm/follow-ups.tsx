@@ -5,9 +5,11 @@ import { useState } from "react";
 
 import { CrmResourceState } from "./crm-resource-state";
 import { FollowUpEditor } from "./follow-up-editor";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { DueDate } from "@/components/time/due-date";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { workLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { followUpsOptions } from "@/queries/crm/options";
@@ -40,6 +42,27 @@ export function FollowUps({
         pending={query.isPending}
         error={query.error}
         onRetry={() => void query.refetch()}
+        loading={
+          <div role="status" aria-label="Loading follow-ups">
+            <ul className="divide-y" aria-hidden="true">
+              {[0, 1, 2].map((key) => (
+                <li key={key}>
+                  <FollowUpRow>
+                    <span className="size-4 shrink-0 overflow-hidden rounded-full">
+                      <Skeleton className="size-full" />
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <SkeletonText width="10rem" />
+                    </span>
+                    <span className="text-xs">
+                      <SkeletonText width="5rem" />
+                    </span>
+                  </FollowUpRow>
+                </li>
+              ))}
+            </ul>
+          </div>
+        }
       />
       {data && !query.error && (
         <>
@@ -51,15 +74,17 @@ export function FollowUps({
               <li key={task.entityId}>
                 <Link
                   {...workLink(organizationId, task.projectEntityId, task.entityId)}
-                  className="flex items-center gap-2 rounded-md px-2 py-2 text-sm hover:bg-row-hover"
+                  className="rounded-md hover:bg-row-hover"
                 >
-                  <TaskStatusIcon status={task.status} />
-                  <span className="min-w-0 flex-1 truncate">{task.title}</span>
-                  {task.dueDate ? (
-                    <DueDate value={task.dueDate} />
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Unscheduled</span>
-                  )}
+                  <FollowUpRow>
+                    <TaskStatusIcon status={task.status} />
+                    <span className="min-w-0 flex-1 truncate">{task.title}</span>
+                    {task.dueDate ? (
+                      <DueDate value={task.dueDate} />
+                    ) : (
+                      <span className="text-xs text-muted-foreground">Unscheduled</span>
+                    )}
+                  </FollowUpRow>
                 </Link>
               </li>
             ))}
@@ -78,4 +103,8 @@ export function FollowUps({
       )}
     </section>
   );
+}
+
+function FollowUpRow({ children }: { children: React.ReactNode }) {
+  return <div className="flex items-center gap-2 px-2 py-2 text-sm">{children}</div>;
 }

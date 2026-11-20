@@ -6,6 +6,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { CrmResourceState } from "./crm-resource-state";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
@@ -54,13 +55,29 @@ export function InteractionRollup({
         pending={query.isPending}
         error={query.error}
         onRetry={() => void query.refetch()}
+        loading={
+          <div role="status" aria-label="Loading customer interactions">
+            <ol className="divide-y" aria-hidden="true">
+              {[0, 1, 2].map((key) => (
+                <InteractionRow key={key}>
+                  <div className="text-xs">
+                    <SkeletonText width="10rem" />
+                  </div>
+                  <p className="text-sm">
+                    <SkeletonText width="16rem" />
+                  </p>
+                </InteractionRow>
+              ))}
+            </ol>
+          </div>
+        }
       />
       {!query.isPending && !query.error && !rows.length && (
         <p className="text-sm text-muted-foreground">No interactions in this view</p>
       )}
       <ol className="divide-y">
         {rows.map((row) => (
-          <li key={row.entityId} className="space-y-2 py-3">
+          <InteractionRow key={row.entityId}>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Timestamp value={row.occurredAt} format="datetime" />
               <Link
@@ -71,7 +88,7 @@ export function InteractionRollup({
               </Link>
             </div>
             <p className="text-sm whitespace-pre-wrap">{row.summary}</p>
-          </li>
+          </InteractionRow>
         ))}
       </ol>
       <div className="flex gap-2">
@@ -102,4 +119,8 @@ export function InteractionRollup({
       </div>
     </section>
   );
+}
+
+function InteractionRow({ children }: { children: React.ReactNode }) {
+  return <li className="space-y-2 py-3">{children}</li>;
 }

@@ -4,8 +4,8 @@ import type { ReactNode } from "react";
 
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
-import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
 import { SettingsSection } from "@/components/layout/settings-section";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
@@ -13,6 +13,66 @@ import { Timestamp } from "@/components/time/timestamp";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { cn } from "cn";
 import { Activity, ChevronRight } from "lucide-react";
+
+const activityRowClass = "grid w-full min-w-0 gap-1 px-4 py-2.5 text-left";
+
+function ActivityRowContent({
+  summary,
+  time,
+  status,
+  place,
+}: {
+  summary: ReactNode;
+  time: ReactNode;
+  status: ReactNode;
+  place: ReactNode;
+}) {
+  return (
+    <>
+      <span className="flex min-w-0 items-baseline gap-3">
+        {summary}
+        {time}
+      </span>
+      <span className="flex min-w-0 items-center gap-2">
+        {status}
+        <span className="min-w-0 truncate text-xs text-muted-foreground">{place}</span>
+      </span>
+    </>
+  );
+}
+
+export function ActivityRowsLoading() {
+  return (
+    <div role="status" aria-label="Loading activity">
+      <ul aria-hidden="true" className="divide-y overflow-hidden rounded-xl border bg-card">
+        {[0, 1, 2].map((i) => (
+          <li key={i} className="grid">
+            <div className={activityRowClass}>
+              <ActivityRowContent
+                summary={
+                  <span className="min-w-0 flex-1 truncate text-sm">
+                    <SkeletonText width="14rem" />
+                  </span>
+                }
+                time={
+                  <span className="shrink-0 text-xs text-muted-foreground">
+                    <SkeletonText width="3rem" />
+                  </span>
+                }
+                status={
+                  <span className="text-xs">
+                    <SkeletonText width="4rem" />
+                  </span>
+                }
+                place={<SkeletonText width="9rem" />}
+              />
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 export type ActivityRow = {
   id: string;
@@ -72,7 +132,7 @@ export function AgentActivityView({
         description="Everything this agent worked on, newest first. Open a row to see its transcript."
       >
         {error && <ErrorState compact title="Couldn’t load activity" onRetry={onRetry} />}
-        {loading && <LoadingState label="Loading activity" variant="compact" />}
+        {loading && !rows.length && <ActivityRowsLoading />}
         {!loading && !error && !rows.length && (
           <ContentNotice
             icon={Activity}
@@ -89,30 +149,31 @@ export function AgentActivityView({
                   aria-current={row.selected ? "true" : undefined}
                   onClick={() => onTranscript(row.id)}
                   className={cn(
-                    "grid w-full min-w-0 gap-1 px-4 py-2.5 text-left transition-colors hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset",
+                    activityRowClass,
+                    "transition-colors hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset",
                     row.selected && "bg-row-selected hover:bg-row-selected",
                   )}
                 >
-                  <span className="flex min-w-0 items-baseline gap-3">
-                    <span
-                      className={cn(
-                        "min-w-0 flex-1 truncate text-sm",
-                        row.selected && "font-medium text-row-selected-foreground",
-                      )}
-                    >
-                      {row.summary}
-                    </span>
-                    <Timestamp
-                      value={row.createdAt}
-                      className="shrink-0 text-xs text-muted-foreground"
-                    />
-                  </span>
-                  <span className="flex min-w-0 items-center gap-2">
-                    {row.status}
-                    <span className="min-w-0 truncate text-xs text-muted-foreground">
-                      {[row.kind, row.place].filter(Boolean).join(" · ")}
-                    </span>
-                  </span>
+                  <ActivityRowContent
+                    summary={
+                      <span
+                        className={cn(
+                          "min-w-0 flex-1 truncate text-sm",
+                          row.selected && "font-medium text-row-selected-foreground",
+                        )}
+                      >
+                        {row.summary}
+                      </span>
+                    }
+                    time={
+                      <Timestamp
+                        value={row.createdAt}
+                        className="shrink-0 text-xs text-muted-foreground"
+                      />
+                    }
+                    status={row.status}
+                    place={[row.kind, row.place].filter(Boolean).join(" · ")}
+                  />
                   {row.note && <span className="text-xs text-muted-foreground">{row.note}</span>}
                 </button>
                 {row.attention}

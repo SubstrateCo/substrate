@@ -2,10 +2,15 @@ import type { ReactNode } from "react";
 
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
-import { LoadingState } from "@/components/feedback/loading-state";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { PageHeader } from "@/components/layout/page-header";
+import { MessageCard, MessageCardBody } from "@/components/messaging/messages/message-card";
 import { Button } from "@/components/ui/button";
-import { CheckCheck } from "lucide-react";
+import { CheckCheck, Hand } from "lucide-react";
+
+function NeedsYouItem({ children }: { children: ReactNode }) {
+  return <li className="grid min-w-0 gap-1.5">{children}</li>;
+}
 
 export type NeedsYouEntry = {
   key: string;
@@ -37,7 +42,25 @@ export function NeedsYouView({
           description="Questions, approvals, and stopped work from your agents."
         />
         {error && <ErrorState title="Couldn’t load what needs you" onRetry={onRetry} />}
-        {loading && <LoadingState label="Loading what needs you" variant="compact" />}
+        {loading && !entries.length && (
+          <div role="status" aria-label="Loading what needs you">
+            <ul aria-hidden="true" className="grid gap-5">
+              {[0, 1].map((i) => (
+                <NeedsYouItem key={i}>
+                  <p className="text-xs">
+                    <SkeletonText width="10rem" />
+                  </p>
+                  <MessageCard icon={Hand} tone="attention" title={<SkeletonText width="12rem" />}>
+                    <MessageCardBody>
+                      <SkeletonText width="18rem" />
+                      <SkeletonText width="12rem" />
+                    </MessageCardBody>
+                  </MessageCard>
+                </NeedsYouItem>
+              ))}
+            </ul>
+          </div>
+        )}
         {!loading && !error && !entries.length && (
           <div className="flex flex-1 items-center justify-center">
             <ContentNotice
@@ -50,7 +73,7 @@ export function NeedsYouView({
         {entries.length > 0 && (
           <ul aria-label="Needs you" className="grid gap-5">
             {entries.map((entry) => (
-              <li key={entry.key} className="grid min-w-0 gap-1.5">
+              <NeedsYouItem key={entry.key}>
                 <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
                   {entry.onOpenAgent ? (
                     <Button
@@ -70,7 +93,7 @@ export function NeedsYouView({
                   {entry.place}
                 </p>
                 {entry.body}
-              </li>
+              </NeedsYouItem>
             ))}
           </ul>
         )}

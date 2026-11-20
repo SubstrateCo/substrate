@@ -56,13 +56,9 @@ export function FileUpload({
   const describedBy = error ? `${id} ${id}-error` : id;
   return (
     <Field>
-      <div
+      <FileUploadLayout
         data-dragging={dragging || undefined}
-        className={cn(
-          "flex min-w-0 items-center gap-4 rounded-lg border border-dashed p-3 transition-colors duration-150 ease-out",
-          error && "border-destructive/50",
-          dragging && "border-primary bg-accent",
-        )}
+        className={cn(error && "border-destructive/50", dragging && "border-primary bg-accent")}
         onDragOver={(event) => {
           event.preventDefault();
           if (!blocked) setDragging(true);
@@ -78,8 +74,7 @@ export function FileUpload({
           select(Array.from(event.dataTransfer.files));
         }}
       >
-        {preview}
-        <div className="grid min-w-0 flex-1 gap-2">
+        <FileUploadContent preview={preview}>
           <Input
             ref={input}
             type="file"
@@ -119,9 +114,36 @@ export function FileUpload({
             {actions}
           </div>
           <FieldDescription id={id}>{description}</FieldDescription>
-        </div>
-      </div>
+        </FileUploadContent>
+      </FileUploadLayout>
       <FieldError id={`${id}-error`}>{error}</FieldError>
     </Field>
+  );
+}
+
+export function FileUploadContent({
+  preview,
+  children,
+}: {
+  preview?: ReactNode;
+  children: ReactNode;
+}) {
+  return (
+    <>
+      {preview}
+      <div className="grid min-w-0 flex-1 gap-2">{children}</div>
+    </>
+  );
+}
+
+export function FileUploadLayout({ className, ...props }: React.ComponentProps<"div">) {
+  return (
+    <div
+      className={cn(
+        "flex min-w-0 items-center gap-4 rounded-lg border border-dashed p-3 transition-colors duration-150 ease-out",
+        className,
+      )}
+      {...props}
+    />
   );
 }

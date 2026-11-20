@@ -1,5 +1,7 @@
 import type { UseQueryResult } from "@tanstack/react-query";
 
+import type { ReactNode } from "react";
+
 import { isAccessFailure } from "@/api/access-failure";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -8,7 +10,7 @@ import { resourceState } from "@/lib/resource-state";
 import { Unlink } from "lucide-react";
 
 /** Returns the record's data, or the loading, error, or unavailable view while it has no fresh data. */
-export function crmResource<T>(query: UseQueryResult<T>) {
+export function crmResource<T>(query: UseQueryResult<T>, loading?: ReactNode) {
   const state = resourceState(query);
   if (!state.data || state.error)
     return {
@@ -17,6 +19,7 @@ export function crmResource<T>(query: UseQueryResult<T>) {
         <CrmResourceState
           pending={query.isPending}
           error={query.error}
+          loading={loading}
           onRetry={() => void query.refetch()}
         />
       ),
@@ -28,10 +31,12 @@ export function CrmResourceState({
   pending,
   error,
   onRetry,
+  loading,
 }: {
   pending: boolean;
   error: Error | null;
   onRetry: () => void;
+  loading?: ReactNode;
 }) {
   if (isAccessFailure(error))
     return (
@@ -49,6 +54,6 @@ export function CrmResourceState({
         onRetry={onRetry}
       />
     );
-  if (pending) return <LoadingState label="Loading CRM…" variant="table" />;
+  if (pending) return loading ?? <LoadingState label="Loading CRM…" variant="table" />;
   return null;
 }

@@ -5,6 +5,7 @@ import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { PageAside, useAsideCovers } from "@/components/layout/page-layout";
+import { MessageLoading } from "@/components/messaging/messages/message-loading";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { X } from "lucide-react";
 
@@ -79,7 +80,7 @@ export function ThreadPane({
           {root && (
             <div className="max-h-7/20 shrink-0 overflow-y-auto border-b pt-4 pb-2">{root}</div>
           )}
-          {loading && !replies ? <PaneState label="Loading replies…" /> : replies}
+          {loading && !replies ? <MessageLoading label="Loading replies…" /> : replies}
         </>
       )}
       {!blocked && <div className="mt-auto shrink-0">{composer}</div>}

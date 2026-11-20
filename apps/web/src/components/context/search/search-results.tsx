@@ -1,7 +1,10 @@
 import { ChannelSearchResult } from "@/components/context/search/channel-search-result";
-import { SearchResult, type SearchResultItem } from "@/components/context/search/search-result";
+import {
+  SearchResult,
+  SearchResultLoading,
+  type SearchResultItem,
+} from "@/components/context/search/search-result";
 import { ErrorState } from "@/components/feedback/error-state";
-import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { CommandGroup, CommandList } from "@/components/ui/command";
 
@@ -37,11 +40,19 @@ export function SearchResults({
   let heading = trimmed ? "Results" : "Jump to";
   if (browsing) heading = "Browse channels";
   const errorState = <ErrorState compact title="Couldn’t search workspace" onRetry={onRetry} />;
+  if (loading && results.length === 0 && !error) {
+    return (
+      <CommandList label="Search results" className="max-h-96 min-h-0">
+        <div className="overflow-hidden p-1">
+          <div className="px-2 py-2 text-xs font-medium text-muted-foreground">{heading}</div>
+          <SearchResultLoading browsing={browsing} />
+        </div>
+      </CommandList>
+    );
+  }
   if (results.length === 0) {
     let notice = <NoSearchResults query={trimmed} browsing={browsing} filtered={filtered} />;
     if (error) notice = errorState;
-    else if (loading)
-      notice = <LoadingState label="Searching workspace" variant="compact" rows={2} />;
     return (
       <CommandList label="Search results" className="max-h-96 min-h-0">
         {/* Loading, error, and empty states share one height, so the panel does not resize. */}

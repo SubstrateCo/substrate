@@ -11,7 +11,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useRef, useState, type ReactNode } from "react";
 
-import { CatalogRow } from "../catalog/catalog-row";
+import { CatalogRow, CatalogRowLoading } from "../catalog/catalog-row";
 import type { AgentSection } from "../editors/agent-form";
 import { McpServerEditor } from "../editors/mcp-server-editor";
 import { SkillEditor } from "../editors/skill-editor";
@@ -19,7 +19,6 @@ import { openingName } from "../editors/skill-name";
 import { McpServerRow, StartupSkills } from "./startup-configuration";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
-import { LoadingState } from "@/components/feedback/loading-state";
 import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { SettingsList, SettingsNote, SettingsSection } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
@@ -156,7 +155,16 @@ function ConfigurationStatus({
             : "Save this agent to see its local configuration."}
         </SettingsNote>
       )}
-      {available && pending && <LoadingState label="Reading the agent’s files" variant="compact" />}
+      {available && pending && (
+        <div role="status" aria-label="Reading the agent’s files">
+          <div aria-hidden="true">
+            <SettingsList title={section === "skills" ? "Your skills" : "Your servers"}>
+              <CatalogRowLoading picture={section === "mcps"} />
+              <CatalogRowLoading picture={section === "mcps"} />
+            </SettingsList>
+          </div>
+        </div>
+      )}
       {error && <ErrorState compact title="Couldn’t read this agent’s files" onRetry={onRetry} />}
     </>
   );

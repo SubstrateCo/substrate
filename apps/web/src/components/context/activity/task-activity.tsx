@@ -1,10 +1,9 @@
 import { useState } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
-import { LoadingState } from "../../feedback/loading-state";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
-import { ActivityRow, type ActivityEvent } from "./activity-row";
+import { ActivityRow, ActivityRowSkeleton, type ActivityEvent } from "./activity-row";
 import { ChevronDown } from "lucide-react";
 
 // Show the newest events first; older ones stay one click away.
@@ -45,7 +44,14 @@ export function TaskActivity({
         </h3>
         <CollapsibleContent>
           {loading && !visible.length && (
-            <LoadingState label="Loading activity" variant="compact" />
+            <div role="status">
+              <span className="sr-only">Loading activity</span>
+              <ul aria-hidden="true">
+                {[0, 1, 2].map((i) => (
+                  <ActivityRowSkeleton key={i} />
+                ))}
+              </ul>
+            </div>
           )}
           {error && <ErrorState compact title="Couldn’t load activity" onRetry={onRetry} />}
           {!loading && !error && !visible.length && (

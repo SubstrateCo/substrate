@@ -7,6 +7,7 @@ import {
   MessageReactions,
   MessageToolbar,
 } from "@/components/messaging/messages/message-interactions";
+import { MessageRowLayout } from "@/components/messaging/messages/message-row-layout";
 import { useHasPersonCard } from "@/components/messaging/people/person-card-context";
 import { PersonCardTarget } from "@/components/messaging/people/person-card-slot";
 import { Timestamp } from "@/components/time/timestamp";
@@ -47,59 +48,57 @@ export function MessageItem({
 }) {
   const name = message.authorName || "Unknown member";
   return (
-    <article
-      aria-label={grouped ? `${name}, continued` : undefined}
-      className={cn(
-        "group/message relative flex w-full gap-2.5 px-4 hover:bg-row-hover has-data-[state=open]:bg-row-hover",
-        grouped ? "py-0.5" : "pt-2 pb-0.5",
-        highlighted &&
-          "bg-row-selected before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-primary hover:bg-row-selected",
-      )}
-    >
-      {grouped ? (
-        <span className="flex w-9 shrink-0 justify-end text-xs leading-6 whitespace-nowrap text-muted-foreground opacity-0 group-hover/message:opacity-100 group-has-focus-visible/message:opacity-100">
-          <Timestamp value={message.createdAt} format="time" />
-        </span>
-      ) : (
-        <span className="relative mt-0.5 h-fit shrink-0">
-          <Avatar
-            aria-hidden="true"
-            variant={message.authorType === "agent" ? "agent" : "message"}
-            className="size-9"
-          >
-            {message.authorImage && <AvatarImage src={message.authorImage} alt="" />}
-            <AvatarFallback>{initials(message.authorName)}</AvatarFallback>
-          </Avatar>
-          {avatarBadge}
-        </span>
-      )}
-      <div className="min-w-0 flex-1">
-        {!grouped && <MessageByline message={message} name={name} status={status} />}
-        {message.deletedAt ? (
-          <p className="text-sm text-muted-foreground italic">Message deleted</p>
+    <MessageRowLayout
+      label={grouped ? `${name}, continued` : undefined}
+      grouped={grouped}
+      highlighted={highlighted}
+      avatar={
+        grouped ? (
+          <span className="flex w-9 shrink-0 justify-end text-xs leading-6 whitespace-nowrap text-muted-foreground opacity-0 group-hover/message:opacity-100 group-has-focus-visible/message:opacity-100">
+            <Timestamp value={message.createdAt} format="time" />
+          </span>
         ) : (
-          (body ?? <MessageMarkdown body={message.body} />)
-        )}
-        {!message.deletedAt && message.editedAt && (
-          <span className="text-xs text-muted-foreground">Edited</span>
-        )}
-        <MessageReactions
+          <span className="relative mt-0.5 h-fit shrink-0">
+            <Avatar
+              aria-hidden="true"
+              variant={message.authorType === "agent" ? "agent" : "message"}
+              className="size-9"
+            >
+              {message.authorImage && <AvatarImage src={message.authorImage} alt="" />}
+              <AvatarFallback>{initials(message.authorName)}</AvatarFallback>
+            </Avatar>
+            {avatarBadge}
+          </span>
+        )
+      }
+      byline={!grouped && <MessageByline message={message} name={name} status={status} />}
+      toolbar={
+        <MessageToolbar
           message={message}
           onReact={onReact}
           pending={pending}
           onThread={onThread}
-          renderReaction={renderReaction}
+          actions={actions}
         />
-        {children}
-      </div>
-      <MessageToolbar
+      }
+    >
+      {message.deletedAt ? (
+        <p className="text-sm text-muted-foreground italic">Message deleted</p>
+      ) : (
+        (body ?? <MessageMarkdown body={message.body} />)
+      )}
+      {!message.deletedAt && message.editedAt && (
+        <span className="text-xs text-muted-foreground">Edited</span>
+      )}
+      <MessageReactions
         message={message}
         onReact={onReact}
         pending={pending}
         onThread={onThread}
-        actions={actions}
+        renderReaction={renderReaction}
       />
-    </article>
+      {children}
+    </MessageRowLayout>
   );
 }
 
@@ -114,7 +113,7 @@ function MessageByline({
 }) {
   const hasPersonCard = useHasPersonCard();
   return (
-    <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">
+    <>
       <PersonCardTarget actorId={message.authorActorEntityId} name={name}>
         <span
           className={cn(
@@ -133,6 +132,6 @@ function MessageByline({
         className="text-xs text-muted-foreground"
       />
       {status && <span className="flex min-w-0 self-center">{status}</span>}
-    </div>
+    </>
   );
 }

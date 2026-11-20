@@ -2,10 +2,9 @@ import { useState, type ReactNode } from "react";
 
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
-import { LoadingState } from "../../feedback/loading-state";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
-import { DiscussionItem, type Discussion } from "./discussion-item";
+import { DiscussionItem, DiscussionItemSkeleton, type Discussion } from "./discussion-item";
 import { ChevronDown, MessagesSquare } from "lucide-react";
 
 /**
@@ -47,7 +46,7 @@ export function WorkDiscussions({
     return (
       <section aria-label={label} className="space-y-3">
         {children}
-        {showLoading && <LoadingState label="Loading discussions" variant="messages" rows={2} />}
+        {showLoading && <DiscussionLoading />}
         {failure}
         {empty && (
           <ContentNotice
@@ -66,7 +65,7 @@ export function WorkDiscussions({
         <p className="text-sm text-muted-foreground">No linked discussions</p>
       </section>
     );
-  const expanded = open ?? (uniqueRows.length > 0 || !!error);
+  const expanded = open ?? (uniqueRows.length > 0 || !!error || showLoading);
   return (
     <Collapsible asChild open={expanded} onOpenChange={setOpen}>
       <section aria-label={label} className="group/discussions space-y-2">
@@ -85,13 +84,25 @@ export function WorkDiscussions({
         <CollapsibleContent>
           <div className="space-y-2">
             {children}
-            {showLoading && <LoadingState label="Loading discussions" variant="compact" />}
+            {showLoading && <DiscussionLoading />}
             {failure}
             {list}
           </div>
         </CollapsibleContent>
       </section>
     </Collapsible>
+  );
+}
+
+function DiscussionLoading() {
+  return (
+    <div role="status">
+      <span className="sr-only">Loading discussions</span>
+      <ul aria-hidden="true" className="space-y-2">
+        <DiscussionItemSkeleton />
+        <DiscussionItemSkeleton />
+      </ul>
+    </div>
   );
 }
 

@@ -2,12 +2,11 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 
 import type { MouseEvent } from "react";
 
-import { NotificationItem, type Notification } from "./notification-item";
+import { NotificationItem, NotificationRowsLoading, type Notification } from "./notification-item";
 import { notificationPresentation } from "./notification-presentation";
 import { isAccessFailure } from "@/api/access-failure";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
-import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { notificationGroupEventsOptions } from "@/queries/context/notification-groups";
 
@@ -21,7 +20,7 @@ export function NotificationGroupEvents({
   onOpen: (item: Notification, event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const events = useInfiniteQuery(notificationGroupEventsOptions(organizationId, groupKey));
-  if (events.isPending) return <LoadingState label="Loading events" variant="compact" />;
+  if (events.isPending) return <NotificationRowsLoading label="Loading events" />;
   if (isAccessFailure(events.error))
     return (
       <ContentNotice

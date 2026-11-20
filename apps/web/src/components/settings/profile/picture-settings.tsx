@@ -1,8 +1,11 @@
 import { ErrorState } from "../../feedback/error-state";
-import { LoadingState } from "../../feedback/loading-state";
 import { SettingsCard } from "../../layout/settings-section";
 import { Button } from "../../ui/button";
-import { PictureUpload, type PictureUploadProps } from "../../upload/picture-upload";
+import {
+  PictureUpload,
+  PictureUploadLoading,
+  type PictureUploadProps,
+} from "../../upload/picture-upload";
 import { FormMessage } from "@/components/feedback/form-message";
 import type { ResourceStatus } from "@/lib/resource-state";
 
@@ -28,7 +31,7 @@ export function PictureSettings({
   return (
     <SettingsCard title={title} description={description}>
       {loading && upload.value === undefined && (
-        <LoadingState label={`Loading ${subject}.`} variant="compact" rows={1} />
+        <PictureUploadLoading kind={upload.kind} label={`Loading ${subject}`} />
       )}
       {error && !blocked && upload.value !== undefined && (
         <div className="flex flex-wrap items-center gap-2">

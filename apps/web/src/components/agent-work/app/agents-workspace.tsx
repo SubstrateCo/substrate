@@ -5,6 +5,7 @@ import { useRef, useState } from "react";
 
 import { ActivityTurnTranscript } from "../transcript/activity-turn-transcript";
 import { AgentPage } from "./agent-page";
+import { AgentPageLoading } from "./agent-page-loading";
 import type { AgentPageSection } from "./agent-sections";
 import { AgentsWorkspaceView } from "./agents-workspace-view";
 import { FirstAgentView } from "./first-agent-view";
@@ -82,10 +83,11 @@ export function AgentsWorkspace({
         onOpenAgent={(id) => go({ agentId: id })}
       />
     );
+  else if (!selected && catalog.isPending) content = <AgentPageLoading section={section} />;
   else if (!selected)
     content = (
       <PaneState
-        label={catalog.isPending ? "Loading agent…" : "Agent unavailable"}
+        label="Agent unavailable"
         error={catalog.error}
         onRetry={() => void catalog.refetch()}
       />

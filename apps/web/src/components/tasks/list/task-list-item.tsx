@@ -5,6 +5,12 @@ import { TaskAssigneeAvatar } from "../task-cues/task-assignee-avatar";
 import { taskPriorityLabels } from "../task-cues/task-labels";
 import { TaskPriorityIcon } from "../task-cues/task-priority-icon";
 import type { ProjectDetail, Task } from "../types";
+import {
+  taskRowAssigneeClassName,
+  taskRowClassName,
+  taskRowContentClassName,
+  taskRowDueDateClassName,
+} from "./task-list-layout";
 import { TaskStatusMenu } from "./task-status-menu";
 import { DueDate } from "@/components/time/due-date";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -51,7 +57,7 @@ export function TaskListItem({
     <li
       data-selected={selected || undefined}
       className={cn(
-        "flex h-11 items-center gap-1 pr-6 pl-9 text-sm",
+        taskRowClassName,
         selected
           ? "bg-row-selected text-row-selected-foreground"
           : "hover:bg-row-hover has-focus-visible:bg-row-hover",
@@ -67,7 +73,10 @@ export function TaskListItem({
         type="button"
         aria-current={selected || undefined}
         onClick={onSelect}
-        className="flex h-full min-w-0 flex-1 items-center gap-3 rounded-sm pl-1 text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset"
+        className={cn(
+          taskRowContentClassName,
+          "rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset",
+        )}
       >
         <span className="flex min-w-0 flex-1 items-center gap-2">
           <span className="sr-only">{taskStatusLabels[task.status]}: </span>
@@ -99,7 +108,7 @@ export function TaskListItem({
           </TooltipTrigger>
           <TooltipContent>{taskPriorityLabels[task.priority]}</TooltipContent>
         </Tooltip>
-        <span className="hidden w-16 shrink-0 justify-end text-xs text-muted-foreground @sm:flex">
+        <span className={taskRowDueDateClassName}>
           {task.dueDate && (
             <>
               <span className="sr-only">, due </span>
@@ -122,7 +131,7 @@ function TaskListAssignee({
 }) {
   const missingName = assigned ? "Former member" : undefined;
   return (
-    <span className="ml-2 flex w-6 shrink-0 justify-center">
+    <span className={taskRowAssigneeClassName}>
       {assignee ? (
         <TaskAssigneeHoverCard assignee={assignee}>
           <TaskAssigneeAvatar name={assignee.name} image={assignee.image} type={assignee.type} />

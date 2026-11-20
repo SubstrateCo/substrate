@@ -14,7 +14,7 @@ import {
   recordChangeDialog,
   type RecordChangeDialog,
 } from "./record-change-dialogs";
-import { RecordDetailView, DetailProperty } from "./record-detail-view";
+import { RecordDetailView, RecordDetailLoading, DetailProperty } from "./record-detail-view";
 import type { RecordDraft } from "./record-editor";
 import type { getDeal } from "@/api/crm/requests";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
@@ -42,7 +42,7 @@ export function DealDetail({
   const [editingRecord, setEditingRecord] = useState<RecordDraft | null>(null);
   const accounts = useQuery({ ...accountsOptions(organizationId), enabled: dialog === "edit" });
   const contacts = useQuery({ ...contactsOptions(organizationId), enabled: dialog === "edit" });
-  const { data, fallback } = crmResource(query);
+  const { data, fallback } = crmResource(query, <RecordDetailLoading kind="deals" />);
   if (!data) return fallback;
   const { deal, contacts: participants, level } = data;
   const canEdit = level === "edit" || level === "owner";

@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { ContentNotice } from "../feedback/content-notice";
 import { ErrorState } from "../feedback/error-state";
 import { LoadingState } from "../feedback/loading-state";
+import { SkeletonText } from "../feedback/skeleton-text";
 import { Table, TableBody, TableCell, TableRow } from "../ui/table";
 import { AppTableHeader } from "./app-table-header";
 import type { AppTableInstance } from "./table";
@@ -48,6 +49,7 @@ export function AppTable<TData extends RowData>({
   const rows = table.getRowModel().rows;
   // With no rows, show only the notice: sortable headers over nothing are noise.
   const hasRows = rows.length > 0;
+  const initialLoading = loading && !hasRows && !error;
   let emptyContent = (
     <ContentNotice title={emptyMessage} description={emptyDescription} icon={emptyIcon} />
   );
@@ -61,8 +63,14 @@ export function AppTable<TData extends RowData>({
   return (
     <table.AppTable>
       <div className="@container min-w-0 space-y-3">
-        {loading && hasRows && (
-          <span role="status" className="sr-only">
+        {loading && (hasRows || initialLoading) && (
+          <span
+            role="status"
+            className={cn(
+              "sr-only",
+              initialLoading && renderMobileRow && "hidden @min-[40rem]:block",
+            )}
+          >
             {loadingMessage}
           </span>
         )}
@@ -82,8 +90,8 @@ export function AppTable<TData extends RowData>({
         >
           {hasRows || loading ? (
             <Table aria-label={name} aria-busy={loading}>
-              <AppTableHeader table={table} />
-              <AppTableBody table={table} rows={rows}>
+              <AppTableHeader table={table} loading={initialLoading} />
+              <AppTableBody table={table} rows={rows} loading={initialLoading}>
                 {emptyContent}
               </AppTableBody>
             </Table>
@@ -128,12 +136,29 @@ function MobileTableRows<TData extends RowData>({
 function AppTableBody<TData extends RowData>({
   table,
   rows,
+  loading,
   children,
 }: {
   table: AppTableInstance<TData>;
   rows: AppTableRows<TData>;
+  loading: boolean;
   children: ReactNode;
 }) {
+  if (loading) {
+    return (
+      <TableBody>
+        {Array.from({ length: 3 }, (_, index) => (
+          <TableRow key={index} aria-hidden="true">
+            {table.getAllLeafColumns().map((column) => (
+              <TableCell key={column.id}>
+                <SkeletonText width="70%" />
+              </TableCell>
+            ))}
+          </TableRow>
+        ))}
+      </TableBody>
+    );
+  }
   return (
     <TableBody>
       {rows.length === 0 ? (

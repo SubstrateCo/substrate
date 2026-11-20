@@ -7,8 +7,10 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 export function AppTableHeader<TData extends RowData>({
   table,
+  loading = false,
 }: {
   table: AppTableInstance<TData>;
+  loading?: boolean;
 }) {
   return (
     <TableHeader>
@@ -32,7 +34,7 @@ export function AppTableHeader<TData extends RowData>({
                 aria-sort={header.column.getCanSort() ? sortDirection : undefined}
               >
                 {!header.isPlaceholder &&
-                  (header.column.getCanSort() ? (
+                  (header.column.getCanSort() && !loading ? (
                     <Button
                       variant="ghost"
                       size="sm"

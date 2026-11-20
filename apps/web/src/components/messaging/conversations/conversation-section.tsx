@@ -1,11 +1,13 @@
 import { useState } from "react";
 
-import { LoadingState } from "@/components/feedback/loading-state";
 import {
   ConversationCreateMenu,
   type DirectMessageAgent,
 } from "@/components/messaging/conversations/conversation-create-menu";
-import { ConversationSidebarItem } from "@/components/messaging/conversations/conversation-sidebar-item";
+import {
+  ConversationSidebarItem,
+  ConversationSidebarLoadingRow,
+} from "@/components/messaging/conversations/conversation-sidebar-item";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import type { Conversation } from "@/lib/messaging/conversations";
@@ -88,12 +90,6 @@ export function ConversationSection({
             />
           )}
         </div>
-        {loading && conversations.length === 0 && (
-          <LoadingState
-            label={section === "dm" ? "Loading direct messages…" : "Loading channels…"}
-            variant="compact"
-          />
-        )}
         {pinned && (
           <div className="mt-0.5">
             <ConversationSidebarItem
@@ -107,6 +103,15 @@ export function ConversationSection({
         <CollapsibleContent className="-mx-1 -my-0.5">
           <div className="px-1 py-0.5">
             <div className="mt-0.5 flex flex-col gap-0.5">
+              {loading && conversations.length === 0 && (
+                <div
+                  role="status"
+                  aria-label={section === "dm" ? "Loading direct messages…" : "Loading channels…"}
+                >
+                  <ConversationSidebarLoadingRow />
+                  <ConversationSidebarLoadingRow />
+                </div>
+              )}
               {listed.map((conversation) => (
                 <ConversationSidebarItem
                   key={conversation.id}

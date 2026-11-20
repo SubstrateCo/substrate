@@ -2,11 +2,10 @@ import type { OrganizationRole } from "@substrate/contracts/auth/permissions";
 
 import { useRef, type ReactNode } from "react";
 
-import { MemberRow, type MemberRowData } from "./member-row";
+import { MemberRow, MemberRowSkeleton, type MemberRowData } from "./member-row";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
-import { LoadingState } from "@/components/feedback/loading-state";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { SettingsPanel } from "@/components/layout/settings-page";
@@ -137,7 +136,18 @@ function MemberListStatus({
   const blocked = state === "unavailable";
   return (
     <>
-      {loading && !hasData && <LoadingState label="Loading members." rows={3} />}
+      {loading && !hasData && (
+        <div role="status" aria-label="Loading members">
+          <ul
+            aria-hidden="true"
+            className="@container divide-y overflow-hidden rounded-xl border bg-card"
+          >
+            {[0, 1, 2].map((key) => (
+              <MemberRowSkeleton key={key} />
+            ))}
+          </ul>
+        </div>
+      )}
       {error && (!hasData || blocked) && (
         <ErrorState title="Couldn’t load members" onRetry={blocked ? undefined : onRetry} />
       )}

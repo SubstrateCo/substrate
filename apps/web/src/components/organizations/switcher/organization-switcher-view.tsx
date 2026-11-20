@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 
 import { ErrorState } from "../../feedback/error-state";
-import { LoadingState } from "../../feedback/loading-state";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,7 +8,10 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "../../ui/dropdown-menu";
-import { OrganizationSwitcherItem } from "./organization-switcher-item";
+import {
+  OrganizationSwitcherItem,
+  OrganizationSwitcherItemSkeleton,
+} from "./organization-switcher-item";
 import { SwitcherTrigger } from "@/components/organizations/switcher/switcher-trigger";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { Settings } from "lucide-react";
@@ -49,7 +51,12 @@ export function OrganizationSwitcher({
         <DropdownMenuContent align="start" side="right" sideOffset={12}>
           <DropdownMenuLabel>Workspaces</DropdownMenuLabel>
           {state === "loading" && !organizations.length && (
-            <LoadingState label="Loading workspaces…" variant="compact" />
+            <div role="status" aria-label="Loading workspaces">
+              <div aria-hidden="true">
+                <OrganizationSwitcherItemSkeleton />
+                <OrganizationSwitcherItemSkeleton />
+              </div>
+            </div>
           )}
           {loadError && (
             <ErrorState

@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import {
@@ -11,6 +12,7 @@ import {
 } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useCrmMutation } from "@/queries/crm/mutations";
 import { ArrowDown, ArrowUp, Plus } from "lucide-react";
 
@@ -39,17 +41,13 @@ export function PipelineSettings({
     setDraft(next);
   }
   return (
-    <SettingsSection
-      title="Pipeline"
-      description="One pipeline with stable open stages. Won and Lost remain separate outcomes."
-    >
+    <PipelineSection>
       <UnsavedChangesGuard
         dirty={dirty}
         name="CRM pipeline"
         description="Your pipeline changes haven’t been saved."
       />
-      <SettingsCard
-        title="Open stages"
+      <PipelineStagesCard
         footer={
           canEdit && (
             <SettingsFooter
@@ -77,40 +75,45 @@ export function PipelineSettings({
       >
         <ol className="space-y-2">
           {rows.map((stage, index) => (
-            <li key={stage.key} className="group/row flex items-center gap-2">
-              <span className="w-5 text-xs text-muted-foreground tabular-nums">{index + 1}</span>
-              <Input
-                aria-label={`Stage ${index + 1} name`}
-                value={stage.name}
-                maxLength={100}
-                disabled={!canEdit || mutation.isPending}
-                onChange={(event) =>
-                  setDraft(
-                    rows.map((row) =>
-                      row.key === stage.key ? { ...row, name: event.target.value } : row,
-                    ),
-                  )
-                }
-              />
-              {canEdit && (
-                <RowActions label={`Actions for ${stage.name}`}>
-                  <RowAction
-                    label={`Move ${stage.name} up`}
-                    disabled={index === 0 || mutation.isPending}
-                    onClick={() => move(index, -1)}
-                  >
-                    <ArrowUp aria-hidden />
-                  </RowAction>
-                  <RowAction
-                    label={`Move ${stage.name} down`}
-                    disabled={index === rows.length - 1 || mutation.isPending}
-                    onClick={() => move(index, 1)}
-                  >
-                    <ArrowDown aria-hidden />
-                  </RowAction>
-                </RowActions>
-              )}
-            </li>
+            <PipelineStageRow
+              key={stage.key}
+              number={index + 1}
+              control={
+                <Input
+                  aria-label={`Stage ${index + 1} name`}
+                  value={stage.name}
+                  maxLength={100}
+                  disabled={!canEdit || mutation.isPending}
+                  onChange={(event) =>
+                    setDraft(
+                      rows.map((row) =>
+                        row.key === stage.key ? { ...row, name: event.target.value } : row,
+                      ),
+                    )
+                  }
+                />
+              }
+              actions={
+                canEdit && (
+                  <RowActions label={`Actions for ${stage.name}`}>
+                    <RowAction
+                      label={`Move ${stage.name} up`}
+                      disabled={index === 0 || mutation.isPending}
+                      onClick={() => move(index, -1)}
+                    >
+                      <ArrowUp aria-hidden />
+                    </RowAction>
+                    <RowAction
+                      label={`Move ${stage.name} down`}
+                      disabled={index === rows.length - 1 || mutation.isPending}
+                      onClick={() => move(index, 1)}
+                    >
+                      <ArrowDown aria-hidden />
+                    </RowAction>
+                  </RowActions>
+                )
+              }
+            />
           ))}
         </ol>
         {canEdit && (
@@ -136,7 +139,70 @@ export function PipelineSettings({
             )}
           </SettingsNote>
         )}
-      </SettingsCard>
+      </PipelineStagesCard>
+    </PipelineSection>
+  );
+}
+
+function PipelineStageRow({
+  number,
+  control,
+  actions,
+}: {
+  number: React.ReactNode;
+  control: React.ReactNode;
+  actions?: React.ReactNode;
+}) {
+  return (
+    <li className="group/row flex items-center gap-2">
+      <span className="w-5 text-xs text-muted-foreground tabular-nums">{number}</span>
+      {control}
+      {actions}
+    </li>
+  );
+}
+
+function PipelineSection({ children }: { children: React.ReactNode }) {
+  return (
+    <SettingsSection
+      title="Pipeline"
+      description="One pipeline with stable open stages. Won and Lost remain separate outcomes."
+    >
+      {children}
     </SettingsSection>
+  );
+}
+
+function PipelineStagesCard({
+  children,
+  footer,
+}: {
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  return (
+    <SettingsCard title="Open stages" footer={footer}>
+      {children}
+    </SettingsCard>
+  );
+}
+
+export function PipelineSettingsLoading() {
+  return (
+    <div role="status" aria-label="Loading pipeline settings">
+      <PipelineSection>
+        <PipelineStagesCard>
+          <ol className="space-y-2" aria-hidden="true">
+            {[0, 1, 2].map((key) => (
+              <PipelineStageRow
+                key={key}
+                number={<SkeletonText width="1rem" />}
+                control={<Skeleton className="h-9 flex-1" />}
+              />
+            ))}
+          </ol>
+        </PipelineStagesCard>
+      </PipelineSection>
+    </div>
   );
 }

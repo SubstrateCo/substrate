@@ -14,6 +14,7 @@ import {
   type TaskFilters,
 } from "./task-filters";
 import { TaskListItem } from "./task-list-item";
+import { TaskGroupHeaderLayout } from "./task-list-layout";
 import { TaskListToolbar } from "./task-list-toolbar";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -114,7 +115,7 @@ export function TaskList({
             const open = !collapsed[status];
             return (
               <div key={status} role="group" aria-labelledby={`${listId}-${status}-label`}>
-                <div className="group/header flex h-10 items-center gap-1 border-b pr-6 pl-4">
+                <TaskGroupHeaderLayout>
                   <h2 className="min-w-0 flex-1">
                     <button
                       type="button"
@@ -151,7 +152,7 @@ export function TaskList({
                       </Tooltip>
                     </span>
                   )}
-                </div>
+                </TaskGroupHeaderLayout>
                 <ul id={`${listId}-${status}`} hidden={!open}>
                   {rows.map((task) => (
                     <TaskListItem

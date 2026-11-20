@@ -1,8 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { CallerSettingsView } from "./caller-settings-view";
+import { CallerSettingsLoading, CallerSettingsView } from "./caller-settings-view";
 import { ErrorState } from "@/components/feedback/error-state";
-import { LoadingState } from "@/components/feedback/loading-state";
 import { callersOptions, useCallMutations } from "@/queries/agent-work/calls";
 import { currentOrganizationQueryOptions } from "@/queries/organizations/options";
 
@@ -18,7 +17,7 @@ export function CallerSettings({
   const callers = useQuery(callersOptions(userId, organizationId, agentId));
   const organization = useQuery(currentOrganizationQueryOptions(organizationId));
   const { policy, remove } = useCallMutations(userId, organizationId, agentId);
-  if (callers.isPending) return <LoadingState label="Loading caller settings" variant="compact" />;
+  if (callers.isPending) return <CallerSettingsLoading />;
   if (!callers.data)
     return (
       <ErrorState title="Couldn’t load caller settings" onRetry={() => void callers.refetch()} />

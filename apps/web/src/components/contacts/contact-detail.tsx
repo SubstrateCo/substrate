@@ -18,7 +18,11 @@ import {
   recordChangeDialog,
   type RecordChangeDialog,
 } from "@/components/crm/record-change-dialogs";
-import { RecordDetailView, DetailProperty } from "@/components/crm/record-detail-view";
+import {
+  RecordDetailView,
+  RecordDetailLoading,
+  DetailProperty,
+} from "@/components/crm/record-detail-view";
 import { Button } from "@/components/ui/button";
 import { crmLink } from "@/lib/navigation/record-links";
 import { contactOptions } from "@/queries/contacts/options";
@@ -37,7 +41,7 @@ export function ContactDetail({
   const [dialog, setDialog] = useState<RecordChangeDialog | "interaction" | "affiliation" | null>(
     null,
   );
-  const { data, fallback } = crmResource(query);
+  const { data, fallback } = crmResource(query, <RecordDetailLoading kind="contacts" />);
   if (!data) return fallback;
   const { profile, affiliations, level } = data;
   const canEdit = level === "edit" || level === "owner";

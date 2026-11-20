@@ -2,12 +2,37 @@ import { Link } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
+import { Skeleton } from "@/components/ui/skeleton";
 import type { TranscriptEntry } from "@/lib/agent-work/transcript";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import { Bot, Check, CornerDownRight, Hand, MessageSquarePlus, RotateCcw, X } from "lucide-react";
 
 const outputLabels = { message: "Posted a message", task: "Changed a task", request: "Asked you" };
+
+function TimelineText({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <li className="flex min-w-0 gap-2.5">
+      {icon}
+      <div className="min-w-0 flex-1 text-sm">{children}</div>
+    </li>
+  );
+}
+
+export function TurnTimelineLoading() {
+  return (
+    <ol aria-hidden="true" className="grid gap-3 px-5 py-4">
+      {[0, 1].map((i) => (
+        <TimelineText key={i} icon={<Skeleton className="mt-0.5 size-5 shrink-0" />}>
+          <SkeletonText width="90%" />
+          <br />
+          <SkeletonText width="60%" />
+        </TimelineText>
+      ))}
+    </ol>
+  );
+}
 
 /** The turn's canonical events, in order. Requests render through the container. */
 export function TurnTimeline({
@@ -27,14 +52,16 @@ export function TurnTimeline({
         switch (entry.type) {
           case "text":
             return (
-              <li key={entry.key} className="flex min-w-0 gap-2.5">
-                <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground">
-                  <Bot aria-hidden="true" className="size-3" />
-                </span>
-                <div className="min-w-0 flex-1 text-sm">
-                  <MessageMarkdown body={entry.text} />
-                </div>
-              </li>
+              <TimelineText
+                key={entry.key}
+                icon={
+                  <span className="mt-0.5 grid size-5 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground">
+                    <Bot aria-hidden="true" className="size-3" />
+                  </span>
+                }
+              >
+                <MessageMarkdown body={entry.text} />
+              </TimelineText>
             );
           case "step":
             return (

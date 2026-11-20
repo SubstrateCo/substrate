@@ -116,7 +116,7 @@ export function ConversationHeader({
   memberAction,
   taskLink,
 }: {
-  title: string;
+  title: ReactNode;
   /** Omitted while the conversation is unavailable. */
   kind?: "private" | "public" | "group" | "dm";
   viewerId?: string;

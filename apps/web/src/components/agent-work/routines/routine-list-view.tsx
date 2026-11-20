@@ -1,10 +1,12 @@
 import type { AgentRoutineView } from "@substrate/contracts/agent-work";
 
+import type { ReactNode } from "react";
+
 import { describeSchedule } from "./schedule";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
-import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
 import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
 import { SettingsSection } from "@/components/layout/settings-section";
@@ -18,6 +20,38 @@ import {
 } from "@/lib/format/date";
 import { cn } from "cn";
 import { CalendarClock, Hand, Pencil, Plus, Trash2 } from "lucide-react";
+
+function RoutineRow({ children }: { children: ReactNode }) {
+  return <li className={cn(actionRow, "flex min-w-0 items-start gap-3 px-4 py-3")}>{children}</li>;
+}
+
+function RoutineContent({ children }: { children: ReactNode }) {
+  return <div className="grid min-w-0 flex-1 gap-0.5">{children}</div>;
+}
+
+export function RoutineRowsLoading() {
+  return (
+    <div role="status" aria-label="Loading routines">
+      <ul aria-hidden="true" className="divide-y overflow-hidden rounded-xl border bg-card">
+        {[0, 1].map((i) => (
+          <RoutineRow key={i}>
+            <RoutineContent>
+              <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
+                <SkeletonText width="12rem" />
+              </p>
+              <p className="truncate text-xs text-muted-foreground">
+                <SkeletonText width="16rem" />
+              </p>
+              <p className="line-clamp-2 text-xs text-muted-foreground">
+                <SkeletonText width="20rem" />
+              </p>
+            </RoutineContent>
+          </RoutineRow>
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 /** "Next run Wed, Nov 11, 9:00 AM EST": in the routine's own zone, so it matches its schedule. */
 function nextRun(routine: AgentRoutineView) {
@@ -72,7 +106,7 @@ export function RoutineListView({
       {error && !routines.length && (
         <ErrorState compact title="Couldn’t load routines" onRetry={onRetry} />
       )}
-      {loading && <LoadingState label="Loading routines" variant="compact" rows={2} />}
+      {loading && !routines.length && <RoutineRowsLoading />}
       {!loading && !error && !routines.length && (
         <ContentNotice
           icon={CalendarClock}
@@ -87,11 +121,8 @@ export function RoutineListView({
             const needsApproval = routine.approvedRevision !== routine.revision;
             const next = nextRun(routine);
             return (
-              <li
-                key={routine.id}
-                className={cn(actionRow, "flex min-w-0 items-start gap-3 px-4 py-3")}
-              >
-                <div className="grid min-w-0 flex-1 gap-0.5">
+              <RoutineRow key={routine.id}>
+                <RoutineContent>
                   <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
                     <span className="truncate">{routine.name}</span>
                     {!needsApproval && !routine.enabled && <Tag>Paused</Tag>}
@@ -126,7 +157,7 @@ export function RoutineListView({
                       </PendingButton>
                     </div>
                   )}
-                </div>
+                </RoutineContent>
                 <RowActions label={`Actions for ${routine.name}`}>
                   <RowAction label={`Edit ${routine.name}`} onClick={() => onEdit(routine.id)}>
                     <Pencil />
@@ -139,7 +170,7 @@ export function RoutineListView({
                     <Trash2 />
                   </RowAction>
                 </RowActions>
-              </li>
+              </RoutineRow>
             );
           })}
         </ul>

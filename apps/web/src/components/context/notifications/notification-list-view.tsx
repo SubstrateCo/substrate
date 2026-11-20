@@ -4,12 +4,11 @@ import { Fragment, type KeyboardEvent, type MouseEvent, type ReactNode } from "r
 
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
-import { LoadingState } from "../../feedback/loading-state";
 import { PendingButton } from "../../feedback/pending-button";
 import { SegmentedControl } from "../../forms/segmented-control";
 import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
-import { NotificationItem, type Notification } from "./notification-item";
+import { NotificationItem, NotificationRowsLoading, type Notification } from "./notification-item";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
@@ -137,7 +136,11 @@ export function NotificationList({
             />
             <div className="flex flex-1 flex-col gap-4">
               <NotificationFeedNotice state={state} onRetry={onRetry} />
-              {loading && <LoadingState label="Loading notifications" variant="compact" />}
+              {loading && !visible.length && !failed && (
+                <div className="-mx-3">
+                  <NotificationRowsLoading label="Loading notifications" />
+                </div>
+              )}
               {empty && (
                 <EmptyNotificationFeed
                   unreadOnly={filter === "unread"}

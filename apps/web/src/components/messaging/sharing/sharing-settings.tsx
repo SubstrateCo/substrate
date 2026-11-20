@@ -1,9 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
+import type { ReactNode } from "react";
+
 import { isAccessFailure } from "@/api/access-failure";
 import { ErrorState } from "@/components/feedback/error-state";
-import { LoadingState } from "@/components/feedback/loading-state";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { SettingsPanel } from "@/components/layout/settings-page";
@@ -30,7 +32,6 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
       description="Approve partner channels, manage invitations, or disconnect organizations."
     >
       <CollaborationLoadNotice
-        loading={conversations.isPending || inbox.isPending}
         failed={!!(conversations.error || inbox.error)}
         blocked={blocked}
         hasLists={!!(conversations.data && inbox.data)}
@@ -38,23 +39,48 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
       />
       {!blocked && (
         <SettingsCard title="Requests">
+          {inbox.isPending && (
+            <div role="status" aria-label="Loading requests…">
+              <div aria-hidden="true" className="flex flex-wrap items-center justify-between gap-3">
+                <SharingRequestContent title={<SkeletonText width="12rem" />} />
+              </div>
+            </div>
+          )}
           {inbox.data?.length === 0 && <SettingsNote>No pending requests.</SettingsNote>}
           {inbox.data?.map((invite) => (
             <div key={invite.id} className="flex flex-wrap items-center justify-between gap-3">
-              <p className="text-sm wrap-anywhere">
-                {invite.name ?? "Conversation"} · {invite.email}
-              </p>
-              <Button asChild variant="outline">
-                <Link to="/accept-sharing/$invitationId" params={{ invitationId: invite.id }}>
-                  Review
-                </Link>
-              </Button>
+              <SharingRequestContent
+                title={
+                  <>
+                    {invite.name ?? "Conversation"} · {invite.email}
+                  </>
+                }
+                action={
+                  <Button asChild variant="outline">
+                    <Link to="/accept-sharing/$invitationId" params={{ invitationId: invite.id }}>
+                      Review
+                    </Link>
+                  </Button>
+                }
+              />
             </div>
           ))}
         </SettingsCard>
       )}
       {!blocked && (
         <SettingsCard title="Shared conversations">
+          {conversations.isPending && (
+            <div role="status" aria-label="Loading shared conversations…">
+              <ul aria-hidden="true" className="divide-y">
+                <li className="flex flex-wrap items-center justify-between gap-3 py-2">
+                  <SharedConversationTitle
+                    icon={<SkeletonText width="1rem" />}
+                    title={<SkeletonText width="10rem" />}
+                  />
+                </li>
+              </ul>
+            </div>
+          )}
           {conversations.data?.length === 0 && (
             <SettingsNote>No conversations to manage.</SettingsNote>
           )}
@@ -65,17 +91,22 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
                   key={conversation.id}
                   className="flex flex-wrap items-center justify-between gap-3 py-2"
                 >
-                  <span className="flex min-w-0 items-center gap-2 text-sm">
-                    {conversation.kind === "channel" ? (
-                      <Globe aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                    ) : (
-                      <ConversationKindIcon
-                        kind={conversation.kind}
-                        className="size-4 shrink-0 text-muted-foreground"
-                      />
-                    )}
-                    {conversation.name ?? "Direct message"}
-                  </span>
+                  <SharedConversationTitle
+                    icon={
+                      conversation.kind === "channel" ? (
+                        <Globe
+                          aria-hidden="true"
+                          className="size-4 shrink-0 text-muted-foreground"
+                        />
+                      ) : (
+                        <ConversationKindIcon
+                          kind={conversation.kind}
+                          className="size-4 shrink-0 text-muted-foreground"
+                        />
+                      )
+                    }
+                    title={conversation.name ?? "Direct message"}
+                  />
                   <Button variant="ghost" onClick={() => open(conversation.id)}>
                     Manage
                   </Button>
@@ -98,13 +129,11 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
 }
 
 function CollaborationLoadNotice({
-  loading,
   failed,
   blocked,
   hasLists,
   onRetry,
 }: {
-  loading: boolean;
   failed: boolean;
   blocked: boolean;
   hasLists: boolean;
@@ -126,10 +155,23 @@ function CollaborationLoadNotice({
           onRetry={blocked ? undefined : onRetry}
         />
       );
+  return notice;
+}
+
+function SharingRequestContent({ title, action }: { title: ReactNode; action?: ReactNode }) {
   return (
     <>
-      {loading && <LoadingState label="Loading collaboration…" rows={2} />}
-      {notice}
+      <p className="text-sm wrap-anywhere">{title}</p>
+      {action}
     </>
+  );
+}
+
+function SharedConversationTitle({ icon, title }: { icon: ReactNode; title: ReactNode }) {
+  return (
+    <span className="flex min-w-0 items-center gap-2 text-sm">
+      {icon}
+      {title}
+    </span>
   );
 }

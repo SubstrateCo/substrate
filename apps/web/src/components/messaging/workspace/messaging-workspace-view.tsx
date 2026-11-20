@@ -3,10 +3,13 @@ import { Children, type ReactNode } from "react";
 import { PaneState } from "../../feedback/pane-state";
 import { Button } from "../../ui/button";
 import { ConversationSidebar } from "../conversations/conversation-sidebar";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-create-menu";
+import { ConversationHeader } from "@/components/messaging/conversations/conversation-header";
+import { MessageLoading } from "@/components/messaging/messages/message-loading";
 import { WorkspaceEmpty } from "@/components/messaging/workspace/workspace-empty";
 import type { Conversation } from "@/lib/messaging/conversations";
 import type { PickerPerson } from "@/lib/people/people-picker";
@@ -149,7 +152,13 @@ function WorkspaceContent({
       {hasContent && children}
       {!hasContent &&
         (loading ? (
-          <PaneState label="Loading your conversations…" />
+          <section
+            aria-label="Conversation"
+            className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface"
+          >
+            <ConversationHeader title={<SkeletonText width="10rem" />} addingMembers={false} />
+            <MessageLoading label="Loading your conversations…" />
+          </section>
         ) : (
           <WorkspaceEmpty onCreate={onCreate} />
         ))}

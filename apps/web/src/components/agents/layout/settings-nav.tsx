@@ -21,6 +21,7 @@ export function SettingsNav<T extends string>({
   value,
   marked,
   onChange,
+  disabled,
 }: {
   label: string;
   groups: readonly SettingsNavGroup<T>[];
@@ -28,6 +29,7 @@ export function SettingsNav<T extends string>({
   /** Items that hold unsaved changes. They get a dot. */
   marked?: readonly T[];
   onChange: (value: T) => void;
+  disabled?: boolean;
 }) {
   const markedItems = useMemo(() => (marked?.length ? new Set(marked) : undefined), [marked]);
   return (
@@ -57,6 +59,7 @@ export function SettingsNav<T extends string>({
               variant="sidebar"
               aria-current={item === value ? "page" : undefined}
               className="shrink-0 justify-start @3xl:w-full"
+              disabled={disabled}
               onClick={() => onChange(item)}
             >
               <Icon aria-hidden="true" />

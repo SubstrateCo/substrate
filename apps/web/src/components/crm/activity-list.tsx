@@ -4,11 +4,12 @@ import { activityActionLabel, activityFieldLabel } from "./activity-labels";
 import { isAccessFailure } from "@/api/access-failure";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
-import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
+import { Skeleton } from "@/components/ui/skeleton";
 import { History, Unlink } from "lucide-react";
 
 export function ActivityList({
@@ -38,7 +39,30 @@ export function ActivityList({
           shown separately.
         </p>
       </div>
-      {loading && <LoadingState label="Loading activity…" variant="compact" />}
+      {loading && !items.length && (
+        <div role="status" aria-label="Loading activity">
+          <ol aria-hidden="true" className="divide-y">
+            {[0, 1, 2].map((key) => (
+              <ActivityRowLayout key={key}>
+                <span className="size-6 shrink-0 overflow-hidden rounded-full">
+                  <Skeleton className="size-full" />
+                </span>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <div className="text-sm font-medium">
+                    <SkeletonText width="8rem" />
+                  </div>
+                  <p className="text-sm">
+                    <SkeletonText width="14rem" />
+                  </p>
+                </div>
+                <span className="shrink-0 text-xs">
+                  <SkeletonText width="5rem" />
+                </span>
+              </ActivityRowLayout>
+            ))}
+          </ol>
+        </div>
+      )}
       {unavailable && (
         <ContentNotice
           icon={Unlink}
@@ -64,7 +88,7 @@ export function ActivityList({
       {!unavailable && items.length > 0 && (
         <ol className="divide-y">
           {items.map((item) => (
-            <li key={item.id} className="flex min-w-0 items-start gap-3 py-3">
+            <ActivityRowLayout key={item.id}>
               <PersonAvatar name={item.actor.displayName} agent={item.actor.type === "agent"} />
               <div className="min-w-0 flex-1 space-y-1">
                 <div className="flex flex-wrap items-center gap-2 text-sm">
@@ -86,7 +110,7 @@ export function ActivityList({
                 format="datetime"
                 className="shrink-0 text-xs text-muted-foreground"
               />
-            </li>
+            </ActivityRowLayout>
           ))}
         </ol>
       )}
@@ -103,4 +127,8 @@ export function ActivityList({
       )}
     </section>
   );
+}
+
+function ActivityRowLayout({ children }: { children: React.ReactNode }) {
+  return <li className="flex min-w-0 items-start gap-3 py-3">{children}</li>;
 }

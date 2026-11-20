@@ -1,11 +1,13 @@
 import type { ReactNode } from "react";
 
 import type { SharingDetails } from "@/api/messaging/sharing";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
 import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "cn";
 import { Building2, Mail, RotateCcw, TriangleAlert, UserMinus, X } from "lucide-react";
 
@@ -93,6 +95,23 @@ function Row({
 }
 
 const iconBox = "flex size-6 shrink-0 items-center justify-center rounded-md bg-muted";
+
+export function SharingDetailsLoading() {
+  return (
+    <div role="status" aria-label="Loading sharing…">
+      <ul aria-hidden="true" className="grid gap-0.5">
+        {[0, 1].map((index) => (
+          <Row
+            key={index}
+            icon={<Skeleton className="size-6 shrink-0" />}
+            title={<SkeletonText width="8rem" />}
+            status={<SkeletonText width="6rem" />}
+          />
+        ))}
+      </ul>
+    </div>
+  );
+}
 
 /** Who outside the organization has access, who is invited, and what changed. */
 export function SharingDetailsView({

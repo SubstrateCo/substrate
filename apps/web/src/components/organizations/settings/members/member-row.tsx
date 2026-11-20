@@ -1,5 +1,6 @@
 import type { OrganizationRole } from "@substrate/contracts/auth/permissions";
 
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
@@ -10,6 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { organizationRoles, primaryRole, roleLabel } from "@/lib/organizations/member-policy";
 import { cn } from "cn";
@@ -27,6 +29,39 @@ export type MemberRowData = {
   canRemove: boolean;
 };
 
+function MemberRowLayout({ children }: { children: React.ReactNode }) {
+  return (
+    <li className={cn(actionRow, "flex min-w-0 items-center gap-3 px-4 py-2.5 hover:bg-row-hover")}>
+      {children}
+    </li>
+  );
+}
+
+export function MemberRowSkeleton() {
+  return (
+    <MemberRowLayout>
+      <span className="size-8 shrink-0 overflow-hidden rounded-full">
+        <Skeleton className="size-full" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-medium">
+          <SkeletonText width="8rem" />
+        </p>
+        <p className="text-sm">
+          <SkeletonText width="12rem" />
+        </p>
+      </div>
+      <span className="hidden text-sm @lg:inline">
+        <SkeletonText width="6rem" />
+      </span>
+      <span className="w-28 px-2.5 text-sm">
+        <SkeletonText width="4rem" />
+      </span>
+      <span className="w-7" />
+    </MemberRowLayout>
+  );
+}
+
 export function MemberRow({
   member,
   disabled,
@@ -40,7 +75,7 @@ export function MemberRow({
 }) {
   const role = primaryRole(member.role);
   return (
-    <li className={cn(actionRow, "flex min-w-0 items-center gap-3 px-4 py-2.5 hover:bg-row-hover")}>
+    <MemberRowLayout>
       <PersonAvatar name={member.name} image={member.image} className="data-[size=sm]:size-8" />
 
       <Tooltip>
@@ -107,6 +142,6 @@ export function MemberRow({
           </RowAction>
         )}
       </RowActions>
-    </li>
+    </MemberRowLayout>
   );
 }

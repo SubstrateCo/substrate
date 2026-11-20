@@ -6,7 +6,7 @@ import { useState } from "react";
 import { CrmExport } from "@/components/crm/crm-export";
 import { CrmResourceState } from "@/components/crm/crm-resource-state";
 import { sectionLabels, singularLabels, type CrmKind } from "@/components/crm/crm-types";
-import { DealPipeline } from "@/components/crm/deal-pipeline";
+import { DealPipeline, DealPipelineLoading } from "@/components/crm/deal-pipeline";
 import { RecordEditor } from "@/components/crm/record-editor";
 import { RecordList } from "@/components/crm/record-list";
 import { SegmentedControl } from "@/components/forms/segmented-control";
@@ -196,9 +196,16 @@ export function RecordCollection({
         </div>
       </div>
       <CrmResourceState
-        pending={debounced.pending || query.isPending}
+        pending={(debounced.pending || query.isPending) && !state.data}
         error={query.error}
         onRetry={() => void query.refetch()}
+        loading={
+          dealPipelineView && !archived ? (
+            <DealPipelineLoading />
+          ) : (
+            <RecordList organizationId={organizationId} kind={kind} rows={[]} loading />
+          )
+        }
       />
       {kind === "deals" && (
         <>

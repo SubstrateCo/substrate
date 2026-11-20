@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 
 import { useCallback, useId, useState } from "react";
 
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
@@ -43,15 +44,17 @@ export function DiscussionItem({ item }: { item: Discussion }) {
   }[item.purpose];
   const author = item.authorName ?? "Unknown author";
   return (
-    <li className="relative flex min-w-0 gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-foreground/15 hover:bg-muted/50">
-      <PersonAvatar
-        name={author}
-        image={item.authorImage}
-        agent={item.authorType === "agent"}
-        className="mt-0.5"
-      />
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+    <DiscussionItemLayout
+      avatar={
+        <PersonAvatar
+          name={author}
+          image={item.authorImage}
+          agent={item.authorType === "agent"}
+          className="mt-0.5"
+        />
+      }
+      meta={
+        <>
           {item.conversationKind ? (
             <ConversationKindIcon
               kind={item.conversationKind}
@@ -72,8 +75,11 @@ export function DiscussionItem({ item }: { item: Discussion }) {
           </Link>
           <span aria-hidden="true">·</span>
           <Timestamp value={item.createdAt} className="relative z-10 shrink-0" />
-        </div>
-        <div id={descriptionId} className="flex min-w-0 flex-col gap-1">
+        </>
+      }
+      descriptionId={descriptionId}
+      content={
+        <>
           <div className="flex min-w-0 items-center gap-1.5 text-sm">
             <span className="truncate font-medium">{author}</span>
             {item.authorType === "agent" && <Tag className="shrink-0">Agent</Tag>}
@@ -92,9 +98,57 @@ export function DiscussionItem({ item }: { item: Discussion }) {
             )}
             <span>{relationship}</span>
           </div>
+        </>
+      }
+    />
+  );
+}
+
+function DiscussionItemLayout({
+  avatar,
+  meta,
+  content,
+  descriptionId,
+}: {
+  avatar: React.ReactNode;
+  meta: React.ReactNode;
+  content: React.ReactNode;
+  descriptionId?: string;
+}) {
+  return (
+    <li className="relative flex min-w-0 gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-foreground/15 hover:bg-row-hover">
+      {avatar}
+      <div className="flex min-w-0 flex-1 flex-col gap-1">
+        <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+          {meta}
+        </div>
+        <div id={descriptionId} className="flex min-w-0 flex-col gap-1">
+          {content}
         </div>
       </div>
     </li>
+  );
+}
+
+export function DiscussionItemSkeleton() {
+  return (
+    <DiscussionItemLayout
+      avatar={<SkeletonText width="1.5rem" className="mt-0.5 h-6 shrink-0 rounded-full" />}
+      meta={<SkeletonText width="9rem" />}
+      content={
+        <>
+          <div className="text-sm">
+            <SkeletonText width="6rem" />
+          </div>
+          <div className="text-sm">
+            <SkeletonText width="80%" />
+          </div>
+          <div className="pt-1 text-xs">
+            <SkeletonText width="8rem" />
+          </div>
+        </>
+      }
+    />
   );
 }
 

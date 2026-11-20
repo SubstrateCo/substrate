@@ -1,8 +1,8 @@
 import type { ReactNode } from "react";
 
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Skeleton } from "@/components/ui/skeleton";
 import { harnessLabel } from "@/lib/agents/harness-meta";
 import { initials } from "@/lib/people/initials";
 import { Bot, LockKeyhole } from "lucide-react";
@@ -102,16 +102,14 @@ export function PersonCard({
   if (state === "loading")
     return (
       <div role="status" aria-label={`Loading details for ${name}…`} className="space-y-3">
-        <div className="flex items-center gap-3">
-          <div className="size-10 shrink-0 overflow-hidden rounded-lg">
-            <Skeleton className="size-full" />
-          </div>
-          <div className="min-w-0 flex-1 space-y-1.5">
-            <Skeleton className="h-4 w-2/3" />
-            <Skeleton className="h-3 w-1/2" />
-          </div>
-        </div>
-        <Skeleton className="h-5 w-16" />
+        <Header
+          name={name}
+          secondary={
+            <p aria-hidden="true" className="text-xs">
+              <SkeletonText width="8rem" />
+            </p>
+          }
+        />
       </div>
     );
   if (state === "unavailable" || !profile)

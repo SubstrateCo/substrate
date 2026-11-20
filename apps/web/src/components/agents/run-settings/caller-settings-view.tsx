@@ -1,15 +1,66 @@
 import type { AgentCallers, AgentCallerPolicy, AgentCallerView } from "@substrate/contracts/agents";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { SettingsCard, SettingsFooter } from "@/components/layout/settings-section";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { UserMinus } from "lucide-react";
+
+function CallerPolicyCard({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
+  return (
+    <SettingsCard
+      title="Who can call this agent"
+      description="Calls from workspace members run with your full access. Your instructions still apply."
+      footer={footer}
+    >
+      {children}
+    </SettingsCard>
+  );
+}
+
+function AllowedCallersCard({ children }: { children: ReactNode }) {
+  return (
+    <SettingsCard
+      title="Allowed callers"
+      description="These people skip approval when you choose Ask me first. Only me still blocks all callers."
+    >
+      {children}
+    </SettingsCard>
+  );
+}
+
+export function CallerSettingsLoading() {
+  return (
+    <div role="status" aria-label="Loading caller settings" className="grid gap-6">
+      <div aria-hidden="true" className="grid gap-6">
+        <CallerPolicyCard>
+          <RadioGroup disabled>
+            {["Only me", "Anyone in", "Ask me first"].map((label) => (
+              <Field key={label} orientation="horizontal">
+                <RadioGroupItem value={label} />
+                <FieldLabel>
+                  {label}
+                  {label === "Anyone in" && <SkeletonText width="7rem" />}
+                </FieldLabel>
+              </Field>
+            ))}
+          </RadioGroup>
+        </CallerPolicyCard>
+        <AllowedCallersCard>
+          <p className="text-sm">
+            <SkeletonText width="10rem" />
+          </p>
+        </AllowedCallersCard>
+      </div>
+    </div>
+  );
+}
 
 export function CallerSettingsView({
   settings,
@@ -45,9 +96,7 @@ export function CallerSettingsView({
         name="Agent callers"
         description="Your caller settings aren’t saved."
       />
-      <SettingsCard
-        title="Who can call this agent"
-        description="Calls from workspace members run with your full access. Your instructions still apply."
+      <CallerPolicyCard
         footer={
           <SettingsFooter
             dirty={dirty}
@@ -81,11 +130,8 @@ export function CallerSettingsView({
             </Field>
           ))}
         </RadioGroup>
-      </SettingsCard>
-      <SettingsCard
-        title="Allowed callers"
-        description="These people skip approval when you choose Ask me first. Only me still blocks all callers."
-      >
+      </CallerPolicyCard>
+      <AllowedCallersCard>
         {!settings.allowlist.length && (
           <p className="text-sm text-muted-foreground">
             No allowed callers. Choose Always allow on a call in Needs you to add someone.
@@ -111,7 +157,7 @@ export function CallerSettingsView({
             </li>
           ))}
         </ul>
-      </SettingsCard>
+      </AllowedCallersCard>
       {confirm && (
         <ConfirmDialog
           title="Allow workspace calls?"

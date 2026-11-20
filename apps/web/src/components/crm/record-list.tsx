@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { dealAmount, outcomeLabel, singularLabels, type CrmKind } from "./crm-types";
 import { ContentNotice } from "@/components/feedback/content-notice";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import {
   Table,
   TableBody,
@@ -27,12 +28,14 @@ export function RecordList({
   kind,
   organizationId,
   rows,
+  loading = false,
 }: {
   kind: CrmKind;
   organizationId: string;
   rows: CrmListRow[];
+  loading?: boolean;
 }) {
-  if (!rows.length)
+  if (!rows.length && !loading)
     return (
       <ContentNotice
         icon={{ accounts: Building2, contacts: Users, deals: Handshake }[kind]}
@@ -41,7 +44,11 @@ export function RecordList({
       />
     );
   return (
-    <div className="overflow-hidden rounded-lg border">
+    <div
+      className="overflow-hidden rounded-lg border"
+      role={loading ? "status" : undefined}
+      aria-label={loading ? `Loading ${kind}` : undefined}
+    >
       <Table aria-label={kind}>
         <TableHeader>
           <TableRow>
@@ -53,33 +60,66 @@ export function RecordList({
           </TableRow>
         </TableHeader>
         <TableBody>
+          {loading &&
+            [0, 1, 2].map((key) => (
+              <RecordListCells
+                key={key}
+                kind={kind}
+                hidden
+                name={<SkeletonText width="9rem" />}
+                detail={<SkeletonText width="12rem" />}
+                amount={<SkeletonText width="5rem" />}
+              />
+            ))}
           {rows.map((row) => (
-            <TableRow key={row.entityId}>
-              <TableCell>
+            <RecordListCells
+              key={row.entityId}
+              kind={kind}
+              name={
                 <Link
                   {...recordLink(organizationId, kind, row.entityId)}
                   className="font-medium underline-offset-4 hover:underline"
                 >
                   {row.name}
                 </Link>
-              </TableCell>
-              <TableCell>
+              }
+              detail={
                 <span className="block max-w-80 truncate text-muted-foreground">
                   {kind === "deals" ? dealStatus(row) : row.description || "—"}
                 </span>
-              </TableCell>
-              {kind === "deals" && (
-                <TableCell>
-                  <span className="tabular-nums">
-                    {dealAmount(row.amount ?? null, row.currency ?? null)}
-                  </span>
-                </TableCell>
-              )}
-            </TableRow>
+              }
+              amount={
+                <span className="tabular-nums">
+                  {dealAmount(row.amount ?? null, row.currency ?? null)}
+                </span>
+              }
+            />
           ))}
         </TableBody>
       </Table>
     </div>
+  );
+}
+
+function RecordListCells({
+  kind,
+  name,
+  detail,
+  amount,
+  hidden,
+}: {
+  kind: CrmKind;
+  name: React.ReactNode;
+  detail: React.ReactNode;
+  amount?: React.ReactNode;
+  hidden?: boolean;
+}) {
+  return (
+    <TableRow aria-hidden={hidden}>
+      <TableCell>{name}</TableCell>
+      <TableCell>{detail}</TableCell>
+      {kind === "deals" && <TableCell>{amount}</TableCell>}
+    </TableRow>
   );
 }
 

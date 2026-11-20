@@ -5,8 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { CrmResourceState } from "./crm-resource-state";
-import { CrmSelect } from "./crm-select";
-import { PipelineSettings } from "./pipeline-settings";
+import { CrmSelect, CrmSelectLoading } from "./crm-select";
+import { PipelineSettings, PipelineSettingsLoading } from "./pipeline-settings";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { PageHeader } from "@/components/layout/page-header";
@@ -49,6 +49,16 @@ export function CrmSettings({ organizationId }: { organizationId: string }) {
           pending={query.isPending}
           error={query.error}
           onRetry={() => void query.refetch()}
+          loading={
+            <div role="status" aria-label="Loading CRM settings">
+              <DealDefaultsCard>
+                <CrmSelectLoading label="Default currency" />
+                <SettingsNote>
+                  Amounts, expected close dates, and responsible owners have no workspace default.
+                </SettingsNote>
+              </DealDefaultsCard>
+            </div>
+          }
         />
         {state.data && !state.error && (
           <>
@@ -57,71 +67,65 @@ export function CrmSettings({ organizationId }: { organizationId: string }) {
               name="CRM defaults"
               description="Your CRM defaults haven’t been saved."
             />
-            <SettingsSection
-              title="Deal defaults"
-              description="Set only the defaults your team needs."
+            <DealDefaultsCard
+              footer={
+                canEdit && (
+                  <SettingsFooter
+                    dirty={dirty}
+                    pending={mutation.isPending}
+                    error={
+                      mutation.error
+                        ? actionErrorMessage(
+                            mutation.error,
+                            "Couldn’t save CRM defaults. Try again.",
+                          )
+                        : undefined
+                    }
+                    onDiscard={() => {
+                      setDraft(null);
+                      mutation.reset();
+                    }}
+                    onSave={() =>
+                      mutation.mutate(
+                        { action: "updateSettings", organizationId, defaultCurrency: currency },
+                        { onSuccess: () => setDraft(null) },
+                      )
+                    }
+                  />
+                )
+              }
             >
-              <SettingsCard
-                title="Default currency"
-                description="Applies to new deals. Existing deals keep their currency."
-                footer={
-                  canEdit && (
-                    <SettingsFooter
-                      dirty={dirty}
-                      pending={mutation.isPending}
-                      error={
-                        mutation.error
-                          ? actionErrorMessage(
-                              mutation.error,
-                              "Couldn’t save CRM defaults. Try again.",
-                            )
-                          : undefined
-                      }
-                      onDiscard={() => {
-                        setDraft(null);
-                        mutation.reset();
-                      }}
-                      onSave={() =>
-                        mutation.mutate(
-                          { action: "updateSettings", organizationId, defaultCurrency: currency },
-                          { onSuccess: () => setDraft(null) },
-                        )
-                      }
-                    />
-                  )
-                }
-              >
-                <CrmSelect
-                  label="Default currency"
-                  value={currency ?? ""}
-                  onValueChange={(next) => setDraft({ currency: next || null })}
-                  options={currencyChoices}
-                  optional
-                  emptyLabel="Not set"
-                  disabled={!canEdit || mutation.isPending}
-                />
-                {!currency && (
-                  <SettingsNote>
-                    No default currency is set. Choose a currency on each new deal when you enter an
-                    amount.
-                  </SettingsNote>
-                )}
-                {!canEdit && (
-                  <SettingsNote>
-                    Only workspace owners and admins can change CRM settings.
-                  </SettingsNote>
-                )}
+              <CrmSelect
+                label="Default currency"
+                value={currency ?? ""}
+                onValueChange={(next) => setDraft({ currency: next || null })}
+                options={currencyChoices}
+                optional
+                emptyLabel="Not set"
+                disabled={!canEdit || mutation.isPending}
+              />
+              {!currency && (
                 <SettingsNote>
-                  Amounts, expected close dates, and responsible owners have no workspace default.
+                  No default currency is set. Choose a currency on each new deal when you enter an
+                  amount.
                 </SettingsNote>
-              </SettingsCard>
-            </SettingsSection>
+              )}
+              {!canEdit && (
+                <SettingsNote>
+                  Only workspace owners and admins can change CRM settings.
+                </SettingsNote>
+              )}
+              <SettingsNote>
+                Amounts, expected close dates, and responsible owners have no workspace default.
+              </SettingsNote>
+            </DealDefaultsCard>
           </>
         )}
         <CrmResourceState
           pending={pipeline.isPending}
           error={pipeline.error}
           onRetry={() => void pipeline.refetch()}
+          loading={<PipelineSettingsLoading />}
         />
         {!pipeline.error && pipeline.data && (
           <PipelineSettings
@@ -132,5 +136,25 @@ export function CrmSettings({ organizationId }: { organizationId: string }) {
         )}
       </SettingsContent>
     </div>
+  );
+}
+
+function DealDefaultsCard({
+  children,
+  footer,
+}: {
+  children: React.ReactNode;
+  footer?: React.ReactNode;
+}) {
+  return (
+    <SettingsSection title="Deal defaults" description="Set only the defaults your team needs.">
+      <SettingsCard
+        title="Default currency"
+        description="Applies to new deals. Existing deals keep their currency."
+        footer={footer}
+      >
+        {children}
+      </SettingsCard>
+    </SettingsSection>
   );
 }

@@ -3,7 +3,6 @@ import type { ContextEntityType } from "@substrate/contracts/context/input";
 import { useState } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
-import { LoadingState } from "../../feedback/loading-state";
 import { PendingButton } from "../../feedback/pending-button";
 import { Button } from "../../ui/button";
 import { Command, CommandEmpty, CommandInput, CommandList } from "../../ui/command";
@@ -17,7 +16,7 @@ import {
   DialogTitle,
 } from "../../ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "../../ui/tabs";
-import { LinkWorkItem } from "./link-work-item";
+import { LinkWorkItem, LinkWorkLoading } from "./link-work-item";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { Link2, Plus } from "lucide-react";
 
@@ -246,7 +245,7 @@ function LinkSearchStatus({
 }) {
   return (
     <>
-      {loading && !hasResults && <LoadingState label="Searching work" variant="compact" />}
+      {loading && !hasResults && !error && <LinkWorkLoading />}
       {error && <ErrorState compact title="Couldn’t search work" onRetry={onRetry} />}
       {!loading && !error && (
         <CommandEmpty>

@@ -7,6 +7,7 @@ import { TaskList } from "../list/task-list";
 import type { ProjectDetail, Task } from "../types";
 import { useTaskPanel } from "./pane/use-task-panel";
 import { ProjectIcon } from "./project-icon";
+import { ProjectHeaderLayout, ProjectTabLayout, projectTabs } from "./project-layout";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { DiscardChangesDialog } from "@/components/feedback/discard-changes-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -127,24 +128,20 @@ function ProjectPaneContent({
           className="min-h-0 min-w-0 flex-1"
         >
           <div className="flex min-h-0 flex-1 flex-col">
-            <div className="shrink-0 border-b px-6 pt-5">
+            <ProjectHeaderLayout>
               <ProjectPaneHeader
                 project={detail.project}
                 actions={headerActions}
                 newTaskButton={newTaskButton}
                 onCreateTask={canEdit ? panel.create : undefined}
               />
-              <div className="mt-3 flex flex-wrap items-center justify-between gap-2 pb-1">
+              <ProjectTabLayout>
                 <TabsList ref={tabsRef} variant="line" className="-ml-1.5">
-                  <TabsTrigger value="tasks" className="flex-none">
-                    Tasks
-                  </TabsTrigger>
-                  <TabsTrigger value="discussions" className="flex-none">
-                    Discussions
-                  </TabsTrigger>
-                  <TabsTrigger value="settings" className="flex-none">
-                    Settings
-                  </TabsTrigger>
+                  {projectTabs.map(({ value, label }) => (
+                    <TabsTrigger key={value} value={value} className="flex-none">
+                      {label}
+                    </TabsTrigger>
+                  ))}
                 </TabsList>
                 {tab === "tasks" && (
                   <SegmentedControl
@@ -154,8 +151,8 @@ function ProjectPaneContent({
                     onValueChange={setView}
                   />
                 )}
-              </div>
-            </div>
+              </ProjectTabLayout>
+            </ProjectHeaderLayout>
             {state === "stale" && (
               <StaleNotice className="border-b px-6">This project may be out of date.</StaleNotice>
             )}

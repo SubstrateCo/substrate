@@ -2,7 +2,9 @@ import { useEffect, useRef, type ReactNode } from "react";
 
 import { TechnicalDetails } from "../technical-details";
 import { WorkIndicator } from "../work-indicator";
+import { TurnTimelineLoading } from "./turn-timeline";
 import { PaneState } from "@/components/feedback/pane-state";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { PageAside, useAsideCovers } from "@/components/layout/page-layout";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
@@ -27,6 +29,7 @@ function TranscriptDetails({
   outputs,
   usage,
   diagnostic,
+  loading,
 }: {
   startedAt?: string;
   session?: string;
@@ -34,9 +37,15 @@ function TranscriptDetails({
   outputs?: ReactNode;
   usage?: string;
   diagnostic?: string;
+  loading?: boolean;
 }) {
   return (
     <dl className="grid gap-1.5 border-b px-5 py-3 text-xs">
+      {loading && (
+        <Detail label="Started">
+          <SkeletonText width="8rem" />
+        </Detail>
+      )}
       {startedAt && (
         <Detail label="Started">
           <Timestamp value={startedAt} format="datetime" />
@@ -45,7 +54,9 @@ function TranscriptDetails({
       {session && <Detail label="Session">{session}</Detail>}
       {sources && <Detail label="From">{sources}</Detail>}
       {outputs && <Detail label="Output">{outputs}</Detail>}
-      <Detail label="Usage">{usage ?? "Unavailable"}</Detail>
+      <Detail label="Usage">
+        {loading ? <SkeletonText width="6rem" /> : (usage ?? "Unavailable")}
+      </Detail>
       {diagnostic && (
         <Detail label="Error">
           <TechnicalDetails>{diagnostic}</TechnicalDetails>
@@ -117,11 +128,20 @@ export function TurnTranscriptView({
         {timeline}
       </div>
     );
+  else if (loading)
+    body = (
+      <div role="status" aria-label="Loading transcript" className="min-h-0 flex-1 overflow-y-auto">
+        <div aria-hidden="true">
+          <TranscriptDetails loading />
+          <TurnTimelineLoading />
+        </div>
+      </div>
+    );
   else
     body = (
       <PaneState
         label={error ? "Transcript unavailable" : "Loading transcript…"}
-        error={loading ? undefined : error}
+        error={error}
         onRetry={onRetry}
       />
     );

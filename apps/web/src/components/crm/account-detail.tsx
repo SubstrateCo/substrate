@@ -9,7 +9,7 @@ import { accessLabel } from "./crm-types";
 import { FollowUps } from "./follow-ups";
 import { InteractionRollup } from "./interaction-rollup";
 import { RecordChangeDialogs, type RecordChangeDialog } from "./record-change-dialogs";
-import { RecordDetailView, DetailProperty } from "./record-detail-view";
+import { RecordDetailView, RecordDetailLoading, DetailProperty } from "./record-detail-view";
 import { RecordList } from "./record-list";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
 import { contactLink } from "@/lib/navigation/record-links";
@@ -26,7 +26,7 @@ export function AccountDetail({
   const query = useQuery(accountOptions(organizationId, entityId));
   const mutation = useRecordMutation(organizationId, "accounts");
   const [dialog, setDialog] = useState<RecordChangeDialog | null>(null);
-  const { data, fallback } = crmResource(query);
+  const { data, fallback } = crmResource(query, <RecordDetailLoading kind="accounts" />);
   if (!data) return fallback;
   const { account, contacts, deals, level } = data;
   const canEdit = level === "edit" || level === "owner";

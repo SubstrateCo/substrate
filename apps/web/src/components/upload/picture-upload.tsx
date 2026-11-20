@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
+import { Field, FieldDescription } from "../ui/field";
+import { Skeleton } from "../ui/skeleton";
 import { Spinner } from "../ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { openPicture, pictureErrorMessage } from "./crop-image";
-import { FileUpload } from "./file-upload";
+import { FileUpload, FileUploadContent, FileUploadLayout } from "./file-upload";
 import { pictureAccept, pictureMaxSize } from "./file-validation";
 import { ImageCropDialog, type PictureUploadContext } from "./image-crop-dialog";
 import { PicturePreview } from "./picture-preview";
@@ -32,6 +34,35 @@ export interface PictureUploadProps {
   disabled?: boolean;
   /** Whose picture this is. Without a picture, the preview shows the initials people see elsewhere. */
   name?: string;
+}
+
+export function PictureUploadLoading({ kind, label }: { kind: PictureKind; label: string }) {
+  return (
+    <div role="status" aria-label={label}>
+      <Field aria-hidden="true">
+        <FileUploadLayout>
+          <FileUploadContent
+            preview={
+              <span
+                className={
+                  kind === "avatar"
+                    ? "size-16 shrink-0 overflow-hidden rounded-full"
+                    : "size-16 shrink-0 overflow-hidden rounded-lg"
+                }
+              >
+                <Skeleton className="size-full" />
+              </span>
+            }
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <Skeleton className="h-9 w-28" />
+            </div>
+            <FieldDescription>Drop an image here. JPEG, PNG, or WebP, up to 5 MB.</FieldDescription>
+          </FileUploadContent>
+        </FileUploadLayout>
+      </Field>
+    </div>
+  );
 }
 
 export function PictureUpload({

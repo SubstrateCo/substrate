@@ -6,6 +6,7 @@ import { StaleNotice } from "@/components/feedback/stale-notice";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import { ConversationHeader } from "@/components/messaging/conversations/conversation-header";
 import type { HeaderMember } from "@/components/messaging/conversations/conversation-header";
+import { MessageLoading } from "@/components/messaging/messages/message-loading";
 import {
   conversationLabel,
   conversationName,
@@ -152,7 +153,7 @@ function PaneMessages({
         onRetry={state === "unavailable" ? undefined : onRetry}
       />
     );
-  if (state === "loading") return <PaneState label="Loading messages…" />;
+  if (state === "loading") return <MessageLoading label="Loading messages…" />;
   return (
     <>
       {state === "stale" && <StaleNotice>Messages may be out of date.</StaleNotice>}

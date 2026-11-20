@@ -19,6 +19,38 @@ import { Switch } from "@/components/ui/switch";
 import { homeDeviceLabel } from "@/lib/agents/triggers";
 import { Laptop } from "lucide-react";
 
+export function RunsOnCard({ children, action }: { children: ReactNode; action?: ReactNode }) {
+  return (
+    <SettingsCard title="Runs on">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted">
+          <Laptop aria-hidden="true" className="size-4 text-muted-foreground" />
+        </span>
+        <div className="min-w-0 flex-1">{children}</div>
+        {action}
+      </div>
+    </SettingsCard>
+  );
+}
+
+export function TriggerCard({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
+  return (
+    <SettingsCard title="Triggers" description="Messages that start this agent." footer={footer}>
+      <ul className="-mx-5 -mb-5 divide-y border-t">{children}</ul>
+    </SettingsCard>
+  );
+}
+
+export function TriggerRow({ children }: { children: ReactNode }) {
+  return (
+    <li className="px-5 py-4">
+      <Field orientation="horizontal" className="items-center">
+        {children}
+      </Field>
+    </li>
+  );
+}
+
 export function AgentRunSettingsView({
   name,
   settings,
@@ -58,20 +90,10 @@ export function AgentRunSettingsView({
       label={`Run settings for ${name}`}
       description="Choose where this agent runs and which messages start it."
     >
-      <SettingsCard title="Runs on">
-        <div className="flex flex-wrap items-center gap-3">
-          <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted">
-            <Laptop aria-hidden="true" className="size-4 text-muted-foreground" />
-          </span>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-medium">{homeDeviceLabel(device)}</p>
-            {!canRunHere && !device?.current && (
-              <p className="text-xs text-muted-foreground">
-                Open Substrate on a desktop to run this agent there.
-              </p>
-            )}
-          </div>
-          {canRunHere && !device?.current && (
+      <RunsOnCard
+        action={
+          canRunHere &&
+          !device?.current && (
             <PendingButton
               size="sm"
               variant="outline"
@@ -81,13 +103,18 @@ export function AgentRunSettingsView({
             >
               Run on this device
             </PendingButton>
-          )}
-        </div>
-      </SettingsCard>
+          )
+        }
+      >
+        <p className="text-sm font-medium">{homeDeviceLabel(device)}</p>
+        {!canRunHere && !device?.current && (
+          <p className="text-xs text-muted-foreground">
+            Open Substrate on a desktop to run this agent there.
+          </p>
+        )}
+      </RunsOnCard>
       {callers}
-      <SettingsCard
-        title="Triggers"
-        description="Messages that start this agent."
+      <TriggerCard
         footer={
           <SettingsFooter
             dirty={dirty}
@@ -98,29 +125,25 @@ export function AgentRunSettingsView({
           />
         }
       >
-        <ul className="-mx-5 -mb-5 divide-y border-t">
-          {triggers.map((trigger) => {
-            const meta = agentTriggers[trigger.kind];
-            const id = `agent-trigger-${trigger.kind}`;
-            return (
-              <li key={trigger.kind} className="px-5 py-4">
-                <Field orientation="horizontal" className="items-center">
-                  <FieldContent>
-                    <FieldLabel htmlFor={id}>{meta.title}</FieldLabel>
-                    <FieldDescription>{meta.description}</FieldDescription>
-                  </FieldContent>
-                  <Switch
-                    id={id}
-                    checked={trigger.enabled}
-                    disabled={saving}
-                    onCheckedChange={(enabled) => update(trigger.kind, { enabled })}
-                  />
-                </Field>
-              </li>
-            );
-          })}
-        </ul>
-      </SettingsCard>
+        {triggers.map((trigger) => {
+          const meta = agentTriggers[trigger.kind];
+          const id = `agent-trigger-${trigger.kind}`;
+          return (
+            <TriggerRow key={trigger.kind}>
+              <FieldContent>
+                <FieldLabel htmlFor={id}>{meta.title}</FieldLabel>
+                <FieldDescription>{meta.description}</FieldDescription>
+              </FieldContent>
+              <Switch
+                id={id}
+                checked={trigger.enabled}
+                disabled={saving}
+                onCheckedChange={(enabled) => update(trigger.kind, { enabled })}
+              />
+            </TriggerRow>
+          );
+        })}
+      </TriggerCard>
     </SettingsSection>
   );
 }

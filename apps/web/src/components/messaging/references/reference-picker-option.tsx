@@ -1,11 +1,55 @@
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
+import type { ReactNode } from "react";
+
 import { Button } from "../../ui/button";
+import { buttonVariants } from "../../ui/button-variants";
 import type { ReferenceKind } from "./reference-picker";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { plainReferenceText } from "@/lib/messaging/reference-token";
+import { cn } from "cn";
 import { FolderKanban, Hash, ListTodo, MessagesSquare, UserRound } from "lucide-react";
+
+function OptionContent({
+  icon,
+  title,
+  description,
+}: {
+  icon: ReactNode;
+  title: ReactNode;
+  description?: ReactNode;
+}) {
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      {icon}
+      <span className="flex min-w-0 flex-col items-start text-left">
+        <span className="wrap-break-word">{title}</span>
+        {description && (
+          <span className="text-xs font-normal wrap-break-word text-muted-foreground">
+            {description}
+          </span>
+        )}
+      </span>
+    </span>
+  );
+}
+
+export function ReferencePickerLoadingOption() {
+  return (
+    <div
+      aria-hidden="true"
+      className={cn(buttonVariants({ variant: "option", size: "default" }), "w-full")}
+    >
+      <OptionContent
+        icon={<SkeletonText width="1rem" className="shrink-0" />}
+        title={<SkeletonText width="8rem" />}
+        description={<SkeletonText width="6rem" />}
+      />
+    </div>
+  );
+}
 
 export function ReferencePickerOption({
   id,
@@ -54,17 +98,7 @@ export function ReferencePickerOption({
       onFocus={onFocus}
       onClick={onSelect}
     >
-      <span className="flex min-w-0 items-center gap-2">
-        {icon}
-        <span className="flex min-w-0 flex-col items-start text-left">
-          <span className="wrap-break-word">{plainReferenceText(title)}</span>
-          {description && (
-            <span className="text-xs font-normal wrap-break-word text-muted-foreground">
-              {description}
-            </span>
-          )}
-        </span>
-      </span>
+      <OptionContent icon={icon} title={plainReferenceText(title)} description={description} />
     </Button>
   );
 }

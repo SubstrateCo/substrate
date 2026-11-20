@@ -3,6 +3,7 @@ import type { HarnessKind } from "@substrate/contracts/harness";
 
 import { useQuery } from "@tanstack/react-query";
 
+import { AgentSettingsLoading } from "./agent-settings-loading";
 import { AgentConfiguration } from "./device/agent-configuration";
 import { AgentForm, type AgentSection } from "./editors/agent-form";
 import { AgentPicture } from "./editors/agent-picture";
@@ -11,7 +12,6 @@ import type { AgentSettingsSection } from "@/components/agent-work/app/agent-sec
 import { DeleteRecordCard } from "@/components/feedback/delete-record-card";
 import { ErrorState } from "@/components/feedback/error-state";
 import { FormDialog } from "@/components/feedback/form-dialog";
-import { LoadingState } from "@/components/feedback/loading-state";
 import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 import { useAgentMutations } from "@/queries/agents/mutations";
@@ -86,9 +86,7 @@ export function AgentSettings({
           onRetry={() => void catalog.refetch()}
         />
       )}
-      {agentId && catalog.isPending && (
-        <LoadingState label="Loading agent settings" variant="compact" />
-      )}
+      {agentId && catalog.isPending && <AgentSettingsLoading section={section} />}
       {agent && (
         <AgentForm
           key={agent.id}

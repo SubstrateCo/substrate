@@ -4,12 +4,13 @@ import { AuthFrame } from "../../auth/auth-frame";
 import { AuthNavLink } from "../../auth/auth-link";
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
-import { LoadingState } from "../../feedback/loading-state";
+import { SkeletonText } from "../../feedback/skeleton-text";
 import { useFocusAfterRender } from "../../feedback/use-focus-after-render";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { Item } from "../../ui/item";
 import { Separator } from "../../ui/separator";
+import { Skeleton } from "../../ui/skeleton";
 import { Spinner } from "../../ui/spinner";
 import { initials } from "@/lib/people/initials";
 import type { ResourceStatus } from "@/lib/resource-state";
@@ -68,7 +69,17 @@ export function OrganizationSelection({
       }
     >
       {state === "loading" && !organizations?.length && (
-        <LoadingState label="Loading workspaces." rows={2} />
+        <div role="status" aria-label="Loading workspaces">
+          <ul aria-hidden="true" className="-mx-2.5 max-h-72 space-y-0.5 overflow-y-auto">
+            {[0, 1].map((key) => (
+              <li key={key}>
+                <Item size="xs">
+                  <WorkspaceChoiceContent />
+                </Item>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
       {loadError && (
         <ErrorState
@@ -103,21 +114,7 @@ export function OrganizationSelection({
                     aria-busy={opening}
                     onClick={() => onSelect(organization.id)}
                   >
-                    <span
-                      aria-hidden="true"
-                      className="flex size-8 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-accent-foreground"
-                    >
-                      {opening ? (
-                        <Spinner aria-hidden="true" role="presentation" />
-                      ) : (
-                        initials(organization.name)
-                      )}
-                    </span>
-                    <span className="min-w-0 flex-1 wrap-anywhere">{organization.name}</span>
-                    <ChevronRight
-                      aria-hidden="true"
-                      className="size-4 shrink-0 text-muted-foreground opacity-60 transition-opacity group-hover/item:opacity-100"
-                    />
+                    <WorkspaceChoiceContent name={organization.name} opening={opening} />
                   </button>
                 </Item>
               </li>
@@ -176,5 +173,27 @@ export function OrganizationSelection({
         </CollapsibleContent>
       </Collapsible>
     </AuthFrame>
+  );
+}
+
+function WorkspaceChoiceContent({ name, opening }: { name?: string; opening?: boolean }) {
+  return (
+    <>
+      {name === undefined ? (
+        <Skeleton className="size-8 shrink-0" />
+      ) : (
+        <span
+          aria-hidden="true"
+          className="flex size-8 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-accent-foreground"
+        >
+          {opening ? <Spinner aria-hidden="true" role="presentation" /> : initials(name)}
+        </span>
+      )}
+      <span className="min-w-0 flex-1 wrap-anywhere">{name ?? <SkeletonText width="9rem" />}</span>
+      <ChevronRight
+        aria-hidden="true"
+        className="size-4 shrink-0 text-muted-foreground opacity-60 transition-opacity group-hover/item:opacity-100"
+      />
+    </>
   );
 }

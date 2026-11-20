@@ -1,5 +1,6 @@
 import type { ProjectDetail } from "../types";
 import type { TaskFilters, TaskSort } from "./task-filters";
+import { TaskFilterLayout } from "./task-list-layout";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,11 +50,7 @@ export function TaskListToolbar({
   if (filters.assignee === "any") assigneeName = "Any assignee";
   if (filters.assignee === "unassigned") assigneeName = "Unassigned";
   return (
-    <div
-      role="toolbar"
-      aria-label="Task filters"
-      className="flex shrink-0 flex-wrap items-center gap-2 border-b px-6 py-2"
-    >
+    <TaskFilterLayout toolbar>
       <Input
         className="max-w-52 min-w-40 flex-1"
         type="search"
@@ -130,6 +127,6 @@ export function TaskListToolbar({
           </p>
         </>
       )}
-    </div>
+    </TaskFilterLayout>
   );
 }

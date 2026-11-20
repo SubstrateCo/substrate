@@ -6,6 +6,9 @@ import { Link } from "@tanstack/react-router";
 import { useRef, type ReactNode } from "react";
 
 import { CommandItem } from "../../ui/command";
+import { ChannelSearchResultContent } from "./channel-search-result";
+import { searchRowClass, SearchRowFrame } from "./search-row";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { formatFullTimestamp, formatRelativeTime } from "@/lib/format/date";
@@ -148,11 +151,15 @@ export function SearchResult({ item, query }: { item: SearchResultItem; query: s
   const link = useRef<HTMLAnchorElement>(null);
   const { icon, title, kind, detail } = describe(item);
   return (
-    <div className="px-1">
+    <SearchRowFrame>
       {/* Enter follows the row's router link, so unsaved-draft guards see the navigation. */}
-      <CommandItem value={item.id} onSelect={() => link.current?.click()} className="items-start">
-        <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center">{icon}</span>
-        <span className="min-w-0 flex-1">
+      <CommandItem
+        value={item.id}
+        onSelect={() => link.current?.click()}
+        // oxlint-disable-next-line shadcn/require-static-classes -- The shared classes match the command item's default geometry for inert rows.
+        className={`${searchRowClass} items-start`}
+      >
+        <SearchResultContent icon={icon}>
           <Link
             ref={link}
             // Two lines at rest. The selected row shows the whole title and context, so a
@@ -169,8 +176,50 @@ export function SearchResult({ item, query }: { item: SearchResultItem; query: s
               {detail}
             </span>
           )}
-        </span>
+        </SearchResultContent>
       </CommandItem>
+    </SearchRowFrame>
+  );
+}
+
+function SearchResultContent({ icon, children }: { icon: ReactNode; children: ReactNode }) {
+  return (
+    <>
+      <span className="mt-0.5 flex size-4 shrink-0 items-center justify-center">{icon}</span>
+      <span className="min-w-0 flex-1">{children}</span>
+    </>
+  );
+}
+
+export function SearchResultLoading({ browsing }: { browsing: boolean }) {
+  return (
+    <div role="status">
+      <span className="sr-only">Searching workspace</span>
+      <div aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <SearchRowFrame key={i}>
+            <div className={`${searchRowClass} ${browsing ? "" : "items-start"}`}>
+              {browsing ? (
+                <ChannelSearchResultContent
+                  icon={<SkeletonText width="1rem" className="h-4" />}
+                  title={<SkeletonText width="9rem" />}
+                  members={<SkeletonText width="4rem" />}
+                  action={<SkeletonText width="3.5rem" />}
+                />
+              ) : (
+                <SearchResultContent icon={<SkeletonText width="1rem" className="h-4" />}>
+                  <span className="block">
+                    <SkeletonText width="12rem" />
+                  </span>
+                  <span className="mt-0.5 block text-xs">
+                    <SkeletonText width="7rem" />
+                  </span>
+                </SearchResultContent>
+              )}
+            </div>
+          </SearchRowFrame>
+        ))}
+      </div>
     </div>
   );
 }

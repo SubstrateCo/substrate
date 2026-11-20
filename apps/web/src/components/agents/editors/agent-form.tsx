@@ -10,6 +10,7 @@ import { HarnessAvailability } from "../model-picker/harness-availability";
 import { ModelPicker } from "../model-picker/model-picker";
 import { HarnessAccount } from "../sign-in/harness-account";
 import { AgentInstructions } from "./agent-instructions";
+import { GeneralSettingsLayout, InstructionsSettingsLayout } from "./agent-settings-layout";
 import { UnsavedSectionsBar } from "./unsaved-sections-bar";
 import {
   agentSettingsSections,
@@ -26,12 +27,7 @@ import {
   useDraftKeys,
 } from "@/components/feedback/unsaved-drafts";
 import { FormTextField } from "@/components/forms/form-text-field";
-import {
-  GroupTitle,
-  SettingsCard,
-  SettingsFooter,
-  SettingsSection,
-} from "@/components/layout/settings-section";
+import { SettingsFooter } from "@/components/layout/settings-section";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { z } from "zod";
 
@@ -309,46 +305,23 @@ export function AgentForm({
               }
             />
             {section === "general" && (
-              <SettingsSection
-                title="General"
-                description="How this agent appears in Substrate and which model it uses."
-              >
-                <SettingsCard label="Agent details" footer={footer}>
-                  <fieldset
-                    disabled={busy}
-                    className="grid min-w-0 gap-x-8 gap-y-8 @2xl/content:grid-cols-2"
-                  >
-                    <section aria-label="Profile" className="grid min-w-0 content-start gap-4">
-                      <GroupTitle title="Profile" />
-                      {nameField}
-                      {picture}
-                    </section>
-                    <section
-                      aria-label="Model"
-                      className="grid min-w-0 content-start gap-4 @2xl/content:border-l @2xl/content:pl-8"
-                    >
-                      <GroupTitle
-                        title="Model"
-                        description="It runs on this agent’s desktop with the tools installed there."
-                      />
-                      {modelField}
-                    </section>
-                  </fieldset>
-                </SettingsCard>
-                {deleteAction}
-              </SettingsSection>
+              <GeneralSettingsLayout
+                footer={footer}
+                disabled={busy}
+                profile={
+                  <>
+                    {nameField}
+                    {picture}
+                  </>
+                }
+                model={modelField}
+                deleteAction={deleteAction}
+              />
             )}
             {section === "instructions" && (
-              <SettingsSection
-                title="Instructions"
-                description="Tell this agent its role, tone, and limits."
-              >
-                <SettingsCard label="Agent instructions" footer={footer}>
-                  <fieldset disabled={busy} className="min-w-0">
-                    {instructionsField}
-                  </fieldset>
-                </SettingsCard>
-              </SettingsSection>
+              <InstructionsSettingsLayout footer={footer} disabled={busy}>
+                {instructionsField}
+              </InstructionsSettingsLayout>
             )}
             {(section === "skills" || section === "mcps") && (
               <>
