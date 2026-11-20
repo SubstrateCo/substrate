@@ -9,6 +9,41 @@
 - Keep `src/schema/index.ts` as the schema export registry for Drizzle and applications. Keep repository composition outside individual domains.
 - Keep shared database test fixtures in `src/testing/`. Do not create a separate tree of test files.
 
+## Shared primitives and feature composition
+
+Arrows mean **“used by”**, not table ownership.
+
+```mermaid
+flowchart BT
+    Foundation["Shared foundations<br/>Identity · Organizations · Entities<br/>Permissions · Links"]
+
+    Messaging["Messaging"]
+    Contacts["Contacts & interactions"]
+    Files["Files & storage"]
+    Tasks["Projects & tasks"]
+
+    Chat["Chat"]
+    Agents["Agent conversations"]
+    CRM["CRM<br/>Accounts · Deals · Pipeline"]
+
+    Foundation --> Messaging
+    Foundation --> Contacts
+    Foundation --> Files
+    Foundation --> Tasks
+    Foundation --> CRM
+
+    Messaging --> Chat
+    Messaging --> Agents
+    Messaging -->|"Task discussions"| Tasks
+    Messaging -->|"Source context"| CRM
+
+    Contacts -->|"Contacts & timelines"| CRM
+    Tasks -->|"Follow-ups"| CRM
+
+    Files -->|"Attachments"| Messaging
+    Files -->|"Attachments"| Tasks
+```
+
 ## Persistence and access
 
 - Entity-backed tables use `entity_id`; organization-owned records require `organization_id`.
