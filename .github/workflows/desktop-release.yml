@@ -120,7 +120,7 @@ jobs:
           - platform: windows
             os: windows-latest
           - platform: macos
-            os: macos-14
+            os: macos-15
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     env:

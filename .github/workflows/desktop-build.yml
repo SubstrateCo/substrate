@@ -23,17 +23,13 @@ jobs:
           - platform: windows-x64
             os: windows-latest
           - platform: macos-arm64
-            os: macos-14
+            os: macos-15
     runs-on: ${{ matrix.os }}
     timeout-minutes: 45
     defaults:
       run:
         shell: bash
     env:
-      # Test installers only. Real release origins and signing belong to Desktop release.
-      SUBSTRATE_API_URL: https://api.example.invalid
-      SUBSTRATE_WEB_URL: https://app.example.invalid
-      S3_ENDPOINT: https://storage.example.invalid
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
     steps:
       - uses: actions/checkout@v5
@@ -48,6 +44,11 @@ jobs:
         run: bun run test
       - name: Build the app
         working-directory: apps/desktop
+        env:
+          # Test installers only. Do not change the environment used by unit tests.
+          SUBSTRATE_API_URL: https://api.example.invalid
+          SUBSTRATE_WEB_URL: https://app.example.invalid
+          S3_ENDPOINT: https://storage.example.invalid
         run: bun run build
       - name: Package Windows installer
         if: runner.os == 'Windows'
