@@ -1,12 +1,10 @@
 # Builds the desktop app for Windows (NSIS, x64) and macOS (arm64) and publishes the installers
-# and update feeds (latest.yml, latest-mac.yml) to a public releases repository. Installed apps
+# and update feeds (latest.yml, latest-mac.yml) to this repository. Installed apps
 # read updates anonymously from that repository with electron-updater.
 #
 # Repository variables:
 #   SUBSTRATE_API_URL, SUBSTRATE_WEB_URL, S3_ENDPOINT  Public HTTPS origins built into the app.
-#   DESKTOP_RELEASES_OWNER, DESKTOP_RELEASES_REPO      Optional. Default SubstrateCo/substrate-releases.
 # Repository secrets:
-#   RELEASES_GITHUB_TOKEN  Fine-grained token with Contents: read and write on the releases repo.
 #   DESKTOP_RELEASE_APP_ID, DESKTOP_RELEASE_APP_PRIVATE_KEY  GitHub App installed on the source
 #     repo with Contents and Pull requests: read and write, and Checks and Commit statuses: read.
 #     The App must be allowed to merge under the repo's branch rules; no admin bypass is used.
@@ -39,8 +37,8 @@ env:
   BUN_VERSION: 1.4.4
   ELECTRON_CACHE: ${{ github.workspace }}/.ci-cache/electron
   ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.ci-cache/electron-builder
-  SUBSTRATE_RELEASES_OWNER: ${{ vars.DESKTOP_RELEASES_OWNER || 'SubstrateCo' }}
-  SUBSTRATE_RELEASES_REPO: ${{ vars.DESKTOP_RELEASES_REPO || 'substrate-releases' }}
+  SUBSTRATE_RELEASES_OWNER: ${{ github.repository_owner }}
+  SUBSTRATE_RELEASES_REPO: ${{ github.event.repository.name }}
 
 jobs:
   source:
@@ -57,14 +55,13 @@ jobs:
         env:
           APP_ID: ${{ secrets.DESKTOP_RELEASE_APP_ID }}
           APP_KEY: ${{ secrets.DESKTOP_RELEASE_APP_PRIVATE_KEY }}
-          RELEASES_TOKEN: ${{ secrets.RELEASES_GITHUB_TOKEN }}
         run: |
           if [ "$GITHUB_REF" != "refs/heads/main" ]; then
             echo "::error::Start desktop releases from main."
             exit 1
           fi
-          if [ -z "$APP_ID" ] || [ -z "$APP_KEY" ] || [ -z "$RELEASES_TOKEN" ]; then
-            echo "::error::Set DESKTOP_RELEASE_APP_ID, DESKTOP_RELEASE_APP_PRIVATE_KEY, and RELEASES_GITHUB_TOKEN."
+          if [ -z "$APP_ID" ] || [ -z "$APP_KEY" ]; then
+            echo "::error::Set DESKTOP_RELEASE_APP_ID and DESKTOP_RELEASE_APP_PRIVATE_KEY."
             exit 1
           fi
       - name: Create source repository token
@@ -101,7 +98,6 @@ jobs:
           SUBSTRATE_API_URL: ${{ vars.SUBSTRATE_API_URL }}
           SUBSTRATE_WEB_URL: ${{ vars.SUBSTRATE_WEB_URL }}
           S3_ENDPOINT: ${{ vars.S3_ENDPOINT }}
-          HAS_RELEASES_TOKEN: ${{ secrets.RELEASES_GITHUB_TOKEN != '' }}
         run: |
           failed=0
           for name in SUBSTRATE_API_URL SUBSTRATE_WEB_URL S3_ENDPOINT; do
@@ -114,14 +110,6 @@ jobs:
               failed=1
             fi
           done
-          if ! [[ "$SUBSTRATE_RELEASES_OWNER/$SUBSTRATE_RELEASES_REPO" =~ ^[A-Za-z0-9][A-Za-z0-9._-]*/[A-Za-z0-9][A-Za-z0-9._-]*$ ]]; then
-            echo "::error::DESKTOP_RELEASES_OWNER and DESKTOP_RELEASES_REPO must name a GitHub repository."
-            failed=1
-          fi
-          if [ "$HAS_RELEASES_TOKEN" != "true" ]; then
-            echo "::error::Set the repository secret RELEASES_GITHUB_TOKEN (contents: write on $SUBSTRATE_RELEASES_OWNER/$SUBSTRATE_RELEASES_REPO)."
-            failed=1
-          fi
           exit "$failed"
       - uses: actions/checkout@v5
         with:
@@ -142,13 +130,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     env:
-      GH_TOKEN: ${{ secrets.RELEASES_GITHUB_TOKEN }}
       VERSION: ${{ needs.source.outputs.version }}
       SOURCE_SHA: ${{ needs.source.outputs.sha }}
     steps:
+      - name: Create release upload token
+        id: token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DESKTOP_RELEASE_APP_ID }}
+          private-key: ${{ secrets.DESKTOP_RELEASE_APP_PRIVATE_KEY }}
       # Both package jobs upload to this one draft. electron-builder reuses a draft with the
       # same tag, but two jobs that start together could each create their own.
       - name: Create or reuse the draft
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
         run: |
           tag="v$VERSION"
           repo="$SUBSTRATE_RELEASES_OWNER/$SUBSTRATE_RELEASES_REPO"
@@ -219,11 +214,18 @@ jobs:
         working-directory: apps/desktop
         run: bun run build
 
+      - name: Create release upload token
+        id: token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DESKTOP_RELEASE_APP_ID }}
+          private-key: ${{ secrets.DESKTOP_RELEASE_APP_PRIVATE_KEY }}
+
       - name: Package and upload (Windows)
         if: matrix.platform == 'windows'
         working-directory: apps/desktop
         env:
-          GH_TOKEN: ${{ secrets.RELEASES_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.token.outputs.token }}
           # Signing hook. Add these secrets to sign the installer; without them it is unsigned
           # and SmartScreen warns on first install.
           CSC_LINK: ${{ secrets.WINDOWS_CSC_LINK }}
@@ -240,7 +242,7 @@ jobs:
         if: matrix.platform == 'macos'
         working-directory: apps/desktop
         env:
-          GH_TOKEN: ${{ secrets.RELEASES_GITHUB_TOKEN }}
+          GH_TOKEN: ${{ steps.token.outputs.token }}
           # Signing hook. Add MAC_CSC_LINK (base64 .p12 of a Developer ID Application
           # certificate) and its password to sign; add the APPLE_* secrets to notarize.
           CSC_LINK: ${{ secrets.MAC_CSC_LINK }}
@@ -270,13 +272,20 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
-      GH_TOKEN: ${{ secrets.RELEASES_GITHUB_TOKEN }}
       VERSION: ${{ needs.source.outputs.version }}
     steps:
+      - name: Create source and release repository token
+        id: token
+        uses: actions/create-github-app-token@v2
+        with:
+          app-id: ${{ secrets.DESKTOP_RELEASE_APP_ID }}
+          private-key: ${{ secrets.DESKTOP_RELEASE_APP_PRIVATE_KEY }}
       # Installed apps see a release only after it is published, so publish only when both
       # platforms uploaded their installers and update feeds.
       - name: Check draft assets
         id: draft
+        env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
         run: |
           tag="v$VERSION"
           repo="$SUBSTRATE_RELEASES_OWNER/$SUBSTRATE_RELEASES_REPO"
@@ -294,12 +303,6 @@ jobs:
             fi
           done
           echo "id=$release" >> "$GITHUB_OUTPUT"
-      - name: Create source repository token
-        id: token
-        uses: actions/create-github-app-token@v2
-        with:
-          app-id: ${{ secrets.DESKTOP_RELEASE_APP_ID }}
-          private-key: ${{ secrets.DESKTOP_RELEASE_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v5
       - uses: oven-sh/setup-bun@v2
         with:
@@ -314,6 +317,7 @@ jobs:
         run: bun scripts/desktop-release.ts finalize
       - name: Publish installers and update feeds
         env:
+          GH_TOKEN: ${{ steps.token.outputs.token }}
           RELEASE_ID: ${{ steps.draft.outputs.id }}
           SOURCE_SHA: ${{ steps.source.outputs.sha }}
         run: |
@@ -322,7 +326,7 @@ jobs:
           gh api -X PATCH "repos/$repo/releases/$RELEASE_ID" \
             -f body="Substrate $VERSION for Windows and macOS (Apple silicon).
 
-          Source: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/releases/tag/$tag
+          Source: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/tree/$tag
           Commit: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/commit/$SOURCE_SHA" \
             -F draft=false -f make_latest=true > /dev/null
           echo "Published https://github.com/$repo/releases/tag/$tag"

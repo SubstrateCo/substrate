@@ -63,7 +63,7 @@
     "publish": {
       "provider": "github",
       "owner": "SubstrateCo",
-      "repo": "substrate-releases",
+      "repo": "substrate",
       "releaseType": "draft"
     },
     "win": {

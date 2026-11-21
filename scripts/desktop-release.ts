@@ -144,18 +144,18 @@ function finalize(): void {
   }
   if (!pull.merged) {
     if (pull.state !== "open") throw new Error("The release PR is not open.");
-    const main = api<{ object: { sha: string } }>(`repos/${repo}/git/ref/heads/main`);
-    if (main.object.sha !== env("RELEASE_BASE")) {
-      throw new Error(
-        "main changed during the build. Rerun all jobs to merge main into the release branch and rebuild.",
-      );
-    }
     // SAFETY: gh pr view returns the explicitly requested statusCheckRollup array.
     const checks = JSON.parse(
       run("gh", "pr", "view", String(pull.number), "--repo", repo, "--json", "statusCheckRollup"),
     ) as { statusCheckRollup: unknown[] };
     if (checks.statusCheckRollup.length) {
       run("gh", "pr", "checks", String(pull.number), "--repo", repo, "--watch", "--fail-fast");
+    }
+    const main = api<{ object: { sha: string } }>(`repos/${repo}/git/ref/heads/main`);
+    if (main.object.sha !== env("RELEASE_BASE")) {
+      throw new Error(
+        "main changed during the build. Rerun all jobs to merge main into the release branch and rebuild.",
+      );
     }
     // GitHub enforces the repository's merge rules. Do not use an admin bypass.
     run(
