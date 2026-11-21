@@ -174,6 +174,33 @@ test("an excluded top-level package fails staging rather than shipping without i
   ).rejects.toThrow("Harness package is both staged and excluded: adapter.");
 });
 
+test("staged manifests omit excluded dependencies so packaging cannot restore them from the workspace", async () => {
+  const f = await fixture();
+  const adapter = await installed(f.source, "adapter", {
+    dependencies: { cli: "1", parser: "1" },
+    optionalDependencies: { "native-cli": "1" },
+    peerDependencies: { "peer-cli": "1" },
+    peerDependenciesMeta: { "peer-cli": { optional: true } },
+    exports: { ".": "./lib/index.js" },
+  });
+  await installed(f.source, "parser");
+  const original = await readFile(join(adapter, "package.json"), "utf8");
+  await stageInstalledPackages({
+    names: ["adapter"],
+    fromDirectory: f.source,
+    nodeModulesDirectory: f.output,
+    exclude: ["cli", "native-cli", "peer-cli"],
+  });
+  expect(JSON.parse(await readFile(join(f.output, "adapter/package.json"), "utf8"))).toEqual({
+    ...JSON.parse(original),
+    dependencies: { parser: "1" },
+    optionalDependencies: {},
+    peerDependencies: {},
+    peerDependenciesMeta: {},
+  });
+  expect(await readFile(join(adapter, "package.json"), "utf8")).toBe(original);
+});
+
 test("missing required dependencies and peers fail staging rather than shipping an incomplete graph", async () => {
   const f = await fixture();
   await installed(f.source, "sdk", { dependencies: { missing: "1" } });
