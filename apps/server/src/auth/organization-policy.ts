@@ -15,14 +15,6 @@ export function rethrowInvitationLookupError(path: string, returned: APIError): 
     });
 }
 
-/** The invitation was saved, but its email was not sent. Clients offer the invite link instead. */
-export function invitationEmailFailure() {
-  return new APIError("BAD_GATEWAY", {
-    code: "INVITATION_EMAIL_FAILED",
-    message: "The invitation was saved, but its email could not be sent.",
-  });
-}
-
 export const organizationBody = z.object({ keepCurrentActiveOrganization: z.boolean().optional() });
 export const organizationResult = z
   .object({

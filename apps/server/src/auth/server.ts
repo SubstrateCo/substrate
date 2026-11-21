@@ -17,7 +17,6 @@ import { isTrustedOrigin } from "../shared/origin";
 import { createOrganizationLifecycle } from "./organization-lifecycle";
 import {
   organizationBody,
-  invitationEmailFailure,
   organizationResult,
   rememberedOrganization,
   rethrowInvitationLookupError,
@@ -65,10 +64,6 @@ export function createAuth(deps: {
     await publishMembershipChange(input);
   };
 
-  // Better Auth logs and drops errors from sendInvitationEmail, so the failure is noted per request
-  // and reported by the after hook. The invitation itself is already saved.
-  const failedInvitationEmails = new WeakSet<Request>();
-
   const handleOrganizationLifecycle = createOrganizationLifecycle({
     clearMembershipSharing: async (userId, organizationId) => {
       await publishCommitted(await clearMembershipSharing(db, userId, organizationId));
@@ -90,7 +85,14 @@ export function createAuth(deps: {
       requireEmailVerification: true,
       revokeSessionsOnPasswordReset: true,
       sendResetPassword: async ({ user, url }) => {
-        await mail.resetPassword(user.email, url);
+        try {
+          await mail.resetPassword(user.email, url);
+        } catch (error) {
+          console.error(
+            "Password reset email failed",
+            error instanceof Error ? error.name : "Unknown error",
+          );
+        }
       },
       onPasswordReset: async ({ user }) => {
         await publishSessionChange({ userId: user.id });
@@ -100,7 +102,14 @@ export function createAuth(deps: {
       sendOnSignUp: true,
       sendOnSignIn: true,
       sendVerificationEmail: async ({ user, url }) => {
-        await mail.verifyEmail(user.email, url);
+        try {
+          await mail.verifyEmail(user.email, url);
+        } catch (error) {
+          console.error(
+            "Verification email failed",
+            error instanceof Error ? error.name : "Unknown error",
+          );
+        }
       },
     },
     user: {
@@ -161,8 +170,6 @@ export function createAuth(deps: {
           returned: ctx.context.returned,
           session: ctx.context.session ?? null,
         });
-        if (ctx.request && failedInvitationEmails.delete(ctx.request))
-          throw invitationEmailFailure();
         const body = organizationBody.safeParse(ctx.body ?? {});
         const result = organizationResult.safeParse(ctx.context.returned);
         if (!body.success || !result.success) return;
@@ -226,7 +233,6 @@ export function createAuth(deps: {
               "Invitation email failed",
               error instanceof Error ? error.name : "Unknown error",
             );
-            if (request) failedInvitationEmails.add(request);
           }
         },
       }),
