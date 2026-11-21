@@ -11,7 +11,6 @@ test("export downloads a CSV with the workspace's account records", async ({ acc
   await visit(user, undefined, "/crm", { section: "accounts" });
 
   await page.getByRole("button", { name: "Download accounts", exact: true }).click();
-  await page.screenshot({ path: "../../artifacts/crm-download.png", animations: "disabled" });
   const pending = page.waitForEvent("download");
   await page.getByRole("menuitem", { name: "Download CSV", exact: true }).click();
   const download = await pending;

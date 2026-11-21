@@ -10,9 +10,9 @@ import { currentOrganizationQueryOptions } from "@/queries/organizations/options
 export type CrmExportProps = Pick<
   CrmExportInput,
   "organizationId" | "kind" | "archived" | "search"
->;
+> & { iconOnly?: boolean };
 
-export function CrmExport({ organizationId, kind, archived, search }: CrmExportProps) {
+export function CrmExport({ organizationId, kind, archived, search, iconOnly }: CrmExportProps) {
   const organization = useQuery(currentOrganizationQueryOptions(organizationId));
   const allowed =
     !organization.error && organizationSettingsAccess(organization.data?.role).allowed;
@@ -24,6 +24,7 @@ export function CrmExport({ organizationId, kind, archived, search }: CrmExportP
       : api.crm.export.$url({ query: { organizationId, kind, archived, search, format } }).href;
   return (
     <DownloadMenu
+      iconOnly={iconOnly}
       label={`Download ${kind}`}
       scope={`All matching ${kind}`}
       urls={{ csv: url("csv"), json: url("json") }}

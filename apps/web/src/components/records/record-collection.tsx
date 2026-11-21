@@ -12,9 +12,11 @@ import { RecordList } from "@/components/crm/record-list";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import { ButtonGroup } from "@/components/ui/button-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { contactLink, crmLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
@@ -125,6 +127,41 @@ export function RecordCollection({
   );
   const singular = singularLabels[kind];
   const dealPipelineView = kind === "deals" && view === "pipeline";
+  const compactActions = kind !== "contacts";
+  const createButton = (
+    <Button
+      size={compactActions ? "icon-sm" : "sm"}
+      variant={compactActions ? "ghost" : "default"}
+      aria-label={`New ${singular}`}
+      disabled={!canCreate}
+      onClick={() => {
+        mutation.reset();
+        setCreating(true);
+      }}
+    >
+      <Plus aria-hidden />
+      {!compactActions && <>New {singular}</>}
+    </Button>
+  );
+  const actions = (
+    <>
+      <CrmExport
+        organizationId={organizationId}
+        kind={kind}
+        archived={archived ? "archived" : "active"}
+        search={debounced.query}
+        iconOnly={compactActions}
+      />
+      {compactActions ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{createButton}</TooltipTrigger>
+          <TooltipContent>New {singular}</TooltipContent>
+        </Tooltip>
+      ) : (
+        createButton
+      )}
+    </>
+  );
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
       <PageHeader
@@ -137,25 +174,7 @@ export function RecordCollection({
           }[kind]
         }
         actions={
-          <>
-            <CrmExport
-              organizationId={organizationId}
-              kind={kind}
-              archived={archived ? "archived" : "active"}
-              search={debounced.query}
-            />
-            <Button
-              size="sm"
-              disabled={!canCreate}
-              onClick={() => {
-                mutation.reset();
-                setCreating(true);
-              }}
-            >
-              <Plus aria-hidden />
-              New {singular}
-            </Button>
-          </>
+          compactActions ? <ButtonGroup aria-label="CRM actions">{actions}</ButtonGroup> : actions
         }
       />
       <div className="flex flex-wrap items-center justify-between gap-3">

@@ -7,26 +7,47 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChevronDown, Download, FileJson, FileSpreadsheet } from "lucide-react";
 
 export function DownloadMenu({
   label,
   scope,
   urls,
+  iconOnly = false,
 }: {
   label: string;
   scope: string;
   urls: { csv: string; json: string };
+  iconOnly?: boolean;
 }) {
+  const trigger = (
+    <DropdownMenuTrigger asChild>
+      <Button
+        variant={iconOnly ? "ghost" : "outline"}
+        size={iconOnly ? "icon-sm" : "sm"}
+        aria-label={label}
+      >
+        <Download aria-hidden="true" />
+        {!iconOnly && (
+          <>
+            Download
+            <ChevronDown aria-hidden="true" />
+          </>
+        )}
+      </Button>
+    </DropdownMenuTrigger>
+  );
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="outline" size="sm" aria-label={label}>
-          <Download aria-hidden="true" />
-          Download
-          <ChevronDown aria-hidden="true" />
-        </Button>
-      </DropdownMenuTrigger>
+      {iconOnly ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{trigger}</TooltipTrigger>
+          <TooltipContent>{label}</TooltipContent>
+        </Tooltip>
+      ) : (
+        trigger
+      )}
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>{scope}</DropdownMenuLabel>
         <DropdownMenuSeparator />

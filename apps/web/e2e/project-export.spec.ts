@@ -26,11 +26,6 @@ test("project downloads include project details and tasks in CSV and JSON", asyn
   await visit(user, undefined, "/tasks", { projectId: project.id });
   for (const format of ["CSV", "JSON"]) {
     await page.getByRole("button", { name: "Download project", exact: true }).click();
-    if (format === "CSV")
-      await page.screenshot({
-        path: "../../artifacts/project-download.png",
-        animations: "disabled",
-      });
     const pending = page.waitForEvent("download");
     await page.getByRole("menuitem", { name: `Download ${format}`, exact: true }).click();
     const download = await pending;
