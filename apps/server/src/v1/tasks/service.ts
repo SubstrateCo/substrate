@@ -9,6 +9,7 @@ import type {
 import type { createCommittedPublisher } from "../../shared/committed";
 import type { WorkspaceScope } from "../../shared/scope";
 import { serviceResult } from "../../shared/service-result";
+import { exportProject } from "./export";
 import type { z } from "zod";
 
 export function createTasksService(deps: {
@@ -115,6 +116,7 @@ export function createTasksService(deps: {
     });
   }
   return {
+    export: exportProject,
     listProjects,
     getProject,
     ensureDiscussion,

@@ -1,5 +1,6 @@
 import { contactsExport } from "@substrate/contracts/crm/export";
 
+import { exportResponse } from "../../shared/export";
 import { respond, v } from "../../shared/http";
 import type { ScopeEnv, Scopes } from "../../shared/scope";
 import type { ContactsService } from "./service";
@@ -11,14 +12,10 @@ export function createContactsExportRoutes(service: ContactsService, scopes: Sco
     v("query", contactsExport),
     scopes.workspace("query"),
     async (c) => {
-      const result = await service.export(c.var.scope, c.req.valid("query"));
+      const input = c.req.valid("query");
+      const result = await service.export(c.var.scope, input);
       if (!result.success) return respond(c, result);
-      return c.body(result.data, 200, {
-        "Content-Type": "text/csv; charset=utf-8",
-        "Content-Disposition": 'attachment; filename="contacts.csv"',
-        "Cache-Control": "no-store",
-        "X-Content-Type-Options": "nosniff",
-      });
+      return exportResponse(c, result.data, input.format ?? "csv", "contacts");
     },
   );
 }

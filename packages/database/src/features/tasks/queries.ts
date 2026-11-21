@@ -13,7 +13,20 @@ import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { liveProjectTasks, liveTask } from "./access";
 import { tasks } from "./tasks.schema";
-import { and, asc, countDistinct, desc, eq, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  countDistinct,
+  desc,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  or,
+  sql,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 interface QueryPage {
@@ -33,6 +46,7 @@ export async function queryTasks(
     statuses?: TaskStatus[];
     assigneeActorEntityId?: string;
     parentTaskEntityId?: string | null;
+    afterEntityId?: string;
   },
 ) {
   const { entity } = await ctx.requireAccess(input.projectEntityId, "view");
@@ -67,6 +81,7 @@ export async function queryTasks(
           ? eq(tasks.assigneeActorEntityId, input.assigneeActorEntityId)
           : undefined,
         parentFilter,
+        input.afterEntityId ? gt(tasks.entityId, input.afterEntityId) : undefined,
       ),
     )
     .orderBy(

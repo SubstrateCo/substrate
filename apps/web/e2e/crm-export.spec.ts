@@ -10,12 +10,22 @@ test("export downloads a CSV with the workspace's account records", async ({ acc
   const { page } = user;
   await visit(user, undefined, "/crm", { section: "accounts" });
 
+  await page.getByRole("button", { name: "Download accounts", exact: true }).click();
+  await page.screenshot({ path: "../../artifacts/crm-download.png", animations: "disabled" });
   const pending = page.waitForEvent("download");
-  await page.getByRole("button", { name: "Export CSV", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Download CSV", exact: true }).click();
   const download = await pending;
 
   expect(download.suggestedFilename()).toBe("crm-accounts.csv");
   const csv = await readFile(await download.path(), "utf8");
   expect(csv).toContain('"entityId","name","website","domain","archivedAt"');
   expect(csv).toContain(`,"${name}",`);
+  await page.getByRole("button", { name: "Download accounts", exact: true }).click();
+  const pendingJson = page.waitForEvent("download");
+  await page.getByRole("menuitem", { name: "Download JSON", exact: true }).click();
+  const json = await pendingJson;
+  expect(json.suggestedFilename()).toBe("crm-accounts.json");
+  expect(JSON.parse(await readFile(await json.path(), "utf8"))).toEqual(
+    expect.arrayContaining([expect.objectContaining({ name })]),
+  );
 });

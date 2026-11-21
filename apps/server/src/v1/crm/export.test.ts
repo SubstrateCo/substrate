@@ -1,5 +1,4 @@
-import { CRM_EXPORT_MAX_ROWS } from "@substrate/contracts/crm/export";
-
+import { exportChunks } from "../../shared/export";
 import { createTestScopes, scopeFixture } from "../../test-support";
 import { exportCrm } from "./export";
 import { createCrmExportRoutes } from "./export-routes";
@@ -7,6 +6,23 @@ import { createCrmService } from "./service";
 import { expect, mock, test } from "bun:test";
 
 const service = createCrmService({ publish: async (committed) => committed.result });
+
+test("JSON exports use the same safe fields without changing formula-like names", async () => {
+  const { scope, listAccounts } = fixture();
+  listAccounts.mockResolvedValue([account("customer", "=North")]);
+  const app = createCrmExportRoutes(
+    service,
+    createTestScopes({ repositories: { forSession: async () => scope.repositories } }),
+  );
+  const response = await app.request("/export?organizationId=org&kind=accounts&format=json");
+  expect(response.headers.get("content-type")).toBe("application/json; charset=utf-8");
+  expect(response.headers.get("content-disposition")).toBe(
+    'attachment; filename="crm-accounts.json"',
+  );
+  expect(await response.json()).toEqual([
+    { entityId: "customer", name: "=North", website: null, domain: null, archivedAt: null },
+  ]);
+});
 
 function account(entityId: string, name = "Customer") {
   return {
@@ -77,13 +93,16 @@ test("CSV round-trips quotes and newlines and neutralizes formulas after control
   });
   expect(result.success).toBe(true);
   if (!result.success) return;
-  const rows = parseCsv(result.data);
+  const text = (
+    await Array.fromAsync(exportChunks(result.data.records, result.data.columns, "csv"))
+  ).join("");
+  const rows = parseCsv(text);
   expect(rows[0]).toEqual(["entityId", "name", "website", "domain", "archivedAt"]);
   expect(rows.slice(1).map((row) => row[1])).toEqual([
     names[0],
     ...names.slice(1).map((name) => `'${name}`),
   ]);
-  expect(result.data).not.toContain("PRIVATE SOURCE BODY");
+  expect(text).not.toContain("PRIVATE SOURCE BODY");
 });
 
 test("read-only members cannot export even readable records", async () => {
@@ -129,32 +148,26 @@ test("search exports matching rows across pages and rejects searches above 200 c
   expect(listAccounts).not.toHaveBeenCalled();
 });
 
-test("exports every page and fails explicitly rather than truncating oversized exports", async () => {
+test("streams every page beyond the former 1,000-record limit", async () => {
   const { scope, listAccounts } = fixture("admin");
-  const records = Array.from({ length: 101 }, (_, i) => account(String(i).padStart(6, "0")));
+  const records = Array.from({ length: 1101 }, (_, i) => account(String(i).padStart(6, "0")));
   listAccounts.mockImplementation(async ({ limit = 100, afterEntityId }) =>
     records.filter((row) => !afterEntityId || row.entityId > afterEntityId).slice(0, limit),
   );
   const input = { organizationId: "org", kind: "accounts" as const, archived: "all" as const };
   const result = await exportCrm(scope, input);
   expect(result.success).toBe(true);
-  if (result.success)
+  expect(listAccounts).not.toHaveBeenCalled();
+  if (result.success) {
+    const text = (
+      await Array.fromAsync(exportChunks(result.data.records, result.data.columns, "csv"))
+    ).join("");
     expect(
-      parseCsv(result.data)
+      parseCsv(text)
         .slice(1)
         .map((row) => row[0]),
     ).toEqual(records.map((row) => row.entityId));
-  records.push(
-    ...Array.from({ length: CRM_EXPORT_MAX_ROWS - records.length }, (_, i) =>
-      account(String(i + 101).padStart(6, "0")),
-    ),
-  );
-  expect((await exportCrm(scope, input)).success).toBe(true);
-  records.push(account("999999"));
-  expect(await exportCrm(scope, input)).toMatchObject({
-    success: false,
-    error: { code: "PAYLOAD_TOO_LARGE" },
-  });
+  }
 });
 
 test("attachment responses are private and foreign workspace requests are rejected before reads", async () => {

@@ -30,6 +30,7 @@
     "./files/pictures": "./src/files/pictures.ts",
     "./tasks": "./src/tasks/status.ts",
     "./tasks/input": "./src/tasks/input.ts",
+    "./tasks/export": "./src/tasks/export.ts",
     "./tasks/links": "./src/tasks/links.ts",
     "./context/input": "./src/context/input.ts",
     "./context/notification-groups": "./src/context/notification-groups.ts",

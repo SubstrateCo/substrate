@@ -1,3 +1,4 @@
+import { projectExport } from "@substrate/contracts/tasks/export";
 import {
   tasksWorkspace,
   projectRequest,
@@ -6,6 +7,7 @@ import {
   tasksWrite,
 } from "@substrate/contracts/tasks/input";
 
+import { exportResponse } from "../../shared/export";
 import { respond, v } from "../../shared/http";
 import type { ScopeEnv, Scopes } from "../../shared/scope";
 import type { TasksService } from "./service";
@@ -13,6 +15,17 @@ import { Hono } from "hono";
 
 export function createTasksRoutes(services: TasksService, scopes: Scopes) {
   return new Hono<ScopeEnv>()
+    .get("/export", v("query", projectExport), scopes.workspace("query"), async (c) => {
+      const input = c.req.valid("query");
+      const result = await services.export(c.var.scope, input);
+      if (!result.success) return respond(c, result);
+      return exportResponse(
+        c,
+        result.data,
+        input.format ?? "csv",
+        `project-${input.projectEntityId}`,
+      );
+    })
     .get("/task-location", v("query", taskLocationRequest), scopes.workspace("query"), async (c) =>
       respond(c, await services.getTaskLocation(c.var.scope, c.req.valid("query"))),
     )

@@ -13,6 +13,37 @@ import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 
+test("task export pages use stable IDs and exclude deleted tasks and other projects", async () => {
+  const alice = f.forActor(f.alice);
+  const project = await alice.projects.create({ name: "Export" });
+  const other = await alice.projects.create({ name: "Other" });
+  const records = [];
+  for (let i = 0; i < 4; i++)
+    records.push(
+      await alice.tasks.create({ projectEntityId: project.entityId, title: `Task ${i}` }),
+    );
+  await alice.tasks.create({ projectEntityId: other.entityId, title: "Hidden" });
+  await alice.tasks.delete(records[0]!.entityId, project.entityId);
+  const expected = records
+    .slice(1)
+    .map((row) => row.entityId)
+    .sort();
+  const ctx = new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.alice });
+  const first = await queryTasks(ctx, {
+    projectEntityId: project.entityId,
+    ascending: true,
+    limit: 2,
+  });
+  const second = await queryTasks(ctx, {
+    projectEntityId: project.entityId,
+    ascending: true,
+    limit: 2,
+    afterEntityId: first.at(-1)!.task.entityId,
+  });
+  expect([...first, ...second].map((row) => row.task.entityId)).toEqual(expected);
+  expect(f.forActor(f.bob).tasks.exportPage(project.entityId)).rejects.toThrow();
+});
+
 test("task activity uses joined current human and agent names", async () => {
   const agent = await ownedAgent(f);
   const alice = f.forActor(f.alice);

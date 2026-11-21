@@ -24,6 +24,7 @@
     "@substrate/contracts": "workspace:*",
     "@substrate/database": "workspace:*",
     "better-auth": "^1.7.18",
+    "csv-stringify": "^6.9.0",
     "drizzle-orm": "^0.45.4",
     "hono": "^4.10.0",
     "nodemailer": "^10.3.1",

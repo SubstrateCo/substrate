@@ -8,6 +8,7 @@ import { TaskForm } from "../editor/task-form";
 import { ProjectDelete } from "./editor/project-delete";
 import { ProjectForm } from "./editor/project-form";
 import { ProjectPicture } from "./editor/project-picture";
+import { ProjectExport } from "./project-export";
 import { ProjectSharing } from "./sharing/project-sharing";
 import { ProjectPane as ProjectPaneView } from "@/components/tasks/projects/project-pane-view";
 import { workLink } from "@/lib/navigation/record-links";
@@ -58,11 +59,14 @@ export function ProjectPane({
         )
       }
       headerActions={
-        <CopyLink
-          grouped
-          label="Copy project link"
-          link={workLink(organizationId, projectEntityId)}
-        />
+        <>
+          <ProjectExport organizationId={organizationId} projectEntityId={projectEntityId} />
+          <CopyLink
+            grouped
+            label="Copy project link"
+            link={workLink(organizationId, projectEntityId)}
+          />
+        </>
       }
       context={
         project.data &&

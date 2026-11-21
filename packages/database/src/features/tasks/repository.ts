@@ -148,6 +148,9 @@ export function taskRepository(context: RepositoryContext) {
   return {
     ...taskLifecycle(context),
     get: requireTask,
+    async exportPage(projectEntityId: string, afterEntityId?: string) {
+      return queryTasks(context, { projectEntityId, afterEntityId, limit: 100, ascending: true });
+    },
     async create(input: CreateTaskInput) {
       return context.transaction(async (ctx) => {
         const project = await ctx.requireAccess(input.projectEntityId, "edit", true);
