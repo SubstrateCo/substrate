@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { linkOptions, useRouter } from "@tanstack/react-router";
+import { Link, linkOptions, useRouter } from "@tanstack/react-router";
 
 import { useState, type ReactNode } from "react";
 
@@ -90,7 +90,7 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
       }
       actions={
         <>
-          <AuthNavLink href="/onboarding">Workspaces</AuthNavLink>
+          <AuthNavLink to="/onboarding">Workspaces</AuthNavLink>
           <SignOutButton destination={path} />
         </>
       }
@@ -261,7 +261,7 @@ function InvitationLoadNotice({
 function WorkspacesLink() {
   return (
     <Button asChild className="w-full" size="lg">
-      <a href="/onboarding">Go to your workspaces</a>
+      <Link to="/onboarding">Go to your workspaces</Link>
     </Button>
   );
 }

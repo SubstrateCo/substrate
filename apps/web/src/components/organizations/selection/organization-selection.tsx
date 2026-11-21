@@ -23,7 +23,6 @@ export function OrganizationSelection({ destination = "/dashboard" }: { destinat
   const pending = (resourceState(invitations).data ?? []).map((item) => ({
     ...item,
     expired: new Date(item.expiresAt).getTime() <= now,
-    href: `/accept-invitation/${encodeURIComponent(item.id)}`,
   }));
   return (
     <OrganizationSelectionView

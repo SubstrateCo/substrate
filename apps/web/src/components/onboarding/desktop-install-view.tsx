@@ -1,3 +1,5 @@
+import { Link, type LinkProps } from "@tanstack/react-router";
+
 import { ErrorState } from "@/components/feedback/error-state";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -10,14 +12,14 @@ import { ArrowUpRight, Download, Laptop } from "lucide-react";
  */
 export function DesktopInstallView({
   openHref,
-  browserHref,
+  browserLink,
   windowsAvailable,
   loading,
   error,
   onRetry,
 }: {
   openHref: string;
-  browserHref: string;
+  browserLink: LinkProps;
   windowsAvailable: boolean;
   loading: boolean;
   error: Error | null;
@@ -33,7 +35,7 @@ export function DesktopInstallView({
   );
   const continueInBrowser = (primary: boolean) => (
     <Button asChild size="lg" variant={primary ? "default" : "outline"}>
-      <a href={browserHref}>Continue in browser</a>
+      <Link {...browserLink}>Continue in browser</Link>
     </Button>
   );
 

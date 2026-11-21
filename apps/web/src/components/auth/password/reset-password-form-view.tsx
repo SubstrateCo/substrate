@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+
 import { useState } from "react";
 
 import { PendingButton } from "../../feedback/pending-button";
@@ -8,6 +10,7 @@ import { Input } from "../../ui/input";
 import { AuthFrame } from "../auth-frame";
 import { AuthLink } from "../auth-link";
 import { FormMessage } from "@/components/feedback/form-message";
+import type { authLink } from "@/lib/auth/navigation";
 
 export function ResetPasswordForm({
   invalid = false,
@@ -15,22 +18,22 @@ export function ResetPasswordForm({
   success = false,
   error,
   onSubmit,
-  loginHref,
-  requestResetHref,
+  loginLink,
+  requestResetLink,
 }: {
   invalid?: boolean;
   pending?: boolean;
   success?: boolean;
   error?: Error | null;
   onSubmit: (form: FormData) => void;
-  loginHref: string;
-  requestResetHref: string;
+  loginLink: ReturnType<typeof authLink>;
+  requestResetLink: ReturnType<typeof authLink>;
 }) {
   const validation = useNativeValidation();
   const [mismatch, setMismatch] = useState("");
   const passwordError = validation.errors.password;
   const confirmError = validation.errors.confirm || mismatch;
-  const backToSignIn = <AuthLink href={loginHref}>Back to sign in</AuthLink>;
+  const backToSignIn = <AuthLink {...loginLink}>Back to sign in</AuthLink>;
 
   if (invalid)
     return (
@@ -40,7 +43,7 @@ export function ResetPasswordForm({
         footer={backToSignIn}
       >
         <Button asChild size="lg" className="w-full">
-          <a href={requestResetHref}>Request a new link</a>
+          <Link {...requestResetLink}>Request a new link</Link>
         </Button>
       </AuthFrame>
     );
@@ -52,7 +55,7 @@ export function ResetPasswordForm({
         description="Your password was changed. You can now sign in."
       >
         <Button asChild size="lg" className="w-full">
-          <a href={loginHref}>Sign in</a>
+          <Link {...loginLink}>Sign in</Link>
         </Button>
       </AuthFrame>
     );
@@ -63,7 +66,7 @@ export function ResetPasswordForm({
       description="Enter a new password for your account."
       footer={
         <>
-          Link not working? <AuthLink href={requestResetHref}>Request a new link</AuthLink>
+          Link not working? <AuthLink {...requestResetLink}>Request a new link</AuthLink>
         </>
       }
     >

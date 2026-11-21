@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+
 import { InvitationStatus } from "../invitations/invitation-status";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
@@ -13,7 +15,6 @@ export type PendingInvitation = {
   role: string;
   expiresAt: Date | string;
   expired: boolean;
-  href: string;
 };
 
 /** Invitations the user can answer before choosing or creating a workspace. */
@@ -81,9 +82,13 @@ export function PendingInvitations({
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Button asChild size="icon-sm">
-                          <a href={invitation.href} aria-label={`Accept invitation to ${name}`}>
+                          <Link
+                            to="/accept-invitation/$invitationId"
+                            params={{ invitationId: invitation.id }}
+                            aria-label={`Accept invitation to ${name}`}
+                          >
                             <Check aria-hidden="true" />
-                          </a>
+                          </Link>
                         </Button>
                       </TooltipTrigger>
                       <TooltipContent>{`Accept invitation to ${name}`}</TooltipContent>

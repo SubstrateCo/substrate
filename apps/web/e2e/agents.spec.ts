@@ -6,7 +6,7 @@ import { expect, type Page } from "@playwright/test";
 const section = (page: Page, name: string) =>
   page
     .getByRole("navigation", { name: "Agent sections", exact: true })
-    .getByRole("button", { name, exact: true });
+    .getByRole("link", { name, exact: true });
 
 const instructions = (page: Page) =>
   page.getByRole("textbox", { name: "Additional instructions (optional)", exact: true });
@@ -57,8 +57,8 @@ test("agent definitions and run settings can be created, edited, persisted and d
     save.click(),
   ]);
   const sidebar = user.page.getByRole("region", { name: "Your agents", exact: true });
-  await expect(sidebar.getByRole("button", { name: updatedName, exact: true })).toBeVisible();
-  await expect(sidebar.getByRole("button", { name, exact: true })).toHaveCount(0);
+  await expect(sidebar.getByRole("link", { name: updatedName, exact: true })).toBeVisible();
+  await expect(sidebar.getByRole("link", { name, exact: true })).toHaveCount(0);
   await user.page.reload();
   await section(user.page, "Instructions").click();
   await expect(instructions(user.page)).toHaveValue("Summarize release risks only.");
@@ -90,7 +90,7 @@ test("agent definitions and run settings can be created, edited, persisted and d
     .getByRole("dialog")
     .getByRole("button", { name: "Delete agent", exact: true })
     .click();
-  await expect(sidebar.getByRole("button", { name: updatedName, exact: true })).toHaveCount(0);
+  await expect(sidebar.getByRole("link", { name: updatedName, exact: true })).toHaveCount(0);
   // Without agents, the Agents app explains how to start instead of an empty Needs you list.
   const firstAgent = user.page.getByRole("heading", {
     name: "Create your first agent",

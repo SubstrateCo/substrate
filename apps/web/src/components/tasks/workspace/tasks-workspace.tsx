@@ -6,6 +6,7 @@ import { useState } from "react";
 import { ProjectForm } from "../projects/editor/project-form";
 import { ProjectPane } from "../projects/project-pane";
 import { TasksWorkspace as TasksWorkspaceView } from "@/components/tasks/workspace/tasks-workspace-view";
+import { workLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { projectsQueryOptions, taskLocationQueryOptions } from "@/queries/tasks/options";
 
@@ -58,6 +59,7 @@ export function TasksWorkspace({
         state={resource.status}
         projects={resource.data ?? []}
         selectedProjectId={selectedProjectId}
+        projectLink={(id) => workLink(organizationId, id)}
         onSelectProject={(selected) =>
           void navigate({
             to: "/tasks",

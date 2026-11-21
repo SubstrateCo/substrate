@@ -1,10 +1,10 @@
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { AuthLink } from "@/components/auth/auth-link";
 import { DesktopInstall } from "@/components/onboarding/desktop-install";
-import { useAuthHref } from "@/hooks/use-auth-href";
+import { useAuthLink } from "@/hooks/use-auth-href";
 
 export function DownloadScreen({ destination }: { destination: string }) {
-  const authHref = useAuthHref();
+  const authLink = useAuthLink();
   return (
     <AuthFrame
       title="Substrate for desktop"
@@ -12,11 +12,11 @@ export function DownloadScreen({ destination }: { destination: string }) {
       footer={
         <>
           New to Substrate?{" "}
-          <AuthLink href={authHref("/signup", destination)}>Create account</AuthLink>
+          <AuthLink {...authLink("/signup", destination)}>Create account</AuthLink>
         </>
       }
     >
-      <DesktopInstall destination={destination} browserHref={authHref("/login", destination)} />
+      <DesktopInstall destination={destination} browserLink={authLink("/login", destination)} />
     </AuthFrame>
   );
 }

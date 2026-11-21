@@ -10,7 +10,7 @@ export async function requireVerifiedSession(
   destination: string,
   options = sessionQueryOptions(),
 ): Promise<NonNullable<Awaited<ReturnType<typeof getSession>>>> {
-  // Realtime session and access events, reconnect resyncs, and full-document auth changes keep a
+  // Realtime session and access events, reconnect resyncs, and auth cache clears keep a
   // verified session current. Recheck a missing or unverified one, since no event reports email verification.
   const session = await queryClient.query({
     ...options,

@@ -9,6 +9,7 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-create-menu";
 import { CreateConversationDialog } from "@/components/messaging/conversations/create-conversation-dialog";
 import { MessagingWorkspace as MessagingWorkspaceView } from "@/components/messaging/workspace/messaging-workspace-view";
+import { messageLink } from "@/lib/navigation/record-links";
 import type { PickerPerson } from "@/lib/people/people-picker";
 import { resourceState } from "@/lib/resource-state";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
@@ -86,7 +87,8 @@ export function MessagingWorkspace({
       selectedId={selected?.id}
       sidebarOpen={sidebarOpen}
       onSidebarOpenChange={setSidebarOpen}
-      onSelect={open}
+      conversationLink={(id) => messageLink(organizationId, id)}
+      onSelect={() => setSidebarOpen(false)}
       loading={conversations.isPending}
       error={conversations.error}
       onRetry={() => void conversations.refetch()}

@@ -3,21 +3,22 @@ import { EmailField, NativeField, NativeForm } from "../../forms/native-form";
 import { AuthFrame } from "../auth-frame";
 import { AuthLink } from "../auth-link";
 import { FormMessage } from "@/components/feedback/form-message";
+import type { authLink } from "@/lib/auth/navigation";
 
 export function LoginForm({
   email = "",
   pending = false,
   error,
   onSubmit,
-  forgotPasswordHref,
-  signupHref,
+  forgotPasswordLink,
+  signupLink,
 }: {
   email?: string;
   pending?: boolean;
   error?: Error | null;
   onSubmit: (form: FormData) => void;
-  forgotPasswordHref: string;
-  signupHref: string;
+  forgotPasswordLink: ReturnType<typeof authLink>;
+  signupLink: ReturnType<typeof authLink>;
 }) {
   return (
     <AuthFrame
@@ -25,7 +26,7 @@ export function LoginForm({
       description="Sign in to your workspace."
       footer={
         <>
-          New to Substrate? <AuthLink href={signupHref}>Create account</AuthLink>
+          New to Substrate? <AuthLink {...signupLink}>Create account</AuthLink>
         </>
       }
     >
@@ -41,7 +42,7 @@ export function LoginForm({
           autoFocus={!!email}
           labelAction={
             <AuthLink
-              href={forgotPasswordHref}
+              {...forgotPasswordLink}
               className="text-xs font-normal text-muted-foreground hover:text-foreground"
             >
               Forgot password?

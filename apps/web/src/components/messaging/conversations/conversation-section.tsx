@@ -1,3 +1,5 @@
+import type { LinkProps } from "@tanstack/react-router";
+
 import { useState } from "react";
 
 import {
@@ -25,6 +27,7 @@ export function ConversationSection({
   people,
   agents,
   onSelect,
+  conversationLink,
   onCreate,
   onMessagePerson,
   onMessageAgent,
@@ -36,6 +39,7 @@ export function ConversationSection({
   people?: PickerPerson[];
   agents?: DirectMessageAgent[];
   onSelect: (id: string) => void;
+  conversationLink: (id: string) => LinkProps;
   onCreate: (kind: Conversation["kind"]) => void;
   onMessagePerson?: (person: PickerPerson) => void;
   onMessageAgent?: (agent: DirectMessageAgent) => void;
@@ -96,6 +100,7 @@ export function ConversationSection({
               conversation={pinned}
               selected
               onSelect={() => onSelect(pinned.id)}
+              link={conversationLink(pinned.id)}
             />
           </div>
         )}
@@ -118,6 +123,7 @@ export function ConversationSection({
                   conversation={conversation}
                   selected={selectedId === conversation.id}
                   onSelect={() => onSelect(conversation.id)}
+                  link={conversationLink(conversation.id)}
                 />
               ))}
             </div>

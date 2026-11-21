@@ -96,7 +96,7 @@ test("members browse public channels in search and join from the list or the cha
   await search.getByRole("button", { name: `Join ${listed.name}`, exact: true }).click();
   await expect(search.getByText("Joined", { exact: true })).toBeVisible();
   await page.keyboard.press("Escape");
-  await expect(page.getByRole("button", { name: listed.name, exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: listed.name, exact: true })).toBeVisible();
 
   await page.getByRole("button", { name: "Browse channels", exact: true }).first().click();
   await page.getByLabel("Search workspace", { exact: true }).fill(opened.name);
@@ -108,7 +108,7 @@ test("members browse public channels in search and join from the list or the cha
   await expect(notice).toBeVisible();
   await page.getByRole("button", { name: "Join channel", exact: true }).click();
   await expect(notice).toHaveCount(0);
-  await expect(page.getByRole("button", { name: opened.name, exact: true })).toBeVisible();
+  await expect(page.getByRole("link", { name: opened.name, exact: true })).toBeVisible();
 });
 
 test("a member leaves a private channel and loses access to it", async ({ actors, client }) => {

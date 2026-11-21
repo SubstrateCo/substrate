@@ -1,22 +1,24 @@
+import { Link } from "@tanstack/react-router";
+
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { AuthLink } from "@/components/auth/auth-link";
 import { Button } from "@/components/ui/button";
-import { useAuthHref } from "@/hooks/use-auth-href";
+import { useAuthLink } from "@/hooks/use-auth-href";
 
 export function WelcomeScreen() {
-  const authHref = useAuthHref();
+  const authLink = useAuthLink();
   return (
     <AuthFrame
       title="Your team’s connected workspace"
       description="Create your account and organization in the browser. Install the desktop app when you’re ready."
-      footer={<AuthLink href="/download">Download the desktop app</AuthLink>}
+      footer={<AuthLink to="/download">Download the desktop app</AuthLink>}
     >
       <div className="grid gap-2">
         <Button asChild size="lg">
-          <a href={authHref("/signup", "/onboarding")}>Create organization</a>
+          <Link {...authLink("/signup", "/onboarding")}>Create organization</Link>
         </Button>
         <Button asChild size="lg" variant="outline">
-          <a href={authHref("/login", "/onboarding")}>Sign in</a>
+          <Link {...authLink("/login", "/onboarding")}>Sign in</Link>
         </Button>
       </div>
       <p className="text-sm text-muted-foreground">

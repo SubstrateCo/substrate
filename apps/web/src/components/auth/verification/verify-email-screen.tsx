@@ -1,6 +1,6 @@
 import { formText } from "../form-values";
 import { VerifyEmailScreen as VerifyEmailScreenView } from "@/components/auth/verification/verify-email-screen-view";
-import { useAuthHref } from "@/hooks/use-auth-href";
+import { useAuthHref, useAuthLink } from "@/hooks/use-auth-href";
 import { useSendVerificationEmail } from "@/queries/auth/mutations";
 
 export function VerifyEmailScreen({
@@ -13,6 +13,7 @@ export function VerifyEmailScreen({
   error: string;
 }) {
   const authHref = useAuthHref();
+  const authLink = useAuthLink();
   const resend = useSendVerificationEmail((email) => authHref("/login", redirect, email));
   return (
     <VerifyEmailScreenView
@@ -23,7 +24,7 @@ export function VerifyEmailScreen({
       error={resend.error}
       onSubmit={(form) => resend.mutate(formText(form, "email"))}
       onReset={() => resend.reset()}
-      loginHref={authHref("/login", redirect, email)}
+      loginLink={authLink("/login", redirect, email)}
     />
   );
 }

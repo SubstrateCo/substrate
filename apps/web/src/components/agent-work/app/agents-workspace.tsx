@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
+import { linkOptions, useNavigate } from "@tanstack/react-router";
 
 import { useRef, useState } from "react";
 
@@ -50,8 +50,8 @@ export function AgentsWorkspace({
     ...localAgentsOptions(userId, organizationId),
     enabled: hasAgentWorkBridge(),
   });
-  const go = ({ section: next, ...search }: AgentsSearch) =>
-    void navigate({
+  const agentLink = ({ section: next, ...search }: AgentsSearch) =>
+    linkOptions({
       to: "/agents",
       search: {
         workspaceId: organizationId,
@@ -59,6 +59,7 @@ export function AgentsWorkspace({
         section: next === "activity" ? undefined : next,
       },
     });
+  const go = (search: AgentsSearch) => void navigate(agentLink(search));
   const status = (id: string) => statuses.data?.find((entry) => entry.userAgentId === id);
   const agents = (catalog.data?.agents ?? []).map((agent) => {
     const published = status(agent.id);
@@ -77,11 +78,7 @@ export function AgentsWorkspace({
     content = firstAgent ? (
       <FirstAgentView onCreate={() => setCreating(true)} />
     ) : (
-      <NeedsYou
-        userId={userId}
-        organizationId={organizationId}
-        onOpenAgent={(id) => go({ agentId: id })}
-      />
+      <NeedsYou userId={userId} organizationId={organizationId} />
     );
   else if (!selected && catalog.isPending) content = <AgentPageLoading section={section} />;
   else if (!selected)
@@ -118,7 +115,7 @@ export function AgentsWorkspace({
       agentsLoaded={catalog.isSuccess}
       needsYouCount={needsYouCount(needsYou.data)}
       selectedAgentId={agentId}
-      onSelect={(id) => go({ agentId: id })}
+      agentLink={(id) => agentLink({ agentId: id })}
       onCreate={() => setCreating(true)}
       createButtonRef={newAgentButton}
       editor={

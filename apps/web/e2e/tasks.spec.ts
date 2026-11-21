@@ -38,7 +38,7 @@ test("task drafts ask before navigation and project drafts stay with their proje
     0,
   );
   await sender.page.getByLabel("Project name", { exact: true }).fill("Unsaved project name");
-  await sender.page.getByRole("button", { name: second.name, exact: true }).click();
+  await sender.page.getByRole("link", { name: second.name, exact: true }).click();
   await sender.page.getByRole("button", { name: "Discard changes" }).click();
   await sender.page.getByRole("tab", { name: "Settings" }).click();
   await expect(sender.page.getByLabel("Project name", { exact: true })).toHaveValue(second.name);
@@ -220,7 +220,7 @@ test("project sharing needs confirmation and revocation removes cached private c
     visit(sender, undefined, "/tasks", { projectId: created.entityId }),
     visit(member, undefined, "/tasks"),
   ]);
-  await expect(member.page.getByRole("button", { name: created.name, exact: true })).toHaveCount(0);
+  await expect(member.page.getByRole("link", { name: created.name, exact: true })).toHaveCount(0);
   await sender.page.getByRole("tab", { name: "Settings", exact: true }).click();
   await sender.page.getByRole("button", { name: "Add people", exact: true }).click();
   await expect(
@@ -232,7 +232,7 @@ test("project sharing needs confirmation and revocation removes cached private c
     (await detail(actors.sender, created.entityId)).members.map((item) => item.name),
   ).not.toContain(actors.member.name);
   await sender.page.getByRole("button", { name: "Share project", exact: true }).click();
-  await member.page.getByRole("button", { name: created.name, exact: true }).click();
+  await member.page.getByRole("link", { name: created.name, exact: true }).click();
   await member.page.getByRole("button", { name: new RegExp(`^Not started: ${title}`) }).click();
   await expect.poll(() => new URL(member.page.url()).searchParams.get("taskId")).toBe(task.id);
   await expect(
@@ -260,7 +260,7 @@ test("project sharing needs confirmation and revocation removes cached private c
     member.page.getByRole("heading", { name: "Project unavailable", exact: true }),
   ).toBeVisible();
   await expect(member.page.getByText(title, { exact: true })).toHaveCount(0);
-  await expect(member.page.getByRole("button", { name: created.name, exact: true })).toHaveCount(0);
+  await expect(member.page.getByRole("link", { name: created.name, exact: true })).toHaveCount(0);
   await member.page.getByRole("combobox", { name: "Search workspace", exact: true }).fill(title);
   await expect(member.page.getByText(`No results for “${title}”`, { exact: true })).toBeVisible();
   await expect(member.page.getByRole("link", { name: `Task: ${title}`, exact: true })).toHaveCount(

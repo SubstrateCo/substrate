@@ -1,3 +1,5 @@
+import { Link, type LinkProps } from "@tanstack/react-router";
+
 import type { ReactNode } from "react";
 
 import { ContentNotice } from "@/components/feedback/content-notice";
@@ -19,7 +21,7 @@ export type NeedsYouEntry = {
   place: ReactNode;
   /** The request card, or a line for an agent that stopped. */
   body: ReactNode;
-  onOpenAgent?: () => void;
+  agentLink?: LinkProps;
 };
 
 /** Everything that waits for the owner, from every agent. Works from any device. */
@@ -75,16 +77,15 @@ export function NeedsYouView({
             {entries.map((entry) => (
               <NeedsYouItem key={entry.key}>
                 <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
-                  {entry.onOpenAgent ? (
+                  {entry.agentLink ? (
                     <Button
-                      type="button"
+                      asChild
                       size="xs"
                       variant="link"
                       className="-mx-2"
                       aria-label={`${entry.agentName}, open activity`}
-                      onClick={entry.onOpenAgent}
                     >
-                      {entry.agentName}
+                      <Link {...entry.agentLink}>{entry.agentName}</Link>
                     </Button>
                   ) : (
                     <span className="font-semibold text-foreground">{entry.agentName}</span>

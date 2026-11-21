@@ -1,6 +1,7 @@
 import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
 
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
@@ -77,9 +78,9 @@ export function WorkspaceFrame({
               logo={organization.data?.logo}
             />
           ) : (
-            <a href="/organizations" aria-label="Workspaces">
+            <Link to="/organizations" aria-label="Workspaces">
               OS
-            </a>
+            </Link>
           )
         }
         signOut={<SignOutButton />}

@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+
 import { useMemo } from "react";
 
 import { DateTimeDisplay } from "../../table/date-time-cell";
@@ -13,7 +15,6 @@ type UserInvitation = {
   organizationName?: string;
   role: string;
   expiresAt: Date | string;
-  href: string;
 };
 
 type InvitationRow = UserInvitation & { expired: boolean };
@@ -43,10 +44,14 @@ function InvitationActions({
         Decline
       </Button>
       <Button asChild variant="outline" size="sm">
-        <a href={invitation.href} aria-label={`Review invitation to ${organization}`}>
+        <Link
+          to="/accept-invitation/$invitationId"
+          params={{ invitationId: invitation.id }}
+          aria-label={`Review invitation to ${organization}`}
+        >
           Review
           <ArrowUpRight aria-hidden="true" />
-        </a>
+        </Link>
       </Button>
     </div>
   );

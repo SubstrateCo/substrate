@@ -12,13 +12,17 @@ export function useElectronAuthorization() {
   });
 }
 
-/**
- * Builds auth page URLs for full-document navigation and auth email callbacks. The router
- * serializes the search, so the target page's `validateSearch` reads it back unchanged.
- */
-export function useAuthHref() {
-  const router = useRouter();
+/** Typed auth destinations that preserve the desktop sign-in handoff. */
+export function useAuthLink() {
   const authorization = useElectronAuthorization();
   return (to: AuthPath, redirect: string, email?: string) =>
-    router.buildLocation(authLink(to, redirect, email, authorization)).href;
+    authLink(to, redirect, email, authorization);
+}
+
+/** Builds URLs for auth email callbacks and full-document session exits. */
+export function useAuthHref() {
+  const router = useRouter();
+  const link = useAuthLink();
+  return (to: AuthPath, redirect: string, email?: string) =>
+    router.buildLocation(link(to, redirect, email)).href;
 }

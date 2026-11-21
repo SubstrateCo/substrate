@@ -69,7 +69,6 @@ export function AcceptInvitationScreen({ invitationId }: { invitationId: string 
       signOut={
         <SignOutButton destination={`/accept-invitation/${encodeURIComponent(invitationId)}`} />
       }
-      workspacesHref="/organizations"
     />
   );
 }

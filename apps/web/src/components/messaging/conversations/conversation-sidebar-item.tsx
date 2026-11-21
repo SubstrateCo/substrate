@@ -1,3 +1,5 @@
+import { Link, type LinkProps } from "@tanstack/react-router";
+
 import type { ReactNode } from "react";
 
 import { Button } from "../../ui/button";
@@ -50,66 +52,69 @@ export function ConversationSidebarItem({
   conversation,
   selected,
   onSelect,
+  link,
 }: {
   conversation: Conversation;
   selected: boolean;
   onSelect: () => void;
+  link: LinkProps;
 }) {
   return (
-    <Button
-      variant="sidebar"
-      className="w-full justify-start"
-      data-conversation-item=""
-      aria-current={selected ? "page" : undefined}
-      onClick={onSelect}
-    >
-      <SidebarItemContent
-        icon={
-          conversation.kind === "channel" && conversation.private ? (
+    <Button asChild variant="sidebar" className="w-full justify-start">
+      <Link
+        {...link}
+        data-conversation-item=""
+        aria-current={selected ? "page" : undefined}
+        onClick={onSelect}
+      >
+        <SidebarItemContent
+          icon={
+            conversation.kind === "channel" && conversation.private ? (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span role="img" aria-label="Private channel" tabIndex={0} className="shrink-0">
+                    <ConversationKindIcon kind="channel" private className="size-4" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>Private channel</TooltipContent>
+              </Tooltip>
+            ) : (
+              <ConversationKindIcon
+                kind={conversation.kind}
+                private={conversation.private}
+                className="size-4 shrink-0"
+              />
+            )
+          }
+          title={conversationName(conversation)}
+          unread={!!conversation.unreadCount}
+        >
+          {/* Channels already sit under "Partner channels"; DMs and groups need the cue here. */}
+          {conversation.partner && conversation.kind !== "channel" && (
             <Tooltip>
               <TooltipTrigger asChild>
-                <span role="img" aria-label="Private channel" tabIndex={0} className="shrink-0">
-                  <ConversationKindIcon kind="channel" private className="size-4" />
+                <span
+                  role="img"
+                  aria-label="Includes people from another organization"
+                  tabIndex={0}
+                  className="shrink-0 text-muted-foreground"
+                >
+                  <Globe aria-hidden="true" className="size-3.5" />
                 </span>
               </TooltipTrigger>
-              <TooltipContent>Private channel</TooltipContent>
+              <TooltipContent>Includes people from another organization</TooltipContent>
             </Tooltip>
-          ) : (
-            <ConversationKindIcon
-              kind={conversation.kind}
-              private={conversation.private}
-              className="size-4 shrink-0"
-            />
-          )
-        }
-        title={conversationName(conversation)}
-        unread={!!conversation.unreadCount}
-      >
-        {/* Channels already sit under "Partner channels"; DMs and groups need the cue here. */}
-        {conversation.partner && conversation.kind !== "channel" && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span
-                role="img"
-                aria-label="Includes people from another organization"
-                tabIndex={0}
-                className="shrink-0 text-muted-foreground"
-              >
-                <Globe aria-hidden="true" className="size-3.5" />
-              </span>
-            </TooltipTrigger>
-            <TooltipContent>Includes people from another organization</TooltipContent>
-          </Tooltip>
-        )}
-        {!!conversation.unreadCount && (
-          <span
-            className="ml-auto shrink-0 text-xs font-medium"
-            aria-label={`${conversation.unreadCount} unread ${conversation.unreadCount === 1 ? "message" : "messages"}`}
-          >
-            {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
-          </span>
-        )}
-      </SidebarItemContent>
+          )}
+          {!!conversation.unreadCount && (
+            <span
+              className="ml-auto shrink-0 text-xs font-medium"
+              aria-label={`${conversation.unreadCount} unread ${conversation.unreadCount === 1 ? "message" : "messages"}`}
+            >
+              {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
+            </span>
+          )}
+        </SidebarItemContent>
+      </Link>
     </Button>
   );
 }

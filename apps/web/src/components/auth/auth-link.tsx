@@ -1,10 +1,12 @@
+import { createLink } from "@tanstack/react-router";
+
 import type { ComponentProps } from "react";
 
 import { Button } from "../ui/button";
 import { cn } from "cn";
 
 /** Inline text link for guest and setup pages: quiet at rest, underlined on hover. */
-export function AuthLink({ className, ...props }: ComponentProps<"a">) {
+function AuthLinkAnchor({ className, ...props }: ComponentProps<"a">) {
   return (
     <a
       className={cn(
@@ -16,14 +18,18 @@ export function AuthLink({ className, ...props }: ComponentProps<"a">) {
   );
 }
 
+export const AuthLink = createLink(AuthLinkAnchor);
+
 /**
  * Secondary navigation on guest and setup pages, such as "Workspaces". Use it in
  * `AuthFrame` actions, which mute it beside Sign out.
  */
-export function AuthNavLink(props: ComponentProps<"a">) {
+function AuthNavLinkAnchor(props: ComponentProps<"a">) {
   return (
     <Button asChild variant="ghost">
       <a {...props} />
     </Button>
   );
 }
+
+export const AuthNavLink = createLink(AuthNavLinkAnchor);

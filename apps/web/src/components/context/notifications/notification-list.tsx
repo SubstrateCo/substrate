@@ -1,12 +1,10 @@
 import type { NotificationFilter } from "@substrate/contracts/context/notification-groups";
 
 import { useInfiniteQuery } from "@tanstack/react-query";
-import { useNavigate } from "@tanstack/react-router";
 
 import { useState, type MouseEvent } from "react";
 
 import { NotificationGroupEvents } from "./notification-group-events";
-import type { Notification } from "./notification-item";
 import { notificationPresentation } from "./notification-presentation";
 import { NotificationList as NotificationListView } from "@/components/context/notifications/notification-list-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
@@ -25,7 +23,6 @@ export function NotificationList({
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const feed = useInfiniteQuery(notificationGroupsOptions(organizationId, filter));
   const resource = resourceState(feed);
-  const navigate = useNavigate();
   const read = useReadNotifications(organizationId);
   const markRead = (target: GroupRead) =>
     read.mutate(target, {
@@ -44,13 +41,11 @@ export function NotificationList({
     const group = groups.get(groupKey);
     if (group && group.unreadCount > 0) markRead({ groupKey, through: group.newestCursor });
   };
-  const open = (groupKey: string, item: Notification, event: MouseEvent<HTMLAnchorElement>) => {
+  const open = (groupKey: string, event: MouseEvent<HTMLAnchorElement>) => {
     mark(groupKey);
     const modified = [event.metaKey, event.ctrlKey, event.shiftKey, event.altKey].some(Boolean);
     if (event.button !== 0 || modified) return;
-    event.preventDefault();
     onClose?.();
-    void navigate(item.link);
   };
   return (
     <NotificationListView
@@ -69,12 +64,12 @@ export function NotificationList({
       onRetry={() => void (feed.isFetchNextPageError ? feed.fetchNextPage() : feed.refetch())}
       onRead={mark}
       onReadAll={() => markRead(null)}
-      onOpen={(item, event) => open(item.id, item, event)}
+      onOpen={(item, event) => open(item.id, event)}
       renderEvents={(item) => (
         <NotificationGroupEvents
           organizationId={organizationId}
           groupKey={item.id}
-          onOpen={(eventItem, event) => open(item.id, eventItem, event)}
+          onOpen={(_eventItem, event) => open(item.id, event)}
         />
       )}
       onClose={onClose}

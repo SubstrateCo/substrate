@@ -4,6 +4,7 @@ import { Button } from "../../ui/button";
 import { AuthFrame } from "../auth-frame";
 import { AuthLink } from "../auth-link";
 import { FormMessage } from "@/components/feedback/form-message";
+import type { authLink } from "@/lib/auth/navigation";
 
 export function VerifyEmailScreen({
   email,
@@ -13,7 +14,7 @@ export function VerifyEmailScreen({
   error,
   onSubmit,
   onReset,
-  loginHref,
+  loginLink,
 }: {
   email: string;
   invalid?: boolean;
@@ -23,9 +24,9 @@ export function VerifyEmailScreen({
   error?: Error | null;
   onSubmit: (form: FormData) => void;
   onReset: () => void;
-  loginHref: string;
+  loginLink: ReturnType<typeof authLink>;
 }) {
-  const footer = <AuthLink href={loginHref}>Back to sign in</AuthLink>;
+  const footer = <AuthLink {...loginLink}>Back to sign in</AuthLink>;
   if (sentTo)
     return (
       <AuthFrame

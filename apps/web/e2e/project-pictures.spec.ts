@@ -23,7 +23,7 @@ test("project icons use the existing crop upload, survive reload, and clear back
   await crop.getByRole("button", { name: "Save picture", exact: true }).click();
   await expect(crop).toHaveCount(0);
   const sidebar = owner.page.getByRole("complementary", { name: "Projects", exact: true });
-  const icon = sidebar.getByRole("button", { name: created.name, exact: true }).locator("img");
+  const icon = sidebar.getByRole("link", { name: created.name, exact: true }).locator("img");
   await expect(icon).toHaveAttribute("src", new RegExp(`/project-icon/${created.entityId}\\?v=`));
   await expect
     .poll(() => icon.evaluate((element: HTMLImageElement) => element.naturalWidth))
@@ -36,6 +36,6 @@ test("project icons use the existing crop upload, survive reload, and clear back
   await expect(icon).toHaveCount(0);
   await expect(upload.getByRole("button", { name: "Choose picture", exact: true })).toBeVisible();
   await owner.page.reload();
-  await expect(sidebar.getByRole("button", { name: created.name, exact: true })).toBeVisible();
+  await expect(sidebar.getByRole("link", { name: created.name, exact: true })).toBeVisible();
   await expect(icon).toHaveCount(0);
 });

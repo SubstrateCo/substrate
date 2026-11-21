@@ -1,3 +1,5 @@
+import { Link, type LinkProps } from "@tanstack/react-router";
+
 import type { Ref } from "react";
 
 import { SkeletonText } from "../../feedback/skeleton-text";
@@ -26,6 +28,7 @@ export function ProjectSidebar({
   onRetry,
   onCreate,
   onSelect,
+  projectLink,
   createButtonRef,
 }: {
   projects: Project[];
@@ -36,6 +39,7 @@ export function ProjectSidebar({
   onRetry: () => void;
   onCreate: () => void;
   onSelect: (id: string) => void;
+  projectLink: (id: string) => LinkProps;
   createButtonRef?: Ref<HTMLButtonElement>;
 }) {
   const visible = projects;
@@ -95,6 +99,7 @@ export function ProjectSidebar({
                 project={project}
                 selected={selectedId === project.entityId}
                 onClick={() => onSelect(project.entityId)}
+                link={projectLink(project.entityId)}
               />
             ))}
           </div>
@@ -107,7 +112,13 @@ export function ProjectSidebar({
 function ProjectSidebarItem(
   props:
     | { loading: true; width: number }
-    | { loading?: false; project: Project; selected: boolean; onClick: () => void },
+    | {
+        loading?: false;
+        project: Project;
+        selected: boolean;
+        onClick: () => void;
+        link: LinkProps;
+      },
 ) {
   const className = "max-w-full min-w-0 shrink-0 justify-start md:w-full";
   if (props.loading) {
@@ -124,14 +135,15 @@ function ProjectSidebarItem(
     );
   }
   return (
-    <Button
-      variant="sidebar"
-      className={className}
-      aria-current={props.selected ? "page" : undefined}
-      onClick={props.onClick}
-    >
-      <ProjectIcon image={props.project.image} />
-      <span className="truncate">{props.project.name}</span>
+    <Button asChild variant="sidebar" className={className}>
+      <Link
+        {...props.link}
+        aria-current={props.selected ? "page" : undefined}
+        onClick={props.onClick}
+      >
+        <ProjectIcon image={props.project.image} />
+        <span className="truncate">{props.project.name}</span>
+      </Link>
     </Button>
   );
 }

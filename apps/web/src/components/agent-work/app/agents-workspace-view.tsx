@@ -1,3 +1,5 @@
+import { Link, type LinkProps } from "@tanstack/react-router";
+
 import type { ReactNode, Ref } from "react";
 
 import { WorkIndicator } from "../work-indicator";
@@ -27,7 +29,7 @@ export function AgentsWorkspaceView({
   agentsLoaded,
   needsYouCount,
   selectedAgentId,
-  onSelect,
+  agentLink,
   onCreate,
   createButtonRef,
   editor,
@@ -39,7 +41,7 @@ export function AgentsWorkspaceView({
   agentsLoaded: boolean;
   needsYouCount: number;
   selectedAgentId?: string;
-  onSelect: (agentId?: string) => void;
+  agentLink: (agentId?: string) => LinkProps;
   onCreate: () => void;
   /** The New agent button, where focus goes once an agent is deleted. */
   createButtonRef?: Ref<HTMLButtonElement>;
@@ -77,20 +79,21 @@ export function AgentsWorkspaceView({
           <PageSidebarContent>
             <nav aria-label="Agent views" className="grid gap-0.5">
               <Button
-                type="button"
+                asChild
                 variant="sidebar"
                 aria-current={!selectedAgentId ? "page" : undefined}
                 className="w-full justify-start"
-                onClick={() => onSelect()}
               >
-                <Hand aria-hidden="true" />
-                <span className="min-w-0 flex-1 truncate text-left">Needs you</span>
-                {needsYouCount > 0 && (
-                  <span className="rounded-full bg-warning/15 px-1.5 text-xs font-medium text-warning-text tabular-nums">
-                    <span className="sr-only">, </span>
-                    {needsYouCount}
-                  </span>
-                )}
+                <Link {...agentLink()} activeOptions={{ explicitUndefined: true }}>
+                  <Hand aria-hidden="true" />
+                  <span className="min-w-0 flex-1 truncate text-left">Needs you</span>
+                  {needsYouCount > 0 && (
+                    <span className="rounded-full bg-warning/15 px-1.5 text-xs font-medium text-warning-text tabular-nums">
+                      <span className="sr-only">, </span>
+                      {needsYouCount}
+                    </span>
+                  )}
+                </Link>
               </Button>
             </nav>
             <section aria-label="Your agents" className="grid gap-0.5">
@@ -101,19 +104,24 @@ export function AgentsWorkspaceView({
               {agents.map((agent) => (
                 <Button
                   key={agent.id}
-                  type="button"
+                  asChild
                   variant="sidebar"
                   aria-current={agent.id === selectedAgentId ? "page" : undefined}
                   className="w-full justify-start"
-                  onClick={() => onSelect(agent.id)}
                 >
-                  <span className="relative grid size-6 shrink-0 place-items-center">
-                    <PersonAvatar name={agent.name} image={agent.image} agent />
-                    {agent.status && (
-                      <WorkIndicator tone={agent.status.tone} label={agent.status.label} compact />
-                    )}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-left">{agent.name}</span>
+                  <Link {...agentLink(agent.id)}>
+                    <span className="relative grid size-6 shrink-0 place-items-center">
+                      <PersonAvatar name={agent.name} image={agent.image} agent />
+                      {agent.status && (
+                        <WorkIndicator
+                          tone={agent.status.tone}
+                          label={agent.status.label}
+                          compact
+                        />
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1 truncate text-left">{agent.name}</span>
+                  </Link>
                 </Button>
               ))}
             </section>

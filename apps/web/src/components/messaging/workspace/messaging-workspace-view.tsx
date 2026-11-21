@@ -1,3 +1,5 @@
+import type { LinkProps } from "@tanstack/react-router";
+
 import { Children, type ReactNode } from "react";
 
 import { PaneState } from "../../feedback/pane-state";
@@ -31,6 +33,7 @@ export function MessagingWorkspace({
   sidebarOpen,
   onSidebarOpenChange,
   onSelect,
+  conversationLink,
   people,
   agents,
   onMessagePerson,
@@ -47,6 +50,7 @@ export function MessagingWorkspace({
   sidebarOpen: boolean;
   onSidebarOpenChange: (open: boolean) => void;
   onSelect: (id: string) => void;
+  conversationLink: (id: string) => LinkProps;
   people?: PickerPerson[];
   agents?: DirectMessageAgent[];
   onMessagePerson?: (person: PickerPerson) => void;
@@ -103,6 +107,7 @@ export function MessagingWorkspace({
           onMessagePerson={onMessagePerson}
           onMessageAgent={onMessageAgent}
           onSelect={onSelect}
+          conversationLink={conversationLink}
           onCreate={create}
         />
         <PageContent>

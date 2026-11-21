@@ -384,7 +384,7 @@ export async function send(page: Page, body: string, label: string | RegExp = /^
 export function conversationButton(page: Page, name: string) {
   return page
     .getByRole("complementary", { name: "Conversations", exact: true })
-    .getByRole("button")
+    .getByRole("link")
     .filter({ has: page.getByText(name, { exact: true }) });
 }
 

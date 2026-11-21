@@ -16,7 +16,7 @@ export function InvitationAcceptedView({
     <AuthFrame
       title="Invitation accepted"
       description="You’re a member now. Continue to open the workspace."
-      actions={<AuthNavLink href="/organizations">Workspaces</AuthNavLink>}
+      actions={<AuthNavLink to="/organizations">Workspaces</AuthNavLink>}
     >
       <FormMessage
         error={error}

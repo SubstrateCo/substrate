@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "@tanstack/react-router";
 
 import { BrowserElectronReturn } from "../desktop/browser-electron-return";
 import { formText } from "../form-values";
 import { LoginForm } from "@/components/auth/login/login-form-view";
-import { useAuthHref, useElectronAuthorization } from "@/hooks/use-auth-href";
+import { useAuthHref, useAuthLink, useElectronAuthorization } from "@/hooks/use-auth-href";
 import { safeRedirect } from "@/lib/auth/navigation";
 import { useEmailLogin } from "@/queries/auth/mutations";
 import { sessionQueryOptions } from "@/queries/auth/session";
@@ -11,6 +12,8 @@ import { sessionQueryOptions } from "@/queries/auth/session";
 export function BrowserLoginForm({ redirect, email }: { redirect: string; email: string }) {
   const query = useElectronAuthorization();
   const authHref = useAuthHref();
+  const authLink = useAuthLink();
+  const router = useRouter();
   // Only the desktop handoff returns early for an existing browser session.
   const session = useQuery({ ...sessionQueryOptions(), enabled: !!query });
   const login = useEmailLogin();
@@ -37,16 +40,15 @@ export function BrowserLoginForm({ redirect, email }: { redirect: string; email:
           {
             onSuccess: (result, input) => {
               if (result.verificationRequired) {
-                window.location.assign(authHref("/verify-email", redirect, input.email));
-                return;
+                return router.navigate(authLink("/verify-email", redirect, input.email));
               }
-              if (!query) window.location.assign(safeRedirect(redirect));
+              if (!query) return router.navigate({ href: safeRedirect(redirect) });
             },
           },
         )
       }
-      forgotPasswordHref={authHref("/forgot-password", redirect)}
-      signupHref={authHref("/signup", redirect)}
+      forgotPasswordLink={authLink("/forgot-password", redirect)}
+      signupLink={authLink("/signup", redirect)}
     />
   );
 }

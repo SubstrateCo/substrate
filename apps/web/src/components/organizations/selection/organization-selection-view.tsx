@@ -74,7 +74,7 @@ export function OrganizationSelection({
       description={description}
       actions={
         <>
-          <AuthNavLink href="/settings/user/invitations">Your invitations</AuthNavLink>
+          <AuthNavLink to="/settings/user/invitations">Your invitations</AuthNavLink>
           {signOut}
         </>
       }

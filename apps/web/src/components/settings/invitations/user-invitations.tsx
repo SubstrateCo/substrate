@@ -17,10 +17,7 @@ export function UserInvitations() {
       description="Invitations to join other workspaces, sent to your email address."
     >
       <UserInvitationsTable
-        invitations={resourceState(invitations).data?.map((item) => ({
-          ...item,
-          href: `/accept-invitation/${encodeURIComponent(item.id)}`,
-        }))}
+        invitations={resourceState(invitations).data}
         now={now}
         loading={invitations.isPending}
         error={invitations.error}

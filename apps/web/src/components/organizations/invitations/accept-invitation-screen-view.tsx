@@ -1,3 +1,5 @@
+import { Link } from "@tanstack/react-router";
+
 import type { ReactNode } from "react";
 
 import { AuthFrame } from "../../auth/auth-frame";
@@ -32,7 +34,6 @@ export function AcceptInvitationScreen({
   onDecline,
   declineDialog,
   signOut,
-  workspacesHref,
 }: {
   invitation?: { organizationName: string; role: string; email: string; inviterEmail?: string };
   loading?: boolean;
@@ -48,7 +49,6 @@ export function AcceptInvitationScreen({
   /** The decline confirmation, while it is open. */
   declineDialog?: ReactNode;
   signOut: ReactNode;
-  workspacesHref: string;
 }) {
   const missing = !loading && (unavailable || (!!invitation && !available));
   const ready = !loading && !failed && !missing && invitation;
@@ -68,7 +68,7 @@ export function AcceptInvitationScreen({
       description={description}
       actions={
         <>
-          <AuthNavLink href={workspacesHref}>Workspaces</AuthNavLink>
+          <AuthNavLink to="/organizations">Workspaces</AuthNavLink>
           {signOut}
         </>
       }
@@ -84,7 +84,7 @@ export function AcceptInvitationScreen({
       )}
       {missing && (
         <Button asChild className="w-full" size="lg">
-          <a href={workspacesHref}>Go to your workspaces</a>
+          <Link to="/organizations">Go to your workspaces</Link>
         </Button>
       )}
       {ready && (

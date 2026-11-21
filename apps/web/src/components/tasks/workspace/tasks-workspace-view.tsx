@@ -1,3 +1,5 @@
+import type { LinkProps } from "@tanstack/react-router";
+
 import { useRef, useState, type ReactNode } from "react";
 
 import { ContentNotice } from "../../feedback/content-notice";
@@ -20,6 +22,7 @@ export function TasksWorkspace({
   project,
   selectedProjectId,
   onSelectProject,
+  projectLink,
 }: {
   projects: Project[];
   state: ResourceStatus;
@@ -34,6 +37,7 @@ export function TasksWorkspace({
   project: ReactNode;
   selectedProjectId?: string;
   onSelectProject: (id: string) => void;
+  projectLink: (id: string) => LinkProps;
 }) {
   const [creating, setCreating] = useState(false);
   const createProjectButton = useRef<HTMLButtonElement>(null);
@@ -58,7 +62,8 @@ export function TasksWorkspace({
         onRetry={onRetry}
         onCreate={openCreate}
         createButtonRef={createProjectButton}
-        onSelect={selectProject}
+        projectLink={projectLink}
+        onSelect={() => setCreating(false)}
       />
       {selectedProjectId && project}
       {!selectedProjectId && (

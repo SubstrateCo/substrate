@@ -1,7 +1,7 @@
 import type { AgentRequestPlace } from "@substrate/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
+import { Link, linkOptions } from "@tanstack/react-router";
 
 import { CallCard } from "../calls/call-card";
 import { RequestCard } from "../requests/request-card";
@@ -26,17 +26,11 @@ function Place({ organizationId, place }: { organizationId: string; place: Agent
   );
 }
 
-export function NeedsYou({
-  userId,
-  organizationId,
-  onOpenAgent,
-}: {
-  userId: string;
-  organizationId: string;
-  onOpenAgent: (agentId: string) => void;
-}) {
+export function NeedsYou({ userId, organizationId }: { userId: string; organizationId: string }) {
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
   const { requests, agents, calls, desktopUpdateRequired } = needsYouItems(needsYou.data);
+  const agentLink = (agentId: string) =>
+    linkOptions({ to: "/agents", search: { workspaceId: organizationId, agentId } });
   const entries: NeedsYouEntry[] = [
     ...desktopUpdateRequired.map((update) => ({
       key: `desktop-update:${update.userAgentId}`,
@@ -52,21 +46,21 @@ export function NeedsYou({
           </p>
         </div>
       ),
-      onOpenAgent: () => onOpenAgent(update.userAgentId),
+      agentLink: agentLink(update.userAgentId),
     })),
     ...calls.map((call) => ({
       key: `call:${call.id}`,
       agentName: call.agent.name,
       place: <Place organizationId={organizationId} place={call.place} />,
       body: <CallCard userId={userId} organizationId={organizationId} call={call} />,
-      onOpenAgent: () => onOpenAgent(call.userAgentId),
+      agentLink: agentLink(call.userAgentId),
     })),
     ...requests.map((request) => ({
       key: request.id,
       agentName: request.agent.name,
       place: <Place organizationId={organizationId} place={request.place} />,
       body: <RequestCard userId={userId} organizationId={organizationId} request={request} />,
-      onOpenAgent: () => onOpenAgent(request.userAgentId),
+      agentLink: agentLink(request.userAgentId),
     })),
     // Agents that need a decision with no request, such as work that stopped.
     ...agents.map((status) => ({
@@ -79,7 +73,7 @@ export function NeedsYou({
           {status.device ? ` on ${status.device.name}` : ""}.
         </p>
       ),
-      onOpenAgent: () => onOpenAgent(status.userAgentId),
+      agentLink: agentLink(status.userAgentId),
     })),
   ];
   return (

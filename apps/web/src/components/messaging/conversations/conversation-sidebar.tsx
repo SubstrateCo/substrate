@@ -1,3 +1,5 @@
+import type { LinkProps } from "@tanstack/react-router";
+
 import type { KeyboardEvent } from "react";
 
 import {
@@ -33,6 +35,7 @@ export function ConversationSidebar({
   people,
   agents,
   onSelect,
+  conversationLink,
   onCreate,
   onMessagePerson,
   onMessageAgent,
@@ -46,6 +49,7 @@ export function ConversationSidebar({
   people?: PickerPerson[];
   agents?: DirectMessageAgent[];
   onSelect: (id: string) => void;
+  conversationLink: (id: string) => LinkProps;
   onCreate: (kind: Conversation["kind"]) => void;
   onMessagePerson?: (person: PickerPerson) => void;
   onMessageAgent?: (agent: DirectMessageAgent) => void;
@@ -77,6 +81,7 @@ export function ConversationSidebar({
               people={people}
               agents={agents}
               onSelect={onSelect}
+              conversationLink={conversationLink}
               onCreate={onCreate}
               onMessagePerson={onMessagePerson}
               onMessageAgent={onMessageAgent}

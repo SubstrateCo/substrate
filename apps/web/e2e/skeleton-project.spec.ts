@@ -46,7 +46,7 @@ test("project loading placeholders give way to the real project and remain nonin
     await expect(loading.getByRole("tab")).toHaveCount(0);
     release.resolve();
     await expect(loading).toHaveCount(0);
-    await expect(sidebar.getByRole("button", { name: created.name, exact: true })).toBeVisible();
+    await expect(sidebar.getByRole("link", { name: created.name, exact: true })).toBeVisible();
     await expect(user.page.getByRole("heading", { name: created.name, exact: true })).toBeVisible();
     await expect(user.page.getByRole("tab", { name: "Tasks", exact: true })).toBeVisible();
     await expect(user.page.getByText("No tasks yet", { exact: true })).toBeVisible();

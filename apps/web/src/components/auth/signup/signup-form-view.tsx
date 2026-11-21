@@ -3,17 +3,18 @@ import { EmailField, NativeField, NativeForm } from "../../forms/native-form";
 import { AuthFrame } from "../auth-frame";
 import { AuthLink } from "../auth-link";
 import { FormMessage } from "@/components/feedback/form-message";
+import type { authLink } from "@/lib/auth/navigation";
 
 export function SignupForm({
   pending = false,
   error,
   onSubmit,
-  loginHref,
+  loginLink,
 }: {
   pending?: boolean;
   error?: Error | null;
   onSubmit: (form: FormData) => void;
-  loginHref: string;
+  loginLink: ReturnType<typeof authLink>;
 }) {
   return (
     <AuthFrame
@@ -21,7 +22,7 @@ export function SignupForm({
       description="A shared home for your team and its work."
       footer={
         <>
-          Already have an account? <AuthLink href={loginHref}>Sign in</AuthLink>
+          Already have an account? <AuthLink {...loginLink}>Sign in</AuthLink>
         </>
       }
     >

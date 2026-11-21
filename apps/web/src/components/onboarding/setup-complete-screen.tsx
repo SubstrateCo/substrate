@@ -1,4 +1,4 @@
-import { useRouter } from "@tanstack/react-router";
+import { linkOptions, useRouter } from "@tanstack/react-router";
 
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { AuthNavLink } from "@/components/auth/auth-link";
@@ -21,10 +21,11 @@ export function SetupCompleteScreen({
   conversationId?: string;
 }) {
   const router = useRouter();
-  const destination = router.buildLocation({
+  const browserLink = linkOptions({
     to: conversationId ? "/messages" : "/dashboard",
     search: { workspaceId: organizationId, conversationId },
-  }).href;
+  });
+  const destination = router.buildLocation(browserLink).href;
   return (
     <AuthFrame
       title="Your workspace is ready"
@@ -36,12 +37,12 @@ export function SetupCompleteScreen({
       }
       actions={
         <>
-          <AuthNavLink href="/onboarding">Workspaces</AuthNavLink>
+          <AuthNavLink to="/onboarding">Workspaces</AuthNavLink>
           <SignOutButton destination="/onboarding" />
         </>
       }
     >
-      <DesktopInstall destination={destination} browserHref={destination} />
+      <DesktopInstall destination={destination} browserLink={browserLink} />
       {invitationRoles(role).length > 0 && (
         <>
           <Separator />

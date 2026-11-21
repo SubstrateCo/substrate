@@ -4,6 +4,7 @@ import { Button } from "../../ui/button";
 import { AuthFrame } from "../auth-frame";
 import { AuthLink } from "../auth-link";
 import { FormMessage } from "@/components/feedback/form-message";
+import type { authLink } from "@/lib/auth/navigation";
 
 export function ForgotPasswordForm({
   pending = false,
@@ -11,16 +12,16 @@ export function ForgotPasswordForm({
   error,
   onSubmit,
   onReset,
-  loginHref,
+  loginLink,
 }: {
   pending?: boolean;
   success?: boolean;
   error?: Error | null;
   onSubmit: (form: FormData) => void;
   onReset: () => void;
-  loginHref: string;
+  loginLink: ReturnType<typeof authLink>;
 }) {
-  const footer = <AuthLink href={loginHref}>Back to sign in</AuthLink>;
+  const footer = <AuthLink {...loginLink}>Back to sign in</AuthLink>;
   if (success)
     return (
       <AuthFrame

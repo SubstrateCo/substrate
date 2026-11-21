@@ -1,12 +1,16 @@
+import { useRouter } from "@tanstack/react-router";
+
 import { formText } from "../form-values";
 import { SignupForm } from "@/components/auth/signup/signup-form-view";
-import { useAuthHref, useElectronAuthorization } from "@/hooks/use-auth-href";
+import { useAuthHref, useAuthLink, useElectronAuthorization } from "@/hooks/use-auth-href";
 import { useEmailSignup } from "@/queries/auth/mutations";
 
 export function BrowserSignupForm({ redirect }: { redirect: string }) {
   const signup = useEmailSignup();
   const query = useElectronAuthorization();
   const authHref = useAuthHref();
+  const authLink = useAuthLink();
+  const router = useRouter();
   return (
     <SignupForm
       pending={signup.isPending}
@@ -21,10 +25,10 @@ export function BrowserSignupForm({ redirect }: { redirect: string }) {
             callbackURL: authHref("/login", redirect, email),
             query,
           },
-          { onSuccess: () => window.location.assign(authHref("/verify-email", redirect, email)) },
+          { onSuccess: () => router.navigate(authLink("/verify-email", redirect, email)) },
         );
       }}
-      loginHref={authHref("/login", redirect)}
+      loginLink={authLink("/login", redirect)}
     />
   );
 }
