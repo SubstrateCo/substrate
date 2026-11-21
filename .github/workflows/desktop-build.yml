@@ -1,0 +1,70 @@
+name: Desktop build
+
+on:
+  push:
+    branches: [main, "ci/**"]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: Package (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-x64
+            os: windows-latest
+          - platform: macos-arm64
+            os: macos-14
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    env:
+      # Test installers only. Real release origins and signing belong to Desktop release.
+      SUBSTRATE_API_URL: https://api.example.invalid
+      SUBSTRATE_WEB_URL: https://app.example.invalid
+      S3_ENDPOINT: https://storage.example.invalid
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - run: bun install --frozen-lockfile
+      - name: Typecheck the desktop app
+        run: bun run --filter @substrate/desktop typecheck
+      - name: Test the desktop app
+        working-directory: apps/desktop
+        run: bun run test
+      - name: Build the app
+        working-directory: apps/desktop
+        run: bun run build
+      - name: Package Windows installer
+        if: runner.os == 'Windows'
+        working-directory: apps/desktop
+        run: bunx electron-builder --win nsis --x64 --publish never
+      - name: Package macOS installers
+        if: runner.os == 'macOS'
+        working-directory: apps/desktop
+        # Apple silicon needs an ad-hoc signature even without a release certificate.
+        run: bunx electron-builder --mac --arm64 --publish never -c.mac.identity=- -c.mac.hardenedRuntime=false
+      - name: Upload test installers (not for production)
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.platform }}
+          if-no-files-found: error
+          retention-days: 7
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
