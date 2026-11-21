@@ -4,6 +4,13 @@ import { expect, test } from "bun:test";
 
 const createApp = () => createApplication(appFixture());
 
+test("health check reports that the server is up without caching", async () => {
+  const response = await createApp().request("/health");
+  expect(response.status).toBe(200);
+  expect(response.headers.get("Cache-Control")).toBe("no-store");
+  expect(await response.json()).toEqual({ status: "ok" });
+});
+
 test("unknown API versions fail with the standard response", async () => {
   const response = await createApp().request("/api/v99/tasks/projects");
   expect(response.status).toBe(404);

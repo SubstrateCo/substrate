@@ -59,6 +59,11 @@ export function createApp({
   if (realtime) app.route("/", realtime.app);
   return app
     .use(secureHeaders())
+    // Liveness only: reports that this process serves HTTP, without checking dependencies.
+    .get("/health", (c) => {
+      c.header("Cache-Control", "no-store");
+      return c.json({ status: "ok" });
+    })
     .use(
       "/api/*",
       cors({
