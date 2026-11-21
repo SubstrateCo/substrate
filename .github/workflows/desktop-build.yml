@@ -1,0 +1,92 @@
+name: Desktop build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-build-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  package:
+    name: Package (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: windows-x64
+            os: windows-latest
+          - platform: macos-arm64
+            os: macos-15
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 45
+    defaults:
+      run:
+        shell: bash
+    env:
+      CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      BUN_INSTALL_CACHE_DIR: ${{ github.workspace }}/.ci-cache/bun
+      ELECTRON_CACHE: ${{ github.workspace }}/.ci-cache/electron
+      ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.ci-cache/electron-builder
+    steps:
+      - uses: actions/checkout@v5
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.4.4
+      - name: Cache Bun packages
+        uses: actions/cache@v6
+        with:
+          path: ${{ env.BUN_INSTALL_CACHE_DIR }}
+          key: bun-v1-${{ runner.os }}-${{ runner.arch }}-1.4.4-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-v1-${{ runner.os }}-${{ runner.arch }}-1.4.4-
+      - name: Cache Electron packaging tools
+        uses: actions/cache@v6
+        with:
+          path: |
+            ${{ env.ELECTRON_CACHE }}
+            ${{ env.ELECTRON_BUILDER_CACHE }}
+          key: electron-v1-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            electron-v1-${{ runner.os }}-${{ runner.arch }}-
+      - run: bun install --frozen-lockfile
+      - name: Typecheck the desktop app
+        run: bun run --filter @substrate/desktop typecheck
+      - name: Test the desktop app
+        working-directory: apps/desktop
+        run: bun run test
+      - name: Build the app
+        working-directory: apps/desktop
+        env:
+          # Test installers only. Do not change the environment used by unit tests.
+          SUBSTRATE_API_URL: https://api.example.invalid
+          SUBSTRATE_WEB_URL: https://app.example.invalid
+          S3_ENDPOINT: https://storage.example.invalid
+        run: bun run build
+      - name: Package Windows installer
+        if: runner.os == 'Windows'
+        working-directory: apps/desktop
+        # Test packaging, not release download size. Keep production compression unchanged.
+        run: bunx electron-builder --win nsis --x64 --publish never -c.compression=store
+      - name: Package macOS installers
+        if: runner.os == 'macOS'
+        working-directory: apps/desktop
+        # Apple silicon needs an ad-hoc signature even without a release certificate.
+        run: bunx electron-builder --mac --arm64 --publish never -c.mac.identity=- -c.mac.hardenedRuntime=false -c.compression=store
+      - name: Upload test installers (not for production)
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-${{ matrix.platform }}
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+          path: |
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip

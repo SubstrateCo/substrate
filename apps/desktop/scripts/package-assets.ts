@@ -1,4 +1,4 @@
-import { cp, mkdir, readFile, realpath } from "node:fs/promises";
+import { cp, mkdir, readFile, realpath, writeFile } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { basename, dirname, isAbsolute, join, relative, sep } from "node:path";
 import { z } from "zod";
@@ -142,6 +142,29 @@ export async function stageInstalledPackages(options: {
       dereference: true,
       filter: (path) => basename(path) !== "node_modules",
     });
+    if (excluded.size > 0) {
+      const path = join(destination, "package.json");
+      const stagedManifest = z
+        .record(z.string(), z.unknown())
+        .parse(JSON.parse(await readFile(path, "utf8")));
+      let changed = false;
+      // Keep the staged graph self-contained. A dangling dependency makes electron-builder
+      // fall back to the workspace graph, bringing the deliberately excluded CLIs back.
+      for (const field of [
+        "dependencies",
+        "optionalDependencies",
+        "peerDependencies",
+        "peerDependenciesMeta",
+      ] as const) {
+        const entries = Object.entries(manifest[field]);
+        const included = entries.filter(([name]) => !excluded.has(name));
+        if (included.length !== entries.length) {
+          stagedManifest[field] = Object.fromEntries(included);
+          changed = true;
+        }
+      }
+      if (changed) await writeFile(path, JSON.stringify(stagedManifest, null, 2) + "\n");
+    }
     const lineage = new Set([...ancestors, source]);
     const dependencies = new Map<string, boolean>();
     for (const dependency of Object.keys(manifest.dependencies))
