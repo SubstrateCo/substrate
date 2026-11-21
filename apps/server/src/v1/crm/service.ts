@@ -12,6 +12,8 @@ type List = Parameters<WorkspaceScope["repositories"]["crm"]["listAccounts"]>[0]
 export function createCrmService(deps: { publish: CommittedPublisher }) {
   return {
     ...createCrmManagementService(),
+    home: (scope: WorkspaceScope, today: string) =>
+      serviceResult(() => scope.repositories.crm.home(today)),
     export: exportCrm,
     activity: (scope: WorkspaceScope, input: z.output<typeof crmActivityList>) =>
       serviceResult(() =>

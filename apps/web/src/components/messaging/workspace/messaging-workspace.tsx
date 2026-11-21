@@ -48,7 +48,7 @@ export function MessagingWorkspace({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const open = (id: string) => {
     void navigate({
-      to: "/dashboard",
+      to: "/messages",
       search: { workspaceId: organizationId, conversationId: id },
     });
     setSidebarOpen(false);

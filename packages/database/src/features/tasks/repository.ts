@@ -19,6 +19,7 @@ import { requireAssignee } from "./assignment";
 import { taskChanges } from "./changes";
 import type { CreateTaskInput, TaskFields } from "./contracts";
 import { ensureTaskDiscussion } from "./discussion";
+import { homeTasks } from "./home";
 import { taskLifecycle } from "./lifecycle";
 import { addTaskLink, linksOfTask, removeTaskLink } from "./links";
 import { queryTasks } from "./queries";
@@ -148,6 +149,7 @@ export function taskRepository(context: RepositoryContext) {
   return {
     ...taskLifecycle(context),
     get: requireTask,
+    home: () => homeTasks(context),
     async exportPage(projectEntityId: string, afterEntityId?: string) {
       return queryTasks(context, { projectEntityId, afterEntityId, limit: 100, ascending: true });
     },

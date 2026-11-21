@@ -51,3 +51,21 @@ test("work label refreshes match a named entity, not its project unless the page
   expect(client.getQueryState(foreign)?.isInvalidated).toBe(false);
   client.clear();
 });
+
+test("a task change refreshes Home work only in its workspace", async () => {
+  const client = new QueryClient();
+  const home = queryKeys.homeTasks("org");
+  const other = queryKeys.homeTasks("other");
+  client.setQueryData(home, [{ entityId: "task", status: "in_progress" }]);
+  client.setQueryData(other, [{ entityId: "other-task" }]);
+  await invalidateTargets(
+    client,
+    domainTargets("tasks", "org", undefined, undefined, {
+      projectId: "project",
+      taskIds: ["task"],
+    }),
+  );
+  expect(client.getQueryState(home)?.isInvalidated).toBe(true);
+  expect(client.getQueryState(other)?.isInvalidated).toBe(false);
+  client.clear();
+});

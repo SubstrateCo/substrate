@@ -4,6 +4,7 @@ import { crmReportFilters } from "./report-input.ts";
 import { z } from "zod";
 
 export const crmWorkspace = z.object({ organizationId });
+export const crmHome = crmWorkspace.extend({ today: z.iso.date() });
 export const crmList = crmWorkspace.extend({
   limit: z.coerce.number().int().min(1).max(100).optional(),
   afterEntityId: z.uuid().optional(),

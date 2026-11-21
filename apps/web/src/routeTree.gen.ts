@@ -27,6 +27,7 @@ import { Route as PublicGuestLoginRouteImport } from './routes/_public/_guest/lo
 import { Route as PublicGuestSignupRouteImport } from './routes/_public/_guest/signup'
 import { Route as AuthenticatedFrameWorkspaceAgentsRouteImport } from './routes/_authenticated/_frame/_workspace/agents'
 import { Route as AuthenticatedFrameWorkspaceDashboardRouteImport } from './routes/_authenticated/_frame/_workspace/dashboard'
+import { Route as AuthenticatedFrameWorkspaceMessagesRouteImport } from './routes/_authenticated/_frame/_workspace/messages'
 import { Route as AuthenticatedFrameWorkspaceNotificationsRouteImport } from './routes/_authenticated/_frame/_workspace/notifications'
 import { Route as AuthenticatedFrameSettingsOrganizationRouteRouteImport } from './routes/_authenticated/_frame/settings/organization/route'
 import { Route as AuthenticatedStandaloneAcceptInvitationInvitationIdRouteImport } from './routes/_authenticated/_standalone/accept-invitation/$invitationId'
@@ -133,6 +134,12 @@ const AuthenticatedFrameWorkspaceDashboardRoute =
   AuthenticatedFrameWorkspaceDashboardRouteImport.update({
     id: '/dashboard',
     path: '/dashboard',
+    getParentRoute: () => AuthenticatedFrameWorkspaceRouteRoute,
+  } as any)
+const AuthenticatedFrameWorkspaceMessagesRoute =
+  AuthenticatedFrameWorkspaceMessagesRouteImport.update({
+    id: '/messages',
+    path: '/messages',
     getParentRoute: () => AuthenticatedFrameWorkspaceRouteRoute,
   } as any)
 const AuthenticatedFrameWorkspaceNotificationsRoute =
@@ -246,6 +253,7 @@ export interface FileRoutesByFullPath {
   '/settings/organization': typeof AuthenticatedFrameSettingsOrganizationRouteRouteWithChildren
   '/agents': typeof AuthenticatedFrameWorkspaceAgentsRoute
   '/dashboard': typeof AuthenticatedFrameWorkspaceDashboardRoute
+  '/messages': typeof AuthenticatedFrameWorkspaceMessagesRoute
   '/notifications': typeof AuthenticatedFrameWorkspaceNotificationsRoute
   '/accept-invitation/$invitationId': typeof AuthenticatedStandaloneAcceptInvitationInvitationIdRoute
   '/accept-sharing/$invitationId': typeof AuthenticatedStandaloneAcceptSharingInvitationIdRoute
@@ -275,6 +283,7 @@ export interface FileRoutesByTo {
   '/signup': typeof PublicGuestSignupRoute
   '/agents': typeof AuthenticatedFrameWorkspaceAgentsRoute
   '/dashboard': typeof AuthenticatedFrameWorkspaceDashboardRoute
+  '/messages': typeof AuthenticatedFrameWorkspaceMessagesRoute
   '/notifications': typeof AuthenticatedFrameWorkspaceNotificationsRoute
   '/accept-invitation/$invitationId': typeof AuthenticatedStandaloneAcceptInvitationInvitationIdRoute
   '/accept-sharing/$invitationId': typeof AuthenticatedStandaloneAcceptSharingInvitationIdRoute
@@ -312,6 +321,7 @@ export interface FileRoutesById {
   '/_authenticated/_frame/settings/organization': typeof AuthenticatedFrameSettingsOrganizationRouteRouteWithChildren
   '/_authenticated/_frame/_workspace/agents': typeof AuthenticatedFrameWorkspaceAgentsRoute
   '/_authenticated/_frame/_workspace/dashboard': typeof AuthenticatedFrameWorkspaceDashboardRoute
+  '/_authenticated/_frame/_workspace/messages': typeof AuthenticatedFrameWorkspaceMessagesRoute
   '/_authenticated/_frame/_workspace/notifications': typeof AuthenticatedFrameWorkspaceNotificationsRoute
   '/_authenticated/_standalone/accept-invitation/$invitationId': typeof AuthenticatedStandaloneAcceptInvitationInvitationIdRoute
   '/_authenticated/_standalone/accept-sharing/$invitationId': typeof AuthenticatedStandaloneAcceptSharingInvitationIdRoute
@@ -344,6 +354,7 @@ export interface FileRouteTypes {
     | '/settings/organization'
     | '/agents'
     | '/dashboard'
+    | '/messages'
     | '/notifications'
     | '/accept-invitation/$invitationId'
     | '/accept-sharing/$invitationId'
@@ -373,6 +384,7 @@ export interface FileRouteTypes {
     | '/signup'
     | '/agents'
     | '/dashboard'
+    | '/messages'
     | '/notifications'
     | '/accept-invitation/$invitationId'
     | '/accept-sharing/$invitationId'
@@ -409,6 +421,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_frame/settings/organization'
     | '/_authenticated/_frame/_workspace/agents'
     | '/_authenticated/_frame/_workspace/dashboard'
+    | '/_authenticated/_frame/_workspace/messages'
     | '/_authenticated/_frame/_workspace/notifications'
     | '/_authenticated/_standalone/accept-invitation/$invitationId'
     | '/_authenticated/_standalone/accept-sharing/$invitationId'
@@ -559,6 +572,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrameWorkspaceDashboardRouteImport
       parentRoute: typeof AuthenticatedFrameWorkspaceRouteRoute
     }
+    '/_authenticated/_frame/_workspace/messages': {
+      id: '/_authenticated/_frame/_workspace/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof AuthenticatedFrameWorkspaceMessagesRouteImport
+      parentRoute: typeof AuthenticatedFrameWorkspaceRouteRoute
+    }
     '/_authenticated/_frame/_workspace/notifications': {
       id: '/_authenticated/_frame/_workspace/notifications'
       path: '/notifications'
@@ -677,6 +697,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedFrameWorkspaceRouteRouteChildren {
   AuthenticatedFrameWorkspaceAgentsRoute: typeof AuthenticatedFrameWorkspaceAgentsRoute
   AuthenticatedFrameWorkspaceDashboardRoute: typeof AuthenticatedFrameWorkspaceDashboardRoute
+  AuthenticatedFrameWorkspaceMessagesRoute: typeof AuthenticatedFrameWorkspaceMessagesRoute
   AuthenticatedFrameWorkspaceNotificationsRoute: typeof AuthenticatedFrameWorkspaceNotificationsRoute
   AuthenticatedFrameWorkspaceContactsIndexRoute: typeof AuthenticatedFrameWorkspaceContactsIndexRoute
   AuthenticatedFrameWorkspaceCrmIndexRoute: typeof AuthenticatedFrameWorkspaceCrmIndexRoute
@@ -689,6 +710,8 @@ const AuthenticatedFrameWorkspaceRouteRouteChildren: AuthenticatedFrameWorkspace
       AuthenticatedFrameWorkspaceAgentsRoute,
     AuthenticatedFrameWorkspaceDashboardRoute:
       AuthenticatedFrameWorkspaceDashboardRoute,
+    AuthenticatedFrameWorkspaceMessagesRoute:
+      AuthenticatedFrameWorkspaceMessagesRoute,
     AuthenticatedFrameWorkspaceNotificationsRoute:
       AuthenticatedFrameWorkspaceNotificationsRoute,
     AuthenticatedFrameWorkspaceContactsIndexRoute:

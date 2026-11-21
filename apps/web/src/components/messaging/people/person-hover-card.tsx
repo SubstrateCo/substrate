@@ -133,7 +133,7 @@ function PersonHoverCardBody({
         onSuccess: ({ id }) => {
           onClose();
           void navigate({
-            to: "/dashboard",
+            to: "/messages",
             search: { workspaceId: organizationId, conversationId: id },
           });
         },

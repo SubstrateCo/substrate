@@ -47,7 +47,7 @@ test("task discussion opens shared messaging and links back to its task", async 
   await expect(sender.page.getByRole("textbox", { name: /^Message / })).toBeVisible();
   const conversationId = new URL(sender.page.url()).searchParams.get("conversationId");
   expect(conversationId).toBeTruthy();
-  expect(new URL(sender.page.url()).pathname).toBe("/dashboard");
+  expect(new URL(sender.page.url()).pathname).toBe("/messages");
   await expect(details).toHaveCount(0);
   await expectNoManagement(sender.page);
   const body = "The checklist is ready. Please review the release notes before we ship.";

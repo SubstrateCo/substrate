@@ -116,6 +116,7 @@ export function createTasksService(deps: {
     });
   }
   return {
+    home: (scope: WorkspaceScope) => serviceResult(() => scope.repositories.tasks.home()),
     export: exportProject,
     listProjects,
     getProject,

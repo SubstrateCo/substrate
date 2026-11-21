@@ -172,6 +172,11 @@ export function parseDateOnly(value: string): Date | undefined {
   return Number.isFinite(date.getTime()) ? date : undefined;
 }
 
+/** A local calendar date for date-only query inputs. */
+export function formatDateOnly(date: Date): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
 type DueDateState = "overdue" | "today" | "tomorrow" | "upcoming";
 
 /** A due date relative to today: "Today", "Tomorrow", or a short date, and whether it is late. */

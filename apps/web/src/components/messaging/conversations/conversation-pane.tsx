@@ -79,7 +79,7 @@ export function ConversationPane({
         footer={<JumpToLatest {...history} />}
         onThread={(id) => {
           void navigate({
-            to: "/dashboard",
+            to: "/messages",
             search: {
               workspaceId: organizationId,
               conversationId: conversation.id,
@@ -92,7 +92,7 @@ export function ConversationPane({
   // The transcript keeps the open thread in the URL, so closing it returns to that thread.
   const transcript = (openTurnId?: string) =>
     void navigate({
-      to: "/dashboard",
+      to: "/messages",
       search: {
         workspaceId: organizationId,
         conversationId: conversation.id,
@@ -129,7 +129,7 @@ export function ConversationPane({
         canPost={conversation.canPost}
         onClose={() => {
           void navigate({
-            to: "/dashboard",
+            to: "/messages",
             search: { workspaceId: organizationId, conversationId: conversation.id },
           });
         }}
@@ -180,7 +180,7 @@ export function ConversationPane({
               conversation={conversation}
               userId={userId}
               onRemoved={() =>
-                navigate({ to: "/dashboard", search: { workspaceId: organizationId } })
+                navigate({ to: "/messages", search: { workspaceId: organizationId } })
               }
             />
           )

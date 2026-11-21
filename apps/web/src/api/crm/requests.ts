@@ -17,6 +17,11 @@ export const getDeal = ({ data, signal }: ApiInput<{ organizationId: string; ent
   readResult(api.crm.deal.$get({ query: data }, { init: { signal } }));
 export const getPipeline = ({ data, signal }: ApiInput<{ organizationId: string }>) =>
   readResult(api.crm.pipeline.$get({ query: data }, { init: { signal } }));
+export const getHomeDeals = ({
+  data,
+  signal,
+}: ApiInput<{ organizationId: string; today: string }>) =>
+  readResult(api.crm.home.$get({ query: data }, { init: { signal } }));
 export const getFollowUps = ({
   data,
   signal,

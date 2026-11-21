@@ -53,7 +53,7 @@ test("root and reply permalinks retain root reactions outside the timeline and r
       conversationId: channel.id,
       messageId,
     });
-    await viewer.page.goto(`/dashboard?${search}`);
+    await viewer.page.goto(`/messages?${search}`);
     const rootBody = `Reacted ${target} root ${channel.id}`;
     const thread = viewer.page.getByRole("complementary", { name: "Thread", exact: true });
     const rootArticle = thread.getByRole("article").filter({ hasText: rootBody });

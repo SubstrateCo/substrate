@@ -15,7 +15,7 @@ test("links preserve workspace and exact task or message targets", () => {
     search: { workspaceId: "team", projectId: "project", taskId: "task" },
   });
   expect(messageLink("team", "conversation", "reply")).toEqual({
-    to: "/dashboard",
+    to: "/messages",
     search: { workspaceId: "team", conversationId: "conversation", messageId: "reply" },
   });
 });

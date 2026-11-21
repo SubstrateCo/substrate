@@ -5,6 +5,7 @@ import {
   Bell,
   Bot,
   Handshake,
+  House,
   ListTodo,
   MessageSquare,
   Users,
@@ -21,10 +22,17 @@ type WorkspaceApp = {
 /** The apps in the rail, in rail order. Each app's route decides when it is active. */
 export const workspaceApps = [
   {
+    id: "home",
+    label: "Home",
+    icon: House,
+    to: "/dashboard",
+    hotkey: ["G", "H"],
+  },
+  {
     id: "messages",
     label: "Messages",
     icon: MessageSquare,
-    to: "/dashboard",
+    to: "/messages",
     hotkey: ["G", "M"],
   },
   {

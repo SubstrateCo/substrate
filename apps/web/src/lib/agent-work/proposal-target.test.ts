@@ -48,7 +48,7 @@ describe("reply proposals", () => {
         access: "visible",
         label: "General",
         link: {
-          to: "/dashboard",
+          to: "/messages",
           search: { workspaceId: "org", conversationId: "c1", messageId: undefined },
         },
       },
@@ -56,7 +56,7 @@ describe("reply proposals", () => {
         access: "visible",
         label: "Can we ship Friday?",
         link: {
-          to: "/dashboard",
+          to: "/messages",
           search: { workspaceId: "org", conversationId: "c1", messageId: "m1" },
         },
       },

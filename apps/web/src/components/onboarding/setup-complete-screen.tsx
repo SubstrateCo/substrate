@@ -22,7 +22,7 @@ export function SetupCompleteScreen({
 }) {
   const router = useRouter();
   const destination = router.buildLocation({
-    to: "/dashboard",
+    to: conversationId ? "/messages" : "/dashboard",
     search: { workspaceId: organizationId, conversationId },
   }).href;
   return (

@@ -46,7 +46,7 @@ function useSharingActivation() {
     // Setup complete shows the now-active workspace, so it needs only the conversation.
     const destination = isDesktop()
       ? linkOptions({
-          to: "/dashboard",
+          to: "/messages",
           search: { workspaceId: result.organizationId, conversationId },
         })
       : linkOptions({ to: "/setup/complete", search: { conversationId } });

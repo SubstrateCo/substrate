@@ -19,12 +19,31 @@ export function ContentNotice({
   description,
   icon: Icon = Inbox,
   action,
+  compact = false,
 }: {
   title: string;
   description: ReactNode;
   icon?: LucideIcon;
   action?: ReactNode;
+  compact?: boolean;
 }) {
+  if (compact)
+    return (
+      <div role="status" className="flex items-start gap-3">
+        <EmptyMedia variant="icon">
+          <Icon aria-hidden="true" />
+        </EmptyMedia>
+        <div className="min-w-0 space-y-3">
+          <div className="space-y-1">
+            <EmptyTitle>
+              <h2>{title}</h2>
+            </EmptyTitle>
+            <EmptyDescription>{description}</EmptyDescription>
+          </div>
+          {action && <EmptyContent className="items-start">{action}</EmptyContent>}
+        </div>
+      </div>
+    );
   return (
     <Empty role="status" variant="pane" className="min-h-40">
       <EmptyHeader>

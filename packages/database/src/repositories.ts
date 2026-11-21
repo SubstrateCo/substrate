@@ -164,6 +164,7 @@ function standalone(
       "getContact",
     ]),
     crm: domain("crm", [
+      "home",
       "listAccounts",
       "getAccount",
       "pipeline",
@@ -187,7 +188,7 @@ function standalone(
     links: domain("links", ["list"]),
     permissions: domain("permissions", []),
     projects: domain("projects", ["get", "getPicture", "assignableActors", "getDetail", "list"]),
-    tasks: domain("tasks", ["get", "list", "listLinks", "exportPage"]),
+    tasks: domain("tasks", ["get", "list", "listLinks", "exportPage", "home"]),
     messaging: domain("messaging", [
       "listConversations",
       "unreadCounts",

@@ -39,8 +39,8 @@ import { useToggleReaction } from "@/queries/messaging/reactions";
 import { Copy, Ellipsis, Link2, Pencil, Smile, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-// Messages render only in the dashboard, which owns the linked-message search param.
-const dashboard = getRouteApi("/_authenticated/_frame/_workspace/dashboard");
+// The Messages route owns the linked-message search param.
+const messages = getRouteApi("/_authenticated/_frame/_workspace/messages");
 
 export function MessageItem({
   message,
@@ -59,7 +59,7 @@ export function MessageItem({
   context: MessageContextState;
   canPost?: boolean;
 }) {
-  const linked = dashboard.useSearch({ select: (search) => search.messageId === message.id });
+  const linked = messages.useSearch({ select: (search) => search.messageId === message.id });
   // A thread's root heads its own pane, so it is not marked as the link target there.
   const highlighted = linked && !threadRoot;
   const [linking, setLinking] = useState(false);

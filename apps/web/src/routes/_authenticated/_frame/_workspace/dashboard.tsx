@@ -1,26 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { MessagingWorkspace } from "@/components/messaging/workspace/messaging-workspace";
-import { z } from "zod";
+import { HomeDashboard } from "@/components/home/home-dashboard";
 
 export const Route = createFileRoute("/_authenticated/_frame/_workspace/dashboard")({
   component: DashboardRoute,
-  validateSearch: z.object({
-    conversationId: z.uuid().optional(),
-    messageId: z.uuid().optional(),
-    turnId: z.uuid().optional(),
-  }),
 });
+
 function DashboardRoute() {
   const { organizationId, session } = Route.useRouteContext();
-  const { conversationId, messageId, turnId } = Route.useSearch();
-  return (
-    <MessagingWorkspace
-      organizationId={organizationId}
-      userId={session.user.id}
-      conversationId={conversationId}
-      messageId={messageId}
-      turnId={turnId}
-    />
-  );
+  return <HomeDashboard organizationId={organizationId} userId={session.user.id} />;
 }

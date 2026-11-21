@@ -127,7 +127,10 @@ export const queryKeys = {
     [...queryKeys.organization(organizationId), "invitations"] as const,
   invitation: (invitationId: string) => ["invitations", invitationId] as const,
   tasks: (organizationId: string) => [...queryKeys.organization(organizationId), "tasks"] as const,
+  homeTasks: (organizationId: string) => [...queryKeys.tasks(organizationId), "home"] as const,
   crm: (organizationId: string) => [...queryKeys.organization(organizationId), "crm"] as const,
+  homeDeals: (organizationId: string, today: string) =>
+    [...queryKeys.crm(organizationId), "home", today] as const,
   contacts: (organizationId: string) =>
     [...queryKeys.organization(organizationId), "contacts"] as const,
   contactInteractions: (organizationId: string) =>

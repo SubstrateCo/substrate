@@ -149,7 +149,7 @@ test("the owner answers an agent's question from another window; members see onl
 
   // The first window shows the question under the agent's reply in the thread.
   const thread = await client(owner);
-  await visit(thread, channel.id, "/dashboard", { messageId: reply.messageId });
+  await visit(thread, channel.id, "/messages", { messageId: reply.messageId });
   const pane = thread.page.getByRole("complementary", { name: "Thread" });
   const card = pane.getByRole("region", { name: "The agent has a question" });
   await expect(card.getByText("Blue or green?")).toBeVisible();
@@ -159,7 +159,7 @@ test("the owner answers an agent's question from another window; members see onl
   // While the question is open, a member sees the agent's published reply and nothing of the
   // owner's agent work, neither in the thread nor on the Agents rail button.
   const member = await client(actors.member);
-  await visit(member, channel.id, "/dashboard", { messageId: reply.messageId });
+  await visit(member, channel.id, "/messages", { messageId: reply.messageId });
   const memberPane = member.page.getByRole("complementary", { name: "Thread" });
   await expect(memberPane.getByText("I need one detail first.")).toBeVisible();
   await expect(memberPane.getByText("Blue or green?")).toHaveCount(0);

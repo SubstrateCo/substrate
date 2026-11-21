@@ -299,7 +299,7 @@ export const test = base.extend<
 export async function visit(
   client: Client,
   conversationId?: string,
-  pathname = "/dashboard",
+  pathname = "/messages",
   params: Record<string, string | undefined> = {},
 ) {
   const search = new URLSearchParams({ workspaceId: client.actor.organizationId });

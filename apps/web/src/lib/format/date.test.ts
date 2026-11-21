@@ -1,5 +1,6 @@
 import {
   formatDateTime,
+  formatDateOnly,
   formatDateTimeInZone,
   formatDayLabel,
   formatDueDate,
@@ -68,4 +69,9 @@ test("due dates read relative to today and mark late work", () => {
 
 test("a stored calendar date does not shift to the previous day", () => {
   expect(parseDateOnly("2026-11-04")?.getDate()).toBe(4);
+});
+
+test("date-only query inputs use the local calendar date with padded month and day", () => {
+  expect(formatDateOnly(new Date(2026, 0, 4, 0, 5))).toBe("2026-01-04");
+  expect(formatDateOnly(new Date(2026, 10, 21, 23, 55))).toBe("2026-11-21");
 });

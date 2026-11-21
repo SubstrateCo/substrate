@@ -20,8 +20,12 @@ test("G then an app key opens that app, and the rail marks it current", async ({
   await expect(rail(page, "Messages")).not.toHaveAttribute("aria-current");
   await page.keyboard.press("g");
   await page.keyboard.press("m");
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/messages/);
   await expect(rail(page, "Messages")).toHaveAttribute("aria-current", "page");
+  await page.keyboard.press("g");
+  await page.keyboard.press("h");
+  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(rail(page, "Home")).toHaveAttribute("aria-current", "page");
 });
 
 test("app shortcuts leave the search field and its own shortcuts alone", async ({
@@ -36,7 +40,7 @@ test("app shortcuts leave the search field and its own shortcuts alone", async (
   await expect(input).toBeFocused();
   await page.keyboard.type("gt");
   await expect(input).toHaveValue("gt");
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/messages/);
 
   // Ctrl+Tab still switches the search type while the app shortcuts are registered.
   const types = page.getByRole("tablist", { name: "Search type", exact: true });
@@ -81,5 +85,5 @@ test("app shortcuts do not fire inside an open dialog", async ({ account, client
   await page.keyboard.press("g");
   await page.keyboard.press("t");
   await expect(menu).toBeVisible();
-  await expect(page).toHaveURL(/\/dashboard/);
+  await expect(page).toHaveURL(/\/messages/);
 });

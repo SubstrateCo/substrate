@@ -14,6 +14,7 @@ import { recordCrmActivity, recordCrmActivities, listCrmActivity } from "./activ
 import { createOnce } from "./creation";
 import { requireDealRelations } from "./deal-relations";
 import { createFollowUp, followUps } from "./follow-ups";
+import { homeDeals } from "./home";
 import { crmManagementRepository } from "./management";
 import { assignOwner } from "./ownership";
 import { report, reportDeals } from "./reports";
@@ -184,6 +185,7 @@ export function crmRepository(context: RepositoryContext) {
   }
   return {
     ...crmManagementRepository(context),
+    home: (today: string) => homeDeals(context, today),
     activity: (id: string, options?: Parameters<typeof listCrmActivity>[2]) =>
       listCrmActivity(context, id, options),
     assignOwner: (id: string, input: Parameters<typeof assignOwner>[2]) =>

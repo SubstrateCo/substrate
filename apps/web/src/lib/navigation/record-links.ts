@@ -37,7 +37,7 @@ export function linkedWorkLink(
 }
 export function messageLink(organizationId: string, conversationId: string, messageId?: string) {
   return linkOptions({
-    to: "/dashboard",
+    to: "/messages",
     search: { workspaceId: organizationId, conversationId, messageId },
   });
 }
