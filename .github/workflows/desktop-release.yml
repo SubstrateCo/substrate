@@ -29,7 +29,6 @@ concurrency:
 
 env:
   BUN_VERSION: 1.4.4
-  BUN_INSTALL_CACHE_DIR: ${{ github.workspace }}/.ci-cache/bun
   ELECTRON_CACHE: ${{ github.workspace }}/.ci-cache/electron
   ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.ci-cache/electron-builder
   VERSION: ${{ inputs.version }}
@@ -77,13 +76,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - name: Cache Bun packages
-        uses: actions/cache@v6
-        with:
-          path: ${{ env.BUN_INSTALL_CACHE_DIR }}
-          key: bun-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            bun-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-
       - run: bun install --frozen-lockfile
       - name: Typecheck the desktop app
         run: bun run --filter @substrate/desktop typecheck
@@ -145,13 +137,6 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - name: Cache Bun packages
-        uses: actions/cache@v6
-        with:
-          path: ${{ env.BUN_INSTALL_CACHE_DIR }}
-          key: bun-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-${{ hashFiles('bun.lock') }}
-          restore-keys: |
-            bun-v1-${{ runner.os }}-${{ runner.arch }}-${{ env.BUN_VERSION }}-
       - name: Cache Electron packaging tools
         uses: actions/cache@v6
         with:
