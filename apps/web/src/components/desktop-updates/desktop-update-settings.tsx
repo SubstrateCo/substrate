@@ -112,12 +112,14 @@ export function DesktopUpdateSettingsView({
       </PendingButton>
     );
   return (
-    <SettingsCard title="Updates">
-      <SettingsRow
-        label={`Substrate ${status.appVersion}`}
-        description={<span role="status">{updateDescription(status)}</span>}
-        control={control}
-      />
-    </SettingsCard>
+    <div id="updates" tabIndex={-1} className="scroll-mt-6">
+      <SettingsCard title="Updates">
+        <SettingsRow
+          label={`Substrate ${status.appVersion}`}
+          description={<span role="status">{updateDescription(status)}</span>}
+          control={control}
+        />
+      </SettingsCard>
+    </div>
   );
 }

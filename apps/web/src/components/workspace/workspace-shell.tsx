@@ -15,6 +15,7 @@ export function WorkspaceShell({
   organizationName,
   switcher,
   signOut,
+  updateIndicator,
   error,
   loading = false,
   onRetry,
@@ -34,6 +35,7 @@ export function WorkspaceShell({
   organizationName?: string;
   switcher: ReactNode;
   signOut: ReactNode;
+  updateIndicator?: ReactNode;
   error?: Error | null;
   loading?: boolean;
   onRetry?: () => void;
@@ -60,6 +62,7 @@ export function WorkspaceShell({
           <WorkspaceAppButton key={id} {...app} {...badges[id]} />
         ))}
         <div className="mt-auto flex flex-col items-center gap-3">
+          {updateIndicator}
           <WorkspaceAppButton {...notificationsApp} unread={hasUnreadNotifications} />
           <UserMenu
             name={name}
