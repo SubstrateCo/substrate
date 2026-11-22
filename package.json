@@ -19,7 +19,6 @@
     "services:test": "docker compose --profile test up -d --wait postgres-test postgres-e2e mailpit valkey s3 s3-init",
     "lint": "oxlint --type-aware --fix",
     "knip": "knip",
-    "dup": "jscpd --reporters console,html",
     "dup:check": "jscpd --fail-on-new-clones --reporters ai",
     "dup:baseline": "jscpd --update-baseline --reporters silent",
     "format": "oxfmt --write .",

@@ -8,7 +8,6 @@ coverage/
 .runtime/
 playwright-report/
 test-results/
-.jscpd-report/
 *.tsbuildinfo
 .env
 .env.*

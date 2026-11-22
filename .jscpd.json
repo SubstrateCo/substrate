@@ -19,7 +19,6 @@
   ],
   "baseline": ".jscpd-baseline.json",
   "reporters": ["console"],
-  "output": ".jscpd-report",
   "noTips": true,
   "boundaries": [
     {
