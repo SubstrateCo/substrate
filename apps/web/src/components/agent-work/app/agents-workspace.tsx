@@ -5,7 +5,6 @@ import { useRef, useState } from "react";
 
 import { ActivityTurnTranscript } from "../transcript/activity-turn-transcript";
 import { AgentPage } from "./agent-page";
-import { AgentPageLoading } from "./agent-page-loading";
 import type { AgentPageSection } from "./agent-sections";
 import { AgentsWorkspaceView } from "./agents-workspace-view";
 import { FirstAgentView } from "./first-agent-view";
@@ -88,7 +87,7 @@ export function AgentsWorkspace({
     ) : (
       <NeedsYou userId={userId} organizationId={organizationId} />
     );
-  else if (!selected && catalog.isPending) content = <AgentPageLoading section={section} />;
+  else if (!selected && catalog.isPending) content = <PaneState label="Loading agent…" />;
   else if (!selected)
     content = (
       <PaneState

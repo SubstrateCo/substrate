@@ -24,15 +24,21 @@ export function AgentPageView({
   status,
   section,
   onSectionChange,
-  children,
-  loading = false,
+  messages,
+  activity,
+  routines,
+  calls,
+  settings,
 }: {
   name: ReactNode;
   status?: WorkStatus;
   section: AgentPageSection;
   onSectionChange: (section: AgentPageSection) => void;
-  children: ReactNode;
-  loading?: boolean;
+  messages: ReactNode;
+  activity: ReactNode;
+  routines: ReactNode;
+  calls: ReactNode;
+  settings: ReactNode;
 }) {
   const tab = isAgentSettingsSection(section) ? "settings" : section;
   return (
@@ -67,25 +73,37 @@ export function AgentPageView({
         <div className="shrink-0 overflow-x-auto border-b px-4 pb-1">
           <TabsList variant="line" aria-label="Agent views">
             {agentConversationSections.map((item) => (
-              <TabsTrigger key={item} value={item} disabled={loading}>
+              <TabsTrigger key={item} value={item}>
                 {labels[item]}
               </TabsTrigger>
             ))}
-            <TabsTrigger value="settings" disabled={loading}>
-              Settings
-            </TabsTrigger>
+            <TabsTrigger value="settings">Settings</TabsTrigger>
           </TabsList>
         </div>
-        <TabsContent value={tab} className="flex min-h-0 flex-1 flex-col">
-          {section === "messages" ? (
-            children
-          ) : (
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <div className="mx-auto w-full max-w-6xl p-6">{children}</div>
-            </div>
-          )}
+        <TabsContent value="messages" className="flex min-h-0 flex-1 flex-col">
+          {messages}
         </TabsContent>
+        <AgentSectionPanel value="activity">{activity}</AgentSectionPanel>
+        <AgentSectionPanel value="routines">{routines}</AgentSectionPanel>
+        <AgentSectionPanel value="calls">{calls}</AgentSectionPanel>
+        <AgentSectionPanel value="settings">{settings}</AgentSectionPanel>
       </Tabs>
     </section>
+  );
+}
+
+function AgentSectionPanel({
+  value,
+  children,
+}: {
+  value: Exclude<AgentConversationSection, "messages"> | "settings";
+  children: ReactNode;
+}) {
+  return (
+    <TabsContent value={value} className="flex min-h-0 flex-1 flex-col">
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="mx-auto w-full max-w-6xl p-6">{children}</div>
+      </div>
+    </TabsContent>
   );
 }

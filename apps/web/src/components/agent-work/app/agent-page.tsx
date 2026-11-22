@@ -77,59 +77,56 @@ function AgentPageContent({
       }
     />
   );
-  let content;
-  if (isAgentSettingsSection(section))
-    content = (
-      <AgentSettingsPanel
-        userId={userId}
-        organizationId={organizationId}
-        agentId={agentId}
-        section={section}
-        onSectionChange={onSectionChange}
-        onDeleted={onDeleted}
-      />
-    );
-  else if (section === "messages")
-    content = (
-      <AgentMessages
-        key={agentId}
-        userId={userId}
-        organizationId={organizationId}
-        agentId={agentId}
-        name={name}
-        enabled={enabled}
-        messageId={messageId}
-        turnId={selectedTurnId}
-        onNavigate={onMessageNavigate}
-        onSettings={() => onSectionChange("general")}
-      />
-    );
-  else if (section === "calls")
-    content = <CallsLog userId={userId} organizationId={organizationId} agentId={agentId} />;
-  else if (unavailable) content = unavailable;
-  else if (section === "routines")
-    content = (
-      <Routines userId={userId} organizationId={organizationId} agentId={agentId} name={name} />
-    );
-  else
-    content = (
-      <AgentActivity
-        userId={userId}
-        organizationId={organizationId}
-        agentId={agentId}
-        name={name}
-        selectedTurnId={selectedTurnId}
-        onTranscript={onTranscript}
-      />
-    );
   return (
     <AgentPageView
       name={name}
       status={status && agentStatus(status)}
       section={section}
       onSectionChange={onSectionChange}
-    >
-      {content}
-    </AgentPageView>
+      messages={
+        <AgentMessages
+          key={agentId}
+          userId={userId}
+          organizationId={organizationId}
+          agentId={agentId}
+          name={name}
+          enabled={enabled}
+          messageId={messageId}
+          turnId={selectedTurnId}
+          onNavigate={onMessageNavigate}
+          onSettings={() => onSectionChange("general")}
+        />
+      }
+      activity={
+        unavailable || (
+          <AgentActivity
+            userId={userId}
+            organizationId={organizationId}
+            agentId={agentId}
+            name={name}
+            selectedTurnId={selectedTurnId}
+            onTranscript={onTranscript}
+          />
+        )
+      }
+      routines={
+        unavailable || (
+          <Routines userId={userId} organizationId={organizationId} agentId={agentId} name={name} />
+        )
+      }
+      calls={<CallsLog userId={userId} organizationId={organizationId} agentId={agentId} />}
+      settings={
+        isAgentSettingsSection(section) && (
+          <AgentSettingsPanel
+            userId={userId}
+            organizationId={organizationId}
+            agentId={agentId}
+            section={section}
+            onSectionChange={onSectionChange}
+            onDeleted={onDeleted}
+          />
+        )
+      }
+    />
   );
 }
