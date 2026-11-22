@@ -5,11 +5,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { InteractionList } from "./interaction-list";
+import { InteractionPager } from "./interaction-pager";
 import { interactionKinds, interactionTypes } from "./interaction-types";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
-import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -124,23 +124,7 @@ function TimelinePage({
           )}
         </div>
       </Card>
-      {(cursor.beforeEntityId || nextCursor) && (
-        <div className="flex shrink-0 justify-between gap-3">
-          <Button
-            variant="outline"
-            size="sm"
-            disabled={!cursor.beforeEntityId}
-            onClick={() => setCursor({})}
-          >
-            Newest
-          </Button>
-          {nextCursor && (
-            <Button variant="outline" size="sm" onClick={() => setCursor(nextCursor)}>
-              Older interactions
-            </Button>
-          )}
-        </div>
-      )}
+      <InteractionPager cursor={cursor} nextCursor={nextCursor} onCursorChange={setCursor} />
     </div>
   );
 }

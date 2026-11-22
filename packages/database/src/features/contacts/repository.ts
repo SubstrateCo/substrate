@@ -25,6 +25,12 @@ import { and, asc, eq, gt, ilike, isNotNull, isNull, sql } from "drizzle-orm";
 export function contactApplicationRepository(context: RepositoryContext) {
   const { db, scope } = context;
   const org = scope.organizationId;
+  // CRM profile columns are visible only while the CRM app is enabled.
+  const crmProfileJoin = and(
+    eq(crmContactProfiles.organizationId, contacts.organizationId),
+    eq(crmContactProfiles.contactEntityId, contacts.entityId),
+    appEnabledCondition(org, "crm"),
+  );
   function changed(ctx: RepositoryContext, id: string) {
     ctx.effects.hint({ audience: realtimeKeys.entity(org, id), domain: "context" });
   }
@@ -79,14 +85,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
       return db
         .select({ contact: contacts, archivedAt: crmContactProfiles.archivedAt })
         .from(contacts)
-        .leftJoin(
-          crmContactProfiles,
-          and(
-            eq(crmContactProfiles.organizationId, contacts.organizationId),
-            eq(crmContactProfiles.contactEntityId, contacts.entityId),
-            appEnabledCondition(org, "crm"),
-          ),
-        )
+        .leftJoin(crmContactProfiles, crmProfileJoin)
         .where(
           and(
             eq(contacts.organizationId, org),
@@ -110,14 +109,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
           archivedAt: crmContactProfiles.archivedAt,
         })
         .from(contacts)
-        .leftJoin(
-          crmContactProfiles,
-          and(
-            eq(crmContactProfiles.organizationId, contacts.organizationId),
-            eq(crmContactProfiles.contactEntityId, contacts.entityId),
-            appEnabledCondition(org, "crm"),
-          ),
-        )
+        .leftJoin(crmContactProfiles, crmProfileJoin)
         .where(
           and(
             eq(contacts.organizationId, org),
