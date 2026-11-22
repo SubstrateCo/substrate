@@ -1,5 +1,5 @@
 import { HarnessError } from "../../errors.ts";
-import { acpAuthRequired, type AcpAuthMethod } from "../api.ts";
+import type { AcpAuthMethod } from "../api.ts";
 import { peerCapabilitiesV2 } from "../capabilities.ts";
 import type {
   AcpDriverConnection,
@@ -10,6 +10,7 @@ import type {
   AcpTransport,
   ProtocolDriver,
 } from "../driver.ts";
+import { native, unsupportedVersion } from "../request-errors.ts";
 import { commandNamesV2, configOptionsV2, SessionUpdatesV2 } from "./events.ts";
 import { elicitationRequestV2, permissionRequestV2 } from "./requests.ts";
 import { SessionTurns } from "./turns.ts";
@@ -31,14 +32,6 @@ import {
 } from "@agentclientprotocol/sdk/experimental/v2/unstable";
 import { z } from "zod";
 
-/** auth_required in ACP's ErrorCode (dist/v2/unstable/schema/types.gen.d.ts ErrorCode). */
-const authRequiredCode = -32000;
-/** RequestError.unsupportedProtocolVersion (dist/core/jsonrpc.d.ts:583) lists data.supported. */
-const unsupportedVersion = z.object({
-  code: z.literal(-32022),
-  data: z.object({ supported: z.array(z.int()) }).catch({ supported: [] }),
-});
-const errorWithCode = z.object({ code: z.number() });
 /** The first response on the connection answers initialize. */
 const initializeResult = z.object({
   id: z.union([z.string(), z.number()]),
@@ -59,21 +52,6 @@ const bounded = (signal: AbortSignal): SendRequestOptions => ({
   cancellationSignal: signal,
   stopWaitingOnCancel: true,
 });
-
-/** Maps SDK errors to HarnessErrors. closed: the connection's signal, aborted once it ends. */
-async function native<T>(run: () => Promise<T>, closed?: AbortSignal): Promise<T> {
-  try {
-    return await run();
-  } catch (error) {
-    if (closed?.aborted)
-      throw new HarnessError("disconnected", "The ACP connection closed.", { cause: error });
-    if (error instanceof HarnessError) throw error;
-    if (errorWithCode.safeParse(error).data?.code === authRequiredCode)
-      throw new HarnessError(acpAuthRequired, "Sign in to the agent first.", { cause: error });
-    const message = error instanceof Error ? error.message : "ACP request failed.";
-    throw new HarnessError("native-request", message, { cause: error });
-  }
-}
 
 /** Custom and future method types are skipped: the client cannot run them. */
 function authMethodsV2(methods: AuthMethod[] | undefined): AcpAuthMethod[] {

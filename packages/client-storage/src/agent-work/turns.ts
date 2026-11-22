@@ -32,6 +32,23 @@ import { and, desc, eq, inArray, lt, lte, ne, or } from "drizzle-orm";
 
 export type TurnRow = typeof turns.$inferSelect;
 
+async function retryTurn(tx: LocalTransaction, turn: TurnRow, now: number, epoch?: number) {
+  const values: Partial<typeof turns.$inferInsert> = {
+    status: turnMachine.events.retry.to,
+    attempt: turn.attempt + 1,
+    generation: turn.generation + 1,
+    attentionReason: null,
+    error: null,
+    finishedAt: null,
+  };
+  if (epoch !== undefined) values.epoch = epoch;
+  await tx
+    .update(turns)
+    .set(values)
+    .where(and(eq(turns.id, turn.id), inStates(turns.status, turnMachine.from("retry"))));
+  await setSessionStatus(tx, turn.sessionId, "work", now);
+}
+
 /** Live turns on one device. Main slots go before helper slots. */
 const deviceTurnCap = 3;
 /** Items batched into one turn. */
@@ -681,18 +698,7 @@ export function turnRepository(run: RunTransaction) {
         }
         if (await folderBusy(tx, turn.folderKey, id))
           throw new Error("The agent is busy. Try again when it finishes.");
-        await tx
-          .update(turns)
-          .set({
-            status: turnMachine.events.retry.to,
-            attempt: turn.attempt + 1,
-            generation: turn.generation + 1,
-            attentionReason: null,
-            error: null,
-            finishedAt: null,
-          })
-          .where(and(eq(turns.id, id), inStates(turns.status, turnMachine.from("retry"))));
-        await setSessionStatus(tx, turn.sessionId, "work", now);
+        await retryTurn(tx, turn, now);
       }),
     /** Ends a needs-attention turn without running it again. */
     dismiss: (id: string, now: number) =>
@@ -728,19 +734,7 @@ export function turnRepository(run: RunTransaction) {
         if (await folderBusy(tx, turn.folderKey, id))
           throw new Error("The agent is busy. Try again when it finishes.");
         const epoch = await rotateEpoch(tx, turn.sessionId, now);
-        await tx
-          .update(turns)
-          .set({
-            status: turnMachine.events.retry.to,
-            attempt: turn.attempt + 1,
-            generation: turn.generation + 1,
-            epoch,
-            attentionReason: null,
-            error: null,
-            finishedAt: null,
-          })
-          .where(and(eq(turns.id, id), inStates(turns.status, turnMachine.from("retry"))));
-        await setSessionStatus(tx, turn.sessionId, "work", now);
+        await retryTurn(tx, turn, now, epoch);
       }),
     /** Marks the live turn of a failed open as needing the owner. */
     attention: (id: string, reason: TurnAttentionReason, error: string | null, now: number) =>

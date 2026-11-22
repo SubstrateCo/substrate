@@ -1,5 +1,6 @@
 import { HarnessError } from "../../errors.ts";
 import type { AcpClientRequest } from "../driver.ts";
+import { permissionRequest } from "../permission-request.ts";
 import type {
   CreateElicitationRequest,
   CreateElicitationResponse,
@@ -7,8 +8,6 @@ import type {
   RequestPermissionResponse,
 } from "@agentclientprotocol/sdk/experimental/v2/unstable";
 import { z } from "zod";
-
-const cancelledPermission: RequestPermissionResponse = { outcome: { outcome: "cancelled" } };
 
 /**
  * The host answers with one of the request's optionIds; null or undefined cancels. In v2,
@@ -18,31 +17,7 @@ const cancelledPermission: RequestPermissionResponse = { outcome: { outcome: "ca
 export function permissionRequestV2(
   request: RequestPermissionRequest,
 ): AcpClientRequest<RequestPermissionResponse> {
-  const selected = (optionId: string): RequestPermissionResponse => ({
-    outcome: { outcome: "selected", optionId },
-  });
-  return {
-    kind: "permission",
-    sessionId: request.sessionId,
-    data: request,
-    deny: () => {
-      const reject =
-        request.options.find((option) => option.kind === "reject_once") ??
-        request.options.find((option) => option.kind === "reject_always");
-      return reject ? selected(reject.optionId) : cancelledPermission;
-    },
-    cancelled: () => cancelledPermission,
-    parse: (response) => {
-      if (response === null || response === undefined) return cancelledPermission;
-      const option = request.options.find((entry) => entry.optionId === response);
-      if (!option)
-        throw new HarnessError(
-          "invalid-response",
-          "Choose one of the native permission option IDs.",
-        );
-      return selected(option.optionId);
-    },
-  };
+  return permissionRequest(request);
 }
 
 const sessionScope = z.object({ sessionId: z.string() });

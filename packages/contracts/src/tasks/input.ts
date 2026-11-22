@@ -1,8 +1,8 @@
-import { attachmentFileIds } from "../files/attachments";
-import { projectIcon } from "../files/pictures";
-import { organizationId } from "../workspace";
-import { taskLinkRelations } from "./links";
-import { permissionLevels, taskPriorityValues, taskStatusValues } from "./status";
+import { attachmentFileIds } from "../files/attachments.ts";
+import { projectIcon } from "../files/pictures.ts";
+import { organizationId } from "../workspace.ts";
+import { taskLinkRelations } from "./links.ts";
+import { permissionLevels, taskPriorityValues, taskStatusValues } from "./status.ts";
 import { z } from "zod";
 
 export const tasksWorkspace = z.object({ organizationId });
@@ -21,6 +21,7 @@ export const taskFields = z.object({
   assigneeActorEntityId: z.uuid().nullable(),
   dueDate: z.iso.date().nullable(),
 });
+export const createTaskFields = taskFields.partial().extend({ title });
 
 export const tasksWrite = z.discriminatedUnion("action", [
   tasksWorkspace.extend({
@@ -39,7 +40,7 @@ export const tasksWrite = z.discriminatedUnion("action", [
       parentTaskEntityId: z.uuid().optional(),
       attachmentFileIds: attachmentFileIds.optional(),
     })
-    .extend(taskFields.partial().extend({ title }).shape),
+    .extend(createTaskFields.shape),
   taskRequest
     .extend({ action: z.literal("updateTask") })
     .extend(taskFields.partial().shape)

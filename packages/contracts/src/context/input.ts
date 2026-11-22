@@ -1,4 +1,4 @@
-import { taskPriorityValues, taskStatusValues } from "../tasks/status.ts";
+import { createTaskFields } from "../tasks/input.ts";
 import { organizationId } from "../workspace.ts";
 import { z } from "zod";
 
@@ -65,12 +65,7 @@ export const contextSearch = contextWorkspace
 export const contextSourceTask = contextMessage.extend({
   requestId: z.uuid(),
   projectEntityId: z.uuid(),
-  title: z.string().trim().min(1).max(300),
-  description: z.string().max(20000).optional(),
-  status: z.enum(taskStatusValues).optional(),
-  priority: z.enum(taskPriorityValues).optional(),
-  assigneeActorEntityId: z.uuid().nullable().optional(),
-  dueDate: z.iso.date().nullable().optional(),
+  ...createTaskFields.shape,
 });
 export const contextNotification = contextWorkspace.extend({ id: z.uuid() });
 export const contextNotificationPage = contextWorkspace.extend({

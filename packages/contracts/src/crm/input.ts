@@ -1,4 +1,5 @@
-import { taskStatusValues, taskPriorityValues, permissionLevels } from "../tasks/status.ts";
+import { createTaskFields } from "../tasks/input.ts";
+import { permissionLevels } from "../tasks/status.ts";
 import { organizationId } from "../workspace.ts";
 import { crmReportFilters } from "./report-input.ts";
 import { z } from "zod";
@@ -105,12 +106,7 @@ export const crmWrite = z.discriminatedUnion("action", [
     action: z.literal("createFollowUp"),
     requestId: z.uuid(),
     projectEntityId: z.uuid(),
-    title: z.string().trim().min(1).max(300),
-    description: z.string().max(20000).optional(),
-    status: z.enum(taskStatusValues).optional(),
-    priority: z.enum(taskPriorityValues).optional(),
-    assigneeActorEntityId: z.uuid().nullable().optional(),
-    dueDate: z.iso.date().nullable().optional(),
+    ...createTaskFields.shape,
     consentToTaskAudience: z.literal(true),
   }),
   crmContact.extend({
