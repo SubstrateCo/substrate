@@ -2,16 +2,24 @@ import type { RecordArchiveFilter } from "@substrate/contracts/crm/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { requireAppEnabled } from "../../core/apps/access";
-import { contactReadable, lockContact, requireContact } from "../../core/contacts/access";
+import { contactReadable, lockContact } from "../../core/contacts/access";
 import { contactProfileInput, parseInput, type ContactInput } from "../../core/contacts/inputs";
+import { contactDetailRows } from "../../core/contacts/profile";
 import { contactRepository } from "../../core/contacts/repository";
 import { contacts } from "../../core/contacts/schema";
 import { appEnabledCondition } from "../../core/permissions/app-visibility";
-import { entityCursor, pageSize, type RepositoryContext } from "../../core/repository-context";
+import { organizationAdminCondition } from "../../core/permissions/visibility";
+import {
+  entityCursor,
+  pageSize,
+  type EntityAccess,
+  type RepositoryContext,
+} from "../../core/repository-context";
+import { AccessDeniedError } from "../../errors";
 import { recordCrmActivity } from "../crm/activity";
 import { crmAccounts, crmAffiliations, crmContactProfiles } from "../crm/schema";
 import { mutateContactDetail } from "./contact-detail-actions";
-import { and, asc, eq, gt, ilike, isNotNull, isNull } from "drizzle-orm";
+import { and, asc, eq, gt, ilike, isNotNull, isNull, sql } from "drizzle-orm";
 
 // Application integration composes the shared contact primitive with its CRM relationships.
 export function contactApplicationRepository(context: RepositoryContext) {
@@ -34,8 +42,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
     updateContact(id: string, input: Partial<ContactInput>) {
       const value = parseInput(contactProfileInput.partial(), input);
       return context.transaction(async (ctx) => {
-        await lockContact(ctx, id);
-        const repo = contactRepository(ctx);
+        const repo = contactRepository(ctx, await lockContact(ctx, id));
         const previous = await repo.get(id);
         // SAFETY: parsing above strips unknown keys; every own key belongs to ContactInput.
         const changedFields = (Object.keys(value) as (keyof typeof value)[]).filter(
@@ -93,8 +100,37 @@ export function contactApplicationRepository(context: RepositoryContext) {
         .limit(pageSize(options.limit));
     },
     async getContact(id: string) {
-      const detail = await contactRepository(context).getDetail(id);
-      const access = await requireContact(context, id);
+      // readContactProfile with requireContact's level and the CRM archive state.
+      const [row] = await db
+        .select({
+          profile: contacts,
+          admin: sql<boolean>`${organizationAdminCondition(scope)}`,
+          archivedAt: crmContactProfiles.archivedAt,
+        })
+        .from(contacts)
+        .leftJoin(
+          crmContactProfiles,
+          and(
+            eq(crmContactProfiles.organizationId, contacts.organizationId),
+            eq(crmContactProfiles.contactEntityId, contacts.entityId),
+            appEnabledCondition(org, "crm"),
+          ),
+        )
+        .where(
+          and(
+            eq(contacts.organizationId, org),
+            eq(contacts.entityId, id),
+            contactReadable(context, contacts.entityId),
+          ),
+        );
+      if (!row) throw new AccessDeniedError();
+      const rows = contactDetailRows(context, id);
+      const [identifiers, addresses, urls] = await Promise.all([
+        rows.identifiers(),
+        rows.addresses(),
+        rows.urls(),
+      ]);
+      const detail = { profile: row.profile, identifiers, addresses, urls };
       const affiliations = await db
         .select({ affiliation: crmAffiliations, account: crmAccounts })
         .from(crmAffiliations)
@@ -112,20 +148,11 @@ export function contactApplicationRepository(context: RepositoryContext) {
             context.readable(crmAccounts.entityId),
           ),
         );
-      const [profile] = await db
-        .select()
-        .from(crmContactProfiles)
-        .where(
-          and(
-            eq(crmContactProfiles.organizationId, org),
-            eq(crmContactProfiles.contactEntityId, id),
-            appEnabledCondition(org, "crm"),
-          ),
-        );
+      const access: Pick<EntityAccess, "level"> = { level: row.admin ? "owner" : "edit" };
       return {
         ...detail,
         affiliations,
-        archivedAt: profile?.archivedAt ?? null,
+        archivedAt: row.archivedAt ?? null,
         level: access.level,
       };
     },

@@ -201,8 +201,8 @@ test("project revocation keeps assignments, locks once, and protects the last ow
   const { db, queries } = recordQueries();
   const repos = new ActorRepositories(db, { organizationId: f.orgA, actorEntityId: f.alice });
   const revoked = await repos.transaction((tx) => tx.projects.revoke(project.entityId, f.bob));
-  // Lock path (2), target actor, assignments, fresh owner check, existing grant, delete.
-  expect(queries).toHaveLength(7);
+  // Lock path (2), assignments, fresh owner check, existing grant, delete.
+  expect(queries).toHaveLength(6);
   expect(locks(queries)).toBe(1);
   expect(revoked.hints).toContainEqual({
     audience: realtimeKeys.actor(f.orgA, f.bob),

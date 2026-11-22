@@ -37,7 +37,6 @@ export async function createCrmFromMessageInContext(
     const resolved = await workspaceContext(ctx.db, identity);
     if (resolved.context.scope.actorEntityId !== ctx.scope.actorEntityId)
       throw new AccessDeniedError();
-    await ctx.requireActiveActor();
     const destinationIds =
       value.kind === "deal"
         ? [value.fields.accountEntityId, ...value.fields.contactEntityIds].filter(

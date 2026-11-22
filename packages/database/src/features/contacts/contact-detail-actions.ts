@@ -26,7 +26,6 @@ function collectionOf(action: Action) {
 /** The content of the collection the action edits, without timestamps. A primary change edits
  * other rows too, so the snapshot covers the whole collection. */
 async function contentKey(ctx: RepositoryContext, contactId: string, action: Action) {
-  await readContactProfile(ctx, contactId);
   const rows = await contactDetailRows(ctx, contactId)[collectionOf(action)]();
   return JSON.stringify(
     rows.map((row) => ({ ...row, createdAt: undefined, updatedAt: undefined })),
@@ -34,8 +33,10 @@ async function contentKey(ctx: RepositoryContext, contactId: string, action: Act
 }
 export function mutateContactDetail(context: RepositoryContext, input: Input) {
   return context.transaction(async (ctx) => {
-    await lockContact(ctx, input.contactEntityId);
-    const repo = contactRepository(ctx);
+    const locked = await lockContact(ctx, input.contactEntityId);
+    const repo = contactRepository(ctx, locked);
+    // Under the lock, the profile read once proves the contact row for the whole transaction.
+    await readContactProfile(ctx, input.contactEntityId);
     const before = await contentKey(ctx, input.contactEntityId, input.action);
     async function write() {
       switch (input.action) {

@@ -4,6 +4,7 @@ import {
   projectIcon,
 } from "@substrate/contracts/files/pictures";
 import { realtimeKeys } from "@substrate/contracts/realtime";
+import type { TaskStatus } from "@substrate/contracts/tasks";
 
 import {
   activeActorCondition,
@@ -17,7 +18,7 @@ import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
 import { changePermission, requirePermissionLevel } from "../../core/permissions/repository";
-import { entityGrants } from "../../core/permissions/schema";
+import { entityGrants, permissionLevel } from "../../core/permissions/schema";
 import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
 import { requiredText } from "../../core/validation";
 import { AccessDeniedError, ValidationError } from "../../errors";
@@ -30,7 +31,7 @@ import { projectTaskLinkRows, toLinkView } from "../tasks/links";
 import { tasks } from "../tasks/tasks.schema";
 import { queryProjects } from "./queries";
 import { projects } from "./schema";
-import { and, eq, inArray, isNull, or, sql, type SQLWrapper } from "drizzle-orm";
+import { and, count, eq, inArray, isNull, or, sql, type SQLWrapper } from "drizzle-orm";
 import { type SelectedFields } from "drizzle-orm/pg-core";
 
 export function projectRepository(context: RepositoryContext) {
@@ -205,6 +206,31 @@ export function projectRepository(context: RepositoryContext) {
     });
   return {
     get,
+    /** get, with the project's live task counts by status in the same statement. */
+    async getWithTaskCounts(entityId: string) {
+      const counts = db
+        .select({ status: tasks.status, total: count().as("total") })
+        .from(tasks)
+        .where(liveProjectTasks(scope, entityId))
+        .groupBy(tasks.status)
+        .as("project_task_counts");
+      const [row] = await selectWithLevel(entityId, {
+        taskCounts: scalar(
+          db
+            .select({
+              items: sql<
+                { status: TaskStatus; total: number }[]
+              >`coalesce(json_agg(json_build_object(${jsonObject({
+                status: counts.status,
+                total: counts.total,
+              })})), '[]'::json)`,
+            })
+            .from(counts),
+        ),
+      });
+      if (!row) throw new AccessDeniedError();
+      return { project: row.project, taskCounts: row.taskCounts };
+    },
     async exportStart(entityId: string) {
       const [row] = await selectWithLevel(entityId, {
         firstPage: firstTaskExportPage(context, entityId),
@@ -251,13 +277,12 @@ export function projectRepository(context: RepositoryContext) {
       });
     },
     async getPicture(entityId: string, minimum: "view" | "edit" = "view") {
-      await context.requireAccess(entityId, minimum);
-      const [project] = await db
-        .select({ image: projects.image })
-        .from(projects)
-        .where(projectWhere(entityId));
-      if (!project) throw new AccessDeniedError();
-      return project.image;
+      const required = permissionLevel.enumValues.indexOf(minimum);
+      if (required < 0) throw new AccessDeniedError();
+      const [row] = await selectWithLevel(entityId, {});
+      if (!row?.level || permissionLevel.enumValues.indexOf(row.level) < required)
+        throw new AccessDeniedError();
+      return row.project.image;
     },
     async setPicture(entityId: string, image: string | null) {
       const parsed = projectIcon.safeParse(image);

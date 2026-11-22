@@ -16,8 +16,8 @@ import {
   readableCondition,
 } from "./permissions/visibility";
 import type { WorkspaceScope } from "./session/identity";
-import { and, eq, exists, inArray, isNull, sql, type SQLWrapper } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { and, eq, exists, inArray, is, isNull, sql, type SQLWrapper } from "drizzle-orm";
+import { alias, PgTransaction } from "drizzle-orm/pg-core";
 
 export interface ActorScope {
   organizationId: string;
@@ -66,7 +66,10 @@ export class RepositoryContext {
     return effectsFor(this.db);
   }
 
+  // An open transaction is joined, not given a savepoint: no caller keeps using a transaction
+  // after a repository call in it fails. Callers that do must open their own savepoint.
   async transaction<T>(work: (context: RepositoryContext) => Promise<T>) {
+    if (is(this.db, PgTransaction)) return work(this);
     return this.db.transaction((tx) => work(new RepositoryContext(tx, this.scope)));
   }
 

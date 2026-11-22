@@ -26,6 +26,6 @@ export function createDeviceWorkRepository(db: DatabaseExecutor, identity: Resol
       committedWrite(openRequestForDevice)(db, identity, input),
     closeRequest: (requestId: string, status: Parameters<typeof closeRequestForDevice>[3]) =>
       committedWrite(closeRequestForDevice)(db, identity, requestId, status),
-    requestAnswers: () => db.transaction((tx) => requestAnswersForDevice(tx, identity)),
+    requestAnswers: () => requestAnswersForDevice(db, identity),
   };
 }

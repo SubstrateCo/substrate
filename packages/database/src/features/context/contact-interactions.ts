@@ -61,7 +61,7 @@ export function contextContactInteractionRepository(context: RepositoryContext) 
       input: Parameters<ReturnType<typeof contactInteractionRepository>["createManual"]>[0],
     ) {
       return context.transaction(async (ctx) => {
-        await lockContact(ctx, input.contactEntityId);
+        const locked = await lockContact(ctx, input.contactEntityId);
         const [profile] = await ctx.db
           .select()
           .from(crmContactProfiles)
@@ -73,7 +73,7 @@ export function contextContactInteractionRepository(context: RepositoryContext) 
             ),
           );
         if (profile?.archivedAt) throw new ValidationError("Restore the archived record first.");
-        const interaction = await contactInteractionRepository(ctx).createManual(input);
+        const interaction = await contactInteractionRepository(ctx).createManual(input, locked);
         await recordCrmActivity(ctx, {
           entityId: input.contactEntityId,
           action: "interaction_created",

@@ -13,10 +13,11 @@ export function contextInteractionActions(context: RepositoryContext) {
     updateInteraction(entityId: string, input: { summary: string }) {
       const value = parseInput(z.object({ summary: z.string().trim().min(1).max(10000) }), input);
       return context.transaction(async (ctx) => {
-        const { interaction: previous } = await requireInteraction(ctx, entityId, true);
+        const locked = await requireInteraction(ctx, entityId, true);
+        const { interaction: previous } = locked;
         const repo = contactInteractionRepository(ctx);
         if (previous.summary === value.summary) return presentInteraction(ctx, previous);
-        const interaction = await repo.update(entityId, value);
+        const interaction = await repo.update(entityId, value, locked);
         await recordCrmActivity(ctx, {
           entityId: interaction.contactEntityId,
           action: "interaction_updated",
@@ -33,8 +34,7 @@ export function contextInteractionActions(context: RepositoryContext) {
     deleteInteraction(entityId: string) {
       return context.transaction(async (ctx) => {
         const repo = contactInteractionRepository(ctx);
-        const previous = await repo.get(entityId);
-        await repo.softDelete(entityId);
+        const previous = await repo.softDelete(entityId);
         await recordCrmActivity(ctx, {
           entityId: previous.contactEntityId,
           action: "interaction_deleted",

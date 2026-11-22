@@ -9,7 +9,7 @@ import {
   viewerActorJoins,
 } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
-import { requireAppEnabled } from "../../core/apps/access";
+import { requireAppEnabled, requireAppEnabledForActiveActor } from "../../core/apps/access";
 import { contactReadable, requireContact } from "../../core/contacts/access";
 import { parseInput } from "../../core/contacts/inputs";
 import { contacts } from "../../core/contacts/schema";
@@ -74,7 +74,9 @@ export function crmRepository(context: RepositoryContext) {
   ) {
     // Lock both in one global order. Only the account has grants to check.
     await ctx.lockAccessPaths([contactId, accountId]);
-    await requireAppEnabled(ctx, "crm", true);
+    // An account target made lockAccessPaths take the organization lock. Any other target is
+    // denied below, before a write.
+    await requireAppEnabled(ctx, "crm", false);
     await requireContact(ctx, contactId);
     const account = await ctx.requireAccess(accountId, "edit");
     if (account.entity.entityType !== "account") throw new AccessDeniedError();
@@ -156,7 +158,7 @@ export function crmRepository(context: RepositoryContext) {
         ...value.contactEntityIds,
       ]),
     ]);
-    await requireDealRelations(ctx, value);
+    await requireDealRelations(ctx, value, { actorChecked: true });
     if (options.requireActiveStage !== false) await requireStage(ctx, value.stageId);
   }
   async function presentDeal(ctx: RepositoryContext, row: typeof crmDeals.$inferSelect) {
@@ -182,10 +184,12 @@ export function crmRepository(context: RepositoryContext) {
     id: string,
     value: z.output<typeof dealFields>,
     retained: { contactEntityId: string; isPrimary: boolean }[] = [],
+    created = false,
   ) {
-    await ctx.db
-      .delete(crmDealContacts)
-      .where(and(eq(crmDealContacts.organizationId, org), eq(crmDealContacts.dealEntityId, id)));
+    if (!created)
+      await ctx.db
+        .delete(crmDealContacts)
+        .where(and(eq(crmDealContacts.organizationId, org), eq(crmDealContacts.dealEntityId, id)));
     if (value.contactEntityIds.length || retained.length)
       await ctx.db.insert(crmDealContacts).values([
         ...[...new Set(value.contactEntityIds)].map((contactEntityId) => ({
@@ -202,8 +206,8 @@ export function crmRepository(context: RepositoryContext) {
         })),
       ]);
   }
+  // Call after requireType(ctx, id, "deal", true) in the same transaction.
   async function lockedDeal(ctx: RepositoryContext, id: string, version: number) {
-    await requireType(ctx, id, "deal", true);
     // The entity access lock already serializes deal edits, transitions, and archiving.
     const [deal] = await ctx.db.select().from(crmDeals).where(target(crmDeals, id));
     if (!deal) throw new AccessDeniedError();
@@ -298,8 +302,7 @@ export function crmRepository(context: RepositoryContext) {
       report(context, from, to, options),
     reportDeals: (input: Parameters<typeof reportDeals>[1]) => reportDeals(context, input),
     async listAccounts(options: ListOptions = {}) {
-      await requireAppEnabled(context, "crm", false);
-      await context.requireActiveActor();
+      await requireAppEnabledForActiveActor(context, "crm");
       return db
         .select()
         .from(crmAccounts)
@@ -337,7 +340,7 @@ export function crmRepository(context: RepositoryContext) {
     async updateAccount(id: string, input: z.input<typeof accountFields>) {
       const value = parseInput(accountFields, input);
       return context.transaction(async (ctx) => {
-        await requireType(ctx, id, "account", true);
+        const access = await requireType(ctx, id, "account", true);
         const [previous] = await ctx.db.select().from(crmAccounts).where(target(crmAccounts, id));
         if (!previous) throw new AccessDeniedError();
         const changedFields = (["name", "website", "domain", "summary"] as const).filter(
@@ -351,7 +354,7 @@ export function crmRepository(context: RepositoryContext) {
         await ctx.touch(id);
         changed(ctx, id);
         if (changedFields.length)
-          await recordCrmActivity(ctx, { entityId: id, action: "updated", changedFields });
+          await recordCrmActivity(ctx, { entityId: id, action: "updated", changedFields }, access);
         return row!;
       });
     },
@@ -500,8 +503,7 @@ export function crmRepository(context: RepositoryContext) {
       });
     },
     async pipeline() {
-      await requireAppEnabled(context, "crm", false);
-      await context.requireActiveActor();
+      await requireAppEnabledForActiveActor(context, "crm");
       return db
         .select()
         .from(crmStages)
@@ -555,7 +557,7 @@ export function crmRepository(context: RepositoryContext) {
               ownerActorEntityId,
             })
             .returning();
-          await participants(ctx, entity.entityId, value);
+          await participants(ctx, entity.entityId, value, [], true);
           changed(ctx, entity.entityId);
           await recordCrmActivity(ctx, { entityId: entity.entityId, action: "created" });
           return row!;
@@ -566,6 +568,7 @@ export function crmRepository(context: RepositoryContext) {
     async updateDeal(id: string, expectedVersion: number, input: DealInput) {
       const value = parseInput(dealFields, input);
       return context.transaction(async (ctx) => {
+        const access = await requireType(ctx, id, "deal", true);
         const previous = await lockedDeal(ctx, id, expectedVersion);
         if (previous.stageId !== value.stageId)
           throw new ValidationError("Use a stage transition to change stage.");
@@ -637,7 +640,7 @@ export function crmRepository(context: RepositoryContext) {
         await ctx.touch(id);
         changed(ctx, id);
         if (changedFields.length)
-          await recordCrmActivity(ctx, { entityId: id, action: "updated", changedFields });
+          await recordCrmActivity(ctx, { entityId: id, action: "updated", changedFields }, access);
         return presentDeal(ctx, row!);
       });
     },
@@ -646,7 +649,7 @@ export function crmRepository(context: RepositoryContext) {
       input: Omit<Transition, "action" | "organizationId" | "entityId">,
     ) {
       return context.transaction(async (ctx) => {
-        await requireType(ctx, id, "deal", true);
+        const access = await requireType(ctx, id, "deal", true);
         const fingerprint = requestFingerprint([
           id,
           input.expectedVersion,
@@ -684,13 +687,16 @@ export function crmRepository(context: RepositoryContext) {
         if (previous.outcome !== input.outcome) changedFields.push("outcome");
         if (previous.lostReason !== row!.lostReason) changedFields.push("lostReason");
         if (changedFields.length)
-          await recordCrmActivity(ctx, { entityId: id, action: "stage_changed", changedFields });
+          await recordCrmActivity(
+            ctx,
+            { entityId: id, action: "stage_changed", changedFields },
+            access,
+          );
         return presentDeal(ctx, row!);
       });
     },
     async listDeals(options: ListOptions = {}) {
-      await requireAppEnabled(context, "crm", false);
-      await context.requireActiveActor();
+      await requireAppEnabledForActiveActor(context, "crm");
       const rows = await db
         .select()
         .from(crmDeals)
@@ -759,7 +765,8 @@ export function crmRepository(context: RepositoryContext) {
     },
     async archive(id: string, archived: boolean) {
       return context.transaction(async (ctx) => {
-        const { entity } = await ctx.requireAccess(id, "edit", true);
+        const access = await ctx.requireAccess(id, "edit", true);
+        const { entity } = access;
         let previousArchived = false;
         if (entity.entityType === "account" || entity.entityType === "deal") {
           const table = entity.entityType === "account" ? crmAccounts : crmDeals;
@@ -781,10 +788,11 @@ export function crmRepository(context: RepositoryContext) {
         await ctx.touch(id);
         changed(ctx, id);
         if (previousArchived !== archived)
-          await recordCrmActivity(ctx, {
-            entityId: id,
-            action: archived ? "archived" : "restored",
-          });
+          await recordCrmActivity(
+            ctx,
+            { entityId: id, action: archived ? "archived" : "restored" },
+            access,
+          );
       });
     },
   };

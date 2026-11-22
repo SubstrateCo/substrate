@@ -3,10 +3,8 @@ import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
-import { liveProjectTasks } from "../tasks/access";
-import { tasks } from "../tasks/tasks.schema";
 import { projects } from "./schema";
-import { and, asc, count, isNull } from "drizzle-orm";
+import { and, asc, isNull } from "drizzle-orm";
 import { eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
@@ -47,13 +45,4 @@ export async function queryProjects(
     await ctx.requireActiveActor();
   }
   return rows.flatMap((row) => (row.project ? [row.project] : []));
-}
-
-// The caller has authorized the project.
-export function queryProjectTaskCounts(ctx: RepositoryContext, projectEntityId: string) {
-  return ctx.db
-    .select({ status: tasks.status, total: count() })
-    .from(tasks)
-    .where(liveProjectTasks(ctx.scope, projectEntityId))
-    .groupBy(tasks.status);
 }

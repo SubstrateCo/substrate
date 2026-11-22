@@ -8,11 +8,12 @@ import { and, eq, inArray } from "drizzle-orm";
 export async function requireDealRelations(
   ctx: RepositoryContext,
   input: { accountEntityId?: string | null; contactEntityIds: string[] },
-  options: { active?: boolean } = {},
+  // actorChecked: lockAccessPaths on these same IDs already proved the actor active.
+  options: { active?: boolean; actorChecked?: boolean } = {},
 ) {
   const ids = [...new Set(input.contactEntityIds)];
   if (!input.accountEntityId && !ids.length) return;
-  await ctx.requireActiveActor();
+  if (!options.actorChecked) await ctx.requireActiveActor();
   if (input.accountEntityId) {
     const [account] = await ctx.db
       .select({ archivedAt: crmAccounts.archivedAt })

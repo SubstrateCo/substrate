@@ -10,20 +10,30 @@ import {
 import { actors } from "../../core/actors/schema";
 import { requireAppEnabled } from "../../core/apps/access";
 import { user } from "../../core/authentication/schema";
-import { RepositoryContext } from "../../core/repository-context";
+import { RepositoryContext, type EntityAccess } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { crmActivityEvents } from "./activity.schema";
 import { crmActorView, joinCrmActorPerson } from "./actor-views";
 import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 
 // Call only inside a domain-authorized mutation transaction. Never expose an append API.
-export async function recordCrmActivity(ctx: RepositoryContext, input: CrmActivityInput) {
-  const [event] = await recordCrmActivities(ctx, [input]);
+// `access` must come from requireAccess for input.entityId, after its access path was locked in
+// this transaction; that entity is then not looked up again.
+export async function recordCrmActivity(
+  ctx: RepositoryContext,
+  input: CrmActivityInput,
+  access?: EntityAccess,
+) {
+  const [event] = await recordCrmActivities(ctx, [input], access ? [access] : []);
   return event!;
 }
 
 // Same rules as recordCrmActivity, with one access lookup and one insert for all inputs.
-export async function recordCrmActivities(ctx: RepositoryContext, inputs: CrmActivityInput[]) {
+export async function recordCrmActivities(
+  ctx: RepositoryContext,
+  inputs: CrmActivityInput[],
+  verified: EntityAccess[] = [],
+) {
   const values = inputs.map((input) => {
     const parsed = crmActivityInput.safeParse(input);
     if (!parsed.success) throw new ValidationError("Invalid CRM activity.");
@@ -37,8 +47,12 @@ export async function recordCrmActivities(ctx: RepositoryContext, inputs: CrmAct
       ),
     ),
   ];
-  const readable = await ctx.requireAccessAll(ids, "view");
-  const types = new Map(readable.map(({ entity }) => [entity.entityId, entity.entityType]));
+  const types = new Map(verified.map(({ entity }) => [entity.entityId, entity.entityType]));
+  const readable = await ctx.requireAccessAll(
+    ids.filter((id) => !types.has(id)),
+    "view",
+  );
+  for (const { entity } of readable) types.set(entity.entityId, entity.entityType);
   const rows = values.map((value) => {
     const entityType = types.get(value.entityId);
     if (!entityType) throw new AccessDeniedError();

@@ -59,7 +59,7 @@ describe("stored file relationships", () => {
       );
       queries.length = 0;
       expect(await repo.getUpload(scope, id)).toEqual({ upload, completed: null });
-      expect(queries).toHaveLength(purpose === "avatar" ? 1 : 2);
+      expect(queries).toHaveLength(1);
       const completed = await repo.complete(scope, id, {
         objectKey: `objects/${id}/hash`,
         contentType: "image/webp",
@@ -75,7 +75,7 @@ describe("stored file relationships", () => {
         upload: { ...upload, expiresAt: new Date(0) },
         completed,
       });
-      expect(queries).toHaveLength(purpose === "avatar" ? 1 : 2);
+      expect(queries).toHaveLength(1);
       expect(
         await repo.complete(scope, id, {
           objectKey: `objects/${id}/late`,

@@ -16,16 +16,17 @@ export async function publishFiles(
   if (!attachmentFileIds.safeParse(ids).success)
     throw new ValidationError("Select up to 10 distinct files.");
   if (!ids.length) return;
-  const [actor] = await ctx.db
-    .select({ userId: actors.userId, type: actors.type })
+  // A missing or non-human actor yields NULL, which matches no file.
+  const uploader = ctx.db
+    .select({ userId: actors.userId })
     .from(actors)
     .where(
       and(
         eq(actors.organizationId, ctx.scope.organizationId),
         eq(actors.entityId, ctx.scope.actorEntityId),
+        eq(actors.type, "human"),
       ),
     );
-  if (!actor || actor.type !== "human") throw new AccessDeniedError();
   const files = await ctx.db
     .update(storedFiles)
     .set({ publishedAt: new Date() })
@@ -34,7 +35,7 @@ export async function publishFiles(
         inArray(storedFiles.id, ids),
         eq(storedFiles.organizationId, ctx.scope.organizationId),
         eq(storedFiles.purpose, "file"),
-        eq(storedFiles.uploadedBy, actor.userId!),
+        eq(storedFiles.uploadedBy, uploader),
         isNull(storedFiles.publishedAt),
       ),
     )

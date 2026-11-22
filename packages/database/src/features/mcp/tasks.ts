@@ -7,7 +7,7 @@ import { joinedActorName } from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
-import { queryProjects, queryProjectTaskCounts } from "../projects/queries";
+import { queryProjects } from "../projects/queries";
 import { projectRepository } from "../projects/repository";
 import { linksOfTask } from "../tasks/links";
 import { queryTasks, queryTaskActivity, queryTaskDetail } from "../tasks/queries";
@@ -35,8 +35,9 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
       return p.page(rows.map((row) => ({ id: row.entityId, name: row.name })));
     },
     async getProject(input: McpInput<"get_project">): Promise<McpOutput<"get_project">> {
-      const project = await projectRepository(ctx).get(input.projectId);
-      const rows = await queryProjectTaskCounts(ctx, input.projectId);
+      const { project, taskCounts: rows } = await projectRepository(ctx).getWithTaskCounts(
+        input.projectId,
+      );
       const taskCounts: Record<TaskStatus, number> = {
         not_started: 0,
         in_progress: 0,

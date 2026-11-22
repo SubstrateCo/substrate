@@ -7,6 +7,9 @@ export type MessagingSessionResolver = (
   db: DatabaseExecutor,
 ) => Promise<ReturnType<typeof resolvedMessagingSession>>;
 
+/** Runs a lock-free messaging read. */
+export type MessagingReader = <T>(work: (db: DatabaseExecutor) => Promise<T>) => Promise<T>;
+
 export async function messagingSession(db: DatabaseExecutor, identity: SessionIdentity) {
   return resolvedMessagingSession(db, identity, await workspaceContext(db, identity));
 }

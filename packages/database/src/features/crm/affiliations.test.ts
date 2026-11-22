@@ -70,7 +70,7 @@ test("affiliation writes batch guards and retain paired activities and hints", a
       domain: "context",
     });
   expect(result.result).toMatchObject(input);
-  expect(counts).toEqual([11, 10, 8, 6]);
+  expect(counts).toEqual([10, 9, 7, 5]);
 });
 
 test("primary selection resets every competitor without rewriting false rows", async () => {

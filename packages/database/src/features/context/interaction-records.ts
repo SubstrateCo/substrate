@@ -4,7 +4,7 @@ import { requireAppEnabled } from "../../core/apps/access";
 import { contactReadable, requireContact, requireInteraction } from "../../core/contacts/access";
 import { contacts } from "../../core/contacts/schema";
 import { linkRepository } from "../../core/links/repository";
-import type { RepositoryContext } from "../../core/repository-context";
+import type { EntityAccess, RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
 import { presentInteraction } from "../crm/actor-views";
 import { crmAccounts, crmAffiliations, crmContactProfiles } from "../crm/schema";
@@ -23,8 +23,9 @@ export type InteractionConnection = {
 async function linkedRecords(
   context: RepositoryContext,
   entityId: string,
+  checked?: EntityAccess,
 ): Promise<InteractionConnection[]> {
-  const links = await linkRepository(context).list(entityId, { limit: 100 });
+  const links = await linkRepository(context).list(entityId, { limit: 100 }, checked);
   const ids = [
     ...new Set(
       links.map((row) =>
@@ -136,7 +137,8 @@ export async function interactionProfileDetail(
     projectEntityId: null,
     contactEntityId: null,
   }));
-  const linked = await linkedRecords(context, entityId);
+  // requireContact implies view access on a contact: member-edited, no app, active member.
+  const linked = await linkedRecords(context, entityId, access);
   return {
     ...profile,
     entityId,

@@ -1,6 +1,6 @@
 import { crmReportDeals } from "@substrate/contracts/crm/report-input";
 
-import { requireAppEnabled } from "../../core/apps/access";
+import { requireAppEnabled, requireAppEnabledForActiveActor } from "../../core/apps/access";
 import { parseInput } from "../../core/contacts/inputs";
 import { RepositoryContext } from "../../core/repository-context";
 import { ValidationError } from "../../errors";
@@ -15,7 +15,6 @@ export async function report(
   to: Date,
   options: ReportFilters = {},
 ) {
-  await requireAppEnabled(context, "crm", false);
   return context.db.transaction(
     (tx) => reportRows(new RepositoryContext(tx, context.scope), from, to, options),
     { isolationLevel: "repeatable read", accessMode: "read only" },
@@ -28,7 +27,7 @@ async function reportRows(
   to: Date,
   options: ReportFilters,
 ) {
-  await context.requireActiveActor();
+  await requireAppEnabledForActiveActor(context, "crm");
   if (!Number.isFinite(+from) || !Number.isFinite(+to) || from >= to)
     throw new ValidationError("Choose a valid half-open close period.");
   const { db } = context;

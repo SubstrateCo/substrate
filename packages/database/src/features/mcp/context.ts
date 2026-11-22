@@ -7,7 +7,7 @@ import type { SessionIdentity } from "../../core/session/identity";
 import { contextSearch } from "../context/search";
 import { projectRepository } from "../projects/repository";
 import { keysetPagination } from "./pagination";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 type Actor = { id: string; name: string; type: "human" | "agent" };
 
@@ -15,7 +15,7 @@ export function mcpContextQueries(ctx: RepositoryContext, identity: SessionIdent
   const { db, scope } = ctx;
   return {
     async getMe(actor: Actor, ownerName: string): Promise<McpOutput<"get_me">> {
-      const [owner] = await db
+      const owner = db
         .select({ id: actors.entityId })
         .from(actors)
         .where(
@@ -25,13 +25,17 @@ export function mcpContextQueries(ctx: RepositoryContext, identity: SessionIdent
             eq(actors.type, "human"),
           ),
         );
-      const [workspace] = await db
-        .select({ id: organization.id, name: organization.name })
+      const [row] = await db
+        .select({
+          workspace: { id: organization.id, name: organization.name },
+          ownerId: sql<string | null>`(${owner})`,
+        })
         .from(organization)
         .where(eq(organization.id, scope.organizationId));
+      const workspace = row?.workspace;
       return {
         actor,
-        owner: { id: owner?.id ?? null, name: ownerName },
+        owner: { id: row?.ownerId ?? null, name: ownerName },
         organization: workspace!,
       };
     },

@@ -1,7 +1,7 @@
 import type { CrmWrite } from "@substrate/contracts/crm/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import { requireAppEnabled } from "../../core/apps/access";
+import { requireAppsEnabled } from "../../core/apps/access";
 import { contactInteractions } from "../../core/contacts/interactions.schema";
 import { relatedPair } from "../../core/links/repository";
 import { entityLinks } from "../../core/links/schema";
@@ -25,8 +25,7 @@ export async function createFollowUp(
     throw new ValidationError("Confirm publication to the project's readers.");
   const { scope } = context;
   return context.transaction(async (ctx) => {
-    await requireAppEnabled(ctx, "crm");
-    await requireAppEnabled(ctx, "tasks");
+    await requireAppsEnabled(ctx, ["crm", "tasks"]);
     await ctx.requireActiveActor();
     // The request identity is actor-scoped, independent of the chosen source.
     const fingerprint = requestFingerprint({
@@ -119,8 +118,7 @@ export async function createFollowUp(
 }
 
 export async function followUps(context: RepositoryContext, entityId: string) {
-  await requireAppEnabled(context, "crm", false);
-  await requireAppEnabled(context, "tasks", false);
+  await requireAppsEnabled(context, ["crm", "tasks"], false);
   await context.requireAccess(entityId, "view");
   const rows = await context.db
     .selectDistinct({

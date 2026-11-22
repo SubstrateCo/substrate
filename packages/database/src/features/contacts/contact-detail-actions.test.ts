@@ -65,8 +65,8 @@ test("detail snapshots read only the affected collection and record only real ch
     type: "email",
     value: "other@example.com",
   });
-  // The lock, two snapshots of two statements each, and the repository edit's own five.
-  expect(tracked.queries).toHaveLength(10);
+  // The lock, the profile, two snapshots, and the repository edit's own four.
+  expect(tracked.queries).toHaveLength(8);
   expect(detailReads("contact_identifiers")).toHaveLength(3);
   expect(detailReads("contact_addresses")).toEqual([]);
   expect(detailReads("contact_urls")).toEqual([]);

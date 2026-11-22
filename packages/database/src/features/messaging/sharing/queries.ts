@@ -25,98 +25,94 @@ export function sharingQueries(
 ) {
   return {
     async list(conversationId: string) {
-      return db.transaction(async (tx) => {
-        const [conversation] = await tx
-          .select()
-          .from(messagingConversations)
-          .where(eq(messagingConversations.id, conversationId));
-        if (!conversation) throw new AccessDeniedError();
-        await checkSharingManager(tx, scope, conversation, viewerOf(scope, resolved.admin));
-        const host = conversation.organizationId === scope.organizationId;
-        const connections = await tx
-          .select({
-            organizationId: messagingConnections.organizationId,
-            name: organization.name,
-            disconnectedAt: messagingConnections.disconnectedAt,
-          })
-          .from(messagingConnections)
-          .innerJoin(organization, eq(organization.id, messagingConnections.organizationId))
-          .where(
-            and(
-              eq(messagingConnections.conversationId, conversationId),
-              host ? undefined : eq(messagingConnections.organizationId, scope.organizationId),
-            ),
-          );
-        const invitations = await tx
-          .select({
-            id: messagingInvitations.id,
-            email: messagingInvitations.email,
-            status: messagingInvitations.status,
-            expiresAt: messagingInvitations.expiresAt,
-            deliveredAt: messagingInvitations.deliveredAt,
-            deliveryAttempts: messagingInvitations.deliveryAttempts,
-            senderOrganizationId: messagingInvitations.senderOrganizationId,
-          })
-          .from(messagingInvitations)
-          .where(
-            and(
-              eq(messagingInvitations.conversationId, conversationId),
-              host
-                ? undefined
-                : eq(messagingInvitations.senderOrganizationId, scope.organizationId),
-            ),
-          )
-          .orderBy(desc(messagingInvitations.createdAt))
-          .limit(100);
-        const participants = await tx
-          .select({
-            actorId: actors.entityId,
-            image: sql<
-              string | null
-            >`case when ${member.id} is not null then ${user.image} end`.mapWith(
-              (value: string | null) => {
-                const parsed = managedPicture.safeParse(value);
-                return parsed.success ? parsed.data : null;
-              },
-            ),
-            name: user.name,
-            organizationId: messagingParticipants.organizationId,
-            consentedAt: messagingParticipants.consentedAt,
-          })
-          .from(messagingParticipants)
-          .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
-          .innerJoin(user, eq(user.id, actors.userId))
-          .leftJoin(
-            member,
-            and(eq(member.userId, actors.userId), eq(member.organizationId, scope.organizationId)),
-          )
-          .where(
-            and(
-              eq(messagingParticipants.conversationId, conversationId),
-              ne(messagingParticipants.organizationId, conversation.organizationId),
-              isNull(messagingParticipants.leftAt),
-              host ? undefined : eq(messagingParticipants.organizationId, scope.organizationId),
-            ),
-          );
-        const events = await tx
-          .select({
-            id: messagingSharingEvents.id,
-            action: messagingSharingEvents.action,
-            userName: user.name,
-            createdAt: messagingSharingEvents.createdAt,
-          })
-          .from(messagingSharingEvents)
-          .innerJoin(user, eq(user.id, messagingSharingEvents.userId))
-          .where(
-            and(
-              eq(messagingSharingEvents.conversationId, conversationId),
-              host ? undefined : eq(messagingSharingEvents.organizationId, scope.organizationId),
-            ),
-          )
-          .orderBy(desc(messagingSharingEvents.createdAt))
-          .limit(30);
-        return { connections, invitations, participants, events, host, kind: conversation.kind };
-      });
+      const [conversation] = await db
+        .select()
+        .from(messagingConversations)
+        .where(eq(messagingConversations.id, conversationId));
+      if (!conversation) throw new AccessDeniedError();
+      await checkSharingManager(db, scope, conversation, viewerOf(scope, resolved.admin));
+      const host = conversation.organizationId === scope.organizationId;
+      const connections = await db
+        .select({
+          organizationId: messagingConnections.organizationId,
+          name: organization.name,
+          disconnectedAt: messagingConnections.disconnectedAt,
+        })
+        .from(messagingConnections)
+        .innerJoin(organization, eq(organization.id, messagingConnections.organizationId))
+        .where(
+          and(
+            eq(messagingConnections.conversationId, conversationId),
+            host ? undefined : eq(messagingConnections.organizationId, scope.organizationId),
+          ),
+        );
+      const invitations = await db
+        .select({
+          id: messagingInvitations.id,
+          email: messagingInvitations.email,
+          status: messagingInvitations.status,
+          expiresAt: messagingInvitations.expiresAt,
+          deliveredAt: messagingInvitations.deliveredAt,
+          deliveryAttempts: messagingInvitations.deliveryAttempts,
+          senderOrganizationId: messagingInvitations.senderOrganizationId,
+        })
+        .from(messagingInvitations)
+        .where(
+          and(
+            eq(messagingInvitations.conversationId, conversationId),
+            host ? undefined : eq(messagingInvitations.senderOrganizationId, scope.organizationId),
+          ),
+        )
+        .orderBy(desc(messagingInvitations.createdAt))
+        .limit(100);
+      const participants = await db
+        .select({
+          actorId: actors.entityId,
+          image: sql<
+            string | null
+          >`case when ${member.id} is not null then ${user.image} end`.mapWith(
+            (value: string | null) => {
+              const parsed = managedPicture.safeParse(value);
+              return parsed.success ? parsed.data : null;
+            },
+          ),
+          name: user.name,
+          organizationId: messagingParticipants.organizationId,
+          consentedAt: messagingParticipants.consentedAt,
+        })
+        .from(messagingParticipants)
+        .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+        .innerJoin(user, eq(user.id, actors.userId))
+        .leftJoin(
+          member,
+          and(eq(member.userId, actors.userId), eq(member.organizationId, scope.organizationId)),
+        )
+        .where(
+          and(
+            eq(messagingParticipants.conversationId, conversationId),
+            ne(messagingParticipants.organizationId, conversation.organizationId),
+            isNull(messagingParticipants.leftAt),
+            host ? undefined : eq(messagingParticipants.organizationId, scope.organizationId),
+          ),
+        );
+      const events = await db
+        .select({
+          id: messagingSharingEvents.id,
+          action: messagingSharingEvents.action,
+          userName: user.name,
+          createdAt: messagingSharingEvents.createdAt,
+        })
+        .from(messagingSharingEvents)
+        .innerJoin(user, eq(user.id, messagingSharingEvents.userId))
+        .where(
+          and(
+            eq(messagingSharingEvents.conversationId, conversationId),
+            host ? undefined : eq(messagingSharingEvents.organizationId, scope.organizationId),
+          ),
+        )
+        .orderBy(desc(messagingSharingEvents.createdAt))
+        .limit(30);
+      return { connections, invitations, participants, events, host, kind: conversation.kind };
     },
     async listConversations() {
       const { admin } = resolved;

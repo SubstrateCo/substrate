@@ -123,14 +123,9 @@ export function taskRepository(context: RepositoryContext) {
     level: PermissionLevel = "view",
     lock = false,
   ): Promise<Task> {
-    if (lock) {
-      await context.requireAccess(entityId, level, true);
-      const [task] = await db.select().from(tasks).where(taskWhere(entityId));
-      if (!task) throw new AccessDeniedError();
-      return task;
-    }
     const minimum = permissionLevel.enumValues.indexOf(level);
     if (minimum < 0) throw new AccessDeniedError();
+    if (lock) await context.lockAccessPath(entityId);
     const viewer = viewerActorJoins(scope, "task_viewer_entity");
     const [row] = await db
       .select({

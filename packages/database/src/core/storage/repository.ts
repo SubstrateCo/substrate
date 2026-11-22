@@ -9,7 +9,18 @@ import { member } from "../organizations/schema";
 import { createStorageCleanup } from "./cleanup";
 import { temporaryObjectKey } from "./object-keys";
 import { fileUploads, storedFiles, storageCandidates } from "./schema";
-import { and, eq, gt, inArray, isNotNull, isNull, not, notExists, type SQL } from "drizzle-orm";
+import {
+  and,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  not,
+  notExists,
+  sql,
+  type SQL,
+} from "drizzle-orm";
 
 // Trusted server-only identity scope. Personal files deliberately do not require an actor.
 export interface StorageScope {
@@ -30,11 +41,21 @@ async function requireScope(
     .select({ role: member.role })
     .from(member)
     .where(and(eq(member.userId, scope.userId), eq(member.organizationId, scope.organizationId)));
+  requireMemberRole(purpose, membership?.role ?? null, manage);
+}
+
+// The scope's role in its organization, or NULL for a non-member.
+function memberRole(scope: StorageScope) {
+  if (!scope.organizationId) return sql<string | null>`null`;
+  return sql<string | null>`(select ${member.role} from ${member}
+    where ${member.userId} = ${scope.userId} and ${member.organizationId} = ${scope.organizationId})`;
+}
+
+// oxlint-disable-next-line deslop/prefer-literal-union -- Persisted upload purposes are strings; all non-avatar uploads need organization access.
+function requireMemberRole(purpose: string, role: string | null, manage: boolean) {
   if (
-    !membership ||
-    (manage &&
-      purpose === "organization-logo" &&
-      !organizationSettingsAccess(membership.role).allowed)
+    role === null ||
+    (manage && purpose === "organization-logo" && !organizationSettingsAccess(role).allowed)
   )
     throw new AccessDeniedError();
 }
@@ -118,21 +139,23 @@ export function createStorageRepository(
       });
     },
     async getUpload(scope: StorageScope, id: string) {
-      const [result] = await db
-        .select({ upload: fileUploads, completed: storedFiles })
+      const [row] = await db
+        .select({ upload: fileUploads, completed: storedFiles, role: memberRole(scope) })
         .from(fileUploads)
         .leftJoin(storedFiles, eq(storedFiles.id, fileUploads.id))
         .where(and(eq(fileUploads.id, id), eq(fileUploads.uploadedBy, scope.userId)));
       if (
-        !result ||
-        (result.upload.organizationId !== null &&
-          result.upload.organizationId !== scope.organizationId)
+        !row ||
+        (row.upload.organizationId !== null && row.upload.organizationId !== scope.organizationId)
       )
         throw new AccessDeniedError();
-      const { upload } = result;
-      await requireScope(db, scope, upload.purpose);
+      const { upload, completed, role } = row;
+      if (upload.purpose !== "avatar") {
+        if (!scope.organizationId) throw new AccessDeniedError();
+        requireMemberRole(upload.purpose, role, true);
+      }
       if (upload.deletedAt) throw new ConflictError("File was deleted. Start a new upload.");
-      return result;
+      return { upload, completed };
     },
     async addCandidate(key: string) {
       await db.insert(storageCandidates).values({ objectKey: key }).onConflictDoNothing();
@@ -184,19 +207,17 @@ export function createStorageRepository(
       });
     },
     async getReadable(scope: StorageScope, id: string) {
-      const [file] = await db.select().from(storedFiles).where(eq(storedFiles.id, id));
-      if (!file) return null;
+      const [row] = await db
+        .select({ file: storedFiles, role: memberRole(scope) })
+        .from(storedFiles)
+        .where(eq(storedFiles.id, id));
+      if (!row) return null;
+      const { file } = row;
       if (file.purpose === "avatar") return file.ownerUserId === scope.userId ? file : null;
       if (file.publishedAt) return null;
       if (file.organizationId !== scope.organizationId) return null;
       if (file.uploadedBy !== scope.userId || !scope.organizationId) return null;
-      const [membership] = await db
-        .select({ id: member.id })
-        .from(member)
-        .where(
-          and(eq(member.userId, scope.userId), eq(member.organizationId, scope.organizationId)),
-        );
-      return membership ? file : null;
+      return row.role !== null ? file : null;
     },
     async deleteFile(scope: StorageScope, id: string) {
       await db

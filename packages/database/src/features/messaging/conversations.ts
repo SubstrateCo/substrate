@@ -8,7 +8,7 @@ import { effectsFor } from "../../core/effects";
 import type { DatabaseExecutor } from "../../core/executor";
 import { member, organization } from "../../core/organizations/schema";
 import type { SessionIdentity } from "../../core/session/identity";
-import type { MessagingSessionResolver } from "../../core/session/messaging";
+import type { MessagingReader, MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { messageEntityReferences } from "../context/schema";
 import { withRemovalHints } from "../realtime/routing";
@@ -74,6 +74,7 @@ export function conversationOperations(
   db: DatabaseExecutor,
   scope: Readonly<SessionIdentity>,
   authenticate: MessagingSessionResolver,
+  read: MessagingReader,
 ) {
   function changed(tx: DatabaseExecutor, conversationId: string, management = false) {
     const effects = effectsFor(tx);
@@ -115,7 +116,7 @@ export function conversationOperations(
 
   return {
     async listConversations(selectedConversationId?: string) {
-      return db.transaction(async (tx) => {
+      return read(async (tx) => {
         const { viewer, context } = await authenticate(tx);
         const rows = await tx
           .select()
@@ -468,7 +469,7 @@ export function conversationOperations(
     // Counts only linked work the caller can read, so the warning leaks nothing. The count is
     // advisory, so it locks nothing; deletion checks again under its own lock.
     async deleteImpact(conversationId: string) {
-      return db.transaction(async (tx) => {
+      return read(async (tx) => {
         const { context, viewer } = await authenticate(tx);
         await managedConversation(tx, viewer, conversationId);
         const [row] = await tx
@@ -500,7 +501,7 @@ export function conversationOperations(
     // Admin view: names and members only, never messages.
     async listManagedConversations() {
       if (scope.actorEntityId) throw new AccessDeniedError();
-      return db.transaction(async (tx) => {
+      return read(async (tx) => {
         const { viewer } = await authenticate(tx);
         if (!viewer.admin) throw new AccessDeniedError();
         const rows = await tx

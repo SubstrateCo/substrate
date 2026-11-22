@@ -36,7 +36,7 @@ test("CRM creation and deal updates avoid duplicate authorization and participan
     title: "Edited",
   });
   const updateCount = tracked.queries.length;
-  expect([accountCount, dealCount, updateCount]).toEqual([9, 16, 18]);
+  expect([accountCount, dealCount, updateCount]).toEqual([9, 14, 16]);
   expect(account.ownerActorEntityId).toBe(f.alice);
   expect(deal.ownerActorEntityId).toBe(f.alice);
   expect(updated.title).toBe("Edited");

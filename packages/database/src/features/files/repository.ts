@@ -36,12 +36,9 @@ export function createAttachmentRepository(context: RepositoryContext) {
   }
   return {
     async listTask(input: { taskEntityId: string; projectEntityId: string }) {
-      return db.transaction(async (tx) => {
-        const ctx = new RepositoryContext(tx, scope);
-        const task = await taskRepository(ctx).get(input.taskEntityId);
-        if (task.projectEntityId !== input.projectEntityId) throw new AccessDeniedError();
-        return taskAttachmentMetadata(tx, task.entityId);
-      });
+      const task = await taskRepository(context).get(input.taskEntityId);
+      if (task.projectEntityId !== input.projectEntityId) throw new AccessDeniedError();
+      return taskAttachmentMetadata(db, task.entityId);
     },
     addTask(input: { taskEntityId: string; projectEntityId: string; attachmentFileIds: string[] }) {
       return taskContext(input, "edit", async (ctx, task) => {
@@ -101,22 +98,20 @@ export function createAttachmentRepository(context: RepositoryContext) {
       projectEntityId: string;
       attachmentId: string;
     }) {
-      return db.transaction(async (tx) => {
-        const task = await taskRepository(new RepositoryContext(tx, scope)).get(input.taskEntityId);
-        if (task.projectEntityId !== input.projectEntityId) throw new AccessDeniedError();
-        const [row] = await tx
-          .select({ file: storedFiles })
-          .from(taskAttachments)
-          .innerJoin(storedFiles, eq(storedFiles.id, taskAttachments.fileId))
-          .where(
-            and(
-              eq(taskAttachments.taskEntityId, task.entityId),
-              eq(taskAttachments.id, input.attachmentId),
-            ),
-          );
-        if (!row) throw new AccessDeniedError();
-        return row.file;
-      });
+      const task = await taskRepository(context).get(input.taskEntityId);
+      if (task.projectEntityId !== input.projectEntityId) throw new AccessDeniedError();
+      const [row] = await db
+        .select({ file: storedFiles })
+        .from(taskAttachments)
+        .innerJoin(storedFiles, eq(storedFiles.id, taskAttachments.fileId))
+        .where(
+          and(
+            eq(taskAttachments.taskEntityId, task.entityId),
+            eq(taskAttachments.id, input.attachmentId),
+          ),
+        );
+      if (!row) throw new AccessDeniedError();
+      return row.file;
     },
     async messageContent(input: {
       conversationId: string;

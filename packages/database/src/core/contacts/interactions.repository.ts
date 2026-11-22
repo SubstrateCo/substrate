@@ -1,6 +1,11 @@
 import { AccessDeniedError } from "../../errors";
 import { entities } from "../entities/schema";
-import { RepositoryContext, pageSize } from "../repository-context";
+import {
+  RepositoryContext,
+  pageSize,
+  type EntityAccess,
+  type LockedAccess,
+} from "../repository-context";
 import {
   deletableAuthors,
   interactionReadable,
@@ -30,6 +35,9 @@ const interactionInput = z
 type InteractionInput = z.input<typeof interactionInput>;
 const timelineCursor = z.object({ occurredAt: z.date(), entityId: z.uuid() });
 type TimelineOptions = { limit?: number; before?: z.input<typeof timelineCursor> };
+type LockedInteraction = Awaited<ReturnType<typeof requireInteraction>> & {
+  contact: LockedAccess<"edit">;
+};
 
 export function contactInteractionRepository(context: RepositoryContext) {
   const { db, scope } = context;
@@ -41,10 +49,14 @@ export function contactInteractionRepository(context: RepositoryContext) {
 
   return {
     ...interactionWorkspaceRepository(context),
-    async createManual(input: InteractionInput) {
+    /** `locked` is the contact lock the caller holds in this transaction. */
+    async createManual(input: InteractionInput, locked?: LockedAccess<"edit">) {
       const value = parseInput(interactionInput, input);
       return context.transaction(async (ctx) => {
-        const parent = await lockContact(ctx, value.contactEntityId);
+        const parent =
+          locked?.entity.entityId === value.contactEntityId
+            ? locked
+            : await lockContact(ctx, value.contactEntityId);
         const [contact] = await ctx.db
           .select()
           .from(contacts)
@@ -74,8 +86,14 @@ export function contactInteractionRepository(context: RepositoryContext) {
     async get(entityId: string) {
       return (await requireInteraction(context, entityId)).interaction;
     },
-    async listForContact(contactEntityId: string, options: TimelineOptions = {}) {
-      await requireContact(context, contactEntityId);
+    /** `checked` is the caller's access to the contact, already read in this context. */
+    async listForContact(
+      contactEntityId: string,
+      options: TimelineOptions = {},
+      checked?: EntityAccess,
+    ) {
+      if (checked?.entity.entityId !== contactEntityId || checked.entity.entityType !== "contact")
+        await requireContact(context, contactEntityId);
       const cursor = options.before ? parseInput(timelineCursor, options.before) : undefined;
       const rows = await db
         .select()
@@ -94,10 +112,14 @@ export function contactInteractionRepository(context: RepositoryContext) {
         .limit(pageSize(options.limit));
       return rows;
     },
-    async update(entityId: string, input: { summary: string }) {
+    /** `locked` is the caller's requireInteraction(entityId, true) in this transaction. */
+    async update(entityId: string, input: { summary: string }, locked?: LockedInteraction) {
       const value = parseInput(z.object({ summary: z.string().trim().min(1).max(10000) }), input);
       return context.transaction(async (ctx) => {
-        const { interaction: existing } = await requireInteraction(ctx, entityId, true);
+        const { interaction: existing } =
+          locked?.interaction.entityId === entityId
+            ? locked
+            : await requireInteraction(ctx, entityId, true);
         const [row] = await ctx.db
           .update(contactInteractions)
           .set(value)
@@ -120,6 +142,7 @@ export function contactInteractionRepository(context: RepositoryContext) {
             and(eq(entities.organizationId, scope.organizationId), eq(entities.entityId, entityId)),
           );
         await ctx.touch(existing.contactEntityId);
+        return existing;
       });
     },
   };

@@ -84,18 +84,21 @@ export async function publishInteraction(
         await contactInteractionRepository(ctx).get(existing.entityId),
       );
     const entity = await ctx.createChildEntity("contact_interaction", parent);
-    await ctx.db.insert(contactInteractions).values({
-      entityId: entity.entityId,
-      organizationId: scope.organizationId,
-      entityType: "contact_interaction",
-      contactEntityId: value.contactEntityId,
-      kind: value.kind,
-      occurredAt,
-      endedAt,
-      summary: value.summary,
-      origin: "message_publication",
-      createdByActorEntityId: scope.actorEntityId,
-    });
+    const [interaction] = await ctx.db
+      .insert(contactInteractions)
+      .values({
+        entityId: entity.entityId,
+        organizationId: scope.organizationId,
+        entityType: "contact_interaction",
+        contactEntityId: value.contactEntityId,
+        kind: value.kind,
+        occurredAt,
+        endedAt,
+        summary: value.summary,
+        origin: "message_publication",
+        createdByActorEntityId: scope.actorEntityId,
+      })
+      .returning();
     await ctx.db.insert(messageEntityReferences).values({
       organizationId: scope.organizationId,
       conversationId: conversation.id,
@@ -120,6 +123,6 @@ export async function publishInteraction(
       domain: "context",
       messageId: message.id,
     });
-    return presentInteraction(ctx, await contactInteractionRepository(ctx).get(entity.entityId));
+    return presentInteraction(ctx, interaction!);
   });
 }

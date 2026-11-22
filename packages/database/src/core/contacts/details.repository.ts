@@ -1,7 +1,12 @@
 import type { ContactIdentifierType } from "@substrate/contracts/contacts/input";
 
 import { AccessDeniedError, ConflictError, violatedConstraint } from "../../errors";
-import { RepositoryContext, entityCursor, pageSize } from "../repository-context";
+import {
+  RepositoryContext,
+  entityCursor,
+  pageSize,
+  type LockedAccess,
+} from "../repository-context";
 import { contactReadable, lockContact } from "./access";
 import { contactAddresses, contactUrls } from "./details.schema";
 import {
@@ -29,7 +34,12 @@ function duplicateUrl(error: Error): never {
   throw error;
 }
 
-export function contactDetailsRepository(context: RepositoryContext) {
+/** `locked` is the contact lock the caller holds in this transaction; edits to that contact reuse
+ * it instead of locking again. */
+export function contactDetailsRepository(
+  context: RepositoryContext,
+  locked?: LockedAccess<"edit">,
+) {
   const { db, scope } = context;
   const target = (
     table: typeof contactIdentifiers | typeof contactAddresses | typeof contactUrls,
@@ -45,7 +55,7 @@ export function contactDetailsRepository(context: RepositoryContext) {
   async function edit<T>(contactId: string, work: (ctx: RepositoryContext) => Promise<T>) {
     return context.transaction(async (ctx) => {
       // The contact lock serializes detail edits, including replacing a primary value.
-      await lockContact(ctx, contactId);
+      if (locked?.entity.entityId !== contactId) await lockContact(ctx, contactId);
       const [contact] = await ctx.db
         .select()
         .from(contacts)

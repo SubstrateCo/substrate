@@ -3,7 +3,7 @@ import type { CrmActivity } from "@substrate/contracts/crm/activity";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
-import { deletableAuthors } from "../../core/contacts/access";
+import { deletableAuthorCondition } from "../../core/contacts/access";
 import type { RepositoryContext } from "../../core/repository-context";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { alias, type PgSelectQueryBuilder } from "drizzle-orm/pg-core";
@@ -38,12 +38,19 @@ export function crmActorView(
   };
 }
 
+// Each author's view, and the authors whose interactions the actor may delete.
 async function crmActorViews(context: RepositoryContext, ids: string[]) {
   const views = new Map<string, CrmActivity["actor"]>();
-  if (!ids.length) return views;
+  const deletable = new Set<string>();
+  if (!ids.length) return { views, deletable };
   const rows = await joinCrmActorPerson(
     context.db
-      .select({ id: actors.entityId, type: actors.type, personName: user.name })
+      .select({
+        id: actors.entityId,
+        type: actors.type,
+        personName: user.name,
+        deletable: sql<boolean>`${deletableAuthorCondition(context, actors.entityId)}`,
+      })
       .from(actors)
       .$dynamic(),
   ).where(
@@ -52,8 +59,11 @@ async function crmActorViews(context: RepositoryContext, ids: string[]) {
       inArray(actors.entityId, [...new Set(ids)]),
     ),
   );
-  for (const row of rows) views.set(row.id, crmActorView(row.type, row.personName));
-  return views;
+  for (const row of rows) {
+    views.set(row.id, crmActorView(row.type, row.personName));
+    if (row.deletable) deletable.add(row.id);
+  }
+  return { views, deletable };
 }
 
 export async function presentInteractions<T extends { createdByActorEntityId: string }>(
@@ -61,10 +71,7 @@ export async function presentInteractions<T extends { createdByActorEntityId: st
   rows: T[],
 ) {
   const authors = rows.map((row) => row.createdByActorEntityId);
-  const [views, deletable] = await Promise.all([
-    crmActorViews(context, authors),
-    deletableAuthors(context, authors),
-  ]);
+  const { views, deletable } = await crmActorViews(context, authors);
   return rows.map(({ createdByActorEntityId, ...row }) => ({
     ...row,
     actor: views.get(createdByActorEntityId) ?? {

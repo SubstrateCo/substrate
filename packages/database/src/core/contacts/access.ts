@@ -6,6 +6,7 @@ import { organizationAdminCondition } from "../permissions/visibility";
 import type { EntityAccess, LockedAccess, RepositoryContext } from "../repository-context";
 import { contactInteractions } from "./interactions.schema";
 import { and, eq, inArray, isNull, sql, type SQLWrapper } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 // Contacts belong to the whole organization. Every active member reads and edits every contact and
 // its interactions, so contacts have no grants. Authors delete their own interactions, and admins
@@ -105,17 +106,77 @@ async function liveInteraction(ctx: RepositoryContext, id: string) {
   return row?.interaction;
 }
 
+// liveInteraction and requireContact in one statement.
+async function interactionAccess(ctx: RepositoryContext, id: string) {
+  const contact = alias(entities, "interaction_contact");
+  const [row] = await ctx.db
+    .select({
+      interaction: contactInteractions,
+      contact,
+      admin: sql<boolean>`${organizationAdminCondition(ctx.scope)}`,
+    })
+    .from(contactInteractions)
+    .innerJoin(
+      entities,
+      and(
+        eq(entities.organizationId, contactInteractions.organizationId),
+        eq(entities.entityId, contactInteractions.entityId),
+        isNull(entities.deletedAt),
+      ),
+    )
+    .innerJoin(
+      contact,
+      and(
+        eq(contact.organizationId, contactInteractions.organizationId),
+        eq(contact.entityId, contactInteractions.contactEntityId),
+        eq(contact.entityType, "contact"),
+        isNull(contact.deletedAt),
+      ),
+    )
+    .where(
+      and(
+        eq(contactInteractions.organizationId, ctx.scope.organizationId),
+        eq(contactInteractions.entityId, id),
+        activeMember(ctx),
+      ),
+    );
+  if (!row) throw new AccessDeniedError();
+  return {
+    interaction: row.interaction,
+    contact: { entity: row.contact, level: row.admin ? "owner" : "edit" } satisfies EntityAccess,
+  };
+}
+
+type Interaction = typeof contactInteractions.$inferSelect;
+
 /** The live interaction and its contact. `lock` takes the contact's lock first, then reads the
  * interaction again, so a concurrent delete cannot be missed. */
+export async function requireInteraction(
+  ctx: RepositoryContext,
+  id: string,
+  lock: true,
+): Promise<{ interaction: Interaction; contact: LockedAccess<"edit"> }>;
+export async function requireInteraction(
+  ctx: RepositoryContext,
+  id: string,
+  lock?: boolean,
+): Promise<{ interaction: Interaction; contact: EntityAccess }>;
 export async function requireInteraction(ctx: RepositoryContext, id: string, lock = false) {
+  if (!lock) return interactionAccess(ctx, id);
   const found = await liveInteraction(ctx, id);
   if (!found) throw new AccessDeniedError();
-  const contact = lock
-    ? await lockContact(ctx, found.contactEntityId)
-    : await requireContact(ctx, found.contactEntityId);
-  const interaction = lock ? await liveInteraction(ctx, id) : found;
+  const contact = await lockContact(ctx, found.contactEntityId);
+  const interaction = await liveInteraction(ctx, id);
   if (!interaction) throw new AccessDeniedError();
   return { interaction, contact };
+}
+
+/** Whether the actor may delete interactions written by the author in `authorEntityId`. */
+export function deletableAuthorCondition(ctx: RepositoryContext, authorEntityId: SQLWrapper) {
+  const { scope } = ctx;
+  return sql`(${organizationAdminCondition(scope)} OR ${permissionActorEntityId(scope)} = ${permissionActorEntityId(
+    { organizationId: scope.organizationId, actorEntityId: authorEntityId },
+  )})`;
 }
 
 /** The authors, among `authorIds`, whose interactions the actor may delete. */
@@ -130,9 +191,7 @@ export async function deletableAuthors(ctx: RepositoryContext, authorIds: string
       and(
         eq(actors.organizationId, scope.organizationId),
         inArray(actors.entityId, ids),
-        sql`(${organizationAdminCondition(scope)} OR ${permissionActorEntityId(scope)} = ${permissionActorEntityId(
-          { organizationId: scope.organizationId, actorEntityId: actors.entityId },
-        )})`,
+        deletableAuthorCondition(ctx, actors.entityId),
       ),
     );
   return new Set(rows.map((row) => row.id));

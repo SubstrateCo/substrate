@@ -13,12 +13,12 @@ import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../activity/schema";
-import { requireWork } from "../context/access";
 import { messageExcerpts } from "../context/message-excerpt";
 import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
+import { taskRepository } from "../tasks/repository";
 import { tasks } from "../tasks/tasks.schema";
 import { toFeedItem } from "./feed-item";
 import { createNotificationGroups } from "./groups";
@@ -31,8 +31,7 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
   const { db } = ctx;
   const service = {
     async activity(taskEntityId: string) {
-      const work = await requireWork(ctx, taskEntityId);
-      if (work.entityType !== "task") throw new AccessDeniedError();
+      await taskRepository(ctx).get(taskEntityId);
       const events = db
         .select({
           id: taskActivity.id,

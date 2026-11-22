@@ -1,5 +1,5 @@
 import { actors } from "../../core/actors/schema";
-import { requireAppEnabled } from "../../core/apps/access";
+import { requireAppEnabled, requireAppEnabledForActiveActor } from "../../core/apps/access";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
@@ -26,8 +26,7 @@ export function crmManagementRepository(context: RepositoryContext) {
   );
   return {
     async people() {
-      await requireAppEnabled(context, "crm", false);
-      await context.requireActiveActor();
+      await requireAppEnabledForActiveActor(context, "crm");
       return db
         .select({ entityId: actors.entityId, userId: user.id, type: sql<"human">`'human'` })
         .from(actors)

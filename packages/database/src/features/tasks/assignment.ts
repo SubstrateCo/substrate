@@ -7,7 +7,8 @@ import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { liveTask } from "./access";
 import { tasks } from "./tasks.schema";
-import { and, eq, isNotNull, isNull, or } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 
 export async function requireAssignee(
   ctx: RepositoryContext,
@@ -64,11 +65,12 @@ export async function requireUnassignedProjectActor(
   actorEntityId: string,
 ) {
   const { db, scope } = ctx;
-  const [target] = await db
-    .select({ userId: actors.userId })
-    .from(actors)
+  const target = alias(actors, "unassigned_target");
+  const targetUserId = db
+    .select({ userId: target.userId })
+    .from(target)
     .where(
-      and(eq(actors.organizationId, scope.organizationId), eq(actors.entityId, actorEntityId)),
+      and(eq(target.organizationId, scope.organizationId), eq(target.entityId, actorEntityId)),
     );
   const [assigned] = await db
     .select({ id: tasks.entityId })
@@ -86,10 +88,8 @@ export async function requireUnassignedProjectActor(
         eq(tasks.organizationId, scope.organizationId),
         eq(tasks.projectEntityId, projectEntityId),
         liveTask(),
-        or(
-          eq(actors.entityId, actorEntityId),
-          target?.userId ? eq(userAgents.userId, target.userId) : undefined,
-        ),
+        // A missing target or one without a user compares NULL, which matches no agent.
+        or(eq(actors.entityId, actorEntityId), eq(userAgents.userId, sql`(${targetUserId})`)),
       ),
     )
     .limit(1);

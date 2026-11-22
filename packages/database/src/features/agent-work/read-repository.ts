@@ -29,7 +29,7 @@ export function createAgentWorkReadRepository(
   return {
     listConversationRequests: (conversationId: string) =>
       queryConversationRequests(db, identity, conversationId),
-    listNeedsYou: () => context.transaction((ctx) => queryNeedsYou(ctx.db, identity)),
+    listNeedsYou: () => queryNeedsYou(db, identity),
     listStatus: () => statusViews(db, identity),
     listInvocations: (userAgentId?: string) =>
       invocationViews(

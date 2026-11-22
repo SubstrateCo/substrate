@@ -1,5 +1,5 @@
 import { ValidationError, mapPostgresError } from "../../errors";
-import { RepositoryContext, pageSize } from "../repository-context";
+import { RepositoryContext, pageSize, type EntityAccess } from "../repository-context";
 import { entityLinks } from "./schema";
 import { and, asc, eq, or, sql } from "drizzle-orm";
 
@@ -42,8 +42,9 @@ export function linkRepository(context: RepositoryContext) {
       });
     },
 
-    async list(entityId: string, options: { limit?: number } = {}) {
-      await context.requireAccess(entityId, "view");
+    /** `checked` is the caller's view access to `entityId`, already read in this context. */
+    async list(entityId: string, options: { limit?: number } = {}, checked?: EntityAccess) {
+      if (checked?.entity.entityId !== entityId) await context.requireAccess(entityId, "view");
       return db
         .select()
         .from(entityLinks)

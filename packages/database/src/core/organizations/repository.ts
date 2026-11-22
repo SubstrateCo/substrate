@@ -1,4 +1,7 @@
+import type { AppSettings } from "@substrate/contracts/apps";
+
 import { AccessDeniedError } from "../../errors";
+import { enabledApps } from "../apps/access";
 import { appRepository } from "../apps/repository";
 import { user } from "../authentication/schema";
 import type { RepositoryContext } from "../repository-context";
@@ -8,7 +11,11 @@ import { and, eq, gt, sql } from "drizzle-orm";
 
 export function organizationRepository(context: RepositoryContext, identity: SessionIdentity) {
   return {
-    apps: () => appRepository(context, identity).get(),
+    // The session already verified this membership, as for people().
+    apps: async (): Promise<AppSettings> => ({
+      organizationId: identity.organizationId,
+      enabledApps: await enabledApps(context),
+    }),
     updateApps: (apps: Parameters<ReturnType<typeof appRepository>["update"]>[0]) =>
       appRepository(context, identity).update(apps),
     /** The organization's name and logo, with the viewer's own role in it. */

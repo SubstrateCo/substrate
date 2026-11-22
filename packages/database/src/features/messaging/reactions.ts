@@ -9,7 +9,7 @@ import { user } from "../../core/authentication/schema";
 import type { DatabaseExecutor } from "../../core/executor";
 import { member } from "../../core/organizations/schema";
 import type { SessionIdentity } from "../../core/session/identity";
-import type { MessagingSessionResolver } from "../../core/session/messaging";
+import type { MessagingReader, MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError } from "../../errors";
 import { visibleConversations } from "./access";
 import { messagingConversations, messagingMessages, messagingReactions } from "./schema";
@@ -19,13 +19,14 @@ export function reactionOperations(
   db: DatabaseExecutor,
   scope: Readonly<SessionIdentity>,
   authenticate: MessagingSessionResolver,
+  read: MessagingReader,
 ) {
   return {
     async listReactions(
       messageId: string,
       options: { emoji?: string; afterActorId?: string; limit?: number } = {},
     ) {
-      return db.transaction(async (tx) => {
+      return read(async (tx) => {
         const { actor } = await authenticate(tx);
         const [message] = await tx
           .select({ id: messagingMessages.id })

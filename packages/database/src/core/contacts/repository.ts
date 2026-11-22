@@ -1,5 +1,10 @@
 import { AccessDeniedError } from "../../errors";
-import { RepositoryContext, entityCursor, pageSize } from "../repository-context";
+import {
+  RepositoryContext,
+  entityCursor,
+  pageSize,
+  type LockedAccess,
+} from "../repository-context";
 import { contactReadable, lockContact } from "./access";
 import { contactDetailsRepository } from "./details.repository";
 import { contactProfileInput, parseInput, type ContactInput } from "./inputs";
@@ -7,10 +12,12 @@ import { readContactProfile } from "./profile";
 import { contacts } from "./schema";
 import { and, asc, eq, gt } from "drizzle-orm";
 
-export function contactRepository(context: RepositoryContext) {
+/** `locked` is the contact lock the caller holds in this transaction; writes to that contact reuse
+ * it instead of locking again. */
+export function contactRepository(context: RepositoryContext, locked?: LockedAccess<"edit">) {
   const { db, scope } = context;
   return {
-    ...contactDetailsRepository(context),
+    ...contactDetailsRepository(context, locked),
     async create(input: ContactInput) {
       const value = parseInput(contactProfileInput, input);
       return db.transaction(async (tx) => {
@@ -52,7 +59,7 @@ export function contactRepository(context: RepositoryContext) {
       const value = parseInput(contactProfileInput.partial(), input);
       return db.transaction(async (tx) => {
         const ctx = new RepositoryContext(tx, scope);
-        await lockContact(ctx, entityId);
+        if (locked?.entity.entityId !== entityId) await lockContact(ctx, entityId);
         const [contact] = await tx
           .update(contacts)
           .set(value)

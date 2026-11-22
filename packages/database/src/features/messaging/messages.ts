@@ -10,7 +10,7 @@ import type { DatabaseExecutor } from "../../core/executor";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
-import type { MessagingSessionResolver } from "../../core/session/messaging";
+import type { MessagingReader, MessagingSessionResolver } from "../../core/session/messaging";
 import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { routeWake } from "../agent-work/router";
@@ -310,6 +310,7 @@ export function messageOperations(
   db: DatabaseExecutor,
   scope: Readonly<SessionIdentity>,
   authenticate: MessagingSessionResolver,
+  read: MessagingReader,
 ) {
   return {
     async listMessages(
@@ -450,7 +451,7 @@ export function messageOperations(
         );
     },
     async getProfile(conversationId: string, actorEntityId: string) {
-      return db.transaction(async (tx) => {
+      return read(async (tx) => {
         const { actor } = await authenticate(tx);
         return messagingProfile(tx, scope, actor.entityId, conversationId, actorEntityId);
       });

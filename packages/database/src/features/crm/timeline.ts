@@ -77,7 +77,8 @@ export async function timeline(
   options: Options = {},
 ) {
   await requireAppEnabled(context, "crm", false);
-  const { entity } = await context.requireAccess(entityId, "view");
+  const access = await context.requireAccess(entityId, "view");
+  const { entity } = access;
   if (Boolean(options.beforeOccurredAt) !== Boolean(options.beforeEntityId))
     throw new ValidationError("Supply both timeline cursor fields.");
   const before =
@@ -87,10 +88,12 @@ export async function timeline(
   if (entity.entityType === "contact")
     return presentInteractions(
       context,
-      await contactInteractionRepository(context).listForContact(entityId, {
-        limit: options.limit,
-        before,
-      }),
+      // View access on a live contact implies requireContact: an active member.
+      await contactInteractionRepository(context).listForContact(
+        entityId,
+        { limit: options.limit, before },
+        access,
+      ),
     );
   if (entity.entityType !== "account" && entity.entityType !== "deal")
     throw new AccessDeniedError();

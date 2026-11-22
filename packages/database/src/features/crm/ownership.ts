@@ -16,7 +16,8 @@ type Input = Omit<
 export async function assignOwner(context: RepositoryContext, id: string, input: Input) {
   return context.transaction(async (ctx) => {
     await ctx.lockAccessPaths([id, input.ownerActorEntityId]);
-    const { entity } = await ctx.requireAccess(id, "edit");
+    const access = await ctx.requireAccess(id, "edit");
+    const { entity } = access;
     if (entity.entityType !== "account" && entity.entityType !== "deal")
       throw new AccessDeniedError();
     const responsible = await ctx.requireActiveActor(input.ownerActorEntityId);
@@ -64,11 +65,11 @@ export async function assignOwner(context: RepositoryContext, id: string, input:
           ),
         );
     await ctx.touch(id);
-    await recordCrmActivity(ctx, {
-      entityId: id,
-      action: "owner_changed",
-      changedFields: ["owner"],
-    });
+    await recordCrmActivity(
+      ctx,
+      { entityId: id, action: "owner_changed", changedFields: ["owner"] },
+      access,
+    );
     ctx.effects.hint({
       audience: realtimeKeys.entity(ctx.scope.organizationId, id),
       domain: "context",
