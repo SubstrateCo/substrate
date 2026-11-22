@@ -10,14 +10,17 @@ import { AgentsWorkspaceView } from "./agents-workspace-view";
 import { FirstAgentView } from "./first-agent-view";
 import { NeedsYou } from "./needs-you";
 import { AgentSettings } from "@/components/agents/agent-settings";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { PaneState } from "@/components/feedback/pane-state";
 import { useFocusAfterRender } from "@/components/feedback/use-focus-after-render";
 import { needsYouCount } from "@/lib/agent-work/needs-you";
 import { agentStatus } from "@/lib/agent-work/status";
+import { resourceState } from "@/lib/resource-state";
 import { hasAgentWorkBridge } from "@/queries/agent-work/bridge";
 import { localAgentsOptions } from "@/queries/agent-work/local";
 import { agentStatusOptions, needsYouOptions } from "@/queries/agent-work/server";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
+import { Unlink } from "lucide-react";
 
 type AgentsSearch = {
   agentId?: string;
@@ -50,6 +53,7 @@ export function AgentsWorkspace({
   const newAgentButton = useRef<HTMLButtonElement>(null);
   const focusAfterRender = useFocusAfterRender();
   const catalog = useQuery(agentCatalogQueryOptions(userId));
+  const catalogState = resourceState(catalog);
   const statuses = useQuery(agentStatusOptions(userId, organizationId));
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
   const local = useQuery({
@@ -67,7 +71,7 @@ export function AgentsWorkspace({
     });
   const go = (search: AgentsSearch) => void navigate(agentLink(search));
   const status = (id: string) => statuses.data?.find((entry) => entry.userAgentId === id);
-  const agents = (catalog.data?.agents ?? []).map((agent) => {
+  const agents = (catalogState.data?.agents ?? []).map((agent) => {
     const published = status(agent.id);
     return {
       id: agent.id,
@@ -79,7 +83,7 @@ export function AgentsWorkspace({
   });
   const selected = agents.find((agent) => agent.id === agentId);
   const homedHere = !!agentId && !!local.data?.some((entry) => entry.userAgentId === agentId);
-  const firstAgent = catalog.isSuccess && !agents.length;
+  const firstAgent = catalogState.status === "ready" && !agents.length;
   let content;
   if (!agentId)
     content = firstAgent ? (
@@ -87,12 +91,21 @@ export function AgentsWorkspace({
     ) : (
       <NeedsYou userId={userId} organizationId={organizationId} />
     );
-  else if (!selected && catalog.isPending) content = <PaneState label="Loading agent…" />;
+  else if (!selected && catalogState.status === "loading")
+    content = <PaneState label="Loading agent…" />;
+  else if (!selected && (catalogState.status === "unavailable" || catalogState.status === "ready"))
+    content = (
+      <ContentNotice
+        icon={Unlink}
+        title="Agent unavailable"
+        description="This agent may have been deleted or you may no longer have access."
+      />
+    );
   else if (!selected)
     content = (
       <PaneState
-        label="Agent unavailable"
-        error={catalog.error}
+        label="Couldn’t load agent"
+        error={catalogState.error}
         onRetry={() => void catalog.refetch()}
       />
     );
@@ -122,7 +135,9 @@ export function AgentsWorkspace({
   return (
     <AgentsWorkspaceView
       agents={agents}
-      agentsLoaded={catalog.isSuccess}
+      catalogState={catalogState.status}
+      catalogError={catalogState.error}
+      onRetryCatalog={() => void catalog.refetch()}
       needsYouCount={needsYouCount(needsYou.data)}
       selectedAgentId={agentId}
       agentLink={(id) => agentLink({ agentId: id })}

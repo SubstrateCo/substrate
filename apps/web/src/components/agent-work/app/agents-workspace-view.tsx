@@ -3,6 +3,7 @@ import { Link, type LinkProps } from "@tanstack/react-router";
 import type { ReactNode, Ref } from "react";
 
 import { WorkIndicator } from "../work-indicator";
+import { LoadingState } from "@/components/feedback/loading-state";
 import {
   PageContent,
   PageLayout,
@@ -10,10 +11,12 @@ import {
   PageSidebarContent,
   PageSidebarHeader,
 } from "@/components/layout/page-layout";
+import { PageSidebarErrorState } from "@/components/layout/page-sidebar-error-state";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { WorkStatus } from "@/lib/agent-work/status";
+import type { ResourceStatus } from "@/lib/resource-state";
 import { Hand, Plus } from "lucide-react";
 
 export type AgentListItem = {
@@ -26,7 +29,9 @@ export type AgentListItem = {
 /** The Agents app: Needs you and each agent in the sidebar, the selection beside it. */
 export function AgentsWorkspaceView({
   agents,
-  agentsLoaded,
+  catalogState,
+  catalogError,
+  onRetryCatalog,
   needsYouCount,
   selectedAgentId,
   agentLink,
@@ -37,8 +42,9 @@ export function AgentsWorkspaceView({
   aside,
 }: {
   agents: AgentListItem[];
-  /** False until the agent list loads, so the empty line does not flash. */
-  agentsLoaded: boolean;
+  catalogState: ResourceStatus;
+  catalogError: Error | null;
+  onRetryCatalog: () => void;
   needsYouCount: number;
   selectedAgentId?: string;
   agentLink: (agentId?: string) => LinkProps;
@@ -96,9 +102,30 @@ export function AgentsWorkspaceView({
                 </Link>
               </Button>
             </nav>
-            <section aria-label="Your agents" className="grid gap-0.5">
+            <section
+              aria-label="Your agents"
+              aria-busy={catalogState === "loading"}
+              className="grid gap-0.5"
+            >
               <h2 className="px-2 pb-1 text-xs font-medium text-muted-foreground">Your agents</h2>
-              {agentsLoaded && !agents.length && (
+              {catalogState === "loading" && (
+                <LoadingState label="Loading agents" variant="compact" />
+              )}
+              {catalogError && (
+                <PageSidebarErrorState
+                  title={
+                    catalogState === "unavailable" ? "Agents unavailable" : "Couldn’t load agents"
+                  }
+                  unavailable={catalogState === "unavailable"}
+                  description={
+                    catalogState === "unavailable"
+                      ? "Check that you’re signed in and still have access to your agents."
+                      : undefined
+                  }
+                  onRetry={catalogState === "unavailable" ? undefined : onRetryCatalog}
+                />
+              )}
+              {catalogState === "ready" && !agents.length && (
                 <p className="px-2 text-xs text-muted-foreground">You have no agents yet.</p>
               )}
               {agents.map((agent) => (
