@@ -80,6 +80,32 @@ test("only a CRM root owner can list its explicit human grants", async () => {
   });
 });
 
+test("a view grant on a contact or deal gives read access until it is revoked", async () => {
+  const a = f.forActor(f.alice);
+  const b = f.forActor(f.bob);
+  const contact = await a.contacts.createContact({ displayName: "Customer" });
+  const account = await a.crm.createAccount({ name: "Business" });
+  const stages = await a.crm.ensurePipeline();
+  const deal = await a.crm.createDeal({
+    title: "Sale",
+    accountEntityId: account.entityId,
+    stageId: stages[0]!.id,
+  });
+  for (const [entityId, read] of [
+    [contact.entityId, () => b.contacts.getContact(contact.entityId)],
+    [deal.entityId, () => b.crm.getDeal(deal.entityId)],
+  ] as const) {
+    expect(await rejection(read())).toMatchObject({ name: "AccessDeniedError" });
+    await a.crm.share(entityId, f.bob, "view");
+    await read();
+    expect(await rejection(b.crm.share(entityId, f.bob, "owner"))).toMatchObject({
+      name: "AccessDeniedError",
+    });
+    await a.crm.revoke(entityId, f.bob);
+    expect(await rejection(read())).toMatchObject({ name: "AccessDeniedError" });
+  }
+});
+
 test("grant lists omit inactive members and do not fabricate implicit administrator grants", async () => {
   const a = f.forActor(f.alice);
   const account = await f.forActor(f.bob).crm.createAccount({ name: "Business" });
