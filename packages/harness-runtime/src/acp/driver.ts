@@ -63,6 +63,8 @@ export interface AcpSessionSetup {
   mcpServers: AcpMcpServer[];
   /** Appended to the agent's own instructions. Send only when capabilities.systemPrompt.append. */
   systemPrompt?: string;
+  /** Initial values, sent only when the agent advertises session.options. */
+  configOptions?: { id: string; value: AcpConfigValue }[];
 }
 
 export interface AcpSessionOpened {

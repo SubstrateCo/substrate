@@ -330,6 +330,13 @@ export function fakeAgentAppV2(
     .onRequest("session/new", ({ params }) => {
       log("session/new", params);
       requireAuth();
+      if (!script.ignoreConfigChanges)
+        for (const value of params.configOptions ?? [])
+          configOptions = configOptions.map((option) =>
+            option.configId === value.configId && option.type === "select" && value.type === "id"
+              ? { ...option, currentValue: String(value.value) }
+              : option,
+          );
       const sessionId = `fake-session-${++sessions}`;
       declare(sessionId, params.mcpServers);
       return {
@@ -374,7 +381,7 @@ export function fakeAgentAppV2(
     })
     .onRequest("session/set_config_option", ({ params }) => {
       log("session/set_config_option", params);
-      if (params.type === "id")
+      if (!script.ignoreConfigChanges && params.type === "id")
         configOptions = configOptions.map((option) =>
           option.configId === params.configId && option.type === "select"
             ? { ...option, currentValue: String(params.value) }

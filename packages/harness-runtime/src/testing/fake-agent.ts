@@ -86,6 +86,8 @@ export interface FakeAgentScript {
   /** Slash commands, sent in available_commands_update after session setup. */
   commands?: string[];
   configOptions?: SessionConfigOption[];
+  /** Simulate an agent that acknowledges config changes without applying them. */
+  ignoreConfigChanges?: boolean;
   /** Steps per prompt text; other prompts run defaultTurn. */
   turns?: Record<string, FakeStep[]>;
   defaultTurn?: FakeStep[];
@@ -302,6 +304,13 @@ function fakeAgentApp(
     .onRequest("session/new", ({ params, client }) => {
       log("session/new", params);
       requireAuth();
+      if (!script.ignoreConfigChanges)
+        for (const value of params.configOptions ?? [])
+          configOptions = configOptions.map((option) =>
+            option.id === value.configId && option.type === "select" && !("type" in value)
+              ? { ...option, currentValue: value.value }
+              : option,
+          );
       const sessionId = `fake-session-${++sessions}`;
       declare(sessionId, params.mcpServers);
       announceCommands(client, sessionId);
@@ -340,7 +349,7 @@ function fakeAgentApp(
     })
     .onRequest("session/set_config_option", ({ params }) => {
       log("session/set_config_option", params);
-      if (!("type" in params))
+      if (!script.ignoreConfigChanges && !("type" in params))
         configOptions = configOptions.map((option) =>
           option.id === params.configId && option.type === "select"
             ? { ...option, currentValue: params.value }

@@ -264,6 +264,11 @@ class AcpSession {
         }
       } else unsupported(`Installed ${options.launch.harness} cannot resume ACP sessions.`);
     } else {
+      if (context.model && capabilities.sessionOptions) {
+        const options = await connection.sessionOptions(context.directory, signal());
+        const option = this.modelOption(options, context.model);
+        setup.configOptions = [{ id: option.id, value: { type: "select", value: context.model } }];
+      }
       opened = await connection.newSession(setup, signal());
       this.sessionId = opened.sessionId;
       const early = this.early ?? [];
@@ -271,24 +276,39 @@ class AcpSession {
       for (const entry of early) if (entry.sessionId === this.sessionId) this.update(entry.update);
     }
     if (!this.configOptions.length) this.configOptions = opened.configOptions;
-    if (context.model) await this.selectModel(context.model, signal());
+    if (context.model) {
+      if (setup.configOptions) this.confirmModel(context.model);
+      else await this.selectModel(context.model, signal());
+    }
     const wait = deps.commandsWaitMs ?? 1_000;
     if (wait > 0 && !this.commands.size)
       await Promise.race([this.commandsSeen.promise, setTimeout(wait)]);
     void connection.closed.then(() => this.lost());
   }
 
-  private async selectModel(model: string, signal: AbortSignal) {
-    const option = this.configOptions.find((entry) => entry.category === "model");
+  private modelOption(options: AcpConfigOption[], model: string) {
+    const option = options.find((entry) => entry.category === "model");
     if (!option) unsupported("The agent offers no model option.");
     if (option.type !== "select" || !option.values.some((value) => value.value === model))
       throw new HarnessError("invalid-model", `The agent does not offer model ${model}.`);
+    return option;
+  }
+
+  private confirmModel(model: string) {
+    const option = this.configOptions.find((entry) => entry.category === "model");
+    if (option?.type !== "select" || option.currentValue !== model)
+      throw new HarnessError("invalid-model", `The agent did not confirm model ${model}.`);
+  }
+
+  private async selectModel(model: string, signal: AbortSignal) {
+    const option = this.modelOption(this.configOptions, model);
     this.configOptions = await this.connection.setConfigOption(
       this.sessionId,
       option.id,
       { type: "select", value: model },
       signal,
     );
+    this.confirmModel(model);
   }
 
   /** Stops serving the lease over ACP. The lease itself belongs to the host. */

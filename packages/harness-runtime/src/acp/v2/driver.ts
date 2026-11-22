@@ -101,6 +101,13 @@ function setupV2(setup: AcpSessionSetup): NewSessionRequest {
       mode: "append",
       content: [{ type: "text", text: setup.systemPrompt }],
     };
+  // InitialSessionConfigOption: dist/v2/unstable/schema/types.gen.d.ts:6792.
+  if (setup.configOptions)
+    request.configOptions = setup.configOptions.map(({ id, value }) =>
+      value.type === "boolean"
+        ? { configId: id, type: "boolean", value: value.value }
+        : { configId: id, type: "id", value: value.value },
+    );
   return request;
 }
 
