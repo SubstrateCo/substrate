@@ -3,7 +3,6 @@ import { sessionKeys } from "@substrate/contracts/agent-work";
 import { agentWakes, messagingMessages } from "../../schema";
 import { agentWorkFixture, threadTurn } from "../../testing/agent-work";
 import { setupDatabase } from "../../testing/database";
-import { createAgentRepository } from "../agents/repository";
 import { createMessagingService } from "../messaging/service";
 import { routeWake } from "./router";
 import { expect, test } from "bun:test";
@@ -92,7 +91,7 @@ test("only the owner's own messages wake the agent; agent messages never do", as
   ]);
 });
 
-test("a thread reply wakes the agent only after it worked in that thread, unless disabled", async () => {
+test("thread participation does not wake an idle agent; another mention still does", async () => {
   const { agent, alice, call } = await agentWorkFixture(f);
   const channel = await alice.createConversation({ kind: "channel", name: "general" });
   await alice.addAgent(channel.id, agent.agentId);
@@ -105,7 +104,13 @@ test("a thread reply wakes the agent only after it worked in that thread, unless
     { requestId: crypto.randomUUID(), body: "Here is a draft" },
     threadTurn(channel.id, root.id),
   );
-  const later = await alice.sendMessage(channel.id, "and also this", root.id);
+  await alice.sendMessage(channel.id, "and also this", root.id);
+  expect(await wakes()).toEqual([]);
+  const later = await alice.sendMessage(
+    channel.id,
+    `@[agent:${agent.actorId}] revise the draft`,
+    root.id,
+  );
   expect(await wakes()).toEqual([
     {
       sessionKey: sessionKeys.thread(root.id),
@@ -114,15 +119,11 @@ test("a thread reply wakes the agent only after it worked in that thread, unless
         messageId: later.id,
         conversationId: channel.id,
         threadId: root.id,
-        kind: "thread_reply",
+        kind: "mention",
       },
     },
   ]);
 
-  await createAgentRepository(f.db, "alice").saveTriggers({
-    agentId: agent.agentId,
-    triggers: [{ kind: "thread_reply", enabled: false }],
-  });
   await alice.sendMessage(channel.id, "one more", root.id);
   expect(await wakes()).toHaveLength(1);
 });

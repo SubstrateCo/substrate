@@ -8,7 +8,7 @@ import {
 import { triggerRegistry, type AgentSourceMessage } from "@substrate/contracts/agent-work";
 import { harnessCodesWithClassification, type HarnessCommand } from "@substrate/contracts/harness";
 
-import { envelopeItem, renderEnvelope } from "../turns/envelope.ts";
+import { envelopeItems, renderEnvelope } from "../turns/envelope.ts";
 import type { LiveTurn, RuntimeContext } from "./context.ts";
 import { inaccessibleItems, sourceRequest } from "./source-check.ts";
 import { endedStatus, errorCode, type TurnExecutor } from "./turn-executor.ts";
@@ -89,8 +89,8 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
     sessionKind: SessionRow["kind"],
     messages: Map<string, AgentSourceMessage>,
   ): Promise<SteerOutcome | "dropped"> {
-    const rendered = envelopeItem(item, { sessionKind, messages });
-    if (!rendered) {
+    const rendered = envelopeItems(item, { sessionKind, messages });
+    if (!rendered.length) {
       await context.store.inbox.drop(context.organizationId, [item.id], "source_inaccessible");
       return "dropped";
     }
@@ -100,7 +100,7 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
       kind: state.kind,
       attempt: turn?.attempt ?? 1,
       changes: [],
-      items: [rendered],
+      items: rendered,
       resume: null,
     });
     return steerInput(state, item.id, text, sourceRequest([item]).invocationIds);
@@ -160,12 +160,20 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
         const session = sessions.get(item.sessionId);
         if (!session) continue;
         const state = liveInFolder(folderKey(session));
-        if (!state) continue;
+        if (!state) {
+          if (item.source === "thread_context")
+            await context.store.inbox.drop(context.organizationId, [item.id], "turn_finished");
+          continue;
+        }
         if (!turns.has(state.turnId))
           turns.set(state.turnId, await context.store.turns.get(state.turnId));
+        const matchesTarget =
+          item.sourceRef.source !== "thread_context" ||
+          item.sourceRef.targetTurnId === state.turnId;
         // Steerable items join only interactive turns of their own session in its current epoch.
         const joins =
           triggerRegistry[item.source].steerable &&
+          matchesTarget &&
           state.sessionId === session.id &&
           state.kind === "interactive" &&
           state.capabilities.steer &&
@@ -182,6 +190,8 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
             ).length <
             20;
         if (joins && withinCallLimit) steerable.push({ item, session, state });
+        else if (item.source === "thread_context")
+          await context.store.inbox.drop(context.organizationId, [item.id], "not_steerable");
         else if (!item.held) hold.push(item.id);
       }
       let messages: Map<string, AgentSourceMessage> | undefined;
@@ -225,7 +235,7 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
             context.log("Could not add a message to the live turn.");
           }
         }
-        if (!item.held) hold.push(item.id);
+        if (item.source !== "thread_context" && !item.held) hold.push(item.id);
       }
       await context.store.inbox.hold(context.organizationId, hold);
       if (hold.length) context.changed({});
@@ -237,6 +247,8 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
       const session = item ? await context.store.sessions.get(item.sessionId) : undefined;
       if (!item || !session || session.organizationId !== context.organizationId)
         throw new Error("Item not found.");
+      if (!triggerRegistry[item.source].canStartTurn)
+        throw new Error("Context updates cannot interrupt work.");
       const state = liveInFolder(folderKey(session));
       if (!state) return;
       await stopTurn(state.turnId, "owner");

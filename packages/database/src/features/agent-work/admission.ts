@@ -155,7 +155,7 @@ export type AdmissionDecision =
       invocation?: InvocationRecord;
     };
 
-// Callers wake for a mention, or for a reply in a thread where the agent answered them.
+// Callers start work with an explicit mention. Other thread traffic is passive desktop context.
 function callerDecision(
   trigger: MessageTrigger,
   facts: MessageFacts,
@@ -168,7 +168,7 @@ function callerDecision(
   const kind = wakeKind({
     mentioned: facts.mentioned,
     directMessage: false,
-    workedInThread: caller.answeredInThread,
+    workedInThread: false,
     disabled: facts.disabled,
   });
   // A caller's kind is never direct_message: DMs were denied above.
@@ -203,13 +203,13 @@ function callerDecision(
  *
  * - Agent-written messages never wake, which also stops agent-to-agent loops.
  * - The owner's message wakes for the first matching kind in agentTriggerPrecedence (mention,
- *   then DM, then a reply in a thread the agent worked in). A disabled kind stops the wake; it
+ *   then DM). Thread participation alone never starts work. A disabled kind stops the wake; it
  *   does not fall back.
  * - Another person wakes the agent only as a caller: the agent's policy is not owner, the person
  *   is a member of the agent's organization, the conversation is a channel or group that the
- *   owner can see, and the message mentions the agent or replies in a thread where the agent
- *   answered that person. The owner's disabled kinds apply. Under ask, a caller who is not
- *   allowlisted waits for the owner's approval. Excess calls are recorded as rate limited.
+ *   owner can see, and the message mentions the agent. The owner's disabled kinds apply.
+ *   Under ask, a caller who is not allowlisted waits for the owner's approval.
+ *   Excess calls are recorded as rate limited.
  * - The owner's answer or proposal result always wakes the agent in the request's session, and
  *   an approved call wakes it in the call's session.
  */
@@ -247,7 +247,7 @@ export function decideAdmission(input: AdmissionInput): AdmissionDecision {
   const kind = wakeKind({
     mentioned: facts.mentioned,
     directMessage: conversationKind === "dm",
-    workedInThread: facts.workedInThread,
+    workedInThread: false,
     disabled: facts.disabled,
   });
   if (!kind) return { type: "deny", reason: "not_triggered" };

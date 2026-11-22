@@ -304,6 +304,8 @@ export function createAgentWorkService(options: {
       }
       if (event.domain === "agent-work")
         void ensure().then((current) => available(current)?.runtime.hint());
+      if (event.domain === "messaging" && (!event.scope || event.scope === "messages"))
+        void ensure().then((current) => available(current)?.runtime.hint());
       if (event.domain === "session" || event.domain === "organization")
         void ensure().then((current) => {
           if (!available(current)) return;

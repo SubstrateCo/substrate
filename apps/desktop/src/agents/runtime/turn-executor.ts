@@ -283,6 +283,36 @@ export function createTurnExecutor(
       context.changed({ userAgentId: turn.userAgentId });
       return;
     }
+    // Idle thread traffic waits for the next authorized turn. It is context, never a new request.
+    const threadSnapshot = session.kind === "thread" && !turn.handoff;
+    if (threadSnapshot && session.originConversationId && session.originThreadId) {
+      try {
+        const page = await context.server.threadMessages(
+          context.organizationId,
+          session.originConversationId,
+          session.originThreadId,
+        );
+        const ids = [
+          ...new Set([session.originThreadId, ...page.map((message) => message.id)]),
+        ].filter((id) => !messages.has(id));
+        const snapshot = await context.server.sources(context.organizationId, ids);
+        for (const message of snapshot.messages) messages.set(message.id, message);
+        envelopeItems.unshift(
+          ...snapshot.messages.map((message) => ({
+            id: message.id,
+            source: "thread_context" as const,
+            author: message.author.name,
+            authorKind: message.author.kind,
+            conversationId: message.conversationId,
+            threadId: message.threadId,
+            body: message.body,
+          })),
+        );
+        sources.messages.push(...snapshot.messages);
+      } catch (error) {
+        return retryLater(turn, error);
+      }
+    }
     let resume: EnvelopeResumeNote | null = null;
     if (turn.attempt > 1) resume = await resumeNote(turn.id, turn.attempt - 1);
     else if (turn.resumesTurnId) {

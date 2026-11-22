@@ -128,6 +128,33 @@ export function envelopeItem(
   return renderers[triggerRegistry[item.sourceRef.source].envelope](item, context);
 }
 
+/** Context batches share one delivery receipt, while preserving each message's attribution. */
+export function envelopeItems(
+  item: InboxRow,
+  context: { sessionKind: string; messages: Map<string, AgentSourceMessage> },
+): EnvelopeItem[] {
+  if (item.sourceRef.source !== "thread_context") {
+    const rendered = envelopeItem(item, context);
+    return rendered ? [rendered] : [];
+  }
+  return item.sourceRef.messageIds.flatMap((id) => {
+    const message = context.messages.get(id);
+    return message
+      ? [
+          {
+            id,
+            source: item.source,
+            author: message.author.name,
+            authorKind: message.author.kind,
+            conversationId: message.conversationId,
+            threadId: message.threadId,
+            body: message.body,
+          },
+        ]
+      : [];
+  });
+}
+
 type ItemRenderer = (
   item: InboxRow,
   context: { sessionKind: string; messages: Map<string, AgentSourceMessage> },

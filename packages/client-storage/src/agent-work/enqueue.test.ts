@@ -37,6 +37,13 @@ test("claims follow each trigger's turn mode, except helper sessions and rotatio
       conversationId: "c",
       threadId: null,
     },
+    thread_context: {
+      source: "thread_context",
+      messageIds: ["m"],
+      targetTurnId: "gone",
+      conversationId: "c",
+      threadId: "root",
+    },
   };
   try {
     for (const source of inboxSources) {
@@ -44,6 +51,10 @@ test("claims follow each trigger's turn mode, except helper sessions and rotatio
         const session = await createSession(store, { kind, userAgentId: `${source}:${kind}` });
         await store.inbox.intake([item(session, { source, sourceRef: refs[source] })], 0);
         const [claimed] = await store.turns.claim(1000, { organizationId: "org-1" });
+        if (!triggerRegistry[source].canStartTurn) {
+          expect(claimed).toBeUndefined();
+          continue;
+        }
         expect(claimed!.turn.kind).toBe(
           kind === "helper" ? "unattended" : triggerRegistry[source].turnMode,
         );

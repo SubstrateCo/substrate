@@ -5,7 +5,7 @@ import {
 } from "@substrate/contracts/agent-work";
 
 import type { LocalTransaction } from "../database.ts";
-import { inbox, sessions } from "../schema/index.ts";
+import { inbox, sessions, turns } from "../schema/index.ts";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
 /** An owner message waits this long for more messages before its turn can start. */
@@ -37,8 +37,54 @@ export async function enqueue(tx: LocalTransaction, item: NewInboxItem, now: num
     .where(eq(sessions.id, item.sessionId))
     .get();
   if (!session) throw new Error("Session not found.");
+  const ref = item.sourceRef;
+  if (ref.source === "thread_context") {
+    const turn = await tx
+      .select()
+      .from(turns)
+      .where(and(eq(turns.id, ref.targetTurnId), eq(turns.organizationId, session.organizationId)))
+      .get();
+    if (!turn) return undefined;
+    const sameSession =
+      turn.organizationId === session.organizationId && turn.sessionId === item.sessionId;
+    if (!sameSession || !["assigned", "running", "waiting"].includes(turn.status)) return undefined;
+    const pending = await tx
+      .select()
+      .from(inbox)
+      .where(
+        and(
+          eq(inbox.turnId, ref.targetTurnId),
+          eq(inbox.organizationId, session.organizationId),
+          eq(inbox.source, "thread_context"),
+          eq(inbox.status, "pending"),
+        ),
+      )
+      .all();
+    const open = pending.find((row) => {
+      const source = row.sourceRef;
+      return (
+        source.source === "thread_context" &&
+        row.availableAt > now &&
+        row.deadlineAt > now &&
+        source.messageIds.length + ref.messageIds.length <= 20
+      );
+    });
+    if (open && open.sourceRef.source === "thread_context") {
+      const messageIds = [...new Set([...open.sourceRef.messageIds, ...ref.messageIds])];
+      if (messageIds.length === open.sourceRef.messageIds.length) return undefined;
+      const [updated] = await tx
+        .update(inbox)
+        .set({
+          sourceRef: { ...open.sourceRef, messageIds },
+          availableAt: Math.min(now + ownerMessageDebounceMs, open.deadlineAt),
+        })
+        .where(and(eq(inbox.id, open.id), eq(inbox.status, "pending")))
+        .returning();
+      return updated;
+    }
+  }
   let availableAt = item.availableAt ?? now;
-  let deadlineAt = availableAt;
+  let deadlineAt = ref.source === "thread_context" ? now + ownerBatchWindowMs : availableAt;
   const debounced = item.source === "owner_message";
   let batch: (typeof inbox.$inferSelect)[] = [];
   if (debounced) {
@@ -71,6 +117,7 @@ export async function enqueue(tx: LocalTransaction, item: NewInboxItem, now: num
       sourceRef: item.sourceRef,
       body: item.body ?? null,
       wakeId: item.wakeId ?? null,
+      turnId: ref.source === "thread_context" ? ref.targetTurnId : null,
       lane: triggerRegistry[item.source].lane,
       dedupeKey: item.dedupeKey,
       availableAt,

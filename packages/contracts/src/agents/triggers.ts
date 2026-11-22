@@ -24,8 +24,9 @@ export const agentTriggers: Record<AgentTriggerKind, { title: string; descriptio
     description: "You mention this agent in a channel, group, or thread it is a member of.",
   },
   thread_reply: {
-    title: "Thread reply",
-    description: "You reply in a thread where this agent already worked.",
+    title: "Thread updates",
+    description:
+      "Add new thread messages to this agent's current work. Updates never start a new turn.",
   },
 };
 

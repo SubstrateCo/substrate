@@ -16,6 +16,14 @@ import { z } from "zod";
 
 type Fetch = (url: string, init: RequestInit) => Promise<Response>;
 const id = z.string().min(1);
+const threadMessageSchema = z.object({
+  id,
+  body: z.string(),
+  createdAt: z.string(),
+  authorType: z.enum(["human", "agent"]),
+  originTurnId: id.nullable(),
+});
+export type ThreadMessage = z.output<typeof threadMessageSchema>;
 
 const result = <T extends z.ZodType>(data: T) =>
   z.union([
@@ -41,6 +49,7 @@ export interface CatalogAgent {
   enabled: boolean;
   /** The agent's home device is this desktop. Only home agents run, claim, and fire routines here. */
   home: boolean;
+  threadContextEnabled: boolean;
 }
 
 /** The home desktop's calls to the server. The session decides the user. */
@@ -57,6 +66,12 @@ export interface AgentWorkServer {
     messageIds: string[],
     invocationIds?: string[],
   ): Promise<AgentSourcesResult>;
+  threadMessages(
+    organizationId: string,
+    conversationId: string,
+    threadId: string,
+    beforeMessageId?: string,
+  ): Promise<ThreadMessage[]>;
   publishStatus(input: Omit<z.input<typeof publishStatusInput>, "installationId">): Promise<void>;
   openRequest(
     input: Omit<z.input<typeof openRequestInput>, "installationId">,
@@ -139,7 +154,15 @@ export function createAgentWorkServer(options: {
           .filter((settings) => settings.homeDevice?.current === true)
           .map((settings) => settings.agentId),
       );
-      return catalog.agents.map((agent) => ({ ...agent, home: home.has(agent.id) }));
+      return catalog.agents.map((agent) => ({
+        ...agent,
+        home: home.has(agent.id),
+        threadContextEnabled:
+          catalog.runSettings
+            .find((settings) => settings.agentId === agent.id)
+            ?.triggers.some((trigger) => trigger.kind === "thread_reply" && trigger.enabled) ??
+          false,
+      }));
     },
     async pullWakes(organizationId, limit) {
       return call(
@@ -165,6 +188,11 @@ export function createAgentWorkServer(options: {
         { ...input, installationId: options.installationId },
         ignored,
       );
+    },
+    async threadMessages(organizationId, conversationId, threadId, beforeMessageId) {
+      const query = new URLSearchParams({ organizationId, conversationId, threadId });
+      if (beforeMessageId) query.set("beforeMessageId", beforeMessageId);
+      return call(`/messaging/messages?${query}`, undefined, z.array(threadMessageSchema), "GET");
     },
     async openRequest(input) {
       return call(

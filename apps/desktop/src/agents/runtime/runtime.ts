@@ -24,6 +24,7 @@ import { pullWakes } from "./intake.ts";
 import { createRequestBridge } from "./requests.ts";
 import { createStatusPublisher } from "./status.ts";
 import { createSteering } from "./steering.ts";
+import { createThreadContext } from "./thread-context.ts";
 import { createTurnExecutor } from "./turn-executor.ts";
 
 const syncIntervalMs = 30_000;
@@ -96,6 +97,7 @@ export function createAgentWorkRuntime(
   const epochs = createEpochs(context);
   const executor = createTurnExecutor(context, { requests, epochs });
   const steering = createSteering(context, executor);
+  const threadContext = createThreadContext(context, executor);
   const status = createStatusPublisher(context, { executor, requests });
   const routines = createRoutines(context);
   const localTools = createLocalTools(context, { executor, steering });
@@ -158,6 +160,7 @@ export function createAgentWorkRuntime(
       context.log("Could not pull agent wakes.");
       return 0;
     });
+    await threadContext.sync().catch(() => context.log("Could not sync live thread context."));
     if (created) {
       // Debounced owner messages become available later; check again when their windows close.
       context.later(pump, ownerMessageDebounceMs + 10);
@@ -187,6 +190,7 @@ export function createAgentWorkRuntime(
     await reconcileHome().catch(() => context.log("Could not check where agents run."));
     await routines.tick().catch(() => context.log("Could not run routines."));
     await steering.enforceBudget().catch(() => {});
+    await threadContext.sync().catch(() => context.log("Could not sync live thread context."));
   }
 
   function dispose() {

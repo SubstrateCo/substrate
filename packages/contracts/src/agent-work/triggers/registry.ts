@@ -6,6 +6,8 @@ export interface TriggerDefinition {
   lane: InboxLane;
   turnMode: "interactive" | "unattended";
   steerable: boolean;
+  /** Passive context can join a live turn, but cannot create one. */
+  canStartTurn: boolean;
   /** owner_source: the owner must still see the message. caller_source: also the call. */
   recheck: "owner_source" | "caller_source" | "none";
   envelope: "message" | "decision" | "helper_task" | "helper_result" | "routine" | "system";
@@ -18,6 +20,7 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     lane: "owner",
     turnMode: "interactive",
     steerable: true,
+    canStartTurn: true,
     recheck: "owner_source",
     envelope: "message",
   },
@@ -27,6 +30,7 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     lane: "owner",
     turnMode: "interactive",
     steerable: true,
+    canStartTurn: true,
     recheck: "none",
     envelope: "decision",
   },
@@ -36,6 +40,7 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     lane: "owner",
     turnMode: "interactive",
     steerable: true,
+    canStartTurn: true,
     recheck: "none",
     envelope: "decision",
   },
@@ -45,6 +50,7 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     lane: "background",
     turnMode: "unattended",
     steerable: false,
+    canStartTurn: true,
     recheck: "none",
     envelope: "routine",
   },
@@ -54,6 +60,7 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     lane: "system",
     turnMode: "unattended",
     steerable: false,
+    canStartTurn: true,
     recheck: "none",
     envelope: "helper_task",
   },
@@ -63,6 +70,7 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     lane: "background",
     turnMode: "unattended",
     steerable: false,
+    canStartTurn: true,
     recheck: "none",
     envelope: "helper_result",
   },
@@ -72,6 +80,7 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     lane: "system",
     turnMode: "unattended",
     steerable: false,
+    canStartTurn: true,
     recheck: "none",
     envelope: "system",
   },
@@ -81,6 +90,7 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     lane: "system",
     turnMode: "unattended",
     steerable: false,
+    canStartTurn: true,
     recheck: "none",
     envelope: "system",
   },
@@ -90,7 +100,18 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     lane: "caller",
     turnMode: "interactive",
     steerable: true,
+    canStartTurn: true,
     recheck: "caller_source",
+    envelope: "message",
+  },
+  thread_context: {
+    origin: "local",
+    principal: "system",
+    lane: "background",
+    turnMode: "unattended",
+    steerable: true,
+    canStartTurn: false,
+    recheck: "owner_source",
     envelope: "message",
   },
 };

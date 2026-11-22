@@ -37,6 +37,8 @@ export const inboxSources = [
   "epoch",
   /** A message from a person the owner allows to call the agent. */
   "caller_message",
+  /** A batch of thread messages for one existing turn. Never starts a turn. */
+  "thread_context",
 ] as const;
 export type InboxSource = (typeof inboxSources)[number];
 
@@ -58,6 +60,13 @@ export const inboxStatuses = [
 export type InboxStatus = (typeof inboxStatuses)[number];
 
 export type InboxSourceRef =
+  | {
+      source: "thread_context";
+      messageIds: string[];
+      targetTurnId: string;
+      conversationId: string;
+      threadId: string;
+    }
   | { source: "owner_message"; messageId: string; conversationId: string; threadId: string | null }
   | {
       source: "caller_message";

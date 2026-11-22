@@ -67,10 +67,10 @@ const messageCases: [string, MessageTrigger, Partial<MessageFacts>, AdmissionDec
     admitted("direct_message", dm),
   ],
   [
-    "a reply in a thread the agent worked in uses the thread root session",
+    "past thread participation does not start another turn",
     sent(owner, "group"),
     { workedInThread: true },
-    admitted("thread_reply", thread),
+    { type: "deny", reason: "not_triggered" },
   ],
   [
     "a disabled winning kind stops the wake without falling back",
@@ -179,11 +179,11 @@ const callerCases: [
     { type: "deny", reason: "not_triggered" },
   ],
   [
-    "a thread reply where the agent answered this caller runs as thread_reply",
+    "past replies to this caller do not start more work without a mention",
     "channel",
     { workedInThread: true },
     { answeredInThread: true },
-    calledNow(call("admit", { kind: "thread_reply" })),
+    { type: "deny", reason: "not_triggered" },
   ],
   [
     "the owner's disabled mention trigger applies to callers",

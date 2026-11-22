@@ -2,6 +2,7 @@ import {
   inboxItemMachine,
   inboxLaneAgingMs,
   inboxLanes,
+  inboxSources,
   liveTurnStatuses,
   sessionMachine,
   turnMachine,
@@ -106,6 +107,10 @@ async function claimTurns(
     .where(
       and(
         inArray(inbox.status, claimableStatuses),
+        inArray(
+          inbox.source,
+          inboxSources.filter((source) => triggerRegistry[source].canStartTurn),
+        ),
         lte(inbox.availableAt, now),
         ne(sessions.status, "closed"),
         eq(sessions.organizationId, options.organizationId),
@@ -315,14 +320,31 @@ async function finishTurn(
     requeued: new Array<string>(),
     uncertain: new Array<string>(),
   };
+  const passiveQueued: string[] = [];
   for (const item of items) {
     if (!item.steered) {
       if (!keep) settle.consumed.push(item.id);
     } else if (consumed.has(item.id)) settle.consumed.push(item.id);
-    else if (queued.has(item.id)) settle.requeued.push(item.id);
-    else settle.uncertain.push(item.id);
+    else if (queued.has(item.id)) {
+      if (item.source === "thread_context") passiveQueued.push(item.id);
+      else settle.requeued.push(item.id);
+    } else settle.uncertain.push(item.id);
   }
   await setItemStatus(tx, settle.consumed, "consume");
+  const passive = await tx
+    .select({ id: inbox.id })
+    .from(inbox)
+    .where(
+      and(
+        eq(inbox.turnId, turnId),
+        eq(inbox.source, "thread_context"),
+        inArray(inbox.status, claimableStatuses),
+      ),
+    )
+    .all();
+  await setItemStatus(tx, [...passive.map((item) => item.id), ...passiveQueued], "drop", {
+    reason: "turn_finished",
+  });
   await setItemStatus(tx, settle.requeued, "requeue", { steered: false, turnId: null });
   await setItemStatus(tx, settle.uncertain, "unconfirm", { reason: "no_consumption_evidence" });
   const uncertain = Boolean(settle.uncertain.length) && input.status !== "needs_attention";

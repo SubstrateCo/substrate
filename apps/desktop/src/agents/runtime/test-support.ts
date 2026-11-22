@@ -85,6 +85,7 @@ interface FixtureHooks {
     next: () => Promise<HostResult>,
   ) => Promise<HostResult> | undefined;
   openRequest?: () => Promise<{ id: string; status: string }>;
+  threadMessages?: () => void;
 }
 
 /** A native session of the fake adapter. Tests end its turn and stream its events. */
@@ -131,6 +132,7 @@ export async function runtimeFixture(
     /** Every native connect fails, as when the native session is gone. */
     failOpen?: boolean;
     now?: number;
+    agents?: CatalogAgent[];
   } = {},
 ) {
   // A restart reuses the given file. Other tests need no file.
@@ -143,6 +145,15 @@ export async function runtimeFixture(
   const wakes: AgentWakeView[] = [];
   const acked = new Set<string>();
   const messages = new Map<string, AgentSourceMessage>();
+  const threadRows: {
+    id: string;
+    body: string;
+    createdAt: string;
+    originTurnId: string | null;
+    authorType: "human" | "agent";
+    conversationId: string;
+    threadId: string;
+  }[] = [];
   const revokedInvocations = new Set<string>();
   const posts: ServerPost[] = [];
   let answers: AgentRequestDelivery[] = [];
@@ -152,8 +163,15 @@ export async function runtimeFixture(
   const stillQueued: string[] = [];
   const capabilities = { ...noCapabilities, ...options.capabilities };
   const timers: { at: number; callback: () => void; cleared: boolean }[] = [];
-  const catalog: CatalogAgent[] = [
-    { id: agentId, name: "Scout", harness: "claude", enabled: true, home: true },
+  const catalog: CatalogAgent[] = options.agents ?? [
+    {
+      id: agentId,
+      name: "Scout",
+      harness: "claude",
+      enabled: true,
+      home: true,
+      threadContextEnabled: true,
+    },
   ];
   /** catalogLookup: reading one agent from the catalog fails, as when its cache expired offline. */
   const outage = { sources: false, openRequest: false, catalogLookup: false };
@@ -189,6 +207,16 @@ export async function runtimeFixture(
         inaccessible: ids.filter((id) => !messages.has(id)),
         inaccessibleInvocations: invocationIds.filter((id) => revokedInvocations.has(id)),
       };
+    },
+    async threadMessages(_organization, conversationId, threadId, beforeMessageId) {
+      hooks.threadMessages?.();
+      const rows = threadRows.filter(
+        (row) => row.conversationId === conversationId && row.threadId === threadId,
+      );
+      const end = beforeMessageId
+        ? rows.findIndex((row) => row.id === beforeMessageId)
+        : rows.length;
+      return rows.slice(Math.max(0, end - 50), end);
     },
     publishStatus: async (body) => record({ method: "status", body }),
     async openRequest(body) {
@@ -379,6 +407,7 @@ export async function runtimeFixture(
   }
 
   interface OwnerMessageInput {
+    userAgentId?: string;
     conversationId?: string;
     threadId?: string;
     body?: string;
@@ -402,7 +431,7 @@ export async function runtimeFixture(
       });
     wakes.push({
       id: crypto.randomUUID(),
-      userAgentId: agentId,
+      userAgentId: input.userAgentId ?? agentId,
       source: "owner_message",
       sourceRef: {
         messageId: id,
@@ -480,6 +509,38 @@ export async function runtimeFixture(
     /** Moves the clock and runs due timers. */
     advance,
     ownerMessage,
+    revokeMessage: (id: string) => messages.delete(id),
+    threadMessage(
+      place: { conversationId: string; threadId: string | null },
+      input: {
+        body: string;
+        authorKind?: "owner" | "member" | "agent";
+        originTurnId?: string;
+      },
+    ) {
+      const id = crypto.randomUUID();
+      const createdAt = new Date(now + 1).toISOString();
+      const kind = input.authorKind ?? "agent";
+      messages.set(id, {
+        id,
+        ...place,
+        body: input.body,
+        createdAt,
+        conversationName: "Thread",
+        conversationKind: "channel",
+        author: { actorId: "other-agent", name: "Finance", kind },
+      });
+      threadRows.push({
+        id,
+        ...place,
+        threadId: place.threadId!,
+        body: input.body,
+        createdAt,
+        authorType: kind === "agent" ? "agent" : "human",
+        originTurnId: input.originTurnId ?? null,
+      });
+      return id;
+    },
     revokedInvocations,
     callerMessage(input: OwnerMessageInput = {}) {
       const message = ownerMessage({ ...input, threadId: input.threadId ?? crypto.randomUUID() });

@@ -111,7 +111,7 @@ test("publisher failure happens after commit and does not audit a failed tool ex
   expect(logged.map((row) => row.result)).toEqual(["ok"]);
 });
 
-test("a thread reply calls only where the agent answered that caller", async () => {
+test("past answers do not make untargeted thread replies start new calls", async () => {
   const x = await callerFixture(f);
   await x.policy("anyone");
   const root = await x.bob.sendMessage(x.channel.id, `${x.mention} start`);
@@ -122,13 +122,11 @@ test("a thread reply calls only where the agent answered that caller", async () 
     { ...threadTurn(x.channel.id, root.id), invocationIds: [first!.id] },
   );
   await x.carol.sendMessage(x.channel.id, "me too", root.id);
-  const reply = await x.bob.sendMessage(x.channel.id, "and the risks", root.id);
+  await x.bob.sendMessage(x.channel.id, "and the risks", root.id);
   expect((await calls()).map((row) => [row.callerUserId, row.kind, row.messageId])).toEqual([
     ["bob", "mention", root.id],
-    ["bob", "thread_reply", reply.id],
   ]);
   expect((await callerWakes()).map((wake) => wake.sessionKey)).toEqual([
-    sessionKeys.thread(root.id),
     sessionKeys.thread(root.id),
   ]);
 });

@@ -127,12 +127,17 @@ export function inboxRepository(run: RunTransaction) {
      */
     submitSteer: (id: string, turnId: string) =>
       run(async (tx) => {
-        const turn = await tx
-          .select({ status: turns.status })
-          .from(turns)
-          .where(eq(turns.id, turnId))
-          .get();
+        const turn = await tx.select().from(turns).where(eq(turns.id, turnId)).get();
         if (!turn || !steerableTurnStatuses.includes(turn.status)) return false;
+        const item = await tx.select().from(inbox).where(eq(inbox.id, id)).get();
+        if (
+          !item ||
+          item.organizationId !== turn.organizationId ||
+          item.sessionId !== turn.sessionId
+        )
+          return false;
+        if (item.sourceRef.source === "thread_context" && item.sourceRef.targetTurnId !== turnId)
+          return false;
         const updated = await tx
           .update(inbox)
           .set({ status: inboxItemMachine.events.submit.to, steered: true, held: false, turnId })
@@ -258,7 +263,14 @@ export function inboxRepository(run: RunTransaction) {
           .select({ userAgentId: inbox.userAgentId, count: sql<number>`count(*)` })
           .from(inbox)
           .where(
-            and(eq(inbox.organizationId, organizationId), inArray(inbox.status, claimableStatuses)),
+            and(
+              eq(inbox.organizationId, organizationId),
+              inArray(inbox.status, claimableStatuses),
+              inArray(
+                inbox.source,
+                inboxSources.filter((source) => triggerRegistry[source].canStartTurn),
+              ),
+            ),
           )
           .groupBy(inbox.userAgentId)
           .all();
