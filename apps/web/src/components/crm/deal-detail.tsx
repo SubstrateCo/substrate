@@ -42,17 +42,18 @@ export function DealDetail({
   const [editingRecord, setEditingRecord] = useState<RecordDraft | null>(null);
   const accounts = useQuery({ ...accountsOptions(organizationId), enabled: dialog === "edit" });
   const contacts = useQuery({ ...contactsOptions(organizationId), enabled: dialog === "edit" });
-  const { data, fallback } = crmResource(query, <RecordDetailLoading kind="deals" />);
+  const { data, fallback, staleNotice } = crmResource(query, <RecordDetailLoading kind="deals" />);
   if (!data) return fallback;
   const { deal, contacts: participants, level } = data;
   const canEdit = level === "edit" || level === "owner";
   const archived = !!deal.archivedAt;
   const change = recordChangeDialog(dialog);
-  const stages = (pipeline.data ?? [])
+  const pipelineData = resourceState(pipeline).data;
+  const stages = (pipelineData ?? [])
     .filter((stage) => !stage.retired)
     .map((stage) => ({ value: stage.id, label: stage.name }));
   const stageName = (stageId: string) =>
-    pipeline.data?.find((stage) => stage.id === stageId)?.name ?? "Stage unavailable";
+    pipelineData?.find((stage) => stage.id === stageId)?.name ?? "Stage unavailable";
   const open = (next: NonNullable<typeof dialog>) => {
     mutation.reset();
     if (next === "edit") {
@@ -71,6 +72,7 @@ export function DealDetail({
         organizationId={organizationId}
         entityId={entityId}
         kind="deals"
+        notice={staleNotice}
         name={deal.title}
         summary={deal.summary}
         archived={archived}

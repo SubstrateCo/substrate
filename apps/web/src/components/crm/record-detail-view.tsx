@@ -29,6 +29,7 @@ export function RecordDetailView({
   children,
   actions,
   properties,
+  notice,
 }: {
   organizationId: string;
   entityId: string;
@@ -44,6 +45,7 @@ export function RecordDetailView({
   children: ReactNode;
   actions?: ReactNode;
   properties?: ReactNode;
+  notice?: ReactNode;
 }) {
   return (
     <RecordDetailFrame>
@@ -85,6 +87,7 @@ export function RecordDetailView({
           </>
         }
       />
+      {notice}
       <RecordDetailBody
         summary={summary && <RecordSummary kind={kind}>{summary}</RecordSummary>}
         properties={

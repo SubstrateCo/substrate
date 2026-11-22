@@ -132,10 +132,20 @@ for (const kind of ["accounts", "deals"] as const) {
     );
 
     const reader = await client(actors.member);
-    await visit(reader, undefined, "/crm", { section: kind, recordId: record.entityId });
+    const search = new URLSearchParams({
+      workspaceId: actors.member.organizationId,
+      section: kind,
+      recordId: record.entityId,
+    });
+    await reader.page.goto(`/crm?${search}`);
     await expect(
       reader.page.getByRole("heading", { name: "Record unavailable", exact: true }),
     ).toBeVisible();
+    await expect(reader.page.getByText(record.name, { exact: true })).toHaveCount(0);
+    await expect(reader.page.getByRole("complementary", { name: "Record details" })).toHaveCount(0);
+    for (const name of ["Share", "Change owner", "Edit", "Archive"])
+      await expect(reader.page.getByRole("button", { name, exact: true })).toHaveCount(0);
+    await expect(reader.page.getByRole("dialog")).toHaveCount(0);
   });
 }
 

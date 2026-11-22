@@ -9,6 +9,7 @@ import { sectionLabels, singularLabels, type CrmKind } from "@/components/crm/cr
 import { DealPipeline, DealPipelineLoading } from "@/components/crm/deal-pipeline";
 import { RecordEditor } from "@/components/crm/record-editor";
 import { RecordList } from "@/components/crm/record-list";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -67,7 +68,7 @@ function collectionRecords(
   kind: CrmKind,
   { accounts, contacts, deals, pipeline, settings }: ReturnType<typeof useCollectionQueries>,
 ) {
-  const stages = (pipeline.data ?? []).filter((stage) => !stage.retired);
+  const stages = (resourceState(pipeline).data ?? []).filter((stage) => !stage.retired);
   const accountState = resourceState(accounts);
   const contactState = resourceState(contacts);
   const dealState = resourceState(deals);
@@ -225,7 +226,7 @@ export function RecordCollection({
       </div>
       <CrmResourceState
         pending={(debounced.pending || query.isPending) && !state.data}
-        error={query.error}
+        error={state.data ? null : state.error}
         onRetry={() => void query.refetch()}
         loading={
           dealPipelineView && !archived ? (
@@ -235,6 +236,11 @@ export function RecordCollection({
           )
         }
       />
+      {state.status === "stale" && (
+        <StaleNotice onRetry={() => void query.refetch()}>
+          These records may be out of date.
+        </StaleNotice>
+      )}
       {kind === "deals" && (
         <>
           <CrmResourceState
@@ -250,17 +256,16 @@ export function RecordCollection({
         </>
       )}
       {state.data &&
-        !state.error &&
         (dealPipelineView && !archived ? (
           <DealPipeline
             organizationId={organizationId}
             stages={stages}
-            deals={(deals.data ?? []).filter((deal) => deal.outcome === "open")}
+            deals={(resourceState(deals).data ?? []).filter((deal) => deal.outcome === "open")}
           />
         ) : (
           <RecordList organizationId={organizationId} kind={kind} rows={rows} />
         ))}
-      {!query.error && (
+      {state.data && (
         <RecordPagination
           page={cursors.length + 1}
           rowCount={rows.length}
@@ -277,7 +282,7 @@ export function RecordCollection({
         <RecordEditor
           kind={kind}
           organizationId={organizationId}
-          defaultCurrency={settings.data?.defaultCurrency}
+          defaultCurrency={resourceState(settings).data?.defaultCurrency}
           accounts={accountRows.map((row) => ({
             value: row.entityId,
             label: row.name,

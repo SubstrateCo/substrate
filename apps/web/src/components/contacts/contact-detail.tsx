@@ -44,7 +44,10 @@ export function ContactDetail({
   const [dialog, setDialog] = useState<RecordChangeDialog | "interaction" | "affiliation" | null>(
     null,
   );
-  const { data, fallback } = crmResource(query, <RecordDetailLoading kind="contacts" />);
+  const { data, fallback, staleNotice } = crmResource(
+    query,
+    <RecordDetailLoading kind="contacts" />,
+  );
   if (!data) return fallback;
   const { profile, affiliations, level } = data;
   const canEdit = level === "edit" || level === "owner";
@@ -61,6 +64,7 @@ export function ContactDetail({
         organizationId={organizationId}
         entityId={entityId}
         kind="contacts"
+        notice={staleNotice}
         name={profile.displayName}
         summary={profile.notes}
         archived={archived}

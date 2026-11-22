@@ -26,7 +26,10 @@ export function AccountDetail({
   const query = useQuery(accountOptions(organizationId, entityId));
   const mutation = useRecordMutation(organizationId, "accounts");
   const [dialog, setDialog] = useState<RecordChangeDialog | null>(null);
-  const { data, fallback } = crmResource(query, <RecordDetailLoading kind="accounts" />);
+  const { data, fallback, staleNotice } = crmResource(
+    query,
+    <RecordDetailLoading kind="accounts" />,
+  );
   if (!data) return fallback;
   const { account, contacts, deals, level } = data;
   const canEdit = level === "edit" || level === "owner";
@@ -41,6 +44,7 @@ export function AccountDetail({
         organizationId={organizationId}
         entityId={entityId}
         kind="accounts"
+        notice={staleNotice}
         name={account.name}
         summary={account.summary}
         archived={archived}
