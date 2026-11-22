@@ -16,7 +16,7 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
-import { permissionRepository } from "../../core/permissions/repository";
+import { changePermission, requirePermissionLevel } from "../../core/permissions/repository";
 import { entityGrants } from "../../core/permissions/schema";
 import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
 import { requiredText } from "../../core/validation";
@@ -224,12 +224,22 @@ export function projectRepository(context: RepositoryContext) {
           );
       });
     },
+    share(entityId: string, actorEntityId: string, level: PermissionLevel) {
+      requirePermissionLevel(level);
+      return context.transaction(async (ctx) => {
+        const access = await ctx.requireAccess(entityId, "owner", true, "structural");
+        if (access.entity.entityType !== "project") throw new AccessDeniedError();
+        await changePermission(ctx, access, { actorEntityId, level });
+      });
+    },
     async revoke(entityId: string, actorEntityId: string) {
       return context.transaction(async (ctx) => {
-        const { entity } = await ctx.requireAccess(entityId, "owner", true, "structural");
-        if (entity.entityType !== "project") throw new AccessDeniedError();
+        const access = await ctx.requireAccess(entityId, "owner", true, "structural");
+        if (access.entity.entityType !== "project") throw new AccessDeniedError();
         await requireUnassignedProjectActor(ctx, entityId, actorEntityId);
-        await permissionRepository(ctx).revoke({ entityId, actorEntityId });
+        // Entity locks do not hold the caller's organization role. Check ownership again last.
+        await ctx.requireAccess(entityId, "owner");
+        await changePermission(ctx, access, { actorEntityId });
       });
     },
     async getPicture(entityId: string, minimum: "view" | "edit" = "view") {

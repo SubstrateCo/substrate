@@ -99,12 +99,7 @@ export function createTasksService(deps: {
             return { id: input.taskEntityId };
           case "share":
             // Grants through this API apply only to projects.
-            await repos.projects.get(input.projectEntityId);
-            await repos.permissions.grant({
-              entityId: input.projectEntityId,
-              actorEntityId: input.actorEntityId,
-              level: input.level,
-            });
+            await repos.projects.share(input.projectEntityId, input.actorEntityId, input.level);
             break;
           case "revoke":
             await repos.projects.revoke(input.projectEntityId, input.actorEntityId);

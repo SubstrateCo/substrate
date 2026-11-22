@@ -6,7 +6,7 @@ import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { createActor } from "../actors/provisioning";
 import { describe, expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
 
@@ -95,6 +95,54 @@ describe("access controls", () => {
     // Lock path (2), target grant, one remaining-owner check, delete.
     expect(queries).toHaveLength(5);
     expect(await f.accessLevel(f.bob, contact.entityId)).toBe("owner");
+  });
+
+  test("unchanged grants and missing revocations write nothing, but still validate the target", async () => {
+    const alice = f.forActor(f.alice);
+    const contact = await alice.contacts.create({ displayName: "Shared" });
+    const unshared = await alice.contacts.create({ displayName: "Unshared" });
+    await alice.permissions.grant({
+      entityId: contact.entityId,
+      actorEntityId: f.bob,
+      level: "view",
+    });
+    // xmin changes with every row version, including an upsert that writes the same level.
+    const grantRow = () =>
+      f.db
+        .select({ version: sql<string>`xmin::text`, level: entityGrants.level })
+        .from(entityGrants)
+        .where(
+          and(eq(entityGrants.entityId, contact.entityId), eq(entityGrants.actorEntityId, f.bob)),
+        );
+    const [before] = await grantRow();
+    const { db, queries } = recordQueries();
+    const repos = new ActorRepositories(db, { organizationId: f.orgA, actorEntityId: f.alice });
+    const granted = await repos.transaction((tx) =>
+      tx.permissions.grant({ entityId: contact.entityId, actorEntityId: f.bob, level: "view" }),
+    );
+    // Lock path (2), target actor, existing grant.
+    expect(queries).toHaveLength(4);
+    expect(granted.hints).toEqual([]);
+    expect(await grantRow()).toEqual([before!]);
+    queries.length = 0;
+    const revoked = await repos.transaction((tx) =>
+      tx.permissions.revoke({ entityId: unshared.entityId, actorEntityId: f.bob }),
+    );
+    // Lock path (2), existing grant.
+    expect(queries).toHaveLength(3);
+    expect(revoked.hints).toEqual([]);
+    expect(queries.filter((query) => /^(insert|update|delete)\b/i.test(query))).toEqual([]);
+    await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.bob));
+    expect(
+      await rejection(
+        alice.permissions.grant({
+          entityId: contact.entityId,
+          actorEntityId: f.bob,
+          level: "view",
+        }),
+      ),
+    ).toBeInstanceOf(AccessDeniedError);
+    expect(await grantRow()).toEqual([before!]);
   });
 
   test("grants and revocations on a child reject; the container keeps its last owner", async () => {
