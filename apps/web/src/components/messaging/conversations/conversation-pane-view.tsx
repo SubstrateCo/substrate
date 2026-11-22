@@ -15,6 +15,7 @@ import {
 import type { ResourceStatus } from "@/lib/resource-state";
 
 type ConversationPaneProps = {
+  header?: ReactNode;
   actions?: ReactNode;
   leftNotice?: ReactNode;
   memberAction?: (member: HeaderMember) => ReactNode;
@@ -49,6 +50,7 @@ export function ConversationPane({
   leftNotice,
   memberAction,
   taskLink,
+  header,
 }: ConversationPaneProps) {
   const title = conversation ? conversationName(conversation) : "Conversation unavailable";
   const blocked = state === "error" || state === "unavailable";
@@ -58,17 +60,21 @@ export function ConversationPane({
     <PageLayout id="conversation" aria-label="Conversation">
       <PageContent>
         <section aria-label={title} className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface">
-          <PaneHeader
-            title={title}
-            blocked={blocked}
-            taskLink={taskLink}
-            conversation={conversation}
-            viewerId={viewerId}
-            memberAction={memberAction}
-            addingMembers={addingMembers}
-            onToggleMembers={onToggleMembers}
-            actions={actions}
-          />
+          {header === undefined ? (
+            <PaneHeader
+              title={title}
+              blocked={blocked}
+              taskLink={taskLink}
+              conversation={conversation}
+              viewerId={viewerId}
+              memberAction={memberAction}
+              addingMembers={addingMembers}
+              onToggleMembers={onToggleMembers}
+              actions={actions}
+            />
+          ) : (
+            header
+          )}
           {!blocked && !taskLink && addingMembers && membersForm}
           <PaneMessages
             title={title}

@@ -7,10 +7,13 @@ import { AgentSettingsLoading } from "@/components/agents/agent-settings-loading
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { SettingsContent } from "@/components/layout/settings-page";
 import { SettingsSection } from "@/components/layout/settings-section";
+import { MessageLoading } from "@/components/messaging/messages/message-loading";
 
 export function AgentPageLoading({ section }: { section: AgentPageSection }) {
   let content;
-  if (isAgentSettingsSection(section)) {
+  if (section === "messages") {
+    content = <MessageLoading label="Loading agent messages…" />;
+  } else if (isAgentSettingsSection(section)) {
     content = (
       <SettingsContent>
         <AgentSettingsLoading section={section} />

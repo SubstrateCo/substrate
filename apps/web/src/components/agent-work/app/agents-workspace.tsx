@@ -20,7 +20,12 @@ import { localAgentsOptions } from "@/queries/agent-work/local";
 import { agentStatusOptions, needsYouOptions } from "@/queries/agent-work/server";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 
-type AgentsSearch = { agentId?: string; turnId?: string; section?: AgentPageSection };
+type AgentsSearch = {
+  agentId?: string;
+  turnId?: string;
+  messageId?: string;
+  section?: AgentPageSection;
+};
 
 /**
  * The Agents app. Needs you comes from the server, so it works on every device. Activity,
@@ -31,12 +36,14 @@ export function AgentsWorkspace({
   organizationId,
   agentId,
   turnId,
+  messageId,
   section,
 }: {
   userId: string;
   organizationId: string;
   agentId?: string;
   turnId?: string;
+  messageId?: string;
   section: AgentPageSection;
 }) {
   const navigate = useNavigate();
@@ -56,7 +63,7 @@ export function AgentsWorkspace({
       search: {
         workspaceId: organizationId,
         ...search,
-        section: next === "activity" ? undefined : next,
+        section: next === "messages" ? undefined : next,
       },
     });
   const go = (search: AgentsSearch) => void navigate(agentLink(search));
@@ -66,6 +73,7 @@ export function AgentsWorkspace({
     return {
       id: agent.id,
       name: agent.name,
+      enabled: agent.enabled,
       image: agent.image,
       status: published && agentStatus(published),
     };
@@ -97,12 +105,15 @@ export function AgentsWorkspace({
         organizationId={organizationId}
         agentId={agentId}
         name={selected.name}
+        enabled={selected.enabled}
         homedHere={homedHere}
         status={status(agentId)}
         section={section}
         selectedTurnId={turnId}
+        messageId={messageId}
+        onMessageNavigate={(target) => go({ agentId, section: "messages", ...target })}
         onSectionChange={(next) => go({ agentId, section: next })}
-        onTranscript={(id) => go({ agentId, turnId: id })}
+        onTranscript={(id) => go({ agentId, section: "activity", turnId: id })}
         onDeleted={() => {
           go({});
           focusAfterRender(() => newAgentButton.current);
@@ -126,7 +137,7 @@ export function AgentsWorkspace({
             onClose={() => setCreating(false)}
             onCreated={(id) => {
               setCreating(false);
-              go({ agentId: id, section: "general" });
+              go({ agentId: id });
             }}
           />
         )
@@ -146,7 +157,7 @@ export function AgentsWorkspace({
             homedHere={homedHere}
             device={status(agentId)?.device?.name}
             turnId={turnId}
-            onClose={() => go({ agentId })}
+            onClose={() => go({ agentId, section: "activity" })}
           />
         )
       }

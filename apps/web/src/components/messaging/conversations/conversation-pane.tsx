@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Composer } from "../composer/composer";
 import { MessageList } from "../messages/message-list";
@@ -35,14 +35,25 @@ export function ConversationPane({
   userId,
   messageId,
   turnId,
+  header,
+  onNavigate,
 }: {
   organizationId: string;
   conversation: Conversation;
   userId: string;
   messageId?: string;
   turnId?: string;
+  header?: ReactNode;
+  onNavigate?: (target: { messageId?: string; turnId?: string }) => void;
 }) {
   const navigate = useNavigate();
+  const navigateConversation = (target: { messageId?: string; turnId?: string }) => {
+    if (onNavigate) return onNavigate(target);
+    void navigate({
+      to: "/messages",
+      search: { workspaceId: organizationId, conversationId: conversation.id, ...target },
+    });
+  };
   const { join } = useConversationManagement(organizationId);
   const task = conversation.task;
   const target = useQuery({
@@ -77,29 +88,12 @@ export function ConversationPane({
         canPost={conversation.canPost}
         header={<OlderMessages {...history} onOlder={() => loadOlder(timeline[0]?.id)} />}
         footer={<JumpToLatest {...history} />}
-        onThread={(id) => {
-          void navigate({
-            to: "/messages",
-            search: {
-              workspaceId: organizationId,
-              conversationId: conversation.id,
-              messageId: id,
-            },
-          });
-        }}
+        onThread={(id) => navigateConversation({ messageId: id })}
       />
     );
   // The transcript keeps the open thread in the URL, so closing it returns to that thread.
   const transcript = (openTurnId?: string) =>
-    void navigate({
-      to: "/messages",
-      search: {
-        workspaceId: organizationId,
-        conversationId: conversation.id,
-        messageId,
-        turnId: openTurnId,
-      },
-    });
+    navigateConversation({ messageId, turnId: openTurnId });
   let aside;
   if (turnId)
     aside = (
@@ -127,12 +121,7 @@ export function ConversationPane({
         root={target.data?.root}
         targetMessage={target.data?.message}
         canPost={conversation.canPost}
-        onClose={() => {
-          void navigate({
-            to: "/messages",
-            search: { workspaceId: organizationId, conversationId: conversation.id },
-          });
-        }}
+        onClose={() => navigateConversation({})}
       />
     );
   return (
@@ -143,6 +132,7 @@ export function ConversationPane({
       onTranscript={transcript}
     >
       <ConversationPaneView
+        header={header}
         conversation={resource.status === "unavailable" ? null : conversation}
         viewerId={userId}
         taskLink={

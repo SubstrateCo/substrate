@@ -5,12 +5,12 @@ import type { ComponentProps } from "react";
 import { CallsLog } from "../calls/calls-log";
 import { Routines } from "../routines/routines";
 import { AgentActivity } from "./agent-activity";
+import { AgentMessages } from "./agent-messages";
 import { AgentPageView } from "./agent-page-view";
 import { isAgentSettingsSection, type AgentPageSection } from "./agent-sections";
-import { AgentSettings } from "@/components/agents/agent-settings";
+import { AgentSettingsPanel } from "./agent-settings-panel";
 import { ContentNotice } from "@/components/feedback/content-notice";
-import { UnsavedDraftsProvider, useDraftKeys } from "@/components/feedback/unsaved-drafts";
-import { SettingsContent } from "@/components/layout/settings-page";
+import { UnsavedDraftsProvider } from "@/components/feedback/unsaved-drafts";
 import { Button } from "@/components/ui/button";
 import { agentStatus, homeDeviceNotice } from "@/lib/agent-work/status";
 import { Laptop } from "lucide-react";
@@ -32,10 +32,13 @@ function AgentPageContent({
   organizationId,
   agentId,
   name,
+  enabled,
   homedHere,
   status,
   section,
   selectedTurnId,
+  messageId,
+  onMessageNavigate,
   onSectionChange,
   onTranscript,
   onDeleted,
@@ -44,15 +47,17 @@ function AgentPageContent({
   organizationId: string;
   agentId: string;
   name: string;
+  enabled: boolean;
   homedHere: boolean;
   status?: AgentStatusView;
   section: AgentPageSection;
   selectedTurnId?: string;
+  messageId?: string;
+  onMessageNavigate: (target: { messageId?: string; turnId?: string }) => void;
   onSectionChange: (section: AgentPageSection) => void;
   onTranscript: (turnId: string) => void;
   onDeleted: () => void;
 }) {
-  const unsaved = useDraftKeys().filter(isAgentSettingsSection);
   const device = status?.device;
   const unavailable = !homedHere && (
     <ContentNotice
@@ -75,16 +80,29 @@ function AgentPageContent({
   let content;
   if (isAgentSettingsSection(section))
     content = (
-      <SettingsContent>
-        <AgentSettings
-          userId={userId}
-          organizationId={organizationId}
-          agentId={agentId}
-          section={section}
-          onSectionChange={onSectionChange}
-          onClose={onDeleted}
-        />
-      </SettingsContent>
+      <AgentSettingsPanel
+        userId={userId}
+        organizationId={organizationId}
+        agentId={agentId}
+        section={section}
+        onSectionChange={onSectionChange}
+        onDeleted={onDeleted}
+      />
+    );
+  else if (section === "messages")
+    content = (
+      <AgentMessages
+        key={agentId}
+        userId={userId}
+        organizationId={organizationId}
+        agentId={agentId}
+        name={name}
+        enabled={enabled}
+        messageId={messageId}
+        turnId={selectedTurnId}
+        onNavigate={onMessageNavigate}
+        onSettings={() => onSectionChange("general")}
+      />
     );
   else if (section === "calls")
     content = <CallsLog userId={userId} organizationId={organizationId} agentId={agentId} />;
@@ -109,7 +127,6 @@ function AgentPageContent({
       name={name}
       status={status && agentStatus(status)}
       section={section}
-      unsaved={unsaved}
       onSectionChange={onSectionChange}
     >
       {content}

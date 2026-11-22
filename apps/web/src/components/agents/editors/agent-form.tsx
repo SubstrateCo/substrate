@@ -28,7 +28,8 @@ import {
 } from "@/components/feedback/unsaved-drafts";
 import { FormTextField } from "@/components/forms/form-text-field";
 import { SettingsFooter } from "@/components/layout/settings-section";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Switch } from "@/components/ui/switch";
 import { z } from "zod";
 
 const agentFields = saveAgentInput.extend({
@@ -45,6 +46,7 @@ export type AgentSection = "skills" | "mcps";
 function definitionChanges(values: SaveAgentInput, saved: SaveAgentInput) {
   return [
     values.name !== saved.name ||
+      values.enabled !== saved.enabled ||
       values.harness !== saved.harness ||
       (values.model ?? undefined) !== (saved.model ?? undefined),
     values.instructions !== saved.instructions,
@@ -312,6 +314,24 @@ export function AgentForm({
                   <>
                     {nameField}
                     {picture}
+                    <form.Field name="enabled">
+                      {(field) => (
+                        <Field orientation="horizontal" className="items-center">
+                          <FieldContent>
+                            <FieldLabel htmlFor={`${formId}-enabled`}>Enabled</FieldLabel>
+                            <FieldDescription>
+                              Allow this agent to join conversations and respond to its triggers.
+                            </FieldDescription>
+                          </FieldContent>
+                          <Switch
+                            id={`${formId}-enabled`}
+                            checked={field.state.value}
+                            disabled={busy}
+                            onCheckedChange={(value) => field.handleChange(value)}
+                          />
+                        </Field>
+                      )}
+                    </form.Field>
                   </>
                 }
                 model={modelField}

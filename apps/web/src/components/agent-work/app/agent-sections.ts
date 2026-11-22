@@ -2,9 +2,12 @@
 export const agentSettingsSections = ["general", "instructions", "skills", "mcps", "run"] as const;
 export type AgentSettingsSection = (typeof agentSettingsSections)[number];
 
-/** Every section of an agent's page. Activity is the default and has no search value. */
-export const agentPageSections = ["routines", "calls", ...agentSettingsSections] as const;
-export type AgentPageSection = "activity" | (typeof agentPageSections)[number];
+export const agentConversationSections = ["messages", "activity", "routines", "calls"] as const;
+export type AgentConversationSection = (typeof agentConversationSections)[number];
+
+/** Messages is the default. Settings sections share one Settings tab. */
+export const agentPageSections = [...agentConversationSections, ...agentSettingsSections] as const;
+export type AgentPageSection = (typeof agentPageSections)[number];
 
 export const agentSectionLabels: Record<AgentSettingsSection, string> = {
   general: "General",

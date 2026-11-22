@@ -29,8 +29,8 @@ function Place({ organizationId, place }: { organizationId: string; place: Agent
 export function NeedsYou({ userId, organizationId }: { userId: string; organizationId: string }) {
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
   const { requests, agents, calls, desktopUpdateRequired } = needsYouItems(needsYou.data);
-  const agentLink = (agentId: string) =>
-    linkOptions({ to: "/agents", search: { workspaceId: organizationId, agentId } });
+  const agentLink = (agentId: string, section?: "activity") =>
+    linkOptions({ to: "/agents", search: { workspaceId: organizationId, agentId, section } });
   const entries: NeedsYouEntry[] = [
     ...desktopUpdateRequired.map((update) => ({
       key: `desktop-update:${update.userAgentId}`,
@@ -73,7 +73,7 @@ export function NeedsYou({ userId, organizationId }: { userId: string; organizat
           {status.device ? ` on ${status.device.name}` : ""}.
         </p>
       ),
-      agentLink: agentLink(status.userAgentId),
+      agentLink: agentLink(status.userAgentId, "activity"),
     })),
   ];
   return (

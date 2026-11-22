@@ -91,7 +91,7 @@ export function HomeDashboard({
       title: `${status.agent.name} needs you`,
       description: "Work stopped · open activity to decide what happens next",
       icon: <Hand className="size-4 text-warning" />,
-      link: agentLink(organizationId, status.userAgentId),
+      link: agentLink(organizationId, status.userAgentId, "activity"),
       trailing: "Review",
     })),
     ...desktopUpdateRequired.map((status): HomeItem => ({

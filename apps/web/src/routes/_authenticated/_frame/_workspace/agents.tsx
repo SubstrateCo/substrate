@@ -9,13 +9,14 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/agents")
   validateSearch: z.object({
     agentId: z.uuid().optional(),
     turnId: z.uuid().optional(),
+    messageId: z.uuid().optional(),
     section: z.enum(agentPageSections).optional(),
   }),
 });
 
 function AgentsRoute() {
   const { organizationId, session } = Route.useRouteContext();
-  const { agentId, turnId, section } = Route.useSearch();
+  const { agentId, turnId, messageId, section } = Route.useSearch();
   return (
     <AgentsWorkspace
       key={organizationId}
@@ -23,7 +24,8 @@ function AgentsRoute() {
       organizationId={organizationId}
       agentId={agentId}
       turnId={turnId}
-      section={section ?? "activity"}
+      messageId={messageId}
+      section={section ?? "messages"}
     />
   );
 }

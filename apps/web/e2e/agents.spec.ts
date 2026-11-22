@@ -1,17 +1,18 @@
-import { createAgent as createHomedAgent } from "./test-support/agent-work";
-import { conversation, test, visit, type Client } from "./test-support/fixtures";
+import { callTool, createAgent as createHomedAgent, threadTurn } from "./test-support/agent-work";
+import { conversation, post, test, visit, type Client } from "./test-support/fixtures";
 import { searches } from "./test-support/search";
 import { expect, type Page } from "@playwright/test";
+import { z } from "zod";
 
 const section = (page: Page, name: string) =>
   page
     .getByRole("navigation", { name: "Agent sections", exact: true })
-    .getByRole("link", { name, exact: true });
+    .getByRole("button", { name, exact: true });
 
 const instructions = (page: Page) =>
   page.getByRole("textbox", { name: "Additional instructions (optional)", exact: true });
 
-/** Creates an agent from the Agents app, which then opens its settings. */
+/** Creates an agent from the Agents app, then opens its settings. */
 async function createAgent(user: Client, name: string) {
   await visit(user, undefined, "/agents");
   await user.page.getByLabel("New agent", { exact: true }).first().click();
@@ -24,8 +25,144 @@ async function createAgent(user: Client, name: string) {
     .getByRole("button", { name: "Create agent", exact: true })
     .click();
   await expect(user.page.getByRole("dialog")).toHaveCount(0);
+  await user.page.getByRole("tab", { name: "Settings", exact: true }).click();
   await expect(user.page.getByLabel("Agent name", { exact: true })).toHaveValue(name);
 }
+
+test("selecting an agent opens its existing messages and settings keep the conversation intact", async ({
+  account,
+  client,
+}) => {
+  const agent = await createHomedAgent(account);
+  const dm = await post<{ id: string }>(account, "messaging/conversations", {
+    kind: "dm",
+    private: true,
+    agentIds: [agent.id],
+  });
+  const root = await post<{ id: string }>(account, "messaging/messages", {
+    conversationId: dm.id,
+    body: "Prepare the launch review",
+  });
+  await callTool(account, agent.id, threadTurn(dm.id, root.id, agent.installationId), "reply", {
+    body: "The launch summary is ready",
+    to: { conversationId: dm.id },
+  });
+  const user = await client(account);
+  await visit(user, undefined, "/agents");
+  await user.page.getByRole("link", { name: agent.name, exact: true }).click();
+  await expect(user.page.getByRole("tab", { name: "Messages", exact: true })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await expect(
+    user.page.getByRole("article").filter({ hasText: "Prepare the launch review" }),
+  ).toBeVisible();
+  const reply = user.page.getByRole("article").filter({ hasText: "The launch summary is ready" });
+  await expect(reply.getByText(agent.name, { exact: true })).toBeVisible();
+  const editor = user.page.getByRole("textbox", { name: `Message ${agent.name}`, exact: true });
+  await editor.fill("Review the checklist next");
+  await user.page.getByRole("tab", { name: "Settings", exact: true }).click();
+  await expect(user.page.getByLabel("Agent name", { exact: true })).toHaveValue(agent.name);
+  await user.page.getByRole("tab", { name: "Messages", exact: true }).click();
+  await expect(user.page.getByLabel("Agent name", { exact: true })).toHaveCount(0);
+  await expect(editor).toHaveText("Review the checklist next");
+  await editor.press("Enter");
+  await expect(
+    user.page.getByRole("article").filter({ hasText: "Review the checklist next" }),
+  ).toBeVisible();
+  const original = user.page.getByRole("article").filter({ hasText: "Prepare the launch review" });
+  await original.hover();
+  await original.getByRole("button", { name: "Reply in thread", exact: true }).click();
+  const thread = user.page.getByRole("complementary", { name: "Thread", exact: true });
+  await expect(thread).toBeVisible();
+  expect(new URL(user.page.url()).pathname).toBe("/agents");
+  expect(new URL(user.page.url()).searchParams.get("messageId")).toBe(root.id);
+  await user.page.reload();
+  await expect(thread).toBeVisible();
+  await visit(user, dm.id);
+  await expect(
+    user.page.getByRole("article").filter({ hasText: "Review the checklist next" }),
+  ).toBeVisible();
+});
+
+test("an agent without a DM waits for Start conversation and then reuses it", async ({
+  account,
+  client,
+}) => {
+  const agent = await createHomedAgent(account);
+  const user = await client(account);
+  await visit(user, undefined, "/agents", { agentId: agent.id });
+  const list = async () => {
+    const response = await account.request.get("/api/v1/messaging/conversations", {
+      params: { organizationId: account.organizationId },
+    });
+    expect(response.ok()).toBe(true);
+    const { data } = z
+      .object({
+        data: z.array(z.object({ id: z.uuid(), kind: z.string() })),
+      })
+      .parse(await response.json());
+    return data.filter((item) => item.kind === "dm");
+  };
+  const start = user.page.getByRole("button", { name: "Start conversation", exact: true });
+  await expect(start).toBeVisible();
+  expect(await list()).toHaveLength(0);
+  await user.page.getByRole("tab", { name: "Settings", exact: true }).click();
+  await expect(user.page.getByLabel("Agent name", { exact: true })).toHaveValue(agent.name);
+  await user.page.getByRole("tab", { name: "Messages", exact: true }).click();
+  await expect(start).toBeVisible();
+  await user.page.reload();
+  await expect(start).toBeVisible();
+  expect(await list()).toHaveLength(0);
+  await start.click();
+  const editor = user.page.getByRole("textbox", { name: `Message ${agent.name}`, exact: true });
+  await expect(editor).toBeVisible();
+  await expect(user.page.getByRole("article")).toHaveCount(0);
+  const created = await list();
+  expect(created).toHaveLength(1);
+  await user.page.reload();
+  await expect(editor).toBeVisible();
+  expect(await list()).toEqual(created);
+});
+
+test("a disabled agent directs the owner to enable it before starting a conversation", async ({
+  account,
+  client,
+}) => {
+  const name = `Disabled helper ${crypto.randomUUID()}`;
+  const saved = await account.request.post("/api/v1/agents/actors/save", {
+    data: { name, instructions: "", harness: "opencode", enabled: false },
+  });
+  expect(saved.ok()).toBe(true);
+  const { data: agent } = z.object({ data: z.object({ id: z.uuid() }) }).parse(await saved.json());
+  const user = await client(account);
+  await visit(user, undefined, "/agents", { agentId: agent.id });
+  await expect(
+    user.page.getByRole("heading", { name: "Agent is disabled", exact: true }),
+  ).toBeVisible();
+  await expect(
+    user.page.getByRole("button", { name: "Start conversation", exact: true }),
+  ).toHaveCount(0);
+  await user.page.getByRole("button", { name: "Open settings", exact: true }).click();
+  const enabled = user.page.getByRole("switch", { name: "Enabled", exact: true });
+  await expect(enabled).not.toBeChecked();
+  await enabled.click();
+  await user.page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(
+    user.page
+      .getByRole("region", { name: "Agent details", exact: true })
+      .getByText("All changes saved", { exact: true }),
+  ).toBeVisible();
+  await user.page.getByRole("tab", { name: "Messages", exact: true }).click();
+  await user.page.getByRole("button", { name: "Start conversation", exact: true }).click();
+  await expect(
+    user.page.getByRole("textbox", { name: `Message ${name}`, exact: true }),
+  ).toBeVisible();
+  await user.page.reload();
+  await expect(
+    user.page.getByRole("textbox", { name: `Message ${name}`, exact: true }),
+  ).toBeVisible();
+});
 
 test("agent definitions and run settings can be created, edited, persisted and deleted", async ({
   account,
@@ -81,7 +218,18 @@ test("agent definitions and run settings can be created, edited, persisted and d
   await expect(directMessage).toBeChecked({ checked: !enabled });
   await section(user.page, "Instructions").click();
   await instructions(user.page).fill("Unsaved draft");
-  await user.page.getByRole("button", { name: "Discard", exact: true }).click();
+  await user.page.getByRole("tab", { name: "Messages", exact: true }).click();
+  const discard = user.page.getByRole("dialog", { name: "Discard unsaved changes?", exact: true });
+  await discard.getByRole("button", { name: "Keep editing", exact: true }).click();
+  await expect(instructions(user.page)).toHaveValue("Unsaved draft");
+  await user.page.getByRole("tab", { name: "Messages", exact: true }).click();
+  await discard.getByRole("button", { name: "Discard changes", exact: true }).click();
+  await expect(user.page.getByRole("tab", { name: "Messages", exact: true })).toHaveAttribute(
+    "aria-selected",
+    "true",
+  );
+  await user.page.getByRole("tab", { name: "Settings", exact: true }).click();
+  await section(user.page, "Instructions").click();
   await expect(instructions(user.page)).toHaveValue("Summarize release risks only.");
 
   await section(user.page, "General").click();
