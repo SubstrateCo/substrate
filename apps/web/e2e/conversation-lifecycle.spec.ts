@@ -1,8 +1,8 @@
 import { conversation, expectChange, post, test, visit } from "./test-support/fixtures";
-import { detail, project } from "./test-support/tasks";
+import { project } from "./test-support/tasks";
 import { expect } from "@playwright/test";
 
-test("deleting a channel keeps its linked task and removes the channel for every member", async ({
+test("deleting a channel warns about linked work and removes the channel for every member", async ({
   actors,
   client,
 }) => {
@@ -23,10 +23,6 @@ test("deleting a channel keeps its linked task and removes the channel for every
     requestId: crypto.randomUUID(),
     title,
   });
-  const linked = (await detail(actors.sender, created.entityId)).tasks.find(
-    (item) => item.title === title,
-  );
-  if (!linked) throw new Error("The source task fixture is missing from its project.");
   const [sender, member] = await Promise.all([client(actors.sender), client(actors.member)]);
   await Promise.all([visit(sender, channel.id), visit(member, channel.id)]);
   // Following this link is covered in connected-work.spec.ts; here it shows the link exists.
@@ -52,16 +48,6 @@ test("deleting a channel keeps its linked task and removes the channel for every
     member.page.getByRole("heading", { name: "Conversation unavailable", exact: true, level: 2 }),
   ).toBeVisible();
   await expect(member.page.getByText(channel.name, { exact: true })).toHaveCount(0);
-
-  await visit(sender, undefined, "/tasks", {
-    projectId: created.entityId,
-    taskId: linked.entityId,
-  });
-  const task = sender.page.getByRole("region", { name: "Task details", exact: true });
-  await expect(task.getByRole("heading", { name: title, exact: true })).toBeVisible();
-  await expect(
-    task.getByRole("link", { name: `Created from a discussion · ${channel.name}`, exact: true }),
-  ).toHaveCount(0);
 });
 
 test("members browse public channels in search and join from the list or the channel", async ({

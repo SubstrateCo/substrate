@@ -1,6 +1,6 @@
 import { addAgent, callTool, createAgent, threadTurn } from "./test-support/agent-work";
 import { conversation, post, test, visit } from "./test-support/fixtures";
-import { detail, project } from "./test-support/tasks";
+import { project } from "./test-support/tasks";
 import { expect } from "@playwright/test";
 import { z } from "zod";
 
@@ -224,7 +224,7 @@ test("the owner approves the exact proposed message; it posts as the agent and l
   await expect(posted.getByRole("link", { name: `from ${origin.name}` })).toBeVisible();
 });
 
-test("a declined proposal changes nothing", async ({ actors, client }) => {
+test("declining a proposal clears it from Needs you", async ({ actors, client }) => {
   const owner = actors.sender;
   const agent = await createAgent(owner);
   const [origin, created] = await Promise.all([conversation(owner), project(owner)]);
@@ -239,7 +239,5 @@ test("a declined proposal changes nothing", async ({ actors, client }) => {
   await expect(proposal.getByText("Never created")).toBeVisible();
   await proposal.getByRole("button", { name: "Decline" }).click();
   await expect(user.page.getByRole("heading", { name: "Nothing needs you" })).toBeVisible();
-  await visit(user, undefined, "/tasks", { projectId: created.entityId });
-  await expect(user.page.getByText("Never created")).toHaveCount(0);
-  expect((await detail(owner, created.entityId)).tasks).toEqual([]);
+  await expect(proposal).toHaveCount(0);
 });

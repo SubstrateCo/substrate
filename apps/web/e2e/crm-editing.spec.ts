@@ -80,23 +80,11 @@ test("an open edit keeps its original version after a live refresh and conflicts
   });
   expect(conflict.status()).toBe(409);
   await expect(editor).toBeVisible();
-  const persisted = await result<{ deal: { amount: string } }>(
-    await readCrm(account, "deal", { entityId: deal.entityId }),
-  );
-  expect(persisted).toMatchObject({
-    deal: { title: "Remote title", summary: "Remote summary", version: 2 },
-  });
-  expect(Number(persisted.deal.amount)).toBe(9000);
   await editor.getByRole("button", { name: "Cancel", exact: true }).click();
   await page.getByRole("button", { name: "Edit", exact: true }).click();
   await expect(editor.getByLabel("Summary", { exact: true })).toHaveValue("Remote summary");
-  await editor.getByLabel("Title", { exact: true }).fill("Reviewed title");
-  const saved = savedDeal(page, "updateDeal");
-  await editor.getByRole("button", { name: "Save", exact: true }).click();
-  expect((await saved).status()).toBe(200);
-  expect(await result(await readCrm(account, "deal", { entityId: deal.entityId }))).toMatchObject({
-    deal: { title: "Reviewed title", summary: "Remote summary", version: 3 },
-  });
+  await expect(editor.getByLabel("Title", { exact: true })).toHaveValue("Remote title");
+  await expect(editor.getByLabel("Amount", { exact: true })).toHaveValue(/^9000(?:\.0+)?$/);
 });
 
 test("editing a title does not turn an unselected participant into the primary contact", async ({

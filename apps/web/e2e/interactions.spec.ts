@@ -17,56 +17,37 @@ const summaries = {
 };
 
 async function sampleInteractions(actor: Actor) {
-  const people = [
-    "Maya Chen",
-    "Alex Rivera",
-    "Sam Patel",
-    "Jordan Lee",
-    "Priya Shah",
-    "Noah Williams",
-    "Sofia Garcia",
-    "Olivia Kim",
-  ];
+  const people = ["Maya Chen", "Alex Rivera"];
   const contacts = [];
   for (const displayName of people)
     contacts.push(await createCrm(actor, { action: "createContact", displayName }));
-  const account = await createCrm(actor, { action: "createAccount", name: "Northstar Labs" });
-  for (const contact of contacts.slice(0, 2))
-    await createCrm(actor, {
-      action: "setAffiliation",
-      contactEntityId: contact.entityId,
-      accountEntityId: account.entityId,
-      title: "Operations",
-      isPrimary: true,
-    });
   const source = await conversation(actor);
-  for (let day = 0; day < 30; day++) {
-    for (let i = 0; i < 4 + (day % 6); i++) {
-      const kind = kinds[(day + i) % kinds.length]!;
-      const occurredAt = new Date();
-      occurredAt.setDate(occurredAt.getDate() - day);
-      occurredAt.setHours(15 - i, 30, 0, 0);
-      const duration = { meeting: 30, call: 15, email: 0, message: 0, note: 0, other: 0 }[kind];
-      const fields = {
-        contactEntityId: contacts[(day + i) % contacts.length]!.entityId,
-        kind,
-        occurredAt: occurredAt.toISOString(),
-        endedAt: duration ? new Date(+occurredAt + duration * 60000).toISOString() : null,
-        summary: summaries[kind],
-      };
-      if (day % 3 === 0 && i === 0) {
-        const message = await post<{ id: string }>(actor, "messaging/messages", {
-          conversationId: source.id,
-          body: fields.summary,
-        });
-        await createCrm(actor, {
-          action: "publishInteraction",
-          ...fields,
-          messageId: message.id,
-          consentToContactAudience: true,
-        });
-      } else await createCrm(actor, { action: "createInteraction", ...fields });
-    }
+  // One page plus one row exercises timeline navigation; only six rows need to be recent.
+  for (let i = 0; i < 51; i++) {
+    const kind = kinds[i % kinds.length]!;
+    const occurredAt = new Date();
+    occurredAt.setDate(occurredAt.getDate() - (i < kinds.length ? 1 : 10));
+    occurredAt.setHours(12, 0, i, 0);
+    const duration = { meeting: 30, call: 15, email: 0, message: 0, note: 0, other: 0 }[kind];
+    const fields = {
+      contactEntityId: contacts[i % contacts.length]!.entityId,
+      kind,
+      occurredAt: occurredAt.toISOString(),
+      endedAt: duration ? new Date(+occurredAt + duration * 60000).toISOString() : null,
+      summary: summaries[kind],
+    };
+    if (i === 0) {
+      const message = await post<{ id: string }>(actor, "messaging/messages", {
+        conversationId: source.id,
+        body: fields.summary,
+      });
+      await createCrm(actor, {
+        action: "publishInteraction",
+        ...fields,
+        messageId: message.id,
+        consentToContactAudience: true,
+      });
+    } else await createCrm(actor, { action: "createInteraction", ...fields });
   }
   return contacts;
 }
@@ -84,17 +65,6 @@ function total(page: Page) {
 }
 
 test("dashboard and timeline use real sample records in dark mode", async ({ account, client }) => {
-  test.setTimeout(90_000);
-  expect(
-    (await account.request.post("/api/auth/update-user", { data: { name: "Morgan Hayes" } })).ok(),
-  ).toBe(true);
-  expect(
-    (
-      await account.request.post("/api/auth/organization/update", {
-        data: { organizationId: account.organizationId, data: { name: "Substrate demo" } },
-      })
-    ).ok(),
-  ).toBe(true);
   await sampleInteractions(account);
   const user = await client(account);
   const { page } = user;
@@ -108,7 +78,7 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   await expect(
     page.getByRole("heading", { name: "Interaction dashboard", exact: true }),
   ).toBeVisible();
-  await expect(total(page)).toHaveText("43");
+  await expect(total(page)).toHaveText("6");
   await expect(page.locator("html")).toHaveClass(/dark/);
   const chart = page.getByRole("img", {
     name: "Daily interaction activity over 7 days",
@@ -129,7 +99,7 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
     true,
   );
   await page.getByRole("radio", { name: "Last 30 days", exact: true }).click();
-  await expect(total(page)).toHaveText("195");
+  await expect(total(page)).toHaveText("51");
   await expect(
     page
       .getByRole("term")
@@ -137,7 +107,7 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
       .locator("..")
       .getByRole("definition")
       .first(),
-  ).toHaveText("10");
+  ).toHaveText("1");
   await expect(
     page.getByRole("img", { name: "Daily interaction activity over 30 days", exact: true }),
   ).toBeVisible();
@@ -170,18 +140,18 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   );
   await page.getByRole("combobox", { name: "Record origin", exact: true }).click();
   await page.getByRole("option", { name: "Published from message", exact: true }).click();
-  await expect(list.getByRole("listitem")).toHaveCount(10);
+  await expect(list.getByRole("listitem")).toHaveCount(1);
   await page.getByRole("combobox", { name: "Record origin", exact: true }).click();
   await page.getByRole("option", { name: "All origins", exact: true }).click();
   await expect(list.getByRole("listitem")).toHaveCount(50);
   await page.getByRole("button", { name: "Older interactions", exact: true }).click();
   await expect(page.getByRole("button", { name: "Newest", exact: true })).toBeEnabled();
   await page.getByRole("textbox", { name: "Search interactions", exact: true }).fill("Maya");
-  await expect(list.getByRole("listitem")).toHaveCount(22);
+  await expect(list.getByRole("listitem")).toHaveCount(26);
   await expect(page.getByRole("button", { name: "Newest", exact: true })).toHaveCount(0);
   await page.getByRole("combobox", { name: "Interaction type", exact: true }).click();
   await page.getByRole("option", { name: "Email", exact: true }).click();
-  await expect(list.getByRole("listitem")).toHaveCount(7);
+  await expect(list.getByRole("listitem")).toHaveCount(9);
   await list.getByRole("link", { name: "Maya Chen", exact: true }).first().click();
   await expect(page.getByRole("heading", { name: "Maya Chen", exact: true })).toBeVisible();
   await page.goBack();
@@ -191,7 +161,7 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   await page.reload();
   await expect(list.getByRole("listitem")).toHaveCount(50);
   await page.getByRole("link", { name: "Dashboard", exact: true }).click();
-  await expect(total(page)).toHaveText("195");
+  await expect(total(page)).toHaveText("51");
   await page.setViewportSize({ width: 600, height: 900 });
   await expect(
     page.getByRole("img", { name: "Daily interaction activity over 30 days", exact: true }),

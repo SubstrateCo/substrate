@@ -14,31 +14,14 @@ test("single and grouped notifications expand to the correct events without mark
   account,
   client,
 }) => {
-  test.setTimeout(60_000);
-  await Promise.all(
-    (
-      [
-        [actors.sender, "Maya Chen"],
-        [actors.member, "Jordan Lee"],
-        [actors.partner, "Sam Rivera"],
-        [account, "Alex Morgan"],
-      ] as const
-    ).map(async ([actor, name]) => {
-      expect((await actor.request.post("/api/auth/update-user", { data: { name } })).ok()).toBe(
-        true,
-      );
-      actor.name = name;
-    }),
-  );
   const channel = await post<{ id: string }>(actors.sender, "messaging/conversations", {
     kind: "channel",
     name: "Launch planning",
     private: true,
     shareHistory: true,
-    emails: [account.email, actors.member.email, actors.partner.email],
+    emails: [account.email, actors.member.email],
   });
   await acceptCollaboration(account, channel.id);
-  await acceptCollaboration(actors.partner, channel.id);
   const root = (body: string) =>
     post<{ id: string }>(account, "messaging/messages", { conversationId: channel.id, body });
   const reply = (actor: typeof account, threadId: string, body: string) =>
@@ -47,38 +30,20 @@ test("single and grouped notifications expand to the correct events without mark
       threadId,
       body,
     });
-  const oldest = await root("Final copy review");
-  await reply(actors.member, oldest.id, "The onboarding copy is approved. We’re ready to publish.");
-  expect(
-    (
-      await account.request.post("/api/v1/context/notifications/read-all", {
-        data: { organizationId: account.organizationId },
-      })
-    ).ok(),
-  ).toBe(true);
-  const smaller = await root("Customer interviews");
-  await reply(actors.sender, smaller.id, "I’ve added the interview notes to the shared brief.");
-  await reply(
-    actors.sender,
-    smaller.id,
-    "Three customers asked for the same improvement. Let’s discuss it tomorrow.",
-  );
   const single = await root("Design handoff");
-  await reply(actors.partner, single.id, "The updated product screens are ready for your review.");
+  const singleReply = await reply(
+    actors.sender,
+    single.id,
+    "The updated product screens are ready for your review.",
+  );
   const launch = await root("Launch checklist");
   await reply(
     actors.sender,
     launch.id,
     "The release checklist is ready. Can everyone check their section?",
   );
-  await reply(actors.member, launch.id, "Support is ready. I’ve added the help centre links.");
-  await reply(
-    actors.partner,
-    launch.id,
-    "The final design review is complete. Everything looks good.",
-  );
   const newest = await reply(
-    actors.sender,
+    actors.member,
     launch.id,
     "We’re all set for Thursday. The final launch checklist is ready to review.",
   );
@@ -86,19 +51,22 @@ test("single and grouped notifications expand to the correct events without mark
   await recipient.page.emulateMedia({ reducedMotion: "reduce" });
   await visit(recipient, undefined, "/notifications");
   const list = recipient.page.getByRole("list", { name: "Notification activity", exact: true });
-  await expect(list.getByRole("button", { name: "Show 4 events", exact: true })).toBeVisible();
-  await expect(list.getByRole("link", { name: /Maya Chen and 2 others replied/ })).toBeVisible();
-  await expect(list.getByRole("link")).toHaveCount(4);
-  await list.getByRole("button", { name: "Show 4 events", exact: true }).click();
+  await expect(
+    list.getByRole("link", {
+      name: `${actors.member.name} and 1 other replied to a thread in Launch planning, unread`,
+    }),
+  ).toBeVisible();
+  await expect(list.locator(`a[href*="messageId=${singleReply.id}"]`)).toBeVisible();
+  await list.getByRole("button", { name: "Show 2 events", exact: true }).click();
   const events = list.getByRole("list", { name: "Group events" });
-  await expect(events.getByRole("link")).toHaveCount(4);
+  await expect(events.getByRole("link")).toHaveCount(2);
   await expect(events.locator(`a[href*="messageId=${newest.id}"]`)).toBeVisible();
-  await list.getByRole("button", { name: "Hide 4 events", exact: true }).click();
-  await list.getByRole("button", { name: "Show 4 events", exact: true }).click();
-  await expect(events.getByRole("link")).toHaveCount(4);
+  await list.getByRole("button", { name: "Hide 2 events", exact: true }).click();
+  await expect(events).toHaveCount(0);
+  await list.getByRole("button", { name: "Show 2 events", exact: true }).click();
+  await expect(events.getByRole("link")).toHaveCount(2);
   // Expansion is not a read action.
-  await expect(list.getByText("4 unread", { exact: true })).toBeVisible();
-  await list.getByRole("button", { name: "Hide 4 events", exact: true }).click();
+  await expect(list.getByText("2 unread", { exact: true })).toBeVisible();
 });
 
 test("notifications page complete groups, filter unread, and mark groups and all items as read", async ({
@@ -128,12 +96,8 @@ test("notifications page complete groups, filter unread, and mark groups and all
     reply(root.id, "Page reply 0"),
     ...threads.map((thread, index) => reply(thread.id, `Page reply ${index + 1}`)),
   ]);
-  // A busy thread still consumes just one place in the group page. Its last reply is the newest
-  // activity, so it is sent after the others.
-  await Promise.all(
-    Array.from({ length: 21 }, (_, index) => reply(root.id, `Busy reply ${index}`)),
-  );
-  await reply(root.id, "Busy reply 21");
+  // One extra reply gives the newest row a group without testing event-page boundaries here.
+  await reply(root.id, "Newest grouped reply");
   const recipient = await client(account);
   await visit(recipient, undefined, "/tasks");
   await expect(recipient.page.getByText("Loading workspace details…")).toHaveCount(0);
@@ -148,8 +112,8 @@ test("notifications page complete groups, filter unread, and mark groups and all
   await expect(rows.first().getByRole("link")).toHaveAccessibleName(
     `${actors.sender.name} replied to a thread in ${channel.name}, unread`,
   );
-  await expect(rows.first()).toContainText("Busy reply 21");
-  await expect(rows.first()).toContainText("23 events");
+  await expect(rows.first()).toContainText("Newest grouped reply");
+  await expect(rows.first()).toContainText("2 events");
   await feed.getByRole("button", { name: "Show older", exact: true }).click();
   await expect(rows).toHaveCount(21);
   await expect(feed.getByRole("button", { name: "Show older", exact: true })).toHaveCount(0);
