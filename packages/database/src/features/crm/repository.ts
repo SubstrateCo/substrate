@@ -30,7 +30,7 @@ import {
 import { requireHumanCrmAdmin, settingsRepository } from "./settings";
 import { crmSharing } from "./sharing";
 import { timeline } from "./timeline";
-import { and, asc, eq, gt, ilike, inArray, isNull, isNotNull, sql } from "drizzle-orm";
+import { and, asc, eq, gt, ilike, inArray, isNull, isNotNull, ne, sql } from "drizzle-orm";
 import { z } from "zod";
 
 type ListOptions = {
@@ -60,15 +60,17 @@ export function crmRepository(context: RepositoryContext) {
     if (access.entity.entityType !== type) throw new AccessDeniedError();
     return access;
   }
-  async function active(ctx: RepositoryContext, id: string, type: "account" | "contact") {
-    await requireType(ctx, id, type);
-    const table = type === "account" ? crmAccounts : crmContactProfiles;
-    const column = type === "account" ? crmAccounts.entityId : crmContactProfiles.contactEntityId;
-    const [row] = await ctx.db
-      .select()
-      .from(table)
-      .where(and(eq(table.organizationId, org), eq(column, id)));
-    if (row?.archivedAt) throw new ValidationError("Restore the archived record first.");
+  async function requireAffiliationAccess(
+    ctx: RepositoryContext,
+    contactId: string,
+    accountId: string,
+  ) {
+    await ctx.lockAccessPaths([contactId, accountId]);
+    await requireAppEnabled(ctx, "crm", true);
+    const access = await ctx.requireAccessAll([contactId, accountId], "edit");
+    const types = new Map(access.map(({ entity }) => [entity.entityId, entity.entityType]));
+    if (types.get(contactId) !== "contact" || types.get(accountId) !== "account")
+      throw new AccessDeniedError();
   }
   async function owner(ctx: RepositoryContext) {
     await ctx.requireActiveActor();
@@ -373,11 +375,19 @@ export function crmRepository(context: RepositoryContext) {
       isPrimary: boolean;
     }) {
       return context.transaction(async (ctx) => {
-        await ctx.lockAccessPaths([input.contactEntityId, input.accountEntityId]);
-        await requireType(ctx, input.contactEntityId, "contact", true);
-        await requireType(ctx, input.accountEntityId, "account", true);
-        await active(ctx, input.contactEntityId, "contact");
-        await active(ctx, input.accountEntityId, "account");
+        await requireAffiliationAccess(ctx, input.contactEntityId, input.accountEntityId);
+        const [archive] = await ctx.db.execute<{ contact: Date | null; account: Date | null }>(sql`
+          select (select ${crmContactProfiles.archivedAt}
+            from ${crmContactProfiles}
+            where ${crmContactProfiles.organizationId} = ${org}
+              and ${crmContactProfiles.contactEntityId} = ${input.contactEntityId}) as contact,
+            (select ${crmAccounts.archivedAt}
+            from ${crmAccounts}
+            where ${crmAccounts.organizationId} = ${org}
+              and ${crmAccounts.entityId} = ${input.accountEntityId}) as account
+        `);
+        if (archive?.contact || archive?.account)
+          throw new ValidationError("Restore the archived record first.");
         const [previous] = await ctx.db
           .select()
           .from(crmAffiliations)
@@ -396,6 +406,8 @@ export function crmRepository(context: RepositoryContext) {
               and(
                 eq(crmAffiliations.organizationId, org),
                 eq(crmAffiliations.contactEntityId, input.contactEntityId),
+                eq(crmAffiliations.isPrimary, true),
+                ne(crmAffiliations.accountEntityId, input.accountEntityId),
               ),
             );
         const [row] = await ctx.db
@@ -433,9 +445,7 @@ export function crmRepository(context: RepositoryContext) {
     },
     async removeAffiliation(contactId: string, accountId: string) {
       return context.transaction(async (ctx) => {
-        await ctx.lockAccessPaths([contactId, accountId]);
-        await requireType(ctx, contactId, "contact", true);
-        await requireType(ctx, accountId, "account", true);
+        await requireAffiliationAccess(ctx, contactId, accountId);
         const removed = await ctx.db
           .delete(crmAffiliations)
           .where(
