@@ -4,19 +4,26 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ConflictError } from "../../errors";
 import {
+  actors,
   agentAuditEvents,
   agentInvocations,
   agentWakes,
   member,
   messagingMessages,
 } from "../../schema";
-import { callerFixture, deviceAgentWork, ownerAgentWork } from "../../testing/agent-work";
+import {
+  callerFixture,
+  deviceAgentWork,
+  ownerAgentWork,
+  threadTurn,
+} from "../../testing/agent-work";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { createAgentRepository } from "../agents/repository";
 import { contextSearch } from "../context/search";
+import { auditCallerTool } from "../mcp/caller-turn";
 import { createMessagingService } from "../messaging/service";
 import { admit } from "./admission";
 import { expireInvocations, revokedInvocations } from "./invocations";
@@ -322,6 +329,96 @@ test("one message batches caller facts and wake links across agents", async () =
     expect(wakes.find((wake) => wake.id === call.wakeId)?.sourceRef).toEqual({
       invocationId: call.id,
     });
+});
+
+test("passive thread replies read no history or caller facts; only mentions call", async () => {
+  const x = await callerFixture(f);
+  await x.policy("anyone");
+  const second = await ownedAgent(f, "carol");
+  await (
+    await ownerAgentWork(f.db, { userId: "carol", organizationId: f.orgA })
+  ).saveCallerPolicy(second.agentId, "ask");
+  await x.carol.addAgent(x.channel.id, second.agentId);
+  // Bob's call is admitted and the agent answers it in the thread, as a caller turn records it.
+  const root = await x.bob.sendMessage(x.channel.id, `${x.mention} draft the plan`);
+  const answered = await callOf(root.id);
+  const turn = { ...threadTurn(x.channel.id, root.id), invocationIds: [answered.id] };
+  const reply = await x.call("reply", { requestId: crypto.randomUUID(), body: "Draft" }, turn);
+  await auditCallerTool(f.db, [answered], {
+    tool: "reply",
+    readOnly: false,
+    turnId: turn.turnId,
+    targetIds: [reply.messageId],
+  });
+  const before = {
+    calls: (await calls()).length,
+    wakes: (await f.db.select().from(agentWakes)).length,
+  };
+  const inThread = async (userId: string, body: string) => {
+    const [author] = await f.db
+      .select({ id: actors.entityId })
+      .from(actors)
+      .where(and(eq(actors.userId, userId), eq(actors.organizationId, f.orgA)));
+    const [message] = await f.db
+      .insert(messagingMessages)
+      .values({
+        conversationId: x.channel.id,
+        threadId: root.id,
+        authorActorEntityId: author!.id,
+        authorOrganizationId: f.orgA,
+        body,
+      })
+      .returning();
+    const recorded = recordQueries();
+    await recorded.db.transaction((tx) =>
+      admit(tx, [
+        {
+          type: "message",
+          organizationId: f.orgA,
+          author: { kind: "human", userId },
+          message: message!,
+          conversationKind: "channel",
+        },
+      ]),
+    );
+    return { message: message!, ...recorded };
+  };
+
+  // Passive replies from the answered caller and from the owner read only the candidates.
+  for (const userId of ["bob", "alice"]) {
+    const passive = await inThread(userId, "thanks, one more detail");
+    expect(passive.queries).toHaveLength(1);
+    expect(passive.queries[0]).toContain('"messaging_participants"');
+  }
+  expect((await calls()).length).toBe(before.calls);
+  expect(await f.db.select().from(agentWakes)).toHaveLength(before.wakes);
+
+  // A re-mention of one agent reads caller facts only for that agent and admits its call.
+  const again = await inThread("bob", `${x.mention} revise it`);
+  const factQueries = again.queries.flatMap((query, index) =>
+    query.includes('"user_agent_callers"') ? [again.parameters[index]!] : [],
+  );
+  expect(factQueries).toHaveLength(1);
+  expect(factQueries[0]).toContain(x.agent.actorId);
+  expect(factQueries[0]).not.toContain(second.actorId);
+  // Candidates, fresh policies, membership, and caller facts; no thread history.
+  expect(again.queries.filter((query) => query.startsWith("select "))).toHaveLength(4);
+  expect(again.queries.some((query) => query.includes('"agent_requests"'))).toBe(false);
+  expect((await calls()).filter((row) => row.messageId === again.message.id)).toEqual([
+    expect.objectContaining({ userAgentId: x.agent.agentId, status: "admitted", kind: "mention" }),
+  ]);
+  const [wake] = await f.db
+    .select()
+    .from(agentWakes)
+    .where(eq(agentWakes.dedupeKey, `call:${(await callOf(again.message.id)).id}`));
+  expect(wake).toMatchObject({ sessionKey: sessionKeys.thread(root.id) });
+
+  // A mention of the other agent holds only its call, under its own policy.
+  const held = await inThread("bob", `@[agent:${second.actorId}] check it`);
+  expect((await calls()).filter((row) => row.messageId === held.message.id)).toEqual([
+    expect.objectContaining({ userAgentId: second.agentId, status: "pending_approval" }),
+  ]);
+  expect(await f.db.select().from(agentWakes)).toHaveLength(before.wakes + 1);
 });
 
 test("batched caller visibility remains bound to each agent owner", async () => {

@@ -14,7 +14,7 @@ import { expect, test } from "bun:test";
 const agent = { actorId: "a1", organizationId: "o1", userAgentId: "ua1", ownerUserId: "alice" };
 const message = { id: "m2", conversationId: "c1", threadId: "m1", body: "" };
 const owner = { kind: "human" as const, userId: "alice" };
-const facts: MessageFacts = { agent, mentioned: false, workedInThread: false, disabled: [] };
+const facts: MessageFacts = { agent, mentioned: false, disabled: [] };
 
 const sent = (
   author: MessageTrigger["author"],
@@ -54,22 +54,12 @@ const messageCases: [string, MessageTrigger, Partial<MessageFacts>, AdmissionDec
     {},
     { type: "deny", reason: "not_triggered" },
   ],
+  ["a mention wins over a DM", sent(owner, "dm"), { mentioned: true }, admitted("mention", dm)],
+  ["an owner's DM wakes the agent", sent(owner, "dm"), {}, admitted("direct_message", dm)],
   [
-    "a mention wins over a DM and a worked thread",
-    sent(owner, "dm"),
-    { mentioned: true, workedInThread: true },
-    admitted("mention", dm),
-  ],
-  [
-    "a DM wins over a worked thread",
-    sent(owner, "dm"),
-    { workedInThread: true },
-    admitted("direct_message", dm),
-  ],
-  [
-    "past thread participation does not start another turn",
+    "an owner's thread reply without a mention does not start another turn",
     sent(owner, "group"),
-    { workedInThread: true },
+    {},
     { type: "deny", reason: "not_triggered" },
   ],
   [
@@ -81,7 +71,7 @@ const messageCases: [string, MessageTrigger, Partial<MessageFacts>, AdmissionDec
   [
     "a disabled weaker kind does not stop a stronger one",
     sent(owner, "channel"),
-    { mentioned: true, workedInThread: true, disabled: ["thread_reply"] },
+    { mentioned: true, disabled: ["thread_reply"] },
     admitted("mention", thread),
   ],
 ];
@@ -100,7 +90,6 @@ const caller: CallerFacts = {
   actorId: "bob-actor",
   ownerCanSee: true,
   allowlisted: false,
-  answeredInThread: false,
   pending: 0,
   admittedToday: 0,
   invocationId: "i1",
@@ -172,17 +161,10 @@ const callerCases: [
     { type: "deny", reason: "owner_cannot_see" },
   ],
   [
-    "a thread reply wakes only where the agent answered this caller",
+    "a caller's thread reply without a mention does not start work",
     "channel",
-    { workedInThread: true },
     {},
-    { type: "deny", reason: "not_triggered" },
-  ],
-  [
-    "past replies to this caller do not start more work without a mention",
-    "channel",
-    { workedInThread: true },
-    { answeredInThread: true },
+    {},
     { type: "deny", reason: "not_triggered" },
   ],
   [

@@ -22,18 +22,13 @@ import { messageReferences } from "../../core/text/references";
 import { userAgentCallers } from "../agents/callers.schema";
 import { userAgentTriggers } from "../agents/triggers.schema";
 import { liveAgentMember, visibleConversations } from "../messaging/access";
-import {
-  messagingConversations,
-  messagingMessages,
-  messagingParticipants,
-} from "../messaging/schema";
+import { messagingConversations, messagingParticipants } from "../messaging/schema";
 import { audit, type AuditEvent } from "./audit";
-import { agentAuditEvents, agentInvocations } from "./invocations.schema";
+import { agentInvocations } from "./invocations.schema";
 import { inStates } from "./machine-sql";
-import { agentRequests } from "./requests.schema";
 import { wakeKind, wakeSessionKey } from "./wake-kind";
 import { agentWakes } from "./wakes.schema";
-import { and, count, eq, gt, inArray, isNotNull, or, sql } from "drizzle-orm";
+import { and, count, eq, gt, inArray, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 /** An agent that a trigger may wake. */
@@ -95,11 +90,6 @@ export type CallerFacts = {
   /** The agent's owner can see the conversation now. */
   ownerCanSee: boolean;
   allowlisted: boolean;
-  /**
-   * The agent published a reply in this thread in a turn that answered an admitted call of this
-   * caller in this thread. An ask alone, or a reply to someone else, does not count.
-   */
-  answeredInThread: boolean;
   /** The caller's calls of this agent that wait for the owner. */
   pending: number;
   /** The agent's caller calls admitted in the last 24 hours. */
@@ -112,7 +102,6 @@ export type CallerFacts = {
 export type MessageFacts = {
   agent: AdmissionAgent;
   mentioned: boolean;
-  workedInThread: boolean;
   disabled: readonly AgentWakeMessageKind[];
   caller?: CallerFacts;
 };
@@ -265,46 +254,6 @@ export function decideAdmission(input: AdmissionInput): AdmissionDecision {
   };
 }
 
-// Agents that already worked in this thread: they published a reply there or asked there.
-async function agentsThatWorked(
-  db: DatabaseExecutor,
-  message: MessageTrigger["message"],
-  agents: AdmissionAgent[],
-) {
-  if (!message.threadId) return new Set<string>();
-  const replied = await db
-    .selectDistinct({ actorId: messagingMessages.authorActorEntityId })
-    .from(messagingMessages)
-    .where(
-      and(
-        eq(messagingMessages.conversationId, message.conversationId),
-        or(
-          eq(messagingMessages.id, message.threadId),
-          eq(messagingMessages.threadId, message.threadId),
-        ),
-        isNotNull(messagingMessages.originTurnId),
-        inArray(
-          messagingMessages.authorActorEntityId,
-          agents.map((agent) => agent.actorId),
-        ),
-      ),
-    );
-  const asked = await db
-    .selectDistinct({ actorId: agentRequests.agentActorEntityId })
-    .from(agentRequests)
-    .where(
-      and(
-        eq(agentRequests.conversationId, message.conversationId),
-        eq(agentRequests.threadId, message.threadId),
-        inArray(
-          agentRequests.userAgentId,
-          agents.map((agent) => agent.userAgentId),
-        ),
-      ),
-    );
-  return new Set([...replied, ...asked].map((row) => row.actorId));
-}
-
 const admittedStates = [invocationMachine.events.admit.to, invocationMachine.events.drop.to];
 
 /**
@@ -331,7 +280,6 @@ async function callerFacts(
   agents: { agent: AdmissionAgent; policy: CallerFacts["policy"] }[],
   person: { actorId: string } | undefined,
 ): Promise<Map<string, CallerFacts>> {
-  if (!agents.length) return new Map<string, CallerFacts>();
   const { message } = trigger;
   const callerUserId = trigger.author.userId;
   const ofAgent = eq(agentInvocations.userAgentId, callerAgent.id);
@@ -373,43 +321,6 @@ async function callerFacts(
             gt(agentInvocations.decidedAt, sql`now() - interval '1 day'`),
           ),
         )})::int`,
-      // The agent published a reply in this thread, and the reply's audit row ties it to an
-      // admitted call of this caller in this thread.
-      answeredInThread: message.threadId
-        ? sql<boolean>`exists (${db
-            .select({ id: messagingMessages.id })
-            .from(messagingMessages)
-            .innerJoin(
-              agentAuditEvents,
-              and(
-                eq(agentAuditEvents.userAgentId, callerAgent.id),
-                eq(agentAuditEvents.action, "mcp_call"),
-                eq(agentAuditEvents.tool, "reply"),
-                eq(agentAuditEvents.result, "ok"),
-                eq(agentAuditEvents.turnId, messagingMessages.originTurnId),
-                sql`${agentAuditEvents.targetIds} @> jsonb_build_array(${messagingMessages.id}::text)`,
-              ),
-            )
-            .innerJoin(agentInvocations, eq(agentInvocations.id, agentAuditEvents.invocationId))
-            .where(
-              and(
-                eq(messagingMessages.conversationId, message.conversationId),
-                or(
-                  eq(messagingMessages.id, message.threadId),
-                  eq(messagingMessages.threadId, message.threadId),
-                ),
-                eq(messagingMessages.authorActorEntityId, callerActor.entityId),
-                isNotNull(messagingMessages.originTurnId),
-                ofCaller,
-                eq(agentInvocations.conversationId, message.conversationId),
-                or(
-                  eq(agentInvocations.threadId, message.threadId),
-                  eq(agentInvocations.messageId, message.threadId),
-                ),
-                inStates(agentInvocations.status, admittedStates),
-              ),
-            )})`
-        : sql<boolean>`false`,
     })
     .from(messagingConversations)
     .innerJoin(
@@ -433,7 +344,6 @@ async function callerFacts(
           actorId: person?.actorId ?? null,
           ownerCanSee: row?.ownerCanSee ?? false,
           allowlisted: row?.allowlisted ?? false,
-          answeredInThread: row?.answeredInThread ?? false,
           pending: row?.pending ?? 0,
           admittedToday: row?.admittedToday ?? 0,
           invocationId: crypto.randomUUID(),
@@ -454,7 +364,10 @@ type MessageCandidates = {
     disabled: AgentWakeMessageKind[];
   }[];
   mentioned: Set<string>;
-  /** Agents this message may call. admit() reads their policies before caller facts. */
+  /**
+   * Other owners' agents that this message mentions and whose policy accepts callers. admit()
+   * reads their policies again before caller facts.
+   */
   callable: Set<string>;
 };
 
@@ -499,7 +412,7 @@ async function messageCandidates(
     rows.flatMap((row) =>
       row.ownerUserId !== author.userId &&
       row.callerPolicy !== "owner" &&
-      (mentioned.has(row.actorId) || message.threadId)
+      mentioned.has(row.actorId)
         ? [row.userAgentId]
         : [],
     ),
@@ -513,23 +426,27 @@ async function messageCandidates(
   };
 }
 
-// Caller facts are read only for callable agents whose policy accepts callers.
+// Membership and caller facts are read only for callable agents whose current policy still
+// accepts callers. Other traffic reads nothing more.
 async function messageInputs(
   db: DatabaseExecutor,
   { trigger, author, rows, mentioned, callable }: MessageCandidates,
   policies: Map<string, AgentCallerPolicy>,
 ): Promise<AdmissionInput[]> {
-  const { message } = trigger;
   const agents = rows.map((row) => ({
     actorId: row.actorId,
     organizationId: row.organizationId,
     userAgentId: row.userAgentId,
     ownerUserId: row.ownerUserId,
   }));
-  const worked = await agentsThatWorked(db, message, agents);
-  const calls = rows.some((row) => row.ownerUserId !== author.userId);
+  const called = agents.flatMap((agent) => {
+    const policy = callable.has(agent.userAgentId) ? policies.get(agent.userAgentId) : undefined;
+    return agent.ownerUserId !== author.userId && policy && policy !== "owner"
+      ? [{ agent, policy }]
+      : [];
+  });
   // The author's person actor, only while they are a member of the organization.
-  const [person] = calls
+  const [person] = called.length
     ? await db
         .select({ actorId: actors.entityId })
         .from(actors)
@@ -546,24 +463,11 @@ async function messageInputs(
         )
     : [];
   const inputs: AdmissionInput[] = [];
-  const callers = await callerFacts(
-    db,
-    { ...trigger, author },
-    agents.flatMap((agent) => {
-      const policy = callable.has(agent.userAgentId) ? policies.get(agent.userAgentId) : undefined;
-      return agent.ownerUserId !== author.userId && policy && policy !== "owner"
-        ? [{ agent, policy }]
-        : [];
-    }),
-    person,
-  );
+  const callers = called.length
+    ? await callerFacts(db, { ...trigger, author }, called, person)
+    : new Map<string, CallerFacts>();
   for (const { disabled, ...agent } of rows) {
-    const facts: MessageFacts = {
-      agent,
-      mentioned: mentioned.has(agent.actorId),
-      workedInThread: worked.has(agent.actorId),
-      disabled,
-    };
+    const facts: MessageFacts = { agent, mentioned: mentioned.has(agent.actorId), disabled };
     facts.caller = callers.get(agent.userAgentId);
     inputs.push({ type: "message", trigger, facts });
   }
