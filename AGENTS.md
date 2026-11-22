@@ -6,18 +6,18 @@ Substrate is an Electron workspace for email, messages, docs, tasks, agents, and
 
 - Design for the Electron desktop app. The web app is its renderer, not a standalone browser product.
 - Automate shared renderer workflows against the real backend with headless Playwright in `apps/web/e2e`. Browser tests do not validate Electron bridges or native behavior.
-- Validate native authentication, session isolation, desktop navigation, and permissions manually through the real Electron app.
+- Validate native authentication, session isolation, desktop navigation, and permissions manually in the real Electron app.
 - Keep non-UI logic in unit tests and request-only HTTP checks in server integration tests.
 
 ## Connected workspace
 
-- Integrate features with existing workspace records and shared identity, permission, and linking mechanisms.
+- Integrate features with existing workspace records and the shared identity, permission, and linking mechanisms.
 - Keep structural relationships, contextual references, provenance, permissions, and notifications distinct.
 - Model each relationship with exactly one mechanism: domain foreign keys for structure, `entity_links` for record-to-record context, and `message_entity_references` for message-to-record context. Load the `database-table-design` skill before you add or change a table, relationship, provenance, request, or history table.
-- Preserve structured source references when creating work from existing context; copied text alone is not enough.
-- Provide forward navigation and backlinks where useful, checking access on each side.
+- Preserve structured source references when creating work from existing context. Copied text is not enough.
+- Provide forward navigation and backlinks where useful. Check access on each side.
 - Keep cross-organization boundaries explicit. Users, actors, and contacts are distinct; matching identifiers do not establish identity or access.
-- If a required connection is out of scope, report the gap and decision needed. Do not build a disconnected substitute or unrelated features.
+- If a required connection is out of scope, report the gap and the decision needed. Do not build a disconnected substitute or unrelated features.
 
 ## Agent work
 
@@ -31,18 +31,18 @@ Substrate is an Electron workspace for email, messages, docs, tasks, agents, and
 
 ## Code organization
 
-- `apps/web` owns renderer presentation and application integration, including routing, data loading, auth/session access, resource policies, mutations, cache updates, and Electron wiring.
-- Keep presentation in `apps/web/src/components`, grouped by domain. Split large views into focused components with meaningful responsibilities and assemble them with composer components.
+- `apps/web` owns renderer presentation and application integration: routing, data loading, auth/session access, resource policies, mutations, cache updates, and Electron wiring.
+- Keep presentation in `apps/web/src/components`, grouped by domain. Split large views into focused components and assemble them with composer components.
 - Keep data fetching, authorization, and persistence separate from visual components where useful. Pass data, resolved capabilities, navigation targets, and callbacks to views.
-- Do not add Storybook or a separate presentation package boundary. Validate UI workflows through the Electron app.
-- Group code by domain and responsibility. Keep files focused and avoid long, catch-all files.
-- Keep database schemas in separate domain files, such as authentication, actors, entities, contacts, and CRM. Do not combine all table definitions in one file.
-- Split repositories and tests by domain as needed. Keep test files beside the code they test, with shared fixtures in a test-support module.
+- Do not add Storybook or a separate presentation package. Validate UI workflows through the Electron app.
+- Group code by domain and responsibility. Avoid long, catch-all files.
+- Keep database schemas in separate domain files, such as authentication, actors, entities, contacts, and CRM.
+- Split repositories and tests by domain. Keep test files beside the code they test, with shared fixtures in a test-support module.
 - Use index files for public exports, not implementation.
 
 ## Scripts
 
-- Do not run `bun run build` or build any part of the app for regular validation. Run build commands only when the user explicitly asks for a build.
+- Do not build any part of the app, including `bun run build`, unless the user explicitly asks for a build.
 
 Run these commands from the repository root:
 

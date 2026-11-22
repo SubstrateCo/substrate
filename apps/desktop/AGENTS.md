@@ -11,4 +11,4 @@
   - Definitive failures, such as `resume-failed`, move the turn to needs attention.
   - A steer that fails with an unknown or transient error marks the item uncertain. Revert it to pending only when the error proves the input was not delivered.
 - Record why the runtime stops or closes a turn before it closes the native session. The close then finishes the turn as cancelled or interrupted, not as needs attention.
-- Test the runtime with the fixture in `src/agents/runtime/test-support.ts`. It runs the real harness host from `@substrate/harness-runtime` with a fake native adapter and a manual clock. Its thin controller wrapper checks the organization and reports host failures by code. Keep that wrapper aligned with the real controller.
+- Test the runtime with the fixture in `src/agents/runtime/test-support.ts`. It runs the real harness host from `@substrate/harness-runtime` with a fake native adapter and a manual clock. Its thin controller wrapper checks the organization and reports host failures by code; keep it aligned with the real controller.

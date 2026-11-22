@@ -1,33 +1,35 @@
 # Web application
 
 - Use Vite and TanStack Router file-based routes. Mirror layout hierarchy with route directories, not flattened dot-separated filenames.
-- Keep routes limited to configuration, loading, access checks, redirects, and composition of imported layouts. Routes may pass context, params, search, and loader data to connected containers in `src/components/<domain>/`.
-- Web owns both renderer presentation and application integration. Group presentation in `src/components/<domain>/` and import it through `@/components` paths.
-- Keep large views split into focused components with meaningful responsibilities. Connected containers can compose these views and pass data, navigation targets, callbacks, and connected content through props, slots, or render callbacks.
+- Limit routes to configuration, loading, access checks, redirects, and composition of imported layouts. Routes may pass context, params, search, and loader data to connected containers.
+- Web owns renderer presentation and application integration. Group presentation and connected containers in `src/components/<domain>/`, one file per container, and import them through `@/components` paths.
+- Split large views into focused components. Connected containers compose these views and pass data, navigation targets, callbacks, and connected content through props, slots, or render callbacks.
 - Keep data fetching, query options, mutations, invalidation, session/auth clients, resource access decisions, routing, and Electron integration in web. Keep purely visual state, focus/scroll effects, form drafts, and interaction behavior in UI. State that controls a query or application action may remain in a connected container.
+- Loading, error, empty, pending, and unavailable views belong in UI and receive their state from the container.
 - Load shared session and application data in the highest common layout and reuse its route context. Do not repeat those loads or session checks; keep resource-specific access checks.
 - Use the Hono `hc` RPC client in `src/api/` for same-origin backend calls. Import the server's `AppType` as a type only. Better Auth uses its native client protocol under `/api/auth`.
 - Keep runtime server code, secrets, database access, setup, and actor provisioning out of the renderer. Share browser-safe contracts through `@substrate/contracts`.
 - The server validates untrusted input and derives identity and actor scope. Organization owners and admins are super users for their organization's records and conversation management; other roles do not bypass entity grants.
 - Do not use dynamic imports to bypass dependency injection, server-only boundaries, or import configuration. Fix the underlying issue.
-- Group connected containers in `src/components/<domain>/`. Use one file per container. Loading, error, empty, pending, and unavailable views belong in UI and receive their state from the container.
-- Add or change UI primitives in `src/components/ui`, using the shadcn CLI. Do not hand-write replacements.
-- Do not add Storybook or presentation package boundary tests. Automate shared renderer workflows in `e2e`; validate desktop-specific workflows through Electron.
+- Add or change UI primitives in `src/components/ui` with the shadcn CLI. Do not hand-write replacements.
 - Put reusable TanStack Query option factories in `src/queries/<domain>/`. Use the shared query-key factory. Include the organization ID in organization-scoped keys.
 - Use TanStack Query for fetched application state. Invalidate affected queries after mutations and clear private state on sign-out.
 - Use Better Auth client APIs for authentication and organization actions. The server owns session and membership checks.
 - Require verified email for workspace access and invitation acceptance. Organization owners and admins may invite members; admins cannot invite owners.
-- Test application policies and complete workflows. Do not test Better Auth internals or third-party guarantees.
-- Use headless Playwright for shared renderer behavior and responsive layout checks. Keep manual Electron checks for native behavior, accessibility, and desktop rendering. Do not assert against rendered HTML strings or HTML snapshots, including markup substring checks.
 
 ## Design
 
 - Follow `DESIGN.md`, the design contract for primitives, shared components, icons, dates, copy, spacing, and motion.
 - Fix `design/*` and `shadcn/*` lint errors and warnings in files you touch. Each message names the component or helper to use and the `DESIGN.md` section.
+- Style with shared components and the tokens in `src/components/styles.css`, so pages do not drift apart. Do not add CSS files, and rarely change the shared styles. Write CSS only when nothing else works, such as making an external library match our styles.
 - If a warning is wrong for a case, explain it in `// oxlint-disable-next-line <rule> -- <reason>`. Do not weaken a rule or a primitive to silence it.
 
-## Test placement
+## Tests
 
+- Test application policies and complete workflows. Do not test Better Auth internals or third-party guarantees.
+- Do not add Storybook or presentation package boundary tests.
+- Use headless Playwright in `e2e` for shared renderer workflows and responsive layout checks. Check native behavior, accessibility, and desktop rendering manually in Electron.
+- Do not assert against rendered HTML strings or HTML snapshots, including markup substring checks.
 - Keep non-UI rules and cache logic in unit tests. Put HTTP security and permission matrices in `apps/server/integration`, not in long UI journeys or viewport loops.
 
 ## Connected workflows
@@ -44,5 +46,5 @@
 - Show agent work only to the agent's owner. Callers see only the status of their own calls and published messages, not the owner's work, approvals, allowlist, or Calls log.
 - Read local work through the `substrateAgentWork` bridge on the home desktop. Elsewhere, fall back to server status and requests.
 - Place work under its outputs, then under its newest accessible source message. Work without an anchor appears only in the Agents app.
-- Notify only for Needs-you items. Do not notify for working, finished, quiet, or routine progress.
+- Notify only for Needs-you items, not for working, finished, quiet, or routine progress.
 - Show records the viewer cannot open as placeholders, such as "A conversation you can't open". Never show their names.
