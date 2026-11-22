@@ -2,6 +2,7 @@ import { AccessDeniedError } from "../../errors";
 import { entities } from "../entities/schema";
 import { RepositoryContext, pageSize } from "../repository-context";
 import { parseInput } from "./inputs";
+import { interactionWorkspaceRepository } from "./interaction-workspace.repository";
 import { contactInteractions } from "./interactions.schema";
 import { contacts } from "./schema";
 import { and, desc, eq, sql } from "drizzle-orm";
@@ -48,6 +49,7 @@ export function contactInteractionRepository(context: RepositoryContext) {
   }
 
   return {
+    ...interactionWorkspaceRepository(context),
     async createManual(input: InteractionInput) {
       const value = parseInput(interactionInput, input);
       return context.transaction(async (ctx) => {

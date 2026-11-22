@@ -54,7 +54,12 @@ export type RecordLink =
   | ReturnType<typeof contactLink>
   | ReturnType<typeof workLink>
   | ReturnType<typeof messageLink>
-  | ReturnType<typeof agentLink>;
+  | ReturnType<typeof agentLink>
+  | ReturnType<typeof interactionLink>;
+
+export function interactionLink(organizationId: string, recordId: string) {
+  return linkOptions({ to: "/interactions", search: { workspaceId: organizationId, recordId } });
+}
 
 export function crmLink(organizationId: string, section: "accounts" | "deals", recordId?: string) {
   return linkOptions({ to: "/crm", search: { workspaceId: organizationId, section, recordId } });

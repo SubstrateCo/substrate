@@ -2,6 +2,7 @@ import type { HotkeySequence } from "@tanstack/react-hotkeys";
 import type { LinkProps } from "@tanstack/react-router";
 
 import {
+  Activity,
   Bell,
   Bot,
   Handshake,
@@ -42,6 +43,13 @@ export const workspaceApps = [
     hotkey: ["G", "T"],
   },
   { id: "crm", label: "CRM", icon: Handshake, to: "/crm", hotkey: ["G", "C"] },
+  {
+    id: "interactions",
+    label: "Interactions",
+    icon: Activity,
+    to: "/interactions",
+    hotkey: ["G", "I"],
+  },
   {
     id: "agents",
     label: "Agents",

@@ -1,4 +1,9 @@
-import type { InteractionWrite } from "@substrate/contracts/context/interactions";
+import type {
+  InteractionPeriod,
+  InteractionTimeline,
+  InteractionWrite,
+  InteractionDirectory,
+} from "@substrate/contracts/context/interactions";
 
 import type { CommittedPublisher } from "../../shared/committed";
 import type { WorkspaceScope } from "../../shared/scope";
@@ -6,6 +11,16 @@ import { serviceResult } from "../../shared/service-result";
 
 export function createContactInteractionsService(deps: { publish: CommittedPublisher }) {
   return {
+    directory: (scope: WorkspaceScope, input: InteractionDirectory) =>
+      serviceResult(() => scope.repositories.contactInteractions.workspaceDirectory(input)),
+    record: (scope: WorkspaceScope, id: string) =>
+      serviceResult(() => scope.repositories.contactInteractions.workspaceRecord(id)),
+    profile: (scope: WorkspaceScope, id: string, type: "person" | "account") =>
+      serviceResult(() => scope.repositories.contactInteractions.workspaceProfile(id, type)),
+    activity: (scope: WorkspaceScope, input: InteractionPeriod) =>
+      serviceResult(() => scope.repositories.contactInteractions.workspaceActivity(input)),
+    timeline: (scope: WorkspaceScope, input: InteractionTimeline) =>
+      serviceResult(() => scope.repositories.contactInteractions.workspaceTimeline(input)),
     list: (scope: WorkspaceScope, id: string) =>
       serviceResult(() => scope.repositories.contactInteractions.listInteractions(id)),
     mutate: (scope: WorkspaceScope, input: InteractionWrite) =>

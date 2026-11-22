@@ -35,6 +35,7 @@ import { Route as AuthenticatedStandaloneAcceptSharingInvitationIdRouteImport } 
 import { Route as AuthenticatedStandaloneSetupCompleteRouteImport } from './routes/_authenticated/_standalone/setup/complete'
 import { Route as AuthenticatedFrameWorkspaceContactsIndexRouteImport } from './routes/_authenticated/_frame/_workspace/contacts/index'
 import { Route as AuthenticatedFrameWorkspaceCrmIndexRouteImport } from './routes/_authenticated/_frame/_workspace/crm/index'
+import { Route as AuthenticatedFrameWorkspaceInteractionsIndexRouteImport } from './routes/_authenticated/_frame/_workspace/interactions/index'
 import { Route as AuthenticatedFrameWorkspaceTasksIndexRouteImport } from './routes/_authenticated/_frame/_workspace/tasks/index'
 import { Route as AuthenticatedFrameSettingsOrganizationIndexRouteImport } from './routes/_authenticated/_frame/settings/organization/index'
 import { Route as AuthenticatedFrameSettingsOrganizationAppsRouteImport } from './routes/_authenticated/_frame/settings/organization/apps'
@@ -185,6 +186,12 @@ const AuthenticatedFrameWorkspaceCrmIndexRoute =
     path: '/crm/',
     getParentRoute: () => AuthenticatedFrameWorkspaceRouteRoute,
   } as any)
+const AuthenticatedFrameWorkspaceInteractionsIndexRoute =
+  AuthenticatedFrameWorkspaceInteractionsIndexRouteImport.update({
+    id: '/interactions/',
+    path: '/interactions/',
+    getParentRoute: () => AuthenticatedFrameWorkspaceRouteRoute,
+  } as any)
 const AuthenticatedFrameWorkspaceTasksIndexRoute =
   AuthenticatedFrameWorkspaceTasksIndexRouteImport.update({
     id: '/tasks/',
@@ -274,6 +281,7 @@ export interface FileRoutesByFullPath {
   '/settings/user/preferences': typeof AuthenticatedFrameSettingsUserPreferencesRoute
   '/contacts/': typeof AuthenticatedFrameWorkspaceContactsIndexRoute
   '/crm/': typeof AuthenticatedFrameWorkspaceCrmIndexRoute
+  '/interactions/': typeof AuthenticatedFrameWorkspaceInteractionsIndexRoute
   '/tasks/': typeof AuthenticatedFrameWorkspaceTasksIndexRoute
   '/settings/organization/': typeof AuthenticatedFrameSettingsOrganizationIndexRoute
   '/settings/user/': typeof AuthenticatedFrameSettingsUserIndexRoute
@@ -305,6 +313,7 @@ export interface FileRoutesByTo {
   '/settings/user/preferences': typeof AuthenticatedFrameSettingsUserPreferencesRoute
   '/contacts': typeof AuthenticatedFrameWorkspaceContactsIndexRoute
   '/crm': typeof AuthenticatedFrameWorkspaceCrmIndexRoute
+  '/interactions': typeof AuthenticatedFrameWorkspaceInteractionsIndexRoute
   '/tasks': typeof AuthenticatedFrameWorkspaceTasksIndexRoute
   '/settings/organization': typeof AuthenticatedFrameSettingsOrganizationIndexRoute
   '/settings/user': typeof AuthenticatedFrameSettingsUserIndexRoute
@@ -344,6 +353,7 @@ export interface FileRoutesById {
   '/_authenticated/_frame/settings/user/preferences': typeof AuthenticatedFrameSettingsUserPreferencesRoute
   '/_authenticated/_frame/_workspace/contacts/': typeof AuthenticatedFrameWorkspaceContactsIndexRoute
   '/_authenticated/_frame/_workspace/crm/': typeof AuthenticatedFrameWorkspaceCrmIndexRoute
+  '/_authenticated/_frame/_workspace/interactions/': typeof AuthenticatedFrameWorkspaceInteractionsIndexRoute
   '/_authenticated/_frame/_workspace/tasks/': typeof AuthenticatedFrameWorkspaceTasksIndexRoute
   '/_authenticated/_frame/settings/organization/': typeof AuthenticatedFrameSettingsOrganizationIndexRoute
   '/_authenticated/_frame/settings/user/': typeof AuthenticatedFrameSettingsUserIndexRoute
@@ -378,6 +388,7 @@ export interface FileRouteTypes {
     | '/settings/user/preferences'
     | '/contacts/'
     | '/crm/'
+    | '/interactions/'
     | '/tasks/'
     | '/settings/organization/'
     | '/settings/user/'
@@ -409,6 +420,7 @@ export interface FileRouteTypes {
     | '/settings/user/preferences'
     | '/contacts'
     | '/crm'
+    | '/interactions'
     | '/tasks'
     | '/settings/organization'
     | '/settings/user'
@@ -447,6 +459,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_frame/settings/user/preferences'
     | '/_authenticated/_frame/_workspace/contacts/'
     | '/_authenticated/_frame/_workspace/crm/'
+    | '/_authenticated/_frame/_workspace/interactions/'
     | '/_authenticated/_frame/_workspace/tasks/'
     | '/_authenticated/_frame/settings/organization/'
     | '/_authenticated/_frame/settings/user/'
@@ -641,6 +654,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrameWorkspaceCrmIndexRouteImport
       parentRoute: typeof AuthenticatedFrameWorkspaceRouteRoute
     }
+    '/_authenticated/_frame/_workspace/interactions/': {
+      id: '/_authenticated/_frame/_workspace/interactions/'
+      path: '/interactions'
+      fullPath: '/interactions/'
+      preLoaderRoute: typeof AuthenticatedFrameWorkspaceInteractionsIndexRouteImport
+      parentRoute: typeof AuthenticatedFrameWorkspaceRouteRoute
+    }
     '/_authenticated/_frame/_workspace/tasks/': {
       id: '/_authenticated/_frame/_workspace/tasks/'
       path: '/tasks'
@@ -721,6 +741,7 @@ interface AuthenticatedFrameWorkspaceRouteRouteChildren {
   AuthenticatedFrameWorkspaceNotificationsRoute: typeof AuthenticatedFrameWorkspaceNotificationsRoute
   AuthenticatedFrameWorkspaceContactsIndexRoute: typeof AuthenticatedFrameWorkspaceContactsIndexRoute
   AuthenticatedFrameWorkspaceCrmIndexRoute: typeof AuthenticatedFrameWorkspaceCrmIndexRoute
+  AuthenticatedFrameWorkspaceInteractionsIndexRoute: typeof AuthenticatedFrameWorkspaceInteractionsIndexRoute
   AuthenticatedFrameWorkspaceTasksIndexRoute: typeof AuthenticatedFrameWorkspaceTasksIndexRoute
 }
 
@@ -738,6 +759,8 @@ const AuthenticatedFrameWorkspaceRouteRouteChildren: AuthenticatedFrameWorkspace
       AuthenticatedFrameWorkspaceContactsIndexRoute,
     AuthenticatedFrameWorkspaceCrmIndexRoute:
       AuthenticatedFrameWorkspaceCrmIndexRoute,
+    AuthenticatedFrameWorkspaceInteractionsIndexRoute:
+      AuthenticatedFrameWorkspaceInteractionsIndexRoute,
     AuthenticatedFrameWorkspaceTasksIndexRoute:
       AuthenticatedFrameWorkspaceTasksIndexRoute,
   }

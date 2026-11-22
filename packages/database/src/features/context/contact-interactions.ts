@@ -1,20 +1,53 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
+import { interactionWorkspaceRepository } from "../../core/contacts/interaction-workspace.repository";
 import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
 import { appEnabledCondition } from "../../core/permissions/app-visibility";
 import type { RepositoryContext } from "../../core/repository-context";
+import { AccessDeniedError } from "../../errors";
 import { ValidationError } from "../../errors";
 import { recordCrmActivity } from "../crm/activity";
 import { presentInteraction, presentInteractions } from "../crm/actor-views";
 import { crmContactProfiles } from "../crm/schema";
+import { interactionAccountScope } from "./interaction-account-scope";
 import { contextInteractionActions } from "./interaction-actions";
+import { interactionDirectoryPage } from "./interaction-directory";
 import { publishInteraction } from "./interaction-publication";
+import { interactionProfileDetail, interactionRecordDetail } from "./interaction-records";
 import { and, eq } from "drizzle-orm";
 
 export function contextContactInteractionRepository(context: RepositoryContext) {
   return {
     ...contactInteractionRepository(context),
     ...contextInteractionActions(context),
+    workspaceDirectory: (input: Parameters<typeof interactionDirectoryPage>[1]) =>
+      interactionDirectoryPage(context, input),
+    workspaceRecord: (id: string) => interactionRecordDetail(context, id),
+    workspaceProfile: (id: string, type: "person" | "account") =>
+      interactionProfileDetail(context, id, type),
+    async workspaceTimeline(
+      input: Parameters<ReturnType<typeof interactionWorkspaceRepository>["workspaceTimeline"]>[0],
+    ) {
+      let condition;
+      if (input.contactEntityId) {
+        const access = await context.requireAccess(input.contactEntityId, "view");
+        if (access.entity.entityType !== "contact") throw new AccessDeniedError();
+      }
+      if (input.accountEntityId) {
+        const access = await context.requireAccess(input.accountEntityId, "view");
+        if (access.entity.entityType !== "account") throw new AccessDeniedError();
+        condition = interactionAccountScope(
+          context,
+          input.accountEntityId,
+          input.scope === "linked",
+        );
+      }
+      const page = await interactionWorkspaceRepository(context).workspaceTimeline(
+        input,
+        condition,
+      );
+      return { ...page, items: await presentInteractions(context, page.items) };
+    },
     publishInteraction: (input: Parameters<typeof publishInteraction>[1]) =>
       publishInteraction(context, input),
     listInteractions: async (

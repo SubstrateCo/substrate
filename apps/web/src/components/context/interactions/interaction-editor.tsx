@@ -1,6 +1,6 @@
 import type { InteractionKind } from "@substrate/contracts/context/interactions";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { CrmSelect } from "@/components/crm/crm-select";
 import { formText } from "@/components/crm/form-text";
@@ -23,11 +23,22 @@ export function InteractionEditor({
   error,
   onClose,
   onSubmit,
+  contactField,
+  canSubmit = true,
+  submitLabel = "Record interaction",
 }: {
   pending: boolean;
   error: Error | null;
   onClose: () => void;
-  onSubmit: (draft: { kind: InteractionKind; occurredAt: string; summary: string }) => void;
+  onSubmit: (draft: {
+    kind: InteractionKind;
+    occurredAt: string;
+    endedAt: string | null;
+    summary: string;
+  }) => void;
+  contactField?: ReactNode;
+  canSubmit?: boolean;
+  submitLabel?: string;
 }) {
   const [kind, setKind] = useState<InteractionKind>("call");
   return (
@@ -51,11 +62,15 @@ export function InteractionEditor({
             onSubmit({
               kind,
               occurredAt: new Date(formText(form, "occurredAt")).toISOString(),
+              endedAt: formText(form, "endedAt")
+                ? new Date(formText(form, "endedAt")).toISOString()
+                : null,
               summary: formText(form, "summary"),
             })
           }
         >
           <DialogBody>
+            {contactField}
             <CrmSelect
               label="Kind"
               value={kind}
@@ -73,6 +88,13 @@ export function InteractionEditor({
               required
             />
             <NativeField
+              id="interaction-ended"
+              name="endedAt"
+              label="Ended at"
+              type="datetime-local"
+              description="Optional. Used for recorded meeting and call duration."
+            />
+            <NativeField
               id="interaction-summary"
               name="summary"
               label="Summary"
@@ -88,8 +110,13 @@ export function InteractionEditor({
             <Button variant="outline" disabled={pending} onClick={onClose}>
               Cancel
             </Button>
-            <PendingButton type="submit" pending={pending} pendingLabel="Recording…">
-              Record interaction
+            <PendingButton
+              type="submit"
+              disabled={!canSubmit}
+              pending={pending}
+              pendingLabel="Recording…"
+            >
+              {submitLabel}
             </PendingButton>
           </DialogFooter>
         </NativeForm>
