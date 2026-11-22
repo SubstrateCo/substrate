@@ -8,7 +8,7 @@ import { and, eq, inArray } from "drizzle-orm";
 export async function requireDealRelations(
   ctx: RepositoryContext,
   input: { accountEntityId?: string | null; contactEntityIds: string[] },
-  // actorChecked: lockAccessPaths on these same IDs already proved the actor active.
+  // actorChecked: the caller already proved the actor active in this transaction.
   options: { active?: boolean; actorChecked?: boolean } = {},
 ) {
   const ids = [...new Set(input.contactEntityIds)];

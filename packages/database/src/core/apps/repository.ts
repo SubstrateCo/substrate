@@ -6,22 +6,22 @@ import {
 } from "@substrate/contracts/apps";
 
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { member, organization } from "../organizations/schema";
+import { adminRoleCondition } from "../organizations/roles";
+import { member } from "../organizations/schema";
 import type { RepositoryContext } from "../repository-context";
 import type { SessionIdentity } from "../session/identity";
 import { enabledApps } from "./access";
 import { organizationApps } from "./schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, sql } from "drizzle-orm";
 
 export function appRepository(context: RepositoryContext, identity: SessionIdentity) {
-  async function membership(lock = false) {
-    const query = context.db
+  async function membership() {
+    const [row] = await context.db
       .select({ role: member.role })
       .from(member)
       .where(
         and(eq(member.organizationId, identity.organizationId), eq(member.userId, identity.userId)),
       );
-    const [row] = await (lock ? query.for("share") : query);
     if (!row) throw new AccessDeniedError();
     return row;
   }
@@ -39,24 +39,26 @@ export function appRepository(context: RepositoryContext, identity: SessionIdent
         enabledApps: apps,
       });
       if (!parsed.success) throw new ValidationError("Invalid app settings.");
-      await context.db
-        .select({ id: organization.id })
-        .from(organization)
-        .where(eq(organization.id, identity.organizationId))
-        .for("update");
-      const { role } = await membership(true);
-      if (!role.split(",").some((value) => ["owner", "admin"].includes(value.trim())))
-        throw new AccessDeniedError();
-      for (const appId of optionalAppIds) {
-        const enabled = apps.includes(appId);
-        await context.db
-          .insert(organizationApps)
-          .values({ organizationId: identity.organizationId, appId, enabled })
-          .onConflictDoUpdate({
-            target: [organizationApps.organizationId, organizationApps.appId],
-            set: { enabled },
-          });
-      }
+      // One statement writes every app, and only for an owner or admin. Concurrent updates write
+      // the rows in the same order, so the settings always match one whole update.
+      const values = sql.join(
+        optionalAppIds.map((appId) => sql`(${appId}::text, ${apps.includes(appId)}::boolean)`),
+        sql`, `,
+      );
+      const written = await context.db.execute(sql`
+        INSERT INTO ${organizationApps} (organization_id, app_id, enabled)
+        SELECT ${identity.organizationId}, app.app_id, app.enabled
+        FROM (VALUES ${values}) AS app(app_id, enabled)
+        WHERE EXISTS (
+          SELECT 1 FROM ${member}
+          WHERE ${member.organizationId} = ${identity.organizationId}
+            AND ${member.userId} = ${identity.userId}
+            AND ${adminRoleCondition(member.role)}
+        )
+        ON CONFLICT (organization_id, app_id) DO UPDATE SET enabled = excluded.enabled
+        RETURNING app_id
+      `);
+      if (!written.length) throw new AccessDeniedError();
       return {
         organizationId: identity.organizationId,
         enabledApps: [...coreAppIds, ...optionalAppIds.filter((app) => apps.includes(app))],

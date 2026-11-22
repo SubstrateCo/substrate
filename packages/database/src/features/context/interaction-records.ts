@@ -81,7 +81,7 @@ export async function interactionProfileDetail(
   entityId: string,
   type: "person" | "account",
 ) {
-  if (type === "account") await requireAppEnabled(context, "crm", false);
+  if (type === "account") await requireAppEnabled(context, "crm");
   const access =
     type === "person"
       ? await requireContact(context, entityId)

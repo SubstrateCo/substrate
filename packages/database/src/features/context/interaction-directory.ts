@@ -28,7 +28,7 @@ export async function interactionDirectoryPage(
   let order = desc(last);
   if (value.sort === "name") order = asc(name);
   if (value.sort === "count") order = desc(count);
-  if (value.type === "accounts") await requireAppEnabled(context, "crm", false);
+  if (value.type === "accounts") await requireAppEnabled(context, "crm");
   const rows = await db
     .select({
       entityId: table.entityId,

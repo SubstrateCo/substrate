@@ -1,6 +1,6 @@
 import { requiredAppsForEntityType } from "@substrate/contracts/apps";
 
-import { AccessDeniedError, ValidationError } from "../errors";
+import { AccessDeniedError, ConflictError, ValidationError } from "../errors";
 import { activeActorCondition, permissionActorEntityId } from "./actors/access";
 import { actors } from "./actors/schema";
 import { requireAppEnabled } from "./apps/access";
@@ -9,12 +9,7 @@ import { rootEntityValues } from "./entities/identity";
 import { entities } from "./entities/schema";
 import type { DatabaseExecutor } from "./executor";
 import { entityGrants, permissionLevel } from "./permissions/schema";
-import {
-  entityAccessLevel,
-  isMemberEdited,
-  lockAccessPaths,
-  readableCondition,
-} from "./permissions/visibility";
+import { entityAccessLevel, isMemberEdited, readableCondition } from "./permissions/visibility";
 import type { WorkspaceScope } from "./session/identity";
 import { and, eq, exists, inArray, is, isNull, sql, type SQLWrapper } from "drizzle-orm";
 import { alias, PgTransaction } from "drizzle-orm/pg-core";
@@ -25,7 +20,6 @@ export interface ActorScope {
 }
 
 export type PermissionLevel = (typeof permissionLevel.enumValues)[number];
-export type AccessPathLockMode = "ordinary" | "structural";
 const permissionRank: Record<PermissionLevel, number> = { view: 0, comment: 1, edit: 2, owner: 3 };
 
 type AtLeast = {
@@ -34,16 +28,16 @@ type AtLeast = {
   edit: "edit" | "owner";
   owner: "owner";
 };
-declare const lockedAt: unique symbol;
-/** Read after requireAccess(entityId, minimum, true) locked the access path in this transaction. */
-export type Locked<T, Minimum extends PermissionLevel> = T & {
-  readonly [lockedAt]: AtLeast[Minimum];
+declare const authorizedAt: unique symbol;
+/** Read after requireAccess(entityId, minimum) granted the level in this transaction. */
+export type Authorized<T, Minimum extends PermissionLevel> = T & {
+  readonly [authorizedAt]: AtLeast[Minimum];
 };
 export interface EntityAccess {
   entity: typeof entities.$inferSelect;
   level: PermissionLevel;
 }
-export type LockedAccess<Minimum extends PermissionLevel> = Locked<EntityAccess, Minimum>;
+export type AuthorizedAccess<Minimum extends PermissionLevel> = Authorized<EntityAccess, Minimum>;
 
 export class RepositoryContext {
   readonly scope: Readonly<ActorScope & Partial<Pick<WorkspaceScope, "userId" | "admin">>>;
@@ -96,81 +90,31 @@ export class RepositoryContext {
     return actor;
   }
 
-  // Locks the entities and their access containers in one statement and one global order. Read
-  // grants in a later statement, after any competing writer commits.
-  async lockAccessPaths(entityIds: string[], mode: AccessPathLockMode = "ordinary") {
-    if (!entityIds.length) return;
-    // Inactive or forged scopes take no locks: the statement locks only for an active actor.
-    // A missing row also means a missing entity, which every caller denies.
-    const rows = await this.db.execute<{ entityId: string; accessEntityId: string }>(
-      lockAccessPaths(this.scope, entityIds, mode),
-    );
-    const locked = new Set(rows.map((row) => row.entityId));
-    if (entityIds.some((id) => !locked.has(id))) throw new AccessDeniedError();
-    // A move may commit while this statement waits for the old container. Fail closed rather
-    // than check access through a new container that this transaction has not locked.
-    if (rows.some((row) => !locked.has(row.accessEntityId))) throw new AccessDeniedError();
-  }
-
-  async lockAccessPath(entityId: string, mode: AccessPathLockMode = "ordinary") {
-    await this.lockAccessPaths([entityId], mode);
-  }
-
-  requireAccess<Minimum extends PermissionLevel>(
-    entityId: string,
-    minimum: Minimum,
-    lock: true,
-    mode?: AccessPathLockMode,
-  ): Promise<LockedAccess<Minimum>>;
-  requireAccess(
-    entityId: string,
-    minimum: PermissionLevel,
-    lock?: boolean,
-    mode?: AccessPathLockMode,
-  ): Promise<EntityAccess>;
-  async requireAccess(
-    entityId: string,
-    minimum: PermissionLevel,
-    lock = false,
-    mode: AccessPathLockMode = "ordinary",
-  ): Promise<EntityAccess> {
+  // The entities with the actor's level and each container's version, in one statement.
+  private async readAccess(entityIds: string[], minimum: PermissionLevel) {
     // Fail closed: an unknown level would otherwise compare as granted.
-    if (!Object.hasOwn(permissionRank, minimum)) throw new AccessDeniedError();
-    if (lock) await this.lockAccessPath(entityId, mode);
-    const [access] = await this.db
-      .select({
-        entity: entities,
-        level: sql<PermissionLevel | null>`${entityAccessLevel(this.scope, entityId)}`,
-      })
-      .from(entities)
-      .where(
-        and(
-          eq(entities.organizationId, this.scope.organizationId),
-          eq(entities.entityId, entityId),
-          isNull(entities.deletedAt),
-          exists(this.activeScopeActor()),
-        ),
-      );
-    if (!access || !access.level || permissionRank[access.level] < permissionRank[minimum])
-      throw new AccessDeniedError();
-    return { entity: access.entity, level: access.level };
-  }
-
-  // requireAccess for several entities in one statement. Lock them first with lockAccessPaths.
-  async requireAccessAll(entityIds: string[], minimum: PermissionLevel): Promise<EntityAccess[]> {
     if (!Object.hasOwn(permissionRank, minimum)) throw new AccessDeniedError();
     const ids = [...new Set(entityIds)];
     if (!ids.length) return [];
+    const container = alias(entities, "access_container");
     const rows = await this.db
       .select({
         entity: entities,
         level: sql<PermissionLevel | null>`${entityAccessLevel(this.scope, entities.entityId)}`,
+        accessVersion: container.accessVersion,
       })
       .from(entities)
+      .innerJoin(
+        container,
+        and(
+          eq(container.organizationId, entities.organizationId),
+          eq(container.entityId, entities.accessEntityId),
+        ),
+      )
       .where(
         and(
           eq(entities.organizationId, this.scope.organizationId),
-          inArray(entities.entityId, ids),
+          ids.length === 1 ? eq(entities.entityId, ids[0]!) : inArray(entities.entityId, ids),
           isNull(entities.deletedAt),
           exists(this.activeScopeActor()),
         ),
@@ -178,7 +122,7 @@ export class RepositoryContext {
     const granted = new Map(
       rows.flatMap((row) =>
         row.level && permissionRank[row.level] >= permissionRank[minimum]
-          ? [[row.entity.entityId, { entity: row.entity, level: row.level }] as const]
+          ? [[row.entity.entityId, { ...row, level: row.level }] as const]
           : [],
       ),
     );
@@ -187,6 +131,68 @@ export class RepositoryContext {
       if (!access) throw new AccessDeniedError();
       return access;
     });
+  }
+
+  /**
+   * The live entity and the actor's level on it, in one statement and without locks. A revocation
+   * that commits after this read does not stop the caller's write. Structural changes use
+   * requireStructuralAccess.
+   */
+  async requireAccess<Minimum extends PermissionLevel>(
+    entityId: string,
+    minimum: Minimum,
+  ): Promise<AuthorizedAccess<Minimum>> {
+    const [access] = await this.requireAccessAll([entityId], minimum);
+    return access!;
+  }
+
+  // requireAccess for several entities in one statement.
+  async requireAccessAll<Minimum extends PermissionLevel>(
+    entityIds: string[],
+    minimum: Minimum,
+  ): Promise<AuthorizedAccess<Minimum>[]> {
+    const rows = await this.readAccess(entityIds, minimum);
+    // SAFETY: readAccess granted at least `minimum`, which is what AuthorizedAccess records.
+    return rows.map(({ entity, level }) => ({ entity, level }) as AuthorizedAccess<Minimum>);
+  }
+
+  /**
+   * requireAccess for a structural change: grants, ownership, moves and deletion. It also claims
+   * the change by compare-and-set on the container's access version, so structural changes to
+   * one container run one at a time and the loser gets a ConflictError. Read the state that the
+   * change depends on after this call: it then includes every earlier structural change.
+   */
+  async requireStructuralAccess<Minimum extends PermissionLevel>(
+    entityId: string,
+    minimum: Minimum,
+  ): Promise<AuthorizedAccess<Minimum>> {
+    const [access] = await this.requireStructuralAccessAll([entityId], minimum);
+    return access!;
+  }
+
+  // requireStructuralAccess for several entities. Containers are claimed in ID order.
+  async requireStructuralAccessAll<Minimum extends PermissionLevel>(
+    entityIds: string[],
+    minimum: Minimum,
+  ): Promise<AuthorizedAccess<Minimum>[]> {
+    const rows = await this.readAccess(entityIds, minimum);
+    const versions = new Map(rows.map((row) => [row.entity.accessEntityId, row.accessVersion]));
+    for (const [containerId, version] of [...versions].sort(([a], [b]) => (a < b ? -1 : 1))) {
+      const [claimed] = await this.db
+        .update(entities)
+        .set({ accessVersion: sql`${entities.accessVersion} + 1` })
+        .where(
+          and(
+            eq(entities.organizationId, this.scope.organizationId),
+            eq(entities.entityId, containerId),
+            eq(entities.accessVersion, version),
+          ),
+        )
+        .returning({ entityId: entities.entityId });
+      if (!claimed) throw new ConflictError("This record changed. Try again.");
+    }
+    // SAFETY: readAccess granted at least `minimum`, which is what AuthorizedAccess records.
+    return rows.map(({ entity, level }) => ({ entity, level }) as AuthorizedAccess<Minimum>);
   }
 
   private activeScopeActor() {
@@ -270,7 +276,7 @@ export class RepositoryContext {
   // The child takes the parent's container, so a child of a child shares the root container.
   async createChildEntity(
     entityType: typeof entities.$inferInsert.entityType,
-    parent: LockedAccess<"edit">,
+    parent: AuthorizedAccess<"edit">,
   ) {
     const parentApps = requiredAppsForEntityType(parent.entity.entityType);
     for (const app of requiredAppsForEntityType(entityType)) {

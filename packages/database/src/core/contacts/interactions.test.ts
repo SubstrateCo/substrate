@@ -1,6 +1,10 @@
+import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { entities } from "../entities/schema";
+import { RepositoryContext } from "../repository-context";
+import { requireInteraction } from "./access";
+import { contactInteractions } from "./interactions.schema";
 import { describe, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -47,6 +51,39 @@ describe("contact interactions", () => {
     expect(
       await f.db.select().from(entities).where(eq(entities.entityType, "contact_interaction")),
     ).toHaveLength(before.length);
+  });
+
+  test("an edit after a deletion is denied, and concurrent deletions delete once", async () => {
+    const repo = f.forActor(f.alice);
+    const contact = await repo.contacts.create({ displayName: "Jane" });
+    const interaction = await repo.contactInteractions.createManual({
+      contactEntityId: contact.entityId,
+      kind: "call",
+      occurredAt: new Date(),
+      summary: "Before",
+    });
+    // The edit checked the interaction before the deletions committed.
+    const checked = await requireInteraction(
+      new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.alice }),
+      interaction.entityId,
+    );
+    const deletions = await Promise.allSettled([
+      repo.contactInteractions.softDelete(interaction.entityId),
+      repo.contactInteractions.softDelete(interaction.entityId),
+    ]);
+    expect(deletions.some((result) => result.status === "fulfilled")).toBe(true);
+    for (const result of deletions)
+      if (result.status === "rejected") expect(result.reason).toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(
+        repo.contactInteractions.update(interaction.entityId, { summary: "After" }, checked),
+      ),
+    ).toBeInstanceOf(AccessDeniedError);
+    const [stored] = await f.db
+      .select({ summary: contactInteractions.summary })
+      .from(contactInteractions)
+      .where(eq(contactInteractions.entityId, interaction.entityId));
+    expect(stored!.summary).toBe("Before");
   });
 
   test("paginates equal timestamps without duplicates and rolls back with its caller", async () => {

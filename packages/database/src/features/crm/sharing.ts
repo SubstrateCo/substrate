@@ -10,7 +10,7 @@ export function crmSharing(context: RepositoryContext) {
   async function change(entityId: string, actorEntityId: string, level?: PermissionLevel) {
     return context.transaction(async (ctx) => {
       await requireAppEnabled(ctx, "crm");
-      const access = await ctx.requireAccess(entityId, "owner", true, "structural");
+      const access = await ctx.requireStructuralAccess(entityId, "owner");
       const { entity } = access;
       if (!["account", "deal"].includes(entity.entityType)) throw new AccessDeniedError();
       const [previous] = await ctx.db
@@ -23,7 +23,7 @@ export function crmSharing(context: RepositoryContext) {
             eq(entityGrants.actorEntityId, actorEntityId),
           ),
         );
-      // Record under the locked authorization before a self-revoke removes access. The
+      // Record under this authorization before a self-revoke removes access. The
       // enclosing transaction rolls this back if changing the grant fails.
       if (previous?.level !== level)
         await recordCrmActivity(

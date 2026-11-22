@@ -3,11 +3,10 @@ import type { McpOutput, ServerToolName } from "@substrate/contracts/harness/too
 
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
-import { findDevice } from "../../core/devices/repository";
 import { desktopDevices } from "../../core/devices/schema";
 import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
-import { AccessDeniedError, mapPostgresError } from "../../errors";
+import { AccessDeniedError, ConflictError } from "../../errors";
 import { agentRequests } from "../agent-work/requests.schema";
 import { agentToolRequests } from "./schema";
 import { and, eq } from "drizzle-orm";
@@ -19,7 +18,7 @@ export async function requireHomeDevice(
   installationId: string | undefined,
 ) {
   if (!installationId) throw new AccessDeniedError();
-  // Keep the home assignment stable until the write commits.
+  // A home change that commits after this read does not stop the caller's write.
   const [row] = await tx
     .select({
       userAgentId: userAgents.id,
@@ -35,14 +34,8 @@ export async function requireHomeDevice(
         eq(desktopDevices.installationId, installationId),
       ),
     )
-    .where(and(eq(actors.entityId, actorId), eq(userAgents.userId, identity.userId)))
-    .for("share", { of: userAgents });
-  if (!row?.homeDeviceId) throw new AccessDeniedError();
-  if (row.deviceId === row.homeDeviceId) return row.userAgentId;
-  // The lock may have waited for a new home whose registration was absent from this
-  // statement's snapshot. Resolve it again after the lock, with a fresh snapshot.
-  const device = await findDevice(tx, identity.userId, installationId);
-  if (device?.id !== row.homeDeviceId) throw new AccessDeniedError();
+    .where(and(eq(actors.entityId, actorId), eq(userAgents.userId, identity.userId)));
+  if (!row?.homeDeviceId || row.deviceId !== row.homeDeviceId) throw new AccessDeniedError();
   return row.userAgentId;
 }
 
@@ -65,7 +58,23 @@ type ReceiptKey = {
   requestId: string;
 };
 
-export async function findToolReceipt(tx: DatabaseExecutor, key: ReceiptKey) {
+/**
+ * Claims the request by inserting its receipt first. A concurrent request with the same key waits
+ * on the primary key until this transaction ends. Returns the stored receipt of an earlier
+ * request, or undefined for a new one; save the new result with saveToolReceipt before commit.
+ */
+export async function claimToolReceipt(
+  tx: DatabaseExecutor,
+  key: ReceiptKey,
+  fingerprint: string,
+  turn: TurnContext,
+) {
+  const [claimed] = await tx
+    .insert(agentToolRequests)
+    .values({ ...key, fingerprint, turnId: turn.turnId, attempt: turn.attempt })
+    .onConflictDoNothing()
+    .returning({ requestId: agentToolRequests.requestId });
+  if (claimed) return undefined;
   const [receipt] = await tx
     .select()
     .from(agentToolRequests)
@@ -77,20 +86,26 @@ export async function findToolReceipt(tx: DatabaseExecutor, key: ReceiptKey) {
         eq(agentToolRequests.requestId, key.requestId),
       ),
     );
-  return receipt;
+  if (receipt && receipt.fingerprint !== fingerprint)
+    throw new ConflictError("This request ID was already used with different input.");
+  if (!receipt?.result) throw new ConflictError("The request did not finish. Try again.");
+  return { ...receipt, result: receipt.result };
 }
 
 export async function saveToolReceipt(
   tx: DatabaseExecutor,
   key: ReceiptKey,
-  fingerprint: string,
   result: McpOutput<ServerToolName>,
-  turn: TurnContext,
 ) {
   await tx
-    .insert(agentToolRequests)
-    .values({ ...key, fingerprint, result, turnId: turn.turnId, attempt: turn.attempt })
-    .catch((error: Error) =>
-      mapPostgresError(error, { unique: "This request ID was already used." }),
+    .update(agentToolRequests)
+    .set({ result })
+    .where(
+      and(
+        eq(agentToolRequests.organizationId, key.organizationId),
+        eq(agentToolRequests.actorEntityId, key.actorEntityId),
+        eq(agentToolRequests.tool, key.tool),
+        eq(agentToolRequests.requestId, key.requestId),
+      ),
     );
 }

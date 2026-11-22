@@ -1,7 +1,11 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { ValidationError } from "../../errors";
-import { RepositoryContext, type LockedAccess, type PermissionLevel } from "../repository-context";
+import {
+  RepositoryContext,
+  type AuthorizedAccess,
+  type PermissionLevel,
+} from "../repository-context";
 import { entityGrants, permissionLevel } from "./schema";
 import { isMemberEdited } from "./visibility";
 import { and, eq, sql } from "drizzle-orm";
@@ -13,12 +17,13 @@ export function requirePermissionLevel(level: PermissionLevel) {
 }
 
 /**
- * Sets or removes (no `level`) one actor's grant on the locked entity. `access` must come from
- * `ctx.requireAccess(entityId, "owner", true, "structural")` in the same transaction as `ctx`.
+ * Sets or removes (no `level`) one actor's grant on the entity. `access` must come from
+ * `ctx.requireStructuralAccess(entityId, "owner")` in the same transaction as `ctx`: that claim
+ * makes grant changes on one entity run one at a time, so the owner count read here is current.
  */
 export async function changePermission(
   ctx: RepositoryContext,
-  access: LockedAccess<"owner">,
+  access: AuthorizedAccess<"owner">,
   input: { actorEntityId: string; level?: PermissionLevel },
 ) {
   const { db: tx, scope } = ctx;
@@ -84,7 +89,7 @@ export async function changePermission(
 export function permissionRepository(context: RepositoryContext) {
   function change(input: { entityId: string; actorEntityId: string; level?: PermissionLevel }) {
     return context.transaction(async (ctx) => {
-      const access = await ctx.requireAccess(input.entityId, "owner", true, "structural");
+      const access = await ctx.requireStructuralAccess(input.entityId, "owner");
       await changePermission(ctx, access, input);
     });
   }

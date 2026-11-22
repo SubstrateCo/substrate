@@ -62,12 +62,17 @@ async function requireAdminActor(context: RepositoryContext, actorEntityId: stri
     );
   if (!admin) throw new AccessDeniedError();
 }
+// pipelineVersion is internal to pipeline changes. This write must not reset it.
+const publicSettings = {
+  organizationId: crmSettings.organizationId,
+  defaultCurrency: crmSettings.defaultCurrency,
+};
 export function settingsRepository(context: RepositoryContext) {
   return {
     async settings() {
       await requireAppEnabledForActiveActor(context, "crm");
       const [row] = await context.db
-        .select()
+        .select(publicSettings)
         .from(crmSettings)
         .where(eq(crmSettings.organizationId, context.scope.organizationId));
       return row ?? { organizationId: context.scope.organizationId, defaultCurrency: null };
@@ -90,7 +95,7 @@ export function settingsRepository(context: RepositoryContext) {
             target: crmSettings.organizationId,
             set: { defaultCurrency: input.defaultCurrency },
           })
-          .returning();
+          .returning(publicSettings);
         ctx.effects.hint({
           audience: realtimeKeys.organization(context.scope.organizationId),
           domain: "context",

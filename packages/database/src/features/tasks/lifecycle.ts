@@ -44,7 +44,8 @@ export function taskLifecycle(context: RepositoryContext) {
     async delete(taskId: string, projectId: string) {
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
-        await ctx.requireAccess(projectId, "edit", true, "structural");
+        // The claim comes first: the subtree read below then includes every committed subtask.
+        await ctx.requireStructuralAccess(projectId, "edit");
         await requireTask(ctx, taskId, projectId);
         const subtree = await taskSubtree(ctx, projectId, taskId);
         // Discussion access disappears with the task, including cached open conversations.
@@ -76,8 +77,8 @@ export function taskLifecycle(context: RepositoryContext) {
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
         const projectIds = [...new Set([projectId, destinationProjectId])];
-        await ctx.lockAccessPaths(projectIds, "structural");
-        for (const { entity } of await ctx.requireAccessAll(projectIds, "edit"))
+        // The claim comes first: the subtree, parent and assignee reads below are then current.
+        for (const { entity } of await ctx.requireStructuralAccessAll(projectIds, "edit"))
           if (entity.entityType !== "project") throw new AccessDeniedError();
         const task = await requireTask(ctx, taskId, projectId);
         const subtree = await taskSubtree(ctx, projectId, taskId);

@@ -78,11 +78,7 @@ test("source creation is atomic, concurrent-idempotent, and preserves the exact 
   await createContextService(db, { userId: "alice", organizationId: f.orgA }).createTaskFromMessage(
     { ...input, requestId: crypto.randomUUID() },
   );
-  // The project lock taken for idempotency also covers the task insert.
-  expect(queries.filter((query) => query.includes("FOR NO KEY UPDATE"))).toHaveLength(1);
-  // Source validation now also locks and rechecks the conversation against concurrent deletion,
-  // and the request identity takes its own advisory lock.
-  expect(queries).toHaveLength(15);
+  expect(queries).toHaveLength(10);
 });
 
 test("both endpoints are required, membership revocation hides context, and linking never shares", async () => {

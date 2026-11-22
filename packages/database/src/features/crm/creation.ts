@@ -31,7 +31,7 @@ export async function createOnce<T extends { entityId: string }>(
       return result;
     }
     const result = await create(ctx);
-    await recordRequest(ctx, operation, requestId, fingerprint, result.entityId);
+    await recordRequest(ctx, operation, requestId, result.entityId);
     return result;
   });
 }

@@ -15,8 +15,8 @@ type Input = Omit<
 >;
 export async function assignOwner(context: RepositoryContext, id: string, input: Input) {
   return context.transaction(async (ctx) => {
-    await ctx.lockAccessPaths([id, input.ownerActorEntityId]);
-    const access = await ctx.requireAccess(id, "edit");
+    // Responsibility is a structural change: concurrent reassignments of one record conflict.
+    const access = await ctx.requireStructuralAccess(id, "edit");
     const { entity } = access;
     if (entity.entityType !== "account" && entity.entityType !== "deal")
       throw new AccessDeniedError();
@@ -25,7 +25,6 @@ export async function assignOwner(context: RepositoryContext, id: string, input:
       throw new ValidationError("Responsibility requires an active organization human.");
     const table = entity.entityType === "account" ? crmAccounts : crmDeals;
     const where = and(eq(table.organizationId, ctx.scope.organizationId), eq(table.entityId, id));
-    // The target's entity access lock also serializes responsibility changes.
     const [previous] = await ctx.db.select().from(table).where(where);
     if (!previous) throw new AccessDeniedError();
     if (previous.ownerActorEntityId !== input.expectedOwnerActorEntityId)
@@ -47,14 +46,21 @@ export async function assignOwner(context: RepositoryContext, id: string, input:
     if (previous.ownerActorEntityId === responsible.entityId)
       return { entityId: id, ownerActorEntityId: responsible.entityId };
     const ownerActorEntityId = responsible.entityId;
-    if (entity.entityType === "deal" && "version" in previous)
-      await ctx.db
+    if (entity.entityType === "deal" && "version" in previous) {
+      // A deal edit does not claim the structural version, so the write checks the deal version.
+      const [row] = await ctx.db
         .update(crmDeals)
         .set({ ownerActorEntityId, version: previous.version + 1 })
         .where(
-          and(eq(crmDeals.organizationId, ctx.scope.organizationId), eq(crmDeals.entityId, id)),
-        );
-    else
+          and(
+            eq(crmDeals.organizationId, ctx.scope.organizationId),
+            eq(crmDeals.entityId, id),
+            eq(crmDeals.version, previous.version),
+          ),
+        )
+        .returning({ entityId: crmDeals.entityId });
+      if (!row) throw new ConflictError("The deal changed. Supply its current version.");
+    } else
       await ctx.db
         .update(crmAccounts)
         .set({ ownerActorEntityId })

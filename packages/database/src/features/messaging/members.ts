@@ -10,7 +10,7 @@ import type { DatabaseExecutor } from "../../core/executor";
 import { member } from "../../core/organizations/schema";
 import type { SessionIdentity } from "../../core/session/identity";
 import { ValidationError } from "../../errors";
-import { approvedParticipant, type Conversation } from "./access";
+import { approvedParticipant, denyDeletedConversation, type Conversation } from "./access";
 import { messagingConversations, messagingParticipants } from "./schema";
 import { and, asc, eq, inArray, isNotNull, isNull, ne, sql, type SQL } from "drizzle-orm";
 
@@ -39,6 +39,20 @@ export async function writeMembers(
   change: "join" | "leave" | "author" | "consent",
 ) {
   if (!members.length) return [];
+  try {
+    return await upsertMembers(db, conversationId, members, change);
+  } catch (error) {
+    if (error instanceof Error) denyDeletedConversation(error);
+    throw error;
+  }
+}
+
+async function upsertMembers(
+  db: DatabaseExecutor,
+  conversationId: string,
+  members: MemberActor[],
+  change: "join" | "leave" | "author" | "consent",
+) {
   const now = new Date();
   const insert = db.insert(messagingParticipants).values(
     members.map((actor) => ({

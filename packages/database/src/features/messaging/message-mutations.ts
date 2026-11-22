@@ -3,7 +3,7 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 import { entities } from "../../core/entities/schema";
 import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
-import { messagingSession, type MessagingSessionResolver } from "../../core/session/messaging";
+import type { MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError } from "../../errors";
 import { applyMessageEffects } from "../context/message-effects";
 import { messageEntityReferences } from "../context/schema";
@@ -14,7 +14,7 @@ import { referenceChangeHints } from "../realtime/routing";
 import { loadConversation } from "./access";
 import { validateBody } from "./policy";
 import { messagingMessages, messagingReactions } from "./schema";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 export function messageMutationOperations(
   db: DatabaseExecutor,
@@ -24,24 +24,16 @@ export function messageMutationOperations(
   async function mutate(messageId: string, body?: string) {
     if (scope.actorEntityId) throw new AccessDeniedError();
     return db.transaction(async (tx) => {
-      await authenticate(tx);
-      const [target] = await tx
-        .select({ conversationId: messagingMessages.conversationId })
-        .from(messagingMessages)
-        .where(eq(messagingMessages.id, messageId));
-      if (!target) throw new AccessDeniedError();
-      // Serialize with membership changes and mutations of this message, not other sends. Read
-      // author and lifecycle state after the lock wait, never from a stale pre-lock message.
-      const conversation = await loadConversation(tx, scope, target.conversationId, "share");
-      const { actor, context } = await messagingSession(tx, scope);
-      if (conversation.taskEntityId)
-        await context.requireAccess(conversation.taskEntityId, "comment", true);
+      const { actor, context } = await authenticate(tx);
       const [message] = await tx
         .select()
         .from(messagingMessages)
-        .where(eq(messagingMessages.id, messageId))
-        .for("no key update");
-      if (!message || message.authorActorEntityId !== actor.entityId || message.deletedAt)
+        .where(eq(messagingMessages.id, messageId));
+      if (!message) throw new AccessDeniedError();
+      const conversation = await loadConversation(tx, scope, message.conversationId);
+      if (conversation.taskEntityId)
+        await context.requireAccess(conversation.taskEntityId, "comment");
+      if (message.authorActorEntityId !== actor.entityId || message.deletedAt)
         throw new AccessDeniedError();
       const deleting = body === undefined;
       if (!deleting) {
@@ -49,6 +41,21 @@ export function messageMutationOperations(
         validateBody(body, attachments.length);
         if (body === message.body) return { id: messageId };
       }
+      // The write checks the author and the lifecycle itself, so an edit can never follow a
+      // deletion. It comes first: mutations of one message then run one at a time, and each
+      // reads the references the previous one committed.
+      const [updated] = await tx
+        .update(messagingMessages)
+        .set(deleting ? { body: "", deletedAt: new Date() } : { body, editedAt: new Date() })
+        .where(
+          and(
+            eq(messagingMessages.id, messageId),
+            eq(messagingMessages.authorActorEntityId, actor.entityId),
+            isNull(messagingMessages.deletedAt),
+          ),
+        )
+        .returning();
+      if (!updated) throw new AccessDeniedError();
       // Related lists of every referenced record show this message's body. Read the references
       // before the edit replaces its mentions.
       const referenced = await tx
@@ -74,11 +81,6 @@ export function messageMutationOperations(
             eq(messageEntityReferences.purpose, "mention"),
           ),
         );
-      const [updated] = await tx
-        .update(messagingMessages)
-        .set(deleting ? { body: "", deletedAt: new Date() } : { body, editedAt: new Date() })
-        .where(eq(messagingMessages.id, messageId))
-        .returning();
       if (deleting) {
         // Detaching blocks both metadata and content reads. Existing orphan-file retention
         // handles storage cleanup; do not remove files that another record still references.
@@ -97,7 +99,7 @@ export function messageMutationOperations(
             domain: "notifications",
           });
       } else {
-        const { work } = await applyMessageEffects(context, scope, updated!, conversation, {
+        const { work } = await applyMessageEffects(context, scope, updated, conversation, {
           delivery: false,
         });
         referenced.push(...work);

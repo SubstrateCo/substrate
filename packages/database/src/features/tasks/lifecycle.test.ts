@@ -1,7 +1,7 @@
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { entities } from "../../core/entities/schema";
-import { AccessDeniedError, ValidationError } from "../../errors";
+import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { ActorRepositories } from "../../repositories";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
@@ -111,6 +111,51 @@ test("concurrent assignment and access removal cannot leave an inaccessible assi
       AccessDeniedError,
     );
   }
+});
+
+test("a subtask created while its parent is deleted or moved never loses its parent", async () => {
+  const { repos, project, task } = await tree();
+  const destination = await repos.projects.create({ name: "Destination" });
+  const subtask = (title: string) =>
+    repos.tasks.create({
+      projectEntityId: project.entityId,
+      parentTaskEntityId: task.entityId,
+      title,
+    });
+  // Every live task's parent is live and in the same project.
+  const expectWholeTrees = async () => {
+    for (const id of [project.entityId, destination.entityId]) {
+      const listed = await repos.tasks.list(id);
+      const ids = new Set(listed.map((row) => row.entityId));
+      for (const row of listed)
+        if (row.parentTaskEntityId) expect(ids.has(row.parentTaskEntityId)).toBe(true);
+    }
+  };
+  const moved = await Promise.allSettled([
+    repos.tasks.move(task.entityId, project.entityId, destination.entityId, null),
+    subtask("During move"),
+  ]);
+  // The loser gets a domain error, not a foreign-key failure.
+  for (const result of moved)
+    if (result.status === "rejected")
+      expect([ConflictError, ValidationError]).toContain(result.reason.constructor);
+  expect(moved.some((result) => result.status === "fulfilled")).toBe(true);
+  await expectWholeTrees();
+
+  const current = (await repos.tasks.get(task.entityId)).projectEntityId;
+  const deleted = await Promise.allSettled([
+    repos.tasks.delete(task.entityId, current),
+    repos.tasks.create({
+      projectEntityId: current,
+      parentTaskEntityId: task.entityId,
+      title: "During delete",
+    }),
+  ]);
+  for (const result of deleted)
+    if (result.status === "rejected")
+      expect([ConflictError, AccessDeniedError]).toContain(result.reason.constructor);
+  expect(deleted.some((result) => result.status === "fulfilled")).toBe(true);
+  await expectWholeTrees();
 });
 
 test("access removal also checks assignments to the person’s agents, but ignores deleted tasks", async () => {

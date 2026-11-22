@@ -1,15 +1,13 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import { RepositoryContext } from "../../core/repository-context";
 import { ActorRepositories } from "../../repositories";
-import { actors, entityGrants, member, organizationApps } from "../../schema";
+import { actors, organizationApps } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { crmActivityEvents } from "./activity.schema";
-import { crmRepository } from "./repository";
 import { crmAccounts, crmAffiliations, crmContactProfiles } from "./schema";
-import { expect, spyOn, test } from "bun:test";
+import { expect, test } from "bun:test";
 import { and, eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
@@ -70,30 +68,31 @@ test("affiliation writes batch guards and retain paired activities and hints", a
       domain: "context",
     });
   expect(result.result).toMatchObject(input);
-  expect(counts).toEqual([10, 9, 7, 5]);
+  expect(counts).toEqual([10, 8, 6, 4]);
 });
 
-test("primary selection resets every competitor without rewriting false rows", async () => {
+test("primary selection resets the old primary without rewriting false rows", async () => {
   const { a, input } = await records();
   const accounts = await Promise.all(
-    ["Other primary", "Another primary", "Not primary"].map((name) =>
+    ["Other primary", "Not primary", "Also not primary"].map((name) =>
       a.crm.createAccount({ name }),
     ),
   );
-  await a.crm.setAffiliation(input);
   await f.db.insert(crmAffiliations).values(
     accounts.map((account, index) => ({
       organizationId: f.orgA,
       contactEntityId: input.contactEntityId,
       accountEntityId: account.entityId,
-      isPrimary: index < 2,
+      isPrimary: index === 0,
       title: "Other",
     })),
   );
   const version = async () =>
     f.db.execute(sql`select xmin::text, ctid::text from ${crmAffiliations}
-      where account_entity_id = ${accounts[2]!.entityId}`);
+      where account_entity_id in (${accounts[1]!.entityId}, ${accounts[2]!.entityId})
+      order by account_entity_id`);
   const before = await version();
+  await a.crm.setAffiliation(input);
   const events = await f.db.select().from(crmActivityEvents);
   await a.crm.setAffiliation(input);
   expect(await version()).toEqual(before);
@@ -185,58 +184,6 @@ for (const invalid of [
   });
 }
 
-for (const operation of ["set", "remove"] as const) {
-  for (const guard of ["membership", "access", "app"] as const)
-    test(`affiliation ${operation} rechecks ${guard} after access paths lock`, async () => {
-      const { a, input } = await records();
-      await a.crm.setAffiliation(input);
-      await a.crm.share(input.accountEntityId, f.bob, "edit");
-      const before = await f.db.select().from(crmActivityEvents);
-      // Change the guarded state after the real lock, before the guards read it.
-      const ctx = new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.bob });
-      // oxlint-disable-next-line typescript/unbound-method -- Called with its original context below.
-      const lock = RepositoryContext.prototype.lockAccessPaths;
-      const mocked = spyOn(RepositoryContext.prototype, "lockAccessPaths").mockImplementation(
-        async function (this: RepositoryContext, ...args) {
-          await lock.apply(this, args);
-          if (guard === "membership") await this.db.delete(member).where(eq(member.id, "bob-a"));
-          else if (guard === "access")
-            await this.db
-              .update(entityGrants)
-              .set({ level: "view" })
-              .where(
-                and(
-                  eq(entityGrants.organizationId, f.orgA),
-                  eq(entityGrants.entityId, input.accountEntityId),
-                  eq(entityGrants.actorEntityId, f.bob),
-                ),
-              );
-          else
-            await this.db
-              .update(organizationApps)
-              .set({ enabled: false })
-              .where(
-                and(eq(organizationApps.organizationId, f.orgA), eq(organizationApps.appId, "crm")),
-              );
-        },
-      );
-      try {
-        const crm = crmRepository(ctx);
-        expect(
-          await rejection(
-            operation === "set"
-              ? crm.setAffiliation({ ...input, title: "Denied" })
-              : crm.removeAffiliation(input.contactEntityId, input.accountEntityId),
-          ),
-        ).toMatchObject({ name: guard === "app" ? "AppDisabledError" : "AccessDeniedError" });
-      } finally {
-        mocked.mockRestore();
-      }
-      expect((await f.db.select().from(crmAffiliations))[0]).toMatchObject(input);
-      expect(await f.db.select().from(crmActivityEvents)).toEqual(before);
-    });
-}
-
 test("caller rollback restores primary selection and paired activities", async () => {
   const { a, input } = await records();
   const other = await a.crm.createAccount({ name: "Other" });
@@ -255,20 +202,27 @@ test("caller rollback restores primary selection and paired activities", async (
   expect(await f.db.select().from(crmActivityEvents)).toEqual(before);
 });
 
-test("concurrent primary selections serialize on the contact", async () => {
+test("concurrent primary selections leave one primary", async () => {
   const { a, input } = await records();
   const other = await a.crm.createAccount({ name: "Other" });
-  await Promise.all([
+  const results = await Promise.allSettled([
     a.crm.setAffiliation(input),
     a.crm.setAffiliation({ ...input, accountEntityId: other.entityId }),
   ]);
+  // The loser conflicts, or applies cleanly after the winner. Its writes never half-apply.
+  const applied = results.filter((result) => result.status === "fulfilled").length;
+  expect(applied).toBeGreaterThanOrEqual(1);
+  for (const result of results)
+    if (result.status === "rejected")
+      expect(result.reason).toMatchObject({
+        name: "ConflictError",
+        message: "The primary affiliation changed. Reload and try again.",
+      });
   const rows = await f.db.select().from(crmAffiliations);
-  expect(rows).toHaveLength(2);
+  expect(rows).toHaveLength(applied);
   expect(rows.filter((row) => row.isPrimary)).toHaveLength(1);
-  for (const id of [input.contactEntityId, input.accountEntityId, other.entityId]) {
-    const events = (await a.crm.activity(id)).items.filter(
-      (row) => row.action === "context_linked",
-    );
-    expect(events).toHaveLength(id === input.contactEntityId ? 2 : 1);
-  }
+  const linked = (await a.crm.activity(input.contactEntityId)).items.filter(
+    (row) => row.action === "context_linked",
+  );
+  expect(linked).toHaveLength(applied);
 });

@@ -105,10 +105,7 @@ test("project references enforce entity type and organization alignment", async 
   ).toHaveLength(1);
 });
 
-const locks = (queries: string[]) =>
-  queries.filter((query) => query.includes("FOR NO KEY UPDATE")).length;
-
-test("project sharing checks the project under one structural lock and keeps grant rules", async () => {
+test("project sharing claims the project once and keeps grant rules", async () => {
   const alice = f.forActor(f.alice);
   const project = await alice.projects.create({ name: "Shared" });
   const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Child" });
@@ -118,9 +115,8 @@ test("project sharing checks the project under one structural lock and keeps gra
   const shared = await repos.transaction((tx) =>
     tx.projects.share(project.entityId, f.bob, "edit"),
   );
-  // Lock path (2), target actor, existing grant, upsert.
+  // Access, structural claim, target actor, existing grant, upsert.
   expect(queries).toHaveLength(5);
-  expect(locks(queries)).toBe(1);
   expect(shared.hints).toEqual(
     expect.arrayContaining([
       { audience: realtimeKeys.actor(f.orgA, f.bob), domain: "access" },
@@ -179,7 +175,7 @@ test("project sharing checks the project under one structural lock and keeps gra
   expect(await f.accessLevel(f.bob, project.entityId)).toBe("edit");
 });
 
-test("project revocation keeps assignments, locks once, and protects the last owner", async () => {
+test("project revocation keeps assignments, claims once, and protects the last owner", async () => {
   const alice = f.forActor(f.alice);
   const project = await alice.projects.create({ name: "Shared" });
   const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Assigned" });
@@ -201,9 +197,8 @@ test("project revocation keeps assignments, locks once, and protects the last ow
   const { db, queries } = recordQueries();
   const repos = new ActorRepositories(db, { organizationId: f.orgA, actorEntityId: f.alice });
   const revoked = await repos.transaction((tx) => tx.projects.revoke(project.entityId, f.bob));
-  // Lock path (2), assignments, fresh owner check, existing grant, delete.
+  // Access, structural claim, assignments, fresh owner check, existing grant, delete.
   expect(queries).toHaveLength(6);
-  expect(locks(queries)).toBe(1);
   expect(revoked.hints).toContainEqual({
     audience: realtimeKeys.actor(f.orgA, f.bob),
     domain: "access",
@@ -213,7 +208,10 @@ test("project revocation keeps assignments, locks once, and protects the last ow
   );
   queries.length = 0;
   const missing = await repos.transaction((tx) => tx.projects.revoke(project.entityId, f.bob));
-  expect(queries.filter((query) => /^(insert|update|delete)\b/i.test(query))).toEqual([]);
+  // The structural claim is the only write: no grant changes.
+  expect(queries.filter((query) => /^(insert|update|delete)\b/i.test(query))).toEqual([
+    expect.stringContaining('"access_version"'),
+  ]);
   expect(missing.hints).toEqual([]);
   expect(await rejection(alice.projects.revoke(project.entityId, f.alice))).toMatchObject({
     message: expect.stringContaining("last owner"),

@@ -1,7 +1,7 @@
 import type { ContactWrite } from "@substrate/contracts/contacts/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import { lockContact } from "../../core/contacts/access";
+import { requireContact } from "../../core/contacts/access";
 import { contactDetailRows, readContactProfile } from "../../core/contacts/profile";
 import { contactRepository } from "../../core/contacts/repository";
 import type { RepositoryContext } from "../../core/repository-context";
@@ -33,9 +33,8 @@ async function contentKey(ctx: RepositoryContext, contactId: string, action: Act
 }
 export function mutateContactDetail(context: RepositoryContext, input: Input) {
   return context.transaction(async (ctx) => {
-    const locked = await lockContact(ctx, input.contactEntityId);
-    const repo = contactRepository(ctx, locked);
-    // Under the lock, the profile read once proves the contact row for the whole transaction.
+    const checked = await requireContact(ctx, input.contactEntityId);
+    const repo = contactRepository(ctx, checked);
     await readContactProfile(ctx, input.contactEntityId);
     const before = await contentKey(ctx, input.contactEntityId, input.action);
     async function write() {

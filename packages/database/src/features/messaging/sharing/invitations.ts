@@ -13,7 +13,12 @@ import { member, organization } from "../../../core/organizations/schema";
 import { workspaceContext } from "../../../core/session/workspace";
 import { AccessDeniedError, ValidationError } from "../../../errors";
 import { sharingInvitationHints, sharingInvitationsHints } from "../../realtime/routing";
-import { lockConversation, visibleConversations, type Conversation } from "../access";
+import {
+  claimConversation,
+  conversationRow,
+  visibleConversations,
+  type Conversation,
+} from "../access";
 import { writeMembers } from "../members";
 import { canShare, invitationTarget, validateExternalInvitations, type Viewer } from "../policy";
 import { messagingConversations, messagingParticipants } from "../schema";
@@ -197,15 +202,14 @@ export async function declineSharingInvitation(db: DatabaseExecutor, userId: str
   });
 }
 
-/** Loads the invitation and locks its conversation. The caller authorizes. */
-async function lockInvitation(db: DatabaseExecutor, id: string) {
+/** Loads the invitation. The caller authorizes. */
+async function loadInvitation(db: DatabaseExecutor, id: string) {
   const [invite] = await db
     .select()
     .from(messagingInvitations)
     .where(eq(messagingInvitations.id, id));
   if (!invite) throw new AccessDeniedError();
-  const conversation = await lockConversation(db, invite.conversationId, "update");
-  return { invite, conversation };
+  return invite;
 }
 
 export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentity) {
@@ -213,10 +217,10 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
     async invite(conversationId: string, input: { email: string; shareHistory: boolean }) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
-        // Check membership before taking the lock, as accept does. The manager check needs the
-        // locked row, so it runs after.
+        // Check membership before the claim, as accept does. The manager check needs the
+        // claimed row, so it runs after.
         await workspaceContext(tx, scope);
-        const conversation = await lockConversation(tx, conversationId, "update");
+        const conversation = await claimConversation(tx, conversationId);
         const [invitation] = await queueSharingInvitations(tx, scope, conversation, {
           emails: [input.email],
           shareHistory: input.shareHistory,
@@ -233,7 +237,9 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
           .from(messagingInvitations)
           .where(eq(messagingInvitations.id, id));
         if (!lookup) throw new AccessDeniedError();
-        const conversation = await lockConversation(tx, lookup.conversationId, "update");
+        // Sharing changes of one conversation run one at a time. Read the invitation again
+        // after the claim: an earlier acceptance may have changed it.
+        const conversation = await claimConversation(tx, lookup.conversationId);
         const [invite] = await tx
           .select()
           .from(messagingInvitations)
@@ -384,7 +390,9 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
     decline: (id: string) => declineSharingInvitation(db, scope.userId, id),
     async revoke(id: string) {
       return db.transaction(async (tx) => {
-        const { invite, conversation } = await lockInvitation(tx, id);
+        // Revocation is one compare-and-set on the invitation's status, so it takes no claim.
+        const invite = await loadInvitation(tx, id);
+        const conversation = await conversationRow(tx, invite.conversationId);
         await requireSharingManager(tx, scope, conversation);
         if (
           invite.senderOrganizationId !== scope.organizationId &&
@@ -409,7 +417,8 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
     },
     async resend(id: string) {
       return db.transaction(async (tx) => {
-        const { invite, conversation } = await lockInvitation(tx, id);
+        const invite = await loadInvitation(tx, id);
+        const conversation = await claimConversation(tx, invite.conversationId);
         if (invite.senderOrganizationId !== scope.organizationId) throw new AccessDeniedError();
         const [current] = await tx
           .select({ status: messagingInvitations.status })

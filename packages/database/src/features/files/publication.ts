@@ -1,16 +1,16 @@
 import { attachmentFileIds } from "@substrate/contracts/files/attachments";
 
 import { actors } from "../../core/actors/schema";
-import type { Locked, RepositoryContext } from "../../core/repository-context";
+import type { Authorized, RepositoryContext } from "../../core/repository-context";
 import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import type { LockedConversation } from "../messaging/access";
+import type { Conversation } from "../messaging/access";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
-// The locked destination proves access. The conditional write arbitrates publication and deletion.
+// The checked destination proves access. The conditional write arbitrates publication and deletion.
 export async function publishFiles(
   ctx: RepositoryContext,
-  _destination: Locked<unknown, "edit"> | LockedConversation,
+  _destination: Authorized<unknown, "edit"> | Conversation,
   ids: string[],
 ) {
   if (!attachmentFileIds.safeParse(ids).success)

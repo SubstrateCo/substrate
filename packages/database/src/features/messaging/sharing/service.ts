@@ -19,7 +19,7 @@ export function createSharingRepository(
   };
 }
 
-// Trusted non-HTTP entry point. Reads resolve at entry; writes recheck after their locks.
+// Trusted non-HTTP entry point. Reads resolve at entry; writes authorize in their own transaction.
 export function createSharingService(db: DatabaseExecutor, scope: SessionIdentity) {
   type Queries = ReturnType<typeof sharingQueries>;
   const run = async <T>(work: (queries: Queries) => Promise<T>) =>

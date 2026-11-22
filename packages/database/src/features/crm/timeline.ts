@@ -76,7 +76,7 @@ export async function timeline(
   entityId: string,
   options: Options = {},
 ) {
-  await requireAppEnabled(context, "crm", false);
+  await requireAppEnabled(context, "crm");
   const access = await context.requireAccess(entityId, "view");
   const { entity } = access;
   if (Boolean(options.beforeOccurredAt) !== Boolean(options.beforeEntityId))

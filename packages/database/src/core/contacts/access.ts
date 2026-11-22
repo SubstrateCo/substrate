@@ -3,7 +3,7 @@ import { activeActorCondition, permissionActorEntityId } from "../actors/access"
 import { actors } from "../actors/schema";
 import { entities } from "../entities/schema";
 import { organizationAdminCondition } from "../permissions/visibility";
-import type { EntityAccess, LockedAccess, RepositoryContext } from "../repository-context";
+import type { AuthorizedAccess, EntityAccess, RepositoryContext } from "../repository-context";
 import { contactInteractions } from "./interactions.schema";
 import { and, eq, inArray, isNull, sql, type SQLWrapper } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -23,8 +23,12 @@ function activeMember(ctx: RepositoryContext) {
   )`;
 }
 
-async function contactAccess(ctx: RepositoryContext, id: string, lock: boolean) {
-  const query = ctx.db
+/** The live contact, for any active member of its organization. */
+export async function requireContact(
+  ctx: RepositoryContext,
+  id: string,
+): Promise<AuthorizedAccess<"edit">> {
+  const [row] = await ctx.db
     .select({
       entity: entities,
       admin: sql<boolean>`${organizationAdminCondition(ctx.scope)}`,
@@ -39,24 +43,10 @@ async function contactAccess(ctx: RepositoryContext, id: string, lock: boolean) 
         activeMember(ctx),
       ),
     );
-  const [row] = lock ? await query.for("no key update") : await query;
   if (!row) throw new AccessDeniedError();
-  return { entity: row.entity, level: row.admin ? "owner" : "edit" } satisfies EntityAccess;
-}
-
-/** The live contact, for any active member of its organization. */
-export function requireContact(ctx: RepositoryContext, id: string): Promise<EntityAccess> {
-  return contactAccess(ctx, id, false);
-}
-
-/** requireContact, holding the contact's row lock until the transaction ends. Writes to a contact
- * and its interactions take this lock, so they run one at a time. */
-export async function lockContact(
-  ctx: RepositoryContext,
-  id: string,
-): Promise<LockedAccess<"edit">> {
-  // SAFETY: the row is locked in this transaction, which is what LockedAccess records.
-  return (await contactAccess(ctx, id, true)) as LockedAccess<"edit">;
+  const access: EntityAccess = { entity: row.entity, level: row.admin ? "owner" : "edit" };
+  // SAFETY: every active member edits every live contact, which is what AuthorizedAccess records.
+  return access as AuthorizedAccess<"edit">;
 }
 
 /** List filter: the contact in `entityId` is live and the actor is an active member. */
@@ -85,29 +75,8 @@ export function interactionReadable(ctx: RepositoryContext, entityId: SQLWrapper
   ))`;
 }
 
-async function liveInteraction(ctx: RepositoryContext, id: string) {
-  const [row] = await ctx.db
-    .select({ interaction: contactInteractions })
-    .from(contactInteractions)
-    .innerJoin(
-      entities,
-      and(
-        eq(entities.organizationId, contactInteractions.organizationId),
-        eq(entities.entityId, contactInteractions.entityId),
-        isNull(entities.deletedAt),
-      ),
-    )
-    .where(
-      and(
-        eq(contactInteractions.organizationId, ctx.scope.organizationId),
-        eq(contactInteractions.entityId, id),
-      ),
-    );
-  return row?.interaction;
-}
-
-// liveInteraction and requireContact in one statement.
-async function interactionAccess(ctx: RepositoryContext, id: string) {
+/** The live interaction and its live contact, in one statement. */
+export async function requireInteraction(ctx: RepositoryContext, id: string) {
   const contact = alias(entities, "interaction_contact");
   const [row] = await ctx.db
     .select({
@@ -143,32 +112,12 @@ async function interactionAccess(ctx: RepositoryContext, id: string) {
   if (!row) throw new AccessDeniedError();
   return {
     interaction: row.interaction,
-    contact: { entity: row.contact, level: row.admin ? "owner" : "edit" } satisfies EntityAccess,
+    // SAFETY: every active member edits every live contact, which is what AuthorizedAccess records.
+    contact: {
+      entity: row.contact,
+      level: row.admin ? "owner" : "edit",
+    } as AuthorizedAccess<"edit">,
   };
-}
-
-type Interaction = typeof contactInteractions.$inferSelect;
-
-/** The live interaction and its contact. `lock` takes the contact's lock first, then reads the
- * interaction again, so a concurrent delete cannot be missed. */
-export async function requireInteraction(
-  ctx: RepositoryContext,
-  id: string,
-  lock: true,
-): Promise<{ interaction: Interaction; contact: LockedAccess<"edit"> }>;
-export async function requireInteraction(
-  ctx: RepositoryContext,
-  id: string,
-  lock?: boolean,
-): Promise<{ interaction: Interaction; contact: EntityAccess }>;
-export async function requireInteraction(ctx: RepositoryContext, id: string, lock = false) {
-  if (!lock) return interactionAccess(ctx, id);
-  const found = await liveInteraction(ctx, id);
-  if (!found) throw new AccessDeniedError();
-  const contact = await lockContact(ctx, found.contactEntityId);
-  const interaction = await liveInteraction(ctx, id);
-  if (!interaction) throw new AccessDeniedError();
-  return { interaction, contact };
 }
 
 /** Whether the actor may delete interactions written by the author in `authorEntityId`. */

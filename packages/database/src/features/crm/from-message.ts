@@ -37,29 +37,12 @@ export async function createCrmFromMessageInContext(
     const resolved = await workspaceContext(ctx.db, identity);
     if (resolved.context.scope.actorEntityId !== ctx.scope.actorEntityId)
       throw new AccessDeniedError();
-    const destinationIds =
-      value.kind === "deal"
-        ? [value.fields.accountEntityId, ...value.fields.contactEntityIds].filter(
-            (id): id is string => id !== null,
-          )
-        : [];
-    // Match createTaskFromMessage: conversation, sorted access paths, then message.
+
     // Admin/CRM access never substitutes for independently readable source access.
-    const { conversation, message } = await requireMessage(
-      ctx.db,
-      identity,
-      value.messageId,
-      "share",
-      async (source) => {
-        if (source.taskEntityId) {
-          await ctx.lockAccessPaths([...destinationIds, source.taskEntityId]);
-          await ctx.requireAccess(source.taskEntityId, "view");
-        }
-      },
-    );
+    const { conversation, message } = await requireMessage(ctx.db, identity, value.messageId);
     if (message.deletedAt || conversation.organizationId !== ctx.scope.organizationId)
       throw new AccessDeniedError();
-    if (!conversation.taskEntityId) await ctx.lockAccessPaths(destinationIds);
+    if (conversation.taskEntityId) await ctx.requireAccess(conversation.taskEntityId, "view");
 
     const { organizationId, actorEntityId } = ctx.scope;
     const fields =
@@ -104,7 +87,7 @@ export async function createCrmFromMessageInContext(
       );
       // Account/deal and the canonical contact wrapper already record "created" activity.
       if (value.associate) await recordCrmActivity(ctx, { entityId, action: "discussion_linked" });
-      await recordRequest(ctx, "crm_from_message", value.requestId, fingerprint, entityId);
+      await recordRequest(ctx, "crm_from_message", value.requestId, entityId);
     }
     for (const hint of referenceChangeHints(
       organizationId,

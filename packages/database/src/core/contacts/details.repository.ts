@@ -5,9 +5,9 @@ import {
   RepositoryContext,
   entityCursor,
   pageSize,
-  type LockedAccess,
+  type AuthorizedAccess,
 } from "../repository-context";
-import { contactReadable, lockContact } from "./access";
+import { contactReadable, requireContact } from "./access";
 import { contactAddresses, contactUrls } from "./details.schema";
 import {
   addressInput,
@@ -22,23 +22,30 @@ import { contactDetailRows, readContactProfile } from "./profile";
 import { contactIdentifiers, contacts } from "./schema";
 import { and, asc, eq, ne, sql } from "drizzle-orm";
 
+// A unique index allows one primary value. A change that races another primary change loses here.
+function primaryChanged(error: Error): never {
+  if (violatedConstraint(error)?.endsWith("_primary_unique"))
+    throw new ConflictError("This contact changed. Try again.");
+  throw error;
+}
+
 function duplicateIdentifier(error: Error): never {
   if (violatedConstraint(error) === "contact_identifiers_value_unique")
     throw new ConflictError("This contact already has that email or phone.");
-  throw error;
+  return primaryChanged(error);
 }
 
 function duplicateUrl(error: Error): never {
   if (violatedConstraint(error) === "contact_urls_value_unique")
     throw new ConflictError("This contact already has that URL.");
-  throw error;
+  return primaryChanged(error);
 }
 
-/** `locked` is the contact lock the caller holds in this transaction; edits to that contact reuse
- * it instead of locking again. */
+/** `checked` is the caller's requireContact in this transaction; edits to that contact reuse it
+ * instead of checking again. */
 export function contactDetailsRepository(
   context: RepositoryContext,
-  locked?: LockedAccess<"edit">,
+  checked?: AuthorizedAccess<"edit">,
 ) {
   const { db, scope } = context;
   const target = (
@@ -54,8 +61,7 @@ export function contactDetailsRepository(
 
   async function edit<T>(contactId: string, work: (ctx: RepositoryContext) => Promise<T>) {
     return context.transaction(async (ctx) => {
-      // The contact lock serializes detail edits, including replacing a primary value.
-      if (locked?.entity.entityId !== contactId) await lockContact(ctx, contactId);
+      if (checked?.entity.entityId !== contactId) await requireContact(ctx, contactId);
       const [contact] = await ctx.db
         .select()
         .from(contacts)
@@ -171,13 +177,15 @@ export function contactDetailsRepository(
             ...value,
             extension: value.extension ?? null,
             label: value.label ?? null,
-            isPrimary,
+            // An unset flag stays as stored, so a concurrent primary change is not undone.
+            isPrimary: value.isPrimary,
             updatedAt: new Date(),
           })
           .where(target(contactIdentifiers, contactId, id))
           .returning()
           .catch(duplicateIdentifier);
-        return row!;
+        if (!row) throw new AccessDeniedError();
+        return row;
       });
     },
     setPrimaryIdentifier(contactId: string, id: string) {
@@ -193,8 +201,10 @@ export function contactDetailsRepository(
           .update(contactIdentifiers)
           .set({ isPrimary: true, updatedAt: new Date() })
           .where(target(contactIdentifiers, contactId, id))
-          .returning();
-        return row!;
+          .returning()
+          .catch(primaryChanged);
+        if (!row) throw new AccessDeniedError();
+        return row;
       });
     },
     removeIdentifier(contactId: string, id: string) {
@@ -213,7 +223,8 @@ export function contactDetailsRepository(
         const [row] = await ctx.db
           .insert(contactAddresses)
           .values({ ...value, organizationId: scope.organizationId, contactEntityId: contactId })
-          .returning();
+          .returning()
+          .catch(primaryChanged);
         return row!;
       });
     },
@@ -236,7 +247,8 @@ export function contactDetailsRepository(
             updatedAt: new Date(),
           })
           .where(target(contactAddresses, contactId, id))
-          .returning();
+          .returning()
+          .catch(primaryChanged);
         if (!row) throw new AccessDeniedError();
         return row;
       });

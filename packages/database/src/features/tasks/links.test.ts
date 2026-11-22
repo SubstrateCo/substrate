@@ -83,6 +83,25 @@ test("links reject self links, block cycles, and reversed duplicates", async () 
   expect(await fixture.db.select().from(entityLinks)).toHaveLength(3);
 });
 
+test("concurrent opposite block links between two tasks keep exactly one link", async () => {
+  const { alice, bob, open, second } = await twoProjects();
+  const results = await Promise.allSettled([
+    alice.tasks.addLink(open.entityId, "blocks", second.entityId),
+    bob.tasks.addLink(second.entityId, "blocks", open.entityId),
+  ]);
+  expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+  expect(
+    results.flatMap((result) => (result.status === "rejected" ? [result.reason] : [])),
+  ).toEqual([new ValidationError("This link would make the tasks block each other.")]);
+  expect(await fixture.db.select().from(entityLinks)).toHaveLength(1);
+  // The loser wrote no history: each task records one added link.
+  expect(
+    (await fixture.db.select().from(taskActivity)).filter((row) =>
+      row.action.startsWith("Link added"),
+    ),
+  ).toHaveLength(2);
+});
+
 test("adding a link needs edit on the task and view on the other task", async () => {
   const { alice, bob, shared, open, second, secret } = await twoProjects();
   // Bob cannot reach the hidden project from either side.

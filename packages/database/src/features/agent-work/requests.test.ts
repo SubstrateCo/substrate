@@ -1,5 +1,7 @@
+import { staleProposalError } from "@substrate/contracts/agent-work";
 import type { WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 
+import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import {
   agentRequests,
@@ -17,7 +19,7 @@ import {
 } from "../../testing/agent-work";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
-import { expect, test } from "bun:test";
+import { expect, spyOn, test } from "bun:test";
 import { eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
@@ -439,6 +441,51 @@ test("an approval runs only while the target is as it was proposed", async () =>
     input: { taskId: task.entityId, changes: { status: "completed" } },
   });
   expect((await work.approveProposal(fresh.proposalId)).result.status).toBe("executed");
+});
+
+test("an approval fails when the target changes after its last check, before its write", async () => {
+  const { dm, owner, call } = await agentWorkFixture(f);
+  const project = await f.forActor(f.alice).projects.create({ name: "Work" });
+  const task = await f.forActor(f.alice).tasks.create({
+    projectEntityId: project.entityId,
+    title: "Draft",
+  });
+  const update = await call(
+    "propose",
+    {
+      requestId: crypto.randomUUID(),
+      summary: "Do it",
+      action: { type: "update_task", input: { taskId: task.entityId, changes: { title: "Done" } } },
+    },
+    dmTurn(dm.id, "unattended"),
+  );
+  // The owner's edit commits on another connection right after the approval reads the task.
+  // SAFETY: the descriptor holds the real method, which the spy below replaces.
+  const read = Object.getOwnPropertyDescriptor(RepositoryContext.prototype, "requireAccess")!
+    .value as RepositoryContext["requireAccess"];
+  let armed = true;
+  const spy = spyOn(RepositoryContext.prototype, "requireAccess").mockImplementation(
+    // SAFETY: the wrapper returns what the real method returns for the same arguments.
+    async function (this: RepositoryContext, entityId: string, minimum: PermissionLevel) {
+      const access = await read.call(this, entityId, minimum);
+      if (armed && entityId === task.entityId) {
+        armed = false;
+        await f.forActor(f.alice).tasks.update(task.entityId, { priority: "high" });
+      }
+      return access;
+    } as typeof read,
+  );
+  try {
+    const { outcome } = (
+      await (await ownerAgentWork(f.db, owner)).approveProposal(update.proposalId)
+    ).result;
+    expect(armed).toBe(false);
+    expect(outcome).toEqual({ status: "failed", error: staleProposalError });
+  } finally {
+    spy.mockRestore();
+  }
+  const [row] = await f.db.select().from(tasks).where(eq(tasks.entityId, task.entityId));
+  expect(row).toMatchObject({ title: "Draft", priority: "high" });
 });
 
 test("a request in a conversation the owner left shows no name or ID", async () => {

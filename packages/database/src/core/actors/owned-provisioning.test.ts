@@ -37,17 +37,12 @@ test("owned provisioning has constant read cost for cold and warm batches", asyn
     statements.length = 0;
     const cold = await ensureOwnedAgentActors(db, input);
     const coldReads = statements.filter((query) => /^select\b/i.test(query)).length;
-    const coldLocks = statements.filter((query) =>
-      /for (?:no key update|key share|share|update)\b/i.test(query),
-    ).length;
     statements.length = 0;
     const warm = await ensureOwnedAgentActors(db, input);
     measurements.push({
       count,
       coldReads,
-      coldLocks,
       warmReads: statements.filter((query) => /^select\b/i.test(query)).length,
-      warmLocks: statements.filter((query) => query.includes("for update")).length,
     });
     expect(cold).toHaveLength(count);
     expect(warm.map((actor) => actor.entityId).sort()).toEqual(
@@ -56,11 +51,11 @@ test("owned provisioning has constant read cost for cold and warm batches", asyn
     expect(statements.filter((query) => /^insert\b/i.test(query))).toHaveLength(0);
   }
   console.log("owned provisioning SELECT counts:", JSON.stringify(measurements));
-  // A cold batch checks membership, enabled profiles and existing identities without row locks.
+  // A cold batch checks membership, enabled profiles and existing identities.
   // A warm batch is one read.
   expect(measurements).toEqual([
-    { count: 1, coldReads: 4, coldLocks: 0, warmReads: 1, warmLocks: 0 },
-    { count: 8, coldReads: 4, coldLocks: 0, warmReads: 1, warmLocks: 0 },
+    { count: 1, coldReads: 4, warmReads: 1 },
+    { count: 8, coldReads: 4, warmReads: 1 },
   ]);
 });
 
@@ -142,7 +137,7 @@ test("bulk and single provisioning converge and keep organization identities sep
   ).toBe(true);
 });
 
-test("existing agent and human actors resolve in one lock-free statement that checks membership", async () => {
+test("existing agent and human actors resolve in one statement that checks membership", async () => {
   await f.verifyEmails();
   const [agent] = await profiles(1);
   const created = await ensureUserAgentActor(f.db, { ...input, userAgentId: agent!.id });
@@ -150,7 +145,6 @@ test("existing agent and human actors resolve in one lock-free statement that ch
   expect(await ensureUserAgentActor(db, { ...input, userAgentId: agent!.id })).toEqual(created);
   expect((await workspaceContext(db, input)).actor.entityId).toBe(f.alice);
   expect(queries).toHaveLength(2);
-  expect(queries.some((query) => query.includes("for update"))).toBe(false);
   await f.db.update(userAgents).set({ enabled: false }).where(eq(userAgents.id, agent!.id));
   expect(
     await rejection(ensureUserAgentActor(f.db, { ...input, userAgentId: agent!.id })),

@@ -1,7 +1,7 @@
 import { interactionFields } from "@substrate/contracts/context/interactions";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import { lockContact } from "../../core/contacts/access";
+import { requireContact } from "../../core/contacts/access";
 import { parseInput } from "../../core/contacts/inputs";
 import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
 import { contactInteractions } from "../../core/contacts/interactions.schema";
@@ -28,22 +28,10 @@ export async function publishInteraction(
   if (!scope.userId) throw new AccessDeniedError();
   const identity = { userId: scope.userId, organizationId: scope.organizationId };
   return context.transaction(async (ctx) => {
-    const { message, conversation } = await requireMessage(
-      ctx.db,
-      identity,
-      value.messageId,
-      "share",
-      async (conversation) => {
-        await ctx.lockAccessPaths([
-          value.contactEntityId,
-          ...(conversation.taskEntityId ? [conversation.taskEntityId] : []),
-        ]);
-        if (conversation.taskEntityId) await ctx.requireAccess(conversation.taskEntityId, "view");
-      },
-    );
+    const { message, conversation } = await requireMessage(ctx.db, identity, value.messageId);
     if (conversation.organizationId !== scope.organizationId || message.deletedAt)
       throw new AccessDeniedError();
-    const parent = await lockContact(ctx, value.contactEntityId);
+    const parent = await requireContact(ctx, value.contactEntityId);
     const [profile] = await ctx.db
       .select()
       .from(crmContactProfiles)
@@ -59,7 +47,9 @@ export async function publishInteraction(
     if (endedAt && endedAt < occurredAt)
       throw new ValidationError("The end must not precede the start.");
     // A message is published once per contact; a repeat returns the earlier interaction unchanged.
-    // The contact lock above serializes publishers, and the message's `source` reference finds it.
+    // The message's `source` reference finds it. Publishers claim the contact's version first, so
+    // of two publishers at the same instant one conflicts and its retry finds the interaction.
+    await ctx.requireStructuralAccess(value.contactEntityId, "edit");
     const [existing] = await ctx.db
       .select({ entityId: contactInteractions.entityId })
       .from(contactInteractions)

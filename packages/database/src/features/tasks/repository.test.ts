@@ -263,7 +263,7 @@ describe("projects and tasks", () => {
   });
 });
 
-test("task create locks the project once and update batches activity with one assignment notification", async () => {
+test("task create checks the project once and update batches activity with one assignment notification", async () => {
   await fixture.verifyEmails();
   const alice = fixture.forActor(fixture.alice);
   const project = await alice.projects.create({ name: "Counted" });
@@ -283,8 +283,8 @@ test("task create locks the project once and update batches activity with one as
     actorEntityId: fixture.alice,
   });
   const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Count" });
-  expect(statements.filter((query) => query.includes("FOR NO KEY UPDATE"))).toHaveLength(1);
-  expect(statements).toHaveLength(5);
+  // Project access, entity, task, activity.
+  expect(statements).toHaveLength(4);
   statements.length = 0;
   expect(
     await repos.tasks.update(task.entityId, {
@@ -301,8 +301,7 @@ test("task create locks the project once and update batches activity with one as
     priority: "high",
     assigneeActorEntityId: fixture.bob,
   });
-  // The task's lock path covers its project, so the update locks once.
-  expect(statements.filter((query) => query.includes("FOR NO KEY UPDATE"))).toHaveLength(1);
+  // Task, assignee claim, assignee access, update, touch, activity, notification.
   expect(statements).toHaveLength(7);
   const activity = await fixture.db
     .select()

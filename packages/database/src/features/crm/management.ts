@@ -37,7 +37,7 @@ export function crmManagementRepository(context: RepositoryContext) {
         .orderBy(asc(actors.entityId));
     },
     async grants(entityId: string) {
-      await requireAppEnabled(context, "crm", false);
+      await requireAppEnabled(context, "crm");
       const { entity } = await context.requireAccess(entityId, "owner");
       if (
         !["account", "deal"].includes(entity.entityType) ||

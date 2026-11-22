@@ -1,37 +1,13 @@
 import { AccessDeniedError, ConflictError } from "../../errors";
 import { ActorRepositories } from "../../repositories";
-import { contacts } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { describe, expect, test } from "bun:test";
-import { sql } from "drizzle-orm";
 
 const f = setupDatabase();
 
 describe("contact details", () => {
-  test("detail edits permit foreign-key readers while their transaction is open", async () => {
-    const a = f.forActor(f.alice);
-    const contact = await a.contacts.create({ displayName: "Jane" });
-    await a.transaction(async (tx) => {
-      await tx.contacts.addIdentifier(contact.entityId, {
-        type: "email",
-        value: "jane@example.com",
-        isPrimary: true,
-      });
-      await f.db.transaction(async (reader) => {
-        const rows = await reader.execute(sql`
-          SELECT entity_id FROM ${contacts} WHERE entity_id = ${contact.entityId}
-          FOR KEY SHARE NOWAIT
-        `);
-        expect(rows).toHaveLength(1);
-      });
-    });
-    expect((await a.contacts.getDetail(contact.entityId)).identifiers).toMatchObject([
-      { value: "jane@example.com", isPrimary: true },
-    ]);
-  });
-
   test("keeps multiple labeled methods and changes primary within each type", async () => {
     const repo = f.forActor(f.alice).contacts;
     const contact = await repo.create({
@@ -190,7 +166,7 @@ describe("contact details", () => {
   test("concurrent primary changes leave one primary and failed changes preserve it", async () => {
     const repo = f.forActor(f.alice).contacts;
     const contact = await repo.create({ displayName: "Jane" });
-    await Promise.all([
+    const added = await Promise.allSettled([
       repo.addIdentifier(contact.entityId, {
         type: "email",
         value: "one@example.com",
@@ -202,16 +178,39 @@ describe("contact details", () => {
         isPrimary: true,
       }),
     ]);
+    // A change that overlaps the other one loses with a conflict and writes nothing.
+    const lost = added.flatMap((result) => (result.status === "rejected" ? [result.reason] : []));
+    expect(lost.length).toBeLessThan(2);
+    for (const reason of lost) expect(reason).toBeInstanceOf(ConflictError);
     const before = await repo.getDetail(contact.entityId);
+    expect(before.identifiers).toHaveLength(2 - lost.length);
     expect(before.identifiers.filter((row) => row.isPrimary)).toHaveLength(1);
+    const one = await repo.addIdentifier(contact.entityId, {
+      type: "email",
+      value: "three@example.com",
+    });
+    const two = await repo.addIdentifier(contact.entityId, {
+      type: "email",
+      value: "four@example.com",
+    });
+    const switched = await Promise.allSettled([
+      repo.setPrimaryIdentifier(contact.entityId, one.id),
+      repo.setPrimaryIdentifier(contact.entityId, two.id),
+    ]);
+    for (const result of switched)
+      if (result.status === "rejected") expect(result.reason).toBeInstanceOf(ConflictError);
+    expect(switched.some((result) => result.status === "fulfilled")).toBe(true);
+    const after = await repo.getDetail(contact.entityId);
+    expect(after.identifiers.filter((row) => row.isPrimary)).toHaveLength(1);
+    expect([one.id, two.id]).toContain(after.identifiers.find((row) => row.isPrimary)!.id);
     await rejection(
       repo.addIdentifier(contact.entityId, {
         type: "email",
-        value: "one@example.com",
+        value: "three@example.com",
         isPrimary: true,
       }),
     );
-    expect((await repo.getDetail(contact.entityId)).identifiers).toEqual(before.identifiers);
+    expect((await repo.getDetail(contact.entityId)).identifiers).toEqual(after.identifiers);
   });
 
   test("primary changes write the selected row once and clear only competitors", async () => {

@@ -11,7 +11,6 @@ import {
   effectsFor,
   type SessionIdentity,
   workspaceContext,
-  ConflictError,
   AccessDeniedError,
   ValidationError,
   attachReference,
@@ -32,7 +31,7 @@ import {
   agentWrites,
   requireHomeDevice,
   requireOwnedProposal,
-  findToolReceipt,
+  claimToolReceipt,
   saveToolReceipt,
 } from "@substrate/database/mcp";
 import type { DatabaseExecutor } from "@substrate/database/trusted";
@@ -79,18 +78,11 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
 ) {
   const definition = mcpTools[tool];
   // Hints go to the caller's commit() collector and are published after commit.
-  // Writes lock the agent's actor row so one agent's writes run one at a time. Reads run in
-  // parallel.
-  const {
-    context: ctx,
-    actor: agent,
-    userName,
-  } = await workspaceContext(tx, identity, { lockActor: !definition.readOnly });
+  const { context: ctx, actor: agent, userName } = await workspaceContext(tx, identity);
   // Check current settings before handlers or cached results can expose disabled app data.
   await requireAppsEnabled(
     ctx,
     toolApps(tool).filter((app) => app === "tasks" || app === "crm"),
-    !definition.readOnly,
   );
   const actor = { id: agent.entityId, name: agent.name, type: agent.type };
   // A turn that answers callers names their calls; each call is audited, reads included.
@@ -246,9 +238,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     ? { organizationId: identity.organizationId, actorEntityId: actor.id, tool, requestId }
     : undefined;
   const fingerprint = JSON.stringify(input);
-  const existing = key ? await findToolReceipt(tx, key) : undefined;
-  if (existing && existing.fingerprint !== fingerprint)
-    throw new ConflictError("This request ID was already used with different input.");
+  const existing = key ? await claimToolReceipt(tx, key, fingerprint, turn) : undefined;
   // Stored and new results cross the same trust boundary, so parse them in one place.
   // SAFETY: `definition` is the registry entry for `tool`, so its schema produces McpOutput<K>.
   let result = definition.output.parse(
@@ -290,7 +280,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
         ),
       );
     }
-  } else if (key) await saveToolReceipt(tx, key, fingerprint, result, turn);
+  } else if (key) await saveToolReceipt(tx, key, result);
   if (calls.length)
     await auditCallerTool(tx, calls, {
       tool,

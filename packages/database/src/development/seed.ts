@@ -21,7 +21,7 @@ import {
   developmentWork,
   type DevelopmentMessage,
 } from "./data";
-import { eq, inArray, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 export { developmentTeams } from "./data";
 
@@ -47,18 +47,15 @@ async function seedMessages(
 // Seeding publishes nothing: no client is connected to a new development database.
 export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash: string) {
   const { result } = await commit(db, async (tx) => {
-    await tx.execute(sql`SELECT pg_advisory_xact_lock(68520317)`);
-    const existing = await tx
-      .select()
-      .from(organization)
-      .where(
-        inArray(
-          organization.id,
-          developmentTeams.map((team) => team.id),
-        ),
-      );
-    if (existing.length === developmentTeams.length) return false;
-    if (existing.length)
+    // The reserved organizations claim the seed. A concurrent seed waits on their keys until
+    // this transaction ends, then inserts nothing and returns.
+    const claimed = await tx
+      .insert(organization)
+      .values(developmentTeams.map((team) => ({ id: team.id, name: team.name, slug: team.slug })))
+      .onConflictDoNothing({ target: organization.id })
+      .returning({ id: organization.id });
+    if (!claimed.length) return false;
+    if (claimed.length !== developmentTeams.length)
       throw new Error("Incomplete development seed: a reserved organization already exists.");
 
     const date = (offset: number) => {
@@ -67,7 +64,6 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
       return value.toISOString().slice(0, 10);
     };
     for (const team of developmentTeams) {
-      await tx.insert(organization).values({ id: team.id, name: team.name, slug: team.slug });
       await tx
         .insert(organizationApps)
         .values({ organizationId: team.id, appId: "tasks", enabled: true });

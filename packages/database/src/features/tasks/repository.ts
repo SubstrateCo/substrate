@@ -6,15 +6,16 @@ import { actors } from "../../core/actors/schema";
 import { permissionLevel } from "../../core/permissions/schema";
 import {
   RepositoryContext,
-  type Locked,
-  type LockedAccess,
+  type Authorized,
+  type AuthorizedAccess,
   type PermissionLevel,
 } from "../../core/repository-context";
 import { requiredText } from "../../core/validation";
-import { AccessDeniedError, ValidationError } from "../../errors";
+import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { notifyAssignment, recordTaskActivity } from "../activity/events";
 import { publishFiles } from "../files/publication";
 import { taskAttachments } from "../files/schema";
+import { claimProjectChange } from "./access";
 import { requireAssignee } from "./assignment";
 import { taskChanges } from "./changes";
 import type { CreateTaskInput, TaskFields } from "./contracts";
@@ -48,6 +49,9 @@ async function validate(
   if (input.status !== undefined && !taskStatusValues.includes(input.status))
     throw new ValidationError("Select a standard task status.");
   if (input.assigneeActorEntityId) {
+    // A new assignee races access removal. Claim it, then check the assignee's access.
+    if (input.assigneeActorEntityId !== currentAssigneeActorEntityId)
+      await claimProjectChange(ctx, projectEntityId);
     await requireAssignee(
       ctx,
       projectEntityId,
@@ -57,16 +61,19 @@ async function validate(
   }
 }
 
-// Locking the project first keeps the assignee check from revealing projects.
-export async function createTaskInLockedProject(
+// Checking the project first keeps the assignee check from revealing projects.
+export async function createTaskInProject(
   ctx: RepositoryContext,
-  project: LockedAccess<"edit">,
+  project: AuthorizedAccess<"edit">,
   input: CreateTaskInput,
 ) {
   if (project.entity.entityType !== "project" || project.entity.entityId !== input.projectEntityId)
     throw new AccessDeniedError();
   await validate(ctx, input.projectEntityId, input);
   if (input.parentTaskEntityId) {
+    // A new subtask races a move or deletion of its parent. Claim it, then read the parent.
+    // A new assignee has claimed the project already.
+    if (!input.assigneeActorEntityId) await claimProjectChange(ctx, input.projectEntityId);
     const parent = await taskRepository(ctx).get(input.parentTaskEntityId);
     if (parent.projectEntityId !== input.projectEntityId)
       throw new ValidationError("Subtasks must belong to their parent's project.");
@@ -111,21 +118,14 @@ export function taskRepository(context: RepositoryContext) {
   const taskWhere = (id: string) =>
     and(eq(tasks.organizationId, scope.organizationId), eq(tasks.entityId, id));
 
-  // A task's level is its project's level. The task's lock path includes the project.
-  function requireTask<Level extends PermissionLevel>(
+  // A task's level is its project's level.
+  async function requireTask<Level extends PermissionLevel = "view">(
     entityId: string,
-    level: Level,
-    lock: true,
-  ): Promise<Locked<Task, Level>>;
-  function requireTask(entityId: string, level?: PermissionLevel, lock?: boolean): Promise<Task>;
-  async function requireTask(
-    entityId: string,
-    level: PermissionLevel = "view",
-    lock = false,
-  ): Promise<Task> {
+    // SAFETY: Level defaults to "view", so the omitted argument is "view".
+    level: Level = "view" as Level,
+  ): Promise<Authorized<Task, Level>> {
     const minimum = permissionLevel.enumValues.indexOf(level);
     if (minimum < 0) throw new AccessDeniedError();
-    if (lock) await context.lockAccessPath(entityId);
     const viewer = viewerActorJoins(scope, "task_viewer_entity");
     const [row] = await db
       .select({
@@ -138,7 +138,8 @@ export function taskRepository(context: RepositoryContext) {
       .where(and(taskWhere(entityId), activeActorCondition()));
     if (!row?.level || permissionLevel.enumValues.indexOf(row.level) < minimum)
       throw new AccessDeniedError();
-    return row.task;
+    // SAFETY: the row's level is at least `level`, which is what Authorized records.
+    return row.task as Authorized<Task, Level>;
   }
 
   return {
@@ -150,8 +151,8 @@ export function taskRepository(context: RepositoryContext) {
     },
     async create(input: CreateTaskInput) {
       return context.transaction(async (ctx) => {
-        const project = await ctx.requireAccess(input.projectEntityId, "edit", true);
-        return createTaskInLockedProject(ctx, project, input);
+        const project = await ctx.requireAccess(input.projectEntityId, "edit");
+        return createTaskInProject(ctx, project, input);
       });
     },
     async list(projectEntityId: string) {
@@ -162,7 +163,7 @@ export function taskRepository(context: RepositoryContext) {
     async update(entityId: string, input: Partial<TaskFields>, expectedProjectEntityId?: string) {
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
-        const task = await taskRepository(ctx).get(entityId, "edit", true);
+        const task = await taskRepository(ctx).get(entityId, "edit");
         if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
           throw new AccessDeniedError();
         await validate(ctx, task.projectEntityId, input, task.assigneeActorEntityId);
@@ -178,14 +179,16 @@ export function taskRepository(context: RepositoryContext) {
             assigneeActorEntityId: input.assigneeActorEntityId,
             dueDate: input.dueDate,
           })
-          .where(taskWhere(entityId))
+          // The checks above used this project. A move that committed since fails the write.
+          .where(and(taskWhere(entityId), eq(tasks.projectEntityId, task.projectEntityId)))
           .returning();
+        if (!updated) throw new ConflictError("This record changed. Try again.");
         await ctx.touch(entityId);
         const events = await recordTaskActivity(ctx, task, changes);
         const assignment = events.find((event) => event.action === "Assignee changed");
         if (assignment)
           await notifyAssignment(ctx, entityId, input.assigneeActorEntityId, assignment.id);
-        return updated!;
+        return updated;
       });
     },
     ensureDiscussion: (entityId: string, expectedProjectEntityId?: string) =>
@@ -199,7 +202,7 @@ export function taskRepository(context: RepositoryContext) {
     ) {
       return context.transaction(async (ctx) => {
         const repository = taskRepository(ctx);
-        const task = await repository.get(entityId, "edit", true);
+        const task = await repository.get(entityId, "edit");
         if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
           throw new AccessDeniedError();
         return addTaskLink(ctx, task, await repository.get(otherEntityId), relation);
@@ -207,7 +210,7 @@ export function taskRepository(context: RepositoryContext) {
     },
     async removeLink(entityId: string, linkId: string, expectedProjectEntityId?: string) {
       return context.transaction(async (ctx) => {
-        const task = await taskRepository(ctx).get(entityId, "edit", true);
+        const task = await taskRepository(ctx).get(entityId, "edit");
         if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
           throw new AccessDeniedError();
         return removeTaskLink(ctx, task, linkId);

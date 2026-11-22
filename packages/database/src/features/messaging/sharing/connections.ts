@@ -7,7 +7,7 @@ import type { DatabaseExecutor } from "../../../core/executor";
 import type { SessionIdentity } from "../../../core/session/identity";
 import { AccessDeniedError } from "../../../errors";
 import { withRemovalHints } from "../../realtime/routing";
-import { lockConversation } from "../access";
+import { claimConversation } from "../access";
 import { endParticipation } from "../members";
 import { partnerTargetAllowed } from "../policy";
 import { messagingConversations, messagingParticipants } from "../schema";
@@ -19,7 +19,7 @@ export function connectionOperations(db: DatabaseExecutor, scope: SessionIdentit
   return {
     async disconnect(conversationId: string, partnerOrganizationId: string) {
       return db.transaction(async (tx) => {
-        const conversation = await lockConversation(tx, conversationId, "update");
+        const conversation = await claimConversation(tx, conversationId);
         const viewer = await requireSharingManager(tx, scope, conversation);
         if (!partnerTargetAllowed(conversation, viewer, partnerOrganizationId))
           throw new AccessDeniedError();
@@ -78,7 +78,7 @@ export function connectionOperations(db: DatabaseExecutor, scope: SessionIdentit
     },
     async remove(conversationId: string, actorId: string) {
       return db.transaction(async (tx) => {
-        const conversation = await lockConversation(tx, conversationId, "update");
+        const conversation = await claimConversation(tx, conversationId);
         const viewer = await requireSharingManager(tx, scope, conversation);
         const [participant] = await tx
           .select()
@@ -120,7 +120,8 @@ export async function clearMembershipSharingInTransaction(
   userId: string,
   organizationId: string,
 ) {
-  // Lock the person's external conversations in ID order, so concurrent changes cannot deadlock.
+  // The person's external conversations. Ending participation and revoking invitations are
+  // guarded writes that are safe to repeat, so this takes no claim.
   const conversations = await tx
     .select({
       id: messagingConversations.id,
@@ -140,8 +141,7 @@ export async function clearMembershipSharingInTransaction(
         ),
       ),
     )
-    .orderBy(asc(messagingConversations.id))
-    .for("no key update");
+    .orderBy(asc(messagingConversations.id));
   const ids = conversations.map((row) => row.id);
   await withRemovalHints(
     tx,

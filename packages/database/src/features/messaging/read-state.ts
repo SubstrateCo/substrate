@@ -6,7 +6,12 @@ import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import type { MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError } from "../../errors";
-import { loadConversation, liveApprovedParticipant, visibleConversations } from "./access";
+import {
+  denyDeletedConversation,
+  loadConversation,
+  liveApprovedParticipant,
+  visibleConversations,
+} from "./access";
 import { messagingReadPositions } from "./read-state.schema";
 import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
 import { and, eq, isNull, ne, notInArray, sql } from "drizzle-orm";
@@ -76,9 +81,9 @@ export function readOperations(
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         const { actor, context } = await authenticate(tx);
-        const conversation = await loadConversation(tx, scope, conversationId, "share");
+        const conversation = await loadConversation(tx, scope, conversationId);
         if (conversation.taskEntityId)
-          await context.requireAccess(conversation.taskEntityId, "view", true);
+          await context.requireAccess(conversation.taskEntityId, "view");
         const [message] = await tx
           .select({
             id: messagingMessages.id,
@@ -107,7 +112,8 @@ export function readOperations(
             set: { messageId, messageCreatedAt: at },
             setWhere: sql`(${messagingReadPositions.messageCreatedAt}, ${messagingReadPositions.messageId}) < (${at}, ${messageId}::uuid)`,
           })
-          .returning({ messageId: messagingReadPositions.messageId });
+          .returning({ messageId: messagingReadPositions.messageId })
+          .catch((error: Error) => denyDeletedConversation(error));
         // A read position changes only the reader's unread counts, on the reader's devices.
         if (changed.length)
           effectsFor(tx).hint({

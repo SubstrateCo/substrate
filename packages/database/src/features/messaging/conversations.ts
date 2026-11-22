@@ -14,8 +14,8 @@ import { messageEntityReferences } from "../context/schema";
 import { withRemovalHints } from "../realtime/routing";
 import { tasks } from "../tasks/tasks.schema";
 import {
+  claimConversationChange,
   loadConversation,
-  lockConversation,
   visibleConversations,
   type Conversation,
 } from "./access";
@@ -37,7 +37,7 @@ import { ownedAgents, recipients } from "./recipients";
 import { messagingConversations, messagingParticipants } from "./schema";
 import { messagingConnections } from "./sharing.schema";
 import { queueSharingInvitations } from "./sharing/invitations";
-import { and, asc, countDistinct, eq, inArray, isNull, ne, or } from "drizzle-orm";
+import { and, asc, countDistinct, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
 interface CreateConversationInput {
   kind: ConversationKind;
@@ -107,11 +107,10 @@ export function conversationOperations(
     return conversation;
   }
 
-  // Writes lock first, then read the session again: a role change may commit during the wait.
+  // Management writes claim the conversation's next version, so they run one at a time. The
+  // claim succeeds only when the row is still the one authorized here.
   async function requireManaged(tx: DatabaseExecutor, viewer: Viewer, id: string) {
-    if (viewer.agent) throw new AccessDeniedError();
-    await lockConversation(tx, id, "update");
-    return managedConversation(tx, (await messagingSession(tx, scope)).viewer, id);
+    return claimConversationChange(tx, await managedConversation(tx, viewer, id));
   }
 
   return {
@@ -260,13 +259,10 @@ export function conversationOperations(
             .onConflictDoNothing()
             .returning();
           if (conversation) break;
-          const existingQuery = tx
+          const [existing] = await tx
             .select()
             .from(messagingConversations)
             .where(eq(messagingConversations.dmKey, dmKey!));
-          const [existing] = await (external.length
-            ? existingQuery.for("no key update")
-            : existingQuery);
           // A deletion or another re-invite can release the key while the insert waits.
           if (!existing) continue;
           if (!external.length) return conversationView(existing);
@@ -274,10 +270,18 @@ export function conversationOperations(
           const valid = await findExternalDirectMessage(tx, scope, external[0]!);
           if (valid) return conversationView(valid);
           // Expired/revoked invitations and departed or disconnected people do not reserve a DM.
+          // Release the key only if the holder is unchanged since it was read: invitations and
+          // acceptances claim a new version. Otherwise the next round reads the holder again.
           await tx
             .update(messagingConversations)
-            .set({ dmKey: null })
-            .where(eq(messagingConversations.id, existing.id));
+            .set({ dmKey: null, version: sql`${messagingConversations.version} + 1` })
+            .where(
+              and(
+                eq(messagingConversations.id, existing.id),
+                eq(messagingConversations.dmKey, dmKey!),
+                eq(messagingConversations.version, existing.version),
+              ),
+            );
         }
         await writeMembers(
           tx,
@@ -369,7 +373,7 @@ export function conversationOperations(
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         await authenticate(tx);
-        const conversation = await loadConversation(tx, scope, conversationId, "update");
+        const conversation = await loadConversation(tx, scope, conversationId);
         if (conversation.taskEntityId) throw new AccessDeniedError();
         if (conversation.kind === "dm")
           throw new ValidationError("Start a direct conversation with the agent instead.");
@@ -385,7 +389,7 @@ export function conversationOperations(
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         await authenticate(tx);
-        const conversation = await loadConversation(tx, scope, conversationId, "update");
+        const conversation = await loadConversation(tx, scope, conversationId);
         if (conversation.kind === "dm" || conversation.taskEntityId) throw new AccessDeniedError();
         const removed = await endParticipation(
           tx,
@@ -414,7 +418,7 @@ export function conversationOperations(
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         const { actor } = await authenticate(tx);
-        const conversation = await loadConversation(tx, scope, conversationId, "update");
+        const conversation = await loadConversation(tx, scope, conversationId);
         if (conversation.taskEntityId) throw new AccessDeniedError();
         const changed =
           (
@@ -439,7 +443,11 @@ export function conversationOperations(
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         const { actor, viewer } = await authenticate(tx);
-        const conversation = await loadConversation(tx, scope, conversationId, "update");
+        // Leaving depends on the owner and the other members, so it claims the conversation.
+        const conversation = await claimConversationChange(
+          tx,
+          await loadConversation(tx, scope, conversationId),
+        );
         const plan = leavePlan(conversation, viewer, newOwnerUserId);
         if (plan === "transfer") await setOwner(tx, conversation, newOwnerUserId!);
         if (plan === "blocked")
@@ -467,7 +475,7 @@ export function conversationOperations(
     },
 
     // Counts only linked work the caller can read, so the warning leaks nothing. The count is
-    // advisory, so it locks nothing; deletion checks again under its own lock.
+    // advisory; deletion authorizes again in its own transaction.
     async deleteImpact(conversationId: string) {
       return read(async (tx) => {
         const { context, viewer } = await authenticate(tx);
@@ -543,5 +551,3 @@ export function conversationOperations(
     },
   };
 }
-
-import { messagingSession } from "../../core/session/messaging";

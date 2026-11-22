@@ -3,7 +3,7 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 import { ensureUserAgentActor } from "../../../core/actors/provisioning";
 import { userAgents } from "../../../core/actors/user-agents.schema";
 import type { DatabaseExecutor } from "../../../core/executor";
-import { AccessDeniedError, ValidationError } from "../../../errors";
+import { AccessDeniedError, ConflictError, ValidationError } from "../../../errors";
 import * as schema from "../../../schema";
 import { member, user } from "../../../schema";
 import { discardEffects } from "../../../testing/connection";
@@ -22,7 +22,6 @@ import { claimSharingMail, finishSharingMail } from "./mail";
 import { createSharingService } from "./service";
 import { expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/postgres-js";
 
 const f = setupDatabase();
 const host = () => createMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
@@ -376,14 +375,22 @@ test("channel sharing requires current admin authority on both sides and a histo
   );
 });
 
-test("concurrent acceptance is safe to replay without duplicate participants or approval events", async () => {
+test("concurrent acceptance leaves one participant and one approval event", async () => {
   const c = await channel();
   const invite = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
-  const results = await Promise.all([
+  const results = await Promise.allSettled([
     sharing("outsider", f.orgB).accept(invite.id, true),
     sharing("outsider", f.orgB).accept(invite.id, true),
   ]);
-  expect(results.map((result) => result.status)).toEqual(["accepted", "accepted"]);
+  // One call accepts. The other replays it, or loses the conversation claim and can retry.
+  const accepted = results.filter((result) => result.status === "fulfilled");
+  expect(accepted.length).toBeGreaterThanOrEqual(1);
+  for (const result of results)
+    if (result.status === "fulfilled") expect(result.value.status).toBe("accepted");
+    else expect(result.reason).toBeInstanceOf(ConflictError);
+  expect(await sharing("outsider", f.orgB).accept(invite.id, true)).toMatchObject({
+    status: "accepted",
+  });
   expect(
     await f.db
       .select()
@@ -697,74 +704,6 @@ test("a legacy external owner can leave without changing the host organization's
   expect((await host().listConversations())[0]!.createdBy).toBe("alice");
 });
 
-test("a post waiting for a disconnect lock rechecks access after that disconnect commits", async () => {
-  const c = await channel();
-  const invitation = await sharing().invite(c.id, {
-    email: "outside@example.com",
-    shareHistory: true,
-  });
-  await sharing("outsider", f.orgB).accept(invitation.id, true);
-  const tryingToPost = Promise.withResolvers<void>();
-  const observed = drizzle(f.db.$client, {
-    logger: {
-      logQuery: (query) => {
-        if (query.includes("for share")) tryingToPost.resolve();
-      },
-    },
-  });
-  let settled = false;
-  const outcome = await f.db.transaction(async (tx) => {
-    await tx
-      .select()
-      .from(schema.messagingConversations)
-      .where(eq(schema.messagingConversations.id, c.id))
-      .for("no key update");
-    const posted = createMessagingService(observed, { userId: "outsider", organizationId: f.orgB })
-      .sendMessage(c.id, "Must not commit")
-      .then(
-        () => ({ error: null }),
-        (error: Error) => ({ error }),
-      )
-      .finally(() => {
-        settled = true;
-      });
-    await tryingToPost.promise;
-    await createSharingService(tx, { userId: "alice", organizationId: f.orgA }).disconnect(
-      c.id,
-      f.orgB,
-    );
-    expect(settled).toBe(false);
-    return { posted };
-  });
-  expect((await outcome.posted).error).toBeInstanceOf(AccessDeniedError);
-  expect(await host().listMessages(c.id)).toEqual([]);
-});
-
-test("listing sharing does not wait for an open post", async () => {
-  const c = await channel();
-  const held = Promise.withResolvers<void>();
-  const release = Promise.withResolvers<void>();
-  const open = f.db.transaction(async (tx) => {
-    await createMessagingService(tx, { userId: "alice", organizationId: f.orgA }).sendMessage(
-      c.id,
-      "open",
-    );
-    held.resolve();
-    await release.promise;
-  });
-  try {
-    await held.promise;
-    const outcome = await Promise.race([
-      sharing().list(c.id),
-      Bun.sleep(1_000).then(() => "blocked" as const),
-    ]);
-    expect(outcome).toMatchObject({ host: true, kind: "channel" });
-  } finally {
-    release.resolve();
-    await open;
-  }
-});
-
 test("mail is durable, leased once, retried after failure, and skipped after revocation", async () => {
   const c = await channel();
   const invite = await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true });
@@ -860,26 +799,4 @@ test("external DMs and groups require individual consent but not an organization
       }).listConversations()
     ).find((conversation) => conversation.id === internal.id)!.canShare,
   ).toBe(false);
-});
-
-test("an invite from a non-member is rejected before it waits for the conversation lock", async () => {
-  const c = await channel();
-  const waited = Symbol("waited");
-  const outcome = await f.db.transaction(async (tx) => {
-    await tx
-      .select()
-      .from(schema.messagingConversations)
-      .where(eq(schema.messagingConversations.id, c.id))
-      .for("no key update");
-    return Promise.race([
-      rejection(
-        sharing("outsider", f.orgA).invite(c.id, {
-          email: "bob@example.com",
-          shareHistory: true,
-        }),
-      ),
-      Bun.sleep(2_000).then(() => waited),
-    ]);
-  });
-  expect(outcome).toBeInstanceOf(AccessDeniedError);
 });

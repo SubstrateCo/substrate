@@ -26,7 +26,8 @@ export const idempotentRequests = pgTable(
     operation: text("operation").$type<RequestOperation>().notNull(),
     requestId: uuid("request_id").notNull(),
     fingerprint: text("fingerprint").notNull(),
-    entityId: uuid("entity_id").notNull(),
+    // NULL only inside the transaction that claimed the request and has not recorded it yet.
+    entityId: uuid("entity_id"),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
   },
   (t) => [

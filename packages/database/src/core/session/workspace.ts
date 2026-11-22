@@ -58,12 +58,8 @@ const humanWorkspaceQueries = new WeakMap<
 
 // Verifies the session identity, membership and active actor in one statement, and reads
 // whether the user is an owner or admin of the organization now. Only a human's first workspace
-// use takes the provisioning lock.
-export async function workspaceContext(
-  db: DatabaseExecutor,
-  scope: SessionIdentity,
-  options: { lockActor?: boolean } = {},
-) {
+// use provisions an actor.
+export async function workspaceContext(db: DatabaseExecutor, scope: SessionIdentity) {
   let actor: { entityId: string; name: string; type: "human" | "agent" } | undefined;
   let userName: string;
   let admin: boolean;
@@ -73,7 +69,7 @@ export async function workspaceContext(
       eq(user.emailVerified, true),
       eq(member.organizationId, scope.organizationId),
     );
-    const query = db
+    const [row] = await db
       .select({ userName: user.name, actor: actorSelection, admin: adminSelection })
       .from(user)
       .innerJoin(member, eq(member.userId, user.id))
@@ -97,7 +93,6 @@ export async function workspaceContext(
         ),
       )
       .where(and(identity, activeActorCondition(), isNull(entities.deletedAt)));
-    const [row] = await (options.lockActor ? query.for("no key update", { of: actors }) : query);
     if (!row) throw new AccessDeniedError();
     ({ actor, userName, admin } = row);
   } else {

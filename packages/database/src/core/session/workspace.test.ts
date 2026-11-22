@@ -10,7 +10,7 @@ import { member } from "../organizations/schema";
 import { RepositoryContext } from "../repository-context";
 import { workspaceContext } from "./workspace";
 import { expect, test } from "bun:test";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 
 const f = setupDatabase();
@@ -114,36 +114,6 @@ test("agent workspace names remain distinct from the owner's name", async () => 
   ).toMatchObject({
     userName: "Alice",
     actor: { entityId: actor.entityId, name: "Writer", type: "agent" },
-  });
-});
-
-test("the agent actor lock allows references but still serializes agent writes", async () => {
-  await f.verifyEmails();
-  const [agent] = await f.db
-    .insert(userAgents)
-    .values({ userId: "alice", name: "Writer", instructions: "", harness: "opencode" })
-    .returning();
-  const actor = await ensureUserAgentActor(f.db, {
-    organizationId: f.orgA,
-    userId: "alice",
-    userAgentId: agent!.id,
-  });
-  const scope = { userId: "alice", organizationId: f.orgA, actorEntityId: actor.entityId };
-  await f.db.transaction(async (tx) => {
-    await workspaceContext(tx, scope, { lockActor: true });
-    expect(
-      await f.db.execute(sql`
-        SELECT entity_id FROM ${actors} WHERE entity_id = ${actor.entityId} FOR KEY SHARE NOWAIT
-      `),
-    ).toHaveLength(1);
-    expect(
-      await rejection(
-        f.db.transaction(async (second) => {
-          await second.execute(sql`SET LOCAL lock_timeout = '100ms'`);
-          await workspaceContext(second, scope, { lockActor: true });
-        }),
-      ),
-    ).toMatchObject({ cause: { code: "55P03" } });
   });
 });
 

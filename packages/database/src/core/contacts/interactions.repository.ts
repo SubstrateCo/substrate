@@ -3,13 +3,12 @@ import { entities } from "../entities/schema";
 import {
   RepositoryContext,
   pageSize,
+  type AuthorizedAccess,
   type EntityAccess,
-  type LockedAccess,
 } from "../repository-context";
 import {
   deletableAuthors,
   interactionReadable,
-  lockContact,
   requireContact,
   requireInteraction,
 } from "./access";
@@ -17,7 +16,7 @@ import { parseInput } from "./inputs";
 import { interactionWorkspaceRepository } from "./interaction-workspace.repository";
 import { contactInteractions } from "./interactions.schema";
 import { contacts } from "./schema";
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 
 const interactionInput = z
@@ -35,9 +34,7 @@ const interactionInput = z
 type InteractionInput = z.input<typeof interactionInput>;
 const timelineCursor = z.object({ occurredAt: z.date(), entityId: z.uuid() });
 type TimelineOptions = { limit?: number; before?: z.input<typeof timelineCursor> };
-type LockedInteraction = Awaited<ReturnType<typeof requireInteraction>> & {
-  contact: LockedAccess<"edit">;
-};
+type CheckedInteraction = Awaited<ReturnType<typeof requireInteraction>>;
 
 export function contactInteractionRepository(context: RepositoryContext) {
   const { db, scope } = context;
@@ -49,14 +46,14 @@ export function contactInteractionRepository(context: RepositoryContext) {
 
   return {
     ...interactionWorkspaceRepository(context),
-    /** `locked` is the contact lock the caller holds in this transaction. */
-    async createManual(input: InteractionInput, locked?: LockedAccess<"edit">) {
+    /** `checked` is the caller's requireContact in this transaction. */
+    async createManual(input: InteractionInput, checked?: AuthorizedAccess<"edit">) {
       const value = parseInput(interactionInput, input);
       return context.transaction(async (ctx) => {
         const parent =
-          locked?.entity.entityId === value.contactEntityId
-            ? locked
-            : await lockContact(ctx, value.contactEntityId);
+          checked?.entity.entityId === value.contactEntityId
+            ? checked
+            : await requireContact(ctx, value.contactEntityId);
         const [contact] = await ctx.db
           .select()
           .from(contacts)
@@ -112,35 +109,44 @@ export function contactInteractionRepository(context: RepositoryContext) {
         .limit(pageSize(options.limit));
       return rows;
     },
-    /** `locked` is the caller's requireInteraction(entityId, true) in this transaction. */
-    async update(entityId: string, input: { summary: string }, locked?: LockedInteraction) {
+    /** `checked` is the caller's requireInteraction(entityId) in this transaction. */
+    async update(entityId: string, input: { summary: string }, checked?: CheckedInteraction) {
       const value = parseInput(z.object({ summary: z.string().trim().min(1).max(10000) }), input);
       return context.transaction(async (ctx) => {
         const { interaction: existing } =
-          locked?.interaction.entityId === entityId
-            ? locked
-            : await requireInteraction(ctx, entityId, true);
+          checked?.interaction.entityId === entityId
+            ? checked
+            : await requireInteraction(ctx, entityId);
+        // The liveness condition makes an edit lose to a deletion that committed after the check.
         const [row] = await ctx.db
           .update(contactInteractions)
           .set(value)
-          .where(target(entityId))
+          .where(and(target(entityId), interactionReadable(ctx, contactInteractions.entityId)))
           .returning();
+        if (!row) throw new AccessDeniedError();
         await ctx.touch(entityId);
         await ctx.touch(existing.contactEntityId);
-        return row!;
+        return row;
       });
     },
     async softDelete(entityId: string) {
       return context.transaction(async (ctx) => {
-        const { interaction: existing } = await requireInteraction(ctx, entityId, true);
+        const { interaction: existing } = await requireInteraction(ctx, entityId);
         const author = existing.createdByActorEntityId;
         if (!(await deletableAuthors(ctx, [author])).has(author)) throw new AccessDeniedError();
-        await ctx.db
+        // Only one of two concurrent deletions writes the row.
+        const deleted = await ctx.db
           .update(entities)
           .set({ deletedAt: new Date(), updatedAt: new Date() })
           .where(
-            and(eq(entities.organizationId, scope.organizationId), eq(entities.entityId, entityId)),
-          );
+            and(
+              eq(entities.organizationId, scope.organizationId),
+              eq(entities.entityId, entityId),
+              isNull(entities.deletedAt),
+            ),
+          )
+          .returning({ entityId: entities.entityId });
+        if (!deleted.length) throw new AccessDeniedError();
         await ctx.touch(existing.contactEntityId);
         return existing;
       });

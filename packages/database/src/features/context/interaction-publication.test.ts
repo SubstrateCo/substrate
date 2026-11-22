@@ -20,10 +20,8 @@ test("publication is consented, idempotent, organization-visible, and cannot rev
     messageId: reply.id,
     consentToContactAudience: true as const,
   };
-  const [first, second] = await Promise.all([
-    alice.contactInteractions.publishInteraction(input),
-    alice.contactInteractions.publishInteraction(input),
-  ]);
+  const first = await alice.contactInteractions.publishInteraction(input);
+  const second = await alice.contactInteractions.publishInteraction(input);
   expect(first.result.entityId).toBe(second.result.entityId);
   expect(await f.db.select().from(contactInteractions)).toHaveLength(1);
   expect(

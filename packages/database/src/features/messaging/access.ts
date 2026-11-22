@@ -6,7 +6,12 @@ import type { DatabaseExecutor } from "../../core/executor";
 import { member } from "../../core/organizations/schema";
 import { entityAccessLevel } from "../../core/permissions/visibility";
 import type { SessionIdentity } from "../../core/session/identity";
-import { AccessDeniedError, ValidationError } from "../../errors";
+import {
+  AccessDeniedError,
+  ConflictError,
+  isForeignKeyViolation,
+  ValidationError,
+} from "../../errors";
 import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
 import { messagingConnections } from "./sharing.schema";
 import {
@@ -278,57 +283,70 @@ export async function requireThreadRoot(
 }
 
 export type Conversation = typeof messagingConversations.$inferSelect;
-declare const conversationLock: unique symbol;
-/** A conversation row locked in this transaction. */
-export type LockedConversation = Conversation & {
-  readonly [conversationLock]: "update" | "share";
-};
-
-/** The caller authorizes. "update" locks non-key changes but permits foreign-key inserts. */
-export async function lockConversation(
-  db: DatabaseExecutor,
-  id: string,
-  lock: "update" | "share",
-): Promise<LockedConversation> {
+/** Reads a conversation by ID. The caller authorizes. */
+export async function conversationRow(db: DatabaseExecutor, id: string): Promise<Conversation> {
   const [row] = await db
     .select()
     .from(messagingConversations)
-    .where(eq(messagingConversations.id, id))
-    .for(lock === "update" ? "no key update" : "share");
+    .where(eq(messagingConversations.id, id));
   if (!row) throw new AccessDeniedError();
-  // SAFETY: the row was just selected with the lock, which holds until the transaction ends.
-  return row as LockedConversation;
+  return row;
 }
 
 /**
- * Loads a conversation the scope can see. Membership, ownership, sharing and deletion take
- * "update" to serialize with each other. Posts, reactions and message mutations take "share":
- * they block those changes until commit but not each other at the conversation level. Reads lock
- * nothing.
- *
- * The lock comes first and visibility is read in a second statement. PostgreSQL rechecks a row
- * after a lock wait, but not the subqueries that grant visibility, so one statement would miss a
- * disconnect or removal that committed during the wait.
+ * Claims the next version of a conversation for a membership, ownership, sharing or lifecycle
+ * change. Such changes run one at a time: when another one committed since `conversation` was
+ * read, this one fails with a conflict. Read the state the change depends on after the claim.
+ * The caller authorizes.
  */
-export function loadConversation(
+export async function claimConversationChange(
   db: DatabaseExecutor,
-  scope: SessionIdentity,
-  id: string,
-  lock: "update" | "share",
-): Promise<LockedConversation>;
-export function loadConversation(
-  db: DatabaseExecutor,
-  scope: SessionIdentity,
-  id: string,
-  lock?: "update" | "share",
-): Promise<Conversation>;
+  conversation: Pick<Conversation, "id" | "version">,
+): Promise<Conversation> {
+  const [claimed] = await db
+    .update(messagingConversations)
+    .set({ version: sql`${messagingConversations.version} + 1` })
+    .where(
+      and(
+        eq(messagingConversations.id, conversation.id),
+        eq(messagingConversations.version, conversation.version),
+      ),
+    )
+    .returning();
+  if (claimed) return claimed;
+  // A deleted conversation is denied, as for a read.
+  await conversationRow(db, conversation.id);
+  throw new ConflictError("This conversation changed. Try again.");
+}
+
+/** Reads a conversation by ID and claims its next version. The caller authorizes. */
+export async function claimConversation(db: DatabaseExecutor, id: string) {
+  return claimConversationChange(db, await conversationRow(db, id));
+}
+
+// These foreign keys fail when the conversation is deleted while a write to it is in progress.
+// PostgreSQL keeps the first 63 bytes of a constraint name.
+const conversationForeignKeys = [
+  "messaging_participants_conversation_id_messaging_conversations_id_fk",
+  "messaging_read_positions_conversation_id_messaging_conversations_id_fk",
+].map((name) => name.slice(0, 63));
+
+/** Denies a write whose conversation was deleted during the call, as a read would. */
+export function denyDeletedConversation(error: Error): never {
+  if (conversationForeignKeys.some((name) => isForeignKeyViolation(error, name)))
+    throw new AccessDeniedError();
+  throw error;
+}
+
+/**
+ * Loads a conversation the scope can see. It takes no lock: a write that overlaps a removal or
+ * a disconnect may commit. Foreign keys stop writes to a deleted conversation.
+ */
 export async function loadConversation(
   db: DatabaseExecutor,
   scope: SessionIdentity,
   id: string,
-  lock?: "update" | "share",
 ): Promise<Conversation> {
-  if (lock) await lockConversation(db, id, lock);
   const [conversation] = await db
     .select()
     .from(messagingConversations)
@@ -341,19 +359,8 @@ export async function requireMessage(
   db: DatabaseExecutor,
   scope: SessionIdentity,
   messageId: string,
-  lock?: "share",
-  beforeMessageLock?: (conversation: LockedConversation) => Promise<void>,
 ) {
-  if (lock) {
-    const [target] = await db
-      .select({ conversationId: messagingMessages.conversationId })
-      .from(messagingMessages)
-      .where(eq(messagingMessages.id, messageId));
-    if (!target) throw new AccessDeniedError();
-    const conversation = await loadConversation(db, scope, target.conversationId, lock);
-    if (beforeMessageLock) await beforeMessageLock(conversation);
-  }
-  const query = db
+  const [row] = await db
     .select({ message: messagingMessages, conversation: messagingConversations })
     .from(messagingMessages)
     .innerJoin(
@@ -361,9 +368,6 @@ export async function requireMessage(
       eq(messagingConversations.id, messagingMessages.conversationId),
     )
     .where(and(eq(messagingMessages.id, messageId), visibleConversations(db, scope)));
-  // Source associations must not race message deletion or edits either. Keep read-only calls free
-  // of locks, and lock only the message here: the conversation is already held above.
-  const [row] = await (lock ? query.for("share", { of: messagingMessages }) : query);
   if (!row) throw new AccessDeniedError();
   return row;
 }

@@ -34,6 +34,7 @@ import {
   crmDealContacts,
 } from "./schema";
 import { requireHumanCrmAdmin, settingsRepository } from "./settings";
+import { crmSettings } from "./settings.schema";
 import { crmSharing } from "./sharing";
 import { timeline } from "./timeline";
 import { and, asc, eq, gt, ilike, inArray, isNull, isNotNull, ne, sql } from "drizzle-orm";
@@ -62,8 +63,8 @@ export function crmRepository(context: RepositoryContext) {
     type: "account" | "deal" | "contact",
     edit = false,
   ) {
-    await requireAppEnabled(ctx, "crm", edit);
-    const access = await ctx.requireAccess(id, edit ? "edit" : "view", edit);
+    await requireAppEnabled(ctx, "crm");
+    const access = await ctx.requireAccess(id, edit ? "edit" : "view");
     if (access.entity.entityType !== type) throw new AccessDeniedError();
     return access;
   }
@@ -72,11 +73,8 @@ export function crmRepository(context: RepositoryContext) {
     contactId: string,
     accountId: string,
   ) {
-    // Lock both in one global order. Only the account has grants to check.
-    await ctx.lockAccessPaths([contactId, accountId]);
-    // An account target made lockAccessPaths take the organization lock. Any other target is
-    // denied below, before a write.
-    await requireAppEnabled(ctx, "crm", false);
+    // Only the account has grants to check.
+    await requireAppEnabled(ctx, "crm");
     await requireContact(ctx, contactId);
     const account = await ctx.requireAccess(accountId, "edit");
     if (account.entity.entityType !== "account") throw new AccessDeniedError();
@@ -152,12 +150,7 @@ export function crmRepository(context: RepositoryContext) {
       throw new ValidationError("The primary contact must be a participant.");
     if (new Set(value.contactEntityIds).size !== value.contactEntityIds.length)
       throw new ValidationError("Participant contacts must be unique.");
-    await ctx.lockAccessPaths([
-      ...new Set([
-        ...(value.accountEntityId ? [value.accountEntityId] : []),
-        ...value.contactEntityIds,
-      ]),
-    ]);
+    // Both callers proved the actor active: owner() on create, requireType on update.
     await requireDealRelations(ctx, value, { actorChecked: true });
     if (options.requireActiveStage !== false) await requireStage(ctx, value.stageId);
   }
@@ -175,8 +168,7 @@ export function crmRepository(context: RepositoryContext) {
       .from(crmStages)
       .where(
         and(eq(crmStages.organizationId, org), eq(crmStages.id, id), eq(crmStages.retired, false)),
-      )
-      .for("share");
+      );
     if (!stage) throw new ValidationError("Choose an active stage.");
   }
   async function participants(
@@ -206,15 +198,43 @@ export function crmRepository(context: RepositoryContext) {
         })),
       ]);
   }
-  // Call after requireType(ctx, id, "deal", true) in the same transaction.
-  async function lockedDeal(ctx: RepositoryContext, id: string, version: number) {
-    // The entity access lock already serializes deal edits, transitions, and archiving.
+  // Call after requireType(ctx, id, "deal", true) in the same transaction. This read does not
+  // stop a concurrent change: the caller's UPDATE must match the version again (dealAt).
+  async function currentDeal(ctx: RepositoryContext, id: string, version: number) {
     const [deal] = await ctx.db.select().from(crmDeals).where(target(crmDeals, id));
     if (!deal) throw new AccessDeniedError();
     if (deal.version !== version)
       throw new ConflictError("The deal changed. Reload and try again.");
     if (deal.archivedAt) throw new ValidationError("Restore the deal first.");
     return deal;
+  }
+  const dealAt = (id: string, version: number) =>
+    and(target(crmDeals, id), eq(crmDeals.version, version));
+  const dealChanged = () => new ConflictError("The deal changed. Reload and try again.");
+  async function stages(ctx: RepositoryContext) {
+    return ctx.db
+      .select()
+      .from(crmStages)
+      .where(eq(crmStages.organizationId, org))
+      .orderBy(asc(crmStages.position));
+  }
+  // Claims the next pipeline version by compare-and-set. False means another pipeline change
+  // won. Read the stages after this call.
+  async function claimPipeline(ctx: RepositoryContext) {
+    const [settings] = await ctx.db
+      .select({ version: crmSettings.pipelineVersion })
+      .from(crmSettings)
+      .where(eq(crmSettings.organizationId, org));
+    const [claimed] = await ctx.db
+      .insert(crmSettings)
+      .values({ organizationId: org, pipelineVersion: 1 })
+      .onConflictDoUpdate({
+        target: crmSettings.organizationId,
+        set: { pipelineVersion: sql`${crmSettings.pipelineVersion} + 1` },
+        setWhere: eq(crmSettings.pipelineVersion, settings?.version ?? 0),
+      })
+      .returning({ version: crmSettings.pipelineVersion });
+    return !!claimed;
   }
   return {
     ...crmManagementRepository(context),
@@ -239,14 +259,12 @@ export function crmRepository(context: RepositoryContext) {
       if (new Set(ids).size !== ids.length) throw new ValidationError("Stage IDs must be unique.");
       return context.transaction(async (ctx) => {
         await requireHumanCrmAdmin(ctx);
-        await ctx.db.execute(
-          sql`select pg_advisory_xact_lock(hashtextextended(${`crm-pipeline:${org}`}, 0))`,
-        );
+        if (!(await claimPipeline(ctx)))
+          throw new ConflictError("The pipeline changed. Reload and try again.");
         const existing = await ctx.db
           .select()
           .from(crmStages)
-          .where(eq(crmStages.organizationId, org))
-          .for("update");
+          .where(eq(crmStages.organizationId, org));
         if (ids.some((id) => !existing.some((stage) => stage.id === id)))
           throw new ValidationError("Unknown stage.");
         const removed = existing.flatMap((stage) => (ids.includes(stage.id) ? [] : [stage.id]));
@@ -424,6 +442,9 @@ export function crmRepository(context: RepositoryContext) {
               eq(crmAffiliations.accountEntityId, input.accountEntityId),
             ),
           );
+        // No unique index covers the primary flag. The contact row write orders concurrent
+        // primary selections, so the clear below sees the earlier one.
+        if (input.isPrimary) await ctx.touch(input.contactEntityId);
         if (input.isPrimary)
           await ctx.db
             .update(crmAffiliations)
@@ -514,15 +535,13 @@ export function crmRepository(context: RepositoryContext) {
       return context.transaction(async (ctx) => {
         await requireAppEnabled(ctx, "crm");
         await ctx.requireActiveActor();
-        await ctx.db.execute(
-          sql`select pg_advisory_xact_lock(hashtextextended(${`crm-pipeline:${org}`}, 0))`,
-        );
-        const rows = await ctx.db
-          .select()
-          .from(crmStages)
-          .where(eq(crmStages.organizationId, org))
-          .orderBy(asc(crmStages.position));
+        const existing = await stages(ctx);
+        if (existing.length) return existing;
+        // A lost claim means another call changed the pipeline; return what it created.
+        const claimed = await claimPipeline(ctx);
+        const rows = await stages(ctx);
         if (rows.length) return rows;
+        if (!claimed) throw new ConflictError("The pipeline changed. Reload and try again.");
         return ctx.db
           .insert(crmStages)
           .values(
@@ -569,7 +588,7 @@ export function crmRepository(context: RepositoryContext) {
       const value = parseInput(dealFields, input);
       return context.transaction(async (ctx) => {
         const access = await requireType(ctx, id, "deal", true);
-        const previous = await lockedDeal(ctx, id, expectedVersion);
+        const previous = await currentDeal(ctx, id, expectedVersion);
         if (previous.stageId !== value.stageId)
           throw new ValidationError("Use a stage transition to change stage.");
         const previousParticipants = await ctx.db
@@ -634,14 +653,16 @@ export function crmRepository(context: RepositoryContext) {
             accountEntityId: retainedAccountId ?? fields.accountEntityId,
             version: previous.version + 1,
           })
-          .where(target(crmDeals, id))
+          .where(dealAt(id, previous.version))
           .returning();
+        // The row is now held by this write, so the participant rewrite cannot interleave.
+        if (!row) throw dealChanged();
         await participants(ctx, id, value, retained);
         await ctx.touch(id);
         changed(ctx, id);
         if (changedFields.length)
           await recordCrmActivity(ctx, { entityId: id, action: "updated", changedFields }, access);
-        return presentDeal(ctx, row!);
+        return presentDeal(ctx, row);
       });
     },
     async transitionDeal(
@@ -662,7 +683,7 @@ export function crmRepository(context: RepositoryContext) {
           changed(ctx, id);
           return presentDeal(ctx, row!);
         }
-        const previous = await lockedDeal(ctx, id, input.expectedVersion);
+        const previous = await currentDeal(ctx, id, input.expectedVersion);
         await requireStage(ctx, input.stageId);
         const now = new Date();
         let closedAt = previous.outcome === input.outcome ? previous.closedAt : now;
@@ -677,22 +698,23 @@ export function crmRepository(context: RepositoryContext) {
             stageEnteredAt: previous.stageId === input.stageId ? previous.stageEnteredAt : now,
             closedAt,
           })
-          .where(target(crmDeals, id))
+          .where(dealAt(id, previous.version))
           .returning();
-        await recordRequest(ctx, "deal_transition", input.requestId, fingerprint, id);
+        if (!row) throw dealChanged();
+        await recordRequest(ctx, "deal_transition", input.requestId, id);
         await ctx.touch(id);
         changed(ctx, id);
         const changedFields: NonNullable<CrmActivityInput["changedFields"]> = [];
         if (previous.stageId !== input.stageId) changedFields.push("stage");
         if (previous.outcome !== input.outcome) changedFields.push("outcome");
-        if (previous.lostReason !== row!.lostReason) changedFields.push("lostReason");
+        if (previous.lostReason !== row.lostReason) changedFields.push("lostReason");
         if (changedFields.length)
           await recordCrmActivity(
             ctx,
             { entityId: id, action: "stage_changed", changedFields },
             access,
           );
-        return presentDeal(ctx, row!);
+        return presentDeal(ctx, row);
       });
     },
     async listDeals(options: ListOptions = {}) {
@@ -765,29 +787,31 @@ export function crmRepository(context: RepositoryContext) {
     },
     async archive(id: string, archived: boolean) {
       return context.transaction(async (ctx) => {
-        const access = await ctx.requireAccess(id, "edit", true);
+        const access = await ctx.requireAccess(id, "edit");
         const { entity } = access;
-        let previousArchived = false;
-        if (entity.entityType === "account" || entity.entityType === "deal") {
-          const table = entity.entityType === "account" ? crmAccounts : crmDeals;
-          const [previous] = await ctx.db
-            .select({ archivedAt: table.archivedAt })
-            .from(table)
-            .where(target(table, id));
-          previousArchived = !!previous?.archivedAt;
-        }
+        if (entity.entityType !== "account" && entity.entityType !== "deal")
+          throw new ValidationError("This record cannot be archived in CRM.");
+        const table = entity.entityType === "account" ? crmAccounts : crmDeals;
         const archivedAt = archived ? new Date() : null;
-        if (entity.entityType === "account")
-          await ctx.db.update(crmAccounts).set({ archivedAt }).where(target(crmAccounts, id));
-        else if (entity.entityType === "deal")
-          await ctx.db
-            .update(crmDeals)
-            .set({ archivedAt, version: sql`${crmDeals.version} + 1` })
-            .where(target(crmDeals, id));
-        else throw new ValidationError("This record cannot be archived in CRM.");
+        const set =
+          entity.entityType === "account"
+            ? { archivedAt }
+            : { archivedAt, version: sql`${crmDeals.version} + 1` };
+        // The old state is in the WHERE, so one of two concurrent calls records the change.
+        const [flipped] = await ctx.db
+          .update(table)
+          .set(set)
+          .where(
+            and(
+              target(table, id),
+              archived ? isNull(table.archivedAt) : isNotNull(table.archivedAt),
+            ),
+          )
+          .returning({ entityId: table.entityId });
+        if (!flipped) await ctx.db.update(table).set(set).where(target(table, id));
         await ctx.touch(id);
         changed(ctx, id);
-        if (previousArchived !== archived)
+        if (flipped)
           await recordCrmActivity(
             ctx,
             { entityId: id, action: archived ? "archived" : "restored" },

@@ -11,11 +11,9 @@ export function entityRepository(context: RepositoryContext) {
 
     async softDelete(entityId: string) {
       return context.db.transaction(async (tx) => {
-        const { entity } = await new RepositoryContext(tx, context.scope).requireAccess(
+        const { entity } = await new RepositoryContext(tx, context.scope).requireStructuralAccess(
           entityId,
           "owner",
-          true,
-          "structural",
         );
         if (entity.entityType === "actor")
           throw new ValidationError("Disable actors instead of deleting them.");

@@ -3,7 +3,7 @@ import { ownerAgentWork } from "../../testing/agent-work";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { expect, test } from "bun:test";
-import { and, eq, sql } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 const f = setupDatabase();
 
@@ -11,29 +11,10 @@ test("concurrent policy changes audit a consistent old and new policy chain", as
   const agent = await ownedAgent(f);
   const owner = { userId: "alice", organizationId: f.orgA };
   const agentWork = await ownerAgentWork(f.db, owner);
-  let changes!: Promise<unknown[]>;
-  await f.db.transaction(async (tx) => {
-    await tx
-      .select({ id: userAgents.id })
-      .from(userAgents)
-      .where(eq(userAgents.id, agent.agentId))
-      .for("no key update");
-    changes = Promise.all([
-      agentWork.saveCallerPolicy(agent.agentId, "ask"),
-      agentWork.saveCallerPolicy(agent.agentId, "anyone"),
-    ]);
-    // Both changes reach the blocked UPDATE with the same old policy.
-    for (let attempt = 0; ; attempt++) {
-      const [row] = await f.db.execute<{ n: number }>(
-        sql`select count(*)::int as n from pg_stat_activity
-          where datname = current_database() and wait_event_type = 'Lock'`,
-      );
-      if (row!.n >= 2) break;
-      if (attempt >= 100) throw new Error("Policy changes did not reach the row lock.");
-      await Bun.sleep(25);
-    }
-  });
-  await changes;
+  await Promise.all([
+    agentWork.saveCallerPolicy(agent.agentId, "ask"),
+    agentWork.saveCallerPolicy(agent.agentId, "anyone"),
+  ]);
   const rows = await f.db
     .select({ policies: agentAuditEvents.targetIds })
     .from(agentAuditEvents)

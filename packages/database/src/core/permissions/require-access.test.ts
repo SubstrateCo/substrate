@@ -1,16 +1,14 @@
-import { AccessDeniedError } from "../../errors";
-import { tasks } from "../../features/tasks/tasks.schema";
+import { AccessDeniedError, ConflictError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { actors } from "../actors/schema";
 import { entities } from "../entities/schema";
 import { member } from "../organizations/schema";
-import { RepositoryContext } from "../repository-context";
-import { entityGrants } from "./schema";
+import { RepositoryContext, type EntityAccess } from "../repository-context";
 import { entityAccessLevel } from "./visibility";
 import { expect, test } from "bun:test";
-import { and, eq, sql } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
 
@@ -32,28 +30,21 @@ async function hierarchy() {
   return { owner, parent, child };
 }
 
-for (const lock of [false, true]) {
-  test(`requireAccess uses ${lock ? 2 : 1} statements with lock=${lock} and preserves entity values`, async () => {
-    const contact = await f.forActor(f.alice).contacts.create({ displayName: "Owned" });
-    const [entity] = await f.db
-      .select()
-      .from(entities)
-      .where(eq(entities.entityId, contact.entityId));
-    const { db, queries } = recordQueries();
-    const scope = { organizationId: f.orgA, actorEntityId: f.alice };
-    const result = await db.transaction(async (tx) => {
-      queries.length = 0;
-      const access = await new RepositoryContext(tx, scope).requireAccess(
-        contact.entityId,
-        "owner",
-        lock,
-      );
-      expect(queries).toHaveLength(lock ? 2 : 1);
-      return access;
-    });
-    expect(result).toEqual({ entity: entity!, level: "owner" });
-  });
-}
+test("requireAccess uses one statement and preserves entity values", async () => {
+  const contact = await f.forActor(f.alice).contacts.create({ displayName: "Owned" });
+  const [entity] = await f.db
+    .select()
+    .from(entities)
+    .where(eq(entities.entityId, contact.entityId));
+  const { db, queries } = recordQueries();
+  const scope = { organizationId: f.orgA, actorEntityId: f.alice };
+  const access: EntityAccess = await new RepositoryContext(db, scope).requireAccess(
+    contact.entityId,
+    "owner",
+  );
+  expect(queries).toHaveLength(1);
+  expect(access).toEqual({ entity: entity!, level: "owner" });
+});
 
 test("the container grant sets the child's level and enforces every permission rank", async () => {
   const { owner, parent, child } = await hierarchy();
@@ -116,23 +107,20 @@ test("missing, deleted, and foreign entities are denied even with an active acto
   }
 });
 
-test("inactive and forged scopes fail the actor precheck before locks or visibility reads", async () => {
+test("inactive and forged scopes are denied in one statement", async () => {
   const contact = await f.forActor(f.alice).contacts.create({ displayName: "Private" });
   const { db, queries } = recordQueries();
   const deny = async (actorEntityId: string, organizationId = f.orgA) => {
-    for (const lock of [true, false]) {
-      queries.length = 0;
-      expect(
-        await rejection(
-          new RepositoryContext(db, { organizationId, actorEntityId }).requireAccess(
-            contact.entityId,
-            "view",
-            lock,
-          ),
+    queries.length = 0;
+    expect(
+      await rejection(
+        new RepositoryContext(db, { organizationId, actorEntityId }).requireAccess(
+          contact.entityId,
+          "view",
         ),
-      ).toBeInstanceOf(AccessDeniedError);
-      expect(queries).toHaveLength(1);
-    }
+      ),
+    ).toBeInstanceOf(AccessDeniedError);
+    expect(queries).toHaveLength(1);
   };
   await deny(f.outsider);
   await deny(f.alice, f.orgB);
@@ -147,206 +135,107 @@ test("inactive and forged scopes fail the actor precheck before locks or visibil
   await deny(f.alice);
 });
 
-test("a denied inactive scope holds no lock on the access path", async () => {
-  const contact = await f.forActor(f.alice).contacts.create({ displayName: "Unlocked" });
-  await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.bob));
-  await f.db.transaction(async (tx) => {
-    expect(
-      await rejection(
-        new RepositoryContext(tx, { organizationId: f.orgA, actorEntityId: f.bob }).requireAccess(
-          contact.entityId,
-          "view",
-          true,
-        ),
-      ),
-    ).toBeInstanceOf(AccessDeniedError);
-    // A second connection locks the row at once while the denied transaction is still open.
-    const rows = await f.db.execute(
-      sql`SELECT entity_id FROM ${entities} WHERE entity_id = ${contact.entityId} FOR UPDATE NOWAIT`,
-    );
-    expect(rows).toHaveLength(1);
-  });
-});
-
-test("lockAccessPaths locks every entity and container in one statement and denies a missing one", async () => {
+test("requireAccessAll grants every entity or denies them all", async () => {
   const { parent, child } = await hierarchy();
-  const other = await f.forActor(f.alice).projects.create({ name: "Other" });
-  const scope = { organizationId: f.orgA, actorEntityId: f.alice };
-  const { db, queries } = recordQueries();
-  await db.transaction(async (tx) => {
-    queries.length = 0;
-    await new RepositoryContext(tx, scope).lockAccessPaths([other.entityId, child.entityId]);
-    expect(queries).toHaveLength(1);
-    for (const id of [parent.entityId, child.entityId, other.entityId])
-      expect(
-        await rejection(
-          f.db.execute(
-            sql`SELECT entity_id FROM ${entities} WHERE entity_id = ${id} FOR UPDATE NOWAIT`,
-          ),
-        ),
-      ).toMatchObject({ cause: { code: "55P03" } });
-  });
+  const context = new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.alice });
+  const granted = await context.requireAccessAll([child.entityId, parent.entityId], "edit");
+  expect(granted.map((access) => access.entity.entityId)).toEqual([
+    child.entityId,
+    parent.entityId,
+  ]);
   expect(
-    await rejection(
-      f.db.transaction((tx) =>
-        new RepositoryContext(tx, scope).lockAccessPaths([parent.entityId, crypto.randomUUID()]),
-      ),
-    ),
+    await rejection(context.requireAccessAll([parent.entityId, crypto.randomUUID()], "view")),
   ).toBeInstanceOf(AccessDeniedError);
 });
 
-test("ordinary writes to different tasks share their project's access lock", async () => {
-  const { owner, parent, child } = await hierarchy();
-  const other = await owner.tasks.create({ projectEntityId: parent.entityId, title: "Other" });
+const accessVersion = async (entityId: string) =>
+  (
+    await f.db
+      .select({ version: entities.accessVersion })
+      .from(entities)
+      .where(eq(entities.entityId, entityId))
+  )[0]!.version;
+
+test("a structural claim on a child advances its container's version once", async () => {
+  const { parent, child } = await hierarchy();
   const scope = { organizationId: f.orgA, actorEntityId: f.alice };
-  await f.db.transaction(async (tx) => {
-    await new RepositoryContext(tx, scope).requireAccess(child.entityId, "edit", true);
-    // This must finish before the first writer commits, not merely after it releases the lock.
-    await f.db.transaction(async (second) => {
-      await second.execute(sql`SET LOCAL lock_timeout = '1s'`);
-      await new RepositoryContext(second, scope).requireAccess(other.entityId, "edit", true);
-      await second
-        .update(tasks)
-        .set({ title: "Written concurrently" })
-        .where(eq(tasks.entityId, other.entityId));
-    });
-    expect((await owner.tasks.get(other.entityId)).title).toBe("Written concurrently");
-    expect(
-      await rejection(
-        f.db.transaction(async (second) => {
-          await second.execute(sql`SET LOCAL lock_timeout = '100ms'`);
-          await new RepositoryContext(second, scope).requireAccess(child.entityId, "edit", true);
-        }),
-      ),
-    ).toMatchObject({ cause: { code: "55P03" } });
-  });
+  const [parentBefore, childBefore] = [
+    await accessVersion(parent.entityId),
+    await accessVersion(child.entityId),
+  ];
+  const { db, queries } = recordQueries();
+  const access = await new RepositoryContext(db, scope).requireStructuralAccessAll(
+    [child.entityId, parent.entityId],
+    "owner",
+  );
+  // One read, and one claim for the container that both entities share.
+  expect(queries).toHaveLength(2);
+  expect(access.map(({ entity, level }) => [entity.entityId, level])).toEqual([
+    [child.entityId, "owner"],
+    [parent.entityId, "owner"],
+  ]);
+  expect(await accessVersion(parent.entityId)).toBe(parentBefore + 1);
+  expect(await accessVersion(child.entityId)).toBe(childBefore);
 });
 
-test("a structural change waits for an ordinary task writer before revoking access", async () => {
+test("a denied structural claim changes nothing", async () => {
   const { owner, parent, child } = await hierarchy();
   await owner.permissions.grant({ entityId: parent.entityId, actorEntityId: f.bob, level: "edit" });
-  const held = Promise.withResolvers<void>();
-  const release = Promise.withResolvers<void>();
-  const writer = f.db.transaction(async (tx) => {
-    const ctx = new RepositoryContext(tx, { organizationId: f.orgA, actorEntityId: f.bob });
-    await ctx.requireAccess(child.entityId, "edit", true);
-    await tx
-      .update(tasks)
-      .set({ title: "Before revoke" })
-      .where(eq(tasks.entityId, child.entityId));
-    held.resolve();
-    await release.promise;
-  });
-  const started = Promise.withResolvers<number>();
-  let structural: Promise<unknown> | undefined;
-  try {
-    await Promise.race([held.promise, writer]);
-    structural = f.db.transaction(async (tx) => {
-      const [connection] = await tx.execute<{ pid: number }>(sql`SELECT pg_backend_pid() AS pid`);
-      started.resolve(connection!.pid);
-      await new RepositoryContext(tx, {
+  const before = await accessVersion(parent.entityId);
+  const bob = new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.bob });
+  for (const id of [child.entityId, parent.entityId, crypto.randomUUID()])
+    expect(await rejection(bob.requireStructuralAccess(id, "owner"))).toBeInstanceOf(
+      AccessDeniedError,
+    );
+  await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.alice));
+  expect(
+    await rejection(
+      new RepositoryContext(f.db, {
         organizationId: f.orgA,
         actorEntityId: f.alice,
-      }).requireAccess(child.entityId, "owner", true, "structural");
-      await tx
-        .delete(entityGrants)
-        .where(
-          and(eq(entityGrants.entityId, parent.entityId), eq(entityGrants.actorEntityId, f.bob)),
-        );
-    });
-    const pid = await started.promise;
-    let blocked = false;
-    for (let attempt = 0; attempt < 200; attempt++) {
-      const [state] = await f.db.execute<{ blocked: boolean }>(
-        sql`SELECT cardinality(pg_blocking_pids(${pid}::integer)) > 0 AS blocked`,
-      );
-      if (state!.blocked) {
-        blocked = true;
-        break;
-      }
-      await Bun.sleep(10);
-    }
-    expect(blocked).toBe(true);
-    release.resolve();
-    await writer;
-    await structural;
-    expect((await owner.tasks.get(child.entityId)).title).toBe("Before revoke");
-    expect(
-      await rejection(
-        new RepositoryContext(f.db, {
-          organizationId: f.orgA,
-          actorEntityId: f.bob,
-        }).requireAccess(child.entityId, "edit"),
-      ),
-    ).toBeInstanceOf(AccessDeniedError);
-  } finally {
-    release.resolve();
-    await Promise.allSettled([writer, ...(structural ? [structural] : [])]);
-  }
+      }).requireStructuralAccess(parent.entityId, "owner"),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(await accessVersion(parent.entityId)).toBe(before);
 });
 
-for (const inherited of [false, true]) {
-  test(`locked access sees ${inherited ? "inherited" : "direct"} revocation committed while waiting for the lock`, async () => {
-    const { owner, parent, child } = await hierarchy();
-    // Grants live on the container. The reader checks the child or the container itself.
-    const grantEntityId = parent.entityId;
-    const readEntityId = inherited ? child.entityId : parent.entityId;
-    await owner.permissions.grant({ entityId: grantEntityId, actorEntityId: f.bob, level: "edit" });
-    const held = Promise.withResolvers<void>();
-    const release = Promise.withResolvers<void>();
-    const writer = f.db.transaction(async (tx) => {
-      await new RepositoryContext(tx, {
-        organizationId: f.orgA,
-        actorEntityId: f.alice,
-      }).requireAccess(grantEntityId, "owner", true, "structural");
-      await tx
-        .delete(entityGrants)
-        .where(
-          and(eq(entityGrants.entityId, grantEntityId), eq(entityGrants.actorEntityId, f.bob)),
-        );
-      held.resolve();
-      await release.promise;
-    });
-    const { db, queries } = recordQueries();
-    const started = Promise.withResolvers<number>();
-    let reader: Promise<PromiseSettledResult<unknown>[]> | undefined;
-    try {
-      await Promise.race([held.promise, writer]);
-      reader = Promise.allSettled([
-        db.transaction(async (tx) => {
-          const [connection] = await tx.execute<{ pid: number }>(
-            sql`SELECT pg_backend_pid() AS pid`,
-          );
-          queries.length = 0;
-          started.resolve(connection!.pid);
-          return new RepositoryContext(tx, {
-            organizationId: f.orgA,
-            actorEntityId: f.bob,
-          }).requireAccess(readEntityId, "edit", true);
-        }),
-      ]);
-      const pid = await started.promise;
-      let blocked = false;
-      for (let attempt = 0; attempt < 200; attempt++) {
-        const [state] = await f.db.execute<{ blocked: boolean }>(
-          sql`SELECT cardinality(pg_blocking_pids(${pid}::integer)) > 0 AS blocked`,
-        );
-        if (state!.blocked) {
-          blocked = true;
-          break;
-        }
-        await Bun.sleep(10);
-      }
-      expect(blocked).toBe(true);
-      release.resolve();
-      await writer;
-      const [result] = await reader;
-      expect(result!.status).toBe("rejected");
-      if (result!.status === "rejected") expect(result!.reason).toBeInstanceOf(AccessDeniedError);
-      expect(queries.filter((query) => !["begin", "rollback"].includes(query))).toHaveLength(2);
-    } finally {
-      release.resolve();
-      await Promise.allSettled([writer, ...(reader ? [reader] : [])]);
-    }
+test("of two concurrent structural claims on one container, one wins and one conflicts", async () => {
+  const { parent, child } = await hierarchy();
+  const scope = { organizationId: f.orgA, actorEntityId: f.alice };
+  const before = await accessVersion(parent.entityId);
+  const claimed = Promise.withResolvers<void>();
+  const secondRead = Promise.withResolvers<void>();
+  // The second connection resolves once it sends its claim, so it read the old version first.
+  const { db: second } = recordQueries((query) => {
+    if (query.startsWith('update "entities"')) secondRead.resolve();
   });
-}
+  const first = f.db.transaction(async (tx) => {
+    await new RepositoryContext(tx, scope).requireStructuralAccess(parent.entityId, "owner");
+    claimed.resolve();
+    await secondRead.promise;
+  });
+  await claimed.promise;
+  const results = await Promise.allSettled([
+    first,
+    second.transaction((tx) =>
+      new RepositoryContext(tx, scope).requireStructuralAccess(child.entityId, "owner"),
+    ),
+  ]);
+  expect(results[0].status).toBe("fulfilled");
+  expect(results[1]).toMatchObject({ status: "rejected", reason: expect.any(ConflictError) });
+  expect(await accessVersion(parent.entityId)).toBe(before + 1);
+});
+
+test("structural claims on different containers do not conflict", async () => {
+  const { parent } = await hierarchy();
+  const other = await f.forActor(f.alice).projects.create({ name: "Other" });
+  const scope = { organizationId: f.orgA, actorEntityId: f.alice };
+  await f.db.transaction(async (tx) => {
+    await new RepositoryContext(tx, scope).requireStructuralAccess(parent.entityId, "owner");
+    // The first claim is still open. A claim on another container finishes at once.
+    const access = await f.db.transaction((second) =>
+      new RepositoryContext(second, scope).requireStructuralAccess(other.entityId, "owner"),
+    );
+    expect(access.entity.entityId).toBe(other.entityId);
+  });
+});

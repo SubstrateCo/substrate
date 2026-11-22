@@ -11,7 +11,7 @@ import {
 import { entities } from "../../core/entities/schema";
 import { relatedPair } from "../../core/links/repository";
 import { entityLinks } from "../../core/links/schema";
-import type { Locked, RepositoryContext } from "../../core/repository-context";
+import type { Authorized, RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
 import { projects } from "../projects/schema";
@@ -150,18 +150,13 @@ export function linksOfTask(ctx: RepositoryContext, taskEntityId: string) {
 // The caller can view `other`.
 export async function addTaskLink(
   ctx: RepositoryContext,
-  task: Locked<Task, "edit">,
+  task: Authorized<Task, "edit">,
   other: Task,
   relation: TaskLinkRelation,
 ) {
   const { db, scope } = ctx;
   if (task.entityId === other.entityId) throw new ValidationError("A task can't link to itself.");
   const link = stored(task.entityId, other.entityId, relation);
-  // Links cross projects, so project locks do not order two writers. One lock per organization
-  // keeps the cycle check and the insert together.
-  await db.execute(
-    sql`SELECT pg_advisory_xact_lock(hashtextextended(${`task-relations:${scope.organizationId}`}, 0))`,
-  );
   const pair = (source: string, target: string, kind: TaskLinkKind) =>
     and(
       eq(entityLinks.organizationId, scope.organizationId),
@@ -169,18 +164,24 @@ export async function addTaskLink(
       eq(entityLinks.targetEntityId, target),
       eq(entityLinks.relationType, kind),
     );
-  const [existing] = await db
-    .select({ id: entityLinks.id })
-    .from(entityLinks)
-    .where(pair(link.sourceEntityId, link.targetEntityId, link.relationType));
-  if (existing) throw new ValidationError("These tasks already have this link.");
-  if (link.relationType === "duplicates") {
-    const [reverse] = await db
+  const requireNewPair = async () => {
+    const [existing] = await db
       .select({ id: entityLinks.id })
       .from(entityLinks)
-      .where(pair(link.targetEntityId, link.sourceEntityId, "duplicates"));
-    if (reverse) throw new ValidationError("These tasks are already marked as duplicates.");
-  }
+      .where(pair(link.sourceEntityId, link.targetEntityId, link.relationType));
+    if (existing) throw new ValidationError("These tasks already have this link.");
+    if (link.relationType === "duplicates") {
+      const [reverse] = await db
+        .select({ id: entityLinks.id })
+        .from(entityLinks)
+        .where(pair(link.targetEntityId, link.sourceEntityId, "duplicates"));
+      if (reverse) throw new ValidationError("These tasks are already marked as duplicates.");
+    }
+  };
+  await requireNewPair();
+  // These checks do not stop a concurrent writer. The unique indexes stop a duplicate and two
+  // tasks that block each other. A longer cycle from an exact race can exist, so every reader
+  // of `blocks` links must stop at a task it has seen.
   if (link.relationType === "blocks") {
     const cycle = await db.execute(sql`
       WITH RECURSIVE blocked(entity_id) AS (
@@ -201,16 +202,22 @@ export async function addTaskLink(
       ...link,
       createdByActorEntityId: scope.actorEntityId,
     })
+    .onConflictDoNothing()
     .returning();
+  if (!created) {
+    // A concurrent writer linked this pair first. Give the error its link would have caused.
+    await requireNewPair();
+    throw new ValidationError("This link would make the tasks block each other.");
+  }
   await recordLinkActivity(ctx, "Link added", task, other, relation);
   await ctx.touch(task.entityId);
-  return created!;
+  return created;
 }
 
 // The link must touch the task.
 export async function removeTaskLink(
   ctx: RepositoryContext,
-  task: Locked<Task, "edit">,
+  task: Authorized<Task, "edit">,
   linkId: string,
 ) {
   // Only task-to-task links: a `related_to` link to a CRM record is not a task relation.

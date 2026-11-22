@@ -1,6 +1,6 @@
 import { organization } from "../../core/organizations/schema";
 import { sql } from "drizzle-orm";
-import { pgTable, text, check } from "drizzle-orm/pg-core";
+import { check, integer, pgTable, text } from "drizzle-orm/pg-core";
 
 export const crmSettings = pgTable(
   "crm_settings",
@@ -9,6 +9,8 @@ export const crmSettings = pgTable(
       .primaryKey()
       .references(() => organization.id, { onDelete: "cascade" }),
     defaultCurrency: text("default_currency"),
+    // Counts pipeline stage changes. Each one claims the next version by compare-and-set.
+    pipelineVersion: integer("pipeline_version").default(0).notNull(),
   },
   (t) => [
     check(

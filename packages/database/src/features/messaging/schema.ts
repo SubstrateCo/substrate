@@ -11,6 +11,7 @@ import {
   check,
   foreignKey,
   index,
+  integer,
   pgTable,
   primaryKey,
   text,
@@ -37,6 +38,9 @@ export const messagingConversations = pgTable(
       .notNull()
       .references(() => user.id),
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
+    // Counts membership, ownership, sharing and lifecycle changes. Each one claims the next
+    // version by compare-and-set, so they run one at a time without row locks.
+    version: integer("version").default(0).notNull(),
   },
   (table) => [
     unique("messaging_conversation_organization_unique").on(table.organizationId, table.id),

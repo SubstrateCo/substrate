@@ -1,6 +1,6 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import { lockContact, requireContact } from "../../core/contacts/access";
+import { requireContact } from "../../core/contacts/access";
 import { interactionWorkspaceRepository } from "../../core/contacts/interaction-workspace.repository";
 import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
 import { appEnabledCondition } from "../../core/permissions/app-visibility";
@@ -61,7 +61,7 @@ export function contextContactInteractionRepository(context: RepositoryContext) 
       input: Parameters<ReturnType<typeof contactInteractionRepository>["createManual"]>[0],
     ) {
       return context.transaction(async (ctx) => {
-        const locked = await lockContact(ctx, input.contactEntityId);
+        const contact = await requireContact(ctx, input.contactEntityId);
         const [profile] = await ctx.db
           .select()
           .from(crmContactProfiles)
@@ -73,7 +73,7 @@ export function contextContactInteractionRepository(context: RepositoryContext) 
             ),
           );
         if (profile?.archivedAt) throw new ValidationError("Restore the archived record first.");
-        const interaction = await contactInteractionRepository(ctx).createManual(input, locked);
+        const interaction = await contactInteractionRepository(ctx).createManual(input, contact);
         await recordCrmActivity(ctx, {
           entityId: input.contactEntityId,
           action: "interaction_created",

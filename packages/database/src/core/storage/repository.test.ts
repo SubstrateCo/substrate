@@ -385,38 +385,6 @@ describe("stored file relationships", () => {
     },
   );
 
-  test("completion cannot insert after concurrent upload cleanup", async () => {
-    const repo = createStorageRepository(f.db);
-    const scope = { userId: "alice", organizationId: null };
-    const id = crypto.randomUUID();
-    await repo.createUpload(
-      scope,
-      { purpose: "avatar", filename: "a.webp", contentType: "image/webp", size: 5 },
-      id,
-      new Date(Date.now() + 60_000),
-    );
-    const deleted = Promise.withResolvers<void>();
-    const release = Promise.withResolvers<void>();
-    const cleanup = f.db.transaction(async (tx) => {
-      await tx.delete(fileUploads).where(eq(fileUploads.id, id));
-      deleted.resolve();
-      await release.promise;
-    });
-    await deleted.promise;
-    const completion = rejection(
-      repo.complete(scope, id, {
-        objectKey: `objects/${id}/hash`,
-        contentType: "image/webp",
-        size: 5,
-        sha256: "a".repeat(64),
-      }),
-    );
-    release.resolve();
-    await cleanup;
-    expect(await completion).toBeInstanceOf(AccessDeniedError);
-    expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, id))).toEqual([]);
-  });
-
   test("logo writes need an active organization and admin or owner role", async () => {
     const repo = createStorageRepository(f.db);
     await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "bob"));

@@ -264,7 +264,7 @@ test("delete impact counts only linked work the caller can read", async () => {
   expect(await chat("carol").deleteImpact(channel.id)).toEqual({ linkedWork: 0 });
 });
 
-test("delete impact reads managed conversations without a conversation write lock", async () => {
+test("delete impact reads a managed conversation once and needs no second session read", async () => {
   await verified();
   const project = await f.forActor(f.bob).projects.create({ name: "Bob's" });
   const secret = await chat("bob").createConversation({
@@ -285,8 +285,7 @@ test("delete impact reads managed conversations without a conversation write loc
   // alice is a host owner who is not a member: she counts readable work but cannot read messages.
   const admin = createMessagingService(db, { userId: "alice", organizationId: f.orgA });
   expect(await admin.deleteImpact(secret.id)).toEqual({ linkedWork: 2 });
-  expect(queries.filter((query) => /\bfor (no key update|update|share)\b/.test(query))).toEqual([]);
-  // One session read and one managed lookup; the write path's second session read is not needed.
+  // One session read and one managed lookup.
   expect(queries.filter((query) => query.includes('from "messaging_conversations"'))).toHaveLength(
     1,
   );
@@ -318,4 +317,57 @@ test("agents cannot leave, delete, or manage conversations", async () => {
   expect(await rejection(agent.transferOwnership(channel.id, "bob"))).toBeInstanceOf(
     AccessDeniedError,
   );
+});
+
+test("a post racing a conversation deletion is denied and leaves no message", async () => {
+  await verified();
+  const channel = await chat("alice").createConversation({ kind: "channel", name: "doomed" });
+  await chat("bob").sendMessage(channel.id, "joined");
+  const held = Promise.withResolvers<void>();
+  const release = Promise.withResolvers<void>();
+  const open = f.db.transaction(async (tx) => {
+    await createMessagingService(tx, {
+      userId: "alice",
+      organizationId: f.orgA,
+    }).deleteConversation(channel.id);
+    held.resolve();
+    await release.promise;
+  });
+  let posting: Promise<unknown> | undefined;
+  try {
+    await held.promise;
+    // The post still sees the conversation, then its first write meets the deletion.
+    posting = rejection(chat("bob").sendMessage(channel.id, "too late"));
+    await Bun.sleep(100);
+  } finally {
+    release.resolve();
+    await open;
+  }
+  expect(await posting).toBeInstanceOf(AccessDeniedError);
+  expect(await f.db.select().from(messagingMessages)).toEqual([]);
+});
+
+test("a transfer racing the new owner's removal never leaves an owner who is not a member", async () => {
+  await verified();
+  for (let round = 0; round < 5; round++) {
+    const channel = await chat("alice").createConversation({
+      kind: "channel",
+      name: `handover ${round}`,
+      private: true,
+      emails: ["bob@example.com"],
+    });
+    const results = await Promise.allSettled([
+      chat("alice").transferOwnership(channel.id, "bob"),
+      chat("alice").removeMember(channel.id, f.bob),
+    ]);
+    expect(results.filter((result) => result.status === "fulfilled")).toHaveLength(1);
+    const [stored] = await f.db
+      .select()
+      .from(messagingConversations)
+      .where(eq(messagingConversations.id, channel.id));
+    const members = (await chat("alice").listManagedConversations())
+      .find((row) => row.id === channel.id)!
+      .members.map((person) => person.userId);
+    expect(members).toContain(stored!.createdBy);
+  }
 });

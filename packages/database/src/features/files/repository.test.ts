@@ -383,7 +383,7 @@ test("creating a task and its files is atomic, and a published file cannot be re
   ]);
 });
 
-test("cleanup skips an uncommitted publication write and cannot remove its committed attachment", async () => {
+test("cleanup that overlaps a publication cannot remove the published attachment", async () => {
   const target = await task();
   const file = await staged();
   await f.db
@@ -400,13 +400,12 @@ test("cleanup skips an uncommitted publication write and cannot remove its commi
   });
   await published.promise;
   const storage = createStorageRepository(f.db, attachmentReferences);
-  try {
-    await storage.pruneUnusedFiles(new Date());
-    expect((await f.db.select().from(storedFiles)).map((row) => row.id)).toEqual([file.id]);
-  } finally {
-    release.resolve();
-    await publishing;
-  }
+  // The cleanup starts while the publication is open, so it does not see the attachment.
+  const pruning = storage.pruneUnusedFiles(new Date());
+  await Bun.sleep(50);
+  release.resolve();
+  await Promise.all([publishing, pruning]);
+  expect((await f.db.select().from(storedFiles)).map((row) => row.id)).toEqual([file.id]);
   await storage.pruneUnusedFiles(new Date());
   expect((await files().listTask(scope(), target))[0]!.fileId).toBe(file.id);
   expect((await f.db.select().from(storedFiles)).map((row) => row.id)).toEqual([file.id]);

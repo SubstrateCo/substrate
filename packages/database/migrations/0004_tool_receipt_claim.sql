@@ -1,0 +1,1 @@
+ALTER TABLE "agent_tool_requests" ALTER COLUMN "result" DROP NOT NULL;

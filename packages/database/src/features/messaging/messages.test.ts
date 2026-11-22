@@ -5,7 +5,6 @@ import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { user, member } from "../../schema";
 import { setupDatabase } from "../../testing/database";
-import { waitForLockWaiters } from "../../testing/locks";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { messagingMessages, messagingReactions } from "./schema";
@@ -17,7 +16,7 @@ const fixture = setupDatabase();
 const service = fixture.messaging;
 const verified = fixture.verifyEmails;
 
-test("send and replay reuse authenticated identity and the locked conversation", async () => {
+test("send and replay reuse the authenticated identity", async () => {
   await verified();
   const channel = await service("alice").createConversation({ kind: "channel", name: "general" });
   const { db, queries } = recordQueries();
@@ -26,18 +25,14 @@ test("send and replay reuse authenticated identity and the locked conversation",
   const sent = await chat.sendMessage(channel.id, "hello", undefined, requestId);
   expect(sent).toMatchObject({ authorName: "Alice", body: "hello", replyCount: 0, reactions: [] });
   const redundant = () => queries.filter((query) => query.startsWith('select "name" from "user"'));
-  const provisioning = () =>
-    queries.filter((query) => query.includes('from "member"') && query.includes("for update"));
   expect(redundant()).toEqual([]);
-  expect(provisioning()).toEqual([]);
   // Includes the lookup for the author's own agents that the message may trigger.
-  expect(queries).toHaveLength(7);
+  expect(queries).toHaveLength(6);
   queries.length = 0;
   expect(await chat.sendMessage(channel.id, "hello", undefined, requestId)).toEqual(sent);
   expect(redundant()).toEqual([]);
-  expect(provisioning()).toEqual([]);
   // Replay also reads the attachment set, so a changed set cannot reuse the request.
-  expect(queries).toHaveLength(5);
+  expect(queries).toHaveLength(4);
   expect(
     await rejection(chat.sendMessage(channel.id, "changed", undefined, requestId)),
   ).toBeInstanceOf(ConflictError);
@@ -71,8 +66,8 @@ test("concurrent sends with one request create one message and both return it", 
   const changed = rejection(
     service("alice").sendMessage(channel.id, "changed", undefined, requestId),
   );
-  // Both sends wait on the uncommitted message's request ID.
-  await waitForLockWaiters(2);
+  // Give both sends time to reach the uncommitted message's request ID.
+  await Bun.sleep(100);
   release.resolve();
   const [first, second] = await Promise.all([open, retry]);
   expect(await changed).toBeInstanceOf(ConflictError);
@@ -548,44 +543,6 @@ test("reactions aggregate per emoji, toggle per user and reject inaccessible mes
         .execute(),
     ),
   ).toMatchObject({ cause: { code: "23503" } });
-});
-
-test("posts, reactions and reads do not wait for an open post, while leaving waits for it", async () => {
-  await verified();
-  const channel = await service("alice").createConversation({ kind: "channel", name: "busy" });
-  const root = await service("bob").sendMessage(channel.id, "joined");
-  const held = Promise.withResolvers<void>();
-  const release = Promise.withResolvers<void>();
-  const open = fixture.db.transaction(async (tx) => {
-    await createMessagingService(tx, { userId: "alice", organizationId: fixture.orgA }).sendMessage(
-      channel.id,
-      "open",
-    );
-    held.resolve();
-    await release.promise;
-  });
-  try {
-    await held.promise;
-    const within = <T>(work: Promise<T>) =>
-      Promise.race([work.then(() => "done"), Bun.sleep(1_000).then(() => "blocked")]);
-    expect(await within(service("bob").sendMessage(channel.id, "second"))).toBe("done");
-    expect(await within(service("bob").toggleReaction(root.id, "👍"))).toBe("done");
-    expect(await within(service("bob").listMessages(channel.id))).toBe("done");
-    let left = false;
-    const leaving = service("bob")
-      .leaveConversation(channel.id)
-      .then(() => {
-        left = true;
-      });
-    await waitForLockWaiters(1);
-    expect(left).toBe(false);
-    release.resolve();
-    await Promise.all([open, leaving]);
-    expect(left).toBe(true);
-  } finally {
-    release.resolve();
-    await open;
-  }
 });
 
 test("concurrent toggles serialize and leave no duplicate reactions", async () => {

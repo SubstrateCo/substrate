@@ -13,11 +13,11 @@ export function contextInteractionActions(context: RepositoryContext) {
     updateInteraction(entityId: string, input: { summary: string }) {
       const value = parseInput(z.object({ summary: z.string().trim().min(1).max(10000) }), input);
       return context.transaction(async (ctx) => {
-        const locked = await requireInteraction(ctx, entityId, true);
-        const { interaction: previous } = locked;
+        const checked = await requireInteraction(ctx, entityId);
+        const { interaction: previous } = checked;
         const repo = contactInteractionRepository(ctx);
         if (previous.summary === value.summary) return presentInteraction(ctx, previous);
-        const interaction = await repo.update(entityId, value, locked);
+        const interaction = await repo.update(entityId, value, checked);
         await recordCrmActivity(ctx, {
           entityId: interaction.contactEntityId,
           action: "interaction_updated",

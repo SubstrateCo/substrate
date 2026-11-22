@@ -107,7 +107,7 @@ async function reportRows(
 
 type DrilldownInput = Omit<z.input<typeof crmReportDeals>, "organizationId">;
 export async function reportDeals(context: RepositoryContext, input: DrilldownInput) {
-  await requireAppEnabled(context, "crm", false);
+  await requireAppEnabled(context, "crm");
   const value = parseInput(crmReportDeals, {
     ...input,
     organizationId: context.scope.organizationId,

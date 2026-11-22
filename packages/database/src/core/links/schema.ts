@@ -10,6 +10,7 @@ import {
   text,
   timestamp,
   unique,
+  uniqueIndex,
   uuid,
 } from "drizzle-orm/pg-core";
 
@@ -50,6 +51,16 @@ export const entityLinks = pgTable(
       foreignColumns: [actors.organizationId, actors.entityId],
     }),
     index("entity_links_target_idx").on(table.organizationId, table.targetEntityId),
+    // One directed link per pair of tasks and relation, whichever way it points. Two concurrent
+    // writers cannot make two tasks block or duplicate each other.
+    uniqueIndex("entity_links_directed_pair_unique")
+      .on(
+        table.organizationId,
+        table.relationType,
+        sql`least(${table.sourceEntityId}, ${table.targetEntityId})`,
+        sql`greatest(${table.sourceEntityId}, ${table.targetEntityId})`,
+      )
+      .where(sql`${table.relationType} IN ('blocks', 'duplicates')`),
     check("entity_links_no_self_link", sql`${table.sourceEntityId} <> ${table.targetEntityId}`),
     check(
       "entity_links_related_order",

@@ -100,9 +100,10 @@ export async function declineProposalInTransaction(
 
 /**
  * Approves a proposal and runs exactly the proposed action as the agent, once. The claim moves
- * the request from pending to executing, so a second approval finds it closed. Access is checked
- * again when the action runs, with its targets locked, and the action runs only while the targets
- * are as they were proposed. A failed action is recorded and reported; it is not retried.
+ * the request from pending to executing in the action's transaction, so a second approval finds
+ * it closed and runs nothing. Access is checked again when the action runs, and the action runs
+ * only while the targets are as they were proposed. A failed action is recorded and reported; it
+ * is not retried.
  */
 // Only expected failures are recorded, with messages the owner can act on. Others are rethrown.
 export function proposalFailure(error: Error): ProposalOutcome | null {
@@ -148,7 +149,7 @@ export async function approveProposalInTransaction(
       // A savepoint, so a failed action leaves no partial writes but the decision is kept. Its
       // hints join the transaction only if the savepoint succeeds.
       const result = await tx.transaction(async (sp) => {
-        const { context, actor } = await workspaceContext(sp, agent, { lockActor: true });
+        const { context, actor } = await workspaceContext(sp, agent);
         return runProposalAction(context, agent, actor, {
           id: claimed.id,
           turnId: claimed.turnId,

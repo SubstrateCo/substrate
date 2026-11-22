@@ -158,7 +158,7 @@ test("project and task getters authorize and read in one statement", async () =>
   expect(await repos.projects.get(project.entityId)).toEqual(project);
   expect(queries).toHaveLength(1);
   queries.length = 0;
-  expect(await repos.tasks.get(task.entityId)).toEqual(task);
+  expect<typeof task>(await repos.tasks.get(task.entityId)).toEqual(task);
   expect(queries).toHaveLength(1);
 });
 
@@ -175,7 +175,7 @@ test("single-statement getters retain minimum levels and disabled-actor checks",
     actorEntityId: f.bob,
     level: "comment",
   });
-  expect(await bob.tasks.get(task.entityId, "comment")).toEqual(task);
+  expect<typeof task>(await bob.tasks.get(task.entityId, "comment")).toEqual(task);
   expect(await rejection(bob.tasks.get(task.entityId, "edit"))).toBeInstanceOf(AccessDeniedError);
   expect(await bob.projects.get(project.entityId)).toEqual(project);
   await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.bob));

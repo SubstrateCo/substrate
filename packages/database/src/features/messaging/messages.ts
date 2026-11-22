@@ -41,11 +41,13 @@ async function messageSummaries(
   db: DatabaseExecutor,
   viewerActorEntityId: string,
   conversationId: string | string[],
-  rows: { id: string; threadId: string | null }[],
+  rows: { id: string; threadId: string | null; deletedAt: Date | null }[],
 ) {
   const roots = rows.flatMap((row) => (row.threadId ? [] : [row.id]));
+  // A reaction can land on a message deleted at the same instant. Deleted messages show none.
+  const live = rows.flatMap((row) => (row.deletedAt ? [] : [row.id]));
   const [allReactions, replies] = await Promise.all([
-    rows.length
+    live.length
       ? db
           .select({
             messageId: messagingReactions.messageId,
@@ -54,12 +56,7 @@ async function messageSummaries(
             reacted: sql<boolean>`bool_or(${messagingReactions.actorEntityId} = ${viewerActorEntityId})`,
           })
           .from(messagingReactions)
-          .where(
-            inArray(
-              messagingReactions.messageId,
-              rows.map((row) => row.id),
-            ),
-          )
+          .where(inArray(messagingReactions.messageId, live))
           .groupBy(messagingReactions.messageId, messagingReactions.emoji)
       : [],
     roots.length
@@ -183,9 +180,8 @@ export async function sendMessageAs(
   const fileIds = message.attachmentFileIds ?? [];
   if (originTurnId && actor.type !== "agent")
     throw new ValidationError("Only agent replies record a turn.");
-  const conversation = await loadConversation(tx, scope, conversationId, "share");
-  if (conversation.taskEntityId)
-    await ctx.requireAccess(conversation.taskEntityId, "comment", true);
+  const conversation = await loadConversation(tx, scope, conversationId);
+  if (conversation.taskEntityId) await ctx.requireAccess(conversation.taskEntityId, "comment");
   validateBody(body, fileIds.length);
   const findRequest = async (id: string) => {
     const [existing] = await tx
@@ -401,6 +397,7 @@ export function messageOperations(
                 bool_or(${messagingReactions.actorEntityId} = ${actor.entityId}) as reacted
               from ${messagingReactions}
               where ${messagingReactions.messageId} = ${messagingMessages.id}
+                and ${messagingMessages.deletedAt} is null
               group by ${messagingReactions.emoji}
             ) reaction
           ), '[]'::json)`,
@@ -483,20 +480,14 @@ export function messageOperations(
           .select({
             conversationId: messagingMessages.conversationId,
             threadId: messagingMessages.threadId,
+            deletedAt: messagingMessages.deletedAt,
           })
           .from(messagingMessages)
           .where(eq(messagingMessages.id, messageId));
-        if (!message) throw new AccessDeniedError();
-        const conversation = await loadConversation(tx, scope, message.conversationId, "share");
+        if (!message || message.deletedAt) throw new AccessDeniedError();
+        const conversation = await loadConversation(tx, scope, message.conversationId);
         if (conversation.taskEntityId)
-          await context.requireAccess(conversation.taskEntityId, "comment", true);
-        const [live] = await tx
-          .select({ deletedAt: messagingMessages.deletedAt })
-          .from(messagingMessages)
-          .where(eq(messagingMessages.id, messageId))
-          // Hold the lifecycle check through the reaction write; deletion waits for this lock.
-          .for("share");
-        if (!live || live.deletedAt) throw new AccessDeniedError();
+          await context.requireAccess(conversation.taskEntityId, "comment");
         const joined =
           (
             await writeMembers(
@@ -507,7 +498,12 @@ export function messageOperations(
             )
           ).length > 0;
         const hints = reactionChangeHints(
-          { ...message, messageId, organizationId: scope.organizationId },
+          {
+            conversationId: message.conversationId,
+            threadId: message.threadId,
+            messageId,
+            organizationId: scope.organizationId,
+          },
           joined,
         );
         for (const hint of hints) effectsFor(tx).hint(hint);
@@ -518,16 +514,22 @@ export function messageOperations(
         );
         const removed = await tx.delete(messagingReactions).where(key).returning();
         if (removed.length) return { active: false };
-        // The shared conversation lock lets toggles run together. If a concurrent toggle added
-        // this reaction, the insert waits for it to commit and this toggle removes it.
+        // The insert adds the reaction only while the message is live. A deletion at the same
+        // instant can still leave the row; reads hide the reactions of deleted messages.
+        // If a concurrent toggle added this reaction, this toggle removes it.
         const added = await tx
           .insert(messagingReactions)
-          .values({
-            conversationId: message.conversationId,
-            messageId,
-            actorEntityId: actor.entityId,
-            emoji,
-          })
+          .select(
+            tx
+              .select({
+                conversationId: messagingMessages.conversationId,
+                messageId: messagingMessages.id,
+                actorEntityId: sql<string>`${actor.entityId}::uuid`.as("actor_entity_id"),
+                emoji: sql<string>`${emoji}::text`.as("emoji"),
+              })
+              .from(messagingMessages)
+              .where(and(eq(messagingMessages.id, messageId), isNull(messagingMessages.deletedAt))),
+          )
           .onConflictDoNothing()
           .returning();
         if (added.length) return { active: true };

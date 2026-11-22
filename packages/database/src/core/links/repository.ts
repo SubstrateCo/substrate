@@ -20,7 +20,7 @@ export function linkRepository(context: RepositoryContext) {
     async create(input: RelatedInput) {
       return db.transaction(async (tx) => {
         const ctx = new RepositoryContext(tx, scope);
-        await ctx.requireAccess(input.entityId, "edit", true);
+        await ctx.requireAccess(input.entityId, "edit");
         await ctx.requireAccess(input.otherEntityId, "view");
         if (input.entityId === input.otherEntityId)
           throw new ValidationError("Cannot link a record to itself.");
@@ -70,7 +70,7 @@ export function linkRepository(context: RepositoryContext) {
     async remove(input: RelatedInput) {
       await db.transaction(async (tx) => {
         const ctx = new RepositoryContext(tx, scope);
-        await ctx.requireAccess(input.entityId, "edit", true);
+        await ctx.requireAccess(input.entityId, "edit");
         await ctx.requireAccess(input.otherEntityId, "view");
         const pair = relatedPair(input.entityId, input.otherEntityId);
         await tx

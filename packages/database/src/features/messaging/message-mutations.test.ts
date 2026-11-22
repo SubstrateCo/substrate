@@ -2,55 +2,18 @@ import { AccessDeniedError, ConflictError } from "../../errors";
 import { member, notifications, taskActivity, user } from "../../schema";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
-import { waitForLockWaiters } from "../../testing/locks";
 import { createAcceptedMessagingService } from "../../testing/messaging";
 import { rejection } from "../../testing/rejection";
 import { messageEntityReferences } from "../context/schema";
 import { createContextService } from "../context/service";
-import { messagingMessages, messagingReactions } from "./schema";
+import { messagingMessages } from "./schema";
 import { createMessagingService } from "./service";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 
-test("an open edit does not block a post or a reaction on another message", async () => {
-  await f.verifyEmails();
-  const channel = await f
-    .messaging("alice")
-    .createConversation({ kind: "channel", name: "editing" });
-  const original = await f.messaging("alice").sendMessage(channel.id, "original");
-  const other = await f.messaging("bob").sendMessage(channel.id, "other");
-  const held = Promise.withResolvers<void>();
-  const release = Promise.withResolvers<void>();
-  const open = f.db.transaction(async (tx) => {
-    await createMessagingService(tx, { userId: "alice", organizationId: f.orgA }).editMessage(
-      original.id,
-      "edited",
-    );
-    held.resolve();
-    await release.promise;
-  });
-  let concurrent: Promise<unknown> | undefined;
-  try {
-    await held.promise;
-    concurrent = Promise.all([
-      f.messaging("bob").sendMessage(channel.id, "while editing"),
-      f.messaging("bob").toggleReaction(other.id, "👍"),
-    ]);
-    expect(
-      await Promise.race([concurrent.then(() => "done"), Bun.sleep(1_000).then(() => "blocked")]),
-    ).toBe("done");
-  } finally {
-    release.resolve();
-    await Promise.all([open, concurrent]);
-  }
-  expect(
-    (await f.messaging("alice").listMessages(channel.id)).map((message) => message.body),
-  ).toEqual(["edited", "other", "while editing"]);
-});
-
-test("deletion waits for an open reaction and removes it after the reaction commits", async () => {
+test("a deletion racing an open reaction shows no reaction on the deleted message", async () => {
   await f.verifyEmails();
   const channel = await f
     .messaging("alice")
@@ -70,27 +33,29 @@ test("deletion waits for an open reaction and removes it after the reaction comm
   try {
     await held.promise;
     deleting = f.messaging("alice").deleteMessage(message.id);
-    await waitForLockWaiters(1);
+    await Bun.sleep(100);
   } finally {
     release.resolve();
     await Promise.all([open, deleting]);
   }
-  expect(await f.db.select().from(messagingReactions)).toEqual([]);
+  // The reaction row may outlive the deletion. Reads hide it.
   expect((await f.messaging("alice").listMessages(channel.id))[0]).toMatchObject({
     id: message.id,
     body: "",
     deletedAt: expect.any(Date),
+    reactions: [],
   });
+  expect((await f.messaging("alice").listReactions(message.id)).items).toEqual([]);
+  const context = createContextService(f.db, { userId: "alice", organizationId: f.orgA });
+  expect((await context.messageTarget(channel.id, message.id)).root.reactions).toEqual([]);
 });
 
-test("reactions and edits waiting for deletion cannot restore deleted message state", async () => {
+test("an edit racing an open deletion cannot restore deleted message state", async () => {
   await f.verifyEmails();
   const channel = await f
     .messaging("alice")
     .createConversation({ kind: "channel", name: "deleting" });
   const message = await f.messaging("alice").sendMessage(channel.id, "secret");
-  const project = await f.forActor(f.alice).projects.create({ name: "No deleted sources" });
-  const context = createContextService(f.db, { userId: "alice", organizationId: f.orgA });
   const held = Promise.withResolvers<void>();
   const release = Promise.withResolvers<void>();
   const open = f.db.transaction(async (tx) => {
@@ -100,27 +65,46 @@ test("reactions and edits waiting for deletion cannot restore deleted message st
     held.resolve();
     await release.promise;
   });
-  let pending: Promise<unknown[]> | undefined;
+  let pending: Promise<Error> | undefined;
   try {
     await held.promise;
-    pending = Promise.all([
-      rejection(f.messaging("bob").toggleReaction(message.id, "👍")),
-      rejection(f.messaging("alice").editMessage(message.id, "restore")),
-      rejection(context.attach(message.id, project.entityId)),
-    ]);
-    await waitForLockWaiters(3);
+    pending = rejection(f.messaging("alice").editMessage(message.id, `restore @[person:${f.bob}]`));
+    await Bun.sleep(100);
   } finally {
     release.resolve();
     await open;
   }
-  for (const error of await pending!) expect(error).toBeInstanceOf(AccessDeniedError);
-  expect(await f.db.select().from(messagingReactions)).toEqual([]);
+  expect(await pending).toBeInstanceOf(AccessDeniedError);
   expect(await f.db.select().from(messageEntityReferences)).toEqual([]);
   expect((await f.messaging("alice").listMessages(channel.id))[0]).toMatchObject({
     id: message.id,
     body: "",
     deletedAt: expect.any(Date),
   });
+});
+
+test("a concurrent edit and deletion never leave an edited deleted message", async () => {
+  await f.verifyEmails();
+  const channel = await f.messaging("alice").createConversation({ kind: "channel", name: "race" });
+  for (let round = 0; round < 5; round++) {
+    const message = await f.messaging("alice").sendMessage(channel.id, "original");
+    const [, deleted] = await Promise.allSettled([
+      f.messaging("alice").editMessage(message.id, `edited @[person:${f.bob}]`),
+      f.messaging("alice").deleteMessage(message.id),
+    ]);
+    expect(deleted.status).toBe("fulfilled");
+    const [stored] = await f.db
+      .select()
+      .from(messagingMessages)
+      .where(eq(messagingMessages.id, message.id));
+    expect(stored).toMatchObject({ body: "", deletedAt: expect.any(Date) });
+    expect(
+      await f.db
+        .select()
+        .from(messageEntityReferences)
+        .where(eq(messageEntityReferences.messageId, message.id)),
+    ).toEqual([]);
+  }
 });
 
 test("only the current human author can edit or delete, even against organization admins", async () => {

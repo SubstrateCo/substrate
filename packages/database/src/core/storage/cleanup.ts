@@ -1,7 +1,8 @@
+import { isForeignKeyViolation } from "../../errors";
 import { userAgents } from "../actors/user-agents.schema";
 import type { Database } from "../executor";
 import { fileUploads, storedFiles, storageCandidates } from "./schema";
-import { and, eq, inArray, isNull, lt, not, notExists, type SQL } from "drizzle-orm";
+import { and, eq, inArray, isNull, lt, not, notExists, sql, type SQL } from "drizzle-orm";
 
 export function createStorageCleanup(db: Database, fileReferences: SQL) {
   return {
@@ -23,42 +24,30 @@ export function createStorageCleanup(db: Database, fileReferences: SQL) {
         .limit(100);
     },
     async pruneUnusedFiles(before: Date) {
-      await db.transaction(async (tx) => {
-        const unused = await tx
-          .select()
-          .from(storedFiles)
-          .where(
-            and(
-              not(fileReferences),
-              lt(storedFiles.createdAt, before),
-              notExists(
-                tx
-                  .select({ id: userAgents.id })
-                  .from(userAgents)
-                  .where(eq(userAgents.imageFileId, storedFiles.id)),
-              ),
+      const prune = db.transaction(async (tx) => {
+        const unused = () =>
+          and(
+            not(fileReferences),
+            lt(storedFiles.createdAt, before),
+            notExists(
+              tx
+                .select({ id: userAgents.id })
+                .from(userAgents)
+                .where(eq(userAgents.imageFileId, storedFiles.id)),
             ),
-          )
-          .limit(100)
-          .for("update", { skipLocked: true });
-        if (!unused.length) return;
+          );
+        // One statement picks a batch and deletes it. A publication that commits while the delete
+        // waits for the row changes its publication time, so the row no longer matches the batch
+        // and the file is kept.
+        const published = sql`coalesce(${storedFiles.publishedAt}, '-infinity'::timestamptz)`;
+        const batch = tx
+          .select({ id: storedFiles.id, published })
+          .from(storedFiles)
+          .where(unused())
+          .limit(100);
         const deleted = await tx
           .delete(storedFiles)
-          .where(
-            and(
-              inArray(
-                storedFiles.id,
-                unused.map((file) => file.id),
-              ),
-              not(fileReferences),
-              notExists(
-                tx
-                  .select({ id: userAgents.id })
-                  .from(userAgents)
-                  .where(eq(userAgents.imageFileId, storedFiles.id)),
-              ),
-            ),
-          )
+          .where(and(sql`(${storedFiles.id}, ${published}) IN (${batch})`, unused()))
           .returning();
         if (!deleted.length) return;
         await tx
@@ -70,6 +59,11 @@ export function createStorageCleanup(db: Database, fileReferences: SQL) {
           .update(fileUploads)
           .set({ deletedAt: new Date() })
           .where(inArray(fileUploads.id, ids));
+      });
+      // A reference that commits while the delete waits for the row fails the foreign key. The
+      // batch rolls back and a later run prunes it without the file that came into use.
+      await prune.catch((error: Error) => {
+        if (!isForeignKeyViolation(error)) throw error;
       });
     },
     async forgetCandidates(objectKeys: string[]) {

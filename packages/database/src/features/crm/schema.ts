@@ -14,6 +14,7 @@ import {
   boolean,
   foreignKey,
   unique,
+  uniqueIndex,
   check,
   index,
 } from "drizzle-orm/pg-core";
@@ -80,6 +81,9 @@ export const crmAffiliations = pgTable(
     }).onDelete("cascade"),
     unique().on(t.organizationId, t.contactEntityId, t.accountEntityId),
     index("crm_affiliations_account_idx").on(t.organizationId, t.accountEntityId),
+    uniqueIndex("crm_affiliations_primary_unique")
+      .on(t.organizationId, t.contactEntityId)
+      .where(sql`${t.isPrimary}`),
   ],
 );
 export const crmStages = pgTable(

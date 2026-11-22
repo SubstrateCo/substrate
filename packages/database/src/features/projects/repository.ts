@@ -241,7 +241,7 @@ export function projectRepository(context: RepositoryContext) {
     async delete(entityId: string) {
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
-        const { entity } = await ctx.requireAccess(entityId, "owner", true, "structural");
+        const { entity } = await ctx.requireStructuralAccess(entityId, "owner");
         if (entity.entityType !== "project") throw new AccessDeniedError();
         ctx.effects.hint({
           audience: realtimeKeys.organization(scope.organizationId),
@@ -261,17 +261,18 @@ export function projectRepository(context: RepositoryContext) {
     share(entityId: string, actorEntityId: string, level: PermissionLevel) {
       requirePermissionLevel(level);
       return context.transaction(async (ctx) => {
-        const access = await ctx.requireAccess(entityId, "owner", true, "structural");
+        const access = await ctx.requireStructuralAccess(entityId, "owner");
         if (access.entity.entityType !== "project") throw new AccessDeniedError();
         await changePermission(ctx, access, { actorEntityId, level });
       });
     },
     async revoke(entityId: string, actorEntityId: string) {
       return context.transaction(async (ctx) => {
-        const access = await ctx.requireAccess(entityId, "owner", true, "structural");
+        const access = await ctx.requireStructuralAccess(entityId, "owner");
         if (access.entity.entityType !== "project") throw new AccessDeniedError();
         await requireUnassignedProjectActor(ctx, entityId, actorEntityId);
-        // Entity locks do not hold the caller's organization role. Check ownership again last.
+        // The caller's organization role can change during the checks above. Check ownership
+        // again last. A demotion that commits after this read does not stop the revocation.
         await ctx.requireAccess(entityId, "owner");
         await changePermission(ctx, access, { actorEntityId });
       });
@@ -293,7 +294,7 @@ export function projectRepository(context: RepositoryContext) {
         throw new ValidationError("Use an uploaded icon for this project.");
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
-        await ctx.requireAccess(entityId, "edit", true);
+        await ctx.requireAccess(entityId, "edit");
         const [project] = await tx
           .update(projects)
           .set({ image })
@@ -356,7 +357,7 @@ export function projectRepository(context: RepositoryContext) {
       const name = requiredText(input.name, 200);
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
-        await ctx.requireAccess(entityId, "edit", true);
+        await ctx.requireAccess(entityId, "edit");
         const [project] = await tx
           .update(projects)
           .set({ name, description: input.description })

@@ -2,7 +2,7 @@ import type { RecordArchiveFilter } from "@substrate/contracts/crm/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { requireAppEnabled } from "../../core/apps/access";
-import { contactReadable, lockContact } from "../../core/contacts/access";
+import { contactReadable, requireContact } from "../../core/contacts/access";
 import { contactProfileInput, parseInput, type ContactInput } from "../../core/contacts/inputs";
 import { contactDetailRows } from "../../core/contacts/profile";
 import { contactRepository } from "../../core/contacts/repository";
@@ -42,7 +42,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
     updateContact(id: string, input: Partial<ContactInput>) {
       const value = parseInput(contactProfileInput.partial(), input);
       return context.transaction(async (ctx) => {
-        const repo = contactRepository(ctx, await lockContact(ctx, id));
+        const repo = contactRepository(ctx, await requireContact(ctx, id));
         const previous = await repo.get(id);
         // SAFETY: parsing above strips unknown keys; every own key belongs to ContactInput.
         const changedFields = (Object.keys(value) as (keyof typeof value)[]).filter(
@@ -52,9 +52,11 @@ export function contactApplicationRepository(context: RepositoryContext) {
           changed(ctx, previous.entityId);
           return previous;
         }
-        const row = await repo.update(id, value);
+        // A concurrent identical edit may have written the fields since the read above.
+        const row = await repo.updateChanged(id, value);
+        changed(ctx, id);
+        if (!row) return repo.get(id);
         await recordCrmActivity(ctx, { entityId: id, action: "updated", changedFields });
-        changed(ctx, row.entityId);
         return row;
       });
     },
@@ -159,7 +161,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
     archive(id: string, archived: boolean) {
       return context.transaction(async (ctx) => {
         await requireAppEnabled(ctx, "crm");
-        await lockContact(ctx, id);
+        await requireContact(ctx, id);
         const [previous] = await ctx.db
           .select()
           .from(crmContactProfiles)
@@ -170,13 +172,20 @@ export function contactApplicationRepository(context: RepositoryContext) {
             ),
           );
         const archivedAt = archived ? new Date() : null;
-        await ctx.db
+        // Only a write that changes the state returns a row, so two concurrent requests for the
+        // same state record one activity event.
+        const written = await ctx.db
           .insert(crmContactProfiles)
           .values({ organizationId: org, contactEntityId: id, archivedAt })
-          .onConflictDoUpdate({ target: crmContactProfiles.contactEntityId, set: { archivedAt } });
+          .onConflictDoUpdate({
+            target: crmContactProfiles.contactEntityId,
+            set: { archivedAt },
+            setWhere: sql`(${crmContactProfiles.archivedAt} IS NOT NULL) <> ${archived}`,
+          })
+          .returning({ contactEntityId: crmContactProfiles.contactEntityId });
         await ctx.touch(id);
         changed(ctx, id);
-        if (!!previous?.archivedAt !== archived)
+        if (written.length && !!previous?.archivedAt !== archived)
           await recordCrmActivity(ctx, {
             entityId: id,
             action: archived ? "archived" : "restored",

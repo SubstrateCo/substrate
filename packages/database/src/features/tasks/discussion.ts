@@ -13,7 +13,7 @@ export function ensureTaskDiscussion(
   expectedProjectEntityId?: string,
 ) {
   return context.transaction(async (ctx) => {
-    const task = await taskRepository(ctx).get(taskId, "view", true);
+    const task = await taskRepository(ctx).get(taskId, "view");
     if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
       throw new AccessDeniedError();
     const [existing] = await ctx.db

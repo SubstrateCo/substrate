@@ -10,13 +10,10 @@ test("a root is its own owned container, and children share the root's container
   const context = new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.alice });
   const root = await context.createEntity("project");
   const [child, grandchild] = await context.transaction(async (tx) => {
-    const child = await tx.createChildEntity(
-      "task",
-      await tx.requireAccess(root.entityId, "edit", true),
-    );
+    const child = await tx.createChildEntity("task", await tx.requireAccess(root.entityId, "edit"));
     const grandchild = await tx.createChildEntity(
       "task",
-      await tx.requireAccess(child.entityId, "edit", true),
+      await tx.requireAccess(child.entityId, "edit"),
     );
     return [child, grandchild];
   });

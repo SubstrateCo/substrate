@@ -50,6 +50,7 @@ flowchart BT
 - Enforce organization and entity-type alignment with composite foreign keys.
 - Every entity has an access container in `entities.access_entity_id`: a root is its own container, and a child uses its parent's. Set grants on containers only. Create children with `createChildEntity`. Moving a child must update its container and structural references together; do not expose raw `access_entity_id` edits.
 - Repositories take `RepositoryContext`, whitelist writable fields, check actor access, and participate in caller transactions.
+- Design writes without explicit locks: no `FOR UPDATE`/`FOR SHARE` or advisory locks. Use guarded writes, compare-and-set on a version, and unique constraints; `SKIP LOCKED` is allowed only to claim queued work.
 - Derive actor scope from authenticated server context, not request-supplied identity fields.
 - Organization owners and admins get owner access to their organization's shared record types through `readableCondition` and `entityAccessLevel`. Read the role on each query; do not store admin grants. People and personal mailbox or calendar records are excluded. In messaging, admins manage conversations but do not read private messages.
 - Raw database access and actor provisioning are trusted server-only APIs. Do not expose them as agent tools.
@@ -77,7 +78,7 @@ Load the `database-table-design` skill before you add or change a table, relatio
 - Callers: `decideAdmission` admits, holds or rate-limits a caller's message, and `admit()` records each call in `agent_invocations`. Decide calls with compare-and-set, check the call again at decision time, and create the wake in the decision's transaction. The source check (`loadSources` with invocation IDs) checks queued calls again and drops revoked ones.
 - Write `agent_audit_events` rows for caller policy and allowlist changes, call decisions, and MCP calls in caller turns. Store IDs and result codes, never message bodies. Only the agent's owner reads them.
 - Answer requests with compare-and-set: the first answer wins.
-- Execute a proposal exactly once. Bind it to its action hash and the target state recorded when it was proposed, and check both under the target's locks.
+- Execute a proposal exactly once. Bind it to its action hash and the target state recorded when it was proposed, and check both in the transaction that runs the action.
 - Bind agent provenance with composite foreign keys: the actor must belong to the user agent and organization.
 - Redact request and status views once the owner loses access to their conversation. Return `origin_turn_id` only to the agent's owner.
 

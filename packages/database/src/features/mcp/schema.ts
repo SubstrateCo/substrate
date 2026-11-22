@@ -21,7 +21,8 @@ export const agentToolRequests = pgTable(
     tool: text("tool").notNull(),
     requestId: uuid("request_id").notNull(),
     fingerprint: text("fingerprint").notNull(),
-    result: jsonb("result").$type<McpOutput<ServerToolName>>().notNull(),
+    // NULL only inside the transaction that claimed the request and has not saved its result yet.
+    result: jsonb("result").$type<McpOutput<ServerToolName>>(),
     // The local turn and attempt that made the write, so recovery can see what already happened.
     turnId: uuid("turn_id"),
     attempt: integer("attempt"),

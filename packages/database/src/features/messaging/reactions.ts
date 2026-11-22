@@ -29,7 +29,7 @@ export function reactionOperations(
       return read(async (tx) => {
         const { actor } = await authenticate(tx);
         const [message] = await tx
-          .select({ id: messagingMessages.id })
+          .select({ id: messagingMessages.id, deletedAt: messagingMessages.deletedAt })
           .from(messagingMessages)
           .innerJoin(
             messagingConversations,
@@ -37,6 +37,8 @@ export function reactionOperations(
           )
           .where(and(eq(messagingMessages.id, messageId), visibleConversations(tx, scope)));
         if (!message) throw new AccessDeniedError();
+        // A reaction can land on a message deleted at the same instant. Deleted messages show none.
+        if (message.deletedAt) return { items: [], nextCursor: null };
         const limit = Math.min(50, Math.max(1, options.limit ?? 3));
         const reactors = tx
           .select({

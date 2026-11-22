@@ -10,10 +10,8 @@ import { expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
 
 const f = setupDatabase();
-const statements = (queries: string[]) =>
-  queries.filter((query) => !["begin", "commit", "rollback"].includes(query));
 
-test("an existing human actor is verified in one statement without the provisioning lock", async () => {
+test("an existing human actor is verified in one statement", async () => {
   await f.db.update(user).set({ emailVerified: true });
   const { db, queries } = recordQueries();
   const { context, actor, userName } = await workspaceContext(db, {
@@ -29,7 +27,6 @@ test("an existing human actor is verified in one statement without the provision
   expect(actor).toEqual({ entityId: f.alice, name: "Alice", type: "human" });
   expect(userName).toBe("Alice");
   expect(queries).toHaveLength(1);
-  expect(queries[0]).not.toContain("for update");
 });
 
 test("first human use provisions the actor once and later uses take the fast path", async () => {
@@ -40,7 +37,6 @@ test("first human use provisions the actor once and later uses take the fast pat
   const first = await workspaceContext(db, scope);
   expect(first.actor).toMatchObject({ name: "Bob", type: "human" });
   expect(first.actor.entityId).not.toBe(f.bob);
-  expect(queries.some((query) => query.includes("for update"))).toBe(false);
   queries.length = 0;
   const second = await workspaceContext(db, scope);
   expect(second.actor).toEqual(first.actor);
@@ -77,7 +73,7 @@ for (const invalid of ["unverified", "removed", "disabled", "deleted", "foreign"
   });
 }
 
-test("an agent actor is verified in one statement and locks only its actor row on request", async () => {
+test("an agent actor is verified in one statement", async () => {
   await f.db.update(user).set({ emailVerified: true });
   const [agent] = await f.db
     .insert(userAgents)
@@ -96,11 +92,6 @@ test("an agent actor is verified in one statement and locks only its actor row o
     type: "agent",
   });
   expect(queries).toHaveLength(1);
-  expect(queries[0]).not.toContain("for update");
-  queries.length = 0;
-  await db.transaction((tx) => workspaceContext(tx, scope, { lockActor: true }));
-  expect(statements(queries)).toHaveLength(1);
-  expect(statements(queries)[0]).toContain('for no key update of "actors"');
   expect(await rejection(workspaceContext(f.db, { ...scope, userId: "bob" }))).toBeInstanceOf(
     AccessDeniedError,
   );

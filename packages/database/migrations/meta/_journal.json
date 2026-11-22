@@ -22,6 +22,20 @@
       "when": 1795306515827,
       "tag": "0002_foamy_synch",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1795387437694,
+      "tag": "0003_lock_free_writes",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1795387982691,
+      "tag": "0004_tool_receipt_claim",
+      "breakpoints": true
     }
   ]
 }

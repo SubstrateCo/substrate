@@ -14,7 +14,7 @@ export { listLinks } from "./links";
 export { mcpMessagingQueries } from "./messaging";
 export { publishingTools } from "./publishing";
 export {
-  findToolReceipt,
+  claimToolReceipt,
   saveToolReceipt,
   requireHomeDevice,
   requireOwnedProposal,

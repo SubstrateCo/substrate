@@ -166,13 +166,7 @@ export function createStorageRepository(
       verified: { objectKey: string; contentType: string; size: number; sha256: string },
     ) {
       return db.transaction(async (tx) => {
-        const [upload] = await tx
-          .select()
-          .from(fileUploads)
-          .where(eq(fileUploads.id, id))
-          // Serialize completions with deletion markers and upload cleanup, not key readers.
-          // SHARE would let an insert loser wait on a file deletion that waits on this upload.
-          .for("no key update");
+        const [upload] = await tx.select().from(fileUploads).where(eq(fileUploads.id, id));
         if (
           !upload ||
           upload.uploadedBy !== scope.userId ||
@@ -199,11 +193,22 @@ export function createStorageRepository(
             size: verified.size,
             sha256: verified.sha256,
           })
-          .onConflictDoNothing({ target: storedFiles.id })
+          // No target: a concurrent completion can hit any unique index that contains the ID.
+          .onConflictDoNothing()
           .returning();
-        if (file) return file;
-        const [completed] = await tx.select().from(storedFiles).where(eq(storedFiles.id, id));
-        return completed!;
+        const [completed] = file
+          ? [file]
+          : await tx.select().from(storedFiles).where(eq(storedFiles.id, id));
+        // A deletion can commit after the first read of the upload. It sets the marker in the
+        // transaction that removes the file, so this read sees it and the insert rolls back.
+        const [current] = await tx
+          .select({ deletedAt: fileUploads.deletedAt })
+          .from(fileUploads)
+          .where(eq(fileUploads.id, id));
+        if (!current) throw new AccessDeniedError();
+        if (current.deletedAt || !completed)
+          throw new ConflictError("File was deleted. Start a new upload.");
+        return completed;
       });
     },
     async getReadable(scope: StorageScope, id: string) {

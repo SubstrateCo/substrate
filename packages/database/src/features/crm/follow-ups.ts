@@ -39,7 +39,6 @@ export async function createFollowUp(
       priority: input.priority ?? "none",
     });
     const previous = await previousRequest(ctx, "crm_follow_up", input.requestId, fingerprint);
-    await ctx.lockAccessPaths([input.entityId, input.projectEntityId]);
     const { entity } = await ctx.requireAccess(input.entityId, "edit");
     if (!["contact", "account", "deal", "contact_interaction"].includes(entity.entityType))
       throw new ValidationError("Choose a CRM source.");
@@ -97,7 +96,7 @@ export async function createFollowUp(
     }
     if (archived) throw new ValidationError("Restore the CRM record first.");
     const task = await taskRepository(ctx).create(input);
-    await recordRequest(ctx, "crm_follow_up", input.requestId, fingerprint, task.entityId);
+    await recordRequest(ctx, "crm_follow_up", input.requestId, task.entityId);
     await ctx.db.insert(entityLinks).values({
       organizationId: scope.organizationId,
       ...relatedPair(task.entityId, input.entityId),
@@ -118,7 +117,7 @@ export async function createFollowUp(
 }
 
 export async function followUps(context: RepositoryContext, entityId: string) {
-  await requireAppsEnabled(context, ["crm", "tasks"], false);
+  await requireAppsEnabled(context, ["crm", "tasks"]);
   await context.requireAccess(entityId, "view");
   const rows = await context.db
     .selectDistinct({

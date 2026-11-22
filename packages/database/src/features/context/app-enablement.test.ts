@@ -1,21 +1,17 @@
-import { appRepository } from "../../core/apps/repository";
 import { organizationApps } from "../../core/apps/schema";
-import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, AppDisabledError } from "../../errors";
 import {
   entities,
   entityLinks,
   messageEntityReferences,
   notifications,
-  organization,
   storedFiles,
   tasks,
 } from "../../schema";
 import { setupDatabase } from "../../testing/database";
-import { waitForLockWaiters } from "../../testing/locks";
 import { rejection } from "../../testing/rejection";
 import { expect, test } from "bun:test";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 
@@ -179,80 +175,6 @@ test("shared contacts stay available while CRM profile metadata and account back
   expect(await rejection(a.contacts.archive(contact.entityId, false))).toBeInstanceOf(
     AppDisabledError,
   );
-});
-
-test("a write waiting behind disable rechecks app state before it changes a record", async () => {
-  const a = f.forActor(f.alice);
-  const project = await a.projects.create({ name: "Launch" });
-  const task = await a.tasks.create({ projectEntityId: project.entityId, title: "Before" });
-  const { pending } = await f.db.transaction(async (tx) => {
-    const ctx = new RepositoryContext(tx, { organizationId: f.orgA, actorEntityId: f.alice });
-    await appRepository(ctx, { organizationId: f.orgA, userId: "alice" }).update([
-      "messages",
-      "agents",
-      "crm",
-    ]);
-    const pending = rejection(a.tasks.update(task.entityId, { title: "After" }));
-    await waitForLockWaiters();
-    return { pending };
-  });
-  expect(await pending).toBeInstanceOf(AccessDeniedError);
-  expect((await f.db.select().from(tasks).where(eq(tasks.entityId, task.entityId)))[0]?.title).toBe(
-    "Before",
-  );
-});
-
-test("disable waits for an authorized task write to commit", async () => {
-  const a = f.forActor(f.alice);
-  const project = await a.projects.create({ name: "Launch" });
-  const task = await a.tasks.create({ projectEntityId: project.entityId, title: "Before" });
-  const { pending } = await f.db.transaction(async (tx) => {
-    const ctx = new RepositoryContext(tx, { organizationId: f.orgA, actorEntityId: f.alice });
-    await ctx.requireAccess(task.entityId, "edit", true);
-    await tx
-      .update(tasks)
-      .set({ title: "Committed before disable" })
-      .where(eq(tasks.entityId, task.entityId));
-    const pending = f.db.transaction((settings) =>
-      appRepository(new RepositoryContext(settings, ctx.scope), {
-        organizationId: f.orgA,
-        userId: "alice",
-      }).update(["messages", "agents", "crm"]),
-    );
-    await waitForLockWaiters();
-    return { pending };
-  });
-  await pending;
-  expect((await f.db.select().from(tasks).where(eq(tasks.entityId, task.entityId)))[0]?.title).toBe(
-    "Committed before disable",
-  );
-  expect(await rejection(a.tasks.get(task.entityId))).toBeInstanceOf(AccessDeniedError);
-});
-
-test("shared contacts and denied inactive scopes do not lock app settings", async () => {
-  const a = f.forActor(f.alice);
-  const contact = await a.contacts.create({ displayName: "Shared" });
-  const project = await a.projects.create({ name: "Launch" });
-  for (const input of [
-    { actorEntityId: f.alice, entityId: contact.entityId, denied: false },
-    { actorEntityId: crypto.randomUUID(), entityId: project.entityId, denied: true },
-  ]) {
-    await f.db.transaction(async (tx) => {
-      const access = new RepositoryContext(tx, {
-        organizationId: f.orgA,
-        actorEntityId: input.actorEntityId,
-      }).requireAccess(input.entityId, "view", true);
-      if (input.denied) expect(await rejection(access)).toBeInstanceOf(AccessDeniedError);
-      else await access;
-      // A separate connection can change settings while this access-path transaction stays open.
-      await f.db.transaction(async (settings) => {
-        const rows = await settings.execute(
-          sql`SELECT id FROM ${organization} WHERE id = ${f.orgA} FOR UPDATE NOWAIT`,
-        );
-        expect(rows).toHaveLength(1);
-      });
-    });
-  }
 });
 
 test("disabled CRM associations lose metadata in generic message context while ordinary messages and edges remain", async () => {

@@ -17,8 +17,8 @@ import { crmActorView, joinCrmActorPerson } from "./actor-views";
 import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 
 // Call only inside a domain-authorized mutation transaction. Never expose an append API.
-// `access` must come from requireAccess for input.entityId, after its access path was locked in
-// this transaction; that entity is then not looked up again.
+// `access` must come from requireAccess for input.entityId in this transaction; that entity is
+// then not looked up again.
 export async function recordCrmActivity(
   ctx: RepositoryContext,
   input: CrmActivityInput,
@@ -79,7 +79,7 @@ export async function listCrmActivity(
   entityId: string,
   options: CrmActivityOptions = {},
 ): Promise<CrmActivityPage> {
-  await requireAppEnabled(ctx, "crm", false);
+  await requireAppEnabled(ctx, "crm");
   const parsed = crmActivityOptions.safeParse(options);
   if (!parsed.success) throw new ValidationError("Invalid CRM activity cursor or limit.");
   const { entity } = await ctx.requireAccess(entityId, "view");

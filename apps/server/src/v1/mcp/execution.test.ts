@@ -178,12 +178,9 @@ test("dual-app tools batch their guard and reject either disabled app before cac
   const { db, queries } = recordQueries();
   const replay = await executeAgentTool(db, identity, "create_crm_follow_up", input, turn);
   expect(replay.output.id).toBe(created.id);
-  const receiptIndex = queries.findIndex((query) => query.includes('from "agent_tool_requests"'));
+  const receiptIndex = queries.findIndex((query) => query.includes('"agent_tool_requests"'));
   expect(receiptIndex).toBeGreaterThan(0);
   const guards = queries.slice(0, receiptIndex);
-  expect(
-    guards.filter((query) => query.includes('from "organization"') && query.includes("for share")),
-  ).toHaveLength(1);
   expect(guards.filter((query) => query.includes('from "organization_apps"'))).toHaveLength(1);
   for (const app of ["tasks", "crm"] as const) {
     await f.db
@@ -197,7 +194,7 @@ test("dual-app tools batch their guard and reject either disabled app before cac
           executeAgentTool(db, identity, "create_crm_follow_up", { ...input, requestId }, turn),
         ),
       ).toBeInstanceOf(AppDisabledError);
-      expect(queries.some((query) => query.includes('from "agent_tool_requests"'))).toBe(false);
+      expect(queries.some((query) => query.includes('"agent_tool_requests"'))).toBe(false);
     }
     await f.db
       .update(organizationApps)
@@ -1438,18 +1435,14 @@ test("reply resolves the agent once and does not re-authenticate inside messagin
   expect(identityReads()).toHaveLength(1);
 });
 
-test("read tools take no row locks, and write tools lock the agent's actor row", async () => {
+test("read and write tools take no row locks", async () => {
   const { identity, project } = await fixture();
   const { db, queries } = recordQueries();
   await executeAgentTool(db, identity, "list_projects", {}, turn);
   await executeAgentTool(db, identity, "get_project", { projectId: project.entityId }, turn);
-  expect(queries.some((query) => /for (update|share)/i.test(query))).toBe(false);
-  queries.length = 0;
-  const input = { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Locked" };
+  const input = { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Task" };
   await executeAgentTool(db, identity, "create_task", input, turn);
-  expect(queries.filter((query) => query.includes('for no key update of "actors"'))).toHaveLength(
-    1,
-  );
+  expect(queries.some((query) => /for (no key )?(update|share)/i.test(query))).toBe(false);
 });
 
 test("failed source validation rolls back task creation; foreign owners and organizations cannot impersonate agents", async () => {

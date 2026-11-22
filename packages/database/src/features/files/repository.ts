@@ -1,6 +1,6 @@
 import { MAX_ATTACHMENTS, attachmentFileIds } from "@substrate/contracts/files/attachments";
 
-import { RepositoryContext, type Locked } from "../../core/repository-context";
+import { RepositoryContext, type Authorized } from "../../core/repository-context";
 import { messagingSession } from "../../core/session/messaging";
 import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ValidationError } from "../../errors";
@@ -26,10 +26,10 @@ export function createAttachmentRepository(context: RepositoryContext) {
   async function taskContext<T, Level extends "view" | "edit">(
     input: { taskEntityId: string; projectEntityId: string },
     level: Level,
-    run: (ctx: RepositoryContext, task: Locked<Task, Level>) => Promise<T>,
+    run: (ctx: RepositoryContext, task: Authorized<Task, Level>) => Promise<T>,
   ) {
     return context.transaction(async (ctx) => {
-      const task = await taskRepository(ctx).get(input.taskEntityId, level, true);
+      const task = await taskRepository(ctx).get(input.taskEntityId, level);
       if (task.projectEntityId !== input.projectEntityId) throw new AccessDeniedError();
       return run(ctx, task);
     });
