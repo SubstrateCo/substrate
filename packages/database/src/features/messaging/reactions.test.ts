@@ -70,6 +70,39 @@ test("reactor names require message read access, including organization owners",
   );
 });
 
+test("reactor access checks the message and conversation in one statement without bodies", async () => {
+  await fixture.db.update(user).set({ emailVerified: true });
+  const channel = await service("alice").createConversation({ kind: "channel", name: "general" });
+  const message = await service("alice").sendMessage(channel.id, "a long body");
+  await service("alice").toggleReaction(message.id, "👍");
+  await service("bob").toggleReaction(message.id, "🎉");
+  const recording = recordQueries();
+  const page = await createMessagingService(recording.db, {
+    userId: "alice",
+    organizationId: fixture.orgA,
+  }).listReactions(message.id);
+  expect(page).toEqual({
+    items: [fixture.alice, fixture.bob].sort().map((actorId) => ({
+      actorId,
+      name: actorId === fixture.alice ? "Alice" : "Bob",
+      image: null,
+      type: "human",
+      self: actorId === fixture.alice,
+      emojis: [actorId === fixture.alice ? "👍" : "🎉"],
+    })),
+    nextCursor: null,
+  });
+  const reactorsAt = recording.queries.findIndex((query) => query.includes("array_agg"));
+  const access = recording.queries
+    .slice(0, reactorsAt)
+    .filter((query) => /"messaging_(messages|conversations)"/.test(query));
+  expect(access).toHaveLength(1);
+  expect(access[0]).toContain('inner join "messaging_conversations"');
+  expect(recording.queries.some((query) => query.includes('"messaging_messages"."body"'))).toBe(
+    false,
+  );
+});
+
 test("partner reactors reuse conversation-scoped profiles without revealing member-only details", async () => {
   await fixture.db.update(user).set({ emailVerified: true });
   const alice = service("alice");

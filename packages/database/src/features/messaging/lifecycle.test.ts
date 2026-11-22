@@ -2,13 +2,16 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { member, notifications, taskActivity, user } from "../../schema";
+import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
+import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { messageEntityReferences } from "../context/schema";
 import { createContextService } from "../context/service";
 import { createFeedService } from "../notifications/service";
 import { messagingConversations, messagingMessages } from "./schema";
+import { createMessagingService } from "./service";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -259,6 +262,47 @@ test("delete impact counts only linked work the caller can read", async () => {
   await chat("carol").sendMessage(channel.id, "joined");
   await chat("bob").transferOwnership(channel.id, "carol");
   expect(await chat("carol").deleteImpact(channel.id)).toEqual({ linkedWork: 0 });
+});
+
+test("delete impact reads managed conversations without a conversation write lock", async () => {
+  await verified();
+  const project = await f.forActor(f.bob).projects.create({ name: "Bob's" });
+  const secret = await chat("bob").createConversation({
+    kind: "channel",
+    name: "secret",
+    private: true,
+  });
+  const message = await chat("bob").sendMessage(secret.id, "Plan");
+  const context = createContextService(f.db, { userId: "bob", organizationId: f.orgA });
+  for (const title of ["One", "Two"])
+    await context.createTaskFromMessage({
+      requestId: crypto.randomUUID(),
+      messageId: message.id,
+      projectEntityId: project.entityId,
+      title,
+    });
+  const { db, queries } = recordQueries();
+  // alice is a host owner who is not a member: she counts readable work but cannot read messages.
+  const admin = createMessagingService(db, { userId: "alice", organizationId: f.orgA });
+  expect(await admin.deleteImpact(secret.id)).toEqual({ linkedWork: 2 });
+  expect(queries.filter((query) => /\bfor (no key update|update|share)\b/.test(query))).toEqual([]);
+  // One session read and one managed lookup; the write path's second session read is not needed.
+  expect(queries.filter((query) => query.includes('from "messaging_conversations"'))).toHaveLength(
+    1,
+  );
+  expect(queries.filter((query) => query.includes('from "user"'))).toHaveLength(1);
+  expect(await rejection(chat("alice").listMessages(secret.id))).toBeInstanceOf(AccessDeniedError);
+  const agent = await ownedAgent(f);
+  const dm = await chat("bob").createConversation({ kind: "dm", emails: ["alice@example.com"] });
+  for (const [viewer, id] of [
+    [chat("outsider", f.orgB), secret.id],
+    [createMessagingService(f.db, { ...agent.identity, actorEntityId: agent.actorId }), secret.id],
+    [chat("alice"), dm.id],
+    [chat("alice"), crypto.randomUUID()],
+  ] as const)
+    expect(await rejection(viewer.deleteImpact(id))).toBeInstanceOf(AccessDeniedError);
+  await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
+  expect(await rejection(chat("alice").deleteImpact(secret.id))).toBeInstanceOf(AccessDeniedError);
 });
 
 test("agents cannot leave, delete, or manage conversations", async () => {

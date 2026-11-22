@@ -15,7 +15,7 @@ import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { routeWake } from "../agent-work/router";
 import { applyMessageEffects } from "../context/message-effects";
-import { messageAttachmentMetadata } from "../files/metadata";
+import { insertMessageAttachments, messageAttachmentMetadata } from "../files/metadata";
 import { publishFiles } from "../files/publication";
 import { messageAttachments } from "../files/schema";
 import { messageChangeHints, reactionChangeHints } from "../realtime/routing";
@@ -267,18 +267,16 @@ export async function sendMessageAs(
   }
   // Publish only for a new message, so a replayed request does not publish its files again.
   await publishFiles(ctx, conversation, fileIds);
-  if (fileIds.length)
-    await tx.insert(messageAttachments).values(
-      fileIds.map((fileId, position) => ({
-        conversationId,
-        messageId: created.id,
-        fileOrganizationId: scope.organizationId,
-        fileId,
-        addedByActorEntityId: actor.entityId,
-        position,
-      })),
-    );
-  const attachments = await messageAttachmentMetadata(tx, fileIds.length ? [created.id] : []);
+  const attachments = await insertMessageAttachments(
+    tx,
+    {
+      conversationId,
+      messageId: created.id,
+      fileOrganizationId: scope.organizationId,
+      addedByActorEntityId: actor.entityId,
+    },
+    fileIds,
+  );
   const effects = await applyMessageEffects(ctx, scope, created, conversation);
   const wakeHints = conversation.taskEntityId
     ? []

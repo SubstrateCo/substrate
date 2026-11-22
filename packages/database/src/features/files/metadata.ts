@@ -31,6 +31,41 @@ export async function messageAttachmentMetadata(db: DatabaseExecutor, messageIds
     .where(inArray(messageAttachments.messageId, messageIds))
     .orderBy(asc(messageAttachments.position));
 }
+/** Attaches files to a new message in input order and returns their metadata in one statement. */
+export async function insertMessageAttachments(
+  db: DatabaseExecutor,
+  message: {
+    conversationId: string;
+    messageId: string;
+    fileOrganizationId: string;
+    addedByActorEntityId: string;
+  },
+  fileIds: string[],
+) {
+  if (!fileIds.length) return [];
+  const inserted = db.$with("inserted_attachments").as(
+    db
+      .insert(messageAttachments)
+      .values(fileIds.map((fileId, position) => ({ ...message, fileId, position })))
+      .returning({
+        id: messageAttachments.id,
+        messageId: messageAttachments.messageId,
+        position: messageAttachments.position,
+        fileId: messageAttachments.fileId,
+      }),
+  );
+  return db
+    .with(inserted)
+    .select({
+      id: inserted.id,
+      messageId: inserted.messageId,
+      position: inserted.position,
+      ...fileMetadata,
+    })
+    .from(inserted)
+    .innerJoin(storedFiles, eq(storedFiles.id, inserted.fileId))
+    .orderBy(asc(inserted.position));
+}
 export async function taskAttachmentMetadata(db: DatabaseExecutor, taskEntityId: string) {
   return db
     .select({ id: taskAttachments.id, position: taskAttachments.position, ...fileMetadata })

@@ -9,6 +9,7 @@ import { createAcceptedMessagingService } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { messagingMessages } from "../messaging/schema";
+import { createMessagingService } from "../messaging/service";
 import { attachmentReferences } from "./repository";
 import { messageAttachments, taskAttachments } from "./schema";
 import { beforeEach, expect, test } from "bun:test";
@@ -187,6 +188,91 @@ test("invalid files roll back the full attachment batch and cannot cross organiz
       ),
     ),
   ).toBeInstanceOf(AccessDeniedError);
+});
+
+test("a new message inserts and returns its attachments in one statement, in input order", async () => {
+  const chat = createAcceptedMessagingService(f.db, scope());
+  const conversation = await chat.createConversation({ kind: "channel", name: "ordered" });
+  const uploads = await Promise.all([staged(), staged(), staged()]);
+  await Promise.all(
+    uploads.map((file, index) =>
+      f.db
+        .update(storedFiles)
+        .set({ filename: `file-${index}.txt`, size: 10 + index, contentType: `text/x-${index}` })
+        .where(eq(storedFiles.id, file.id)),
+    ),
+  );
+  const order = [uploads[2]!, uploads[0]!, uploads[1]!];
+  const { db, queries } = recordQueries();
+  const recorded = createMessagingService(db, scope());
+  const sent = await recorded.sendMessage(
+    conversation.id,
+    "Files",
+    undefined,
+    crypto.randomUUID(),
+    order.map((file) => file.id),
+  );
+  const rows = await f.db
+    .select()
+    .from(messageAttachments)
+    .where(eq(messageAttachments.messageId, sent.id));
+  expect(sent.attachments).toEqual(
+    order.map((file, position) => ({
+      id: rows.find((row) => row.fileId === file.id)!.id,
+      messageId: sent.id,
+      position,
+      fileId: file.id,
+      filename: `file-${uploads.indexOf(file)}.txt`,
+      size: 10 + uploads.indexOf(file),
+      contentType: `text/x-${uploads.indexOf(file)}`,
+    })),
+  );
+  expect(rows.toSorted((a, b) => a.position - b.position).map((row) => row.fileId)).toEqual(
+    order.map((file) => file.id),
+  );
+  expect(queries.filter((query) => query.includes('"message_attachments"'))).toHaveLength(1);
+  expect(queries.find((query) => query.includes('"message_attachments"'))).toMatch(
+    /^with "\w+" as \(insert into "message_attachments"/,
+  );
+
+  queries.length = 0;
+  await recorded.sendMessage(conversation.id, "No files");
+  expect(queries.filter((query) => query.includes('"message_attachments"'))).toEqual([]);
+});
+
+test("replays compare the ordered file set, and invalid new files roll back the message", async () => {
+  const chat = createAcceptedMessagingService(f.db, scope());
+  const conversation = await chat.createConversation({ kind: "channel", name: "replays" });
+  const [first, second] = await Promise.all([staged(), staged()]);
+  const requestId = crypto.randomUUID();
+  const sent = await chat.sendMessage(conversation.id, "", undefined, requestId, [
+    first!.id,
+    second!.id,
+  ]);
+  const replayed = await chat.sendMessage(conversation.id, "", undefined, requestId, [
+    first!.id,
+    second!.id,
+  ]);
+  expect(replayed.attachments).toEqual(sent.attachments);
+  for (const changed of [[second!.id, first!.id], [first!.id], [first!.id, second!.id, "x"]])
+    expect(
+      await rejection(chat.sendMessage(conversation.id, "", undefined, requestId, changed)),
+    ).toBeInstanceOf(ConflictError);
+
+  const valid = await staged();
+  const foreign = await staged("outsider", f.orgB);
+  for (const invalid of [foreign.id, first!.id, crypto.randomUUID()])
+    expect(
+      await rejection(
+        chat.sendMessage(conversation.id, "", undefined, undefined, [valid.id, invalid]),
+      ),
+    ).toBeInstanceOf(AccessDeniedError);
+  expect(
+    (await f.db.select({ id: messagingMessages.id }).from(messagingMessages)).map((row) => row.id),
+  ).toEqual([sent.id]);
+  expect(await f.db.select().from(messageAttachments)).toHaveLength(2);
+  const [unpublished] = await f.db.select().from(storedFiles).where(eq(storedFiles.id, valid.id));
+  expect(unpublished!.publishedAt).toBeNull();
 });
 
 test("attachment-only messages replay safely and private files do not become admin-readable", async () => {

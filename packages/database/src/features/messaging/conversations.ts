@@ -86,10 +86,8 @@ export function conversationOperations(
   }
 
   // Admins can find conversations of their organization that they cannot read.
-  async function requireManaged(tx: DatabaseExecutor, viewer: Viewer, id: string) {
+  async function managedConversation(tx: DatabaseExecutor, viewer: Viewer, id: string) {
     if (viewer.agent) throw new AccessDeniedError();
-    await lockConversation(tx, id, "update");
-    viewer = (await messagingSession(tx, scope)).viewer;
     const [conversation] = await tx
       .select()
       .from(messagingConversations)
@@ -106,6 +104,13 @@ export function conversationOperations(
       );
     if (!conversation || !canManage(conversation, viewer)) throw new AccessDeniedError();
     return conversation;
+  }
+
+  // Writes lock first, then read the session again: a role change may commit during the wait.
+  async function requireManaged(tx: DatabaseExecutor, viewer: Viewer, id: string) {
+    if (viewer.agent) throw new AccessDeniedError();
+    await lockConversation(tx, id, "update");
+    return managedConversation(tx, (await messagingSession(tx, scope)).viewer, id);
   }
 
   return {
@@ -460,11 +465,12 @@ export function conversationOperations(
       });
     },
 
-    // Counts only linked work the caller can read, so the warning leaks nothing.
+    // Counts only linked work the caller can read, so the warning leaks nothing. The count is
+    // advisory, so it locks nothing; deletion checks again under its own lock.
     async deleteImpact(conversationId: string) {
       return db.transaction(async (tx) => {
         const { context, viewer } = await authenticate(tx);
-        await requireManaged(tx, viewer, conversationId);
+        await managedConversation(tx, viewer, conversationId);
         const [row] = await tx
           .select({ linkedWork: countDistinct(messageEntityReferences.entityId) })
           .from(messageEntityReferences)

@@ -11,8 +11,8 @@ import { member } from "../../core/organizations/schema";
 import type { SessionIdentity } from "../../core/session/identity";
 import type { MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError } from "../../errors";
-import { loadConversation } from "./access";
-import { messagingMessages, messagingReactions } from "./schema";
+import { visibleConversations } from "./access";
+import { messagingConversations, messagingMessages, messagingReactions } from "./schema";
 import { and, asc, eq, gt, sql } from "drizzle-orm";
 
 export function reactionOperations(
@@ -28,11 +28,14 @@ export function reactionOperations(
       return db.transaction(async (tx) => {
         const { actor } = await authenticate(tx);
         const [message] = await tx
-          .select({ conversationId: messagingMessages.conversationId })
+          .select({ id: messagingMessages.id })
           .from(messagingMessages)
-          .where(eq(messagingMessages.id, messageId));
+          .innerJoin(
+            messagingConversations,
+            eq(messagingConversations.id, messagingMessages.conversationId),
+          )
+          .where(and(eq(messagingMessages.id, messageId), visibleConversations(tx, scope)));
         if (!message) throw new AccessDeniedError();
-        await loadConversation(tx, scope, message.conversationId);
         const limit = Math.min(50, Math.max(1, options.limit ?? 3));
         const reactors = tx
           .select({
