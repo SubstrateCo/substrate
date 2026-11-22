@@ -1,10 +1,6 @@
-import type { RuleTester } from "oxlint/plugins-dev";
+import type { AstNode, Context, NodeOf } from "@substrate/architecture-lint/ast";
 
-export type Rule = Parameters<RuleTester["run"]>[1];
-type CreateRule = Exclude<Rule, { createOnce: object }>;
-export type Context = Parameters<CreateRule["create"]>[0];
-export type AstNode = Parameters<Context["sourceCode"]["isGlobalReference"]>[0];
-export type NodeOf<T extends AstNode["type"]> = Extract<AstNode, { type: T }>;
+export type { AstNode, Context, NodeOf, Rule } from "@substrate/architecture-lint/ast";
 
 type OpeningElement = NodeOf<"JSXOpeningElement">;
 type JsxAttribute = NodeOf<"JSXAttribute">;

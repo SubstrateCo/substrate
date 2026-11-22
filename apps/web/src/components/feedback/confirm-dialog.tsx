@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { FormMessage } from "@/components/feedback/form-message";
+import { modalDialogProps } from "@/components/feedback/modal-dialog";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import {
@@ -54,20 +55,10 @@ export function ConfirmDialog({
   status?: string;
   children?: ReactNode;
 }) {
+  const modal = modalDialogProps({ pending, onClose, onRestoreFocus });
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open && !pending) onClose();
-      }}
-    >
-      <DialogContent
-        onCloseAutoFocus={(event) => {
-          if (!onRestoreFocus) return;
-          event.preventDefault();
-          onRestoreFocus();
-        }}
-      >
+    <Dialog {...modal.root}>
+      <DialogContent {...modal.content}>
         <DialogHeader>
           <DialogTitle className="wrap-anywhere">{title}</DialogTitle>
           <DialogDescription className="wrap-anywhere">{description}</DialogDescription>

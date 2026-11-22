@@ -3,6 +3,7 @@ import type { ContextEntityType } from "@substrate/contracts/context/input";
 import { useState } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
+import { modalDialogProps } from "../../feedback/modal-dialog";
 import { PendingButton } from "../../feedback/pending-button";
 import { Button } from "../../ui/button";
 import { Command, CommandEmpty, CommandInput, CommandList } from "../../ui/command";
@@ -100,20 +101,10 @@ export function LinkMessageWork({
   let linkLabel = "Link";
   if (selection.length === 1) linkLabel = "Link item";
   else if (selection.length > 1) linkLabel = `Link ${selection.length} items`;
+  const modal = modalDialogProps({ pending, onClose, onRestoreFocus });
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open && !pending) onClose();
-      }}
-    >
-      <DialogContent
-        onCloseAutoFocus={(event) => {
-          if (!onRestoreFocus) return;
-          event.preventDefault();
-          onRestoreFocus();
-        }}
-      >
+    <Dialog {...modal.root}>
+      <DialogContent {...modal.content}>
         <DialogHeader>
           <DialogTitle>Link existing records</DialogTitle>
           <DialogDescription>

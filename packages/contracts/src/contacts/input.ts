@@ -1,14 +1,9 @@
-import { organizationId } from "../workspace.ts";
+import { organizationId, recordListFields } from "../workspace.ts";
 import { z } from "zod";
 
 export const contactsWorkspace = z.object({ organizationId });
 export const contactsRecord = contactsWorkspace.extend({ entityId: z.uuid() });
-export const contactsList = contactsWorkspace.extend({
-  limit: z.coerce.number().int().min(1).max(100).optional(),
-  afterEntityId: z.uuid().optional(),
-  search: z.string().trim().max(200).optional(),
-  archived: z.enum(["active", "archived", "all"]).default("active"),
-});
+export const contactsList = contactsWorkspace.extend(recordListFields);
 export const contactReference = contactsWorkspace.extend({ contactEntityId: z.uuid() });
 export const contactIdentifierSearch = contactsWorkspace.extend({
   type: z.enum(["email", "phone"]),

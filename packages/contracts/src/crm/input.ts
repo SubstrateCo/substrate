@@ -1,17 +1,12 @@
 import { createTaskFields } from "../tasks/input.ts";
 import { permissionLevels } from "../tasks/status.ts";
-import { organizationId } from "../workspace.ts";
+import { organizationId, recordListFields } from "../workspace.ts";
 import { crmReportFilters } from "./report-input.ts";
 import { z } from "zod";
 
 export const crmWorkspace = z.object({ organizationId });
 export const crmHome = crmWorkspace.extend({ today: z.iso.date() });
-export const crmList = crmWorkspace.extend({
-  limit: z.coerce.number().int().min(1).max(100).optional(),
-  afterEntityId: z.uuid().optional(),
-  search: z.string().trim().max(200).optional(),
-  archived: z.enum(["active", "archived", "all"]).default("active"),
-});
+export const crmList = crmWorkspace.extend(recordListFields);
 export type RecordArchiveFilter = z.output<typeof crmList>["archived"];
 export const crmRecord = crmWorkspace.extend({ entityId: z.uuid() });
 export const crmContact = crmWorkspace.extend({ contactEntityId: z.uuid() });

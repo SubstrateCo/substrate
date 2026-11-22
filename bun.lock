@@ -183,6 +183,7 @@
     "tooling/design-lint": {
       "name": "@substrate/design-lint",
       "devDependencies": {
+        "@substrate/architecture-lint": "workspace:*",
         "@types/node": "24.19.2",
         "oxlint": "^1.91.0",
         "typescript": "^7.0.2",

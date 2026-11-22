@@ -197,6 +197,17 @@ export async function declineSharingInvitation(db: DatabaseExecutor, userId: str
   });
 }
 
+/** Loads the invitation and locks its conversation. The caller authorizes. */
+async function lockInvitation(db: DatabaseExecutor, id: string) {
+  const [invite] = await db
+    .select()
+    .from(messagingInvitations)
+    .where(eq(messagingInvitations.id, id));
+  if (!invite) throw new AccessDeniedError();
+  const conversation = await lockConversation(db, invite.conversationId, "update");
+  return { invite, conversation };
+}
+
 export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentity) {
   return {
     async invite(conversationId: string, input: { email: string; shareHistory: boolean }) {
@@ -373,12 +384,7 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
     decline: (id: string) => declineSharingInvitation(db, scope.userId, id),
     async revoke(id: string) {
       return db.transaction(async (tx) => {
-        const [invite] = await tx
-          .select()
-          .from(messagingInvitations)
-          .where(eq(messagingInvitations.id, id));
-        if (!invite) throw new AccessDeniedError();
-        const conversation = await lockConversation(tx, invite.conversationId, "update");
+        const { invite, conversation } = await lockInvitation(tx, id);
         await requireSharingManager(tx, scope, conversation);
         if (
           invite.senderOrganizationId !== scope.organizationId &&
@@ -403,12 +409,7 @@ export function invitationOperations(db: DatabaseExecutor, scope: SessionIdentit
     },
     async resend(id: string) {
       return db.transaction(async (tx) => {
-        const [invite] = await tx
-          .select()
-          .from(messagingInvitations)
-          .where(eq(messagingInvitations.id, id));
-        if (!invite) throw new AccessDeniedError();
-        const conversation = await lockConversation(tx, invite.conversationId, "update");
+        const { invite, conversation } = await lockInvitation(tx, id);
         if (invite.senderOrganizationId !== scope.organizationId) throw new AccessDeniedError();
         const [current] = await tx
           .select({ status: messagingInvitations.status })
