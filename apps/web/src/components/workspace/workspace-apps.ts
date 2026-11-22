@@ -8,7 +8,6 @@ import {
   House,
   ListTodo,
   MessageSquare,
-  Users,
   type LucideIcon,
 } from "lucide-react";
 
@@ -49,13 +48,6 @@ export const workspaceApps = [
     icon: Bot,
     to: "/agents",
     hotkey: ["G", "A"],
-  },
-  {
-    id: "contacts",
-    label: "Contacts",
-    icon: Users,
-    to: "/contacts",
-    hotkey: ["G", "P"],
   },
 ] as const satisfies ReadonlyArray<WorkspaceApp & { id: string }>;
 

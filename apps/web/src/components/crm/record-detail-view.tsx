@@ -47,12 +47,14 @@ export function RecordDetailView({
 }) {
   return (
     <RecordDetailFrame>
-      <Button variant="link" size="sm" asChild>
-        <Link {...recordLink(organizationId, kind)}>
-          <ArrowLeft aria-hidden />
-          Back to {kind}
-        </Link>
-      </Button>
+      {kind !== "contacts" && (
+        <Button variant="link" size="sm" asChild>
+          <Link {...recordLink(organizationId, kind)}>
+            <ArrowLeft aria-hidden />
+            Back to {kind}
+          </Link>
+        </Button>
+      )}
       <PageHeader
         title={name}
         description={archived ? <Tag>Archived</Tag> : undefined}

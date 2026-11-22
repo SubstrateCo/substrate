@@ -53,18 +53,12 @@ test("create customer records, record a call, and advance a linked deal", async 
   await expect(page.getByRole("heading", { name: "Northstar Labs", exact: true })).toBeVisible();
   await captureCrm(page, "01-account-detail");
 
-  await visit(user, undefined, "/contacts");
-  await page.getByRole("button", { name: "New contact", exact: true }).click();
-  const contactDialog = page.getByRole("dialog", { name: "New contact", exact: true });
-  await contactDialog.getByLabel("Name", { exact: true }).fill("Jordan Lee");
-  await contactDialog
-    .getByLabel("Notes", { exact: true })
-    .fill("Operations lead. Coordinates the rollout and customer training.");
-  const contact = await submitCrm(
-    page,
-    "createContact",
-    contactDialog.getByRole("button", { name: "Create contact", exact: true }),
-  );
+  const contact = await createCrm(account, {
+    action: "createContact",
+    displayName: "Jordan Lee",
+    notes: "Operations lead. Coordinates the rollout and customer training.",
+  });
+  await visit(user, undefined, "/contacts", { recordId: contact.entityId });
   await expect(page.getByRole("heading", { name: "Jordan Lee", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "New interaction", exact: true }).click();
   const interactionDialog = page.getByRole("dialog", { name: "New interaction", exact: true });
@@ -81,9 +75,6 @@ test("create customer records, record a call, and advance a linked deal", async 
   await expect(page.getByText(summary, { exact: true })).toBeVisible();
   await captureCrm(page, "02-contact-interaction");
   await expect(page.locator("html")).toHaveClass(/dark/);
-  await visit(user, undefined, "/contacts");
-  await expect(page.getByRole("link", { name: "Jordan Lee", exact: true })).toBeVisible();
-  await captureCrm(page, "contacts-dark");
 
   await visit(user, undefined, "/crm", { section: "deals" });
   await page.getByRole("button", { name: "New deal", exact: true }).click();

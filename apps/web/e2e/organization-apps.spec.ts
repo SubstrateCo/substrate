@@ -1,3 +1,4 @@
+import { createCrm } from "../../server/integration/test-support/crm";
 import { provisionWorkspaceSession } from "../../server/integration/test-support/organizations";
 import { test, visit } from "./test-support/fixtures";
 import { project } from "./test-support/tasks";
@@ -73,8 +74,9 @@ test("owner enables independent apps, confirms disable, and restores preserved p
   await page.keyboard.press("Escape");
   await visit(user, undefined, "/crm");
   await expect(page.getByRole("button", { name: "New deal", exact: true })).toBeVisible();
-  await visit(user, undefined, "/contacts");
-  await expect(page.getByRole("button", { name: "New contact", exact: true })).toBeVisible();
+  const contact = await createCrm(account, { action: "createContact", displayName: "App contact" });
+  await visit(user, undefined, "/contacts", { recordId: contact.entityId });
+  await expect(page.getByRole("heading", { name: "App contact", exact: true })).toBeVisible();
   await page.keyboard.press("g");
   await page.keyboard.press("t");
   await expect(page).toHaveURL(/\/contacts/);
