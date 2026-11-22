@@ -94,3 +94,34 @@ test("project exports enforce access and tenant boundaries and include all task 
   );
   expect((await member.request.get("/api/v1/tasks/export", { params })).status()).toBe(404);
 });
+
+test("project CSV exports have one row for the project and one for each task", async ({
+  actors,
+  workspace,
+}) => {
+  const [owner] = await workspace(actors.owner);
+  const projectEntityId = await tasks.create(owner, {
+    action: "createProject",
+    name: "Launch plan",
+  });
+  const taskEntityId = await tasks.create(owner, {
+    action: "createTask",
+    projectEntityId,
+    title: "Review launch checklist",
+    description: "Check the release notes and customer updates.",
+  });
+  const response = await owner.request.get("/api/v1/tasks/export", {
+    params: { organizationId: owner.organizationId, projectEntityId, format: "csv" },
+  });
+  expect(response.status()).toBe(200);
+  expect(response.headers()["content-disposition"]).toBe(
+    `attachment; filename="project-${projectEntityId}.csv"`,
+  );
+  const [header, project, task, ...rest] = (await response.text()).trim().split(/\r?\n/);
+  expect(header).toMatch(/^"recordType","entityId","projectEntityId"/);
+  expect(project).toMatch(new RegExp(`^"project","${projectEntityId}",`));
+  expect(project).toContain('"Launch plan"');
+  expect(task).toMatch(new RegExp(`^"task","${taskEntityId}","${projectEntityId}"`));
+  expect(task).toContain('"Check the release notes and customer updates."');
+  expect(rest).toEqual([]);
+});
