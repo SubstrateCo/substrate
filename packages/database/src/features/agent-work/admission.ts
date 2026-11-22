@@ -28,7 +28,7 @@ import { agentInvocations } from "./invocations.schema";
 import { inStates } from "./machine-sql";
 import { wakeKind, wakeSessionKey } from "./wake-kind";
 import { agentWakes } from "./wakes.schema";
-import { and, count, eq, gt, inArray, or, sql } from "drizzle-orm";
+import { and, eq, gt, inArray, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 /** An agent that a trigger may wake. */
@@ -301,8 +301,8 @@ async function callerFacts(
             eq(userAgentCallers.callerUserId, callerUserId),
           ),
         )})`,
-      pending: sql<number>`(${db
-        .select({ n: count() })
+      pending: sql<number>`(SELECT count(*)::int FROM (${db
+        .select({ one: sql`1` })
         .from(agentInvocations)
         .where(
           and(
@@ -310,9 +310,10 @@ async function callerFacts(
             eq(agentInvocations.status, invocationMachine.events.hold.to),
             gt(agentInvocations.expiresAt, sql`now()`),
           ),
-        )})::int`,
-      admittedToday: sql<number>`(${db
-        .select({ n: count() })
+        )
+        .limit(maxPendingInvocationsPerCaller)}) pending_cap)`,
+      admittedToday: sql<number>`(SELECT count(*)::int FROM (${db
+        .select({ one: sql`1` })
         .from(agentInvocations)
         .where(
           and(
@@ -320,7 +321,8 @@ async function callerFacts(
             inStates(agentInvocations.status, admittedStates),
             gt(agentInvocations.decidedAt, sql`now() - interval '1 day'`),
           ),
-        )})::int`,
+        )
+        .limit(maxAdmittedInvocationsPerDay)}) daily_cap)`,
     })
     .from(messagingConversations)
     .innerJoin(

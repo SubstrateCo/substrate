@@ -14,6 +14,52 @@ import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 const f = setupDatabase();
 
+test("entity transfer is globally capped unless kinds request separate pages", async () => {
+  await f.verifyEmails();
+  const alice = f.forActor(f.alice);
+  for (let i = 0; i < 3; i++) {
+    const project = await alice.projects.create({ name: `Transfer ${i}` });
+    await alice.tasks.create({ projectEntityId: project.entityId, title: `Transfer task ${i}` });
+  }
+  const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const channel = await chat.createConversation({ kind: "channel", name: "Transfer channel" });
+  await chat.sendMessage(channel.id, "Transfer message");
+  const recorded = recordQueries();
+  const context = createContextService(recorded.db, { userId: "alice", organizationId: f.orgA });
+  const all = await context.search({ query: "Transfer", limit: 100 });
+  const search = async (input: Parameters<typeof context.search>[0]) => {
+    recorded.queries.length = 0;
+    recorded.parameters.length = 0;
+    const result = await context.search(input);
+    const index = recorded.queries.findIndex((query) => query.includes('FROM "tasks"'));
+    const transferred =
+      index < 0
+        ? []
+        : await f.db.$client.unsafe(
+            recorded.queries[index]!,
+            // SAFETY: replay the parameters recorded for this statement.
+            recorded.parameters[index] as never[],
+          );
+    return { result, transferred };
+  };
+  const first = await search({ query: "Transfer", limit: 2 });
+  expect(first.result).toEqual(all.slice(0, 2));
+  expect(first.transferred).toHaveLength(2);
+  const after = first.result.at(-1)!.id;
+  const second = await search({ query: "Transfer", limit: 2, after });
+  expect(second.result).toEqual(all.filter((row) => row.id.localeCompare(after) > 0).slice(0, 2));
+  expect(second.transferred.length).toBeLessThanOrEqual(2);
+  const batch = await search({ query: "Transfer", kinds: ["project", "task"], limit: 2 });
+  expect(batch.result).toEqual(
+    ["project", "task"].flatMap((kind) => all.filter((row) => row.kind === kind).slice(0, 2)),
+  );
+  expect(batch.transferred).toHaveLength(4);
+  expect(await search({ query: "", kinds: [], limit: 2 })).toEqual({
+    result: [],
+    transferred: [],
+  });
+});
+
 test("an already cancelled search runs no queries", async () => {
   const controller = new AbortController();
   controller.abort();

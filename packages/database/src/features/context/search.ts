@@ -339,6 +339,7 @@ export async function contextSearch(
           ${contactEntityId} AS "contactEntityId"
           FROM ${table} ${parent} WHERE ${where} ORDER BY ${table.entityId} LIMIT ${limit})`;
     });
+    const union = sql.join(branches, sql` UNION ALL `);
     branchRows.push(
       db
         .execute<{
@@ -349,7 +350,14 @@ export async function contextSearch(
           projectName: string | null;
           status: TaskStatus | null;
           contactEntityId: string | null;
-        }>(withVisibility(ctx.scope, sql.join(branches, sql` UNION ALL `)))
+        }>(
+          withVisibility(
+            ctx.scope,
+            input.kinds
+              ? union
+              : sql`SELECT * FROM (${union}) entity_results ORDER BY id LIMIT ${limit}`,
+          ),
+        )
         .then((rows) =>
           rows.map(({ projectEntityId, projectName, status, contactEntityId, ...row }) => {
             if (row.kind === "task")

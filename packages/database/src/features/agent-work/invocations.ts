@@ -437,7 +437,9 @@ export async function invocationViews(
       conversationName: sql<
         string | null
       >`case when ${messagingConversations.id} is null then null else ${conversationDisplayName(db, identity)} end`,
-      body: messagingMessages.body,
+      body: sql<string | null>`case when ${messagingConversations.id} is not null
+        and ${messagingMessages.deletedAt} is null
+        then substring(${messagingMessages.body} FROM 1 FOR ${previewLength}) end`,
       deletedAt: messagingMessages.deletedAt,
       expired: sql<boolean>`${agentInvocations.expiresAt} <= now()`,
     })

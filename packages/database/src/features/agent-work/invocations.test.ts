@@ -2,6 +2,7 @@ import { maxAdmittedInvocationsPerDay, sessionKeys } from "@substrate/contracts/
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { workspaceContext } from "../../core/session/workspace";
+import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ConflictError } from "../../errors";
 import {
   actors,
@@ -23,14 +24,88 @@ import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { createAgentRepository } from "../agents/repository";
 import { contextSearch } from "../context/search";
+import { messageAttachments } from "../files/schema";
 import { auditCallerTool } from "../mcp/caller-turn";
 import { createMessagingService } from "../messaging/service";
 import { admit } from "./admission";
-import { expireInvocations, revokedInvocations } from "./invocations";
+import { expireInvocations, invocationViews, revokedInvocations } from "./invocations";
 import { expect, test } from "bun:test";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, getTableColumns, sql } from "drizzle-orm";
 
 const f = setupDatabase();
+
+test("invocation SQL transfers only visible live preview prefixes and preserves JS slicing", async () => {
+  const x = await callerFixture(f);
+  await x.policy("ask");
+  const sent = await x.bob.sendMessage(x.channel.id, x.mention);
+  const original = `${"a".repeat(199)}😀${"b".repeat(5000)}`;
+  const recorded = recordQueries();
+  const read = async (body: string, deletedAt: Date | null = null) => {
+    await f.db
+      .update(messagingMessages)
+      .set({ body, deletedAt })
+      .where(eq(messagingMessages.id, sent.id));
+    recorded.queries.length = 0;
+    recorded.parameters.length = 0;
+    const views = await invocationViews(recorded.db, x.owner, undefined);
+    const raw = await f.db.$client
+      .unsafe(
+        recorded.queries[0]!,
+        // SAFETY: replay the parameters recorded for this statement.
+        recorded.parameters[0] as never[],
+      )
+      .values();
+    // Body follows invocation's columns, agent name, caller name and conversation name.
+    const bodyIndex = Object.keys(getTableColumns(agentInvocations)).length + 3;
+    return { views, raw, bodyIndex };
+  };
+  const visible = await read(original);
+  expect(visible.views[0]?.preview).toBe(original.slice(0, 200));
+  // Raw driver rows include the bounded PostgreSQL character prefix, not the full body.
+  expect(visible.raw[0]?.[visible.bodyIndex]).toBe(`${"a".repeat(199)}😀`);
+  const [file] = await f.db
+    .insert(storedFiles)
+    .values({
+      id: crypto.randomUUID(),
+      organizationId: f.orgA,
+      uploadedBy: "bob",
+      purpose: "file",
+      filename: "preview.txt",
+      contentType: "text/plain",
+      size: 6,
+      objectKey: crypto.randomUUID(),
+      sha256: "a".repeat(64),
+    })
+    .returning();
+  await f.db.insert(messageAttachments).values({
+    conversationId: x.channel.id,
+    messageId: sent.id,
+    fileOrganizationId: f.orgA,
+    fileId: file!.id,
+    addedByActorEntityId: f.bob,
+    position: 0,
+  });
+  expect((await read("")).views[0]?.preview).toBe("");
+  const deleted = await read("", new Date());
+  expect(deleted.views[0]?.preview).toBeNull();
+  expect(deleted.raw[0]?.[deleted.bodyIndex]).toBeNull();
+  const privateChannel = await x.alice.createConversation({
+    kind: "channel",
+    name: "Hidden previews",
+    private: true,
+    emails: ["bob@example.com"],
+  });
+  await x.alice.addAgent(privateChannel.id, x.agent.agentId);
+  const hidden = await x.bob.sendMessage(privateChannel.id, x.mention);
+  await f.db
+    .update(messagingMessages)
+    .set({ body: original })
+    .where(eq(messagingMessages.id, hidden.id));
+  await x.alice.leaveConversation(privateChannel.id, "bob");
+  const result = await read(original);
+  expect(result.views.find((view) => view.place.access === "hidden")?.preview).toBeNull();
+  expect(result.raw.map((row) => row[result.bodyIndex])).toEqual([null, `${"a".repeat(199)}😀`]);
+});
 
 const calls = () => f.db.select().from(agentInvocations).orderBy(asc(agentInvocations.createdAt));
 const callerWakes = () =>
