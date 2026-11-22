@@ -121,14 +121,6 @@ export const developmentTeams = [
   },
 ] as const;
 
-export const developmentAgent = {
-  name: (personName: string) => `${personName.split(" ")[0]}'s workspace assistant`,
-  instructions:
-    "Help me review assigned work, summarize project discussions, and prepare clear next steps. Keep source references and ask before publishing changes.",
-  harness: "opencode",
-  enabled: false,
-} as const;
-
 export const developmentWork = {
   stages: [
     { status: "not_started", priority: "low", dueInDays: -4 },

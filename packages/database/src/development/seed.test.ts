@@ -31,7 +31,7 @@ describe("development seed", () => {
     }
   });
 
-  test("seeds connected work, task relationships, contact identifiers, and inactive local agent definitions", async () => {
+  test("seeds connected work, task relationships, and contact identifiers", async () => {
     await seedDevelopmentDatabase(fixture.db, "development-password-hash");
     for (const organizationId of ["dev-northstar", "dev-orbit"]) {
       const tasks = await fixture.db
@@ -134,13 +134,6 @@ describe("development seed", () => {
         ).toBe(true);
       }
     }
-    const agents = await fixture.db.select().from(schema.userAgents);
-    expect(agents).toHaveLength(6);
-    for (const agent of agents) {
-      expect(agent.enabled).toBe(false);
-      expect(agent.homeDeviceId).toBeNull();
-      expect(agent.userId.startsWith("dev-")).toBe(true);
-    }
     expect(await fixture.db.select().from(schema.storedFiles)).toHaveLength(0);
     expect(await fixture.db.select().from(schema.agentWakes)).toHaveLength(0);
   });
@@ -238,7 +231,6 @@ describe("development seed", () => {
       .where(eq(schema.tasks.entityId, task!.entityId));
     const before = await fixture.db.select().from(schema.messagingMessages);
     const workBefore = await fixture.db.select().from(schema.entityLinks);
-    const agentsBefore = await fixture.db.select().from(schema.userAgents);
     const [interaction] = await fixture.db.select().from(schema.contactInteractions);
     await fixture.db
       .update(schema.contactInteractions)
@@ -254,7 +246,6 @@ describe("development seed", () => {
     expect(await fixture.db.select().from(schema.organizationApps)).toEqual(appsBefore);
     expect(await fixture.db.select().from(schema.messagingMessages)).toEqual(before);
     expect(await fixture.db.select().from(schema.entityLinks)).toEqual(workBefore);
-    expect(await fixture.db.select().from(schema.userAgents)).toEqual(agentsBefore);
     expect(await fixture.db.select().from(schema.contactInteractions)).toEqual(interactionsBefore);
     expect(
       (

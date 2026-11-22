@@ -11,10 +11,9 @@ import { messagingInvitations } from "../features/messaging/sharing.schema";
 import { createSharingService } from "../features/messaging/sharing/service";
 import { projectRepository } from "../features/projects/repository";
 import { taskRepository } from "../features/tasks/repository";
-import { account, member, organization, user, userAgents } from "../schema";
+import { account, member, organization, user } from "../schema";
 import { seedDevelopmentContact, seedDevelopmentContactPublication } from "./contacts";
 import {
-  developmentAgent,
   developmentConversations,
   developmentPartner,
   developmentTeams,
@@ -90,11 +89,6 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
           role: person.role,
         });
         actors.push(await ensureHumanActor(tx, { organizationId: team.id, userId: person.id }));
-        await tx.insert(userAgents).values({
-          ...developmentAgent,
-          name: developmentAgent.name(person.name),
-          userId: person.id,
-        });
       }
       const context = new RepositoryContext(tx, {
         organizationId: team.id,
