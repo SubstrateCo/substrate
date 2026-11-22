@@ -31,10 +31,32 @@ describe("connected CRM", () => {
     expect(await a.crm.timeline(deal.entityId)).toHaveLength(1);
     expect(await a.crm.timeline(deal.entityId, { mode: "linked" })).toHaveLength(1);
     expect(await a.crm.timeline(account.entityId, { mode: "linked" })).toEqual([]);
+    const structuralOnly = await a.contactInteractions.createInteraction({
+      contactEntityId: contact.entityId,
+      kind: "note",
+      occurredAt: new Date(),
+      summary: "Structural only",
+    });
+    const advisor = await a.contacts.create({ displayName: "Advisor" });
+    const linkedOnly = await a.contactInteractions.createInteraction({
+      contactEntityId: advisor.entityId,
+      kind: "note",
+      occurredAt: new Date(),
+      summary: "Linked only",
+    });
+    await a.links.create({ entityId: deal.entityId, otherEntityId: linkedOnly.entityId });
+    expect((await a.crm.timeline(deal.entityId)).map((row) => row.entityId).sort()).toEqual(
+      [interaction.entityId, structuralOnly.entityId, linkedOnly.entityId].sort(),
+    );
+    expect(
+      (await a.crm.timeline(deal.entityId, { mode: "linked" })).map((row) => row.entityId).sort(),
+    ).toEqual([interaction.entityId, linkedOnly.entityId].sort());
     await a.permissions.grant({ entityId: deal.entityId, actorEntityId: f.bob, level: "view" });
     expect(await f.forActor(f.bob).crm.timeline(deal.entityId)).toEqual([]);
     await a.permissions.grant({ entityId: contact.entityId, actorEntityId: f.bob, level: "view" });
-    expect(await f.forActor(f.bob).crm.timeline(deal.entityId)).toHaveLength(1);
+    expect(
+      (await f.forActor(f.bob).crm.timeline(deal.entityId)).map((row) => row.entityId).sort(),
+    ).toEqual([interaction.entityId, structuralOnly.entityId].sort());
   });
   test("keeps account access independent and filters unreadable relationships", async () => {
     const a = f.forActor(f.alice);

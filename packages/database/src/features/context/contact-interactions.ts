@@ -9,7 +9,7 @@ import { ValidationError } from "../../errors";
 import { recordCrmActivity } from "../crm/activity";
 import { presentInteraction, presentInteractions } from "../crm/actor-views";
 import { crmContactProfiles } from "../crm/schema";
-import { interactionAccountScope } from "./interaction-account-scope";
+import { interactionScope } from "../crm/timeline";
 import { contextInteractionActions } from "./interaction-actions";
 import { interactionDirectoryPage } from "./interaction-directory";
 import { publishInteraction } from "./interaction-publication";
@@ -36,8 +36,9 @@ export function contextContactInteractionRepository(context: RepositoryContext) 
       if (input.accountEntityId) {
         const access = await context.requireAccess(input.accountEntityId, "view");
         if (access.entity.entityType !== "account") throw new AccessDeniedError();
-        condition = interactionAccountScope(
+        condition = interactionScope(
           context,
+          "account",
           input.accountEntityId,
           input.scope === "linked",
         );

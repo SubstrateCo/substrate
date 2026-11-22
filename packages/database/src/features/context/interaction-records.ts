@@ -2,17 +2,14 @@ import type { ContextEntityType } from "@substrate/contracts/context/input";
 
 import { requireAppEnabled } from "../../core/apps/access";
 import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
-import { contactInteractions } from "../../core/contacts/interactions.schema";
 import { contacts } from "../../core/contacts/schema";
-import { entities } from "../../core/entities/schema";
 import { linkRepository } from "../../core/links/repository";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
 import { presentInteraction } from "../crm/actor-views";
 import { crmAccounts, crmAffiliations, crmContactProfiles } from "../crm/schema";
-import { tasks } from "../tasks/tasks.schema";
 import { requireContextTargetPage } from "./target-page";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 
 export type InteractionConnection = {
   entityId: string;
@@ -28,37 +25,25 @@ async function linkedRecords(
   entityId: string,
 ): Promise<InteractionConnection[]> {
   const links = await linkRepository(context).list(entityId, { limit: 100 });
-  const ids = links.map((row) =>
-    row.sourceEntityId === entityId ? row.targetEntityId : row.sourceEntityId,
-  );
+  const ids = [
+    ...new Set(
+      links.map((row) =>
+        row.sourceEntityId === entityId ? row.targetEntityId : row.sourceEntityId,
+      ),
+    ),
+  ];
   const targets = await requireContextTargetPage(context, ids);
-  if (!ids.length) return [];
-  const rows = await context.db
-    .select({
-      entityId: entities.entityId,
-      projectEntityId: tasks.projectEntityId,
-      contactEntityId: contactInteractions.contactEntityId,
-    })
-    .from(entities)
-    .leftJoin(
-      tasks,
-      and(eq(tasks.organizationId, entities.organizationId), eq(tasks.entityId, entities.entityId)),
-    )
-    .leftJoin(
-      contactInteractions,
-      and(
-        eq(contactInteractions.organizationId, entities.organizationId),
-        eq(contactInteractions.entityId, entities.entityId),
-      ),
-    )
-    .where(
-      and(
-        eq(entities.organizationId, context.scope.organizationId),
-        inArray(entities.entityId, ids),
-        context.readable(entities.entityId),
-      ),
-    );
-  return rows.map((row) => ({ ...row, ...targets.get(row.entityId)!, relation: "Related record" }));
+  return ids.map((id): InteractionConnection => {
+    const target = targets.get(id)!;
+    return {
+      entityId: id,
+      entityType: target.entityType,
+      title: target.title,
+      relation: "Related record",
+      projectEntityId: target.projectEntityId,
+      contactEntityId: target.contactEntityId,
+    };
+  });
 }
 
 export async function interactionRecordDetail(context: RepositoryContext, entityId: string) {

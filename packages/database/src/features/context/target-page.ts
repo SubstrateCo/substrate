@@ -10,9 +10,19 @@ import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 
-export async function requireContextTargetPage(ctx: RepositoryContext, entityIds: string[]) {
+type ContextTarget = {
+  entityType: ContextEntityType;
+  title: string;
+  projectEntityId: string | null;
+  contactEntityId: string | null;
+};
+
+export async function requireContextTargetPage(
+  ctx: RepositoryContext,
+  entityIds: string[],
+): Promise<Map<string, ContextTarget>> {
   const ids = [...new Set(entityIds)];
-  if (!ids.length) return new Map<string, { entityType: ContextEntityType; title: string }>();
+  if (!ids.length) return new Map<string, ContextTarget>();
   await ctx.requireActiveActor();
   const title = sql<string>`coalesce(${tasks.title}, ${projects.name}, ${contacts.displayName}, ${crmAccounts.name}, ${crmDeals.title}, ${contactInteractions.summary})`;
   const rows = await ctx.db
@@ -20,6 +30,8 @@ export async function requireContextTargetPage(ctx: RepositoryContext, entityIds
       id: entities.entityId,
       entityType: sql<ContextEntityType>`${entities.entityType}`,
       title,
+      projectEntityId: tasks.projectEntityId,
+      contactEntityId: contactInteractions.contactEntityId,
     })
     .from(entities)
     .leftJoin(

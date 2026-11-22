@@ -12,7 +12,7 @@ import { requireCrmAdmin } from "../crm/settings";
 import { mcpTaskQueries } from "./tasks";
 
 /** Called only behind the MCP turn/device/write gates, on the caller's transaction. */
-export async function mcpCrmTools(context: RepositoryContext, identity: SessionIdentity) {
+export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentity) {
   // Preserve the validated acting agent. CRM resolves human responsibility separately.
   const crm = crmRepository(context);
   const interactions = contextContactInteractionRepository(context);

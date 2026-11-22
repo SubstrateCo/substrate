@@ -10,7 +10,7 @@ import { contactInteractions } from "../../core/contacts/interactions.schema";
 import { contacts } from "../../core/contacts/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { crmAccounts } from "../crm/schema";
-import { interactionAccountScope } from "./interaction-account-scope";
+import { interactionScope } from "../crm/timeline";
 import { and, asc, desc, eq, ilike, sql } from "drizzle-orm";
 
 export async function interactionDirectoryPage(
@@ -42,7 +42,7 @@ export async function interactionDirectoryPage(
       contactInteractions,
       value.type === "people"
         ? eq(contactInteractions.contactEntityId, contacts.entityId)
-        : interactionAccountScope(context, crmAccounts.entityId),
+        : interactionScope(context, "account", crmAccounts.entityId),
     )
     .where(
       and(

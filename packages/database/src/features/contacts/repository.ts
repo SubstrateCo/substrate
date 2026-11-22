@@ -2,6 +2,7 @@ import type { RecordArchiveFilter } from "@substrate/contracts/crm/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { requireAppEnabled } from "../../core/apps/access";
+import { contactProfileInput, parseInput, type ContactInput } from "../../core/contacts/inputs";
 import { contactRepository } from "../../core/contacts/repository";
 import { contacts } from "../../core/contacts/schema";
 import { appEnabledCondition } from "../../core/permissions/app-visibility";
@@ -9,7 +10,6 @@ import { entityCursor, pageSize, type RepositoryContext } from "../../core/repos
 import { AccessDeniedError } from "../../errors";
 import { recordCrmActivity } from "../crm/activity";
 import { crmAccounts, crmAffiliations, crmContactProfiles } from "../crm/schema";
-import { contactActions } from "./contact-actions";
 import { mutateContactDetail } from "./contact-detail-actions";
 import { and, asc, eq, gt, ilike, isNotNull, isNull } from "drizzle-orm";
 
@@ -24,21 +24,33 @@ export function contactApplicationRepository(context: RepositoryContext) {
     ...contactRepository(context),
     mutateContactDetail: (input: Parameters<typeof mutateContactDetail>[1]) =>
       mutateContactDetail(context, input),
-    createContact: (input: Parameters<ReturnType<typeof contactActions>["create"]>[0]) =>
+    createContact: (input: ContactInput) =>
       context.transaction(async (ctx) => {
-        const row = await contactActions(ctx).create(input);
+        const row = await contactRepository(ctx).create(input);
+        await recordCrmActivity(ctx, { entityId: row.entityId, action: "created" });
         changed(ctx, row.entityId);
         return row;
       }),
-    updateContact: (
-      id: string,
-      input: Parameters<ReturnType<typeof contactActions>["update"]>[1],
-    ) =>
-      context.transaction(async (ctx) => {
-        const row = await contactActions(ctx).update(id, input);
+    updateContact(id: string, input: Partial<ContactInput>) {
+      const value = parseInput(contactProfileInput.partial(), input);
+      return context.transaction(async (ctx) => {
+        await ctx.requireAccess(id, "edit", true);
+        const repo = contactRepository(ctx);
+        const previous = await repo.get(id);
+        // SAFETY: parsing above strips unknown keys; every own key belongs to ContactInput.
+        const changedFields = (Object.keys(value) as (keyof typeof value)[]).filter(
+          (key) => value[key] !== undefined && value[key] !== previous[key],
+        );
+        if (!changedFields.length) {
+          changed(ctx, previous.entityId);
+          return previous;
+        }
+        const row = await repo.update(id, value);
+        await recordCrmActivity(ctx, { entityId: id, action: "updated", changedFields });
         changed(ctx, row.entityId);
         return row;
-      }),
+      });
+    },
     async listContacts(
       options: {
         limit?: number;

@@ -115,15 +115,6 @@ export function connectionOperations(db: DatabaseExecutor, scope: SessionIdentit
   };
 }
 
-// Run on departure and before provisioning a rejoined membership. Rejoining is not fresh consent.
-export async function clearMembershipSharing(
-  db: DatabaseExecutor,
-  userId: string,
-  organizationId: string,
-) {
-  return db.transaction((tx) => clearMembershipSharingInTransaction(tx, userId, organizationId));
-}
-
 export async function clearMembershipSharingInTransaction(
   tx: DatabaseExecutor,
   userId: string,

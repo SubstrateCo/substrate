@@ -73,7 +73,7 @@ test("deal relation checks batch contacts and preserve archive and access rules"
   tracked.queries.length = 0;
   await repos.crm.createDeal({ title: "All buyers", stageId: stage!.id, ...input });
   expect(tracked.queries.length).toBe(writeCount);
-  const tools = await mcpCrmTools(ctx, { userId: "alice", organizationId: f.orgA });
+  const tools = mcpCrmTools(ctx, { userId: "alice", organizationId: f.orgA });
   const replay = {
     requestId: crypto.randomUUID(),
     title: "Replay",

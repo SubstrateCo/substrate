@@ -58,9 +58,16 @@ test("interaction directories and profiles use readable affiliations and do not 
   expect(
     (await member.contactInteractions.workspaceProfile(contact.entityId, "person")).connections,
   ).toMatchObject([{ entityId: account.entityId, title: "Northstar" }]);
-  expect(
-    (await member.contactInteractions.workspaceRecord(interaction.entityId)).links,
-  ).toMatchObject([{ entityId: account.entityId, title: "Northstar" }]);
+  expect((await member.contactInteractions.workspaceRecord(interaction.entityId)).links).toEqual([
+    {
+      entityId: account.entityId,
+      entityType: "account",
+      title: "Northstar",
+      relation: "Related record",
+      projectEntityId: null,
+      contactEntityId: null,
+    },
+  ]);
   expect(
     (
       await member.contactInteractions.workspaceTimeline({
@@ -69,6 +76,114 @@ test("interaction directories and profiles use readable affiliations and do not 
       })
     ).items,
   ).toHaveLength(1);
+});
+
+test("linked interaction records retain parent IDs and link order without extra fields", async () => {
+  const repo = f.forActor(f.alice);
+  const contact = await repo.contacts.create({ displayName: "Buyer" });
+  const interaction = await repo.contactInteractions.createManual({
+    contactEntityId: contact.entityId,
+    kind: "note",
+    occurredAt: new Date("2026-11-10T12:00:00Z"),
+    summary: "Original",
+  });
+  const other = await repo.contactInteractions.createManual({
+    contactEntityId: contact.entityId,
+    kind: "call",
+    occurredAt: new Date("2026-11-11T12:00:00Z"),
+    summary: "Follow-up",
+  });
+  const project = await repo.projects.create({ name: "Launch" });
+  const task = await repo.tasks.create({ projectEntityId: project.entityId, title: "Ship" });
+  await repo.links.create({ entityId: interaction.entityId, otherEntityId: task.entityId });
+  await repo.links.create({ entityId: interaction.entityId, otherEntityId: other.entityId });
+  const links = (await repo.contactInteractions.workspaceRecord(interaction.entityId)).links;
+  expect(links.map((row) => row.entityId)).toEqual(
+    (await repo.links.list(interaction.entityId)).map((row) =>
+      row.sourceEntityId === interaction.entityId ? row.targetEntityId : row.sourceEntityId,
+    ),
+  );
+  expect([...links].sort((a, b) => a.entityId.localeCompare(b.entityId))).toEqual(
+    [
+      {
+        entityId: task.entityId,
+        entityType: "task" as const,
+        title: "Ship",
+        relation: "Related record",
+        projectEntityId: project.entityId,
+        contactEntityId: null,
+      },
+      {
+        entityId: other.entityId,
+        entityType: "contact_interaction" as const,
+        title: "Follow-up",
+        relation: "Related record",
+        projectEntityId: null,
+        contactEntityId: contact.entityId,
+      },
+    ].sort((a, b) => a.entityId.localeCompare(b.entityId)),
+  );
+});
+
+test("account interaction scope combines affiliations and links once and supports linked-only", async () => {
+  const repo = f.forActor(f.alice);
+  const account = await repo.crm.createAccount({ name: "Customer" });
+  const affiliated = await repo.contacts.create({ displayName: "Buyer" });
+  const other = await repo.contacts.create({ displayName: "Advisor" });
+  await repo.crm.setAffiliation({
+    accountEntityId: account.entityId,
+    contactEntityId: affiliated.entityId,
+    title: "Buyer",
+    isPrimary: true,
+  });
+  const records = [];
+  for (const contactEntityId of [
+    affiliated.entityId,
+    affiliated.entityId,
+    other.entityId,
+    other.entityId,
+  ]) {
+    records.push(
+      await repo.contactInteractions.createManual({
+        contactEntityId,
+        kind: "note",
+        occurredAt: new Date("2026-11-10T12:00:00Z"),
+        summary: "Context",
+      }),
+    );
+  }
+  for (const record of [records[1]!, records[2]!])
+    await repo.links.create({ entityId: record.entityId, otherEntityId: account.entityId });
+  const expected = records
+    .slice(0, 3)
+    .map((row) => row.entityId)
+    .sort();
+  const input = { ...period, accountEntityId: account.entityId };
+  expect(
+    (await repo.contactInteractions.workspaceTimeline(input)).items
+      .map((row) => row.entityId)
+      .sort(),
+  ).toEqual(expected);
+  expect((await repo.crm.timeline(account.entityId)).map((row) => row.entityId).sort()).toEqual(
+    expected,
+  );
+  const linked = records
+    .slice(1, 3)
+    .map((row) => row.entityId)
+    .sort();
+  expect(
+    (await repo.contactInteractions.workspaceTimeline({ ...input, scope: "linked" })).items
+      .map((row) => row.entityId)
+      .sort(),
+  ).toEqual(linked);
+  expect(
+    (await repo.crm.timeline(account.entityId, { mode: "linked" }))
+      .map((row) => row.entityId)
+      .sort(),
+  ).toEqual(linked);
+  expect(
+    (await repo.contactInteractions.workspaceDirectory({ ...period, type: "accounts" })).items,
+  ).toMatchObject([{ entityId: account.entityId, count: 3, contacts: 2 }]);
 });
 
 test("all-time timeline and repeat directory include older records but profile IDs cannot cross types or organizations", async () => {

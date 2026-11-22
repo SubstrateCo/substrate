@@ -113,24 +113,24 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     return publishingTools(ctx, identity, { ...agent, userAgentId }, turn);
   };
   const handlers: ToolHandlers = {
-    create_crm_from_message: async (value) => (await crm()).createFromMessage(value),
-    list_crm_activity: async (value) => (await crm()).activity(value),
-    get_crm_settings: async () => (await crm()).settings(),
-    update_crm_settings: async (value) => (await crm()).updateSettings(value),
-    create_crm_follow_up: async (value) => (await crm()).createFollowUp(value),
-    list_crm_records: async (value) => (await crm()).list(value),
-    get_crm_record: async (value) => (await crm()).get(value),
-    get_crm_pipeline: async () => (await crm()).pipeline(),
-    create_crm_account: async (value) => (await crm()).createAccount(value),
-    update_crm_account: async (value) => (await crm()).updateAccount(value),
-    create_crm_contact: async (value) => (await crm()).createContact(value),
-    update_crm_contact: async (value) => (await crm()).updateContact(value),
-    create_crm_deal: async (value) => (await crm()).createDeal(value),
-    update_crm_deal: async (value) => (await crm()).updateDeal(value),
-    transition_crm_deal: async (value) => (await crm()).transition(value),
-    list_crm_interactions: async (value) => (await crm()).listInteractions(value),
-    create_crm_interaction: async (value) => (await crm()).createInteraction(value),
-    publish_crm_interaction: async (value) => (await crm()).publishInteraction(value),
+    create_crm_from_message: async (value) => crm().createFromMessage(value),
+    list_crm_activity: async (value) => crm().activity(value),
+    get_crm_settings: async () => crm().settings(),
+    update_crm_settings: async (value) => crm().updateSettings(value),
+    create_crm_follow_up: async (value) => crm().createFollowUp(value),
+    list_crm_records: async (value) => crm().list(value),
+    get_crm_record: async (value) => crm().get(value),
+    get_crm_pipeline: async () => crm().pipeline(),
+    create_crm_account: async (value) => crm().createAccount(value),
+    update_crm_account: async (value) => crm().updateAccount(value),
+    create_crm_contact: async (value) => crm().createContact(value),
+    update_crm_contact: async (value) => crm().updateContact(value),
+    create_crm_deal: async (value) => crm().createDeal(value),
+    update_crm_deal: async (value) => crm().updateDeal(value),
+    transition_crm_deal: async (value) => crm().transition(value),
+    list_crm_interactions: async (value) => crm().listInteractions(value),
+    create_crm_interaction: async (value) => crm().createInteraction(value),
+    publish_crm_interaction: async (value) => crm().publishInteraction(value),
     get_me: () => context.getMe(actor, userName),
     search: (value) => context.search(value),
     list_assignees: (value) => context.listAssignees(value),
@@ -174,36 +174,36 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
       await ctx.requireAccess(previous.entityId, "view");
     },
     async update_crm_settings() {
-      await (await crm()).requireSettingsAdmin();
+      await crm().requireSettingsAdmin();
     },
     async create_crm_follow_up(value, previous) {
       await tasks.get(previous.id);
       await ctx.requireAccess(value.entityId, "view");
     },
     async create_crm_account(_, previous) {
-      await (await crm()).get({ kind: "account", entityId: previous.record.entityId });
+      await crm().get({ kind: "account", entityId: previous.record.entityId });
     },
     async update_crm_account(value) {
-      await (await crm()).get({ kind: "account", entityId: value.entityId });
+      await crm().get({ kind: "account", entityId: value.entityId });
     },
     async create_crm_contact(_, previous) {
-      await (await crm()).get({ kind: "contact", entityId: previous.record.entityId });
+      await crm().get({ kind: "contact", entityId: previous.record.entityId });
     },
     async update_crm_contact(value) {
-      await (await crm()).get({ kind: "contact", entityId: value.entityId });
+      await crm().get({ kind: "contact", entityId: value.entityId });
     },
     async create_crm_deal(value, previous) {
-      const tools = await crm();
+      const tools = crm();
       await tools.get({ kind: "deal", entityId: previous.record.entityId });
       await tools.requireDealRelations(value);
     },
     async update_crm_deal(value) {
-      const tools = await crm();
+      const tools = crm();
       await tools.get({ kind: "deal", entityId: value.entityId });
       await tools.requireDealRelations(value);
     },
     async transition_crm_deal(value, previous) {
-      const tools = await crm();
+      const tools = crm();
       await tools.get({ kind: "deal", entityId: value.entityId });
       if (previous.record.accountEntityId)
         await tools.get(
@@ -214,7 +214,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
         );
     },
     async create_crm_interaction(_, previous) {
-      await (await crm()).requireInteraction(previous.record.entityId);
+      await crm().requireInteraction(previous.record.entityId);
     },
     async create_task(value, previous) {
       await tasks.get(previous.id);
@@ -264,7 +264,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     await recheck(input, result);
     if (tool === "create_crm_from_message") {
       const previous = mcpTools.create_crm_from_message.output.parse(result);
-      const current = await (await crm()).fromMessageView(previous);
+      const current = await crm().fromMessageView(previous);
       // SAFETY: rebuild the current public projection, then cross the same output boundary.
       result = definition.output.parse(JSON.parse(JSON.stringify(current))) as McpOutput<K>;
     }

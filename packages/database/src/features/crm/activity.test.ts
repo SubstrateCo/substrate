@@ -1,10 +1,13 @@
+import { realtimeKeys } from "@substrate/contracts/realtime";
+
 import { actors } from "../../core/actors/schema";
 import { contactRepository } from "../../core/contacts/repository";
+import { commit, RepositoryEffects } from "../../core/effects";
 import { RepositoryContext } from "../../core/repository-context";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
-import { contactActions } from "../contacts/contact-actions";
+import { contactApplicationRepository } from "../contacts/repository";
 import { listCrmActivity, recordCrmActivity } from "./activity";
 import { crmActivityEvents } from "./activity.schema";
 import { expect, test } from "bun:test";
@@ -186,14 +189,14 @@ test("a domain failure rolls back both changed data and its activity", async () 
 });
 
 test("contact updates record only changed field names and concurrent retries do not duplicate history", async () => {
-  const repo = contactActions(ctx());
-  const target = await repo.create({ displayName: "Customer" });
+  const repo = contactApplicationRepository(ctx());
+  const target = await repo.createContact({ displayName: "Customer" });
   await Promise.all([
-    repo.update(target.entityId, { notes: "Sensitive note" }),
-    repo.update(target.entityId, { notes: "Sensitive note" }),
+    repo.updateContact(target.entityId, { notes: "Sensitive note" }),
+    repo.updateContact(target.entityId, { notes: "Sensitive note" }),
   ]);
-  await repo.update(target.entityId, { notes: "Sensitive note" });
-  await repo.update(target.entityId, {});
+  await repo.updateContact(target.entityId, { notes: "Sensitive note" });
+  await repo.updateContact(target.entityId, {});
   const page = await listCrmActivity(ctx(), target.entityId);
   expect(page.items).toHaveLength(2);
   expect(page.items.filter((item) => item.action === "updated")).toMatchObject([
@@ -210,6 +213,55 @@ test("contact updates record only changed field names and concurrent retries do 
   expect(
     await rejection(recordCrmActivity(ctx(), badInput as Parameters<typeof recordCrmActivity>[1])),
   ).toMatchObject({ name: "ValidationError" });
+});
+
+test("no-op contact updates retain context hints without adding activity or accepting unknown fields", async () => {
+  const repo = contactApplicationRepository(ctx());
+  const target = await repo.createContact({ displayName: "Customer" });
+  for (const input of [
+    {},
+    { displayName: "Customer" },
+    { displayName: "Customer", organizationId: f.orgB, notes: undefined },
+  ]) {
+    const committed = await commit(f.db, (tx) =>
+      contactApplicationRepository(
+        new RepositoryContext(tx, { organizationId: f.orgA, actorEntityId: f.alice }),
+      ).updateContact(target.entityId, input),
+    );
+    expect(committed.result).toEqual(target);
+    expect(committed.hints).toContainEqual({
+      audience: realtimeKeys.entity(f.orgA, target.entityId),
+      domain: "context",
+    });
+  }
+  const page = await listCrmActivity(ctx(), target.entityId);
+  expect(page.items).toHaveLength(1);
+  expect(page.items[0]!.action).toBe("created");
+  expect(await contactRepository(ctx()).get(target.entityId)).toEqual(target);
+});
+
+test("contact application updates roll back data, activity and context hints together", async () => {
+  const target = await contact();
+  const effects = new RepositoryEffects();
+  const context = new RepositoryContext(
+    f.db,
+    { organizationId: f.orgA, actorEntityId: f.alice },
+    effects,
+  );
+  const failure = new Error("Abort contact update");
+  expect(
+    await rejection(
+      context.transaction(async (tx) => {
+        await contactApplicationRepository(tx).updateContact(target.entityId, {
+          notes: "Must roll back",
+        });
+        throw failure;
+      }),
+    ),
+  ).toBe(failure);
+  expect((await contactRepository(ctx()).get(target.entityId)).notes).toBeNull();
+  expect((await listCrmActivity(ctx(), target.entityId)).items).toHaveLength(0);
+  expect(effects.committed(null).hints).toEqual([]);
 });
 
 test("pagination returns every event once even with tied timestamps and more than fifty events", async () => {

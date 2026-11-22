@@ -16,11 +16,7 @@ import { messagingParticipants } from "../schema";
 import { createMessagingService } from "../service";
 import { messagingConnections, messagingInvitations } from "../sharing.schema";
 import { messagingSharingEvents } from "../sharing.schema";
-import {
-  claimSharingMail as claimCommittedSharingMail,
-  clearMembershipSharing as clearCommittedMembershipSharing,
-} from "./committed";
-import { clearMembershipSharing } from "./connections";
+import { claimSharingMail as claimCommittedSharingMail, clearMembershipSharing } from "./committed";
 import { readSharingInvitation } from "./invitations";
 import { claimSharingMail, finishSharingMail } from "./mail";
 import { createSharingService } from "./service";
@@ -67,16 +63,13 @@ test("membership cleanup uses one transaction, collects hints and rolls back on 
       }),
     );
   const db = track(f.db);
-  for (const clear of [clearMembershipSharing, clearCommittedMembershipSharing]) {
-    count = 0;
-    expect(await rejection(clear(db, "outsider", f.orgB))).toBe(failure);
-    expect(count).toBe(1);
-    expect(await f.db.select().from(messagingParticipants)).toEqual(before);
-    expect(await f.db.select().from(messagingInvitations)).toEqual(invitationsBefore);
-  }
+  expect(await rejection(clearMembershipSharing(db, "outsider", f.orgB))).toBe(failure);
+  expect(count).toBe(1);
+  expect(await f.db.select().from(messagingParticipants)).toEqual(before);
+  expect(await f.db.select().from(messagingInvitations)).toEqual(invitationsBefore);
   count = 0;
   abort = false;
-  const committed = await clearCommittedMembershipSharing(db, "outsider", f.orgB);
+  const committed = await clearMembershipSharing(db, "outsider", f.orgB);
   expect(count).toBe(1);
   expect(committed.result).toBeNull();
   expect(committed.hints).toContainEqual({
