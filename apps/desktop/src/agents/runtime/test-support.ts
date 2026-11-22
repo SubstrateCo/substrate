@@ -6,6 +6,7 @@ import {
   type AgentWakeRequestDetail,
   type AgentWakeView,
 } from "@substrate/contracts/agent-work";
+import type { AppSettings } from "@substrate/contracts/apps";
 import {
   isHarnessErrorCode,
   type AdapterCapabilities,
@@ -138,6 +139,7 @@ export async function runtimeFixture(
   await mkdir(join(tmpdir(), "opencode"), { recursive: true });
   const accountDirectory = await mkdtemp(join(tmpdir(), "opencode", "agent-work-host-"));
   let now = options.now ?? Date.parse("2026-06-01T10:00:00Z");
+  const apps: AppSettings = { organizationId, enabledApps: ["messages", "agents"] };
   const wakes: AgentWakeView[] = [];
   const acked = new Set<string>();
   const messages = new Map<string, AgentSourceMessage>();
@@ -346,6 +348,7 @@ export async function runtimeFixture(
           invalidate: () => {},
         },
         profile: async () => "",
+        enabledApps: async () => apps.enabledApps,
         now: () => now,
         log: () => {},
       },
@@ -437,6 +440,7 @@ export async function runtimeFixture(
 
   return {
     store,
+    apps,
     get runtime() {
       return runtime;
     },

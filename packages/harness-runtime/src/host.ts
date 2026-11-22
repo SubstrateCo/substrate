@@ -279,6 +279,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
     // The instructions file follows the agent at each open, not only at first write.
     await writeDefaultFiles(folder, command.organizationId, agent, {
       replace: true,
+      enabledApps: configuration.enabledApps,
       managedPrefix: definition.prefixChannel === "instructions" ? command.prefix : undefined,
     });
     const lease = agent.useStartupDefaults
@@ -286,7 +287,10 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
           organizationId: command.organizationId,
           agentId: agent.id,
           sessionId: command.sessionId,
-          tools: leaseTools(command.folder === "main" ? "main" : "helper"),
+          tools: leaseTools(
+            command.folder === "main" ? "main" : "helper",
+            configuration.enabledApps,
+          ),
           folder,
           agentFolder,
         })
@@ -624,7 +628,10 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         ?.agents.find((entry) => entry.id === scope.agentId && entry.harness === scope.harness);
       if (!agent)
         throw new HarnessError("agent-not-found", "Agent is not configured for this harness.");
-      await writeDefaultFiles(root, scope.organizationId, agent, { replace: true });
+      await writeDefaultFiles(root, scope.organizationId, agent, {
+        replace: true,
+        enabledApps: configurations.get(scope.organizationId)?.enabledApps,
+      });
     },
     async inspect() {
       assertOpen();

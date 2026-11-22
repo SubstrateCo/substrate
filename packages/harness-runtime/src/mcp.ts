@@ -80,7 +80,7 @@ export interface McpLease {
 export const mcpServerInfo = { name: "substrate", version: "1.0.0" };
 
 export const mcpInstructions =
-  "Substrate connects workspace search, messages, tasks, CRM, and record links. " +
+  "Substrate connects workspace search, messages, and enabled workspace apps. Tasks and CRM are optional. " +
   "Use your harness's tool discovery to discover relevant operations when their schemas are not loaded; " +
   "do not assume a capability is unavailable just because its tool is not listed in context. " +
   "Load the relevant domain skills for workflow guidance. Only tools offered to this session are available; " +
@@ -138,6 +138,8 @@ function errorHint(code: string) {
       return "Stop. Tell your owner to sign in to Substrate in this workspace and start a new run.";
     case "NO_TURN":
       return "Do not retry. Substrate tools work only while a turn is running.";
+    case "APP_DISABLED":
+      return "Stop this workflow. Do not retry or use another tool to bypass the disabled app. Tell your owner the app must be enabled first.";
     default:
       return "Retry once. If it fails again, stop and report the error to your owner.";
   }

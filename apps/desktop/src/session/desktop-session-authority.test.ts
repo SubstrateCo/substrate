@@ -72,3 +72,24 @@ test("invalidation rejects an old verification and drops the catalog cache", asy
   expect(catalogCalls).toBe(2);
   expect(changes).toBe(2);
 });
+
+test("app settings come from the server and refresh after a workspace hint", async () => {
+  let enabledApps = ["messages", "agents", "tasks"];
+  const authority = new DesktopSessionAuthority({
+    backend: "https://api.example.com",
+    fetchAPI: async (url) => {
+      if (new URL(url).pathname === "/api/auth/get-session")
+        return Response.json({
+          user: { id: "user", emailVerified: true },
+          session: { activeOrganizationId: "org" },
+        });
+      if (url.includes("get-active-member-role")) return Response.json({ role: "member" });
+      expect(new URL(url).searchParams.get("organizationId")).toBe("org");
+      return Response.json({ success: true, data: { organizationId: "org", enabledApps } });
+    },
+  });
+  expect((await authority.appSettings()).enabledApps).toContain("tasks");
+  enabledApps = ["messages", "agents"];
+  authority.invalidate();
+  expect((await authority.appSettings()).enabledApps).not.toContain("tasks");
+});

@@ -7,6 +7,7 @@ import {
   type ProposalTargetBasis,
 } from "@substrate/contracts/agent-work";
 
+import { requireAppEnabled } from "../../core/apps/access";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { messageReferences } from "../../core/text/references";
@@ -63,6 +64,7 @@ export async function checkProposalAccess(
       return { type: action.type, conversationId, threadId, ...target };
     }
     case "create_task": {
+      await requireAppEnabled(ctx, "tasks");
       const { projectId, parentTaskId } = action.input;
       if (lock) await ctx.lockAccessPaths(parentTaskId ? [projectId, parentTaskId] : [projectId]);
       const project = await editableWork(ctx, projectId);
@@ -74,6 +76,7 @@ export async function checkProposalAccess(
       return { type: action.type, projectUpdatedAt: project.version, parentTaskUpdatedAt };
     }
     case "update_task": {
+      await requireAppEnabled(ctx, "tasks");
       if (lock) await ctx.lockAccessPaths([action.input.taskId]);
       const task = await editableWork(ctx, action.input.taskId);
       if (task.entityType !== "task") throw new AccessDeniedError();

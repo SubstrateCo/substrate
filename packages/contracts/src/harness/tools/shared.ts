@@ -1,6 +1,8 @@
+import type { AppId } from "../../apps/index.ts";
 import { z } from "zod";
 
 export interface ToolDefinition {
+  requiredApps?: readonly AppId[];
   title: string;
   description: string;
   readOnly: boolean;

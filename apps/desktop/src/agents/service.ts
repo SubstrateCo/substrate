@@ -154,6 +154,7 @@ export function createAgentWorkService(options: {
         server,
         harness: options.harness,
         agents,
+        enabledApps: async () => (await authority.appSettings()).enabledApps,
         profile: (agentId) => options.harness.readProfile(agentId).catch(() => ""),
         now: () => Date.now(),
         log,
@@ -304,7 +305,11 @@ export function createAgentWorkService(options: {
       if (event.domain === "agent-work")
         void ensure().then((current) => available(current)?.runtime.hint());
       if (event.domain === "session" || event.domain === "organization")
-        void ensure().then((current) => available(current)?.runtime.sync());
+        void ensure().then((current) => {
+          if (!available(current)) return;
+          current?.runtime.agentsChanged();
+          return current?.runtime.sync();
+        });
     },
     /** Harness events reach the store before anything else. */
     onHarnessEvent(event: HarnessEvent) {

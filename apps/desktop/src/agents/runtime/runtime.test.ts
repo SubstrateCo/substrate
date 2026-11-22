@@ -72,6 +72,31 @@ test("a message the owner can no longer see is dropped and starts no turn", asyn
   expect(turns).toEqual([]);
 });
 
+test("app changes rotate the epoch without changing its frozen managed prefix", async () => {
+  const f = await started();
+  const { conversationId } = f.ownerMessage();
+  await f.runtime.sync();
+  await f.advance(600);
+  const turn = f.turns().at(-1)!;
+  const before = await f.store.sessions.get(turn.sessionId);
+  expect(before?.prefix).toContain("Enabled workspace apps:");
+  f.apps.enabledApps = ["messages", "agents", "tasks"];
+  f.runtime.agentsChanged();
+  await f.runtime.sync();
+  await f.settle();
+  const after = await f.store.sessions.get(turn.sessionId);
+  expect(after?.prefix).toBe(before?.prefix);
+  expect(after?.rotation).toBe("policy");
+  await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
+  const handoff = f.turns().at(-1)!;
+  expect(handoff.context.purpose).toBe("handoff");
+  await f.emit(handoff.turnId, { type: "turn.completed", result: { status: "completed" } });
+  await f.message({ conversationId });
+  const fresh = await f.store.sessions.get(turn.sessionId);
+  expect(fresh?.epoch).toBe(1);
+  expect(fresh?.prefix).toContain("Enabled workspace apps: messages, agents, tasks");
+});
+
 test("a reply recorded from the MCP call makes the turn replied", async () => {
   const f = await started();
   const { conversationId } = f.ownerMessage();

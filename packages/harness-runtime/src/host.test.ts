@@ -112,7 +112,11 @@ async function host(
     },
   });
   created.subscribe((event) => events.push(event));
-  await created.configure({ organizationId: "org-a", agents: [agent()] });
+  await created.configure({
+    organizationId: "org-a",
+    enabledApps: ["messages", "agents", "tasks", "crm"],
+    agents: [agent()],
+  });
   return { host: created, native, events };
 }
 

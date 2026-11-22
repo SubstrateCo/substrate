@@ -9,6 +9,7 @@ import { SettingsNav, type SettingsNavGroup } from "@/components/settings/settin
 import { currentOrganizationQueryOptions } from "@/queries/organizations/options";
 import {
   Building2,
+  Blocks,
   Globe,
   Hash,
   Mail,
@@ -45,16 +46,19 @@ export function SettingsShell({
     organization.data?.id === organizationId ? organization.data.role : undefined,
   );
   const groups: SettingsNavGroup[] = [accountGroup];
-  if (organizationId && access.allowed)
+  if (organizationId)
     groups.push({
       label: organization.data?.name || "Organization",
-      items: [
-        { to: "/settings/organization", label: "General", icon: Building2 },
-        { to: "/settings/organization/members", label: "Members", icon: Users },
-        { to: "/settings/organization/invitations", label: "Invitations", icon: Send },
-        { to: "/settings/organization/conversations", label: "Conversations", icon: Hash },
-        { to: "/settings/organization/sharing", label: "External collaboration", icon: Globe },
-      ],
+      items: access.allowed
+        ? [
+            { to: "/settings/organization/apps", label: "Apps", icon: Blocks },
+            { to: "/settings/organization", label: "General", icon: Building2 },
+            { to: "/settings/organization/members", label: "Members", icon: Users },
+            { to: "/settings/organization/invitations", label: "Invitations", icon: Send },
+            { to: "/settings/organization/conversations", label: "Conversations", icon: Hash },
+            { to: "/settings/organization/sharing", label: "External collaboration", icon: Globe },
+          ]
+        : [{ to: "/settings/organization/apps", label: "Apps", icon: Blocks }],
     });
   return (
     <PageLayout id="settings" aria-label="Settings">

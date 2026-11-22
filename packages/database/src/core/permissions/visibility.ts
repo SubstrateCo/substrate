@@ -1,9 +1,12 @@
+import { requiredAppsForEntityType } from "@substrate/contracts/apps";
+
 import { activeActorCondition, permissionActorEntityId } from "../actors/access";
 import { actors } from "../actors/schema";
-import { entities, type entityType } from "../entities/schema";
+import { entities, entityType } from "../entities/schema";
 import { adminRoleCondition } from "../organizations/roles";
-import { member } from "../organizations/schema";
+import { member, organization } from "../organizations/schema";
 import type { AccessPathLockMode, ActorScope, PermissionLevel } from "../repository-context";
+import { entityAppsEnabled } from "./app-visibility";
 import { entityGrants } from "./schema";
 import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
 
@@ -52,7 +55,7 @@ function visibleEntitiesQuery(scope: ScopeExpression) {
     JOIN ${entities} c ON c.organization_id = g.organization_id AND c.entity_id = g.entity_id
       AND c.deleted_at IS NULL
     JOIN ${entities} e ON e.organization_id = c.organization_id AND e.access_entity_id = c.entity_id
-      AND e.deleted_at IS NULL
+      AND e.deleted_at IS NULL AND ${entityAppsEnabled(scope.organizationId, sql`e.entity_type`)}
     WHERE g.organization_id = ${scope.organizationId} AND g.actor_entity_id = ${permissionActorEntityId(scope)}`;
 }
 
@@ -84,6 +87,7 @@ function adminOwnsCondition(scope: ScopeExpression, entityId: SQLWrapper) {
       AND ac.deleted_at IS NULL
     WHERE ae.organization_id = ${scope.organizationId} AND ae.entity_id = ${entityId}
       AND ae.deleted_at IS NULL AND ac.entity_type IN (${adminEntityTypes})
+      AND ${entityAppsEnabled(scope.organizationId, sql`ae.entity_type`)}
   ))`;
 }
 
@@ -115,7 +119,7 @@ export function entityAccessLevel(
     LEFT JOIN ${entityGrants} g ON g.organization_id = c.organization_id AND g.entity_id = c.entity_id
       AND g.actor_entity_id = ${permissionActorEntityId(scope)}
     WHERE e.organization_id = ${scope.organizationId} AND e.entity_id = ${entityId}
-      AND e.deleted_at IS NULL)`;
+      AND e.deleted_at IS NULL AND ${entityAppsEnabled(scope.organizationId, sql`e.entity_type`)})`;
 }
 
 // Materialize the global order before the correlated locking subqueries run: containers first,
@@ -130,10 +134,39 @@ export function lockAccessPaths(
     entityIds.map((id) => sql`${id}::uuid`),
     sql`, `,
   );
+  const appTypes = entityType.enumValues.filter((type) => requiredAppsForEntityType(type).length);
+  const needsAppLock = appTypes.length
+    ? sql`EXISTS (SELECT 1 FROM ${entities} app_target
+        WHERE app_target.organization_id = ${scope.organizationId}
+          AND app_target.entity_id IN (${ids})
+          AND app_target.entity_type IN (${sql.join(
+            appTypes.map((type) => sql`${type}`),
+            sql`, `,
+          )}))`
+    : sql`false`;
+  // Optional-app writes share the settings writer's organization lock. Keep this before entity
+  // locks, but take no organization lock for shared records or an inactive scope. Authorization
+  // is read in a later statement, after any disable that made this lock wait has committed.
   return sql`WITH access_paths AS MATERIALIZED (
   SELECT e.entity_id, (${mode === "structural"} OR e.entity_id IN (${ids})) AS exclusive_lock
   FROM ${entities} e
-  WHERE e.organization_id = ${scope.organizationId} AND (e.entity_id IN (${ids})
+  CROSS JOIN (
+    SELECT count(*) AS checked FROM (
+      SELECT app_org.id FROM ${organization} app_org
+      WHERE app_org.id = ${scope.organizationId} AND ${needsAppLock}
+        AND EXISTS (
+          SELECT 1 FROM ${actors}
+          JOIN ${entities} actor_entity ON actor_entity.entity_id = ${actors.entityId}
+            AND actor_entity.organization_id = ${actors.organizationId}
+          WHERE ${actors.organizationId} = ${scope.organizationId}
+            AND ${actors.entityId} = ${scope.actorEntityId}
+            AND ${activeActorCondition()} AND actor_entity.deleted_at IS NULL
+        )
+      FOR SHARE OF app_org
+    ) app_lock
+  ) app_guard
+  WHERE app_guard.checked >= 0
+    AND e.organization_id = ${scope.organizationId} AND (e.entity_id IN (${ids})
       OR e.entity_id IN (SELECT access_entity_id FROM ${entities}
         WHERE organization_id = ${scope.organizationId} AND entity_id IN (${ids})))
     AND EXISTS (

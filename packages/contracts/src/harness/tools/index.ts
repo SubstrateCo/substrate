@@ -1,5 +1,6 @@
 export {
   leaseTools,
+  toolApps,
   localToolCall,
   mcpCall,
   mcpTools,

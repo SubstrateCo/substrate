@@ -1,3 +1,4 @@
+import { appEnabled, type AppId } from "../../apps/index.ts";
 import { turnContextSchema } from "../turn-context.ts";
 import { contextTools } from "./context.ts";
 import { crmTools } from "./crm.ts";
@@ -12,12 +13,22 @@ import { z } from "zod";
 export type ToolScope = "server" | "local";
 
 const serverTools = {
-  ...crmTools,
+  ...required(crmTools, ["crm"]),
   ...contextTools,
-  ...taskTools,
+  ...required(taskTools, ["tasks"]),
   ...messagingTools,
   ...linkTools,
 } as const satisfies Record<string, ToolDefinition>;
+
+function required<T extends Record<string, ToolDefinition>>(tools: T, apps: readonly AppId[]) {
+  // SAFETY: this adds app metadata without changing any tool's schemas.
+  return Object.fromEntries(
+    Object.entries(tools).map(([name, tool]) => [
+      name,
+      { ...tool, requiredApps: name === "create_crm_follow_up" ? ["crm", "tasks"] : apps },
+    ]),
+  ) as { [K in keyof T]: T[K] & { requiredApps: readonly AppId[] } };
+}
 
 type Scoped<T, S extends ToolScope> = { [K in keyof T]: T[K] & { scope: S } };
 function scoped<T extends Record<string, ToolDefinition>, S extends ToolScope>(
@@ -63,12 +74,21 @@ export const localToolCall = z
 const mainOnlyServerTools: ReadonlySet<string> = new Set(["reply", "propose"]);
 
 /** Tools offered on a lease. Helper sessions cannot publish, manage helpers, or edit memory. */
-export function leaseTools(session: "main" | "helper"): McpToolName[] {
+export function leaseTools(
+  session: "main" | "helper",
+  enabledApps: readonly AppId[] = [],
+): McpToolName[] {
   // SAFETY: Object.keys reads the statically defined registry above.
   return (Object.keys(mcpTools) as McpToolName[]).filter((name) => {
+    if (!toolApps(name).every((app) => appEnabled(enabledApps, app))) return false;
     if (session === "main") return name !== "finish_helper";
     return mcpTools[name].scope === "server"
       ? !mainOnlyServerTools.has(name)
       : name === "finish_helper";
   });
+}
+
+export function toolApps(name: McpToolName): readonly AppId[] {
+  const definition: ToolDefinition = mcpTools[name];
+  return definition.requiredApps ?? [];
 }

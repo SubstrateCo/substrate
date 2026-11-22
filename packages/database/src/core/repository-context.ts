@@ -1,7 +1,10 @@
+import { requiredAppsForEntityType } from "@substrate/contracts/apps";
+
 import type { DatabaseExecutor } from "../client";
 import { AccessDeniedError, ValidationError } from "../errors";
 import { activeActorCondition, permissionActorEntityId } from "./actors/access";
 import { actors } from "./actors/schema";
+import { requireAppEnabled } from "./apps/access";
 import { effectExecutor, effectsFor, type RepositoryEffects } from "./effects";
 import { rootEntityValues } from "./entities/identity";
 import { entities } from "./entities/schema";
@@ -237,6 +240,9 @@ export class RepositoryContext {
 
   // A root entity owned by the actor's person. Children use createChildEntity.
   async createEntity(entityType: typeof entities.$inferInsert.entityType) {
+    for (const app of requiredAppsForEntityType(entityType)) {
+      if (app === "tasks" || app === "crm") await requireAppEnabled(this, app);
+    }
     await this.requireActiveActor();
     const [entity] = await this.db
       .insert(entities)
@@ -256,6 +262,11 @@ export class RepositoryContext {
     entityType: typeof entities.$inferInsert.entityType,
     parent: LockedAccess<"edit">,
   ) {
+    const parentApps = requiredAppsForEntityType(parent.entity.entityType);
+    for (const app of requiredAppsForEntityType(entityType)) {
+      if (!parentApps.includes(app) && (app === "tasks" || app === "crm"))
+        await requireAppEnabled(this, app);
+    }
     const [entity] = await this.db
       .insert(entities)
       .values({

@@ -37,6 +37,7 @@ import { Route as AuthenticatedFrameWorkspaceContactsIndexRouteImport } from './
 import { Route as AuthenticatedFrameWorkspaceCrmIndexRouteImport } from './routes/_authenticated/_frame/_workspace/crm/index'
 import { Route as AuthenticatedFrameWorkspaceTasksIndexRouteImport } from './routes/_authenticated/_frame/_workspace/tasks/index'
 import { Route as AuthenticatedFrameSettingsOrganizationIndexRouteImport } from './routes/_authenticated/_frame/settings/organization/index'
+import { Route as AuthenticatedFrameSettingsOrganizationAppsRouteImport } from './routes/_authenticated/_frame/settings/organization/apps'
 import { Route as AuthenticatedFrameSettingsOrganizationConversationsRouteImport } from './routes/_authenticated/_frame/settings/organization/conversations'
 import { Route as AuthenticatedFrameSettingsOrganizationInvitationsRouteImport } from './routes/_authenticated/_frame/settings/organization/invitations'
 import { Route as AuthenticatedFrameSettingsOrganizationMembersRouteImport } from './routes/_authenticated/_frame/settings/organization/members'
@@ -196,6 +197,12 @@ const AuthenticatedFrameSettingsOrganizationIndexRoute =
     path: '/',
     getParentRoute: () => AuthenticatedFrameSettingsOrganizationRouteRoute,
   } as any)
+const AuthenticatedFrameSettingsOrganizationAppsRoute =
+  AuthenticatedFrameSettingsOrganizationAppsRouteImport.update({
+    id: '/apps',
+    path: '/apps',
+    getParentRoute: () => AuthenticatedFrameSettingsOrganizationRouteRoute,
+  } as any)
 const AuthenticatedFrameSettingsOrganizationConversationsRoute =
   AuthenticatedFrameSettingsOrganizationConversationsRouteImport.update({
     id: '/conversations',
@@ -258,6 +265,7 @@ export interface FileRoutesByFullPath {
   '/accept-invitation/$invitationId': typeof AuthenticatedStandaloneAcceptInvitationInvitationIdRoute
   '/accept-sharing/$invitationId': typeof AuthenticatedStandaloneAcceptSharingInvitationIdRoute
   '/setup/complete': typeof AuthenticatedStandaloneSetupCompleteRoute
+  '/settings/organization/apps': typeof AuthenticatedFrameSettingsOrganizationAppsRoute
   '/settings/organization/conversations': typeof AuthenticatedFrameSettingsOrganizationConversationsRoute
   '/settings/organization/invitations': typeof AuthenticatedFrameSettingsOrganizationInvitationsRoute
   '/settings/organization/members': typeof AuthenticatedFrameSettingsOrganizationMembersRoute
@@ -288,6 +296,7 @@ export interface FileRoutesByTo {
   '/accept-invitation/$invitationId': typeof AuthenticatedStandaloneAcceptInvitationInvitationIdRoute
   '/accept-sharing/$invitationId': typeof AuthenticatedStandaloneAcceptSharingInvitationIdRoute
   '/setup/complete': typeof AuthenticatedStandaloneSetupCompleteRoute
+  '/settings/organization/apps': typeof AuthenticatedFrameSettingsOrganizationAppsRoute
   '/settings/organization/conversations': typeof AuthenticatedFrameSettingsOrganizationConversationsRoute
   '/settings/organization/invitations': typeof AuthenticatedFrameSettingsOrganizationInvitationsRoute
   '/settings/organization/members': typeof AuthenticatedFrameSettingsOrganizationMembersRoute
@@ -326,6 +335,7 @@ export interface FileRoutesById {
   '/_authenticated/_standalone/accept-invitation/$invitationId': typeof AuthenticatedStandaloneAcceptInvitationInvitationIdRoute
   '/_authenticated/_standalone/accept-sharing/$invitationId': typeof AuthenticatedStandaloneAcceptSharingInvitationIdRoute
   '/_authenticated/_standalone/setup/complete': typeof AuthenticatedStandaloneSetupCompleteRoute
+  '/_authenticated/_frame/settings/organization/apps': typeof AuthenticatedFrameSettingsOrganizationAppsRoute
   '/_authenticated/_frame/settings/organization/conversations': typeof AuthenticatedFrameSettingsOrganizationConversationsRoute
   '/_authenticated/_frame/settings/organization/invitations': typeof AuthenticatedFrameSettingsOrganizationInvitationsRoute
   '/_authenticated/_frame/settings/organization/members': typeof AuthenticatedFrameSettingsOrganizationMembersRoute
@@ -359,6 +369,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/accept-sharing/$invitationId'
     | '/setup/complete'
+    | '/settings/organization/apps'
     | '/settings/organization/conversations'
     | '/settings/organization/invitations'
     | '/settings/organization/members'
@@ -389,6 +400,7 @@ export interface FileRouteTypes {
     | '/accept-invitation/$invitationId'
     | '/accept-sharing/$invitationId'
     | '/setup/complete'
+    | '/settings/organization/apps'
     | '/settings/organization/conversations'
     | '/settings/organization/invitations'
     | '/settings/organization/members'
@@ -426,6 +438,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_standalone/accept-invitation/$invitationId'
     | '/_authenticated/_standalone/accept-sharing/$invitationId'
     | '/_authenticated/_standalone/setup/complete'
+    | '/_authenticated/_frame/settings/organization/apps'
     | '/_authenticated/_frame/settings/organization/conversations'
     | '/_authenticated/_frame/settings/organization/invitations'
     | '/_authenticated/_frame/settings/organization/members'
@@ -642,6 +655,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrameSettingsOrganizationIndexRouteImport
       parentRoute: typeof AuthenticatedFrameSettingsOrganizationRouteRoute
     }
+    '/_authenticated/_frame/settings/organization/apps': {
+      id: '/_authenticated/_frame/settings/organization/apps'
+      path: '/apps'
+      fullPath: '/settings/organization/apps'
+      preLoaderRoute: typeof AuthenticatedFrameSettingsOrganizationAppsRouteImport
+      parentRoute: typeof AuthenticatedFrameSettingsOrganizationRouteRoute
+    }
     '/_authenticated/_frame/settings/organization/conversations': {
       id: '/_authenticated/_frame/settings/organization/conversations'
       path: '/conversations'
@@ -728,6 +748,7 @@ const AuthenticatedFrameWorkspaceRouteRouteWithChildren =
   )
 
 interface AuthenticatedFrameSettingsOrganizationRouteRouteChildren {
+  AuthenticatedFrameSettingsOrganizationAppsRoute: typeof AuthenticatedFrameSettingsOrganizationAppsRoute
   AuthenticatedFrameSettingsOrganizationConversationsRoute: typeof AuthenticatedFrameSettingsOrganizationConversationsRoute
   AuthenticatedFrameSettingsOrganizationInvitationsRoute: typeof AuthenticatedFrameSettingsOrganizationInvitationsRoute
   AuthenticatedFrameSettingsOrganizationMembersRoute: typeof AuthenticatedFrameSettingsOrganizationMembersRoute
@@ -737,6 +758,8 @@ interface AuthenticatedFrameSettingsOrganizationRouteRouteChildren {
 
 const AuthenticatedFrameSettingsOrganizationRouteRouteChildren: AuthenticatedFrameSettingsOrganizationRouteRouteChildren =
   {
+    AuthenticatedFrameSettingsOrganizationAppsRoute:
+      AuthenticatedFrameSettingsOrganizationAppsRoute,
     AuthenticatedFrameSettingsOrganizationConversationsRoute:
       AuthenticatedFrameSettingsOrganizationConversationsRoute,
     AuthenticatedFrameSettingsOrganizationInvitationsRoute:

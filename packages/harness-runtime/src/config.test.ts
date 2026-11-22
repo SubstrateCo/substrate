@@ -29,6 +29,7 @@ const agent = (harness: HarnessKind, overrides: Partial<HarnessAgent> = {}): Har
 });
 const configuration = (...agents: HarnessAgent[]): HarnessConfiguration => ({
   organizationId: "org-a",
+  enabledApps: ["messages", "agents", "tasks", "crm"],
   agents,
 });
 const read = (directory: string, path: string) => readFile(join(directory, path), "utf8");
@@ -121,4 +122,29 @@ test("defaults are never written through a symlink", async () => {
     code: "unsafe-path",
   });
   expect(await readFile(outside, "utf8")).toBe("Outside content");
+});
+
+test("disabled apps remove only owned skill files and preserve adjacent user files", async () => {
+  const config = configuration(agent("codex"));
+  await materialize(root, config);
+  const directory = await agentDirectory(root, "org-a", "agent-a");
+  const tasks = ".agents/skills/substrate-tasks";
+  await writeFile(join(directory, tasks, "notes.md"), "User notes");
+  await writeFile(join(directory, ".agents/skills/substrate-crm/SKILL.md"), "User file");
+  config.enabledApps = ["messages", "agents"];
+  await materialize(root, config);
+  expect(await exists(directory, `${tasks}/SKILL.md`)).toBe(false);
+  expect(await read(directory, `${tasks}/notes.md`)).toBe("User notes");
+  expect(await read(directory, ".agents/skills/substrate-crm/SKILL.md")).toBe("User file");
+  expect(await exists(directory, ".agents/skills/substrate-search/SKILL.md")).toBe(true);
+  expect(await exists(directory, ".agents/skills/substrate-messaging/SKILL.md")).toBe(true);
+});
+
+test("optional app skills are absent by default", async () => {
+  await materialize(root, { organizationId: "org-a", agents: [agent("claude")] });
+  const directory = await agentDirectory(root, "org-a", "agent-a");
+  expect((await scanNativeSkills(directory, "claude")).map((skill) => skill.id)).toEqual([
+    "substrate-messaging",
+    "substrate-search",
+  ]);
 });

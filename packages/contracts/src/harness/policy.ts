@@ -1,5 +1,7 @@
+import { appEnabled, appIds, type AppId } from "../apps/index.ts";
+
 /** Change this whenever runtimePolicy changes. A new version rotates every session's epoch. */
-export const POLICY_VERSION = 5;
+export const POLICY_VERSION = 6;
 
 /** Runtime rules for every turn. Turn input never repeats them. */
 export const runtimePolicy = `# How you work in Substrate
@@ -10,6 +12,7 @@ You are an always-on agent. Work reaches you in turns. Each turn is one <turn> b
 
 - Substrate tools may load on demand. If a needed tool is not in context, use your harness's tool discovery before assuming it is unavailable.
 - Load the relevant domain skill for workflow guidance. Skills explain procedures; the discovered tool schema defines the arguments. Discovery does not grant access or approval.
+- Only enabled workspace apps are available. An unavailable app is not a discovery problem. If a tool returns APP_DISABLED, stop that workflow. Do not retry or use another tool to bypass it. Tell your owner that the app must be enabled first.
 
 ## Replying
 
@@ -67,6 +70,11 @@ export interface ManagedPrefixInput {
   organizationId: string;
   /** Contents of memory/profile.md at epoch start, or empty. */
   profile: string;
+  enabledApps?: readonly AppId[];
+}
+
+export function appAvailability(enabledApps: readonly AppId[] = []) {
+  return `Enabled workspace apps: ${appIds.filter((app) => appEnabled(enabledApps, app)).join(", ")}`;
 }
 
 /** The managed prefix. Built once per epoch so that it stays byte-stable. */
@@ -79,6 +87,7 @@ Agent: ${JSON.stringify(input.agentName)}
 Agent definition ID: ${input.agentId}
 Organization ID: ${input.organizationId}
 Policy version: ${POLICY_VERSION}
+${appAvailability(input.enabledApps)}
 
 ## Profile memory
 

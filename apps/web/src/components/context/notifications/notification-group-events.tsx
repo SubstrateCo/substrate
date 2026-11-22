@@ -8,6 +8,7 @@ import { isAccessFailure } from "@/api/access-failure";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { notificationGroupEventsOptions } from "@/queries/context/notification-groups";
 
 export function NotificationGroupEvents({
@@ -20,6 +21,7 @@ export function NotificationGroupEvents({
   onOpen: (item: Notification, event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
   const events = useInfiniteQuery(notificationGroupEventsOptions(organizationId, groupKey));
+  const apps = useOrganizationApps();
   if (events.isPending) return <NotificationRowsLoading label="Loading events" />;
   if (isAccessFailure(events.error))
     return (
@@ -28,7 +30,11 @@ export function NotificationGroupEvents({
         description="You may no longer have access to this activity."
       />
     );
-  const items = (events.data?.pages ?? []).flatMap((page) => page.items);
+  const items = (events.data?.pages ?? []).flatMap((page) =>
+    page.items.filter(
+      (item) => apps.enabled("tasks") || (!item.projectEntityId && item.kind !== "assignment"),
+    ),
+  );
   return (
     <div className="flex flex-col gap-2">
       {events.error && (

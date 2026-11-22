@@ -1,8 +1,10 @@
 import type { RecordArchiveFilter } from "@substrate/contracts/crm/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
+import { requireAppEnabled } from "../../core/apps/access";
 import { contactRepository } from "../../core/contacts/repository";
 import { contacts } from "../../core/contacts/schema";
+import { appEnabledCondition } from "../../core/permissions/app-visibility";
 import { pageSize, type RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
 import { recordCrmActivity } from "../crm/activity";
@@ -60,6 +62,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
           and(
             eq(crmContactProfiles.organizationId, contacts.organizationId),
             eq(crmContactProfiles.contactEntityId, contacts.entityId),
+            appEnabledCondition(org, "crm"),
           ),
         )
         .where(
@@ -104,6 +107,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
           and(
             eq(crmContactProfiles.organizationId, org),
             eq(crmContactProfiles.contactEntityId, id),
+            appEnabledCondition(org, "crm"),
           ),
         );
       return {
@@ -115,6 +119,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
     },
     archive(id: string, archived: boolean) {
       return context.transaction(async (ctx) => {
+        await requireAppEnabled(ctx, "crm");
         const { entity } = await ctx.requireAccess(id, "edit", true);
         if (entity.entityType !== "contact") throw new AccessDeniedError();
         const [previous] = await ctx.db

@@ -72,6 +72,7 @@ export function realtimeQueryTargets(
       if (organizationId)
         targets.push(
           { queryKey: queryKeys.organizationDetail(organizationId) },
+          { queryKey: queryKeys.organizationApps(organizationId) },
           { queryKey: queryKeys.invitations(organizationId) },
         );
       break;

@@ -10,7 +10,7 @@ import { SearchResults } from "@/components/context/search/search-results";
 // "channel" lists channels only, with membership. DMs and group messages appear under "all".
 export type SearchKind = "all" | "task" | "project" | "message" | "channel";
 
-const kinds = ["all", "task", "project", "message", "channel"] as const;
+const defaultKinds = ["all", "task", "project", "message", "channel"] as const;
 const kindLabels = {
   all: "All",
   task: "Tasks",
@@ -35,6 +35,7 @@ function Hint({ keys, label }: { keys: string[]; label: string }) {
 export function WorkspaceSearch({
   query,
   kind,
+  kinds = defaultKinds,
   results,
   loading,
   error,
@@ -48,6 +49,7 @@ export function WorkspaceSearch({
 }: {
   query: string;
   kind: SearchKind;
+  kinds?: readonly SearchKind[];
   results: SearchResultItem[];
   loading: boolean;
   error?: Error | null;

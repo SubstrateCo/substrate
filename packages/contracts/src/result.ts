@@ -2,6 +2,7 @@ export const serviceErrorCodes = [
   "INVALID_INPUT",
   "UNAUTHENTICATED",
   "FORBIDDEN",
+  "APP_DISABLED",
   /** The request names a workspace that is no longer the session's active one. */
   "WORKSPACE_CHANGED",
   "NOT_FOUND",
@@ -17,6 +18,7 @@ export const serviceErrorKinds = {
   INVALID_INPUT: "validation",
   UNAUTHENTICATED: "access",
   FORBIDDEN: "access",
+  APP_DISABLED: "access",
   WORKSPACE_CHANGED: "access",
   NOT_FOUND: "access",
   CONFLICT: "conflict",

@@ -1,3 +1,4 @@
+import { appIds } from "@substrate/contracts/apps";
 import { desktopAgentCatalogSchema } from "@substrate/contracts/harness";
 
 import { createHash } from "node:crypto";
@@ -10,6 +11,10 @@ const verifiedSessionSchema = z.object({
   }),
 });
 const catalogSchema = z.object({ success: z.literal(true), data: desktopAgentCatalogSchema });
+const appSettingsSchema = z.object({
+  success: z.literal(true),
+  data: z.object({ organizationId: z.string(), enabledApps: z.array(z.enum(appIds)) }),
+});
 
 /**
  * The backend answered that this account or membership is no longer valid. Other failures,
@@ -50,6 +55,7 @@ export class DesktopSessionAuthority {
   private verifiedAt = 0;
   private invalidated = false;
   private cachedCatalog: Promise<z.output<typeof desktopAgentCatalogSchema>> | undefined;
+  private cachedApps: Promise<z.output<typeof appSettingsSchema>["data"]> | undefined;
   private listeners = new Set<() => void>();
   private options: AuthorityOptions;
   constructor(options: AuthorityOptions) {
@@ -68,12 +74,35 @@ export class DesktopSessionAuthority {
     this.invalidated = true;
     this.verified = undefined;
     this.cachedCatalog = undefined;
+    this.cachedApps = undefined;
     this.identity = undefined;
     for (const listener of this.listeners) listener();
   }
 
   invalidateCatalog() {
     this.cachedCatalog = undefined;
+    this.cachedApps = undefined;
+  }
+
+  appSettings() {
+    const generation = this.generation;
+    const pending = (this.cachedApps ??= (async () => {
+      const auth = await this.verify();
+      const url = new URL("/api/v1/organizations/apps", this.options.backend);
+      url.searchParams.set("organizationId", auth.organizationId);
+      const response = await this.options.fetchAPI(url.href, { method: "GET", redirect: "error" });
+      if (deniedStatuses.has(response.status))
+        throw new HarnessAccessDenied("App settings access ended.");
+      if (!response.ok) throw new Error("App settings unavailable.");
+      const { data } = appSettingsSchema.parse(await response.json());
+      if (generation !== this.generation || data.organizationId !== auth.organizationId)
+        throw new Error("Session changed.");
+      return data;
+    })());
+    pending.catch(() => {
+      if (this.cachedApps === pending) this.cachedApps = undefined;
+    });
+    return pending;
   }
 
   /** A catalog request must not configure a worker after the backend workspace changed. */

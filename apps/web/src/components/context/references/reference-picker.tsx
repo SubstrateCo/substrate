@@ -9,11 +9,11 @@ import {
   type ReferenceTab,
 } from "@/components/messaging/references/reference-picker";
 import type { ReferenceQuery } from "@/components/messaging/references/reference-query";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { searchOptions } from "@/queries/context/search";
 
 // "All" lists the best few of each kind, people first.
-const mixedKinds = ["person", "agent", "task", "project"] satisfies ReferenceKind[];
 const mixedLimit = 5;
 
 export function ReferencePicker({
@@ -30,12 +30,18 @@ export function ReferencePicker({
   onClose: () => void;
 }) {
   const parsed = activeReference;
+  const apps = useOrganizationApps();
+  const mixedKinds: Extract<ReferenceKind, "person" | "agent" | "task" | "project">[] =
+    apps.enabled("tasks") ? ["person", "agent", "task", "project"] : ["person", "agent"];
+  const kinds: ReferenceTab[] =
+    parsed.trigger === "#" ? ["channel", "thread"] : ["all", ...mixedKinds];
   const query = parsed.query;
   const [selection, setSelection] = useState<{ prefix: string; kind: ReferenceTab }>({
     prefix: parsed.kind,
     kind: parsed.kind,
   });
-  const kind = selection.prefix === parsed.kind ? selection.kind : parsed.kind;
+  const selectedKind = selection.prefix === parsed.kind ? selection.kind : parsed.kind;
+  const kind = kinds.includes(selectedKind) ? selectedKind : kinds[0]!;
   if (selection.prefix !== parsed.kind) setSelection({ prefix: parsed.kind, kind });
   const debounced = useSearchDebounce(
     query,
@@ -49,7 +55,7 @@ export function ReferencePicker({
       query: debounced.query,
       ...(kind === "all" ? { kinds: mixedKinds, limit: mixedLimit } : { kind }),
     }),
-    enabled: !debounced.pending,
+    enabled: apps.ready && !debounced.pending,
   });
   const rows = (result.data ?? []).flatMap((row) => {
     const rowKind = kind === "all" ? mixedKinds.find((mixed) => mixed === row.kind) : kind;
@@ -59,11 +65,7 @@ export function ReferencePicker({
     <ReferencePickerView
       query={query}
       kind={kind}
-      kinds={
-        parsed.trigger === "#"
-          ? ["channel", "thread"]
-          : ["all", "person", "agent", "task", "project"]
-      }
+      kinds={kinds}
       results={debounced.pending ? [] : rows}
       loading={debounced.pending || result.isPending}
       error={debounced.pending ? null : result.error}

@@ -1,5 +1,6 @@
 import type { DatabaseExecutor } from "../client";
 import { ensureHumanActor } from "../core/actors/provisioning";
+import { organizationApps } from "../core/apps/schema";
 import { commit } from "../core/effects";
 import { linkRepository } from "../core/links/repository";
 import { permissionRepository } from "../core/permissions/repository";
@@ -67,6 +68,9 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
     };
     for (const team of developmentTeams) {
       await tx.insert(organization).values({ id: team.id, name: team.name, slug: team.slug });
+      await tx
+        .insert(organizationApps)
+        .values({ organizationId: team.id, appId: "tasks", enabled: true });
       const actors = [];
       for (const person of team.people) {
         await tx.insert(user).values({

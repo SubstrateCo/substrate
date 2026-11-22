@@ -17,6 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { contactLink, crmLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
@@ -40,13 +41,14 @@ function useCollectionQueries(
   afterEntityId: string | undefined,
   creating: boolean,
 ) {
+  const apps = useOrganizationApps();
   const scopedFilters = (section: CrmKind) =>
     kind === section
       ? ([search, archived, afterEntityId] as const)
       : (["", false, undefined] as const);
   const accounts = useQuery({
     ...accountsOptions(organizationId, ...scopedFilters("accounts")),
-    enabled: !pending && (kind === "accounts" || creating),
+    enabled: apps.enabled("crm") && !pending && (kind === "accounts" || creating),
   });
   const contacts = useQuery({
     ...contactsOptions(organizationId, ...scopedFilters("contacts")),

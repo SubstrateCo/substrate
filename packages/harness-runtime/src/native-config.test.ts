@@ -20,6 +20,7 @@ afterEach(async () => {
 
 const config = (): HarnessConfiguration => ({
   organizationId: "org-a",
+  enabledApps: ["messages", "agents", "tasks", "crm"],
   agents: [
     {
       id: "agent-a",
@@ -114,6 +115,7 @@ test("recreates the host and synchronizes edited actors without replacing local 
   const first = await createHarnessHost({ accountDirectory: root });
   const configuration: HarnessConfiguration = {
     organizationId: "restart-org",
+    enabledApps: ["messages", "agents", "tasks", "crm"],
     agents: [
       {
         id: "opencode-agent",

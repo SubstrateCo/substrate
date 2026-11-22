@@ -1,4 +1,9 @@
-import { AccessDeniedError, ConflictError, ValidationError } from "@substrate/database";
+import {
+  AccessDeniedError,
+  AppDisabledError,
+  ConflictError,
+  ValidationError,
+} from "@substrate/database";
 
 import { createServiceResult, ServiceError } from "./service-result";
 import { APIError } from "better-auth/api";
@@ -38,6 +43,7 @@ describe("service results", () => {
     ],
     [new ServiceError("FORBIDDEN", "Verify your email."), "FORBIDDEN", "Verify your email."],
     [new AccessDeniedError(), "NOT_FOUND", "Item not found or access denied."],
+    [new AppDisabledError(), "APP_DISABLED", "This app is disabled for this organization."],
     [new ValidationError("Invalid task status."), "INVALID_INPUT", "Invalid task status."],
     [new ConflictError("Task already exists."), "CONFLICT", "Task already exists."],
     [

@@ -13,6 +13,7 @@ import { TaskPriorityIcon } from "@/components/tasks/task-cues/task-priority-ico
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { DueDate } from "@/components/time/due-date";
 import { Timestamp } from "@/components/time/timestamp";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { useNow } from "@/hooks/use-now";
 import { hiddenConversation } from "@/lib/agent-work/hidden-records";
 import { needsYouItems } from "@/lib/agent-work/needs-you";
@@ -44,15 +45,21 @@ export function HomeDashboard({
   userId: string;
 }) {
   const now = useNow(true, 60_000);
+  const apps = useOrganizationApps();
   const today = formatDateOnly(new Date(now));
-  const tasks = useQuery(homeTasksOptions(organizationId));
-  const deals = useQuery(homeDealsOptions(organizationId, today));
+  const tasks = useQuery({ ...homeTasksOptions(organizationId), enabled: apps.enabled("tasks") });
+  const deals = useQuery({
+    ...homeDealsOptions(organizationId, today),
+    enabled: apps.enabled("crm"),
+  });
   const statuses = useQuery(agentStatusOptions(userId, organizationId));
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
   const conversations = useQuery(conversationsQueryOptions(organizationId));
   const unread = useQuery(unreadCountsOptions(organizationId));
   const notifications = useInfiniteQuery(notificationGroupsOptions(organizationId, "all"));
-  const groups = notifications.data?.pages[0]?.items ?? [];
+  const groups = (notifications.data?.pages[0]?.items ?? []).filter(
+    (item) => apps.enabled("tasks") || (!item.projectEntityId && item.kind !== "assignment"),
+  );
   const mentions = groups.filter((item) => item.kind === "mention" && item.unreadCount > 0);
   const { requests, agents, calls, desktopUpdateRequired } = needsYouItems(needsYou.data);
   const attentionItems: HomeItem[] = [
@@ -138,6 +145,8 @@ export function HomeDashboard({
   return (
     <HomeDashboardView
       organizationId={organizationId}
+      tasksEnabled={apps.enabled("tasks")}
+      crmEnabled={apps.enabled("crm")}
       date={formatShortDate(now)}
       attention={{
         items: visibleAttention,

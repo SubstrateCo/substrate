@@ -24,6 +24,8 @@ import {
   DetailProperty,
 } from "@/components/crm/record-detail-view";
 import { Button } from "@/components/ui/button";
+import { AppAvailability } from "@/components/workspace/app-availability";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { crmLink } from "@/lib/navigation/record-links";
 import { contactOptions } from "@/queries/contacts/options";
 import { useRecordMutation } from "@/queries/records/mutations";
@@ -37,6 +39,7 @@ export function ContactDetail({
   entityId: string;
 }) {
   const query = useQuery(contactOptions(organizationId, entityId));
+  const apps = useOrganizationApps();
   const mutation = useRecordMutation(organizationId, "contacts");
   const [dialog, setDialog] = useState<RecordChangeDialog | "interaction" | "affiliation" | null>(
     null,
@@ -93,40 +96,42 @@ export function ContactDetail({
           </>
         }
       >
-        <section className="space-y-3" aria-label="Contact accounts">
-          <div className="flex items-center justify-between gap-3">
-            <h2 className="text-sm font-medium">Accounts</h2>
-            {canChange && (
-              <Button variant="outline" size="sm" onClick={() => open("affiliation")}>
-                <Plus aria-hidden />
-                Link account
-              </Button>
-            )}
-          </div>
-          {affiliations.length ? (
-            <ul className="divide-y rounded-lg border">
-              {affiliations.map(({ account, affiliation }) => (
-                <li
-                  key={account.entityId}
-                  className="flex items-center justify-between gap-4 px-4 py-2"
-                >
-                  <Link
-                    {...crmLink(organizationId, "accounts", account.entityId)}
-                    className="text-sm font-medium hover:underline"
+        <AppAvailability app="crm">
+          <section className="space-y-3" aria-label="Contact accounts">
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-sm font-medium">Accounts</h2>
+              {canChange && (
+                <Button variant="outline" size="sm" onClick={() => open("affiliation")}>
+                  <Plus aria-hidden />
+                  Link account
+                </Button>
+              )}
+            </div>
+            {affiliations.length ? (
+              <ul className="divide-y rounded-lg border">
+                {affiliations.map(({ account, affiliation }) => (
+                  <li
+                    key={account.entityId}
+                    className="flex items-center justify-between gap-4 px-4 py-2"
                   >
-                    {account.name}
-                  </Link>
-                  <span className="text-xs text-muted-foreground">
-                    {affiliation.title}
-                    {affiliation.isPrimary ? " · Primary" : ""}
-                  </span>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">No linked accounts you can read</p>
-          )}
-        </section>
+                    <Link
+                      {...crmLink(organizationId, "accounts", account.entityId)}
+                      className="text-sm font-medium hover:underline"
+                    >
+                      {account.name}
+                    </Link>
+                    <span className="text-xs text-muted-foreground">
+                      {affiliation.title}
+                      {affiliation.isPrimary ? " · Primary" : ""}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">No linked accounts you can read</p>
+            )}
+          </section>
+        </AppAvailability>
         <ContactMethods
           organizationId={organizationId}
           contactEntityId={entityId}
@@ -173,7 +178,7 @@ export function ContactDetail({
           }
         />
       )}
-      {dialog === "affiliation" && (
+      {dialog === "affiliation" && apps.enabled("crm") && (
         <AffiliationEditor
           organizationId={organizationId}
           contactEntityId={entityId}

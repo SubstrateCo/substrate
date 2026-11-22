@@ -14,7 +14,7 @@ export {
   type HarnessAgent,
   type HarnessConfiguration,
 } from "./agent.ts";
-export { startupSkillIds, startupSkills } from "./skills/index.ts";
+export { startupSkillIds, startupSkills, enabledStartupSkills } from "./skills/index.ts";
 export {
   harnessIdSchema,
   harnessInspectionSchema,
@@ -53,7 +53,13 @@ export {
   type TurnKind,
   type TurnPlace,
 } from "./turn-context.ts";
-export { POLICY_VERSION, managedPrefix, runtimePolicy, type ManagedPrefixInput } from "./policy.ts";
+export {
+  POLICY_VERSION,
+  managedPrefix,
+  runtimePolicy,
+  appAvailability,
+  type ManagedPrefixInput,
+} from "./policy.ts";
 export {
   harnessAuthMethodSchema,
   harnessModelCatalogSchema,

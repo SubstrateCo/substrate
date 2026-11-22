@@ -1,6 +1,7 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
+import { appEnabledCondition } from "../../core/permissions/app-visibility";
 import type { RepositoryContext } from "../../core/repository-context";
 import { ValidationError } from "../../errors";
 import { recordCrmActivity } from "../crm/activity";
@@ -37,6 +38,7 @@ export function contextContactInteractionRepository(context: RepositoryContext) 
             and(
               eq(crmContactProfiles.organizationId, ctx.scope.organizationId),
               eq(crmContactProfiles.contactEntityId, input.contactEntityId),
+              appEnabledCondition(ctx.scope.organizationId, "crm"),
             ),
           );
         if (profile?.archivedAt) throw new ValidationError("Restore the archived record first.");

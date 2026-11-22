@@ -15,6 +15,13 @@
       "when": 1795179956456,
       "tag": "0001_message_content",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1795306515827,
+      "tag": "0002_foamy_synch",
+      "breakpoints": true
     }
   ]
 }

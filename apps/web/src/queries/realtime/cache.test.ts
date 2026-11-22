@@ -182,6 +182,7 @@ test("organization hints retain role refresh because organization deletion has n
     { queryKey: queryKeys.organizations },
     { queryKey: queryKeys.userInvitations },
     { queryKey: queryKeys.organizationDetail("org") },
+    { queryKey: queryKeys.organizationApps("org") },
     { queryKey: queryKeys.invitations("org") },
   ]);
 });

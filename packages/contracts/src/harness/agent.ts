@@ -1,3 +1,4 @@
+import { appIds } from "../apps/index.ts";
 import { harnessKinds } from "./kinds.ts";
 import { z } from "zod";
 
@@ -14,6 +15,7 @@ export const harnessAgentSchema = z.object({
 export const harnessConfigurationSchema = z.object({
   organizationId: z.string(),
   agents: z.array(harnessAgentSchema),
+  enabledApps: z.array(z.enum(appIds)).optional(),
 });
 
 export type HarnessAgent = z.infer<typeof harnessAgentSchema>;

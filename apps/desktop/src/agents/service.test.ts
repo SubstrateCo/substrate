@@ -160,6 +160,8 @@ async function serviceFixture(
       if (path === "/api/auth/organization/get-active-member-role")
         return Response.json({ role: "owner" });
       if (path === "/api/v1/agents/list") return ok({ agents: [], runSettings: [] });
+      if (path === "/api/v1/organizations/apps")
+        return ok({ organizationId, enabledApps: ["messages", "agents"] });
       if (path.endsWith("/device/register")) {
         registeredOrganizations.push(organizationId);
         await registrationGate?.wait();

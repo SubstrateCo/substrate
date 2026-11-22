@@ -233,6 +233,7 @@ export function createHarnessController(options: {
       if (method === "synchronize") {
         const sync = capture();
         const { agents } = await authority.catalog();
+        const { enabledApps } = await authority.appSettings();
         // Renderer organization switches do not bump the generation; reread only the session.
         // Membership was verified for this organization before the catalog request.
         await authority.confirm(auth);
@@ -250,6 +251,7 @@ export function createHarnessController(options: {
         identity = auth.identity;
         await worker.request("configure", {
           agents,
+          enabledApps,
           organizationId: auth.organizationId,
         });
         sync.assertCurrent(auth.identity);

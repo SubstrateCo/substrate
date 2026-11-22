@@ -7,4 +7,4 @@ export type {
   WorkspaceScope,
   OwnerSessionIdentity,
 } from "./core/session/identity";
-export { AccessDeniedError, ValidationError, ConflictError } from "./errors";
+export { AccessDeniedError, ValidationError, ConflictError, AppDisabledError } from "./errors";

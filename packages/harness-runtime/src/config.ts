@@ -1,6 +1,8 @@
+import type { AppId } from "@substrate/contracts/apps";
 import {
   startupInstructions,
   startupSkills,
+  enabledStartupSkills,
   type HarnessAgent,
   type HarnessConfiguration,
   type HarnessSkill,
@@ -9,10 +11,10 @@ import {
 import { HarnessError } from "./errors.ts";
 import { organizationDirectory, safeId, safePath } from "./paths.ts";
 import { harnessDefinitions } from "./registry.ts";
-import { writeFile } from "node:fs/promises";
+import { readFile, unlink, writeFile } from "node:fs/promises";
 
-function skillFile(skill: HarnessSkill) {
-  return `---\nname: ${skill.name}\ndescription: ${JSON.stringify(skill.description)}\n---\n\n${skill.content}`;
+function skillFile(skill: HarnessSkill, managed = true) {
+  return `---\nname: ${skill.name}\ndescription: ${JSON.stringify(skill.description)}\n${managed ? "substrateManaged: true\n" : ""}---\n\n${skill.content}`;
 }
 
 /** Files Substrate provides for an agent, relative to its folder. The user owns them once written. */
@@ -28,26 +30,41 @@ function defaultFiles(organizationId: string, agent: HarnessAgent) {
 }
 
 /** Substrate owns these skills: each write replaces them so they match the current MCP tools. */
-async function writeStartupSkills(agentRoot: string, agent: HarnessAgent): Promise<void> {
-  if (!agent.useStartupDefaults) return;
+async function writeStartupSkills(
+  agentRoot: string,
+  agent: HarnessAgent,
+  enabledApps: readonly AppId[],
+): Promise<void> {
+  const enabled = agent.useStartupDefaults ? enabledStartupSkills(enabledApps) : [];
   for (const skill of startupSkills) {
     const path = `${harnessDefinitions[agent.harness].skills}/${skill.id}/SKILL.md`;
     const target = await safePath(agentRoot, path, false, true);
-    await writeFile(target, skillFile(skill), { mode: 0o600 });
+    const previous = await readFile(target, "utf8").catch((error: NodeJS.ErrnoException) => {
+      if (error.code !== "ENOENT") throw error;
+      return undefined;
+    });
+    const owned =
+      previous?.startsWith("---\n") &&
+      (previous.split("\n---\n", 1)[0]?.includes("\nsubstrateManaged: true") ||
+        previous === skillFile(skill, false));
+    if (enabled.includes(skill)) {
+      if (previous === undefined || owned)
+        await writeFile(target, skillFile(skill), { mode: 0o600 });
+    } else if (owned) await unlink(target);
   }
 }
 
 /**
  * Writes missing default files. With `replace`, replaces existing ones too: on a reset, and when
  * a session opens, so its folder matches the current agent. Substrate skills are always
- * replaced. Never deletes files. With managedPrefix, the instructions file starts with it: the
+ * replaced. Disabled managed skills are removed; user skills are preserved. With managedPrefix, the instructions file starts with it: the
  * managed policy channel for harnesses that load no other instruction source.
  */
 export async function writeDefaultFiles(
   folder: string,
   organizationId: string,
   agent: HarnessAgent,
-  options: { replace?: boolean; managedPrefix?: string } = {},
+  options: { replace?: boolean; managedPrefix?: string; enabledApps?: readonly AppId[] } = {},
 ): Promise<void> {
   const { replace = false, managedPrefix } = options;
   for (const [path, content] of defaultFiles(organizationId, agent)) {
@@ -59,7 +76,7 @@ export async function writeDefaultFiles(
       if (error.code !== "EEXIST") throw error;
     });
   }
-  await writeStartupSkills(folder, agent);
+  await writeStartupSkills(folder, agent, options.enabledApps ?? []);
 }
 
 export async function materialize(
@@ -74,7 +91,10 @@ export async function materialize(
       throw new HarnessError("duplicate-id", `Duplicate agent ID: ${agent.id}`);
     ids.add(agent.id);
     const agentRoot = await safePath(directory, safeId(agent.id), true);
-    if (agent.enabled) await writeDefaultFiles(agentRoot, config.organizationId, agent);
+    if (agent.enabled)
+      await writeDefaultFiles(agentRoot, config.organizationId, agent, {
+        enabledApps: config.enabledApps,
+      });
   }
   return directory;
 }

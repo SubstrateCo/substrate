@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { TasksWorkspace } from "@/components/tasks/workspace/tasks-workspace";
+import { AppAvailability } from "@/components/workspace/app-availability";
 import { z } from "zod";
 
 export const Route = createFileRoute("/_authenticated/_frame/_workspace/tasks/")({
@@ -12,11 +13,13 @@ function TasksRoute() {
   const { organizationId } = Route.useRouteContext();
   const { projectId, taskId } = Route.useSearch();
   return (
-    <TasksWorkspace
-      key={organizationId}
-      organizationId={organizationId}
-      projectId={projectId}
-      taskId={taskId}
-    />
+    <AppAvailability app="tasks">
+      <TasksWorkspace
+        key={organizationId}
+        organizationId={organizationId}
+        projectId={projectId}
+        taskId={taskId}
+      />
+    </AppAvailability>
   );
 }

@@ -8,6 +8,7 @@ import {
 } from "@substrate/contracts/crm/activity";
 
 import { actors } from "../../core/actors/schema";
+import { requireAppEnabled } from "../../core/apps/access";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { RepositoryContext } from "../../core/repository-context";
@@ -76,6 +77,7 @@ export async function listCrmActivity(
   entityId: string,
   options: CrmActivityOptions = {},
 ): Promise<CrmActivityPage> {
+  await requireAppEnabled(ctx, "crm", false);
   const parsed = crmActivityOptions.safeParse(options);
   if (!parsed.success) throw new ValidationError("Invalid CRM activity cursor or limit.");
   const { entity } = await ctx.requireAccess(entityId, "view");

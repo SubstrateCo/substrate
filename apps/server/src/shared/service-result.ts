@@ -6,7 +6,12 @@ import {
   type ServiceErrorReason,
   type ServiceResult,
 } from "@substrate/contracts/result";
-import { AccessDeniedError, ConflictError, ValidationError } from "@substrate/database";
+import {
+  AccessDeniedError,
+  AppDisabledError,
+  ConflictError,
+  ValidationError,
+} from "@substrate/database";
 
 import { APIError } from "better-auth/api";
 import { ZodError } from "zod";
@@ -47,6 +52,8 @@ export const createServiceResult =
             return publicFailure("FORBIDDEN", "Access denied.");
         }
       }
+      if (error instanceof AppDisabledError)
+        return publicFailure("APP_DISABLED", "This app is disabled for this organization.");
       if (error instanceof AccessDeniedError)
         return publicFailure("NOT_FOUND", "Item not found or access denied.");
       if (error instanceof ValidationError) return publicFailure("INVALID_INPUT", error.message);

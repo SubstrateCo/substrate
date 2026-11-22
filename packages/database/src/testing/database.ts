@@ -34,6 +34,13 @@ export function setupDatabase() {
         { id: fixture.orgA, name: "A", slug: "a" },
         { id: fixture.orgB, name: "B", slug: "b" },
       ]),
+      testDatabase
+        .insert(schema.organizationApps)
+        .values(
+          [fixture.orgA, fixture.orgB].flatMap((organizationId) =>
+            (["tasks", "crm"] as const).map((appId) => ({ organizationId, appId, enabled: true })),
+          ),
+        ),
       testDatabase.insert(schema.user).values([
         { id: "alice", name: "Alice", email: "alice@example.com" },
         { id: "bob", name: "Bob", email: "bob@example.com" },

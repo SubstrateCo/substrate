@@ -1,9 +1,13 @@
+import { Link } from "@tanstack/react-router";
+
 import { useState, type ReactNode } from "react";
 
 import { HomeAttention } from "./home-attention";
 import { HomeEmptyWork } from "./home-empty-work";
 import { HomeSection, type HomeSectionData } from "./home-section";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { PageHeader } from "@/components/layout/page-header";
+import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -16,6 +20,8 @@ import { Bell, Bot, Handshake, ListTodo, MessageSquare } from "lucide-react";
 
 export type HomeDashboardViewProps = {
   organizationId: string;
+  tasksEnabled?: boolean;
+  crmEnabled?: boolean;
   date: string;
   attention: HomeSectionData;
   tasks: HomeSectionData;
@@ -54,6 +60,8 @@ function HomePanel({
 
 export function HomeDashboardView({
   organizationId,
+  tasksEnabled = true,
+  crmEnabled = true,
   date,
   attention,
   tasks,
@@ -78,11 +86,15 @@ export function HomeDashboardView({
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {sections.map(([value, label]) => (
-                    <SelectItem key={value} value={value}>
-                      {label}
-                    </SelectItem>
-                  ))}
+                  {sections.flatMap(([value, label]) =>
+                    (value === "tasks" && !tasksEnabled) || (value === "deals" && !crmEnabled)
+                      ? []
+                      : [
+                          <SelectItem key={value} value={value}>
+                            {label}
+                          </SelectItem>,
+                        ],
+                  )}
                 </SelectContent>
               </Select>
             </div>
@@ -108,18 +120,22 @@ export function HomeDashboardView({
               quietAttention ? "xl:row-span-4 xl:row-start-2" : "xl:row-span-3 xl:row-start-3",
             )}
           >
-            <HomeSection
-              title="My work"
-              description="Assigned to you · earliest due first"
-              icon={ListTodo}
-              emptyTitle="No open tasks assigned to you"
-              emptyDescription="Find work in your projects or create a task."
-              emptyAction="Browse tasks"
-              emptyContent={<HomeEmptyWork organizationId={organizationId} />}
-              emphasis
-              link={{ to: "/tasks", search }}
-              data={tasks}
-            />
+            {tasksEnabled ? (
+              <HomeSection
+                title="My work"
+                description="Assigned to you · earliest due first"
+                icon={ListTodo}
+                emptyTitle="No open tasks assigned to you"
+                emptyDescription="Find work in your projects or create a task."
+                emptyAction="Browse tasks"
+                emptyContent={<HomeEmptyWork organizationId={organizationId} />}
+                emphasis
+                link={{ to: "/tasks", search }}
+                data={tasks}
+              />
+            ) : (
+              <DisabledHomeApp label="Tasks" />
+            )}
           </HomePanel>
           <HomePanel
             id="agents"
@@ -175,19 +191,38 @@ export function HomeDashboardView({
             active={activeSection}
             className="xl:col-span-5 xl:col-start-8 xl:row-span-3 xl:row-start-5"
           >
-            <HomeSection
-              title="CRM follow-ups"
-              description="Your open deals · closing within 7 days or overdue"
-              icon={Handshake}
-              emptyTitle="No deals closing soon"
-              emptyDescription="CRM follow-up tasks appear in My work."
-              emptyAction="Open CRM"
-              link={{ to: "/crm", search: { ...search, section: "deals" } }}
-              data={deals}
-            />
+            {crmEnabled ? (
+              <HomeSection
+                title="CRM follow-ups"
+                description="Your open deals · closing within 7 days or overdue"
+                icon={Handshake}
+                emptyTitle="No deals closing soon"
+                emptyDescription="CRM follow-up tasks appear in My work."
+                emptyAction="Open CRM"
+                link={{ to: "/crm", search: { ...search, section: "deals" } }}
+                data={deals}
+              />
+            ) : (
+              <DisabledHomeApp label="CRM" />
+            )}
           </HomePanel>
         </div>
       </div>
     </div>
+  );
+}
+
+function DisabledHomeApp({ label }: { label: string }) {
+  return (
+    <ContentNotice
+      icon={label === "Tasks" ? ListTodo : Handshake}
+      title={`${label} is disabled`}
+      description="Enable this app for your organization to see it here."
+      action={
+        <Button variant="outline" asChild>
+          <Link to="/settings/organization/apps">View apps</Link>
+        </Button>
+      }
+    />
   );
 }

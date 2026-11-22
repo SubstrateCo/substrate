@@ -8,6 +8,7 @@ import { NotificationGroupEvents } from "./notification-group-events";
 import { notificationPresentation } from "./notification-presentation";
 import { NotificationList as NotificationListView } from "@/components/context/notifications/notification-list-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { resourceState } from "@/lib/resource-state";
 import { notificationGroupsOptions, type GroupRead } from "@/queries/context/notification-groups";
 import { useReadNotifications } from "@/queries/context/notification-mutations";
@@ -21,6 +22,7 @@ export function NotificationList({
   onClose?: () => void;
 }) {
   const [filter, setFilter] = useState<NotificationFilter>("all");
+  const apps = useOrganizationApps();
   const feed = useInfiniteQuery(notificationGroupsOptions(organizationId, filter));
   const resource = resourceState(feed);
   const read = useReadNotifications(organizationId);
@@ -32,7 +34,12 @@ export function NotificationList({
   // A group can move above a saved cursor while older pages load. Keep its first occurrence.
   const groups = new Map<string, NonNullable<typeof feed.data>["pages"][number]["items"][number]>();
   for (const page of resource.data?.pages ?? [])
-    for (const item of page.items) if (!groups.has(item.groupKey)) groups.set(item.groupKey, item);
+    for (const item of page.items)
+      if (
+        !groups.has(item.groupKey) &&
+        (apps.enabled("tasks") || (!item.projectEntityId && item.kind !== "assignment"))
+      )
+        groups.set(item.groupKey, item);
   const items = [...groups.values()].map((item) => ({
     ...notificationPresentation(organizationId, item),
     id: item.groupKey,

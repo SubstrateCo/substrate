@@ -5,8 +5,9 @@ import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../client";
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
+import { organizationApps } from "../../core/apps/schema";
 import { registerDevice } from "../../core/devices/repository";
-import { AccessDeniedError, ConflictError } from "../../errors";
+import { AccessDeniedError, AppDisabledError, ConflictError } from "../../errors";
 import {
   entities,
   member,
@@ -113,6 +114,34 @@ async function setCreatedAt(id: string, createdAt: string) {
     .set({ createdAt: new Date(createdAt) })
     .where(eq(messagingMessages.id, id));
 }
+
+test("disabled app tools reject fresh calls and cached writes from stale sessions", async () => {
+  const { call, project } = await fixture();
+  const input = {
+    requestId: crypto.randomUUID(),
+    projectId: project.entityId,
+    title: "Remembered",
+  };
+  await call("create_task", input);
+  await f.db
+    .update(organizationApps)
+    .set({ enabled: false })
+    .where(and(eq(organizationApps.organizationId, f.orgA), eq(organizationApps.appId, "tasks")));
+  expect(await rejection(call("create_task", input))).toBeInstanceOf(AppDisabledError);
+  expect(await rejection(call("list_projects", {}))).toBeInstanceOf(AppDisabledError);
+  expect(
+    await rejection(
+      call("create_crm_follow_up", {
+        requestId: crypto.randomUUID(),
+        entityId: project.entityId,
+        projectEntityId: project.entityId,
+        title: "Follow up",
+        consentToTaskAudience: true,
+      }),
+    ),
+  ).toBeInstanceOf(AppDisabledError);
+  expect(await call("get_me", {})).toHaveProperty("actor");
+});
 
 test("CRM MCP uses owner access, human responsibility and replay without duplicate records", async () => {
   const { call } = await fixture();

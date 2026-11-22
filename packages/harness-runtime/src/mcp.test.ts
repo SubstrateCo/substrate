@@ -38,7 +38,7 @@ function leaseOptions(overrides: Partial<McpLeaseOptions> = {}): McpLeaseOptions
     organizationId: "org-a",
     agentId,
     sessionId: "session-a",
-    tools: leaseTools("main"),
+    tools: leaseTools("main", ["messages", "agents", "tasks", "crm"]),
     folder,
     agentFolder: folder,
     ...overrides,
@@ -221,7 +221,10 @@ test("memory tools are handled locally and never reach either proxy", async () =
 });
 
 test("helper leases offer no publishing, helper management or memory tools", async () => {
-  const mcp = await connected({}, leaseOptions({ tools: leaseTools("helper") }));
+  const mcp = await connected(
+    {},
+    leaseOptions({ tools: leaseTools("helper", ["messages", "agents", "tasks", "crm"]) }),
+  );
   try {
     const names = new Set((await mcp.client.listTools()).tools.map((tool) => tool.name));
     for (const name of [
@@ -333,6 +336,26 @@ test("loopback MCP rejects revoked, browser and rebound requests", async () => {
     expect(revoked.status).toBe(401);
   } finally {
     await host.close();
+  }
+});
+
+test("APP_DISABLED tells a stale native session to stop rather than retry", async () => {
+  const mcp = await connected({
+    workspace: async () => ({
+      success: false,
+      error: { code: "APP_DISABLED", message: "Tasks is disabled." },
+    }),
+  });
+  try {
+    mcp.lease.bind(turn);
+    const result = await mcp.client.callTool({ name: "list_projects", arguments: {} });
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(text(result))).toMatchObject({
+      code: "APP_DISABLED",
+      hint: expect.stringContaining("Do not retry"),
+    });
+  } finally {
+    await mcp.close();
   }
 });
 

@@ -3,6 +3,7 @@ import type { MessagePageContext } from "@/api/context/links";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { attachedWork } from "@/components/messaging/messages/attached-work";
 import { MessageWork } from "@/components/messaging/messages/message-work";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { linkedWorkLink } from "@/lib/navigation/record-links";
 import { useDetachMessageWork } from "@/queries/context/link-mutations";
 import { toast } from "sonner";
@@ -48,14 +49,28 @@ function MessageContextCard({
   links: MessagePageContext["links"];
 }) {
   const remove = useDetachMessageWork(organizationId, messageId);
+  const apps = useOrganizationApps();
   return (
     <MessageWork
-      links={links.map((link) => ({ ...link, link: linkedWorkLink(organizationId, link) }))}
+      links={links.map((link) =>
+        apps.entityEnabled(link.entityType)
+          ? { ...link, link: linkedWorkLink(organizationId, link) }
+          : {
+              ...link,
+              title: "Unavailable record",
+              status: null,
+              statusName: null,
+              purpose: "reference",
+              canRemove: false,
+              unavailable: true,
+              link: linkedWorkLink(organizationId, link),
+            },
+      )}
       error={context.error}
       onRetry={context.onRetry}
       onRemove={(entityId) => {
         const work = links.find((link) => link.entityId === entityId);
-        if (work)
+        if (work && apps.entityEnabled(work.entityType))
           remove.mutate(
             { entityId, projectEntityId: work.projectEntityId },
             {

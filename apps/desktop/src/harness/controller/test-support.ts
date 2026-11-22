@@ -72,6 +72,14 @@ export function fixture(
         requests.push("membership");
         return membership ? Response.json({ role: "member" }) : new Response(null, { status: 403 });
       }
+      if (new URL(url).pathname === "/api/v1/organizations/apps")
+        return Response.json({
+          success: true,
+          data: {
+            organizationId: session.session.activeOrganizationId,
+            enabledApps: ["messages", "agents"],
+          },
+        });
       requests.push("catalog");
       catalogRequests++;
       if (catalogFails) return new Response("Bad gateway", { status: 502 });

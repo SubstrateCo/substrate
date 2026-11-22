@@ -5,6 +5,7 @@ import {
 } from "@substrate/contracts/crm/from-message";
 
 import type { DatabaseExecutor } from "../../client";
+import { requireAppEnabled } from "../../core/apps/access";
 import { parseInput } from "../../core/contacts/inputs";
 import { commit } from "../../core/effects";
 import type { RepositoryContext } from "../../core/repository-context";
@@ -32,6 +33,7 @@ export async function createCrmFromMessageInContext(
   )
     throw new AccessDeniedError();
   return context.transaction(async (ctx) => {
+    await requireAppEnabled(ctx, "crm");
     const resolved = await workspaceContext(ctx.db, identity);
     if (resolved.context.scope.actorEntityId !== ctx.scope.actorEntityId)
       throw new AccessDeniedError();

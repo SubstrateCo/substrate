@@ -1,1 +1,1 @@
-export { startupSkills, startupSkillIds } from "./registry.ts";
+export { startupSkills, startupSkillIds, enabledStartupSkills } from "./registry.ts";

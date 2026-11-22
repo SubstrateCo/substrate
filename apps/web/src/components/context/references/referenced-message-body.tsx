@@ -1,5 +1,6 @@
 import type { MessageContextState } from "./message-context";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { linkedWorkLink, messageLink } from "@/lib/navigation/record-links";
 
 export function ReferencedMessageBody({
@@ -11,6 +12,7 @@ export function ReferencedMessageBody({
   context: MessageContextState;
   body: string;
 }) {
+  const apps = useOrganizationApps();
   return (
     <MessageMarkdown
       body={body}
@@ -27,7 +29,11 @@ export function ReferencedMessageBody({
           ),
         })),
         ...(context.error ? [] : (context.data?.links ?? []))
-          .filter((link) => link.entityType === "task" || link.entityType === "project")
+          .filter(
+            (link) =>
+              apps.entityEnabled(link.entityType) &&
+              (link.entityType === "task" || link.entityType === "project"),
+          )
           .map((link) => ({
             id: link.entityId,
             kind: link.entityType === "task" ? ("task" as const) : ("project" as const),

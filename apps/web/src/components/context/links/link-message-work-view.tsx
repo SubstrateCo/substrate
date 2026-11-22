@@ -49,6 +49,7 @@ export function LinkMessageWork({
   query,
   state,
   kind,
+  kinds = kindOptions,
   results,
   linkedIds,
   loading,
@@ -65,6 +66,7 @@ export function LinkMessageWork({
   query: string;
   state: ResourceStatus;
   kind: ContextEntityType;
+  kinds?: readonly ContextEntityType[];
   results: LinkableWork[];
   linkedIds: ReadonlySet<string>;
   loading: boolean;
@@ -85,7 +87,9 @@ export function LinkMessageWork({
   const kindLabel = kindLabels[kind];
   // Items that became linked, for example after a partial failure, leave the selection.
   const selection =
-    state === "unavailable" ? [] : [...chosen.values()].filter((item) => !linkedIds.has(item.id));
+    state === "unavailable"
+      ? []
+      : [...chosen.values()].filter((item) => kinds.includes(item.kind) && !linkedIds.has(item.id));
   const toggle = (item: LinkableWork) =>
     setChosen((current) => {
       const next = new Map(current);
@@ -123,12 +127,12 @@ export function LinkMessageWork({
               <Tabs
                 value={kind}
                 onValueChange={(value) => {
-                  const option = kindOptions.find((item) => item === value);
+                  const option = kinds.find((item) => item === value);
                   if (option) onKindChange(option);
                 }}
               >
                 <TabsList aria-label="Record type" className="flex-wrap">
-                  {kindOptions.map((option) => (
+                  {kinds.map((option) => (
                     <TabsTrigger key={option} value={option} disabled={pending}>
                       {kindLabels[option]}
                     </TabsTrigger>

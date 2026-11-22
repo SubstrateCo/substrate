@@ -218,6 +218,7 @@ export function createTurnExecutor(
       agentId: session.agentId,
       organizationId: session.organizationId,
       profile: await context.profile(session.agentId),
+      enabledApps: await context.enabledApps?.(),
     });
     await context.store.sessions.setPrefix(session.id, value, POLICY_VERSION, context.now());
     return { value, policyVersion: POLICY_VERSION };

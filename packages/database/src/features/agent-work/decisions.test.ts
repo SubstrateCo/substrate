@@ -1,8 +1,10 @@
-import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
+import { AccessDeniedError, AppDisabledError, ConflictError, ValidationError } from "../../errors";
 import { proposalFailure } from "./decisions";
 import { expect, test } from "bun:test";
 
 test("expected proposal failures become owner-facing outcomes; others are not recorded", () => {
+  const disabled = new AppDisabledError();
+  expect(proposalFailure(disabled)).toEqual({ status: "failed", error: disabled.message });
   expect(proposalFailure(new AccessDeniedError())).toEqual({
     status: "failed",
     error: "The target no longer exists or is no longer available.",

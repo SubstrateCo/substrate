@@ -7,6 +7,7 @@ import {
   type SearchKind,
 } from "@/components/context/search/workspace-search-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { recordLink, contactLink, messageLink, workLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
@@ -22,17 +23,28 @@ export function WorkspaceSearch({
   initialKind?: SearchKind;
   query: string;
 }) {
-  const [kind, setKind] = useState<SearchKind>(initialKind);
+  const apps = useOrganizationApps();
+  const kinds: SearchKind[] = apps.enabled("tasks")
+    ? ["all", "task", "project", "message", "channel"]
+    : ["all", "message", "channel"];
+  const [selectedKind, setKind] = useState<SearchKind>(initialKind);
+  const kind = kinds.includes(selectedKind) ? selectedKind : "all";
   const search = useSearchDebounce(query, JSON.stringify([organizationId, kind]));
   const join = useJoinSearchConversation({ organizationId, query: search.query, kind });
   const pages = searchPagesOptions({ organizationId, query: search.query, kind });
-  const results = useInfiniteQuery({ ...pages, enabled: !search.pending });
+  const results = useInfiniteQuery({ ...pages, enabled: apps.ready && !search.pending });
   return (
     <WorkspaceSearchView
       query={query}
       kind={kind}
-      results={(search.pending ? [] : (resourceState(results).data?.pages.flat() ?? [])).map(
-        (item) => {
+      kinds={kinds}
+      results={(search.pending ? [] : (resourceState(results).data?.pages.flat() ?? []))
+        .filter(
+          (item) =>
+            ((item.kind !== "task" && item.kind !== "project") || apps.enabled("tasks")) &&
+            ((item.kind !== "account" && item.kind !== "deal") || apps.enabled("crm")),
+        )
+        .map((item) => {
           if (item.kind === "account" || item.kind === "contact" || item.kind === "deal") {
             const section = { account: "accounts", contact: "contacts", deal: "deals" } as const;
             return { ...item, link: recordLink(organizationId, section[item.kind], item.id) };
@@ -53,8 +65,7 @@ export function WorkspaceSearch({
                   item.kind === "task" ? item.id : undefined,
                 ),
           };
-        },
-      )}
+        })}
       loading={search.pending || results.isPending}
       error={search.pending ? null : results.error}
       hasMore={!search.pending && results.hasNextPage}

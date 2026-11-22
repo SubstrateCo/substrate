@@ -2,6 +2,7 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { permissionActorEntityId } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
+import { requireAppEnabled } from "../../core/apps/access";
 import { adminRoleCondition } from "../../core/organizations/roles";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
@@ -19,6 +20,7 @@ export function requireHumanCrmAdmin(context: RepositoryContext) {
 }
 
 async function requireAdminActor(context: RepositoryContext, actorEntityId: string | SQL) {
+  await requireAppEnabled(context, "crm");
   await context.requireActiveActor();
   const [admin] = await context.db
     .select({ id: actors.entityId })
@@ -40,6 +42,7 @@ async function requireAdminActor(context: RepositoryContext, actorEntityId: stri
 export function settingsRepository(context: RepositoryContext) {
   return {
     async settings() {
+      await requireAppEnabled(context, "crm", false);
       await context.requireActiveActor();
       const [row] = await context.db
         .select()

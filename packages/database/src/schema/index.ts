@@ -1,5 +1,6 @@
 export * from "../core/authentication/schema";
 export * from "../core/organizations/schema";
+export * from "../core/apps/schema";
 export * from "../core/entities/schema";
 export * from "../core/actors/schema";
 export * from "../core/actors/user-agents.schema";

@@ -28,7 +28,7 @@ Use the Substrate MCP server for workspace records:
 
 The MCP credential sets your identity, organization and turn, so do not put them in tool inputs. Never move work to another organization.
 
-The substrate-search, substrate-messaging, substrate-tasks and substrate-crm skills give detailed guidance.
+The installed substrate-* skills give detailed guidance for enabled apps. Tasks and CRM are optional. Use only the tools offered to this session; discovery cannot enable an app. If a tool returns APP_DISABLED, stop that workflow and do not retry or bypass it.
 
 Always create skills in the local project folder, never in a global or user-level skills folder.
 

@@ -1,5 +1,6 @@
 import { crmReportDeals } from "@substrate/contracts/crm/report-input";
 
+import { requireAppEnabled } from "../../core/apps/access";
 import { parseInput } from "../../core/contacts/inputs";
 import { RepositoryContext } from "../../core/repository-context";
 import { ValidationError } from "../../errors";
@@ -14,6 +15,7 @@ export async function report(
   to: Date,
   options: ReportFilters = {},
 ) {
+  await requireAppEnabled(context, "crm", false);
   return context.db.transaction(
     (tx) => reportRows(new RepositoryContext(tx, context.scope), from, to, options),
     { isolationLevel: "repeatable read", accessMode: "read only" },
@@ -106,6 +108,7 @@ async function reportRows(
 
 type DrilldownInput = Omit<z.input<typeof crmReportDeals>, "organizationId">;
 export async function reportDeals(context: RepositoryContext, input: DrilldownInput) {
+  await requireAppEnabled(context, "crm", false);
   const value = parseInput(crmReportDeals, {
     ...input,
     organizationId: context.scope.organizationId,

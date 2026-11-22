@@ -1,5 +1,6 @@
 import type { CrmTimelineMode } from "@substrate/contracts/crm/input";
 
+import { requireAppEnabled } from "../../core/apps/access";
 import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
 import { contactInteractions } from "../../core/contacts/interactions.schema";
 import { entityLinks } from "../../core/links/schema";
@@ -21,6 +22,7 @@ export async function timeline(
   entityId: string,
   options: Options = {},
 ) {
+  await requireAppEnabled(context, "crm", false);
   const { entity } = await context.requireAccess(entityId, "view");
   if (Boolean(options.beforeOccurredAt) !== Boolean(options.beforeEntityId))
     throw new ValidationError("Supply both timeline cursor fields.");

@@ -82,7 +82,7 @@ describe("desktop harness authority", () => {
     expect(f.directories).toHaveLength(1);
     expect(f.calls.at(-1)).toEqual({
       method: "configure",
-      value: { organizationId: "org-2", agents: [] },
+      value: { organizationId: "org-2", agents: [], enabledApps: ["messages", "agents"] },
     });
   });
   test("model discovery uses verified organization scope and returns only catalog metadata", async () => {
@@ -109,7 +109,10 @@ describe("desktop harness authority", () => {
     });
     expect(f.directories[0]).toMatch(/^accounts[\\/][a-f0-9]{64}$/);
     expect(f.calls).toEqual([
-      { method: "configure", value: { organizationId: "org-1", agents: [] } },
+      {
+        method: "configure",
+        value: { organizationId: "org-1", agents: [], enabledApps: ["messages", "agents"] },
+      },
     ]);
     expect(await f.controller.run("status")).toEqual({
       connected: true,

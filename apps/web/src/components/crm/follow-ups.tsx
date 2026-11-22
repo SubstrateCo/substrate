@@ -10,12 +10,29 @@ import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { DueDate } from "@/components/time/due-date";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { AppAvailability } from "@/components/workspace/app-availability";
 import { workLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { followUpsOptions } from "@/queries/crm/options";
 import { Plus } from "lucide-react";
 
 export function FollowUps({
+  organizationId,
+  entityId,
+  canCreate,
+}: {
+  organizationId: string;
+  entityId: string;
+  canCreate: boolean;
+}) {
+  return (
+    <AppAvailability app="tasks">
+      <EnabledFollowUps organizationId={organizationId} entityId={entityId} canCreate={canCreate} />
+    </AppAvailability>
+  );
+}
+
+function EnabledFollowUps({
   organizationId,
   entityId,
   canCreate,

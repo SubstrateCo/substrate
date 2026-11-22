@@ -16,6 +16,12 @@ export function MessageWorkTile({
   removing: boolean;
   onRemove?: (id: string) => void;
 }) {
+  if (link.unavailable)
+    return (
+      <li className="flex h-8 items-center rounded-md border px-3 text-sm text-muted-foreground">
+        Unavailable record · app disabled
+      </li>
+    );
   const meta = [link.statusName, link.purpose === "source" ? "Created here" : null]
     .filter(Boolean)
     .join(" · ");

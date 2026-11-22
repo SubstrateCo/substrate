@@ -1,5 +1,6 @@
 import type { AgentWorkStore } from "@substrate/client-storage/agent-work";
 import type { AgentWorkChange } from "@substrate/contracts/agent-work/desktop";
+import type { AppId } from "@substrate/contracts/apps";
 import type {
   AdapterCapabilities,
   HarnessCommand,
@@ -45,6 +46,7 @@ export interface RuntimeContext {
   agents: AgentDirectory;
   /** memory/profile.md of the agent folder, or empty. */
   profile(agentId: string): Promise<string>;
+  enabledApps?(): Promise<readonly AppId[]>;
   now(): number;
   log(message: string): void;
   /** Local work changed: tell the renderer, publish status, and run the claim loop. */

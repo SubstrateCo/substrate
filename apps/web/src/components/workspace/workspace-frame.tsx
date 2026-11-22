@@ -1,5 +1,3 @@
-import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
-
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
@@ -53,9 +51,6 @@ export function WorkspaceFrame({
     enabled: !!organizationId,
   });
   useAgentWorkBridgeSync(userId, organizationId);
-  const access = organizationSettingsAccess(
-    organization.data?.id === organizationId ? organization.data?.role : undefined,
-  );
   useAppShortcuts();
   return (
     <WorkspaceSearchProvider>
@@ -68,7 +63,7 @@ export function WorkspaceFrame({
           !unreadMessages.error && unreadMessages.data?.some((row) => row.unreadCount > 0)
         }
         agentsNeedYou={!needsYou.error && needsYouCount(needsYou.data) > 0}
-        showOrganizationSettings={access.allowed}
+        showOrganizationSettings={!!organization.data}
         organizationName={organization.data?.name}
         switcher={
           organizationId ? (

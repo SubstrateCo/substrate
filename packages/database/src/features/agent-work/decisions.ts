@@ -12,7 +12,7 @@ import type { DatabaseExecutor } from "../../client";
 import { effectsFor } from "../../core/effects";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
-import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
+import { AccessDeniedError, AppDisabledError, ConflictError, ValidationError } from "../../errors";
 import { inStates } from "./machine-sql";
 import { runProposalAction } from "./proposals";
 import { answerableBy, ownedRequests } from "./request-views";
@@ -108,7 +108,11 @@ export async function declineProposalInTransaction(
 export function proposalFailure(error: Error): ProposalOutcome | null {
   if (error instanceof AccessDeniedError)
     return { status: "failed", error: "The target no longer exists or is no longer available." };
-  if (error instanceof ValidationError || error instanceof ConflictError)
+  if (
+    error instanceof ValidationError ||
+    error instanceof ConflictError ||
+    error instanceof AppDisabledError
+  )
     return { status: "failed", error: error.message };
   return null;
 }

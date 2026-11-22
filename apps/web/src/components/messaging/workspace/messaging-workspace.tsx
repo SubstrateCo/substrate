@@ -9,6 +9,7 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-create-menu";
 import { CreateConversationDialog } from "@/components/messaging/conversations/create-conversation-dialog";
 import { MessagingWorkspace as MessagingWorkspaceView } from "@/components/messaging/workspace/messaging-workspace-view";
+import { AppAvailability } from "@/components/workspace/app-availability";
 import { messageLink } from "@/lib/navigation/record-links";
 import type { PickerPerson } from "@/lib/people/people-picker";
 import { resourceState } from "@/lib/resource-state";
@@ -80,6 +81,16 @@ export function MessagingWorkspace({
   const selected = conversationId
     ? visibleConversations.find((conversation) => conversation.id === conversationId)
     : sidebarConversations[0];
+  const pane = selected && (
+    <ConversationPane
+      key={selected.id}
+      organizationId={organizationId}
+      conversation={selected}
+      userId={userId}
+      messageId={messageId}
+      turnId={turnId}
+    />
+  );
   return (
     <MessagingWorkspaceView
       state={resource.status}
@@ -110,16 +121,7 @@ export function MessagingWorkspace({
         />
       )}
     >
-      {selected && (
-        <ConversationPane
-          key={selected.id}
-          organizationId={organizationId}
-          conversation={selected}
-          userId={userId}
-          messageId={messageId}
-          turnId={turnId}
-        />
-      )}
+      {selected?.task ? <AppAvailability app="tasks">{pane}</AppAvailability> : pane}
       {conversationId && !selected && !conversations.isPending && (
         <ContentNotice
           icon={Unlink}

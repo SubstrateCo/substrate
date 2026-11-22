@@ -1,5 +1,7 @@
 import { taskStatusValues } from "@substrate/contracts/tasks";
 
+import { enabledApps } from "../core/apps/access";
+import { RepositoryContext } from "../core/repository-context";
 import { AccessDeniedError } from "../errors";
 import { createMessagingService } from "../features/messaging/service";
 import * as schema from "../schema";
@@ -10,6 +12,24 @@ import { and, eq, isNotNull, or } from "drizzle-orm";
 
 describe("development seed", () => {
   const fixture = setupDatabase();
+
+  test("enables the seeded Tasks app without enabling unrelated optional apps", async () => {
+    await seedDevelopmentDatabase(fixture.db, "development-password-hash");
+    for (const organizationId of ["dev-northstar", "dev-orbit"]) {
+      const [owner] = await fixture.db
+        .select()
+        .from(schema.actors)
+        .where(eq(schema.actors.organizationId, organizationId));
+      const apps = await enabledApps(
+        new RepositoryContext(fixture.db, {
+          organizationId,
+          actorEntityId: owner!.entityId,
+        }),
+      );
+      expect(apps).toContain("tasks");
+      expect(apps).not.toContain("crm");
+    }
+  });
 
   test("seeds connected work, task relationships, contact identifiers, and inactive local agent definitions", async () => {
     await seedDevelopmentDatabase(fixture.db, "development-password-hash");
@@ -225,7 +245,13 @@ describe("development seed", () => {
       .set({ summary: "My edited call summary" })
       .where(eq(schema.contactInteractions.entityId, interaction!.entityId));
     const interactionsBefore = await fixture.db.select().from(schema.contactInteractions);
+    await fixture.db
+      .update(schema.organizationApps)
+      .set({ enabled: false })
+      .where(eq(schema.organizationApps.organizationId, "dev-northstar"));
+    const appsBefore = await fixture.db.select().from(schema.organizationApps);
     expect(await seedDevelopmentDatabase(fixture.db, "replacement-hash")).toBe(false);
+    expect(await fixture.db.select().from(schema.organizationApps)).toEqual(appsBefore);
     expect(await fixture.db.select().from(schema.messagingMessages)).toEqual(before);
     expect(await fixture.db.select().from(schema.entityLinks)).toEqual(workBefore);
     expect(await fixture.db.select().from(schema.userAgents)).toEqual(agentsBefore);

@@ -5,6 +5,7 @@ import { LoadingState } from "../feedback/loading-state";
 import { UserMenu } from "./user-menu";
 import { notificationsApp, workspaceApps, type WorkspaceAppId } from "./workspace-apps";
 import { RealtimeContainerContext } from "@/components/realtime/realtime-container-context";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { WorkspaceAppButton } from "@/components/workspace/workspace-app-button";
 
 export function WorkspaceShell({
@@ -42,6 +43,7 @@ export function WorkspaceShell({
   children: ReactNode;
 }) {
   const realtimeContainerRef = useContext(RealtimeContainerContext);
+  const apps = useOrganizationApps();
   const badges: Partial<
     Record<
       WorkspaceAppId,
@@ -58,9 +60,11 @@ export function WorkspaceShell({
         className="z-20 flex w-14 shrink-0 flex-col items-center gap-3 bg-rail py-3 text-rail-foreground"
       >
         {switcher}
-        {workspaceApps.map(({ id, ...app }) => (
-          <WorkspaceAppButton key={id} {...app} {...badges[id]} />
-        ))}
+        {workspaceApps
+          .filter(({ id }) => (id !== "tasks" && id !== "crm") || apps.enabled(id))
+          .map(({ id, ...app }) => (
+            <WorkspaceAppButton key={id} {...app} {...badges[id]} />
+          ))}
         <div className="mt-auto flex flex-col items-center gap-3">
           {updateIndicator}
           <WorkspaceAppButton {...notificationsApp} unread={hasUnreadNotifications} />

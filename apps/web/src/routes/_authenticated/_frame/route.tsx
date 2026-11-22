@@ -1,6 +1,7 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 import { ComposerDraftProvider } from "@/components/messaging/composer/composer-drafts";
+import { OrganizationAppsProvider } from "@/components/workspace/organization-apps";
 import { WorkspaceFrame } from "@/components/workspace/workspace-frame";
 
 // The workspace and user settings share one frame, so it stays mounted between them. User
@@ -16,14 +17,19 @@ function FrameLayout() {
       key={`${session.session.id}:${session.user.id}:${session.session.activeOrganizationId ?? ""}`}
       organizationId={session.session.activeOrganizationId ?? null}
     >
-      <WorkspaceFrame
-        userId={session.user.id}
+      <OrganizationAppsProvider
+        key={session.session.activeOrganizationId ?? ""}
         organizationId={session.session.activeOrganizationId}
-        name={session.user.name}
-        image={session.user.image}
       >
-        <Outlet />
-      </WorkspaceFrame>
+        <WorkspaceFrame
+          userId={session.user.id}
+          organizationId={session.session.activeOrganizationId}
+          name={session.user.name}
+          image={session.user.image}
+        >
+          <Outlet />
+        </WorkspaceFrame>
+      </OrganizationAppsProvider>
     </ComposerDraftProvider>
   );
 }

@@ -1,6 +1,7 @@
 import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 import {
   mcpTools,
+  toolApps,
   type McpInput,
   type McpOutput,
   type ServerToolName,
@@ -9,6 +10,7 @@ import {
 import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
+import { requireAppEnabled } from "../../core/apps/access";
 import { findDevice } from "../../core/devices/repository";
 import { effectsFor } from "../../core/effects";
 import type { SessionIdentity } from "../../core/session/identity";
@@ -90,6 +92,11 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     actor: agent,
     userName,
   } = await workspaceContext(tx, identity, { lockActor: !definition.readOnly });
+  // Check current settings before handlers or cached results can expose disabled app data.
+  for (const app of toolApps(tool)) {
+    if (app !== "tasks" && app !== "crm") continue;
+    await requireAppEnabled(ctx, app, !definition.readOnly);
+  }
   const actor = { id: agent.entityId, name: agent.name, type: agent.type };
   // A turn that answers callers names their calls; each call is audited, reads included.
   const calls = await requireCallerTurn(tx, identity, turn);

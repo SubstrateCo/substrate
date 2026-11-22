@@ -75,8 +75,10 @@ export function readOperations(
     async markRead(conversationId: string, messageId: string) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
-        const { actor } = await authenticate(tx);
-        await loadConversation(tx, scope, conversationId, "share");
+        const { actor, context } = await authenticate(tx);
+        const conversation = await loadConversation(tx, scope, conversationId, "share");
+        if (conversation.taskEntityId)
+          await context.requireAccess(conversation.taskEntityId, "view", true);
         const [message] = await tx
           .select({
             id: messagingMessages.id,

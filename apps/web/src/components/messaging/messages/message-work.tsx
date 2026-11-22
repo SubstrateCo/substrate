@@ -17,6 +17,7 @@ export type MessageWorkLink = {
   statusName?: string | null;
   purpose: string;
   canRemove: boolean;
+  unavailable?: boolean;
 };
 
 // Longer lists collapse so a message with many links stays short.

@@ -145,6 +145,12 @@ export function createAgentWorkRuntime(
    * Answers for callbacks that are gone are orphaned by the full pulls.
    */
   async function sync(answers: "always" | "waiting" = "always") {
+    try {
+      await epochs.refreshApps();
+    } catch {
+      context.log("Could not refresh enabled workspace apps.");
+      return;
+    }
     if (answers === "always") pulledAt = context.now();
     seenAt = context.now();
     status.refreshOpenRequests();

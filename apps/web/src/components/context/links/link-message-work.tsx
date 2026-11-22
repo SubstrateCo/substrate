@@ -10,6 +10,7 @@ import {
   type LinkableWork,
 } from "@/components/context/links/link-message-work-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { resourceState } from "@/lib/resource-state";
 import { useAttachMessageWork } from "@/queries/context/link-mutations";
@@ -31,12 +32,17 @@ export function LinkMessageWork({
   onRestoreFocus?: () => void;
 }) {
   const [query, setQuery] = useState("");
-  const [kind, setKind] = useState<ContextEntityType>("task");
+  const apps = useOrganizationApps();
+  const kinds = (
+    ["task", "project", "contact", "account", "deal", "contact_interaction"] as const
+  ).filter((kind) => apps.entityEnabled(kind));
+  const [selectedKind, setKind] = useState<ContextEntityType>("task");
+  const kind = kinds.find((item) => item === selectedKind) ?? "contact";
   const [creating, setCreating] = useState<"account" | "contact" | "deal" | null>(null);
   const search = useSearchDebounce(query, JSON.stringify([organizationId, kind]));
   const results = useQuery({
     ...searchOptions({ organizationId, query: search.query, kind, editable: true }),
-    enabled: !search.pending,
+    enabled: apps.ready && !search.pending,
   });
   const projects = useQuery({ ...projectsQueryOptions(organizationId), enabled: kind === "task" });
   const projectNames = new Map(
@@ -57,7 +63,7 @@ export function LinkMessageWork({
       ),
     );
   };
-  if (creating)
+  if (creating && apps.entityEnabled(creating))
     return (
       <MessageRecordCreator
         key={`${organizationId}:${messageId}:${creating}`}
@@ -73,6 +79,7 @@ export function LinkMessageWork({
       state={resourceState(results).status}
       query={query}
       kind={kind}
+      kinds={kinds}
       results={(search.pending ? [] : (resourceState(results).data ?? [])).map((item) => ({
         id: item.id,
         kind,
@@ -93,7 +100,8 @@ export function LinkMessageWork({
         if (!search.pending) void results.refetch();
       }}
       onLink={(items) => {
-        if (items.length) attach.mutate(items, { onSuccess });
+        if (items.length && items.every((item) => apps.entityEnabled(item.kind)))
+          attach.mutate(items, { onSuccess });
       }}
       onClose={onClose}
       onRestoreFocus={onRestoreFocus}

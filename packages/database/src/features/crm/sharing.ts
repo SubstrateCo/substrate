@@ -1,3 +1,4 @@
+import { requireAppEnabled } from "../../core/apps/access";
 import { permissionRepository } from "../../core/permissions/repository";
 import { entityGrants } from "../../core/permissions/schema";
 import type { RepositoryContext, PermissionLevel } from "../../core/repository-context";
@@ -8,6 +9,7 @@ import { and, eq } from "drizzle-orm";
 export function crmSharing(context: RepositoryContext) {
   async function change(entityId: string, actorEntityId: string, level?: PermissionLevel) {
     return context.transaction(async (ctx) => {
+      await requireAppEnabled(ctx, "crm");
       const { entity } = await ctx.requireAccess(entityId, "owner", true, "structural");
       if (!["contact", "account", "deal"].includes(entity.entityType))
         throw new AccessDeniedError();

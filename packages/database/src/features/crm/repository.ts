@@ -5,6 +5,7 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { permissionActorEntityId } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
+import { requireAppEnabled } from "../../core/apps/access";
 import { parseInput } from "../../core/contacts/inputs";
 import { contacts } from "../../core/contacts/schema";
 import { RepositoryContext, pageSize } from "../../core/repository-context";
@@ -54,6 +55,7 @@ export function crmRepository(context: RepositoryContext) {
     type: "account" | "deal" | "contact",
     edit = false,
   ) {
+    await requireAppEnabled(ctx, "crm", edit);
     const access = await ctx.requireAccess(id, edit ? "edit" : "view", edit);
     if (access.entity.entityType !== type) throw new AccessDeniedError();
     return access;
@@ -269,6 +271,7 @@ export function crmRepository(context: RepositoryContext) {
       report(context, from, to, options),
     reportDeals: (input: Parameters<typeof reportDeals>[1]) => reportDeals(context, input),
     async listAccounts(options: ListOptions = {}) {
+      await requireAppEnabled(context, "crm", false);
       await context.requireActiveActor();
       return db
         .select()
@@ -462,6 +465,7 @@ export function crmRepository(context: RepositoryContext) {
       });
     },
     async pipeline() {
+      await requireAppEnabled(context, "crm", false);
       await context.requireActiveActor();
       return db
         .select()
@@ -471,6 +475,7 @@ export function crmRepository(context: RepositoryContext) {
     },
     async ensurePipeline() {
       return context.transaction(async (ctx) => {
+        await requireAppEnabled(ctx, "crm");
         await ctx.requireActiveActor();
         await ctx.db.execute(
           sql`select pg_advisory_xact_lock(hashtextextended(${`crm-pipeline:${org}`}, 0))`,
@@ -654,6 +659,7 @@ export function crmRepository(context: RepositoryContext) {
       });
     },
     async listDeals(options: ListOptions = {}) {
+      await requireAppEnabled(context, "crm", false);
       await context.requireActiveActor();
       const rows = await db
         .select()

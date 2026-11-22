@@ -1,3 +1,4 @@
+import type { AppId } from "@substrate/contracts/apps";
 import { roles, type OrganizationRole } from "@substrate/contracts/auth/permissions";
 import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
 import { desktopHandoffURL } from "@substrate/contracts/desktop/links";
@@ -25,6 +26,14 @@ function canShareInvitation(viewerRole: string, invitationRole: string | null) {
 
 export function createOrganizationService(deps: { apiURL: string }) {
   return {
+    apps(scope: WorkspaceScope) {
+      return serviceResult(() => scope.repositories.organizations.apps());
+    },
+    updateApps(scope: WorkspaceScope, apps: AppId[]) {
+      return serviceResult(
+        async () => (await scope.repositories.organizations.updateApps(apps)).result,
+      );
+    },
     settingsAccess({ session, role }: SettingsScope) {
       return serviceResult(async () => {
         const organizationId = session?.session.activeOrganizationId;

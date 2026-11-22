@@ -1,5 +1,10 @@
 import type { EpochRotationReason, SessionRow } from "@substrate/client-storage/agent-work";
-import { POLICY_VERSION, type AdapterCapabilities, type Usage } from "@substrate/contracts/harness";
+import {
+  appAvailability,
+  POLICY_VERSION,
+  type AdapterCapabilities,
+  type Usage,
+} from "@substrate/contracts/harness";
 
 import type { RuntimeContext } from "./context.ts";
 
@@ -40,6 +45,21 @@ export function createEpochs(context: RuntimeContext) {
   }
 
   return {
+    /** App changes use the existing policy rotation, without editing an epoch's frozen prefix. */
+    async refreshApps() {
+      if (!context.enabledApps) return;
+      const availability = appAvailability(await context.enabledApps());
+      for (const agent of await context.agents.all()) {
+        for (const summary of await context.store.sessions.forAgent(
+          context.organizationId,
+          agent.id,
+        )) {
+          const session = await context.store.sessions.get(summary.id);
+          if (session?.prefix && !session.prefix.split("\n").includes(availability))
+            await rotate(session, "policy");
+        }
+      }
+    },
     /** After a finished turn: compact natively where the harness can, else rotate. */
     async afterTurn(sessionId: string, usage: Usage | null, capabilities: AdapterCapabilities) {
       const session = await context.store.sessions.get(sessionId);

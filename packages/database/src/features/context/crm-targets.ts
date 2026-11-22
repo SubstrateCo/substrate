@@ -1,5 +1,6 @@
 import { contactInteractions } from "../../core/contacts/interactions.schema";
 import { contacts } from "../../core/contacts/schema";
+import { appEnabledCondition } from "../../core/permissions/app-visibility";
 import { crmAccounts, crmContactProfiles, crmDeals } from "../crm/schema";
 import { isNull, sql, type SQLWrapper } from "drizzle-orm";
 
@@ -7,6 +8,7 @@ function activeContact(organizationId: SQLWrapper, contactEntityId: SQLWrapper) 
   return sql`not exists (select 1 from ${crmContactProfiles}
     where ${crmContactProfiles.organizationId} = ${organizationId}
       and ${crmContactProfiles.contactEntityId} = ${contactEntityId}
+      and ${appEnabledCondition(organizationId, "crm")}
       and ${crmContactProfiles.archivedAt} is not null)`;
 }
 
