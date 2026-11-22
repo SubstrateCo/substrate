@@ -18,6 +18,8 @@ import { ConversationTurnTranscript } from "@/components/agent-work/transcript/c
 import { ErrorState } from "@/components/feedback/error-state";
 import { ConversationPane as ConversationPaneView } from "@/components/messaging/conversations/conversation-pane-view";
 import { JumpToLatest, OlderMessages } from "@/components/messaging/messages/message-history";
+import { MessageLoading } from "@/components/messaging/messages/message-loading";
+import { ThreadPaneFrame } from "@/components/messaging/threads/thread-pane-frame";
 import {
   conversationLabel,
   conversationName,
@@ -106,23 +108,30 @@ export function ConversationPane({
         onClose={() => transcript()}
       />
     );
-  else if (activeThreadId)
+  else if (messageId && !target.error)
     aside = (
-      <ThreadPane
-        key={activeThreadId}
-        organizationId={organizationId}
-        conversationId={conversation.id}
+      <ThreadPaneFrame
         conversationLabel={conversationLabel({
           ...conversation,
           name: conversationName(conversation),
         })}
-        threadId={activeThreadId}
-        contextMessageIds={timeline.map((message) => message.id)}
-        root={target.data?.root}
-        targetMessage={target.data?.message}
-        canPost={conversation.canPost}
         onClose={() => navigateConversation({})}
-      />
+      >
+        {activeThreadId ? (
+          <ThreadPane
+            key={activeThreadId}
+            organizationId={organizationId}
+            conversationId={conversation.id}
+            threadId={activeThreadId}
+            contextMessageIds={timeline.map((message) => message.id)}
+            root={target.data?.root}
+            targetMessage={target.data?.message}
+            canPost={conversation.canPost}
+          />
+        ) : (
+          <MessageLoading label="Loading replies…" />
+        )}
+      </ThreadPaneFrame>
     );
   return (
     <ConversationAgentWork

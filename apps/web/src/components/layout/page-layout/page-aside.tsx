@@ -11,9 +11,10 @@ const width = { default: "40%", min: 300, max: "65%" };
 export function PageAside({
   className,
   overlay = false,
+  animate = true,
   "aria-label": label,
   ...props
-}: ComponentProps<"aside"> & { "aria-label": string; overlay?: boolean }) {
+}: ComponentProps<"aside"> & { "aria-label": string; overlay?: boolean; animate?: boolean }) {
   const layout = usePageLayout("PageAside");
   const [saved] = useState(() => readPaneWidth(layout.id, "aside"));
   const { setHasAside } = layout;
@@ -27,7 +28,9 @@ export function PageAside({
         data-slot="page-aside"
         aria-label={label}
         className={cn(
-          "absolute inset-y-0 right-0 z-10 flex w-full min-w-0 flex-col border-l bg-surface shadow-raised duration-200 ease-out motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-right-2 lg:w-2/5 lg:max-w-xl",
+          "absolute inset-y-0 right-0 z-10 flex w-full min-w-0 flex-col border-l bg-surface shadow-raised lg:w-2/5 lg:max-w-xl",
+          animate &&
+            "duration-200 ease-out motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-right-2",
           className,
         )}
         {...props}
@@ -51,7 +54,9 @@ export function PageAside({
           aria-label={label}
           className={cn(
             // The pane's content eases in from the right; the pane's width itself does not animate.
-            "absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col bg-surface shadow-raised duration-200 ease-out motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-right-2 lg:static lg:flex-1 lg:shadow-none",
+            "absolute inset-0 z-10 flex min-h-0 min-w-0 flex-col bg-surface shadow-raised lg:static lg:flex-1 lg:shadow-none",
+            animate &&
+              "duration-200 ease-out motion-safe:animate-in motion-safe:fade-in-0 motion-safe:slide-in-from-right-2",
             className,
           )}
           {...props}

@@ -15,22 +15,18 @@ import { useConversationRead } from "@/queries/messaging/read-state";
 export function ThreadPane({
   organizationId,
   conversationId,
-  conversationLabel,
   threadId,
   root,
   contextMessageIds,
   targetMessage,
-  onClose,
   canPost = true,
 }: {
   organizationId: string;
   conversationId: string;
-  conversationLabel: string;
   threadId: string;
   root?: Message;
   contextMessageIds: string[];
   targetMessage?: Message;
-  onClose: () => void;
   canPost?: boolean;
 }) {
   const {
@@ -65,7 +61,6 @@ export function ThreadPane({
   return (
     <ThreadPaneView
       state={resource.status}
-      conversationLabel={conversationLabel}
       loading={replies.isPending}
       error={replies.error}
       onRetry={() => void replies.refetch()}
@@ -85,7 +80,6 @@ export function ThreadPane({
           />
         )
       }
-      onClose={onClose}
       replies={
         resource.data && (
           <MessageList

@@ -54,8 +54,7 @@ export function ConversationPane({
 }: ConversationPaneProps) {
   const title = conversation ? conversationName(conversation) : "Conversation unavailable";
   const blocked = state === "error" || state === "unavailable";
-  const initialLoading = state === "loading";
-  const showThread = !blocked && !initialLoading && !!thread;
+  const showThread = !blocked && !!thread;
   return (
     <PageLayout id="conversation" aria-label="Conversation">
       <PageContent>
