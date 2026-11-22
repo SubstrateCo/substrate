@@ -11,7 +11,11 @@ import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { PageHeader } from "@/components/layout/page-header";
 import { SettingsContent } from "@/components/layout/settings-page";
-import { SettingsFooter, SettingsSection } from "@/components/layout/settings-section";
+import {
+  SettingsCard,
+  SettingsFooter,
+  SettingsSection,
+} from "@/components/layout/settings-section";
 import { resourceState } from "@/lib/resource-state";
 import { useCrmMutation } from "@/queries/crm/mutations";
 import { crmSettingsOptions, pipelineOptions } from "@/queries/crm/options";
@@ -35,12 +39,12 @@ export function CrmSettings({ organizationId }: { organizationId: string }) {
   const dirty = !!state.data && currency !== state.data.defaultCurrency;
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-6">
-      <SettingsContent className="mx-0">
+      <SettingsContent>
         <PageHeader
           title="CRM settings"
           description="Manage your sales pipeline and defaults for new deals."
         />
-        <div className="border-b pb-6">
+        <div>
           <CrmResourceState
             pending={query.isPending}
             error={query.error}
@@ -146,8 +150,9 @@ function DealDefaultsSection({
       title="Deal defaults"
       description="Applies to new deals only. Existing deals stay unchanged."
     >
-      {children}
-      {footer}
+      <SettingsCard label="CRM defaults" footer={footer}>
+        {children}
+      </SettingsCard>
     </SettingsSection>
   );
 }

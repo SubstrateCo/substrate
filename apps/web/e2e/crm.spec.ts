@@ -237,7 +237,7 @@ test("CRM default currency prefills new deal drafts and preserves an existing US
     page,
     "updateSettings",
     page
-      .getByRole("region", { name: "Default currency", exact: true })
+      .getByRole("region", { name: "CRM defaults", exact: true })
       .getByRole("button", { name: "Save", exact: true }),
   );
   await expect(page.getByRole("combobox", { name: "Default currency", exact: true })).toContainText(

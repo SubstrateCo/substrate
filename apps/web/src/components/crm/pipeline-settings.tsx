@@ -5,6 +5,7 @@ import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import {
+  SettingsCard,
   SettingsFooter,
   SettingsNote,
   SettingsSection,
@@ -171,8 +172,9 @@ function PipelineSection({
       title="Pipeline"
       description="Arrange open stages in sales order. Renaming or reordering keeps deal history."
     >
-      {children}
-      {footer}
+      <SettingsCard label="CRM pipeline" footer={footer}>
+        {children}
+      </SettingsCard>
     </SettingsSection>
   );
 }
