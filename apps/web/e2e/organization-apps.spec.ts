@@ -30,13 +30,33 @@ test("owner enables independent apps, confirms disable, and restores preserved p
   const { page } = user;
   await visit(user, undefined, "/settings/organization/apps");
   const apps = page.getByRole("region", { name: "Workspace apps", exact: true });
-  await expect(apps.getByRole("button", { name: "Enable Tasks", exact: true })).toBeVisible();
-  await expect(apps.getByRole("button", { name: "Enable CRM", exact: true })).toBeVisible();
+  const tasksSwitch = apps.getByRole("switch", { name: "Tasks", exact: true });
+  const crmSwitch = apps.getByRole("switch", { name: "CRM", exact: true });
+  await expect(tasksSwitch).not.toBeChecked();
+  await expect(crmSwitch).not.toBeChecked();
+  const messagesCard = apps.getByRole("region", { name: "Messages", exact: true });
+  const agentsCard = apps.getByRole("region", { name: "Agents", exact: true });
+  const messagesBounds = await messagesCard.boundingBox();
+  const agentsBounds = await agentsCard.boundingBox();
+  expect(messagesBounds).not.toBeNull();
+  expect(agentsBounds).not.toBeNull();
+  expect(messagesBounds!.y).toBe(agentsBounds!.y);
+  expect(messagesBounds!.x).toBeLessThan(agentsBounds!.x);
   await captureApps(page, "apps-owner-default");
+  await page.setViewportSize({ width: 800, height: 900 });
+  await expect
+    .poll(async () => {
+      const first = await messagesCard.boundingBox();
+      const second = await agentsCard.boundingBox();
+      return first && second && second.y >= first.y + first.height;
+    })
+    .toBe(true);
+  await captureApps(page, "apps-owner-narrow");
+  await page.setViewportSize({ width: 1440, height: 900 });
 
-  await apps.getByRole("button", { name: "Enable CRM", exact: true }).click();
-  await expect(apps.getByRole("button", { name: "Disable CRM", exact: true })).toBeVisible();
-  await expect(apps.getByRole("button", { name: "Enable Tasks", exact: true })).toBeVisible();
+  await crmSwitch.click();
+  await expect(crmSwitch).toBeChecked();
+  await expect(tasksSwitch).not.toBeChecked();
   await captureApps(page, "apps-owner-mixed");
   await visit(user, undefined, "/tasks");
   await expect(page.getByRole("heading", { name: "Tasks is disabled", exact: true })).toBeVisible();
@@ -60,25 +80,25 @@ test("owner enables independent apps, confirms disable, and restores preserved p
   await expect(page).toHaveURL(/\/contacts/);
 
   await visit(user, undefined, "/settings/organization/apps");
-  await apps.getByRole("button", { name: "Enable Tasks", exact: true }).click();
-  await expect(apps.getByRole("button", { name: "Disable Tasks", exact: true })).toBeVisible();
+  await tasksSwitch.click();
+  await expect(tasksSwitch).toBeChecked();
   const preserved = await project(account);
-  await apps.getByRole("button", { name: "Disable Tasks", exact: true }).click();
+  await tasksSwitch.click();
   const confirm = page.getByRole("dialog", { name: "Disable Tasks?", exact: true });
   await expect(confirm).toContainText("Existing projects and tasks are preserved.");
   await captureApps(page, "apps-disable-confirmation");
   await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
-  await expect(apps.getByRole("button", { name: "Disable Tasks", exact: true })).toBeVisible();
-  await apps.getByRole("button", { name: "Disable Tasks", exact: true }).click();
+  await expect(tasksSwitch).toBeChecked();
+  await tasksSwitch.click();
   await confirm.getByRole("button", { name: "Disable Tasks", exact: true }).click();
   await expect(confirm).toHaveCount(0);
-  await expect(apps.getByRole("button", { name: "Enable Tasks", exact: true })).toBeVisible();
+  await expect(tasksSwitch).not.toBeChecked();
   await visit(user, undefined, "/tasks", { projectId: preserved.entityId });
   await expect(page.getByRole("heading", { name: "Tasks is disabled", exact: true })).toBeVisible();
   await expect(page.getByText(preserved.name, { exact: true })).toHaveCount(0);
   await visit(user, undefined, "/settings/organization/apps");
-  await apps.getByRole("button", { name: "Enable Tasks", exact: true }).click();
-  await expect(apps.getByRole("button", { name: "Disable Tasks", exact: true })).toBeVisible();
+  await tasksSwitch.click();
+  await expect(tasksSwitch).toBeChecked();
   await visit(user, undefined, "/tasks", { projectId: preserved.entityId });
   await expect(page.getByText(preserved.name, { exact: true }).first()).toBeVisible();
 });
@@ -87,13 +107,8 @@ test("member can view organization apps but cannot change them", async ({ actors
   const user = await client(actors.member);
   await visit(user, undefined, "/settings/organization/apps");
   await expect(user.page.getByRole("heading", { name: "Apps", exact: true })).toBeVisible();
-  await expect(
-    user.page.getByText("You can view your organization’s apps.", { exact: false }),
-  ).toBeVisible();
   await expect(user.page.getByRole("region", { name: "Tasks", exact: true })).toBeVisible();
-  await expect(
-    user.page.getByRole("button", { name: /^(Enable|Disable) (Tasks|CRM)$/ }),
-  ).toHaveCount(0);
+  await expect(user.page.getByRole("switch")).toHaveCount(0);
   const settings = user.page.getByRole("navigation", { name: "Settings sections", exact: true });
   await expect(settings.getByRole("link", { name: "Apps", exact: true })).toBeVisible();
   await expect(settings.getByRole("link", { name: "Members", exact: true })).toHaveCount(0);

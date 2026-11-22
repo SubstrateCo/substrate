@@ -10,17 +10,11 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Tag } from "@/components/feedback/tag";
 import { SettingsPanel } from "@/components/layout/settings-page";
-import {
-  SettingsCard,
-  SettingsNote,
-  SettingsRow,
-  SettingsSection,
-} from "@/components/layout/settings-section";
-import { Button } from "@/components/ui/button";
+import { SettingsCard, SettingsSection } from "@/components/layout/settings-section";
+import { Switch } from "@/components/ui/switch";
 import { workspaceApps } from "@/components/workspace/workspace-apps";
 import { organizationAppsOptions, useUpdateOrganizationApps } from "@/queries/organizations/apps";
 import { currentOrganizationQueryOptions } from "@/queries/organizations/options";
-import { ShieldCheck, Users } from "lucide-react";
 
 const catalog = [
   {
@@ -64,11 +58,6 @@ export function OrganizationApps({ organizationId }: { organizationId: string })
       title="Apps"
       description="Choose the tools your organization uses. Changes apply to everyone in this workspace."
     >
-      <SettingsNote icon={<ShieldCheck aria-hidden />}>
-        {canManage
-          ? "Owners and admins manage apps for the whole organization. Disabling an app preserves its data and blocks access until it is enabled again."
-          : "You can view your organization’s apps. Ask an owner or admin to enable or disable an app."}
-      </SettingsNote>
       {settings.isPending && <LoadingState label="Loading apps…" />}
       {settings.error && (
         <ErrorState
@@ -79,54 +68,55 @@ export function OrganizationApps({ organizationId }: { organizationId: string })
       )}
       {settings.data && !settings.error && (
         <>
-          <SettingsSection
-            title="Workspace apps"
-            description="Messages and Agents are always available. Add other apps when your team needs them."
-          >
-            <div className="grid gap-4">
-              {catalog.map((entry) => {
-                const app = workspaceApps.find((item) => item.id === entry.id)!;
-                const Icon = app.icon;
-                const enabled = settings.data.enabledApps.includes(entry.id);
-                let status = enabled ? "Enabled" : "Disabled";
-                if (entry.required) status = "Required";
-                return (
-                  <SettingsCard key={entry.id} label={app.label}>
-                    <SettingsRow
-                      label={app.label}
-                      description={entry.description}
-                      control={
-                        <div className="flex items-center gap-3">
-                          <Tag>{status}</Tag>
-                          {!entry.required && canManage && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              disabled={mutation.isPending}
-                              onClick={() => {
-                                mutation.reset();
-                                if (enabled) setDisabling(entry.id);
-                                else change(entry.id, true);
-                              }}
+          <SettingsSection title="Workspace apps">
+            <div className="@container">
+              <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
+                {catalog.map((entry) => {
+                  const app = workspaceApps.find((item) => item.id === entry.id)!;
+                  const Icon = app.icon;
+                  const enabled = settings.data.enabledApps.includes(entry.id);
+                  return (
+                    <SettingsCard key={entry.id} label={app.label}>
+                      <div className="flex items-center justify-between gap-4">
+                        <div className="flex min-w-0 items-center gap-3">
+                          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
+                            <Icon className="size-5" aria-hidden />
+                          </div>
+                          {!entry.required && canManage ? (
+                            <label
+                              htmlFor={`organization-app-${entry.id}`}
+                              className="text-sm font-medium"
                             >
-                              {enabled ? `Disable ${app.label}` : `Enable ${app.label}`}
-                            </Button>
+                              {app.label}
+                            </label>
+                          ) : (
+                            <p className="text-sm font-medium">{app.label}</p>
                           )}
                         </div>
-                      }
-                    />
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <Icon className="size-4" aria-hidden />
-                      {entry.required ? "Included in every workspace" : "Organization-wide"}
-                    </div>
-                  </SettingsCard>
-                );
-              })}
+                        {entry.required && <Tag>Required</Tag>}
+                        {!entry.required && canManage && (
+                          <Switch
+                            id={`organization-app-${entry.id}`}
+                            checked={enabled}
+                            disabled={mutation.isPending}
+                            onCheckedChange={(checked) => {
+                              mutation.reset();
+                              if (!checked) setDisabling(entry.id);
+                              else change(entry.id, true);
+                            }}
+                          />
+                        )}
+                        {!entry.required && !canManage && (
+                          <Tag>{enabled ? "Enabled" : "Disabled"}</Tag>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">{entry.description}</p>
+                    </SettingsCard>
+                  );
+                })}
+              </div>
             </div>
           </SettingsSection>
-          <SettingsNote icon={<Users aria-hidden />}>
-            Contacts stay available across the workspace, whether CRM is enabled or not.
-          </SettingsNote>
           {mutation.error && !disabling && (
             <ErrorState
               title="Couldn’t update apps"
