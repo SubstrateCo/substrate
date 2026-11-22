@@ -1,3 +1,4 @@
+import { contextConversation } from "../../testing/context";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { expect, test } from "bun:test";
@@ -228,6 +229,38 @@ test("all-time timeline and repeat directory include older records but profile I
   await rejection(
     f.forActor(f.outsider, f.orgB).contactInteractions.workspaceProfile(contact.entityId, "person"),
   );
+});
+
+test("published interactions are counted and filtered by their origin", async () => {
+  const { repos, reply } = await contextConversation(f);
+  const contact = await repos.contacts.create({ displayName: "Maya Chen" });
+  const occurredAt = "2026-11-12T12:00:00.000Z";
+  const manual = await repos.contactInteractions.createManual({
+    contactEntityId: contact.entityId,
+    kind: "call",
+    occurredAt: new Date(occurredAt),
+    summary: "Manual call",
+  });
+  const published = await (
+    await f.forSession("alice")
+  ).contactInteractions.publishInteraction({
+    contactEntityId: contact.entityId,
+    kind: "message",
+    summary: "Published summary",
+    occurredAt,
+    messageId: reply.id,
+    consentToContactAudience: true,
+  });
+  expect((await repos.contactInteractions.workspaceActivity(period)).summary).toMatchObject({
+    total: 2,
+    published: 1,
+  });
+  const timeline = (origin: "manual" | "message_publication") =>
+    repos.contactInteractions.workspaceTimeline({ ...period, origin });
+  expect((await timeline("message_publication")).items.map((row) => row.entityId)).toEqual([
+    published.result.entityId,
+  ]);
+  expect((await timeline("manual")).items.map((row) => row.entityId)).toEqual([manual.entityId]);
 });
 
 test("directory pagination has a stable tie break and filters before paging", async () => {
