@@ -1,11 +1,35 @@
 import { ConflictError } from "../../errors";
+import { contacts } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { describe, expect, test } from "bun:test";
+import { sql } from "drizzle-orm";
 
 const f = setupDatabase();
 
 describe("contact details", () => {
+  test("detail edits permit foreign-key readers while their transaction is open", async () => {
+    const a = f.forActor(f.alice);
+    const contact = await a.contacts.create({ displayName: "Jane" });
+    await a.transaction(async (tx) => {
+      await tx.contacts.addIdentifier(contact.entityId, {
+        type: "email",
+        value: "jane@example.com",
+        isPrimary: true,
+      });
+      await f.db.transaction(async (reader) => {
+        const rows = await reader.execute(sql`
+          SELECT entity_id FROM ${contacts} WHERE entity_id = ${contact.entityId}
+          FOR KEY SHARE NOWAIT
+        `);
+        expect(rows).toHaveLength(1);
+      });
+    });
+    expect((await a.contacts.getDetail(contact.entityId)).identifiers).toMatchObject([
+      { value: "jane@example.com", isPrimary: true },
+    ]);
+  });
+
   test("keeps multiple labeled methods and changes primary within each type", async () => {
     const repo = f.forActor(f.alice).contacts;
     const contact = await repo.create({

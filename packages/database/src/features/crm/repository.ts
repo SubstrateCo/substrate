@@ -179,7 +179,8 @@ export function crmRepository(context: RepositoryContext) {
   }
   async function lockedDeal(ctx: RepositoryContext, id: string, version: number) {
     await requireType(ctx, id, "deal", true);
-    const [deal] = await ctx.db.select().from(crmDeals).where(target(crmDeals, id)).for("update");
+    // The entity access lock already serializes deal edits, transitions, and archiving.
+    const [deal] = await ctx.db.select().from(crmDeals).where(target(crmDeals, id));
     if (!deal) throw new AccessDeniedError();
     if (deal.version !== version)
       throw new ConflictError("The deal changed. Reload and try again.");

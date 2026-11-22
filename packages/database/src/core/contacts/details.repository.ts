@@ -44,14 +44,13 @@ export function contactDetailsRepository(context: RepositoryContext) {
     return context.transaction(async (ctx) => {
       const { entity } = await ctx.requireAccess(contactId, "edit", true);
       if (entity.entityType !== "contact") throw new AccessDeniedError();
-      // Serialize detail edits, including replacing a primary value, on the parent row.
+      // The entity access lock serializes detail edits, including replacing a primary value.
       const [contact] = await ctx.db
         .select()
         .from(contacts)
         .where(
           and(eq(contacts.organizationId, scope.organizationId), eq(contacts.entityId, contactId)),
-        )
-        .for("update");
+        );
       if (!contact) throw new AccessDeniedError();
       const result = await work(ctx);
       await ctx.touch(contactId);

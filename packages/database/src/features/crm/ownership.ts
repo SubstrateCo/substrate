@@ -24,7 +24,8 @@ export async function assignOwner(context: RepositoryContext, id: string, input:
       throw new ValidationError("Responsibility requires an active organization human.");
     const table = entity.entityType === "account" ? crmAccounts : crmDeals;
     const where = and(eq(table.organizationId, ctx.scope.organizationId), eq(table.entityId, id));
-    const [previous] = await ctx.db.select().from(table).where(where).for("update");
+    // The target's entity access lock also serializes responsibility changes.
+    const [previous] = await ctx.db.select().from(table).where(where);
     if (!previous) throw new AccessDeniedError();
     if (previous.ownerActorEntityId !== input.expectedOwnerActorEntityId)
       throw new ConflictError("Responsibility changed. Reload and try again.");
