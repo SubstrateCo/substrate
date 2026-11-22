@@ -59,7 +59,7 @@ test("five person mentions and five task references resolve in set-based stateme
   const sent = await sender.sendMessage(channel.id, body);
   // Five of each cost what one of each costs. Includes the lookup for the author's own agents.
   expect(queries).toHaveLength(single);
-  expect(queries).toHaveLength(11);
+  expect(queries).toHaveLength(10);
   expect(
     (
       await f.db
@@ -280,7 +280,7 @@ test("message, references and batched notifications all roll back with the calle
   expect(await chat.listMessages(conversation.id)).toEqual(before);
 });
 
-test("mention, reply and message alerts share one candidate read and one insert, and mentions win", async () => {
+test("mention, reply and message alerts share one insert-select, and mentions win", async () => {
   await f.db.insert(user).values({ id: "one", name: "one", email: "one@example.com" });
   await f.db.insert(member).values({ id: "one-a", userId: "one", organizationId: f.orgA });
   await f.db.update(user).set({ emailVerified: true });
@@ -304,8 +304,10 @@ test("mention, reply and message alerts share one candidate read and one insert,
   const sent = await sender.sendMessage(group.id, `@[person:${one.entityId}]`, root.id);
   expect(
     queries.filter((query) => /^\s*select distinct "actors"\."organization_id"/i.test(query)),
+  ).toEqual([]);
+  expect(
+    queries.filter((query) => /^\s*insert into "notifications".*\bselect\b/is.test(query)),
   ).toHaveLength(1);
-  expect(queries.filter((query) => /^\s*insert into "notifications"/i.test(query))).toHaveLength(1);
   // One authored a thread reply and was mentioned; the mention takes precedence.
   expect(
     (await f.db.select().from(notifications).where(eq(notifications.messageId, sent.id)))

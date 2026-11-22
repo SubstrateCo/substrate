@@ -294,7 +294,7 @@ test("task create locks the project once and update batches activity with one as
   });
   // The task's lock path covers its project, so the update locks once.
   expect(statements.filter((query) => query.includes("FOR NO KEY UPDATE"))).toHaveLength(1);
-  expect(statements).toHaveLength(10);
+  expect(statements).toHaveLength(9);
   const activity = await fixture.db
     .select()
     .from(schema.taskActivity)

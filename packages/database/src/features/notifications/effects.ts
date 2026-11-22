@@ -29,13 +29,44 @@ export async function notify(
 ) {
   const recipients = groups.flatMap((group) => group.recipients);
   if (!recipients.length) return [];
-  const actorIds = recipients.flatMap((row) => ("actorEntityId" in row ? [row.actorEntityId] : []));
-  const userIds = recipients.flatMap((row) => ("userId" in row ? [row.userId] : []));
-  const candidates = await ctx.db
-    .selectDistinct({
+  const actorIdsOf = (rows: Recipient[]) =>
+    rows.flatMap((row) => ("actorEntityId" in row ? [row.actorEntityId] : []));
+  // Entity targets reach recipients only by actor.
+  const userIdsOf = (rows: Recipient[]) =>
+    "entityId" in target ? [] : rows.flatMap((row) => ("userId" in row ? [row.userId] : []));
+  const actorIds = actorIdsOf(recipients);
+  const userIds = userIdsOf(recipients);
+  const matches = groups.flatMap((group) => {
+    const named = or(
+      actorIdsOf(group.recipients).length
+        ? inArray(actors.entityId, actorIdsOf(group.recipients))
+        : undefined,
+      userIdsOf(group.recipients).length
+        ? inArray(actors.userId, userIdsOf(group.recipients))
+        : undefined,
+    );
+    return named ? [sql`WHEN ${named} THEN ${group.kind}::text`] : [];
+  });
+  // Every candidate the filter keeps is named by a group, so the CASE always has a match.
+  const kind = matches.length ? sql<Kind>`CASE ${sql.join(matches, sql` `)} END` : sql<Kind>`NULL`;
+  // Insert-select lists every column in table order. The id and creation time repeat the column
+  // defaults. The joins use unique keys, so each actor is one row; the unique event key keeps
+  // one alert per recipient.
+  const candidates = ctx.db
+    .select({
+      id: sql<string>`gen_random_uuid()`.as("id"),
       organizationId: actors.organizationId,
-      actorId: actors.entityId,
-      userId: actors.userId,
+      recipientActorEntityId: actors.entityId,
+      kind: kind.as("kind"),
+      eventKey: sql<string>`${target.eventKey}::text`.as("event_key"),
+      entityId: sql<string | null>`${"entityId" in target ? target.entityId : null}::uuid`.as(
+        "entity_id",
+      ),
+      messageId: sql<string | null>`${"messageId" in target ? target.messageId : null}::uuid`.as(
+        "message_id",
+      ),
+      readAt: sql<Date | null>`NULL::timestamptz`.as("read_at"),
+      createdAt: sql<Date>`now()`.as("created_at"),
     })
     .from(actors)
     .innerJoin(user, and(eq(user.id, actors.userId), eq(user.emailVerified, true)))
@@ -81,29 +112,8 @@ export async function notify(
                 OR ${messagingParticipants.actorEntityId} IS NOT NULL))`,
       ),
     );
-  // Entity targets reach recipients only by actor.
-  const names = (recipient: Recipient, row: (typeof candidates)[number]) =>
-    "actorEntityId" in recipient
-      ? recipient.actorEntityId === row.actorId
-      : !("entityId" in target) && recipient.userId === row.userId;
-  const values = candidates.flatMap((row) => {
-    const group = groups.find((entry) => entry.recipients.some((item) => names(item, row)));
-    return group
-      ? [
-          {
-            organizationId: row.organizationId,
-            recipientActorEntityId: row.actorId,
-            kind: group.kind,
-            eventKey: target.eventKey,
-            entityId: "entityId" in target ? target.entityId : undefined,
-            messageId: "messageId" in target ? target.messageId : undefined,
-          },
-        ]
-      : [];
-  });
-  if (!values.length) return [];
   return ctx.effects.notify(() =>
-    ctx.db.insert(notifications).values(values).onConflictDoNothing().returning({
+    ctx.db.insert(notifications).select(candidates).onConflictDoNothing().returning({
       organizationId: notifications.organizationId,
       actorId: notifications.recipientActorEntityId,
     }),
