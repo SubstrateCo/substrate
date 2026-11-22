@@ -1,10 +1,10 @@
 import type { mcpCall } from "@substrate/contracts/harness/tools";
-import { executeAgentTool } from "@substrate/database/mcp";
 import { ensureUserAgentActor, type Database } from "@substrate/database/trusted";
 
 import type { CommittedPublisher } from "../../shared/committed";
 import type { WorkspaceScope } from "../../shared/scope-types";
 import { serviceResult } from "../../shared/service-result";
+import { executeAgentTool } from "./execution";
 import type { z } from "zod";
 
 export function createMcpService({ db, publish }: { db: Database; publish: CommittedPublisher }) {

@@ -1,13 +1,23 @@
 import { sessionKeys } from "@substrate/contracts/agent-work";
 
-import { registerDevice } from "../../core/devices/repository";
-import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
-import { agentRequests, agentToolRequests, messagingMessages, userAgents } from "../../schema";
-import { agentWorkFixture, dmTurn, threadTurn } from "../../testing/agent-work";
-import { ownedAgent } from "../../testing/agents";
-import { setupDatabase } from "../../testing/database";
-import { rejection } from "../../testing/rejection";
-import { executeAgentTool } from "./service";
+import { registerDevice } from "../../../../../packages/database/src/core/devices/repository";
+import {
+  AccessDeniedError,
+  ConflictError,
+  ValidationError,
+} from "../../../../../packages/database/src/errors";
+import {
+  agentRequests,
+  agentToolRequests,
+  messagingMessages,
+  userAgents,
+} from "../../../../../packages/database/src/schema";
+import { dmTurn, threadTurn } from "../../../../../packages/database/src/testing/agent-work";
+import { ownedAgent } from "../../../../../packages/database/src/testing/agents";
+import { setupDatabase } from "../../../../../packages/database/src/testing/database";
+import { rejection } from "../../../../../packages/database/src/testing/rejection";
+import { executeAgentTool } from "./execution";
+import { agentWorkFixture } from "./test-support";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { ZodError } from "zod";

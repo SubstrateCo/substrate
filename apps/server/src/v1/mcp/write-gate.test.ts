@@ -1,6 +1,6 @@
 import { mcpTools } from "@substrate/contracts/harness/tools";
+import { proposeInstead } from "@substrate/database/mcp";
 
-import { proposeInstead } from "./turn";
 import { writeGate } from "./write-gate";
 import { expect, test } from "bun:test";
 

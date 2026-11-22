@@ -1,7 +1,6 @@
 import type { TurnContext } from "@substrate/contracts/harness/mcp";
 import type { ServerToolName } from "@substrate/contracts/harness/tools";
-
-import { proposeInstead } from "./turn";
+import { proposeInstead } from "@substrate/database/mcp";
 
 // In background turns the agent may only publish to its own place or propose.
 const unattendedWrites: ReadonlySet<ServerToolName> = new Set(["reply", "propose"]);

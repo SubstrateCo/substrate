@@ -1,13 +1,22 @@
 import { sessionKeys } from "@substrate/contracts/agent-work";
-import type { WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
+import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
-import { ensureUserAgentActor } from "../../core/actors/provisioning";
-import { organizationApps } from "../../core/apps/schema";
-import { registerDevice } from "../../core/devices/repository";
-import type { DatabaseExecutor } from "../../core/executor";
-import { AccessDeniedError, AppDisabledError, ConflictError } from "../../errors";
+import { ensureUserAgentActor } from "../../../../../packages/database/src/core/actors/provisioning";
+import { organizationApps } from "../../../../../packages/database/src/core/apps/schema";
+import { registerDevice } from "../../../../../packages/database/src/core/devices/repository";
+import type { DatabaseExecutor } from "../../../../../packages/database/src/core/executor";
+import {
+  AccessDeniedError,
+  AppDisabledError,
+  ConflictError,
+} from "../../../../../packages/database/src/errors";
+import { crmActivityEvents } from "../../../../../packages/database/src/features/crm/activity.schema";
+import { crmStages } from "../../../../../packages/database/src/features/crm/schema";
+import { crmSettings } from "../../../../../packages/database/src/features/crm/settings.schema";
+import { agentToolRequests } from "../../../../../packages/database/src/features/mcp/schema";
+import { createMessagingService } from "../../../../../packages/database/src/features/messaging/service";
 import {
   entities,
   member,
@@ -21,23 +30,32 @@ import {
   messageEntityReferences,
   messagingMessages,
   messagingParticipants,
-} from "../../schema";
-import { discardEffects } from "../../testing/connection";
-import { contextConversation } from "../../testing/context";
-import { setupDatabase } from "../../testing/database";
-import { recordQueries } from "../../testing/queries";
-import { rejection } from "../../testing/rejection";
-import { crmActivityEvents } from "../crm/activity.schema";
-import { crmStages } from "../crm/schema";
-import { crmSettings } from "../crm/settings.schema";
-import { createMessagingService } from "../messaging/service";
-import { executeAgentTool as executeCommittedTool } from "./committed";
-import { agentToolRequests } from "./schema";
-import { executeAgentTool } from "./service";
-import { expect, test } from "bun:test";
+} from "../../../../../packages/database/src/schema";
+import { discardEffects } from "../../../../../packages/database/src/testing/connection";
+import { contextConversation } from "../../../../../packages/database/src/testing/context";
+import { setupDatabase } from "../../../../../packages/database/src/testing/database";
+import { recordQueries } from "../../../../../packages/database/src/testing/queries";
+import { rejection } from "../../../../../packages/database/src/testing/rejection";
+import { scopeFixture } from "../../test-support";
+import { executeAgentTool as executeCommittedTool } from "./execution";
+import { createMcpService } from "./service";
+import { expect, spyOn, test } from "bun:test";
 import { and, eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
+
+// Tests that inspect only the payload still use the production commit boundary.
+async function executeAgentTool<K extends ServerToolName>(
+  db: DatabaseExecutor,
+  identity: Parameters<typeof executeCommittedTool>[1],
+  tool: K,
+  input: WorkspaceApiRequest["input"],
+  context: TurnContext,
+) {
+  const { result } = await executeCommittedTool(db, identity, tool, input, context);
+  // SAFETY: execution parses this payload with the schema registered for K.
+  return { ...result, output: result.output as McpOutput<K> };
+}
 
 function trackedTransactions(failAfterWork = false) {
   let count = 0;
@@ -323,7 +341,7 @@ test("CRM MCP keeps the validated agent actor separate from human responsibility
     .select()
     .from(contactInteractions)
     .where(eq(contactInteractions.entityId, interaction.record.entityId));
-  expect(stored?.createdByActorEntityId).toBe(actor.entityId);
+  expect(stored.createdByActorEntityId).toBe(actor.entityId);
   expect(interaction.record.actor).toEqual({
     type: "agent",
     displayName: "Agent on behalf of Alice",
@@ -888,7 +906,7 @@ test("committed MCP reads use one transaction and raw validation opens none", as
   expect(invalid.count()).toBe(0);
 });
 
-test("raw and committed MCP writes roll back with their transaction", async () => {
+test("MCP writes roll back with their transaction", async () => {
   const { identity, project } = await fixture();
   const input = {
     taskId: (
@@ -899,14 +917,74 @@ test("raw and committed MCP writes roll back with their transaction", async () =
     ).entityId,
     requestId: crypto.randomUUID(),
   };
-  for (const execute of [executeAgentTool, executeCommittedTool]) {
-    const tracked = trackedTransactions(true);
-    expect(await rejection(execute(tracked.db, identity, "get_task_discussion", input, turn))).toBe(
-      tracked.failure,
-    );
-    expect(await f.db.select().from(messagingConversations)).toEqual([]);
-    expect(await f.db.select().from(agentToolRequests)).toEqual([]);
+  const tracked = trackedTransactions(true);
+  expect(
+    await rejection(executeCommittedTool(tracked.db, identity, "get_task_discussion", input, turn)),
+  ).toBe(tracked.failure);
+  expect(await f.db.select().from(messagingConversations)).toEqual([]);
+  expect(await f.db.select().from(agentToolRequests)).toEqual([]);
+});
+
+test("invalid fresh tool output rolls back its write and never reaches the publisher", async () => {
+  const { agentId, project } = await fixture();
+  let published = false;
+  const service = createMcpService({
+    db: f.db,
+    publish: async (committed) => {
+      published = true;
+      return committed.result;
+    },
+  });
+  const parse = mcpTools.create_task.output.parse.bind(mcpTools.create_task.output);
+  // Inject a malformed handler result at the output boundary, after the real task write.
+  const output = spyOn(mcpTools.create_task.output, "parse").mockImplementation(() =>
+    parse({ id: "invalid" }),
+  );
+  try {
+    expect(
+      await service.callAgentTool(
+        { ...scopeFixture(), userId: "alice", organizationId: f.orgA },
+        {
+          organizationId: f.orgA,
+          agentId,
+          tool: "create_task",
+          turn,
+          input: { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Rollback" },
+        },
+      ),
+    ).toMatchObject({ success: false });
+    expect(output).toHaveBeenCalledTimes(1);
+  } finally {
+    output.mockRestore();
   }
+  expect(published).toBe(false);
+  expect(await f.db.select().from(tasks)).toEqual([]);
+  expect(await f.db.select().from(agentToolRequests)).toEqual([]);
+});
+
+test("concurrent identical MCP requests commit one task and one receipt", async () => {
+  const { identity, project } = await fixture();
+  const input = { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Once" };
+  const results = await Promise.all([
+    executeCommittedTool(f.db, identity, "create_task", input, turn),
+    executeCommittedTool(f.db, identity, "create_task", input, turn),
+  ]);
+  expect(results[0]!.result.output).toEqual(results[1]!.result.output);
+  expect(await f.db.select().from(tasks)).toHaveLength(1);
+  const receipts = await f.db.select().from(agentToolRequests);
+  expect(receipts).toHaveLength(1);
+  expect(receipts[0]!.fingerprint).toBe(JSON.stringify(mcpTools.create_task.input.parse(input)));
+});
+
+test("cached tool output must still pass its output schema", async () => {
+  const { identity, project } = await fixture();
+  const input = { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Once" };
+  await executeCommittedTool(f.db, identity, "create_task", input, turn);
+  await f.db.update(agentToolRequests).set({ result: sql`'{}'::jsonb` });
+  expect(
+    await rejection(executeCommittedTool(f.db, identity, "create_task", input, turn)),
+  ).toBeInstanceOf(Error);
+  expect(await f.db.select().from(tasks)).toHaveLength(1);
 });
 
 test("MCP discussion replies preserve provenance, references and notification hints without wakes", async () => {
@@ -1125,7 +1203,7 @@ test("a task created from a thread reply links to a message that read_thread can
   await human.sendMessage(channel.id, "Agreed", root.id);
   const task = await createTask({ title: "Write checklist", sourceMessageId: first.id });
   const [linked] = (await call("list_links", { target: { type: "task", id: task.id } })).items;
-  expect(linked?.message).toMatchObject({
+  expect(linked.message).toMatchObject({
     id: first.id,
     threadId: root.id,
     text: "We need a checklist",

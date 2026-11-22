@@ -2,7 +2,7 @@ import { maxAdmittedInvocationsPerDay, sessionKeys } from "@substrate/contracts/
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { workspaceContext } from "../../core/session/workspace";
-import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
+import { AccessDeniedError, ConflictError } from "../../errors";
 import {
   agentAuditEvents,
   agentInvocations,
@@ -10,19 +10,13 @@ import {
   member,
   messagingMessages,
 } from "../../schema";
-import {
-  callerFixture,
-  deviceAgentWork,
-  ownerAgentWork,
-  threadTurn,
-} from "../../testing/agent-work";
+import { callerFixture, deviceAgentWork, ownerAgentWork } from "../../testing/agent-work";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { createAgentRepository } from "../agents/repository";
 import { contextSearch } from "../context/search";
-import { executeAgentTool } from "../mcp/committed";
 import { createMessagingService } from "../messaging/service";
 import { admit } from "./admission";
 import { expireInvocations, revokedInvocations } from "./invocations";
@@ -187,57 +181,6 @@ test("partners, places the owner cannot see, and disabled triggers never call", 
   await x.bob.sendMessage(x.channel.id, `${x.mention} help`);
   expect(await calls()).toEqual([]);
   expect(await callerWakes()).toEqual([]);
-});
-
-test("a thread reply calls only where the agent answered that caller", async () => {
-  const x = await callerFixture(f);
-  await x.policy("anyone");
-  const root = await x.bob.sendMessage(x.channel.id, `${x.mention} start`);
-  const [first] = await calls();
-  await x.call(
-    "reply",
-    { requestId: crypto.randomUUID(), body: "Started" },
-    { ...threadTurn(x.channel.id, root.id), invocationIds: [first!.id] },
-  );
-  await x.carol.sendMessage(x.channel.id, "me too", root.id);
-  const reply = await x.bob.sendMessage(x.channel.id, "and the risks", root.id);
-  expect((await calls()).map((row) => [row.callerUserId, row.kind, row.messageId])).toEqual([
-    ["bob", "mention", root.id],
-    ["bob", "thread_reply", reply.id],
-  ]);
-  expect((await callerWakes()).map((wake) => wake.sessionKey)).toEqual([
-    sessionKeys.thread(root.id),
-    sessionKeys.thread(root.id),
-  ]);
-});
-
-test("a thread reply does not call where the agent only asked, or replied to someone else", async () => {
-  const x = await callerFixture(f);
-  await x.policy("anyone");
-  const root = await x.bob.sendMessage(x.channel.id, `${x.mention} start`);
-  const [first] = await calls();
-  const turn = { ...threadTurn(x.channel.id, root.id), invocationIds: [first!.id] };
-  // The agent works on Bob's call but publishes no reply: it only proposes in the thread.
-  const project = await f.forActor(f.alice).projects.create({ name: "Work" });
-  await x.call(
-    "propose",
-    {
-      requestId: crypto.randomUUID(),
-      summary: "Track it",
-      action: { type: "create_task", input: { projectId: project.entityId, title: "Track" } },
-    },
-    turn,
-  );
-  // The agent replies in the thread to its owner, in a turn that answers no call.
-  await x.alice.sendMessage(x.channel.id, `${x.mention} note this`, root.id);
-  await x.call(
-    "reply",
-    { requestId: crypto.randomUUID(), body: "Noted" },
-    threadTurn(x.channel.id, root.id),
-  );
-  await x.bob.sendMessage(x.channel.id, "and the risks", root.id);
-  expect((await calls()).map((row) => row.messageId)).toEqual([root.id]);
-  expect(await callerWakes()).toHaveLength(1);
 });
 
 test("a caller has at most three calls waiting for the owner; more are rate limited", async () => {
@@ -633,29 +576,6 @@ test("a queued call drops at the source check once the owner disables its trigge
   expect(await auditActions()).toContain("invocation_dropped");
 });
 
-test("a caller sees a call as queued until the agent's reply for it is published", async () => {
-  const x = await callerFixture(f);
-  await x.policy("anyone");
-  const root = await x.bob.sendMessage(x.channel.id, `${x.mention} help`);
-  const call = await callOf(root.id);
-  const bobWork = await ownerAgentWork(f.db, { userId: "bob", organizationId: f.orgA });
-  const bobCalls = () => bobWork.listMyCalls(x.channel.id);
-  expect((await bobCalls()).map((view) => view.status)).toEqual(["queued"]);
-  // A reply in a turn that answers no call is not an answer to this call.
-  await x.call(
-    "reply",
-    { requestId: crypto.randomUUID(), body: "For Alice" },
-    threadTurn(x.channel.id, root.id),
-  );
-  expect((await bobCalls()).map((view) => view.status)).toEqual(["queued"]);
-  await x.call(
-    "reply",
-    { requestId: crypto.randomUUID(), body: "Done" },
-    { ...threadTurn(x.channel.id, root.id), invocationIds: [call.id] },
-  );
-  expect((await bobCalls()).map((view) => view.status)).toEqual(["answered"]);
-});
-
 test("caller wakes withheld from an old desktop for a day drop and ask the owner to update", async () => {
   const x = await callerFixture(f);
   await x.policy("anyone");
@@ -732,61 +652,6 @@ test("caller wakes go only to desktops that declare caller_wakes", async () => {
       },
     }),
   ]);
-});
-
-test("MCP calls of a caller turn need its admitted calls in the turn's place and are audited", async () => {
-  const x = await callerFixture(f);
-  await x.policy("anyone");
-  const root = await x.bob.sendMessage(x.channel.id, `${x.mention} help`);
-  const [call] = await calls();
-  const turn = { ...threadTurn(x.channel.id, root.id), invocationIds: [call!.id] };
-  const replied = await x.call("reply", { requestId: crypto.randomUUID(), body: "Done" }, turn);
-  const [logged] = await f.db
-    .select()
-    .from(agentAuditEvents)
-    .where(eq(agentAuditEvents.action, "mcp_call"));
-  expect(logged).toMatchObject({
-    invocationId: call!.id,
-    callerUserId: "bob",
-    tool: "reply",
-    access: "write",
-    result: "ok",
-    turnId: turn.turnId,
-    targetIds: expect.arrayContaining([replied.messageId, x.channel.id]),
-  });
-  // The request ID is idempotency, not a record, and no text is stored.
-  expect(JSON.stringify(logged)).not.toContain("Done");
-
-  // A call from another place, or a call of another agent's turn, is refused and logged.
-  const other = await x.alice.createConversation({ kind: "channel", name: "other" });
-  const elsewhere = { ...threadTurn(other.id, root.id), invocationIds: [call!.id] };
-  expect(
-    await rejection(
-      executeAgentTool(
-        f.db,
-        x.agentIdentity,
-        "list_projects",
-        {},
-        {
-          ...elsewhere,
-          installationId: x.agent.identity.installationId,
-        },
-      ),
-    ),
-  ).toBeInstanceOf(ValidationError);
-  const results = await f.db
-    .select({ result: agentAuditEvents.result, access: agentAuditEvents.access })
-    .from(agentAuditEvents)
-    .where(eq(agentAuditEvents.action, "mcp_call"))
-    .orderBy(asc(agentAuditEvents.createdAt));
-  expect(results).toEqual([
-    { result: "ok", access: "write" },
-    { result: "invalid", access: "read" },
-  ]);
-  const log = await (await ownerAgentWork(f.db, x.owner)).listCallsLog(x.agent.agentId);
-  expect(JSON.stringify(log)).not.toContain("Done");
-  const bobWork = await ownerAgentWork(f.db, { userId: "bob", organizationId: f.orgA });
-  expect(await rejection(bobWork.listCallsLog(x.agent.agentId))).toBeInstanceOf(AccessDeniedError);
 });
 
 test("members find a shared agent and its mode, never its allowlist; agents never do", async () => {

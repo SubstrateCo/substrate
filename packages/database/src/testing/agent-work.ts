@@ -7,7 +7,9 @@ import { actors } from "../core/actors/schema";
 import type { DatabaseExecutor } from "../core/executor";
 import type { DeviceIdentity } from "../core/session/device";
 import type { SessionIdentity } from "../core/session/identity";
-import { executeAgentTool } from "../features/mcp/service";
+import { workspaceContext } from "../core/session/workspace";
+import { publishingTools } from "../features/mcp/publishing";
+import { requireTurn } from "../features/mcp/turn";
 import { createMessagingService } from "../features/messaging/service";
 import { createRepositories } from "../repositories";
 import { member, user } from "../schema";
@@ -57,25 +59,37 @@ export async function agentWorkFixture(f: Fixture) {
   const dm = await alice.createConversation({ kind: "dm", agentIds: [agent.agentId] });
   const owner = { userId: "alice", organizationId: f.orgA };
   const agentIdentity = { ...owner, actorEntityId: agent.actorId };
-  const call = async <K extends ServerToolName>(
+  const call = async <K extends Extract<ServerToolName, "reply" | "propose">>(
     tool: K,
     input: WorkspaceApiRequest["input"],
     turn: TurnContext,
-  ) =>
-    // SAFETY: the result was parsed with the output schema registered for tool K.
-    mcpTools[tool].output.parse(
-      (
-        await executeAgentTool(
-          f.db,
-          agentIdentity,
-          tool,
-          input,
-          "installationId" in turn
-            ? turn
-            : { ...turn, installationId: agent.identity.installationId },
-        )
-      ).output,
-    ) as McpOutput<K>;
+  ) => {
+    const attachedTurn =
+      "installationId" in turn ? turn : { ...turn, installationId: agent.identity.installationId };
+    const output = await f.db.transaction(async (tx) => {
+      const { context, actor } = await workspaceContext(tx, agentIdentity);
+      await requireTurn(
+        tx,
+        agentIdentity,
+        { actorId: agent.actorId, userAgentId: agent.agentId },
+        attachedTurn,
+      );
+      const tools = publishingTools(
+        context,
+        agentIdentity,
+        { ...actor, userAgentId: agent.agentId },
+        attachedTurn,
+      );
+      // Fixture writes exercise domain persistence, not server tool dispatch or receipts.
+      return tool === "reply"
+        ? tools.reply(mcpTools.reply.input.parse(input))
+        : tools.propose(mcpTools.propose.input.parse(input));
+    });
+    return (
+      // SAFETY: the result was parsed with the output schema registered for tool K.
+      mcpTools[tool].output.parse(output) as McpOutput<K>
+    );
+  };
   return { agent, alice, bob, dm, owner, agentIdentity, call };
 }
 

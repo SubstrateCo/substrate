@@ -1,7 +1,9 @@
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
+import { commit } from "./core/effects";
+import { workspaceContext } from "./core/session/workspace";
 import { AccessDeniedError, ConflictError } from "./errors";
-import { executeAgentTool } from "./features/mcp/committed";
+import { publishingTools } from "./features/mcp/publishing";
 import { createRepositories } from "./repositories";
 import { notifications, messagingInvitations, member } from "./schema";
 import { agentWorkFixture, deviceAgentWork, dmTurn, ownerAgentWork } from "./testing/agent-work";
@@ -239,24 +241,26 @@ test("MCP proposals and approved actions expose owner and confirmed notification
     actorEntityId: f.bob,
     level: "view",
   });
-  const proposed = await executeAgentTool(
-    f.db,
-    agentIdentity,
-    "propose",
-    {
+  const proposed = await commit(f.db, async (tx) => {
+    const { context, actor } = await workspaceContext(tx, agentIdentity);
+    return publishingTools(
+      context,
+      agentIdentity,
+      { ...actor, userAgentId: agent.agentId },
+      { ...dmTurn(dm.id), installationId: agent.identity.installationId },
+    ).propose({
       requestId: crypto.randomUUID(),
       summary: "Assign follow-up",
       action: {
         type: "create_task",
         input: { projectId: project.entityId, title: "Follow up", assigneeActorId: f.bob },
       },
-    },
-    { ...dmTurn(dm.id), installationId: agent.identity.installationId },
-  );
+    });
+  });
   const ownerHint = { audience: realtimeKeys.user("alice"), domain: "agent-work" as const };
   expect(proposed.hints).toEqual([ownerHint]);
   const ownerWork = await ownerAgentWork(f.db, owner);
-  const approved = await ownerWork.approveProposal(proposed.result.output.proposalId);
+  const approved = await ownerWork.approveProposal(proposed.result.proposalId);
   expect(approved.result.outcome.status).toBe("executed");
   expect(approved.hints).toContainEqual(ownerHint);
   expect(approved.hints).toContainEqual(
@@ -270,9 +274,9 @@ test("MCP proposals and approved actions expose owner and confirmed notification
     audience: realtimeKeys.actor(f.orgA, f.bob),
     domain: "notifications",
   });
-  expect(
-    await rejection(ownerWork.approveProposal(proposed.result.output.proposalId)),
-  ).toBeInstanceOf(ConflictError);
+  expect(await rejection(ownerWork.approveProposal(proposed.result.proposalId))).toBeInstanceOf(
+    ConflictError,
+  );
   expect(await f.db.select().from(notifications)).toHaveLength(1);
 });
 

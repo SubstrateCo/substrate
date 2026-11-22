@@ -6,33 +6,38 @@ import {
   type McpOutput,
   type ServerToolName,
 } from "@substrate/contracts/harness/tools";
+import {
+  requireAppEnabled,
+  effectsFor,
+  type SessionIdentity,
+  workspaceContext,
+  ConflictError,
+  AccessDeniedError,
+  ValidationError,
+  attachReference,
+  detachReference,
+  requireMessage,
+  messageChangeHints,
+  taskRepository,
+  auditCallerTool,
+  namedIds,
+  requireCallerTurn,
+  mcpContextQueries,
+  mcpCrmTools,
+  listLinks,
+  mcpMessagingQueries,
+  publishingTools,
+  mcpTaskQueries,
+  requireTurn,
+  agentWrites,
+  requireHomeDevice,
+  requireOwnedProposal,
+  findToolReceipt,
+  saveToolReceipt,
+} from "@substrate/database/mcp";
+import type { DatabaseExecutor } from "@substrate/database/trusted";
 
-import { actors } from "../../core/actors/schema";
-import { userAgents } from "../../core/actors/user-agents.schema";
-import { requireAppEnabled } from "../../core/apps/access";
-import { findDevice } from "../../core/devices/repository";
-import { effectsFor } from "../../core/effects";
-import type { DatabaseExecutor } from "../../core/executor";
-import type { SessionIdentity } from "../../core/session/identity";
-import { workspaceContext } from "../../core/session/workspace";
-import { ConflictError, AccessDeniedError, ValidationError, mapPostgresError } from "../../errors";
-import { agentRequests } from "../agent-work/requests.schema";
-import { attachReference, detachReference } from "../context/service";
-import { requireMessage } from "../messaging/access";
-import { messageChangeHints } from "../realtime/routing";
-import { taskRepository } from "../tasks/repository";
-import { auditCallerTool, namedIds, requireCallerTurn } from "./caller-turn";
-import { mcpContextQueries } from "./context";
-import { mcpCrmTools } from "./crm";
-import { listLinks } from "./links";
-import { mcpMessagingQueries } from "./messaging";
-import { publishingTools } from "./publishing";
-import { agentToolRequests } from "./schema";
-import { mcpTaskQueries } from "./tasks";
-import { requireTurn } from "./turn";
 import { writeGate } from "./write-gate";
-import { agentWrites } from "./writes";
-import { and, eq } from "drizzle-orm";
 
 type AgentToolExecution = {
   [K in ServerToolName]: {
@@ -65,17 +70,6 @@ export function parseAgentToolInput<K extends ServerToolName>(
   return mcpTools[tool].input.parse(raw) as McpInput<K>;
 }
 
-export async function executeAgentTool<K extends ServerToolName>(
-  db: DatabaseExecutor,
-  identity: SessionIdentity & { actorEntityId: string },
-  tool: K,
-  raw: WorkspaceApiRequest["input"],
-  turn: TurnContext,
-) {
-  const input = parseAgentToolInput(tool, raw);
-  return db.transaction((tx) => executeAgentToolInTransaction(tx, identity, tool, input, turn));
-}
-
 export async function executeAgentToolInTransaction<K extends ServerToolName>(
   tx: DatabaseExecutor,
   identity: SessionIdentity & { actorEntityId: string },
@@ -105,18 +99,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
   if (!definition.readOnly) {
     const blocked = writeGate(turn, tool);
     if (blocked) throw new ValidationError(blocked);
-    // Only the agent's home desktop runs its turns. The share lock keeps the agent from moving
-    // to another desktop until this write commits.
-    const [row] = await tx
-      .select({ userAgentId: userAgents.id, homeDeviceId: userAgents.homeDeviceId })
-      .from(actors)
-      .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-      .where(and(eq(actors.entityId, agent.entityId), eq(userAgents.userId, identity.userId)))
-      .for("share", { of: userAgents });
-    if (!row?.homeDeviceId || !turn.installationId) throw new AccessDeniedError();
-    const device = await findDevice(tx, identity.userId, turn.installationId);
-    if (device?.id !== row.homeDeviceId) throw new AccessDeniedError();
-    userAgentId = row.userAgentId;
+    userAgentId = await requireHomeDevice(tx, identity, agent.entityId, turn.installationId);
     await requireTurn(tx, identity, { actorId: agent.entityId, userAgentId }, turn);
   }
   const tasks = taskRepository(ctx);
@@ -254,29 +237,15 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
       await requireMessage(tx, identity, previous.messageId);
     },
     async propose(_, previous) {
-      const [request] = await tx
-        .select({ id: agentRequests.id })
-        .from(agentRequests)
-        .where(
-          and(
-            eq(agentRequests.id, previous.proposalId),
-            eq(agentRequests.ownerUserId, identity.userId),
-          ),
-        );
-      if (!request) throw new AccessDeniedError();
+      await requireOwnedProposal(tx, identity, previous.proposalId);
     },
   };
   const requestId = requestIdOf(input);
   const key = requestId
-    ? and(
-        eq(agentToolRequests.organizationId, identity.organizationId),
-        eq(agentToolRequests.actorEntityId, actor.id),
-        eq(agentToolRequests.tool, tool),
-        eq(agentToolRequests.requestId, requestId),
-      )
+    ? { organizationId: identity.organizationId, actorEntityId: actor.id, tool, requestId }
     : undefined;
   const fingerprint = JSON.stringify(input);
-  const [existing] = key ? await tx.select().from(agentToolRequests).where(key) : [];
+  const existing = key ? await findToolReceipt(tx, key) : undefined;
   if (existing && existing.fingerprint !== fingerprint)
     throw new ConflictError("This request ID was already used with different input.");
   // Stored and new results cross the same trust boundary, so parse them in one place.
@@ -320,22 +289,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
         ),
       );
     }
-  } else if (requestId)
-    await tx
-      .insert(agentToolRequests)
-      .values({
-        organizationId: identity.organizationId,
-        actorEntityId: actor.id,
-        tool,
-        requestId,
-        fingerprint,
-        result,
-        turnId: turn.turnId,
-        attempt: turn.attempt,
-      })
-      .catch((error: Error) =>
-        mapPostgresError(error, { unique: "This request ID was already used." }),
-      );
+  } else if (key) await saveToolReceipt(tx, key, fingerprint, result, turn);
   if (calls.length)
     await auditCallerTool(tx, calls, {
       tool,
