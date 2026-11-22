@@ -8,9 +8,10 @@ export function exportProject(scope: WorkspaceScope, input: ProjectExport) {
   return serviceResult(async () => {
     if (input.organizationId !== scope.organizationId)
       throw new ServiceError("FORBIDDEN", "Access denied.");
-    const project = await scope.repositories.projects.get(input.projectEntityId);
-    // Eagerly read the first page inside serviceResult so app/access failures map before streaming.
-    const firstPage = await scope.repositories.tasks.exportPage(project.entityId, undefined);
+    // Read access and the first page inside serviceResult, before streaming.
+    const { project, firstPage } = await scope.repositories.projects.exportStart(
+      input.projectEntityId,
+    );
     const columns = [
       "recordType",
       "entityId",

@@ -113,25 +113,14 @@ test("sharing checks the project under one lock, publishes hints, and hides task
   ).toEqual([]);
 });
 
-test("project export fails inside serviceResult when the first task page throws", async () => {
+test("project export fails inside serviceResult when export startup throws", async () => {
   const scope = scopeFixture();
   const projectEntityId = crypto.randomUUID();
   scope.repositories = {
     ...scope.repositories,
     projects: {
       ...scope.repositories.projects,
-      get: async () => ({
-        entityId: projectEntityId,
-        organizationId: scope.organizationId,
-        entityType: "project" as const,
-        name: "Launch",
-        description: "",
-        image: null,
-      }),
-    },
-    tasks: {
-      ...scope.repositories.tasks,
-      exportPage: async () => {
+      exportStart: async () => {
         throw new AppDisabledError();
       },
     },
@@ -147,4 +136,129 @@ test("project export fails inside serviceResult when the first task page throws"
       format: "csv",
     }),
   ).toMatchObject({ success: false, error: { code: "APP_DISABLED" } });
+});
+
+test("project export rejects an organization mismatch without calling the repository", async () => {
+  const scope = scopeFixture();
+  const exportStart = mock(async () => {
+    throw new Error("Must not read another organization");
+  });
+  scope.repositories = {
+    ...scope.repositories,
+    projects: { ...scope.repositories.projects, exportStart },
+  };
+  const service = createTasksService({
+    ensureOwnedAgentActors: async () => {},
+    publish: async (committed) => committed.result,
+  });
+  expect(
+    await service.export(scope, {
+      organizationId: "another-organization",
+      projectEntityId: crypto.randomUUID(),
+      format: "csv",
+    }),
+  ).toMatchObject({ success: false, error: { code: "FORBIDDEN" } });
+  expect(exportStart).not.toHaveBeenCalled();
+});
+
+test("project export consumes startup records and pages from the last task cursor", async () => {
+  const scope = scopeFixture();
+  const project = {
+    entityId: crypto.randomUUID(),
+    organizationId: scope.organizationId,
+    entityType: "project" as const,
+    name: "Launch",
+    description: "Plan",
+    image: null,
+  };
+  const updatedAt = new Date("2026-11-22T12:34:56.123Z");
+  const rows = Array.from({ length: 101 }, (_, index) => ({
+    task: {
+      entityId: crypto.randomUUID(),
+      organizationId: scope.organizationId,
+      entityType: "task" as const,
+      projectEntityId: project.entityId,
+      parentTaskEntityId: null,
+      title: `Task ${index}`,
+      description: "",
+      status: "not_started" as const,
+      priority: "none" as const,
+      assigneeActorEntityId: null,
+      dueDate: "2026-12-01",
+    },
+    assignee: null,
+    updatedAt,
+  }));
+  const exportStart = mock(async () => ({ project, firstPage: rows.slice(0, 100) }));
+  const exportPage = mock(async (_projectEntityId: string, _afterEntityId?: string) =>
+    rows.slice(100),
+  );
+  scope.repositories = {
+    ...scope.repositories,
+    projects: { ...scope.repositories.projects, exportStart },
+    tasks: { ...scope.repositories.tasks, exportPage },
+  };
+  const service = createTasksService({
+    ensureOwnedAgentActors: async () => {},
+    publish: async (committed) => committed.result,
+  });
+  const result = await service.export(scope, {
+    organizationId: scope.organizationId,
+    projectEntityId: project.entityId,
+    format: "csv",
+  });
+  expect(exportStart).toHaveBeenCalledWith(project.entityId);
+  expect(exportPage).not.toHaveBeenCalled();
+  if (!result.success) throw new Error("Expected export stream");
+  const records = await Array.fromAsync(result.data.records);
+  expect(records).toEqual([
+    { recordType: "project", entityId: project.entityId, name: "Launch", description: "Plan" },
+    ...rows.map(({ task, updatedAt }) => ({
+      recordType: "task",
+      entityId: task.entityId,
+      projectEntityId: project.entityId,
+      parentTaskEntityId: null,
+      title: task.title,
+      description: "",
+      status: "not_started",
+      priority: "none",
+      assigneeActorEntityId: null,
+      assigneeName: null,
+      dueDate: "2026-12-01",
+      updatedAt,
+    })),
+  ]);
+  expect(exportPage.mock.calls).toEqual([[project.entityId, rows[99]!.task.entityId]]);
+});
+
+test("project export starts and consumes a short page with one database query", async () => {
+  await f.verifyEmails();
+  const alice = f.forActor(f.alice);
+  const project = await alice.projects.create({ name: "Export" });
+  const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "First" });
+  const { db, queries } = recordQueries();
+  const identity = { userId: "alice", organizationId: f.orgA };
+  const scope = {
+    ...scopeFixture(),
+    ...identity,
+    repositories: await createRepositories(db).forSession(identity),
+  };
+  const service = createTasksService({
+    ensureOwnedAgentActors: async () => {},
+    publish: async (committed) => committed.result,
+  });
+  queries.length = 0;
+  const result = await service.export(scope, {
+    organizationId: f.orgA,
+    projectEntityId: project.entityId,
+    format: "json",
+  });
+  expect(queries).toHaveLength(1);
+  if (!result.success) throw new Error("Expected export stream");
+  const records = await Array.fromAsync(result.data.records);
+  expect(records).toMatchObject([
+    { recordType: "project", entityId: project.entityId, name: "Export" },
+    { recordType: "task", entityId: task.entityId, title: "First", assigneeName: null },
+  ]);
+  expect(queries).toHaveLength(1);
 });

@@ -25,6 +25,7 @@ import { messagingConversations } from "../messaging/schema";
 import { workHint } from "../realtime/routing";
 import { liveProjectTasks } from "../tasks/access";
 import { requireUnassignedProjectActor } from "../tasks/assignment";
+import { firstTaskExportPage } from "../tasks/export-query";
 import { projectTaskLinkRows, toLinkView } from "../tasks/links";
 import { tasks } from "../tasks/tasks.schema";
 import { queryProjects } from "./queries";
@@ -204,6 +205,13 @@ export function projectRepository(context: RepositoryContext) {
     });
   return {
     get,
+    async exportStart(entityId: string) {
+      const [row] = await selectWithLevel(entityId, {
+        firstPage: firstTaskExportPage(context, entityId),
+      });
+      if (!row) throw new AccessDeniedError();
+      return { project: row.project, firstPage: row.firstPage };
+    },
     async delete(entityId: string) {
       return context.transaction(async (ctx) => {
         const tx = ctx.db;

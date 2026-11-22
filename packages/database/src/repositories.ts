@@ -192,7 +192,14 @@ function standalone(
     entities: domain("entities", ["get"]),
     links: domain("links", ["list"]),
     permissions: domain("permissions", []),
-    projects: domain("projects", ["get", "getPicture", "assignableActors", "getDetail", "list"]),
+    projects: domain("projects", [
+      "get",
+      "getPicture",
+      "assignableActors",
+      "getDetail",
+      "list",
+      "exportStart",
+    ]),
     tasks: domain("tasks", ["get", "list", "listLinks", "exportPage", "home"]),
     messaging: domain("messaging", [
       "listConversations",
