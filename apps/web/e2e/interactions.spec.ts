@@ -78,6 +78,15 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   await expect(
     page.getByRole("heading", { name: "Interaction dashboard", exact: true }),
   ).toBeVisible();
+  await expect(
+    page
+      .getByRole("navigation", { name: "Interactions views" })
+      .getByRole("link", { name: "Timeline", exact: true }),
+  ).toHaveCount(0);
+  await expect(total(page)).toHaveText("51");
+  await expect(page.getByRole("radio", { name: "Last 30 days", exact: true })).toBeChecked();
+  await expect(page.getByLabel("Selected day: Today", { exact: true })).toBeVisible();
+  await page.getByRole("radio", { name: "Last 7 days", exact: true }).click();
   await expect(total(page)).toHaveText("6");
   await expect(page.locator("html")).toHaveClass(/dark/);
   const chart = page.getByRole("img", {
@@ -167,11 +176,137 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
     page.getByRole("img", { name: "Daily interaction activity over 30 days", exact: true }),
   ).toBeVisible();
   await capture(page, "dashboard-narrow-dark");
-  await page.getByRole("link", { name: "Timeline", exact: true }).click();
+  await page.getByRole("link", { name: "View timeline", exact: true }).click();
   await expect(
     page.getByRole("textbox", { name: "Search interactions", exact: true }),
   ).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+});
+
+test("dashboard selects today, browses day-specific pages, and handles empty days", async ({
+  account,
+  client,
+}) => {
+  test.setTimeout(60_000);
+  const contact = await createCrm(account, {
+    action: "createContact",
+    displayName: "Daily activity contact",
+  });
+  const user = await client(account);
+  const { page } = user;
+  await visit(user, undefined, "/interactions");
+  const timestamps = await page.evaluate(() =>
+    [0, 1, 20].map((offset) => {
+      const now = new Date();
+      return new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset, 12).toISOString();
+    }),
+  );
+  for (const [offset, count] of [51, 2, 1].entries()) {
+    for (let i = 0; i < count; i++)
+      await createCrm(account, {
+        action: "createInteraction",
+        contactEntityId: contact.entityId,
+        kind: "message",
+        occurredAt: timestamps[offset]!,
+        summary: `${["Today", "Yesterday", "Earlier"][offset]} interaction ${i + 1}`,
+      });
+  }
+  await page.reload();
+  await expect(total(page)).toHaveText("54");
+  const chart = page.getByRole("img", {
+    name: "Daily interaction activity over 30 days",
+    exact: true,
+  });
+  const rows = page.getByRole("link", { name: /^Open interaction:/ });
+  await expect(page.getByLabel("Selected day: Today", { exact: true })).toBeVisible();
+  await expect(rows).toHaveCount(50);
+  await expect(rows.first()).toHaveAccessibleName(/Today interaction/);
+  const table = page.getByRole("table", { name: "Day’s interactions", exact: true });
+  await expect(table.getByRole("columnheader", { name: "Summary", exact: true })).toBeVisible();
+  const rowHeight = await table
+    .locator("tbody tr")
+    .first()
+    .evaluate((row) => row.getBoundingClientRect().height);
+  expect(rowHeight).toBeLessThanOrEqual(40);
+  await expect(page.getByRole("heading", { name: "Interaction mix", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Next day", exact: true })).toBeDisabled();
+  const nextDayX = (await page
+    .getByRole("button", { name: "Next day", exact: true })
+    .boundingBox())!.x;
+  await page.getByRole("button", { name: "Previous day", exact: true }).click();
+  await expect(page.getByLabel("Selected day: Yesterday", { exact: true })).toBeVisible();
+  await expect(rows).toHaveCount(2);
+  await page.getByRole("button", { name: "Next day", exact: true }).click();
+  await expect(page.getByLabel("Selected day: Today", { exact: true })).toBeVisible();
+  await expect(rows).toHaveCount(50);
+  await page.getByRole("button", { name: "Older interactions", exact: true }).click();
+  await expect(rows).toHaveCount(1);
+  await expect(rows.first()).toHaveAccessibleName(/Today interaction/);
+
+  await chart.focus();
+  await page.keyboard.press("End");
+  await page.keyboard.press("ArrowLeft");
+  await page.keyboard.press("Enter");
+  await expect(page.getByLabel("Selected day: Yesterday", { exact: true })).toBeVisible();
+  await expect(rows).toHaveCount(2);
+  await expect(rows.first()).toHaveAccessibleName(/Yesterday interaction/);
+  await expect(page.getByRole("button", { name: "Newest", exact: true })).toHaveCount(0);
+  await expect(total(page)).toHaveText("54");
+
+  await page.keyboard.press("Home");
+  await page.keyboard.press("Enter");
+  await expect(
+    page.getByRole("heading", { name: "No interactions on this day", exact: true }),
+  ).toBeVisible();
+  await expect(rows).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Previous day", exact: true })).toBeDisabled();
+  expect(
+    (await page.getByRole("button", { name: "Next day", exact: true }).boundingBox())!.x,
+  ).toBeCloseTo(nextDayX, 1);
+
+  await chart.focus();
+  await page.keyboard.press("End");
+  await page.keyboard.press("Enter");
+  await expect(page.getByLabel("Selected day: Today", { exact: true })).toBeVisible();
+  await expect(rows).toHaveCount(50);
+  await expect(page.getByRole("button", { name: "Newest", exact: true })).toBeDisabled();
+  await page.getByRole("radio", { name: "Last 7 days", exact: true }).click();
+  await expect(total(page)).toHaveText("53");
+  await expect(page.getByLabel("Selected day: Today", { exact: true })).toBeVisible();
+  for (const width of [1440, 600]) {
+    await page.setViewportSize({ width, height: 900 });
+    const dailyChart = page.getByRole("img", {
+      name: "Daily interaction activity over 7 days",
+      exact: true,
+    });
+    const bar = await dailyChart.locator("rect").evaluateAll((rectangles) => {
+      const bounds = rectangles
+        .map((rect) => rect.getBoundingClientRect())
+        .filter((rect) => rect.width > 0 && rect.height > 0 && rect.width < 150)
+        .sort((a, b) => b.x - a.x || b.height - a.height)[0]!;
+      return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+    });
+    await page.mouse.move(bar.x + bar.width / 2, bar.y + bar.height / 2);
+    const tip = page.getByRole("status").filter({ hasText: "Message" });
+    await expect(tip).toBeVisible();
+    await expect
+      .poll(async () => {
+        const box = await tip.boundingBox();
+        return !!box && (box.x + box.width <= bar.x || box.x >= bar.x + bar.width);
+      })
+      .toBe(true);
+    await page.mouse.click(bar.x + bar.width / 2, bar.y + bar.height / 2);
+    await expect(page.getByLabel("Selected day: Today", { exact: true })).toBeVisible();
+    await expect(dailyChart).toBeFocused();
+    expect(await dailyChart.evaluate((chart) => getComputedStyle(chart).outlineStyle)).toBe("none");
+    await page.getByRole("button", { name: "Previous day", exact: true }).focus();
+    await page.keyboard.press("Tab");
+    await expect(dailyChart).toBeFocused();
+    expect(await dailyChart.evaluate((chart) => chart.matches(":focus-visible"))).toBe(true);
+    expect(await dailyChart.evaluate((chart) => getComputedStyle(chart).outlineStyle)).not.toBe(
+      "none",
+    );
+  }
 });
 
 test("create interactions, browse directories and profiles, and inspect source context", async ({
@@ -221,7 +356,8 @@ test("create interactions, browse directories and profiles, and inspect source c
       .getByRole("table", { name: "People directory", exact: true })
       .getByText("Morgan Stone", { exact: true }),
   ).toBeVisible();
-  await page.getByRole("link", { name: "Timeline", exact: true }).click();
+  await page.getByRole("link", { name: "Dashboard", exact: true }).click();
+  await page.getByRole("link", { name: "View timeline", exact: true }).click();
   await expect(
     page.getByRole("link", {
       name: "Open interaction: Agreed on a pilot with the operations team.",
@@ -302,7 +438,7 @@ test("empty dark dashboard and timeline do not invent activity", async ({ accoun
   await expect(page.getByRole("img", { name: /Daily interaction activity/ })).toHaveCount(0);
   await expect(page.locator("html")).toHaveClass(/dark/);
   await capture(page, "dashboard-empty-dark");
-  await page.getByRole("link", { name: "Timeline", exact: true }).click();
+  await visit(user, undefined, "/interactions", { section: "timeline" });
   await expect(
     page.getByRole("heading", { name: "No interactions in this period", exact: true }),
   ).toBeVisible();

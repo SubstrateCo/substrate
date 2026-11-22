@@ -205,6 +205,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* Charts keep keyboard focus visible without outlining the plot after pointer selection. */
+  [data-chart-input="pointer"] .ts-chart:focus {
+    outline: none;
+  }
   ::-webkit-scrollbar {
     width: 8px;
     height: 8px;

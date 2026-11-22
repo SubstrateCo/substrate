@@ -143,7 +143,7 @@ test("disabled apps remove only owned skill files and preserve adjacent user fil
 test("optional app skills are absent by default", async () => {
   await materialize(root, { organizationId: "org-a", agents: [agent("claude")] });
   const directory = await agentDirectory(root, "org-a", "agent-a");
-  expect((await scanNativeSkills(directory, "claude")).map((skill) => skill.id)).toEqual([
+  expect((await scanNativeSkills(directory, "claude")).map((skill) => skill.id).sort()).toEqual([
     "substrate-messaging",
     "substrate-search",
   ]);

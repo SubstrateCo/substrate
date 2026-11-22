@@ -1,16 +1,26 @@
-import { barX, barY, defineChart, stack } from "@tanstack/charts";
+import { bandX, barY, defineChart, stack } from "@tanstack/charts";
+import { decorative } from "@tanstack/charts/mark/decorative";
 import { Chart } from "@tanstack/charts/react";
 import { scaleBand } from "@tanstack/charts/scales/band";
 import { scaleLinear } from "@tanstack/charts/scales/linear";
 import { tooltip } from "@tanstack/charts/tooltip";
+import { portal } from "@tanstack/charts/tooltip/portal";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 
 import { interactionKinds, interactionTypes, type InteractionActivity } from "./interaction-types";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { formatShortDate, parseDateOnly } from "@/lib/format/date";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatDayLabel, formatShortDate, parseDateOnly } from "@/lib/format/date";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
-function activityChart(activity: InteractionActivity["activity"], dates: string[]) {
+function activityChart(
+  activity: InteractionActivity["activity"],
+  dates: string[],
+  selectedDay: string,
+  tooltipOffset: number,
+) {
   const rows = dates.flatMap((day) =>
     interactionKinds.map((kind) => ({
       day,
@@ -26,6 +36,13 @@ function activityChart(activity: InteractionActivity["activity"], dates: string[
       background: "var(--card)",
     },
     marks: [
+      decorative(
+        bandX([{ day: selectedDay }], {
+          x: "day",
+          fill: "var(--muted-foreground)",
+          fillOpacity: 0.12,
+        }),
+      ),
       barY(rows, {
         x: "day",
         y: "count",
@@ -62,110 +79,108 @@ function activityChart(activity: InteractionActivity["activity"], dates: string[
       range: interactionKinds.map((k) => interactionTypes[k].color),
     },
     focus: "group-x",
-    tooltip,
-  });
-}
-
-function mixChart(activity: InteractionActivity["activity"]) {
-  const rows = interactionKinds.map((kind) => ({
-    type: interactionTypes[kind].label,
-    count: activity.filter((row) => row.kind === kind).reduce((n, row) => n + row.count, 0),
-  }));
-  return defineChart({
-    theme: {
-      foreground: "var(--muted-foreground)",
-      muted: "var(--muted-foreground)",
-      grid: "var(--border)",
-      background: "var(--card)",
+    maxFocusDistance: Number.POSITIVE_INFINITY,
+    tooltip: {
+      use: tooltip,
+      portal,
+      anchor: "group-center",
+      placement: ["right", "left"],
+      offset: tooltipOffset,
+      sticky: false,
     },
-    marks: [barX(rows, { x: "count", y: "type", color: "type", key: "type" })],
-    scales: {
-      x: {
-        scale: scaleLinear,
-        nice: true,
-        axis: {
-          line: false,
-          ticks: {
-            count: 3,
-            size: 0,
-            format: (value) => (Number.isInteger(value) ? String(value) : ""),
-          },
-        },
-      },
-      y: {
-        scale: scaleBand<string>()
-          .domain(rows.map((r) => r.type))
-          .padding(0.6),
-        axis: { line: false, ticks: { size: 0 } },
-      },
-    },
-    color: {
-      domain: rows.map((r) => r.type),
-      range: interactionKinds.map((k) => interactionTypes[k].color),
-    },
-    tooltip,
   });
 }
 
 export function InteractionChart({
   activity,
   dates,
+  selectedDay,
+  onSelectDay,
 }: {
   activity: InteractionActivity["activity"];
   dates: string[];
+  selectedDay: string;
+  onSelectDay: (day: string) => void;
 }) {
-  const totals = interactionKinds.map((kind) =>
-    activity.filter((row) => row.kind === kind).reduce((n, row) => n + row.count, 0),
-  );
+  const [tooltipOffset, setTooltipOffset] = useState(12);
+  const [input, setInput] = useState<"pointer" | "keyboard">("keyboard");
+  const selectedIndex = dates.indexOf(selectedDay);
+  const selectedDate = parseDateOnly(selectedDay)!;
   const dateKey = dates.join(",");
   const definition = useMemo(
-    () => activityChart(activity, dateKey.split(",")),
-    [activity, dateKey],
+    () => activityChart(activity, dateKey.split(","), selectedDay, tooltipOffset),
+    [activity, dateKey, selectedDay, tooltipOffset],
   );
-  const mixDefinition = useMemo(() => mixChart(activity), [activity]);
   return (
-    <div className="grid min-w-0 shrink-0 grid-cols-1 gap-4 @2xl:grid-cols-4">
-      <Card size="sm" className="min-w-0 @2xl:col-span-3">
-        <CardHeader>
-          <CardTitle>
-            <h2>Activity by interaction type</h2>
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">
-            Daily totals · stacked by type · your local time
-          </p>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Chart
-            definition={definition}
-            height={180}
-            ariaLabel={`Daily interaction activity over ${dates.length} days`}
-          />
-          <ul
-            aria-label="Interaction type totals"
-            className="flex flex-wrap gap-x-4 gap-y-2 text-xs text-muted-foreground"
-          >
-            {interactionKinds.map((kind, i) => (
-              <li key={kind} className="flex items-center gap-1.5">
-                <span className={interactionTypes[kind].textClass}>
-                  <span className="block size-2 rounded-sm bg-current" aria-hidden />
-                </span>
-                {interactionTypes[kind].label} · {totals[i]}
-              </li>
-            ))}
-          </ul>
-        </CardContent>
-      </Card>
-      <Card size="sm" className="hidden @2xl:flex">
-        <CardHeader>
-          <CardTitle>
-            <h2>Interaction mix</h2>
-          </CardTitle>
-          <p className="text-xs text-muted-foreground">Count by type</p>
-        </CardHeader>
-        <CardContent>
-          <Chart definition={mixDefinition} height={196} ariaLabel="Interaction counts by type" />
-        </CardContent>
-      </Card>
-    </div>
+    <Card
+      size="sm"
+      className="min-w-0 shrink-0"
+      data-chart-input={input}
+      onPointerDownCapture={() => setInput("pointer")}
+      onKeyDownCapture={() => setInput("keyboard")}
+    >
+      <CardHeader>
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="space-y-1">
+            <CardTitle>
+              <h2>Activity by interaction type</h2>
+            </CardTitle>
+            <p className="text-xs text-muted-foreground">
+              Select a bar to see that day’s interactions · your local time
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-1 text-xs text-muted-foreground">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon-xs"
+                  aria-label="Previous day"
+                  disabled={selectedIndex <= 0}
+                  onClick={() => onSelectDay(dates[selectedIndex - 1]!)}
+                >
+                  <ChevronLeft aria-hidden />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Previous day</TooltipContent>
+            </Tooltip>
+            <time
+              dateTime={selectedDay}
+              className="w-14 shrink-0 text-center tabular-nums"
+              aria-label={`Selected day: ${formatDayLabel(selectedDate)}`}
+              aria-live="polite"
+            >
+              {formatShortDate(selectedDate, selectedDate)}
+            </time>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon-xs"
+                  aria-label="Next day"
+                  disabled={selectedIndex >= dates.length - 1}
+                  onClick={() => onSelectDay(dates[selectedIndex + 1]!)}
+                >
+                  <ChevronRight aria-hidden />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Next day</TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <Chart
+          definition={definition}
+          height={130}
+          ariaLabel={`Daily interaction activity over ${dates.length} days`}
+          ariaDescription="Use arrow keys to explore days, then Enter or Space to select a day."
+          onSelect={(point) => {
+            if (point) onSelectDay(point.datum.day);
+          }}
+          onRender={({ scene }) => setTooltipOffset(scene.scales.x!.bandwidth / 2 + 12)}
+        />
+      </CardContent>
+    </Card>
   );
 }
