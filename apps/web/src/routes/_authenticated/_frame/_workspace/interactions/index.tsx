@@ -9,7 +9,7 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/interact
       .enum(["dashboard", "timeline", "people", "accounts", "person", "account"])
       .optional()
       .default("dashboard"),
-    days: z.enum(["7", "30", "all"]).optional().default("7"),
+    days: z.enum(["7", "30", "all"]).optional().default("30"),
     profileId: z.uuid().optional(),
     recordId: z.uuid().optional(),
     tab: z.enum(["activity", "map"]).optional(),

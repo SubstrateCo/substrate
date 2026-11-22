@@ -1,7 +1,7 @@
 import type { InteractionKind } from "@substrate/contracts/context/interactions";
 
 import type { getInteractionActivity, getInteractionTimeline } from "@/api/context/interactions";
-import { Calendar, Mail, MessageSquare, Ellipsis, NotebookPen, Phone } from "lucide-react";
+import { Calendar, Mail, MessageSquare, Layers, NotebookPen, Phone } from "lucide-react";
 
 export type InteractionActivity = Awaited<ReturnType<typeof getInteractionActivity>>;
 export type InteractionRow = Awaited<ReturnType<typeof getInteractionTimeline>>["items"][number];
@@ -36,18 +36,18 @@ export const interactionTypes = {
   message: {
     label: "Message",
     icon: MessageSquare,
-    color: "var(--chart-4)",
-    textClass: "text-chart-4",
+    color: "var(--chart-5)",
+    textClass: "text-chart-5",
   },
   note: {
     label: "Note",
     icon: NotebookPen,
-    color: "var(--chart-5)",
-    textClass: "text-chart-5",
+    color: "var(--chart-4)",
+    textClass: "text-chart-4",
   },
   other: {
     label: "Other",
-    icon: Ellipsis,
+    icon: Layers,
     color: "var(--chart-6)",
     textClass: "text-chart-6",
   },

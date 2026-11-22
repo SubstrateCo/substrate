@@ -3,18 +3,18 @@ import type { InteractionPeriod } from "@substrate/contracts/context/interaction
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
+import { useState } from "react";
+
 import { InteractionChart } from "./interaction-chart";
-import { InteractionList } from "./interaction-list";
+import { InteractionDay } from "./interaction-day";
+import { interactionDay } from "./interaction-period";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader } from "@/components/ui/card";
 import { formatShortDate } from "@/lib/format/date";
-import {
-  interactionActivityOptions,
-  interactionTimelineOptions,
-} from "@/queries/context/interactions";
+import { interactionActivityOptions } from "@/queries/context/interactions";
 import { Activity } from "lucide-react";
 
 export function InteractionDashboard({
@@ -26,8 +26,10 @@ export function InteractionDashboard({
   dates: string[];
   days: "7" | "30";
 }) {
+  const today = dates.at(-1)!;
+  const [selectedDay, setSelectedDay] = useState(today);
+  const day = dates.includes(selectedDay) ? selectedDay : today;
   const activity = useQuery(interactionActivityOptions(period));
-  const recent = useQuery(interactionTimelineOptions(period));
   if (activity.error)
     return (
       <ErrorState
@@ -60,30 +62,20 @@ export function InteractionDashboard({
       hint: "Other records logged manually",
     },
   ];
-  let recentContent;
-  if (recent.error)
-    recentContent = (
-      <ErrorState title="Couldn’t load recent interactions" onRetry={() => void recent.refetch()} />
-    );
-  else if (!recent.data) recentContent = <LoadingState label="Loading recent interactions…" />;
-  else
-    recentContent = (
-      <InteractionList
-        rows={recent.data.items.slice(0, 4)}
-        organizationId={period.organizationId}
-      />
-    );
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <dl
         aria-label="Interaction summary"
-        className="grid shrink-0 grid-cols-2 gap-y-3 rounded-xl border bg-card py-3 @3xl:grid-cols-4"
+        className="grid shrink-0 grid-cols-2 gap-2 @3xl:grid-cols-4"
       >
         {metrics.map(({ label, value, hint }) => (
-          <div key={label} className="space-y-1 px-4">
+          <div
+            key={label}
+            className="flex items-center justify-between gap-2 rounded-md border bg-card px-3 py-2"
+            title={hint}
+          >
             <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className="text-2xl font-medium tracking-tight tabular-nums">{value}</dd>
-            <dd className="text-xs text-muted-foreground">{hint}</dd>
+            <dd className="text-sm font-medium tabular-nums">{value}</dd>
           </div>
         ))}
       </dl>
@@ -97,11 +89,16 @@ export function InteractionDashboard({
         </Card>
       ) : (
         <>
-          <InteractionChart activity={activity.data.activity} dates={dates} />
+          <InteractionChart
+            activity={activity.data.activity}
+            dates={dates}
+            selectedDay={day}
+            onSelectDay={setSelectedDay}
+          />
           <Card size="sm" className="min-h-0 flex-1">
             <CardHeader>
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-medium">Recent interactions</h2>
+                <h2 className="text-sm font-medium">Day’s interactions</h2>
                 <Button variant="link" size="sm" asChild>
                   <Link
                     to="/interactions"
@@ -112,7 +109,7 @@ export function InteractionDashboard({
                 </Button>
               </div>
             </CardHeader>
-            <div className="min-h-0 flex-1 overflow-y-auto">{recentContent}</div>
+            <InteractionDay key={day} period={interactionDay(period, day)} />
           </Card>
         </>
       )}

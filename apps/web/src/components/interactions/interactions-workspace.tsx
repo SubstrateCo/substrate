@@ -22,11 +22,10 @@ import {
 } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
-import { Building2, Clock3, LayoutDashboard, Plus, Users } from "lucide-react";
+import { Building2, LayoutDashboard, Plus, Users } from "lucide-react";
 
 const sections = [
   { value: "dashboard", label: "Dashboard", icon: LayoutDashboard },
-  { value: "timeline", label: "Timeline", icon: Clock3 },
   { value: "people", label: "People", icon: Users },
   { value: "accounts", label: "Organizations", icon: Building2 },
 ] as const;
