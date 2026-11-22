@@ -113,10 +113,10 @@ test("MVP message controls preserve discussions and show clear ownership actions
     const message = page.getByRole("article").filter({ hasText: original });
     await message.getByRole("button", { name: "More message actions", exact: true }).click();
     await page.getByRole("menuitem", { name: "Edit message", exact: true }).click();
-    const edit = page.getByRole("dialog", { name: "Edit message", exact: true });
-    await edit.getByLabel("Message", { exact: true }).fill(corrected);
+    const edit = message.getByRole("textbox", { name: "Edit message", exact: true });
+    await edit.fill(corrected);
     await capture("02-edit-message");
-    await edit.getByRole("button", { name: "Save message", exact: true }).click();
+    await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(edit).toHaveCount(0);
     const edited = page.getByRole("article").filter({ hasText: corrected });
     await expect(edited).toContainText("Edited");

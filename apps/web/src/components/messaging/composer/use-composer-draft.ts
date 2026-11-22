@@ -11,18 +11,24 @@ export function useComposerDraft({
   onSend,
   hasAttachments = false,
   attachmentsReady = true,
+  submitDisabled = false,
+  autoFocus = false,
 }: {
   draftKey: string;
   pending: boolean;
   onSend: (body: string, onSuccess: () => void) => void;
   hasAttachments?: boolean;
   attachmentsReady?: boolean;
+  submitDisabled?: boolean;
+  /** Focuses the end of the draft on mount. */
+  autoFocus?: boolean;
 }) {
   const drafts = useContext(ComposerDrafts);
   if (!drafts) throw new Error("Composer requires ComposerDraftProvider");
   const draft = drafts.get(draftKey) ?? "";
   const setDraft = (value: string) => drafts.set(draftKey, value);
   const [focusRequest, setFocusRequest] = useState({ id: 0, caret: 0 });
+  const [initialFocus] = useState(autoFocus ? draft.length : null);
   const appliedFocus = useRef(0);
   const currentDestination = useRef(draftKey);
   const editor = useRef<ReferenceEditorHandle>(null);
@@ -40,6 +46,10 @@ export function useComposerDraft({
   useEffect(() => {
     currentDestination.current = draftKey;
   }, [draftKey]);
+  // Runs on every mount, so focus survives an editor remount.
+  useEffect(() => {
+    if (initialFocus !== null) editor.current?.focusAt(initialFocus);
+  }, [initialFocus]);
   useEffect(() => {
     if (focusRequest.id > appliedFocus.current && !pending) {
       editor.current?.focusAt(focusRequest.caret);
@@ -52,6 +62,7 @@ export function useComposerDraft({
     const sendable =
       (draft.trim() !== "" || hasAttachments) &&
       attachmentsReady &&
+      !submitDisabled &&
       draft.length <= messageMaxLength;
     if (!sendable || pending || composing.current) return;
     onSend(draft.trim(), () => {

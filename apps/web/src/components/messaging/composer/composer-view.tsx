@@ -33,12 +33,31 @@ export function Composer({
   attachmentDrafts,
   hasAttachments = false,
   attachmentsReady = true,
+  submitLabel = "Send",
+  pendingLabel = "Sending…",
+  errorDescription = "Your message couldn’t be sent. Try sending it again.",
+  submitDisabled = false,
+  secondaryAction,
+  autoFocus = false,
+  onCancel,
+  className,
 }: {
+  /** Called on Escape when no picker is open, such as to stop editing. */
+  onCancel?: () => void;
+  className?: string;
   onSend: (body: string, onSuccess: () => void) => void;
   pending?: boolean;
   error?: Error | null;
   label: string;
   draftKey: string;
+  submitLabel?: string;
+  pendingLabel?: string;
+  errorDescription?: string;
+  /** Blocks submitting a draft that is otherwise sendable, such as an unchanged edit. */
+  submitDisabled?: boolean;
+  /** Shown before the submit button, such as Cancel. */
+  secondaryAction?: ReactNode;
+  autoFocus?: boolean;
   attachmentControls?: ReactNode;
   attachmentDrafts?: ReactNode;
   hasAttachments?: boolean;
@@ -56,6 +75,8 @@ export function Composer({
       onSend,
       hasAttachments,
       attachmentsReady,
+      submitDisabled,
+      autoFocus,
     });
   const [references, setReferences] = useState(false);
   const [pickerAccessibility, setPickerAccessibility] = useState<{
@@ -99,7 +120,7 @@ export function Composer({
   };
   return (
     <form
-      className="@container relative w-full p-3 pt-1"
+      className={cn("@container relative w-full p-3 pt-1", className)}
       onSubmit={(event) => {
         event.preventDefault();
         submit();
@@ -161,6 +182,11 @@ export function Composer({
                         return;
                       }
                     }
+                    if (event.key === "Escape" && onCancel) {
+                      event.preventDefault();
+                      onCancel();
+                      return;
+                    }
                     const shortcut =
                       (event.ctrlKey || event.metaKey) && !event.altKey && !event.shiftKey
                         ? composerFormats.find((format) => format.key === event.key.toLowerCase())
@@ -220,18 +246,17 @@ export function Composer({
                   hasAttachments={hasAttachments}
                   attachmentsReady={attachmentsReady}
                   pending={pending}
+                  submitLabel={submitLabel}
+                  pendingLabel={pendingLabel}
+                  submitDisabled={submitDisabled}
+                  secondaryAction={secondaryAction}
                 />
               </div>
             </InputGroupAddon>
           </InputGroup>
         </Popover>
         {attachmentDrafts}
-        {error && (
-          <FormMessage
-            error={error}
-            errorDescription="Your message couldn’t be sent. Try sending it again."
-          />
-        )}
+        {error && <FormMessage error={error} errorDescription={errorDescription} />}
         {error && (
           <p className="text-xs text-muted-foreground" role="status">
             Your draft is still here.
@@ -247,11 +272,19 @@ function ComposerSendControls({
   hasAttachments,
   attachmentsReady,
   pending,
+  submitLabel,
+  pendingLabel,
+  submitDisabled,
+  secondaryAction,
 }: {
   draft: string;
   hasAttachments: boolean;
   attachmentsReady: boolean;
   pending: boolean;
+  submitLabel: string;
+  pendingLabel: string;
+  submitDisabled: boolean;
+  secondaryAction?: ReactNode;
 }) {
   const limitId = useId();
   const overBy = draft.length - messageMaxLength;
@@ -273,22 +306,25 @@ function ComposerSendControls({
         </span>
       ) : (
         <span className="hidden truncate text-xs font-normal text-muted-foreground opacity-0 transition-opacity group-focus-within/composer:opacity-100 motion-reduce:transition-none @lg:inline">
-          <strong className="font-medium">Enter</strong> to send ·{" "}
+          <strong className="font-medium">Enter</strong> to {submitLabel.toLowerCase()} ·{" "}
           <strong className="font-medium">Shift+Enter</strong> for a new line ·{" "}
           <strong className="font-medium">@</strong> to reference
         </span>
       )}
+      {secondaryAction}
       <PendingButton
         type="submit"
         size="sm"
         className="min-w-16"
         aria-describedby={nearLimit ? limitId : undefined}
-        disabled={(!draft.trim() && !hasAttachments) || !attachmentsReady || overBy > 0}
+        disabled={
+          (!draft.trim() && !hasAttachments) || !attachmentsReady || overBy > 0 || submitDisabled
+        }
         pending={pending}
-        pendingLabel="Sending…"
+        pendingLabel={pendingLabel}
       >
         <Send className="size-3.5" />
-        Send
+        {submitLabel}
       </PendingButton>
     </span>
   );

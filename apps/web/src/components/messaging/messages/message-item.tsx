@@ -1,11 +1,11 @@
 import { useSearch } from "@tanstack/react-router";
 
-import { useRef, useState, type RefObject } from "react";
+import { useEffect, useRef, useState, type RefObject } from "react";
 
 import { LinkMessageWork } from "../../context/links/link-message-work";
 import { MessageContext, type MessageContextState } from "../../context/references/message-context";
 import { ReferencedMessageBody } from "../../context/references/referenced-message-body";
-import { EditMessageDialog } from "./edit-message-dialog";
+import { EditMessageComposer } from "./edit-message-composer";
 import { messageAttachmentUrl, messageAttachmentPreviewUrl } from "@/api/files/attachments";
 import type { Message } from "@/api/messaging/requests";
 import {
@@ -64,6 +64,13 @@ export function MessageItem({
   const [deleting, setDeleting] = useState(false);
   const { remove } = useMessageMutations(organizationId, message.conversationId, message.id);
   const actionsTrigger = useRef<HTMLButtonElement>(null);
+  // The toolbar is hidden while editing, so focus returns to its trigger once it renders again.
+  const restoreActionsFocus = useRef(false);
+  useEffect(() => {
+    if (editing || !restoreActionsFocus.current) return;
+    restoreActionsFocus.current = false;
+    actionsTrigger.current?.focus();
+  }, [editing]);
   const [reactionsEmoji, setReactionsEmoji] = useState<string | null>(null);
   const reactionsTrigger = useRef<HTMLElement | null>(null);
   const reaction = useToggleReaction(organizationId, message.conversationId, message.id);
@@ -105,6 +112,19 @@ export function MessageItem({
           )}
           grouped={grouped && !highlighted}
           highlighted={highlighted}
+          editor={
+            canPost && editing && !message.deletedAt ? (
+              <EditMessageComposer
+                organizationId={organizationId}
+                message={message}
+                context={context}
+                onClose={() => {
+                  restoreActionsFocus.current = true;
+                  setEditing(false);
+                }}
+              />
+            ) : undefined
+          }
           body={
             <>
               <ReferencedMessageBody
@@ -167,14 +187,6 @@ export function MessageItem({
             />
           )}
           <AgentWorkSlot messageId={message.id} fromAgent={message.authorType === "agent"} />
-          {canPost && editing && !message.deletedAt && (
-            <EditMessageDialog
-              organizationId={organizationId}
-              message={message}
-              onClose={() => setEditing(false)}
-              onRestoreFocus={() => actionsTrigger.current?.focus()}
-            />
-          )}
           {canPost && deleting && (
             <ConfirmDialog
               destructive
@@ -235,6 +247,9 @@ function MessageActionsMenu({
 }) {
   const recordUrl = useRecordUrl();
   const copyText = useCopyText();
+  // The inline editor opens once the menu has closed. While the menu is open, its focus trap
+  // would pull focus back from the editor.
+  const editAfterClose = useRef(false);
   return (
     <DropdownMenu>
       <Tooltip>
@@ -253,7 +268,15 @@ function MessageActionsMenu({
         </TooltipTrigger>
         <TooltipContent>More message actions</TooltipContent>
       </Tooltip>
-      <DropdownMenuContent align="end">
+      <DropdownMenuContent
+        align="end"
+        onCloseAutoFocus={(event) => {
+          if (!editAfterClose.current) return;
+          editAfterClose.current = false;
+          event.preventDefault();
+          onEdit();
+        }}
+      >
         {!!message.reactions.length && (
           <DropdownMenuItem onSelect={onReactions}>
             <Smile aria-hidden="true" /> View reactions
@@ -277,7 +300,11 @@ function MessageActionsMenu({
         </DropdownMenuItem>
         {canPost && message.canModify && (
           <>
-            <DropdownMenuItem onSelect={onEdit}>
+            <DropdownMenuItem
+              onSelect={() => {
+                editAfterClose.current = true;
+              }}
+            >
               <Pencil aria-hidden="true" /> Edit message
             </DropdownMenuItem>
             <DropdownMenuSeparator />

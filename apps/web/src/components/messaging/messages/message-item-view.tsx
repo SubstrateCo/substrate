@@ -23,12 +23,15 @@ export function MessageItem({
   pending = false,
   onThread,
   body,
+  editor,
   actions,
   avatarBadge,
   status,
   renderReaction,
   children,
 }: {
+  /** Replaces the body while the message is edited in place. */
+  editor?: ReactNode;
   message: Message;
   /** Continues the previous message from the same author: no avatar or name. */
   grouped?: boolean;
@@ -51,7 +54,7 @@ export function MessageItem({
     <MessageRowLayout
       label={grouped ? `${name}, continued` : undefined}
       grouped={grouped}
-      highlighted={highlighted}
+      highlighted={highlighted || !!editor}
       avatar={
         grouped ? (
           <span className="flex w-9 shrink-0 justify-end text-xs leading-6 whitespace-nowrap text-muted-foreground opacity-0 group-hover/message:opacity-100 group-has-focus-visible/message:opacity-100">
@@ -73,21 +76,23 @@ export function MessageItem({
       }
       byline={!grouped && <MessageByline message={message} name={name} status={status} />}
       toolbar={
-        <MessageToolbar
-          message={message}
-          onReact={onReact}
-          pending={pending}
-          onThread={onThread}
-          actions={actions}
-        />
+        !editor && (
+          <MessageToolbar
+            message={message}
+            onReact={onReact}
+            pending={pending}
+            onThread={onThread}
+            actions={actions}
+          />
+        )
       }
     >
       {message.deletedAt ? (
         <p className="text-sm text-muted-foreground italic">Message deleted</p>
       ) : (
-        (body ?? <MessageMarkdown body={message.body} />)
+        (editor ?? body ?? <MessageMarkdown body={message.body} />)
       )}
-      {!message.deletedAt && message.editedAt && (
+      {!message.deletedAt && !editor && message.editedAt && (
         <span className="text-xs text-muted-foreground">Edited</span>
       )}
       <MessageReactions
