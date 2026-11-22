@@ -23,7 +23,7 @@ const threadMessageSchema = z.object({
   authorType: z.enum(["human", "agent"]),
   originTurnId: id.nullable(),
 });
-export type ThreadMessage = z.output<typeof threadMessageSchema>;
+type ThreadMessage = z.output<typeof threadMessageSchema>;
 
 const result = <T extends z.ZodType>(data: T) =>
   z.union([
