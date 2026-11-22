@@ -5,7 +5,6 @@ import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import {
-  SettingsCard,
   SettingsFooter,
   SettingsNote,
   SettingsSection,
@@ -41,13 +40,13 @@ export function PipelineSettings({
     setDraft(next);
   }
   return (
-    <PipelineSection>
+    <>
       <UnsavedChangesGuard
         dirty={dirty}
         name="CRM pipeline"
         description="Your pipeline changes haven’t been saved."
       />
-      <PipelineStagesCard
+      <PipelineSection
         footer={
           canEdit && (
             <SettingsFooter
@@ -118,6 +117,7 @@ export function PipelineSettings({
         </ol>
         {canEdit && (
           <Button
+            className="justify-self-start"
             variant="outline"
             size="sm"
             disabled={rows.length >= 20 || mutation.isPending}
@@ -127,10 +127,6 @@ export function PipelineSettings({
             Add stage
           </Button>
         )}
-        <SettingsNote>
-          Rename or reorder stages without changing their IDs or deal history. Move existing deals
-          before retiring stages. Closing a deal uses its Won or Lost outcome.
-        </SettingsNote>
         {mutation.error && (
           <SettingsNote>
             {actionErrorMessage(
@@ -139,8 +135,8 @@ export function PipelineSettings({
             )}
           </SettingsNote>
         )}
-      </PipelineStagesCard>
-    </PipelineSection>
+      </PipelineSection>
+    </>
   );
 }
 
@@ -162,18 +158,7 @@ function PipelineStageRow({
   );
 }
 
-function PipelineSection({ children }: { children: React.ReactNode }) {
-  return (
-    <SettingsSection
-      title="Pipeline"
-      description="One pipeline with stable open stages. Won and Lost remain separate outcomes."
-    >
-      {children}
-    </SettingsSection>
-  );
-}
-
-function PipelineStagesCard({
+function PipelineSection({
   children,
   footer,
 }: {
@@ -181,9 +166,14 @@ function PipelineStagesCard({
   footer?: React.ReactNode;
 }) {
   return (
-    <SettingsCard title="Open stages" footer={footer}>
+    <SettingsSection
+      layout="split"
+      title="Pipeline"
+      description="Arrange open stages in sales order. Renaming or reordering keeps deal history."
+    >
       {children}
-    </SettingsCard>
+      {footer}
+    </SettingsSection>
   );
 }
 
@@ -191,17 +181,15 @@ export function PipelineSettingsLoading() {
   return (
     <div role="status" aria-label="Loading pipeline settings">
       <PipelineSection>
-        <PipelineStagesCard>
-          <ol className="space-y-2" aria-hidden="true">
-            {[0, 1, 2].map((key) => (
-              <PipelineStageRow
-                key={key}
-                number={<SkeletonText width="1rem" />}
-                control={<Skeleton className="h-9 flex-1" />}
-              />
-            ))}
-          </ol>
-        </PipelineStagesCard>
+        <ol className="space-y-2" aria-hidden="true">
+          {[0, 1, 2].map((key) => (
+            <PipelineStageRow
+              key={key}
+              number={<SkeletonText width="1rem" />}
+              control={<Skeleton className="h-9 flex-1" />}
+            />
+          ))}
+        </ol>
       </PipelineSection>
     </div>
   );
