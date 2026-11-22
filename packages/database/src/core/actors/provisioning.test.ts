@@ -123,7 +123,7 @@ describe("actor provisioning", () => {
       .returning();
     const input = { organizationId: f.orgA, userId: "alice", userAgentId: agent!.id };
     const assistant = f.forActor((await ensureUserAgentActor(f.db, input)).entityId);
-    const contact = await f.forActor(f.alice).contacts.create({ displayName: "Private" });
+    const account = await f.forActor(f.alice).crm.createAccount({ name: "Private" });
     const [actor] = await f.db.select().from(actors).where(eq(actors.userAgentId, agent!.id));
     const project = await f.forActor(f.alice).projects.create({ name: "Agent work" });
     const task = await f.forActor(f.alice).tasks.create({
@@ -132,10 +132,10 @@ describe("actor provisioning", () => {
       assigneeActorEntityId: actor!.entityId,
     });
     expect((await assistant.tasks.get(task.entityId)).assigneeActorEntityId).toBe(actor!.entityId);
-    expect((await assistant.contacts.get(contact.entityId)).displayName).toBe("Private");
-    expect(
-      (await assistant.contacts.update(contact.entityId, { displayName: "Changed" })).displayName,
-    ).toBe("Changed");
+    expect((await assistant.crm.getAccount(account.entityId)).account.name).toBe("Private");
+    expect((await assistant.crm.updateAccount(account.entityId, { name: "Changed" })).name).toBe(
+      "Changed",
+    );
     await ensureUserAgentActor(f.db, input);
     expect(await f.db.select().from(actors).where(eq(actors.userAgentId, agent!.id))).toHaveLength(
       1,
@@ -158,24 +158,24 @@ describe("actor provisioning", () => {
     expect(
       await rejection(
         f.forActor(f.alice).permissions.grant({
-          entityId: contact.entityId,
+          entityId: account.entityId,
           actorEntityId: actor!.entityId,
           level: "edit",
         }),
       ),
     ).toBeInstanceOf(AccessDeniedError);
-    expect(await rejection(assistant.contacts.list())).toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(assistant.crm.listAccounts())).toBeInstanceOf(AccessDeniedError);
     expect(await rejection(ensureUserAgentActor(f.db, input))).toBeInstanceOf(AccessDeniedError);
     await f.db
       .update(userAgents)
       .set({ enabled: true, deletedAt: new Date() })
       .where(eq(userAgents.id, agent!.id));
-    expect(await rejection(assistant.contacts.get(contact.entityId))).toBeInstanceOf(
+    expect(await rejection(assistant.crm.getAccount(account.entityId))).toBeInstanceOf(
       AccessDeniedError,
     );
     await f.db.update(userAgents).set({ deletedAt: null }).where(eq(userAgents.id, agent!.id));
     await f.db.delete(member).where(eq(member.id, "alice-a"));
-    expect(await rejection(assistant.contacts.get(contact.entityId))).toBeInstanceOf(
+    expect(await rejection(assistant.crm.getAccount(account.entityId))).toBeInstanceOf(
       AccessDeniedError,
     );
   });
@@ -188,9 +188,9 @@ describe("actor provisioning", () => {
     expect(actor.entityId).toBe(f.alice);
     expect(await f.db.select().from(entities)).toHaveLength(before.length);
     await f.db.update(member).set({ role: "member" }).where(eq(member.id, "alice-a"));
-    const privateContact = await f.forActor(f.bob).contacts.create({ displayName: "Private" });
+    const privateAccount = await f.forActor(f.bob).crm.createAccount({ name: "Private" });
     expect(
-      await rejection(f.forActor(actor.entityId).contacts.get(privateContact.entityId)),
+      await rejection(f.forActor(actor.entityId).crm.getAccount(privateAccount.entityId)),
     ).toBeInstanceOf(AccessDeniedError);
   });
 

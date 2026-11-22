@@ -7,8 +7,9 @@ import { eq } from "drizzle-orm";
 const f = setupDatabase();
 
 describe("contact interactions", () => {
-  test("inherits contact access and hides history when the contact is deleted", async () => {
+  test("shares history with the organization and hides it when the contact is deleted", async () => {
     const repo = f.forActor(f.bob);
+    const admin = f.forActor(f.alice);
     const contact = await repo.contacts.create({ displayName: "Jane" });
     const interaction = await repo.contactInteractions.createManual({
       contactEntityId: contact.entityId,
@@ -17,8 +18,12 @@ describe("contact interactions", () => {
       summary: "Discussed the proposal",
     });
     expect(await repo.contactInteractions.listForContact(contact.entityId)).toHaveLength(1);
+    expect(
+      (await admin.contactInteractions.listForContact(contact.entityId)).map((row) => row.entityId),
+    ).toEqual([interaction.entityId]);
     await rejection(f.forActor(f.outsider, f.orgB).contactInteractions.get(interaction.entityId));
-    await repo.entities.softDelete(contact.entityId);
+    await rejection(repo.entities.softDelete(contact.entityId));
+    await admin.entities.softDelete(contact.entityId);
     await rejection(repo.contactInteractions.get(interaction.entityId));
     await rejection(repo.contactInteractions.listForContact(contact.entityId));
   });

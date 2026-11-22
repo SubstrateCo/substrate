@@ -68,25 +68,28 @@ describe("contact details", () => {
     ).toEqual(["email", "phone"]);
   });
 
-  test("matches only readable contacts, allows shared addresses, and rejects duplicates within a contact", async () => {
+  test("matches organization contacts, allows shared addresses, and rejects duplicates within a contact", async () => {
     const alice = f.forActor(f.alice).contacts;
     const bob = f.forActor(f.bob).contacts;
-    const a = await alice.create({ displayName: "Private" });
+    const outsider = f.forActor(f.outsider, f.orgB).contacts;
+    const a = await alice.create({ displayName: "Alice's" });
     await alice.addIdentifier(a.entityId, { type: "email", value: "shared@example.com" });
     const b = await bob.create({ displayName: "Shared inbox" });
     await bob.addIdentifier(b.entityId, { type: "email", value: "shared@example.com" });
+    const foreign = await outsider.create({ displayName: "Foreign" });
+    await outsider.addIdentifier(foreign.entityId, { type: "email", value: "shared@example.com" });
     expect(
-      (await bob.findByIdentifier({ type: "email", value: "shared@example.com" })).map(
-        (row) => row.entityId,
-      ),
-    ).toEqual([b.entityId]);
+      (await bob.findByIdentifier({ type: "email", value: "shared@example.com" }))
+        .map((row) => row.entityId)
+        .sort(),
+    ).toEqual([a.entityId, b.entityId].sort());
     await rejection(
       alice.addIdentifier(a.entityId, { type: "email", value: "shared@example.com" }),
     );
     await rejection(
-      bob.addIdentifier(a.entityId, { type: "email", value: "unauthorized@example.com" }),
+      outsider.addIdentifier(a.entityId, { type: "email", value: "unauthorized@example.com" }),
     );
-    await rejection(f.forActor(f.outsider, f.orgB).contacts.getDetail(a.entityId));
+    await rejection(outsider.getDetail(a.entityId));
   });
 
   test("reports duplicate methods and URLs within a contact as conflicts", async () => {
@@ -209,23 +212,22 @@ describe("contact details", () => {
     expect((await repo.getDetail(contact.entityId)).identifiers).toEqual(before.identifiers);
   });
 
-  test("viewers can read details but cannot change them", async () => {
-    const alice = f.forActor(f.alice);
+  test("members change any contact's details and outsiders cannot", async () => {
+    const alice = f.forActor(f.alice).contacts;
     const bob = f.forActor(f.bob).contacts;
-    const contact = await alice.contacts.create({ displayName: "Jane" });
-    const method = await alice.contacts.addIdentifier(contact.entityId, {
+    const outsider = f.forActor(f.outsider, f.orgB).contacts;
+    const contact = await alice.create({ displayName: "Jane" });
+    const method = await alice.addIdentifier(contact.entityId, {
       type: "email",
       value: "jane@example.com",
     });
-    await alice.permissions.grant({
-      entityId: contact.entityId,
-      actorEntityId: f.bob,
-      level: "view",
-    });
     expect((await bob.getDetail(contact.entityId)).identifiers).toContainEqual(method);
-    await rejection(bob.removeIdentifier(contact.entityId, method.id));
-    await rejection(bob.addAddress(contact.entityId, { city: "London" }));
-    await rejection(bob.addUrl(contact.entityId, { url: "https://example.com" }));
-    expect((await bob.getDetail(contact.entityId)).identifiers).toContainEqual(method);
+    await rejection(outsider.removeIdentifier(contact.entityId, method.id));
+    await rejection(outsider.addAddress(contact.entityId, { city: "London" }));
+    await bob.removeIdentifier(contact.entityId, method.id);
+    const address = await bob.addAddress(contact.entityId, { city: "London" });
+    const detail = await alice.getDetail(contact.entityId);
+    expect(detail.identifiers).toEqual([]);
+    expect(detail.addresses).toContainEqual(address);
   });
 });

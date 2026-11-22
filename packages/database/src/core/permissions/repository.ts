@@ -3,6 +3,7 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 import { ValidationError } from "../../errors";
 import { RepositoryContext, type LockedAccess, type PermissionLevel } from "../repository-context";
 import { entityGrants, permissionLevel } from "./schema";
+import { isMemberEdited } from "./visibility";
 import { and, eq, sql } from "drizzle-orm";
 
 // Untyped callers reach grants too; an unknown level must not be stored or read as a revoke.
@@ -25,6 +26,8 @@ export async function changePermission(
   const entityId = entity.entityId;
   if (entity.accessEntityId !== entityId)
     throw new ValidationError("This record inherits its access. Share its parent instead.");
+  if (isMemberEdited(entity.entityType))
+    throw new ValidationError("Everyone in the organization can already edit this record.");
   if (input.level) {
     const target = await ctx.requireActiveActor(input.actorEntityId);
     if (target.type !== "human")

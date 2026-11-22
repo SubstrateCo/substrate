@@ -22,11 +22,6 @@ const discussionEvents = (entityId: string) =>
 test("association retries record one generic link and unlink event without exposing a private source", async () => {
   const { repos, reply } = await contextConversation(f);
   const contact = await repos.contacts.create({ displayName: "Customer" });
-  await repos.permissions.grant({
-    entityId: contact.entityId,
-    actorEntityId: f.bob,
-    level: "view",
-  });
   const attached = await f.context().attach(reply.id, contact.entityId);
   const attachedAgain = await f.context().attach(reply.id, contact.entityId);
   expect(attached).toBe(true);
@@ -66,21 +61,21 @@ test("association retries record one generic link and unlink event without expos
 
 test("an association creator can still unlink after their target access is reduced to view", async () => {
   const { chat, conversation, reply, repos } = await contextConversation(f);
-  const contact = await repos.contacts.create({ displayName: "Customer" });
+  const account = await repos.crm.createAccount({ name: "Customer" });
   await chat.addMembers(conversation.id, ["bob@example.com"]);
   await repos.permissions.grant({
-    entityId: contact.entityId,
+    entityId: account.entityId,
     actorEntityId: f.bob,
     level: "edit",
   });
-  await f.context("bob").attach(reply.id, contact.entityId);
+  await f.context("bob").attach(reply.id, account.entityId);
   await repos.permissions.grant({
-    entityId: contact.entityId,
+    entityId: account.entityId,
     actorEntityId: f.bob,
     level: "view",
   });
-  expect(await f.context("bob").detach(reply.id, contact.entityId)).toBe(true);
-  const events = await discussionEvents(contact.entityId);
+  expect(await f.context("bob").detach(reply.id, account.entityId)).toBe(true);
+  const events = await discussionEvents(account.entityId);
   expect(events.map((event) => event.action).sort()).toEqual([...discussionActions].sort());
   expect(events.every((event) => event.actorEntityId === f.bob)).toBe(true);
 });

@@ -41,7 +41,7 @@ export function crmManagementRepository(context: RepositoryContext) {
       await requireAppEnabled(context, "crm", false);
       const { entity } = await context.requireAccess(entityId, "owner");
       if (
-        !["contact", "account", "deal"].includes(entity.entityType) ||
+        !["account", "deal"].includes(entity.entityType) ||
         entity.accessEntityId !== entity.entityId
       )
         throw new AccessDeniedError();

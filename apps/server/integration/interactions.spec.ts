@@ -3,7 +3,7 @@ import { createCrm } from "./test-support/crm";
 import { test } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
 
-test("interaction workspace reads enforce access and validate periods and cursors", async ({
+test("interaction workspace reads are organization-wide, isolated from outsiders, and validate periods and cursors", async ({
   actors: { owner: sharedOwner, member: sharedMember, outsider },
   workspace,
   request: anonymous,
@@ -11,7 +11,7 @@ test("interaction workspace reads enforce access and validate periods and cursor
   const [owner, member] = await workspace(sharedOwner, sharedMember);
   const contact = await createCrm(owner, {
     action: "createContact",
-    displayName: "Private customer",
+    displayName: "Workspace customer",
   });
   const interaction = await createCrm(owner, {
     action: "createInteraction",
@@ -30,30 +30,26 @@ test("interaction workspace reads enforce access and validate periods and cursor
   const base = "/api/v1/context/interactions";
   const read = (actor: typeof owner, endpoint: string, params = period) =>
     actor.request.get(`${base}/${endpoint}`, { params });
-  expect(await result(await read(owner, "activity"))).toMatchObject({
-    summary: { total: 1, contacts: 1, meetingsAndCalls: 1, recordedMinutes: 30 },
-  });
-  expect(await result(await read(member, "activity"))).toMatchObject({
-    summary: { total: 0, contacts: 0 },
-    activity: [],
-  });
-  expect(await result(await read(member, "timeline"))).toEqual({ items: [], nextCursor: null });
-  expect(await result(await read(owner, "timeline"))).toMatchObject({
-    items: [
-      {
-        contactName: "Private customer",
-        summary: "Confidential pilot discussion",
-        actor: { displayName: owner.name },
-      },
-    ],
-  });
+  // Contacts and their interactions belong to the whole organization.
+  for (const reader of [owner, member]) {
+    expect(await result(await read(reader, "activity"))).toMatchObject({
+      summary: { total: 1, contacts: 1, meetingsAndCalls: 1, recordedMinutes: 30 },
+    });
+    expect(await result(await read(reader, "timeline"))).toMatchObject({
+      items: [
+        {
+          contactName: "Workspace customer",
+          summary: "Confidential pilot discussion",
+          actor: { displayName: owner.name },
+        },
+      ],
+    });
+  }
   const directoryParams = { ...period, type: "people" };
-  expect(
-    await result(await owner.request.get(`${base}/directory`, { params: directoryParams })),
-  ).toMatchObject({ items: [{ name: "Private customer", count: 1 }], more: false });
-  expect(
-    await result(await member.request.get(`${base}/directory`, { params: directoryParams })),
-  ).toEqual({ items: [], more: false });
+  for (const reader of [owner, member])
+    expect(
+      await result(await reader.request.get(`${base}/directory`, { params: directoryParams })),
+    ).toMatchObject({ items: [{ name: "Workspace customer", count: 1 }], more: false });
   for (const [endpoint, params] of [
     ["record", { organizationId: owner.organizationId, entityId: interaction.entityId }],
     [
@@ -61,13 +57,10 @@ test("interaction workspace reads enforce access and validate periods and cursor
       { organizationId: owner.organizationId, entityId: contact.entityId, type: "person" },
     ],
   ] as const) {
-    expect((await owner.request.get(`${base}/${endpoint}`, { params })).ok()).toBe(true);
-    await rejected(await member.request.get(`${base}/${endpoint}`, { params }), [
-      "Private customer",
-      "Confidential pilot discussion",
-    ]);
+    for (const reader of [owner, member])
+      expect((await reader.request.get(`${base}/${endpoint}`, { params })).ok()).toBe(true);
     await rejected(await outsider.request.get(`${base}/${endpoint}`, { params }), [
-      "Private customer",
+      "Workspace customer",
       "Confidential pilot discussion",
     ]);
     expect((await anonymous.get(`${base}/${endpoint}`, { params })).status()).toBe(401);
@@ -81,7 +74,7 @@ test("interaction workspace reads enforce access and validate periods and cursor
   for (const endpoint of ["activity", "timeline"]) {
     expect((await anonymous.get(`${base}/${endpoint}`, { params: period })).status()).toBe(401);
     await rejected(await read(outsider, endpoint), [
-      "Private customer",
+      "Workspace customer",
       "Confidential pilot discussion",
     ]);
     for (const invalid of [

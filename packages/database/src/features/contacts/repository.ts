@@ -2,12 +2,12 @@ import type { RecordArchiveFilter } from "@substrate/contracts/crm/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { requireAppEnabled } from "../../core/apps/access";
+import { contactReadable, lockContact, requireContact } from "../../core/contacts/access";
 import { contactProfileInput, parseInput, type ContactInput } from "../../core/contacts/inputs";
 import { contactRepository } from "../../core/contacts/repository";
 import { contacts } from "../../core/contacts/schema";
 import { appEnabledCondition } from "../../core/permissions/app-visibility";
 import { entityCursor, pageSize, type RepositoryContext } from "../../core/repository-context";
-import { AccessDeniedError } from "../../errors";
 import { recordCrmActivity } from "../crm/activity";
 import { crmAccounts, crmAffiliations, crmContactProfiles } from "../crm/schema";
 import { mutateContactDetail } from "./contact-detail-actions";
@@ -34,7 +34,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
     updateContact(id: string, input: Partial<ContactInput>) {
       const value = parseInput(contactProfileInput.partial(), input);
       return context.transaction(async (ctx) => {
-        await ctx.requireAccess(id, "edit", true);
+        await lockContact(ctx, id);
         const repo = contactRepository(ctx);
         const previous = await repo.get(id);
         // SAFETY: parsing above strips unknown keys; every own key belongs to ContactInput.
@@ -81,7 +81,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
         .where(
           and(
             eq(contacts.organizationId, org),
-            context.readable(contacts.entityId),
+            contactReadable(context, contacts.entityId),
             afterEntityId ? gt(contacts.entityId, afterEntityId) : undefined,
             options.search
               ? ilike(contacts.displayName, `%${options.search.replace(/[\\%_]/g, "\\$&")}%`)
@@ -94,8 +94,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
     },
     async getContact(id: string) {
       const detail = await contactRepository(context).getDetail(id);
-      const access = await context.requireAccess(id, "view");
-      if (access.entity.entityType !== "contact") throw new AccessDeniedError();
+      const access = await requireContact(context, id);
       const affiliations = await db
         .select({ affiliation: crmAffiliations, account: crmAccounts })
         .from(crmAffiliations)
@@ -133,8 +132,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
     archive(id: string, archived: boolean) {
       return context.transaction(async (ctx) => {
         await requireAppEnabled(ctx, "crm");
-        const { entity } = await ctx.requireAccess(id, "edit", true);
-        if (entity.entityType !== "contact") throw new AccessDeniedError();
+        await lockContact(ctx, id);
         const [previous] = await ctx.db
           .select()
           .from(crmContactProfiles)

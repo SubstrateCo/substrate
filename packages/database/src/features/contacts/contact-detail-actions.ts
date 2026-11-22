@@ -1,6 +1,7 @@
 import type { ContactWrite } from "@substrate/contracts/contacts/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
+import { lockContact } from "../../core/contacts/access";
 import { contactRepository } from "../../core/contacts/repository";
 import type { RepositoryContext } from "../../core/repository-context";
 import { recordCrmActivity } from "../crm/activity";
@@ -34,7 +35,7 @@ function contentKey(detail: Details) {
 }
 export function mutateContactDetail(context: RepositoryContext, input: Input) {
   return context.transaction(async (ctx) => {
-    await ctx.requireAccess(input.contactEntityId, "edit", true);
+    await lockContact(ctx, input.contactEntityId);
     const repo = contactRepository(ctx);
     const before = contentKey(await repo.getDetail(input.contactEntityId));
     async function write() {

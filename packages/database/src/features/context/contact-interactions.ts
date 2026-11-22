@@ -1,5 +1,6 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
+import { lockContact, requireContact } from "../../core/contacts/access";
 import { interactionWorkspaceRepository } from "../../core/contacts/interaction-workspace.repository";
 import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
 import { appEnabledCondition } from "../../core/permissions/app-visibility";
@@ -29,10 +30,7 @@ export function contextContactInteractionRepository(context: RepositoryContext) 
       input: Parameters<ReturnType<typeof interactionWorkspaceRepository>["workspaceTimeline"]>[0],
     ) {
       let condition;
-      if (input.contactEntityId) {
-        const access = await context.requireAccess(input.contactEntityId, "view");
-        if (access.entity.entityType !== "contact") throw new AccessDeniedError();
-      }
+      if (input.contactEntityId) await requireContact(context, input.contactEntityId);
       if (input.accountEntityId) {
         const access = await context.requireAccess(input.accountEntityId, "view");
         if (access.entity.entityType !== "account") throw new AccessDeniedError();
@@ -63,8 +61,7 @@ export function contextContactInteractionRepository(context: RepositoryContext) 
       input: Parameters<ReturnType<typeof contactInteractionRepository>["createManual"]>[0],
     ) {
       return context.transaction(async (ctx) => {
-        await ctx.lockAccessPath(input.contactEntityId);
-        await ctx.requireAccess(input.contactEntityId, "edit");
+        await lockContact(ctx, input.contactEntityId);
         const [profile] = await ctx.db
           .select()
           .from(crmContactProfiles)

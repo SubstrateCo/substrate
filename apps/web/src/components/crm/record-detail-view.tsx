@@ -63,14 +63,17 @@ export function RecordDetailView({
         actions={
           <>
             <CopyLink link={recordLink(organizationId, kind, entityId)} grouped />
-            <RecordManagement
-              key={entityId}
-              organizationId={organizationId}
-              entityId={entityId}
-              name={name}
-              level={level}
-              record={ownerRecord}
-            />
+            {/* Every member edits contacts, so they have no sharing or owner. */}
+            {kind !== "contacts" && (
+              <RecordManagement
+                key={entityId}
+                organizationId={organizationId}
+                entityId={entityId}
+                name={name}
+                level={level}
+                record={ownerRecord}
+              />
+            )}
             {actions}
             {canEdit && (
               <>

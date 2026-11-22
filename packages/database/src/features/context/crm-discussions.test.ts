@@ -14,47 +14,54 @@ const f = setupDatabase();
 
 test("CRM discussions require both endpoints and hide restricted backlink metadata", async () => {
   const { repos, chat, conversation, reply } = await contextConversation(f);
-  const contact = await repos.contacts.create({ displayName: "Private customer" });
+  const account = await repos.crm.createAccount({ name: "Private customer" });
   const before = await f.db.select().from(entityGrants);
-  await f.context().attach(reply.id, contact.entityId);
+  await f.context().attach(reply.id, account.entityId);
   expect(await f.context().messageLinks(reply.id)).toMatchObject([
-    { entityId: contact.entityId, entityType: "contact", title: "Private customer" },
+    { entityId: account.entityId, entityType: "account", title: "Private customer" },
   ]);
-  expect(await f.context().related(contact.entityId)).toMatchObject([{ messageId: reply.id }]);
+  expect(await f.context().related(account.entityId)).toMatchObject([{ messageId: reply.id }]);
   expect(await f.db.select().from(entityGrants)).toEqual(before);
 
   await repos.permissions.grant({
-    entityId: contact.entityId,
+    entityId: account.entityId,
     actorEntityId: f.bob,
     level: "view",
   });
   // Target access does not expose private message IDs, names, timestamps, or counts.
-  expect(await f.context("bob").related(contact.entityId)).toEqual([]);
+  expect(await f.context("bob").related(account.entityId)).toEqual([]);
   await f.db.update(member).set({ role: "admin" }).where(eq(member.userId, "bob"));
-  expect(await f.context("bob").related(contact.entityId)).toEqual([]);
+  expect(await f.context("bob").related(account.entityId)).toEqual([]);
   expect(await rejection(f.context("bob").messageLinks(reply.id))).toBeInstanceOf(
     AccessDeniedError,
   );
   await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "bob"));
-  expect(await rejection(f.context("bob").attach(reply.id, contact.entityId))).toBeInstanceOf(
+  expect(await rejection(f.context("bob").attach(reply.id, account.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
   await chat.addMembers(conversation.id, ["bob@example.com"]);
-  expect(await f.context("bob").related(contact.entityId)).toHaveLength(1);
+  expect(await f.context("bob").related(account.entityId)).toHaveLength(1);
   // Message access and target view still do not permit association writes.
-  expect(await rejection(f.context("bob").attach(reply.id, contact.entityId))).toBeInstanceOf(
+  expect(await rejection(f.context("bob").attach(reply.id, account.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
-  await repos.permissions.revoke({ entityId: contact.entityId, actorEntityId: f.bob });
-  expect(await f.context("bob").messageLinks(reply.id)).toEqual([]);
-  expect(await f.context("bob").search({ query: "Private", kind: "contact" })).toEqual([]);
+  // Every member edits contacts, so message access is enough to associate one.
+  const contact = await repos.contacts.create({ displayName: "Shared customer" });
+  expect(await f.context("bob").attach(reply.id, contact.entityId)).toBe(true);
+  await repos.permissions.revoke({ entityId: account.entityId, actorEntityId: f.bob });
+  expect(await f.context("bob").messageLinks(reply.id)).toMatchObject([
+    { entityId: contact.entityId, entityType: "contact" },
+  ]);
+  expect(await f.context("bob").search({ query: "Private", kind: "account" })).toEqual([]);
   await f.db.delete(messagingParticipants).where(eq(messagingParticipants.actorEntityId, f.bob));
   expect(await rejection(f.context("bob").messageLinks(reply.id))).toBeInstanceOf(
     AccessDeniedError,
   );
-  expect(
-    await rejection(f.context("outsider", f.orgB).attach(reply.id, contact.entityId)),
-  ).toBeInstanceOf(AccessDeniedError);
+  expect(await f.context("bob").related(contact.entityId)).toEqual([]);
+  for (const target of [account.entityId, contact.entityId])
+    expect(await rejection(f.context("outsider", f.orgB).attach(reply.id, target))).toBeInstanceOf(
+      AccessDeniedError,
+    );
 });
 
 test("interaction associations use real inherited entities and unlink preserves source provenance", async () => {

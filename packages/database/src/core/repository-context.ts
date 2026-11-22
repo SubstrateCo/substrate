@@ -9,7 +9,12 @@ import { rootEntityValues } from "./entities/identity";
 import { entities } from "./entities/schema";
 import type { DatabaseExecutor } from "./executor";
 import { entityGrants, permissionLevel } from "./permissions/schema";
-import { entityAccessLevel, lockAccessPaths, readableCondition } from "./permissions/visibility";
+import {
+  entityAccessLevel,
+  isMemberEdited,
+  lockAccessPaths,
+  readableCondition,
+} from "./permissions/visibility";
 import type { WorkspaceScope } from "./session/identity";
 import { and, eq, exists, inArray, isNull, sql, type SQLWrapper } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -238,7 +243,8 @@ export class RepositoryContext {
     );
   }
 
-  // A root entity owned by the actor's person. Children use createChildEntity.
+  // A root entity owned by the actor's person, or shared with every member for a member-edited
+  // type. Children use createChildEntity.
   async createEntity(entityType: typeof entities.$inferInsert.entityType) {
     for (const app of requiredAppsForEntityType(entityType)) {
       if (app === "tasks" || app === "crm") await requireAppEnabled(this, app);
@@ -248,6 +254,7 @@ export class RepositoryContext {
       .insert(entities)
       .values(rootEntityValues(this.scope.organizationId, entityType))
       .returning();
+    if (isMemberEdited(entityType)) return entity!;
     await this.db.insert(entityGrants).values({
       organizationId: this.scope.organizationId,
       entityId: entity!.entityId,

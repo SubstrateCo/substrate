@@ -138,7 +138,6 @@ test("contact detail and interaction wrappers record changes without duplicate n
 test("publication and follow-up request retries append only one event, with independently hidden task context", async () => {
   const { repos, reply, project } = await contextConversation(f);
   const contact = await repos.contacts.createContact({ displayName: "Customer" });
-  await repos.crm.share(contact.entityId, f.bob, "view");
   const alice = await f.forSession("alice");
   const input = {
     contactEntityId: contact.entityId,

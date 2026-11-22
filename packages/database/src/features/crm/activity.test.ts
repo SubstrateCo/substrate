@@ -22,9 +22,6 @@ const contact = (actorEntityId = f.alice, organizationId = f.orgA) =>
 test("human and agent attribution is distinct from responsibility and hides all private agent metadata", async () => {
   const agent = await ownedAgent(f, "alice", "Private strategy assistant");
   const target = await contact();
-  await f
-    .forActor(f.alice)
-    .permissions.grant({ entityId: target.entityId, actorEntityId: f.bob, level: "view" });
   await recordCrmActivity(ctx(), { entityId: target.entityId, action: "created" });
   await recordCrmActivity(ctx(agent.actorId), {
     entityId: target.entityId,
@@ -60,8 +57,10 @@ test("human and agent attribution is distinct from responsibility and hides all 
 });
 
 test("unreadable targets and related endpoints are denied without identifiers, names, or counts", async () => {
-  const target = await contact();
-  const hidden = await contact();
+  // Contacts are readable by every member, so the restricted records are accounts.
+  const target = await f.forActor(f.alice).crm.createAccount({ name: "Customer" });
+  const hidden = await f.forActor(f.alice).crm.createAccount({ name: "Hidden" });
+  await f.db.delete(crmActivityEvents);
   await recordCrmActivity(ctx(), {
     entityId: target.entityId,
     action: "context_linked",

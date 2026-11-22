@@ -32,14 +32,7 @@ test("interaction directories and profiles use readable affiliations and do not 
   expect(
     (await owner.contactInteractions.workspaceDirectory({ ...period, type: "accounts" })).items,
   ).toMatchObject([{ name: "Northstar", count: 1, contacts: 1 }]);
-  expect(
-    (await member.contactInteractions.workspaceDirectory({ ...period, type: "people" })).items,
-  ).toEqual([]);
-  await owner.permissions.grant({
-    entityId: contact.entityId,
-    actorEntityId: f.bob,
-    level: "view",
-  });
+  // Every member reads the contact and its interaction, but not the private account.
   expect(
     (await member.contactInteractions.workspaceDirectory({ ...period, type: "people" })).items,
   ).toMatchObject([{ name: "Maya Chen", count: 1 }]);

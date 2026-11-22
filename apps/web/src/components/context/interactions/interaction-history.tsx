@@ -54,42 +54,46 @@ export function InteractionHistory({
         <p className="text-sm text-muted-foreground">No interactions recorded</p>
       )}
       <ol className="divide-y">
-        {(resourceState(query).data ?? []).map((interaction) => (
-          <li key={interaction.entityId} className="group/row space-y-2 py-3">
-            <div className="flex items-center gap-2 text-xs text-muted-foreground">
-              <span>{interactionLabels[interaction.kind]}</span>
-              <Timestamp value={interaction.occurredAt} format="datetime" />
-              {(canEdit || canDelete) && (
-                <RowActions label="Interaction actions" className="ml-auto">
-                  {canEdit && (
-                    <RowAction
-                      label="Edit interaction"
-                      onClick={() => {
-                        mutation.reset();
-                        setSelected({ ...interaction, action: "edit" });
-                      }}
-                    >
-                      <Pencil aria-hidden />
-                    </RowAction>
-                  )}
-                  {canDelete && (
-                    <RowAction
-                      label="Delete interaction"
-                      destructive
-                      onClick={() => {
-                        mutation.reset();
-                        setSelected({ ...interaction, action: "delete" });
-                      }}
-                    >
-                      <Trash2 aria-hidden />
-                    </RowAction>
-                  )}
-                </RowActions>
-              )}
-            </div>
-            <p className="text-sm whitespace-pre-wrap">{interaction.summary}</p>
-          </li>
-        ))}
+        {(resourceState(query).data ?? []).map((interaction) => {
+          // Authors delete their own interactions, and admins delete any.
+          const deletable = canDelete && interaction.canDelete;
+          return (
+            <li key={interaction.entityId} className="group/row space-y-2 py-3">
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <span>{interactionLabels[interaction.kind]}</span>
+                <Timestamp value={interaction.occurredAt} format="datetime" />
+                {(canEdit || deletable) && (
+                  <RowActions label="Interaction actions" className="ml-auto">
+                    {canEdit && (
+                      <RowAction
+                        label="Edit interaction"
+                        onClick={() => {
+                          mutation.reset();
+                          setSelected({ ...interaction, action: "edit" });
+                        }}
+                      >
+                        <Pencil aria-hidden />
+                      </RowAction>
+                    )}
+                    {deletable && (
+                      <RowAction
+                        label="Delete interaction"
+                        destructive
+                        onClick={() => {
+                          mutation.reset();
+                          setSelected({ ...interaction, action: "delete" });
+                        }}
+                      >
+                        <Trash2 aria-hidden />
+                      </RowAction>
+                    )}
+                  </RowActions>
+                )}
+              </div>
+              <p className="text-sm whitespace-pre-wrap">{interaction.summary}</p>
+            </li>
+          );
+        })}
       </ol>
       {selected?.action === "edit" && canEdit && (
         <Dialog
@@ -102,7 +106,7 @@ export function InteractionHistory({
             <DialogHeader>
               <DialogTitle>Edit interaction</DialogTitle>
               <DialogDescription>
-                The summary remains visible to this contact’s readers.
+                The summary remains visible to everyone in the workspace.
               </DialogDescription>
             </DialogHeader>
             <NativeForm

@@ -279,7 +279,11 @@ test("work and CRM search share one statement and keep each type's filters and a
     expect(await search("alice", { query: "Pipeline", kind: row.kind })).toEqual([row]);
     expect(entityStatements()).toHaveLength(1);
   }
-  expect(await search("bob", { query: "Pipeline" })).toEqual([]);
+  // Every member edits contacts and their interactions; other records need grants.
+  const shared = expected.filter(
+    (row) => row.kind === "contact" || row.kind === "contact_interaction",
+  );
+  expect(await search("bob", { query: "Pipeline" })).toEqual(shared);
   await alice.permissions.grant({
     entityId: account.entityId,
     actorEntityId: f.bob,
@@ -287,9 +291,11 @@ test("work and CRM search share one statement and keep each type's filters and a
   });
   await alice.permissions.grant({ entityId: deal.entityId, actorEntityId: f.bob, level: "edit" });
   expect(await search("bob", { query: "Pipeline" })).toEqual(
-    [accountRow, dealRow].sort((a, b) => a.id.localeCompare(b.id)),
+    [...shared, accountRow, dealRow].sort((a, b) => a.id.localeCompare(b.id)),
   );
-  expect(await search("bob", { query: "Pipeline", editable: true })).toEqual([dealRow]);
+  expect(await search("bob", { query: "Pipeline", editable: true })).toEqual(
+    [...shared, dealRow].sort((a, b) => a.id.localeCompare(b.id)),
+  );
 });
 
 test("searching several kinds returns each kind's first page in the requested order", async () => {

@@ -24,7 +24,6 @@ test("follow-up reuses the task, preserves provenance and derives date-only next
   await a.tasks.update(first.entityId, { dueDate: "2026-11-12" }, project.entityId);
   expect((await a.crm.followUps(contact.entityId)).nextAction?.entityId).toBe(first.entityId);
   expect((await a.crm.followUps(contact.entityId)).nextAction?.dueDate).toBe("2026-11-12");
-  await a.permissions.grant({ entityId: contact.entityId, actorEntityId: f.bob, level: "view" });
   expect((await f.forActor(f.bob).crm.followUps(contact.entityId)).tasks).toEqual([]);
   await a.tasks.update(first.entityId, { status: "completed" }, project.entityId);
   expect((await a.crm.followUps(contact.entityId)).nextAction).toBeNull();

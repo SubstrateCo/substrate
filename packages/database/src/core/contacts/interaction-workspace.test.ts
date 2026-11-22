@@ -36,11 +36,11 @@ describe("interaction workspace", () => {
       published: 0,
     });
   });
-  test("aggregates readable records only, excludes deleted records, and groups local days", async () => {
+  test("aggregates the organization's records only, excludes deleted records, and groups local days", async () => {
     const owner = f.forActor(f.alice);
     const member = f.forActor(f.bob);
     const visible = await member.contacts.create({ displayName: "Visible contact" });
-    const hidden = await owner.contacts.create({ displayName: "Private contact" });
+    const ownerContact = await owner.contacts.create({ displayName: "Owner's contact" });
     const other = f.forActor(f.outsider, f.orgB);
     const foreign = await other.contacts.create({ displayName: "Other organization" });
     const create = (repo: typeof owner, contactEntityId: string, summary: string) =>
@@ -52,13 +52,13 @@ describe("interaction workspace", () => {
         summary,
       });
     await create(member, visible.entityId, "Visible");
-    await create(owner, hidden.entityId, "Hidden");
+    await create(owner, ownerContact.entityId, "Owner's");
     await create(other, foreign.entityId, "Foreign");
     const deleted = await create(member, visible.entityId, "Deleted interaction");
     await member.contactInteractions.softDelete(deleted.entityId);
     const deletedContact = await member.contacts.create({ displayName: "Deleted contact" });
     await create(member, deletedContact.entityId, "Deleted parent");
-    await member.entities.softDelete(deletedContact.entityId);
+    await owner.entities.softDelete(deletedContact.entityId);
     await member.contactInteractions.createManual({
       contactEntityId: visible.entityId,
       kind: "email",
@@ -67,16 +67,18 @@ describe("interaction workspace", () => {
     });
     const activity = await member.contactInteractions.workspaceActivity(period);
     expect(activity.summary).toEqual({
-      total: 1,
-      contacts: 1,
-      meetingsAndCalls: 1,
-      recordedMinutes: 20,
+      total: 2,
+      contacts: 2,
+      meetingsAndCalls: 2,
+      recordedMinutes: 40,
       published: 0,
     });
-    expect(activity.activity).toEqual([{ day: "2026-11-09", kind: "call", count: 1 }]);
+    expect(activity.activity).toEqual([{ day: "2026-11-09", kind: "call", count: 2 }]);
     expect(
-      (await member.contactInteractions.workspaceTimeline(period)).items.map((r) => r.summary),
-    ).toEqual(["Visible"]);
+      (await member.contactInteractions.workspaceTimeline(period)).items
+        .map((r) => r.summary)
+        .sort(),
+    ).toEqual(["Owner's", "Visible"]);
     expect((await owner.contactInteractions.workspaceActivity(period)).summary.total).toBe(2);
   });
 

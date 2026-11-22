@@ -1,4 +1,4 @@
-import { AccessDeniedError } from "../../errors";
+import { AccessDeniedError, ValidationError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { ensureUserAgentActor } from "../actors/provisioning";
@@ -19,17 +19,39 @@ async function promote(userId: string, role: string) {
 }
 
 test("organization admins and owners act as owner of unshared records", async () => {
-  const contact = await f.forActor(f.bob).contacts.create({ displayName: "Bob's contact" });
+  const account = await f.forActor(f.bob).crm.createAccount({ name: "Bob's account" });
   expect(
-    await rejection(context(f.outsider, f.orgB).requireAccess(contact.entityId, "view")),
+    await rejection(context(f.outsider, f.orgB).requireAccess(account.entityId, "view")),
   ).toBeInstanceOf(AccessDeniedError);
-  expect((await context(f.alice).requireAccess(contact.entityId, "owner")).level).toBe("owner");
+  expect((await context(f.alice).requireAccess(account.entityId, "owner")).level).toBe("owner");
   await promote("alice", "member");
-  expect(await rejection(context(f.alice).requireAccess(contact.entityId, "view"))).toBeInstanceOf(
+  expect(await rejection(context(f.alice).requireAccess(account.entityId, "view"))).toBeInstanceOf(
     AccessDeniedError,
   );
   await promote("alice", "member,admin");
-  expect((await context(f.alice).requireAccess(contact.entityId, "owner")).level).toBe("owner");
+  expect((await context(f.alice).requireAccess(account.entityId, "owner")).level).toBe("owner");
+});
+
+test("every member edits an organization's contacts without grants, and outsiders cannot read them", async () => {
+  const contact = await f.forActor(f.alice).contacts.create({ displayName: "Shared" });
+  const bob = f.forActor(f.bob);
+  expect((await bob.contacts.get(contact.entityId)).displayName).toBe("Shared");
+  expect((await bob.contacts.update(contact.entityId, { displayName: "Edited" })).displayName).toBe(
+    "Edited",
+  );
+  expect(
+    await rejection(f.forActor(f.outsider, f.orgB).contacts.get(contact.entityId)),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(
+      f.forActor(f.alice).permissions.grant({
+        entityId: contact.entityId,
+        actorEntityId: f.bob,
+        level: "view",
+      }),
+    ),
+  ).toBeInstanceOf(ValidationError);
+  expect(await f.accessLevel(f.bob, contact.entityId)).toBe("edit");
 });
 
 test("admin access is limited to the admin's organization", async () => {
@@ -58,13 +80,13 @@ test("an admin's agent acts with the admin's live access", async () => {
     userId: "alice",
     userAgentId: agent!.id,
   });
-  const contact = await f.forActor(f.bob).contacts.create({ displayName: "Bob's contact" });
-  expect((await context(actor.entityId).requireAccess(contact.entityId, "edit")).level).toBe(
+  const account = await f.forActor(f.bob).crm.createAccount({ name: "Bob's account" });
+  expect((await context(actor.entityId).requireAccess(account.entityId, "edit")).level).toBe(
     "owner",
   );
   await promote("alice", "member");
   expect(
-    await rejection(context(actor.entityId).requireAccess(contact.entityId, "view")),
+    await rejection(context(actor.entityId).requireAccess(account.entityId, "view")),
   ).toBeInstanceOf(AccessDeniedError);
 });
 
@@ -96,9 +118,9 @@ test("admins inherit owner access from a shared container, not from the child's 
 });
 
 test("readable entities include unshared records for admins only", async () => {
-  const contact = await f.forActor(f.bob).contacts.create({ displayName: "Bob's contact" });
-  const ids = async () => (await f.forActor(f.alice).contacts.list()).map((row) => row.entityId);
-  expect(await ids()).toEqual([contact.entityId]);
+  const account = await f.forActor(f.bob).crm.createAccount({ name: "Bob's account" });
+  const ids = async () => (await f.forActor(f.alice).crm.listAccounts()).map((row) => row.entityId);
+  expect(await ids()).toEqual([account.entityId]);
   await promote("alice", "member");
   expect(await ids()).toEqual([]);
 });

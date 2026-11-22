@@ -112,7 +112,7 @@ test("project sharing checks the project under one structural lock and keeps gra
   const alice = f.forActor(f.alice);
   const project = await alice.projects.create({ name: "Shared" });
   const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Child" });
-  const contact = await alice.contacts.create({ displayName: "Not a project" });
+  const account = await alice.crm.createAccount({ name: "Not a project" });
   const { db, queries } = recordQueries();
   const repos = new ActorRepositories(db, { organizationId: f.orgA, actorEntityId: f.alice });
   const shared = await repos.transaction((tx) =>
@@ -129,7 +129,7 @@ test("project sharing checks the project under one structural lock and keeps gra
   );
   expect(await f.accessLevel(f.bob, project.entityId)).toBe("edit");
 
-  for (const id of [task.entityId, contact.entityId])
+  for (const id of [task.entityId, account.entityId])
     expect(await rejection(alice.projects.share(id, f.bob, "view"))).toBeInstanceOf(
       AccessDeniedError,
     );
@@ -137,9 +137,9 @@ test("project sharing checks the project under one structural lock and keeps gra
     await f.db
       .select()
       .from(entityGrants)
-      .where(inArray(entityGrants.entityId, [task.entityId, contact.entityId])),
+      .where(inArray(entityGrants.entityId, [task.entityId, account.entityId])),
   ).toEqual([
-    expect.objectContaining({ entityId: contact.entityId, actorEntityId: f.alice, level: "owner" }),
+    expect.objectContaining({ entityId: account.entityId, actorEntityId: f.alice, level: "owner" }),
   ]);
   // SAFETY: Deliberately invalid input from an untyped caller.
   const unknown = "admin" as PermissionLevel;

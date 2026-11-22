@@ -8,14 +8,9 @@ import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
-test("publication is consented, idempotent, contact-visible, and cannot revive a deletion", async () => {
+test("publication is consented, idempotent, organization-visible, and cannot revive a deletion", async () => {
   const { repos, reply } = await contextConversation(f);
   const contact = await repos.contacts.create({ displayName: "Customer" });
-  await repos.permissions.grant({
-    entityId: contact.entityId,
-    actorEntityId: f.bob,
-    level: "view",
-  });
   const alice = await f.forSession("alice");
   const input = {
     contactEntityId: contact.entityId,
@@ -40,6 +35,7 @@ test("publication is consented, idempotent, contact-visible, and cannot revive a
   const visible = await f.forActor(f.bob).contactInteractions.get(first.result.entityId);
   expect(visible.summary).toBe("Approved summary");
   expect(visible).not.toHaveProperty("messageId");
+  await rejection(f.forActor(f.outsider, f.orgB).contactInteractions.get(first.result.entityId));
   await repos.contactInteractions.update(first.result.entityId, { summary: "Later correction" });
   // A repeat, even with a different summary, returns the published interaction unchanged.
   const replay = await alice.contactInteractions.publishInteraction({
@@ -60,14 +56,9 @@ test("publication is consented, idempotent, contact-visible, and cannot revive a
   });
 });
 
-test("publication rejects a contact-only reader and false audience consent", async () => {
+test("publication rejects a member without message access and false audience consent", async () => {
   const { repos, reply } = await contextConversation(f);
   const contact = await repos.contacts.create({ displayName: "Customer" });
-  await repos.permissions.grant({
-    entityId: contact.entityId,
-    actorEntityId: f.bob,
-    level: "edit",
-  });
   const bob = await f.forSession("bob");
   const input = {
     contactEntityId: contact.entityId,

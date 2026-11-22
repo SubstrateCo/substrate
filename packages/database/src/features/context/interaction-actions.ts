@@ -1,5 +1,6 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
+import { requireInteraction } from "../../core/contacts/access";
 import { parseInput } from "../../core/contacts/inputs";
 import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
 import type { RepositoryContext } from "../../core/repository-context";
@@ -12,9 +13,8 @@ export function contextInteractionActions(context: RepositoryContext) {
     updateInteraction(entityId: string, input: { summary: string }) {
       const value = parseInput(z.object({ summary: z.string().trim().min(1).max(10000) }), input);
       return context.transaction(async (ctx) => {
-        await ctx.requireAccess(entityId, "edit", true, "structural");
+        const { interaction: previous } = await requireInteraction(ctx, entityId, true);
         const repo = contactInteractionRepository(ctx);
-        const previous = await repo.get(entityId);
         if (previous.summary === value.summary) return presentInteraction(ctx, previous);
         const interaction = await repo.update(entityId, value);
         await recordCrmActivity(ctx, {
@@ -32,7 +32,6 @@ export function contextInteractionActions(context: RepositoryContext) {
     },
     deleteInteraction(entityId: string) {
       return context.transaction(async (ctx) => {
-        await ctx.requireAccess(entityId, "owner", true, "structural");
         const repo = contactInteractionRepository(ctx);
         const previous = await repo.get(entityId);
         await repo.softDelete(entityId);

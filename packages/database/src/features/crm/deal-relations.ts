@@ -1,3 +1,4 @@
+import { contactReadable } from "../../core/contacts/access";
 import { contacts } from "../../core/contacts/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
@@ -42,7 +43,7 @@ export async function requireDealRelations(
       and(
         eq(contacts.organizationId, ctx.scope.organizationId),
         inArray(contacts.entityId, ids),
-        ctx.readable(contacts.entityId),
+        contactReadable(ctx, contacts.entityId),
       ),
     );
   if (rows.length !== ids.length) throw new AccessDeniedError();

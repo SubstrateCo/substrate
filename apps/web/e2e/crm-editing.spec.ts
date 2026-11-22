@@ -113,15 +113,12 @@ test("editing a title does not turn an unselected participant into the primary c
   });
 });
 
-test("an editor can update a deal with only restricted customer relationships without removing them", async ({
+// Contacts are readable by every member, so only the account can be restricted.
+test("an editor can update a deal with a restricted customer account without removing it", async ({
   actors,
   client,
 }) => {
-  const contact = await createCrm(actors.sender, {
-    action: "createContact",
-    displayName: "Restricted buyer",
-  });
-  const { deal, customer } = await customerDeal(actors.sender, [contact.entityId]);
+  const { deal, customer } = await customerDeal(actors.sender);
   const destination = await project(actors.sender);
   const workspace = await detail(actors.sender, destination.entityId);
   const member = workspace.actors.find((actor) => actor.name === actors.member.name);
@@ -141,9 +138,6 @@ test("an editor can update a deal with only restricted customer relationships wi
   await expect(editor.getByRole("combobox", { name: "Account", exact: true })).toContainText(
     "None",
   );
-  await expect(
-    editor.getByRole("combobox", { name: "Primary contact", exact: true }),
-  ).toContainText("None");
   await editor.getByLabel("Title", { exact: true }).fill("Updated without private customer access");
   const saved = savedDeal(user.page, "updateDeal");
   await editor.getByRole("button", { name: "Save", exact: true }).click();
@@ -153,7 +147,6 @@ test("an editor can update a deal with only restricted customer relationships wi
   ).toMatchObject({
     deal: { title: "Updated without private customer access" },
     account: { entityId: customer.entityId },
-    contacts: [{ contact: { entityId: contact.entityId }, isPrimary: false }],
   });
 });
 
@@ -186,7 +179,7 @@ test("moving an already lost deal preserves its saved lost reason", async ({ acc
   });
 });
 
-test("a contact editor can correct a published interaction, but only its owner can delete it", async ({
+test("any member can correct a published interaction, but only its author can delete it", async ({
   actors,
   client,
 }) => {
@@ -195,18 +188,6 @@ test("a contact editor can correct a published interaction, but only its owner c
     action: "createContact",
     displayName: "Publication correction",
   });
-  const destination = await project(account);
-  const workspace = await detail(account, destination.entityId);
-  const member = workspace.actors.find((actor) => actor.name === actors.member.name);
-  if (!member) throw new Error("Member fixture is missing.");
-  await result(
-    await writeCrm(account, {
-      action: "share",
-      entityId: contact.entityId,
-      actorEntityId: member.entityId,
-      level: "edit",
-    }),
-  );
   const channel = await conversation(account);
   const message = await post<{ id: string }>(account, "messaging/messages", {
     conversationId: channel.id,

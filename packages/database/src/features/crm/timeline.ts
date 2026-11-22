@@ -1,6 +1,7 @@
 import type { CrmTimelineMode } from "@substrate/contracts/crm/input";
 
 import { requireAppEnabled } from "../../core/apps/access";
+import { interactionReadable } from "../../core/contacts/access";
 import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
 import { contactInteractions } from "../../core/contacts/interactions.schema";
 import { entityLinks } from "../../core/links/schema";
@@ -110,8 +111,7 @@ export async function timeline(
     .where(
       and(
         eq(contactInteractions.organizationId, scope.organizationId),
-        context.readable(contactInteractions.entityId),
-        context.readable(contactInteractions.contactEntityId),
+        interactionReadable(context, contactInteractions.entityId),
         interactionScope(context, entity.entityType, entityId, options.mode === "linked"),
         before
           ? sql`(${contactInteractions.occurredAt}, ${contactInteractions.entityId}) < (${before.occurredAt.toISOString()}::timestamptz, ${before.entityId}::uuid)`

@@ -366,9 +366,6 @@ test("CRM MCP interaction responses redact private agent identity for coworkers"
     occurredAt: "2026-11-12T10:00:00Z",
     summary: "Customer call.",
   });
-  await f
-    .forActor(f.alice)
-    .permissions.grant({ entityId: contact.record.entityId, actorEntityId: f.bob, level: "view" });
   const [agent] = await f.db
     .insert(userAgents)
     .values({ userId: "bob", name: "Coworker agent", instructions: "", harness: "opencode" })

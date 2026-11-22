@@ -11,8 +11,7 @@ export function crmSharing(context: RepositoryContext) {
     return context.transaction(async (ctx) => {
       await requireAppEnabled(ctx, "crm");
       const { entity } = await ctx.requireAccess(entityId, "owner", true, "structural");
-      if (!["contact", "account", "deal"].includes(entity.entityType))
-        throw new AccessDeniedError();
+      if (!["account", "deal"].includes(entity.entityType)) throw new AccessDeniedError();
       const permissions = permissionRepository(ctx);
       const [previous] = await ctx.db
         .select({ level: entityGrants.level })

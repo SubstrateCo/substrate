@@ -1,7 +1,7 @@
 import type { ContextEntityType } from "@substrate/contracts/context/input";
 
 import { requireAppEnabled } from "../../core/apps/access";
-import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
+import { contactReadable, requireContact, requireInteraction } from "../../core/contacts/access";
 import { contacts } from "../../core/contacts/schema";
 import { linkRepository } from "../../core/links/repository";
 import type { RepositoryContext } from "../../core/repository-context";
@@ -47,8 +47,7 @@ async function linkedRecords(
 }
 
 export async function interactionRecordDetail(context: RepositoryContext, entityId: string) {
-  const record = await contactInteractionRepository(context).get(entityId);
-  const access = await context.requireAccess(entityId, "view");
+  const { interaction: record, contact: access } = await requireInteraction(context, entityId);
   const [contact] = await context.db
     .select({ name: contacts.displayName })
     .from(contacts)
@@ -56,7 +55,6 @@ export async function interactionRecordDetail(context: RepositoryContext, entity
       and(
         eq(contacts.organizationId, context.scope.organizationId),
         eq(contacts.entityId, record.contactEntityId),
-        context.readable(contacts.entityId),
       ),
     );
   if (!contact) throw new AccessDeniedError();
@@ -83,7 +81,10 @@ export async function interactionProfileDetail(
   type: "person" | "account",
 ) {
   if (type === "account") await requireAppEnabled(context, "crm", false);
-  const access = await context.requireAccess(entityId, "view");
+  const access =
+    type === "person"
+      ? await requireContact(context, entityId)
+      : await context.requireAccess(entityId, "view");
   if (access.entity.entityType !== (type === "person" ? "contact" : "account"))
     throw new AccessDeniedError();
   const table = type === "person" ? contacts : crmAccounts;
@@ -121,7 +122,9 @@ export async function interactionProfileDetail(
           type === "person" ? crmAffiliations.contactEntityId : crmAffiliations.accountEntityId,
           entityId,
         ),
-        context.readable(other.entityId),
+        type === "person"
+          ? context.readable(crmAccounts.entityId)
+          : contactReadable(context, contacts.entityId),
       ),
     )
     .orderBy(other.entityId)

@@ -31,8 +31,8 @@ async function assistant() {
 test("agents use their owner's live access, not grants of their own", async () => {
   await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
   const { repositories: agent, actor } = await assistant();
-  const contact = await f.forActor(f.bob).contacts.create({ displayName: "Shared" });
-  expect(await rejection(agent.contacts.get(contact.entityId))).toBeInstanceOf(AccessDeniedError);
+  const account = await f.forActor(f.bob).crm.createAccount({ name: "Shared" });
+  expect(await rejection(agent.crm.getAccount(account.entityId))).toBeInstanceOf(AccessDeniedError);
   // The database holds no grant rows for agents.
   expect(
     await rejection(
@@ -40,7 +40,7 @@ test("agents use their owner's live access, not grants of their own", async () =
         .insert(entityGrants)
         .values({
           organizationId: f.orgA,
-          entityId: contact.entityId,
+          entityId: account.entityId,
           actorEntityId: actor.entityId,
           level: "owner",
         })
@@ -50,33 +50,35 @@ test("agents use their owner's live access, not grants of their own", async () =
   for (const level of ["view", "comment", "edit", "owner"] as const) {
     await f
       .forActor(f.bob)
-      .permissions.grant({ entityId: contact.entityId, actorEntityId: f.alice, level });
-    expect(await f.accessLevel(actor.entityId, contact.entityId)).toBe(level);
-    expect((await agent.contacts.list()).map((item) => item.entityId)).toContain(contact.entityId);
+      .permissions.grant({ entityId: account.entityId, actorEntityId: f.alice, level });
+    expect(await f.accessLevel(actor.entityId, account.entityId)).toBe(level);
+    expect((await agent.crm.listAccounts()).map((item) => item.entityId)).toContain(
+      account.entityId,
+    );
     if (level === "view" || level === "comment") {
       expect(
-        await rejection(agent.contacts.update(contact.entityId, { displayName: "Changed" })),
+        await rejection(agent.crm.updateAccount(account.entityId, { name: "Changed" })),
       ).toBeInstanceOf(AccessDeniedError);
     } else {
-      expect(
-        (await agent.contacts.update(contact.entityId, { displayName: "Changed" })).displayName,
-      ).toBe("Changed");
+      expect((await agent.crm.updateAccount(account.entityId, { name: "Changed" })).name).toBe(
+        "Changed",
+      );
     }
   }
   await f
     .forActor(f.bob)
-    .permissions.revoke({ entityId: contact.entityId, actorEntityId: f.alice });
-  expect(await agent.contacts.list()).toEqual([]);
-  expect(await rejection(agent.contacts.get(contact.entityId))).toBeInstanceOf(AccessDeniedError);
+    .permissions.revoke({ entityId: account.entityId, actorEntityId: f.alice });
+  expect(await agent.crm.listAccounts()).toEqual([]);
+  expect(await rejection(agent.crm.getAccount(account.entityId))).toBeInstanceOf(AccessDeniedError);
 });
 
 test("agents cannot receive grants", async () => {
   const { actor } = await assistant();
-  const contact = await f.forActor(f.bob).contacts.create({ displayName: "Shared" });
+  const account = await f.forActor(f.bob).crm.createAccount({ name: "Shared" });
   expect(
     await rejection(
       f.forActor(f.bob).permissions.grant({
-        entityId: contact.entityId,
+        entityId: account.entityId,
         actorEntityId: actor.entityId,
         level: "view",
       }),

@@ -2,6 +2,7 @@ import type { ContactIdentifierType } from "@substrate/contracts/contacts/input"
 
 import { AccessDeniedError, ConflictError, violatedConstraint } from "../../errors";
 import { RepositoryContext, entityCursor, pageSize } from "../repository-context";
+import { contactReadable, lockContact, requireContact } from "./access";
 import { contactAddresses, contactUrls } from "./details.schema";
 import {
   addressInput,
@@ -42,9 +43,8 @@ export function contactDetailsRepository(context: RepositoryContext) {
 
   async function edit<T>(contactId: string, work: (ctx: RepositoryContext) => Promise<T>) {
     return context.transaction(async (ctx) => {
-      const { entity } = await ctx.requireAccess(contactId, "edit", true);
-      if (entity.entityType !== "contact") throw new AccessDeniedError();
-      // The entity access lock serializes detail edits, including replacing a primary value.
+      // The contact lock serializes detail edits, including replacing a primary value.
+      await lockContact(ctx, contactId);
       const [contact] = await ctx.db
         .select()
         .from(contacts)
@@ -78,7 +78,7 @@ export function contactDetailsRepository(context: RepositoryContext) {
 
   return {
     async getDetail(contactId: string) {
-      await context.requireAccess(contactId, "view");
+      await requireContact(context, contactId);
       const [profile] = await db
         .select()
         .from(contacts)
@@ -130,7 +130,7 @@ export function contactDetailsRepository(context: RepositoryContext) {
         .where(
           and(
             eq(contacts.organizationId, scope.organizationId),
-            context.readable(contacts.entityId),
+            contactReadable(context, contacts.entityId),
             eq(contactIdentifiers.type, value.type),
             value.normalizedValue
               ? eq(contactIdentifiers.normalizedValue, value.normalizedValue)

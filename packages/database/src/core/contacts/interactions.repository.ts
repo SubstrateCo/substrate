@@ -1,6 +1,13 @@
 import { AccessDeniedError } from "../../errors";
 import { entities } from "../entities/schema";
 import { RepositoryContext, pageSize } from "../repository-context";
+import {
+  deletableAuthors,
+  interactionReadable,
+  lockContact,
+  requireContact,
+  requireInteraction,
+} from "./access";
 import { parseInput } from "./inputs";
 import { interactionWorkspaceRepository } from "./interaction-workspace.repository";
 import { contactInteractions } from "./interactions.schema";
@@ -32,34 +39,12 @@ export function contactInteractionRepository(context: RepositoryContext) {
       eq(contactInteractions.entityId, entityId),
     );
 
-  async function requireContact(
-    ctx: RepositoryContext,
-    id: string,
-    minimum: "view" | "edit",
-    lock = false,
-  ) {
-    const access = await ctx.requireAccess(id, minimum, lock);
-    if (access.entity.entityType !== "contact") throw new AccessDeniedError();
-    const [contact] = await ctx.db
-      .select()
-      .from(contacts)
-      .where(and(eq(contacts.organizationId, scope.organizationId), eq(contacts.entityId, id)));
-    if (!contact) throw new AccessDeniedError();
-    return access;
-  }
-
   return {
     ...interactionWorkspaceRepository(context),
     async createManual(input: InteractionInput) {
       const value = parseInput(interactionInput, input);
       return context.transaction(async (ctx) => {
-        await ctx.lockAccessPath(value.contactEntityId);
-        const parent = await ctx.requireAccess(value.contactEntityId, "edit", true);
-        if (
-          parent.entity.entityType !== "contact" ||
-          parent.entity.accessEntityId !== value.contactEntityId
-        )
-          throw new AccessDeniedError();
+        const parent = await lockContact(ctx, value.contactEntityId);
         const [contact] = await ctx.db
           .select()
           .from(contacts)
@@ -87,14 +72,10 @@ export function contactInteractionRepository(context: RepositoryContext) {
       });
     },
     async get(entityId: string) {
-      await context.requireAccess(entityId, "view");
-      const [row] = await db.select().from(contactInteractions).where(target(entityId));
-      if (!row) throw new AccessDeniedError();
-      await requireContact(context, row.contactEntityId, "view");
-      return row;
+      return (await requireInteraction(context, entityId)).interaction;
     },
     async listForContact(contactEntityId: string, options: TimelineOptions = {}) {
-      await requireContact(context, contactEntityId, "view");
+      await requireContact(context, contactEntityId);
       const cursor = options.before ? parseInput(timelineCursor, options.before) : undefined;
       const rows = await db
         .select()
@@ -103,7 +84,7 @@ export function contactInteractionRepository(context: RepositoryContext) {
           and(
             eq(contactInteractions.organizationId, scope.organizationId),
             eq(contactInteractions.contactEntityId, contactEntityId),
-            context.readable(contactInteractions.entityId),
+            interactionReadable(context, contactInteractions.entityId),
             cursor
               ? sql`(${contactInteractions.occurredAt}, ${contactInteractions.entityId}) < (${cursor.occurredAt.toISOString()}::timestamptz, ${cursor.entityId}::uuid)`
               : undefined,
@@ -116,10 +97,7 @@ export function contactInteractionRepository(context: RepositoryContext) {
     async update(entityId: string, input: { summary: string }) {
       const value = parseInput(z.object({ summary: z.string().trim().min(1).max(10000) }), input);
       return context.transaction(async (ctx) => {
-        await ctx.requireAccess(entityId, "edit", true, "structural");
-        const [existing] = await ctx.db.select().from(contactInteractions).where(target(entityId));
-        if (!existing) throw new AccessDeniedError();
-        await requireContact(ctx, existing.contactEntityId, "edit", true);
+        const { interaction: existing } = await requireInteraction(ctx, entityId, true);
         const [row] = await ctx.db
           .update(contactInteractions)
           .set(value)
@@ -132,10 +110,9 @@ export function contactInteractionRepository(context: RepositoryContext) {
     },
     async softDelete(entityId: string) {
       return context.transaction(async (ctx) => {
-        await ctx.requireAccess(entityId, "owner", true, "structural");
-        const [existing] = await ctx.db.select().from(contactInteractions).where(target(entityId));
-        if (!existing) throw new AccessDeniedError();
-        await requireContact(ctx, existing.contactEntityId, "view");
+        const { interaction: existing } = await requireInteraction(ctx, entityId, true);
+        const author = existing.createdByActorEntityId;
+        if (!(await deletableAuthors(ctx, [author])).has(author)) throw new AccessDeniedError();
         await ctx.db
           .update(entities)
           .set({ deletedAt: new Date(), updatedAt: new Date() })

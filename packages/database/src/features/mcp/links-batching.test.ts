@@ -12,9 +12,9 @@ test("entity link metadata uses a fixed number of queries and omits hidden targe
   const account = await a.crm.createAccount({ name: "Customer" });
   const titles = [];
   for (let index = 0; index < 4; index++) {
-    const contact = await a.contacts.createContact({ displayName: `Buyer ${index}` });
-    await a.links.create({ entityId: account.entityId, otherEntityId: contact.entityId });
-    titles.push(contact.displayName);
+    const buyer = await a.crm.createAccount({ name: `Buyer ${index}` });
+    await a.links.create({ entityId: account.entityId, otherEntityId: buyer.entityId });
+    titles.push(buyer.name);
   }
   await a.crm.share(account.entityId, f.bob, "view");
   const tracked = recordQueries();

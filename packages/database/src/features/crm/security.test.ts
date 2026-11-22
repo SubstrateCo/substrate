@@ -39,11 +39,11 @@ test("transition results and retries do not reveal an unreadable account", async
   expect((await b.crm.transitionDeal(deal.entityId, input)).accountEntityId).toBeNull();
 });
 
-test("editing a permission-filtered deal preserves unavailable structural relationships", async () => {
+test("editing a permission-filtered deal preserves an unavailable account", async () => {
   const a = f.forActor(f.alice);
   const b = f.forActor(f.bob);
   const account = await a.crm.createAccount({ name: "Restricted business" });
-  const contact = await a.contacts.create({ displayName: "Restricted buyer" });
+  const contact = await a.contacts.create({ displayName: "Organization buyer" });
   const stages = await a.crm.ensurePipeline();
   const deal = await a.crm.createDeal({
     title: "Shared pursuit",
@@ -55,12 +55,16 @@ test("editing a permission-filtered deal preserves unavailable structural relati
   await a.crm.share(deal.entityId, f.bob, "edit");
   const visible = await b.crm.getDeal(deal.entityId);
   expect(visible.deal.accountEntityId).toBeNull();
-  expect(visible.contacts).toEqual([]);
+  // Every member reads every contact, so only the account is hidden.
+  expect(visible.contacts).toMatchObject([
+    { contact: { entityId: contact.entityId }, isPrimary: true },
+  ]);
   const updated = await b.crm.updateDeal(deal.entityId, 1, {
     title: "Renamed",
     stageId: deal.stageId,
     accountEntityId: null,
-    contactEntityIds: [],
+    contactEntityIds: [contact.entityId],
+    primaryContactEntityId: contact.entityId,
   });
   expect(updated.accountEntityId).toBeNull();
   const actual = await a.crm.getDeal(deal.entityId);
@@ -112,7 +116,6 @@ test("shared deal history and interaction responses do not reveal private agent 
     stageId: stages[0]!.id,
   });
   await a.crm.share(deal.entityId, f.bob, "view");
-  await a.crm.share(contact.entityId, f.bob, "view");
   await agentRepos.crm.transitionDeal(deal.entityId, {
     expectedVersion: 1,
     requestId: crypto.randomUUID(),

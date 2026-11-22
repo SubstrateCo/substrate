@@ -4,7 +4,7 @@ import { appOrigin } from "./test-support/environment";
 import { test } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
 
-test("Contacts owns profiles and Context owns interactions without weakening record or tenant access", async ({
+test("Contacts owns profiles and Context owns interactions, shared with members and isolated from other organizations", async ({
   actors: { owner: sharedOwner, member: sharedMember, outsider },
   workspace,
   request: anonymous,
@@ -27,21 +27,33 @@ test("Contacts owns profiles and Context owns interactions without weakening rec
   expect(
     await result(await readCrm(owner, "interactions", { contactEntityId: contact.entityId })),
   ).toMatchObject([{ entityId: interaction.entityId, summary: "Private call summary" }]);
-  for (const actor of [member, outsider]) {
-    await rejected(await readCrm(actor, "contact", { entityId: contact.entityId }), [
-      "Private contact",
-    ]);
-    await rejected(await readCrm(actor, "interactions", { contactEntityId: contact.entityId }), [
-      "Private call summary",
-    ]);
-    await rejected(
-      await writeCrm(actor, {
-        action: "updateInteraction",
-        entityId: interaction.entityId,
-        summary: "Changed",
-      }),
-    );
-  }
+  // Every member of the organization reads and edits its contacts without a grant.
+  expect(
+    await result(await readCrm(member, "contact", { entityId: contact.entityId })),
+  ).toMatchObject({ profile: { displayName: "Private contact" }, level: "edit" });
+  await result(
+    await writeCrm(member, {
+      action: "updateInteraction",
+      entityId: interaction.entityId,
+      summary: "Corrected call summary",
+    }),
+  );
+  expect(
+    await result(await readCrm(owner, "interactions", { contactEntityId: contact.entityId })),
+  ).toMatchObject([{ entityId: interaction.entityId, summary: "Corrected call summary" }]);
+  await rejected(await readCrm(outsider, "contact", { entityId: contact.entityId }), [
+    "Private contact",
+  ]);
+  await rejected(await readCrm(outsider, "interactions", { contactEntityId: contact.entityId }), [
+    "Corrected call summary",
+  ]);
+  await rejected(
+    await writeCrm(outsider, {
+      action: "updateInteraction",
+      entityId: interaction.entityId,
+      summary: "Changed",
+    }),
+  );
   expect(
     (
       await anonymous.get("/api/v1/contacts/record", {

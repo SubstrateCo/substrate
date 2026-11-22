@@ -9,9 +9,9 @@ const f = setupDatabase();
 describe("links", () => {
   test("links do not grant access or reveal inaccessible targets", async () => {
     const repo = f.forActor(f.alice);
-    const shared = await repo.contacts.create({ displayName: "Shared" });
-    const privateContact = await repo.contacts.create({ displayName: "Private" });
-    await repo.links.create({ entityId: shared.entityId, otherEntityId: privateContact.entityId });
+    const shared = await repo.crm.createAccount({ name: "Shared" });
+    const privateAccount = await repo.crm.createAccount({ name: "Private" });
+    await repo.links.create({ entityId: shared.entityId, otherEntityId: privateAccount.entityId });
     await repo.permissions.grant({
       entityId: shared.entityId,
       actorEntityId: f.bob,
@@ -22,20 +22,20 @@ describe("links", () => {
       await rejection(
         f.forActor(f.bob).links.remove({
           entityId: shared.entityId,
-          otherEntityId: privateContact.entityId,
+          otherEntityId: privateAccount.entityId,
         }),
       ),
     ).toBeInstanceOf(AccessDeniedError);
     await repo.permissions.grant({
-      entityId: privateContact.entityId,
+      entityId: privateAccount.entityId,
       actorEntityId: f.bob,
       level: "view",
     });
     const bob = f.forActor(f.bob);
     expect(await bob.links.list(shared.entityId)).toHaveLength(1);
-    expect(await bob.links.list(privateContact.entityId)).toHaveLength(1);
+    expect(await bob.links.list(privateAccount.entityId)).toHaveLength(1);
     await repo.permissions.revoke({ entityId: shared.entityId, actorEntityId: f.bob });
-    expect(await f.forActor(f.bob).links.list(privateContact.entityId)).toEqual([]);
+    expect(await f.forActor(f.bob).links.list(privateAccount.entityId)).toEqual([]);
   });
 
   test("related_to has no direction and rejects duplicate, self, and cross-organization links", async () => {
@@ -81,8 +81,8 @@ describe("links", () => {
 
   test("only an editor of the entity can remove a link", async () => {
     const repo = f.forActor(f.alice);
-    const a = await repo.contacts.create({ displayName: "A" });
-    const b = await repo.contacts.create({ displayName: "B" });
+    const a = await repo.crm.createAccount({ name: "A" });
+    const b = await repo.crm.createAccount({ name: "B" });
     const link = { entityId: a.entityId, otherEntityId: b.entityId };
     await repo.links.create(link);
     for (const entityId of [a.entityId, b.entityId]) {

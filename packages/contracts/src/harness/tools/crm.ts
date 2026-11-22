@@ -257,7 +257,7 @@ export const crmTools = {
   publish_crm_interaction: {
     title: "Publish message as CRM interaction",
     description:
-      "Publish an owner-approved summary from a readable message with structured provenance. First obtain explicit approval for the exact summary and its contact-reader audience, which can retain the summary after source access changes. Set consentToContactAudience only after that approval. Deduplicates by contact/message and preserves later summary edits on retry. Interactive turns only; does not wake agents.",
+      "Publish an owner-approved summary from a readable message with structured provenance. First obtain explicit approval for the exact summary and its audience, everyone in the workspace, who can retain the summary after source access changes. Set consentToContactAudience only after that approval. Deduplicates by contact/message and preserves later summary edits on retry. Interactive turns only; does not wake agents.",
     readOnly: false,
     idempotent: true,
     input: mutations.publishInteraction.omit({ organizationId: true, action: true }).strict(),

@@ -109,15 +109,7 @@ export async function seedDevelopmentDatabase(db: DatabaseExecutor, passwordHash
         createMessagingService(tx, { userId: team.people[index]!.id, organizationId: team.id });
       const contacts = [];
       for (const [index, input] of team.contacts.entries()) {
-        const contact = await seedDevelopmentContact(context, input, team.projects[index]!.name);
-        for (const actor of actors.slice(1)) {
-          await permissionRepository(context).grant({
-            entityId: contact.entityId,
-            actorEntityId: actor.entityId,
-            level: "view",
-          });
-        }
-        contacts.push(contact);
+        contacts.push(await seedDevelopmentContact(context, input, team.projects[index]!.name));
       }
       const seededTasks: { entityId: string; title: string; projectEntityId: string }[] = [];
       const tasks = taskRepository(context);

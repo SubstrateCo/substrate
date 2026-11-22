@@ -274,8 +274,13 @@ describe("development seed", () => {
     ).toBe("alice@example.com");
   });
 
-  test("seeds readable contact history, inherited access, and structured discussion and task context", async () => {
+  test("seeds contact history every member reads without grants, and structured discussion and task context", async () => {
     await seedDevelopmentDatabase(fixture.db, "development-password-hash");
+    const contactGrants = await fixture.db
+      .select()
+      .from(schema.entityGrants)
+      .innerJoin(schema.contacts, eq(schema.contacts.entityId, schema.entityGrants.entityId));
+    expect(contactGrants).toEqual([]);
     for (const organizationId of ["dev-northstar", "dev-orbit"]) {
       const actors = await fixture.db
         .select()

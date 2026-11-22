@@ -80,7 +80,7 @@ test("only a CRM root owner can list its explicit human grants", async () => {
   });
 });
 
-test("a view grant on a contact or deal gives read access until it is revoked", async () => {
+test("a view grant on a deal gives read access until it is revoked; contacts cannot be shared", async () => {
   const a = f.forActor(f.alice);
   const b = f.forActor(f.bob);
   const contact = await a.contacts.createContact({ displayName: "Customer" });
@@ -91,19 +91,22 @@ test("a view grant on a contact or deal gives read access until it is revoked", 
     accountEntityId: account.entityId,
     stageId: stages[0]!.id,
   });
-  for (const [entityId, read] of [
-    [contact.entityId, () => b.contacts.getContact(contact.entityId)],
-    [deal.entityId, () => b.crm.getDeal(deal.entityId)],
-  ] as const) {
-    expect(await rejection(read())).toMatchObject({ name: "AccessDeniedError" });
-    await a.crm.share(entityId, f.bob, "view");
-    await read();
-    expect(await rejection(b.crm.share(entityId, f.bob, "owner"))).toMatchObject({
-      name: "AccessDeniedError",
-    });
-    await a.crm.revoke(entityId, f.bob);
-    expect(await rejection(read())).toMatchObject({ name: "AccessDeniedError" });
-  }
+  const read = () => b.crm.getDeal(deal.entityId);
+  expect(await rejection(read())).toMatchObject({ name: "AccessDeniedError" });
+  await a.crm.share(deal.entityId, f.bob, "view");
+  await read();
+  expect(await rejection(b.crm.share(deal.entityId, f.bob, "owner"))).toMatchObject({
+    name: "AccessDeniedError",
+  });
+  await a.crm.revoke(deal.entityId, f.bob);
+  expect(await rejection(read())).toMatchObject({ name: "AccessDeniedError" });
+  expect((await b.contacts.getContact(contact.entityId)).level).toBe("edit");
+  for (const work of [
+    () => a.crm.share(contact.entityId, f.bob, "view"),
+    () => a.crm.revoke(contact.entityId, f.bob),
+    () => a.crm.grants(contact.entityId),
+  ])
+    expect(await rejection(work())).toMatchObject({ name: "AccessDeniedError" });
 });
 
 test("grant lists omit inactive members and do not fabricate implicit administrator grants", async () => {

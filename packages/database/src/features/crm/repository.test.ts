@@ -4,7 +4,7 @@ import { describe, expect, test } from "bun:test";
 
 const f = setupDatabase();
 describe("connected CRM", () => {
-  test("account and deal rollups reuse interactions and omit restricted contacts", async () => {
+  test("account and deal rollups reuse interactions and follow deal access", async () => {
     const a = f.forActor(f.alice);
     const account = await a.crm.createAccount({ name: "Customer" });
     const contact = await a.contacts.create({ displayName: "Buyer" });
@@ -51,14 +51,16 @@ describe("connected CRM", () => {
     expect(
       (await a.crm.timeline(deal.entityId, { mode: "linked" })).map((row) => row.entityId).sort(),
     ).toEqual([interaction.entityId, linkedOnly.entityId].sort());
+    // Members read every contact's interactions, so the deal grant alone gates the rollup.
+    expect(await rejection(f.forActor(f.bob).crm.timeline(deal.entityId))).toMatchObject({
+      name: "AccessDeniedError",
+    });
     await a.permissions.grant({ entityId: deal.entityId, actorEntityId: f.bob, level: "view" });
-    expect(await f.forActor(f.bob).crm.timeline(deal.entityId)).toEqual([]);
-    await a.permissions.grant({ entityId: contact.entityId, actorEntityId: f.bob, level: "view" });
     expect(
       (await f.forActor(f.bob).crm.timeline(deal.entityId)).map((row) => row.entityId).sort(),
-    ).toEqual([interaction.entityId, structuralOnly.entityId].sort());
+    ).toEqual([interaction.entityId, structuralOnly.entityId, linkedOnly.entityId].sort());
   });
-  test("keeps account access independent and filters unreadable relationships", async () => {
+  test("keeps account access independent of its organization-wide contacts", async () => {
     const a = f.forActor(f.alice);
     const b = f.forActor(f.bob);
     const account = await a.crm.createAccount({ name: "Customer" });
@@ -74,7 +76,9 @@ describe("connected CRM", () => {
     });
     expect((await a.crm.getAccount(account.entityId)).contacts).toHaveLength(1);
     await a.crm.share(account.entityId, f.bob, "view");
-    expect((await b.crm.getAccount(account.entityId)).contacts).toEqual([]);
+    expect((await b.crm.getAccount(account.entityId)).contacts).toMatchObject([
+      { contact: { entityId: contact.entityId } },
+    ]);
     expect(await rejection(b.crm.share(account.entityId, f.bob, "owner"))).toMatchObject({
       name: "AccessDeniedError",
     });

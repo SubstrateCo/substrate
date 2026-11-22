@@ -153,7 +153,7 @@ function PublicationEditor({
               label="Approved summary"
               required
               maxLength={10000}
-              description="Write only the customer facts you approve for the contact’s readers. Source content is not copied automatically."
+              description="Write only the customer facts you approve for everyone in the workspace. Source content is not copied automatically."
             />
             <div className="flex items-start gap-2">
               <Checkbox
@@ -162,13 +162,13 @@ function PublicationEditor({
                 onCheckedChange={(checked) => setConsent(checked === true)}
               />
               <Label htmlFor="publication-consent">
-                I approve this summary becoming visible to this contact’s readers. It can remain
+                I approve this summary becoming visible to everyone in the workspace. It can remain
                 visible after the source message is restricted or deleted.
               </Label>
             </div>
             <FormMessage
               error={mutation.error}
-              errorDescription="Couldn’t publish this interaction. Check your source and contact access, then try again."
+              errorDescription="Couldn’t publish this interaction. Check your source access, then try again."
             />
           </DialogBody>
           <DialogFooter>

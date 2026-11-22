@@ -38,16 +38,32 @@ async function choosePerson(page: Page, name: string) {
   await page.getByRole("option").filter({ hasText: name }).click();
 }
 
-// Accounts, contacts and deals share one management view, and database tests cover each kind's
-// grant rules. Contacts use their own route; the creator test below covers the CRM route.
-test("an owner shares and revokes a private contact through its detail", async ({
+// Accounts and deals share one management view, and database tests cover each kind's grant rules.
+// Contacts belong to every member, so they have no management view.
+test("a member edits a contact without sharing, and contacts offer no management", async ({
   actors,
   client,
 }) => {
   const record = await managedRecord(actors.sender, "contacts");
-  const owner = await client(actors.sender);
   const search = { recordId: record.entityId };
-  await visit(owner, undefined, "/contacts", search);
+  for (const actor of [actors.sender, actors.member]) {
+    const user = await client(actor);
+    await visit(user, undefined, "/contacts", search);
+    await expect(user.page.getByRole("heading", { name: record.name, exact: true })).toBeVisible();
+    await expect(user.page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
+    for (const name of ["Share", "Change owner"])
+      await expect(user.page.getByRole("button", { name, exact: true })).toHaveCount(0);
+  }
+});
+
+test("an owner shares and revokes a private account through its detail", async ({
+  actors,
+  client,
+}) => {
+  const record = await managedRecord(actors.sender, "accounts");
+  const owner = await client(actors.sender);
+  const search = { section: "accounts", recordId: record.entityId };
+  await visit(owner, undefined, "/crm", search);
   await owner.page.getByRole("button", { name: "Share", exact: true }).click();
   const sharing = owner.page.getByRole("dialog", { name: `Share ${record.name}`, exact: true });
   await choosePerson(owner.page, actors.member.name);
@@ -57,12 +73,11 @@ test("an owner shares and revokes a private contact through its detail", async (
   await expect(sharing).toHaveCount(0);
 
   const reader = await client(actors.member);
-  await visit(reader, undefined, "/contacts", search);
+  await visit(reader, undefined, "/crm", search);
   await expect(reader.page.getByRole("heading", { name: record.name, exact: true })).toBeVisible();
-  await expect(reader.page.getByRole("button", { name: "Share", exact: true })).toHaveCount(0);
-  await expect(reader.page.getByRole("button", { name: "Change owner", exact: true })).toHaveCount(
-    0,
-  );
+  // A viewer neither shares nor reassigns the account.
+  for (const name of ["Share", "Change owner"])
+    await expect(reader.page.getByRole("button", { name, exact: true })).toHaveCount(0);
 
   await owner.page.getByRole("button", { name: "Share", exact: true }).click();
   const grants = sharing.getByRole("list", { name: "Direct access", exact: true });

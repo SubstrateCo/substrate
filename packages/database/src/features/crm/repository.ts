@@ -6,6 +6,7 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 import { permissionActorEntityId } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { requireAppEnabled } from "../../core/apps/access";
+import { contactReadable, requireContact } from "../../core/contacts/access";
 import { parseInput } from "../../core/contacts/inputs";
 import { contacts } from "../../core/contacts/schema";
 import { RepositoryContext, entityCursor, pageSize } from "../../core/repository-context";
@@ -65,12 +66,12 @@ export function crmRepository(context: RepositoryContext) {
     contactId: string,
     accountId: string,
   ) {
+    // Lock both in one global order. Only the account has grants to check.
     await ctx.lockAccessPaths([contactId, accountId]);
     await requireAppEnabled(ctx, "crm", true);
-    const access = await ctx.requireAccessAll([contactId, accountId], "edit");
-    const types = new Map(access.map(({ entity }) => [entity.entityId, entity.entityType]));
-    if (types.get(contactId) !== "contact" || types.get(accountId) !== "account")
-      throw new AccessDeniedError();
+    await requireContact(ctx, contactId);
+    const account = await ctx.requireAccess(accountId, "edit");
+    if (account.entity.entityType !== "account") throw new AccessDeniedError();
   }
   async function owner(ctx: RepositoryContext) {
     await ctx.requireActiveActor();
@@ -350,7 +351,7 @@ export function crmRepository(context: RepositoryContext) {
           and(
             eq(crmAffiliations.organizationId, org),
             eq(crmAffiliations.accountEntityId, id),
-            context.readable(contacts.entityId),
+            contactReadable(context, contacts.entityId),
           ),
         )
         .orderBy(asc(contacts.entityId));
@@ -556,7 +557,7 @@ export function crmRepository(context: RepositoryContext) {
             and(
               eq(crmDealContacts.organizationId, org),
               eq(crmDealContacts.dealEntityId, id),
-              sql`NOT ${ctx.readable(crmDealContacts.contactEntityId)}`,
+              sql`NOT ${contactReadable(ctx, crmDealContacts.contactEntityId)}`,
             ),
           );
         const [visibleAccount] = previous.accountEntityId
@@ -729,7 +730,7 @@ export function crmRepository(context: RepositoryContext) {
           and(
             eq(crmDealContacts.organizationId, org),
             eq(crmDealContacts.dealEntityId, id),
-            context.readable(contacts.entityId),
+            contactReadable(context, contacts.entityId),
           ),
         );
       return {

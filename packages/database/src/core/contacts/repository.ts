@@ -1,5 +1,6 @@
 import { AccessDeniedError } from "../../errors";
 import { RepositoryContext, entityCursor, pageSize } from "../repository-context";
+import { contactReadable, lockContact, requireContact } from "./access";
 import { contactDetailsRepository } from "./details.repository";
 import { contactProfileInput, parseInput, type ContactInput } from "./inputs";
 import { contacts } from "./schema";
@@ -26,7 +27,7 @@ export function contactRepository(context: RepositoryContext) {
     },
 
     async get(entityId: string) {
-      await context.requireAccess(entityId, "view");
+      await requireContact(context, entityId);
       const [contact] = await db
         .select()
         .from(contacts)
@@ -46,7 +47,7 @@ export function contactRepository(context: RepositoryContext) {
         .where(
           and(
             eq(contacts.organizationId, scope.organizationId),
-            context.readable(contacts.entityId),
+            contactReadable(context, contacts.entityId),
             afterEntityId ? gt(contacts.entityId, afterEntityId) : undefined,
           ),
         )
@@ -58,7 +59,7 @@ export function contactRepository(context: RepositoryContext) {
       const value = parseInput(contactProfileInput.partial(), input);
       return db.transaction(async (tx) => {
         const ctx = new RepositoryContext(tx, scope);
-        await ctx.requireAccess(entityId, "edit", true);
+        await lockContact(ctx, entityId);
         const [contact] = await tx
           .update(contacts)
           .set(value)

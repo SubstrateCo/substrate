@@ -70,7 +70,7 @@ test("affiliation writes batch guards and retain paired activities and hints", a
       domain: "context",
     });
   expect(result.result).toMatchObject(input);
-  expect(counts).toEqual([11, 10, 8, 5]);
+  expect(counts).toEqual([12, 11, 9, 6]);
 });
 
 test("primary selection resets every competitor without rewriting false rows", async () => {
@@ -157,7 +157,6 @@ for (const invalid of [
       accountId = (await f.forActor(f.outsider, f.orgB).crm.createAccount({ name: "Foreign" }))
         .entityId;
     if (invalid === "view") {
-      await a.crm.share(contactId, f.bob, "edit");
       await a.crm.share(accountId, f.bob, "view");
       repos = f.forActor(f.bob);
     }
@@ -191,7 +190,6 @@ for (const operation of ["set", "remove"] as const) {
     test(`affiliation ${operation} rechecks ${guard} after access paths lock`, async () => {
       const { a, input } = await records();
       await a.crm.setAffiliation(input);
-      await a.crm.share(input.contactEntityId, f.bob, "edit");
       await a.crm.share(input.accountEntityId, f.bob, "edit");
       const before = await f.db.select().from(crmActivityEvents);
       // Change the guarded state after the real lock, before the guards read it.

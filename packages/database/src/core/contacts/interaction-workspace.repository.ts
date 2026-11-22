@@ -6,6 +6,7 @@ import {
 } from "@substrate/contracts/context/interactions";
 
 import type { RepositoryContext } from "../repository-context";
+import { interactionReadable } from "./access";
 import { parseInput } from "./inputs";
 import { contactInteractions } from "./interactions.schema";
 import { contacts } from "./schema";
@@ -19,8 +20,7 @@ export const readableInteractionPeriod = (
     eq(contactInteractions.organizationId, context.scope.organizationId),
     input.allTime ? undefined : gte(contactInteractions.occurredAt, new Date(input.from)),
     input.allTime ? undefined : lt(contactInteractions.occurredAt, new Date(input.until)),
-    context.readable(contactInteractions.entityId),
-    context.readable(contactInteractions.contactEntityId),
+    interactionReadable(context, contactInteractions.entityId),
   );
 
 export function interactionWorkspaceRepository(context: RepositoryContext) {

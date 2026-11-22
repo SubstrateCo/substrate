@@ -101,7 +101,12 @@ test("deal relation checks batch contacts and preserve archive and access rules"
     organizationId: f.orgA,
     actorEntityId: f.bob,
   });
-  expect(await rejection(requireDealRelations(bob, input, { active: false }))).toMatchObject({
+  await requireDealRelations(bob, input, { active: false });
+  const outsider = new RepositoryContext(tracked.db, {
+    organizationId: f.orgB,
+    actorEntityId: f.outsider,
+  });
+  expect(await rejection(requireDealRelations(outsider, input, { active: false }))).toMatchObject({
     name: "AccessDeniedError",
   });
 });
@@ -196,8 +201,7 @@ test("CRM activities record many rows with one access lookup and one insert", as
     },
     { entityId: account.entityId, entityType: "account", action: "updated", relatedEntityId: null },
   ]);
-  const hidden = await a.contacts.createContact({ displayName: "Hidden" });
-  await a.crm.share(contact.entityId, f.bob, "view");
+  const hidden = await a.crm.createAccount({ name: "Hidden" });
   await a.crm.share(account.entityId, f.bob, "view");
   const bob = new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.bob });
   const count = async () => (await f.db.select().from(crmActivityEvents)).length;

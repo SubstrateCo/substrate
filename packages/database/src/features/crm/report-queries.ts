@@ -1,5 +1,6 @@
 import { crmReportFilters } from "@substrate/contracts/crm/report-input";
 
+import { interactionReadable } from "../../core/contacts/access";
 import { parseInput } from "../../core/contacts/inputs";
 import { contactInteractions } from "../../core/contacts/interactions.schema";
 import { entities } from "../../core/entities/schema";
@@ -28,7 +29,7 @@ export function reportQuery(context: RepositoryContext, input: ReportFilters = {
     where ${contactInteractions.organizationId} = ${org}
       and ${contactInteractions.kind} in ('email','meeting','call','message')
       and ${contactInteractions.occurredAt} <= ${asOf}::timestamptz
-      and ${context.readable(contactInteractions.entityId)} and ${context.readable(contactInteractions.contactEntityId)}
+      and ${interactionReadable(context, contactInteractions.entityId)}
       and exists (select 1 from ${entityLinks} where ${entityLinks.organizationId} = ${org}
         and ${entityLinks.relationType} = 'related_to' and (
           (${entityLinks.sourceEntityId} = ${crmDeals.entityId} and ${entityLinks.targetEntityId} = ${contactInteractions.entityId}) or

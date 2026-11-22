@@ -11,7 +11,6 @@ import { PublishInteraction } from "@/components/context/interactions/publish-in
 import { AffiliationEditor } from "@/components/crm/affiliation-editor";
 import { CrmActivity } from "@/components/crm/crm-activity";
 import { crmResource } from "@/components/crm/crm-resource-state";
-import { accessLabel } from "@/components/crm/crm-types";
 import { FollowUps } from "@/components/crm/follow-ups";
 import {
   RecordChangeDialogs,
@@ -81,23 +80,19 @@ export function ContactDetail({
           )
         }
         properties={
-          <>
-            {data.urls.map((url) => (
-              <DetailProperty key={url.id} label={url.label || "Website"}>
-                <a
-                  href={url.url}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="underline underline-offset-4"
-                >
-                  {url.url}
-                </a>
-              </DetailProperty>
-            ))}
-            <DetailProperty label="Access">
-              {accessLabel(level)}. Interactions use this contact’s access.
+          data.urls.length > 0 &&
+          data.urls.map((url) => (
+            <DetailProperty key={url.id} label={url.label || "Website"}>
+              <a
+                href={url.url}
+                target="_blank"
+                rel="noreferrer"
+                className="underline underline-offset-4"
+              >
+                {url.url}
+              </a>
             </DetailProperty>
-          </>
+          ))
         }
       >
         <AppAvailability app="crm">
@@ -146,7 +141,7 @@ export function ContactDetail({
           organizationId={organizationId}
           contactEntityId={entityId}
           canEdit={canChange}
-          canDelete={level === "owner" && !archived}
+          canDelete={!archived}
         />
         <FollowUps organizationId={organizationId} entityId={entityId} canCreate={canChange} />
         <WorkDiscussions organizationId={organizationId} entityId={entityId}>

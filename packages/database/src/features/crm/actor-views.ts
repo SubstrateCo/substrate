@@ -3,6 +3,7 @@ import type { CrmActivity } from "@substrate/contracts/crm/activity";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
+import { deletableAuthors } from "../../core/contacts/access";
 import type { RepositoryContext } from "../../core/repository-context";
 import { and, eq, inArray, sql } from "drizzle-orm";
 import { alias, type PgSelectQueryBuilder } from "drizzle-orm/pg-core";
@@ -59,16 +60,18 @@ export async function presentInteractions<T extends { createdByActorEntityId: st
   context: RepositoryContext,
   rows: T[],
 ) {
-  const views = await crmActorViews(
-    context,
-    rows.map((row) => row.createdByActorEntityId),
-  );
+  const authors = rows.map((row) => row.createdByActorEntityId);
+  const [views, deletable] = await Promise.all([
+    crmActorViews(context, authors),
+    deletableAuthors(context, authors),
+  ]);
   return rows.map(({ createdByActorEntityId, ...row }) => ({
     ...row,
     actor: views.get(createdByActorEntityId) ?? {
       type: "human" as const,
       displayName: "Former member",
     },
+    canDelete: deletable.has(createdByActorEntityId),
   }));
 }
 export async function presentInteraction<T extends { createdByActorEntityId: string }>(
