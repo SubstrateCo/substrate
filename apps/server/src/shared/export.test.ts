@@ -1,5 +1,6 @@
-import { exportChunks } from "./export";
-import { expect, test } from "bun:test";
+import { exportChunks, exportResponse } from "./export";
+import { expect, spyOn, test } from "bun:test";
+import { Hono } from "hono";
 
 test("CSV exports escape multiline cells and neutralize spreadsheet formulas", async () => {
   async function* records() {
@@ -28,4 +29,29 @@ test("JSON exports preserve structured values and read records only as consumed"
     { name: "=Customer", amount: null, tags: ["one", "two"] },
     { name: "Second" },
   ]);
+});
+
+test("exportResponse sanitizes mid-stream errors instead of leaking internal error details", async () => {
+  const errorLog = spyOn(console, "error").mockImplementation(() => {});
+  try {
+    async function* failingRecords() {
+      yield { name: "First" };
+      throw new Error("postgres://secret-driver-detail");
+    }
+    const app = new Hono().get("/export", (c) =>
+      exportResponse(c, { records: failingRecords(), columns: ["name"] }, "json", "test"),
+    );
+    const response = await app.request("/export");
+    expect(response.status).toBe(200);
+    let caught: Error | null = null;
+    try {
+      await response.text();
+    } catch (error) {
+      if (error instanceof Error) caught = error;
+    }
+    expect(caught?.message).toBe("Export failed.");
+    expect(errorLog).toHaveBeenCalledWith("Export stream failed", "Error");
+  } finally {
+    errorLog.mockRestore();
+  }
 });

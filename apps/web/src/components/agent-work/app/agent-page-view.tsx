@@ -1,13 +1,13 @@
 import type { ReactNode } from "react";
 
+import { PageHeader } from "@/components/layout/page-header";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   agentConversationSections,
   isAgentSettingsSection,
   type AgentConversationSection,
   type AgentPageSection,
-} from "./agent-sections";
-import { PageHeader } from "@/components/layout/page-header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+} from "@/lib/agent-work/agent-sections";
 import type { WorkStatus } from "@/lib/agent-work/status";
 import { cn } from "cn";
 import { Bot } from "lucide-react";

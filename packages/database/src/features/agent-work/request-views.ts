@@ -4,9 +4,9 @@ import {
   type AgentRequestView,
 } from "@substrate/contracts/agent-work";
 
-import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";

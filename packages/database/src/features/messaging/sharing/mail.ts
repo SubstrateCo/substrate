@@ -1,5 +1,5 @@
-import type { DatabaseExecutor } from "../../../client";
 import { effectsFor } from "../../../core/effects";
+import type { DatabaseExecutor } from "../../../core/executor";
 import { organization } from "../../../core/organizations/schema";
 import { sharingInvitationHints } from "../../realtime/routing";
 import { messagingConversations } from "../schema";

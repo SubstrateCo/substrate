@@ -6,7 +6,8 @@ import {
 import { publicFailure } from "@substrate/contracts/result";
 
 import { respond, v } from "../../shared/http";
-import type { ScopeEnv, Scopes, UserScope } from "../../shared/scope";
+import type { ScopeEnv, Scopes } from "../../shared/scope";
+import type { UserScope } from "../../shared/scope-types";
 import type { PictureService } from "./pictures";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
@@ -22,17 +23,20 @@ export function createPictureRoutes(service: PictureService, scopes: Scopes) {
       v("param", pictureKindParam),
       v("form", pictureUploadInput),
       scopes.user(),
-      async (c) =>
-        respond(
+      async (c) => {
+        const { file, organizationId, projectEntityId } = c.req.valid("form");
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        return respond(
           c,
           await service.upload(
             c.var.scope,
             c.req.valid("param").purpose,
-            c.req.valid("form").file,
-            c.req.valid("form").organizationId,
-            c.req.valid("form").projectEntityId,
+            { bytes, contentType: file.type },
+            organizationId,
+            projectEntityId,
           ),
-        ),
+        );
+      },
     )
     .get("/:purpose/:owner", v("param", pictureOwnerParam), scopes.user(), async (c) => {
       const { purpose, owner } = c.req.valid("param");

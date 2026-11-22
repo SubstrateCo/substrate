@@ -1,13 +1,14 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 import { DesktopSignIn } from "@/components/auth/desktop/desktop-sign-in";
-import { redirectAuthenticatedSession } from "@/lib/auth/route-access";
 import { isDesktop } from "@/lib/desktop/auth";
+import { electronQuery } from "@/lib/desktop/authorization-query";
+import { redirectAuthenticatedSession } from "@/route-guards/auth";
 
 export const Route = createFileRoute("/_public/_guest")({
   ssr: false,
   beforeLoad: async ({ context, search }) => {
-    if (search.client_id === "electron" && search.state && search.code_challenge) return;
+    if (electronQuery(search)) return;
     await redirectAuthenticatedSession(context.queryClient, search.redirect);
   },
   component: GuestLayout,

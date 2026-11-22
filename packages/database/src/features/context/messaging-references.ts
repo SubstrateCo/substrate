@@ -1,4 +1,4 @@
-import type { DatabaseExecutor } from "../../client";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import { messageReferences, type Reference } from "../../core/text/references";
 import { AccessDeniedError } from "../../errors";

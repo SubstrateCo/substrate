@@ -275,7 +275,6 @@ test("task create locks the project once and update batches activity with one as
   const statements: string[] = [];
   const db = discardEffects(
     drizzle(fixture.db.$client, {
-      schema,
       logger: { logQuery: (query) => statements.push(query) },
     }),
   );

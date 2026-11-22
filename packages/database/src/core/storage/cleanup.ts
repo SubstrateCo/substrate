@@ -1,5 +1,5 @@
-import type { Database } from "../../client";
 import { userAgents } from "../actors/user-agents.schema";
+import type { Database } from "../executor";
 import { fileUploads, storedFiles, storageCandidates } from "./schema";
 import { and, eq, inArray, isNull, lt, not, notExists, type SQL } from "drizzle-orm";
 

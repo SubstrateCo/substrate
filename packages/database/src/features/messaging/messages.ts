@@ -1,4 +1,3 @@
-import type { DatabaseExecutor } from "../../client";
 import {
   joinActorProfile,
   joinedActorName,
@@ -7,6 +6,7 @@ import {
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { effectsFor } from "../../core/effects";
+import type { DatabaseExecutor } from "../../core/executor";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";

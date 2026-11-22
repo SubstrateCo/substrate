@@ -1,8 +1,8 @@
 import { queryOptions } from "@tanstack/react-query";
 
+import { authClient } from "@/api/auth/client";
+import { unwrap } from "@/api/auth/result";
 import { getCurrentOrganization } from "@/api/organizations/requests";
-import { authClient } from "@/lib/auth/client";
-import { unwrap } from "@/lib/auth/result";
 import { queryKeys } from "@/queries/keys";
 
 export const organizationsQueryOptions = () =>

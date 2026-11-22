@@ -1,4 +1,4 @@
-import type { Hono, MiddlewareHandler } from "hono";
+import type { MiddlewareHandler } from "hono";
 import { monitorEventLoopDelay, performance } from "node:perf_hooks";
 
 export function createRuntimeMetrics(enabled: boolean, poolMaxConnections: number) {
@@ -60,12 +60,3 @@ export function createRuntimeMetrics(enabled: boolean, poolMaxConnections: numbe
 }
 
 export type RuntimeMetrics = NonNullable<ReturnType<typeof createRuntimeMetrics>>;
-
-export function installRuntimeMetrics(app: Hono, metrics?: RuntimeMetrics) {
-  if (!metrics) return;
-  app.use("*", metrics.middleware);
-  app.get("/internal/metrics", (c) => {
-    c.header("Cache-Control", "no-store");
-    return c.json(metrics.read(c.req.query("reset") === "1"));
-  });
-}

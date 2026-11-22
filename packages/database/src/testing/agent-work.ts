@@ -3,8 +3,8 @@ import type { AgentCallerPolicy } from "@substrate/contracts/agents";
 import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
 
-import type { DatabaseExecutor } from "../client";
 import { actors } from "../core/actors/schema";
+import type { DatabaseExecutor } from "../core/executor";
 import type { DeviceIdentity } from "../core/session/device";
 import type { SessionIdentity } from "../core/session/identity";
 import { executeAgentTool } from "../features/mcp/service";

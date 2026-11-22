@@ -1,17 +1,13 @@
 import { desktopPath } from "@substrate/contracts/desktop/links";
-import { publicFailure, success } from "@substrate/contracts/result";
 
-import { environment, type ServerEnvironment } from "../environment";
 import { respond, validationHook } from "../shared/http";
-import { openDesktop } from "./service";
+import type { DesktopService } from "./service";
 import { zValidator } from "@hono/zod-validator";
 import { Hono } from "hono";
 import { html } from "hono/html";
 import { z } from "zod";
 
-export function createDesktopRoutes(
-  config: Pick<ServerEnvironment, "webURL" | "windowsDownloadURL" | "desktopScheme"> = environment,
-) {
+export function createDesktopRoutes(service: DesktopService) {
   return new Hono()
     .use(async (c, next) => {
       c.header("Cache-Control", "no-store");
@@ -23,22 +19,14 @@ export function createDesktopRoutes(
       c.header("X-Content-Type-Options", "nosniff");
       await next();
     })
-    .get("/release", (c) =>
-      respond(c, success({ windowsAvailable: Boolean(config.windowsDownloadURL) })),
-    )
+    .get("/release", (c) => respond(c, service.release()))
     .get("/download", (c) => {
-      if (!config.windowsDownloadURL)
-        return respond(
-          c,
-          publicFailure("NOT_FOUND", "The Windows installer is not available yet."),
-        );
-      return c.redirect(config.windowsDownloadURL, 303);
+      const result = service.downloadURL();
+      if (!result.success) return respond(c, result);
+      return c.redirect(result.data, 303);
     })
     .get("/open", zValidator("query", z.object({ path: desktopPath }), validationHook), (c) => {
-      const { link, browserURL, downloadURL } = openDesktop(c.req.valid("query").path, {
-        scheme: config.desktopScheme,
-        webURL: config.webURL,
-      });
+      const { link, browserURL, downloadURL } = service.open(c.req.valid("query").path);
       return c.html(
         html`<!doctype html>
           <html lang="en">

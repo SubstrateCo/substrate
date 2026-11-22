@@ -1,11 +1,11 @@
 import type { ConversationKind } from "@substrate/contracts/messaging/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { effectsFor } from "../../core/effects";
+import type { DatabaseExecutor } from "../../core/executor";
 import { member, organization } from "../../core/organizations/schema";
 import type { SessionIdentity } from "../../core/session/identity";
 import type { MessagingSessionResolver } from "../../core/session/messaging";

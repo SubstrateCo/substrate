@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
-import { agentPageSections } from "@/components/agent-work/app/agent-sections";
 import { AgentsWorkspace } from "@/components/agent-work/app/agents-workspace";
+import { agentPageSections } from "@/lib/agent-work/agent-sections";
 import { z } from "zod";
 
 export const Route = createFileRoute("/_authenticated/_frame/_workspace/agents")({

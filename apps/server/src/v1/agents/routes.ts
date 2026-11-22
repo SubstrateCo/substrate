@@ -6,7 +6,8 @@ import {
 } from "@substrate/contracts/agents";
 
 import { respond, v } from "../../shared/http";
-import type { ScopeEnv, Scopes, UserScope } from "../../shared/scope";
+import type { ScopeEnv, Scopes } from "../../shared/scope";
+import type { UserScope } from "../../shared/scope-types";
 import type { AgentService } from "./service";
 import { Hono } from "hono";
 

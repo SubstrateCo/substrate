@@ -1,7 +1,7 @@
 import type { DeviceCapability } from "@substrate/contracts/agent-work";
 
-import type { DatabaseExecutor } from "../../client";
 import { committedWrite } from "../../core/effects";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { ResolvedDeviceIdentity } from "../../core/session/device";
 import {
   openRequestForDevice,

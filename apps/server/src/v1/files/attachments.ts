@@ -7,7 +7,7 @@ import type {
 import { MAX_FILE_BYTES } from "@substrate/contracts/files/input";
 
 import type { CommittedPublisher } from "../../shared/committed";
-import type { WorkspaceScope } from "../../shared/scope";
+import type { WorkspaceScope } from "../../shared/scope-types";
 import { serviceResult } from "../../shared/service-result";
 import type { ObjectStorage } from "../../storage/types";
 import { previewAttachmentImage } from "./attachment-image";

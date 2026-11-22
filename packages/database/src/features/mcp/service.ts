@@ -7,15 +7,15 @@ import {
   type ServerToolName,
 } from "@substrate/contracts/harness/tools";
 
-import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { requireAppEnabled } from "../../core/apps/access";
 import { findDevice } from "../../core/devices/repository";
 import { effectsFor } from "../../core/effects";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
-import { ConflictError, AccessDeniedError, ValidationError } from "../../errors";
+import { ConflictError, AccessDeniedError, ValidationError, mapPostgresError } from "../../errors";
 import { agentRequests } from "../agent-work/requests.schema";
 import { attachReference, detachReference } from "../context/service";
 import { requireMessage } from "../messaging/access";
@@ -321,16 +321,21 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
       );
     }
   } else if (requestId)
-    await tx.insert(agentToolRequests).values({
-      organizationId: identity.organizationId,
-      actorEntityId: actor.id,
-      tool,
-      requestId,
-      fingerprint,
-      result,
-      turnId: turn.turnId,
-      attempt: turn.attempt,
-    });
+    await tx
+      .insert(agentToolRequests)
+      .values({
+        organizationId: identity.organizationId,
+        actorEntityId: actor.id,
+        tool,
+        requestId,
+        fingerprint,
+        result,
+        turnId: turn.turnId,
+        attempt: turn.attempt,
+      })
+      .catch((error: Error) =>
+        mapPostgresError(error, { unique: "This request ID was already used." }),
+      );
   if (calls.length)
     await auditCallerTool(tx, calls, {
       tool,

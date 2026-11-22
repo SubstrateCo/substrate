@@ -1,10 +1,10 @@
-import { attachmentReferences } from "@substrate/database/files";
 import {
   createStorageRepository,
   ensureOwnedAgentActors,
   type Database,
 } from "@substrate/database/trusted";
 
+import { createDesktopService, type DesktopConfig } from "./desktop/service";
 import type { CommittedPublisher } from "./shared/committed";
 import type { ObjectStorage } from "./storage/types";
 import { createDeviceService } from "./v1/agent-work/device-service";
@@ -32,9 +32,11 @@ export function createServices(deps: {
   storage: ObjectStorage;
   publish: CommittedPublisher;
   apiURL: string;
+  desktop: DesktopConfig;
 }) {
-  const repository = createStorageRepository(deps.db, attachmentReferences);
+  const repository = createStorageRepository(deps.db);
   return {
+    desktop: createDesktopService(deps.desktop),
     crm: createCrmService(deps),
     contacts: createContactsService(deps),
     contactInteractions: createContactInteractionsService(deps),

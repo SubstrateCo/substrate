@@ -1,5 +1,5 @@
-import { authClient } from "./client";
-import { unwrap } from "./result";
+import { authClient } from "@/api/auth/client";
+import { unwrap } from "@/api/auth/result";
 import { leaveDocument } from "@/lib/navigation/unsaved-drafts";
 
 /**

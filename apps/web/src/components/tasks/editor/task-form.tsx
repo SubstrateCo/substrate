@@ -5,9 +5,9 @@ import type { ComponentProps } from "react";
 import { changedTaskFields } from "./task-patch";
 import { AttachFilesButton, AttachmentDraftList } from "@/components/attachments/attachment-picker";
 import { FileDropZone } from "@/components/attachments/file-drop-zone";
-import { useAttachmentUploads } from "@/components/attachments/use-attachment-uploads";
 import { TaskForm as TaskFormView } from "@/components/tasks/editor/task-form-view";
 import type { ProjectDetail, Task } from "@/components/tasks/types";
+import { useAttachmentUploads } from "@/queries/files/use-attachment-uploads";
 import { useTasksMutation } from "@/queries/tasks/mutations";
 
 export function TaskForm({

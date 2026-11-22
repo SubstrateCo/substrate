@@ -1,15 +1,9 @@
 import { publicFailure } from "@substrate/contracts/result";
 
 import { respond } from "./http";
+import { isTrustedOrigin } from "./origin-check";
 import { ServiceError } from "./service-result";
 import { createMiddleware } from "hono/factory";
-
-export function isTrustedOrigin(
-  origin: string | null | undefined,
-  trustedOrigins: readonly string[],
-) {
-  return !!origin && trustedOrigins.includes(origin);
-}
 
 export function requireOrigin(headers: Headers, trustedOrigins: readonly string[]) {
   if (!isTrustedOrigin(headers.get("origin"), trustedOrigins))

@@ -7,8 +7,8 @@ import { useEffect, useRef } from "react";
 
 import { updateNoticeContent, type UpdateNoticeAction } from "./update-notice-content";
 import { UpdateToast } from "./update-toast";
+import { useDesktopUpdates } from "@/hooks/use-desktop-updates";
 import { updatesBridge } from "@/lib/desktop/bridges";
-import { useDesktopUpdates } from "@/lib/desktop/use-desktop-updates";
 import { toast } from "sonner";
 
 const toastId = "desktop-update";

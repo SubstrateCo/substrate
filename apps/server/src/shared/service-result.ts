@@ -13,7 +13,6 @@ import {
   ValidationError,
 } from "@substrate/database";
 
-import { APIError } from "better-auth/api";
 import { ZodError } from "zod";
 
 export class ServiceError extends Error {
@@ -42,16 +41,6 @@ export const createServiceResult =
         return publicFailure(error.code, error.message, error.reason);
       if (error instanceof ZodError)
         return publicFailure("INVALID_INPUT", "Invalid request input.");
-      if (error instanceof APIError) {
-        switch (error.statusCode) {
-          case 400:
-            return publicFailure("INVALID_INPUT", "Invalid request input.");
-          case 401:
-            return publicFailure("UNAUTHENTICATED", "Sign in to continue.");
-          case 403:
-            return publicFailure("FORBIDDEN", "Access denied.");
-        }
-      }
       if (error instanceof AppDisabledError)
         return publicFailure("APP_DISABLED", "This app is disabled for this organization.");
       if (error instanceof AccessDeniedError)

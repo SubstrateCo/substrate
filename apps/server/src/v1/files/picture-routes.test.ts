@@ -9,7 +9,7 @@ test("picture uploads accept multipart bytes and return the URL without saving a
   const app = createPictureRoutes(
     {
       upload: async (_headers, purpose, file) =>
-        success({ url: `${purpose}:${await file.text()}` }),
+        success({ url: `${purpose}:${file.contentType}:${new TextDecoder().decode(file.bytes)}` }),
       content: async () => failure("NOT_FOUND", "Not found."),
     },
     createTestScopes(),
@@ -18,7 +18,10 @@ test("picture uploads accept multipart bytes and return the URL without saving a
   form.set("file", new File(["pixels"], "image.png", { type: "image/png" }));
   const response = await app.request("/avatar", { method: "POST", body: form });
   expect(response.status).toBe(200);
-  expect(await response.json()).toEqual({ success: true, data: { url: "avatar:pixels" } });
+  expect(await response.json()).toEqual({
+    success: true,
+    data: { url: "avatar:image/png:pixels" },
+  });
 });
 
 test("picture content redirects only after authorization and is not cached", async () => {

@@ -1,6 +1,12 @@
-import type { DatabaseExecutor } from "../../client";
+import type { DatabaseExecutor } from "../../core/executor";
 import { createRepositories } from "../../repositories";
-import { agentAuditEvents, agentRequests, agentWakes, userAgents } from "../../schema";
+import {
+  agentAuditEvents,
+  agentInvocations,
+  agentRequests,
+  agentWakes,
+  userAgents,
+} from "../../schema";
 import {
   agentWorkFixture,
   callerFixture,
@@ -66,7 +72,7 @@ test("scoped agent-work writes commit once each and approval nests its savepoint
     expect(transactionCount).toBe(1);
   }
   await x.bob.sendMessage(x.channel.id, `${x.mention} help`);
-  const [invocation] = await f.db.query.agentInvocations.findMany();
+  const [invocation] = await f.db.select().from(agentInvocations);
   transactionCount = 0;
   expect((await agentWork.decideInvocation(invocation!.id, "always_allow")).result).toEqual({
     status: "admitted",
@@ -141,10 +147,8 @@ test("policy changes roll back if the audit fails", async () => {
     message: "Insert unavailable",
   });
   expect(transactionCount).toBe(1);
-  expect(
-    (await f.db.query.userAgents.findFirst({ where: eq(userAgents.id, x.agent.agentId) }))!
-      .callerPolicy,
-  ).toBe("owner");
+  const [agent] = await f.db.select().from(userAgents).where(eq(userAgents.id, x.agent.agentId));
+  expect(agent!.callerPolicy).toBe("owner");
   expect(await f.db.select().from(agentAuditEvents)).toEqual([]);
 });
 
@@ -162,11 +166,11 @@ test("answers roll back the decision if creating its wake fails", async () => {
     message: "Insert unavailable",
   });
   expect(transactionCount).toBe(1);
-  expect(
-    await f.db.query.agentRequests.findFirst({
-      where: eq(agentRequests.id, question.questionId!),
-    }),
-  ).toMatchObject({
+  const [storedRequest] = await f.db
+    .select()
+    .from(agentRequests)
+    .where(eq(agentRequests.id, question.questionId!));
+  expect(storedRequest).toMatchObject({
     status: "pending",
     response: null,
     resolvedAt: null,

@@ -1,7 +1,7 @@
 import type { ContactIdentifierType } from "@substrate/contracts/contacts/input";
 
 import { AccessDeniedError, ConflictError, violatedConstraint } from "../../errors";
-import { RepositoryContext, pageSize } from "../repository-context";
+import { RepositoryContext, entityCursor, pageSize } from "../repository-context";
 import { contactAddresses, contactUrls } from "./details.schema";
 import {
   addressInput,
@@ -112,6 +112,7 @@ export function contactDetailsRepository(context: RepositoryContext) {
       options: { limit?: number; afterEntityId?: string } = {},
     ) {
       await context.requireActiveActor();
+      const afterEntityId = entityCursor(options.afterEntityId);
       const value = normalizedIdentifier(input);
       return db
         .selectDistinct({
@@ -136,9 +137,7 @@ export function contactDetailsRepository(context: RepositoryContext) {
               ? eq(contactIdentifiers.normalizedValue, value.normalizedValue)
               : eq(contactIdentifiers.value, value.value),
             sql`coalesce(${contactIdentifiers.extension}, '') = ${value.extension ?? ""}`,
-            options.afterEntityId
-              ? sql`${contacts.entityId} > ${options.afterEntityId}::uuid`
-              : undefined,
+            afterEntityId ? sql`${contacts.entityId} > ${afterEntityId}::uuid` : undefined,
           ),
         )
         .orderBy(asc(contacts.entityId))

@@ -6,7 +6,6 @@ import {
 } from "@substrate/database";
 
 import { createServiceResult, ServiceError } from "./service-result";
-import { APIError } from "better-auth/api";
 import { describe, expect, test } from "bun:test";
 
 function recorded() {
@@ -46,11 +45,6 @@ describe("service results", () => {
     [new AppDisabledError(), "APP_DISABLED", "This app is disabled for this organization."],
     [new ValidationError("Invalid task status."), "INVALID_INPUT", "Invalid task status."],
     [new ConflictError("Task already exists."), "CONFLICT", "Task already exists."],
-    [
-      new APIError("BAD_REQUEST", { message: "Private implementation details" }),
-      "INVALID_INPUT",
-      "Invalid request input.",
-    ],
   ] as const)("maps expected failure %s to %s", async (error, code, message) => {
     const result = await serviceResult(async () => {
       throw error;

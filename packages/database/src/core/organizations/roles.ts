@@ -1,4 +1,4 @@
-import type { DatabaseExecutor } from "../../client";
+import type { DatabaseExecutor } from "../executor";
 import { member } from "./schema";
 import { and, eq, sql, type SQLWrapper } from "drizzle-orm";
 

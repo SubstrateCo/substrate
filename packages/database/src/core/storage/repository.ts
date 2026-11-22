@@ -2,9 +2,9 @@ import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-a
 import type { CreateUploadInput } from "@substrate/contracts/files/input";
 import type { PictureKind } from "@substrate/contracts/files/pictures";
 
-import type { Database, DatabaseExecutor } from "../../client";
 import { AccessDeniedError, ConflictError, violatedConstraint } from "../../errors";
 import { userAgents } from "../actors/user-agents.schema";
+import type { Database, DatabaseExecutor } from "../executor";
 import { member } from "../organizations/schema";
 import { createStorageCleanup } from "./cleanup";
 import { temporaryObjectKey } from "./object-keys";

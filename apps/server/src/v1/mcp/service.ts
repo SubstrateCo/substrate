@@ -3,7 +3,7 @@ import { executeAgentTool } from "@substrate/database/mcp";
 import { ensureUserAgentActor, type Database } from "@substrate/database/trusted";
 
 import type { CommittedPublisher } from "../../shared/committed";
-import type { WorkspaceScope } from "../../shared/scope";
+import type { WorkspaceScope } from "../../shared/scope-types";
 import { serviceResult } from "../../shared/service-result";
 import type { z } from "zod";
 

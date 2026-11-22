@@ -1,6 +1,6 @@
-import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import { approvedParticipant } from "./access";
 import { messagingConversations, messagingParticipants } from "./schema";

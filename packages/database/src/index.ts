@@ -1,4 +1,4 @@
-export type { Database, Transaction } from "./client";
+export type { Database, Transaction } from "./core/executor";
 export { createRepositories } from "./repositories";
 export type { PermissionLevel } from "./core/repository-context";
 export type { Committed } from "./core/effects";

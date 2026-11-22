@@ -1,4 +1,5 @@
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
+import { AppDisabledError } from "@substrate/database";
 
 import { createCommittedPublisher } from "../../shared/committed";
 import { scopeFixture } from "../../test-support";
@@ -60,4 +61,40 @@ test("project detail provisions the session owner's agents and returns only the 
     organizationId: scope.organizationId,
   });
   expect(getDetail).toHaveBeenCalledWith(projectEntityId);
+});
+
+test("project export fails inside serviceResult when the first task page throws", async () => {
+  const scope = scopeFixture();
+  const projectEntityId = crypto.randomUUID();
+  scope.repositories = {
+    ...scope.repositories,
+    projects: {
+      ...scope.repositories.projects,
+      get: async () => ({
+        entityId: projectEntityId,
+        organizationId: scope.organizationId,
+        entityType: "project" as const,
+        name: "Launch",
+        description: "",
+        image: null,
+      }),
+    },
+    tasks: {
+      ...scope.repositories.tasks,
+      exportPage: async () => {
+        throw new AppDisabledError();
+      },
+    },
+  };
+  const service = createTasksService({
+    ensureOwnedAgentActors: async () => {},
+    publish: async (committed) => committed.result,
+  });
+  expect(
+    await service.export(scope, {
+      organizationId: scope.organizationId,
+      projectEntityId,
+      format: "csv",
+    }),
+  ).toMatchObject({ success: false, error: { code: "APP_DISABLED" } });
 });

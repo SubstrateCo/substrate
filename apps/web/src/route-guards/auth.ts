@@ -1,8 +1,8 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { redirect } from "@tanstack/react-router";
 
-import { guestSessionRedirect, verifiedSessionAccess } from "./session-policy";
 import type { getSession } from "@/api/auth/session";
+import { guestSessionRedirect, verifiedSessionAccess } from "@/lib/auth/session-policy";
 import { sessionQueryOptions } from "@/queries/auth/session";
 
 export async function requireVerifiedSession(

@@ -1,7 +1,7 @@
 import type { ProjectExport } from "@substrate/contracts/tasks/export";
 
-import type { ExportRecord } from "../../shared/export";
-import type { WorkspaceScope } from "../../shared/scope";
+import type { ExportRecord } from "../../shared/export-types";
+import type { WorkspaceScope } from "../../shared/scope-types";
 import { ServiceError, serviceResult } from "../../shared/service-result";
 
 export function exportProject(scope: WorkspaceScope, input: ProjectExport) {
@@ -9,6 +9,8 @@ export function exportProject(scope: WorkspaceScope, input: ProjectExport) {
     if (input.organizationId !== scope.organizationId)
       throw new ServiceError("FORBIDDEN", "Access denied.");
     const project = await scope.repositories.projects.get(input.projectEntityId);
+    // Eagerly read the first page inside serviceResult so app/access failures map before streaming.
+    const firstPage = await scope.repositories.tasks.exportPage(project.entityId, undefined);
     const columns = [
       "recordType",
       "entityId",
@@ -31,9 +33,8 @@ export function exportProject(scope: WorkspaceScope, input: ProjectExport) {
         name: project.name,
         description: project.description,
       };
-      let afterEntityId: string | undefined;
+      let rows = firstPage;
       for (;;) {
-        const rows = await scope.repositories.tasks.exportPage(project.entityId, afterEntityId);
         for (const { task, assignee, updatedAt } of rows) {
           yield {
             recordType: "task",
@@ -51,7 +52,10 @@ export function exportProject(scope: WorkspaceScope, input: ProjectExport) {
           };
         }
         if (rows.length < 100) break;
-        afterEntityId = rows.at(-1)!.task.entityId;
+        rows = await scope.repositories.tasks.exportPage(
+          project.entityId,
+          rows.at(-1)!.task.entityId,
+        );
       }
     }
     return { records: records(), columns };

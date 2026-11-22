@@ -3,7 +3,7 @@ import { roles, type OrganizationRole } from "@substrate/contracts/auth/permissi
 import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
 import { desktopHandoffURL } from "@substrate/contracts/desktop/links";
 
-import type { SettingsScope, WorkspaceScope } from "../../shared/scope";
+import type { SettingsScope, WorkspaceScope } from "../../shared/scope-types";
 import { ServiceError, serviceResult } from "../../shared/service-result";
 
 function storedRoles(role: string | null) {

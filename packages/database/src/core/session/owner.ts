@@ -1,6 +1,6 @@
-import type { DatabaseExecutor } from "../../client";
 import { AccessDeniedError } from "../../errors";
 import { user } from "../authentication/schema";
+import type { DatabaseExecutor } from "../executor";
 import type { OwnerSessionIdentity } from "./identity";
 import { and, eq } from "drizzle-orm";
 

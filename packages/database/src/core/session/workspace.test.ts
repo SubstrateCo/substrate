@@ -1,6 +1,5 @@
 import { AccessDeniedError } from "../../errors";
 import { createRepositories } from "../../repositories";
-import * as schema from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { ensureUserAgentActor } from "../actors/provisioning";
@@ -60,7 +59,6 @@ test("human workspace names use the joined user without another name lookup", as
   await f.db.update(user).set({ name: "Alice renamed" }).where(eq(user.id, "alice"));
   const queries: string[] = [];
   const db = drizzle(f.db.$client, {
-    schema,
     logger: { logQuery: (query) => queries.push(query) },
   });
   const result = await workspaceContext(db, { userId: "alice", organizationId: f.orgA });

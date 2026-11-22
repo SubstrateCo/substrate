@@ -1,3 +1,4 @@
+import { ValidationError, mapPostgresError } from "../../errors";
 import { RepositoryContext, pageSize } from "../repository-context";
 import { entityLinks } from "./schema";
 import { and, asc, eq, or, sql } from "drizzle-orm";
@@ -21,6 +22,8 @@ export function linkRepository(context: RepositoryContext) {
         const ctx = new RepositoryContext(tx, scope);
         await ctx.requireAccess(input.entityId, "edit", true);
         await ctx.requireAccess(input.otherEntityId, "view");
+        if (input.entityId === input.otherEntityId)
+          throw new ValidationError("Cannot link a record to itself.");
         const [link] = await tx
           .insert(entityLinks)
           .values({
@@ -29,7 +32,12 @@ export function linkRepository(context: RepositoryContext) {
             relationType: "related_to",
             createdByActorEntityId: scope.actorEntityId,
           })
-          .returning();
+          .returning()
+          .catch((error: Error) =>
+            mapPostgresError(error, {
+              uniqueConstraint: { entity_links_pair_unique: "These records are already linked." },
+            }),
+          );
         return link!;
       });
     },

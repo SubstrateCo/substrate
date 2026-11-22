@@ -4,11 +4,11 @@ import {
 } from "@substrate/contracts/messaging/sharing";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../../client";
 import { ensureHumanActor } from "../../../core/actors/provisioning";
 import { actors } from "../../../core/actors/schema";
 import { user } from "../../../core/authentication/schema";
 import { effectsFor } from "../../../core/effects";
+import type { DatabaseExecutor } from "../../../core/executor";
 import { member, organization } from "../../../core/organizations/schema";
 import { workspaceContext } from "../../../core/session/workspace";
 import { AccessDeniedError, ValidationError } from "../../../errors";

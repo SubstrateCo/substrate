@@ -1,8 +1,8 @@
 import type { AgentAuditEventView } from "@substrate/contracts/agent-work";
 
-import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";
 import { agentAuditEvents } from "./invocations.schema";

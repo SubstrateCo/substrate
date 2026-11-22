@@ -7,11 +7,11 @@ import { Routines } from "../routines/routines";
 import { AgentActivity } from "./agent-activity";
 import { AgentMessages } from "./agent-messages";
 import { AgentPageView } from "./agent-page-view";
-import { isAgentSettingsSection, type AgentPageSection } from "./agent-sections";
 import { AgentSettingsPanel } from "./agent-settings-panel";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { UnsavedDraftsProvider } from "@/components/feedback/unsaved-drafts";
 import { Button } from "@/components/ui/button";
+import { isAgentSettingsSection, type AgentPageSection } from "@/lib/agent-work/agent-sections";
 import { agentStatus, homeDeviceNotice } from "@/lib/agent-work/status";
 import { Laptop } from "lucide-react";
 

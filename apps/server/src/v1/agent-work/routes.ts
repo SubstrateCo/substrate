@@ -21,13 +21,8 @@ import {
 } from "@substrate/contracts/agent-work";
 
 import { respond, v } from "../../shared/http";
-import type {
-  DeviceScope,
-  RegisteredUserDeviceScope,
-  ScopeEnv,
-  Scopes,
-  UserScope,
-} from "../../shared/scope";
+import type { ScopeEnv, Scopes } from "../../shared/scope";
+import type { DeviceScope, UserScope } from "../../shared/scope-types";
 import type { DeviceService } from "./device-service";
 import type { AgentWorkService } from "./service";
 import { Hono } from "hono";
@@ -106,10 +101,10 @@ export function createAgentWorkRoutes(
     scopes.user(),
     async (c) => respond(c, await device.registerDevice(c.var.scope, c.req.valid("json"))),
   );
-  const heartbeat = new Hono<ScopeEnv<RegisteredUserDeviceScope>>().post(
+  const heartbeat = new Hono<ScopeEnv<UserScope>>().post(
     "/device/heartbeat",
     v("json", deviceHeartbeatInput),
-    scopes.registeredUserDevice("json"),
+    scopes.user(),
     async (c) => respond(c, await device.deviceHeartbeat(c.var.scope, c.req.valid("json"))),
   );
   const desktop = new Hono<ScopeEnv<DeviceScope>>()

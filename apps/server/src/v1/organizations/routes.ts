@@ -2,7 +2,8 @@ import { appsWorkspace, updateApps } from "@substrate/contracts/apps";
 import { invitationParams, organizationWorkspace } from "@substrate/contracts/organizations/input";
 
 import { respond, v } from "../../shared/http";
-import type { ScopeEnv, Scopes, SettingsScope } from "../../shared/scope";
+import type { ScopeEnv, Scopes } from "../../shared/scope";
+import type { SettingsScope } from "../../shared/scope-types";
 import type { OrganizationService } from "./service";
 import { Hono } from "hono";
 

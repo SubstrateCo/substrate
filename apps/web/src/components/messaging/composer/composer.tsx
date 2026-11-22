@@ -3,10 +3,10 @@ import { useContext } from "react";
 import { ReferencePicker } from "../../context/references/reference-picker";
 import { AttachFilesButton, AttachmentDraftList } from "@/components/attachments/attachment-picker";
 import { FileDropZone } from "@/components/attachments/file-drop-zone";
-import { useAttachmentUploads } from "@/components/attachments/use-attachment-uploads";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { ComposerSendRequests } from "@/components/messaging/composer/composer-draft-context";
 import { Composer as ComposerView } from "@/components/messaging/composer/composer-view";
+import { useAttachmentUploads } from "@/queries/files/use-attachment-uploads";
 import { useSendMessage } from "@/queries/messaging/messages";
 
 export function Composer(props: {

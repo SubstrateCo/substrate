@@ -4,7 +4,6 @@ import { member } from "../../core/organizations/schema";
 import { AccessDeniedError } from "../../errors";
 import { ActorRepositories } from "../../repositories";
 import { user, userAgents, storedFiles } from "../../schema";
-import * as schema from "../../schema";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
@@ -120,7 +119,6 @@ test("project detail preserves protected output in one SELECT statement", async 
     .where(eq(entities.entityId, deleted.entityId));
   const statements: string[] = [];
   const db = drizzle(f.db.$client, {
-    schema,
     logger: { logQuery: (query) => statements.push(query) },
   });
   const repos = new ActorRepositories(db, { organizationId: f.orgA, actorEntityId: f.alice });

@@ -1,6 +1,6 @@
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../client";
+import type { DatabaseExecutor } from "./executor";
 
 export interface Committed<T> {
   result: T;

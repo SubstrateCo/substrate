@@ -1,4 +1,4 @@
-import type { DatabaseExecutor } from "../../client";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { messagePeople, messageWorkLinks } from "./message-metadata";

@@ -3,7 +3,7 @@ import type { TaskStatus } from "@substrate/contracts/tasks";
 import { joinActorAccount, joinedActorName } from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
-import type { RepositoryContext } from "../../core/repository-context";
+import { entityCursor, type RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../activity/schema";
@@ -51,6 +51,7 @@ export async function queryTasks(
 ) {
   const { entity } = await ctx.requireAccess(input.projectEntityId, "view");
   if (entity.entityType !== "project") throw new AccessDeniedError();
+  const afterEntityId = entityCursor(input.afterEntityId);
   let parentFilter;
   if (input.parentTaskEntityId === null) parentFilter = isNull(tasks.parentTaskEntityId);
   else if (input.parentTaskEntityId)
@@ -81,7 +82,7 @@ export async function queryTasks(
           ? eq(tasks.assigneeActorEntityId, input.assigneeActorEntityId)
           : undefined,
         parentFilter,
-        input.afterEntityId ? gt(tasks.entityId, input.afterEntityId) : undefined,
+        afterEntityId ? gt(tasks.entityId, afterEntityId) : undefined,
       ),
     )
     .orderBy(

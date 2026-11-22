@@ -3,10 +3,10 @@ import type { WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../client";
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { organizationApps } from "../../core/apps/schema";
 import { registerDevice } from "../../core/devices/repository";
+import type { DatabaseExecutor } from "../../core/executor";
 import { AccessDeniedError, AppDisabledError, ConflictError } from "../../errors";
 import {
   entities,

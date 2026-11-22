@@ -7,11 +7,11 @@ import {
 } from "@substrate/contracts/agents";
 import { managedPicturePath } from "@substrate/contracts/files/pictures";
 
-import type { DatabaseExecutor } from "../../client";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { deviceOnline, findDevice } from "../../core/devices/repository";
 import { desktopDevices } from "../../core/devices/schema";
 import { effectsFor } from "../../core/effects";
+import type { DatabaseExecutor } from "../../core/executor";
 import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ValidationError, violatedConstraint } from "../../errors";
 import { agentRefreshHints } from "../realtime/routing";

@@ -1,9 +1,9 @@
 import { ac, roles } from "@substrate/contracts/auth/permissions";
 
-import { desktop } from "../desktop/identity";
+import "@/lib/desktop/auth";
+import { desktop } from "@/lib/desktop/identity";
 import { electronProxyClient } from "@better-auth/electron/proxy";
 import { organizationClient } from "better-auth/client/plugins";
-import "../desktop/auth";
 import { createAuthClient } from "better-auth/react";
 
 export const authClient = createAuthClient({

@@ -1,8 +1,8 @@
 import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type ServerToolName } from "@substrate/contracts/harness/tools";
 
-import type { DatabaseExecutor } from "../../client";
 import { commit } from "../../core/effects";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import { auditFailedCallerTool, namedIds } from "./caller-turn";
 import { executeAgentToolInTransaction, parseAgentToolInput } from "./service";

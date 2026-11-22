@@ -1,9 +1,9 @@
 import type { AgentSourcesResult } from "@substrate/contracts/agent-work";
 
-import type { DatabaseExecutor } from "../../client";
 import { actorAuthorKind } from "../../core/actors/display-name";
 import { joinActorAccount, joinedActorName } from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
+import type { DatabaseExecutor } from "../../core/executor";
 import { type ResolvedDeviceIdentity } from "../../core/session/device";
 import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";

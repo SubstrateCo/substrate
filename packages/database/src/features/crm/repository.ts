@@ -8,7 +8,7 @@ import { actors } from "../../core/actors/schema";
 import { requireAppEnabled } from "../../core/apps/access";
 import { parseInput } from "../../core/contacts/inputs";
 import { contacts } from "../../core/contacts/schema";
-import { RepositoryContext, pageSize } from "../../core/repository-context";
+import { RepositoryContext, entityCursor, pageSize } from "../../core/repository-context";
 import { previousRequest, recordRequest, requestFingerprint } from "../../core/requests/once";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { recordCrmActivity, recordCrmActivities, listCrmActivity } from "./activity";
@@ -85,6 +85,7 @@ export function crmRepository(context: RepositoryContext) {
     return actor.entityId;
   }
   function listWhere(table: typeof crmAccounts | typeof crmDeals, options: ListOptions) {
+    const afterEntityId = entityCursor(options.afterEntityId);
     let archiveFilter;
     if (options.archived !== "all")
       archiveFilter =
@@ -92,7 +93,7 @@ export function crmRepository(context: RepositoryContext) {
     return and(
       eq(table.organizationId, org),
       context.readable(table.entityId),
-      options.afterEntityId ? gt(table.entityId, options.afterEntityId) : undefined,
+      afterEntityId ? gt(table.entityId, afterEntityId) : undefined,
       archiveFilter,
       options.search
         ? ilike(

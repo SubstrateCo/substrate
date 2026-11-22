@@ -1,7 +1,7 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 import { WorkspaceLinkBoundary } from "@/components/workspace/workspace-link-boundary";
-import { requireActiveOrganization } from "@/lib/organizations/route-access";
+import { requireActiveOrganization } from "@/route-guards/organizations";
 import { z } from "zod";
 
 export const Route = createFileRoute("/_authenticated/_frame/_workspace")({

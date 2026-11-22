@@ -3,8 +3,8 @@ import type { OrganizationRole } from "@substrate/contracts/auth/permissions";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
+import { authClient } from "@/api/auth/client";
 import { authError } from "@/api/auth/error";
-import { authClient } from "@/lib/auth/client";
 
 export function useInvitationMutations(organizationId: string) {
   const client = useQueryClient();

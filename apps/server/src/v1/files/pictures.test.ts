@@ -28,18 +28,14 @@ async function fixture() {
       signDownload: async (key) => `https://s3.test/${key}`,
     },
   });
-  const image = async (color: string) =>
-    new File(
-      [
-        new Uint8Array(
-          await sharp({ create: { width: 20, height: 20, channels: 3, background: color } })
-            .png()
-            .toBuffer(),
-        ),
-      ],
-      "picture.png",
-      { type: "image/png" },
-    );
+  const image = async (color: string) => ({
+    bytes: new Uint8Array(
+      await sharp({ create: { width: 20, height: 20, channels: 3, background: color } })
+        .png()
+        .toBuffer(),
+    ),
+    contentType: "image/png",
+  });
   return {
     service,
     objects,
@@ -80,8 +76,8 @@ test("logos use the active organization key and denied writes do not replace it"
 test("invalid images and oversized uploads do not write S3 objects", async () => {
   const f = await fixture();
   for (const file of [
-    new File(["not an image"], "bad.png", { type: "image/png" }),
-    new File([new Uint8Array(5 * 1024 * 1024 + 1)], "large.png", { type: "image/png" }),
+    { bytes: new TextEncoder().encode("not an image"), contentType: "image/png" },
+    { bytes: new Uint8Array(5 * 1024 * 1024 + 1), contentType: "image/png" },
   ]) {
     expect((await f.service.upload(scope, "avatar", file)).success).toBe(false);
   }

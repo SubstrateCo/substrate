@@ -1,7 +1,6 @@
 import type { ContextEntityType } from "@substrate/contracts/context/input";
 import { taskStatusLabels } from "@substrate/contracts/tasks";
 
-import type { DatabaseExecutor } from "../../client";
 import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
@@ -9,6 +8,7 @@ import { user } from "../../core/authentication/schema";
 import { contactInteractions } from "../../core/contacts/interactions.schema";
 import { contacts } from "../../core/contacts/schema";
 import { entities } from "../../core/entities/schema";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { messageReferences } from "../../core/text/references";

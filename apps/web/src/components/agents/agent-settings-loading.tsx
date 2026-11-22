@@ -1,6 +1,5 @@
 import { agentTriggers } from "@substrate/contracts/agents";
 
-import type { AgentSettingsSection } from "@/components/agent-work/app/agent-sections";
 import { CatalogRowLoading } from "@/components/agents/catalog/catalog-row";
 import {
   GeneralSettingsLayout,
@@ -16,6 +15,7 @@ import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { SettingsList, SettingsSection } from "@/components/layout/settings-section";
 import { FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { AgentSettingsSection } from "@/lib/agent-work/agent-sections";
 
 export function AgentSettingsLoading({ section }: { section: AgentSettingsSection }) {
   let content;

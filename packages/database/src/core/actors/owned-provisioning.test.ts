@@ -1,5 +1,4 @@
 import { AccessDeniedError } from "../../errors";
-import * as schema from "../../schema";
 import { actors, entities, member, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
@@ -30,7 +29,6 @@ async function profiles(count: number) {
 test("owned provisioning has constant read cost for cold and warm batches", async () => {
   const statements: string[] = [];
   const db = drizzle(f.db.$client, {
-    schema,
     logger: { logQuery: (query) => statements.push(query) },
   });
   const measurements = [];

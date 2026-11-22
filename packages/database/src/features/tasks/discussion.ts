@@ -36,8 +36,17 @@ export function ensureTaskDiscussion(
         private: true,
         createdBy: creator.userId,
       })
+      .onConflictDoNothing({ target: messagingConversations.taskEntityId })
       .returning();
-    ctx.effects.hint(workHint(ctx.scope.organizationId, task.projectEntityId, [taskId]));
-    return created!.id;
+    if (created) {
+      ctx.effects.hint(workHint(ctx.scope.organizationId, task.projectEntityId, [taskId]));
+      return created.id;
+    }
+    const [concurrent] = await ctx.db
+      .select({ id: messagingConversations.id })
+      .from(messagingConversations)
+      .where(eq(messagingConversations.taskEntityId, taskId));
+    if (!concurrent) throw new AccessDeniedError();
+    return concurrent.id;
   });
 }

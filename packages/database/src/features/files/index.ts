@@ -1,1 +1,0 @@
-export { attachmentReferences } from "./repository";

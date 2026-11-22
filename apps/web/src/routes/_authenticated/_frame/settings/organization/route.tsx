@@ -2,7 +2,7 @@ import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-a
 
 import { createFileRoute, redirect } from "@tanstack/react-router";
 
-import { requireActiveOrganization } from "@/lib/organizations/route-access";
+import { requireActiveOrganization } from "@/route-guards/organizations";
 
 export const Route = createFileRoute("/_authenticated/_frame/settings/organization")({
   // The workspace frame already observes the viewer's role, so this reads the cache. The

@@ -1,12 +1,12 @@
 import type { AgentCallMode } from "@substrate/contracts/agents";
 import { managedPicture, managedPicturePath } from "@substrate/contracts/files/pictures";
 
-import type { DatabaseExecutor } from "../../client";
 import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
+import type { DatabaseExecutor } from "../../core/executor";
 import { member } from "../../core/organizations/schema";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";

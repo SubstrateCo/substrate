@@ -1,10 +1,10 @@
 import type { RealtimeAudience } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../client";
 import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
+import type { DatabaseExecutor } from "../../core/executor";
 import { adminRoleCondition } from "../../core/organizations/roles";
 import { member } from "../../core/organizations/schema";
 import { entityGrants } from "../../core/permissions/schema";

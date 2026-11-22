@@ -1,7 +1,7 @@
 import type { CrmFromMessageInput } from "@substrate/contracts/crm/from-message";
 
 import type { CommittedPublisher } from "../../shared/committed";
-import type { WorkspaceScope } from "../../shared/scope";
+import type { WorkspaceScope } from "../../shared/scope-types";
 import { serviceResult } from "../../shared/service-result";
 
 export function createCrmFromMessageService(deps: { publish: CommittedPublisher }) {

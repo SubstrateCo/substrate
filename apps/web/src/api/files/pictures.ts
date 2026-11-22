@@ -5,8 +5,8 @@ import type {
 
 import { api, type Api } from "../client";
 import { readResult } from "../result";
-import { authClient } from "@/lib/auth/client";
-import { unwrap } from "@/lib/auth/result";
+import { authClient } from "@/api/auth/client";
+import { unwrap } from "@/api/auth/result";
 
 export type PictureKind = Exclude<ManagedPictureKind, "project-icon">;
 type PictureAuthClient = Pick<typeof authClient, "updateUser"> & {

@@ -1,4 +1,4 @@
-import { downloadApi } from "@/api/exports";
+import { projectExportUrl } from "@/api/exports";
 import { DownloadMenu } from "@/components/exports/download-menu";
 
 export function ProjectExport({
@@ -8,9 +8,8 @@ export function ProjectExport({
   organizationId: string;
   projectEntityId: string;
 }) {
-  const api = downloadApi();
   const url = (format: "csv" | "json") =>
-    api.tasks.export.$url({ query: { organizationId, projectEntityId, format } }).href;
+    projectExportUrl({ organizationId, projectEntityId, format });
   return (
     <DownloadMenu
       label="Download project"

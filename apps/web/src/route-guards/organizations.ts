@@ -11,18 +11,21 @@ import { currentOrganizationQueryOptions } from "@/queries/organizations/options
 export async function requireActiveOrganization(
   queryClient: QueryClient,
   organizationId: string | null | undefined,
+  options?: { redirectTo?: "/organizations" | "/onboarding"; staleTime?: number },
 ) {
-  if (!organizationId) throw redirect({ to: "/organizations" });
+  const redirectTo = options?.redirectTo ?? "/organizations";
+  const staleTime = options && "staleTime" in options ? options.staleTime : Infinity;
+  if (!organizationId) throw redirect({ to: redirectTo });
   try {
     // Realtime organization and access hints and reconnect resyncs invalidate or reset this
     // entry, so a cached one is current and navigation does not wait for the network.
-    const organization = await queryClient.query({
-      ...currentOrganizationQueryOptions(organizationId),
-      staleTime: Infinity,
-    });
+    const query = currentOrganizationQueryOptions(organizationId);
+    const organization = await queryClient.query(
+      staleTime === undefined ? query : { ...query, staleTime },
+    );
     return { organizationId, organization };
   } catch (error) {
-    if (error instanceof Error && isAccessFailure(error)) throw redirect({ to: "/organizations" });
+    if (error instanceof Error && isAccessFailure(error)) throw redirect({ to: redirectTo });
     throw error;
   }
 }

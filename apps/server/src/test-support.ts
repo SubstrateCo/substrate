@@ -3,12 +3,8 @@ import type { Database } from "@substrate/database/trusted";
 import type { AppDependencies } from "./app";
 import { sessionFixture } from "./auth/test-support";
 import { createServices } from "./services";
-import {
-  createScopes,
-  type ScopeDependencies,
-  type WorkspaceScope,
-  type UserScope,
-} from "./shared/scope";
+import { createScopes, type ScopeDependencies } from "./shared/scope";
+import type { UserScope, WorkspaceScope } from "./shared/scope-types";
 import type { ObjectStorage } from "./storage/types";
 
 export function scopeFixture(): WorkspaceScope & UserScope {
@@ -44,7 +40,6 @@ export function createTestScopes(
         ({}) as Awaited<ReturnType<ScopeDependencies["repositories"]["forDeviceSession"]>>,
       ...repositories,
     },
-    checkDevice: async () => {},
     ...dependencies,
   });
 }
@@ -58,6 +53,7 @@ export function createTestServices() {
     storage: {} as ObjectStorage,
     publish: async (committed) => committed.result,
     apiURL: "http://localhost:3001",
+    desktop: { desktopScheme: "substrate-dev", webURL: "http://localhost:3000" },
   });
 }
 

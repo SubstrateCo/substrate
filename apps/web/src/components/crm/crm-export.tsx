@@ -3,7 +3,7 @@ import type { CrmExport as CrmExportInput } from "@substrate/contracts/crm/expor
 
 import { useQuery } from "@tanstack/react-query";
 
-import { downloadApi } from "@/api/exports";
+import { contactsExportUrl, crmExportUrl } from "@/api/exports";
 import { DownloadMenu } from "@/components/exports/download-menu";
 import { currentOrganizationQueryOptions } from "@/queries/organizations/options";
 
@@ -17,11 +17,10 @@ export function CrmExport({ organizationId, kind, archived, search, iconOnly }: 
   const allowed =
     !organization.error && organizationSettingsAccess(organization.data?.role).allowed;
   if (!allowed) return null;
-  const api = downloadApi();
   const url = (format: "csv" | "json") =>
     kind === "contacts"
-      ? api.contacts.export.$url({ query: { organizationId, kind, archived, search, format } }).href
-      : api.crm.export.$url({ query: { organizationId, kind, archived, search, format } }).href;
+      ? contactsExportUrl({ organizationId, kind, archived, search, format })
+      : crmExportUrl({ organizationId, kind, archived, search, format });
   return (
     <DownloadMenu
       iconOnly={iconOnly}

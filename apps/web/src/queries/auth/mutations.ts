@@ -2,8 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { authActionOptions } from "./action-options";
 import { signOutAndClear } from "./sign-out";
+import { authClient } from "@/api/auth/client";
 import { authError } from "@/api/auth/error";
-import { authClient } from "@/lib/auth/client";
 import { isDesktop } from "@/lib/desktop/auth";
 import type { ElectronAuthorization } from "@/lib/desktop/authorization-query";
 

@@ -1,7 +1,7 @@
-import type { DatabaseExecutor } from "../../client";
 import { AccessDeniedError, ValidationError, violatedConstraint } from "../../errors";
 import { rootEntityValues } from "../entities/identity";
 import { entities } from "../entities/schema";
+import type { DatabaseExecutor } from "../executor";
 import { member } from "../organizations/schema";
 import { entityGrants } from "../permissions/schema";
 import { actors } from "./schema";

@@ -1,5 +1,5 @@
-import type { DatabaseExecutor } from "../../../client";
 import { user } from "../../../core/authentication/schema";
+import type { DatabaseExecutor } from "../../../core/executor";
 import { isOrganizationAdmin } from "../../../core/organizations/roles";
 import type { SessionIdentity } from "../../../core/session/identity";
 import { workspaceContext } from "../../../core/session/workspace";

@@ -13,7 +13,7 @@ import type { Database } from "@substrate/database/trusted";
 import { environment } from "../environment";
 import type { MailService } from "../mail/service";
 import type { CommittedPublisher } from "../shared/committed";
-import { isTrustedOrigin } from "../shared/origin";
+import { isTrustedOrigin } from "../shared/origin-check";
 import { createOrganizationLifecycle } from "./organization-lifecycle";
 import {
   organizationBody,

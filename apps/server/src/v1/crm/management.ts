@@ -1,4 +1,4 @@
-import type { WorkspaceScope } from "../../shared/scope";
+import type { WorkspaceScope } from "../../shared/scope-types";
 import { serviceResult } from "../../shared/service-result";
 
 export function createCrmManagementService() {

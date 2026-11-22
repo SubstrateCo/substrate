@@ -1,9 +1,6 @@
+import type { ExportFormat, ExportRecord, ExportValue } from "./export-types";
 import { stringify } from "csv-stringify/sync";
 import type { Context } from "hono";
-
-export type ExportFormat = "csv" | "json";
-type ExportValue = string | number | boolean | Date | null | string[];
-export type ExportRecord = Record<string, ExportValue | undefined>;
 
 function csvValue(value: ExportValue | undefined) {
   let text: string;
@@ -52,7 +49,11 @@ export function exportResponse(
         if (next.done) controller.close();
         else controller.enqueue(encoder.encode(next.value));
       } catch (error) {
-        controller.error(error);
+        console.error(
+          "Export stream failed",
+          error instanceof Error ? error.name : "Unknown error",
+        );
+        controller.error(new Error("Export failed."));
       }
     },
     async cancel() {

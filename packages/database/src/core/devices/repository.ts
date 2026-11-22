@@ -1,5 +1,5 @@
-import type { DatabaseExecutor } from "../../client";
 import { AccessDeniedError } from "../../errors";
+import type { DatabaseExecutor } from "../executor";
 import { desktopDevices } from "./schema";
 import { and, eq, sql } from "drizzle-orm";
 

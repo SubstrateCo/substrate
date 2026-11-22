@@ -1,8 +1,5 @@
-import {
-  agentSectionLabels,
-  type AgentSettingsSection,
-} from "@/components/agent-work/app/agent-sections";
 import { Button } from "@/components/ui/button";
+import { agentSectionLabels, type AgentSettingsSection } from "@/lib/agent-work/agent-sections";
 
 /**
  * Tells the owner where unsaved changes are while they look at another section. Each name goes

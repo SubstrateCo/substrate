@@ -1,5 +1,5 @@
-import type { DatabaseExecutor } from "../client";
 import { RepositoryEffects, effectExecutor, effectsFor } from "./effects";
+import type { DatabaseExecutor } from "./executor";
 import { expect, test } from "bun:test";
 
 test("effects on an executor outside a committed write are rejected, not dropped", () => {

@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { authActionLifetime, authActionOptions } from "./action-options";
 import { requestDesktopSignIn } from "./desktop-sign-in";
-import { authClient } from "@/lib/auth/client";
+import { authClient } from "@/api/auth/client";
 import "@/lib/desktop/auth";
 import type { ElectronAuthorization } from "@/lib/desktop/authorization-query";
 
@@ -50,4 +50,9 @@ export function useElectronTransfer() {
       if (result.error) throw new Error("Could not return to Substrate. Please try again.");
     }),
   );
+}
+
+export function ensureElectronRedirect(timeout = 300_000) {
+  const id = authClient.ensureElectronRedirect({ timeout });
+  return () => clearInterval(id);
 }

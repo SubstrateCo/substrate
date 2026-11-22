@@ -1,7 +1,8 @@
 import { createUploadInput, uploadIdParam } from "@substrate/contracts/files/input";
 
 import { respond, v } from "../../shared/http";
-import type { ScopeEnv, Scopes, UserScope } from "../../shared/scope";
+import type { ScopeEnv, Scopes } from "../../shared/scope";
+import type { UserScope } from "../../shared/scope-types";
 import type { FileService } from "./service";
 import { Hono } from "hono";
 

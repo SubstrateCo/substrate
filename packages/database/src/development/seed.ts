@@ -1,7 +1,7 @@
-import type { DatabaseExecutor } from "../client";
 import { ensureHumanActor } from "../core/actors/provisioning";
 import { organizationApps } from "../core/apps/schema";
 import { commit } from "../core/effects";
+import type { DatabaseExecutor } from "../core/executor";
 import { linkRepository } from "../core/links/repository";
 import { permissionRepository } from "../core/permissions/repository";
 import { RepositoryContext } from "../core/repository-context";

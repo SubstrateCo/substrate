@@ -1,4 +1,4 @@
-import type { DatabaseExecutor } from "./client";
+import type { DatabaseExecutor } from "./core/executor";
 import { expireInvocations } from "./features/agent-work/invocations";
 import { deleteAckedWakes } from "./features/agent-work/retention";
 import {

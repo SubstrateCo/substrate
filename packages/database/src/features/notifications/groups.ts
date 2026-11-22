@@ -4,8 +4,8 @@ import {
 } from "@substrate/contracts/context/notification-groups";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../client";
 import { effectsFor } from "../../core/effects";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";

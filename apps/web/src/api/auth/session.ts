@@ -1,5 +1,5 @@
+import { authClient } from "./client";
 import { authError } from "./error";
-import { authClient } from "@/lib/auth/client";
 
 export async function getSession(signal?: AbortSignal, disableCookieCache = false) {
   const { data, error } = await authClient.getSession({

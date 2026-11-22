@@ -1,5 +1,5 @@
-import type { DatabaseExecutor } from "../../client";
 import { touchDevice } from "../devices/repository";
+import type { DatabaseExecutor } from "../executor";
 import type { SessionIdentity } from "./identity";
 import { workspaceContext } from "./workspace";
 

@@ -1,6 +1,5 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../client";
 import {
   joinActorProfile,
   joinedActorName,
@@ -8,6 +7,7 @@ import {
 } from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
 import { effectsFor } from "../../core/effects";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";

@@ -1,6 +1,6 @@
 import { QueryClient } from "@tanstack/react-query";
 
-import { requireVerifiedSession } from "./route-access";
+import { requireVerifiedSession } from "./auth";
 import type { getSession } from "@/api/auth/session";
 import { sessionQueryOptions } from "@/queries/auth/session";
 import { queryKeys } from "@/queries/keys";

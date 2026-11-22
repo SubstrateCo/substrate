@@ -1,4 +1,4 @@
-import type { Database } from "./client";
+import type { Database } from "./core/executor";
 import { migrate } from "drizzle-orm/postgres-js/migrator";
 import { fileURLToPath } from "node:url";
 

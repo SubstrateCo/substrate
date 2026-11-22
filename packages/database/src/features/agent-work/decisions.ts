@@ -8,8 +8,8 @@ import {
 } from "@substrate/contracts/agent-work";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../client";
 import { effectsFor } from "../../core/effects";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, AppDisabledError, ConflictError, ValidationError } from "../../errors";

@@ -1,10 +1,10 @@
 import type { CrmFromMessageInput } from "@substrate/contracts/crm/from-message";
 
-import type { DatabaseExecutor } from "./client";
 import { registerDevice, touchDevice } from "./core/devices/repository";
 import { RepositoryEffects, collectedEffects, commit, commitWrites } from "./core/effects";
 import type { Committed } from "./core/effects";
 import { entityRepository } from "./core/entities/repository";
+import type { DatabaseExecutor } from "./core/executor";
 import { linkRepository } from "./core/links/repository";
 import { organizationRepository } from "./core/organizations/repository";
 import { permissionRepository } from "./core/permissions/repository";

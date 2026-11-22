@@ -1,7 +1,7 @@
-import type { DatabaseExecutor } from "../../client";
 import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { DeviceIdentity } from "../../core/session/device";
 import { AccessDeniedError } from "../../errors";
 import { and, eq } from "drizzle-orm";

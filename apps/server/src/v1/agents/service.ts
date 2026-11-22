@@ -6,7 +6,7 @@ import type {
 } from "@substrate/contracts/agents";
 
 import type { CommittedPublisher } from "../../shared/committed";
-import type { UserScope } from "../../shared/scope";
+import type { UserScope } from "../../shared/scope-types";
 import { serviceResult } from "../../shared/service-result";
 import type { z } from "zod";
 

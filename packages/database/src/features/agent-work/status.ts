@@ -1,12 +1,12 @@
 import type { AgentStatusState, AgentStatusView } from "@substrate/contracts/agent-work";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { deviceOnline } from "../../core/devices/repository";
 import { desktopDevices } from "../../core/devices/schema";
 import { effectsFor } from "../../core/effects";
+import type { DatabaseExecutor } from "../../core/executor";
 import { type ResolvedDeviceIdentity } from "../../core/session/device";
 import type { SessionIdentity } from "../../core/session/identity";
 import { threadRoot, visibleConversationIds, visibleConversations } from "../messaging/access";

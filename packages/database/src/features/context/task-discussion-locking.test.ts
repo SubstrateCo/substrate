@@ -15,7 +15,6 @@ const f = setupDatabase();
 function observeAccessLock(attempted: PromiseWithResolvers<void>) {
   return discardEffects(
     drizzle(f.db.$client, {
-      schema,
       logger: {
         logQuery: (query) => {
           if (query.includes("WITH access_paths")) attempted.resolve();

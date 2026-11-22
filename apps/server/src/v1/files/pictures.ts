@@ -44,7 +44,7 @@ export function createPictureService(deps: PictureDependencies) {
     upload(
       scope: StorageScope,
       purpose: PictureKind,
-      file: File,
+      file: { bytes: Uint8Array; contentType: string },
       organizationId?: string,
       projectEntityId?: string,
     ) {
@@ -54,9 +54,9 @@ export function createPictureService(deps: PictureDependencies) {
         if (purpose === "project-icon" && !projectEntityId)
           throw new ServiceError("INVALID_INPUT", "Choose a project for this icon.");
         await requireAccess(scope, purpose, projectEntityId);
-        if (!file.size || file.size > MAX_FILE_BYTES)
+        if (!file.bytes.byteLength || file.bytes.byteLength > MAX_FILE_BYTES)
           throw new ServiceError("INVALID_INPUT", "Use a picture up to 5 MB.");
-        const bytes = await normalizePicture(new Uint8Array(await file.arrayBuffer()), file.type);
+        const bytes = await normalizePicture(file.bytes, file.contentType);
         let owner = scope.userId;
         if (purpose === "project-icon") owner = projectEntityId!;
         if (purpose === "organization-logo") owner = scope.organizationId!;

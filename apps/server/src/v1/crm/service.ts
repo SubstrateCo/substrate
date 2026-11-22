@@ -2,7 +2,7 @@ import type { crmActivityList } from "@substrate/contracts/crm/activity";
 import type { CrmWrite } from "@substrate/contracts/crm/input";
 
 import type { CommittedPublisher } from "../../shared/committed";
-import type { WorkspaceScope } from "../../shared/scope";
+import type { WorkspaceScope } from "../../shared/scope-types";
 import { serviceResult } from "../../shared/service-result";
 import { exportCrm } from "./export";
 import { createCrmManagementService } from "./management";

@@ -1,6 +1,6 @@
-import type { DatabaseExecutor } from "../../../client";
 import { committedWrite } from "../../../core/effects";
 import type { Committed } from "../../../core/effects";
+import type { DatabaseExecutor } from "../../../core/executor";
 import * as connections from "./connections";
 import * as mail from "./mail";
 

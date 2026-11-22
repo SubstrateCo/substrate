@@ -5,7 +5,6 @@ import { useRef, useState } from "react";
 import { AttachmentList } from "./attachment-list";
 import { AttachFilesButton, AttachmentDraftList } from "./attachment-picker";
 import { FileDropZone } from "./file-drop-zone";
-import { useAttachmentUploads, type AttachmentUploads } from "./use-attachment-uploads";
 import { taskAttachmentUrl, type TaskAttachmentTarget } from "@/api/files/attachments";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FormMessage } from "@/components/feedback/form-message";
@@ -15,6 +14,10 @@ import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { Button } from "@/components/ui/button";
 import { useTaskAttachmentMutations } from "@/queries/attachments/mutations";
 import { taskAttachmentsOptions } from "@/queries/files/attachments";
+import {
+  useAttachmentUploads,
+  type AttachmentUploads,
+} from "@/queries/files/use-attachment-uploads";
 import { Trash2 } from "lucide-react";
 
 function TaskAttachmentDrafts({

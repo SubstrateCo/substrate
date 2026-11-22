@@ -1,3 +1,4 @@
+import { ValidationError } from "../../errors";
 import { entities, entityGrants } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
@@ -69,5 +70,19 @@ describe("contacts and transactions", () => {
     expect(second).toHaveLength(1);
     expect(second[0]!.entityId).not.toBe(first[0]!.entityId);
     await rejection(repo.contacts.list({ limit: 1001 }));
+    expect(await rejection(repo.contacts.list({ afterEntityId: "not-a-uuid" }))).toBeInstanceOf(
+      ValidationError,
+    );
+    expect(
+      await rejection(repo.contacts.listContacts({ afterEntityId: "not-a-uuid" })),
+    ).toBeInstanceOf(ValidationError);
+    expect(
+      await rejection(
+        repo.contacts.findByIdentifier(
+          { type: "email", value: "a@example.com" },
+          { afterEntityId: "not-a-uuid" },
+        ),
+      ),
+    ).toBeInstanceOf(ValidationError);
   });
 });

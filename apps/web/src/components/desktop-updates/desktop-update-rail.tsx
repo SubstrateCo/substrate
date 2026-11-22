@@ -5,8 +5,8 @@ import { Link } from "@tanstack/react-router";
 import { updateRailLabel } from "./update-rail-label";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useDesktopUpdates } from "@/hooks/use-desktop-updates";
 import { updatesBridge } from "@/lib/desktop/bridges";
-import { useDesktopUpdates } from "@/lib/desktop/use-desktop-updates";
 import { CircleArrowUp } from "lucide-react";
 
 export function DesktopUpdateRail() {

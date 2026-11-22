@@ -2,7 +2,7 @@ import { failure, publicFailure } from "@substrate/contracts/result";
 
 import type { Auth } from "./auth/server";
 import { createDesktopRoutes } from "./desktop/routes";
-import { installRuntimeMetrics, type RuntimeMetrics } from "./infrastructure/runtime-metrics";
+import type { RuntimeMetrics } from "./infrastructure/runtime-metrics";
 import type { Services } from "./services";
 import { respond } from "./shared/http";
 import { trustedOrigin } from "./shared/origin";
@@ -10,6 +10,7 @@ import type { Scopes } from "./shared/scope";
 import { createAgentWorkRoutes } from "./v1/agent-work/routes";
 import { createCallerRoutes } from "./v1/agents/callers-routes";
 import { createAgentsRoutes } from "./v1/agents/routes";
+import { createContactsExportRoutes } from "./v1/contacts/export-routes";
 import { createContactsRoutes } from "./v1/contacts/routes";
 import { createContactInteractionsRoutes } from "./v1/context/interactions-routes";
 import { createContextRoutes } from "./v1/context/routes";
@@ -53,17 +54,24 @@ export function createApp({
   metrics,
 }: AppDependencies) {
   const app = new Hono();
-  installRuntimeMetrics(app, metrics);
+  if (metrics) app.use("*", metrics.middleware);
   // Upgrade handlers must run before response-mutating middleware. Hono owns routing;
   // Bun only receives its websocket callbacks in main.ts.
   if (realtime) app.route("/", realtime.app);
-  return app
+  const wired = app
     .use(secureHeaders())
     // Liveness only: reports that this process serves HTTP, without checking dependencies.
     .get("/health", (c) => {
       c.header("Cache-Control", "no-store");
       return c.json({ status: "ok" });
-    })
+    });
+  if (metrics) {
+    wired.get("/internal/metrics", (c) => {
+      c.header("Cache-Control", "no-store");
+      return c.json(metrics.read(c.req.query("reset") === "1"));
+    });
+  }
+  return wired
     .use(
       "/api/*",
       cors({
@@ -90,7 +98,7 @@ export function createApp({
     })
     .use("/api/v1/*", trustedOrigin(trustedOrigins))
     .on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw))
-    .route("/desktop", createDesktopRoutes())
+    .route("/desktop", createDesktopRoutes(services.desktop))
     .route("/api/v1/organizations", createOrganizationRoutes(services.organizations, scopes))
     .route("/api/v1/files/pictures", createPictureRoutes(services.pictures, scopes))
     .route("/api/v1/files/attachments", createAttachmentRoutes(services.attachments, scopes))
@@ -99,6 +107,7 @@ export function createApp({
     .route("/api/v1/crm", createCrmExportRoutes(services.crm, scopes))
     .route("/api/v1/crm", createCrmManagementRoutes(services.crm, scopes))
     .route("/api/v1/crm", createCrmRoutes(services.crm, scopes))
+    .route("/api/v1/contacts", createContactsExportRoutes(services.contacts, scopes))
     .route("/api/v1/contacts", createContactsRoutes(services.contacts, scopes))
     .route(
       "/api/v1/context/interactions",

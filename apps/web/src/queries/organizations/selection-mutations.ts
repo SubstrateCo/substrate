@@ -5,9 +5,9 @@ import {
   type QueryClient,
 } from "@tanstack/react-query";
 
-import { authClient } from "@/lib/auth/client";
+import { authClient } from "@/api/auth/client";
+import { unwrap } from "@/api/auth/result";
 import { activateOrganization } from "@/lib/auth/organization";
-import { unwrap } from "@/lib/auth/result";
 import { queryKeys } from "@/queries/keys";
 
 type WorkspaceActivation = { organizationId: string; destination?: string | null };

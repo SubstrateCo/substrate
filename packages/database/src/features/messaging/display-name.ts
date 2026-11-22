@@ -1,6 +1,6 @@
-import type { DatabaseExecutor } from "../../client";
 import { joinActorAccount, joinedActorName } from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
+import type { DatabaseExecutor } from "../../core/executor";
 import { tasks } from "../tasks/tasks.schema";
 import { approvedParticipant } from "./access";
 import { messagingConversations, messagingParticipants } from "./schema";

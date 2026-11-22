@@ -1,9 +1,9 @@
 import { sharingInvitationMachine } from "@substrate/contracts/messaging/sharing";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../../client";
 import { actors } from "../../../core/actors/schema";
 import { effectsFor } from "../../../core/effects";
+import type { DatabaseExecutor } from "../../../core/executor";
 import type { SessionIdentity } from "../../../core/session/identity";
 import { AccessDeniedError } from "../../../errors";
 import { withRemovalHints } from "../../realtime/routing";

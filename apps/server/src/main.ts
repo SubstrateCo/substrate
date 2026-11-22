@@ -1,9 +1,10 @@
 import { createRepositories } from "@substrate/database";
-import { pruneRecords, touchDevice } from "@substrate/database/trusted";
+import { pruneRecords } from "@substrate/database/trusted";
 
 import { createApp } from "./app";
 import { createAuthPublisher } from "./auth/realtime";
 import { createAuth } from "./auth/server";
+import { createSessionApi } from "./auth/session-api";
 // Parsed once on import: an invalid environment stops startup before the app is created.
 import { environment } from "./environment";
 import { createServerDatabase } from "./infrastructure/database";
@@ -30,13 +31,20 @@ const publish = createCommittedPublisher({
 const sharingMail = createSharingMail({ db, mail, publish });
 const auth = createAuth({ db, mail, publish, realtime: createAuthPublisher(db, publish) });
 const storage = createS3Storage();
-const services = createServices({ db, storage, publish, apiURL: environment.apiURL });
-const scopes = createScopes({
-  api: auth.api,
-  repositories: createRepositories(db),
-  checkDevice: async (userId, installationId) => {
-    await touchDevice(db, userId, installationId);
+const services = createServices({
+  db,
+  storage,
+  publish,
+  apiURL: environment.apiURL,
+  desktop: {
+    desktopScheme: environment.desktopScheme,
+    webURL: environment.webURL,
+    windowsDownloadURL: environment.windowsDownloadURL,
   },
+});
+const scopes = createScopes({
+  api: createSessionApi(auth.api),
+  repositories: createRepositories(db),
 });
 const realtime = createRealtimeService({ db, auth });
 const realtimeRoutes = createRealtimeRoutes(realtime.hub, environment.trustedOrigins);

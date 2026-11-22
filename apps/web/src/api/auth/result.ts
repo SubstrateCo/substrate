@@ -1,3 +1,5 @@
+import { authError } from "./error";
+
 export function unwrap<T>(result: {
   data: T;
   error: { message?: string; code?: string; status?: number } | null;
@@ -6,4 +8,3 @@ export function unwrap<T>(result: {
   if (result.data == null) throw new Error("No data was returned. Please try again.");
   return result.data;
 }
-import { authError } from "@/api/auth/error";

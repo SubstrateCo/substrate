@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 
-import { authClient } from "@/lib/auth/client";
-import { unwrap } from "@/lib/auth/result";
+import { authClient } from "@/api/auth/client";
+import { unwrap } from "@/api/auth/result";
 import { queryKeys } from "@/queries/keys";
 
 /** Renames the signed-in user. The frame reads the name from route context, so reload it too. */

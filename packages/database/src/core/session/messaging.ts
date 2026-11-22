@@ -1,4 +1,4 @@
-import type { DatabaseExecutor } from "../../client";
+import type { DatabaseExecutor } from "../executor";
 import { RepositoryContext } from "../repository-context";
 import type { SessionIdentity } from "./identity";
 import { workspaceContext, type ResolvedWorkspace } from "./workspace";

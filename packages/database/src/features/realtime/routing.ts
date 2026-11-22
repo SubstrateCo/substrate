@@ -1,12 +1,12 @@
 import { realtimeKeys, realtimeTaskLimit } from "@substrate/contracts/realtime";
 import type { RealtimeHint } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { effectsFor } from "../../core/effects";
 import { entities } from "../../core/entities/schema";
+import type { DatabaseExecutor } from "../../core/executor";
 import { member } from "../../core/organizations/schema";
 import { agentRequests } from "../agent-work/requests.schema";
 import {

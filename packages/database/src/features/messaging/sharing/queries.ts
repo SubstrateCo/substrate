@@ -1,8 +1,8 @@
 import { managedPicture } from "@substrate/contracts/files/pictures";
 
-import type { DatabaseExecutor } from "../../../client";
 import { actors } from "../../../core/actors/schema";
 import { user } from "../../../core/authentication/schema";
+import type { DatabaseExecutor } from "../../../core/executor";
 import { member, organization } from "../../../core/organizations/schema";
 import type { SessionIdentity } from "../../../core/session/identity";
 import type { ResolvedWorkspace } from "../../../core/session/workspace";

@@ -1,7 +1,7 @@
 import { parseSessionKey } from "@substrate/contracts/agent-work";
 import type { TurnContext } from "@substrate/contracts/harness/mcp";
 
-import type { DatabaseExecutor } from "../../client";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { requirePlace } from "../agent-work/place";

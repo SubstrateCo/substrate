@@ -37,7 +37,9 @@
     },
     {
       "name": "kernel",
-      "files": ["apps/server/src/shared/{service-result,committed}.ts"]
+      "files": [
+        "apps/server/src/shared/{service-result,committed,workspace,content-disposition,origin-check,scope-types,export-types}.ts"
+      ]
     },
     {
       "name": "route",
@@ -45,12 +47,12 @@
     },
     {
       "name": "http",
-      "files": ["apps/server/src/shared/{http,content-disposition}.ts"]
+      "files": ["apps/server/src/shared/{http,export}.ts"]
     },
     {
       "name": "middleware",
       "files": [
-        "apps/server/src/shared/{scope,origin,workspace}.ts",
+        "apps/server/src/shared/{scope,origin}.ts",
         "apps/server/src/infrastructure/runtime-metrics.ts"
       ]
     },
@@ -71,18 +73,19 @@
     },
     {
       "name": "database-client",
-      "files": ["packages/database/src/client.ts"]
+      "files": ["packages/database/src/{client,trusted,migrate}.ts"],
+      "mayImport": ["database", "database-core", "contracts"]
     },
     {
       "name": "database-core",
       "files": ["packages/database/src/core/**", "packages/database/src/errors.ts"],
-      "mayImport": ["database-client", "contracts"]
+      "mayImport": ["contracts"]
     },
     {
       "name": "database",
       "files": ["packages/database/src/**"],
       "specifiers": ["^@substrate/database"],
-      "mayImport": ["database-client", "database-core", "contracts"]
+      "mayImport": ["database-core", "contracts"]
     },
     {
       "name": "contracts",
@@ -91,19 +94,40 @@
       "mayImport": []
     },
     {
+      "name": "renderer-desktop",
+      "files": ["apps/web/src/lib/desktop/**"],
+      "specifiers": ["^@/lib/desktop/"],
+      "mayImport": ["contracts"]
+    },
+    {
       "name": "renderer-api",
       "files": ["apps/web/src/api/**"],
-      "specifiers": ["^@/api/"]
+      "specifiers": ["^@/api/"],
+      "mayImport": ["contracts", "renderer-desktop"]
+    },
+    {
+      "name": "renderer-lib",
+      "files": ["apps/web/src/lib/**"],
+      "specifiers": ["^@/lib/"],
+      "mayImport": ["contracts", "renderer-desktop", "renderer-api"]
     },
     {
       "name": "renderer-queries",
       "files": ["apps/web/src/queries/**"],
-      "specifiers": ["^@/queries/"]
+      "specifiers": ["^@/queries/"],
+      "mayImport": ["contracts", "renderer-desktop", "renderer-api", "renderer-lib"]
     },
     {
       "name": "renderer",
       "files": ["apps/web/src/**"],
-      "specifiers": ["^@/"]
+      "specifiers": ["^@/"],
+      "mayImport": [
+        "contracts",
+        "renderer-desktop",
+        "renderer-api",
+        "renderer-lib",
+        "renderer-queries"
+      ]
     }
   ],
   "rules": [
@@ -237,7 +261,7 @@
     {
       "id": "W1",
       "tag": "upward",
-      "layer": ["renderer", "renderer-api", "renderer-queries"],
+      "layer": ["renderer", "renderer-queries", "renderer-lib", "renderer-api", "renderer-desktop"],
       "forbidImports": ["/^@substrate\\/server/"],
       "allowTypeOnly": true,
       "message": "renderer imports server runtime code ({match})",
@@ -246,7 +270,7 @@
     {
       "id": "W2",
       "tag": "bypass",
-      "layer": ["renderer", "renderer-api", "renderer-queries"],
+      "layer": ["renderer", "renderer-queries", "renderer-lib", "renderer-api", "renderer-desktop"],
       "forbidImports": [
         "database",
         "database-core",
@@ -260,7 +284,7 @@
     {
       "id": "W3",
       "tag": "move",
-      "layer": ["renderer", "renderer-api", "renderer-queries"],
+      "layer": ["renderer", "renderer-queries", "renderer-lib", "renderer-api", "renderer-desktop"],
       "forbidSyntax": ["ImportExpression"],
       "message": "renderer uses a dynamic import()",
       "fix": "Use a static import; fix the dependency injection, server-only boundary, or import configuration instead of bypassing it"
@@ -268,7 +292,7 @@
     {
       "id": "W4",
       "tag": "move",
-      "layer": ["renderer", "renderer-api"],
+      "layer": ["renderer", "renderer-lib", "renderer-api", "renderer-desktop"],
       "forbidCalls": ["{queryOptions,infiniteQueryOptions}"],
       "message": "{target} defines query options (`{match}()`)",
       "fix": "Put reusable query option factories in src/queries/<domain>/ and use the shared query-key factory"
@@ -276,7 +300,7 @@
     {
       "id": "W5",
       "tag": "bypass",
-      "layer": ["renderer", "renderer-queries"],
+      "layer": ["renderer", "renderer-queries", "renderer-lib", "renderer-desktop"],
       "forbidImports": ["/^hono\\/client$/"],
       "forbidCalls": ["hc"],
       "message": "{target} builds an RPC client ({match})",

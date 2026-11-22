@@ -7,7 +7,7 @@ import type {
 } from "@substrate/contracts/tasks/input";
 
 import type { createCommittedPublisher } from "../../shared/committed";
-import type { WorkspaceScope } from "../../shared/scope";
+import type { WorkspaceScope } from "../../shared/scope-types";
 import { serviceResult } from "../../shared/service-result";
 import { exportProject } from "./export";
 import type { z } from "zod";

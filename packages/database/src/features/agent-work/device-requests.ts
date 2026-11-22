@@ -8,8 +8,8 @@ import {
 } from "@substrate/contracts/agent-work";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../client";
 import { effectsFor } from "../../core/effects";
+import type { DatabaseExecutor } from "../../core/executor";
 import { type DeviceIdentity, type ResolvedDeviceIdentity } from "../../core/session/device";
 import { AccessDeniedError } from "../../errors";
 import { homedAgentIds, requireHomedAgent } from "./device";

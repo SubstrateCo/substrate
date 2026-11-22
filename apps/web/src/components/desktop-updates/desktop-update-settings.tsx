@@ -8,8 +8,8 @@ import { useState } from "react";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { SettingsCard, SettingsRow } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
+import { useDesktopUpdates } from "@/hooks/use-desktop-updates";
 import { updatesBridge } from "@/lib/desktop/bridges";
-import { useDesktopUpdates } from "@/lib/desktop/use-desktop-updates";
 import { ArrowUpRight } from "lucide-react";
 import { toast } from "sonner";
 

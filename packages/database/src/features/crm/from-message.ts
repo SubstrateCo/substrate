@@ -4,10 +4,10 @@ import {
   type CrmFromMessageResult,
 } from "@substrate/contracts/crm/from-message";
 
-import type { DatabaseExecutor } from "../../client";
 import { requireAppEnabled } from "../../core/apps/access";
 import { parseInput } from "../../core/contacts/inputs";
 import { commit } from "../../core/effects";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { RepositoryContext } from "../../core/repository-context";
 import { previousRequest, recordRequest, requestFingerprint } from "../../core/requests/once";
 import type { SessionIdentity } from "../../core/session/identity";

@@ -1,12 +1,12 @@
 import type { ContextEntityType } from "@substrate/contracts/context/input";
 
-import type { DatabaseExecutor } from "../../client";
 import {
   joinActorProfile,
   joinedActorName,
   joinedActorPicture,
 } from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { RepositoryContext } from "../../core/repository-context";
 import { previousRequest, recordRequest, requestFingerprint } from "../../core/requests/once";
 import type { SessionIdentity } from "../../core/session/identity";

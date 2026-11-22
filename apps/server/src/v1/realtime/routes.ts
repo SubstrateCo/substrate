@@ -1,6 +1,6 @@
 import { realtimeConnectInput } from "@substrate/contracts/realtime";
 
-import { isTrustedOrigin } from "../../shared/origin";
+import { isTrustedOrigin } from "../../shared/origin-check";
 import type { RealtimeHub } from "./hub";
 import { upgradeWebSocket, websocket, type BunWebSocketData } from "@hono/bun";
 import { zValidator } from "@hono/zod-validator";

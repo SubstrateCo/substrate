@@ -1,6 +1,5 @@
 import { requiredAppsForEntityType } from "@substrate/contracts/apps";
 
-import type { DatabaseExecutor } from "../client";
 import { AccessDeniedError, ValidationError } from "../errors";
 import { activeActorCondition, permissionActorEntityId } from "./actors/access";
 import { actors } from "./actors/schema";
@@ -8,6 +7,7 @@ import { requireAppEnabled } from "./apps/access";
 import { effectExecutor, effectsFor, type RepositoryEffects } from "./effects";
 import { rootEntityValues } from "./entities/identity";
 import { entities } from "./entities/schema";
+import type { DatabaseExecutor } from "./executor";
 import { entityGrants, permissionLevel } from "./permissions/schema";
 import { entityAccessLevel, lockAccessPaths, readableCondition } from "./permissions/visibility";
 import type { WorkspaceScope } from "./session/identity";
@@ -300,6 +300,14 @@ export class RepositoryContext {
         ),
       );
   }
+}
+
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+export function entityCursor(afterEntityId?: string) {
+  if (afterEntityId === undefined) return undefined;
+  if (!uuidPattern.test(afterEntityId)) throw new ValidationError("Invalid cursor.");
+  return afterEntityId;
 }
 
 export function pageSize(limit = 50) {

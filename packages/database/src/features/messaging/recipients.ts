@@ -1,9 +1,9 @@
 import { messagingLimits } from "@substrate/contracts/messaging/input";
 
-import type { DatabaseExecutor } from "../../client";
 import { ensureHumanActors, ensureOwnedAgentActors } from "../../core/actors/provisioning";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
+import type { DatabaseExecutor } from "../../core/executor";
 import { member } from "../../core/organizations/schema";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ValidationError } from "../../errors";

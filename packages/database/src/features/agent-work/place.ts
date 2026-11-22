@@ -1,4 +1,4 @@
-import type { DatabaseExecutor } from "../../client";
+import type { DatabaseExecutor } from "../../core/executor";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { requireThreadRoot, visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";

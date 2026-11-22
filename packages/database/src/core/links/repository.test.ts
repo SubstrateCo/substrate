@@ -1,4 +1,4 @@
-import { AccessDeniedError } from "../../index";
+import { AccessDeniedError, ConflictError, ValidationError } from "../../index";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { entityLinks } from "./schema";
@@ -49,8 +49,12 @@ describe("links", () => {
       [a.entityId, b.entityId].sort(),
     );
     expect(await repo.links.list(b.entityId)).toEqual([stored!]);
-    await rejection(repo.links.create({ entityId: a.entityId, otherEntityId: b.entityId }));
-    await rejection(repo.links.create({ entityId: a.entityId, otherEntityId: a.entityId }));
+    expect(
+      await rejection(repo.links.create({ entityId: a.entityId, otherEntityId: b.entityId })),
+    ).toBeInstanceOf(ConflictError);
+    expect(
+      await rejection(repo.links.create({ entityId: a.entityId, otherEntityId: a.entityId })),
+    ).toBeInstanceOf(ValidationError);
     expect(
       await rejection(repo.links.create({ entityId: a.entityId, otherEntityId: other.entityId })),
     ).toBeInstanceOf(AccessDeniedError);

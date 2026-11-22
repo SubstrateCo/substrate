@@ -5,7 +5,8 @@ import { AccessDeniedError } from "@substrate/database";
 import { sessionFixture } from "../auth/test-support";
 import { createTestScopes, scopeFixture } from "../test-support";
 import { respond, v } from "./http";
-import type { ScopeDependencies, ScopeEnv, UserScope, SettingsScope } from "./scope";
+import type { ScopeDependencies, ScopeEnv } from "./scope";
+import type { SettingsScope, UserScope } from "./scope-types";
 import { expect, mock, test } from "bun:test";
 import { Hono } from "hono";
 import { z } from "zod";
@@ -147,27 +148,6 @@ test("settings membership is checked only for verified sessions with an active w
   }
 });
 
-test("heartbeats do not construct unused owner repositories", async () => {
-  const installationId = crypto.randomUUID();
-  const forOwnerSession = mock(async () => scopeFixture().owner);
-  const checkDevice = mock(async () => {});
-  const scopes = createTestScopes({ repositories: { forOwnerSession }, checkDevice });
-  const app = new Hono().post(
-    "/",
-    v("json", z.object({ installationId: z.uuid() })),
-    scopes.registeredUserDevice("json"),
-    (c) => c.json({ registered: true }),
-  );
-  const response = await app.request("/", {
-    method: "POST",
-    headers: { "content-type": "application/json", [desktopInstallationHeader]: installationId },
-    body: JSON.stringify({ installationId }),
-  });
-  expect(await response.json()).toEqual({ registered: true });
-  expect(forOwnerSession).not.toHaveBeenCalled();
-  expect(checkDevice).toHaveBeenCalledWith("user-1", installationId);
-});
-
 test("device middleware constructs only the registered-device repository", async () => {
   const installationId = crypto.randomUUID();
   const forSession = mock(async () => scopeFixture().repositories);
@@ -179,10 +159,8 @@ test("device middleware constructs only the registered-device repository", async
         ReturnType<ScopeDependencies["repositories"]["forDeviceSession"]>
       >,
   );
-  const checkDevice = mock(async () => {});
   const scopes = createTestScopes({
     repositories: { forSession, forOwnerSession, forDeviceSession },
-    checkDevice,
   });
   const app = new Hono().post(
     "/",
@@ -199,5 +177,4 @@ test("device middleware constructs only the registered-device repository", async
   expect(forDeviceSession).toHaveBeenCalledTimes(1);
   expect(forSession).not.toHaveBeenCalled();
   expect(forOwnerSession).not.toHaveBeenCalled();
-  expect(checkDevice).not.toHaveBeenCalled();
 });

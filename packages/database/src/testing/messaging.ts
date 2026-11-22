@@ -1,5 +1,5 @@
-import type { DatabaseExecutor } from "../client";
 import { actors } from "../core/actors/schema";
+import type { DatabaseExecutor } from "../core/executor";
 import type { SessionIdentity } from "../core/session/identity";
 import { messagingConversations, messagingParticipants } from "../features/messaging/schema";
 import { createMessagingService } from "../features/messaging/service";

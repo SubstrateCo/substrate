@@ -1,8 +1,8 @@
-import { isAgentSettingsSection, type AgentSettingsSection } from "./agent-sections";
 import { AgentSettings } from "@/components/agents/agent-settings";
 import { SettingsNav, type SettingsNavGroup } from "@/components/agents/layout/settings-nav";
 import { useDraftKeys } from "@/components/feedback/unsaved-drafts";
 import { SettingsContent } from "@/components/layout/settings-page";
+import { isAgentSettingsSection, type AgentSettingsSection } from "@/lib/agent-work/agent-sections";
 import { Blocks, ScrollText, SlidersHorizontal, Sparkles, Zap } from "lucide-react";
 
 const groups = [

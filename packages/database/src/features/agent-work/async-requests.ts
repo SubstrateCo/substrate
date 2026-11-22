@@ -4,7 +4,7 @@ import type {
   ProposalTargetBasis,
 } from "@substrate/contracts/agent-work";
 
-import type { DatabaseExecutor } from "../../client";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { Place } from "./place";
 import { agentRequests } from "./requests.schema";
 

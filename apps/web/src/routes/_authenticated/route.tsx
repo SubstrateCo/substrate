@@ -2,7 +2,7 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 
 import { DesktopUpdateNotice } from "@/components/desktop-updates/desktop-update-notice";
 import { RealtimeConnection } from "@/components/realtime/realtime-connection";
-import { requireVerifiedSession } from "@/lib/auth/route-access";
+import { requireVerifiedSession } from "@/route-guards/auth";
 
 export const Route = createFileRoute("/_authenticated")({
   ssr: false,

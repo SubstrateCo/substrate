@@ -12,12 +12,6 @@ import { HarnessAccount } from "../sign-in/harness-account";
 import { AgentInstructions } from "./agent-instructions";
 import { GeneralSettingsLayout, InstructionsSettingsLayout } from "./agent-settings-layout";
 import { UnsavedSectionsBar } from "./unsaved-sections-bar";
-import {
-  agentSettingsSections,
-  isAgentSettingsSection,
-  listSections,
-  type AgentSettingsSection,
-} from "@/components/agent-work/app/agent-sections";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import type { FormDialogEditor } from "@/components/feedback/form-dialog";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
@@ -30,6 +24,12 @@ import { FormTextField } from "@/components/forms/form-text-field";
 import { SettingsFooter } from "@/components/layout/settings-section";
 import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
+import {
+  agentSettingsSections,
+  isAgentSettingsSection,
+  listSections,
+  type AgentSettingsSection,
+} from "@/lib/agent-work/agent-sections";
 import { z } from "zod";
 
 const agentFields = saveAgentInput.extend({

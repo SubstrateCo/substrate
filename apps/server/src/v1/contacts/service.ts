@@ -1,7 +1,7 @@
 import type { ContactWrite } from "@substrate/contracts/contacts/input";
 
 import type { CommittedPublisher } from "../../shared/committed";
-import type { WorkspaceScope } from "../../shared/scope";
+import type { WorkspaceScope } from "../../shared/scope-types";
 import { serviceResult } from "../../shared/service-result";
 import { exportCrm } from "../crm/export";
 

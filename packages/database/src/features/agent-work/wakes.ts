@@ -8,9 +8,9 @@ import {
 } from "@substrate/contracts/agent-work";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../client";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { effectsFor } from "../../core/effects";
+import type { DatabaseExecutor } from "../../core/executor";
 import { type DeviceIdentity, type ResolvedDeviceIdentity } from "../../core/session/device";
 import { admit } from "./admission";
 import { homedAgentIds } from "./device";

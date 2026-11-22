@@ -1,7 +1,7 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../client";
 import { entities } from "../../core/entities/schema";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import { messagingSession, type MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError } from "../../errors";

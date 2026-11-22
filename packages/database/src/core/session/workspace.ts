@@ -1,4 +1,3 @@
-import type { DatabaseExecutor } from "../../client";
 import { AccessDeniedError } from "../../errors";
 import { activeActorCondition } from "../actors/access";
 import { actorDisplayName } from "../actors/display-name";
@@ -7,6 +6,7 @@ import { actors } from "../actors/schema";
 import { userAgents } from "../actors/user-agents.schema";
 import { user } from "../authentication/schema";
 import { entities } from "../entities/schema";
+import type { DatabaseExecutor } from "../executor";
 import { adminRoleCondition } from "../organizations/roles";
 import { member } from "../organizations/schema";
 import { RepositoryContext } from "../repository-context";

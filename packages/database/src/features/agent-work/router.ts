@@ -1,7 +1,7 @@
 import type { ConversationKind } from "@substrate/contracts/messaging/input";
 import type { RealtimeHint } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../client";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import type { messagingMessages } from "../messaging/schema";
 import { admit } from "./admission";

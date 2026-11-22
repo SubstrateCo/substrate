@@ -11,8 +11,8 @@ import type {
 } from "@substrate/contracts/agent-work";
 
 import type { CommittedPublisher } from "../../shared/committed";
-import type { DeviceScope, UserScope, RegisteredUserDeviceScope } from "../../shared/scope";
-import { serviceResult } from "../../shared/service-result";
+import type { DeviceScope, UserScope } from "../../shared/scope-types";
+import { ServiceError, serviceResult } from "../../shared/service-result";
 import type { z } from "zod";
 
 export function createDeviceService({ publish }: { publish: CommittedPublisher }) {
@@ -23,12 +23,11 @@ export function createDeviceService({ publish }: { publish: CommittedPublisher }
         return { id: result.id };
       });
     },
-    deviceHeartbeat(
-      this: void,
-      _scope: RegisteredUserDeviceScope,
-      _input: z.output<typeof deviceHeartbeatInput>,
-    ) {
+    deviceHeartbeat(this: void, scope: UserScope, input: z.output<typeof deviceHeartbeatInput>) {
       return serviceResult(async () => {
+        if (!scope.installationId || scope.installationId !== input.installationId)
+          throw new ServiceError("FORBIDDEN", "Invalid desktop installation.");
+        await publish(await scope.owner.devices.touch(input.installationId));
         return {};
       });
     },

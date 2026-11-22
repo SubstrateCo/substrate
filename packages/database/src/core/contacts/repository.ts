@@ -1,5 +1,5 @@
 import { AccessDeniedError } from "../../errors";
-import { RepositoryContext, pageSize } from "../repository-context";
+import { RepositoryContext, entityCursor, pageSize } from "../repository-context";
 import { contactDetailsRepository } from "./details.repository";
 import { contactProfileInput, parseInput, type ContactInput } from "./inputs";
 import { contacts } from "./schema";
@@ -39,6 +39,7 @@ export function contactRepository(context: RepositoryContext) {
 
     async list(options: { limit?: number; afterEntityId?: string } = {}) {
       await context.requireActiveActor();
+      const afterEntityId = entityCursor(options.afterEntityId);
       return db
         .select()
         .from(contacts)
@@ -46,7 +47,7 @@ export function contactRepository(context: RepositoryContext) {
           and(
             eq(contacts.organizationId, scope.organizationId),
             context.readable(contacts.entityId),
-            options.afterEntityId ? gt(contacts.entityId, options.afterEntityId) : undefined,
+            afterEntityId ? gt(contacts.entityId, afterEntityId) : undefined,
           ),
         )
         .orderBy(asc(contacts.entityId))

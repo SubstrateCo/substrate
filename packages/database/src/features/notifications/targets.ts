@@ -1,5 +1,5 @@
-import type { DatabaseExecutor } from "../../client";
 import { entities } from "../../core/entities/schema";
+import type { DatabaseExecutor } from "../../core/executor";
 import { readableFromCte, withVisibility } from "../../core/permissions/visibility";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";

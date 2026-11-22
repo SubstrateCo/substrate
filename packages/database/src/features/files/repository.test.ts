@@ -81,8 +81,13 @@ test("task attachments inherit access, reject uploader backdoors, and block blob
   const file = await staged();
   await files().addTask(scope(), { ...target, attachmentFileIds: [file.id] });
   await files().addTask(scope(), { ...target, attachmentFileIds: [file.id] });
+  const second = await staged();
+  await files().addTask(scope(), { ...target, attachmentFileIds: [file.id, second.id] });
+  expect(await files().listTask(scope(), target)).toHaveLength(2);
+  const [attachment, secondAttachment] = await files().listTask(scope(), target);
+  expect(secondAttachment).toMatchObject({ fileId: second.id });
+  await files().removeTask(scope(), { ...target, attachmentId: secondAttachment!.id });
   expect(await files().listTask(scope(), target)).toHaveLength(1);
-  const [attachment] = await files().listTask(scope(), target);
   expect(attachment).toMatchObject({ fileId: file.id, filename: "launch.txt" });
   expect(
     await files().taskContent(scope(), { ...target, attachmentId: attachment!.id }),

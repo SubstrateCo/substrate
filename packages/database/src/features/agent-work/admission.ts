@@ -14,9 +14,9 @@ import type { AgentCallerPolicy } from "@substrate/contracts/agents";
 import type { ConversationKind } from "@substrate/contracts/messaging/input";
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../client";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
+import type { DatabaseExecutor } from "../../core/executor";
 import { member } from "../../core/organizations/schema";
 import { messageReferences } from "../../core/text/references";
 import { userAgentCallers } from "../agents/callers.schema";

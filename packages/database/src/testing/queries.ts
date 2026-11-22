@@ -1,4 +1,3 @@
-import * as schema from "../schema";
 import { discardEffects, testDatabase } from "./connection";
 import { drizzle } from "drizzle-orm/postgres-js";
 
@@ -7,7 +6,6 @@ export function recordQueries(onQuery?: (query: string) => void) {
   const parameters: unknown[][] = [];
   const db = discardEffects(
     drizzle(testDatabase.$client, {
-      schema,
       logger: {
         logQuery: (query, params) => {
           queries.push(query);

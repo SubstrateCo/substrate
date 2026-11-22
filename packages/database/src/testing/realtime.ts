@@ -1,6 +1,6 @@
 import type { RealtimeAudience } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../client";
+import type { DatabaseExecutor } from "../core/executor";
 import { audienceRecipients, resolveReceiver } from "../features/realtime/audience";
 
 /** Whether a session identity receives a change, as the realtime hub decides it. */

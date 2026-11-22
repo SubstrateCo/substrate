@@ -1,8 +1,8 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../../client";
 import { ensureUserAgentActor } from "../../../core/actors/provisioning";
 import { userAgents } from "../../../core/actors/user-agents.schema";
+import type { DatabaseExecutor } from "../../../core/executor";
 import { AccessDeniedError, ValidationError } from "../../../errors";
 import * as schema from "../../../schema";
 import { member, user } from "../../../schema";
@@ -713,7 +713,6 @@ test("a post waiting for a disconnect lock rechecks access after that disconnect
   await sharing("outsider", f.orgB).accept(invitation.id, true);
   const tryingToPost = Promise.withResolvers<void>();
   const observed = drizzle(f.db.$client, {
-    schema,
     logger: {
       logQuery: (query) => {
         if (query.includes("for share")) tryingToPost.resolve();

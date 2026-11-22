@@ -1,4 +1,4 @@
-import type { DatabaseExecutor } from "../../client";
+import type { DatabaseExecutor } from "../../core/executor";
 import { storedFiles } from "../../core/storage/schema";
 import { messagingMessages } from "../messaging/schema";
 import { messageAttachments, taskAttachments } from "./schema";

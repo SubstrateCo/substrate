@@ -3,9 +3,7 @@ import type { CrmExport } from "@substrate/contracts/crm/export";
 
 import { linkOptions } from "@tanstack/react-router";
 
-import type { agentPageSections } from "@/components/agent-work/app/agent-sections";
-
-type AgentPageSection = (typeof agentPageSections)[number];
+import type { AgentPageSection } from "@/lib/agent-work/agent-sections";
 
 /** A task opens in its project. Pass the link to `Link`, `navigate`, or `useRecordUrl`. */
 export function workLink(organizationId: string, projectEntityId: string, taskEntityId?: string) {

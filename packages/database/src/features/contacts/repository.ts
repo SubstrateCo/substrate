@@ -5,7 +5,7 @@ import { requireAppEnabled } from "../../core/apps/access";
 import { contactRepository } from "../../core/contacts/repository";
 import { contacts } from "../../core/contacts/schema";
 import { appEnabledCondition } from "../../core/permissions/app-visibility";
-import { pageSize, type RepositoryContext } from "../../core/repository-context";
+import { entityCursor, pageSize, type RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
 import { recordCrmActivity } from "../crm/activity";
 import { crmAccounts, crmAffiliations, crmContactProfiles } from "../crm/schema";
@@ -48,6 +48,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
       } = {},
     ) {
       await context.requireActiveActor();
+      const afterEntityId = entityCursor(options.afterEntityId);
       let archiveFilter;
       if (options.archived !== "all")
         archiveFilter =
@@ -69,7 +70,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
           and(
             eq(contacts.organizationId, org),
             context.readable(contacts.entityId),
-            options.afterEntityId ? gt(contacts.entityId, options.afterEntityId) : undefined,
+            afterEntityId ? gt(contacts.entityId, afterEntityId) : undefined,
             options.search
               ? ilike(contacts.displayName, `%${options.search.replace(/[\\%_]/g, "\\$&")}%`)
               : undefined,

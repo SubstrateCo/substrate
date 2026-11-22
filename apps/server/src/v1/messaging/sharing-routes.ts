@@ -9,7 +9,8 @@ import {
 } from "@substrate/contracts/messaging/sharing";
 
 import { respond, v } from "../../shared/http";
-import type { ScopeEnv, Scopes, UserScope } from "../../shared/scope";
+import type { ScopeEnv, Scopes } from "../../shared/scope";
+import type { UserScope } from "../../shared/scope-types";
 import type { SharingService } from "./sharing-service";
 import { Hono } from "hono";
 

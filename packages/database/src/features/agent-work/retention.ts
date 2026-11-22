@@ -1,4 +1,4 @@
-import type { DatabaseExecutor } from "../../client";
+import type { DatabaseExecutor } from "../../core/executor";
 import { agentWakes } from "./wakes.schema";
 import { inArray, lt } from "drizzle-orm";
 

@@ -1,8 +1,14 @@
 import { createDesktopRoutes } from "./routes";
+import { createDesktopService } from "./service";
 import { describe, expect, test } from "bun:test";
 
 describe("desktop open landing", () => {
-  const app = createDesktopRoutes();
+  const app = createDesktopRoutes(
+    createDesktopService({
+      desktopScheme: "substrate-dev",
+      webURL: "http://localhost:3000",
+    }),
+  );
 
   test("provides a desktop invitation link and prevents caching and referrer leaks", async () => {
     const path = "/accept-invitation/invite-1";
@@ -42,11 +48,13 @@ describe("desktop open landing", () => {
 
 describe("desktop releases", () => {
   test("reports installer availability and redirects only to the configured installer", async () => {
-    const app = createDesktopRoutes({
-      desktopScheme: "substrate",
-      webURL: "https://app.example.test",
-      windowsDownloadURL: "https://downloads.example.test/Substrate.exe",
-    });
+    const app = createDesktopRoutes(
+      createDesktopService({
+        desktopScheme: "substrate",
+        webURL: "https://app.example.test",
+        windowsDownloadURL: "https://downloads.example.test/Substrate.exe",
+      }),
+    );
     const release = await app.request("/release");
     expect(await release.json()).toEqual({ success: true, data: { windowsAvailable: true } });
     const download = await app.request("/download?redirect=https://evil.example");
@@ -57,11 +65,13 @@ describe("desktop releases", () => {
   });
 
   test("does not advertise or redirect to an unpublished installer", async () => {
-    const app = createDesktopRoutes({
-      desktopScheme: "substrate",
-      webURL: "https://app.example.test",
-      windowsDownloadURL: undefined,
-    });
+    const app = createDesktopRoutes(
+      createDesktopService({
+        desktopScheme: "substrate",
+        webURL: "https://app.example.test",
+        windowsDownloadURL: undefined,
+      }),
+    );
     expect(await (await app.request("/release")).json()).toEqual({
       success: true,
       data: { windowsAvailable: false },

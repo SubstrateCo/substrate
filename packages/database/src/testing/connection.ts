@@ -1,5 +1,6 @@
-import { createDatabase, type DatabaseExecutor } from "../client";
+import { createDatabase } from "../client";
 import { RepositoryEffects, effectExecutor } from "../core/effects";
+import type { DatabaseExecutor } from "../core/executor";
 import * as schema from "../schema";
 import { testDatabaseURL } from "./environment";
 import { is } from "drizzle-orm";

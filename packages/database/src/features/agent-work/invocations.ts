@@ -10,12 +10,12 @@ import {
 } from "@substrate/contracts/agent-work";
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
-import type { DatabaseExecutor } from "../../client";
 import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { effectsFor } from "../../core/effects";
+import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ConflictError } from "../../errors";

@@ -1,8 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
+import { authClient } from "@/api/auth/client";
 import { authError } from "@/api/auth/error";
-import { authClient } from "@/lib/auth/client";
 
 /** The signed-in user declines an invitation sent to their email address. */
 export function useDeclineInvitation() {

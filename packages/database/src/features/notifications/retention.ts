@@ -1,5 +1,5 @@
-import type { DatabaseExecutor } from "../../client";
 import { entities } from "../../core/entities/schema";
+import type { DatabaseExecutor } from "../../core/executor";
 import { notifications } from "./schema";
 import { and, eq, exists, inArray, isNotNull, lt } from "drizzle-orm";
 

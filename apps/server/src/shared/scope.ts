@@ -1,41 +1,22 @@
 import { desktopInstallationHeader } from "@substrate/contracts/desktop/links";
 import type { createRepositories } from "@substrate/database";
 
-import type { Auth } from "../auth/server";
 import { respond } from "./http";
+import type {
+  AuthSession,
+  DeviceScope,
+  IdentityScope,
+  SettingsScope,
+  UserScope,
+  WorkspaceScope,
+} from "./scope-types";
 import { ServiceError, serviceResult } from "./service-result";
 import { requireVerified, requireWorkspace } from "./workspace";
 import type { Env, ValidationTargets } from "hono";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 
-export type AuthSession = NonNullable<Awaited<ReturnType<Auth["api"]["getSession"]>>>;
-export interface SettingsScope {
-  session: AuthSession | null;
-  role: string | null;
-}
 type Repositories = ReturnType<typeof createRepositories>;
-interface IdentityScope {
-  session: AuthSession;
-  userId: string;
-  organizationId: string | null;
-  installationId?: string;
-}
-export interface UserScope extends IdentityScope {
-  owner: Awaited<ReturnType<Repositories["forOwnerSession"]>>;
-}
-export interface RegisteredUserDeviceScope extends IdentityScope {
-  installationId: string;
-}
-export interface WorkspaceScope extends IdentityScope {
-  organizationId: string;
-  repositories: Awaited<ReturnType<Repositories["forSession"]>>;
-}
-export interface DeviceScope extends IdentityScope {
-  organizationId: string;
-  installationId: string;
-  device: Awaited<ReturnType<Repositories["forDeviceSession"]>>;
-}
 export type ScopeEnv<S = WorkspaceScope> = Env & { Variables: { scope: S } };
 
 export interface ScopeDependencies {
@@ -50,7 +31,6 @@ export interface ScopeDependencies {
     }): Promise<{ role: string }>;
   };
   repositories: Repositories;
-  checkDevice(userId: string, installationId: string): Promise<void>;
 }
 
 type ScopeInput = { organizationId?: string; installationId?: string };
@@ -114,12 +94,6 @@ export function createScopes(deps: ScopeDependencies) {
       await next();
     });
   }
-  async function registered<S extends IdentityScope>(scope: S, input: ScopeInput) {
-    if (!scope.installationId || scope.installationId !== input.installationId)
-      throw new ServiceError("FORBIDDEN", "Invalid desktop installation.");
-    await deps.checkDevice(scope.userId, scope.installationId);
-    return { ...scope, installationId: scope.installationId };
-  }
   return {
     settings: () =>
       middleware(async (headers, _input, session): Promise<SettingsScope> => {
@@ -131,11 +105,6 @@ export function createScopes(deps: ScopeDependencies) {
         return { session, role };
       }),
     user: () => middleware((headers, _input, session) => user(headers, session)),
-    registeredUserDevice: (target: keyof ValidationTargets) =>
-      middleware(
-        async (headers, input, session) => registered(identity(headers, session), input),
-        target,
-      ),
     workspace: (target?: keyof ValidationTargets) =>
       middleware(
         (headers, input, session) => workspace(headers, session, input.organizationId),

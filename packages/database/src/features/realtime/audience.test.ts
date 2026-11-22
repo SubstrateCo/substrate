@@ -148,7 +148,6 @@ test("a delivery resolves the receiver once and checks only conversation audienc
   });
   const statements: string[] = [];
   const db = drizzle(fixture.db.$client, {
-    schema,
     logger: { logQuery: (query) => statements.push(query) },
   });
   const counts: Record<string, number> = {};

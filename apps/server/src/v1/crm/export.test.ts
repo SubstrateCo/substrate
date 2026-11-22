@@ -1,3 +1,5 @@
+import { AccessDeniedError, AppDisabledError } from "@substrate/database";
+
 import { exportChunks } from "../../shared/export";
 import { createTestScopes, scopeFixture } from "../../test-support";
 import { exportCrm } from "./export";
@@ -157,7 +159,8 @@ test("streams every page beyond the former 1,000-record limit", async () => {
   const input = { organizationId: "org", kind: "accounts" as const, archived: "all" as const };
   const result = await exportCrm(scope, input);
   expect(result.success).toBe(true);
-  expect(listAccounts).not.toHaveBeenCalled();
+  // First page is fetched eagerly so access/app errors fail before streaming starts; remaining pages stay lazy.
+  expect(listAccounts).toHaveBeenCalledTimes(1);
   if (result.success) {
     const text = (
       await Array.fromAsync(exportChunks(result.data.records, result.data.columns, "csv"))
@@ -167,6 +170,23 @@ test("streams every page beyond the former 1,000-record limit", async () => {
         .slice(1)
         .map((row) => row[0]),
     ).toEqual(records.map((row) => row.entityId));
+  }
+});
+
+test("first-page app and access errors fail inside serviceResult before HTTP 200 streaming starts", async () => {
+  for (const [error, status, code] of [
+    [new AppDisabledError(), 403, "APP_DISABLED"],
+    [new AccessDeniedError(), 404, "NOT_FOUND"],
+  ] as const) {
+    const { scope, listAccounts } = fixture();
+    listAccounts.mockRejectedValue(error);
+    const app = createCrmExportRoutes(
+      service,
+      createTestScopes({ repositories: { forSession: async () => scope.repositories } }),
+    );
+    const response = await app.request("/export?organizationId=org&kind=accounts");
+    expect(response.status).toBe(status);
+    expect(await response.json()).toMatchObject({ success: false, error: { code } });
   }
 });
 

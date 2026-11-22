@@ -1,9 +1,9 @@
 import { useRef } from "react";
 
-import type { AttachmentDraft, AttachmentUploads } from "./use-attachment-uploads";
 import { FormMessage } from "@/components/feedback/form-message";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { AttachmentDraft, AttachmentUploads } from "@/queries/files/use-attachment-uploads";
 import { FileText, Paperclip, RefreshCw, X } from "lucide-react";
 
 export function AttachFilesButton({

@@ -1,6 +1,6 @@
 import { authError } from "./error";
+import { unwrap } from "./result";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
-import { unwrap } from "@/lib/auth/result";
 import { expect, test } from "bun:test";
 
 test("adapts known auth codes without trusting provider wording", () => {

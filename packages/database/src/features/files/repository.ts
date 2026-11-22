@@ -54,22 +54,26 @@ export function createAttachmentRepository(context: RepositoryContext) {
           .select({ fileId: taskAttachments.fileId, position: taskAttachments.position })
           .from(taskAttachments)
           .where(eq(taskAttachments.taskEntityId, input.taskEntityId));
-        if (input.attachmentFileIds.every((id) => existing.some((item) => item.fileId === id)))
-          return;
-        if (existing.length + input.attachmentFileIds.length > MAX_ATTACHMENTS)
+        const existingIds = new Set(existing.map((item) => item.fileId));
+        const toAttach = input.attachmentFileIds.filter((id) => !existingIds.has(id));
+        if (!toAttach.length) return;
+        if (existing.length + toAttach.length > MAX_ATTACHMENTS)
           throw new ValidationError("A task can have up to 10 files.");
-        await publishFiles(ctx, task, input.attachmentFileIds);
+        await publishFiles(ctx, task, toAttach);
         const position = Math.max(-1, ...existing.map((item) => item.position)) + 1;
-        await ctx.db.insert(taskAttachments).values(
-          input.attachmentFileIds.map((fileId, index) => ({
-            organizationId: ctx.scope.organizationId,
-            taskEntityId: input.taskEntityId,
-            fileOrganizationId: ctx.scope.organizationId,
-            fileId,
-            addedByActorEntityId: ctx.scope.actorEntityId,
-            position: position + index,
-          })),
-        );
+        await ctx.db
+          .insert(taskAttachments)
+          .values(
+            toAttach.map((fileId, index) => ({
+              organizationId: ctx.scope.organizationId,
+              taskEntityId: input.taskEntityId,
+              fileOrganizationId: ctx.scope.organizationId,
+              fileId,
+              addedByActorEntityId: ctx.scope.actorEntityId,
+              position: position + index,
+            })),
+          )
+          .onConflictDoNothing({ target: [taskAttachments.taskEntityId, taskAttachments.fileId] });
         ctx.effects.hint(workHint(scope.organizationId, task.projectEntityId, [task.entityId]));
       });
     },

@@ -5,7 +5,6 @@ import { useRef, useState } from "react";
 
 import { ActivityTurnTranscript } from "../transcript/activity-turn-transcript";
 import { AgentPage } from "./agent-page";
-import type { AgentPageSection } from "./agent-sections";
 import { AgentsWorkspaceView } from "./agents-workspace-view";
 import { FirstAgentView } from "./first-agent-view";
 import { NeedsYou } from "./needs-you";
@@ -13,6 +12,7 @@ import { AgentSettings } from "@/components/agents/agent-settings";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { PaneState } from "@/components/feedback/pane-state";
 import { useFocusAfterRender } from "@/components/feedback/use-focus-after-render";
+import type { AgentPageSection } from "@/lib/agent-work/agent-sections";
 import { needsYouCount } from "@/lib/agent-work/needs-you";
 import { agentStatus } from "@/lib/agent-work/status";
 import { resourceState } from "@/lib/resource-state";
