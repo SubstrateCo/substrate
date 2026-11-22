@@ -190,10 +190,20 @@ test("sign-out clears drafts before another user opens the same conversation", a
   };
   await signOut(account.name);
   await signIn(page, actors.member.email, actors.member.password);
+  await expect(page).toHaveURL(/\/dashboard(?:\?|$)/);
+  await page
+    .getByRole("navigation", { name: "Apps", exact: true })
+    .getByRole("link", { name: "Messages", exact: true })
+    .click();
   await conversationButton(page, channel.name).click();
   await expect(editor).toBeEmpty();
   await signOut(actors.member.name);
   await signIn(page, account.email, account.password);
+  await expect(page).toHaveURL(/\/dashboard(?:\?|$)/);
+  await page
+    .getByRole("navigation", { name: "Apps", exact: true })
+    .getByRole("link", { name: "Messages", exact: true })
+    .click();
   await conversationButton(page, channel.name).click();
   await expect(editor).toBeEmpty();
 });
