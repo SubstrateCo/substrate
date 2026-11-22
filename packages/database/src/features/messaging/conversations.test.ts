@@ -1,5 +1,6 @@
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { user, member, entityGrants, actors } from "../../schema";
+import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { messagingConversations, messagingMessages, messagingParticipants } from "./schema";
@@ -264,6 +265,19 @@ test("starting a DM with the same person returns the existing DM", async () => {
       .from(messagingConversations)
       .where(eq(messagingConversations.kind, "dm")),
   ).toHaveLength(2);
+});
+
+test("starting a DM with the same agent returns the existing DM", async () => {
+  const agent = await ownedAgent(fixture);
+  const chat = service("alice");
+  const input = { kind: "dm" as const, agentIds: [agent.agentId] };
+  const [dm, concurrent] = await Promise.all([
+    chat.createConversation(input),
+    chat.createConversation(input),
+  ]);
+  expect(concurrent.id).toBe(dm.id);
+  expect((await chat.createConversation(input)).id).toBe(dm.id);
+  expect(await fixture.db.select().from(messagingConversations)).toHaveLength(1);
 });
 
 test("unnamed DMs and groups have participant display names", async () => {
