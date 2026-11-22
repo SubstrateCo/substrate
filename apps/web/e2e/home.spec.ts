@@ -1,6 +1,9 @@
+import { provisionWorkspaceSession } from "../../server/integration/test-support/organizations";
 import { post, test, visit } from "./test-support/fixtures";
 import { detail, project } from "./test-support/tasks";
 import { expect } from "@playwright/test";
+import { mkdir } from "node:fs/promises";
+import { resolve } from "node:path";
 
 test("Home has useful empty states and Messages has its own route", async ({ account, client }) => {
   const user = await client(account);
@@ -20,6 +23,39 @@ test("Home has useful empty states and Messages has its own route", async ({ acc
   await expect(user.page).toHaveURL(/\/messages/);
   await user.page.getByRole("link", { name: "Home", exact: true }).click();
   await expect(user.page).toHaveURL(/\/dashboard/);
+});
+
+test("Home fills the grid when Tasks and CRM are disabled", async ({ account, client }) => {
+  const organization = await provisionWorkspaceSession(
+    account.request,
+    "Home apps workspace",
+    `home-apps-${crypto.randomUUID()}`,
+    { enableOptionalApps: false },
+  );
+  account.organizationId = organization.id;
+  account.state = await account.request.storageState();
+  const user = await client(account);
+  const { page } = user;
+  await page.emulateMedia({ colorScheme: "dark" });
+  await visit(user, undefined, "/dashboard");
+  await expect(page.getByText("You’re caught up", { exact: true })).toBeVisible();
+  await expect(page.getByRole("heading", { name: /is disabled$/ })).toHaveCount(0);
+  const region = (name: string) => page.getByRole("region", { name, exact: true }).boundingBox();
+  const attention = await region("Needs your attention");
+  const updates = await region("Recent updates");
+  const agents = await region("My agents");
+  const conversations = await region("Conversations");
+  for (const box of [attention, updates, agents, conversations]) expect(box).not.toBeNull();
+  const bottom = (box: NonNullable<typeof updates>) => box.y + box.height;
+  // Each column runs from the top row to the bottom row with only the grid gap between panels.
+  expect(updates!.y - bottom(attention!)).toBeLessThanOrEqual(16);
+  expect(conversations!.y - bottom(agents!)).toBeLessThanOrEqual(16);
+  expect(Math.abs(bottom(updates!) - bottom(conversations!))).toBeLessThanOrEqual(1);
+  if (process.env.E2E_SCREENSHOTS_DIR) {
+    const directory = resolve(process.env.E2E_SCREENSHOTS_DIR);
+    await mkdir(directory, { recursive: true });
+    await page.screenshot({ path: resolve(directory, "home-apps-disabled-dark.png") });
+  }
 });
 
 test("Home shows assigned work, opens the exact task, and refreshes after completion", async ({

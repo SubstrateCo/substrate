@@ -1,13 +1,9 @@
-import { Link } from "@tanstack/react-router";
-
 import { useState, type ReactNode } from "react";
 
 import { HomeAttention } from "./home-attention";
 import { HomeEmptyWork } from "./home-empty-work";
 import { HomeSection, type HomeSectionData } from "./home-section";
-import { ContentNotice } from "@/components/feedback/content-notice";
 import { PageHeader } from "@/components/layout/page-header";
-import { Button } from "@/components/ui/button";
 import {
   Select,
   SelectContent,
@@ -52,7 +48,7 @@ function HomePanel({
   children: ReactNode;
 }) {
   return (
-    <div className={cn("flex min-h-0 min-w-0", active !== id && "max-md:hidden", className)}>
+    <div className={cn("flex min-h-0 min-w-0 flex-1", active !== id && "max-md:hidden", className)}>
       {children}
     </div>
   );
@@ -100,129 +96,88 @@ export function HomeDashboardView({
             </div>
           }
         />
-        <div className="grid min-h-0 flex-1 grid-cols-1 grid-rows-1 gap-4 md:grid-cols-2 md:grid-rows-3 xl:grid-cols-12 xl:grid-rows-7">
-          <HomePanel
-            id="attention"
-            active={activeSection}
-            className={
-              quietAttention
-                ? "xl:col-span-7 xl:col-start-1 xl:row-start-1"
-                : "xl:col-span-8 xl:col-start-1 xl:row-span-2 xl:row-start-1"
-            }
-          >
-            <HomeAttention organizationId={organizationId} data={attention} />
-          </HomePanel>
-          <HomePanel
-            id="tasks"
-            active={activeSection}
-            className={cn(
-              "xl:col-span-7 xl:col-start-1",
-              quietAttention ? "xl:row-span-4 xl:row-start-2" : "xl:row-span-3 xl:row-start-3",
+        <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row">
+          <div className="flex min-h-0 min-w-0 flex-col gap-4 max-md:contents md:flex-1 xl:flex-7">
+            <HomePanel
+              id="attention"
+              active={activeSection}
+              className={quietAttention ? "md:flex-none" : "md:grow-2"}
+            >
+              <HomeAttention organizationId={organizationId} data={attention} />
+            </HomePanel>
+            {tasksEnabled && (
+              <HomePanel
+                id="tasks"
+                active={activeSection}
+                className={quietAttention ? "md:grow-4" : "md:grow-3"}
+              >
+                <HomeSection
+                  title="My work"
+                  description="Assigned to you · earliest due first"
+                  icon={ListTodo}
+                  emptyTitle="No open tasks assigned to you"
+                  emptyDescription="Find work in your projects or create a task."
+                  emptyAction="Browse tasks"
+                  emptyContent={<HomeEmptyWork organizationId={organizationId} />}
+                  emphasis
+                  link={{ to: "/tasks", search }}
+                  data={tasks}
+                />
+              </HomePanel>
             )}
-          >
-            {tasksEnabled ? (
+            <HomePanel id="updates" active={activeSection} className="md:grow-2">
               <HomeSection
-                title="My work"
-                description="Assigned to you · earliest due first"
-                icon={ListTodo}
-                emptyTitle="No open tasks assigned to you"
-                emptyDescription="Find work in your projects or create a task."
-                emptyAction="Browse tasks"
-                emptyContent={<HomeEmptyWork organizationId={organizationId} />}
-                emphasis
-                link={{ to: "/tasks", search }}
-                data={tasks}
+                title="Recent updates"
+                icon={Bell}
+                emptyTitle="No other recent updates"
+                emptyDescription="View past assignments, mentions, and replies."
+                emptyAction="Open notifications"
+                link={{ to: "/notifications", search }}
+                data={updates}
               />
-            ) : (
-              <DisabledHomeApp label="Tasks" />
-            )}
-          </HomePanel>
-          <HomePanel
-            id="agents"
-            active={activeSection}
-            className={cn(
-              "xl:row-span-2 xl:row-start-1",
-              quietAttention ? "xl:col-span-5 xl:col-start-8" : "xl:col-span-4 xl:col-start-9",
-            )}
-          >
-            <HomeSection
-              title="My agents"
-              icon={Bot}
-              emptyTitle="No agent activity yet"
-              emptyDescription="Choose an agent and connect its home desktop to start delegating work."
-              emptyAction="Open agents"
-              link={{ to: "/agents", search }}
-              data={agents}
-            />
-          </HomePanel>
-          <HomePanel
-            id="updates"
-            active={activeSection}
-            className="xl:col-span-7 xl:col-start-1 xl:row-span-2 xl:row-start-6"
-          >
-            <HomeSection
-              title="Recent updates"
-              icon={Bell}
-              emptyTitle="No other recent updates"
-              emptyDescription="View past assignments, mentions, and replies."
-              emptyAction="Open notifications"
-              link={{ to: "/notifications", search }}
-              data={updates}
-            />
-          </HomePanel>
-          <HomePanel
-            id="conversations"
-            active={activeSection}
-            className="xl:col-span-5 xl:col-start-8 xl:row-span-2 xl:row-start-3"
-          >
-            <HomeSection
-              title="Conversations"
-              description="Unread · Direct messages first"
-              icon={MessageSquare}
-              emptyTitle="No other unread conversations"
-              emptyDescription="Open Messages to catch up on channels or start a conversation."
-              emptyAction="Open messages"
-              link={{ to: "/messages", search }}
-              data={conversations}
-            />
-          </HomePanel>
-          <HomePanel
-            id="deals"
-            active={activeSection}
-            className="xl:col-span-5 xl:col-start-8 xl:row-span-3 xl:row-start-5"
-          >
-            {crmEnabled ? (
+            </HomePanel>
+          </div>
+          <div className="flex min-h-0 min-w-0 flex-col gap-4 max-md:contents md:flex-1 xl:flex-5">
+            <HomePanel id="agents" active={activeSection} className="md:grow-2">
               <HomeSection
-                title="CRM follow-ups"
-                description="Your open deals · closing within 7 days or overdue"
-                icon={Handshake}
-                emptyTitle="No deals closing soon"
-                emptyDescription="CRM follow-up tasks appear in My work."
-                emptyAction="Open CRM"
-                link={{ to: "/crm", search: { ...search, section: "deals" } }}
-                data={deals}
+                title="My agents"
+                icon={Bot}
+                emptyTitle="No agent activity yet"
+                emptyDescription="Choose an agent and connect its home desktop to start delegating work."
+                emptyAction="Open agents"
+                link={{ to: "/agents", search }}
+                data={agents}
               />
-            ) : (
-              <DisabledHomeApp label="CRM" />
+            </HomePanel>
+            <HomePanel id="conversations" active={activeSection} className="md:grow-2">
+              <HomeSection
+                title="Conversations"
+                description="Unread · Direct messages first"
+                icon={MessageSquare}
+                emptyTitle="No other unread conversations"
+                emptyDescription="Open Messages to catch up on channels or start a conversation."
+                emptyAction="Open messages"
+                link={{ to: "/messages", search }}
+                data={conversations}
+              />
+            </HomePanel>
+            {crmEnabled && (
+              <HomePanel id="deals" active={activeSection} className="md:grow-3">
+                <HomeSection
+                  title="CRM follow-ups"
+                  description="Your open deals · closing within 7 days or overdue"
+                  icon={Handshake}
+                  emptyTitle="No deals closing soon"
+                  emptyDescription="CRM follow-up tasks appear in My work."
+                  emptyAction="Open CRM"
+                  link={{ to: "/crm", search: { ...search, section: "deals" } }}
+                  data={deals}
+                />
+              </HomePanel>
             )}
-          </HomePanel>
+          </div>
         </div>
       </div>
     </div>
-  );
-}
-
-function DisabledHomeApp({ label }: { label: string }) {
-  return (
-    <ContentNotice
-      icon={label === "Tasks" ? ListTodo : Handshake}
-      title={`${label} is disabled`}
-      description="Enable this app for your organization to see it here."
-      action={
-        <Button variant="outline" asChild>
-          <Link to="/settings/organization/apps">View apps</Link>
-        </Button>
-      }
-    />
   );
 }
