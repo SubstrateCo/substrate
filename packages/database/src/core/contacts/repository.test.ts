@@ -1,8 +1,12 @@
-import { ValidationError } from "../../errors";
-import { entities, entityGrants } from "../../schema";
+import { AccessDeniedError, ValidationError } from "../../errors";
+import { ActorRepositories } from "../../repositories";
+import { actors, entities, entityGrants } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
+import { rootEntityValues } from "../entities/identity";
 import { describe, expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 
@@ -59,6 +63,46 @@ describe("contacts and transactions", () => {
     expect(await f.forActor(f.alice).contacts.list()).toHaveLength(2);
     const [link] = await f.forActor(f.alice).links.list(ids[0]!);
     expect([link?.sourceEntityId, link?.targetEntityId]).toEqual([...ids].sort());
+  });
+
+  test("reads the profile and detail in one authorized query each, with the same access rules", async () => {
+    const contact = await f.forActor(f.alice).contacts.create({ displayName: "Customer" });
+    await f.forActor(f.alice).contacts.addIdentifier(contact.entityId, {
+      type: "email",
+      value: "customer@example.com",
+    });
+    const tracked = recordQueries();
+    const bob = new ActorRepositories(tracked.db, { organizationId: f.orgA, actorEntityId: f.bob });
+    expect(await bob.contacts.get(contact.entityId)).toMatchObject({
+      entityId: contact.entityId,
+      displayName: "Customer",
+    });
+    const getCount = tracked.queries.length;
+    tracked.queries.length = 0;
+    const detail = await bob.contacts.getDetail(contact.entityId);
+    expect([getCount, tracked.queries.length]).toEqual([1, 4]);
+    expect(detail.profile.displayName).toBe("Customer");
+    expect(detail.identifiers).toMatchObject([{ value: "customer@example.com" }]);
+
+    const missingProfile = crypto.randomUUID();
+    await f.db.insert(entities).values(rootEntityValues(f.orgA, "contact", missingProfile));
+    const deleted = await f.forActor(f.alice).contacts.create({ displayName: "Deleted" });
+    await f.forActor(f.alice).entities.softDelete(deleted.entityId);
+    const denied = [
+      [f.forActor(f.outsider, f.orgB), contact.entityId],
+      [f.forActor(f.alice), missingProfile],
+      [f.forActor(f.alice), deleted.entityId],
+      [f.forActor(f.alice), f.bob],
+    ] as const;
+    for (const [repos, id] of denied) {
+      expect(await rejection(repos.contacts.get(id))).toBeInstanceOf(AccessDeniedError);
+      expect(await rejection(repos.contacts.getDetail(id))).toBeInstanceOf(AccessDeniedError);
+    }
+    await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.bob));
+    expect(await rejection(bob.contacts.get(contact.entityId))).toBeInstanceOf(AccessDeniedError);
+    expect(await rejection(bob.contacts.getDetail(contact.entityId))).toBeInstanceOf(
+      AccessDeniedError,
+    );
   });
 
   test("pagination is bounded and ordered consistently", async () => {

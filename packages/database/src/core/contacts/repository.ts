@@ -1,8 +1,9 @@
 import { AccessDeniedError } from "../../errors";
 import { RepositoryContext, entityCursor, pageSize } from "../repository-context";
-import { contactReadable, lockContact, requireContact } from "./access";
+import { contactReadable, lockContact } from "./access";
 import { contactDetailsRepository } from "./details.repository";
 import { contactProfileInput, parseInput, type ContactInput } from "./inputs";
+import { readContactProfile } from "./profile";
 import { contacts } from "./schema";
 import { and, asc, eq, gt } from "drizzle-orm";
 
@@ -26,16 +27,8 @@ export function contactRepository(context: RepositoryContext) {
       });
     },
 
-    async get(entityId: string) {
-      await requireContact(context, entityId);
-      const [contact] = await db
-        .select()
-        .from(contacts)
-        .where(
-          and(eq(contacts.organizationId, scope.organizationId), eq(contacts.entityId, entityId)),
-        );
-      if (!contact) throw new AccessDeniedError();
-      return contact;
+    get(entityId: string) {
+      return readContactProfile(context, entityId);
     },
 
     async list(options: { limit?: number; afterEntityId?: string } = {}) {

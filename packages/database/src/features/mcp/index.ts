@@ -1,4 +1,4 @@
-export { requireAppEnabled } from "../../core/apps/access";
+export { requireAppEnabled, requireAppsEnabled } from "../../core/apps/access";
 export { commit, effectsFor } from "../../core/effects";
 export type { SessionIdentity } from "../../core/session/identity";
 export { workspaceContext } from "../../core/session/workspace";

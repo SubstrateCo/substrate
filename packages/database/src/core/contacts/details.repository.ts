@@ -2,7 +2,7 @@ import type { ContactIdentifierType } from "@substrate/contracts/contacts/input"
 
 import { AccessDeniedError, ConflictError, violatedConstraint } from "../../errors";
 import { RepositoryContext, entityCursor, pageSize } from "../repository-context";
-import { contactReadable, lockContact, requireContact } from "./access";
+import { contactReadable, lockContact } from "./access";
 import { contactAddresses, contactUrls } from "./details.schema";
 import {
   addressInput,
@@ -13,8 +13,9 @@ import {
   type IdentifierInput,
   type UrlInput,
 } from "./inputs";
+import { contactDetailRows, readContactProfile } from "./profile";
 import { contactIdentifiers, contacts } from "./schema";
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, ne, sql } from "drizzle-orm";
 
 function duplicateIdentifier(error: Error): never {
   if (violatedConstraint(error) === "contact_identifiers_value_unique")
@@ -58,10 +59,13 @@ export function contactDetailsRepository(context: RepositoryContext) {
     });
   }
 
+  /** Clears the other primary values. `keepId` is the row the caller makes primary next, so it is
+   * written once, not cleared and then set again. */
   async function clearPrimary(
     ctx: RepositoryContext,
     table: typeof contactIdentifiers | typeof contactAddresses | typeof contactUrls,
     contactId: string,
+    keepId?: string,
     type?: ContactIdentifierType,
   ) {
     await ctx.db
@@ -71,6 +75,7 @@ export function contactDetailsRepository(context: RepositoryContext) {
         and(
           target(table, contactId),
           eq(table.isPrimary, true),
+          keepId !== undefined ? ne(table.id, keepId) : undefined,
           type ? eq(contactIdentifiers.type, type) : undefined,
         ),
       );
@@ -78,30 +83,12 @@ export function contactDetailsRepository(context: RepositoryContext) {
 
   return {
     async getDetail(contactId: string) {
-      await requireContact(context, contactId);
-      const [profile] = await db
-        .select()
-        .from(contacts)
-        .where(
-          and(eq(contacts.organizationId, scope.organizationId), eq(contacts.entityId, contactId)),
-        );
-      if (!profile) throw new AccessDeniedError();
+      const profile = await readContactProfile(context, contactId);
+      const rows = contactDetailRows(context, contactId);
       const [identifiers, addresses, urls] = await Promise.all([
-        db
-          .select()
-          .from(contactIdentifiers)
-          .where(target(contactIdentifiers, contactId))
-          .orderBy(asc(contactIdentifiers.id)),
-        db
-          .select()
-          .from(contactAddresses)
-          .where(target(contactAddresses, contactId))
-          .orderBy(asc(contactAddresses.id)),
-        db
-          .select()
-          .from(contactUrls)
-          .where(target(contactUrls, contactId))
-          .orderBy(asc(contactUrls.id)),
+        rows.identifiers(),
+        rows.addresses(),
+        rows.urls(),
       ]);
       return { profile, identifiers, addresses, urls };
     },
@@ -146,7 +133,8 @@ export function contactDetailsRepository(context: RepositoryContext) {
     async addIdentifier(contactId: string, input: IdentifierInput) {
       const value = normalizedIdentifier(input);
       return edit(contactId, async (ctx) => {
-        if (value.isPrimary) await clearPrimary(ctx, contactIdentifiers, contactId, value.type);
+        if (value.isPrimary)
+          await clearPrimary(ctx, contactIdentifiers, contactId, undefined, value.type);
         const [row] = await ctx.db
           .insert(contactIdentifiers)
           .values({ ...value, organizationId: scope.organizationId, contactEntityId: contactId })
@@ -164,7 +152,9 @@ export function contactDetailsRepository(context: RepositoryContext) {
           .where(target(contactIdentifiers, contactId, id));
         if (!existing) throw new AccessDeniedError();
         const isPrimary = value.isPrimary ?? existing.isPrimary;
-        if (isPrimary) await clearPrimary(ctx, contactIdentifiers, contactId, value.type);
+        // The unique index allows one primary per type, so an unchanged primary has no competitor.
+        if (isPrimary && !(existing.isPrimary && existing.type === value.type))
+          await clearPrimary(ctx, contactIdentifiers, contactId, id, value.type);
         const [row] = await ctx.db
           .update(contactIdentifiers)
           .set({
@@ -187,7 +177,8 @@ export function contactDetailsRepository(context: RepositoryContext) {
           .from(contactIdentifiers)
           .where(target(contactIdentifiers, contactId, id));
         if (!existing) throw new AccessDeniedError();
-        await clearPrimary(ctx, contactIdentifiers, contactId, existing.type);
+        if (!existing.isPrimary)
+          await clearPrimary(ctx, contactIdentifiers, contactId, id, existing.type);
         const [row] = await ctx.db
           .update(contactIdentifiers)
           .set({ isPrimary: true, updatedAt: new Date() })
@@ -219,7 +210,7 @@ export function contactDetailsRepository(context: RepositoryContext) {
     async updateAddress(contactId: string, id: string, input: AddressInput) {
       const value = parseInput(addressInput, input);
       return edit(contactId, async (ctx) => {
-        if (value.isPrimary) await clearPrimary(ctx, contactAddresses, contactId);
+        if (value.isPrimary) await clearPrimary(ctx, contactAddresses, contactId, id);
         const [row] = await ctx.db
           .update(contactAddresses)
           .set({
@@ -264,7 +255,7 @@ export function contactDetailsRepository(context: RepositoryContext) {
     async updateUrl(contactId: string, id: string, input: UrlInput) {
       const value = parseInput(urlInput, input);
       return edit(contactId, async (ctx) => {
-        if (value.isPrimary) await clearPrimary(ctx, contactUrls, contactId);
+        if (value.isPrimary) await clearPrimary(ctx, contactUrls, contactId, id);
         const [row] = await ctx.db
           .update(contactUrls)
           .set({ ...value, label: value.label ?? null, updatedAt: new Date() })

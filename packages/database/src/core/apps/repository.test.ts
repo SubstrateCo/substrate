@@ -5,7 +5,7 @@ import { waitForLockWaiters } from "../../testing/locks";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { RepositoryContext } from "../repository-context";
-import { enabledApps, requireAppEnabled } from "./access";
+import { enabledApps, requireAppEnabled, requireAppsEnabled } from "./access";
 import { appRepository } from "./repository";
 import { expect, test } from "bun:test";
 import { eq, sql } from "drizzle-orm";
@@ -93,6 +93,64 @@ test("read app checks take no row locks and observe later changes", async () => 
     AppDisabledError,
   );
   expect(queries.some((query) => /for (share|update|no key update)/i.test(query))).toBe(false);
+});
+
+test("batched app checks use one lock and one settings read, or no queries for no apps", async () => {
+  const { db, queries } = recordQueries();
+  await requireAppsEnabled(context(db), []);
+  expect(queries).toEqual([]);
+  await db.transaction(async (tx) => {
+    queries.length = 0;
+    await requireAppsEnabled(context(tx), ["crm", "tasks"]);
+    expect(queries).toHaveLength(2);
+    expect(queries[0]).toContain('from "organization"');
+    expect(queries[0]).toContain("for share");
+    expect(queries[1]).toContain('from "organization_apps"');
+  });
+  queries.length = 0;
+  await requireAppsEnabled(context(db), ["crm", "tasks"], false);
+  expect(queries).toHaveLength(1);
+  expect(queries[0]).not.toContain("for share");
+  for (const app of ["crm", "tasks"] as const) {
+    await f.db
+      .update(organizationApps)
+      .set({ enabled: false })
+      .where(eq(organizationApps.appId, app));
+    expect(
+      await rejection(db.transaction((tx) => requireAppsEnabled(context(tx), ["crm", "tasks"]))),
+    ).toBeInstanceOf(AppDisabledError);
+    await f.db
+      .update(organizationApps)
+      .set({ enabled: true })
+      .where(eq(organizationApps.appId, app));
+  }
+});
+
+test("batched mutation guards read fresh settings after waiting for the organization lock", async () => {
+  let release!: () => void;
+  let locked!: () => void;
+  const held = new Promise<void>((resolve) => {
+    locked = resolve;
+  });
+  const finish = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const disable = f.db.transaction(async (tx) => {
+    await repository(context(tx)).update(["messages", "agents", "tasks"]);
+    locked();
+    await finish;
+  });
+  await held;
+  const check = rejection(
+    f.db.transaction((tx) => requireAppsEnabled(context(tx), ["tasks", "crm"])),
+  );
+  try {
+    await waitForLockWaiters();
+  } finally {
+    release();
+    await disable;
+  }
+  expect(await check).toBeInstanceOf(AppDisabledError);
 });
 
 test("locked checks observe settings changes in their transaction", async () => {

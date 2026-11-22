@@ -2,6 +2,7 @@ import type { ContactWrite } from "@substrate/contracts/contacts/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { lockContact } from "../../core/contacts/access";
+import { contactDetailRows, readContactProfile } from "../../core/contacts/profile";
 import { contactRepository } from "../../core/contacts/repository";
 import type { RepositoryContext } from "../../core/repository-context";
 import { recordCrmActivity } from "../crm/activity";
@@ -17,27 +18,25 @@ type Action =
   | "updateUrl"
   | "removeUrl";
 type Input = Extract<ContactWrite, { action: Action }>;
-type Details = Awaited<ReturnType<ReturnType<typeof contactRepository>["getDetail"]>>;
-function contentKey(detail: Details) {
-  return JSON.stringify({
-    identifiers: detail.identifiers.map((row) => ({
-      ...row,
-      createdAt: undefined,
-      updatedAt: undefined,
-    })),
-    addresses: detail.addresses.map((row) => ({
-      ...row,
-      createdAt: undefined,
-      updatedAt: undefined,
-    })),
-    urls: detail.urls.map((row) => ({ ...row, createdAt: undefined, updatedAt: undefined })),
-  });
+function collectionOf(action: Action) {
+  if (action.endsWith("Identifier")) return "identifiers";
+  if (action.endsWith("Address")) return "addresses";
+  return "urls";
+}
+/** The content of the collection the action edits, without timestamps. A primary change edits
+ * other rows too, so the snapshot covers the whole collection. */
+async function contentKey(ctx: RepositoryContext, contactId: string, action: Action) {
+  await readContactProfile(ctx, contactId);
+  const rows = await contactDetailRows(ctx, contactId)[collectionOf(action)]();
+  return JSON.stringify(
+    rows.map((row) => ({ ...row, createdAt: undefined, updatedAt: undefined })),
+  );
 }
 export function mutateContactDetail(context: RepositoryContext, input: Input) {
   return context.transaction(async (ctx) => {
     await lockContact(ctx, input.contactEntityId);
     const repo = contactRepository(ctx);
-    const before = contentKey(await repo.getDetail(input.contactEntityId));
+    const before = await contentKey(ctx, input.contactEntityId, input.action);
     async function write() {
       switch (input.action) {
         case "addIdentifier":
@@ -64,7 +63,7 @@ export function mutateContactDetail(context: RepositoryContext, input: Input) {
       }
     }
     const result = await write();
-    const after = contentKey(await repo.getDetail(input.contactEntityId));
+    const after = await contentKey(ctx, input.contactEntityId, input.action);
     if (before !== after) {
       let field: "identifier" | "address" | "url" = "url";
       if (input.action.endsWith("Identifier")) field = "identifier";

@@ -31,11 +31,21 @@ export async function requireAppEnabled(
   app: OptionalAppId,
   lock = true,
 ) {
+  return requireAppsEnabled(context, [app], lock);
+}
+
+export async function requireAppsEnabled(
+  context: RepositoryContext,
+  apps: OptionalAppId[],
+  lock = true,
+) {
+  if (!apps.length) return;
   if (lock)
     await context.db
       .select({ id: organization.id })
       .from(organization)
       .where(eq(organization.id, context.scope.organizationId))
       .for("share");
-  if (!(await enabledApps(context)).includes(app)) throw new AppDisabledError();
+  const enabled = await enabledApps(context);
+  if (apps.some((app) => !enabled.includes(app))) throw new AppDisabledError();
 }

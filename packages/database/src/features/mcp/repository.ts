@@ -4,6 +4,7 @@ import type { McpOutput, ServerToolName } from "@substrate/contracts/harness/too
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { findDevice } from "../../core/devices/repository";
+import { desktopDevices } from "../../core/devices/schema";
 import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, mapPostgresError } from "../../errors";
@@ -17,14 +18,29 @@ export async function requireHomeDevice(
   actorId: string,
   installationId: string | undefined,
 ) {
+  if (!installationId) throw new AccessDeniedError();
   // Keep the home assignment stable until the write commits.
   const [row] = await tx
-    .select({ userAgentId: userAgents.id, homeDeviceId: userAgents.homeDeviceId })
+    .select({
+      userAgentId: userAgents.id,
+      homeDeviceId: userAgents.homeDeviceId,
+      deviceId: desktopDevices.id,
+    })
     .from(actors)
     .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+    .leftJoin(
+      desktopDevices,
+      and(
+        eq(desktopDevices.userId, identity.userId),
+        eq(desktopDevices.installationId, installationId),
+      ),
+    )
     .where(and(eq(actors.entityId, actorId), eq(userAgents.userId, identity.userId)))
     .for("share", { of: userAgents });
-  if (!row?.homeDeviceId || !installationId) throw new AccessDeniedError();
+  if (!row?.homeDeviceId) throw new AccessDeniedError();
+  if (row.deviceId === row.homeDeviceId) return row.userAgentId;
+  // The lock may have waited for a new home whose registration was absent from this
+  // statement's snapshot. Resolve it again after the lock, with a fresh snapshot.
   const device = await findDevice(tx, identity.userId, installationId);
   if (device?.id !== row.homeDeviceId) throw new AccessDeniedError();
   return row.userAgentId;

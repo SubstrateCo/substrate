@@ -1,6 +1,8 @@
-import { ConflictError } from "../../errors";
+import { AccessDeniedError, ConflictError } from "../../errors";
+import { ActorRepositories } from "../../repositories";
 import { contacts } from "../../schema";
 import { setupDatabase } from "../../testing/database";
+import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { describe, expect, test } from "bun:test";
 import { sql } from "drizzle-orm";
@@ -210,6 +212,118 @@ describe("contact details", () => {
       }),
     );
     expect((await repo.getDetail(contact.entityId)).identifiers).toEqual(before.identifiers);
+  });
+
+  test("primary changes write the selected row once and clear only competitors", async () => {
+    const contact = await f.forActor(f.alice).contacts.create({ displayName: "Jane" });
+    const seed = f.forActor(f.alice).contacts;
+    const work = await seed.addIdentifier(contact.entityId, {
+      type: "email",
+      value: "work@example.com",
+      isPrimary: true,
+    });
+    const home = await seed.addIdentifier(contact.entityId, {
+      type: "email",
+      value: "home@example.com",
+    });
+    const phone = await seed.addIdentifier(contact.entityId, {
+      type: "phone",
+      value: "+1 415 555 0123",
+      isPrimary: true,
+    });
+    await seed.addAddress(contact.entityId, { city: "London", isPrimary: true });
+    const otherAddress = await seed.addAddress(contact.entityId, { city: "Paris" });
+    await seed.addUrl(contact.entityId, { url: "https://a.example", isPrimary: true });
+    const otherUrl = await seed.addUrl(contact.entityId, { url: "https://b.example" });
+    const tracked = recordQueries();
+    const repo = new ActorRepositories(tracked.db, {
+      organizationId: f.orgA,
+      actorEntityId: f.alice,
+    }).contacts;
+    const updates = (table: string) => {
+      const found = tracked.queries
+        .map((query, index) => ({ query, parameters: tracked.parameters[index]! }))
+        .filter(({ query }) => query.startsWith(`update "${table}"`));
+      tracked.queries.length = 0;
+      tracked.parameters.length = 0;
+      return found;
+    };
+    const clears = (rows: { parameters: unknown[] }[], id: string) =>
+      rows.filter(({ parameters }) => parameters[0] === false && parameters.includes(id));
+
+    await repo.setPrimaryIdentifier(contact.entityId, work.id);
+    expect(updates("contact_identifiers")).toHaveLength(1);
+    await repo.updateIdentifier(contact.entityId, work.id, {
+      type: "email",
+      value: "work@example.com",
+      label: "work",
+    });
+    expect(updates("contact_identifiers")).toHaveLength(1);
+    await repo.setPrimaryIdentifier(contact.entityId, home.id);
+    const switched = updates("contact_identifiers");
+    expect(switched).toHaveLength(2);
+    expect(clears(switched, home.id)).toHaveLength(1);
+    expect(switched[0]!.query).toContain(`"id" <> `);
+    await repo.updateAddress(contact.entityId, otherAddress.id, { city: "Paris", isPrimary: true });
+    const addressWrites = updates("contact_addresses");
+    expect(addressWrites[0]!.query).toContain(`"id" <> `);
+    expect(clears(addressWrites, otherAddress.id)).toHaveLength(1);
+    await repo.updateUrl(contact.entityId, otherUrl.id, {
+      url: "https://b.example",
+      isPrimary: true,
+    });
+    const urlWrites = updates("contact_urls");
+    expect(urlWrites[0]!.query).toContain(`"id" <> `);
+    expect(clears(urlWrites, otherUrl.id)).toHaveLength(1);
+    // Moving the email primary to the phone type replaces the phone primary.
+    await repo.updateIdentifier(contact.entityId, home.id, {
+      type: "phone",
+      value: "+1 415 555 0199",
+    });
+
+    const detail = await seed.getDetail(contact.entityId);
+    const primary = (rows: { id: string; isPrimary: boolean }[]) =>
+      rows.flatMap((row) => (row.isPrimary ? [row.id] : []));
+    expect(primary(detail.identifiers)).toEqual([home.id]);
+    expect(detail.identifiers.find((row) => row.id === home.id)).toMatchObject({
+      type: "phone",
+      label: null,
+    });
+    expect(detail.identifiers.find((row) => row.id === work.id)).toMatchObject({
+      label: "work",
+      isPrimary: false,
+    });
+    expect(detail.identifiers.find((row) => row.id === phone.id)?.isPrimary).toBe(false);
+    expect(primary(detail.addresses)).toEqual([otherAddress.id]);
+    expect(primary(detail.urls)).toEqual([otherUrl.id]);
+  });
+
+  test("a missing primary target rolls back the cleared competitor", async () => {
+    const repo = f.forActor(f.alice).contacts;
+    const contact = await repo.create({ displayName: "Jane" });
+    await repo.addIdentifier(contact.entityId, {
+      type: "email",
+      value: "a@example.com",
+      isPrimary: true,
+    });
+    await repo.addAddress(contact.entityId, { city: "London", isPrimary: true });
+    await repo.addUrl(contact.entityId, { url: "https://a.example", isPrimary: true });
+    const before = await repo.getDetail(contact.entityId);
+    const missing = crypto.randomUUID();
+    for (const write of [
+      () =>
+        repo.updateIdentifier(contact.entityId, missing, {
+          type: "email",
+          value: "b@example.com",
+          isPrimary: true,
+        }),
+      () => repo.setPrimaryIdentifier(contact.entityId, missing),
+      () => repo.updateAddress(contact.entityId, missing, { city: "Paris", isPrimary: true }),
+      () =>
+        repo.updateUrl(contact.entityId, missing, { url: "https://b.example", isPrimary: true }),
+    ])
+      expect(await rejection(write())).toBeInstanceOf(AccessDeniedError);
+    expect(await repo.getDetail(contact.entityId)).toEqual(before);
   });
 
   test("members change any contact's details and outsiders cannot", async () => {

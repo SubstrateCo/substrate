@@ -7,7 +7,7 @@ import {
   type ServerToolName,
 } from "@substrate/contracts/harness/tools";
 import {
-  requireAppEnabled,
+  requireAppsEnabled,
   effectsFor,
   type SessionIdentity,
   workspaceContext,
@@ -87,10 +87,11 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     userName,
   } = await workspaceContext(tx, identity, { lockActor: !definition.readOnly });
   // Check current settings before handlers or cached results can expose disabled app data.
-  for (const app of toolApps(tool)) {
-    if (app !== "tasks" && app !== "crm") continue;
-    await requireAppEnabled(ctx, app, !definition.readOnly);
-  }
+  await requireAppsEnabled(
+    ctx,
+    toolApps(tool).filter((app) => app === "tasks" || app === "crm"),
+    !definition.readOnly,
+  );
   const actor = { id: agent.entityId, name: agent.name, type: agent.type };
   // A turn that answers callers names their calls; each call is audited, reads included.
   const calls = await requireCallerTurn(tx, identity, turn);

@@ -161,6 +161,51 @@ test("disabled app tools reject fresh calls and cached writes from stale session
   expect(await call("get_me", {})).toHaveProperty("actor");
 });
 
+test("dual-app tools batch their guard and reject either disabled app before cached receipts", async () => {
+  const { call, identity, project } = await fixture();
+  const account = await call("create_crm_account", {
+    requestId: crypto.randomUUID(),
+    name: "Customer",
+  });
+  const input = {
+    requestId: crypto.randomUUID(),
+    entityId: account.record.entityId,
+    projectEntityId: project.entityId,
+    title: "Follow up",
+    consentToTaskAudience: true,
+  };
+  const created = await call("create_crm_follow_up", input);
+  const { db, queries } = recordQueries();
+  const replay = await executeAgentTool(db, identity, "create_crm_follow_up", input, turn);
+  expect(replay.output.id).toBe(created.id);
+  const receiptIndex = queries.findIndex((query) => query.includes('from "agent_tool_requests"'));
+  expect(receiptIndex).toBeGreaterThan(0);
+  const guards = queries.slice(0, receiptIndex);
+  expect(
+    guards.filter((query) => query.includes('from "organization"') && query.includes("for share")),
+  ).toHaveLength(1);
+  expect(guards.filter((query) => query.includes('from "organization_apps"'))).toHaveLength(1);
+  for (const app of ["tasks", "crm"] as const) {
+    await f.db
+      .update(organizationApps)
+      .set({ enabled: false })
+      .where(and(eq(organizationApps.organizationId, f.orgA), eq(organizationApps.appId, app)));
+    for (const requestId of [input.requestId, crypto.randomUUID()]) {
+      queries.length = 0;
+      expect(
+        await rejection(
+          executeAgentTool(db, identity, "create_crm_follow_up", { ...input, requestId }, turn),
+        ),
+      ).toBeInstanceOf(AppDisabledError);
+      expect(queries.some((query) => query.includes('from "agent_tool_requests"'))).toBe(false);
+    }
+    await f.db
+      .update(organizationApps)
+      .set({ enabled: true })
+      .where(and(eq(organizationApps.organizationId, f.orgA), eq(organizationApps.appId, app)));
+  }
+});
+
 test("CRM MCP uses owner access, human responsibility and replay without duplicate records", async () => {
   const { call } = await fixture();
   await f.db.update(member).set({ role: "member" }).where(eq(member.id, "alice-a"));

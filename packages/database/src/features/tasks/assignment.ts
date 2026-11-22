@@ -1,11 +1,13 @@
-import { visibleActorCondition } from "../../core/actors/access";
+import { activeActorCondition, visibleActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
+import { entities } from "../../core/entities/schema";
+import { entityAccessLevel } from "../../core/permissions/visibility";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { liveTask } from "./access";
 import { tasks } from "./tasks.schema";
-import { and, eq, or } from "drizzle-orm";
+import { and, eq, isNotNull, isNull, or } from "drizzle-orm";
 
 export async function requireAssignee(
   ctx: RepositoryContext,
@@ -16,17 +18,31 @@ export async function requireAssignee(
   const [assignee] = await ctx.db
     .select({ entityId: actors.entityId })
     .from(actors)
+    .innerJoin(
+      entities,
+      and(
+        eq(entities.organizationId, actors.organizationId),
+        eq(entities.entityId, actors.entityId),
+      ),
+    )
     .where(
       and(
         eq(actors.organizationId, ctx.scope.organizationId),
         eq(actors.entityId, actorEntityId),
+        activeActorCondition(),
+        isNull(entities.deletedAt),
         actorEntityId === currentAssigneeActorEntityId
           ? undefined
           : visibleActorCondition(ctx.scope),
+        isNotNull(
+          entityAccessLevel(
+            { organizationId: ctx.scope.organizationId, actorEntityId: actors.entityId },
+            projectEntityId,
+          ),
+        ),
       ),
     );
-  if (!assignee || !(await ctx.actorCanAccess(actorEntityId, projectEntityId, "view")))
-    throw new AccessDeniedError();
+  if (!assignee) throw new AccessDeniedError();
 }
 
 export async function requireMovingAssignees(

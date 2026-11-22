@@ -286,7 +286,16 @@ test("task create locks the project once and update batches activity with one as
   expect(statements.filter((query) => query.includes("FOR NO KEY UPDATE"))).toHaveLength(1);
   expect(statements).toHaveLength(5);
   statements.length = 0;
-  await repos.tasks.update(task.entityId, {
+  expect(
+    await repos.tasks.update(task.entityId, {
+      title: "Counted",
+      status: "in_progress",
+      priority: "high",
+      assigneeActorEntityId: fixture.bob,
+    }),
+  ).toMatchObject({
+    entityId: task.entityId,
+    projectEntityId: project.entityId,
     title: "Counted",
     status: "in_progress",
     priority: "high",
@@ -294,7 +303,7 @@ test("task create locks the project once and update batches activity with one as
   });
   // The task's lock path covers its project, so the update locks once.
   expect(statements.filter((query) => query.includes("FOR NO KEY UPDATE"))).toHaveLength(1);
-  expect(statements).toHaveLength(9);
+  expect(statements).toHaveLength(8);
   const activity = await fixture.db
     .select()
     .from(schema.taskActivity)
