@@ -4,6 +4,12 @@ import { AccountDetail } from "./account-detail";
 import { CrmSettings } from "./crm-settings";
 import type { CrmSection } from "./crm-types";
 import { DealDetail } from "./deal-detail";
+import {
+  PageContent,
+  PageLayout,
+  PageSidebar,
+  PageSidebarContent,
+} from "@/components/layout/page-layout";
 import { RecordCollection } from "@/components/records/record-collection";
 import { Button } from "@/components/ui/button";
 import { Building2, Handshake, Settings } from "lucide-react";
@@ -32,25 +38,30 @@ export function CrmWorkspace({
     content = <Detail key={recordId} organizationId={organizationId} entityId={recordId} />;
   }
   return (
-    <div className="@container flex min-h-0 flex-1 flex-col">
-      <nav
-        aria-label="CRM"
-        className="flex shrink-0 items-center gap-1 overflow-x-auto border-b px-4 py-2"
-      >
-        {sections.map(({ value, label, icon: Icon }) => (
-          <Button key={value} variant={section === value ? "secondary" : "ghost"} size="sm" asChild>
-            <Link
-              to="/crm"
-              search={{ workspaceId: organizationId, section: value }}
-              aria-current={section === value ? "page" : undefined}
-            >
-              <Icon aria-hidden />
-              {label}
-            </Link>
-          </Button>
-        ))}
-      </nav>
-      {content}
-    </div>
+    <PageLayout id="crm" aria-label="CRM workspace">
+      <PageSidebar aria-label="CRM">
+        <PageSidebarContent>
+          <nav aria-label="CRM">
+            <ul className="flex gap-0.5 overflow-x-auto md:flex-col">
+              {sections.map(({ value, label, icon: Icon }) => (
+                <li key={value} className="shrink-0">
+                  <Button variant="sidebar" className="w-full justify-start" asChild>
+                    <Link
+                      to="/crm"
+                      search={{ workspaceId: organizationId, section: value }}
+                      aria-current={section === value ? "page" : undefined}
+                    >
+                      <Icon aria-hidden className="text-muted-foreground" />
+                      {label}
+                    </Link>
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          </nav>
+        </PageSidebarContent>
+      </PageSidebar>
+      <PageContent className="@container">{content}</PageContent>
+    </PageLayout>
   );
 }
