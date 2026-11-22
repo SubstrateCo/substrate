@@ -37,7 +37,6 @@ export function CrmWorkspace({
         aria-label="CRM"
         className="flex shrink-0 items-center gap-1 overflow-x-auto border-b px-4 py-2"
       >
-        <span className="mr-4 text-sm font-semibold">CRM</span>
         {sections.map(({ value, label, icon: Icon }) => (
           <Button key={value} variant={section === value ? "secondary" : "ghost"} size="sm" asChild>
             <Link
