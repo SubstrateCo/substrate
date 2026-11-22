@@ -45,7 +45,7 @@ export function RecordList({
     );
   return (
     <div
-      className="overflow-hidden rounded-lg border"
+      className="shrink-0 overflow-hidden rounded-lg border"
       role={loading ? "status" : undefined}
       aria-label={loading ? `Loading ${kind}` : undefined}
     >
