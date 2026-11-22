@@ -1,4 +1,5 @@
 import { Skeleton } from "../ui/skeleton";
+import { useDelayedLoading } from "@/hooks/use-delayed-loading";
 import { cn } from "cn";
 
 export function LoadingState({
@@ -10,8 +11,9 @@ export function LoadingState({
   variant?: "list" | "compact" | "messages" | "table";
   rows?: number;
 }) {
+  const showLoading = useDelayedLoading(true);
   return (
-    <div role="status" aria-label={label} className="min-w-0">
+    <div role="status" aria-label={label} className={cn("min-w-0", !showLoading && "invisible")}>
       <span className="sr-only">{label}</span>
       <div aria-hidden="true" className={cn("space-y-2", variant === "messages" && "space-y-5")}>
         {Array.from({ length: rows }, (_, index) => (

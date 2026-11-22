@@ -6,7 +6,9 @@ import { isAccessFailure } from "@/api/access-failure";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { useDelayedLoading } from "@/hooks/use-delayed-loading";
 import { resourceState } from "@/lib/resource-state";
+import { cn } from "cn";
 import { Unlink } from "lucide-react";
 
 /** Returns the record's data, or the loading, error, or unavailable view while it has no fresh data. */
@@ -38,6 +40,7 @@ export function CrmResourceState({
   onRetry: () => void;
   loading?: ReactNode;
 }) {
+  const showLoading = useDelayedLoading(pending);
   if (isAccessFailure(error))
     return (
       <ContentNotice
@@ -54,6 +57,11 @@ export function CrmResourceState({
         onRetry={onRetry}
       />
     );
-  if (pending) return loading ?? <LoadingState label="Loading CRM…" variant="table" />;
+  if (pending)
+    return (
+      <div className={cn("contents", !showLoading && "invisible")}>
+        {loading ?? <LoadingState label="Loading CRM…" variant="table" />}
+      </div>
+    );
   return null;
 }

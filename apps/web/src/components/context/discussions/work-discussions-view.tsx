@@ -5,6 +5,8 @@ import { ErrorState } from "../../feedback/error-state";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { DiscussionItem, DiscussionItemSkeleton, type Discussion } from "./discussion-item";
+import { useDelayedLoading } from "@/hooks/use-delayed-loading";
+import { cn } from "cn";
 import { ChevronDown, MessagesSquare } from "lucide-react";
 
 /**
@@ -95,8 +97,9 @@ export function WorkDiscussions({
 }
 
 function DiscussionLoading() {
+  const showLoading = useDelayedLoading(true);
   return (
-    <div role="status">
+    <div role="status" className={cn(!showLoading && "invisible")}>
       <span className="sr-only">Loading discussions</span>
       <ul aria-hidden="true" className="space-y-2">
         <DiscussionItemSkeleton />

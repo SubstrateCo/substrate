@@ -10,6 +10,8 @@ import { Tag } from "@/components/feedback/tag";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useDelayedLoading } from "@/hooks/use-delayed-loading";
+import { cn } from "cn";
 import { History, Unlink } from "lucide-react";
 
 export function ActivityList({
@@ -30,6 +32,7 @@ export function ActivityList({
   onLoadMore: () => void;
 }) {
   const unavailable = isAccessFailure(error);
+  const showLoading = useDelayedLoading(loading && !items.length);
   return (
     <section aria-label="Activity" className="space-y-3">
       <div className="space-y-1">
@@ -40,7 +43,11 @@ export function ActivityList({
         </p>
       </div>
       {loading && !items.length && (
-        <div role="status" aria-label="Loading activity">
+        <div
+          role="status"
+          aria-label="Loading activity"
+          className={cn(!showLoading && "invisible")}
+        >
           <ol aria-hidden="true" className="divide-y">
             {[0, 1, 2].map((key) => (
               <ActivityRowLayout key={key}>

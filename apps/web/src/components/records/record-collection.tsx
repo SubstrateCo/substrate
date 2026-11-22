@@ -108,7 +108,14 @@ export function RecordCollection({
 }) {
   const [search, setSearch] = useState("");
   const [archived, setArchived] = useState(false);
-  const debounced = useSearchDebounce(search, JSON.stringify([organizationId, kind, archived]));
+  const searchDebounce = useSearchDebounce(
+    search,
+    JSON.stringify([organizationId, kind, archived]),
+  );
+  const debounced = {
+    ...searchDebounce,
+    pending: searchDebounce.pending && (kind !== "deals" || search !== ""),
+  };
   const [view, setView] = useState<"pipeline" | "list">("pipeline");
   const [creating, setCreating] = useState(false);
   const [cursors, setCursors] = useState<string[]>([]);
