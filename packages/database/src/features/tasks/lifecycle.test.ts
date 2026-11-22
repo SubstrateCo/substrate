@@ -58,9 +58,9 @@ test("project access cannot be revoked while the person has assigned tasks", asy
     level: "view",
   });
   await repos.tasks.update(task.entityId, { assigneeActorEntityId: f.bob });
-  expect(await rejection(repos.projects.revoke(project.entityId, f.bob))).toBeInstanceOf(
-    ValidationError,
-  );
+  const error = await rejection(repos.projects.revoke(project.entityId, f.bob));
+  expect(error).toBeInstanceOf(ValidationError);
+  expect(error.message).toContain("Reassign or unassign");
   expect((await f.forActor(f.bob).tasks.get(task.entityId)).assigneeActorEntityId).toBe(f.bob);
   await repos.tasks.update(task.entityId, { assigneeActorEntityId: null });
   await repos.projects.revoke(project.entityId, f.bob);

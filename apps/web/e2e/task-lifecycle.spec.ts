@@ -1,5 +1,5 @@
 import { post, test, visit } from "./test-support/fixtures";
-import { detail, project, select, share } from "./test-support/tasks";
+import { project, select, share } from "./test-support/tasks";
 import { expect } from "@playwright/test";
 
 test("move a task with its subtasks, follow its old link, change parent, and delete it", async ({
@@ -104,36 +104,6 @@ test("moving work to a private project removes it from another viewer’s open i
   ).toBeVisible();
   await expect(viewer.page.getByText("Moved private work", { exact: true })).toHaveCount(0);
   await expect(viewer.page.getByText(destination.name, { exact: true })).toHaveCount(0);
-});
-
-test("removing project access explains that assigned tasks must be reassigned first", async ({
-  actors,
-  client,
-}) => {
-  const created = await project(actors.sender);
-  await share(actors.sender, created.entityId, actors.member.name, "edit");
-  const data = await detail(actors.sender, created.entityId);
-  const assignee = data.actors.find((actor) => actor.name === actors.member.name)!;
-  await post(actors.sender, "tasks/mutations", {
-    action: "createTask",
-    organizationId: actors.sender.organizationId,
-    projectEntityId: created.entityId,
-    title: "Assigned work",
-    assigneeActorEntityId: assignee.entityId,
-  });
-  const user = await client(actors.sender);
-  await visit(user, undefined, "/tasks", { projectId: created.entityId });
-  await user.page.getByRole("tab", { name: "Settings", exact: true }).click();
-  await user.page
-    .getByRole("button", { name: `Remove ${actors.member.name}’s access`, exact: true })
-    .click();
-  await user.page.getByRole("button", { name: "Remove access", exact: true }).click();
-  await expect(user.page.getByRole("alert")).toContainText("Reassign or unassign");
-  expect(
-    (await detail(actors.sender, created.entityId)).members.some(
-      (member) => member.actorEntityId === assignee.entityId,
-    ),
-  ).toBe(true);
 });
 
 test("saving a description does not overwrite a title changed by another client", async ({

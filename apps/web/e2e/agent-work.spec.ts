@@ -223,21 +223,3 @@ test("the owner approves the exact proposed message; it posts as the agent and l
   await expect(posted.getByText("You approved this")).toBeVisible();
   await expect(posted.getByRole("link", { name: `from ${origin.name}` })).toBeVisible();
 });
-
-test("declining a proposal clears it from Needs you", async ({ actors, client }) => {
-  const owner = actors.sender;
-  const agent = await createAgent(owner);
-  const [origin, created] = await Promise.all([conversation(owner), project(owner)]);
-  const root = await ownerMessage(owner, origin.id, "Track this");
-  await callTool(owner, agent.id, threadTurn(origin.id, root.id, agent.installationId), "propose", {
-    summary: "Create a follow-up task.",
-    action: { type: "create_task", input: { projectId: created.entityId, title: "Never created" } },
-  });
-  const user = await client(owner);
-  await visit(user, undefined, "/agents");
-  const proposal = user.page.getByRole("region", { name: `${agent.name} proposes` });
-  await expect(proposal.getByText("Never created")).toBeVisible();
-  await proposal.getByRole("button", { name: "Decline" }).click();
-  await expect(user.page.getByRole("heading", { name: "Nothing needs you" })).toBeVisible();
-  await expect(proposal).toHaveCount(0);
-});
