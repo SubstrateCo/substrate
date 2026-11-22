@@ -71,7 +71,7 @@ function updateDescription({ install, state }: DesktopUpdateStatus) {
   }
 }
 
-export function DesktopUpdateSettingsView({
+function DesktopUpdateSettingsView({
   status,
   pending,
   onCheck,

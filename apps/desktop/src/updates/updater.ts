@@ -169,5 +169,3 @@ export function createDesktopUpdater(options: {
     },
   };
 }
-
-export type DesktopUpdater = ReturnType<typeof createDesktopUpdater>;

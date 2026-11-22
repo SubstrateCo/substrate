@@ -29,7 +29,7 @@ function RoutineContent({ children }: { children: ReactNode }) {
   return <div className="grid min-w-0 flex-1 gap-0.5">{children}</div>;
 }
 
-export function RoutineRowsLoading() {
+function RoutineRowsLoading() {
   return (
     <div role="status" aria-label="Loading routines">
       <ul aria-hidden="true" className="divide-y overflow-hidden rounded-xl border bg-card">

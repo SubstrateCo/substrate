@@ -17,7 +17,7 @@ test("Home summaries require a session and the active workspace", async ({
   }
 });
 
-test("Home tasks stop exposing assigned work when project access is revoked", async ({
+test("Home tasks require unassignment before project access is revoked", async ({
   actors,
   workspace,
 }) => {
@@ -50,6 +50,23 @@ test("Home tasks stop exposing assigned work when project access is revoked", as
   expect(await result(await read())).toMatchObject([
     { entityId: id, title: "Private launch review" },
   ]);
+  await rejected(
+    await tasks.write(owner, {
+      action: "revoke",
+      projectEntityId,
+      actorEntityId: memberId,
+    }),
+  );
+  expect(await result(await read())).toMatchObject([{ entityId: id }]);
+  await result(
+    await tasks.write(owner, {
+      action: "updateTask",
+      projectEntityId,
+      taskEntityId: id,
+      assigneeActorEntityId: null,
+    }),
+  );
+  expect(await result(await read())).toEqual([]);
   await result(
     await tasks.write(owner, {
       action: "revoke",

@@ -8,7 +8,7 @@ export type InteractionConnection = Awaited<
   ReturnType<typeof getInteractionProfile>
 >["connections"][number];
 
-export function ConnectionLink({
+function ConnectionLink({
   organizationId,
   connection,
 }: {

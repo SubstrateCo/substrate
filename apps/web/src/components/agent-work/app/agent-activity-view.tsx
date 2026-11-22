@@ -41,7 +41,7 @@ function ActivityRowContent({
   );
 }
 
-export function ActivityRowsLoading() {
+function ActivityRowsLoading() {
   return (
     <div role="status" aria-label="Loading activity">
       <ul aria-hidden="true" className="divide-y overflow-hidden rounded-xl border bg-card">

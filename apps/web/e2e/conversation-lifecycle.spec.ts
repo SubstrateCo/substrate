@@ -49,7 +49,7 @@ test("deleting a channel keeps its linked task and removes the channel for every
   await expect(sender.page.getByText(channel.name, { exact: true })).toHaveCount(0);
   await expectChange(member, since, "messaging");
   await expect(
-    member.page.getByRole("heading", { name: "Conversation unavailable", exact: true }),
+    member.page.getByRole("heading", { name: "Conversation unavailable", exact: true, level: 2 }),
   ).toBeVisible();
   await expect(member.page.getByText(channel.name, { exact: true })).toHaveCount(0);
 

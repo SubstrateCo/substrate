@@ -48,7 +48,8 @@ test("home work is personal, readable, live, and ordered by due date", async () 
     assigneeActorEntityId: f.bob,
   });
   expect((await f.forActor(f.bob).tasks.home()).map((item) => item.title)).toEqual(["Bob’s work"]);
-  await alice.projects.revoke(project.entityId, f.bob);
+  // Simulate a lost grant with an assignment still present; project revocation prevents this.
+  await alice.permissions.revoke({ entityId: project.entityId, actorEntityId: f.bob });
   expect(await f.forActor(f.bob).tasks.home()).toEqual([]);
   expect(await f.forActor(f.outsider, f.orgB).tasks.home()).toEqual([]);
 });

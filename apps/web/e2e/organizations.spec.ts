@@ -48,7 +48,7 @@ test("switching workspaces clears private messages, reconnects in the selected o
   await user.page.getByRole("button", { name: `${firstName} ▾`, exact: true }).click();
   await user.page.clock.resume();
   await Promise.all([reconnect, user.page.getByRole("menuitem", { name, exact: true }).click()]);
-  await expect(user.page.getByText(secondBody, { exact: true })).toBeVisible();
+  await expect(user.page).toHaveURL(/\/dashboard$/);
   await expect(user.page.getByText(privateBody, { exact: true })).toHaveCount(0);
   await expect(conversationButton(user.page, first.name)).toHaveCount(0);
   await user.waitForEvent(
@@ -58,6 +58,10 @@ test("switching workspaces clears private messages, reconnects in the selected o
   );
   expect(await activeOrganizationId()).toBe(second.id);
   expect(requests.some((request) => request.query === "discard on workspace switch")).toBe(false);
+  await user.page.getByRole("link", { name: "Messages", exact: true }).click();
+  await conversationButton(user.page, secondChannel.name).click();
+  await expect(user.page.getByText(secondBody, { exact: true })).toBeVisible();
+  await expect(conversationButton(user.page, first.name)).toHaveCount(0);
   await user.page.reload();
   await expect(user.page.getByText(secondBody, { exact: true })).toBeVisible();
 
