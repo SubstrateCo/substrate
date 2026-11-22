@@ -2,7 +2,6 @@ import { failure, publicFailure } from "@substrate/contracts/result";
 
 import type { Auth } from "./auth/server";
 import { createDesktopRoutes } from "./desktop/routes";
-import type { RuntimeMetrics } from "./infrastructure/runtime-metrics";
 import type { Services } from "./services";
 import { respond } from "./shared/http";
 import { trustedOrigin } from "./shared/origin";
@@ -42,19 +41,10 @@ export interface AppDependencies {
   scopes: Scopes;
   trustedOrigins: string[];
   realtime?: Pick<ReturnType<typeof createRealtimeRoutes>, "app">;
-  metrics?: RuntimeMetrics;
 }
 
-export function createApp({
-  auth,
-  services,
-  scopes,
-  trustedOrigins,
-  realtime,
-  metrics,
-}: AppDependencies) {
+export function createApp({ auth, services, scopes, trustedOrigins, realtime }: AppDependencies) {
   const app = new Hono();
-  if (metrics) app.use("*", metrics.middleware);
   // Upgrade handlers must run before response-mutating middleware. Hono owns routing;
   // Bun only receives its websocket callbacks in main.ts.
   if (realtime) app.route("/", realtime.app);
@@ -65,12 +55,6 @@ export function createApp({
       c.header("Cache-Control", "no-store");
       return c.json({ status: "ok" });
     });
-  if (metrics) {
-    wired.get("/internal/metrics", (c) => {
-      c.header("Cache-Control", "no-store");
-      return c.json(metrics.read(c.req.query("reset") === "1"));
-    });
-  }
   return wired
     .use(
       "/api/*",

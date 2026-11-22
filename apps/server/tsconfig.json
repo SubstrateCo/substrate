@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.json",
   "compilerOptions": { "lib": ["ESNext", "DOM", "DOM.Iterable"] },
-  "include": ["src", "scripts", "integration", "load", "playwright.config.ts"]
+  "include": ["src", "scripts", "integration", "playwright.config.ts"]
 }

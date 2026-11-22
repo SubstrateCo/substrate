@@ -57,14 +57,11 @@ describe("server environment", () => {
     ).toContain("https://admin.example.com");
   });
 
-  test("pool size is a positive integer and metrics require an explicit opt-in", () => {
+  test("pool size is a positive integer", () => {
     expect(parse({}).databasePoolSize).toBe(10);
-    expect(parse({}).serverMetrics).toBe(false);
-    expect(parse({ DATABASE_POOL_SIZE: "24", SERVER_METRICS: "1" }).databasePoolSize).toBe(24);
-    expect(parse({ SERVER_METRICS: "1" }).serverMetrics).toBe(true);
+    expect(parse({ DATABASE_POOL_SIZE: "24" }).databasePoolSize).toBe(24);
     for (const value of ["0", "-1", "1.5", "bad"])
       expect(() => parse({ DATABASE_POOL_SIZE: value })).toThrow("DATABASE_POOL_SIZE");
-    expect(() => parse({ SERVER_METRICS: "true" })).toThrow("SERVER_METRICS");
   });
   test("one error lists every invalid variable", () => {
     expect(() => parseServerEnvironment({ BETTER_AUTH_SECRET: "short", SMTP_PORT: "bad" })).toThrow(

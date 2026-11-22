@@ -15,8 +15,7 @@
     "**/test-support/**",
     "apps/web/e2e/**",
     "apps/web/src/components/ui/**",
-    "packages/*/migrations/**",
-    "apps/server/load/**"
+    "packages/*/migrations/**"
   ],
   "baseline": ".jscpd-baseline.json",
   "reporters": ["console"],

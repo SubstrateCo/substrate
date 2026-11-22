@@ -51,10 +51,7 @@
     },
     {
       "name": "middleware",
-      "files": [
-        "apps/server/src/shared/{scope,origin}.ts",
-        "apps/server/src/infrastructure/runtime-metrics.ts"
-      ]
+      "files": ["apps/server/src/shared/{scope,origin}.ts"]
     },
     {
       "name": "adapter",

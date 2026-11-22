@@ -14,24 +14,10 @@
     },
     "apps/server": {
       // Runtime scripts and the public API export are discovered from package.json.
-      "entry": [
-        "{src,scripts,load}/**/*.test.ts",
-        "load/k6/main.ts",
-        "load/k6/discussions-smoke.ts",
-        "load/k6/crm-smoke.ts",
-        "load/stats/{reset,snapshot,plans,report}.ts",
-      ],
-      "project": [
-        "src/**/*.ts",
-        "scripts/**/*.ts",
-        "integration/**/*.ts",
-        "load/**/*.ts",
-        "*.config.ts",
-      ],
+      "entry": ["{src,scripts}/**/*.test.ts"],
+      "project": ["src/**/*.ts", "scripts/**/*.ts", "integration/**/*.ts", "*.config.ts"],
       // Tests run through a custom Bun launcher rather than a bun test script.
       "bun": true,
-      // k6 provides these modules at runtime; @types/k6 supplies their declarations.
-      "ignoreDependencies": ["k6"],
     },
     "apps/web": {
       // Vite, TanStack Router, and Playwright discover renderer and test entries.
