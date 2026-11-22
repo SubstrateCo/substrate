@@ -24,5 +24,8 @@ export function accessLabel(level: string) {
 
 export function dealAmount(amount: string | null, currency: string | null) {
   if (amount === null) return "Amount not set";
-  return `${currency ?? ""} ${amount}`.trim();
+  return new Intl.NumberFormat(
+    "en-US",
+    currency ? { style: "currency", currency } : { maximumFractionDigits: 4 },
+  ).format(Number(amount));
 }
