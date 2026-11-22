@@ -8,9 +8,9 @@ import type { LocalTransaction } from "../database.ts";
 import { inbox, sessions, turns } from "../schema/index.ts";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
-/** An owner message waits this long for more messages before its turn can start. */
+/** A human message waits this long for more messages before its turn can start. */
 export const ownerMessageDebounceMs = 500;
-/** A batch of owner messages closes this long after its first message. */
+/** A batch of human messages closes this long after its first message. */
 export const ownerBatchWindowMs = 2000;
 
 export interface NewInboxItem {
@@ -21,13 +21,13 @@ export interface NewInboxItem {
   dedupeKey: string;
   body?: string | null;
   wakeId?: string | null;
-  /** Defaults to now. Owner messages are debounced instead. */
+  /** Defaults to now. Human messages are debounced instead. */
   availableAt?: number;
 }
 
 /**
  * Inserts an item unless the agent already has one with its dedupe key. The item takes its
- * session's organization. Owner messages wait for more messages: each new one moves the batch
+ * session's organization. Human messages wait for more messages: each new one moves the batch
  * 500 ms out, up to 2 s after the first.
  */
 export async function enqueue(tx: LocalTransaction, item: NewInboxItem, now: number) {
@@ -85,7 +85,7 @@ export async function enqueue(tx: LocalTransaction, item: NewInboxItem, now: num
   }
   let availableAt = item.availableAt ?? now;
   let deadlineAt = ref.source === "thread_context" ? now + ownerBatchWindowMs : availableAt;
-  const debounced = item.source === "owner_message";
+  const debounced = item.source === "owner_message" || item.source === "caller_message";
   let batch: (typeof inbox.$inferSelect)[] = [];
   if (debounced) {
     batch = await tx
@@ -94,7 +94,7 @@ export async function enqueue(tx: LocalTransaction, item: NewInboxItem, now: num
       .where(
         and(
           eq(inbox.sessionId, item.sessionId),
-          eq(inbox.source, "owner_message"),
+          eq(inbox.source, item.source),
           eq(inbox.status, "pending"),
           isNull(inbox.turnId),
         ),

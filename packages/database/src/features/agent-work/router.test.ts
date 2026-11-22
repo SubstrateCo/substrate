@@ -91,7 +91,7 @@ test("only the owner's own messages wake the agent; agent messages never do", as
   ]);
 });
 
-test("thread participation does not wake an idle agent; another mention still does", async () => {
+test("human follow-ups wake a thread participant, and explicit mentions still take precedence", async () => {
   const { agent, alice, call } = await agentWorkFixture(f);
   const channel = await alice.createConversation({ kind: "channel", name: "general" });
   await alice.addAgent(channel.id, agent.agentId);
@@ -104,26 +104,35 @@ test("thread participation does not wake an idle agent; another mention still do
     { requestId: crypto.randomUUID(), body: "Here is a draft" },
     threadTurn(channel.id, root.id),
   );
-  await alice.sendMessage(channel.id, "and also this", root.id);
-  expect(await wakes()).toEqual([]);
+  const followUp = await alice.sendMessage(channel.id, "and also this", root.id);
+  expect(await wakes()).toEqual([
+    {
+      sessionKey: sessionKeys.thread(root.id),
+      dedupeKey: `msg:${followUp.id}`,
+      sourceRef: {
+        messageId: followUp.id,
+        conversationId: channel.id,
+        threadId: root.id,
+        kind: "thread_reply",
+      },
+    },
+  ]);
   const later = await alice.sendMessage(
     channel.id,
     `@[agent:${agent.actorId}] revise the draft`,
     root.id,
   );
-  expect(await wakes()).toEqual([
-    {
-      sessionKey: sessionKeys.thread(root.id),
-      dedupeKey: `msg:${later.id}`,
-      sourceRef: {
-        messageId: later.id,
-        conversationId: channel.id,
-        threadId: root.id,
-        kind: "mention",
-      },
+  expect((await wakes()).at(-1)).toEqual({
+    sessionKey: sessionKeys.thread(root.id),
+    dedupeKey: `msg:${later.id}`,
+    sourceRef: {
+      messageId: later.id,
+      conversationId: channel.id,
+      threadId: root.id,
+      kind: "mention",
     },
-  ]);
+  });
 
   await alice.sendMessage(channel.id, "one more", root.id);
-  expect(await wakes()).toHaveLength(1);
+  expect(await wakes()).toHaveLength(3);
 });

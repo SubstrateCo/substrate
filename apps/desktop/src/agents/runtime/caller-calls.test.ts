@@ -7,6 +7,26 @@ afterEach(async () => {
   fixture = undefined;
 });
 
+test("rapid caller messages batch without losing their individual invocation authority", async () => {
+  const f = (fixture = await runtimeFixture());
+  const place = { conversationId: crypto.randomUUID(), threadId: crypto.randomUUID() };
+  const first = f.callerMessage({ ...place, body: "Funding" });
+  await f.runtime.start();
+  await f.advance(200);
+  const second = f.callerMessage({ ...place, body: "And investors" });
+  await f.runtime.sync();
+  await f.advance(400);
+  expect(f.turns()).toHaveLength(0);
+  await f.advance(200);
+  expect(f.turns()).toHaveLength(1);
+  const [turn] = f.turns();
+  expect(turn!.context.invocationIds?.sort()).toEqual(
+    [first.invocationId, second.invocationId].sort(),
+  );
+  expect(turn!.input.text).toContain("Funding");
+  expect(turn!.input.text).toContain("And investors");
+});
+
 test("a caller wake runs interactively with the caller author and invocation context", async () => {
   const f = (fixture = await runtimeFixture());
   const call = f.callerMessage({ body: "Find the report" });

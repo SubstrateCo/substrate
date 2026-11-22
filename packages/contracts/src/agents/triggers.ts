@@ -26,7 +26,7 @@ export const agentTriggers: Record<AgentTriggerKind, { title: string; descriptio
   thread_reply: {
     title: "Thread updates",
     description:
-      "Add new thread messages to this agent's current work. Updates never start a new turn.",
+      "Human follow-ups wake this agent in threads it joined. Agent messages only update current work.",
   },
 };
 

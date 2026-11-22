@@ -111,7 +111,7 @@ test("publisher failure happens after commit and does not audit a failed tool ex
   expect(logged.map((row) => row.result)).toEqual(["ok"]);
 });
 
-test("past answers do not make untargeted thread replies start new calls", async () => {
+test("human follow-ups call a participant under each caller's current policy", async () => {
   const x = await callerFixture(f);
   await x.policy("anyone");
   const root = await x.bob.sendMessage(x.channel.id, `${x.mention} start`);
@@ -121,17 +121,21 @@ test("past answers do not make untargeted thread replies start new calls", async
     { requestId: crypto.randomUUID(), body: "Started" },
     { ...threadTurn(x.channel.id, root.id), invocationIds: [first!.id] },
   );
-  await x.carol.sendMessage(x.channel.id, "me too", root.id);
-  await x.bob.sendMessage(x.channel.id, "and the risks", root.id);
+  const carol = await x.carol.sendMessage(x.channel.id, "me too", root.id);
+  const bob = await x.bob.sendMessage(x.channel.id, "and the risks", root.id);
   expect((await calls()).map((row) => [row.callerUserId, row.kind, row.messageId])).toEqual([
     ["bob", "mention", root.id],
+    ["carol", "thread_reply", carol.id],
+    ["bob", "thread_reply", bob.id],
   ]);
   expect((await callerWakes()).map((wake) => wake.sessionKey)).toEqual([
+    sessionKeys.thread(root.id),
+    sessionKeys.thread(root.id),
     sessionKeys.thread(root.id),
   ]);
 });
 
-test("a thread reply does not call where the agent only asked, or replied to someone else", async () => {
+test("admitted participation permits follow-ups even before a public answer", async () => {
   const x = await callerFixture(f);
   await x.policy("anyone");
   const root = await x.bob.sendMessage(x.channel.id, `${x.mention} start`);
@@ -153,9 +157,9 @@ test("a thread reply does not call where the agent only asked, or replied to som
     { requestId: crypto.randomUUID(), body: "Noted" },
     threadTurn(x.channel.id, root.id),
   );
-  await x.bob.sendMessage(x.channel.id, "and the risks", root.id);
-  expect((await calls()).map((row) => row.messageId)).toEqual([root.id]);
-  expect(await callerWakes()).toHaveLength(1);
+  const followUp = await x.bob.sendMessage(x.channel.id, "and the risks", root.id);
+  expect((await calls()).map((row) => row.messageId)).toEqual([root.id, followUp.id]);
+  expect(await callerWakes()).toHaveLength(2);
 });
 
 test("a caller sees a call as queued until the agent's reply for it is published", async () => {

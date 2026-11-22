@@ -14,7 +14,7 @@ import { expect, test } from "bun:test";
 const agent = { actorId: "a1", organizationId: "o1", userAgentId: "ua1", ownerUserId: "alice" };
 const message = { id: "m2", conversationId: "c1", threadId: "m1", body: "" };
 const owner = { kind: "human" as const, userId: "alice" };
-const facts: MessageFacts = { agent, mentioned: false, disabled: [] };
+const facts: MessageFacts = { agent, mentioned: false, participatedInThread: false, disabled: [] };
 
 const sent = (
   author: MessageTrigger["author"],
@@ -57,7 +57,7 @@ const messageCases: [string, MessageTrigger, Partial<MessageFacts>, AdmissionDec
   ["a mention wins over a DM", sent(owner, "dm"), { mentioned: true }, admitted("mention", dm)],
   ["an owner's DM wakes the agent", sent(owner, "dm"), {}, admitted("direct_message", dm)],
   [
-    "an owner's thread reply without a mention does not start another turn",
+    "an owner's thread reply does not wake an agent that never joined",
     sent(owner, "group"),
     {},
     { type: "deny", reason: "not_triggered" },
@@ -82,6 +82,39 @@ for (const [name, trigger, overrides, expected] of messageCases)
       decideAdmission({ type: "message", trigger, facts: { ...facts, ...overrides } }),
     ).toEqual(expected);
   });
+
+test("an unmentioned human follow-up wakes a participating agent in the same thread", () => {
+  expect(
+    decideAdmission({
+      type: "message",
+      trigger: sent(owner, "channel"),
+      facts: { ...facts, participatedInThread: true },
+    }),
+  ).toEqual(admitted("thread_reply", thread));
+});
+
+test("a mention of another agent narrows the follow-up's recipients", () => {
+  expect(
+    decideAdmission({
+      type: "message",
+      trigger: {
+        ...sent(owner, "channel"),
+        message: { ...message, body: "@[agent:00000000-0000-4000-8000-000000000001] check this" },
+      },
+      facts: { ...facts, participatedInThread: true },
+    }),
+  ).toEqual({ type: "deny", reason: "not_triggered" });
+});
+
+test("the thread follow-up switch still controls human follow-ups", () => {
+  expect(
+    decideAdmission({
+      type: "message",
+      trigger: sent(owner, "channel"),
+      facts: { ...facts, participatedInThread: true, disabled: ["thread_reply"] },
+    }),
+  ).toEqual({ type: "deny", reason: "not_triggered" });
+});
 
 const bob = { kind: "human" as const, userId: "bob" };
 const caller: CallerFacts = {
@@ -109,6 +142,53 @@ const calledNow = (invocation: InvocationRecord): AdmissionDecision => ({
   sessionKey: thread,
   dedupeKey: wakeDedupeKeys.call("i1"),
   invocation,
+});
+
+test("a participating agent admits a caller's follow-up under its current policy", () => {
+  expect(
+    decideAdmission({
+      type: "message",
+      trigger: sent(bob, "channel"),
+      facts: { ...facts, participatedInThread: true, caller },
+    }),
+  ).toEqual(calledNow(call("admit", { kind: "thread_reply" })));
+  expect(
+    decideAdmission({
+      type: "message",
+      trigger: sent(bob, "channel"),
+      facts: { ...facts, participatedInThread: true, caller: { ...caller, policy: "ask" } },
+    }),
+  ).toEqual({
+    type: "needs_approval",
+    sessionKey: thread,
+    invocation: call("hold", { kind: "thread_reply", policy: "ask" }),
+  });
+});
+
+for (const [name, overrides, reason] of [
+  ["membership", { member: false }, "not_member"],
+  ["owner visibility", { ownerCanSee: false }, "owner_cannot_see"],
+  ["daily limit", { admittedToday: 100 }, "rate_limited"],
+] as const) {
+  test(`a caller follow-up still checks ${name}`, () => {
+    expect(
+      decideAdmission({
+        type: "message",
+        trigger: sent(bob, "channel"),
+        facts: { ...facts, participatedInThread: true, caller: { ...caller, ...overrides } },
+      }),
+    ).toMatchObject({ type: "deny", reason });
+  });
+}
+
+test("participation never bypasses an owner's owner-only caller policy", () => {
+  expect(
+    decideAdmission({
+      type: "message",
+      trigger: sent(bob, "channel"),
+      facts: { ...facts, participatedInThread: true },
+    }),
+  ).toEqual({ type: "deny", reason: "not_owner" });
 });
 
 const callerCases: [
@@ -161,7 +241,7 @@ const callerCases: [
     { type: "deny", reason: "owner_cannot_see" },
   ],
   [
-    "a caller's thread reply without a mention does not start work",
+    "a caller's thread reply does not wake an agent that never joined",
     "channel",
     {},
     {},

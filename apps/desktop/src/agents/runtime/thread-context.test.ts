@@ -341,3 +341,46 @@ test("two activated agents receive each other's findings without starting extra 
   );
   expect(f.turns()).toHaveLength(2);
 });
+
+test("an admitted human follow-up starts new turns for both finished agents after an hour", async () => {
+  const first = "00000000-0000-4000-8000-0000000000a1";
+  const second = "00000000-0000-4000-8000-0000000000a2";
+  fixture = await runtimeFixture({
+    capabilities: { steer: true, steerEvidence: true },
+    agents: [first, second].map((id) => ({
+      id,
+      name: id === first ? "Research" : "Finance",
+      harness: "opencode",
+      enabled: true,
+      home: true,
+      threadContextEnabled: true,
+    })),
+  });
+  const f = fixture;
+  await f.runtime.start();
+  const place = { conversationId: crypto.randomUUID(), threadId: crypto.randomUUID() };
+  for (const userAgentId of [first, second])
+    f.ownerMessage({ ...place, userAgentId, body: "Research Tidewater" });
+  await f.runtime.sync();
+  await f.advance(600);
+  const initial = f.turns();
+  expect(initial).toHaveLength(2);
+  for (const turn of initial)
+    await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
+  await f.advance(61 * 60_000);
+  // Server admission is covered by the database regression; this exercises its resulting wakes.
+  for (const userAgentId of [first, second])
+    f.ownerMessage({ ...place, userAgentId, body: "Tell me about their funding and investors" });
+  await f.runtime.sync();
+  await f.advance(600);
+  const followUps = f.turns().slice(2);
+  expect(followUps).toHaveLength(2);
+  expect(followUps.map((turn) => turn.sessionId).sort()).toEqual(
+    initial.map((turn) => turn.sessionId).sort(),
+  );
+  for (const turn of followUps) {
+    expect(turn.mode).toBe("interactive");
+    expect(turn.input.text).toContain("Tell me about their funding and investors");
+    expect(turn.input.text).toContain('source="owner_message"');
+  }
+});

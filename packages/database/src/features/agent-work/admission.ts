@@ -26,6 +26,7 @@ import { messagingConversations, messagingParticipants } from "../messaging/sche
 import { audit, type AuditEvent } from "./audit";
 import { agentInvocations } from "./invocations.schema";
 import { inStates } from "./machine-sql";
+import { threadParticipation } from "./thread-participation";
 import { wakeKind, wakeSessionKey } from "./wake-kind";
 import { agentWakes } from "./wakes.schema";
 import { and, eq, gt, inArray, or, sql } from "drizzle-orm";
@@ -102,6 +103,7 @@ export type CallerFacts = {
 export type MessageFacts = {
   agent: AdmissionAgent;
   mentioned: boolean;
+  participatedInThread: boolean;
   disabled: readonly AgentWakeMessageKind[];
   caller?: CallerFacts;
 };
@@ -144,7 +146,19 @@ export type AdmissionDecision =
       invocation?: InvocationRecord;
     };
 
-// Callers start work with an explicit mention. Other thread traffic is passive desktop context.
+function messageKind(trigger: MessageTrigger, facts: MessageFacts) {
+  const addressed = messageReferences(trigger.message.body).some(
+    (reference) => reference.kind === "agent",
+  );
+  return wakeKind({
+    mentioned: facts.mentioned,
+    directMessage: trigger.conversationKind === "dm",
+    workedInThread: !!trigger.message.threadId && facts.participatedInThread && !addressed,
+    disabled: facts.disabled,
+  });
+}
+
+// Human follow-ups use the same caller authority and limits as explicit calls.
 function callerDecision(
   trigger: MessageTrigger,
   facts: MessageFacts,
@@ -154,12 +168,7 @@ function callerDecision(
   if (!caller.member || !caller.actorId) return { type: "deny", reason: "not_member" };
   if (conversationKind === "dm") return { type: "deny", reason: "direct_message" };
   if (!caller.ownerCanSee) return { type: "deny", reason: "owner_cannot_see" };
-  const kind = wakeKind({
-    mentioned: facts.mentioned,
-    directMessage: false,
-    workedInThread: false,
-    disabled: facts.disabled,
-  });
+  const kind = messageKind(trigger, facts);
   // A caller's kind is never direct_message: DMs were denied above.
   if (!kind || kind === "direct_message") return { type: "deny", reason: "not_triggered" };
   const record = { id: caller.invocationId, kind, policy: caller.policy };
@@ -192,11 +201,12 @@ function callerDecision(
  *
  * - Agent-written messages never wake, which also stops agent-to-agent loops.
  * - The owner's message wakes for the first matching kind in agentTriggerPrecedence (mention,
- *   then DM). Thread participation alone never starts work. A disabled kind stops the wake; it
+ *   then DM, then an untargeted human follow-up in a thread it joined). A disabled kind stops the wake; it
  *   does not fall back.
  * - Another person wakes the agent only as a caller: the agent's policy is not owner, the person
  *   is a member of the agent's organization, the conversation is a channel or group that the
- *   owner can see, and the message mentions the agent. The owner's disabled kinds apply.
+ *   owner can see, and the message mentions the agent or follows up in a thread it joined.
+ *   Explicit agent mentions narrow recipients. The owner's disabled kinds apply.
  *   Under ask, a caller who is not allowlisted waits for the owner's approval.
  *   Excess calls are recorded as rate limited.
  * - The owner's answer or proposal result always wakes the agent in the request's session, and
@@ -233,12 +243,7 @@ export function decideAdmission(input: AdmissionInput): AdmissionDecision {
     return facts.caller
       ? callerDecision(trigger, facts, facts.caller)
       : { type: "deny", reason: "not_owner" };
-  const kind = wakeKind({
-    mentioned: facts.mentioned,
-    directMessage: conversationKind === "dm",
-    workedInThread: false,
-    disabled: facts.disabled,
-  });
+  const kind = messageKind(trigger, facts);
   if (!kind) return { type: "deny", reason: "not_triggered" };
   return {
     type: "admit",
@@ -364,10 +369,11 @@ type MessageCandidates = {
     userAgentId: string;
     ownerUserId: string;
     disabled: AgentWakeMessageKind[];
+    participatedInThread: boolean;
   }[];
   mentioned: Set<string>;
   /**
-   * Other owners' agents that this message mentions and whose policy accepts callers. admit()
+   * Other owners' agents that this message addresses or follows up with. admit()
    * reads their policies again before caller facts.
    */
   callable: Set<string>;
@@ -389,6 +395,7 @@ async function messageCandidates(
       userAgentId: userAgents.id,
       ownerUserId: userAgents.userId,
       callerPolicy: userAgents.callerPolicy,
+      participatedInThread: threadParticipation(db, trigger),
       disabled: sql<AgentWakeMessageKind[]>`coalesce((
         select array_agg(${userAgentTriggers.kind}) from ${userAgentTriggers}
         where ${userAgentTriggers.userAgentId} = ${userAgents.id} and not ${userAgentTriggers.enabled}
@@ -414,7 +421,7 @@ async function messageCandidates(
     rows.flatMap((row) =>
       row.ownerUserId !== author.userId &&
       row.callerPolicy !== "owner" &&
-      mentioned.has(row.actorId)
+      (mentioned.size ? mentioned.has(row.actorId) : row.participatedInThread)
         ? [row.userAgentId]
         : [],
     ),
@@ -468,8 +475,13 @@ async function messageInputs(
   const callers = called.length
     ? await callerFacts(db, { ...trigger, author }, called, person)
     : new Map<string, CallerFacts>();
-  for (const { disabled, ...agent } of rows) {
-    const facts: MessageFacts = { agent, mentioned: mentioned.has(agent.actorId), disabled };
+  for (const { disabled, participatedInThread, ...agent } of rows) {
+    const facts: MessageFacts = {
+      agent,
+      mentioned: mentioned.has(agent.actorId),
+      participatedInThread,
+      disabled,
+    };
     facts.caller = callers.get(agent.userAgentId);
     inputs.push({ type: "message", trigger, facts });
   }

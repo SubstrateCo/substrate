@@ -406,7 +406,7 @@ test("one message batches caller facts and wake links across agents", async () =
     });
 });
 
-test("passive thread replies read no history or caller facts; only mentions call", async () => {
+test("thread follow-ups read caller facts only for admitted participants; mentions narrow calls", async () => {
   const x = await callerFixture(f);
   await x.policy("anyone");
   const second = await ownedAgent(f, "carol");
@@ -459,14 +459,16 @@ test("passive thread replies read no history or caller facts; only mentions call
     return { message: message!, ...recorded };
   };
 
-  // Passive replies from the answered caller and from the owner read only the candidates.
+  // Only the first agent joined. Its caller follow-up checks policy; its owner's does not.
   for (const userId of ["bob", "alice"]) {
-    const passive = await inThread(userId, "thanks, one more detail");
-    expect(passive.queries).toHaveLength(1);
-    expect(passive.queries[0]).toContain('"messaging_participants"');
+    const followUp = await inThread(userId, "thanks, one more detail");
+    expect(followUp.queries.filter((query) => query.includes('"user_agent_callers"'))).toHaveLength(
+      userId === "bob" ? 1 : 0,
+    );
+    expect(followUp.queries[0]).toContain('"messaging_participants"');
   }
-  expect((await calls()).length).toBe(before.calls);
-  expect(await f.db.select().from(agentWakes)).toHaveLength(before.wakes);
+  expect((await calls()).length).toBe(before.calls + 1);
+  expect(await f.db.select().from(agentWakes)).toHaveLength(before.wakes + 2);
 
   // A re-mention of one agent reads caller facts only for that agent and admits its call.
   const again = await inThread("bob", `${x.mention} revise it`);
@@ -476,7 +478,7 @@ test("passive thread replies read no history or caller facts; only mentions call
   expect(factQueries).toHaveLength(1);
   expect(factQueries[0]).toContain(x.agent.actorId);
   expect(factQueries[0]).not.toContain(second.actorId);
-  // Candidates, fresh policies, membership, and caller facts; no thread history.
+  // Participation is read with candidates, not with separate per-agent history queries.
   expect(again.queries.filter((query) => query.startsWith("select "))).toHaveLength(4);
   expect(again.queries.some((query) => query.includes('"agent_requests"'))).toBe(false);
   expect((await calls()).filter((row) => row.messageId === again.message.id)).toEqual([
@@ -493,7 +495,7 @@ test("passive thread replies read no history or caller facts; only mentions call
   expect((await calls()).filter((row) => row.messageId === held.message.id)).toEqual([
     expect.objectContaining({ userAgentId: second.agentId, status: "pending_approval" }),
   ]);
-  expect(await f.db.select().from(agentWakes)).toHaveLength(before.wakes + 1);
+  expect(await f.db.select().from(agentWakes)).toHaveLength(before.wakes + 3);
 });
 
 test("batched caller visibility remains bound to each agent owner", async () => {
