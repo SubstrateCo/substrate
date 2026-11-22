@@ -12,6 +12,41 @@ import { inArray } from "drizzle-orm";
 
 const f = setupDatabase();
 
+test("CRM creation and deal updates avoid duplicate authorization and participant reads", async () => {
+  const tracked = recordQueries();
+  const a = new ActorRepositories(tracked.db, { organizationId: f.orgA, actorEntityId: f.alice });
+  const [stage] = await a.crm.ensurePipeline();
+  const contact = await a.contacts.createContact({ displayName: "Buyer" });
+  tracked.queries.length = 0;
+  const account = await a.crm.createAccount({ name: "Customer" });
+  const accountCount = tracked.queries.length;
+  tracked.queries.length = 0;
+  const input = {
+    title: "Sale",
+    accountEntityId: account.entityId,
+    contactEntityIds: [contact.entityId],
+    primaryContactEntityId: contact.entityId,
+    stageId: stage!.id,
+  };
+  const deal = await a.crm.createDeal(input);
+  const dealCount = tracked.queries.length;
+  tracked.queries.length = 0;
+  const updated = await a.crm.updateDeal(deal.entityId, deal.version, {
+    ...input,
+    title: "Edited",
+  });
+  const updateCount = tracked.queries.length;
+  expect([accountCount, dealCount, updateCount]).toEqual([9, 16, 18]);
+  expect(account.ownerActorEntityId).toBe(f.alice);
+  expect(deal.ownerActorEntityId).toBe(f.alice);
+  expect(updated.title).toBe("Edited");
+  expect((await a.crm.activity(account.entityId)).items).toMatchObject([{ action: "created" }]);
+  expect((await a.crm.activity(deal.entityId)).items).toMatchObject([
+    { action: "updated", changedFields: ["title"] },
+    { action: "created" },
+  ]);
+});
+
 test("deal lists batch account visibility and keep unreadable accounts redacted", async () => {
   const a = f.forActor(f.alice);
   const account = await a.crm.createAccount({ name: "Customer" });
@@ -159,6 +194,8 @@ test("CRM activities record many rows with one access lookup and one insert", as
   const account = await a.crm.createAccount({ name: "Customer" });
   const tracked = recordQueries();
   const ctx = new RepositoryContext(tracked.db, { organizationId: f.orgA, actorEntityId: f.alice });
+  expect(await recordCrmActivities(ctx, [])).toEqual([]);
+  expect(tracked.queries).toEqual([]);
   await recordCrmActivities(ctx, [{ entityId: contact.entityId, action: "updated" }]);
   const singleCount = tracked.queries.length;
   tracked.queries.length = 0;
@@ -172,6 +209,7 @@ test("CRM activities record many rows with one access lookup and one insert", as
     { entityId: account.entityId, action: "context_linked", relatedEntityId: contact.entityId },
     { entityId: account.entityId, action: "updated", changedFields: ["name"] },
   ]);
+  expect(singleCount).toBe(2);
   expect(tracked.queries.length).toBe(singleCount);
   const rows = await f.db
     .select()
@@ -207,6 +245,14 @@ test("CRM activities record many rows with one access lookup and one insert", as
   const count = async () => (await f.db.select().from(crmActivityEvents)).length;
   const total = await count();
   for (const inputs of [
+    [{ entityId: crypto.randomUUID(), action: "updated" as const }],
+    [
+      {
+        entityId: contact.entityId,
+        action: "context_linked" as const,
+        relatedEntityId: crypto.randomUUID(),
+      },
+    ],
     [
       { entityId: contact.entityId, action: "updated" as const },
       { entityId: hidden.entityId, action: "updated" as const },

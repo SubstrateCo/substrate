@@ -1,9 +1,65 @@
+import { entities } from "../../core/entities/schema";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
+import { crmDealContacts } from "./schema";
 import { expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
+
+test("deal edits retain deleted participants and change primary contacts without false activity", async () => {
+  const a = f.forActor(f.alice);
+  const b = f.forActor(f.bob);
+  const hidden = await a.contacts.createContact({ displayName: "Deleted buyer" });
+  const visible = await a.contacts.createContact({ displayName: "Workspace buyer" });
+  const [stage] = await a.crm.ensurePipeline();
+  const input = {
+    title: "Sale",
+    stageId: stage!.id,
+    contactEntityIds: [hidden.entityId, visible.entityId],
+    primaryContactEntityId: hidden.entityId,
+  };
+  const deal = await a.crm.createDeal(input);
+  await a.crm.share(deal.entityId, f.bob, "edit");
+  await f.db
+    .update(entities)
+    .set({ deletedAt: new Date() })
+    .where(eq(entities.entityId, hidden.entityId));
+  const edit = { title: "Edited", stageId: stage!.id, contactEntityIds: [visible.entityId] };
+  await b.crm.updateDeal(deal.entityId, 1, edit);
+  const participants = async () =>
+    (
+      await f.db
+        .select({
+          contactEntityId: crmDealContacts.contactEntityId,
+          isPrimary: crmDealContacts.isPrimary,
+        })
+        .from(crmDealContacts)
+        .where(eq(crmDealContacts.dealEntityId, deal.entityId))
+    ).sort((left, right) => left.contactEntityId.localeCompare(right.contactEntityId));
+  const expected = [
+    { contactEntityId: hidden.entityId, isPrimary: true },
+    { contactEntityId: visible.entityId, isPrimary: false },
+  ].sort((left, right) => left.contactEntityId.localeCompare(right.contactEntityId));
+  expect(await participants()).toEqual(expected);
+  expect((await b.crm.activity(deal.entityId)).items[0]).toMatchObject({
+    changedFields: ["title"],
+  });
+  await b.crm.updateDeal(deal.entityId, 2, { ...edit, primaryContactEntityId: visible.entityId });
+  expect(await participants()).toEqual(
+    expected.map((row) => ({
+      ...row,
+      isPrimary: row.contactEntityId === visible.entityId,
+    })),
+  );
+  expect((await b.crm.activity(deal.entityId)).items[0]).toMatchObject({
+    changedFields: ["contacts"],
+  });
+  expect((await b.crm.getDeal(deal.entityId)).contacts).toMatchObject([
+    { contact: { entityId: visible.entityId }, isPrimary: true },
+  ]);
+});
 test("an admin owner's agent may change CRM settings but not configure stages", async () => {
   const agent = await ownedAgent(f, "alice", "Pipeline assistant");
   const agentRepos = f.forActor(agent.actorId);

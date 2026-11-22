@@ -3,12 +3,17 @@ import type { RecordArchiveFilter } from "@substrate/contracts/crm/input";
 import { accountFields, dealFields, crmWrite } from "@substrate/contracts/crm/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import { permissionActorEntityId } from "../../core/actors/access";
+import {
+  activeActorCondition,
+  permissionActorEntityId,
+  viewerActorJoins,
+} from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { requireAppEnabled } from "../../core/apps/access";
 import { contactReadable, requireContact } from "../../core/contacts/access";
 import { parseInput } from "../../core/contacts/inputs";
 import { contacts } from "../../core/contacts/schema";
+import { entities } from "../../core/entities/schema";
 import { RepositoryContext, entityCursor, pageSize } from "../../core/repository-context";
 import { previousRequest, recordRequest, requestFingerprint } from "../../core/requests/once";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
@@ -32,6 +37,7 @@ import { requireHumanCrmAdmin, settingsRepository } from "./settings";
 import { crmSharing } from "./sharing";
 import { timeline } from "./timeline";
 import { and, asc, eq, gt, ilike, inArray, isNull, isNotNull, ne, sql } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import { z } from "zod";
 
 type ListOptions = {
@@ -74,15 +80,31 @@ export function crmRepository(context: RepositoryContext) {
     if (account.entity.entityType !== "account") throw new AccessDeniedError();
   }
   async function owner(ctx: RepositoryContext) {
-    await ctx.requireActiveActor();
-    const [person] = await ctx.db
-      .select({ id: actors.entityId })
+    const viewer = viewerActorJoins(ctx.scope, "crm_creator_entity");
+    const responsible = alias(actors, "crm_responsible_actor");
+    const responsibleEntity = alias(entities, "crm_responsible_entity");
+    const [actor] = await ctx.db
+      .select({ entityId: responsible.entityId, type: responsible.type })
       .from(actors)
-      .where(
-        and(eq(actors.organizationId, org), eq(actors.entityId, permissionActorEntityId(scope))),
-      );
-    if (!person) throw new AccessDeniedError();
-    const actor = await ctx.requireActiveActor(person.id);
+      .innerJoin(viewer.entity, viewer.entityOn)
+      .innerJoin(
+        responsible,
+        and(
+          eq(responsible.organizationId, org),
+          eq(responsible.entityId, permissionActorEntityId(ctx.scope)),
+          activeActorCondition(responsible),
+        ),
+      )
+      .innerJoin(
+        responsibleEntity,
+        and(
+          eq(responsibleEntity.organizationId, responsible.organizationId),
+          eq(responsibleEntity.entityId, responsible.entityId),
+          isNull(responsibleEntity.deletedAt),
+        ),
+      )
+      .where(and(viewer.actorOn, activeActorCondition()));
+    if (!actor) throw new AccessDeniedError();
     if (actor.type !== "human")
       throw new ValidationError("CRM records require a human responsible owner.");
     return actor.entityId;
@@ -547,19 +569,23 @@ export function crmRepository(context: RepositoryContext) {
         const previous = await lockedDeal(ctx, id, expectedVersion);
         if (previous.stageId !== value.stageId)
           throw new ValidationError("Use a stage transition to change stage.");
-        const retained = await ctx.db
+        const previousParticipants = await ctx.db
           .select({
             contactEntityId: crmDealContacts.contactEntityId,
             isPrimary: crmDealContacts.isPrimary,
+            readable: sql<boolean>`${contactReadable(ctx, crmDealContacts.contactEntityId)}`,
           })
           .from(crmDealContacts)
           .where(
-            and(
-              eq(crmDealContacts.organizationId, org),
-              eq(crmDealContacts.dealEntityId, id),
-              sql`NOT ${contactReadable(ctx, crmDealContacts.contactEntityId)}`,
-            ),
+            and(eq(crmDealContacts.organizationId, org), eq(crmDealContacts.dealEntityId, id)),
           );
+        const priorParticipants = previousParticipants.map(({ contactEntityId, isPrimary }) => ({
+          contactEntityId,
+          isPrimary,
+        }));
+        const retained = previousParticipants.flatMap(({ readable, ...row }) =>
+          readable ? [] : [row],
+        );
         const [visibleAccount] = previous.accountEntityId
           ? await ctx.db
               .select({ id: crmAccounts.entityId })
@@ -580,15 +606,6 @@ export function crmRepository(context: RepositoryContext) {
           requireActiveStage: false,
         });
         const { contactEntityIds: _, primaryContactEntityId: __, ...fields } = value;
-        const priorParticipants = await ctx.db
-          .select({
-            contactEntityId: crmDealContacts.contactEntityId,
-            isPrimary: crmDealContacts.isPrimary,
-          })
-          .from(crmDealContacts)
-          .where(
-            and(eq(crmDealContacts.organizationId, org), eq(crmDealContacts.dealEntityId, id)),
-          );
         const nextParticipants = [
           ...value.contactEntityIds.map((contactEntityId) => ({
             contactEntityId,

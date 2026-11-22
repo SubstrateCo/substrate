@@ -10,12 +10,11 @@ import {
 import { actors } from "../../core/actors/schema";
 import { requireAppEnabled } from "../../core/apps/access";
 import { user } from "../../core/authentication/schema";
-import { entities } from "../../core/entities/schema";
 import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { crmActivityEvents } from "./activity.schema";
 import { crmActorView, joinCrmActorPerson } from "./actor-views";
-import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, isNull, or, sql } from "drizzle-orm";
 
 // Call only inside a domain-authorized mutation transaction. Never expose an append API.
 export async function recordCrmActivity(ctx: RepositoryContext, input: CrmActivityInput) {
@@ -31,7 +30,6 @@ export async function recordCrmActivities(ctx: RepositoryContext, inputs: CrmAct
     return parsed.data;
   });
   if (!values.length) return [];
-  await ctx.requireActiveActor();
   const ids = [
     ...new Set(
       values.flatMap((value) =>
@@ -39,18 +37,8 @@ export async function recordCrmActivities(ctx: RepositoryContext, inputs: CrmAct
       ),
     ),
   ];
-  const readable = await ctx.db
-    .select({ entityId: entities.entityId, entityType: entities.entityType })
-    .from(entities)
-    .where(
-      and(
-        eq(entities.organizationId, ctx.scope.organizationId),
-        inArray(entities.entityId, ids),
-        isNull(entities.deletedAt),
-        ctx.readable(entities.entityId),
-      ),
-    );
-  const types = new Map(readable.map((row) => [row.entityId, row.entityType]));
+  const readable = await ctx.requireAccessAll(ids, "view");
+  const types = new Map(readable.map(({ entity }) => [entity.entityId, entity.entityType]));
   const rows = values.map((value) => {
     const entityType = types.get(value.entityId);
     if (!entityType) throw new AccessDeniedError();

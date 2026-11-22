@@ -18,8 +18,8 @@ export async function createOnce<T extends { entityId: string }>(
 ) {
   if (requestId !== undefined) parseInput(z.uuid(), requestId);
   return context.transaction(async (ctx) => {
-    await ctx.requireActiveActor();
     if (!requestId) return create(ctx);
+    await ctx.requireActiveActor();
     const fingerprint = requestFingerprint(payload);
     const previous = await previousRequest(ctx, operation, requestId, fingerprint);
     if (previous) {
