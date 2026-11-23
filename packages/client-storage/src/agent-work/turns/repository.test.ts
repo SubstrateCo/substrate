@@ -1,6 +1,6 @@
 import { inboxLaneAgingMs, sessionKeys } from "@substrate/contracts/agent-work";
 
-import { background, createSession, item, openTestStore, system } from "./test-support.ts";
+import { background, createSession, item, openTestStore, system } from "../test-support.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
 

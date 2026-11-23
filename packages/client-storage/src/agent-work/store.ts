@@ -8,7 +8,8 @@ import { mcpServerRepository } from "./mcp-servers.ts";
 import { outputRepository } from "./outputs.ts";
 import { routineRepository } from "./routines.ts";
 import { sessionRepository } from "./sessions.ts";
-import { turnRepository, type TurnRow } from "./turns.ts";
+import type { TurnRow } from "./turns/claim.ts";
+import { turnRepository } from "./turns/repository.ts";
 import { turnView } from "./views.ts";
 import { inArray } from "drizzle-orm";
 

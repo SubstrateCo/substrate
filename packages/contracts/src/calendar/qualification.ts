@@ -1,11 +1,11 @@
 import {
-  maxMeetingPeople,
   type AttendeeResponseStatus,
   type CalendarEventKind,
   type CalendarEventStatus,
   type CalendarEventVisibility,
-  type MeetingSkipReason,
-} from "./index.ts";
+} from "./providers.ts";
+import { maxMeetingPeople } from "./sync.ts";
+import { type MeetingSkipReason } from "./views.ts";
 
 export interface QualificationInput {
   calendar: { recordsInteractions: boolean; interactionsFrom: Date };

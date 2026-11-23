@@ -1,5 +1,4 @@
 import {
-  maxHarnessMcpServers,
   startupSkillIds,
   startupSkills,
   type HarnessKind,
@@ -9,34 +8,25 @@ import {
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useRef, useState, type ReactNode } from "react";
+import { useRef, useState } from "react";
 
-import { CatalogRow, CatalogRowLoading } from "../catalog/catalog-row";
 import type { AgentSection } from "../editors/agent-form";
-import { McpServerEditor } from "../editors/mcp-server-editor";
 import { SkillEditor } from "../editors/skill-editor";
-import { openingName } from "../editors/skill-name";
-import { McpServerRow, StartupSkills } from "./startup-configuration";
+import { ConfigurationStatus } from "./configuration-status";
+import { McpServerDialogs } from "./mcp-server-dialogs";
+import { McpServersSection } from "./mcp-servers-section";
+import { SkillsSection } from "./skills-section";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { ErrorState } from "@/components/feedback/error-state";
 import { useFocusReturn } from "@/components/feedback/use-focus-return";
-import { SettingsList, SettingsNote, SettingsSection } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { mcpServerLimitReached } from "@/lib/agents/mcp-server-draft";
 import { useAgentConfigurationMutations } from "@/queries/agents/configuration-mutations";
 import {
   localAgentConfiguration,
   localConfigurationOptions,
 } from "@/queries/agents/local-configuration";
-import { Blocks, Info, Laptop, Plus, RefreshCw, RotateCcw } from "lucide-react";
+import { RefreshCw } from "lucide-react";
 import { toast } from "sonner";
-
-/** How the agent reaches a server: the command it runs or the host it calls. */
-function serverDetail(server: HarnessMcpServer) {
-  if (server.transport === "stdio") return `Runs ${server.command}`;
-  return `Connects to ${new URL(server.url).host}`;
-}
 
 function skillLists(scannedSkills: HarnessSkill[] | undefined, showDefaults: boolean) {
   if (!scannedSkills) return { skills: [], managedSkills: showDefaults ? startupSkills : [] };
@@ -46,166 +36,6 @@ function skillLists(scannedSkills: HarnessSkill[] | undefined, showDefaults: boo
     skills: scannedSkills.filter((skill) => !isStartupSkill(skill)),
     managedSkills: scannedSkills.filter(isStartupSkill),
   };
-}
-
-function McpServersSection({
-  servers,
-  scanned,
-  defaults,
-  available,
-  refresh,
-  status,
-  busy,
-  onCreate,
-  onEdit,
-  onDelete,
-}: {
-  servers: readonly HarnessMcpServer[];
-  scanned: boolean;
-  defaults: boolean;
-  available: boolean;
-  refresh: ReactNode;
-  status: ReactNode;
-  /** A save or delete is running. */
-  busy: boolean;
-  onCreate: () => void;
-  onEdit: (server: HarnessMcpServer) => void;
-  onDelete: (server: HarnessMcpServer) => void;
-}) {
-  const full = mcpServerLimitReached(servers);
-  return (
-    <SettingsSection
-      title="MCP servers"
-      description="Tool servers this agent can use. Substrate keeps them on its desktop and gives them to the agent at the start of each session."
-      actions={
-        <>
-          {refresh}
-          <Button
-            type="button"
-            size="sm"
-            disabled={!available || !scanned || full || busy}
-            onClick={onCreate}
-          >
-            <Plus />
-            New server
-          </Button>
-        </>
-      }
-    >
-      {status}
-      {defaults && (
-        <SettingsList description="Substrate adds the built-in server, which lets the agent read and post in this workspace.">
-          <McpServerRow name="substrate" detail="Substrate workspace" builtIn />
-        </SettingsList>
-      )}
-      {scanned && (
-        <SettingsList title="Your servers">
-          {servers.length ? (
-            servers.map((server) => (
-              <CatalogRow
-                key={server.id}
-                name={server.name}
-                detail={serverDetail(server)}
-                picture={
-                  <Blocks aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                }
-                disabled={busy}
-                onEdit={() => onEdit(server)}
-                onDelete={() => onDelete(server)}
-              />
-            ))
-          ) : (
-            <li className="px-4 py-3 text-sm text-muted-foreground">
-              No servers of your own yet. Add one to give this agent more tools.
-            </li>
-          )}
-        </SettingsList>
-      )}
-      {full && (
-        <SettingsNote icon={<Info />}>
-          This agent has {maxHarnessMcpServers} servers, the most it can have. Delete one to add
-          another.
-        </SettingsNote>
-      )}
-    </SettingsSection>
-  );
-}
-
-function ConfigurationStatus({
-  available,
-  agentId,
-  section,
-  pending,
-  error,
-  onRetry,
-}: {
-  available: boolean;
-  agentId?: string;
-  section: AgentSection;
-  pending: boolean;
-  error: Error | null;
-  onRetry: () => void;
-}) {
-  return (
-    <>
-      {!available && (
-        <SettingsNote icon={<Laptop />}>
-          {agentId
-            ? `Open this agent in the Substrate desktop app to see the ${section === "skills" ? "skills" : "MCP servers"} in its folder.`
-            : "Save this agent to see its local configuration."}
-        </SettingsNote>
-      )}
-      {available && pending && (
-        <div role="status" aria-label="Reading the agent’s files">
-          <div aria-hidden="true">
-            <SettingsList title={section === "skills" ? "Your skills" : "Your servers"}>
-              <CatalogRowLoading picture={section === "mcps"} />
-              <CatalogRowLoading picture={section === "mcps"} />
-            </SettingsList>
-          </div>
-        </div>
-      )}
-      {error && <ErrorState compact title="Couldn’t read this agent’s files" onRetry={onRetry} />}
-    </>
-  );
-}
-
-function SkillList({
-  skills,
-  removing,
-  onEdit,
-  onDelete,
-}: {
-  skills: readonly HarnessSkill[];
-  removing: boolean;
-  onEdit: (id: string) => void;
-  onDelete: (skill: { id: string; name: string }) => void;
-}) {
-  return (
-    <SettingsList title="Your skills">
-      {skills.length ? (
-        skills.map((item) => {
-          // The list, the editor and the delete prompt all name the skill by its file name.
-          const name = openingName(item);
-          return (
-            <CatalogRow
-              key={item.id}
-              name={name}
-              mono
-              detail={item.description}
-              disabled={removing}
-              onEdit={() => onEdit(item.id)}
-              onDelete={() => onDelete({ id: item.id, name })}
-            />
-          );
-        })
-      ) : (
-        <li className="px-4 py-3 text-sm text-muted-foreground">
-          No skills of your own yet. Create one to teach this agent a repeatable task.
-        </li>
-      )}
-    </SettingsList>
-  );
 }
 
 function RefreshConfiguration({
@@ -233,144 +63,6 @@ function RefreshConfiguration({
       </TooltipTrigger>
       <TooltipContent>Read the agent’s files again</TooltipContent>
     </Tooltip>
-  );
-}
-
-function SkillsSection({
-  skills,
-  managedSkills,
-  scanned,
-  available,
-  fetching,
-  refresh,
-  status,
-  resetting,
-  removing,
-  onReset,
-  onCreate,
-  onEdit,
-  onDelete,
-}: {
-  skills: readonly HarnessSkill[];
-  managedSkills: ReturnType<typeof skillLists>["managedSkills"];
-  scanned: boolean;
-  available: boolean;
-  fetching: boolean;
-  refresh: ReactNode;
-  status: ReactNode;
-  /** A reset of the defaults is running. */
-  resetting: boolean;
-  /** A delete is running. */
-  removing: boolean;
-  onReset: () => void;
-  onCreate: () => void;
-  onEdit: (id: string) => void;
-  onDelete: (skill: { id: string; name: string }) => void;
-}) {
-  return (
-    <SettingsSection
-      title="Skills"
-      description="How-to guides the agent opens when a task matches. Each skill is a file in its folder on its desktop."
-      actions={
-        <>
-          {refresh}
-          <Button
-            type="button"
-            size="sm"
-            variant="outline"
-            disabled={!available || resetting}
-            onClick={onReset}
-          >
-            <RotateCcw />
-            Reset defaults
-          </Button>
-          <Button type="button" size="sm" disabled={!available || fetching} onClick={onCreate}>
-            <Plus />
-            New skill
-          </Button>
-        </>
-      }
-    >
-      {status}
-      {managedSkills.length > 0 && <StartupSkills skills={managedSkills} scanned={scanned} />}
-      {scanned && (
-        <SkillList skills={skills} removing={removing} onEdit={onEdit} onDelete={onDelete} />
-      )}
-    </SettingsSection>
-  );
-}
-
-type ConfigurationMutations = ReturnType<typeof useAgentConfigurationMutations>;
-
-/** The editor and the delete prompt for the agent's own MCP servers. */
-function McpServerDialogs({
-  editing,
-  deleting,
-  servers,
-  saveServer,
-  removeServer,
-  onRestoreFocus,
-  onEditDone,
-  onDeleteDone,
-}: {
-  /** The server being edited, or an empty object for a new one. */
-  editing?: { server?: HarnessMcpServer };
-  deleting?: HarnessMcpServer;
-  servers: readonly HarnessMcpServer[];
-  saveServer: ConfigurationMutations["saveServer"];
-  removeServer: ConfigurationMutations["removeServer"];
-  onRestoreFocus: () => void;
-  onEditDone: () => void;
-  onDeleteDone: () => void;
-}) {
-  return (
-    <>
-      {editing && (
-        <McpServerEditor
-          server={editing.server}
-          servers={servers}
-          pending={saveServer.isPending}
-          error={saveServer.error}
-          onRestoreFocus={onRestoreFocus}
-          onClose={() => {
-            onEditDone();
-            saveServer.reset();
-          }}
-          onSave={(server) =>
-            saveServer.mutate(server, {
-              onSuccess: () => {
-                toast.success(editing.server ? "Server saved." : "Server added.");
-                onEditDone();
-              },
-            })
-          }
-        />
-      )}
-      {deleting && (
-        <ConfirmDialog
-          title={`Delete ${deleting.name}?`}
-          description="This removes the server from this agent on this desktop. New sessions won’t use it. You can’t undo this."
-          confirmLabel="Delete server"
-          errorDescription="We couldn’t delete this server. Try again."
-          destructive
-          pending={removeServer.isPending}
-          error={removeServer.error}
-          onRestoreFocus={onRestoreFocus}
-          onConfirm={() =>
-            removeServer.mutate(deleting.id, {
-              onSuccess: () => {
-                toast.success("Server deleted.");
-                onDeleteDone();
-              },
-            })
-          }
-          onClose={() => {
-            onDeleteDone();
-            removeServer.reset();
-          }}
-        />
-      )}
-    </>
   );
 }
 

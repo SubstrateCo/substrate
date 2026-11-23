@@ -12,7 +12,7 @@ import type { InboxRow } from "./inbox.ts";
 import type { OutputRow } from "./outputs.ts";
 import type { RoutineRow } from "./routines.ts";
 import type { SessionRow, SessionSummary } from "./sessions.ts";
-import type { TurnRow } from "./turns.ts";
+import type { TurnRow } from "./turns/claim.ts";
 
 const iso = (value: number) => new Date(value).toISOString();
 const isoOrNull = (value: number | null) => (value === null ? null : iso(value));
