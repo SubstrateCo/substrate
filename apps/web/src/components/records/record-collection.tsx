@@ -12,11 +12,11 @@ import { RecordList } from "@/components/crm/record-list";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
+import { Pager, useCursorPages, type AppTablePagination } from "@/components/table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { contactLink, crmLink } from "@/lib/navigation/record-links";
@@ -29,7 +29,8 @@ import {
   crmSettingsOptions,
 } from "@/queries/crm/options";
 import { useRecordMutation } from "@/queries/records/mutations";
-import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
+import { cn } from "cn";
+import { Plus } from "lucide-react";
 
 const pageSize = 100;
 
@@ -118,7 +119,7 @@ export function RecordCollection({
   };
   const [view, setView] = useState<"pipeline" | "list">("pipeline");
   const [creating, setCreating] = useState(false);
-  const [cursors, setCursors] = useState<string[]>([]);
+  const pages = useCursorPages<string>();
   const navigate = useNavigate();
   const mutation = useRecordMutation(organizationId, kind);
   const queries = useCollectionQueries(
@@ -126,13 +127,19 @@ export function RecordCollection({
     kind,
     debounced,
     archived,
-    cursors.at(-1),
+    pages.cursor,
     creating,
   );
   const records = collectionRecords(kind, queries);
-  const dealPipelineView = kind === "deals" && view === "pipeline";
+  const showPipeline = kind === "deals" && view === "pipeline" && !archived;
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
+    // The pipeline's columns scroll on their own, so the page does not.
+    <div
+      className={cn(
+        "flex min-h-0 flex-1 flex-col gap-6 p-6",
+        showPipeline ? "overflow-hidden" : "overflow-y-auto",
+      )}
+    >
       <RecordCollectionHeader
         organizationId={organizationId}
         kind={kind}
@@ -144,7 +151,7 @@ export function RecordCollection({
           setCreating(true);
         }}
       />
-      <div className="flex flex-col gap-4">
+      <div className={cn("flex flex-col gap-4", showPipeline && "min-h-0 flex-1")}>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             type="search"
@@ -154,7 +161,7 @@ export function RecordCollection({
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
-              setCursors([]);
+              pages.reset();
             }}
           />
           <div className="ml-auto flex items-center gap-4">
@@ -164,7 +171,7 @@ export function RecordCollection({
                 checked={archived}
                 onCheckedChange={(checked) => {
                   setArchived(checked === true);
-                  setCursors([]);
+                  pages.reset();
                 }}
               />
               <Label htmlFor="crm-archived">Archived</Label>
@@ -188,9 +195,8 @@ export function RecordCollection({
           records={records}
           queries={queries}
           searchPending={debounced.pending}
-          showPipeline={dealPipelineView && !archived}
-          dealPipelineView={dealPipelineView}
-          page={cursors.length + 1}
+          showPipeline={showPipeline}
+          pages={pages}
           filtered={debounced.query !== "" || archived}
           onCreate={
             records.canCreate
@@ -200,8 +206,6 @@ export function RecordCollection({
                 }
               : undefined
           }
-          onPrevious={() => setCursors((previous) => previous.slice(0, -1))}
-          onNext={(entityId) => setCursors((previous) => [...previous, entityId])}
         />
       </div>
       {creating && (
@@ -291,12 +295,9 @@ function RecordCollectionResults({
   queries: { deals, pipeline, settings },
   searchPending,
   showPipeline,
-  dealPipelineView,
-  page,
+  pages,
   filtered,
   onCreate,
-  onPrevious,
-  onNext,
 }: {
   organizationId: string;
   kind: CrmKind;
@@ -307,13 +308,22 @@ function RecordCollectionResults({
   searchPending: boolean;
   /** Open deals as a pipeline board instead of a list. */
   showPipeline: boolean;
-  dealPipelineView: boolean;
-  page: number;
-  onPrevious: () => void;
-  onNext: (afterEntityId: string) => void;
+  pages: ReturnType<typeof useCursorPages<string>>;
 }) {
   // One error per failed load: deals also need the pipeline and settings.
   const dealsError = kind === "deals" ? (pipeline.error ?? settings.error) : null;
+  // The API returns up to `pageSize` records after a cursor and no total.
+  const pagination = {
+    mode: "server",
+    pageIndex: pages.pageIndex,
+    pageSize,
+    hasNextPage: rows.length === pageSize,
+    onPageChange: (pageIndex: number) => {
+      const last = rows.at(-1);
+      if (pageIndex < pages.pageIndex) pages.previous();
+      else if (last) pages.next(last.entityId);
+    },
+  } satisfies AppTablePagination;
   return (
     <>
       <CrmResourceState
@@ -340,90 +350,35 @@ function RecordCollectionResults({
       )}
       {state.data &&
         (showPipeline ? (
-          <DealPipeline
-            organizationId={organizationId}
-            stages={stages}
-            deals={(resourceState(deals).data ?? []).filter((deal) => deal.outcome === "open")}
-          />
+          <>
+            <DealPipeline
+              organizationId={organizationId}
+              stages={stages}
+              deals={(resourceState(deals).data ?? []).filter((deal) => deal.outcome === "open")}
+            />
+            {(pagination.pageIndex > 0 || pagination.hasNextPage) && (
+              <Pager
+                name="Deals"
+                pageIndex={pagination.pageIndex}
+                pageCount={-1}
+                canPrevious={pagination.pageIndex > 0}
+                canNext={pagination.hasNextPage}
+                disabled={query.isFetching}
+                onPageChange={pagination.onPageChange}
+              />
+            )}
+          </>
         ) : (
           <RecordList
             organizationId={organizationId}
             kind={kind}
             rows={rows}
+            fetching={query.isFetching}
+            pagination={pagination}
             filtered={filtered}
             onCreate={onCreate}
           />
         ))}
-      {state.data && (rows.length > 0 || page > 1) && (
-        <RecordPagination
-          page={page}
-          rowCount={rows.length}
-          fetching={query.isFetching}
-          dealPipelineView={dealPipelineView}
-          onPrevious={onPrevious}
-          onNext={() => {
-            const last = rows.at(-1);
-            if (last) onNext(last.entityId);
-          }}
-        />
-      )}
     </>
-  );
-}
-
-function RecordPagination({
-  page,
-  rowCount,
-  fetching,
-  dealPipelineView,
-  onPrevious,
-  onNext,
-}: {
-  page: number;
-  rowCount: number;
-  fetching: boolean;
-  dealPipelineView: boolean;
-  onPrevious: () => void;
-  onNext: () => void;
-}) {
-  // One page of results needs no pager.
-  if (page === 1 && rowCount < pageSize) return null;
-  return (
-    <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
-      <span>
-        Page {page} · up to {pageSize} records
-        {dealPipelineView ? " · open deals on this page" : ""}
-      </span>
-      <div className="flex gap-0.5">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Previous page"
-              disabled={page === 1 || fetching}
-              onClick={onPrevious}
-            >
-              <ChevronLeft aria-hidden />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Previous page</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              aria-label="Next page"
-              disabled={rowCount < pageSize || fetching}
-              onClick={onNext}
-            >
-              <ChevronRight aria-hidden />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Next page</TooltipContent>
-        </Tooltip>
-      </div>
-    </div>
   );
 }

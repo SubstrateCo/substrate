@@ -1,17 +1,15 @@
 import { Link } from "@tanstack/react-router";
 
+import { useMemo } from "react";
+
 import { dealAmount, outcomeLabel, sectionLabels, singularLabels, type CrmKind } from "./crm-types";
-import { ContentNotice } from "@/components/feedback/content-notice";
-import { SkeletonText } from "@/components/feedback/skeleton-text";
-import { Button } from "@/components/ui/button";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  AppTable,
+  createAppColumnHelper,
+  tableLink,
+  type AppTablePagination,
+} from "@/components/table";
+import { Button } from "@/components/ui/button";
 import { recordLink } from "@/lib/navigation/record-links";
 import { Building2, Handshake, Plus, Users } from "lucide-react";
 
@@ -25,11 +23,48 @@ export type CrmListRow = {
   stageName?: string;
 };
 
+const column = createAppColumnHelper<CrmListRow>();
+
+function recordColumns(kind: CrmKind, organizationId: string) {
+  return column.columns([
+    column.accessor("name", {
+      header: "Name",
+      cell: ({ row }) => (
+        <Link
+          {...recordLink(organizationId, kind, row.original.entityId)}
+          className={tableLink}
+          title={row.original.name}
+        >
+          {row.original.name}
+        </Link>
+      ),
+    }),
+    column.accessor((row) => (kind === "deals" ? dealStatus(row) : row.description || "-"), {
+      id: "detail",
+      header: { deals: "Stage / outcome", accounts: "Domain", contacts: "Notes" }[kind],
+      cell: ({ getValue }) => (
+        <span className="block max-w-80 truncate text-muted-foreground">{getValue()}</span>
+      ),
+    }),
+    ...(kind === "deals"
+      ? [
+          column.accessor((row) => dealAmount(row.amount ?? null, row.currency ?? null), {
+            id: "amount",
+            header: "Amount",
+            meta: { align: "end" },
+          }),
+        ]
+      : []),
+  ]);
+}
+
 export function RecordList({
   kind,
   organizationId,
   rows,
   loading = false,
+  fetching = false,
+  pagination,
   filtered = false,
   onCreate,
 }: {
@@ -37,109 +72,39 @@ export function RecordList({
   organizationId: string;
   rows: CrmListRow[];
   loading?: boolean;
+  /** A later page is loading. */
+  fetching?: boolean;
+  pagination?: AppTablePagination;
   /** A search or the archived filter is active, so the empty list says nothing matched. */
   filtered?: boolean;
   /** Offers the empty list's primary action when the viewer can create a record. */
   onCreate?: () => void;
 }) {
-  if (!rows.length && !loading)
-    return (
-      <ContentNotice
-        icon={{ accounts: Building2, contacts: Users, deals: Handshake }[kind]}
-        title={filtered ? `No ${kind} found` : `No ${kind} yet`}
-        description={
-          filtered
-            ? "Try a different search or filter."
-            : `${sectionLabels[kind]} you create appear here.`
-        }
-        action={
-          !filtered &&
-          onCreate && (
-            <Button onClick={onCreate}>
-              <Plus aria-hidden />
-              New {singularLabels[kind]}
-            </Button>
-          )
-        }
-      />
-    );
+  const columns = useMemo(() => recordColumns(kind, organizationId), [kind, organizationId]);
   return (
-    <div
-      className="shrink-0 overflow-hidden rounded-lg border"
-      role={loading ? "status" : undefined}
-      aria-label={loading ? `Loading ${kind}` : undefined}
-    >
-      <Table aria-label={kind}>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Name</TableHead>
-            <TableHead>
-              {{ deals: "Stage / outcome", accounts: "Domain", contacts: "Notes" }[kind]}
-            </TableHead>
-            {kind === "deals" && <TableHead>Amount</TableHead>}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {loading &&
-            [0, 1, 2].map((key) => (
-              <RecordListCells
-                key={key}
-                kind={kind}
-                hidden
-                name={<SkeletonText width="9rem" />}
-                detail={<SkeletonText width="12rem" />}
-                amount={<SkeletonText width="5rem" />}
-              />
-            ))}
-          {rows.map((row) => (
-            <RecordListCells
-              key={row.entityId}
-              kind={kind}
-              name={
-                <Link
-                  {...recordLink(organizationId, kind, row.entityId)}
-                  className="font-medium underline-offset-4 hover:underline"
-                >
-                  {row.name}
-                </Link>
-              }
-              detail={
-                <span className="block max-w-80 truncate text-muted-foreground">
-                  {kind === "deals" ? dealStatus(row) : row.description || "—"}
-                </span>
-              }
-              amount={
-                <span className="tabular-nums">
-                  {dealAmount(row.amount ?? null, row.currency ?? null)}
-                </span>
-              }
-            />
-          ))}
-        </TableBody>
-      </Table>
-    </div>
-  );
-}
-
-function RecordListCells({
-  kind,
-  name,
-  detail,
-  amount,
-  hidden,
-}: {
-  kind: CrmKind;
-  name: React.ReactNode;
-  detail: React.ReactNode;
-  amount?: React.ReactNode;
-  hidden?: boolean;
-}) {
-  return (
-    <TableRow aria-hidden={hidden}>
-      <TableCell>{name}</TableCell>
-      <TableCell>{detail}</TableCell>
-      {kind === "deals" && <TableCell>{amount}</TableCell>}
-    </TableRow>
+    <AppTable
+      name={kind}
+      columns={columns}
+      data={rows}
+      getRowId={(row) => row.entityId}
+      loading={loading}
+      loadingMessage={`Loading ${kind}`}
+      fetching={fetching}
+      pagination={pagination}
+      empty={{
+        icon: { accounts: Building2, contacts: Users, deals: Handshake }[kind],
+        title: filtered ? `No ${kind} found` : `No ${kind} yet`,
+        description: filtered
+          ? "Try a different search or filter."
+          : `${sectionLabels[kind]} you create appear here.`,
+        action: !filtered && onCreate && (
+          <Button onClick={onCreate}>
+            <Plus aria-hidden />
+            New {singularLabels[kind]}
+          </Button>
+        ),
+      }}
+    />
   );
 }
 

@@ -17,7 +17,8 @@ import { MessageCircle, MessageSquareReply } from "lucide-react";
 
 export type Discussion = {
   messageId: string;
-  purpose: "source" | "mention" | "association";
+  /** `discussion`: a thread in the discussion of one of a project's tasks. */
+  purpose: "source" | "mention" | "association" | "discussion";
   link: RecordLink;
   conversationName: string | null;
   conversationKind?: ConversationKind;
@@ -36,11 +37,19 @@ export function DiscussionItem({ item }: { item: Discussion }) {
   const conversation =
     item.conversationName ??
     (item.conversationKind === "group" ? "Group message" : "Direct message");
-  const title = `${item.purpose === "source" ? "Created from a discussion" : "Related discussion"} · ${conversation}`;
+  const title = `${
+    {
+      source: "Created from a discussion",
+      mention: "Related discussion",
+      association: "Related discussion",
+      discussion: "Task discussion",
+    }[item.purpose]
+  } · ${conversation}`;
   const relationship = {
     source: "Created from this discussion",
     mention: "Linked through a reference",
     association: "Linked work",
+    discussion: "Discussed on a task",
   }[item.purpose];
   const author = item.authorName ?? "Unknown author";
   return (

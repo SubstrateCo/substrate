@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 
-import { TaskAssigneeAvatar } from "../task-cues/task-assignee-avatar";
 import type { ProjectDetail } from "../types";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import {
   Command,
   CommandEmpty,
@@ -44,7 +44,12 @@ export function AssigneePicker({
       value={`${actor.name} ${actor.entityId}`}
       onSelect={() => choose(actor.entityId)}
     >
-      <TaskAssigneeAvatar name={actor.name} image={actor.image} type={actor.type} />
+      <PersonAvatar
+        size="xs"
+        name={actor.name}
+        image={actor.image}
+        agent={actor.type === "agent"}
+      />
       <span className="min-w-0 flex-1 truncate">{actor.name}</span>
       {actor.entityId === value && <Check aria-hidden="true" />}
     </CommandItem>
@@ -59,7 +64,7 @@ export function AssigneePicker({
             <CommandEmpty>No one matches.</CommandEmpty>
             <CommandGroup>
               <CommandItem value="Unassigned" onSelect={() => choose(null)}>
-                <TaskAssigneeAvatar />
+                <PersonAvatar size="xs" />
                 <span className="flex-1">Unassigned</span>
                 {!value && <Check aria-hidden="true" />}
               </CommandItem>

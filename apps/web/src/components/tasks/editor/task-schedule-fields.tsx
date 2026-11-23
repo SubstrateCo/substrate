@@ -3,11 +3,11 @@ import { useId } from "react";
 import { assigneeLabel } from "../assignee/assignee-label";
 import { AssigneePicker } from "../assignee/assignee-picker";
 import { TaskDueDatePicker } from "../detail/task-due-date-picker";
-import { TaskAssigneeAvatar } from "../task-cues/task-assignee-avatar";
 import { taskPriorityOptions, taskStatusOptions } from "../task-cues/task-options";
 import { TaskSelect } from "../task-select";
 import type { ProjectDetail } from "../types";
 import type { TaskEditorForm } from "./task-form-view";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { formatShortDate, parseDateOnly } from "@/lib/format/date";
@@ -89,10 +89,11 @@ export function TaskScheduleFields({
                     aria-invalid={invalid}
                     aria-describedby={invalid ? `${id}-assignee-error` : undefined}
                   >
-                    <TaskAssigneeAvatar
+                    <PersonAvatar
+                      size="xs"
                       name={actor?.name}
                       image={actor?.image}
-                      type={actor?.type}
+                      agent={actor?.type === "agent"}
                     />
                     <span className="min-w-0 flex-1 truncate text-left">
                       {value && !actor

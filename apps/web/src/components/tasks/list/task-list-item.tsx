@@ -1,7 +1,6 @@
 import { taskStatusLabels, type TaskStatus } from "@substrate/contracts/tasks";
 
 import { TaskAssigneeHoverCard } from "../assignee/task-assignee-hover-card";
-import { TaskAssigneeAvatar } from "../task-cues/task-assignee-avatar";
 import { taskPriorityLabels } from "../task-cues/task-labels";
 import { TaskPriorityIcon } from "../task-cues/task-priority-icon";
 import type { ProjectDetail, Task } from "../types";
@@ -12,6 +11,7 @@ import {
   taskRowDueDateClassName,
 } from "./task-list-layout";
 import { TaskStatusMenu } from "./task-status-menu";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import { DueDate } from "@/components/time/due-date";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "cn";
@@ -134,11 +134,16 @@ function TaskListAssignee({
     <span className={taskRowAssigneeClassName}>
       {assignee ? (
         <TaskAssigneeHoverCard assignee={assignee}>
-          <TaskAssigneeAvatar name={assignee.name} image={assignee.image} type={assignee.type} />
+          <PersonAvatar
+            size="xs"
+            name={assignee.name}
+            image={assignee.image}
+            agent={assignee.type === "agent"}
+          />
         </TaskAssigneeHoverCard>
       ) : (
         <span aria-label={missingName ?? "Unassigned"}>
-          <TaskAssigneeAvatar name={missingName} />
+          <PersonAvatar size="xs" name={missingName} />
         </span>
       )}
     </span>

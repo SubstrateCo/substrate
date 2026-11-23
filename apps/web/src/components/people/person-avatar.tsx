@@ -6,6 +6,7 @@ import { Bot } from "lucide-react";
 /**
  * A person or agent in rows, chips, and pickers: 24px, or 20px for `xs`. A person is a circle
  * with initials; an agent is a rounded square with the Bot mark. Both use the neutral fill.
+ * No name, such as an unassigned task, shows an empty dashed circle.
  */
 export function PersonAvatar({
   name,
@@ -14,12 +15,23 @@ export function PersonAvatar({
   size = "sm",
   className,
 }: {
-  name: string;
+  name?: string;
   image?: string | null;
   agent?: boolean;
   size?: "sm" | "xs";
   className?: string;
 }) {
+  if (!name)
+    return (
+      <span
+        aria-hidden="true"
+        className={cn(
+          "inline-block shrink-0 rounded-full border border-dashed border-muted-foreground/50",
+          size === "xs" ? "size-5" : "size-6",
+          className,
+        )}
+      />
+    );
   return (
     <Avatar
       aria-hidden="true"

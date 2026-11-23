@@ -127,8 +127,7 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   ).toBeVisible();
   const list = page
     .getByRole("region", { name: "Interactions workspace", exact: true })
-    .getByRole("list")
-    .last();
+    .getByRole("list", { name: "Interactions", exact: true });
   await expect(list.getByRole("listitem")).toHaveCount(50);
   await capture(page, "timeline-dark");
   await page
@@ -153,11 +152,11 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   await page.getByRole("combobox", { name: "Record origin", exact: true }).click();
   await page.getByRole("option", { name: "All origins", exact: true }).click();
   await expect(list.getByRole("listitem")).toHaveCount(50);
-  await page.getByRole("button", { name: "Older interactions", exact: true }).click();
-  await expect(page.getByRole("button", { name: "Newest", exact: true })).toBeEnabled();
+  await page.getByRole("button", { name: "Next page", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Previous page", exact: true })).toBeEnabled();
   await page.getByRole("searchbox", { name: "Search interactions", exact: true }).fill("Maya");
   await expect(list.getByRole("listitem")).toHaveCount(26);
-  await expect(page.getByRole("button", { name: "Newest", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Previous page", exact: true })).toHaveCount(0);
   await page.getByRole("combobox", { name: "Interaction type", exact: true }).click();
   await page.getByRole("option", { name: "Email", exact: true }).click();
   await expect(list.getByRole("listitem")).toHaveCount(9);
@@ -239,7 +238,7 @@ test("dashboard selects today, browses day-specific pages, and handles empty day
   await page.getByRole("button", { name: "Next day", exact: true }).click();
   await expect(page.getByLabel("Selected day: Today", { exact: true })).toBeVisible();
   await expect(rows).toHaveCount(50);
-  await page.getByRole("button", { name: "Older interactions", exact: true }).click();
+  await page.getByRole("button", { name: "Next page", exact: true }).click();
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toHaveAccessibleName(/Today interaction/);
 
@@ -250,7 +249,7 @@ test("dashboard selects today, browses day-specific pages, and handles empty day
   await expect(page.getByLabel("Selected day: Yesterday", { exact: true })).toBeVisible();
   await expect(rows).toHaveCount(2);
   await expect(rows.first()).toHaveAccessibleName(/Yesterday interaction/);
-  await expect(page.getByRole("button", { name: "Newest", exact: true })).toHaveCount(0);
+  await expect(page.getByRole("button", { name: "Previous page", exact: true })).toHaveCount(0);
   await expect(total(page)).toHaveText("54");
 
   await page.keyboard.press("Home");
@@ -269,7 +268,7 @@ test("dashboard selects today, browses day-specific pages, and handles empty day
   await page.keyboard.press("Enter");
   await expect(page.getByLabel("Selected day: Today", { exact: true })).toBeVisible();
   await expect(rows).toHaveCount(50);
-  await expect(page.getByRole("button", { name: "Newest", exact: true })).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Previous page", exact: true })).toBeDisabled();
   await page.getByRole("radio", { name: "Last 7 days", exact: true }).click();
   await expect(total(page)).toHaveText("53");
   await expect(page.getByLabel("Selected day: Today", { exact: true })).toBeVisible();
@@ -366,7 +365,9 @@ test("create interactions, browse directories and profiles, and inspect source c
   ).toBeVisible();
   await page.evaluate(() => {
     const observer = new MutationObserver(() => {
-      if (document.querySelector('[role="status"][aria-label="Loading interaction directory…"]'))
+      if (
+        document.querySelector('table[aria-label="People directory"] tbody tr[aria-hidden="true"]')
+      )
         document.documentElement.setAttribute("data-loading-flash", "true");
     });
     observer.observe(document.body, { childList: true, subtree: true });
@@ -496,7 +497,7 @@ test("people and organization tables paginate and reset after filtering", async 
       page,
       type === "people" ? "people-paginated-dark" : "organizations-paginated-dark",
     );
-    await page.getByRole("button", { name: "Next", exact: true }).click();
+    await page.getByRole("button", { name: "Next page", exact: true }).click();
     await expect(table.getByRole("row")).toHaveCount(2);
     await expect(page.getByText("Page 2", { exact: true })).toBeVisible();
     await expect(
@@ -505,7 +506,7 @@ test("people and organization tables paginate and reset after filtering", async 
         exact: true,
       }),
     ).toBeVisible();
-    await expect(page.getByRole("button", { name: "Next", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Next page", exact: true })).toBeDisabled();
     await page.getByRole("combobox", { name: "Rows per page", exact: true }).click();
     await page.getByRole("option", { name: "50", exact: true }).click();
     await expect(table.getByRole("row")).toHaveCount(27);
@@ -517,6 +518,6 @@ test("people and organization tables paginate and reset after filtering", async 
       })
       .fill(type === "people" ? "Person 25" : "Company 25");
     await expect(table.getByRole("row")).toHaveCount(2);
-    await expect(page.getByRole("button", { name: "Previous", exact: true })).toBeDisabled();
+    await expect(page.getByRole("button", { name: "Previous page", exact: true })).toBeDisabled();
   }
 });

@@ -1,24 +1,13 @@
 import type { ConversationKind } from "@substrate/contracts/messaging/input";
 
-import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
-import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { Tag } from "@/components/feedback/tag";
-import { RowActions } from "@/components/layout/row-actions";
+import { RowAction } from "@/components/layout/row-actions";
 import { ConversationActionsMenu } from "@/components/messaging/conversations/actions/conversation-actions-menu";
 import { PersonAvatar } from "@/components/people/person-avatar";
-import { Button } from "@/components/ui/button";
+import { AppTable, createAppColumnHelper } from "@/components/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ConversationMember } from "@/lib/messaging/conversations";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { Hash, LockKeyhole, UserPlus, Users } from "lucide-react";
@@ -119,113 +108,74 @@ export function ManagedConversations({
         onRetry={state === "unavailable" ? undefined : onRetry}
       />
     );
-  const loadingRows = loading && !rows;
-  if (!loadingRows && !rows?.length && !error)
-    return (
-      <div className="rounded-lg border">
-        <ContentNotice
-          icon={Hash}
-          title="No channels or group messages"
-          description="Channels and group messages people create in this organization appear here."
-        />
-      </div>
-    );
   return (
     <div className="space-y-3">
       {state === "stale" && (
         <StaleNotice onRetry={onRetry}>This list may be out of date.</StaleNotice>
       )}
-      <div
-        className="overflow-hidden rounded-lg border bg-card"
-        role={loadingRows ? "status" : undefined}
-        aria-label={loadingRows ? "Loading conversations" : undefined}
-      >
-        <Table aria-label="Channels and group messages">
-          <TableHeader>
-            <TableRow>
-              <TableHead>Conversation</TableHead>
-              <TableHead>Owner</TableHead>
-              <TableHead>Members</TableHead>
-              <TableHead className="w-20">
-                <span className="sr-only">Actions</span>
-              </TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loadingRows &&
-              [0, 1, 2].map((key) => (
-                <ManagedConversationCells
-                  key={key}
-                  hidden
-                  conversation={<SkeletonText width="10rem" />}
-                  owner={<SkeletonText width="7rem" />}
-                  members={<SkeletonText width="8rem" />}
-                />
-              ))}
-            {rows?.map((row) => {
-              const name = row.name ?? "Group message";
-              return (
-                <ManagedConversationCells
-                  key={row.id}
-                  conversation={
-                    <span className="flex min-w-0 items-center gap-2">
-                      <KindIcon row={row} />
-                      <span className="truncate font-medium">{name}</span>
-                    </span>
-                  }
-                  owner={<span className="text-muted-foreground">{row.ownerName}</span>}
-                  members={<MemberSummary members={row.members} />}
-                  actions={
-                    <RowActions label={`${name} actions`} className="justify-end">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <Button
-                            variant="ghost"
-                            size="icon-sm"
-                            aria-label={`Add people to ${name}`}
-                            onClick={() => onAddMembers(row.id)}
-                          >
-                            <UserPlus aria-hidden="true" />
-                          </Button>
-                        </TooltipTrigger>
-                        <TooltipContent>Add people</TooltipContent>
-                      </Tooltip>
-                      <ConversationActionsMenu
-                        deleteLabel={row.kind === "channel" ? "Delete channel" : "Delete group"}
-                        onTransfer={() => onTransfer(row.id)}
-                        onDelete={() => onDelete(row.id)}
-                      />
-                    </RowActions>
-                  }
-                />
-              );
-            })}
-          </TableBody>
-        </Table>
-      </div>
+      <AppTable
+        name="Channels and group messages"
+        columns={columns}
+        data={rows ?? []}
+        getRowId={(row) => row.id}
+        loading={loading && !rows}
+        loadingMessage="Loading conversations"
+        error={error}
+        onRetry={onRetry}
+        empty={{
+          icon: Hash,
+          title: "No channels or group messages",
+          description:
+            "Channels and group messages people create in this organization appear here.",
+        }}
+        rowActions={{
+          label: (row) => `${conversationName(row)} actions`,
+          render: (row) => (
+            <>
+              <RowAction
+                label={`Add people to ${conversationName(row)}`}
+                onClick={() => onAddMembers(row.id)}
+              >
+                <UserPlus aria-hidden="true" />
+              </RowAction>
+              <ConversationActionsMenu
+                deleteLabel={row.kind === "channel" ? "Delete channel" : "Delete group"}
+                onTransfer={() => onTransfer(row.id)}
+                onDelete={() => onDelete(row.id)}
+              />
+            </>
+          ),
+        }}
+      />
     </div>
   );
 }
 
-function ManagedConversationCells({
-  conversation,
-  owner,
-  members,
-  actions,
-  hidden,
-}: {
-  conversation: React.ReactNode;
-  owner: React.ReactNode;
-  members: React.ReactNode;
-  actions?: React.ReactNode;
-  hidden?: boolean;
-}) {
-  return (
-    <TableRow className="group/row" aria-hidden={hidden}>
-      <TableCell className="max-w-64">{conversation}</TableCell>
-      <TableCell>{owner}</TableCell>
-      <TableCell>{members}</TableCell>
-      <TableCell>{actions}</TableCell>
-    </TableRow>
-  );
+function conversationName(row: ManagedConversationRow) {
+  return row.name ?? "Group message";
 }
+
+const column = createAppColumnHelper<ManagedConversationRow>();
+
+const columns = column.columns([
+  column.accessor(conversationName, {
+    id: "conversation",
+    header: "Conversation",
+    cell: ({ row }) => (
+      <span className="flex max-w-64 min-w-0 items-center gap-2">
+        <KindIcon row={row.original} />
+        <span className="truncate font-medium">{conversationName(row.original)}</span>
+      </span>
+    ),
+  }),
+  column.accessor("ownerName", {
+    header: "Owner",
+    cell: ({ getValue }) => <span className="text-muted-foreground">{getValue()}</span>,
+  }),
+  column.accessor((row) => row.members.length, {
+    id: "members",
+    header: "Members",
+    meta: { controls: true },
+    cell: ({ row }) => <MemberSummary members={row.original.members} />,
+  }),
+]);

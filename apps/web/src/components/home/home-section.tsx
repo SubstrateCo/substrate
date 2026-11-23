@@ -7,7 +7,6 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "cn";
 import { ArrowRight, type LucideIcon } from "lucide-react";
 
 export type HomeItem = {
@@ -26,40 +25,26 @@ export type HomeSectionData = {
   onRetry: () => void;
 };
 
-export function HomeRows({
-  items,
-  featured = false,
-  compact = false,
-}: {
-  items: HomeItem[];
-  featured?: boolean;
-  compact?: boolean;
-}) {
+export function HomeRows({ items }: { items: HomeItem[] }) {
   return (
-    <ul className={featured ? "grid gap-3 lg:grid-cols-2" : "divide-y"}>
+    <ul className="flex flex-col gap-0.5">
       {items.map((item) => (
         <li key={item.id}>
           <Link
             {...item.link}
             title={item.title}
-            className={cn(
-              "flex min-w-0 items-center gap-3 rounded-md px-3 text-sm outline-none hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring",
-              compact ? "py-2" : "py-3",
-              featured && "items-start rounded-lg border bg-muted/20",
-            )}
+            className="flex min-w-0 items-center gap-3 rounded-md px-3 py-2 text-sm outline-none hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring"
           >
             <span className="relative flex size-8 shrink-0 items-center justify-center text-muted-foreground">
               {item.icon}
             </span>
             <span className="min-w-0 flex-1 space-y-1">
-              <span className={cn("block font-medium", featured ? "line-clamp-2" : "truncate")}>
-                {item.title}
-              </span>
+              <span className="block truncate font-medium">{item.title}</span>
               <span className="block truncate text-xs text-muted-foreground">
                 {item.description}
               </span>
             </span>
-            {item.trailing && !featured && (
+            {item.trailing && (
               <span className="shrink-0 text-xs text-muted-foreground">{item.trailing}</span>
             )}
           </Link>
@@ -73,24 +58,34 @@ export function HomeSection({
   title,
   description,
   icon,
+  titleIcon,
   emptyTitle,
   emptyDescription,
   link,
+  linkLabel,
+  emptyLink = link,
   data,
   emptyAction,
   emptyContent,
-  emphasis = false,
+  hideHeaderWhenEmpty = false,
 }: {
   title: string;
   description?: string;
   icon: LucideIcon;
+  /** An icon before the title, such as `Hand` for what needs you. */
+  titleIcon?: ReactNode;
   emptyTitle: string;
   emptyDescription: string;
   link: LinkProps;
+  /** The header link's text. Without it, the link reads "View all". */
+  linkLabel?: string;
+  /** Where the empty state's action goes, when not the header link. */
+  emptyLink?: LinkProps;
   data: HomeSectionData;
   emptyAction: string;
   emptyContent?: ReactNode;
-  emphasis?: boolean;
+  /** A quiet section shows only its empty state. */
+  hideHeaderWhenEmpty?: boolean;
 }) {
   const empty = !data.loading && !data.error && !data.items.length;
   let content = emptyContent ?? (
@@ -101,7 +96,7 @@ export function HomeSection({
       description={emptyDescription}
       action={
         <Button variant="outline" size="sm" asChild>
-          <Link {...link}>
+          <Link {...emptyLink}>
             {emptyAction}
             <ArrowRight aria-hidden="true" />
           </Link>
@@ -109,28 +104,36 @@ export function HomeSection({
       }
     />
   );
-  if (data.items.length) content = <HomeRows items={data.items} compact={!emphasis} />;
+  if (data.items.length) content = <HomeRows items={data.items} />;
   if (data.loading)
     content = <LoadingState label={`Loading ${title.toLowerCase()}`} variant="compact" rows={3} />;
   if (data.error)
     content = <ErrorState compact title="Couldn’t load this section" onRetry={data.onRetry} />;
   return (
     <Card size="sm" className="min-h-0 min-w-0 flex-1" role="region" aria-label={title}>
-      <CardHeader className="flex shrink-0 items-start justify-between gap-3">
-        <div className="space-y-1">
-          <CardTitle>
-            <h2>{title}</h2>
-          </CardTitle>
-          {description && <p className="text-xs text-muted-foreground">{description}</p>}
-        </div>
-        {!empty && (
-          <Button asChild variant="ghost" size="xs">
-            <Link {...link} aria-label={`View all ${title.toLowerCase()}`}>
-              View all <ArrowRight aria-hidden="true" />
-            </Link>
-          </Button>
-        )}
-      </CardHeader>
+      {!(empty && hideHeaderWhenEmpty) && (
+        <CardHeader className="flex shrink-0 items-start justify-between gap-3">
+          <div className="space-y-1">
+            <CardTitle>
+              <h2 className="flex items-center gap-2">
+                {titleIcon}
+                {title}
+              </h2>
+            </CardTitle>
+            {description && <p className="text-xs text-muted-foreground">{description}</p>}
+          </div>
+          {!empty && (
+            <Button asChild variant="ghost" size="xs">
+              <Link
+                {...link}
+                aria-label={linkLabel ? undefined : `View all ${title.toLowerCase()}`}
+              >
+                {linkLabel ?? "View all"} <ArrowRight aria-hidden="true" />
+              </Link>
+            </Button>
+          )}
+        </CardHeader>
+      )}
       <CardContent
         className="min-h-0 flex-1 overflow-y-auto"
         tabIndex={0}

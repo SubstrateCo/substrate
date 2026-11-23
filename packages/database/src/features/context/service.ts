@@ -191,6 +191,9 @@ export function joinReferenceMessages<T extends PgSelectQueryBuilder>(query: T) 
     .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId));
 }
 
+/** The most discussions a record shows. */
+const relatedLimit = 100;
+
 export function createContextRepository(context: RepositoryContext, scope: SessionIdentity) {
   const { db } = context;
   const transaction = <T>(work: (ctx: RepositoryContext) => Promise<T>) =>
@@ -311,24 +314,32 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
               .from(tasks)
               .where(liveProjectTasks(scope, entityId))
           : undefined;
+      const message = {
+        messageId: messagingMessages.id,
+        conversationId: messagingConversations.id,
+        conversationName: messagingConversations.name,
+        body: sql<string>`case when ${messagingMessages.deletedAt} is null then ${messagingMessages.body} else '' end`,
+        deletedAt: messagingMessages.deletedAt,
+        threadId: messagingMessages.threadId,
+        authorName: joinedActorName(),
+        authorImage: joinedActorPicture(scope.userId),
+        authorType: actors.type,
+        createdAt: messagingMessages.createdAt,
+        replyCount: sql<number>`(select count(*)::int from ${messagingMessages} replies where replies.conversation_id = ${messagingMessages.conversationId} and replies.thread_id = coalesce(${messagingMessages.threadId}, ${messagingMessages.id}))`,
+      };
       const references = db
         .select({
-          messageId: messagingMessages.id,
-          conversationId: messagingConversations.id,
-          conversationName: messagingConversations.name,
-          body: sql<string>`case when ${messagingMessages.deletedAt} is null then ${messagingMessages.body} else '' end`,
-          deletedAt: messagingMessages.deletedAt,
-          threadId: messagingMessages.threadId,
-          authorName: joinedActorName(),
-          authorImage: joinedActorPicture(scope.userId),
-          authorType: actors.type,
-          createdAt: messagingMessages.createdAt,
-          purpose: messageEntityReferences.purpose,
-          replyCount: sql<number>`(select count(*)::int from ${messagingMessages} replies where replies.conversation_id = ${messagingMessages.conversationId} and replies.thread_id = coalesce(${messagingMessages.threadId}, ${messagingMessages.id}))`,
+          ...message,
+          purpose: sql<
+            "source" | "mention" | "association" | "discussion"
+          >`${messageEntityReferences.purpose}`,
         })
         .from(messageEntityReferences)
         .$dynamic();
-      return joinActorProfile(joinReferenceMessages(references), scope.organizationId)
+      const referenced = await joinActorProfile(
+        joinReferenceMessages(references),
+        scope.organizationId,
+      )
         .where(
           and(
             eq(messageEntityReferences.organizationId, scope.organizationId),
@@ -343,7 +354,39 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
           ),
         )
         .orderBy(asc(messageEntityReferences.createdAt))
-        .limit(100);
+        .limit(relatedLimit);
+      if (!projectTasks || referenced.length >= relatedLimit) return referenced;
+      // A project's discussions also include the threads of its tasks' own discussions. Those
+      // messages belong to the task by their conversation, so they have no reference row.
+      const taskThreads = await joinActorProfile(
+        db
+          .select({
+            ...message,
+            conversationName: tasks.title,
+            purpose: sql<"discussion">`'discussion'`,
+          })
+          .from(messagingMessages)
+          .innerJoin(
+            messagingConversations,
+            eq(messagingConversations.id, messagingMessages.conversationId),
+          )
+          .innerJoin(tasks, eq(tasks.entityId, messagingConversations.taskEntityId))
+          .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
+          .$dynamic(),
+        scope.organizationId,
+      )
+        .where(
+          and(
+            eq(messagingConversations.organizationId, scope.organizationId),
+            inArray(messagingConversations.taskEntityId, projectTasks),
+            isNull(messagingMessages.threadId),
+            isNull(messagingMessages.deletedAt),
+            visibleConversations(db, scope),
+          ),
+        )
+        .orderBy(asc(messagingMessages.createdAt))
+        .limit(relatedLimit - referenced.length);
+      return [...referenced, ...taskThreads];
     },
     messageTargets,
     async messageTarget(conversationId: string, messageId: string) {

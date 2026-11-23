@@ -4,10 +4,10 @@ import { revalidateLogic, useForm, useSelector } from "@tanstack/react-form";
 
 import type { ReactNode } from "react";
 
-import { TaskAssigneeAvatar } from "../../task-cues/task-assignee-avatar";
 import { TaskSelect } from "../../task-select";
 import { projectPermissionOptions, type ProjectDetail } from "../../types";
 import type { FormDialogEditor } from "@/components/feedback/form-dialog";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import {
   Command,
   CommandEmpty,
@@ -86,7 +86,7 @@ export function ProjectAccessForm({
                     value={`${candidate.name} ${candidate.entityId}`}
                     onSelect={() => form.setFieldValue("actorEntityId", candidate.entityId)}
                   >
-                    <TaskAssigneeAvatar name={candidate.name} image={candidate.image} />
+                    <PersonAvatar size="xs" name={candidate.name} image={candidate.image} />
                     <span className="min-w-0 flex-1 truncate">{candidate.name}</span>
                     {candidate.entityId === actorEntityId && <Check aria-hidden="true" />}
                   </CommandItem>

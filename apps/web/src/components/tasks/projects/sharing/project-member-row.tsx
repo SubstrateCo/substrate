@@ -2,9 +2,9 @@ import type { PermissionLevel } from "@substrate/contracts/tasks";
 
 import { useId } from "react";
 
-import { TaskAssigneeAvatar } from "../../task-cues/task-assignee-avatar";
 import { projectPermissionLabels, projectPermissionOptions, type ProjectDetail } from "../../types";
 import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import {
   Select,
   SelectContent,
@@ -38,12 +38,7 @@ export function ProjectMemberRow({
   const editable = canManage && !lastOwner;
   return (
     <li className={cn(actionRow, "flex min-h-12 items-center gap-3 px-5 py-2")}>
-      <TaskAssigneeAvatar
-        name={member.name}
-        image={member.image}
-        type={member.type}
-        className="size-7"
-      />
+      <PersonAvatar name={member.name} image={member.image} agent={member.type === "agent"} />
       <div className="min-w-0 flex-1">
         <p id={labelId} className="truncate text-sm font-medium">
           {member.name}

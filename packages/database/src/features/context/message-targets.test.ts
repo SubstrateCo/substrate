@@ -49,6 +49,36 @@ test("project discussions include task links while checking both work and conver
   expect(await context().related(project.entityId)).toMatchObject([{ messageId: root.id }]);
 });
 
+test("project discussions include the thread roots of its tasks' own discussions", async () => {
+  const { project, repos } = await setup();
+  const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Draft" });
+  const discussion = await repos.tasks.ensureDiscussion(task.entityId);
+  const root = await f.messaging("alice").sendMessage(discussion, "Can we split this?");
+  await f.messaging("alice").sendMessage(discussion, "Yes, I'll draft half.", root.id);
+  const other = await repos.projects.create({ name: "Separate work" });
+  const otherTask = await repos.tasks.create({ projectEntityId: other.entityId, title: "Other" });
+  await f
+    .messaging("alice")
+    .sendMessage(await repos.tasks.ensureDiscussion(otherTask.entityId), "Elsewhere");
+  expect(await context().related(project.entityId)).toMatchObject([
+    { messageId: root.id, conversationId: discussion, purpose: "discussion", replyCount: 1 },
+  ]);
+  // The task's own discussion is shown on the task itself, not as a related discussion.
+  expect(await context().related(task.entityId)).toEqual([]);
+  // People who cannot see the task cannot see its discussion through the project either.
+  await repos.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.bob,
+    level: "view",
+  });
+  expect(await context("bob").related(project.entityId)).toHaveLength(1);
+  await f.db
+    .update(entities)
+    .set({ deletedAt: new Date() })
+    .where(eq(entities.entityId, task.entityId));
+  expect(await context().related(project.entityId)).toEqual([]);
+});
+
 test("message targets retain timeline reaction and reply summaries for roots and replies, and mismatched conversations fail", async () => {
   const { chat, reply, root, conversation } = await setup();
   await chat.addMembers(conversation.id, ["bob@example.com"]);

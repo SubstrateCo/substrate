@@ -9,9 +9,9 @@ import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { NativeField } from "@/components/forms/native-form";
+import { InteractionRow } from "@/components/interactions/interaction-row";
 import { RecordSection, RecordSectionAction, recordRows } from "@/components/layout/record-section";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
-import { Timestamp } from "@/components/time/timestamp";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { resourceState } from "@/lib/resource-state";
 import { useInteractionSources } from "@/queries/calendar/interaction-sources";
@@ -71,15 +71,21 @@ export function InteractionHistory({
           // Authors delete their own interactions, and admins delete any.
           const deletable = canDelete && interaction.canDelete;
           return (
-            <li
+            <InteractionRow
               key={interaction.entityId}
-              className="group/row grid gap-1 rounded-md px-2 py-1.5 hover:bg-row-hover"
-            >
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <span>{interactionLabels[interaction.kind]}</span>
-                <Timestamp value={interaction.occurredAt} format="datetime" />
-                {(canEdit || deletable) && (
-                  <RowActions label="Interaction actions" className="ml-auto">
+              kind={interaction.kind}
+              occurredAt={interaction.occurredAt}
+              summary={interaction.summary}
+              source={
+                <MeetingSourceLink
+                  organizationId={organizationId}
+                  source={sources[interaction.entityId]}
+                  className="max-w-full"
+                />
+              }
+              actions={
+                (canEdit || deletable) && (
+                  <RowActions label="Interaction actions">
                     {canEdit && (
                       <RowAction
                         label="Edit interaction"
@@ -104,15 +110,9 @@ export function InteractionHistory({
                       </RowAction>
                     )}
                   </RowActions>
-                )}
-              </div>
-              <p className="text-sm whitespace-pre-wrap">{interaction.summary}</p>
-              <MeetingSourceLink
-                organizationId={organizationId}
-                source={sources[interaction.entityId]}
-                className="max-w-full"
-              />
-            </li>
+                )
+              }
+            />
           );
         })}
       </ol>
@@ -172,12 +172,3 @@ export function InteractionHistory({
     </RecordSection>
   );
 }
-
-const interactionLabels = {
-  call: "Call",
-  meeting: "Meeting",
-  email: "Email",
-  message: "Message",
-  note: "Internal note",
-  other: "Other",
-};
