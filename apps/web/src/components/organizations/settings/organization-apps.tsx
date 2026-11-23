@@ -5,12 +5,14 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
+import { AppAgentSupportFooter, type AppAgentSupport } from "./app-agent-support";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Tag } from "@/components/feedback/tag";
 import { SettingsPanel } from "@/components/layout/settings-page";
-import { SettingsCard, SettingsSection } from "@/components/layout/settings-section";
+import { SettingsSection } from "@/components/layout/settings-section";
+import { Item, ItemContent, ItemHeader, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { Switch } from "@/components/ui/switch";
 import { workspaceApps } from "@/components/workspace/workspace-apps";
 import { organizationAppsOptions, useUpdateOrganizationApps } from "@/queries/organizations/apps";
@@ -21,31 +23,41 @@ const catalog = [
     id: "messages",
     description: "Keep conversations, channels, and shared context together.",
     required: true,
+    agentSupport: { mcp: true, skill: "substrate-messaging" },
   },
   {
     id: "agents",
     description: "Work with your agents, review requests, and manage their home desktops.",
     required: true,
+    agentSupport: { mcp: false },
   },
   {
     id: "tasks",
     description:
       "Plan projects, assign tasks, and track work. Includes Projects and CRM follow-up tasks.",
     required: false,
+    agentSupport: { mcp: true, skill: "substrate-tasks" },
   },
   {
     id: "crm",
     description:
       "Manage accounts, deals, and customer relationships. Enable independently of Tasks.",
     required: false,
+    agentSupport: { mcp: true, skill: "substrate-crm" },
   },
   {
     id: "calendar",
     description:
       "Members sync their calendars read-only. Meetings with outside attendees can create contacts and interactions.",
     required: false,
+    agentSupport: { mcp: false },
   },
-] as const satisfies ReadonlyArray<{ id: AppId; description: string; required: boolean }>;
+] as const satisfies ReadonlyArray<{
+  id: AppId;
+  description: string;
+  required: boolean;
+  agentSupport: AppAgentSupport;
+}>;
 
 const disableCopy = {
   tasks: {
@@ -100,42 +112,52 @@ export function OrganizationApps({ organizationId }: { organizationId: string })
                   const Icon = app.icon;
                   const enabled = settings.data.enabledApps.includes(entry.id);
                   return (
-                    <SettingsCard key={entry.id} label={app.label}>
-                      <div className="flex items-center justify-between gap-4">
-                        <div className="flex min-w-0 items-center gap-3">
-                          <div className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                            <Icon className="size-5" aria-hidden />
+                    <Item
+                      key={entry.id}
+                      variant="outline"
+                      asChild
+                      className="h-full flex-col flex-nowrap items-stretch"
+                    >
+                      <section aria-label={app.label}>
+                        <ItemHeader className="basis-auto">
+                          <div className="flex min-w-0 items-center gap-3">
+                            <ItemMedia>
+                              <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
+                                <Icon className="size-5" aria-hidden />
+                              </div>
+                            </ItemMedia>
+                            <ItemTitle>
+                              {!entry.required && canManage ? (
+                                <label htmlFor={`organization-app-${entry.id}`}>{app.label}</label>
+                              ) : (
+                                app.label
+                              )}
+                            </ItemTitle>
                           </div>
-                          {!entry.required && canManage ? (
-                            <label
-                              htmlFor={`organization-app-${entry.id}`}
-                              className="text-sm font-medium"
-                            >
-                              {app.label}
-                            </label>
-                          ) : (
-                            <p className="text-sm font-medium">{app.label}</p>
+                          {entry.required && <Tag>Required</Tag>}
+                          {!entry.required && canManage && (
+                            <Switch
+                              id={`organization-app-${entry.id}`}
+                              checked={enabled}
+                              disabled={mutation.isPending}
+                              onCheckedChange={(checked) => {
+                                mutation.reset();
+                                if (!checked) setDisabling(entry.id);
+                                else change(entry.id, true);
+                              }}
+                            />
                           )}
-                        </div>
-                        {entry.required && <Tag>Required</Tag>}
-                        {!entry.required && canManage && (
-                          <Switch
-                            id={`organization-app-${entry.id}`}
-                            checked={enabled}
-                            disabled={mutation.isPending}
-                            onCheckedChange={(checked) => {
-                              mutation.reset();
-                              if (!checked) setDisabling(entry.id);
-                              else change(entry.id, true);
-                            }}
-                          />
-                        )}
-                        {!entry.required && !canManage && (
-                          <Tag>{enabled ? "Enabled" : "Disabled"}</Tag>
-                        )}
-                      </div>
-                      <p className="text-sm text-muted-foreground">{entry.description}</p>
-                    </SettingsCard>
+                          {!entry.required && !canManage && (
+                            <Tag>{enabled ? "Enabled" : "Disabled"}</Tag>
+                          )}
+                        </ItemHeader>
+                        <ItemContent>
+                          {/* ItemDescription clamps to two lines; these descriptions run longer. */}
+                          <p className="text-sm text-muted-foreground">{entry.description}</p>
+                        </ItemContent>
+                        <AppAgentSupportFooter app={app.label} support={entry.agentSupport} />
+                      </section>
+                    </Item>
                   );
                 })}
               </div>
