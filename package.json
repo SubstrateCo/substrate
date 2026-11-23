@@ -36,9 +36,9 @@
     "ai-deslop": "^0.7.1",
     "jscpd": "^5",
     "knip": "^6.44.2",
-    "oxfmt": "^0.76.0",
-    "oxlint": "^1.91.0",
-    "oxlint-tsgolint": "^7.0.2005",
+    "oxfmt": "^0.79.0",
+    "oxlint": "^1.94.0",
+    "oxlint-tsgolint": "^7.0.2008",
     "turbo": "^2.11.10"
   },
   "engines": {
