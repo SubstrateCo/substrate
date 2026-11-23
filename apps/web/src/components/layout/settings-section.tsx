@@ -137,14 +137,20 @@ export function SettingsRow({
   );
 }
 
-/** A titled list of rows, such as skills or MCP servers. */
+/** A bordered list of rows, such as skills, MCP servers, routines, or agent activity. */
 export function SettingsList({
   title,
   description,
+  label,
+  hidden,
   children,
 }: {
   title?: string;
   description?: ReactNode;
+  /** The list's accessible name when it has no title. */
+  label?: string;
+  /** Hides the list from assistive technology, such as skeleton rows under a status. */
+  hidden?: boolean;
   children: ReactNode;
 }) {
   const id = useId();
@@ -152,7 +158,9 @@ export function SettingsList({
     <div className="grid min-w-0 gap-3">
       {(title || description) && <GroupTitle id={`${id}-title`} {...{ title, description }} />}
       <ul
+        aria-label={label}
         aria-labelledby={title ? `${id}-title` : undefined}
+        aria-hidden={hidden || undefined}
         className="divide-y overflow-hidden rounded-xl border bg-card"
       >
         {children}

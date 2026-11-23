@@ -163,12 +163,7 @@ function CalendarOptions({
 }) {
   if (loadError)
     return accessRequired ? null : (
-      <ErrorState
-        compact
-        title="Couldn’t load your calendars"
-        description="Try again to see the calendars in this account."
-        onRetry={onRetry}
-      />
+      <ErrorState compact title="Couldn’t load your calendars" onRetry={onRetry} />
     );
   if (!options) return <LoadingState label="Loading calendars" variant="compact" />;
   if (options.length === 0)

@@ -14,7 +14,7 @@ export function HomeEmptyWork({ organizationId }: { organizationId: string }) {
         title="No open tasks assigned to you"
         description="Find work in your projects, or create a task and assign it to yourself."
         action={
-          <Button asChild>
+          <Button variant="outline" asChild>
             <Link to="/tasks" search={search}>
               Browse tasks <ArrowRight aria-hidden="true" data-icon="inline-end" />
             </Link>

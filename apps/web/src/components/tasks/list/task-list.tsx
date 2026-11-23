@@ -115,7 +115,14 @@ export function TaskList({
                   ? "Break the project into tasks, then assign and schedule them."
                   : "Tasks appear here when a project editor creates them."
               }
-              action={onCreate && <Button onClick={() => onCreate()}>New task</Button>}
+              action={
+                onCreate && (
+                  <Button onClick={() => onCreate()}>
+                    <Plus aria-hidden />
+                    New task
+                  </Button>
+                )
+              }
             />
           )}
           {taskStatusValues.map((status) => {

@@ -50,14 +50,14 @@ function directoryColumns(type: DirectoryInput["type"]) {
     }),
     column.accessor("count", {
       header: "Interactions",
-      meta: { align: "end" },
+      meta: { align: "end", width: "w-36" },
       cell: ({ cell }) => <cell.NumberCell />,
     }),
     ...(type === "accounts"
       ? [
           column.accessor("contacts", {
             header: "Active contacts",
-            meta: { align: "end" },
+            meta: { align: "end", width: "w-36" },
             cell: ({ cell }) => <cell.NumberCell />,
           }),
         ]

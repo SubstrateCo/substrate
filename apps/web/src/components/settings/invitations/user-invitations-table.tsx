@@ -59,16 +59,21 @@ const baseColumns = column.columns([
   column.accessor((invitation) => invitation.organizationName || "Organization", {
     id: "organization",
     header: "Organization",
-    cell: ({ row }) => (
-      <span className="block wrap-anywhere whitespace-normal">
-        {row.original.organizationName || "Organization"}
+    cell: ({ getValue }) => (
+      <span className="block truncate" title={getValue()}>
+        {getValue()}
       </span>
     ),
   }),
-  column.accessor((invitation) => roleLabel(invitation.role), { id: "role", header: "Role" }),
+  column.accessor((invitation) => roleLabel(invitation.role), {
+    id: "role",
+    header: "Role",
+    meta: { width: "w-28" },
+  }),
   column.accessor((invitation) => (invitation.expired ? "expired" : "pending"), {
     id: "status",
     header: "Status",
+    meta: { width: "w-28" },
     cell: ({ row }) => <InvitationStatus status="pending" expired={row.original.expired} />,
   }),
   dateTimeColumn<InvitationRow>((invitation) => invitation.expiresAt, {
@@ -102,7 +107,7 @@ export function UserInvitationsTable({
         column.display({
           id: "actions",
           header: () => <span className="sr-only">Actions</span>,
-          meta: { align: "end", controls: true },
+          meta: { align: "end", controls: true, width: "w-44" },
           cell: ({ row }) =>
             !row.original.expired && (
               <div className="flex justify-end">
@@ -131,7 +136,6 @@ export function UserInvitationsTable({
       loadingMessage="Loading your invitations"
       error={error}
       errorTitle="Couldn’t load your invitations"
-      errorDescription="Your invitations are unavailable. Please try again."
       onRetry={onRetry}
       empty={{
         title: "No pending invitations",

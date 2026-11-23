@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FormMessage } from "@/components/feedback/form-message";
+import { SettingsCard } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 
 export function CallCardView({
@@ -19,7 +20,7 @@ export function CallCardView({
 }) {
   const [confirm, setConfirm] = useState(false);
   return (
-    <div className="grid gap-4 rounded-xl border bg-card p-5">
+    <SettingsCard>
       <p className="text-sm font-medium">
         {call.caller.name} wants to call {call.agent.name}
       </p>
@@ -53,6 +54,6 @@ export function CallCardView({
           onClose={() => setConfirm(false)}
         />
       )}
-    </div>
+    </SettingsCard>
   );
 }

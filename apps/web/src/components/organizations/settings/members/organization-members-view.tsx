@@ -113,7 +113,6 @@ export function OrganizationMembers({
           loadingMessage="Loading members"
           error={!members || blocked ? error : null}
           errorTitle="Couldn’t load members"
-          errorDescription="We couldn’t load this content. Please try again."
           onRetry={blocked ? undefined : onRetry}
           empty={{
             icon: Users,

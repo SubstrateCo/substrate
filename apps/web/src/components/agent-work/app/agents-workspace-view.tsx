@@ -87,7 +87,7 @@ export function AgentsWorkspaceView({
             }
           />
           <PageSidebarContent>
-            <nav aria-label="Agent views" className="grid gap-0.5">
+            <nav aria-label="Agent views" className="grid min-w-0 grid-cols-1 gap-0.5">
               <Button
                 asChild
                 variant="sidebar"
@@ -114,7 +114,7 @@ export function AgentsWorkspaceView({
             <section
               aria-label="Your agents"
               aria-busy={catalogState === "loading"}
-              className="grid gap-0.5"
+              className="grid min-w-0 grid-cols-1 gap-0.5"
             >
               <PageSidebarGroupTitle>Your agents</PageSidebarGroupTitle>
               {catalogState === "loading" && (
@@ -123,14 +123,9 @@ export function AgentsWorkspaceView({
               {catalogError && (
                 <div className="px-2">
                   <ErrorState
-                    compact
+                    inline
                     title={
                       catalogState === "unavailable" ? "Agents unavailable" : "Couldn’t load agents"
-                    }
-                    description={
-                      catalogState === "unavailable"
-                        ? "Check that you’re signed in and still have access to your agents."
-                        : "Check your connection and try again."
                     }
                     onRetry={catalogState === "unavailable" ? undefined : onRetryCatalog}
                   />

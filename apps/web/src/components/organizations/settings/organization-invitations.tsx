@@ -17,13 +17,11 @@ export function OrganizationInvitations({
       {invitationRoles(viewerRole).length > 0 ? (
         <InvitationManager organizationId={organizationId} viewerRole={viewerRole} framed />
       ) : (
-        <div className="rounded-xl border">
-          <ContentNotice
-            icon={LockKeyhole}
-            title="Only owners and admins can invite people"
-            description="Ask an owner or admin of this organization to send the invitation."
-          />
-        </div>
+        <ContentNotice
+          icon={LockKeyhole}
+          title="Only owners and admins can invite people"
+          description="Ask an owner or admin of this organization to send the invitation."
+        />
       )}
     </SettingsPanel>
   );

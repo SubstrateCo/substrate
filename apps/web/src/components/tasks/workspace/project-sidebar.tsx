@@ -91,13 +91,8 @@ export function ProjectSidebar({
           {error && (
             <div className="px-2">
               <ErrorState
-                compact
+                inline
                 title={state === "unavailable" ? "Projects unavailable" : "Couldn’t load projects"}
-                description={
-                  state === "unavailable"
-                    ? "Check that you still have access to this workspace."
-                    : "Check your connection and try again."
-                }
                 onRetry={state === "unavailable" ? undefined : onRetry}
               />
             </div>

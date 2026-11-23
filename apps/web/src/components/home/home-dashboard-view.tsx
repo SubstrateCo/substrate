@@ -110,7 +110,7 @@ export function HomeDashboardView({
                   titleIcon={<Hand aria-hidden="true" className="size-4 text-warning" />}
                   emptyTitle="You’re caught up"
                   emptyDescription="No pending decisions or recent mentions here."
-                  emptyAction="Notifications"
+                  emptyAction="Open notifications"
                   emptyLink={{ to: "/notifications", search }}
                   hideHeaderWhenEmpty
                   link={{ to: "/agents", search }}

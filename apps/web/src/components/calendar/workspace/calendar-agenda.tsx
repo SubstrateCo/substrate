@@ -5,6 +5,7 @@ import { Link, type LinkProps } from "@tanstack/react-router";
 import { CalendarColorDot } from "../calendar-color";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { Tag } from "@/components/feedback/tag";
+import { SettingsList } from "@/components/layout/settings-section";
 import { agendaTimeLabel, eventEnded, eventTitle, type AgendaDay } from "@/lib/calendar/days";
 import { formatDayLabel, formatShortDate, isSameDay } from "@/lib/format/date";
 import { cn } from "cn";
@@ -45,7 +46,7 @@ export function CalendarAgenda({
               {events.length === 0 ? (
                 <ContentNotice variant="inline" title="No events" />
               ) : (
-                <ul className="divide-y overflow-hidden rounded-xl border bg-card">
+                <SettingsList>
                   {events.map((event) => (
                     <AgendaRow
                       key={event.entityId}
@@ -56,7 +57,7 @@ export function CalendarAgenda({
                       link={eventLink(event)}
                     />
                   ))}
-                </ul>
+                </SettingsList>
               )}
             </li>
           );

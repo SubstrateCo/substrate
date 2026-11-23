@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { AgendaDay, CalendarViewMode } from "@/lib/calendar/days";
 import type { CalendarGroup } from "@/lib/calendar/groups";
-import { CalendarDays, Settings, TriangleAlert } from "lucide-react";
+import { CalendarDays, Plus, Settings, TriangleAlert } from "lucide-react";
 
 export type CalendarBodyState = "loading" | "error" | "no-calendars" | "ready";
 
@@ -110,13 +110,7 @@ export function CalendarWorkspaceView({
             </InlineNotice>
           </div>
         )}
-        {state === "error" && (
-          <ErrorState
-            title="Couldn’t load your calendar"
-            description="Try again to see your events."
-            onRetry={onRetry}
-          />
-        )}
+        {state === "error" && <ErrorState title="Couldn’t load your calendar" onRetry={onRetry} />}
         {state === "loading" && (
           <div className="p-6">
             <LoadingState label="Loading events" rows={5} />
@@ -127,7 +121,12 @@ export function CalendarWorkspaceView({
             icon={CalendarDays}
             title="No calendars connected"
             description="Connect your Google Calendar to see your meetings here. Calendars sync read-only."
-            action={<SettingsLink>Connect a calendar</SettingsLink>}
+            action={
+              <SettingsLink>
+                <Plus aria-hidden />
+                Connect a calendar
+              </SettingsLink>
+            }
           />
         )}
         {state === "ready" && view === "week" && (

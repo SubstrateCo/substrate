@@ -51,7 +51,7 @@ function recordColumns(kind: CrmKind, organizationId: string) {
           column.accessor((row) => dealAmount(row.amount ?? null, row.currency ?? null), {
             id: "amount",
             header: "Amount",
-            meta: { align: "end" },
+            meta: { align: "end", width: "w-36" },
           }),
         ]
       : []),

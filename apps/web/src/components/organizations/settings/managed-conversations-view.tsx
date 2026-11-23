@@ -103,7 +103,7 @@ export function ManagedConversations({
         description={
           state === "unavailable"
             ? "Check that you still have access to this workspace."
-            : "Check your connection and try again."
+            : undefined
         }
         onRetry={state === "unavailable" ? undefined : onRetry}
       />
@@ -130,6 +130,7 @@ export function ManagedConversations({
         }}
         rowActions={{
           label: (row) => `${conversationName(row)} actions`,
+          width: "w-24",
           render: (row) => (
             <>
               <RowAction
@@ -170,12 +171,14 @@ const columns = column.columns([
   }),
   column.accessor("ownerName", {
     header: "Owner",
-    cell: ({ getValue }) => <span className="text-muted-foreground">{getValue()}</span>,
+    cell: ({ getValue }) => (
+      <span className="block truncate text-muted-foreground">{getValue()}</span>
+    ),
   }),
   column.accessor((row) => row.members.length, {
     id: "members",
     header: "Members",
-    meta: { controls: true },
+    meta: { width: "w-44", controls: true },
     cell: ({ row }) => <MemberSummary members={row.original.members} />,
   }),
 ]);
