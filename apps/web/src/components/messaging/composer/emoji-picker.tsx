@@ -27,21 +27,24 @@ function EmojiGrid({
       <h4 className="px-1 text-xs font-medium text-muted-foreground">{label}</h4>
       <div className="grid grid-cols-8 gap-0.5">
         {emojis.map(({ emoji, name }, index) => (
-          <Button
-            key={emoji}
-            type="button"
-            variant="ghost"
-            size="icon"
-            aria-label={name}
-            title={name}
-            tabIndex={active === offset + index ? 0 : -1}
-            data-emoji-option=""
-            onFocus={() => onFocus(offset + index)}
-            onClick={() => onPick(emoji)}
-          >
-            {/* oxlint-disable-next-line design/type-scale -- An emoji glyph, not text: it fills the picker cell. */}
-            <span className="text-lg leading-none">{emoji}</span>
-          </Button>
+          <Tooltip key={emoji}>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                aria-label={name}
+                tabIndex={active === offset + index ? 0 : -1}
+                data-emoji-option=""
+                onFocus={() => onFocus(offset + index)}
+                onClick={() => onPick(emoji)}
+              >
+                {/* oxlint-disable-next-line design/type-scale -- An emoji glyph, not text: it fills the picker cell. */}
+                <span className="text-lg leading-none">{emoji}</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>{name}</TooltipContent>
+          </Tooltip>
         ))}
       </div>
     </section>

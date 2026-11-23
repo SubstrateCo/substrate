@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { WorkTone } from "@/lib/agent-work/status";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
@@ -59,18 +60,24 @@ export function ComposerNotice({
         </span>
       ))}
       {onNewTopic && (
-        <Button
-          type="button"
-          size="xs"
-          variant="ghost"
-          className="ml-auto"
-          disabled={startingTopic}
-          title="The agent keeps its memory but starts this conversation with a clean slate"
-          onClick={onNewTopic}
-        >
-          <MessageSquarePlus aria-hidden="true" />
-          New topic
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              size="xs"
+              variant="ghost"
+              className="ml-auto"
+              disabled={startingTopic}
+              onClick={onNewTopic}
+            >
+              <MessageSquarePlus aria-hidden="true" />
+              New topic
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>
+            The agent keeps its memory but starts this conversation with a clean slate
+          </TooltipContent>
+        </Tooltip>
       )}
     </div>
   );

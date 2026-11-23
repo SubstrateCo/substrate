@@ -68,14 +68,18 @@ export function TaskDetail({
               <>
                 <ChevronRight aria-hidden="true" className="size-3 shrink-0" />
                 {parent ? (
-                  <button
-                    type="button"
-                    className="min-w-0 truncate rounded-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-                    title={parent.title}
-                    onClick={() => onSelectTask(parent.entityId)}
-                  >
-                    {parent.title}
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        className="min-w-0 truncate rounded-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                        onClick={() => onSelectTask(parent.entityId)}
+                      >
+                        {parent.title}
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent>{parent.title}</TooltipContent>
+                  </Tooltip>
                 ) : (
                   <span className="truncate">A task you can’t open</span>
                 )}
