@@ -67,10 +67,13 @@ export default defineConfig({
       },
     ],
     "deslop/max-boolean-conditions": ["error", { maxConditions: 3 }],
-    ...designConfig.rules,
     ...architectureConfig.rules,
   },
   overrides: [
+    {
+      files: ["apps/web/**"],
+      rules: designConfig.rules,
+    },
     {
       files: ["apps/web/src/**"],
       rules: {
