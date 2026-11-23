@@ -800,3 +800,102 @@ test("external DMs and groups require individual consent but not an organization
     ).find((conversation) => conversation.id === internal.id)!.canShare,
   ).toBe(false);
 });
+
+test("the sharing list names each conversation and tags its partner and status for admins of both sides", async () => {
+  const connected = await channel();
+  await sharing("outsider", f.orgB).accept(
+    (await sharing().invite(connected.id, { email: "outside@example.com", shareHistory: true })).id,
+    true,
+  );
+  const invited = await host().createConversation({ kind: "channel", name: "Invited" });
+  await sharing().invite(invited.id, { email: "outside@example.com", shareHistory: true });
+  const requested = await host().createConversation({ kind: "channel", name: "Requested" });
+  await f.db.insert(member).values({ id: "bob-b", userId: "bob", organizationId: f.orgB });
+  const request = await sharing().invite(requested.id, {
+    email: "bob@example.com",
+    shareHistory: true,
+  });
+  expect((await sharing("bob", f.orgB).accept(request.id, true)).status).toBe("approval-required");
+  const unshared = await host().createConversation({ kind: "channel", name: "Internal" });
+  const rows = new Map((await sharing().listConversations()).map((row) => [row.id, row]));
+  expect(rows.get(connected.id)).toMatchObject({
+    kind: "channel",
+    displayName: "Partners",
+    accessible: true,
+    partnerOrganizationName: "B",
+    partnerOrganizationCount: 1,
+    participantCount: 2,
+    status: "connected",
+  });
+  expect(rows.get(invited.id)).toMatchObject({
+    displayName: "Invited",
+    partnerOrganizationName: null,
+    partnerOrganizationCount: 0,
+    status: "invited",
+  });
+  expect(rows.get(requested.id)).toMatchObject({
+    partnerOrganizationName: null,
+    status: "needs-approval",
+  });
+  expect(rows.get(unshared.id)).toMatchObject({ status: null, partnerOrganizationName: null });
+  expect(await sharing("outsider", f.orgB).listConversations()).toMatchObject([
+    {
+      id: connected.id,
+      displayName: "Partners",
+      partnerOrganizationName: "A",
+      partnerOrganizationCount: 1,
+      status: "connected",
+    },
+  ]);
+});
+
+test("a partner person who must accept again marks the row as needing approval", async () => {
+  const c = await channel();
+  await sharing("outsider", f.orgB).accept(
+    (await sharing().invite(c.id, { email: "outside@example.com", shareHistory: true })).id,
+    true,
+  );
+  await f.db
+    .update(messagingParticipants)
+    .set({ consentedAt: null })
+    .where(eq(messagingParticipants.actorEntityId, f.outsider));
+  expect((await sharing().listConversations())[0]).toMatchObject({ status: "needs-approval" });
+  expect((await sharing("outsider", f.orgB).listConversations())[0]).toMatchObject({
+    status: "needs-approval",
+  });
+});
+
+test("the sharing list hides participant names and counts of conversations the viewer cannot open", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  await f.db
+    .insert(user)
+    .values({ id: "pat", name: "Pat", email: "pat@example.com", emailVerified: true });
+  await f.db.insert(member).values({ id: "pat-b", userId: "pat", organizationId: f.orgB });
+  const group = await host().createConversation({
+    kind: "group",
+    emails: ["bob@example.com", "pat@example.com"],
+    shareHistory: true,
+  });
+  const [invite] = await f.db
+    .select()
+    .from(messagingInvitations)
+    .where(eq(messagingInvitations.conversationId, group.id));
+  await sharing("pat", f.orgB).accept(invite!.id, true);
+  const [hidden] = await sharing("outsider", f.orgB).listConversations();
+  expect(hidden).toMatchObject({
+    id: group.id,
+    kind: "group",
+    displayName: null,
+    accessible: false,
+    participantCount: null,
+    partnerOrganizationName: "A",
+    status: "connected",
+  });
+  expect(JSON.stringify(hidden)).not.toMatch(/Alice|Bob|Pat/);
+  expect((await sharing().listConversations())[0]).toMatchObject({
+    displayName: "Bob, Pat",
+    accessible: true,
+    participantCount: 3,
+    partnerOrganizationName: "B",
+  });
+});

@@ -5,6 +5,9 @@ import { z } from "zod";
 export { sharingInvitationMachine, sharingInvitationStatuses } from "./invitation-machine";
 export type { SharingInvitationStatus } from "./invitation-machine";
 
+/** A shared conversation's state from the viewer organization's side. */
+export type SharedConversationStatus = "connected" | "needs-approval" | "invited";
+
 export const sharingInviteInput = conversationTargetInput.extend({
   email: z.email().max(320),
   shareHistory: z.literal(true),

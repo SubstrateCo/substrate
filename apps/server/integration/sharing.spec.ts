@@ -208,3 +208,96 @@ test("accepted access is scoped to the recipient org and disconnect revokes read
     (await conversations.json()).data.some((item: { id: string }) => item.id === channel.id),
   ).toBe(false);
 });
+
+type SharedConversationRow = {
+  id: string;
+  displayName: string | null;
+  accessible: boolean;
+  participantCount: number | null;
+  partnerOrganizationName: string | null;
+  status: string | null;
+};
+async function sharedConversations(actor: Actor) {
+  const response = await actor.request.get("/api/v1/messaging/sharing/conversations", {
+    params: { organizationId: actor.organizationId },
+  });
+  expect(response.ok()).toBe(true);
+  const result: { data: SharedConversationRow[] } = await response.json();
+  return new Map(result.data.map((row) => [row.id, row]));
+}
+async function accept(partner: Actor, invitationId: string) {
+  const response = await partner.request.post("/api/v1/messaging/sharing/accept", {
+    headers: { origin },
+    data: { invitationId, organizationId: partner.organizationId, shareHistory: true },
+  });
+  expect(response.ok()).toBe(true);
+}
+
+test("the shared conversation list shows partner organizations and statuses to admins of each side only", async ({
+  actors: { owner: host, member, recipient: partner, outsider: stranger },
+}) => {
+  const connected = await createChannel(host);
+  await accept(partner, (await invite(host, partner, connected.id)).id);
+  const invited = await createChannel(host);
+  await invite(host, stranger, invited.id);
+  const hostRows = await sharedConversations(host);
+  expect(hostRows.get(connected.id)).toMatchObject({
+    partnerOrganizationName: partner.name,
+    status: "connected",
+  });
+  expect(hostRows.get(invited.id)).toMatchObject({
+    partnerOrganizationName: null,
+    status: "invited",
+  });
+  const partnerRows = await sharedConversations(partner);
+  expect(partnerRows.get(connected.id)).toMatchObject({
+    partnerOrganizationName: host.name,
+    status: "connected",
+  });
+  expect(partnerRows.has(invited.id), "Partners see only connected channels").toBe(false);
+  const memberRows = await sharedConversations(member);
+  expect([memberRows.has(connected.id), memberRows.has(invited.id)]).toEqual([false, false]);
+  const strangerRows = await sharedConversations(stranger);
+  expect([strangerRows.has(connected.id), strangerRows.has(invited.id)]).toEqual([false, false]);
+  const forged = await partner.request.get("/api/v1/messaging/sharing/conversations", {
+    params: { organizationId: host.organizationId },
+  });
+  expect(forged.status()).toBe(403);
+});
+
+test("partner admins see a shared group they cannot open without its participants", async ({
+  actors: { owner: host, member, recipient, outsider },
+  workspace,
+}) => {
+  const [partnerAdmin, partnerMember] = await workspace(recipient, outsider);
+  const created = await host.request.post("/api/v1/messaging/conversations", {
+    headers: { origin },
+    data: {
+      organizationId: host.organizationId,
+      kind: "group",
+      emails: [member.email, partnerMember.email],
+      shareHistory: true,
+    },
+  });
+  expect(created.ok()).toBe(true);
+  const group: { id: string } = (await created.json()).data;
+  const inbox = await partnerMember.request.get("/api/v1/messaging/sharing/inbox", {
+    params: { organizationId: partnerMember.organizationId },
+  });
+  const invitations: { id: string; conversationId: string }[] = (await inbox.json()).data;
+  await accept(partnerMember, invitations.find((row) => row.conversationId === group.id)!.id);
+  const hidden = (await sharedConversations(partnerAdmin)).get(group.id);
+  expect(hidden).toMatchObject({
+    displayName: null,
+    accessible: false,
+    participantCount: null,
+    partnerOrganizationName: host.name,
+    status: "connected",
+  });
+  expect(JSON.stringify(hidden)).not.toContain(partnerMember.name);
+  expect(JSON.stringify(hidden)).not.toContain(member.name);
+  expect((await sharedConversations(host)).get(group.id)).toMatchObject({
+    accessible: true,
+    displayName: expect.stringContaining(partnerMember.name),
+  });
+});

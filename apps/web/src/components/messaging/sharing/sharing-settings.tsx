@@ -1,12 +1,16 @@
+import type { SharedConversationStatus } from "@substrate/contracts/messaging/sharing";
+
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
 import { isAccessFailure } from "@/api/access-failure";
+import type { listSharingConversations } from "@/api/messaging/sharing";
 import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { StaleNotice } from "@/components/feedback/stale-notice";
+import { Tag } from "@/components/feedback/tag";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { SettingsPanel } from "@/components/layout/settings-page";
 import { SettingsCard, SettingsNote } from "@/components/layout/settings-section";
@@ -22,6 +26,7 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
   const { value: selected, open, close, restoreFocus } = useStateDialog<string>();
   const blocked = isAccessFailure(conversations.error) || isAccessFailure(inbox.error);
   if (blocked && selected !== undefined) close();
+  const selectedConversation = conversations.data?.find((row) => row.id === selected);
   const retry = () => {
     void conversations.refetch();
     void inbox.refetch();
@@ -105,7 +110,11 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
                         />
                       )
                     }
-                    title={conversation.name ?? "Direct message"}
+                    title={sharedConversationTitle(conversation)}
+                    details={sharedConversationDetails(conversation)}
+                    status={
+                      conversation.status && <Tag>{sharedStatusLabels[conversation.status]}</Tag>
+                    }
                   />
                   <Button variant="ghost" onClick={() => open(conversation.id)}>
                     Manage
@@ -120,6 +129,7 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
         <SharingManager
           organizationId={organizationId}
           conversationId={selected}
+          name={selectedConversation && sharedConversationName(selectedConversation)}
           onClose={close}
           onRestoreFocus={restoreFocus}
         />
@@ -167,11 +177,64 @@ function SharingRequestContent({ title, action }: { title: ReactNode; action?: R
   );
 }
 
-function SharedConversationTitle({ icon, title }: { icon: ReactNode; title: ReactNode }) {
+type SharedConversation = Awaited<ReturnType<typeof listSharingConversations>>[number];
+
+const sharedStatusLabels: Record<SharedConversationStatus, string> = {
+  connected: "Connected",
+  "needs-approval": "Needs approval",
+  invited: "Invited",
+};
+
+// The server names only conversations the viewer may open. Undefined means a placeholder.
+function sharedConversationName(conversation: SharedConversation) {
+  if (conversation.displayName) return conversation.displayName;
+  if (conversation.accessible)
+    return conversation.kind === "dm" ? "Direct message" : "Group conversation";
+}
+
+function sharedConversationTitle(conversation: SharedConversation) {
   return (
-    <span className="flex min-w-0 items-center gap-2 text-sm">
+    sharedConversationName(conversation) ?? (
+      <span className="text-muted-foreground">A conversation you can’t open</span>
+    )
+  );
+}
+
+function sharedConversationDetails(conversation: SharedConversation) {
+  const { partnerOrganizationName, partnerOrganizationCount, participantCount } = conversation;
+  const parts: string[] = [];
+  if (partnerOrganizationName)
+    parts.push(
+      partnerOrganizationCount > 1
+        ? `${partnerOrganizationName} and ${partnerOrganizationCount - 1} more`
+        : partnerOrganizationName,
+    );
+  if (participantCount !== null)
+    parts.push(`${participantCount} ${participantCount === 1 ? "member" : "members"}`);
+  return parts.join(" · ");
+}
+
+function SharedConversationTitle({
+  icon,
+  title,
+  details,
+  status,
+}: {
+  icon: ReactNode;
+  title: ReactNode;
+  details?: ReactNode;
+  status?: ReactNode;
+}) {
+  return (
+    <span className="flex min-w-0 flex-1 items-center gap-2 text-sm">
       {icon}
-      {title}
+      <span className="min-w-0">
+        <span className="flex flex-wrap items-center gap-2">
+          <span className="wrap-anywhere">{title}</span>
+          {status}
+        </span>
+        {details && <span className="block truncate text-xs text-muted-foreground">{details}</span>}
+      </span>
     </span>
   );
 }

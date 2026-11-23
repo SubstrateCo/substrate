@@ -16,6 +16,7 @@ import {
   messagingSharingEvents,
 } from "../sharing.schema";
 import { checkSharingManager } from "./access";
+import { describeSharedConversations } from "./shared-conversations";
 import { and, desc, eq, gt, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
 export function sharingQueries(
@@ -116,7 +117,7 @@ export function sharingQueries(
     },
     async listConversations() {
       const { admin } = resolved;
-      return db
+      const rows = await db
         .select({
           id: messagingConversations.id,
           name: messagingConversations.name,
@@ -164,6 +165,7 @@ export function sharingQueries(
           ),
         )
         .orderBy(desc(messagingConversations.createdAt));
+      return describeSharedConversations(db, scope, admin, rows);
     },
     async inbox() {
       const { admin } = resolved;

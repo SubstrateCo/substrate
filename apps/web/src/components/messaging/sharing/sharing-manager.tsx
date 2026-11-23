@@ -57,11 +57,14 @@ function inviteHint(details: SharingDetails) {
 export function SharingManager({
   organizationId,
   conversationId,
+  name,
   onClose,
   onRestoreFocus,
 }: {
   organizationId: string;
   conversationId: string;
+  /** The conversation's name, or undefined when the viewer may not see it. */
+  name: string | undefined;
   onClose: () => void;
   /** Focus the control that opened the dialog, which a menu item no longer is once it closes. */
   onRestoreFocus?: () => void;
@@ -87,6 +90,7 @@ export function SharingManager({
     <>
       <SharingInvitationForm
         key={blocked ? "unavailable" : "available"}
+        title={`External collaboration for ${name ?? "a conversation you can’t open"}`}
         available={!!data}
         hint={data ? inviteHint(data) : undefined}
         inputRef={confirmFallback}

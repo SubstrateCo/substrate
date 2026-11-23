@@ -2,7 +2,6 @@ import type { ReactNode } from "react";
 
 import type { SharingDetails } from "@/api/messaging/sharing";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
-import { Tag } from "@/components/feedback/tag";
 import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
@@ -34,25 +33,10 @@ function pendingStatus(invite: Invitation, now: number) {
   };
 }
 
-function Section({
-  title,
-  note,
-  children,
-}: {
-  title: string;
-  /** One warning for the whole list, so the rows need not repeat it. */
-  note?: ReactNode;
-  children: ReactNode;
-}) {
+function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="grid gap-1">
       <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
-      {note && (
-        <p className="flex items-start gap-1.5 text-xs font-medium text-warning-text">
-          <TriangleAlert aria-hidden="true" className="mt-px size-3.5 shrink-0 text-warning" />
-          {note}
-        </p>
-      )}
       <ul className="grid gap-0.5">{children}</ul>
     </section>
   );
@@ -136,7 +120,6 @@ export function SharingDetailsView({
   const organizationName = (id: string) =>
     details.connections.find((connection) => connection.organizationId === id)?.name;
   const invitations = details.invitations.filter((invite) => invite.status === "pending");
-  const waiting = details.participants.filter((person) => !person.consentedAt).length;
   const sections = [details.connections, details.participants, invitations, details.events];
   if (sections.every((rows) => rows.length === 0))
     return (
@@ -175,28 +158,18 @@ export function SharingDetailsView({
         </Section>
       )}
       {details.participants.length > 0 && (
-        <Section
-          title="People"
-          note={
-            waiting > 0 &&
-            `${waiting === 1 ? "1 person needs" : `${waiting} people need`} to accept again before they can read new messages.`
-          }
-        >
+        <Section title="People">
           {details.participants.map((person) => {
-            const from = organizationName(person.organizationId);
+            const from = organizationName(person.organizationId) ?? "External";
             return (
               <Row
                 key={person.actorId}
                 icon={<PersonAvatar name={person.name} image={person.image} />}
-                title={
-                  <>
-                    {person.name}
-                    {!person.consentedAt && (
-                      <Tag className="ml-2 align-middle">Needs to accept</Tag>
-                    )}
-                  </>
+                title={person.name}
+                status={
+                  person.consentedAt ? from : `${from} · Must accept again to read new messages`
                 }
-                status={from ?? "External"}
+                warning={!person.consentedAt}
                 actions={
                   <RowActions label={`Actions for ${person.name}`}>
                     <RowAction

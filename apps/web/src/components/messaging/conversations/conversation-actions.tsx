@@ -68,6 +68,7 @@ export function ConversationActions({
         <SharingManager
           organizationId={organizationId}
           conversationId={conversation.id}
+          name={name}
           onClose={close}
           onRestoreFocus={restoreFocus}
         />

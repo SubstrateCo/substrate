@@ -11,6 +11,7 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Separator } from "@/components/ui/separator";
 
 export function SharingInvitationForm({
+  title,
   available,
   hint,
   pending,
@@ -21,6 +22,7 @@ export function SharingInvitationForm({
   onRestoreFocus,
   children,
 }: {
+  title: string;
   available: boolean;
   hint?: string;
   pending: boolean;
@@ -53,7 +55,7 @@ export function SharingInvitationForm({
   const confirmed = useSelector(form.store, (state) => state.values.confirmed);
   return (
     <FormDialog
-      title="External collaboration"
+      title={title}
       description="Work with people from other organizations. They see this conversation only, never your workspace or its private records."
       saveLabel="Send invitation"
       pendingLabel="Sending…"
