@@ -22,6 +22,14 @@ export default defineConfig(({ mode }) => {
     server: {
       port,
       strictPort: true,
+      warmup: process.env.E2E_WARMUP
+        ? {
+            clientFiles: [
+              "./src/main.tsx",
+              "./src/components/agent-work/app/agents-workspace.tsx",
+            ],
+          }
+        : undefined,
       proxy: {
         "/desktop": { target: apiURL },
         "/api": { target: apiURL, ws: true },

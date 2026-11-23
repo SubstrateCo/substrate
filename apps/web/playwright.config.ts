@@ -67,6 +67,7 @@ export default defineConfig({
         SUBSTRATE_WEB_URL: baseURL,
         SUBSTRATE_API_URL: apiURL,
         VITE_CACHE_DIR: "node_modules/.vite-e2e",
+        E2E_WARMUP: "1",
       },
     },
   ],
