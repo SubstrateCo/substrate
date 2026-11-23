@@ -53,6 +53,12 @@ export function WorkspaceShell({
     messages: { unread: hasUnreadMessages, unreadLabel: "unread messages" },
     agents: { unread: agentsNeedYou, unreadLabel: "needs you", dotTone: "warning" },
   };
+  const visibleApps = workspaceApps.filter(
+    ({ id }) => (id !== "tasks" && id !== "crm" && id !== "calendar") || apps.enabled(id),
+  );
+  // Agents sit at the bottom of the rail, above Notifications.
+  const topApps = visibleApps.filter(({ id }) => id !== "agents");
+  const bottomApps = visibleApps.filter(({ id }) => id === "agents");
   return (
     <main data-workspace-shell className="flex h-(--app-height) min-h-0 overflow-hidden bg-rail">
       <nav
@@ -60,15 +66,14 @@ export function WorkspaceShell({
         className="z-20 flex w-14 shrink-0 flex-col items-center gap-3 bg-rail py-3 text-rail-foreground"
       >
         {switcher}
-        {workspaceApps
-          .filter(
-            ({ id }) => (id !== "tasks" && id !== "crm" && id !== "calendar") || apps.enabled(id),
-          )
-          .map(({ id, ...app }) => (
-            <WorkspaceAppButton key={id} {...app} {...badges[id]} />
-          ))}
+        {topApps.map(({ id, ...app }) => (
+          <WorkspaceAppButton key={id} {...app} {...badges[id]} />
+        ))}
         <div className="mt-auto flex flex-col items-center gap-3">
           {updateIndicator}
+          {bottomApps.map(({ id, ...app }) => (
+            <WorkspaceAppButton key={id} {...app} {...badges[id]} />
+          ))}
           <WorkspaceAppButton {...notificationsApp} unread={hasUnreadNotifications} />
           <UserMenu
             name={name}

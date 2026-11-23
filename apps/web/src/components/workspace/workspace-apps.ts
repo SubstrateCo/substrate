@@ -20,7 +20,10 @@ type WorkspaceApp = {
   hotkey: HotkeySequence;
 };
 
-/** The apps in the rail, in rail order. Each app's route decides when it is active. */
+/**
+ * The apps in the rail, in rail order. Agents render in the bottom group, above Notifications.
+ * Each app's route decides when it is active.
+ */
 export const workspaceApps = [
   {
     id: "home",
