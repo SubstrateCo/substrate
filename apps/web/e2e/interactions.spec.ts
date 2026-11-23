@@ -1,6 +1,6 @@
 import type { InteractionKind } from "@substrate/contracts/context/interactions";
 
-import { createCrm } from "../../server/integration/test-support/crm";
+import { createCrm, type CrmMutation } from "../../server/integration/test-support/crm";
 import { conversation, post, test, visit, type Actor } from "./test-support/fixtures";
 import { expect, type Page } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
@@ -16,39 +16,48 @@ const summaries = {
   other: "Followed up after the community roundtable.",
 };
 
+async function seedInteractions(
+  actor: Actor,
+  interactions: Extract<CrmMutation, { action: "createInteraction" }>[],
+) {
+  for (let start = 0; start < interactions.length; start += 4)
+    await Promise.all(interactions.slice(start, start + 4).map((input) => createCrm(actor, input)));
+}
+
 async function sampleInteractions(actor: Actor) {
   const people = ["Maya Chen", "Alex Rivera"];
-  const contacts = [];
-  for (const displayName of people)
-    contacts.push(await createCrm(actor, { action: "createContact", displayName }));
+  const contacts = await Promise.all(
+    people.map((displayName) => createCrm(actor, { action: "createContact", displayName })),
+  );
   const source = await conversation(actor);
+  const today = new Date();
   // One page plus one row exercises timeline navigation; only six rows need to be recent.
-  for (let i = 0; i < 51; i++) {
+  const interactions = Array.from({ length: 51 }, (_, i) => {
     const kind = kinds[i % kinds.length]!;
-    const occurredAt = new Date();
+    const occurredAt = new Date(today);
     occurredAt.setDate(occurredAt.getDate() - (i < kinds.length ? 1 : 10));
     occurredAt.setHours(12, 0, i, 0);
     const duration = { meeting: 30, call: 15, email: 0, message: 0, note: 0, other: 0 }[kind];
-    const fields = {
+    return {
+      action: "createInteraction" as const,
       contactEntityId: contacts[i % contacts.length]!.entityId,
       kind,
       occurredAt: occurredAt.toISOString(),
       endedAt: duration ? new Date(+occurredAt + duration * 60000).toISOString() : null,
       summary: summaries[kind],
     };
-    if (i === 0) {
-      const message = await post<{ id: string }>(actor, "messaging/messages", {
-        conversationId: source.id,
-        body: fields.summary,
-      });
-      await createCrm(actor, {
-        action: "publishInteraction",
-        ...fields,
-        messageId: message.id,
-        consentToContactAudience: true,
-      });
-    } else await createCrm(actor, { action: "createInteraction", ...fields });
-  }
+  });
+  const message = await post<{ id: string }>(actor, "messaging/messages", {
+    conversationId: source.id,
+    body: interactions[0]!.summary,
+  });
+  await createCrm(actor, {
+    ...interactions[0]!,
+    action: "publishInteraction",
+    messageId: message.id,
+    consentToContactAudience: true,
+  });
+  await seedInteractions(actor, interactions.slice(1));
   return contacts;
 }
 
@@ -215,26 +224,25 @@ test("dashboard selects today, browses day-specific pages, and handles empty day
     action: "createContact",
     displayName: "Daily activity contact",
   });
-  const user = await client(account);
-  const { page } = user;
-  await visit(user, undefined, "/interactions");
-  const timestamps = await page.evaluate(() =>
-    [0, 1, 20].map((offset) => {
-      const now = new Date();
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset, 12).toISOString();
-    }),
+  const now = new Date();
+  const timestamps = [0, 1, 20].map((offset) =>
+    new Date(now.getFullYear(), now.getMonth(), now.getDate() - offset, 12).toISOString(),
   );
-  for (const [offset, count] of [51, 2, 1].entries()) {
-    for (let i = 0; i < count; i++)
-      await createCrm(account, {
-        action: "createInteraction",
+  await seedInteractions(
+    account,
+    [51, 2, 1].flatMap((count, offset) =>
+      Array.from({ length: count }, (_, i) => ({
+        action: "createInteraction" as const,
         contactEntityId: contact.entityId,
         kind: "message",
         occurredAt: timestamps[offset]!,
         summary: `${["Today", "Yesterday", "Earlier"][offset]} interaction ${i + 1}`,
-      });
-  }
-  await page.reload();
+      })),
+    ),
+  );
+  const user = await client(account);
+  const { page } = user;
+  await visit(user, undefined, "/interactions");
   await expect(total(page)).toHaveText("54");
   const chart = page.getByRole("img", {
     name: "Daily interaction activity over 30 days",
@@ -483,29 +491,35 @@ test("people and organization tables paginate and reset after filtering", async 
   client,
 }) => {
   test.setTimeout(60_000);
-  for (let i = 0; i < 26; i++) {
-    const suffix = String(i).padStart(2, "0");
-    const contact = await createCrm(account, {
-      action: "createContact",
-      displayName: `Person ${suffix}`,
-    });
-    const customer = await createCrm(account, {
-      action: "createAccount",
-      name: `Company ${suffix}`,
-    });
-    await createCrm(account, {
-      action: "setAffiliation",
-      contactEntityId: contact.entityId,
-      accountEntityId: customer.entityId,
-      title: "Founder",
-    });
-    await createCrm(account, {
-      action: "createInteraction",
-      contactEntityId: contact.entityId,
-      kind: "note",
-      occurredAt: new Date().toISOString(),
-      summary: "Introduced the workspace.",
-    });
+  const now = new Date();
+  for (let start = 0; start < 26; start += 4) {
+    await Promise.all(
+      Array.from({ length: Math.min(4, 26 - start) }, async (_, offset) => {
+        const i = start + offset;
+        const suffix = String(i).padStart(2, "0");
+        const contact = await createCrm(account, {
+          action: "createContact",
+          displayName: `Person ${suffix}`,
+        });
+        const customer = await createCrm(account, {
+          action: "createAccount",
+          name: `Company ${suffix}`,
+        });
+        await createCrm(account, {
+          action: "setAffiliation",
+          contactEntityId: contact.entityId,
+          accountEntityId: customer.entityId,
+          title: "Founder",
+        });
+        await createCrm(account, {
+          action: "createInteraction",
+          contactEntityId: contact.entityId,
+          kind: "note",
+          occurredAt: new Date(+now + i).toISOString(),
+          summary: "Introduced the workspace.",
+        });
+      }),
+    );
   }
   const user = await client(account),
     { page } = user;
