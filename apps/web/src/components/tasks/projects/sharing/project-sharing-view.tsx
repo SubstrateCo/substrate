@@ -79,6 +79,7 @@ export function ProjectSharing({
   };
   const project = detail.project.name;
   return (
+    // oxlint-disable-next-line shadcn/no-restyle -- The member list runs flush to the card's bottom edge (-mx-5 border-t).
     <SettingsCard label="Project access" className="pb-0">
       <GroupTitle
         title="Project access"

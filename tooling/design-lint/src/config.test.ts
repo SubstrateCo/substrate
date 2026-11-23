@@ -58,6 +58,56 @@ export const View = () => (
   }
 });
 
+void test("renderer design configuration protects shared blocks outside components/ui", () => {
+  const directory = mkdtempSync(join(root, "apps/web/src/design-lint-test-"));
+  try {
+    const file = join(directory, "view.tsx");
+    writeFileSync(
+      file,
+      `
+import { Tag } from "@/components/feedback/tag";
+import { SettingsCard } from "@/components/layout/settings-section";
+export const View = () => (
+  <SettingsCard className="p-8">
+    <Tag className="bg-warning/10">External</Tag>
+  </SettingsCard>
+);
+`,
+    );
+    assert.equal(
+      lint(file).filter((code) => code === "shadcn(no-restyle)").length,
+      2,
+      "Tag and SettingsCard must be recognized as shared components.",
+    );
+
+    writeFileSync(
+      file,
+      `
+import { Tag } from "@/components/feedback/tag";
+export const View = () => <Tag size="sm" className="ml-auto tabular-nums">3</Tag>;
+`,
+    );
+    assert.deepEqual(lint(file), [], "Placement and tabular digits remain allowed.");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+void test("guest copy is checked only on guest and onboarding pages", () => {
+  const source = `export const View = () => <p>Create an organization</p>;\n`;
+  const guest = mkdtempSync(join(root, "apps/web/src/components/auth/design-lint-test-"));
+  const workspace = mkdtempSync(join(root, "apps/web/src/design-lint-test-"));
+  try {
+    writeFileSync(join(guest, "view.tsx"), source);
+    writeFileSync(join(workspace, "view.tsx"), source);
+    assert.ok(lint(join(guest, "view.tsx")).includes("design(guest-copy)"));
+    assert.deepEqual(lint(join(workspace, "view.tsx")), [], "Workspace pages say organization.");
+  } finally {
+    rmSync(guest, { recursive: true, force: true });
+    rmSync(workspace, { recursive: true, force: true });
+  }
+});
+
 void test("renderer design configuration keeps primitive libraries behind components/ui", () => {
   const directory = mkdtempSync(join(root, "apps/web/src/design-lint-test-"));
   try {

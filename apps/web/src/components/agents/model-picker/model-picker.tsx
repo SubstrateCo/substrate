@@ -101,7 +101,10 @@ function ModelCatalogStatus({
       </PickerNote>
     );
   if (loading)
-    return <PickerNote icon={<Spinner aria-hidden="true" />}>Loading {label} models</PickerNote>;
+    return (
+      // oxlint-disable-next-line design/pending-button -- A one-line picker status beside its spinner, in the slot of the model list.
+      <PickerNote icon={<Spinner aria-hidden="true" />}>Loading {label} models</PickerNote>
+    );
   return null;
 }
 

@@ -267,6 +267,24 @@ export function isRenderedChild(node: AstNode) {
   return false;
 }
 
+/**
+ * The labels an element can show through its own children: its JSX text joined, or, for a child
+ * such as `{pending ? "Saving" : "Save"}`, each string it can produce. Nested elements are skipped.
+ */
+export function childLabels(element: NodeOf<"JSXElement">): string[] {
+  const text = element.children
+    .flatMap((child) => (child.type === "JSXText" ? [child.value] : []))
+    .join(" ")
+    .replaceAll(/\s+/g, " ")
+    .trim();
+  const expressions = element.children.flatMap((child) =>
+    child.type === "JSXExpressionContainer"
+      ? possibleStrings(child.expression).map((site) => site.value.trim())
+      : [],
+  );
+  return [text, ...expressions].filter(Boolean);
+}
+
 /** The property name of `a.b` or `a?.b`, or undefined for computed access. */
 export function memberName(node: AstNode): string | undefined {
   if (node.type !== "MemberExpression" || node.computed) return undefined;

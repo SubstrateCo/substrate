@@ -44,6 +44,7 @@ export function TaskBoardCard({
     <BoardCard
       ref={setNodeRef}
       selected={selected}
+      // oxlint-disable-next-line shadcn/require-static-classes -- actionRow is the shared group/row hook that RowActions reads.
       className={cn(actionRow, isDragging && "opacity-40")}
     >
       <div className={cn("flex items-start gap-2", onStatusChange && "pr-6")}>

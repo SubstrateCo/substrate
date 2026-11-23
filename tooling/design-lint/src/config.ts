@@ -15,7 +15,11 @@ export const designConfig = {
   settings: {
     shadcn: {
       ui: "@/components/ui",
-      componentImports: ["^@/components/people/person-avatar$", "^@/components/layout/page-sheet$"],
+      componentImports: [
+        "^@/components/people/person-avatar$",
+        "^@/components/layout/(page-sheet|page-header|board|record-section|settings-section)$",
+        "^@/components/feedback/(tag|inline-notice)$",
+      ],
       note: `Design contract: ${DESIGN_DOC}. Add a variant or size in ${WEB}/components/ui (shadcn CLI) only when the contract calls for one.`,
     },
   },
@@ -145,6 +149,50 @@ export const designConfig = {
               '"{{className}}" restyles <PersonAvatar>. Use size="sm" (24px, the default) or size="xs" (20px). PersonAvatar owns its shape and neutral fill.',
           },
           {
+            pattern: "^Tag$",
+            allow: ["layout", "tabular-nums"],
+            message:
+              '"{{className}}" restyles <Tag>, which owns its border, radius, and type. For a status pass tone ("working", "success", "warning", "destructive") with an icon; inside a one-line row use size="sm". A surface that carries a status reuses toneBorder and toneFill from "@/components/feedback/tag".',
+          },
+          {
+            pattern: "^PageHeader$",
+            allow: ["layout"],
+            message:
+              '"{{className}}" restyles <PageHeader>, which owns its height, inset, and type. Use variant="page" for pages or variant="pane" for panes and asides; place it with margin or width only.',
+          },
+          {
+            pattern: "^InlineNotice$",
+            allow: ["layout"],
+            message:
+              '"{{className}}" restyles <InlineNotice>. Use tone="warning" for an alert or tone="neutral" for a status; place it with margin or width only.',
+          },
+          {
+            // The board is the scroll container, so the page inset sits on it.
+            pattern: "^Board$",
+            allow: ["layout", "spacing"],
+            message:
+              '"{{className}}" restyles <Board>, which owns the column row and its gap-4. Columns are BoardColumn.',
+          },
+          {
+            // A card fades while it is dragged.
+            pattern: "^BoardCard$",
+            allow: ["layout", "opacity-*"],
+            message:
+              '"{{className}}" restyles <BoardCard>, which owns one look for every board: rounded-lg border bg-surface p-3 shadow-surface. Pass selected for the selected row colour.',
+          },
+          {
+            pattern: "^(RecordSection|PropertyList)$",
+            allow: ["layout"],
+            message:
+              '"{{className}}" restyles <{{component}}>, which owns the section title row and gap-2 content spacing. Space sections apart on the parent (gap-6).',
+          },
+          {
+            pattern: "^SettingsCard$",
+            allow: ["layout"],
+            message:
+              '"{{className}}" restyles <SettingsCard>, which owns its p-5 inset, gap-4 fields, and footer. Pass footer for actions and tone="destructive" for a danger zone.',
+          },
+          {
             pattern: "^TableRow$",
             allow: ["layout"],
             message:
@@ -187,12 +235,16 @@ export const designConfig = {
     {
       files: [`${WEB}/**`],
       rules: {
+        "design/action-copy": "warn",
+        "design/back-link": "warn",
         "design/canonical-icons": "error",
         "design/conversation-label": "warn",
         "design/destructive-label": "warn",
         "design/dialog-footer-order": "error",
         "design/dialog-structure": "warn",
         "design/elevation": "error",
+        "design/entity-kind-map": "warn",
+        "design/form-copy": "warn",
         "design/icon-button-name": "error",
         "design/icon-button-tooltip": "warn",
         "design/motion": "error",
@@ -208,11 +260,18 @@ export const designConfig = {
         "design/no-raw-validation-text": "error",
         "design/no-solid-destructive": "error",
         "design/no-tooltip-on-toggle-item": "error",
+        "design/notice-placement": "warn",
         "design/notice-title": "error",
         "design/page-header": "warn",
+        "design/page-width": "warn",
+        "design/pane-header": "warn",
+        "design/pending-button": "warn",
         "design/person-avatar": "warn",
         "design/radius-scale": "warn",
+        "design/record-section-action": "warn",
+        "design/selected-choice": "warn",
         "design/sentence-case": "warn",
+        "design/sheet-header-tools": "warn",
         "design/type-scale": "warn",
         "design/typographic-quotes": "warn",
         "no-restricted-imports": [
@@ -263,6 +322,8 @@ export const designConfig = {
       // Vendored shadcn primitives define the treatments these rules point to.
       files: [`${WEB}/components/ui/**`],
       rules: {
+        "design/action-copy": "off",
+        "design/back-link": "off",
         "design/canonical-icons": "off",
         "design/dialog-footer-order": "off",
         "design/dialog-structure": "off",
@@ -274,6 +335,10 @@ export const designConfig = {
         "design/no-raw-error-message": "off",
         "design/no-solid-destructive": "off",
         "design/page-header": "off",
+        "design/page-width": "off",
+        "design/pane-header": "off",
+        "design/pending-button": "off",
+        "design/selected-choice": "off",
         "design/no-opacity-tint": "off",
         "design/radius-scale": "off",
         "design/sentence-case": "off",
@@ -317,6 +382,32 @@ export const designConfig = {
       // PageHeader and the guest frame are the shared page titles.
       files: [`${WEB}/components/layout/**`, `${WEB}/components/auth/auth-frame.tsx`],
       rules: { "design/page-header": "off" },
+    },
+    {
+      // The shared layouts define the page widths, the pane header, and BackLink.
+      files: [`${WEB}/components/layout/**`, `${WEB}/components/auth/auth-frame.tsx`],
+      rules: {
+        "design/back-link": "off",
+        "design/page-width": "off",
+        "design/pane-header": "off",
+      },
+    },
+    {
+      files: [`${WEB}/components/auth/**`, `${WEB}/components/onboarding/**`],
+      rules: { "design/guest-copy": "warn" },
+    },
+    {
+      // The one record-kind map.
+      files: [
+        `${WEB}/components/context/entity-kinds.ts`,
+        `${WEB}/components/context/entity-kinds.tsx`,
+      ],
+      rules: { "design/entity-kind-map": "off" },
+    },
+    {
+      // The shared notices and loading views own their own placement and loading label.
+      files: [`${WEB}/components/feedback/**`],
+      rules: { "design/notice-placement": "off", "design/pending-button": "off" },
     },
   ],
 } satisfies Pick<OxlintConfig, "jsPlugins" | "settings" | "rules" | "overrides">;

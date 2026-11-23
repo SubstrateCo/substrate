@@ -8,6 +8,7 @@ ruleTester.run("motion", motion, {
     // Prose is not a class list.
     "export const a = <p>animate-ping is gone</p>;",
     'const label = "ease-in";',
+    'export const a = <span className="transition-[border-color,box-shadow] transition-transform" />;',
   ],
   invalid: [
     {
@@ -26,6 +27,14 @@ ruleTester.run("motion", motion, {
     {
       code: 'const panel = cva("transition", { variants: { open: { true: "duration-200 ease-in" } } });',
       errors: [{ messageId: "easeIn", data: { className: "ease-in" } }],
+    },
+    {
+      code: 'export const a = <div className="transition-all duration-200" />;',
+      errors: [{ messageId: "layout", data: { className: "transition-all" } }],
+    },
+    {
+      code: 'export const a = <div className="transition-[opacity,height]" />;',
+      errors: [{ messageId: "layout", data: { className: "transition-[opacity,height]" } }],
     },
   ],
 });
