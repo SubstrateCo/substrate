@@ -31,7 +31,7 @@ export function useMessageReferences(
           link.status && link.statusName
             ? { value: link.status, label: link.statusName }
             : undefined,
-        link: linkedWorkLink(organizationId, link),
+        link: linkedWorkLink(organizationId, link, apps.enabled("crm")),
       })),
     ...(context.data?.people ?? []).map((person) => ({
       id: person.id,

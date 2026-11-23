@@ -7,7 +7,8 @@ import { MessageRecordEditor } from "./message-record-editor";
 import { CrmResourceState } from "@/components/crm/crm-resource-state";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
-import { recordLink } from "@/lib/navigation/record-links";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { personLink, recordLink } from "@/lib/navigation/record-links";
 import { useCreateCrmFromMessage } from "@/queries/context/crm-from-message";
 import { crmSettingsOptions, pipelineOptions } from "@/queries/crm/options";
 import { Handshake } from "lucide-react";
@@ -28,6 +29,7 @@ export function MessageRecordCreator({
 }) {
   const [requestId] = useState(() => crypto.randomUUID());
   const navigate = useNavigate();
+  const apps = useOrganizationApps();
   const create = useCreateCrmFromMessage(organizationId);
   const pipeline = useQuery({ ...pipelineOptions(organizationId), enabled: kind === "deal" });
   const settings = useQuery({ ...crmSettingsOptions(organizationId), enabled: kind === "deal" });
@@ -75,11 +77,10 @@ export function MessageRecordCreator({
           { messageId, requestId, draft },
           {
             onSuccess: (result) => {
-              const target = recordLink(
-                organizationId,
-                section[result.entityType],
-                result.entityId,
-              );
+              const target =
+                result.entityType === "contact"
+                  ? personLink(organizationId, result.entityId, apps.enabled("crm"))
+                  : recordLink(organizationId, section[result.entityType], result.entityId);
               toast.success(`Created ${kind} with message provenance.`, {
                 action: { label: `Open ${kind}`, onClick: () => void navigate(target) },
               });

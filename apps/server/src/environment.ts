@@ -104,14 +104,29 @@ const variables = z
     // Separates servers that share one Valkey, such as the e2e and development servers.
     REALTIME_CHANNEL: z.string().default("substrate:realtime:v1"),
     SUBSTRATE_WINDOWS_DOWNLOAD_URL: httpsURL.optional(),
+    // Google OAuth client for calendar sync. Unset disables Google calendars.
+    GOOGLE_CLIENT_ID: z.string().optional(),
+    GOOGLE_CLIENT_SECRET: z.string().optional(),
+    // Microsoft calendar sync is not implemented yet. These are validated but unused.
+    MICROSOFT_CLIENT_ID: z.string().optional(),
+    MICROSOFT_CLIENT_SECRET: z.string().optional(),
+    MICROSOFT_TENANT_ID: z
+      .string()
+      .regex(/^[A-Za-z0-9.-]{1,64}$/, "Use a tenant ID, a domain, or common.")
+      .default("common"),
   })
   .superRefine((env, ctx) => {
-    if (Boolean(env.SMTP_USER) !== Boolean(env.SMTP_PASSWORD))
-      ctx.addIssue({
-        code: "custom",
-        path: [env.SMTP_USER ? "SMTP_PASSWORD" : "SMTP_USER"],
-        message: "Set SMTP_USER and SMTP_PASSWORD together.",
-      });
+    for (const [user, password] of [
+      ["SMTP_USER", "SMTP_PASSWORD"],
+      ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"],
+      ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"],
+    ] as const)
+      if (Boolean(env[user]) !== Boolean(env[password]))
+        ctx.addIssue({
+          code: "custom",
+          path: [env[user] ? password : user],
+          message: `Set ${user} and ${password} together.`,
+        });
     if (env.NODE_ENV === "production") {
       for (const key of ["SUBSTRATE_API_URL", "SUBSTRATE_WEB_URL"] as const)
         if (!productionOrigin(env[key]))
@@ -168,6 +183,21 @@ const variables = z
       valkeyURL: env.VALKEY_URL,
       realtimeChannel: env.REALTIME_CHANNEL,
       windowsDownloadURL: env.SUBSTRATE_WINDOWS_DOWNLOAD_URL,
+      calendarProviders: {
+        google:
+          env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
+            ? { clientId: env.GOOGLE_CLIENT_ID, clientSecret: env.GOOGLE_CLIENT_SECRET }
+            : undefined,
+        // Not implemented yet: nothing reads this until a Microsoft adapter exists.
+        microsoft:
+          env.MICROSOFT_CLIENT_ID && env.MICROSOFT_CLIENT_SECRET
+            ? {
+                clientId: env.MICROSOFT_CLIENT_ID,
+                clientSecret: env.MICROSOFT_CLIENT_SECRET,
+                tenantId: env.MICROSOFT_TENANT_ID,
+              }
+            : undefined,
+      },
     };
   });
 

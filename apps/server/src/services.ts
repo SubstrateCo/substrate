@@ -4,6 +4,7 @@ import {
   type Database,
 } from "@substrate/database/trusted";
 
+import type { GoogleLinkTickets } from "./auth/google-link";
 import { createDesktopService, type DesktopConfig } from "./desktop/service";
 import type { CommittedPublisher } from "./shared/committed";
 import type { ObjectStorage } from "./storage/types";
@@ -11,6 +12,7 @@ import { createDeviceService } from "./v1/agent-work/device-service";
 import { createAgentWorkService } from "./v1/agent-work/service";
 import { createCallerService } from "./v1/agents/callers-service";
 import { createAgentService } from "./v1/agents/service";
+import { createCalendarService, type CalendarServiceDependencies } from "./v1/calendar/service";
 import { createContactsService } from "./v1/contacts/service";
 import { createContactInteractionsService } from "./v1/context/interactions-service";
 import { createContextService } from "./v1/context/service";
@@ -19,6 +21,7 @@ import { createCrmService } from "./v1/crm/service";
 import { createAttachmentService } from "./v1/files/attachments";
 import { createPictureService } from "./v1/files/pictures";
 import { createFileService } from "./v1/files/service";
+import { createIntegrationService } from "./v1/integrations/service";
 import { createMcpService } from "./v1/mcp/service";
 import { createReadService } from "./v1/messaging/read-service";
 import { createMessagingService } from "./v1/messaging/service";
@@ -33,10 +36,17 @@ export function createServices(deps: {
   publish: CommittedPublisher;
   apiURL: string;
   desktop: DesktopConfig;
+  calendar: CalendarServiceDependencies;
+  googleLink: GoogleLinkTickets;
 }) {
   const repository = createStorageRepository(deps.db);
   return {
     desktop: createDesktopService(deps.desktop),
+    calendar: createCalendarService({ ...deps.calendar, publish: deps.publish }),
+    integrations: createIntegrationService({
+      googleLink: deps.googleLink,
+      desktopScheme: deps.desktop.desktopScheme,
+    }),
     crm: createCrmService(deps),
     contacts: createContactsService(deps),
     contactInteractions: createContactInteractionsService(deps),

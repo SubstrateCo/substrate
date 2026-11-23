@@ -10,6 +10,7 @@ import { currentOrganizationQueryOptions } from "@/queries/organizations/options
 import {
   Building2,
   Blocks,
+  CalendarDays,
   Globe,
   Hash,
   Mail,
@@ -24,6 +25,7 @@ const accountGroup: SettingsNavGroup = {
   items: [
     { to: "/settings/user", label: "Profile", icon: UserRound },
     { to: "/settings/user/preferences", label: "Preferences", icon: SlidersHorizontal },
+    { to: "/settings/user/calendars", label: "Calendars", icon: CalendarDays },
     { to: "/settings/user/invitations", label: "Your invitations", icon: Mail },
   ],
 };

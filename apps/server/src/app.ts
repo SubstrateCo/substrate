@@ -9,6 +9,7 @@ import type { Scopes } from "./shared/scope";
 import { createAgentWorkRoutes } from "./v1/agent-work/routes";
 import { createCallerRoutes } from "./v1/agents/callers-routes";
 import { createAgentsRoutes } from "./v1/agents/routes";
+import { createCalendarRoutes } from "./v1/calendar/routes";
 import { createContactsExportRoutes } from "./v1/contacts/export-routes";
 import { createContactsRoutes } from "./v1/contacts/routes";
 import { createContactInteractionsRoutes } from "./v1/context/interactions-routes";
@@ -20,6 +21,7 @@ import { createCrmRoutes } from "./v1/crm/routes";
 import { createAttachmentRoutes } from "./v1/files/attachment-routes";
 import { createPictureRoutes } from "./v1/files/picture-routes";
 import { createFilesRoutes } from "./v1/files/routes";
+import { createIntegrationRoutes } from "./v1/integrations/routes";
 import { createMcpRoutes } from "./v1/mcp/routes";
 import { createReadRoutes } from "./v1/messaging/read-routes";
 import { createMessagingRoutes } from "./v1/messaging/routes";
@@ -98,6 +100,8 @@ export function createApp({ auth, services, scopes, trustedOrigins, realtime }: 
       createContactInteractionsRoutes(services.contactInteractions, scopes),
     )
     .route("/api/v1/crm", createCrmFromMessageRoutes(services.crmFromMessage, scopes))
+    .route("/api/v1/calendar", createCalendarRoutes(services.calendar, scopes))
+    .route("/api/v1/integrations", createIntegrationRoutes(services.integrations, scopes))
     .route("/api/v1/messaging", createMessagingRoutes(services.messaging, scopes))
     .route("/api/v1/messaging", createReadRoutes(services.messagingRead, scopes))
     .route("/api/v1/messaging/sharing", createSharingRoutes(services.sharing, scopes))

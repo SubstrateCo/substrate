@@ -28,6 +28,15 @@ export default defineConfig(({ mode }) => {
       },
     },
     envDir: "../..",
+    build: {
+      // The app, and the transparent window that shows screen notifications.
+      rolldownOptions: {
+        input: {
+          main: fileURLToPath(new URL("./index.html", import.meta.url)),
+          overlay: fileURLToPath(new URL("./overlay.html", import.meta.url)),
+        },
+      },
+    },
     resolve: { alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) } },
     plugins: [
       tailwindcss(),

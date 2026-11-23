@@ -12,6 +12,7 @@ type SettingsPath =
   | "/settings/user"
   | "/settings/user/preferences"
   | "/settings/user/invitations"
+  | "/settings/user/calendars"
   | "/settings/organization"
   | "/settings/organization/apps"
   | "/settings/organization/members"

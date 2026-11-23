@@ -1,4 +1,5 @@
 import type { AgentWorkAPI } from "@substrate/contracts/agent-work/desktop";
+import type { ScreenNotificationsBridge } from "@substrate/contracts/desktop/screen-notifications-ipc";
 import type { DesktopUpdatesAPI } from "@substrate/contracts/desktop/updates-ipc";
 import type { DesktopSettingsAPI, DesktopWindowAPI } from "@substrate/contracts/desktop/window";
 import type { HarnessAPI } from "@substrate/contracts/harness/desktop";
@@ -14,6 +15,8 @@ declare global {
     readonly substrateDesktopSettings?: DesktopSettingsAPI;
     readonly substrateRealtime?: RealtimeAPI;
     readonly substrateUpdates?: DesktopUpdatesAPI;
+    /** Only the screen notification overlay window has this bridge. */
+    readonly substrateScreenNotifications?: ScreenNotificationsBridge;
   }
 }
 
@@ -23,6 +26,7 @@ export const windowBridge = () => window.substrateWindow;
 export const desktopSettingsBridge = () => window.substrateDesktopSettings;
 export const realtimeBridge = () => window.substrateRealtime;
 export const updatesBridge = () => window.substrateUpdates;
+export const screenNotificationsBridge = () => window.substrateScreenNotifications;
 export const desktopPlatform = () => windowBridge()?.platform;
 export const hasDesktopAuth = () => Boolean(window.requestAuth);
 

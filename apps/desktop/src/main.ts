@@ -2,6 +2,7 @@ import { agentWorkChannel } from "@substrate/contracts/agent-work/desktop";
 import { desktopIdentity } from "@substrate/contracts/desktop/identity";
 import { handleBridge } from "@substrate/contracts/desktop/ipc";
 import { resolveDesktopLink } from "@substrate/contracts/desktop/links";
+import { defaultMeetingReminderSettings } from "@substrate/contracts/desktop/screen-notifications-ipc";
 import * as settingsIPC from "@substrate/contracts/desktop/settings-ipc";
 import { desktopSettingsChannel } from "@substrate/contracts/desktop/window";
 import * as harnessIPC from "@substrate/contracts/harness/ipc";
@@ -12,6 +13,10 @@ import { installationId } from "./agents/installation.ts";
 import { composeDesktop } from "./app/composition.ts";
 import { createDesktopAuthClient } from "./auth/auth-client.ts";
 import { HarnessCommandError } from "./harness/controller/harness-controller.ts";
+import {
+  setupScreenNotifications,
+  type ScreenNotifications,
+} from "./notifications/screen-notifications.ts";
 import { applicationURL, bundledApplicationURL, navigationTarget } from "./shell/navigation.ts";
 import { registerWindowBridge } from "./shell/title-bar.ts";
 import { trustedSender } from "./shell/trusted-sender.ts";
@@ -21,7 +26,16 @@ import { configureProtocols } from "./transport/protocols.ts";
 import { publicConfigSchema, resolvePublicConfig } from "./transport/public-config.ts";
 import { emitToRenderer } from "./transport/realtime-events.ts";
 import { setupDesktopUpdates } from "./updates/desktop-updates.ts";
-import { app, BrowserWindow, ipcMain, Menu, Notification, session, Tray } from "electron";
+import {
+  app,
+  type BrowserWindow,
+  ipcMain,
+  Menu,
+  Notification,
+  session,
+  shell,
+  Tray,
+} from "electron";
 import { readFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { join } from "node:path";
@@ -229,7 +243,7 @@ function main() {
       .whenReady()
       .then(() => {
         initializeSession();
-        registerWindowBridge(rendererURL);
+        registerWindowBridge(rendererURL, backend, () => mainWindow);
         const desktopSession = session.fromPartition(sessionPartition);
         const installation = installationId(app.getPath("userData"));
         const accountsDirectory = join(app.getPath("userData"), "accounts");
@@ -238,6 +252,22 @@ function main() {
           authFetch: (path, options) => authClient.$fetch(path, options),
           installationId: installation,
         });
+        // Smoke tests drive a single window, so they run without the overlay.
+        const screenNotifications: ScreenNotifications | undefined = smokeTest
+          ? undefined
+          : setupScreenNotifications({
+              rendererURL,
+              partition: sessionPartition,
+              preload: fileURLToPath(
+                new URL(
+                  app.isPackaged ? "./overlay-preload.cjs" : "../.runtime/overlay-preload.cjs",
+                  import.meta.url,
+                ),
+              ),
+              production: app.isPackaged,
+              userData: app.getPath("userData"),
+              onWake: () => void services?.meetingReminders?.refresh(),
+            });
         services = composeDesktop({
           backend,
           accountsDirectory,
@@ -276,6 +306,16 @@ function main() {
             showWindow();
             void mainWindow?.loadURL(destination.href).catch(() => {});
           },
+          screenNotifications,
+          openExternal: (url) => void shell.openExternal(url).catch(console.error),
+          openCalendarEvent: ({ organizationId, eventId, date }) => {
+            const destination = new URL("/calendar", rendererURL);
+            destination.searchParams.set("workspaceId", organizationId);
+            destination.searchParams.set("eventId", eventId);
+            destination.searchParams.set("date", date);
+            showWindow();
+            void mainWindow?.loadURL(destination.href).catch(() => {});
+          },
         });
         const composed = services;
         ({ agentWork, realtime } = composed);
@@ -297,11 +337,18 @@ function main() {
         });
         const readSettings = () => ({
           launchAtLogin: app.getLoginItemSettings({ args: loginArguments }).openAtLogin,
+          meetingReminders: screenNotifications?.store.settings() ?? defaultMeetingReminderSettings,
         });
         const dispatchSettings = handleBridge(desktopSettingsChannel, settingsIPC.methods, {
           get: readSettings,
           setLaunchAtLogin: (enabled) => {
             app.setLoginItemSettings({ openAtLogin: enabled, args: loginArguments });
+            return readSettings();
+          },
+          setMeetingReminders: (value) => {
+            if (!screenNotifications) throw new Error("Meeting reminders unavailable.");
+            screenNotifications.store.setSettings(value);
+            void composed.meetingReminders?.refresh();
             return readSettings();
           },
         });
@@ -364,8 +411,9 @@ function main() {
           prepareInstall: shutdownForUpdate,
         }).start();
         app.on("activate", () => {
-          if (BrowserWindow.getAllWindows().length === 0) createWindow();
-          else mainWindow?.show();
+          // The hidden overlay is a window too, so check for the main window itself.
+          if (!mainWindow) createWindow();
+          else mainWindow.show();
         });
         if (!smokeTest) void createTray().catch(console.error);
       })

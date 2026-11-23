@@ -13,6 +13,17 @@ export type InteractionSection =
   | "person"
   | "account";
 
+/** How an interaction was recorded: a tag, a table cell, and the full wording for filters. */
+export const interactionOrigins = {
+  manual: { tag: "Manual", short: "Manual", long: "Logged manually" },
+  message_publication: {
+    tag: "Published from message",
+    short: "Published",
+    long: "Published from message",
+  },
+  calendar_event: { tag: "From meeting", short: "Meeting", long: "Recorded from meeting" },
+} satisfies Record<InteractionRow["origin"], { tag: string; short: string; long: string }>;
+
 export const interactionKinds = ["email", "meeting", "call", "message", "note", "other"] as const;
 export const interactionTypes = {
   email: {

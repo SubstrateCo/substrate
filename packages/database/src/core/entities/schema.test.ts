@@ -20,8 +20,6 @@ describe("database integrity", () => {
     "channel",
     "thread",
     "message",
-    "calendar",
-    "calendar_event",
   ])("entities reject unimplemented type %s", async (type) => {
     const entityId = crypto.randomUUID();
     expect(

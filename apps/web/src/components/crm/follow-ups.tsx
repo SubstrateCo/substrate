@@ -10,7 +10,7 @@ import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { DueDate } from "@/components/time/due-date";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { AppAvailability } from "@/components/workspace/app-availability";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { workLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { followUpsOptions } from "@/queries/crm/options";
@@ -25,10 +25,11 @@ export function FollowUps({
   entityId: string;
   canCreate: boolean;
 }) {
+  const apps = useOrganizationApps();
+  // Follow-ups are CRM tasks: the server reads and creates them only with both apps on.
+  if (!apps.enabled("crm") || !apps.enabled("tasks")) return null;
   return (
-    <AppAvailability app="tasks">
-      <EnabledFollowUps organizationId={organizationId} entityId={entityId} canCreate={canCreate} />
-    </AppAvailability>
+    <EnabledFollowUps organizationId={organizationId} entityId={entityId} canCreate={canCreate} />
   );
 }
 

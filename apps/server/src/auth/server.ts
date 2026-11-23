@@ -14,6 +14,11 @@ import { environment } from "../environment";
 import type { MailService } from "../mail/service";
 import type { CommittedPublisher } from "../shared/committed";
 import { isTrustedOrigin } from "../shared/origin-check";
+import {
+  calendarSocialProviders,
+  isCalendarProviderSignIn,
+  requestedProvider,
+} from "./calendar-accounts";
 import { createOrganizationLifecycle } from "./organization-lifecycle";
 import {
   organizationBody,
@@ -79,6 +84,17 @@ export function createAuth(deps: {
     secret: environment.authSecret,
     database: drizzleAdapter(db, { provider: "pg", schema }),
     session: { cookieCache: { enabled: true, maxAge: 60 } },
+    socialProviders: calendarSocialProviders(environment.calendarProviders),
+    account: {
+      // Calendar refresh tokens are encrypted with BETTER_AUTH_SECRET; getAccessToken decrypts them.
+      encryptOAuthTokens: true,
+      accountLinking: {
+        // A signed-in user links calendars from another address, such as a work account.
+        allowDifferentEmails: true,
+        // An OAuth sign-in never attaches a provider account to a user by matching email.
+        disableImplicitLinking: true,
+      },
+    },
     emailAndPassword: {
       enabled: true,
       disableSignUp: false,
@@ -153,6 +169,10 @@ export function createAuth(deps: {
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
+        if (isCalendarProviderSignIn(ctx.path, requestedProvider.parse(ctx.body).provider))
+          throw new APIError("FORBIDDEN", {
+            message: "Calendar accounts cannot be used to sign in.",
+          });
         const mutation = readPictureMutation({ path: ctx.path, body: ctx.body ?? {} });
         if (!mutation) return;
         const origin = ctx.headers?.get("origin");

@@ -15,6 +15,6 @@ export const organizationApps = pgTable(
   },
   (table) => [
     primaryKey({ columns: [table.organizationId, table.appId] }),
-    check("organization_apps_app_id_check", sql`${table.appId} IN ('tasks', 'crm')`),
+    check("organization_apps_app_id_check", sql`${table.appId} IN ('tasks', 'crm', 'calendar')`),
   ],
 );

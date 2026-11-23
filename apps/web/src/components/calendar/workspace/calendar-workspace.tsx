@@ -1,0 +1,124 @@
+import type { CalendarEventSummary } from "@substrate/contracts/calendar";
+
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { linkOptions, useNavigate } from "@tanstack/react-router";
+
+import { useState } from "react";
+
+import { CalendarEventPanel } from "../event/calendar-event-panel";
+import { CalendarWorkspaceView, type CalendarBodyState } from "./calendar-workspace-view";
+import { isCalendarAccessRequired } from "@/api/calendar/access";
+import { useNow } from "@/hooks/use-now";
+import {
+  eventRange,
+  groupEventsByDay,
+  shiftAnchor,
+  startOfDay,
+  viewAnchor,
+  visibleDays,
+  type CalendarViewMode,
+} from "@/lib/calendar/days";
+import { groupCalendarsByAccount } from "@/lib/calendar/groups";
+import { formatDateOnly, formatDateRange, formatMonthYear } from "@/lib/format/date";
+import { calendarEventsOptions, calendarSettingsOptions } from "@/queries/calendar/options";
+
+export function CalendarWorkspace({
+  organizationId,
+  view,
+  date,
+  eventId,
+}: {
+  organizationId: string;
+  view: CalendarViewMode;
+  /** YYYY-MM-DD of the day the view is anchored to. Today when absent. */
+  date?: string;
+  eventId?: string;
+}) {
+  const navigate = useNavigate({ from: "/calendar/" });
+  const now = useNow(true, 60_000);
+  const anchor = viewAnchor(date, new Date(now));
+  const days = visibleDays(view, anchor);
+  const range = eventRange(days);
+  const settings = useQuery(calendarSettingsOptions(organizationId));
+  const events = useQuery({
+    ...calendarEventsOptions(organizationId, range),
+    placeholderData: keepPreviousData,
+  });
+  const [hidden, setHidden] = useState<ReadonlySet<string>>(new Set());
+  const calendarGroups = settings.data ? groupCalendarsByAccount(settings.data) : [];
+  // A missing calendar grant reads as a reconnect banner over an empty calendar, not an error.
+  const accessRequired = isCalendarAccessRequired(events.error);
+  const needsReconnect =
+    accessRequired ||
+    (settings.data?.accounts.some(
+      (account) =>
+        (!account.hasCalendarAccess && account.calendars.length > 0) ||
+        account.calendars.some((calendar) => calendar.syncStatus === "reauth_required"),
+    ) ??
+      false);
+  let state: CalendarBodyState = "ready";
+  if (settings.error || (events.error && !accessRequired)) state = "error";
+  else if (!settings.data || (!events.data && !accessRequired)) state = "loading";
+  else if (calendarGroups.length === 0) state = "no-calendars";
+  const visible = (events.data ?? []).filter((event) => !hidden.has(event.calendarEntityId));
+  const today = startOfDay(new Date(now));
+  const showsToday = days.some((day) => day.getTime() === today.getTime());
+  const search = (next: { view?: CalendarViewMode; date?: string; eventId?: string }) =>
+    void navigate({ to: "/calendar", search: (previous) => ({ ...previous, ...next }) });
+  // The open event lives in the URL, so the pane is linkable and Back closes it.
+  const eventLink = (event: CalendarEventSummary) =>
+    linkOptions({
+      to: "/calendar",
+      search: { workspaceId: organizationId, view, date, eventId: event.entityId },
+    });
+  return (
+    <CalendarWorkspaceView
+      state={state}
+      onRetry={() => {
+        void settings.refetch();
+        void events.refetch();
+      }}
+      calendarGroups={calendarGroups}
+      hidden={hidden}
+      onToggleCalendar={(calendarEntityId, show) =>
+        setHidden((current) => {
+          const next = new Set(current);
+          if (show) next.delete(calendarEntityId);
+          else next.add(calendarEntityId);
+          return next;
+        })
+      }
+      toolbar={{
+        title:
+          view === "week"
+            ? formatMonthYear(days[3]!)
+            : formatDateRange(days[0]!, days.at(-1)!, now),
+        view,
+        showsToday,
+        onToday: () => search({ date: undefined }),
+        onStep: (direction) => search({ date: shiftAnchor(view, anchor, direction) }),
+        onViewChange: (next) =>
+          search({ view: next, date: date ? formatDateOnly(anchor) : undefined }),
+      }}
+      needsReconnect={needsReconnect}
+      view={view}
+      weekDays={days}
+      agenda={groupEventsByDay(visible, days, showsToday ? today : undefined)}
+      events={visible}
+      now={now}
+      selectedEventId={eventId}
+      eventLink={eventLink}
+      aside={
+        eventId && (
+          <CalendarEventPanel
+            key={eventId}
+            organizationId={organizationId}
+            eventId={eventId}
+            now={now}
+            onClose={() => search({ eventId: undefined })}
+          />
+        )
+      }
+    />
+  );
+}

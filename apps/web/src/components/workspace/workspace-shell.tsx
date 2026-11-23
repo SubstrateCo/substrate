@@ -61,7 +61,9 @@ export function WorkspaceShell({
       >
         {switcher}
         {workspaceApps
-          .filter(({ id }) => (id !== "tasks" && id !== "crm") || apps.enabled(id))
+          .filter(
+            ({ id }) => (id !== "tasks" && id !== "crm" && id !== "calendar") || apps.enabled(id),
+          )
           .map(({ id, ...app }) => (
             <WorkspaceAppButton key={id} {...app} {...badges[id]} />
           ))}

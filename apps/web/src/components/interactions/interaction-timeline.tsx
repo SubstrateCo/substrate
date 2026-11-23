@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { InteractionList } from "./interaction-list";
 import { InteractionPager } from "./interaction-pager";
-import { interactionKinds, interactionTypes } from "./interaction-types";
+import { interactionKinds, interactionOrigins, interactionTypes } from "./interaction-types";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
@@ -19,13 +19,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
+import { useInteractionSources } from "@/queries/calendar/interaction-sources";
 import { interactionTimelineOptions } from "@/queries/context/interactions";
 import { Activity } from "lucide-react";
 
 type Cursor = Pick<TimelineInput, "beforeOccurredAt" | "beforeEntityId">;
 
 export function InteractionTimeline({ period }: { period: TimelineInput }) {
+  const apps = useOrganizationApps();
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState("all");
   const [origin, setOrigin] = useState("all");
@@ -63,6 +66,11 @@ export function InteractionTimeline({ period }: { period: TimelineInput }) {
             <SelectItem value="all">All origins</SelectItem>
             <SelectItem value="manual">Logged manually</SelectItem>
             <SelectItem value="message_publication">Published from message</SelectItem>
+            {apps.enabled("calendar") && (
+              <SelectItem value="calendar_event">
+                {interactionOrigins.calendar_event.long}
+              </SelectItem>
+            )}
           </SelectContent>
         </Select>
       </div>
@@ -96,10 +104,18 @@ function TimelinePage({
     ...period,
     search,
     kind: interactionKinds.find((k) => k === kind),
-    origin: (["manual", "message_publication"] as const).find((value) => value === origin),
+    origin: (["manual", "message_publication", "calendar_event"] as const).find(
+      (value) => value === origin,
+    ),
     ...cursor,
   };
+  const apps = useOrganizationApps();
   const query = useQuery({ ...interactionTimelineOptions(input), enabled: !pending });
+  const sources = useInteractionSources(
+    period.organizationId,
+    query.data?.items ?? [],
+    apps.enabled("calendar"),
+  );
   if (query.error)
     return <ErrorState title="Couldn’t load interactions" onRetry={() => void query.refetch()} />;
   if (!query.data) return <LoadingState label="Loading interactions…" rows={5} />;
@@ -110,7 +126,11 @@ function TimelinePage({
       <Card size="sm" className="min-h-0 flex-1">
         <div className="min-h-0 flex-1 overflow-y-auto">
           {items.length ? (
-            <InteractionList rows={items} organizationId={period.organizationId} />
+            <InteractionList
+              rows={items}
+              organizationId={period.organizationId}
+              sources={sources}
+            />
           ) : (
             <ContentNotice
               title={filtered ? "No matching interactions" : "No interactions in this period"}

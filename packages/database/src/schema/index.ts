@@ -31,3 +31,4 @@ export * from "../features/messaging/read-state.schema";
 export * from "../features/crm/schema";
 export * from "../features/crm/settings.schema";
 export * from "../features/crm/activity.schema";
+export * from "../features/calendar/schema";

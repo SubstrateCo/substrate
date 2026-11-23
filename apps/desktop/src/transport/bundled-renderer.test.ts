@@ -57,6 +57,7 @@ describe("bundled assets and responses", () => {
     await mkdir(join(directory, "dist"));
     await writeFile(join(directory, "dist", "index.html"), "<h1>Workspace</h1>");
     await writeFile(join(directory, "dist", "app.js"), "console.log('workspace')");
+    await writeFile(join(directory, "dist", "overlay.html"), "<h1>Overlay</h1>");
     await writeFile(join(directory, "private.txt"), "secret");
     await symlink(directory, join(directory, "dist", "linked"), "junction");
   });
@@ -97,6 +98,14 @@ describe("bundled assets and responses", () => {
         await assetPath(join(directory, "dist"), new URL(`${bundledApplicationURL}${path}`)),
       ).toBeNull();
     }
+  });
+
+  test("serves the overlay entry itself and never falls back to the workspace for an HTML file", async () => {
+    const serve = handler();
+    expect(await (await serve(new Request(`${bundledApplicationURL}/overlay.html`))).text()).toBe(
+      "<h1>Overlay</h1>",
+    );
+    expect((await serve(new Request(`${bundledApplicationURL}/missing.html`))).status).toBe(404);
   });
 
   test("rejects non-app origins and unsupported asset methods", async () => {

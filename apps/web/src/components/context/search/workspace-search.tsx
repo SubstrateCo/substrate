@@ -9,7 +9,13 @@ import {
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
-import { recordLink, contactLink, messageLink, workLink } from "@/lib/navigation/record-links";
+import {
+  interactionLink,
+  messageLink,
+  personLink,
+  recordLink,
+  workLink,
+} from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { searchPagesOptions, useJoinSearchConversation } from "@/queries/context/search";
 import { toast } from "sonner";
@@ -45,12 +51,19 @@ export function WorkspaceSearch({
             ((item.kind !== "account" && item.kind !== "deal") || apps.enabled("crm")),
         )
         .map((item) => {
-          if (item.kind === "account" || item.kind === "contact" || item.kind === "deal") {
-            const section = { account: "accounts", contact: "contacts", deal: "deals" } as const;
+          if (item.kind === "contact")
+            return { ...item, link: personLink(organizationId, item.id, apps.enabled("crm")) };
+          if (item.kind === "account" || item.kind === "deal") {
+            const section = { account: "accounts", deal: "deals" } as const;
             return { ...item, link: recordLink(organizationId, section[item.kind], item.id) };
           }
           if (item.kind === "contact_interaction")
-            return { ...item, link: contactLink(organizationId, item.contactEntityId) };
+            return {
+              ...item,
+              link: item.contactEntityId
+                ? personLink(organizationId, item.contactEntityId, apps.enabled("crm"))
+                : interactionLink(organizationId, item.id),
+            };
           return {
             ...item,
             link: item.conversationId

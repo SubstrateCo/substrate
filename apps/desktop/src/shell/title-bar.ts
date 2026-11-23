@@ -2,11 +2,13 @@ import { handleBridge } from "@substrate/contracts/desktop/ipc";
 import { fullscreenChannel, windowChannel } from "@substrate/contracts/desktop/window";
 import { methods } from "@substrate/contracts/desktop/window-ipc";
 
+import { googleLinkURL } from "./google-link.ts";
 import { trustedSender } from "./trusted-sender.ts";
 import {
   ipcMain,
   nativeTheme,
-  BrowserWindow,
+  shell,
+  type BrowserWindow,
   type BrowserWindowConstructorOptions,
 } from "electron";
 
@@ -34,10 +36,15 @@ export function titleBarOptions(): BrowserWindowConstructorOptions {
   };
 }
 
-export function registerWindowBridge(rendererURL: string) {
+export function registerWindowBridge(
+  rendererURL: string,
+  apiURL: string,
+  getWindow: () => BrowserWindow | undefined,
+) {
   ipcMain.handle(windowChannel, (event, method, value) => {
-    const window = BrowserWindow.fromWebContents(event.sender);
-    if (!window || !trustedSender(event, window.webContents, rendererURL))
+    // Only the main window: other windows, such as the notification overlay, are rejected.
+    const window = getWindow();
+    if (!window || window.isDestroyed() || !trustedSender(event, window.webContents, rendererURL))
       throw new Error("Untrusted window request.");
     return handleBridge(windowChannel, methods, {
       isFullscreen: () => window.isFullScreen(),
@@ -47,6 +54,7 @@ export function registerWindowBridge(rendererURL: string) {
           window.setTitleBarOverlay(overlayOptions());
         }
       },
+      openGoogleLink: (request) => shell.openExternal(googleLinkURL(request, apiURL)),
     })(method, value);
   });
 }

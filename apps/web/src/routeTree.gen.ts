@@ -33,6 +33,7 @@ import { Route as AuthenticatedFrameSettingsOrganizationRouteRouteImport } from 
 import { Route as AuthenticatedStandaloneAcceptInvitationInvitationIdRouteImport } from './routes/_authenticated/_standalone/accept-invitation/$invitationId'
 import { Route as AuthenticatedStandaloneAcceptSharingInvitationIdRouteImport } from './routes/_authenticated/_standalone/accept-sharing/$invitationId'
 import { Route as AuthenticatedStandaloneSetupCompleteRouteImport } from './routes/_authenticated/_standalone/setup/complete'
+import { Route as AuthenticatedFrameWorkspaceCalendarIndexRouteImport } from './routes/_authenticated/_frame/_workspace/calendar/index'
 import { Route as AuthenticatedFrameWorkspaceContactsIndexRouteImport } from './routes/_authenticated/_frame/_workspace/contacts/index'
 import { Route as AuthenticatedFrameWorkspaceCrmIndexRouteImport } from './routes/_authenticated/_frame/_workspace/crm/index'
 import { Route as AuthenticatedFrameWorkspaceInteractionsIndexRouteImport } from './routes/_authenticated/_frame/_workspace/interactions/index'
@@ -44,6 +45,7 @@ import { Route as AuthenticatedFrameSettingsOrganizationInvitationsRouteImport }
 import { Route as AuthenticatedFrameSettingsOrganizationMembersRouteImport } from './routes/_authenticated/_frame/settings/organization/members'
 import { Route as AuthenticatedFrameSettingsOrganizationSharingRouteImport } from './routes/_authenticated/_frame/settings/organization/sharing'
 import { Route as AuthenticatedFrameSettingsUserIndexRouteImport } from './routes/_authenticated/_frame/settings/user/index'
+import { Route as AuthenticatedFrameSettingsUserCalendarsRouteImport } from './routes/_authenticated/_frame/settings/user/calendars'
 import { Route as AuthenticatedFrameSettingsUserInvitationsRouteImport } from './routes/_authenticated/_frame/settings/user/invitations'
 import { Route as AuthenticatedFrameSettingsUserPreferencesRouteImport } from './routes/_authenticated/_frame/settings/user/preferences'
 
@@ -174,6 +176,12 @@ const AuthenticatedStandaloneSetupCompleteRoute =
     path: '/setup/complete',
     getParentRoute: () => AuthenticatedStandaloneRouteRoute,
   } as any)
+const AuthenticatedFrameWorkspaceCalendarIndexRoute =
+  AuthenticatedFrameWorkspaceCalendarIndexRouteImport.update({
+    id: '/calendar/',
+    path: '/calendar/',
+    getParentRoute: () => AuthenticatedFrameWorkspaceRouteRoute,
+  } as any)
 const AuthenticatedFrameWorkspaceContactsIndexRoute =
   AuthenticatedFrameWorkspaceContactsIndexRouteImport.update({
     id: '/contacts/',
@@ -240,6 +248,12 @@ const AuthenticatedFrameSettingsUserIndexRoute =
     path: '/user/',
     getParentRoute: () => AuthenticatedFrameSettingsRouteRoute,
   } as any)
+const AuthenticatedFrameSettingsUserCalendarsRoute =
+  AuthenticatedFrameSettingsUserCalendarsRouteImport.update({
+    id: '/user/calendars',
+    path: '/user/calendars',
+    getParentRoute: () => AuthenticatedFrameSettingsRouteRoute,
+  } as any)
 const AuthenticatedFrameSettingsUserInvitationsRoute =
   AuthenticatedFrameSettingsUserInvitationsRouteImport.update({
     id: '/user/invitations',
@@ -277,8 +291,10 @@ export interface FileRoutesByFullPath {
   '/settings/organization/invitations': typeof AuthenticatedFrameSettingsOrganizationInvitationsRoute
   '/settings/organization/members': typeof AuthenticatedFrameSettingsOrganizationMembersRoute
   '/settings/organization/sharing': typeof AuthenticatedFrameSettingsOrganizationSharingRoute
+  '/settings/user/calendars': typeof AuthenticatedFrameSettingsUserCalendarsRoute
   '/settings/user/invitations': typeof AuthenticatedFrameSettingsUserInvitationsRoute
   '/settings/user/preferences': typeof AuthenticatedFrameSettingsUserPreferencesRoute
+  '/calendar/': typeof AuthenticatedFrameWorkspaceCalendarIndexRoute
   '/contacts/': typeof AuthenticatedFrameWorkspaceContactsIndexRoute
   '/crm/': typeof AuthenticatedFrameWorkspaceCrmIndexRoute
   '/interactions/': typeof AuthenticatedFrameWorkspaceInteractionsIndexRoute
@@ -309,8 +325,10 @@ export interface FileRoutesByTo {
   '/settings/organization/invitations': typeof AuthenticatedFrameSettingsOrganizationInvitationsRoute
   '/settings/organization/members': typeof AuthenticatedFrameSettingsOrganizationMembersRoute
   '/settings/organization/sharing': typeof AuthenticatedFrameSettingsOrganizationSharingRoute
+  '/settings/user/calendars': typeof AuthenticatedFrameSettingsUserCalendarsRoute
   '/settings/user/invitations': typeof AuthenticatedFrameSettingsUserInvitationsRoute
   '/settings/user/preferences': typeof AuthenticatedFrameSettingsUserPreferencesRoute
+  '/calendar': typeof AuthenticatedFrameWorkspaceCalendarIndexRoute
   '/contacts': typeof AuthenticatedFrameWorkspaceContactsIndexRoute
   '/crm': typeof AuthenticatedFrameWorkspaceCrmIndexRoute
   '/interactions': typeof AuthenticatedFrameWorkspaceInteractionsIndexRoute
@@ -349,8 +367,10 @@ export interface FileRoutesById {
   '/_authenticated/_frame/settings/organization/invitations': typeof AuthenticatedFrameSettingsOrganizationInvitationsRoute
   '/_authenticated/_frame/settings/organization/members': typeof AuthenticatedFrameSettingsOrganizationMembersRoute
   '/_authenticated/_frame/settings/organization/sharing': typeof AuthenticatedFrameSettingsOrganizationSharingRoute
+  '/_authenticated/_frame/settings/user/calendars': typeof AuthenticatedFrameSettingsUserCalendarsRoute
   '/_authenticated/_frame/settings/user/invitations': typeof AuthenticatedFrameSettingsUserInvitationsRoute
   '/_authenticated/_frame/settings/user/preferences': typeof AuthenticatedFrameSettingsUserPreferencesRoute
+  '/_authenticated/_frame/_workspace/calendar/': typeof AuthenticatedFrameWorkspaceCalendarIndexRoute
   '/_authenticated/_frame/_workspace/contacts/': typeof AuthenticatedFrameWorkspaceContactsIndexRoute
   '/_authenticated/_frame/_workspace/crm/': typeof AuthenticatedFrameWorkspaceCrmIndexRoute
   '/_authenticated/_frame/_workspace/interactions/': typeof AuthenticatedFrameWorkspaceInteractionsIndexRoute
@@ -384,8 +404,10 @@ export interface FileRouteTypes {
     | '/settings/organization/invitations'
     | '/settings/organization/members'
     | '/settings/organization/sharing'
+    | '/settings/user/calendars'
     | '/settings/user/invitations'
     | '/settings/user/preferences'
+    | '/calendar/'
     | '/contacts/'
     | '/crm/'
     | '/interactions/'
@@ -416,8 +438,10 @@ export interface FileRouteTypes {
     | '/settings/organization/invitations'
     | '/settings/organization/members'
     | '/settings/organization/sharing'
+    | '/settings/user/calendars'
     | '/settings/user/invitations'
     | '/settings/user/preferences'
+    | '/calendar'
     | '/contacts'
     | '/crm'
     | '/interactions'
@@ -455,8 +479,10 @@ export interface FileRouteTypes {
     | '/_authenticated/_frame/settings/organization/invitations'
     | '/_authenticated/_frame/settings/organization/members'
     | '/_authenticated/_frame/settings/organization/sharing'
+    | '/_authenticated/_frame/settings/user/calendars'
     | '/_authenticated/_frame/settings/user/invitations'
     | '/_authenticated/_frame/settings/user/preferences'
+    | '/_authenticated/_frame/_workspace/calendar/'
     | '/_authenticated/_frame/_workspace/contacts/'
     | '/_authenticated/_frame/_workspace/crm/'
     | '/_authenticated/_frame/_workspace/interactions/'
@@ -640,6 +666,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedStandaloneSetupCompleteRouteImport
       parentRoute: typeof AuthenticatedStandaloneRouteRoute
     }
+    '/_authenticated/_frame/_workspace/calendar/': {
+      id: '/_authenticated/_frame/_workspace/calendar/'
+      path: '/calendar'
+      fullPath: '/calendar/'
+      preLoaderRoute: typeof AuthenticatedFrameWorkspaceCalendarIndexRouteImport
+      parentRoute: typeof AuthenticatedFrameWorkspaceRouteRoute
+    }
     '/_authenticated/_frame/_workspace/contacts/': {
       id: '/_authenticated/_frame/_workspace/contacts/'
       path: '/contacts'
@@ -717,6 +750,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrameSettingsUserIndexRouteImport
       parentRoute: typeof AuthenticatedFrameSettingsRouteRoute
     }
+    '/_authenticated/_frame/settings/user/calendars': {
+      id: '/_authenticated/_frame/settings/user/calendars'
+      path: '/user/calendars'
+      fullPath: '/settings/user/calendars'
+      preLoaderRoute: typeof AuthenticatedFrameSettingsUserCalendarsRouteImport
+      parentRoute: typeof AuthenticatedFrameSettingsRouteRoute
+    }
     '/_authenticated/_frame/settings/user/invitations': {
       id: '/_authenticated/_frame/settings/user/invitations'
       path: '/user/invitations'
@@ -739,6 +779,7 @@ interface AuthenticatedFrameWorkspaceRouteRouteChildren {
   AuthenticatedFrameWorkspaceDashboardRoute: typeof AuthenticatedFrameWorkspaceDashboardRoute
   AuthenticatedFrameWorkspaceMessagesRoute: typeof AuthenticatedFrameWorkspaceMessagesRoute
   AuthenticatedFrameWorkspaceNotificationsRoute: typeof AuthenticatedFrameWorkspaceNotificationsRoute
+  AuthenticatedFrameWorkspaceCalendarIndexRoute: typeof AuthenticatedFrameWorkspaceCalendarIndexRoute
   AuthenticatedFrameWorkspaceContactsIndexRoute: typeof AuthenticatedFrameWorkspaceContactsIndexRoute
   AuthenticatedFrameWorkspaceCrmIndexRoute: typeof AuthenticatedFrameWorkspaceCrmIndexRoute
   AuthenticatedFrameWorkspaceInteractionsIndexRoute: typeof AuthenticatedFrameWorkspaceInteractionsIndexRoute
@@ -755,6 +796,8 @@ const AuthenticatedFrameWorkspaceRouteRouteChildren: AuthenticatedFrameWorkspace
       AuthenticatedFrameWorkspaceMessagesRoute,
     AuthenticatedFrameWorkspaceNotificationsRoute:
       AuthenticatedFrameWorkspaceNotificationsRoute,
+    AuthenticatedFrameWorkspaceCalendarIndexRoute:
+      AuthenticatedFrameWorkspaceCalendarIndexRoute,
     AuthenticatedFrameWorkspaceContactsIndexRoute:
       AuthenticatedFrameWorkspaceContactsIndexRoute,
     AuthenticatedFrameWorkspaceCrmIndexRoute:
@@ -802,6 +845,7 @@ const AuthenticatedFrameSettingsOrganizationRouteRouteWithChildren =
 
 interface AuthenticatedFrameSettingsRouteRouteChildren {
   AuthenticatedFrameSettingsOrganizationRouteRoute: typeof AuthenticatedFrameSettingsOrganizationRouteRouteWithChildren
+  AuthenticatedFrameSettingsUserCalendarsRoute: typeof AuthenticatedFrameSettingsUserCalendarsRoute
   AuthenticatedFrameSettingsUserInvitationsRoute: typeof AuthenticatedFrameSettingsUserInvitationsRoute
   AuthenticatedFrameSettingsUserPreferencesRoute: typeof AuthenticatedFrameSettingsUserPreferencesRoute
   AuthenticatedFrameSettingsUserIndexRoute: typeof AuthenticatedFrameSettingsUserIndexRoute
@@ -811,6 +855,8 @@ const AuthenticatedFrameSettingsRouteRouteChildren: AuthenticatedFrameSettingsRo
   {
     AuthenticatedFrameSettingsOrganizationRouteRoute:
       AuthenticatedFrameSettingsOrganizationRouteRouteWithChildren,
+    AuthenticatedFrameSettingsUserCalendarsRoute:
+      AuthenticatedFrameSettingsUserCalendarsRoute,
     AuthenticatedFrameSettingsUserInvitationsRoute:
       AuthenticatedFrameSettingsUserInvitationsRoute,
     AuthenticatedFrameSettingsUserPreferencesRoute:

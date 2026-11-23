@@ -1,8 +1,12 @@
+import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
 import type { getInteractionProfile } from "@/api/context/interactions";
-import { linkedWorkLink } from "@/lib/navigation/record-links";
-import { ArrowRight, Building2, Link2, UserRound } from "lucide-react";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { eventDate } from "@/lib/calendar/days";
+import { calendarLink, linkedWorkLink } from "@/lib/navigation/record-links";
+import { calendarEventOptions } from "@/queries/calendar/options";
+import { ArrowRight, Building2, CalendarDays, Link2, UserRound } from "lucide-react";
 
 export type InteractionConnection = Awaited<
   ReturnType<typeof getInteractionProfile>
@@ -15,6 +19,7 @@ function ConnectionLink({
   organizationId: string;
   connection: InteractionConnection;
 }) {
+  const apps = useOrganizationApps();
   if (connection.entityType === "contact" || connection.entityType === "account")
     return (
       <Link
@@ -26,12 +31,16 @@ function ConnectionLink({
           profileId: connection.entityId,
           recordId: undefined,
           tab: undefined,
+          // The linked record can be older than the current period.
+          days: "all",
         })}
         className="font-medium underline-offset-4 hover:underline"
       >
         {connection.title}
       </Link>
     );
+  if (connection.entityType === "calendar_event")
+    return <MeetingLink organizationId={organizationId} connection={connection} />;
   if (connection.entityType === "contact_interaction")
     return (
       <Link
@@ -48,9 +57,35 @@ function ConnectionLink({
       </Link>
     );
   return (
-    <Link {...linkedWorkLink(organizationId, connection)} className="underline underline-offset-4">
+    <Link
+      {...linkedWorkLink(organizationId, connection, apps.enabled("crm"))}
+      className="underline underline-offset-4"
+    >
       {connection.title}
     </Link>
+  );
+}
+
+/** A linked meeting opens on its day. The event read is the one the calendar pane reuses. */
+function MeetingLink({
+  organizationId,
+  connection,
+}: {
+  organizationId: string;
+  connection: InteractionConnection;
+}) {
+  const event = useQuery(calendarEventOptions(organizationId, connection.entityId)).data;
+  const date = event ? eventDate(event) : undefined;
+  return (
+    <span className="inline-flex min-w-0 items-center gap-1.5">
+      <CalendarDays aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
+      <Link
+        {...calendarLink(organizationId, connection.entityId, date)}
+        className="truncate underline underline-offset-4"
+      >
+        {connection.title}
+      </Link>
+    </span>
   );
 }
 

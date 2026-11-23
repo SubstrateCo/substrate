@@ -22,6 +22,12 @@ export const contextEntityTypes = [
   "contact_interaction",
 ] as const;
 export type ContextEntityType = (typeof contextEntityTypes)[number];
+/**
+ * Records that context views show as related, such as an interaction's linked records. A calendar
+ * event is only a readable target: people cannot link it by hand or reference it from a message.
+ */
+export const contextTargetTypes = [...contextEntityTypes, "calendar_event"] as const;
+export type ContextTargetType = (typeof contextTargetTypes)[number];
 export const contextSearchKinds = [
   "all",
   "task",

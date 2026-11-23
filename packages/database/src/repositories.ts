@@ -16,6 +16,7 @@ import { workspaceContext, type ResolvedWorkspace } from "./core/session/workspa
 import { createDeviceWorkRepository } from "./features/agent-work/device-repository";
 import { createAgentWorkReadRepository } from "./features/agent-work/read-repository";
 import { createAgentRepository } from "./features/agents/repository";
+import { calendarRepository } from "./features/calendar/repository";
 import { contactApplicationRepository } from "./features/contacts/repository";
 import { contextContactInteractionRepository } from "./features/context/contact-interactions";
 import { createContextRepository } from "./features/context/service";
@@ -44,6 +45,7 @@ export class ActorRepositories {
   readonly projects;
   readonly tasks;
   readonly crm;
+  readonly calendar;
   protected readonly repositoryContext;
 
   constructor(
@@ -60,6 +62,7 @@ export class ActorRepositories {
     this.projects = projectRepository(this.repositoryContext);
     this.tasks = taskRepository(this.repositoryContext);
     this.crm = crmRepository(this.repositoryContext);
+    this.calendar = calendarRepository(this.repositoryContext);
   }
 
   async transaction<T>(
@@ -137,6 +140,7 @@ function standalone(
     K extends
       | "contacts"
       | "crm"
+      | "calendar"
       | "contactInteractions"
       | "entities"
       | "links"
@@ -178,6 +182,13 @@ function standalone(
       "followUps",
       "settings",
       "timeline",
+    ]),
+    calendar: domain("calendar", [
+      "settings",
+      "events",
+      "event",
+      "contactMeetings",
+      "interactionSourceEvents",
     ]),
     contactInteractions: domain("contactInteractions", [
       "get",

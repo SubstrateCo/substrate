@@ -1,6 +1,9 @@
+import type { InteractionSourceEvent } from "@substrate/contracts/calendar";
+
 import { Link } from "@tanstack/react-router";
 
-import { interactionTypes, type InteractionRow } from "./interaction-types";
+import { interactionOrigins, interactionTypes, type InteractionRow } from "./interaction-types";
+import { MeetingSourceLink } from "@/components/calendar/meeting-source-link";
 import { Tag } from "@/components/feedback/tag";
 import { Timestamp } from "@/components/time/timestamp";
 import { cn } from "cn";
@@ -8,9 +11,12 @@ import { cn } from "cn";
 export function InteractionList({
   rows,
   organizationId,
+  sources = {},
 }: {
   rows: InteractionRow[];
   organizationId: string;
+  /** The meetings that calendar interactions came from, by interaction. */
+  sources?: Readonly<Record<string, InteractionSourceEvent>>;
 }) {
   return (
     <ol className="divide-y">
@@ -72,8 +78,13 @@ export function InteractionList({
                     <span>{minutes} min recorded</span>
                   </>
                 )}
-                <Tag>{row.origin === "manual" ? "Manual" : "Published from message"}</Tag>
+                <Tag>{interactionOrigins[row.origin].tag}</Tag>
               </div>
+              <MeetingSourceLink
+                organizationId={organizationId}
+                source={sources[row.entityId]}
+                className="max-w-full"
+              />
             </div>
           </li>
         );

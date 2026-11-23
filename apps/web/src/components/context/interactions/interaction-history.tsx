@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
+import { MeetingSourceLink } from "@/components/calendar/meeting-source-link";
 import { CrmResourceState } from "@/components/crm/crm-resource-state";
 import { formText } from "@/components/crm/form-text";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
@@ -20,7 +21,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { resourceState } from "@/lib/resource-state";
+import { useInteractionSources } from "@/queries/calendar/interaction-sources";
 import { useInteractionMutation, interactionsOptions } from "@/queries/context/interactions";
 import { Pencil, Trash2 } from "lucide-react";
 
@@ -37,6 +40,12 @@ export function InteractionHistory({
 }) {
   const query = useQuery(interactionsOptions(organizationId, contactEntityId));
   const mutation = useInteractionMutation(organizationId);
+  const apps = useOrganizationApps();
+  const sources = useInteractionSources(
+    organizationId,
+    resourceState(query).data ?? [],
+    apps.enabled("calendar"),
+  );
   const [selected, setSelected] = useState<{
     entityId: string;
     summary: string;
@@ -91,6 +100,11 @@ export function InteractionHistory({
                 )}
               </div>
               <p className="text-sm whitespace-pre-wrap">{interaction.summary}</p>
+              <MeetingSourceLink
+                organizationId={organizationId}
+                source={sources[interaction.entityId]}
+                className="max-w-full"
+              />
             </li>
           );
         })}

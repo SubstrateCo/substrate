@@ -39,13 +39,37 @@ const catalog = [
       "Manage accounts, deals, and customer relationships. Enable independently of Tasks.",
     required: false,
   },
+  {
+    id: "calendar",
+    description:
+      "Members sync their calendars read-only. Meetings with outside attendees can create contacts and interactions.",
+    required: false,
+  },
 ] as const satisfies ReadonlyArray<{ id: AppId; description: string; required: boolean }>;
+
+const disableCopy = {
+  tasks: {
+    label: "Tasks",
+    description:
+      "Tasks, Projects, and CRM follow-up tasks will be unavailable to everyone in this organization. Existing projects and tasks are preserved. Enable Tasks again to restore access.",
+  },
+  crm: {
+    label: "CRM",
+    description:
+      "Accounts and deals will be unavailable to everyone in this organization. Existing CRM data is preserved. Contacts and Tasks stay available. Enable CRM again to restore access.",
+  },
+  calendar: {
+    label: "Calendar",
+    description:
+      "Calendar and calendar settings will be unavailable to everyone in this organization. Contacts and interactions from past meetings are preserved. Enable Calendar again to restore access.",
+  },
+} as const;
 
 export function OrganizationApps({ organizationId }: { organizationId: string }) {
   const settings = useQuery(organizationAppsOptions(organizationId));
   const organization = useQuery(currentOrganizationQueryOptions(organizationId));
   const mutation = useUpdateOrganizationApps(organizationId);
-  const [disabling, setDisabling] = useState<"tasks" | "crm" | null>(null);
+  const [disabling, setDisabling] = useState<"tasks" | "crm" | "calendar" | null>(null);
   const canManage = organizationSettingsAccess(organization.data?.role).allowed;
   const change = (app: AppId, enabled: boolean) => {
     if (!settings.data || !canManage) return;
@@ -127,13 +151,9 @@ export function OrganizationApps({ organizationId }: { organizationId: string })
       )}
       {disabling && (
         <ConfirmDialog
-          title={`Disable ${disabling === "tasks" ? "Tasks" : "CRM"}?`}
-          description={
-            disabling === "tasks"
-              ? "Tasks, Projects, and CRM follow-up tasks will be unavailable to everyone in this organization. Existing projects and tasks are preserved. Enable Tasks again to restore access."
-              : "Accounts and deals will be unavailable to everyone in this organization. Existing CRM data is preserved. Contacts and Tasks stay available. Enable CRM again to restore access."
-          }
-          confirmLabel={`Disable ${disabling === "tasks" ? "Tasks" : "CRM"}`}
+          title={`Disable ${disableCopy[disabling].label}?`}
+          description={disableCopy[disabling].description}
+          confirmLabel={`Disable ${disableCopy[disabling].label}`}
           pendingLabel="Disabling"
           pending={mutation.isPending}
           error={mutation.error}

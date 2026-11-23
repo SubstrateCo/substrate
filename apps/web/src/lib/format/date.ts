@@ -164,6 +164,52 @@ export function formatDayLabel(value: DateInput, now: DateInput = Date.now()) {
   );
 }
 
+const weekdayShort = new Intl.DateTimeFormat(locale, { weekday: "short" });
+const hour = new Intl.DateTimeFormat(locale, { hour: "numeric" });
+const monthYear = new Intl.DateTimeFormat(locale, { month: "long", year: "numeric" });
+
+/** A weekday's short name: "Mon". */
+export function formatWeekdayShort(value: DateInput) {
+  const date = toDate(value);
+  return date ? weekdayShort.format(date) : "";
+}
+
+/** An hour mark on a time grid: "9 AM". */
+export function formatHour(value: DateInput) {
+  const date = toDate(value);
+  return date ? plain(hour.format(date)) : "";
+}
+
+/** A month heading: "November 2026". */
+export function formatMonthYear(value: DateInput) {
+  const date = toDate(value);
+  return date ? monthYear.format(date) : "";
+}
+
+/** A span of days: "Nov 22 – 28", "Nov 29 – Dec 5", with the year outside this year. */
+export function formatDateRange(start: DateInput, end: DateInput, now: DateInput = Date.now()) {
+  const first = toDate(start);
+  const last = toDate(end);
+  if (!first || !last) return "";
+  if (isSameDay(first, last)) return formatShortDate(first, now);
+  const sameMonth =
+    first.getFullYear() === last.getFullYear() && first.getMonth() === last.getMonth();
+  const tail = sameMonth ? String(last.getDate()) : formatShortDate(last, now);
+  return `${formatShortDate(first, now)} – ${tail}`;
+}
+
+/** A time span on one day: "9:00 AM – 10:30 AM". */
+export function formatTimeRange(start: DateInput, end: DateInput) {
+  const from = formatTime(start);
+  const until = formatTime(end);
+  return from && until ? `${from} – ${until}` : from;
+}
+
+/** The viewer's IANA time zone, such as "America/New_York". */
+export function localTimeZone() {
+  return new Intl.DateTimeFormat().resolvedOptions().timeZone;
+}
+
 /** A calendar date stored as YYYY-MM-DD, read in local time so it never shifts a day. */
 export function parseDateOnly(value: string): Date | undefined {
   const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);

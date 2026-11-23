@@ -2,6 +2,7 @@ import { createRepositories } from "@substrate/database";
 import { pruneRecords } from "@substrate/database/trusted";
 
 import { createApp } from "./app";
+import { createGoogleLinkTickets } from "./auth/google-link";
 import { createAuthPublisher } from "./auth/realtime";
 import { createAuth } from "./auth/server";
 import { createSessionApi } from "./auth/session-api";
@@ -13,6 +14,8 @@ import { createServices } from "./services";
 import { createCommittedPublisher } from "./shared/committed";
 import { createScopes } from "./shared/scope";
 import { createS3Storage } from "./storage/s3";
+import { createCalendarProviders } from "./v1/calendar/providers";
+import { createCalendarSync } from "./v1/calendar/sync";
 import { createSharingMail } from "./v1/messaging/sharing-mail";
 import { createRedisPublisher } from "./v1/realtime/publisher";
 import { createRealtimeRoutes } from "./v1/realtime/routes";
@@ -30,6 +33,8 @@ const publish = createCommittedPublisher({
 const sharingMail = createSharingMail({ db, mail, publish });
 const auth = createAuth({ db, mail, publish, realtime: createAuthPublisher(db, publish) });
 const storage = createS3Storage();
+const calendarProviders = createCalendarProviders(environment.calendarProviders, auth);
+const calendarSync = createCalendarSync({ db, publish, providers: calendarProviders });
 const services = createServices({
   db,
   storage,
@@ -40,6 +45,11 @@ const services = createServices({
     webURL: environment.webURL,
     windowsDownloadURL: environment.windowsDownloadURL,
   },
+  calendar: {
+    providers: calendarProviders,
+    triggerSync: () => calendarSync.worker.trigger(),
+  },
+  googleLink: createGoogleLinkTickets(auth, { apiURL: environment.apiURL }),
 });
 const scopes = createScopes({
   api: createSessionApi(auth.api),
@@ -56,6 +66,7 @@ const app = createApp({
 });
 await realtime.start();
 const stopSharingMail = sharingMail.start();
+const stopCalendarSync = calendarSync.start();
 const server = Bun.serve({
   port: environment.port,
   websocket: realtimeRoutes.websocket,
@@ -94,6 +105,7 @@ function shutdown() {
   void server
     .stop(true)
     .then(() => stopSharingMail())
+    .then(() => stopCalendarSync())
     .then(() => refresh.close())
     .then(() => closeMail())
     .then(() => closeDatabase())

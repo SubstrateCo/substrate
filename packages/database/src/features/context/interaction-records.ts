@@ -1,4 +1,4 @@
-import type { ContextEntityType } from "@substrate/contracts/context/input";
+import type { ContextTargetType } from "@substrate/contracts/context/input";
 
 import { requireAppEnabled } from "../../core/apps/access";
 import { contactReadable, requireContact, requireInteraction } from "../../core/contacts/access";
@@ -8,12 +8,12 @@ import type { EntityAccess, RepositoryContext } from "../../core/repository-cont
 import { AccessDeniedError } from "../../errors";
 import { presentInteraction } from "../crm/actor-views";
 import { crmAccounts, crmAffiliations, crmContactProfiles } from "../crm/schema";
-import { requireContextTargetPage } from "./target-page";
+import { requireReadableTargetPage } from "./target-page";
 import { and, eq } from "drizzle-orm";
 
 export type InteractionConnection = {
   entityId: string;
-  entityType: ContextEntityType;
+  entityType: ContextTargetType;
   title: string;
   relation: string;
   projectEntityId: string | null;
@@ -33,7 +33,7 @@ async function linkedRecords(
       ),
     ),
   ];
-  const targets = await requireContextTargetPage(context, ids);
+  const targets = await requireReadableTargetPage(context, ids);
   return ids.map((id): InteractionConnection => {
     const target = targets.get(id)!;
     return {

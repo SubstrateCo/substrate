@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { ContactMethods } from "./contact-methods";
+import { ContactMeetings } from "@/components/calendar/contact/contact-meetings";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
 import { InteractionEditor } from "@/components/context/interactions/interaction-editor";
 import { InteractionHistory } from "@/components/context/interactions/interaction-history";
@@ -143,6 +144,7 @@ export function ContactDetail({
           canEdit={canChange}
           canDelete={!archived}
         />
+        <ContactMeetings organizationId={organizationId} contactEntityId={entityId} />
         <FollowUps organizationId={organizationId} entityId={entityId} canCreate={canChange} />
         <WorkDiscussions organizationId={organizationId} entityId={entityId}>
           {canChange && (

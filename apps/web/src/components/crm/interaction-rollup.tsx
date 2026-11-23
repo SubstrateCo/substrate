@@ -6,12 +6,15 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { CrmResourceState } from "./crm-resource-state";
+import { MeetingSourceLink } from "@/components/calendar/meeting-source-link";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { contactLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
+import { useInteractionSources } from "@/queries/calendar/interaction-sources";
 import { crmTimelineOptions } from "@/queries/crm/options";
 
 export function InteractionRollup({
@@ -29,6 +32,8 @@ export function InteractionRollup({
   );
   const query = useQuery(crmTimelineOptions(organizationId, entityId, mode, before));
   const rows = resourceState(query).data ?? [];
+  const apps = useOrganizationApps();
+  const sources = useInteractionSources(organizationId, rows, apps.enabled("calendar"));
   return (
     <section className="space-y-3" aria-label="Customer interaction timeline">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -88,6 +93,11 @@ export function InteractionRollup({
               </Link>
             </div>
             <p className="text-sm whitespace-pre-wrap">{row.summary}</p>
+            <MeetingSourceLink
+              organizationId={organizationId}
+              source={sources[row.entityId]}
+              className="max-w-full"
+            />
           </InteractionRow>
         ))}
       </ol>

@@ -5,9 +5,16 @@ import {
 import { realtimeEventChannel, type RealtimeUpdate } from "@substrate/contracts/realtime";
 
 import { createAgentWorkService } from "../agents/service.ts";
+import { sessionTokenCookie } from "../auth/auth-client.ts";
 import { createHarnessController } from "../harness/controller/harness-controller.ts";
 import { createHarnessProcess } from "../harness/worker/harness-process.ts";
+import {
+  createMeetingReminders,
+  type CalendarEventTarget,
+} from "../notifications/meeting-reminders.ts";
+import type { ScreenNotifications } from "../notifications/screen-notifications.ts";
 import { DesktopSessionAuthority } from "../session/desktop-session-authority.ts";
+import { readCalendarFeed } from "../transport/calendar-feed.ts";
 import { createMessageNotifications } from "../transport/message-notifications.ts";
 import { readNotificationFeed } from "../transport/notification-feed.ts";
 import { createRealtimeController } from "../transport/realtime-controller.ts";
@@ -30,6 +37,9 @@ export function composeDesktop(options: {
     conversationId: string;
     messageId: string;
   }) => void;
+  screenNotifications?: Pick<ScreenNotifications, "center" | "store" | "activate" | "deactivate">;
+  openExternal?: (url: string) => void;
+  openCalendarEvent?: (target: CalendarEventTarget) => void;
 }) {
   const authority = new DesktopSessionAuthority(options);
   const agentWork = createAgentWorkService({
@@ -67,6 +77,17 @@ export function composeDesktop(options: {
     show: options.showMessageNotification ?? (() => () => {}),
     open: options.openMessage ?? (() => {}),
   });
+  const screen = options.screenNotifications;
+  const meetingReminders =
+    screen &&
+    createMeetingReminders({
+      read: (organizationId, range) => readCalendarFeed(options, organizationId, range),
+      sessionKey: () => sessionTokenCookie(options.getCookie()),
+      center: screen.center,
+      store: screen.store,
+      openExternal: options.openExternal ?? (() => {}),
+      openEvent: options.openCalendarEvent ?? (() => {}),
+    });
   let notificationRecovery: ReturnType<typeof setInterval> | undefined;
   const socket = createRealtimeController({
     backend: options.backend,
@@ -74,6 +95,7 @@ export function composeDesktop(options: {
     emit: (event) => {
       options.emit(realtimeEventChannel, event);
       agentWork.onRealtime(event);
+      void meetingReminders?.receive(event);
       if (event.type === "ready") void notifications.connect(notificationOrganization);
       else if (event.type === "status" && event.status !== "connected") notifications.disconnect();
       else void notifications.receive(event);
@@ -83,6 +105,9 @@ export function composeDesktop(options: {
     connect(input: { organizationId: string | null }) {
       notificationOrganization = input.organizationId;
       notifications.disconnect();
+      // Reminders survive the renderer's reconnects. They reset only for a new session or workspace.
+      if (input.organizationId) screen?.activate();
+      void meetingReminders?.connect(input.organizationId);
       socket.connect(input);
       // Main remains active while hidden. Recover a missed publish without renderer focus.
       clearInterval(notificationRecovery);
@@ -106,7 +131,12 @@ export function composeDesktop(options: {
       harness.disconnect();
       authority.invalidate();
     },
-    disconnectRealtime: () => realtime.disconnect(),
+    disconnectRealtime: () => {
+      realtime.disconnect();
+      // Sign-out, a session change, and quit all end here.
+      meetingReminders?.disconnect();
+      screen?.deactivate();
+    },
   });
-  return { harness, agentWork, realtime, authority, ...lifecycle };
+  return { harness, agentWork, realtime, authority, meetingReminders, ...lifecycle };
 }

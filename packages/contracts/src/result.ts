@@ -34,7 +34,8 @@ export type ServiceResult<T> =
   | { success: true; data: T }
   | { success: false; error: ServiceFailure };
 
-export type ServiceErrorReason = "EMAIL_NOT_VERIFIED";
+/** CALENDAR_ACCESS_REQUIRED: reconnect the provider account and grant calendar access. */
+export type ServiceErrorReason = "EMAIL_NOT_VERIFIED" | "CALENDAR_ACCESS_REQUIRED";
 
 export type ServiceFailure = {
   code: ServiceErrorCode;

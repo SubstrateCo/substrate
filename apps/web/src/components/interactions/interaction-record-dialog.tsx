@@ -2,7 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
 import { InteractionConnections } from "./interaction-connections";
-import { interactionTypes } from "./interaction-types";
+import { interactionOrigins, interactionTypes } from "./interaction-types";
+import { MeetingSourceLink } from "@/components/calendar/meeting-source-link";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
 import { CopyLink } from "@/components/context/links/copy-link";
 import { FollowUps } from "@/components/crm/follow-ups";
@@ -18,7 +19,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { interactionLink } from "@/lib/navigation/record-links";
+import { useInteractionSources } from "@/queries/calendar/interaction-sources";
 import { interactionRecordOptions } from "@/queries/context/interactions";
 
 export function InteractionRecordDialog({
@@ -32,6 +35,12 @@ export function InteractionRecordDialog({
 }) {
   const query = useQuery(interactionRecordOptions(organizationId, entityId));
   const data = query.data;
+  const apps = useOrganizationApps();
+  const sources = useInteractionSources(
+    organizationId,
+    data ? [data.interaction] : [],
+    apps.enabled("calendar"),
+  );
   return (
     <Dialog
       open
@@ -65,6 +74,8 @@ export function InteractionRecordDialog({
                     section: "person",
                     profileId: data.interaction.contactEntityId,
                     recordId: undefined,
+                    // The record can be older than the current period.
+                    days: "all",
                   })}
                   className="text-base font-medium underline-offset-4 hover:underline"
                 >
@@ -79,10 +90,9 @@ export function InteractionRecordDialog({
                       <Timestamp value={data.interaction.endedAt} format="time" />
                     </>
                   )}
-                  <Tag>
-                    {data.interaction.origin === "manual" ? "Manual" : "Published from message"}
-                  </Tag>
+                  <Tag>{interactionOrigins[data.interaction.origin].tag}</Tag>
                 </div>
+                <MeetingSourceLink organizationId={organizationId} source={sources[entityId]} />
                 <p className="text-sm/relaxed wrap-break-word whitespace-pre-wrap">
                   {data.interaction.summary}
                 </p>

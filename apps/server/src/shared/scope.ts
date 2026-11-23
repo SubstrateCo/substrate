@@ -104,6 +104,8 @@ export function createScopes(deps: ScopeDependencies) {
             : null;
         return { session, role };
       }),
+    /** A verified session, without repositories: for user-level actions such as account links. */
+    identity: () => middleware(async (headers, _input, session) => identity(headers, session)),
     user: () => middleware((headers, _input, session) => user(headers, session)),
     workspace: (target?: keyof ValidationTargets) =>
       middleware(

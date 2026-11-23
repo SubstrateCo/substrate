@@ -1,6 +1,9 @@
+import type { InteractionSourceEvent } from "@substrate/contracts/calendar";
+
 import { Link } from "@tanstack/react-router";
 
-import { interactionTypes, type InteractionRow } from "./interaction-types";
+import { interactionOrigins, interactionTypes, type InteractionRow } from "./interaction-types";
+import { MeetingSourceLink } from "@/components/calendar/meeting-source-link";
 import { Timestamp } from "@/components/time/timestamp";
 import {
   Table,
@@ -14,9 +17,12 @@ import {
 export function InteractionTable({
   rows,
   organizationId,
+  sources = {},
 }: {
   rows: InteractionRow[];
   organizationId: string;
+  /** The meetings that calendar interactions came from, by interaction. */
+  sources?: Readonly<Record<string, InteractionSourceEvent>>;
 }) {
   return (
     <Table aria-label="Day’s interactions" className="min-w-xl table-fixed">
@@ -72,6 +78,11 @@ export function InteractionTable({
                 >
                   {row.summary}
                 </Link>
+                <MeetingSourceLink
+                  organizationId={organizationId}
+                  source={sources[row.entityId]}
+                  className="flex"
+                />
               </TableCell>
               <TableCell>
                 <span className="flex items-center gap-1.5">
@@ -82,9 +93,9 @@ export function InteractionTable({
               <TableCell className="hidden @3xl:table-cell">
                 <span
                   className="block truncate text-muted-foreground"
-                  title={row.origin === "manual" ? "Logged manually" : "Published from message"}
+                  title={interactionOrigins[row.origin].long}
                 >
-                  {row.origin === "manual" ? "Manual" : "Published"}
+                  {interactionOrigins[row.origin].short}
                 </span>
               </TableCell>
               <TableCell className="hidden @4xl:table-cell">

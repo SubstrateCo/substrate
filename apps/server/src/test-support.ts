@@ -6,6 +6,7 @@ import { createServices } from "./services";
 import { createScopes, type ScopeDependencies } from "./shared/scope";
 import type { UserScope, WorkspaceScope } from "./shared/scope-types";
 import type { ObjectStorage } from "./storage/types";
+import { createCalendarProviders } from "./v1/calendar/providers";
 
 export function scopeFixture(): WorkspaceScope & UserScope {
   const session = sessionFixture({ organizationId: "org" });
@@ -54,6 +55,25 @@ export function createTestServices() {
     publish: async (committed) => committed.result,
     apiURL: "http://localhost:3001",
     desktop: { desktopScheme: "substrate-dev", webURL: "http://localhost:3000" },
+    calendar: {
+      providers: createCalendarProviders(
+        { google: undefined, microsoft: undefined },
+        {
+          api: {
+            getAccessToken: async () => {
+              throw new Error("Tests that reach provider tokens must provide their own fake.");
+            },
+          },
+        },
+      ),
+      triggerSync: () => {},
+    },
+    googleLink: {
+      create: async () => {
+        throw new Error("Tests that create link tickets must provide their own fake.");
+      },
+      start: async () => null,
+    },
   });
 }
 

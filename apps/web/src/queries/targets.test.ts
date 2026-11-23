@@ -35,6 +35,24 @@ test("multiple task IDs refresh their linked messages and discussions, not other
   client.clear();
 });
 
+test("a calendar's context hint refreshes that organization's calendars, events, and meetings", async () => {
+  const client = new QueryClient();
+  const refreshed = [
+    queryKeys.calendarSettings("org"),
+    [...queryKeys.calendarEvents("org"), { from: "2026-11-21", until: "2026-11-30" }],
+    queryKeys.calendarEvent("org", "meeting"),
+    [...queryKeys.calendarEvents("org"), "contact", "contact"],
+  ];
+  const other = queryKeys.calendarSettings("other");
+  for (const key of [...refreshed, other]) client.setQueryData(key, []);
+
+  await invalidateTargets(client, domainTargets("context", "org"));
+
+  for (const key of refreshed) expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+  expect(client.getQueryState(other)?.isInvalidated).toBe(false);
+  client.clear();
+});
+
 test("work label refreshes match a named entity, not its project unless the page links to it", async () => {
   const client = new QueryClient();
   const task = queryKeys.messagePage("org", "conversation", ["task"]);

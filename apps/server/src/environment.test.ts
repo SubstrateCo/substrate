@@ -150,6 +150,26 @@ describe("server environment", () => {
     });
   });
 
+  test("calendar provider credentials come as pairs and enable only a complete provider", () => {
+    expect(parse({}).calendarProviders).toEqual({ google: undefined, microsoft: undefined });
+    for (const key of ["GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"])
+      expect(() => parse({ [key]: "value" })).toThrow("GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET");
+    for (const key of ["MICROSOFT_CLIENT_ID", "MICROSOFT_CLIENT_SECRET"])
+      expect(() => parse({ [key]: "value" })).toThrow(
+        "MICROSOFT_CLIENT_ID and MICROSOFT_CLIENT_SECRET",
+      );
+    expect(
+      parse({ GOOGLE_CLIENT_ID: "id", GOOGLE_CLIENT_SECRET: "secret" }).calendarProviders.google,
+    ).toEqual({ clientId: "id", clientSecret: "secret" });
+    expect(
+      parse({ MICROSOFT_CLIENT_ID: "id", MICROSOFT_CLIENT_SECRET: "secret" }).calendarProviders
+        .microsoft,
+    ).toEqual({ clientId: "id", clientSecret: "secret", tenantId: "common" });
+    expect(() => parse({ MICROSOFT_TENANT_ID: "https://login.example" })).toThrow(
+      "MICROSOFT_TENANT_ID",
+    );
+  });
+
   test("the Windows installer link must be HTTPS without credentials", () => {
     expect(parse({}).windowsDownloadURL).toBeUndefined();
     expect(

@@ -12,8 +12,10 @@ test("app changes discard records, task discussions, and cross-app previews with
     [...queryKeys.contacts("org"), "contact", "affiliations"],
     [...queryKeys.context("org"), "search", "private"],
     [...queryKeys.messaging("org"), "task-discussion"],
+    queryKeys.calendarEvent("org", "meeting"),
   ];
   const retained = [
+    queryKeys.calendar("other"),
     queryKeys.tasks("other"),
     queryKeys.crm("other"),
     queryKeys.context("other"),

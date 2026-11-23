@@ -55,7 +55,7 @@ export const interactionTimeline = interactionPeriod
     scope: z.enum(["related", "linked"]).optional(),
     allTime: z.literal("true").optional(),
     kind: interactionFields.shape.kind.optional(),
-    origin: z.enum(["manual", "message_publication"]).optional(),
+    origin: z.enum(["manual", "message_publication", "calendar_event"]).optional(),
     search: z.string().trim().max(200).optional(),
     beforeOccurredAt: z.iso.datetime().optional(),
     beforeEntityId: z.uuid().optional(),

@@ -54,7 +54,7 @@ function MessageContextCard({
     <MessageWork
       links={links.map((link) =>
         apps.entityEnabled(link.entityType)
-          ? { ...link, link: linkedWorkLink(organizationId, link) }
+          ? { ...link, link: linkedWorkLink(organizationId, link, apps.enabled("crm")) }
           : {
               ...link,
               title: "Unavailable record",
@@ -63,7 +63,7 @@ function MessageContextCard({
               purpose: "reference",
               canRemove: false,
               unavailable: true,
-              link: linkedWorkLink(organizationId, link),
+              link: linkedWorkLink(organizationId, link, apps.enabled("crm")),
             },
       )}
       error={context.error}

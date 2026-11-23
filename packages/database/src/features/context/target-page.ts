@@ -1,34 +1,53 @@
-import { contextEntityTypes, type ContextEntityType } from "@substrate/contracts/context/input";
+import {
+  contextEntityTypes,
+  contextTargetTypes,
+  type ContextEntityType,
+  type ContextTargetType,
+} from "@substrate/contracts/context/input";
 
 import { contactInteractions } from "../../core/contacts/interactions.schema";
 import { contacts } from "../../core/contacts/schema";
 import { entities } from "../../core/entities/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
+import { calendarEvents } from "../calendar/schema";
 import { crmAccounts, crmDeals } from "../crm/schema";
 import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { and, eq, inArray, isNotNull, sql } from "drizzle-orm";
 
-type ContextTarget = {
-  entityType: ContextEntityType;
+type ContextTarget<T extends ContextTargetType> = {
+  entityType: T;
   title: string;
   projectEntityId: string | null;
   contactEntityId: string | null;
 };
 
-export async function requireContextTargetPage(
+/** Linkable and referenceable records. Use it where the result names a record people can link. */
+export function requireContextTargetPage(ctx: RepositoryContext, entityIds: string[]) {
+  return targetPage<ContextEntityType>(ctx, entityIds, contextEntityTypes);
+}
+
+/** Every record a context view shows as related, including the meetings a reader can open. */
+export function requireReadableTargetPage(ctx: RepositoryContext, entityIds: string[]) {
+  return targetPage<ContextTargetType>(ctx, entityIds, contextTargetTypes);
+}
+
+async function targetPage<T extends ContextTargetType>(
   ctx: RepositoryContext,
   entityIds: string[],
-): Promise<Map<string, ContextTarget>> {
+  types: readonly T[],
+): Promise<Map<string, ContextTarget<T>>> {
   const ids = [...new Set(entityIds)];
-  if (!ids.length) return new Map<string, ContextTarget>();
+  if (!ids.length) return new Map<string, ContextTarget<T>>();
   await ctx.requireActiveActor();
-  const title = sql<string>`coalesce(${tasks.title}, ${projects.name}, ${contacts.displayName}, ${crmAccounts.name}, ${crmDeals.title}, ${contactInteractions.summary})`;
+  const meetingTitle = sql`CASE WHEN ${calendarEvents.entityId} IS NOT NULL
+    THEN coalesce(nullif(btrim(${calendarEvents.title}), ''), 'Untitled meeting') END`;
+  const title = sql<string>`coalesce(${tasks.title}, ${projects.name}, ${contacts.displayName}, ${crmAccounts.name}, ${crmDeals.title}, ${contactInteractions.summary}, ${meetingTitle})`;
   const rows = await ctx.db
     .select({
       id: entities.entityId,
-      entityType: sql<ContextEntityType>`${entities.entityType}`,
+      entityType: sql<T>`${entities.entityType}`,
       title,
       projectEntityId: tasks.projectEntityId,
       contactEntityId: contactInteractions.contactEntityId,
@@ -82,11 +101,19 @@ export async function requireContextTargetPage(
         eq(entities.entityType, "contact_interaction"),
       ),
     )
+    .leftJoin(
+      calendarEvents,
+      and(
+        eq(calendarEvents.organizationId, entities.organizationId),
+        eq(calendarEvents.entityId, entities.entityId),
+        eq(entities.entityType, "calendar_event"),
+      ),
+    )
     .where(
       and(
         eq(entities.organizationId, ctx.scope.organizationId),
         inArray(entities.entityId, ids),
-        inArray(entities.entityType, contextEntityTypes),
+        inArray(entities.entityType, types),
         ctx.readable(entities.entityId),
         isNotNull(title),
       ),

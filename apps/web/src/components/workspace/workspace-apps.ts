@@ -5,6 +5,7 @@ import {
   Activity,
   Bell,
   Bot,
+  CalendarDays,
   Handshake,
   House,
   ListTodo,
@@ -49,6 +50,13 @@ export const workspaceApps = [
     icon: Activity,
     to: "/interactions",
     hotkey: ["G", "I"],
+  },
+  {
+    id: "calendar",
+    label: "Calendar",
+    icon: CalendarDays,
+    to: "/calendar",
+    hotkey: ["G", "L"],
   },
   {
     id: "agents",

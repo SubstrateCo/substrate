@@ -135,6 +135,15 @@ export const queryKeys = {
     [...queryKeys.crm(organizationId), "home", today] as const,
   contacts: (organizationId: string) =>
     [...queryKeys.organization(organizationId), "contacts"] as const,
+  // The viewer's calendars and events in one organization. Sync changes refresh all of them.
+  calendar: (organizationId: string) =>
+    [...queryKeys.organization(organizationId), "calendar"] as const,
+  calendarSettings: (organizationId: string) =>
+    [...queryKeys.calendar(organizationId), "settings"] as const,
+  calendarEvents: (organizationId: string) =>
+    [...queryKeys.calendar(organizationId), "events"] as const,
+  calendarEvent: (organizationId: string, entityId: string) =>
+    [...queryKeys.calendar(organizationId), "event", entityId] as const,
   contactInteractions: (organizationId: string) =>
     [...queryKeys.context(organizationId), "contact-interactions"] as const,
   crmList: (

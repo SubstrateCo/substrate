@@ -10,6 +10,16 @@ import { createAuthClient } from "better-auth/client";
 import type { BrowserWindow } from "electron";
 import { createHash } from "node:crypto";
 
+/** The session token cookie alone. Cache-cookie updates do not change the signed-in identity. */
+export function sessionTokenCookie(cookie: string) {
+  return (
+    cookie
+      .split(";")
+      .map((value) => value.trim())
+      .find((value) => value.split("=", 1)[0]?.endsWith(".session_token")) ?? ""
+  );
+}
+
 export function createDesktopAuthClient(
   backend: string,
   frontend: string,
@@ -47,12 +57,7 @@ export function createDesktopAuthClient(
   });
   // Cache-cookie updates do not change the signed-in identity. Keep those out of the
   // shutdown/reload path while the official plugin still persists every cookie update.
-  const sessionToken = () =>
-    authClient
-      .getCookie()
-      .split(";")
-      .map((cookie) => cookie.trim())
-      .find((cookie) => cookie.split("=", 1)[0]?.endsWith(".session_token")) ?? "";
+  const sessionToken = () => sessionTokenCookie(authClient.getCookie());
   let previousToken: string | undefined;
   authClient.$store.atoms.$sessionSignal.listen(() => {
     if (previousToken === undefined) return;
