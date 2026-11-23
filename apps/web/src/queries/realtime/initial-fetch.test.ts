@@ -9,6 +9,148 @@ import { afterEach, beforeEach, expect, vi, test } from "bun:test";
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
+for (const observed of [false, true]) {
+  test(`ready starts the ${observed ? "observed" : "unobserved"} session replacement before unrelated refresh completes`, async () => {
+    const client = new QueryClient();
+    const session = Promise.withResolvers<string[]>();
+    const projects = Promise.withResolvers<string[]>();
+    let reads = 0;
+    const readSession = () => {
+      reads++;
+      return session.promise;
+    };
+    const readProjects = () => projects.promise;
+    const opts = {
+      queryKey: queryKeys.session,
+      staleTime: Infinity,
+      initialData: ["old session"],
+      queryFn: () => readSession(),
+    };
+    const sessionObserver = new QueryObserver(client, opts);
+    const unsubscribeSession = observed ? sessionObserver.subscribe(() => {}) : () => {};
+    const projectsObserver = new QueryObserver(client, {
+      queryKey: queryKeys.projects("org"),
+      initialData: ["old project"],
+      staleTime: Infinity,
+      queryFn: () => readProjects(),
+    });
+    const unsubscribeProjects = projectsObserver.subscribe(() => {});
+    const routed: string[][] = [];
+    const cache = createRealtimeCache({
+      queryClient: client,
+      organizationId: "org",
+      userId: "user",
+      revalidate: async () => {
+        routed.push(await client.query(opts));
+      },
+    });
+    try {
+      const ready = cache.receive({ version: 1, type: "ready" });
+      await advanceTimersAsync(0);
+      expect(reads).toBe(1);
+      expect(routed).toEqual([]);
+      session.resolve(["current session"]);
+      await advanceTimersAsync(0);
+      expect(client.getQueryData(queryKeys.session)).toEqual(["current session"]);
+      expect(routed).toEqual([]);
+      projects.resolve(["current project"]);
+      await ready;
+      expect(routed).toEqual([["current session"]]);
+      expect(reads).toBe(1);
+    } finally {
+      session.resolve([]);
+      projects.resolve([]);
+      cache.dispose();
+      unsubscribeSession();
+      unsubscribeProjects();
+      client.clear();
+    }
+  });
+}
+
+test("ready waits for a pre-ready session's follow-up read before routing", async () => {
+  const client = new QueryClient();
+  const initial = Promise.withResolvers<string[]>();
+  const replacement = Promise.withResolvers<string[]>();
+  let reads = 0;
+  const readSession = () => (++reads === 1 ? initial.promise : replacement.promise);
+  const opts = {
+    queryKey: queryKeys.session,
+    staleTime: Infinity,
+    queryFn: () => readSession(),
+  };
+  const original = client.query(opts);
+  const routed: string[][] = [];
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {
+      routed.push(await client.query(opts));
+    },
+  });
+  try {
+    const ready = cache.receive({ version: 1, type: "ready" });
+    initial.resolve(["obsolete session"]);
+    expect(await original).toEqual(["obsolete session"]);
+    await advanceTimersAsync(0);
+    expect(reads).toBe(2);
+    expect(routed).toEqual([]);
+    replacement.resolve(["current session"]);
+    await ready;
+    expect(routed).toEqual([["current session"]]);
+    expect(reads).toBe(2);
+  } finally {
+    initial.resolve([]);
+    replacement.resolve([]);
+    cache.dispose();
+    client.clear();
+  }
+});
+
+for (const outcome of ["failure", "disposal"] as const) {
+  test(`ready does not route after session replacement ${outcome}`, async () => {
+    const client = new QueryClient();
+    const replacement = Promise.withResolvers<string[]>();
+    const failure = new Error("Session unavailable");
+    let reads = 0;
+    const readSession = () =>
+      ++reads === 1 ? Promise.resolve(["old session"]) : replacement.promise;
+    const opts = {
+      queryKey: queryKeys.session,
+      staleTime: Infinity,
+      retry: false,
+      queryFn: () => readSession(),
+    };
+    await client.query(opts);
+    let routed = false;
+    const cache = createRealtimeCache({
+      queryClient: client,
+      organizationId: "org",
+      userId: "user",
+      revalidate: async () => {
+        routed = true;
+      },
+    });
+    try {
+      const ready = cache.receive({ version: 1, type: "ready" }).catch((error: Error) => error);
+      await advanceTimersAsync(0);
+      if (outcome === "failure") replacement.reject(failure);
+      else {
+        cache.dispose();
+        replacement.resolve(["late session"]);
+      }
+      const result = await ready;
+      if (outcome === "failure") expect(result).toBe(failure);
+      expect(routed).toBe(false);
+    } finally {
+      replacement.resolve([]);
+      cache.dispose();
+      client.clear();
+    }
+  });
+}
+
 test("ready resync ignores a canceled page that has been replaced by another visible page", async () => {
   const client = new QueryClient();
   const oldPage = Promise.withResolvers<string[]>();

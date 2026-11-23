@@ -313,7 +313,14 @@ export function createRealtimeCache({
   }
   async function initialRefresh() {
     const epoch = generation;
-    await refresh([everything]);
+    const refreshing = refresh([everything]);
+    // refresh invalidates synchronously. Start the idle route session alongside mounted reads,
+    // but still wait for refresh's follow-up reads when a request predates ready.
+    const session = queryClient.getQueryCache().find({ queryKey: queryKeys.session, exact: true });
+    const sessionRead = session
+      ? queryClient.query({ ...session.options, queryKey: session.queryKey, staleTime: Infinity })
+      : Promise.resolve();
+    await Promise.all([refreshing, sessionRead]);
     if (isCurrent(epoch)) await revalidate();
   }
   function resync() {
