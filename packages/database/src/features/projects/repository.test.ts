@@ -115,8 +115,8 @@ test("project sharing claims the project once and keeps grant rules", async () =
   const shared = await repos.transaction((tx) =>
     tx.projects.share(project.entityId, f.bob, "edit"),
   );
-  // Access, structural claim, target actor, existing grant, upsert.
-  expect(queries).toHaveLength(5);
+  // Access, structural claim, archive check, target actor, existing grant, upsert.
+  expect(queries).toHaveLength(6);
   expect(shared.hints).toEqual(
     expect.arrayContaining([
       { audience: realtimeKeys.actor(f.orgA, f.bob), domain: "access" },
@@ -197,8 +197,9 @@ test("project revocation keeps assignments, claims once, and protects the last o
   const { db, queries } = recordQueries();
   const repos = new ActorRepositories(db, { organizationId: f.orgA, actorEntityId: f.alice });
   const revoked = await repos.transaction((tx) => tx.projects.revoke(project.entityId, f.bob));
-  // Access, structural claim, assignments, fresh owner check, existing grant, delete.
-  expect(queries).toHaveLength(6);
+  // Access, structural claim, archive check, assignments, fresh owner check, existing grant,
+  // delete.
+  expect(queries).toHaveLength(7);
   expect(revoked.hints).toContainEqual({
     audience: realtimeKeys.actor(f.orgA, f.bob),
     domain: "access",

@@ -44,7 +44,10 @@ export function TaskMoveDialog({
     }
   }
   const destinationResource = resourceState(destination);
-  const { canEdit } = projectCapabilities(destinationResource.data?.level);
+  const { canEdit } = projectCapabilities(
+    destinationResource.data?.level,
+    !!destinationResource.data?.project.archivedAt,
+  );
   return (
     <TaskMoveDialogView
       title={task.title}

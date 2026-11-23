@@ -17,6 +17,7 @@ import { recordCrmActivity } from "../crm/activity";
 import { requireMessage, visibleConversations } from "../messaging/access";
 import { messageViews, selectMessages } from "../messaging/messages";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
+import { requireUnarchived } from "../projects/archive";
 import { referenceChangeHints } from "../realtime/routing";
 import { liveProjectTasks } from "../tasks/access";
 import type { CreateTaskInput } from "../tasks/contracts";
@@ -55,6 +56,11 @@ async function referenceEndpoints(
   if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
   const work = await requireContextTarget(ctx, target.id, level);
   if (target.type && work.entityType !== target.type) throw new AccessDeniedError();
+  // Neither an archived task's discussion nor archived work changes its linked messages.
+  await requireUnarchived(ctx, [
+    work.entityId,
+    ...(conversation.taskEntityId ? [conversation.taskEntityId] : []),
+  ]);
   return { conversation, work };
 }
 

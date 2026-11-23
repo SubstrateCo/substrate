@@ -14,6 +14,9 @@ import { FolderKanban, Unlink } from "lucide-react";
 
 export function TasksWorkspace({
   projects,
+  archivedProjects,
+  onRestoreProject,
+  restoringProjectId,
   state,
   loading = false,
   error,
@@ -25,6 +28,9 @@ export function TasksWorkspace({
   projectLink,
 }: {
   projects: Project[];
+  archivedProjects?: Project[];
+  onRestoreProject?: (id: string) => void;
+  restoringProjectId?: string;
   state: ResourceStatus;
   loading?: boolean;
   error?: Error | null;
@@ -56,6 +62,9 @@ export function TasksWorkspace({
       <ProjectSidebar
         state={state}
         projects={visible}
+        archivedProjects={archivedProjects}
+        onRestore={onRestoreProject}
+        restoringId={restoringProjectId}
         selectedId={selectedProjectId}
         loading={loading}
         error={error}

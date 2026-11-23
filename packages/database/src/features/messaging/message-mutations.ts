@@ -10,6 +10,7 @@ import { messageEntityReferences } from "../context/schema";
 import { messageAttachmentMetadata } from "../files/metadata";
 import { messageAttachments } from "../files/schema";
 import { notifications } from "../notifications/schema";
+import { requireUnarchived } from "../projects/archive";
 import { referenceChangeHints } from "../realtime/routing";
 import { loadConversation } from "./access";
 import { validateBody } from "./policy";
@@ -31,8 +32,10 @@ export function messageMutationOperations(
         .where(eq(messagingMessages.id, messageId));
       if (!message) throw new AccessDeniedError();
       const conversation = await loadConversation(tx, scope, message.conversationId);
-      if (conversation.taskEntityId)
+      if (conversation.taskEntityId) {
         await context.requireAccess(conversation.taskEntityId, "comment");
+        await requireUnarchived(context, [conversation.taskEntityId]);
+      }
       if (message.authorActorEntityId !== actor.entityId || message.deletedAt)
         throw new AccessDeniedError();
       const deleting = body === undefined;

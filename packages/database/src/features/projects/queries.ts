@@ -1,10 +1,12 @@
+import type { RecordArchiveFilter } from "@substrate/contracts/crm/input";
+
 import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
-import type { RepositoryContext } from "../../core/repository-context";
+import type { PermissionLevel, RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
 import { projects } from "./schema";
-import { and, asc, isNull } from "drizzle-orm";
+import { and, asc, isNotNull, isNull, sql } from "drizzle-orm";
 import { eq } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
@@ -13,10 +15,22 @@ import { alias } from "drizzle-orm/pg-core";
 export async function queryProjects(
   ctx: RepositoryContext,
   page: { offset?: number; limit?: number } = {},
+  archived: RecordArchiveFilter = "active",
 ) {
   const actorEntity = alias(entities, "projects_viewer_entity");
+  const archiveFilter = {
+    active: isNull(projects.archivedAt),
+    archived: isNotNull(projects.archivedAt),
+    all: undefined,
+  }[archived];
+  // Archived lists are short and offer Restore, so they carry the reader's level. The level
+  // walks up from each row, so active lists leave it out.
+  const level =
+    archived === "active"
+      ? sql<PermissionLevel | null>`null::permission_level`
+      : sql<PermissionLevel | null>`${ctx.accessLevel(projects.entityId)}`;
   const query = ctx.db
-    .select({ project: projects })
+    .select({ project: projects, level })
     .from(actors)
     .innerJoin(
       actorEntity,
@@ -28,7 +42,11 @@ export async function queryProjects(
     )
     .leftJoin(
       projects,
-      and(eq(projects.organizationId, actors.organizationId), ctx.readable(projects.entityId)),
+      and(
+        eq(projects.organizationId, actors.organizationId),
+        ctx.readable(projects.entityId),
+        archiveFilter,
+      ),
     )
     .where(
       and(
@@ -44,5 +62,9 @@ export async function queryProjects(
     if (!page.offset) throw new AccessDeniedError();
     await ctx.requireActiveActor();
   }
-  return rows.flatMap((row) => (row.project ? [row.project] : []));
+  return rows.flatMap((row) =>
+    row.project
+      ? [{ ...row.project, ...(archived !== "active" && { level: row.level ?? undefined }) }]
+      : [],
+  );
 }

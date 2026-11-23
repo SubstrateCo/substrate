@@ -4,6 +4,7 @@ import { entities } from "../../core/entities/schema";
 import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
+import { requireUnarchived } from "../projects/archive";
 import { workHint } from "../realtime/routing";
 import { liveTask } from "./access";
 import { tasks } from "./tasks.schema";
@@ -47,6 +48,7 @@ export function taskLifecycle(context: RepositoryContext) {
         // The claim comes first: the subtree read below then includes every committed subtask.
         await ctx.requireStructuralAccess(projectId, "edit");
         await requireTask(ctx, taskId, projectId);
+        await requireUnarchived(ctx, [projectId]);
         const subtree = await taskSubtree(ctx, projectId, taskId);
         // Discussion access disappears with the task, including cached open conversations.
         ctx.effects.hint({
@@ -81,6 +83,7 @@ export function taskLifecycle(context: RepositoryContext) {
         for (const { entity } of await ctx.requireStructuralAccessAll(projectIds, "edit"))
           if (entity.entityType !== "project") throw new AccessDeniedError();
         const task = await requireTask(ctx, taskId, projectId);
+        await requireUnarchived(ctx, projectIds);
         const subtree = await taskSubtree(ctx, projectId, taskId);
         const ids = subtree.map((row) => row.entityId);
         if (parentTaskId) {

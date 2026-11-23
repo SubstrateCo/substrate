@@ -17,12 +17,15 @@ export function TaskDiscussion({
   taskEntityId,
   visible,
   conversationId,
+  archived = false,
 }: {
   organizationId: string;
   projectEntityId: string;
   taskEntityId: string;
   visible: boolean;
   conversationId: string | null;
+  /** An archived task keeps its discussion but cannot start one. */
+  archived?: boolean;
 }) {
   const discussion = useTaskDiscussion();
   const navigate = useNavigate();
@@ -69,7 +72,7 @@ export function TaskDiscussion({
             </Link>
           </Button>
         ) : (
-          openLink
+          !archived && openLink
         )
       }
     />

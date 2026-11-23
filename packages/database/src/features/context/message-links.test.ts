@@ -78,7 +78,8 @@ test("source creation is atomic, concurrent-idempotent, and preserves the exact 
   await createContextService(db, { userId: "alice", organizationId: f.orgA }).createTaskFromMessage(
     { ...input, requestId: crypto.randomUUID() },
   );
-  expect(queries).toHaveLength(10);
+  // Includes one archive check of the project.
+  expect(queries).toHaveLength(11);
 });
 
 test("both endpoints are required, membership revocation hides context, and linking never shares", async () => {

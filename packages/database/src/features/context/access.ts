@@ -2,6 +2,7 @@ import { taskStatusLabels } from "@substrate/contracts/tasks";
 
 import type { EntityAccess, RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
+import { requireUnarchived } from "../projects/archive";
 import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { crmContextTargets, isCrmContextType } from "./crm-targets";
@@ -15,6 +16,9 @@ export async function requireWork(
   access?: EntityAccess,
 ) {
   const { entity, level } = access ?? (await context.requireAccess(entityId, minimum));
+  // Archived work stays readable, like archived CRM records, but takes no changes.
+  if (minimum !== "view" && (entity.entityType === "task" || entity.entityType === "project"))
+    await requireUnarchived(context, [entityId]);
   if (entity.entityType === "task") {
     const [task] = await context.db
       .select()

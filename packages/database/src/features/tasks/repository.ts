@@ -15,6 +15,7 @@ import { AccessDeniedError, ConflictError, ValidationError } from "../../errors"
 import { notifyAssignment, recordTaskActivity } from "../activity/events";
 import { publishFiles } from "../files/publication";
 import { taskAttachments } from "../files/schema";
+import { archivedProjectMessage, inArchivedProject, requireUnarchived } from "../projects/archive";
 import { claimProjectChange } from "./access";
 import { requireAssignee } from "./assignment";
 import { taskChanges } from "./changes";
@@ -69,6 +70,7 @@ export async function createTaskInProject(
 ) {
   if (project.entity.entityType !== "project" || project.entity.entityId !== input.projectEntityId)
     throw new AccessDeniedError();
+  await requireUnarchived(ctx, [input.projectEntityId]);
   await validate(ctx, input.projectEntityId, input);
   if (input.parentTaskEntityId) {
     // A new subtask races a move or deletion of its parent. Claim it, then read the parent.
@@ -118,7 +120,7 @@ export function taskRepository(context: RepositoryContext) {
   const taskWhere = (id: string) =>
     and(eq(tasks.organizationId, scope.organizationId), eq(tasks.entityId, id));
 
-  // A task's level is its project's level.
+  // A task's level is its project's level. Above "view", the project must not be archived.
   async function requireTask<Level extends PermissionLevel = "view">(
     entityId: string,
     // SAFETY: Level defaults to "view", so the omitted argument is "view".
@@ -131,6 +133,7 @@ export function taskRepository(context: RepositoryContext) {
       .select({
         task: tasks,
         level: sql<PermissionLevel | null>`${context.accessLevel(tasks.entityId)}`,
+        archived: sql<boolean>`${inArchivedProject(scope.organizationId, tasks.entityId)}`,
       })
       .from(tasks)
       .innerJoin(actors, viewer.actorOn)
@@ -138,6 +141,7 @@ export function taskRepository(context: RepositoryContext) {
       .where(and(taskWhere(entityId), activeActorCondition()));
     if (!row?.level || permissionLevel.enumValues.indexOf(row.level) < minimum)
       throw new AccessDeniedError();
+    if (level !== "view" && row.archived) throw new ValidationError(archivedProjectMessage);
     // SAFETY: the row's level is at least `level`, which is what Authorized records.
     return row.task as Authorized<Task, Level>;
   }
@@ -205,7 +209,10 @@ export function taskRepository(context: RepositoryContext) {
         const task = await repository.get(entityId, "edit");
         if (expectedProjectEntityId && task.projectEntityId !== expectedProjectEntityId)
           throw new AccessDeniedError();
-        return addTaskLink(ctx, task, await repository.get(otherEntityId), relation);
+        const other = await repository.get(otherEntityId);
+        // The link also changes the other task's links and history.
+        await requireUnarchived(ctx, [otherEntityId]);
+        return addTaskLink(ctx, task, other, relation);
       });
     },
     async removeLink(entityId: string, linkId: string, expectedProjectEntityId?: string) {

@@ -16,7 +16,7 @@ export function ProjectDelete({
   return (
     <DeleteRecordCard
       title="Delete project"
-      description="Remove this project and all its tasks and subtasks."
+      description="Remove this archived project and all its tasks and subtasks."
       confirmTitle={`Delete “${project.name}”?`}
       confirmDescription="The project and all its tasks and subtasks will be removed. Their comments and attachments will no longer be accessible through this project. This cannot be undone in the app."
       pending={remove.isPending}

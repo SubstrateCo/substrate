@@ -1,6 +1,7 @@
 import { projectExport } from "@substrate/contracts/tasks/export";
 import {
   tasksWorkspace,
+  projectList,
   projectRequest,
   taskRequest,
   taskLocationRequest,
@@ -32,7 +33,7 @@ export function createTasksRoutes(services: TasksService, scopes: Scopes) {
     .get("/task-location", v("query", taskLocationRequest), scopes.workspace("query"), async (c) =>
       respond(c, await services.getTaskLocation(c.var.scope, c.req.valid("query"))),
     )
-    .get("/projects", v("query", tasksWorkspace), scopes.workspace("query"), async (c) =>
+    .get("/projects", v("query", projectList), scopes.workspace("query"), async (c) =>
       respond(c, await services.listProjects(c.var.scope, c.req.valid("query"))),
     )
     .get("/project", v("query", projectRequest), scopes.workspace("query"), async (c) =>

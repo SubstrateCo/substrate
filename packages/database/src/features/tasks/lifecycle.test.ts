@@ -42,6 +42,7 @@ test("deleting a task deletes its subtree, not its siblings, and denies readers"
 
 test("project deletion hides its tasks even from organization admins", async () => {
   const { repos, project, task } = await tree();
+  await repos.projects.archive(project.entityId);
   await repos.projects.delete(project.entityId);
   expect(await repos.projects.list()).toEqual([]);
   expect(await rejection(repos.tasks.get(task.entityId))).toBeInstanceOf(AccessDeniedError);
@@ -194,6 +195,7 @@ test("deletion and moves roll back with the caller, including deleted descendant
     await rejection(
       repos.transaction(async (tx) => {
         await tx.tasks.move(task.entityId, project.entityId, destination.entityId, null);
+        await tx.projects.archive(destination.entityId);
         await tx.projects.delete(destination.entityId);
         throw abort;
       }),

@@ -28,6 +28,7 @@ import {
   messagingMessages,
   messagingParticipants,
 } from "../messaging/schema";
+import { inArchivedProject } from "../projects/archive";
 import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { requireWork } from "./access";
@@ -310,6 +311,9 @@ export async function contextSearch(
           matchesWords(searchDocument(column, table.description), words),
         );
         projectEntityId = type === "task" ? tasks.projectEntityId : projects.entityId;
+        // Archived work stays searchable but cannot be the target of a change.
+        if (input.editable)
+          active = sql`NOT ${inArchivedProject(table.organizationId, table.entityId)}`;
       } else {
         ({ table, title: column, active } = crmContextTargets[type]);
         matches = containsText(column, query);

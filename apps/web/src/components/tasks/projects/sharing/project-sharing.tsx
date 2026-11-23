@@ -50,7 +50,7 @@ export function ProjectSharing({
     );
   return (
     <ProjectSharingView
-      capabilities={projectCapabilities(detail.level)}
+      capabilities={projectCapabilities(detail.level, !!detail.project.archivedAt)}
       detail={detail}
       pending={share.isPending}
       error={share.error}

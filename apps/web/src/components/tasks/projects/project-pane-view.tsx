@@ -51,6 +51,8 @@ function ProjectPaneContent({
   onRetry,
   editor,
   sharing,
+  dangerZone,
+  notice,
   renderTaskForm,
   renderTaskDetail,
   selectedTaskId,
@@ -69,6 +71,10 @@ function ProjectPaneContent({
   editor: ReactNode;
   /** Project access, shown in Settings. */
   sharing: ReactNode;
+  /** Archive or delete, shown last in Settings to owners. */
+  dangerZone?: ReactNode;
+  /** Above the tabs' content, such as the read-only notice of an archived project. */
+  notice?: ReactNode;
   renderTaskForm: (props: {
     detail: ProjectDetail;
     parentTaskEntityId: string | undefined;
@@ -156,6 +162,7 @@ function ProjectPaneContent({
             {state === "stale" && (
               <StaleNotice className="border-b px-6">This project may be out of date.</StaleNotice>
             )}
+            {notice && <div className="px-6 pt-4">{notice}</div>}
             <TabsContent
               value="tasks"
               forceMount
@@ -192,6 +199,7 @@ function ProjectPaneContent({
               <SettingsContent inset>
                 {canEdit && editor}
                 {sharing}
+                {dangerZone}
               </SettingsContent>
             </TabsContent>
           </div>

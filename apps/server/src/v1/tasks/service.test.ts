@@ -169,6 +169,8 @@ test("project export consumes startup records and pages from the last task curso
     name: "Launch",
     description: "Plan",
     image: null,
+    archivedAt: null,
+    archivedByActorEntityId: null,
   };
   const updatedAt = new Date("2026-11-22T12:34:56.123Z");
   const rows = Array.from({ length: 101 }, (_, index) => ({

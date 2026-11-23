@@ -1,4 +1,5 @@
 import type {
+  projectList,
   projectRequest,
   taskRequest,
   taskLocationRequest,
@@ -11,7 +12,7 @@ import { uploadPictureBytes } from "../files/pictures";
 import { readResult } from "../result";
 import type { z } from "zod";
 
-export const listProjects = ({ data, signal }: ApiInput<z.input<typeof tasksWorkspace>>) =>
+export const listProjects = ({ data, signal }: ApiInput<z.input<typeof projectList>>) =>
   readResult(api.tasks.projects.$get({ query: data }, { init: { signal } }));
 export const getHomeTasks = ({ data, signal }: ApiInput<z.input<typeof tasksWorkspace>>) =>
   readResult(api.tasks.home.$get({ query: data }, { init: { signal } }));

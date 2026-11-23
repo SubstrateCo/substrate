@@ -3,6 +3,7 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
 import { messagingConversations } from "../messaging/schema";
+import { requireUnarchived } from "../projects/archive";
 import { workHint } from "../realtime/routing";
 import { taskRepository } from "./repository";
 import { eq, sql } from "drizzle-orm";
@@ -21,6 +22,8 @@ export function ensureTaskDiscussion(
       .from(messagingConversations)
       .where(eq(messagingConversations.taskEntityId, taskId));
     if (existing) return existing.id;
+    // An archived task keeps its discussion but cannot start one.
+    await requireUnarchived(ctx, [taskId]);
     const [creator] = await ctx.db
       .select({ userId: sql<string>`coalesce(${actors.userId}, ${userAgents.userId})` })
       .from(actors)

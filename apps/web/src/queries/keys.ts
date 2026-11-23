@@ -167,6 +167,8 @@ export const queryKeys = {
   crmActivity: (organizationId: string, entityId: string) =>
     [...queryKeys.crm(organizationId), "activity", entityId] as const,
   projects: (organizationId: string) => [...queryKeys.tasks(organizationId), "projects"] as const,
+  archivedProjects: (organizationId: string) =>
+    [...queryKeys.projects(organizationId), "archived"] as const,
   // Every cached project detail.
   projectDetails: (organizationId: string) =>
     [...queryKeys.tasks(organizationId), "project"] as const,

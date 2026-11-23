@@ -16,6 +16,13 @@ export const projectsQueryOptions = (organizationId: string) =>
     queryFn: ({ signal }) => listProjects({ data: { organizationId }, signal }),
     retry: false,
   });
+export const archivedProjectsQueryOptions = (organizationId: string) =>
+  queryOptions({
+    queryKey: queryKeys.archivedProjects(organizationId),
+    queryFn: ({ signal }) =>
+      listProjects({ data: { organizationId, archived: "archived" }, signal }),
+    retry: false,
+  });
 export const taskLocationQueryOptions = (organizationId: string, taskEntityId: string) =>
   queryOptions({
     queryKey: queryKeys.taskLocation(organizationId, taskEntityId),

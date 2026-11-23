@@ -1,0 +1,4 @@
+ALTER TABLE "projects" ADD COLUMN "archived_at" timestamp with time zone;--> statement-breakpoint
+ALTER TABLE "projects" ADD COLUMN "archived_by_actor_entity_id" uuid;--> statement-breakpoint
+ALTER TABLE "projects" ADD CONSTRAINT "projects_organization_id_archived_by_actor_entity_id_actors_organization_id_entity_id_fk" FOREIGN KEY ("organization_id","archived_by_actor_entity_id") REFERENCES "public"."actors"("organization_id","entity_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "projects" ADD CONSTRAINT "projects_archive_check" CHECK (("projects"."archived_at" IS NULL) = ("projects"."archived_by_actor_entity_id" IS NULL));

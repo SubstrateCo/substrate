@@ -100,6 +100,7 @@ test("moving tasks and deleting projects emit access hints; deleting a task refr
       projectId: second.entityId,
     },
   ]);
+  await repos.projects.archive(first.entityId);
   const projectDeleted = await repos.transaction((tx) => tx.projects.delete(first.entityId));
   expect(projectDeleted.hints).toEqual([access]);
 });

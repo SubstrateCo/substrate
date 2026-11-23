@@ -1,8 +1,8 @@
 import type {
+  projectList,
   projectRequest,
   taskRequest,
   taskLocationRequest,
-  tasksWorkspace,
   tasksWrite,
 } from "@substrate/contracts/tasks/input";
 
@@ -17,10 +17,10 @@ export function createTasksService(deps: {
   ensureOwnedAgentActors(identity: { organizationId: string; userId: string }): Promise<void>;
 }) {
   const publishCommitted = deps.publish;
-  function listProjects(scope: WorkspaceScope, _input: z.output<typeof tasksWorkspace>) {
+  function listProjects(scope: WorkspaceScope, input: z.output<typeof projectList>) {
     return serviceResult(async () => {
       const { repositories } = scope;
-      return repositories.projects.list();
+      return repositories.projects.list(input.archived);
     });
   }
 
@@ -72,6 +72,12 @@ export function createTasksService(deps: {
           case "updateTask":
             await repos.tasks.update(input.taskEntityId, input, input.projectEntityId);
             return { id: input.taskEntityId };
+          case "archiveProject":
+            await repos.projects.archive(input.projectEntityId);
+            break;
+          case "restoreProject":
+            await repos.projects.restore(input.projectEntityId);
+            break;
           case "deleteProject":
             await repos.projects.delete(input.projectEntityId);
             break;

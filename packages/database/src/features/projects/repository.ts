@@ -1,3 +1,4 @@
+import type { RecordArchiveFilter } from "@substrate/contracts/crm/input";
 import {
   managedPicture,
   profilePicturePath,
@@ -29,9 +30,10 @@ import { requireUnassignedProjectActor } from "../tasks/assignment";
 import { firstTaskExportPage } from "../tasks/export-query";
 import { projectTaskLinkRows, toLinkView } from "../tasks/links";
 import { tasks } from "../tasks/tasks.schema";
+import { requireUnarchived } from "./archive";
 import { queryProjects } from "./queries";
 import { projects } from "./schema";
-import { and, count, eq, inArray, isNull, or, sql, type SQLWrapper } from "drizzle-orm";
+import { and, count, eq, inArray, isNotNull, isNull, or, sql, type SQLWrapper } from "drizzle-orm";
 import { type SelectedFields } from "drizzle-orm/pg-core";
 
 export function projectRepository(context: RepositoryContext) {
@@ -204,6 +206,32 @@ export function projectRepository(context: RepositoryContext) {
       const parsed = managedPicture.safeParse(row.image);
       return { ...row, image: parsed.success ? parsed.data : null };
     });
+  // A structural change: it claims the project's version, like delete and sharing do.
+  function setArchived(entityId: string, archived: boolean) {
+    return context.transaction(async (ctx) => {
+      const { entity } = await ctx.requireStructuralAccess(entityId, "owner");
+      if (entity.entityType !== "project") throw new AccessDeniedError();
+      // The old state is in the WHERE, so a repeated call changes nothing.
+      const [changed] = await ctx.db
+        .update(projects)
+        .set(
+          archived
+            ? { archivedAt: new Date(), archivedByActorEntityId: scope.actorEntityId }
+            : { archivedAt: null, archivedByActorEntityId: null },
+        )
+        .where(
+          and(
+            projectWhere(entityId),
+            archived ? isNull(projects.archivedAt) : isNotNull(projects.archivedAt),
+          ),
+        )
+        .returning();
+      if (!changed) return;
+      await ctx.touch(entityId);
+      ctx.effects.hint(workHint(scope.organizationId, entityId));
+      ctx.effects.hint(workHint(scope.organizationId, entityId, [], "context"));
+    });
+  }
   return {
     get,
     /** get, with the project's live task counts by status in the same statement. */
@@ -238,11 +266,22 @@ export function projectRepository(context: RepositoryContext) {
       if (!row) throw new AccessDeniedError();
       return { project: row.project, firstPage: row.firstPage };
     },
+    /** Makes the project and its tasks read-only. Owners and organization admins only. */
+    archive: (entityId: string) => setArchived(entityId, true),
+    restore: (entityId: string) => setArchived(entityId, false),
+    /** Deletes an archived project. Archive it first. */
     async delete(entityId: string) {
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
+        // The claim comes first, so a restore in flight is either committed or fails after this.
         const { entity } = await ctx.requireStructuralAccess(entityId, "owner");
         if (entity.entityType !== "project") throw new AccessDeniedError();
+        const [project] = await tx
+          .select({ archivedAt: projects.archivedAt })
+          .from(projects)
+          .where(projectWhere(entityId));
+        if (!project) throw new AccessDeniedError();
+        if (!project.archivedAt) throw new ValidationError("Archive the project first.");
         ctx.effects.hint({
           audience: realtimeKeys.organization(scope.organizationId),
           domain: "access",
@@ -263,6 +302,7 @@ export function projectRepository(context: RepositoryContext) {
       return context.transaction(async (ctx) => {
         const access = await ctx.requireStructuralAccess(entityId, "owner");
         if (access.entity.entityType !== "project") throw new AccessDeniedError();
+        await requireUnarchived(ctx, [entityId]);
         await changePermission(ctx, access, { actorEntityId, level });
       });
     },
@@ -270,6 +310,7 @@ export function projectRepository(context: RepositoryContext) {
       return context.transaction(async (ctx) => {
         const access = await ctx.requireStructuralAccess(entityId, "owner");
         if (access.entity.entityType !== "project") throw new AccessDeniedError();
+        await requireUnarchived(ctx, [entityId]);
         await requireUnassignedProjectActor(ctx, entityId, actorEntityId);
         // The caller's organization role can change during the checks above. Check ownership
         // again last. A demotion that commits after this read does not stop the revocation.
@@ -295,6 +336,7 @@ export function projectRepository(context: RepositoryContext) {
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
         await ctx.requireAccess(entityId, "edit");
+        await requireUnarchived(ctx, [entityId]);
         const [project] = await tx
           .update(projects)
           .set({ image })
@@ -350,14 +392,16 @@ export function projectRepository(context: RepositoryContext) {
         return project!;
       });
     },
-    async list() {
-      return queryProjects(context);
+    /** Active projects unless `archived` asks for archived ones or all. */
+    async list(archived: RecordArchiveFilter = "active") {
+      return queryProjects(context, {}, archived);
     },
     async update(entityId: string, input: { name: string; description: string }) {
       const name = requiredText(input.name, 200);
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
         await ctx.requireAccess(entityId, "edit");
+        await requireUnarchived(ctx, [entityId]);
         const [project] = await tx
           .update(projects)
           .set({ name, description: input.description })

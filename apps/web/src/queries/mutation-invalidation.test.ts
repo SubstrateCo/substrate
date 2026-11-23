@@ -18,6 +18,34 @@ afterEach(() => vi.useRealTimers());
 const taskId = "00000000-0000-4000-8000-000000000001";
 const context = queryKeys.context("org");
 
+test("archive and restore refresh project lists, details, discussions, backlinks, and searches", async () => {
+  for (const action of ["archiveProject", "restoreProject"] as const) {
+    const client = new QueryClient();
+    const keys = [
+      queryKeys.projects("org"),
+      queryKeys.archivedProjects("org"),
+      queryKeys.project("org", "source"),
+      queryKeys.conversations("org"),
+      queryKeys.related("org", taskId),
+      ...queryKeys.searches("org").map((key) => [...key, "task"]),
+    ];
+    for (const key of keys) client.setQueryData(key, { title: "Cached" });
+    const foreign = queryKeys.projects("foreign");
+    client.setQueryData(foreign, { title: "Other organization" });
+    try {
+      await invalidateTasksWrite(
+        client,
+        { action, organizationId: "org", projectEntityId: "source" },
+        "source",
+      );
+      for (const key of keys) expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+      expect(client.getQueryState(foreign)?.isInvalidated).toBe(false);
+    } finally {
+      client.clear();
+    }
+  }
+});
+
 test("task deletion and moves clear cached work and references without touching another organization", async () => {
   for (const action of ["deleteProject", "deleteTask", "moveTask"] as const) {
     const client = new QueryClient();

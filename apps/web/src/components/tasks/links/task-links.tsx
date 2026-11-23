@@ -27,7 +27,7 @@ export function TaskLinks({
   task: Task;
   onSelectTask: (id: string) => void;
 }) {
-  const { canEdit } = projectCapabilities(detail.level);
+  const { canEdit } = projectCapabilities(detail.level, !!detail.project.archivedAt);
   const write = useTasksMutation(organizationId);
   const [open, setOpen] = useState(false);
   const [relation, setRelation] = useState<TaskLinkRelation>("blocked_by");

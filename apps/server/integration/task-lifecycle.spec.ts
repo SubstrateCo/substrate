@@ -94,6 +94,7 @@ test("deletion, partial updates, moves, and task-location reads enforce live acc
     title: "Original title",
     status: "completed",
   });
+  await result(await write(owner, { action: "archiveProject", projectEntityId: destination }));
   await result(await write(owner, { action: "deleteProject", projectEntityId: destination }));
   await rejected(await owner.request.get("/api/v1/tasks/task-location", { params }));
 });

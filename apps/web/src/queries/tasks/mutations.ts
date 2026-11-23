@@ -106,6 +106,15 @@ export function invalidateTasksWrite(client: QueryClient, input: TasksWrite, id:
       client.resetQueries({ queryKey: queryKeys.notifications(organizationId) }),
       ...queryKeys.searches(organizationId).map((queryKey) => client.resetQueries({ queryKey })),
     ]);
+  if (input.action === "archiveProject" || input.action === "restoreProject")
+    // Project lists and details, discussion composers, backlinks, and pickers all show the
+    // archive state, so every one of them refreshes.
+    return Promise.all([
+      client.invalidateQueries({ queryKey: queryKeys.tasks(organizationId) }),
+      client.invalidateQueries({ queryKey: queryKeys.conversations(organizationId) }),
+      client.invalidateQueries({ queryKey: queryKeys.related(organizationId) }),
+      staleSearches(client, organizationId),
+    ]);
   if (input.action === "addTaskLink" || input.action === "removeTaskLink")
     // The other task may be in another cached project, and both tasks get a history row.
     return Promise.all([

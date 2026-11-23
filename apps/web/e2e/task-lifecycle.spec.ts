@@ -63,6 +63,12 @@ test("move a task with its subtasks, follow its old link, change parent, and del
   await expect(inspector).toHaveCount(0);
   await expect(user.page.getByRole("button", { name: /^Not started: Move parent/ })).toHaveCount(0);
   await user.page.getByRole("tab", { name: "Settings", exact: true }).click();
+  // Only an archived project can be deleted.
+  await user.page.getByRole("button", { name: "Archive project", exact: true }).click();
+  await user.page
+    .getByRole("dialog")
+    .getByRole("button", { name: "Archive project", exact: true })
+    .click();
   await user.page.getByRole("button", { name: "Delete project", exact: true }).click();
   await user.page
     .getByRole("dialog")

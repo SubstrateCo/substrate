@@ -36,7 +36,7 @@ export function TaskDetail({
   visible: boolean;
 }) {
   const update = useTaskUpdate(organizationId, detail.project.entityId);
-  const capabilities = projectCapabilities(detail.level);
+  const capabilities = projectCapabilities(detail.level, !!detail.project.archivedAt);
   const [editDirty, setEditDirty] = useState(false);
   const active = useContext(TaskInspectorActive);
   const dirty = active && editDirty;
@@ -112,6 +112,7 @@ export function TaskDetail({
           organizationId={organizationId}
           projectEntityId={detail.project.entityId}
           taskEntityId={task.entityId}
+          archived={!!detail.project.archivedAt}
         />
         <TaskAttachments
           key={`${organizationId}:${task.entityId}`}

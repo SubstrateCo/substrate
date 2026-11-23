@@ -11,6 +11,7 @@ import type { SessionIdentity } from "../../core/session/identity";
 import type { MessagingReader, MessagingSessionResolver } from "../../core/session/messaging";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { messageEntityReferences } from "../context/schema";
+import { inArchivedProject } from "../projects/archive";
 import { withRemovalHints } from "../realtime/routing";
 import { tasks } from "../tasks/tasks.schema";
 import {
@@ -140,7 +141,8 @@ export function conversationOperations(
                 taskEntityId: tasks.entityId,
                 projectEntityId: tasks.projectEntityId,
                 title: tasks.title,
-                canPost: context.readable(tasks.entityId, "comment"),
+                canPost: sql<boolean>`(${context.readable(tasks.entityId, "comment")}
+                  AND NOT ${inArchivedProject(tasks.organizationId, tasks.entityId)})`,
               })
               .from(tasks)
               .where(inArray(tasks.entityId, taskIds))

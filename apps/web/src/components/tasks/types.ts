@@ -19,6 +19,11 @@ export interface Project {
   name: string;
   description: string;
   image?: string | null;
+  /** Set while the project is archived and read-only. */
+  archivedAt?: string | null;
+  archivedByActorEntityId?: string | null;
+  /** The reader's level, in archived project lists only. */
+  level?: PermissionLevel;
 }
 export interface Task {
   entityId: string;

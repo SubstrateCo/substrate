@@ -1,11 +1,12 @@
 import { attachmentFileIds } from "../files/attachments.ts";
 import { projectIcon } from "../files/pictures.ts";
-import { organizationId } from "../workspace.ts";
+import { organizationId, recordListFields } from "../workspace.ts";
 import { taskLinkRelations } from "./links.ts";
 import { permissionLevels, taskPriorityValues, taskStatusValues } from "./status.ts";
 import { z } from "zod";
 
 export const tasksWorkspace = z.object({ organizationId });
+export const projectList = tasksWorkspace.extend({ archived: recordListFields.archived });
 export const projectRequest = tasksWorkspace.extend({ projectEntityId: z.uuid() });
 export const taskRequest = projectRequest.extend({ taskEntityId: z.uuid() });
 export const taskLocationRequest = tasksWorkspace.extend({ taskEntityId: z.uuid() });
@@ -61,6 +62,8 @@ export const tasksWrite = z.discriminatedUnion("action", [
   }),
   projectRequest.extend({ action: z.literal("revoke"), actorEntityId: z.uuid() }),
   projectRequest.extend({ action: z.literal("setProjectPicture"), image: projectIcon }),
+  projectRequest.extend({ action: z.literal("archiveProject") }),
+  projectRequest.extend({ action: z.literal("restoreProject") }),
   projectRequest.extend({ action: z.literal("deleteProject") }),
   taskRequest.extend({ action: z.literal("deleteTask") }),
   taskRequest.extend({

@@ -283,8 +283,8 @@ test("task create checks the project once and update batches activity with one a
     actorEntityId: fixture.alice,
   });
   const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Count" });
-  // Project access, entity, task, activity.
-  expect(statements).toHaveLength(4);
+  // Project access, archive check, entity, task, activity.
+  expect(statements).toHaveLength(5);
   statements.length = 0;
   expect(
     await repos.tasks.update(task.entityId, {

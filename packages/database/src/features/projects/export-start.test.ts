@@ -149,6 +149,7 @@ test("export startup distinguishes authorized empty projects from denied project
     .update(organizationApps)
     .set({ enabled: true })
     .where(eq(organizationApps.organizationId, f.orgA));
+  await alice.projects.archive(project.entityId);
   await alice.projects.delete(project.entityId);
   expect(await rejection(alice.projects.exportStart(project.entityId))).toBeInstanceOf(
     AccessDeniedError,

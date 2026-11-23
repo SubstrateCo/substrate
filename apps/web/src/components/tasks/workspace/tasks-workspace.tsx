@@ -5,10 +5,15 @@ import { useState } from "react";
 
 import { ProjectForm } from "../projects/editor/project-form";
 import { ProjectPane } from "../projects/project-pane";
+import { useProjectRestore } from "../projects/use-project-restore";
 import { TasksWorkspace as TasksWorkspaceView } from "@/components/tasks/workspace/tasks-workspace-view";
 import { workLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
-import { projectsQueryOptions, taskLocationQueryOptions } from "@/queries/tasks/options";
+import {
+  archivedProjectsQueryOptions,
+  projectsQueryOptions,
+  taskLocationQueryOptions,
+} from "@/queries/tasks/options";
 
 export function TasksWorkspace({
   organizationId,
@@ -20,6 +25,8 @@ export function TasksWorkspace({
   taskId?: string;
 }) {
   const projects = useQuery(projectsQueryOptions(organizationId));
+  const archived = useQuery(archivedProjectsQueryOptions(organizationId));
+  const restore = useProjectRestore(organizationId);
   const navigate = useNavigate();
   const taskLocation = useQuery({
     ...taskLocationQueryOptions(organizationId, taskId ?? ""),
@@ -58,6 +65,9 @@ export function TasksWorkspace({
       <TasksWorkspaceView
         state={resource.status}
         projects={resource.data ?? []}
+        archivedProjects={resourceState(archived).data ?? []}
+        onRestoreProject={restore.restore}
+        restoringProjectId={restore.pendingId}
         selectedProjectId={selectedProjectId}
         projectLink={(id) => workLink(organizationId, id)}
         onSelectProject={(selected) =>

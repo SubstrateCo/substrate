@@ -18,6 +18,7 @@ import { applyMessageEffects } from "../context/message-effects";
 import { insertMessageAttachments, messageAttachmentMetadata } from "../files/metadata";
 import { publishFiles } from "../files/publication";
 import { messageAttachments } from "../files/schema";
+import { requireUnarchived } from "../projects/archive";
 import { messageChangeHints, reactionChangeHints } from "../realtime/routing";
 import { loadConversation, requireThreadRoot, threadRoot, visibleConversations } from "./access";
 import { writeMembers } from "./members";
@@ -181,7 +182,10 @@ export async function sendMessageAs(
   if (originTurnId && actor.type !== "agent")
     throw new ValidationError("Only agent replies record a turn.");
   const conversation = await loadConversation(tx, scope, conversationId);
-  if (conversation.taskEntityId) await ctx.requireAccess(conversation.taskEntityId, "comment");
+  if (conversation.taskEntityId) {
+    await ctx.requireAccess(conversation.taskEntityId, "comment");
+    await requireUnarchived(ctx, [conversation.taskEntityId]);
+  }
   validateBody(body, fileIds.length);
   const findRequest = async (id: string) => {
     const [existing] = await tx
@@ -486,8 +490,10 @@ export function messageOperations(
           .where(eq(messagingMessages.id, messageId));
         if (!message || message.deletedAt) throw new AccessDeniedError();
         const conversation = await loadConversation(tx, scope, message.conversationId);
-        if (conversation.taskEntityId)
+        if (conversation.taskEntityId) {
           await context.requireAccess(conversation.taskEntityId, "comment");
+          await requireUnarchived(context, [conversation.taskEntityId]);
+        }
         const joined =
           (
             await writeMembers(
