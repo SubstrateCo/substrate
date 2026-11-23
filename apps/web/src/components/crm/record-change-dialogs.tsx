@@ -2,9 +2,8 @@ import type { CrmKind } from "./crm-types";
 import { RecordArchive } from "./record-archive";
 import type { RecordChangeDialog } from "./record-change-dialog";
 import { RecordEditor, type RecordDraft } from "./record-editor";
+import type { ComboboxOption } from "@/components/ui/combobox";
 import type { useRecordMutation } from "@/queries/records/mutations";
-
-type Option = { value: string; label: string };
 
 /** Renders the edit or archive dialog of a CRM record detail and closes it after a successful change. */
 export function RecordChangeDialogs({
@@ -28,9 +27,9 @@ export function RecordChangeDialogs({
   name: string;
   archived: boolean;
   record: RecordDraft | null;
-  accounts?: Option[];
-  contacts?: Option[];
-  stages?: Option[];
+  accounts?: ComboboxOption[];
+  contacts?: ComboboxOption[];
+  stages?: ComboboxOption[];
   mutation: ReturnType<typeof useRecordMutation>;
   onClose: () => void;
 }) {
