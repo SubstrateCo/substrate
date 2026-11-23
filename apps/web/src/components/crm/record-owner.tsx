@@ -8,7 +8,6 @@ import { useRecordPeople } from "./record-people-directory";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import type { PickedRecipient } from "@/lib/people/people-picker";
 import { useCrmMutation } from "@/queries/crm/mutations";
 
 type Assignment = Extract<CrmWrite, { action: "assignOwner" }>;
@@ -38,14 +37,11 @@ export function RecordOwner({
   const mutation = useCrmMutation(organizationId);
   const directory = useRecordPeople(organizationId);
   const [expectedRecord] = useState(record);
-  const [people, setPeople] = useState<PickedRecipient[]>([]);
-  const [pendingText, setPendingText] = useState("");
+  const [personId, setPersonId] = useState("");
   const [decision, setDecision] = useState<Assignment["accessDecision"]>("require_existing_access");
-  const person = people[0]?.person;
-  const actor = directory.people.find((candidate) => candidate.id === person?.id);
+  const actor = directory.people.find((candidate) => candidate.id === personId);
   const canEdit = level === "edit" || level === "owner";
-  const canSubmit =
-    canEdit && !!actor && actor.id !== expectedRecord.ownerActorEntityId && !pendingText.trim();
+  const canSubmit = canEdit && !!actor && actor.id !== expectedRecord.ownerActorEntityId;
   if (!canEdit) return null;
   return (
     <FormDialog
@@ -73,14 +69,12 @@ export function RecordOwner({
       }}
     >
       <RecordPersonField
-        id={`${id}-person`}
         directory={directory}
-        value={people}
+        value={personId}
         onValueChange={(value) => {
           mutation.reset();
-          setPeople(value);
+          setPersonId(value);
         }}
-        onPendingTextChange={setPendingText}
         disabled={mutation.isPending}
       />
       <Field>

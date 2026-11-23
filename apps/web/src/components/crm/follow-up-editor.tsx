@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { formText } from "./form-text";
 import { FormDialog } from "@/components/feedback/form-dialog";
+import { DateField } from "@/components/forms/date-field";
 import { NativeField } from "@/components/forms/native-form";
 import { SelectField } from "@/components/forms/select-field";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -24,6 +25,7 @@ export function FollowUpEditor({
   const projects = useQuery(projectsQueryOptions(organizationId));
   const mutation = useCrmMutation(organizationId);
   const [projectId, setProjectId] = useState("");
+  const [dueDate, setDueDate] = useState("");
   const [consent, setConsent] = useState(false);
   const [requestId] = useState(() => crypto.randomUUID());
   return (
@@ -48,7 +50,7 @@ export function FollowUpEditor({
             requestId,
             title: formText(form, "title"),
             description: formText(form, "description"),
-            dueDate: formText(form, "dueDate") || null,
+            dueDate: dueDate || null,
             consentToTaskAudience: true,
           },
           { onSuccess: onClose },
@@ -75,11 +77,10 @@ export function FollowUpEditor({
           })),
         ]}
       />
-      <NativeField
-        id="followup-due"
-        name="dueDate"
+      <DateField
         label="Due date"
-        type="date"
+        value={dueDate}
+        onChange={setDueDate}
         description="No date means unscheduled. Manage assignment and completion in the task."
       />
       <NativeField

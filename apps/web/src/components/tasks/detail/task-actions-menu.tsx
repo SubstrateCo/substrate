@@ -25,12 +25,12 @@ export function TaskActionsMenu({
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
-            <Button ref={triggerRef} variant="ghost" size="icon-sm" aria-label="Task actions">
+            <Button ref={triggerRef} variant="ghost" size="icon-sm" aria-label="More actions">
               <Ellipsis aria-hidden="true" />
             </Button>
           </DropdownMenuTrigger>
         </TooltipTrigger>
-        <TooltipContent>Task actions</TooltipContent>
+        <TooltipContent>More actions</TooltipContent>
       </Tooltip>
       <DropdownMenuContent align="end">
         <DropdownMenuItem onSelect={onMove}>

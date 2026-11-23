@@ -12,7 +12,7 @@ import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { TaskDueDatePicker } from "./task-due-date-picker";
 import { Tag } from "@/components/feedback/tag";
-import { Property, PropertyList } from "@/components/layout/record-section";
+import { NotSet, Property, PropertyList } from "@/components/layout/record-section";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { DueDate } from "@/components/time/due-date";
 import { Button } from "@/components/ui/button";
@@ -32,7 +32,7 @@ const trigger = "-ml-2.5 max-w-full min-w-0";
 
 function dueText(value: string | null) {
   const due = value ? formatDueDate(value) : undefined;
-  if (!due) return "none";
+  if (!due) return "Not set";
   return due.state === "overdue" ? `${due.label}, overdue` : due.label;
 }
 
@@ -96,11 +96,7 @@ export function TaskProperties({
       {assignee?.type === "agent" && <Tag size="sm">Agent</Tag>}
     </>
   );
-  const dueValue = task.dueDate ? (
-    <DueDate value={task.dueDate} />
-  ) : (
-    <span className="text-muted-foreground">No due date</span>
-  );
+  const dueValue = task.dueDate ? <DueDate value={task.dueDate} /> : <NotSet />;
   return (
     <PropertyList>
       <Property label="Status">

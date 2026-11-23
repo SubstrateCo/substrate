@@ -12,6 +12,7 @@ export function WorkDiscussions({
   organizationId,
   entityId,
   label,
+  emptyTitle,
   variant,
   children,
   visible = true,
@@ -19,6 +20,7 @@ export function WorkDiscussions({
   organizationId: string;
   entityId: string;
   label?: string;
+  emptyTitle?: string;
   variant?: "inspector" | "page";
   children?: ReactNode;
   visible?: boolean;
@@ -46,6 +48,7 @@ export function WorkDiscussions({
       error={related.error}
       onRetry={() => void related.refetch()}
       label={label}
+      emptyTitle={emptyTitle}
       variant={variant}
     >
       {children}

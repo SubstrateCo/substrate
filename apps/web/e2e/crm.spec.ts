@@ -85,7 +85,10 @@ test("create customer records, record a call, and advance a linked deal", async 
   await selectCrmOption(page, "Primary contact", "Jordan Lee");
   await dealDialog.getByLabel("Amount", { exact: true }).fill("48000");
   await dealDialog.getByLabel("Currency", { exact: true }).fill("USD");
-  await dealDialog.getByLabel("Expected close", { exact: true }).fill("2026-12-15");
+  await dealDialog.getByLabel("Expected close", { exact: true }).click();
+  await page.getByLabel("Type a date", { exact: true }).fill("2026-12-15");
+  await page.getByLabel("Type a date", { exact: true }).press("Enter");
+  await expect(dealDialog.getByLabel("Expected close", { exact: true })).toHaveText("Dec 15");
   await dealDialog
     .getByLabel("Summary", { exact: true })
     .fill("Pilot, training, and rollout for the operations workspace.");

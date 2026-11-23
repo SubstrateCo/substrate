@@ -67,7 +67,7 @@ test("board moves persist, filters survive view switches, and cards open the tas
         )?.status,
     )
     .toBe("in_progress");
-  await page.getByRole("searchbox", { name: "Filter tasks" }).fill("onboarding");
+  await page.getByRole("searchbox", { name: "Search tasks" }).fill("onboarding");
   await page.getByRole("radio", { name: "List", exact: true }).click();
   await expect(
     page.getByRole("button", { name: /^In progress: Design the onboarding flow/ }),
@@ -76,8 +76,8 @@ test("board moves persist, filters survive view switches, and cards open the tas
     page.getByRole("button", { name: /In progress: Connect workspace data/ }),
   ).toHaveCount(0);
   await page.getByRole("radio", { name: "Board", exact: true }).click();
-  await expect(page.getByRole("searchbox", { name: "Filter tasks" })).toHaveValue("onboarding");
-  await page.getByRole("searchbox", { name: "Filter tasks" }).fill("");
+  await expect(page.getByRole("searchbox", { name: "Search tasks" })).toHaveValue("onboarding");
+  await page.getByRole("searchbox", { name: "Search tasks" }).fill("");
   await board.getByRole("button", { name: "Open Design the onboarding flow", exact: true }).click();
   await expect(
     page
@@ -205,7 +205,7 @@ test("empty columns create tasks in their status, retain subtask context, and sc
   expect(tasks.find((task) => task.title === "Check the links")).toMatchObject({
     parentTaskEntityId: parent!.entityId,
   });
-  await user.page.getByRole("searchbox", { name: "Filter tasks" }).fill("no matching title");
+  await user.page.getByRole("searchbox", { name: "Search tasks" }).fill("no matching title");
   await expect(
     user.page.getByRole("heading", { name: "No matching tasks", exact: true }),
   ).toBeVisible();

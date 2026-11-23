@@ -9,7 +9,7 @@ import type { RecordSharingProps } from "./record-sharing";
 import { CopyLink } from "@/components/context/links/copy-link";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
-import { PageHeader } from "@/components/layout/page-header";
+import { BackLink, PageHeader } from "@/components/layout/page-header";
 import { PageSheetHeader, PageSheetBody, usePageSheet } from "@/components/layout/page-sheet";
 import { Property, PropertyList } from "@/components/layout/record-section";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { recordLink } from "@/lib/navigation/record-links";
-import { ArrowLeft, Archive, Ellipsis, Pencil, RotateCcw } from "lucide-react";
+import { Archive, Ellipsis, Pencil, RotateCcw } from "lucide-react";
 
 export function RecordDetailView({
   organizationId,
@@ -53,13 +53,12 @@ export function RecordDetailView({
   onEdit: () => void;
   onArchive: () => void;
   children: ReactNode;
-  /** Feature actions, such as Move deal: labelled buttons on the page, menu items in a sheet. */
+  /** Feature actions, such as Move deal: items in the More actions menu. */
   tools?: RecordTool[];
   properties?: ReactNode;
   notice?: ReactNode;
 }) {
   const sheet = usePageSheet();
-  const launchers = useRef(new Map<string, HTMLButtonElement>());
   const menuTrigger = useRef<HTMLButtonElement>(null);
   const management = useRecordManagement({
     organizationId,
@@ -70,8 +69,7 @@ export function RecordDetailView({
     record: ownerRecord,
     // Every member edits contacts, so they have no sharing or owner.
     enabled: kind !== "contacts",
-    onRestoreFocus: (label) =>
-      (sheet ? menuTrigger.current : launchers.current.get(label))?.focus(),
+    onRestoreFocus: () => menuTrigger.current?.focus(),
   });
   const tools = [...management.tools, ...featureTools];
   const archive: RecordTool | null = canEdit
@@ -140,12 +138,9 @@ export function RecordDetailView({
   return (
     <RecordDetailFrame>
       {kind !== "contacts" && (
-        <Button variant="link" size="sm" asChild>
-          <Link {...recordLink(organizationId, kind)}>
-            <ArrowLeft aria-hidden />
-            Back to {kind}
-          </Link>
-        </Button>
+        <BackLink>
+          <Link {...recordLink(organizationId, kind)}>Back to {kind}</Link>
+        </BackLink>
       )}
       <PageHeader
         title={name}
@@ -153,32 +148,13 @@ export function RecordDetailView({
         actions={
           <>
             <CopyLink link={link} grouped />
-            {tools.map((tool) => (
-              <Button
-                key={tool.label}
-                ref={(button) => {
-                  if (button) launchers.current.set(tool.label, button);
-                }}
-                variant="outline"
-                size="sm"
-                onClick={tool.onSelect}
-              >
-                {tool.icon}
-                {tool.label}
-              </Button>
-            ))}
             {canEdit && (
               <Button variant="outline" size="sm" onClick={onEdit} disabled={archived}>
                 <Pencil aria-hidden="true" />
                 Edit
               </Button>
             )}
-            {archive && (
-              <Button variant="outline" size="sm" onClick={archive.onSelect}>
-                {archive.icon}
-                {archive.label}
-              </Button>
-            )}
+            <RecordActionsMenu triggerRef={menuTrigger} tools={tools} archive={archive} />
           </>
         }
       />
@@ -191,7 +167,7 @@ export function RecordDetailView({
   );
 }
 
-/** The sheet's More menu: record tools, then Archive or Restore below a separator. */
+/** The More actions menu on the sheet and the page: record tools, then Archive or Restore below a separator. */
 function RecordActionsMenu({
   triggerRef,
   tools,

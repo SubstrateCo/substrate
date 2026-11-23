@@ -6,7 +6,7 @@ import { UserPlus, UserRound } from "lucide-react";
 
 export type ResponsibleRecord = RecordOwnerProps["record"];
 
-/** A record header action: a labelled button on the page, a menu item in a sheet. */
+/** A record header action: an item in the More actions menu. */
 export type RecordTool = { label: string; icon: ReactNode; onSelect: () => void };
 
 /** The Share and Change owner tools of an account or deal, and the dialogs they open. */
@@ -28,8 +28,8 @@ export function useRecordManagement({
   level: RecordSharingProps["level"];
   record?: ResponsibleRecord;
   enabled: boolean;
-  /** Focuses the launcher of the tool with this label after its dialog closes. */
-  onRestoreFocus: (label: string) => void;
+  /** Focuses the menu trigger after a tool's dialog closes. */
+  onRestoreFocus: () => void;
 }) {
   const [dialog, setDialog] = useState<"share" | "owner" | null>(null);
   const canShare = enabled && level === "owner";
@@ -57,7 +57,7 @@ export function useRecordManagement({
           noun={noun}
           level={level}
           onClose={() => setDialog(null)}
-          onRestoreFocus={() => onRestoreFocus("Share")}
+          onRestoreFocus={onRestoreFocus}
         />
       )}
       {dialog === "owner" && canReassign && (
@@ -68,7 +68,7 @@ export function useRecordManagement({
           level={level}
           record={record}
           onClose={() => setDialog(null)}
-          onRestoreFocus={() => onRestoreFocus("Change owner")}
+          onRestoreFocus={onRestoreFocus}
         />
       )}
     </>

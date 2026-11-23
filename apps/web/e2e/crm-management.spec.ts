@@ -33,8 +33,25 @@ function managementWrite(page: Page, action: "share" | "revoke" | "assignOwner")
   );
 }
 
+// Record tools sit in the header's More actions menu on pages and sheets.
+async function openTool(page: Page, name: string) {
+  await page.getByRole("button", { name: "More actions", exact: true }).click();
+  await page.getByRole("menuitem", { name, exact: true }).click();
+}
+
+async function expectNoTools(page: Page, names: string[]) {
+  const more = page.getByRole("button", { name: "More actions", exact: true });
+  if (!(await more.count())) return;
+  await more.click();
+  await expect(page.getByRole("menu")).toBeVisible();
+  for (const name of names)
+    await expect(page.getByRole("menuitem", { name, exact: true })).toHaveCount(0);
+  await page.keyboard.press("Escape");
+}
+
 async function choosePerson(page: Page, name: string) {
-  await page.getByRole("combobox", { name: "Person", exact: true }).fill(name);
+  await page.getByRole("combobox", { name: "Person", exact: true }).click();
+  await page.getByLabel("Search people", { exact: true }).fill(name);
   await page.getByRole("option").filter({ hasText: name }).click();
 }
 
@@ -51,8 +68,7 @@ test("a member edits a contact without sharing, and contacts offer no management
     await visit(user, undefined, "/contacts", search);
     await expect(user.page.getByRole("heading", { name: record.name, exact: true })).toBeVisible();
     await expect(user.page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
-    for (const name of ["Share", "Change owner"])
-      await expect(user.page.getByRole("button", { name, exact: true })).toHaveCount(0);
+    await expectNoTools(user.page, ["Share", "Change owner"]);
   }
 });
 
@@ -64,7 +80,7 @@ test("an owner shares and revokes a private account through its detail", async (
   const owner = await client(actors.sender);
   const search = { section: "accounts", recordId: record.entityId };
   await visit(owner, undefined, "/crm", search);
-  await owner.page.getByRole("button", { name: "Share", exact: true }).click();
+  await openTool(owner.page, "Share");
   const sharing = owner.page.getByRole("dialog", { name: `Share ${record.name}`, exact: true });
   await choosePerson(owner.page, actors.member.name);
   const shared = managementWrite(owner.page, "share");
@@ -76,10 +92,9 @@ test("an owner shares and revokes a private account through its detail", async (
   await visit(reader, undefined, "/crm", search);
   await expect(reader.page.getByRole("heading", { name: record.name, exact: true })).toBeVisible();
   // A viewer neither shares nor reassigns the account.
-  for (const name of ["Share", "Change owner"])
-    await expect(reader.page.getByRole("button", { name, exact: true })).toHaveCount(0);
+  await expectNoTools(reader.page, ["Share", "Change owner"]);
 
-  await owner.page.getByRole("button", { name: "Share", exact: true }).click();
+  await openTool(owner.page, "Share");
   const grants = sharing.getByRole("list", { name: "Direct access", exact: true });
   const member = grants.getByRole("listitem").filter({ hasText: actors.member.name });
   await expect(member).toContainText("Can view");
@@ -164,14 +179,14 @@ test("a creator who removes their own access closes management and sees only the
   const record = await managedRecord(actors.member, "accounts");
   const user = await client(actors.member);
   await visit(user, undefined, "/crm", { section: "accounts", recordId: record.entityId });
-  await user.page.getByRole("button", { name: "Share", exact: true }).click();
+  await openTool(user.page, "Share");
   await choosePerson(user.page, actors.sender.name);
   await user.page.getByRole("combobox", { name: "Access", exact: true }).click();
   await user.page.getByRole("option", { name: "Can manage access", exact: true }).click();
   const shared = managementWrite(user.page, "share");
   await user.page.getByRole("button", { name: "Share account", exact: true }).click();
   expect((await shared).status()).toBe(200);
-  await user.page.getByRole("button", { name: "Share", exact: true }).click();
+  await openTool(user.page, "Share");
   const ownGrant = user.page
     .getByRole("list", { name: "Direct access", exact: true })
     .getByRole("listitem")

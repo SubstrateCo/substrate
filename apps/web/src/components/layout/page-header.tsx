@@ -1,7 +1,23 @@
 import type { ReactNode } from "react";
 
+import { Button } from "../ui/button";
 import { cva } from "class-variance-authority";
 import { cn } from "cn";
+import { ArrowLeft } from "lucide-react";
+import { Slot } from "radix-ui";
+
+/**
+ * Back navigation directly above a page header, on the title's left edge. `children` is the link
+ * element (a router `Link`); its text follows the arrow.
+ */
+export function BackLink({ children }: { children: ReactNode }) {
+  return (
+    <Button variant="link" size="sm" className="-ml-1.5" asChild>
+      <ArrowLeft aria-hidden="true" data-icon="inline-start" />
+      <Slot.Slottable>{children}</Slot.Slottable>
+    </Button>
+  );
+}
 
 const pageHeaderVariants = cva("flex shrink-0 justify-between gap-x-4", {
   variants: {

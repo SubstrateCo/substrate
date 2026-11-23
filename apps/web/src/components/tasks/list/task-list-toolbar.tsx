@@ -59,8 +59,8 @@ export function TaskListToolbar({
       <Input
         className="w-72 max-w-full"
         type="search"
-        aria-label="Filter tasks"
-        placeholder="Filter tasks"
+        aria-label="Search tasks"
+        placeholder="Search tasks"
         value={filters.query}
         onChange={(event) => set({ query: event.target.value })}
         onKeyDown={(event) => {

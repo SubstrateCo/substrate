@@ -133,8 +133,8 @@ export function InteractionChart({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  variant="outline"
-                  size="icon-xs"
+                  variant="ghost"
+                  size="icon-sm"
                   aria-label="Previous day"
                   disabled={selectedIndex <= 0}
                   onClick={() => onSelectDay(dates[selectedIndex - 1]!)}
@@ -155,8 +155,8 @@ export function InteractionChart({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  variant="outline"
-                  size="icon-xs"
+                  variant="ghost"
+                  size="icon-sm"
                   aria-label="Next day"
                   disabled={selectedIndex >= dates.length - 1}
                   onClick={() => onSelectDay(dates[selectedIndex + 1]!)}

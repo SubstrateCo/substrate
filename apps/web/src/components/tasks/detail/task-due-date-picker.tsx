@@ -15,7 +15,7 @@ const quick: { label: string; days: (today: Date) => number }[] = [
   { label: "Next week", days: (today) => (8 - today.getDay()) % 7 || 7 },
 ];
 
-/** Quick choices and an exact date for a task's due date. `children` is the trigger button. */
+/** Quick choices and an exact date for a date-only value. `children` is the trigger button. */
 export function TaskDueDatePicker({
   value,
   onChange,
@@ -114,7 +114,7 @@ function DueDateChoices({
       />
       {value && (
         <Button type="button" variant="property" size="sm" onClick={() => choose(null)}>
-          Clear due date
+          Clear date
         </Button>
       )}
     </>
