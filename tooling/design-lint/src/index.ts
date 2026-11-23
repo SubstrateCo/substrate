@@ -9,6 +9,8 @@ import { iconButtonName, iconButtonTooltip } from "./rules/icon-buttons.ts";
 import { motion } from "./rules/motion.ts";
 import { noAdhocDateFormat } from "./rules/no-adhoc-date-format.ts";
 import { noEllipsis } from "./rules/no-ellipsis.ts";
+import { noNativeActionTitle } from "./rules/no-native-action-title.ts";
+import { noNativeDateInput } from "./rules/no-native-date-input.ts";
 import { noNativeDialogs } from "./rules/no-native-dialogs.ts";
 import { noOpacityTint } from "./rules/no-opacity-tint.ts";
 import { noPressedOutline } from "./rules/no-pressed-outline.ts";
@@ -39,6 +41,8 @@ export default {
     motion,
     "no-adhoc-date-format": noAdhocDateFormat,
     "no-ellipsis": noEllipsis,
+    "no-native-action-title": noNativeActionTitle,
+    "no-native-date-input": noNativeDateInput,
     "no-native-dialogs": noNativeDialogs,
     "no-opacity-tint": noOpacityTint,
     "no-pressed-outline": noPressedOutline,

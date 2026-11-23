@@ -15,6 +15,7 @@ export const designConfig = {
   settings: {
     shadcn: {
       ui: "@/components/ui",
+      componentImports: ["^@/components/people/person-avatar$", "^@/components/layout/page-sheet$"],
       note: `Design contract: ${DESIGN_DOC}. Add a variant or size in ${WEB}/components/ui (shadcn CLI) only when the contract calls for one.`,
     },
   },
@@ -105,6 +106,19 @@ export const designConfig = {
             },
           },
           {
+            pattern: "^PageSheetBody$",
+            allow: ["layout"],
+            message:
+              '"{{className}}" restyles <PageSheetBody>, which owns its px-4 py-5 inset. Put section spacing on the content inside it.',
+          },
+          {
+            pattern: "^PersonAvatar$",
+            allow: ["layout"],
+            deny: ["size-*", "h-*", "w-*", "min-h-*", "max-h-*", "min-w-*", "max-w-*"],
+            message:
+              '"{{className}}" restyles <PersonAvatar>. Use size="sm" (24px, the default) or size="xs" (20px). PersonAvatar owns its shape and neutral fill.',
+          },
+          {
             pattern: "^TableRow$",
             allow: ["layout"],
             message:
@@ -153,6 +167,8 @@ export const designConfig = {
         "design/motion": "error",
         "design/no-adhoc-date-format": "error",
         "design/no-ellipsis": "error",
+        "design/no-native-action-title": "error",
+        "design/no-native-date-input": "error",
         "design/no-native-dialogs": "error",
         "design/no-opacity-tint": "warn",
         "design/no-pressed-outline": "error",
@@ -166,7 +182,23 @@ export const designConfig = {
         "design/sentence-case": "warn",
         "design/type-scale": "warn",
         "design/typographic-quotes": "warn",
+        "no-restricted-imports": [
+          "error",
+          {
+            patterns: [
+              {
+                group: ["**/ui/table", "**/ui/table.*"],
+                message:
+                  'Use AppTable from "@/components/table/app-table". Only its implementation imports the raw table primitives.',
+              },
+            ],
+          },
+        ],
       },
+    },
+    {
+      files: [`${WEB}/components/table/app-table.tsx`, `${WEB}/components/ui/**`],
+      rules: { "no-restricted-imports": "off" },
     },
     {
       // The helper builds the "#" name; its test checks it.
