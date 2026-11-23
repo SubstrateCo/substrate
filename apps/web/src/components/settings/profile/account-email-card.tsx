@@ -1,3 +1,4 @@
+import { Tag } from "@/components/feedback/tag";
 import { SettingsCard } from "@/components/layout/settings-section";
 import { BadgeCheck, TriangleAlert } from "lucide-react";
 
@@ -11,15 +12,13 @@ export function AccountEmailCard({ email, verified }: { email: string; verified:
       <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-4 gap-y-1">
         <span className="min-w-0 text-sm font-medium wrap-anywhere">{email}</span>
         {verified ? (
-          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <BadgeCheck aria-hidden="true" className="size-4 text-success" />
+          <Tag tone="success" icon={<BadgeCheck aria-hidden="true" className="size-3" />}>
             Verified
-          </span>
+          </Tag>
         ) : (
-          <span className="flex items-center gap-1.5 text-sm text-muted-foreground">
-            <TriangleAlert aria-hidden="true" className="size-4 text-warning" />
+          <Tag tone="warning" icon={<TriangleAlert aria-hidden="true" className="size-3" />}>
             Not verified
-          </span>
+          </Tag>
         )}
       </div>
     </SettingsCard>

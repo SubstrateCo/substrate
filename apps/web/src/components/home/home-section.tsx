@@ -25,7 +25,7 @@ export type HomeSectionData = {
   onRetry: () => void;
 };
 
-export function HomeRows({ items }: { items: HomeItem[] }) {
+function HomeRows({ items }: { items: HomeItem[] }) {
   return (
     <ul className="flex flex-col gap-0.5">
       {items.map((item) => (
