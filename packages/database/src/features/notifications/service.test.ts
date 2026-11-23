@@ -221,6 +221,24 @@ test("work groups use entity identity, page tied timestamps after a deleted anch
   ).toBeInstanceOf(AccessDeniedError);
 });
 
+test("the unread indicator ignores readable targets that the feed cannot show", async () => {
+  await setup();
+  const contact = await f.forActor(f.alice).contacts.create({ displayName: "Buyer" });
+  await f.db.delete(notifications);
+  await f.db.insert(notifications).values({
+    organizationId: f.orgA,
+    recipientActorEntityId: f.alice,
+    entityId: contact.entityId,
+    kind: "mention",
+    eventKey: "contact-mention",
+  });
+  const service = feed("alice");
+  expect(await service.list()).toEqual([]);
+  expect((await service.groups({ limit: 20, filter: "all" })).items).toEqual([]);
+  // Nothing in the feed can clear this row, so it must not light the dot.
+  expect(await service.hasUnread()).toBe(false);
+});
+
 test("groups retain microsecond boundaries and mixed read history and do not enrich the unread indicator", async () => {
   const { chat, channel } = await setup();
   await chat.addMembers(channel.id, ["bob@example.com", "outside@example.com"]);

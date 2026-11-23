@@ -12,6 +12,8 @@ import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../activity/schema";
 import { visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
+import { projects } from "../projects/schema";
+import { tasks } from "../tasks/tasks.schema";
 import type { toFeedItem } from "./feed-item";
 import { notifications } from "./schema";
 import { sql } from "drizzle-orm";
@@ -36,7 +38,12 @@ function eligible(db: DatabaseExecutor, ctx: RepositoryContext, scope: SessionId
     WHERE ${notifications.organizationId} = ${scope.organizationId}
       AND ${notifications.recipientActorEntityId} = ${ctx.scope.actorEntityId}
       AND (
-        (${notifications.entityId} IS NOT NULL AND ${ctx.readable(notifications.entityId)})
+        (${notifications.entityId} IS NOT NULL AND ${ctx.readable(notifications.entityId)}
+          -- The feed shows only work targets. Others would light the dot with nothing to clear.
+          AND (EXISTS (SELECT 1 FROM ${tasks} WHERE ${tasks.organizationId} = ${notifications.organizationId}
+              AND ${tasks.entityId} = ${notifications.entityId})
+            OR EXISTS (SELECT 1 FROM ${projects} WHERE ${projects.organizationId} = ${notifications.organizationId}
+              AND ${projects.entityId} = ${notifications.entityId})))
          OR (${notifications.entityId} IS NULL AND ${messagingConversations.id} IS NOT NULL
            AND ${messagingMessages.deletedAt} IS NULL
           AND ${visibleConversations(db, scope)})
