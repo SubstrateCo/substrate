@@ -55,6 +55,9 @@ export function readOperations(
             // already satisfies visibleConversations, including partner conversations.
             liveApprovedParticipant(db),
             visibleConversations(db, scope),
+            // Match the Messages list: task discussions open only from their task, so they must
+            // not light the Messages dot with nothing there to read.
+            isNull(messagingConversations.taskEntityId),
             ne(messagingMessages.authorActorEntityId, actor.entityId),
             notInArray(
               messagingMessages.authorActorEntityId,

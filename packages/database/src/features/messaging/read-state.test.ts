@@ -2,6 +2,7 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { commit } from "../../core/effects";
 import { AccessDeniedError } from "../../errors";
+import { ActorRepositories } from "../../repositories";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { messagingMessages, messagingParticipants } from "./schema";
@@ -37,6 +38,33 @@ test("read positions persist, exclude own messages, and never move backwards", a
   expect(await reads().unreadCounts()).toEqual([
     { conversationId: conversation.id, unreadCount: 1 },
   ]);
+});
+
+test("unread counts cover only conversations the Messages list shows, not task discussions", async () => {
+  await f.verifyEmails();
+  const alice = new ActorRepositories(f.db, { organizationId: f.orgA, actorEntityId: f.alice });
+  const project = await alice.projects.create({ name: "Launch" });
+  const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Demo" });
+  await alice.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.bob,
+    level: "comment",
+  });
+  const discussion = await alice.tasks.ensureDiscussion(task.entityId);
+  const dm = await f.messaging("alice").createConversation({
+    kind: "dm",
+    emails: ["bob@example.com"],
+  });
+  await f.messaging("alice").sendMessage(discussion, "Discussion start");
+  const bob = f.messaging("bob");
+  await bob.sendMessage(discussion, "Discussion reply");
+  await bob.sendMessage(dm.id, "Direct reply");
+  // The discussion has an unread message, but only its task can open it.
+  expect((await f.messaging("alice").listMessages(discussion)).map((row) => row.body)).toEqual([
+    "Discussion start",
+    "Discussion reply",
+  ]);
+  expect(await reads("alice").unreadCounts()).toEqual([{ conversationId: dm.id, unreadCount: 1 }]);
 });
 
 test("unchanged and older read positions publish no refresh hints", async () => {
