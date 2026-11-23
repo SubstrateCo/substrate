@@ -6,20 +6,14 @@ ruleTester.run("no-native-date-input", noNativeDateInput, {
     '<input type="datetime-local" />',
     '<input type="hidden" value="2026-11-23" />',
     "<input type={kind} />",
+    // no-native-element reports a raw input, so this rule does not report it twice.
+    '<input type="date" />',
     '<DateField label="Due date" value={value} onChange={setValue} />',
     'import { Input } from "another-library"; <Input type="date" />;',
     'function Input() { return null; } <Input type="date" />;',
     'import { Input } from "@/components/ui/input"; function View(Input) { return <Input type="date" />; }',
   ],
   invalid: [
-    {
-      code: '<input type="date" />',
-      errors: [{ messageId: "date" }],
-    },
-    {
-      code: '<input type={"date"} />',
-      errors: [{ messageId: "date" }],
-    },
     {
       code: 'import { Input as DateInput } from "@/components/ui/input"; <DateInput type="date" />;',
       errors: [{ messageId: "date" }],

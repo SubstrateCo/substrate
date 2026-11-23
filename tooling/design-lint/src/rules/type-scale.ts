@@ -11,7 +11,7 @@ export const typeScale: Rule = {
     type: "suggestion",
     docs: { description: "Use the type roles: sizes, weights, tracking, and leading." },
     messages: {
-      size: `"{{className}}" is larger than body text outside a title role. Titles are semibold: page text-xl, record name text-lg/snug, settings section text-base; groups and cards are text-sm font-semibold (GroupTitle, CardTitle). Body is text-sm. ${SECTION}`,
+      size: `"{{className}}" is larger than body text outside a title role. For a title use <Heading level={...} variant="page" | "record" | "section" | "title"> from "@/components/ui/heading", or GroupTitle and CardTitle. Body is text-sm. ${SECTION}`,
       weight: `"{{className}}" is off the weight scale, and dark mode only steps down font-normal, font-medium, and font-semibold. Use one of those. ${SECTION}`,
       tracking: `"{{className}}" changes letter spacing outside a text-xl title. Remove it. ${SECTION}`,
       leading: `"{{className}}" repeats the default line height of {{size}}. Remove it, or use the {{size}}/relaxed shorthand for long-form text. ${SECTION}`,

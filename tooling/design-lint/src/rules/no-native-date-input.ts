@@ -1,4 +1,4 @@
-import { attributeString, elementImport, elementName, type Rule } from "../ast.ts";
+import { attributeString, elementImport, type Rule } from "../ast.ts";
 
 export const noNativeDateInput: Rule = {
   meta: {
@@ -12,17 +12,16 @@ export const noNativeDateInput: Rule = {
   create(context) {
     return {
       JSXOpeningElement(node) {
+        // A raw <input type="date"> is reported by no-native-element.
         if (attributeString(node, "type") !== "date") return;
-        if (elementName(node.name) !== "input") {
-          const imported = elementImport(context, node);
-          if (!imported) return;
-          const module = imported.source.replace(/\.[jt]sx?$/, "");
-          const field =
-            (imported.name === "Input" && module.endsWith("/ui/input")) ||
-            (imported.name === "NativeField" && module.endsWith("/forms/native-form")) ||
-            (imported.name === "FormTextField" && module.endsWith("/forms/form-text-field"));
-          if (!field || !/^(?:@\/components\/|\.\.?\/)/.test(module)) return;
-        }
+        const imported = elementImport(context, node);
+        if (!imported) return;
+        const module = imported.source.replace(/\.[jt]sx?$/, "");
+        const field =
+          (imported.name === "Input" && module.endsWith("/ui/input")) ||
+          (imported.name === "NativeField" && module.endsWith("/forms/native-form")) ||
+          (imported.name === "FormTextField" && module.endsWith("/forms/form-text-field"));
+        if (!field || !/^(?:@\/components\/|\.\.?\/)/.test(module)) return;
         context.report({ node, messageId: "date" });
       },
     };
