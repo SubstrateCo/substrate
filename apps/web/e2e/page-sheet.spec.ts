@@ -5,6 +5,9 @@ import { post, test, visit } from "./test-support/fixtures";
 import { project } from "./test-support/tasks";
 import { expect } from "@playwright/test";
 
+// Keep normal-motion coverage for sheet transitions and focus restoration.
+test.use({ reducedMotion: "no-preference" });
+
 test("contact sheets keep the list stable, replace records, and restore focus in dark mode", async ({
   account,
   client,
@@ -21,6 +24,9 @@ test("contact sheets keep the list stable, replace records, and restore focus in
   });
   const user = await client(account);
   const { page } = user;
+  expect(await page.evaluate(() => matchMedia("(prefers-reduced-motion: reduce)").matches)).toBe(
+    false,
+  );
   await page.emulateMedia({ colorScheme: "dark" });
   await visit(user, undefined, "/contacts");
   const search = page.getByRole("searchbox", { name: "Search contacts", exact: true });

@@ -21,6 +21,8 @@ export default defineConfig({
     browserName: "chromium",
     headless: true,
     viewport: { width: 1440, height: 900 },
+    // Functional workflows do not need to wait for decorative transitions.
+    reducedMotion: "reduce",
     actionTimeout: 5_000,
     navigationTimeout: 10_000,
     // Auth cookies and signed URLs can appear in traces. Do not collect them by default.
