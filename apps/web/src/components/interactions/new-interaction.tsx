@@ -1,7 +1,7 @@
 import { useState } from "react";
 
-import { InteractionEditor } from "@/components/context/interactions/interaction-editor";
 import { CustomerPicker } from "@/components/crm/customer-picker";
+import { InteractionEditor } from "@/components/interactions/interaction-editor";
 import { useInteractionMutation } from "@/queries/context/interactions";
 
 export function NewInteraction({

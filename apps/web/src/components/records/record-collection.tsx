@@ -6,7 +6,7 @@ import { useState } from "react";
 import { CrmExport } from "@/components/crm/crm-export";
 import { CrmResourceState } from "@/components/crm/crm-resource-state";
 import { sectionLabels, singularLabels, type CrmKind } from "@/components/crm/crm-types";
-import { DealPipeline, DealPipelineLoading } from "@/components/crm/deal-pipeline";
+import { DealPipeline, DealPipelineLoading } from "@/components/crm/deals/deal-pipeline";
 import { RecordEditor } from "@/components/crm/record-editor";
 import { RecordList } from "@/components/crm/record-list";
 import { StaleNotice } from "@/components/feedback/stale-notice";

@@ -18,7 +18,7 @@ import { createAgentWorkReadRepository } from "./features/agent-work/read-reposi
 import { createAgentRepository } from "./features/agents/repository";
 import { calendarRepository } from "./features/calendar/repository";
 import { contactApplicationRepository } from "./features/contacts/repository";
-import { contextContactInteractionRepository } from "./features/context/contact-interactions";
+import { contextContactInteractionRepository } from "./features/context/interactions/contact-interactions";
 import { createContextRepository } from "./features/context/service";
 import { createCrmFromMessageInContext } from "./features/crm/from-message";
 import { crmRepository } from "./features/crm/repository";

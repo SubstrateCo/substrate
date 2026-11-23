@@ -3,9 +3,13 @@ import { Link } from "@tanstack/react-router";
 import { useRef, type ReactNode, type RefObject } from "react";
 
 import type { CrmKind } from "./crm-types";
-import { useRecordManagement, type RecordTool, type ResponsibleRecord } from "./record-management";
-import { RecordResponsible } from "./record-responsible";
-import type { RecordSharingProps } from "./record-sharing";
+import {
+  useRecordManagement,
+  type RecordTool,
+  type ResponsibleRecord,
+} from "./management/record-management";
+import { RecordResponsible } from "./management/record-responsible";
+import type { RecordSharingProps } from "./management/record-sharing";
 import { CopyLink } from "@/components/context/links/copy-link";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";

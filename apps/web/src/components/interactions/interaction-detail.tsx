@@ -6,15 +6,15 @@ import { InteractionConnections } from "./interaction-connections";
 import { interactionOrigins, interactionTypes } from "./interaction-types";
 import { MeetingSourceLink } from "@/components/calendar/meeting-source-link";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
-import {
-  InteractionChangeDialog,
-  type InteractionChange,
-} from "@/components/context/interactions/interaction-change-dialog";
 import { CopyLink } from "@/components/context/links/copy-link";
 import { FollowUps } from "@/components/crm/follow-ups";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Tag } from "@/components/feedback/tag";
+import {
+  InteractionChangeDialog,
+  type InteractionChange,
+} from "@/components/interactions/interaction-change-dialog";
 import { PageSheetBody, PageSheetHeader, usePageSheet } from "@/components/layout/page-sheet";
 import { Property, PropertyList, RecordSection } from "@/components/layout/record-section";
 import { Timestamp } from "@/components/time/timestamp";

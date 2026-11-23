@@ -1,7 +1,7 @@
 import { linkRepository } from "../core/links/repository";
 import type { RepositoryContext } from "../core/repository-context";
 import { contactApplicationRepository } from "../features/contacts/repository";
-import { contextContactInteractionRepository } from "../features/context/contact-interactions";
+import { contextContactInteractionRepository } from "../features/context/interactions/contact-interactions";
 import type { developmentTeams } from "./data";
 
 type SeedContact = (typeof developmentTeams)[number]["contacts"][number];

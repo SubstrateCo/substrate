@@ -1,9 +1,9 @@
 import { useNavigate } from "@tanstack/react-router";
 
 import { AccountDetail } from "./account-detail";
-import { CrmSettings } from "./crm-settings";
 import type { CrmSection } from "./crm-types";
-import { DealDetail } from "./deal-detail";
+import { DealDetail } from "./deals/deal-detail";
+import { CrmSettings } from "./settings/crm-settings";
 import {
   PageContent,
   PageLayout,

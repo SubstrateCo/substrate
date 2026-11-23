@@ -6,9 +6,6 @@ import { useState } from "react";
 import { ContactMethods } from "./contact-methods";
 import { ContactMeetings } from "@/components/calendar/contact/contact-meetings";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
-import { InteractionEditor } from "@/components/context/interactions/interaction-editor";
-import { InteractionHistory } from "@/components/context/interactions/interaction-history";
-import { PublishInteraction } from "@/components/context/interactions/publish-interaction";
 import { AffiliationEditor } from "@/components/crm/affiliation-editor";
 import { CrmActivity } from "@/components/crm/crm-activity";
 import { crmResource } from "@/components/crm/crm-resource";
@@ -17,6 +14,9 @@ import { recordChangeDialog, type RecordChangeDialog } from "@/components/crm/re
 import { RecordChangeDialogs } from "@/components/crm/record-change-dialogs";
 import { RecordDetailView, RecordDetailLoading } from "@/components/crm/record-detail-view";
 import { ContentNotice } from "@/components/feedback/content-notice";
+import { InteractionEditor } from "@/components/interactions/interaction-editor";
+import { InteractionHistory } from "@/components/interactions/interaction-history";
+import { PublishInteraction } from "@/components/interactions/publish-interaction";
 import {
   Property,
   RecordSection,
