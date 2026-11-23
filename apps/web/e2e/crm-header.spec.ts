@@ -5,15 +5,16 @@ for (const [section, singular] of [
   ["accounts", "account"],
   ["deals", "deal"],
 ] as const) {
-  test(`${section} header groups accessible icon actions`, async ({ account, client }) => {
+  test(`${section} header has an icon download and a labelled create`, async ({
+    account,
+    client,
+  }) => {
     const user = await client(account);
     const { page } = user;
     await visit(user, undefined, "/crm", { section });
-    const actions = page.getByRole("group", { name: "CRM actions", exact: true });
-    const create = actions.getByRole("button", { name: `New ${singular}`, exact: true });
-    await create.focus();
-    await expect(page.getByRole("tooltip", { name: `New ${singular}`, exact: true })).toBeVisible();
-    const download = actions.getByRole("button", { name: `Download ${section}`, exact: true });
+    // The header create comes first; an empty list repeats it in its notice.
+    const create = page.getByRole("button", { name: `New ${singular}`, exact: true }).first();
+    const download = page.getByRole("button", { name: `Download ${section}`, exact: true });
     await download.focus();
     await expect(
       page.getByRole("tooltip", { name: `Download ${section}`, exact: true }),

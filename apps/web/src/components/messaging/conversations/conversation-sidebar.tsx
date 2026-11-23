@@ -63,7 +63,7 @@ export function ConversationSidebar({
     <PageSidebar id="conversation-sidebar" aria-label="Conversations" aria-busy={loading}>
       <PageSidebarHeader title="Messages" />
       {showList && (
-        <PageSidebarContent className="pt-0" onKeyDown={moveBetweenConversations}>
+        <PageSidebarContent onKeyDown={moveBetweenConversations}>
           {error && (
             <div className="px-2">
               <ErrorState

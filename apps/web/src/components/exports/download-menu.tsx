@@ -8,46 +8,30 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ChevronDown, Download, FileJson, FileSpreadsheet } from "lucide-react";
+import { Download, FileJson, FileSpreadsheet } from "lucide-react";
 
+/** A ghost icon tool for page headers that downloads the page's records as CSV or JSON. */
 export function DownloadMenu({
   label,
   scope,
   urls,
-  iconOnly = false,
 }: {
   label: string;
   scope: string;
   urls: { csv: string; json: string };
-  iconOnly?: boolean;
 }) {
-  const trigger = (
-    <DropdownMenuTrigger asChild>
-      <Button
-        variant={iconOnly ? "ghost" : "outline"}
-        size={iconOnly ? "icon-sm" : "sm"}
-        aria-label={label}
-      >
-        <Download aria-hidden="true" />
-        {!iconOnly && (
-          <>
-            Download
-            <ChevronDown aria-hidden="true" />
-          </>
-        )}
-      </Button>
-    </DropdownMenuTrigger>
-  );
   return (
     <DropdownMenu>
-      {iconOnly ? (
-        <Tooltip>
-          <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-          <TooltipContent>{label}</TooltipContent>
-        </Tooltip>
-      ) : (
-        trigger
-      )}
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon-sm" aria-label={label}>
+              <Download aria-hidden="true" />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="end">
         <DropdownMenuLabel>{scope}</DropdownMenuLabel>
         <DropdownMenuSeparator />

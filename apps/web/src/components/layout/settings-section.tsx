@@ -10,7 +10,6 @@ export function SettingsSection({
   description,
   actions,
   label,
-  layout = "stacked",
   children,
 }: {
   title: string;
@@ -18,7 +17,6 @@ export function SettingsSection({
   actions?: ReactNode;
   /** Accessible name when it should differ from the visible title. */
   label?: string;
-  layout?: "stacked" | "split";
   children: ReactNode;
 }) {
   const id = useId();
@@ -26,7 +24,7 @@ export function SettingsSection({
     <section
       aria-label={label}
       aria-labelledby={label ? undefined : `${id}-title`}
-      className={cn("grid min-w-0 gap-6", layout === "split" && "@2xl/content:grid-cols-3")}
+      className="grid min-w-0 gap-6"
     >
       <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0 flex-1 basis-72 space-y-1">
@@ -42,13 +40,7 @@ export function SettingsSection({
           </div>
         )}
       </header>
-      {layout === "split" ? (
-        <div className="grid w-full max-w-lg min-w-0 content-start gap-4 @2xl/content:col-span-2">
-          {children}
-        </div>
-      ) : (
-        children
-      )}
+      {children}
     </section>
   );
 }

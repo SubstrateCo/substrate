@@ -76,7 +76,7 @@ export function ProjectSidebar({
       />
       {/* With no projects to show, the main pane shows the load error. */}
       {error && !visible.length ? null : (
-        <PageSidebarContent className="pt-0">
+        <PageSidebarContent>
           {loading && !visible.length && (
             <div
               role="status"

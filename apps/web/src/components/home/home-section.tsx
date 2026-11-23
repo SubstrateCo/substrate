@@ -118,7 +118,7 @@ export function HomeSection({
     <Card size="sm" className="min-h-0 min-w-0 flex-1" role="region" aria-label={title}>
       <CardHeader className="flex shrink-0 items-start justify-between gap-3">
         <div className="space-y-1">
-          <CardTitle size={emphasis ? "lg" : undefined}>
+          <CardTitle>
             <h2>{title}</h2>
           </CardTitle>
           {description && <p className="text-xs text-muted-foreground">{description}</p>}

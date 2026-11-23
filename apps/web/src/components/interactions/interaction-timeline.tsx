@@ -2,7 +2,7 @@ import type { InteractionTimeline as TimelineInput } from "@substrate/contracts/
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { InteractionList } from "./interaction-list";
 import { InteractionPager } from "./interaction-pager";
@@ -27,7 +27,14 @@ import { Activity } from "lucide-react";
 
 type Cursor = Pick<TimelineInput, "beforeOccurredAt" | "beforeEntityId">;
 
-export function InteractionTimeline({ period }: { period: TimelineInput }) {
+export function InteractionTimeline({
+  period,
+  filters,
+}: {
+  period: TimelineInput;
+  /** Filters right after the search, such as the activity period. */
+  filters?: ReactNode;
+}) {
   const apps = useOrganizationApps();
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState("all");
@@ -35,16 +42,17 @@ export function InteractionTimeline({ period }: { period: TimelineInput }) {
   const debounced = useSearchDebounce(search, `${kind}:${origin}`);
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="flex shrink-0 flex-wrap gap-3">
-        <div className="min-w-40 flex-1">
-          <Input
-            aria-label="Search interactions"
-            placeholder="Search contacts or summaries"
-            value={search}
-            maxLength={200}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <Input
+          type="search"
+          aria-label="Search interactions"
+          placeholder="Search contacts or summaries…"
+          className="w-72 max-w-full"
+          value={search}
+          maxLength={200}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        {filters}
         <Select value={kind} onValueChange={setKind}>
           <SelectTrigger aria-label="Interaction type">
             <SelectValue />

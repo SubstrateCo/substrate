@@ -9,6 +9,7 @@ import {
   PageLayout,
   PageSidebar,
   PageSidebarContent,
+  PageSidebarHeader,
 } from "@/components/layout/page-layout";
 import { PageSheet } from "@/components/layout/page-sheet";
 import { RecordCollection } from "@/components/records/record-collection";
@@ -41,6 +42,7 @@ export function CrmWorkspace({
   return (
     <PageLayout id="crm" aria-label="CRM workspace">
       <PageSidebar aria-label="CRM">
+        <PageSidebarHeader title="CRM" />
         <PageSidebarContent>
           <nav aria-label="CRM">
             <ul className="flex gap-0.5 overflow-x-auto md:flex-col">

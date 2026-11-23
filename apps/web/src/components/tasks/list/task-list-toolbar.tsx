@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import type { ProjectDetail } from "../types";
 import type { TaskFilters, TaskSort } from "./task-filters";
 import { TaskFilterLayout } from "./task-list-layout";
@@ -35,6 +37,7 @@ export function TaskListToolbar({
   filtered,
   shown,
   total,
+  viewControl,
 }: {
   filters: TaskFilters;
   onChange: (filters: TaskFilters) => void;
@@ -43,6 +46,8 @@ export function TaskListToolbar({
   filtered: boolean;
   shown: number;
   total: number;
+  /** The view toggle, last at the right end. */
+  viewControl?: ReactNode;
 }) {
   const set = (patch: Partial<TaskFilters>) => onChange({ ...filters, ...patch });
   let assigneeName =
@@ -52,7 +57,7 @@ export function TaskListToolbar({
   return (
     <TaskFilterLayout toolbar>
       <Input
-        className="max-w-52 min-w-40 flex-1"
+        className="w-72 max-w-full"
         type="search"
         aria-label="Filter tasks"
         placeholder="Filter tasks"
@@ -127,6 +132,7 @@ export function TaskListToolbar({
           </p>
         </>
       )}
+      {viewControl && <div className="ml-auto">{viewControl}</div>}
     </TaskFilterLayout>
   );
 }

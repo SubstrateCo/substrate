@@ -30,7 +30,7 @@ export function SettingsNav({ groups }: { groups: readonly SettingsNavGroup[] })
   return (
     <PageSidebar aria-label="Settings">
       <PageSidebarHeader title="Settings" />
-      <PageSidebarContent className="pt-0">
+      <PageSidebarContent>
         <nav aria-label="Settings sections" className="space-y-5">
           {groups.map((group) => (
             <div key={group.label} className="space-y-1">

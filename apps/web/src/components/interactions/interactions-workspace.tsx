@@ -65,8 +65,42 @@ export function InteractionsWorkspace({
   let directorySection: InteractionSection = section;
   if (section === "person") directorySection = "people";
   if (section === "account") directorySection = "accounts";
+  const crmUnavailable = (section === "accounts" || section === "account") && !apps.enabled("crm");
+  // A profile renders its own header, with the record's name as the title.
+  const showsProfile =
+    !crmUnavailable && !!profileId && (section === "person" || section === "account");
+  const createButton = (
+    <Button size="sm" onClick={() => setCreating(true)}>
+      <Plus aria-hidden />
+      New interaction
+    </Button>
+  );
+  const periodControl = (
+    <SegmentedControl
+      aria-label="Activity period"
+      value={activeDays}
+      options={
+        section === "dashboard"
+          ? [
+              { value: "7", label: "Last 7 days" },
+              { value: "30", label: "Last 30 days" },
+            ]
+          : [
+              { value: "7", label: "Last 7 days" },
+              { value: "30", label: "Last 30 days" },
+              { value: "all", label: "All time" },
+            ]
+      }
+      onValueChange={(value) =>
+        void navigate({
+          to: "/interactions",
+          search: (previous) => ({ ...previous, days: value }),
+        })
+      }
+    />
+  );
   function content() {
-    if ((section === "accounts" || section === "account") && !apps.enabled("crm"))
+    if (crmUnavailable)
       return (
         <ContentNotice
           title="CRM is unavailable"
@@ -76,17 +110,26 @@ export function InteractionsWorkspace({
       );
     if (section === "dashboard")
       return (
-        <InteractionDashboard
-          key={activeDays}
-          period={period}
-          dates={dates}
-          days={activeDays === "7" ? "7" : "30"}
-        />
+        <div className="flex min-h-0 flex-1 flex-col gap-4">
+          <div className="flex shrink-0 flex-wrap items-center gap-2">{periodControl}</div>
+          <InteractionDashboard
+            key={activeDays}
+            period={period}
+            dates={dates}
+            days={activeDays === "7" ? "7" : "30"}
+          />
+        </div>
       );
-    if (section === "timeline") return <InteractionTimeline key={activeDays} period={filter} />;
+    if (section === "timeline")
+      return <InteractionTimeline key={activeDays} period={filter} filters={periodControl} />;
     if (section === "people" || section === "accounts")
       return (
-        <InteractionDirectory key={`${section}:${activeDays}`} period={filter} type={section} />
+        <InteractionDirectory
+          key={`${section}:${activeDays}`}
+          period={filter}
+          type={section}
+          filters={periodControl}
+        />
       );
     if (!profileId)
       return (
@@ -103,6 +146,8 @@ export function InteractionsWorkspace({
         type={section === "person" ? "person" : "account"}
         period={filter}
         tab={tab ?? "activity"}
+        periodControl={periodControl}
+        createAction={createButton}
       />
     );
   }
@@ -112,10 +157,10 @@ export function InteractionsWorkspace({
         <PageSidebarHeader title="Interactions" />
         <PageSidebarContent>
           <nav aria-label="Interactions views">
-            <ul className="flex gap-0.5 md:flex-col">
+            <ul className="flex gap-0.5 overflow-x-auto md:flex-col">
               {sections.map(({ value, label, icon: Icon }) =>
                 value === "accounts" && !apps.enabled("crm") ? null : (
-                  <li key={value}>
+                  <li key={value} className="shrink-0">
                     <Button variant="sidebar" className="w-full justify-start" asChild>
                       <Link
                         to="/interactions"
@@ -138,40 +183,8 @@ export function InteractionsWorkspace({
         </PageSidebarContent>
       </PageSidebar>
       <PageContent className="@container">
-        <div className="mx-auto flex min-h-0 w-full max-w-7xl flex-1 flex-col gap-4 overflow-hidden p-6">
-          <PageHeader
-            title={titles[section]}
-            actions={
-              <>
-                <SegmentedControl
-                  aria-label="Activity period"
-                  value={activeDays}
-                  options={
-                    section === "dashboard"
-                      ? [
-                          { value: "7", label: "Last 7 days" },
-                          { value: "30", label: "Last 30 days" },
-                        ]
-                      : [
-                          { value: "7", label: "Last 7 days" },
-                          { value: "30", label: "Last 30 days" },
-                          { value: "all", label: "All time" },
-                        ]
-                  }
-                  onValueChange={(value) =>
-                    void navigate({
-                      to: "/interactions",
-                      search: (previous) => ({ ...previous, days: value }),
-                    })
-                  }
-                />
-                <Button size="sm" onClick={() => setCreating(true)}>
-                  <Plus aria-hidden />
-                  New interaction
-                </Button>
-              </>
-            }
-          />
+        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden p-6">
+          {!showsProfile && <PageHeader title={titles[section]} actions={createButton} />}
           {content()}
         </div>
       </PageContent>

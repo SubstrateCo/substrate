@@ -1,10 +1,10 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
 import { TechnicalDetails } from "../technical-details";
-import { WorkIndicator } from "../work-indicator";
 import { TurnTimelineLoading } from "./turn-timeline";
 import { PaneState } from "@/components/feedback/pane-state";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
+import { PageHeader } from "@/components/layout/page-header";
 import { PageAside, useAsideCovers } from "@/components/layout/page-layout";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
@@ -147,53 +147,53 @@ export function TurnTranscriptView({
     );
   return (
     <PageAside aria-label="Agent transcript">
-      <header className="flex shrink-0 items-center gap-3 border-b bg-card/60 py-3 pr-3 pl-4">
-        <span className="relative grid size-8 shrink-0 place-items-center rounded-lg bg-accent text-accent-foreground">
-          <Bot aria-hidden="true" className="size-4" />
-          {tone && <WorkIndicator tone={tone} label={label} />}
-        </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="truncate font-semibold">{name} · transcript</h2>
-          {label && (
-            <p
-              className={cn(
-                "truncate text-xs text-muted-foreground tabular-nums",
-                tone === "attention" && "text-warning-text",
-                tone === "failed" && "text-destructive",
-              )}
-            >
-              {label}
-            </p>
-          )}
-        </div>
-        {onStop && (
-          <Button
-            type="button"
-            size="sm"
-            variant="destructive-ghost"
-            disabled={stopping}
-            onClick={onStop}
-          >
-            <Square aria-hidden="true" />
-            {stopping ? "Stopping…" : "Stop"}
-          </Button>
-        )}
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              ref={close}
-              type="button"
-              size="icon-sm"
-              variant="ghost"
-              aria-label="Close transcript"
-              onClick={onClose}
-            >
-              <X />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Close transcript</TooltipContent>
-        </Tooltip>
-      </header>
+      <PageHeader
+        variant="pane"
+        icon={<Bot aria-hidden="true" />}
+        title={`${name} · transcript`}
+        actions={
+          <>
+            {label && (
+              <span
+                className={cn(
+                  "mr-1.5 truncate text-xs text-muted-foreground tabular-nums",
+                  tone === "attention" && "text-warning-text",
+                  tone === "failed" && "text-destructive",
+                )}
+              >
+                {label}
+              </span>
+            )}
+            {onStop && (
+              <Button
+                type="button"
+                size="sm"
+                variant="destructive-ghost"
+                disabled={stopping}
+                onClick={onStop}
+              >
+                <Square aria-hidden="true" />
+                {stopping ? "Stopping…" : "Stop"}
+              </Button>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  ref={close}
+                  type="button"
+                  size="icon-sm"
+                  variant="ghost"
+                  aria-label="Close transcript"
+                  onClick={onClose}
+                >
+                  <X />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Close transcript</TooltipContent>
+            </Tooltip>
+          </>
+        }
+      />
       {body}
     </PageAside>
   );

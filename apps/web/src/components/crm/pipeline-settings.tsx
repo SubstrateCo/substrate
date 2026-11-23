@@ -168,7 +168,6 @@ function PipelineSection({
 }) {
   return (
     <SettingsSection
-      layout="split"
       title="Pipeline"
       description="Arrange open stages in sales order. Renaming or reordering keeps deal history."
     >

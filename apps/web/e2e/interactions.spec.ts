@@ -155,7 +155,7 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   await expect(list.getByRole("listitem")).toHaveCount(50);
   await page.getByRole("button", { name: "Older interactions", exact: true }).click();
   await expect(page.getByRole("button", { name: "Newest", exact: true })).toBeEnabled();
-  await page.getByRole("textbox", { name: "Search interactions", exact: true }).fill("Maya");
+  await page.getByRole("searchbox", { name: "Search interactions", exact: true }).fill("Maya");
   await expect(list.getByRole("listitem")).toHaveCount(26);
   await expect(page.getByRole("button", { name: "Newest", exact: true })).toHaveCount(0);
   await page.getByRole("combobox", { name: "Interaction type", exact: true }).click();
@@ -178,7 +178,7 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   await capture(page, "dashboard-narrow-dark");
   await page.getByRole("link", { name: "View timeline", exact: true }).click();
   await expect(
-    page.getByRole("textbox", { name: "Search interactions", exact: true }),
+    page.getByRole("searchbox", { name: "Search interactions", exact: true }),
   ).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
 });
@@ -443,7 +443,7 @@ test("empty dark dashboard and timeline do not invent activity", async ({ accoun
     page.getByRole("heading", { name: "No interactions in this period", exact: true }),
   ).toBeVisible();
   await capture(page, "timeline-empty-dark");
-  await page.getByRole("textbox", { name: "Search interactions", exact: true }).fill("unmatched");
+  await page.getByRole("searchbox", { name: "Search interactions", exact: true }).fill("unmatched");
   await expect(
     page.getByRole("heading", { name: "No matching interactions", exact: true }),
   ).toBeVisible();

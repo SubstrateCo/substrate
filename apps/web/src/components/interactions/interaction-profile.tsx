@@ -3,7 +3,7 @@ import type { InteractionTimeline as TimelineInput } from "@substrate/contracts/
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { RelationshipMap } from "./interaction-connections";
 import { InteractionTimeline } from "./interaction-timeline";
@@ -11,6 +11,7 @@ import { ContactLink } from "@/components/contacts/contact-link";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { SegmentedControl } from "@/components/forms/segmented-control";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { crmLink } from "@/lib/navigation/record-links";
@@ -23,12 +24,18 @@ export function InteractionProfile({
   type,
   period,
   tab,
+  periodControl,
+  createAction,
 }: {
   organizationId: string;
   entityId: string;
   type: "person" | "account";
   period: TimelineInput;
   tab: "activity" | "map";
+  /** The activity period, in the activity toolbar. */
+  periodControl?: ReactNode;
+  /** The primary create button, last in the header. */
+  createAction?: ReactNode;
 }) {
   const profile = useQuery(interactionProfileOptions(organizationId, entityId, type));
   const navigate = useNavigate({ from: "/interactions/" });
@@ -44,9 +51,9 @@ export function InteractionProfile({
   if (!profile.data) return <LoadingState label="Loading interaction profile…" />;
   const data = profile.data;
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-3">
-        <div className="space-y-1">
+    <div className="flex min-h-0 flex-1 flex-col gap-6">
+      <div className="shrink-0 space-y-2">
+        <Button variant="link" size="sm" asChild>
           <Link
             to="/interactions"
             search={(previous) => ({
@@ -55,26 +62,32 @@ export function InteractionProfile({
               profileId: undefined,
               tab: undefined,
             })}
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:underline"
           >
-            <ArrowLeft aria-hidden className="size-3" />
-            {type === "person" ? "People" : "Organizations"}
+            <ArrowLeft aria-hidden />
+            Back to {type === "person" ? "people" : "organizations"}
           </Link>
-          <h2 className="text-lg font-semibold">{data.title}</h2>
-        </div>
-        <Button variant="outline" size="sm" asChild>
-          {type === "person" ? (
-            <ContactLink entityId={entityId}>
-              Open contact
-              <ArrowUpRight aria-hidden />
-            </ContactLink>
-          ) : (
-            <Link {...crmLink(organizationId, "accounts", entityId)}>
-              Open in CRM
-              <ArrowUpRight aria-hidden />
-            </Link>
-          )}
         </Button>
+        <PageHeader
+          title={data.title}
+          actions={
+            <>
+              <Button variant="outline" size="sm" asChild>
+                {type === "person" ? (
+                  <ContactLink entityId={entityId}>
+                    Open contact
+                    <ArrowUpRight aria-hidden />
+                  </ContactLink>
+                ) : (
+                  <Link {...crmLink(organizationId, "accounts", entityId)}>
+                    Open in CRM
+                    <ArrowUpRight aria-hidden />
+                  </Link>
+                )}
+              </Button>
+              {createAction}
+            </>
+          }
+        />
       </div>
       <Tabs
         value={tab}
@@ -86,41 +99,44 @@ export function InteractionProfile({
         }
         className="flex min-h-0 flex-1 flex-col"
       >
-        <TabsList variant="line" aria-label="Profile sections">
-          <TabsTrigger value="activity">
-            <List aria-hidden />
-            Activity record
-          </TabsTrigger>
-          <TabsTrigger value="map">
-            <Network aria-hidden />
-            Relationship map
-          </TabsTrigger>
-        </TabsList>
+        <div className="shrink-0 border-b">
+          <TabsList variant="line" aria-label="Profile sections">
+            <TabsTrigger value="activity">
+              <List aria-hidden />
+              Activity record
+            </TabsTrigger>
+            <TabsTrigger value="map">
+              <Network aria-hidden />
+              Relationship map
+            </TabsTrigger>
+          </TabsList>
+        </div>
         <TabsContent value="activity" className="flex min-h-0 flex-col">
-          <div className="flex min-h-0 flex-1 flex-col gap-3">
-            {type === "account" && (
-              <div className="shrink-0">
-                <SegmentedControl
-                  aria-label="Interaction scope"
-                  value={scope}
-                  onValueChange={setScope}
-                  options={[
-                    { value: "related", label: "Related contacts" },
-                    { value: "linked", label: "Explicit links" },
-                  ]}
-                />
-              </div>
-            )}
-            <InteractionTimeline
-              key={scope}
-              period={{
-                ...period,
-                contactEntityId: type === "person" ? entityId : undefined,
-                accountEntityId: type === "account" ? entityId : undefined,
-                scope,
-              }}
-            />
-          </div>
+          <InteractionTimeline
+            key={scope}
+            period={{
+              ...period,
+              contactEntityId: type === "person" ? entityId : undefined,
+              accountEntityId: type === "account" ? entityId : undefined,
+              scope,
+            }}
+            filters={
+              <>
+                {periodControl}
+                {type === "account" && (
+                  <SegmentedControl
+                    aria-label="Interaction scope"
+                    value={scope}
+                    onValueChange={setScope}
+                    options={[
+                      { value: "related", label: "Related contacts" },
+                      { value: "linked", label: "Explicit links" },
+                    ]}
+                  />
+                )}
+              </>
+            }
+          />
         </TabsContent>
         <TabsContent value="map" className="flex min-h-0 flex-col">
           <RelationshipMap

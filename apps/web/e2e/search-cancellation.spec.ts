@@ -130,7 +130,7 @@ test("CRM search waits for typing to settle and aborts the old request immediate
       delivered.resolve();
     }
   });
-  const input = page.getByRole("textbox", { name: "Search accounts", exact: true });
+  const input = page.getByRole("searchbox", { name: "Search accounts", exact: true });
   await input.fill("N");
   await page.clock.runFor(100);
   await input.fill("No");

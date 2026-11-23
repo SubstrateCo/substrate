@@ -90,35 +90,19 @@ export function RecordDetailView({
             {actions}
             {canEdit && (
               <>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={sheet ? "ghost" : "outline"}
-                      size={sheet ? "icon-sm" : "sm"}
-                      aria-label="Edit"
-                      onClick={onEdit}
-                      disabled={archived}
-                    >
-                      <Pencil aria-hidden />
-                      {!sheet && "Edit"}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Edit</TooltipContent>
-                </Tooltip>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant={sheet ? "ghost" : "outline"}
-                      size={sheet ? "icon-sm" : "sm"}
-                      aria-label={archived ? "Restore" : "Archive"}
-                      onClick={onArchive}
-                    >
-                      {archived ? <RotateCcw aria-hidden /> : <Archive aria-hidden />}
-                      {!sheet && (archived ? "Restore" : "Archive")}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{archived ? "Restore" : "Archive"}</TooltipContent>
-                </Tooltip>
+                <RecordAction
+                  iconOnly={!!sheet}
+                  label="Edit"
+                  icon={<Pencil aria-hidden />}
+                  onClick={onEdit}
+                  disabled={archived}
+                />
+                <RecordAction
+                  iconOnly={!!sheet}
+                  label={archived ? "Restore" : "Archive"}
+                  icon={archived ? <RotateCcw aria-hidden /> : <Archive aria-hidden />}
+                  onClick={onArchive}
+                />
               </>
             )}
           </>
@@ -149,6 +133,45 @@ export function RecordDetailView({
   );
 }
 
+/** A ghost icon tool with a tooltip in a sheet; a labelled outline button on the page. */
+function RecordAction({
+  iconOnly,
+  label,
+  icon,
+  onClick,
+  disabled,
+}: {
+  iconOnly: boolean;
+  label: string;
+  icon: ReactNode;
+  onClick: () => void;
+  disabled?: boolean;
+}) {
+  if (!iconOnly)
+    return (
+      <Button variant="outline" size="sm" onClick={onClick} disabled={disabled}>
+        {icon}
+        {label}
+      </Button>
+    );
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={label}
+          onClick={onClick}
+          disabled={disabled}
+        >
+          {icon}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
+  );
+}
+
 function RecordDetailFrame({ children }: { children: ReactNode }) {
   const sheet = usePageSheet();
   if (sheet)
@@ -159,7 +182,7 @@ function RecordDetailFrame({ children }: { children: ReactNode }) {
     );
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-6">
-      <div className="mx-auto max-w-6xl space-y-6">{children}</div>
+      <div className="mx-auto max-w-4xl space-y-6">{children}</div>
     </div>
   );
 }

@@ -13,7 +13,6 @@ import { StaleNotice } from "@/components/feedback/stale-notice";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { ButtonGroup } from "@/components/ui/button-group";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +29,7 @@ import {
   crmSettingsOptions,
 } from "@/queries/crm/options";
 import { useRecordMutation } from "@/queries/records/mutations";
-import { Plus } from "lucide-react";
+import { ChevronLeft, ChevronRight, Plus } from "lucide-react";
 
 const pageSize = 100;
 
@@ -145,64 +144,66 @@ export function RecordCollection({
           setCreating(true);
         }}
       />
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="w-72 max-w-full">
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-center gap-2">
           <Input
+            type="search"
             aria-label={`Search ${kind}`}
             placeholder={`Search ${kind}…`}
+            className="w-72 max-w-full"
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
               setCursors([]);
             }}
           />
-        </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <Checkbox
-              id="crm-archived"
-              checked={archived}
-              onCheckedChange={(checked) => {
-                setArchived(checked === true);
-                setCursors([]);
-              }}
-            />
-            <Label htmlFor="crm-archived">Archived</Label>
+          <div className="ml-auto flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <Checkbox
+                id="crm-archived"
+                checked={archived}
+                onCheckedChange={(checked) => {
+                  setArchived(checked === true);
+                  setCursors([]);
+                }}
+              />
+              <Label htmlFor="crm-archived">Archived</Label>
+            </div>
+            {kind === "deals" && (
+              <SegmentedControl
+                aria-label="Deal view"
+                value={view}
+                onValueChange={setView}
+                options={[
+                  { value: "pipeline", label: "Pipeline" },
+                  { value: "list", label: "List" },
+                ]}
+              />
+            )}
           </div>
-          {kind === "deals" && (
-            <SegmentedControl
-              aria-label="Deal view"
-              value={view}
-              onValueChange={setView}
-              options={[
-                { value: "pipeline", label: "Pipeline" },
-                { value: "list", label: "List" },
-              ]}
-            />
-          )}
         </div>
+        <RecordCollectionResults
+          organizationId={organizationId}
+          kind={kind}
+          records={records}
+          queries={queries}
+          searchPending={debounced.pending}
+          showPipeline={dealPipelineView && !archived}
+          dealPipelineView={dealPipelineView}
+          page={cursors.length + 1}
+          filtered={debounced.query !== "" || archived}
+          onCreate={
+            records.canCreate
+              ? () => {
+                  mutation.reset();
+                  setCreating(true);
+                }
+              : undefined
+          }
+          onPrevious={() => setCursors((previous) => previous.slice(0, -1))}
+          onNext={(entityId) => setCursors((previous) => [...previous, entityId])}
+        />
       </div>
-      <RecordCollectionResults
-        organizationId={organizationId}
-        kind={kind}
-        records={records}
-        queries={queries}
-        searchPending={debounced.pending}
-        showPipeline={dealPipelineView && !archived}
-        dealPipelineView={dealPipelineView}
-        page={cursors.length + 1}
-        filtered={debounced.query !== "" || archived}
-        onCreate={
-          records.canCreate
-            ? () => {
-                mutation.reset();
-                setCreating(true);
-              }
-            : undefined
-        }
-        onPrevious={() => setCursors((previous) => previous.slice(0, -1))}
-        onNext={(entityId) => setCursors((previous) => [...previous, entityId])}
-      />
       {creating && (
         <RecordEditor
           kind={kind}
@@ -255,38 +256,6 @@ function RecordCollectionHeader({
   onCreate: () => void;
 }) {
   const singular = singularLabels[kind];
-  const compactActions = kind !== "contacts";
-  const createButton = (
-    <Button
-      size={compactActions ? "icon-sm" : "sm"}
-      variant={compactActions ? "ghost" : "default"}
-      aria-label={`New ${singular}`}
-      disabled={!canCreate}
-      onClick={onCreate}
-    >
-      <Plus aria-hidden />
-      {!compactActions && <>New {singular}</>}
-    </Button>
-  );
-  const actions = (
-    <>
-      <CrmExport
-        organizationId={organizationId}
-        kind={kind}
-        archived={archived ? "archived" : "active"}
-        search={search}
-        iconOnly={compactActions}
-      />
-      {compactActions ? (
-        <Tooltip>
-          <TooltipTrigger asChild>{createButton}</TooltipTrigger>
-          <TooltipContent>New {singular}</TooltipContent>
-        </Tooltip>
-      ) : (
-        createButton
-      )}
-    </>
-  );
   return (
     <PageHeader
       title={sectionLabels[kind]}
@@ -298,7 +267,18 @@ function RecordCollectionHeader({
         }[kind]
       }
       actions={
-        compactActions ? <ButtonGroup aria-label="CRM actions">{actions}</ButtonGroup> : actions
+        <>
+          <CrmExport
+            organizationId={organizationId}
+            kind={kind}
+            archived={archived ? "archived" : "active"}
+            search={search}
+          />
+          <Button size="sm" disabled={!canCreate} onClick={onCreate}>
+            <Plus aria-hidden />
+            New {singular}
+          </Button>
+        </>
       }
     />
   );
@@ -406,24 +386,43 @@ function RecordPagination({
   onPrevious: () => void;
   onNext: () => void;
 }) {
+  // One page of results needs no pager.
+  if (page === 1 && rowCount < pageSize) return null;
   return (
     <div className="flex items-center justify-between gap-3 text-xs text-muted-foreground">
       <span>
         Page {page} · up to {pageSize} records
         {dealPipelineView ? " · open deals on this page" : ""}
       </span>
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" disabled={page === 1 || fetching} onClick={onPrevious}>
-          Previous
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={rowCount < pageSize || fetching}
-          onClick={onNext}
-        >
-          Next
-        </Button>
+      <div className="flex gap-0.5">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Previous page"
+              disabled={page === 1 || fetching}
+              onClick={onPrevious}
+            >
+              <ChevronLeft aria-hidden />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Previous page</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              aria-label="Next page"
+              disabled={rowCount < pageSize || fetching}
+              onClick={onNext}
+            >
+              <ChevronRight aria-hidden />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Next page</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   );

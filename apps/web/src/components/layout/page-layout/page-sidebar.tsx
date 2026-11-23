@@ -68,10 +68,11 @@ export function PageSidebarHeader({
 }
 
 export function PageSidebarContent({ className, ...props }: ComponentProps<"div">) {
+  // Always follows PageSidebarHeader, so it needs no top padding.
   return (
     <div
       data-slot="page-sidebar-content"
-      className={cn("min-h-0 flex-1 space-y-5 overflow-y-auto px-2 py-3", className)}
+      className={cn("min-h-0 flex-1 space-y-5 overflow-y-auto px-2 pb-3", className)}
       {...props}
     />
   );

@@ -24,17 +24,11 @@ export function ProjectLoading() {
       <div aria-hidden="true" className="flex min-h-0 flex-1 flex-col">
         <ProjectHeaderLayout>
           <PageHeader
-            title={
-              <span className="inline-flex items-center gap-2">
-                <span className="text-2xl">
-                  <SkeletonText width="1.5rem" />
-                </span>
-                <SkeletonText width="12rem" />
-              </span>
-            }
+            icon={<Skeleton className="size-6 shrink-0" />}
+            title={<SkeletonText width="12rem" />}
           />
           <ProjectTabLayout>
-            <div className="-ml-1.5 flex h-8 items-center gap-1 p-0.75 text-sm font-medium text-muted-foreground">
+            <div className="flex h-8 items-center gap-1 p-0.75 text-sm font-medium text-muted-foreground">
               {projectTabs.map(({ value, label }) => (
                 <span key={value} className="px-1.5">
                   {label}
@@ -45,10 +39,11 @@ export function ProjectLoading() {
         </ProjectHeaderLayout>
         <section className="@container flex min-h-0 min-w-0 flex-1 flex-col">
           <TaskFilterLayout>
-            <Skeleton className="h-9 w-52" />
-            <Skeleton className="h-9 w-40" />
-            <Skeleton className="h-9 w-36" />
-            <Skeleton className="h-9 w-28" />
+            <Skeleton className="h-8 w-72 max-w-full" />
+            <Skeleton className="h-8 w-40" />
+            <Skeleton className="h-8 w-36" />
+            <Skeleton className="h-8 w-28" />
+            <Skeleton className="ml-auto h-8 w-36" />
           </TaskFilterLayout>
           <div className="min-h-0 flex-1 overflow-y-auto pb-6">
             <TaskGroupHeaderLayout>

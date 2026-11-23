@@ -23,44 +23,46 @@ export function CalendarAgenda({
   eventLink: (event: CalendarEventSummary) => LinkProps;
 }) {
   return (
-    <ol aria-label="Agenda" className="mx-auto w-full max-w-3xl space-y-6 px-4 py-6 sm:px-6">
-      {days.map((group) => {
-        const label = formatDayLabel(group.day, now);
-        const events = [...group.allDay, ...group.timed];
-        const today = isSameDay(group.day, now);
-        return (
-          <li key={group.key} aria-labelledby={`agenda-${group.key}`} className="space-y-2">
-            <h2
-              id={`agenda-${group.key}`}
-              className="flex items-baseline gap-2 text-sm font-semibold"
-            >
-              <span className={cn(today && "text-primary")}>{label}</span>
-              {(label === "Today" || label === "Yesterday") && (
-                <span className="text-xs font-normal text-muted-foreground">
-                  {formatShortDate(group.day, now)}
-                </span>
+    <div className="p-6">
+      <ol aria-label="Agenda" className="mx-auto w-full max-w-4xl space-y-6">
+        {days.map((group) => {
+          const label = formatDayLabel(group.day, now);
+          const events = [...group.allDay, ...group.timed];
+          const today = isSameDay(group.day, now);
+          return (
+            <li key={group.key} aria-labelledby={`agenda-${group.key}`} className="space-y-2">
+              <h2
+                id={`agenda-${group.key}`}
+                className="flex items-baseline gap-2 text-sm font-semibold"
+              >
+                <span className={cn(today && "text-primary")}>{label}</span>
+                {(label === "Today" || label === "Yesterday") && (
+                  <span className="text-xs font-normal text-muted-foreground">
+                    {formatShortDate(group.day, now)}
+                  </span>
+                )}
+              </h2>
+              {events.length === 0 ? (
+                <ContentNotice variant="inline" title="No events" />
+              ) : (
+                <ul className="divide-y overflow-hidden rounded-lg border bg-card">
+                  {events.map((event) => (
+                    <AgendaRow
+                      key={event.entityId}
+                      event={event}
+                      day={group.day}
+                      ended={eventEnded(event, now)}
+                      selected={event.entityId === selectedEventId}
+                      link={eventLink(event)}
+                    />
+                  ))}
+                </ul>
               )}
-            </h2>
-            {events.length === 0 ? (
-              <ContentNotice variant="inline" title="No events" />
-            ) : (
-              <ul className="divide-y overflow-hidden rounded-lg border bg-card">
-                {events.map((event) => (
-                  <AgendaRow
-                    key={event.entityId}
-                    event={event}
-                    day={group.day}
-                    ended={eventEnded(event, now)}
-                    selected={event.entityId === selectedEventId}
-                    link={eventLink(event)}
-                  />
-                ))}
-              </ul>
-            )}
-          </li>
-        );
-      })}
-    </ol>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
 

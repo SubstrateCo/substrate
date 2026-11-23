@@ -8,6 +8,7 @@ import { CopyLink } from "@/components/context/links/copy-link";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { PageHeader } from "@/components/layout/page-header";
 import { PageAside, useAsideCovers } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -37,31 +38,34 @@ export function CalendarEventPanel({
   const event = query.data;
   return (
     <PageAside aria-label="Event details">
-      <header className="flex h-12 shrink-0 items-center justify-between gap-2 border-b px-4">
-        <h2 className="text-sm font-semibold">Event</h2>
-        <div role="group" aria-label="Event tools" className="flex gap-0.5">
-          {event && (
-            <CopyLink
-              grouped
-              link={calendarLink(organizationId, event.entityId, eventDate(event))}
-            />
-          )}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                ref={close}
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Close event"
-                onClick={onClose}
-              >
-                <X />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Close event</TooltipContent>
-          </Tooltip>
-        </div>
-      </header>
+      <PageHeader
+        variant="pane"
+        title="Event"
+        actions={
+          <div role="group" aria-label="Event tools" className="flex gap-0.5">
+            {event && (
+              <CopyLink
+                grouped
+                link={calendarLink(organizationId, event.entityId, eventDate(event))}
+              />
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  ref={close}
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Close event"
+                  onClick={onClose}
+                >
+                  <X />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Close event</TooltipContent>
+            </Tooltip>
+          </div>
+        }
+      />
       {query.error && isAccessFailure(query.error) && (
         <ContentNotice
           icon={Unlink}

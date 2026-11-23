@@ -6,7 +6,7 @@ import type {
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -37,9 +37,12 @@ import { Building2, Users } from "lucide-react";
 export function InteractionDirectory({
   period,
   type,
+  filters,
 }: {
   period: InteractionTimeline;
   type: "people" | "accounts";
+  /** Filters right after the search, such as the activity period. */
+  filters?: ReactNode;
 }) {
   const [search, setSearch] = useState("");
   const [frequency, setFrequency] = useState("all");
@@ -48,17 +51,17 @@ export function InteractionDirectory({
   const debounced = useSearchDebounce(search, `${frequency}:${sort}`);
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
-      <div className="flex shrink-0 flex-wrap gap-3">
-        <div className="min-w-40 flex-1">
-          <Input
-            type="search"
-            aria-label={type === "people" ? "Search people" : "Search organizations"}
-            placeholder={type === "people" ? "Search people…" : "Search organizations…"}
-            value={search}
-            maxLength={200}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <Input
+          type="search"
+          aria-label={type === "people" ? "Search people" : "Search organizations"}
+          placeholder={type === "people" ? "Search people…" : "Search organizations…"}
+          className="w-72 max-w-full"
+          value={search}
+          maxLength={200}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        {filters}
         <SegmentedControl
           aria-label="Interaction frequency"
           value={frequency}

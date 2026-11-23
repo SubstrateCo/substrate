@@ -37,8 +37,8 @@ export function NeedsYouView({
   onRetry: () => void;
 }) {
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-      <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col gap-6 p-6">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
+      <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col gap-6">
         <PageHeader
           title="Needs you"
           description="Questions, approvals, and stopped work from your agents."

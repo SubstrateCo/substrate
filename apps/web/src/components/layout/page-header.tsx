@@ -29,7 +29,7 @@ export function PageHeader({
 }: {
   title: ReactNode;
   description?: ReactNode;
-  /** A kind icon before a pane title, such as Hash for a channel. */
+  /** A kind icon before a pane title (Hash for a channel), or a record icon before a page title. */
   icon?: ReactNode;
   actions?: ReactNode;
   variant?: "page" | "pane";
@@ -45,12 +45,16 @@ export function PageHeader({
           className={cn(
             "min-w-0 font-semibold",
             page
-              ? "text-xl tracking-tight wrap-break-word"
+              ? cn(
+                  "text-xl tracking-tight wrap-break-word",
+                  // The caller sizes a page icon, such as a size-6 project image.
+                  icon && "flex items-center gap-2",
+                )
               : "flex items-center gap-2 truncate text-sm [&_svg]:size-4 [&_svg]:shrink-0",
           )}
         >
           {icon}
-          <span className={page ? undefined : "truncate"}>{title}</span>
+          <span className={page ? "min-w-0" : "truncate"}>{title}</span>
         </h1>
         {page && description && <p className="text-sm text-muted-foreground">{description}</p>}
       </div>

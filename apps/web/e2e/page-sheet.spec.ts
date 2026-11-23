@@ -23,7 +23,7 @@ test("contact sheets keep the list stable, replace records, and restore focus in
   const { page } = user;
   await page.emulateMedia({ colorScheme: "dark" });
   await visit(user, undefined, "/contacts");
-  const search = page.getByRole("textbox", { name: "Search contacts", exact: true });
+  const search = page.getByRole("searchbox", { name: "Search contacts", exact: true });
   const before = await search.boundingBox();
   const launcher = page.getByRole("link", { name: "Avery Chen", exact: true });
   await launcher.click();

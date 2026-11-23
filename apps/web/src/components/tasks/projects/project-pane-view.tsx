@@ -24,7 +24,6 @@ import { SettingsContent } from "@/components/layout/settings-page";
 import { ProjectLoading } from "@/components/tasks/projects/project-loading";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ResourceStatus } from "@/lib/resource-state";
 import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
 import { Columns3, ListTodo, Plus, Unlink } from "lucide-react";
@@ -123,21 +122,13 @@ function ProjectPaneContent({
                 onCreateTask={canEdit ? panel.create : undefined}
               />
               <ProjectTabLayout>
-                <TabsList ref={tabsRef} variant="line" className="-ml-1.5">
+                <TabsList ref={tabsRef} variant="line">
                   {projectTabs.map(({ value, label }) => (
                     <TabsTrigger key={value} value={value} className="flex-none">
                       {label}
                     </TabsTrigger>
                   ))}
                 </TabsList>
-                {tab === "tasks" && (
-                  <SegmentedControl
-                    aria-label="Task view"
-                    value={view}
-                    options={viewOptions}
-                    onValueChange={setView}
-                  />
-                )}
               </ProjectTabLayout>
             </ProjectHeaderLayout>
             {state === "stale" && (
@@ -153,6 +144,14 @@ function ProjectPaneContent({
               <TaskList
                 detail={detail}
                 view={view}
+                viewControl={
+                  <SegmentedControl
+                    aria-label="Task view"
+                    value={view}
+                    options={viewOptions}
+                    onValueChange={setView}
+                  />
+                }
                 statusPending={statusPending}
                 selectedId={openTaskId}
                 onSelect={panel.select}
@@ -304,12 +303,8 @@ function ProjectPaneHeader({
 }) {
   return (
     <PageHeader
-      title={
-        <span className="inline-flex items-center gap-2">
-          <ProjectIcon image={project.image} className="size-6" />
-          <span>{project.name}</span>
-        </span>
-      }
+      icon={<ProjectIcon image={project.image} className="size-6" />}
+      title={project.name}
       description={
         project.description && (
           <span
@@ -321,23 +316,13 @@ function ProjectPaneHeader({
         )
       }
       actions={
-        <div role="group" aria-label="Project actions" className="flex gap-0.5">
-          {actions}
+        <div role="group" aria-label="Project actions" className="flex items-center gap-2">
+          <div className="flex items-center gap-0.5">{actions}</div>
           {onCreateTask && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  ref={newTaskButton}
-                  size="icon-sm"
-                  variant="ghost"
-                  aria-label="New task"
-                  onClick={() => onCreateTask()}
-                >
-                  <Plus aria-hidden="true" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>New task</TooltipContent>
-            </Tooltip>
+            <Button ref={newTaskButton} size="sm" onClick={() => onCreateTask()}>
+              <Plus aria-hidden="true" />
+              New task
+            </Button>
           )}
         </div>
       }

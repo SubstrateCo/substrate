@@ -92,9 +92,9 @@ export function NotificationList({
           role="region"
           aria-label="Notification feed"
           aria-busy={loading}
-          className="min-h-0 flex-1 overflow-y-auto"
+          className="min-h-0 flex-1 overflow-y-auto p-6"
         >
-          <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col gap-6 p-6">
+          <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col gap-6">
             <PageHeader
               title="Notifications"
               description="Mentions, replies, and tasks assigned to you."

@@ -70,12 +70,12 @@ export function ProjectPane({
       }
       headerActions={
         <>
-          <ProjectExport organizationId={organizationId} projectEntityId={projectEntityId} />
           <CopyLink
             grouped
             label="Copy project link"
             link={workLink(organizationId, projectEntityId)}
           />
+          <ProjectExport organizationId={organizationId} projectEntityId={projectEntityId} />
         </>
       }
       context={

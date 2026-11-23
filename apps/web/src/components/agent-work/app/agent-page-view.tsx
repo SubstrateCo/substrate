@@ -101,8 +101,8 @@ function AgentSectionPanel({
 }) {
   return (
     <TabsContent value={value} className="flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <div className="mx-auto w-full max-w-6xl p-6">{children}</div>
+      <div className="min-h-0 flex-1 overflow-y-auto p-6">
+        <div className="mx-auto w-full max-w-4xl">{children}</div>
       </div>
     </TabsContent>
   );

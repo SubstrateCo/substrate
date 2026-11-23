@@ -1,6 +1,6 @@
 import { taskStatusLabels, taskStatusValues, type TaskStatus } from "@substrate/contracts/tasks";
 
-import { useId, useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 
 import { ContentNotice } from "../../feedback/content-notice";
 import { TaskBoard } from "../board/task-board";
@@ -24,6 +24,7 @@ import { ChevronRight, ListTodo, Plus, SearchX } from "lucide-react";
 export function TaskList({
   detail,
   view,
+  viewControl,
   selectedId,
   onSelect,
   onCreate,
@@ -32,6 +33,8 @@ export function TaskList({
 }: {
   detail: ProjectDetail;
   view: "list" | "board";
+  /** The List/Board toggle, at the right end of the toolbar. */
+  viewControl?: ReactNode;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onCreate?: (status?: TaskStatus) => void;
@@ -67,6 +70,7 @@ export function TaskList({
           filtered={filtered}
           shown={tasks.length}
           total={detail.tasks.length}
+          viewControl={viewControl}
         />
       )}
       {noMatches && (
