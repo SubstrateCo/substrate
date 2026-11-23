@@ -25,15 +25,15 @@ test("member rows stay inert while the organization loads and become real rows",
       "The authenticated WebSocket completes its ready handshake",
     );
     await held.promise;
-    const loading = user.page.getByRole("status", { name: "Loading members", exact: true });
-    await expect(loading).toBeVisible();
-    const placeholders = loading.locator('ul[aria-hidden="true"] > li');
+    const table = user.page.getByRole("table", { name: "Members", exact: true });
+    await expect(table).toBeVisible();
+    const placeholders = table.locator('tbody tr[aria-hidden="true"]');
     await expect(placeholders).toHaveCount(3);
-    await expect(loading.locator("button, a, input, select, [tabindex]")).toHaveCount(0);
+    await expect(placeholders.locator("button, a, input, select, [tabindex]")).toHaveCount(0);
     const placeholder = await placeholders.first().boundingBox();
     release.resolve();
-    await expect(loading).toHaveCount(0);
-    const row = user.page.getByRole("list", { name: "Members" }).getByRole("listitem").first();
+    await expect(placeholders).toHaveCount(0);
+    const row = table.getByRole("row").filter({ hasText: account.email });
     await expect(row.getByText(account.email, { exact: true })).toBeVisible();
     const loaded = await row.boundingBox();
     expect(placeholder).not.toBeNull();

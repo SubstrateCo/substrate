@@ -4,10 +4,10 @@ import { revalidateLogic, useForm, useSelector } from "@tanstack/react-form";
 
 import { useId, type ReactNode } from "react";
 
-import { TaskAssigneeAvatar } from "../../task-cues/task-assignee-avatar";
 import { projectPermissionOptions, type ProjectDetail } from "../../types";
 import type { FormDialogEditor } from "@/components/feedback/form-dialog";
 import { SelectField } from "@/components/forms/select-field";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
 import {
   Combobox,
@@ -95,7 +95,7 @@ export function ProjectAccessForm({
             >
               {actor ? (
                 <>
-                  <TaskAssigneeAvatar name={actor.name} image={actor.image} />
+                  <PersonAvatar size="xs" name={actor.name} image={actor.image} />
                   <span className="min-w-0 flex-1 truncate text-left">{actor.name}</span>
                 </>
               ) : (
@@ -108,7 +108,7 @@ export function ProjectAccessForm({
               <ComboboxList>
                 {(person: (typeof people)[number]) => (
                   <ComboboxItem key={person.value} value={person}>
-                    <TaskAssigneeAvatar name={person.label} image={person.image} />
+                    <PersonAvatar size="xs" name={person.label} image={person.image} />
                     <span className="min-w-0 flex-1 truncate">{person.label}</span>
                   </ComboboxItem>
                 )}

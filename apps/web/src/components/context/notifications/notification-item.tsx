@@ -110,7 +110,8 @@ export function NotificationItem({
           content={
             <>
               <NotificationSummary item={item} actor={actor} onOpen={onOpen} />
-              {item.count !== undefined && (
+              {/* One event needs no count: the row is that event. */}
+              {item.count !== undefined && item.count > 1 && (
                 <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                   {canExpand ? (
                     <CollapsibleTrigger asChild>

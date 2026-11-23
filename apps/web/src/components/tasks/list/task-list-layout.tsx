@@ -19,10 +19,10 @@ export function TaskFilterLayout({
 }
 
 export function TaskGroupHeaderLayout({ children }: { children: ReactNode }) {
-  return <div className="group/header flex h-10 items-center gap-1 border-b px-6">{children}</div>;
+  return <div className="group/header flex h-9 items-center gap-1 border-b px-6">{children}</div>;
 }
 
-export const taskRowClassName = "flex h-11 items-center gap-1 pr-6 pl-11 text-sm";
+export const taskRowClassName = "flex h-9 items-center gap-1 pr-6 pl-11 text-sm";
 export const taskRowContentClassName = "flex h-full min-w-0 flex-1 items-center gap-3 pl-1";
 export const taskRowDueDateClassName =
   "hidden w-16 shrink-0 justify-end text-xs text-muted-foreground @sm:flex";

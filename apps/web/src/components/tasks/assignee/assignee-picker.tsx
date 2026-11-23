@@ -1,7 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 
-import { TaskAssigneeAvatar } from "../task-cues/task-assignee-avatar";
 import type { ProjectDetail } from "../types";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import {
   Combobox,
   ComboboxCollection,
@@ -69,10 +69,11 @@ export function AssigneePicker({
               <ComboboxCollection>
                 {(item: Option) => (
                   <ComboboxItem key={item.value ?? "unassigned"} value={item}>
-                    <TaskAssigneeAvatar
+                    <PersonAvatar
+                      size="xs"
                       name={item.actor?.name}
                       image={item.actor?.image}
-                      type={item.actor?.type}
+                      agent={item.actor?.type === "agent"}
                     />
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
                   </ComboboxItem>

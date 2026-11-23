@@ -2,111 +2,153 @@ import type { InteractionSourceEvent } from "@substrate/contracts/calendar";
 
 import { Link } from "@tanstack/react-router";
 
+import { useMemo } from "react";
+
 import { interactionOrigins, interactionTypes, type InteractionRow } from "./interaction-types";
 import { MeetingSourceLink } from "@/components/calendar/meeting-source-link";
-import { Timestamp } from "@/components/time/timestamp";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+  AppTable,
+  createAppColumnHelper,
+  tableLink,
+  type AppTablePagination,
+} from "@/components/table";
+import { Timestamp } from "@/components/time/timestamp";
+import { Activity } from "lucide-react";
+
+const column = createAppColumnHelper<InteractionRow>();
+const emptySources: Readonly<Record<string, InteractionSourceEvent>> = {};
+
+function interactionColumns(
+  organizationId: string,
+  sources: Readonly<Record<string, InteractionSourceEvent>>,
+) {
+  return column.columns([
+    column.accessor("occurredAt", {
+      header: "Time",
+      meta: { width: "w-20" },
+      cell: ({ row }) => (
+        <span className="text-muted-foreground">
+          <Timestamp value={row.original.occurredAt} format="time" />
+        </span>
+      ),
+    }),
+    column.accessor("contactName", {
+      header: "Contact",
+      meta: { width: "w-36" },
+      cell: ({ row }) => (
+        <Link
+          from="/interactions/"
+          to="/interactions"
+          search={(previous) => ({
+            ...previous,
+            workspaceId: organizationId,
+            section: "person",
+            profileId: row.original.contactEntityId,
+            recordId: undefined,
+          })}
+          className={tableLink}
+          title={row.original.contactName}
+        >
+          {row.original.contactName}
+        </Link>
+      ),
+    }),
+    column.accessor("summary", {
+      header: "Summary",
+      cell: ({ row }) => (
+        <>
+          <Link
+            from="/interactions/"
+            to="/interactions"
+            search={(previous) => ({
+              ...previous,
+              workspaceId: organizationId,
+              recordId: row.original.entityId,
+            })}
+            className="block truncate underline-offset-4 hover:underline"
+            aria-label={`Open interaction: ${row.original.summary}`}
+            title={row.original.summary}
+          >
+            {row.original.summary}
+          </Link>
+          <MeetingSourceLink
+            organizationId={organizationId}
+            source={sources[row.original.entityId]}
+            className="flex"
+          />
+        </>
+      ),
+    }),
+    column.accessor((row) => interactionTypes[row.kind].label, {
+      id: "kind",
+      header: "Type",
+      meta: { width: "w-24" },
+      cell: ({ row }) => {
+        const { icon: Icon, label, textClass } = interactionTypes[row.original.kind];
+        return (
+          <span className="flex items-center gap-1.5">
+            <Icon aria-hidden className={`size-4 shrink-0 ${textClass}`} />
+            {label}
+          </span>
+        );
+      },
+    }),
+    column.accessor((row) => interactionOrigins[row.origin].short, {
+      id: "origin",
+      header: "Origin",
+      meta: { width: "w-28", hideBelow: "@3xl" },
+      cell: ({ row }) => (
+        <span
+          className="block truncate text-muted-foreground"
+          title={interactionOrigins[row.original.origin].long}
+        >
+          {interactionOrigins[row.original.origin].short}
+        </span>
+      ),
+    }),
+    column.accessor((row) => row.actor.displayName, {
+      id: "loggedBy",
+      header: "Logged by",
+      meta: { width: "w-20", hideBelow: "@4xl" },
+      cell: ({ getValue }) => (
+        <span className="block truncate text-muted-foreground">{getValue()}</span>
+      ),
+    }),
+  ]);
+}
 
 export function InteractionTable({
   rows,
   organizationId,
-  sources = {},
+  sources = emptySources,
+  pagination,
+  fetching,
 }: {
   rows: InteractionRow[];
   organizationId: string;
   /** The meetings that calendar interactions came from, by interaction. */
   sources?: Readonly<Record<string, InteractionSourceEvent>>;
+  pagination: AppTablePagination;
+  fetching: boolean;
 }) {
+  const columns = useMemo(
+    () => interactionColumns(organizationId, sources),
+    [organizationId, sources],
+  );
   return (
-    <Table aria-label="Day’s interactions" className="min-w-xl table-fixed">
-      <TableHeader>
-        <TableRow>
-          <TableHead className="w-20">Time</TableHead>
-          <TableHead className="w-36 @3xl:w-56">Contact</TableHead>
-          <TableHead>Summary</TableHead>
-          <TableHead className="w-24">Type</TableHead>
-          <TableHead className="hidden w-28 @3xl:table-cell">Origin</TableHead>
-          <TableHead className="hidden w-20 @4xl:table-cell">Logged by</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {rows.map((row) => {
-          const { icon: Icon, label, textClass } = interactionTypes[row.kind];
-          return (
-            <TableRow key={row.entityId}>
-              <TableCell>
-                <span className="text-muted-foreground">
-                  <Timestamp value={row.occurredAt} format="time" />
-                </span>
-              </TableCell>
-              <TableCell>
-                <Link
-                  from="/interactions/"
-                  to="/interactions"
-                  search={(previous) => ({
-                    ...previous,
-                    workspaceId: organizationId,
-                    section: "person",
-                    profileId: row.contactEntityId,
-                    recordId: undefined,
-                  })}
-                  className="block truncate font-medium underline-offset-4 hover:underline"
-                  title={row.contactName}
-                >
-                  {row.contactName}
-                </Link>
-              </TableCell>
-              <TableCell>
-                <Link
-                  from="/interactions/"
-                  to="/interactions"
-                  search={(previous) => ({
-                    ...previous,
-                    workspaceId: organizationId,
-                    recordId: row.entityId,
-                  })}
-                  className="block truncate underline-offset-4 hover:underline"
-                  aria-label={`Open interaction: ${row.summary}`}
-                  title={row.summary}
-                >
-                  {row.summary}
-                </Link>
-                <MeetingSourceLink
-                  organizationId={organizationId}
-                  source={sources[row.entityId]}
-                  className="flex"
-                />
-              </TableCell>
-              <TableCell>
-                <span className="flex items-center gap-1.5">
-                  <Icon aria-hidden className={`size-4 shrink-0 ${textClass}`} />
-                  {label}
-                </span>
-              </TableCell>
-              <TableCell className="hidden @3xl:table-cell">
-                <span
-                  className="block truncate text-muted-foreground"
-                  title={interactionOrigins[row.origin].long}
-                >
-                  {interactionOrigins[row.origin].short}
-                </span>
-              </TableCell>
-              <TableCell className="hidden @4xl:table-cell">
-                <span className="block truncate text-muted-foreground">
-                  {row.actor.displayName}
-                </span>
-              </TableCell>
-            </TableRow>
-          );
-        })}
-      </TableBody>
-    </Table>
+    <AppTable
+      name="Day’s interactions"
+      layout="fixed"
+      columns={columns}
+      data={rows}
+      getRowId={(row) => row.entityId}
+      pagination={pagination}
+      fetching={fetching}
+      empty={{
+        title: "No interactions on this day",
+        icon: Activity,
+        description: "Select another bar to explore a different day.",
+      }}
+    />
   );
 }

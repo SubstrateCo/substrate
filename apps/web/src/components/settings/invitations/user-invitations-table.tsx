@@ -3,10 +3,9 @@ import { Link } from "@tanstack/react-router";
 import { useMemo } from "react";
 
 import { DateTimeDisplay } from "../../table/date-time-cell";
-import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "../../table/index";
+import { AppTable, createAppColumnHelper, dateTimeColumn } from "../../table/index";
 import { Button } from "../../ui/button";
 import { InvitationStatus } from "@/components/organizations/invitations/invitation-status";
-import { useDelayedLoading } from "@/hooks/use-delayed-loading";
 import { roleLabel } from "@/lib/organizations/member-policy";
 import { Mail } from "lucide-react";
 
@@ -103,6 +102,7 @@ export function UserInvitationsTable({
         column.display({
           id: "actions",
           header: () => <span className="sr-only">Actions</span>,
+          meta: { align: "end", controls: true },
           cell: ({ row }) =>
             !row.original.expired && (
               <div className="flex justify-end">
@@ -121,54 +121,49 @@ export function UserInvitationsTable({
     ...invitation,
     expired: new Date(invitation.expiresAt).getTime() <= now,
   }));
-  const table = useAppTable({
-    columns,
-    data,
-    getRowId: (row) => row.id,
-    autoResetPageIndex: false,
-  });
-  const showLoading = useDelayedLoading(loading);
   return (
-    <div className={loading && !showLoading ? "invisible" : undefined}>
-      <AppTable
-        table={table}
-        name="Your invitations"
-        loading={loading}
-        loadingMessage="Loading your invitations"
-        error={error}
-        errorTitle="Couldn’t load your invitations"
-        errorDescription="Your invitations are unavailable. Please try again."
-        onRetry={onRetry}
-        emptyMessage="No pending invitations"
-        emptyDescription="When someone invites you to their workspace, you can review it here."
-        emptyIcon={Mail}
-        renderMobileRow={(invitation) => (
-          <>
-            <p className="font-medium wrap-anywhere">
-              {invitation.organizationName || "Organization"}
-            </p>
-            <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
-              <dt className="text-muted-foreground">Role</dt>
-              <dd className="col-span-2">{roleLabel(invitation.role)}</dd>
-              <dt className="text-muted-foreground">Status</dt>
-              <dd className="col-span-2">
-                <InvitationStatus status="pending" expired={invitation.expired} />
-              </dd>
-              <dt className="text-muted-foreground">Expires</dt>
-              <dd className="col-span-2">
-                <DateTimeDisplay value={invitation.expiresAt} />
-              </dd>
-            </dl>
-            {!invitation.expired && (
-              <InvitationActions
-                invitation={invitation}
-                declining={decliningId === invitation.id}
-                onDecline={onDecline}
-              />
-            )}
-          </>
-        )}
-      />
-    </div>
+    <AppTable
+      name="Your invitations"
+      columns={columns}
+      data={data}
+      getRowId={(row) => row.id}
+      loading={loading}
+      loadingMessage="Loading your invitations"
+      error={error}
+      errorTitle="Couldn’t load your invitations"
+      errorDescription="Your invitations are unavailable. Please try again."
+      onRetry={onRetry}
+      empty={{
+        title: "No pending invitations",
+        description: "When someone invites you to their workspace, you can review it here.",
+        icon: Mail,
+      }}
+      renderMobileRow={(invitation) => (
+        <>
+          <p className="font-medium wrap-anywhere">
+            {invitation.organizationName || "Organization"}
+          </p>
+          <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
+            <dt className="text-muted-foreground">Role</dt>
+            <dd className="col-span-2">{roleLabel(invitation.role)}</dd>
+            <dt className="text-muted-foreground">Status</dt>
+            <dd className="col-span-2">
+              <InvitationStatus status="pending" expired={invitation.expired} />
+            </dd>
+            <dt className="text-muted-foreground">Expires</dt>
+            <dd className="col-span-2">
+              <DateTimeDisplay value={invitation.expiresAt} />
+            </dd>
+          </dl>
+          {!invitation.expired && (
+            <InvitationActions
+              invitation={invitation}
+              declining={decliningId === invitation.id}
+              onDecline={onDecline}
+            />
+          )}
+        </>
+      )}
+    />
   );
 }

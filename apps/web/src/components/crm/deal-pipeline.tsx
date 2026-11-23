@@ -3,9 +3,10 @@ import { Link } from "@tanstack/react-router";
 import { dealAmount } from "./crm-types";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
+import { Board, BoardCard, BoardColumn, boardCardTarget } from "@/components/layout/board";
 import { crmLink } from "@/lib/navigation/record-links";
+import { cn } from "cn";
 import { Handshake } from "lucide-react";
-import { Slot } from "radix-ui";
 
 export type PipelineDeal = {
   entityId: string;
@@ -34,113 +35,55 @@ export function DealPipeline({
       />
     );
   return (
-    <div className="flex min-h-0 flex-1 gap-4 overflow-x-auto pb-4" aria-label="Deals pipeline">
+    <Board aria-label="Deals pipeline">
       {stages.map((stage) => {
         const rows = deals.filter((deal) => deal.stageId === stage.id && deal.outcome === "open");
         return (
-          <PipelineColumn key={stage.id} aria-label={stage.name}>
-            <PipelineHeading name={stage.name} count={rows.length} />
-            <ul className="space-y-2">
-              {rows.map((deal) => (
-                <li key={deal.entityId}>
-                  <PipelineCard asChild>
-                    <Link
-                      {...crmLink(organizationId, "deals", deal.entityId)}
-                      className="transition-colors hover:bg-row-hover focus-visible:outline-2 focus-visible:outline-ring"
-                    >
-                      <PipelineCardContent
-                        title={deal.title}
-                        amount={dealAmount(deal.amount, deal.currency)}
-                      />
-                    </Link>
-                  </PipelineCard>
-                </li>
-              ))}
-            </ul>
-            {rows.length === 0 && <ContentNotice variant="inline" title="No deals in this stage" />}
-          </PipelineColumn>
+          <BoardColumn
+            key={stage.id}
+            label={stage.name}
+            listLabel={`${stage.name} deals`}
+            count={rows.length}
+            empty={rows.length ? undefined : "No deals in this stage"}
+          >
+            {rows.map((deal) => (
+              <BoardCard key={deal.entityId}>
+                <Link
+                  {...crmLink(organizationId, "deals", deal.entityId)}
+                  className={cn(boardCardTarget, "block")}
+                >
+                  {deal.title}
+                </Link>
+                <span className="text-xs text-muted-foreground tabular-nums">
+                  {dealAmount(deal.amount, deal.currency)}
+                </span>
+              </BoardCard>
+            ))}
+          </BoardColumn>
         );
       })}
-    </div>
-  );
-}
-
-function PipelineHeading({ name, count }: { name: React.ReactNode; count: React.ReactNode }) {
-  return (
-    <div className="flex items-center justify-between gap-2">
-      <h2 className="text-sm font-semibold">{name}</h2>
-      <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
-    </div>
-  );
-}
-
-function PipelineCard({
-  children,
-  asChild = false,
-}: {
-  children: React.ReactNode;
-  asChild?: boolean;
-}) {
-  const Component = asChild ? Slot.Root : "div";
-  return (
-    <Component className="block space-y-3 rounded-lg border bg-surface p-3 shadow-surface">
-      {children}
-    </Component>
-  );
-}
-
-function PipelineCardContent({
-  title,
-  amount,
-}: {
-  title: React.ReactNode;
-  amount: React.ReactNode;
-}) {
-  return (
-    <>
-      <span className="block text-sm font-medium wrap-break-word">{title}</span>
-      <span className="block text-xs text-muted-foreground tabular-nums">{amount}</span>
-    </>
-  );
-}
-
-function PipelineColumn({
-  children,
-  ...props
-}: {
-  children: React.ReactNode;
-  "aria-label"?: string;
-}) {
-  return (
-    <section className="flex w-64 shrink-0 flex-col gap-3 rounded-lg bg-inset p-3" {...props}>
-      {children}
-    </section>
+    </Board>
   );
 }
 
 export function DealPipelineLoading() {
   return (
-    <div role="status" aria-label="Loading deals">
-      <div aria-hidden="true" className="flex min-h-0 flex-1 gap-4 overflow-x-auto pb-4">
+    <div role="status" aria-label="Loading deals" className="flex min-h-0 flex-1">
+      <Board aria-hidden="true">
         {[0, 1, 2].map((key) => (
-          <PipelineColumn key={key}>
-            <PipelineHeading
-              name={<SkeletonText width="6rem" />}
-              count={<SkeletonText width="1rem" />}
-            />
-            <ul className="space-y-2">
-              <li>
-                <PipelineCard>
-                  <PipelineCardContent
-                    title={<SkeletonText width="9rem" />}
-                    amount={<SkeletonText width="5rem" />}
-                  />
-                </PipelineCard>
-              </li>
-            </ul>
-          </PipelineColumn>
+          <BoardColumn
+            key={key}
+            label={<SkeletonText width="6rem" />}
+            listLabel=""
+            count={<SkeletonText width="1rem" />}
+          >
+            <BoardCard>
+              <SkeletonText width="9rem" />
+              <SkeletonText width="5rem" className="text-xs" />
+            </BoardCard>
+          </BoardColumn>
         ))}
-      </div>
+      </Board>
     </div>
   );
 }

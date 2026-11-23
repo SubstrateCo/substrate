@@ -2,59 +2,54 @@ import type { InteractionSourceEvent } from "@substrate/contracts/calendar";
 
 import { Link } from "@tanstack/react-router";
 
-import { interactionOrigins, interactionTypes, type InteractionRow } from "./interaction-types";
+import { InteractionRow } from "./interaction-row";
+import {
+  interactionOrigins,
+  interactionTypes,
+  type InteractionRow as Row,
+} from "./interaction-types";
 import { MeetingSourceLink } from "@/components/calendar/meeting-source-link";
 import { Tag } from "@/components/feedback/tag";
-import { Timestamp } from "@/components/time/timestamp";
-import { cn } from "cn";
 
 export function InteractionList({
   rows,
   organizationId,
   sources = {},
 }: {
-  rows: InteractionRow[];
+  rows: Row[];
   organizationId: string;
   /** The meetings that calendar interactions came from, by interaction. */
   sources?: Readonly<Record<string, InteractionSourceEvent>>;
 }) {
   return (
-    <ol className="divide-y">
+    <ol aria-label="Interactions" className="grid gap-px">
       {rows.map((row) => {
-        const { icon: Icon, label, textClass } = interactionTypes[row.kind];
         const minutes = row.endedAt
           ? Math.round((Date.parse(row.endedAt) - Date.parse(row.occurredAt)) / 60000)
           : null;
         return (
-          <li key={row.entityId} className="flex items-start gap-2 px-4 py-2">
-            <div
-              className={cn(
-                "flex size-6 shrink-0 items-center justify-center rounded-md bg-muted",
-                textClass,
-              )}
-            >
-              <Icon aria-hidden className="size-3.5" />
-            </div>
-            <div className="min-w-0 flex-1 space-y-1">
-              <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
-                <Link
-                  from="/interactions/"
-                  to="/interactions"
-                  search={(previous) => ({
-                    ...previous,
-                    workspaceId: organizationId,
-                    section: "person",
-                    profileId: row.contactEntityId,
-                    recordId: undefined,
-                  })}
-                  className="text-sm font-medium underline-offset-4 hover:underline"
-                >
-                  {row.contactName}
-                </Link>
-                <span className="text-xs text-muted-foreground">
-                  <Timestamp value={row.occurredAt} format="datetime" />
-                </span>
-              </div>
+          <InteractionRow
+            key={row.entityId}
+            icon
+            kind={row.kind}
+            occurredAt={row.occurredAt}
+            contact={
+              <Link
+                from="/interactions/"
+                to="/interactions"
+                search={(previous) => ({
+                  ...previous,
+                  workspaceId: organizationId,
+                  section: "person",
+                  profileId: row.contactEntityId,
+                  recordId: undefined,
+                })}
+                className="underline-offset-4 hover:underline"
+              >
+                {row.contactName}
+              </Link>
+            }
+            summary={
               <Link
                 from="/interactions/"
                 to="/interactions"
@@ -63,30 +58,26 @@ export function InteractionList({
                   workspaceId: organizationId,
                   recordId: row.entityId,
                 })}
-                className="block text-sm wrap-break-word whitespace-pre-wrap underline-offset-4 hover:underline"
+                className="underline-offset-4 hover:underline"
                 aria-label={`Open interaction: ${row.summary}`}
               >
                 {row.summary}
               </Link>
-              <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
-                <span>{label}</span>
-                <span aria-hidden>·</span>
-                <span>Logged by {row.actor.displayName}</span>
-                {minutes !== null && (
-                  <>
-                    <span aria-hidden>·</span>
-                    <span>{minutes} min recorded</span>
-                  </>
-                )}
-                <Tag>{interactionOrigins[row.origin].tag}</Tag>
-              </div>
+            }
+            details={[
+              <span key="kind">{interactionTypes[row.kind].label}</span>,
+              <span key="actor">Logged by {row.actor.displayName}</span>,
+              ...(minutes === null ? [] : [<span key="minutes">{minutes} min recorded</span>]),
+              <Tag key="origin">{interactionOrigins[row.origin].tag}</Tag>,
+            ]}
+            source={
               <MeetingSourceLink
                 organizationId={organizationId}
                 source={sources[row.entityId]}
                 className="max-w-full"
               />
-            </div>
-          </li>
+            }
+          />
         );
       })}
     </ol>

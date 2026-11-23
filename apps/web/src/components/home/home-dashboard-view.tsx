@@ -1,6 +1,5 @@
 import { useState, type ReactNode } from "react";
 
-import { HomeAttention } from "./home-attention";
 import { HomeEmptyWork } from "./home-empty-work";
 import { HomeSection, type HomeSectionData } from "./home-section";
 import { PageHeader } from "@/components/layout/page-header";
@@ -13,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "cn";
-import { Bell, Bot, Handshake, ListTodo, MessageSquare } from "lucide-react";
+import { Bell, Bot, CheckCheck, Hand, Handshake, ListTodo, MessageSquare } from "lucide-react";
 
 export type HomeDashboardViewProps = {
   organizationId: string;
@@ -105,7 +104,19 @@ export function HomeDashboardView({
                 active={activeSection}
                 className={quietAttention ? "md:flex-none" : "md:grow-2"}
               >
-                <HomeAttention organizationId={organizationId} data={attention} />
+                <HomeSection
+                  title="Needs your attention"
+                  icon={CheckCheck}
+                  titleIcon={<Hand aria-hidden="true" className="size-4 text-warning" />}
+                  emptyTitle="You’re caught up"
+                  emptyDescription="No pending decisions or recent mentions here."
+                  emptyAction="Notifications"
+                  emptyLink={{ to: "/notifications", search }}
+                  hideHeaderWhenEmpty
+                  link={{ to: "/agents", search }}
+                  linkLabel="Agent requests"
+                  data={attention}
+                />
               </HomePanel>
               {tasksEnabled && (
                 <HomePanel
@@ -121,7 +132,6 @@ export function HomeDashboardView({
                     emptyDescription="Find work in your projects or create a task."
                     emptyAction="Browse tasks"
                     emptyContent={<HomeEmptyWork organizationId={organizationId} />}
-                    emphasis
                     link={{ to: "/tasks", search }}
                     data={tasks}
                   />

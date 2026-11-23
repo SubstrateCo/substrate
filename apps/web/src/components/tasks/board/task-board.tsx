@@ -6,6 +6,7 @@ import { blockedTaskIds } from "../links/task-relations";
 import type { ProjectDetail, Task } from "../types";
 import { TaskBoardCard } from "./task-board-card";
 import { TaskBoardColumn } from "./task-board-column";
+import { Board, BoardCard } from "@/components/layout/board";
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 
 export function TaskBoard({
@@ -59,11 +60,7 @@ export function TaskBoard({
         },
       }}
     >
-      <section
-        aria-label="Task board"
-        aria-busy={statusPending}
-        className="flex min-h-0 min-w-0 flex-1 gap-4 overflow-x-auto p-6"
-      >
+      <Board aria-label="Task board" aria-busy={statusPending} className="p-6">
         {taskStatusValues.map((status) => {
           const rows = tasks.filter((task) => task.status === status);
           return (
@@ -96,12 +93,12 @@ export function TaskBoard({
             </TaskBoardColumn>
           );
         })}
-      </section>
+      </Board>
       <DragOverlay dropAnimation={null}>
         {active && (
-          <div className="rounded-lg border bg-popover p-4 text-sm font-medium shadow-raised">
-            {active.title}
-          </div>
+          <BoardCard overlay>
+            <span className="font-medium wrap-break-word">{active.title}</span>
+          </BoardCard>
         )}
       </DragOverlay>
     </DndContext>

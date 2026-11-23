@@ -3,7 +3,7 @@ import { useMemo } from "react";
 import { CopyButton } from "../../feedback/copy-button";
 import { RowAction, RowActions } from "../../layout/row-actions";
 import { DateTimeDisplay } from "../../table/date-time-cell";
-import { AppTable, createAppColumnHelper, dateTimeColumn, useAppTable } from "../../table/index";
+import { AppTable, createAppColumnHelper, dateTimeColumn } from "../../table/index";
 import type { InvitationListItem } from "./invitation-manager-view";
 import { invitationState } from "./invitation-state";
 import { InvitationStatus } from "./invitation-status";
@@ -13,22 +13,44 @@ import { MailX, Send } from "lucide-react";
 const column = createAppColumnHelper<InvitationListItem>();
 const emptyInvitations: InvitationListItem[] = [];
 
+const columns = column.columns([
+  column.accessor("email", {
+    header: "Email",
+    cell: ({ row }) => (
+      <span className="block wrap-anywhere whitespace-normal">{row.original.email}</span>
+    ),
+  }),
+  column.accessor((invitation) => roleLabel(invitation.role), { id: "role", header: "Role" }),
+  column.accessor((invitation) => invitationState(invitation.status, invitation.expired).label, {
+    id: "status",
+    header: "Status",
+    cell: ({ row }) => (
+      <InvitationStatus status={row.original.status} expired={row.original.expired} />
+    ),
+  }),
+  dateTimeColumn<InvitationListItem>((invitation) => invitation.expiresAt, {
+    id: "expiresAt",
+    header: "Expires",
+  }),
+]);
+
+type ActionProps = {
+  busy: boolean;
+  onInvite: (email: string, role: InvitationListItem["role"], resend?: boolean) => void;
+  onCancel: (id: string) => void;
+  onCopyLink: (id: string) => Promise<void>;
+};
+
 function InvitationActions({
   invitation,
   busy,
   onInvite,
   onCancel,
   onCopyLink,
-}: {
-  invitation: InvitationListItem;
-  busy: boolean;
-  onInvite: (email: string, role: InvitationListItem["role"], resend?: boolean) => void;
-  onCancel: (id: string) => void;
-  onCopyLink: (id: string) => Promise<void>;
-}) {
+}: ActionProps & { invitation: InvitationListItem }) {
   if (invitation.status !== "pending") return null;
   return (
-    <RowActions label="Invitation actions">
+    <>
       {!invitation.expired && (
         // oxlint-disable-next-line design/icon-button-name, design/icon-button-tooltip -- CopyButton uses `label` as its aria-label and tooltip.
         <CopyButton
@@ -55,7 +77,7 @@ function InvitationActions({
       >
         <MailX aria-hidden="true" />
       </RowAction>
-    </RowActions>
+    </>
   );
 }
 
@@ -63,80 +85,48 @@ export function InvitationTable({
   invitations = emptyInvitations,
   loading,
   error,
-  busy,
   onRetry,
-  onInvite,
-  onCancel,
-  onCopyLink,
-}: {
+  ...actions
+}: ActionProps & {
   invitations?: InvitationListItem[];
   loading: boolean;
   error?: Error | null;
-  busy: boolean;
   onRetry: () => void;
-  onInvite: (email: string, role: InvitationListItem["role"], resend?: boolean) => void;
-  onCancel: (id: string) => void;
-  onCopyLink: (id: string) => Promise<void>;
 }) {
-  const columns = useMemo(
-    () =>
-      column.columns([
-        column.accessor("email", {
-          header: "Email",
-          cell: ({ row }) => (
-            <span className="block wrap-anywhere whitespace-normal">{row.original.email}</span>
-          ),
-        }),
-        column.accessor((invitation) => roleLabel(invitation.role), { id: "role", header: "Role" }),
-        column.accessor(
-          (invitation) => invitationState(invitation.status, invitation.expired).label,
-          {
-            id: "status",
-            header: "Status",
-            cell: ({ row }) => (
-              <InvitationStatus status={row.original.status} expired={row.original.expired} />
-            ),
-          },
-        ),
-        dateTimeColumn<InvitationListItem>((invitation) => invitation.expiresAt, {
-          id: "expiresAt",
-          header: "Expires",
-        }),
-        column.display({
-          id: "actions",
-          header: () => <span className="sr-only">Actions</span>,
-          cell: ({ row }) => (
-            <InvitationActions
-              invitation={row.original}
-              busy={busy}
-              onInvite={onInvite}
-              onCancel={onCancel}
-              onCopyLink={onCopyLink}
-            />
-          ),
-        }),
-      ]),
+  const { busy, onInvite, onCancel, onCopyLink } = actions;
+  const rowActions = useMemo(
+    () => ({
+      label: () => "Invitation actions",
+      render: (invitation: InvitationListItem) => (
+        <InvitationActions
+          invitation={invitation}
+          busy={busy}
+          onInvite={onInvite}
+          onCancel={onCancel}
+          onCopyLink={onCopyLink}
+        />
+      ),
+    }),
     [busy, onInvite, onCancel, onCopyLink],
   );
-  const table = useAppTable({
-    columns,
-    data: invitations,
-    getRowId: (row) => row.id,
-    autoResetPageIndex: false,
-  });
   return (
     <AppTable
-      table={table}
       name="Invitations"
+      columns={columns}
+      data={invitations}
+      getRowId={(row) => row.id}
       loading={loading}
       loadingMessage="Loading invitations…"
       error={error}
       errorTitle="Couldn’t load invitations"
       errorDescription="Your team’s invitations are unavailable. Please try again."
       onRetry={onRetry}
-      emptyMessage="No invitations yet"
-      emptyDescription="Invitations you send appear here until they are accepted."
-      emptyIcon={Send}
+      empty={{
+        title: "No invitations yet",
+        description: "Invitations you send appear here until they are accepted.",
+        icon: Send,
+      }}
+      rowActions={rowActions}
       renderMobileRow={(invitation) => (
         <>
           <p className="font-medium wrap-anywhere">{invitation.email}</p>
@@ -152,13 +142,9 @@ export function InvitationTable({
               <DateTimeDisplay value={invitation.expiresAt} />
             </dd>
           </dl>
-          <InvitationActions
-            invitation={invitation}
-            busy={busy}
-            onInvite={onInvite}
-            onCancel={onCancel}
-            onCopyLink={onCopyLink}
-          />
+          <RowActions label="Invitation actions">
+            <InvitationActions invitation={invitation} {...actions} />
+          </RowActions>
         </>
       )}
     />

@@ -5,11 +5,11 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, type ReactNode } from "react";
 
 import { InteractionList } from "./interaction-list";
-import { InteractionPager } from "./interaction-pager";
 import { interactionKinds, interactionOrigins, interactionTypes } from "./interaction-types";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { Pager, useCursorPages } from "@/components/table";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
@@ -107,7 +107,7 @@ function TimelinePage({
   origin: string;
   pending: boolean;
 }) {
-  const [cursor, setCursor] = useState<Cursor>({});
+  const pages = useCursorPages<Cursor>();
   const input: TimelineInput = {
     ...period,
     search,
@@ -115,7 +115,7 @@ function TimelinePage({
     origin: (["manual", "message_publication", "calendar_event"] as const).find(
       (value) => value === origin,
     ),
-    ...cursor,
+    ...pages.cursor,
   };
   const apps = useOrganizationApps();
   const query = useQuery({ ...interactionTimelineOptions(input), enabled: !pending });
@@ -152,7 +152,19 @@ function TimelinePage({
           )}
         </div>
       </Card>
-      <InteractionPager cursor={cursor} nextCursor={nextCursor} onCursorChange={setCursor} />
+      {(pages.pageIndex > 0 || nextCursor) && (
+        <Pager
+          name="Interactions"
+          pageIndex={pages.pageIndex}
+          pageCount={-1}
+          canPrevious={pages.pageIndex > 0}
+          canNext={Boolean(nextCursor)}
+          onPageChange={(pageIndex) => {
+            if (pageIndex < pages.pageIndex) pages.previous();
+            else if (nextCursor) pages.next(nextCursor);
+          }}
+        />
+      )}
     </div>
   );
 }

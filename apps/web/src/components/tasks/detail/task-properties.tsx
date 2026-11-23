@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import { assignableActors } from "../assignee/assignable";
 import { assigneeLabel } from "../assignee/assignee-label";
 import { AssigneePicker } from "../assignee/assignee-picker";
-import { TaskAssigneeAvatar } from "../task-cues/task-assignee-avatar";
 import { taskPriorityLabels } from "../task-cues/task-labels";
 import { taskPriorityOptions, taskStatusOptions } from "../task-cues/task-options";
 import { TaskPriorityIcon } from "../task-cues/task-priority-icon";
@@ -14,6 +13,7 @@ import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { TaskDueDatePicker } from "./task-due-date-picker";
 import { Tag } from "@/components/feedback/tag";
 import { Property, PropertyList } from "@/components/layout/record-section";
+import { PersonAvatar } from "@/components/people/person-avatar";
 import { DueDate } from "@/components/time/due-date";
 import { Button } from "@/components/ui/button";
 import {
@@ -86,7 +86,12 @@ export function TaskProperties({
   const assigneeText = assigneeLabel(task.assigneeActorEntityId, detail.actors);
   const assigneeValue = (
     <>
-      <TaskAssigneeAvatar name={assignee?.name} image={assignee?.image} type={assignee?.type} />
+      <PersonAvatar
+        size="xs"
+        name={assignee?.name}
+        image={assignee?.image}
+        agent={assignee?.type === "agent"}
+      />
       <span className={`truncate ${assignee ? "" : "text-muted-foreground"}`}>{assigneeText}</span>
       {assignee?.type === "agent" && <Tag size="sm">Agent</Tag>}
     </>

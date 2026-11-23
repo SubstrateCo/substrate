@@ -1,17 +1,17 @@
 import type { OrganizationRole } from "@substrate/contracts/auth/permissions";
 
-import { useRef, type ReactNode } from "react";
+import { useMemo, useRef, type ReactNode } from "react";
 
-import { MemberRow, MemberRowSkeleton, type MemberRowData } from "./member-row";
+import { memberColumns, type MemberRowData } from "./member-row";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { ContentNotice } from "@/components/feedback/content-notice";
-import { ErrorState } from "@/components/feedback/error-state";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
+import { RowAction } from "@/components/layout/row-actions";
 import { SettingsPanel } from "@/components/layout/settings-page";
+import { AppTable } from "@/components/table";
 import { roleLabel } from "@/lib/organizations/member-policy";
 import type { ResourceStatus } from "@/lib/resource-state";
-import { Users } from "lucide-react";
+import { UserMinus, Users } from "lucide-react";
 
 type PendingChange =
   | { kind: "role"; member: MemberRowData; role: OrganizationRole }
@@ -65,6 +65,31 @@ export function OrganizationMembers({
     closeConfirm();
     onResetChange();
   };
+  const columns = useMemo(
+    () =>
+      memberColumns({
+        disabled: changing,
+        onRoleChange: (member, role) => confirm({ kind: "role", member, role }),
+      }),
+    [changing, confirm],
+  );
+  const rowActions = useMemo(
+    () => ({
+      label: (member: MemberRowData) => `Actions for ${member.name}`,
+      render: (member: MemberRowData) =>
+        member.canRemove && (
+          <RowAction
+            label={`Remove ${member.name}`}
+            destructive
+            disabled={changing}
+            onClick={() => confirm({ kind: "remove", member })}
+          >
+            <UserMinus aria-hidden="true" />
+          </RowAction>
+        ),
+    }),
+    [changing, confirm],
+  );
   const count = members?.length;
   let description = "People in this organization and what they can do.";
   if (count !== undefined)
@@ -75,39 +100,28 @@ export function OrganizationMembers({
       description={description}
       actions={blocked ? undefined : inviteAction}
     >
-      <div ref={list} tabIndex={-1}>
-        <MemberListStatus
-          hasData={members !== undefined}
-          loading={loading}
-          error={error}
-          state={state}
-          onRetry={onRetry}
+      <div ref={list} tabIndex={-1} className="space-y-3">
+        {state === "stale" && (
+          <StaleNotice onRetry={onRetry}>This list may be out of date.</StaleNotice>
+        )}
+        <AppTable
+          name="Members"
+          columns={columns}
+          data={members ?? []}
+          getRowId={(member) => member.id}
+          loading={loading && !members}
+          loadingMessage="Loading members"
+          error={!members || blocked ? error : null}
+          errorTitle="Couldn’t load members"
+          errorDescription="We couldn’t load this content. Please try again."
+          onRetry={blocked ? undefined : onRetry}
+          empty={{
+            icon: Users,
+            title: "No members yet",
+            description: "People appear here after they accept an invitation.",
+          }}
+          rowActions={rowActions}
         />
-        {members?.length === 0 && (
-          <div className="rounded-xl border">
-            <ContentNotice
-              icon={Users}
-              title="No members yet"
-              description="People appear here after they accept an invitation."
-            />
-          </div>
-        )}
-        {!!members?.length && (
-          <ul
-            aria-label="Members"
-            className="@container divide-y overflow-hidden rounded-xl border bg-card"
-          >
-            {members.map((member) => (
-              <MemberRow
-                key={member.id}
-                member={member}
-                disabled={changing}
-                onRoleChange={(role) => confirm({ kind: "role", member, role })}
-                onRemove={() => confirm({ kind: "remove", member })}
-              />
-            ))}
-          </ul>
-        )}
       </div>
       {!blocked && confirming && (
         <MemberChangeDialog
@@ -121,40 +135,6 @@ export function OrganizationMembers({
         />
       )}
     </SettingsPanel>
-  );
-}
-
-function MemberListStatus({
-  hasData,
-  loading,
-  error,
-  state,
-  onRetry,
-}: Pick<OrganizationMembersProps, "loading" | "error" | "state" | "onRetry"> & {
-  hasData: boolean;
-}) {
-  const blocked = state === "unavailable";
-  return (
-    <>
-      {loading && !hasData && (
-        <div role="status" aria-label="Loading members">
-          <ul
-            aria-hidden="true"
-            className="@container divide-y overflow-hidden rounded-xl border bg-card"
-          >
-            {[0, 1, 2].map((key) => (
-              <MemberRowSkeleton key={key} />
-            ))}
-          </ul>
-        </div>
-      )}
-      {error && (!hasData || blocked) && (
-        <ErrorState title="Couldn’t load members" onRetry={blocked ? undefined : onRetry} />
-      )}
-      {state === "stale" && (
-        <StaleNotice onRetry={onRetry}>This list may be out of date.</StaleNotice>
-      )}
-    </>
   );
 }
 

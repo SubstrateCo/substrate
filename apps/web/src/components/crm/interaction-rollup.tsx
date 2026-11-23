@@ -10,9 +10,9 @@ import { ContactLink } from "@/components/contacts/contact-link";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { SegmentedControl } from "@/components/forms/segmented-control";
+import { InteractionRow } from "@/components/interactions/interaction-row";
 import { RecordSection, recordRows } from "@/components/layout/record-section";
-import { Timestamp } from "@/components/time/timestamp";
-import { Button } from "@/components/ui/button";
+import { Pager, useCursorPages } from "@/components/table";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { resourceState } from "@/lib/resource-state";
 import { useInteractionSources } from "@/queries/calendar/interaction-sources";
@@ -28,10 +28,8 @@ export function InteractionRollup({
   kind: "account" | "deal";
 }) {
   const [mode, setMode] = useState<CrmTimelineMode>(kind === "deal" ? "linked" : "participants");
-  const [before, setBefore] = useState<{ beforeOccurredAt: string; beforeEntityId: string } | null>(
-    null,
-  );
-  const query = useQuery(crmTimelineOptions(organizationId, entityId, mode, before));
+  const pages = useCursorPages<{ beforeOccurredAt: string; beforeEntityId: string }>();
+  const query = useQuery(crmTimelineOptions(organizationId, entityId, mode, pages.cursor ?? null));
   const rows = resourceState(query).data ?? [];
   const apps = useOrganizationApps();
   const sources = useInteractionSources(organizationId, rows, apps.enabled("calendar"));
@@ -45,7 +43,7 @@ export function InteractionRollup({
           value={mode}
           onValueChange={(next) => {
             setMode(next);
-            setBefore(null);
+            pages.reset();
           }}
           options={[
             { value: "linked", label: "Explicitly linked" },
@@ -88,56 +86,51 @@ export function InteractionRollup({
       {rows.length > 0 && (
         <ol className={recordRows}>
           {rows.map((row) => (
-            <li key={row.entityId} className={interactionRow}>
-              <p className="text-sm whitespace-pre-wrap">{row.summary}</p>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Timestamp value={row.occurredAt} format="datetime" />
+            <InteractionRow
+              key={row.entityId}
+              kind={row.kind}
+              occurredAt={row.occurredAt}
+              summary={row.summary}
+              details={[
                 <ContactLink
+                  key="contact"
                   entityId={row.contactEntityId}
                   className="underline-offset-4 hover:text-foreground hover:underline"
                 >
                   Open contact
-                </ContactLink>
-              </div>
-              <MeetingSourceLink
-                organizationId={organizationId}
-                source={sources[row.entityId]}
-                className="max-w-full"
-              />
-            </li>
+                </ContactLink>,
+              ]}
+              source={
+                <MeetingSourceLink
+                  organizationId={organizationId}
+                  source={sources[row.entityId]}
+                  className="max-w-full"
+                />
+              }
+            />
           ))}
         </ol>
       )}
-      {(before || rows.length === 50) && (
-        <div className="flex gap-2">
-          {before && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={query.isFetching}
-              onClick={() => setBefore(null)}
-            >
-              Newest
-            </Button>
-          )}
-          {rows.length === 50 && (
-            <Button
-              variant="outline"
-              size="sm"
-              disabled={query.isFetching}
-              onClick={() => {
-                const last = rows.at(-1);
-                if (last)
-                  setBefore({ beforeOccurredAt: last.occurredAt, beforeEntityId: last.entityId });
-              }}
-            >
-              Older interactions
-            </Button>
-          )}
-        </div>
+      {(pages.pageIndex > 0 || rows.length === pageSize) && (
+        <Pager
+          name="Customer interactions"
+          pageIndex={pages.pageIndex}
+          pageCount={-1}
+          canPrevious={pages.pageIndex > 0}
+          canNext={rows.length === pageSize}
+          disabled={query.isFetching}
+          onPageChange={(pageIndex) => {
+            const last = rows.at(-1);
+            if (pageIndex < pages.pageIndex) pages.previous();
+            else if (last)
+              pages.next({ beforeOccurredAt: last.occurredAt, beforeEntityId: last.entityId });
+          }}
+        />
       )}
     </RecordSection>
   );
 }
 
+/** The timeline returns up to this many interactions per page. */
+const pageSize = 50;
 const interactionRow = "grid min-w-0 gap-1 rounded-md px-2 py-1.5 hover:bg-row-hover";
