@@ -1,64 +1,65 @@
-{
-  "$schema": "https://unpkg.com/knip@6/schema-jsonc.json",
-  "workspaces": {
+import type { KnipConfig } from "knip";
+
+export default {
+  workspaces: {
     ".": {
-      "entry": [],
-      "project": ["*.{js,ts}"],
+      entry: [],
+      project: ["*.{js,ts}"],
     },
     "apps/desktop": {
       // Bun's custom bundlers and Electron load these outside the import graph.
-      "entry": ["src/preload.ts", "src/overlay-preload.ts", "src/harness/worker/harness-worker.ts"],
-      "project": ["src/**/*.{js,ts}", "scripts/**/*.{js,ts}"],
+      entry: ["src/preload.ts", "src/overlay-preload.ts", "src/harness/worker/harness-worker.ts"],
+      project: ["src/**/*.{js,ts}", "scripts/**/*.{js,ts}"],
       // package-assets tests resolve a synthetic package from a temporary fixture.
-      "ignoreDependencies": ["sdk"],
+      ignoreDependencies: ["sdk"],
     },
     "apps/server": {
       // Runtime scripts and the public API export are discovered from package.json.
-      "entry": ["{src,scripts}/**/*.test.ts", "scripts/seed-calendar-e2e.ts"],
-      "project": ["src/**/*.ts", "scripts/**/*.ts", "integration/**/*.ts", "*.config.ts"],
+      entry: ["{src,scripts}/**/*.test.ts", "scripts/seed-calendar-e2e.ts"],
+      project: ["src/**/*.ts", "scripts/**/*.ts", "integration/**/*.ts", "*.config.ts"],
       // Tests run through a custom Bun launcher rather than a bun test script.
-      "bun": true,
+      bun: true,
     },
     "apps/web": {
       // Vite, TanStack Router, and Playwright discover renderer and test entries.
-      "entry": ["e2e/test-support/screenshots.ts"],
-      "project": ["src/**/*.{ts,tsx,css}", "e2e/**/*.ts", "scripts/**/*.ts", "*.config.ts"],
+      entry: ["e2e/test-support/screenshots.ts"],
+      project: ["src/**/*.{ts,tsx,css}", "e2e/**/*.ts", "scripts/**/*.ts", "*.config.ts"],
       // Vendored shadcn components retain their upstream exports.
-      "ignore": ["src/components/ui/**"],
+      ignore: ["src/components/ui/**"],
     },
     // Package entry points come from each package.json exports map.
     "packages/client-storage": {
-      "entry": [],
-      "project": ["src/**/*.ts", "*.config.ts"],
+      entry: [],
+      project: ["src/**/*.ts", "*.config.ts"],
     },
     "packages/contracts": {
-      "entry": [],
-      "project": ["src/**/*.{js,ts}"],
+      entry: [],
+      project: ["src/**/*.{js,ts}"],
     },
     "packages/database": {
-      "entry": ["src/**/*.test.ts"],
-      "project": ["src/**/*.ts", "*.config.ts"],
+      entry: ["src/**/*.test.ts"],
+      project: ["src/**/*.ts", "*.config.ts"],
       // Tests run through a custom Bun launcher rather than a bun test script.
-      "bun": true,
+      bun: true,
     },
     "tooling/architecture-lint": {
       // oxlint loads src/index.ts through jsPlugins; `node --test` runs the rule tests.
-      "entry": ["src/**/*.test.ts"],
-      "project": ["src/**/*.ts"],
+      entry: ["src/**/*.test.ts"],
+      project: ["src/**/*.ts"],
     },
     "tooling/design-lint": {
       // oxlint loads src/index.ts through jsPlugins; `node --test` runs the rule tests.
-      "entry": ["src/**/*.test.ts"],
-      "project": ["src/**/*.ts"],
+      entry: ["src/**/*.test.ts"],
+      project: ["src/**/*.ts"],
     },
     "packages/harness-runtime": {
-      "entry": [],
-      "project": ["src/**/*.ts"],
+      entry: [],
+      project: ["src/**/*.ts"],
       // Located from the ACP manifest and shipped as executable adapters, not imported.
-      "ignoreDependencies": [
+      ignoreDependencies: [
         "@agentclientprotocol/claude-agent-acp",
         "@agentclientprotocol/codex-acp",
       ],
     },
   },
-}
+} satisfies KnipConfig;
