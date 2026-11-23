@@ -106,7 +106,8 @@ test("CRM search waits for typing to settle and aborts the old request immediate
   const user = await client(account);
   const { page } = user;
   await visit(user, undefined, "/crm", { section: "accounts" });
-  await expect(page.getByRole("button", { name: "New account", exact: true })).toBeVisible();
+  const input = page.getByRole("searchbox", { name: "Search accounts", exact: true });
+  await expect(input).toBeVisible();
   await pauseClock(page);
   const requests: string[] = [];
   page.on("request", (request) => {
@@ -130,7 +131,6 @@ test("CRM search waits for typing to settle and aborts the old request immediate
       delivered.resolve();
     }
   });
-  const input = page.getByRole("searchbox", { name: "Search accounts", exact: true });
   await input.fill("N");
   await page.clock.runFor(100);
   await input.fill("No");

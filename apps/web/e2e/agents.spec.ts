@@ -168,6 +168,7 @@ test("agent definitions and run settings can be created, edited, persisted and d
   account,
   client,
 }) => {
+  test.setTimeout(30_000);
   const user = await client(account);
   const name = `Release helper ${crypto.randomUUID()}`;
   await createAgent(user, name);

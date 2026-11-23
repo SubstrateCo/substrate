@@ -141,7 +141,10 @@ test("an ordinary recipient requests org approval and an owner approves without 
     recipient.page.getByRole("status").filter({ hasText: "Approval requested" }),
   ).toBeVisible();
   await visit(approver, undefined, "/settings/organization/sharing");
-  await approver.page.getByRole("link", { name: "Review", exact: true }).click();
+  await approver.page
+    .getByRole("link", { name: "Review", exact: true })
+    .and(approver.page.locator(`a[href="/accept-sharing/${invitation.id}"]`))
+    .click();
   await accept(approver.page);
   await expect(
     approver.page.getByRole("heading", { name: "Your workspace is ready", exact: true }),
