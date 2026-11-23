@@ -40,6 +40,8 @@ test("reconnect resyncs messages missed while the socket was disconnected", asyn
 }) => {
   const channel = await conversation(actors.sender, [actors.member.email]);
   const [sender, recipient] = await Promise.all([client(actors.sender), client(actors.member)]);
+  const initial = `Loaded before disconnect ${channel.id}`;
+  await post(actors.sender, "messaging/messages", { conversationId: channel.id, body: initial });
   let upstream: WebSocketRoute | undefined;
   let downstream: WebSocketRoute | undefined;
   let resume!: () => void;
@@ -56,6 +58,9 @@ test("reconnect resyncs messages missed while the socket was disconnected", asyn
     upstream = socket.connectToServer();
   });
   await Promise.all([visit(sender, channel.id), visit(recipient, channel.id)]);
+  // Ready can precede the conversation's first HTTP read. Load history before missing a write.
+  await expect(recipient.page.getByText(initial, { exact: true })).toBeVisible();
+  await expect(sender.page.getByText(initial, { exact: true })).toBeVisible();
   const readyBefore = recipient.events.filter((event) => event.type === "ready").length;
   const connectionsBefore = connections;
   paused = true;
