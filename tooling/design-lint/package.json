@@ -6,13 +6,12 @@
     ".": "./src/index.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun check",
     "test": "node --test \"src/**/*.test.ts\""
   },
   "devDependencies": {
     "@substrate/architecture-lint": "workspace:*",
     "@types/node": "catalog:tooling",
-    "oxlint": "catalog:tooling",
-    "typescript": "catalog:tooling"
+    "oxlint": "catalog:tooling"
   }
 }

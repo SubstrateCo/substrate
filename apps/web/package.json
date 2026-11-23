@@ -55,7 +55,6 @@
     "@vitejs/plugin-react": "^6.2.1",
     "oxc-transform-react": "^0.157.0",
     "tailwindcss": "^4.3.4",
-    "typescript": "catalog:tooling",
     "vite": "^8.3.6"
   }
 }

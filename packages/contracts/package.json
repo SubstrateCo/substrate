@@ -57,14 +57,11 @@
     "./timestamps": "./src/timestamps.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun check",
     "test": "bun test src"
   },
   "dependencies": {
     "better-auth": "catalog:auth",
     "zod": "catalog:"
-  },
-  "devDependencies": {
-    "typescript": "catalog:tooling"
   }
 }

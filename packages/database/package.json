@@ -16,7 +16,7 @@
     "./development": "./src/development/seed.ts"
   },
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun check",
     "test": "bun --env-file=../../.env src/testing/run.ts",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "bun --env-file=../../.env src/migrate.ts"
@@ -29,7 +29,6 @@
   },
   "devDependencies": {
     "drizzle-kit": "catalog:database",
-    "typescript": "catalog:tooling",
     "zod": "catalog:"
   }
 }

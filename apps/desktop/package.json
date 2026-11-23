@@ -13,7 +13,7 @@
     "package": "bun run package:win",
     "package:win": "bun run build && electron-builder --win nsis --publish never",
     "package:mac": "bun run build && electron-builder --mac --publish never",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun check",
     "test": "bun test src scripts"
   },
   "dependencies": {
@@ -32,8 +32,7 @@
     "@types/bun": "catalog:tooling",
     "@types/ws": "^8.18.2",
     "electron": "^43.0.0",
-    "electron-builder": "^26.0.12",
-    "typescript": "catalog:tooling"
+    "electron-builder": "^26.0.12"
   },
   "build": {
     "appId": "com.substrate.desktop",

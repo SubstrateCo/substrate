@@ -7,7 +7,7 @@
   },
   "scripts": {
     "db:generate": "drizzle-kit generate",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "bun check",
     "test": "bun test src"
   },
   "dependencies": {
@@ -16,7 +16,6 @@
   },
   "devDependencies": {
     "@types/node": "catalog:tooling",
-    "drizzle-kit": "catalog:database",
-    "typescript": "catalog:tooling"
+    "drizzle-kit": "catalog:database"
   }
 }
