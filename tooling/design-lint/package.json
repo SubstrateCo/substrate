@@ -11,8 +11,8 @@
   },
   "devDependencies": {
     "@substrate/architecture-lint": "workspace:*",
-    "@types/node": "24.19.2",
-    "oxlint": "^1.94.0",
-    "typescript": "^7.0.2"
+    "@types/node": "catalog:tooling",
+    "oxlint": "catalog:tooling",
+    "typescript": "catalog:tooling"
   }
 }

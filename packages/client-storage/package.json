@@ -12,11 +12,11 @@
   },
   "dependencies": {
     "@substrate/contracts": "workspace:*",
-    "drizzle-orm": "^0.45.4"
+    "drizzle-orm": "catalog:database"
   },
   "devDependencies": {
-    "@types/node": "24.19.2",
-    "drizzle-kit": "^0.31.11",
-    "typescript": "^7.0.2"
+    "@types/node": "catalog:tooling",
+    "drizzle-kit": "catalog:database",
+    "typescript": "catalog:tooling"
   }
 }

@@ -61,10 +61,10 @@
     "test": "bun test src"
   },
   "dependencies": {
-    "better-auth": "^1.7.18",
-    "zod": "^4.6.7"
+    "better-auth": "catalog:auth",
+    "zod": "catalog:"
   },
   "devDependencies": {
-    "typescript": "^7.0.2"
+    "typescript": "catalog:tooling"
   }
 }
