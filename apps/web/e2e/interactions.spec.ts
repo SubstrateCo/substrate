@@ -65,6 +65,7 @@ function total(page: Page) {
 }
 
 test("dashboard and timeline use real sample records in dark mode", async ({ account, client }) => {
+  test.setTimeout(30_000);
   await sampleInteractions(account);
   const user = await client(account);
   const { page } = user;
