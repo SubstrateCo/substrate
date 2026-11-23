@@ -1,5 +1,4 @@
 import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import type { LucideIcon } from "lucide-react";
 
 export type SegmentedOption<T extends string> = {
@@ -24,7 +23,7 @@ export function SegmentedControl<T extends string>({
   options: readonly SegmentedOption<T>[];
   onValueChange: (value: T) => void;
   "aria-label": string;
-  /** Show only icons. Each option keeps its label as its accessible name and tooltip. */
+  /** Show only icons. Each option keeps its label as its accessible name. */
   iconOnly?: boolean;
   disabled?: boolean;
 }) {
@@ -43,29 +42,16 @@ export function SegmentedControl<T extends string>({
         if (option) onValueChange(option.value);
       }}
     >
-      {options.map(({ value: optionValue, label: optionLabel, icon: Icon }) => {
-        const item = (
-          <ToggleGroupItem
-            key={optionValue}
-            value={optionValue}
-            aria-label={iconOnly ? optionLabel : undefined}
-          >
-            {Icon && <Icon aria-hidden />}
-            {!iconOnly && optionLabel}
-          </ToggleGroupItem>
-        );
-        if (!iconOnly) return item;
-        // The tooltip trigger is a wrapper, not the item: a trigger that is the item overwrites
-        // the item's `data-state`, and the chosen option would lose its raised style.
-        return (
-          <Tooltip key={optionValue}>
-            <TooltipTrigger asChild>
-              <span className="inline-flex">{item}</span>
-            </TooltipTrigger>
-            <TooltipContent>{optionLabel}</TooltipContent>
-          </Tooltip>
-        );
-      })}
+      {options.map(({ value: optionValue, label: optionLabel, icon: Icon }) => (
+        <ToggleGroupItem
+          key={optionValue}
+          value={optionValue}
+          aria-label={iconOnly ? optionLabel : undefined}
+        >
+          {Icon && <Icon aria-hidden />}
+          {!iconOnly && optionLabel}
+        </ToggleGroupItem>
+      ))}
     </ToggleGroup>
   );
 }
