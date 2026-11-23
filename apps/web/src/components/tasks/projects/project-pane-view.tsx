@@ -18,7 +18,8 @@ import { StaleNotice } from "@/components/feedback/stale-notice";
 import { UnsavedDraftsProvider, useDraftKeys } from "@/components/feedback/unsaved-drafts";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
-import { PageAside, PageContent } from "@/components/layout/page-layout";
+import { PageContent } from "@/components/layout/page-layout";
+import { PageSheet, PageSheetHeader, PageSheetBody } from "@/components/layout/page-sheet";
 import { SettingsContent } from "@/components/layout/settings-page";
 import { ProjectLoading } from "@/components/tasks/projects/project-loading";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ResourceStatus } from "@/lib/resource-state";
 import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
-import { Columns3, ListTodo, Plus, Unlink, X } from "lucide-react";
+import { Columns3, ListTodo, Plus, Unlink } from "lucide-react";
 
 const viewOptions = [
   { value: "list", label: "List", icon: ListTodo },
@@ -34,8 +35,7 @@ const viewOptions = [
 ] as const;
 
 /**
- * A project page and, when a task is open, the task inspector beside it. It renders the page's
- * content pane and aside, so it sits directly inside a PageLayout.
+ * A project page and its task detail sheet, directly inside a PageLayout.
  */
 export function ProjectPane(props: ComponentProps<typeof ProjectPaneContent>) {
   return (
@@ -87,7 +87,6 @@ function ProjectPaneContent({
   renderTaskDetail: (props: {
     detail: ProjectDetail;
     task: Task;
-    onClose: () => void;
     onSubtask: () => void;
     onSelectTask: (id: string) => void;
   }) => ReactNode;
@@ -104,7 +103,6 @@ function ProjectPaneContent({
   const { panel, inspector, newTaskButton, restoreFocus } = useTaskPanel({
     selectedTaskId,
     onSelectTask,
-    ready: !!detail,
   });
   const { tab, setTab, tabsRef, ...tabGuard } = useGuardedTab(inspector, taskDirty);
   if (!detail) return <ProjectPaneState state={state} onRetry={onRetry} />;
@@ -188,23 +186,23 @@ function ProjectPaneContent({
           </div>
         </Tabs>
       </PageContent>
-      <TaskAside
+      <TaskSheet
         open={Boolean(openTaskId && tab === "tasks")}
         inspector={inspector}
         onFocusCapture={tabGuard.trackInspectorFocus}
+        onClose={panel.close}
       >
         {selected ? (
           renderTaskDetail({
             detail,
             task: selected,
-            onClose: panel.close,
             onSubtask: () => panel.createSubtask(selected.entityId),
             onSelectTask: panel.select,
           })
         ) : (
-          <UnavailableTask onClose={panel.close} />
+          <UnavailableTask />
         )}
-      </TaskAside>
+      </TaskSheet>
       {panel.creating && canEdit && (
         <CreateTaskForm
           detail={detail}
@@ -347,50 +345,45 @@ function ProjectPaneHeader({
   );
 }
 
-function UnavailableTask({ onClose }: { onClose: () => void }) {
+function UnavailableTask() {
   return (
     <>
-      <header className="flex h-12 shrink-0 items-center justify-end border-b px-4">
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button variant="ghost" size="icon-sm" aria-label="Close task" onClick={onClose}>
-              <X aria-hidden="true" />
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Close task</TooltipContent>
-        </Tooltip>
-      </header>
-      <ContentNotice
-        icon={Unlink}
-        title="Task unavailable"
-        description="This task was removed or you no longer have access. Choose another task."
-      />
+      <PageSheetHeader title="Task" />
+      <PageSheetBody>
+        <ContentNotice
+          icon={Unlink}
+          title="Task unavailable"
+          description="This task was removed or you no longer have access. Choose another task."
+        />
+      </PageSheetBody>
     </>
   );
 }
 
-function TaskAside({
+function TaskSheet({
   open,
   inspector,
   onFocusCapture,
   children,
+  onClose,
 }: {
   open: boolean;
-  inspector: RefObject<HTMLElement | null>;
+  inspector: RefObject<HTMLDivElement | null>;
   onFocusCapture: React.FocusEventHandler<HTMLElement>;
   children: ReactNode;
+  onClose: () => void;
 }) {
-  if (!open) return null;
   return (
-    <PageAside
-      overlay
+    <PageSheet
+      open={open}
+      label="Task"
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
       ref={inspector}
-      tabIndex={-1}
-      aria-label="Task"
       onFocusCapture={onFocusCapture}
-      className="outline-none"
     >
       <TaskInspectorActive.Provider value={open}>{children}</TaskInspectorActive.Provider>
-    </PageAside>
+    </PageSheet>
   );
 }

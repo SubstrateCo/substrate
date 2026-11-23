@@ -3,7 +3,7 @@ import { captureCrm } from "./test-support/crm";
 import { test, visit } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
 
-test("contacts open as records without a rail entry or collection page", async ({
+test("contacts open in a sheet over their collection without a rail entry", async ({
   account,
   client,
 }) => {
@@ -25,7 +25,7 @@ test("contacts open as records without a rail entry or collection page", async (
   const apps = user.page.getByRole("navigation", { name: "Apps", exact: true });
   await expect(apps.getByRole("link", { name: "Contacts", exact: true })).toHaveCount(0);
   await visit(user, undefined, "/contacts");
-  await expect(user.page).toHaveURL(/\/dashboard/);
+  await expect(user.page.getByRole("heading", { name: "Contacts", exact: true })).toBeVisible();
   await visit(user, undefined, "/contacts", { recordId: contact.entityId });
   await expect(
     user.page.getByRole("heading", { name: "Linked contact", exact: true }),
@@ -33,7 +33,7 @@ test("contacts open as records without a rail entry or collection page", async (
   await expect(user.page.getByRole("link", { name: "Back to contacts", exact: true })).toHaveCount(
     0,
   );
-  await expect(user.page.getByRole("table", { name: "contacts", exact: true })).toHaveCount(0);
+  await expect(user.page.getByRole("table", { name: "contacts", exact: true })).toBeVisible();
   await expect(user.page.getByRole("navigation", { name: "CRM", exact: true })).toHaveCount(0);
   await user.page.reload();
   await expect(

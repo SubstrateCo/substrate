@@ -151,7 +151,9 @@ test("deal reassignment requires existing access by default and never silently g
   await expect(reader.page.getByRole("complementary", { name: "Record details" })).toHaveCount(0);
   for (const name of ["Share", "Change owner", "Edit", "Archive"])
     await expect(reader.page.getByRole("button", { name, exact: true })).toHaveCount(0);
-  await expect(reader.page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    reader.page.getByRole("dialog", { name: `Reassign ${record.name}`, exact: true }),
+  ).toHaveCount(0);
 });
 
 test("a creator who removes their own access closes management and sees only the unavailable state", async ({

@@ -24,7 +24,10 @@ test("task drafts ask before navigation and project drafts stay with their proje
   await visit(sender, undefined, "/tasks", { projectId: first.entityId, taskId: task.id });
   await sender.page.getByRole("button", { name: "Edit task" }).click();
   await sender.page.getByLabel("Task title").fill("Unsaved task title");
-  await sender.page.getByRole("button", { name: /^Not started: Other task/ }).click();
+  await sender.page
+    .getByRole("button", { name: /^Not started: Other task/ })
+    .getByText("Other task", { exact: true })
+    .click();
   await sender.page.getByRole("button", { name: "Keep editing" }).click();
   await expect(sender.page.getByLabel("Task title")).toHaveValue("Unsaved task title");
   await sender.page.getByRole("button", { name: "Close task" }).click();
@@ -34,9 +37,7 @@ test("task drafts ask before navigation and project drafts stay with their proje
   await sender.page.getByRole("tab", { name: "Settings" }).click();
   await sender.page.getByRole("button", { name: "Discard changes" }).click();
   // The task inspector keeps its draft guard until its exit animation ends.
-  await expect(sender.page.getByRole("complementary", { name: "Task", exact: true })).toHaveCount(
-    0,
-  );
+  await expect(sender.page.getByRole("dialog", { name: "Task", exact: true })).toHaveCount(0);
   await sender.page.getByLabel("Project name", { exact: true }).fill("Unsaved project name");
   await sender.page.getByRole("link", { name: second.name, exact: true }).click();
   await sender.page.getByRole("button", { name: "Discard changes" }).click();
@@ -61,11 +62,14 @@ test("a click outside the task inspector closes it, but controls, drafts and bac
   );
   const user = await client(actors.sender);
   await visit(user, undefined, "/tasks", { projectId: created.entityId, taskId: first.id });
-  const inspector = user.page.getByRole("complementary", { name: "Task", exact: true });
+  const inspector = user.page.getByRole("dialog", { name: "Task", exact: true });
   const outside = user.page.getByRole("heading", { name: created.name, exact: true });
   await expect(inspector.getByRole("heading", { name: "Open task", exact: true })).toBeVisible();
   // Another task's row switches the inspector instead of closing it.
-  await user.page.getByRole("button", { name: /^Not started: Other task/ }).click();
+  await user.page
+    .getByRole("button", { name: /^Not started: Other task/ })
+    .getByText("Other task", { exact: true })
+    .click();
   await expect(inspector.getByRole("heading", { name: "Other task", exact: true })).toBeVisible();
   // A click inside the inspector keeps it open.
   await inspector.getByRole("heading", { name: "Other task", exact: true }).click();
@@ -76,7 +80,9 @@ test("a click outside the task inspector closes it, but controls, drafts and bac
   await title.fill("Unsaved other task");
   await outside.click();
   await user.page.getByRole("button", { name: "Keep editing" }).click();
-  await expect(user.page.getByRole("dialog")).toHaveCount(0);
+  await expect(
+    user.page.getByRole("dialog", { name: "Discard unsaved changes?", exact: true }),
+  ).toHaveCount(0);
   await expect(title).toHaveValue("Unsaved other task");
   // The click outside moved focus off the draft, so keeping it returns focus there.
   await expect(title).toBeFocused();
@@ -86,7 +92,10 @@ test("a click outside the task inspector closes it, but controls, drafts and bac
   await expect.poll(() => new URL(user.page.url()).searchParams.has("taskId")).toBe(false);
 
   // A task created elsewhere refreshes the project without discarding an open edit draft.
-  await user.page.getByRole("button", { name: /^Not started: Open task/ }).click();
+  await user.page
+    .getByRole("button", { name: /^Not started: Open task/ })
+    .getByText("Open task", { exact: true })
+    .click();
   await inspector.getByRole("button", { name: "Edit task", exact: true }).click();
   const editor = user.page.getByRole("textbox", { name: "Task title", exact: true });
   const draft = "Unsaved task draft";
@@ -129,7 +138,7 @@ test("create a project, task and subtask, then edit and reload the task", async 
     .click();
   await sender.page.getByLabel("Task title", { exact: true }).fill("Ship release");
   await sender.page.getByRole("button", { name: "Create task", exact: true }).click();
-  await expect(sender.page.getByRole("dialog")).toHaveCount(0);
+  await expect(sender.page.getByRole("dialog", { name: "New task", exact: true })).toHaveCount(0);
   const task = sender.page.getByRole("region", { name: "Task details", exact: true });
   await expect(task.getByRole("heading", { name: "Ship release", exact: true })).toBeVisible();
   // Reload the parent to check the saved fields and its subtask in the renderer.

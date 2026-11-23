@@ -6,8 +6,9 @@ import { ProjectIcon } from "../projects/project-icon";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { TaskProperties } from "./task-properties";
 import { TaskSubtasks } from "./task-subtasks";
+import { PageSheetHeader, PageSheetBody } from "@/components/layout/page-sheet";
 import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
-import { ChevronRight, Pencil, X } from "lucide-react";
+import { ChevronRight, Pencil } from "lucide-react";
 
 /**
  * The task inspector: a fixed header with the task's place and tools, then one scrolling column
@@ -17,7 +18,6 @@ export function TaskDetail({
   detail,
   capabilities,
   task,
-  onClose,
   onSelectTask,
   onSubtask,
   onUpdate,
@@ -29,7 +29,6 @@ export function TaskDetail({
   detail: ProjectDetail;
   capabilities: ProjectCapabilities;
   task: Task;
-  onClose: () => void;
   onSelectTask: (id: string) => void;
   onSubtask: () => void;
   onUpdate: (patch: Partial<TaskDraft>) => void;
@@ -55,62 +54,58 @@ export function TaskDetail({
   );
   return (
     <section aria-label="Task details" className="flex min-h-0 min-w-0 flex-1 flex-col">
-      <header className="flex h-12 shrink-0 items-center gap-2 border-b px-4">
-        <nav
-          aria-label="Task location"
-          className="flex min-w-0 flex-1 items-center gap-1 text-xs text-muted-foreground"
-        >
-          <ProjectIcon image={detail.project.image} className="size-3.5" />
-          <span className="truncate" title={detail.project.name}>
-            {detail.project.name}
-          </span>
-          {task.parentTaskEntityId && (
-            <>
-              <ChevronRight aria-hidden="true" className="size-3 shrink-0" />
-              {parent ? (
-                <button
-                  type="button"
-                  className="min-w-0 truncate rounded-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
-                  title={parent.title}
-                  onClick={() => onSelectTask(parent.entityId)}
-                >
-                  {parent.title}
-                </button>
-              ) : (
-                <span className="truncate">A task you can’t open</span>
-              )}
-            </>
-          )}
-        </nav>
-        <div role="group" aria-label="Task actions" className="flex shrink-0 items-center gap-0.5">
-          {canEdit && !editing && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  ref={editButton}
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Edit task"
-                  onClick={() => setEditing(true)}
-                >
-                  <Pencil aria-hidden="true" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Edit title and description</TooltipContent>
-            </Tooltip>
-          )}
-          {actions}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button variant="ghost" size="icon-sm" aria-label="Close task" onClick={onClose}>
-                <X aria-hidden="true" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Close task</TooltipContent>
-          </Tooltip>
-        </div>
-      </header>
-      <div className="min-h-0 flex-1 overflow-y-auto">
+      <PageSheetHeader
+        title={
+          <nav
+            aria-label="Task location"
+            className="flex min-w-0 flex-1 items-center gap-1 text-xs text-muted-foreground"
+          >
+            <ProjectIcon image={detail.project.image} className="size-3.5" />
+            <span className="truncate" title={detail.project.name}>
+              {detail.project.name}
+            </span>
+            {task.parentTaskEntityId && (
+              <>
+                <ChevronRight aria-hidden="true" className="size-3 shrink-0" />
+                {parent ? (
+                  <button
+                    type="button"
+                    className="min-w-0 truncate rounded-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                    title={parent.title}
+                    onClick={() => onSelectTask(parent.entityId)}
+                  >
+                    {parent.title}
+                  </button>
+                ) : (
+                  <span className="truncate">A task you can’t open</span>
+                )}
+              </>
+            )}
+          </nav>
+        }
+        actions={
+          <>
+            {canEdit && !editing && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    ref={editButton}
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label="Edit task"
+                    onClick={() => setEditing(true)}
+                  >
+                    <Pencil aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Edit title and description</TooltipContent>
+              </Tooltip>
+            )}
+            {actions}
+          </>
+        }
+      />
+      <PageSheetBody className="p-0">
         <div className="grid min-w-0 gap-5 px-5 pt-4 pb-8 wrap-anywhere">
           {editing && canEdit ? (
             renderEditor(() => setEditing(false))
@@ -142,7 +137,7 @@ export function TaskDetail({
           {links}
           {children}
         </div>
-      </div>
+      </PageSheetBody>
     </section>
   );
 }

@@ -10,7 +10,9 @@ import { CopyLink } from "@/components/context/links/copy-link";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
 import { PageHeader } from "@/components/layout/page-header";
+import { PageSheetHeader, PageSheetBody, usePageSheet } from "@/components/layout/page-sheet";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { recordLink } from "@/lib/navigation/record-links";
 import { ArrowLeft, Archive, Pencil, RotateCcw } from "lucide-react";
 
@@ -47,9 +49,11 @@ export function RecordDetailView({
   properties?: ReactNode;
   notice?: ReactNode;
 }) {
+  const sheet = usePageSheet();
+  const Header = sheet ? PageSheetHeader : PageHeader;
   return (
     <RecordDetailFrame>
-      {kind !== "contacts" && (
+      {!sheet && kind !== "contacts" && (
         <Button variant="link" size="sm" asChild>
           <Link {...recordLink(organizationId, kind)}>
             <ArrowLeft aria-hidden />
@@ -57,8 +61,17 @@ export function RecordDetailView({
           </Link>
         </Button>
       )}
-      <PageHeader
-        title={name}
+      <Header
+        title={
+          sheet && archived ? (
+            <span className="flex items-center gap-2">
+              {name}
+              <Tag>Archived</Tag>
+            </span>
+          ) : (
+            name
+          )
+        }
         description={archived ? <Tag>Archived</Tag> : undefined}
         actions={
           <>
@@ -77,14 +90,35 @@ export function RecordDetailView({
             {actions}
             {canEdit && (
               <>
-                <Button variant="outline" size="sm" onClick={onEdit} disabled={archived}>
-                  <Pencil aria-hidden />
-                  Edit
-                </Button>
-                <Button variant="outline" size="sm" onClick={onArchive}>
-                  {archived ? <RotateCcw aria-hidden /> : <Archive aria-hidden />}
-                  {archived ? "Restore" : "Archive"}
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={sheet ? "ghost" : "outline"}
+                      size={sheet ? "icon-sm" : "sm"}
+                      aria-label="Edit"
+                      onClick={onEdit}
+                      disabled={archived}
+                    >
+                      <Pencil aria-hidden />
+                      {!sheet && "Edit"}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Edit</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant={sheet ? "ghost" : "outline"}
+                      size={sheet ? "icon-sm" : "sm"}
+                      aria-label={archived ? "Restore" : "Archive"}
+                      onClick={onArchive}
+                    >
+                      {archived ? <RotateCcw aria-hidden /> : <Archive aria-hidden />}
+                      {!sheet && (archived ? "Restore" : "Archive")}
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{archived ? "Restore" : "Archive"}</TooltipContent>
+                </Tooltip>
               </>
             )}
           </>
@@ -116,6 +150,13 @@ export function RecordDetailView({
 }
 
 function RecordDetailFrame({ children }: { children: ReactNode }) {
+  const sheet = usePageSheet();
+  if (sheet)
+    return (
+      <div className="flex min-h-0 flex-1 flex-col *:data-[slot=page-header]:shrink-0">
+        {children}
+      </div>
+    );
   return (
     <div className="min-h-0 flex-1 overflow-y-auto p-6">
       <div className="mx-auto max-w-6xl space-y-6">{children}</div>
@@ -124,6 +165,19 @@ function RecordDetailFrame({ children }: { children: ReactNode }) {
 }
 
 export function RecordDetailLoading({ kind }: { kind: CrmKind }) {
+  const sheet = usePageSheet();
+  if (sheet)
+    return (
+      <RecordDetailFrame>
+        <PageSheetHeader title={`Loading ${sheet.label.toLowerCase()}…`} />
+        <PageSheetBody>
+          <div role="status" aria-label={`Loading ${kind}`} className="space-y-6">
+            <SkeletonText width="12rem" />
+            <SkeletonText width="20rem" />
+          </div>
+        </PageSheetBody>
+      </RecordDetailFrame>
+    );
   return (
     <RecordDetailFrame>
       <div role="status" aria-label={`Loading ${kind}`}>
@@ -172,7 +226,8 @@ function RecordDetailBody({
   children?: ReactNode;
   properties?: ReactNode;
 }) {
-  return (
+  const sheet = usePageSheet();
+  const content = (
     <div className="grid grid-cols-1 gap-6 @3xl:grid-cols-3">
       <div className="min-w-0 space-y-6 @3xl:col-span-2">
         {summary}
@@ -185,6 +240,8 @@ function RecordDetailBody({
       )}
     </div>
   );
+  if (sheet) return <PageSheetBody>{content}</PageSheetBody>;
+  return content;
 }
 
 export function DetailProperty({ label, children }: { label: string; children: ReactNode }) {

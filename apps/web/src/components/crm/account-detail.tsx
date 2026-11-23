@@ -1,5 +1,4 @@
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 
 import { useState } from "react";
 
@@ -12,8 +11,8 @@ import type { RecordChangeDialog } from "./record-change-dialog";
 import { RecordChangeDialogs } from "./record-change-dialogs";
 import { RecordDetailView, RecordDetailLoading, DetailProperty } from "./record-detail-view";
 import { RecordList } from "./record-list";
+import { ContactLink } from "@/components/contacts/contact-link";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
-import { contactLink } from "@/lib/navigation/record-links";
 import { accountOptions } from "@/queries/crm/options";
 import { useRecordMutation } from "@/queries/records/mutations";
 
@@ -86,12 +85,12 @@ export function AccountDetail({
                   key={contact.entityId}
                   className="flex items-center justify-between gap-4 px-4 py-2"
                 >
-                  <Link
-                    {...contactLink(organizationId, contact.entityId)}
+                  <ContactLink
+                    entityId={contact.entityId}
                     className="text-sm font-medium hover:underline"
                   >
                     {contact.displayName}
-                  </Link>
+                  </ContactLink>
                   <span className="text-xs text-muted-foreground">
                     {affiliation.title}
                     {affiliation.isPrimary ? " · Primary account" : ""}

@@ -139,14 +139,13 @@ export function ProjectPane({
           renderCreate={renderCreate}
         />
       )}
-      renderTaskDetail={({ detail, task, onClose, onSubtask, onSelectTask }) => (
+      renderTaskDetail={({ detail, task, onSubtask, onSelectTask }) => (
         <TaskDetail
           visible
           key={task.entityId}
           organizationId={organizationId}
           detail={detail}
           task={task}
-          onClose={onClose}
           onSubtask={onSubtask}
           onSelectTask={onSelectTask}
         />

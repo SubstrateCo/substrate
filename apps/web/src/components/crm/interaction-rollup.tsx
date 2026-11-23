@@ -1,18 +1,17 @@
 import type { CrmTimelineMode } from "@substrate/contracts/crm/input";
 
 import { useQuery } from "@tanstack/react-query";
-import { Link } from "@tanstack/react-router";
 
 import { useState } from "react";
 
 import { CrmResourceState } from "./crm-resource-state";
 import { MeetingSourceLink } from "@/components/calendar/meeting-source-link";
+import { ContactLink } from "@/components/contacts/contact-link";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
-import { contactLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { useInteractionSources } from "@/queries/calendar/interaction-sources";
 import { crmTimelineOptions } from "@/queries/crm/options";
@@ -85,12 +84,9 @@ export function InteractionRollup({
           <InteractionRow key={row.entityId}>
             <div className="flex items-center gap-2 text-xs text-muted-foreground">
               <Timestamp value={row.occurredAt} format="datetime" />
-              <Link
-                {...contactLink(organizationId, row.contactEntityId)}
-                className="underline underline-offset-4"
-              >
+              <ContactLink entityId={row.contactEntityId} className="underline underline-offset-4">
                 Open contact
-              </Link>
+              </ContactLink>
             </div>
             <p className="text-sm whitespace-pre-wrap">{row.summary}</p>
             <MeetingSourceLink

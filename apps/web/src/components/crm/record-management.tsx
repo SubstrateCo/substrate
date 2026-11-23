@@ -2,7 +2,9 @@ import { useRef, useState } from "react";
 
 import { RecordOwner, type RecordOwnerProps } from "./record-owner";
 import { RecordSharing, type RecordSharingProps } from "./record-sharing";
+import { usePageSheet } from "@/components/layout/page-sheet";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { UserPlus, UserRound } from "lucide-react";
 
 export type ResponsibleRecord = RecordOwnerProps["record"];
@@ -20,6 +22,7 @@ export function RecordManagement({
   level: RecordSharingProps["level"];
   record?: ResponsibleRecord;
 }) {
+  const sheet = usePageSheet();
   const [dialog, setDialog] = useState<"share" | "owner" | null>(null);
   const shareButton = useRef<HTMLButtonElement>(null);
   const ownerButton = useRef<HTMLButtonElement>(null);
@@ -27,16 +30,38 @@ export function RecordManagement({
   return (
     <>
       {level === "owner" && (
-        <Button ref={shareButton} variant="outline" size="sm" onClick={() => setDialog("share")}>
-          <UserPlus aria-hidden="true" />
-          Share
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              ref={shareButton}
+              variant={sheet ? "ghost" : "outline"}
+              size={sheet ? "icon-sm" : "sm"}
+              aria-label="Share"
+              onClick={() => setDialog("share")}
+            >
+              <UserPlus aria-hidden="true" />
+              {!sheet && "Share"}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Share</TooltipContent>
+        </Tooltip>
       )}
       {canEdit && record && (
-        <Button ref={ownerButton} variant="outline" size="sm" onClick={() => setDialog("owner")}>
-          <UserRound aria-hidden="true" />
-          Change owner
-        </Button>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              ref={ownerButton}
+              variant={sheet ? "ghost" : "outline"}
+              size={sheet ? "icon-sm" : "sm"}
+              aria-label="Change owner"
+              onClick={() => setDialog("owner")}
+            >
+              <UserRound aria-hidden="true" />
+              {!sheet && "Change owner"}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Change owner</TooltipContent>
+        </Tooltip>
       )}
       {dialog === "share" && level === "owner" && (
         <RecordSharing

@@ -22,7 +22,6 @@ export function TaskDetail({
   organizationId,
   detail,
   task,
-  onClose,
   onSelectTask,
   onSubtask,
   visible,
@@ -30,7 +29,6 @@ export function TaskDetail({
   organizationId: string;
   detail: ProjectDetail;
   task: Task;
-  onClose: () => void;
   onSelectTask: (id: string) => void;
   onSubtask: () => void;
   visible: boolean;
@@ -52,7 +50,6 @@ export function TaskDetail({
         capabilities={capabilities}
         detail={detail}
         task={task}
-        onClose={onClose}
         onSelectTask={onSelectTask}
         onSubtask={onSubtask}
         onUpdate={(patch) =>

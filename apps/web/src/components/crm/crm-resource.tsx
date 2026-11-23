@@ -14,6 +14,7 @@ export function crmResource<T>(query: UseQueryResult<T>, loading?: ReactNode) {
       data: undefined,
       fallback: (
         <CrmResourceState
+          record
           pending={query.isPending}
           error={query.error}
           loading={loading}

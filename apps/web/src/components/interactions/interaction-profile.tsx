@@ -7,12 +7,13 @@ import { useState } from "react";
 
 import { RelationshipMap } from "./interaction-connections";
 import { InteractionTimeline } from "./interaction-timeline";
+import { ContactLink } from "@/components/contacts/contact-link";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { contactLink, crmLink } from "@/lib/navigation/record-links";
+import { crmLink } from "@/lib/navigation/record-links";
 import { interactionProfileOptions } from "@/queries/context/interactions";
 import { ArrowLeft, ArrowUpRight, List, Network } from "lucide-react";
 
@@ -62,14 +63,17 @@ export function InteractionProfile({
           <h2 className="text-lg font-semibold">{data.title}</h2>
         </div>
         <Button variant="outline" size="sm" asChild>
-          <Link
-            {...(type === "person"
-              ? contactLink(organizationId, entityId)
-              : crmLink(organizationId, "accounts", entityId))}
-          >
-            Open in {type === "person" ? "Contacts" : "CRM"}
-            <ArrowUpRight aria-hidden />
-          </Link>
+          {type === "person" ? (
+            <ContactLink entityId={entityId}>
+              Open contact
+              <ArrowUpRight aria-hidden />
+            </ContactLink>
+          ) : (
+            <Link {...crmLink(organizationId, "accounts", entityId)}>
+              Open in CRM
+              <ArrowUpRight aria-hidden />
+            </Link>
+          )}
         </Button>
       </div>
       <Tabs

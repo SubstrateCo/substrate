@@ -14,11 +14,13 @@ import { RecordChangeDialogs } from "./record-change-dialogs";
 import { RecordDetailView, RecordDetailLoading, DetailProperty } from "./record-detail-view";
 import type { RecordDraft } from "./record-editor";
 import type { getDeal } from "@/api/crm/requests";
+import { ContactLink } from "@/components/contacts/contact-link";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDueDate } from "@/lib/format/date";
-import { crmLink, contactLink } from "@/lib/navigation/record-links";
+import { crmLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { contactsOptions } from "@/queries/contacts/options";
 import { accountsOptions, dealOptions, pipelineOptions } from "@/queries/crm/options";
@@ -85,10 +87,19 @@ export function DealDetail({
         actions={
           canEdit &&
           !archived && (
-            <Button size="sm" onClick={() => open("transition")}>
-              <ArrowRight aria-hidden />
-              Move deal
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="Move deal"
+                  onClick={() => open("transition")}
+                >
+                  <ArrowRight aria-hidden />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Move deal</TooltipContent>
+            </Tooltip>
           )
         }
         properties={
@@ -198,12 +209,9 @@ function DealProperties({
           <ul className="space-y-1">
             {contacts.map(({ contact, isPrimary }) => (
               <li key={contact.entityId}>
-                <Link
-                  {...contactLink(organizationId, contact.entityId)}
-                  className="underline underline-offset-4"
-                >
+                <ContactLink entityId={contact.entityId} className="underline underline-offset-4">
                   {contact.displayName}
-                </Link>
+                </ContactLink>
                 {isPrimary && <span className="ml-2 text-xs text-muted-foreground">Primary</span>}
               </li>
             ))}

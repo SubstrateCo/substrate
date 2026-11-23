@@ -1,4 +1,4 @@
-import { Link } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 
 import { AccountDetail } from "./account-detail";
 import { CrmSettings } from "./crm-settings";
@@ -10,8 +10,10 @@ import {
   PageSidebar,
   PageSidebarContent,
 } from "@/components/layout/page-layout";
+import { PageSheet } from "@/components/layout/page-sheet";
 import { RecordCollection } from "@/components/records/record-collection";
 import { Button } from "@/components/ui/button";
+import { crmLink } from "@/lib/navigation/record-links";
 import { Building2, Handshake, Settings } from "lucide-react";
 
 const sections = [
@@ -29,14 +31,13 @@ export function CrmWorkspace({
   section: CrmSection;
   recordId?: string;
 }) {
+  const navigate = useNavigate();
   let content;
   if (section === "settings") content = <CrmSettings organizationId={organizationId} />;
-  else if (!recordId)
+  else if (section === "deals" || !recordId)
     content = <RecordCollection key={section} organizationId={organizationId} kind={section} />;
-  else {
-    const Detail = { accounts: AccountDetail, deals: DealDetail }[section];
-    content = <Detail key={recordId} organizationId={organizationId} entityId={recordId} />;
-  }
+  else
+    content = <AccountDetail key={recordId} organizationId={organizationId} entityId={recordId} />;
   return (
     <PageLayout id="crm" aria-label="CRM workspace">
       <PageSidebar aria-label="CRM">
@@ -62,6 +63,17 @@ export function CrmWorkspace({
         </PageSidebarContent>
       </PageSidebar>
       <PageContent className="@container">{content}</PageContent>
+      <PageSheet
+        open={section === "deals" && !!recordId}
+        label="Deal"
+        onOpenChange={(open) => {
+          if (!open) void navigate(crmLink(organizationId, "deals"));
+        }}
+      >
+        {section === "deals" && recordId && (
+          <DealDetail key={recordId} organizationId={organizationId} entityId={recordId} />
+        )}
+      </PageSheet>
     </PageLayout>
   );
 }

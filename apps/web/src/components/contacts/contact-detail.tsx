@@ -21,6 +21,7 @@ import {
   DetailProperty,
 } from "@/components/crm/record-detail-view";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AppAvailability } from "@/components/workspace/app-availability";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { crmLink } from "@/lib/navigation/record-links";
@@ -71,10 +72,19 @@ export function ContactDetail({
         onArchive={() => open("archive")}
         actions={
           canChange && (
-            <Button size="sm" onClick={() => open("interaction")}>
-              <Plus aria-hidden />
-              New interaction
-            </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon-sm"
+                  aria-label="New interaction"
+                  onClick={() => open("interaction")}
+                >
+                  <Plus aria-hidden />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>New interaction</TooltipContent>
+            </Tooltip>
           )
         }
         properties={
