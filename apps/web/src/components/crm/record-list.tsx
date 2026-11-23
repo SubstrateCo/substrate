@@ -1,8 +1,9 @@
 import { Link } from "@tanstack/react-router";
 
-import { dealAmount, outcomeLabel, singularLabels, type CrmKind } from "./crm-types";
+import { dealAmount, outcomeLabel, sectionLabels, singularLabels, type CrmKind } from "./crm-types";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
+import { Button } from "@/components/ui/button";
 import {
   Table,
   TableBody,
@@ -12,7 +13,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { recordLink } from "@/lib/navigation/record-links";
-import { Building2, Handshake, Users } from "lucide-react";
+import { Building2, Handshake, Plus, Users } from "lucide-react";
 
 export type CrmListRow = {
   entityId: string;
@@ -29,18 +30,37 @@ export function RecordList({
   organizationId,
   rows,
   loading = false,
+  filtered = false,
+  onCreate,
 }: {
   kind: CrmKind;
   organizationId: string;
   rows: CrmListRow[];
   loading?: boolean;
+  /** A search or the archived filter is active, so the empty list says nothing matched. */
+  filtered?: boolean;
+  /** Offers the empty list's primary action when the viewer can create a record. */
+  onCreate?: () => void;
 }) {
   if (!rows.length && !loading)
     return (
       <ContentNotice
         icon={{ accounts: Building2, contacts: Users, deals: Handshake }[kind]}
-        title={`No ${kind} found`}
-        description={`Create a ${singularLabels[kind]}, or adjust your search.`}
+        title={filtered ? `No ${kind} found` : `No ${kind} yet`}
+        description={
+          filtered
+            ? "Try a different search or filter."
+            : `${sectionLabels[kind]} you create appear here.`
+        }
+        action={
+          !filtered &&
+          onCreate && (
+            <Button onClick={onCreate}>
+              <Plus aria-hidden />
+              New {singularLabels[kind]}
+            </Button>
+          )
+        }
       />
     );
   return (

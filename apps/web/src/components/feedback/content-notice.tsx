@@ -11,26 +11,44 @@ import {
 import { Inbox, type LucideIcon } from "lucide-react";
 
 /**
- * An empty or unavailable state. Pick an icon that names the situation, such as Unlink for a
- * broken link or MailX for a missing invitation, and give one labelled primary action at most.
+ * An empty, unavailable, or error state. Pick an icon that names the situation, such as Unlink for
+ * a broken link or MailX for a missing invitation, and give one labelled primary action at most.
+ *
+ * - `pane`: the only content of a page or pane. Centered horizontally, top-anchored.
+ * - `compact`: in a card or page section with its own heading.
+ * - `inline`: one muted line in a sheet section, sidebar list, or board column.
  */
 export function ContentNotice({
   title,
   description,
   icon: Icon = Inbox,
   action,
-  compact = false,
+  variant = "pane",
+  tone = "default",
 }: {
   title: string;
-  description: ReactNode;
+  description?: ReactNode;
   icon?: LucideIcon;
   action?: ReactNode;
-  compact?: boolean;
+  variant?: "pane" | "compact" | "inline";
+  tone?: "default" | "error";
 }) {
-  if (compact)
+  const role = tone === "error" ? "alert" : "status";
+  const media = tone === "error" ? "error" : "icon";
+  if (variant === "inline")
     return (
-      <div role="status" className="flex items-start gap-3">
-        <EmptyMedia variant="icon">
+      <div
+        role={role}
+        className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground"
+      >
+        <span>{title}</span>
+        {action}
+      </div>
+    );
+  if (variant === "compact")
+    return (
+      <div role={role} className="flex items-start gap-3">
+        <EmptyMedia variant={media}>
           <Icon aria-hidden="true" />
         </EmptyMedia>
         <div className="min-w-0 space-y-3">
@@ -38,22 +56,26 @@ export function ContentNotice({
             <EmptyTitle>
               <h2>{title}</h2>
             </EmptyTitle>
-            <EmptyDescription>{description}</EmptyDescription>
+            {description && (
+              <EmptyDescription className="wrap-break-word">{description}</EmptyDescription>
+            )}
           </div>
           {action && <EmptyContent className="items-start">{action}</EmptyContent>}
         </div>
       </div>
     );
   return (
-    <Empty role="status" variant="pane" className="min-h-40">
+    <Empty role={role} variant="pane" className="my-6 flex-none justify-start">
       <EmptyHeader>
-        <EmptyMedia variant="icon">
+        <EmptyMedia variant={media}>
           <Icon aria-hidden="true" />
         </EmptyMedia>
         <EmptyTitle>
           <h2>{title}</h2>
         </EmptyTitle>
-        <EmptyDescription>{description}</EmptyDescription>
+        {description && (
+          <EmptyDescription className="wrap-break-word">{description}</EmptyDescription>
+        )}
       </EmptyHeader>
       {action && <EmptyContent>{action}</EmptyContent>}
     </Empty>

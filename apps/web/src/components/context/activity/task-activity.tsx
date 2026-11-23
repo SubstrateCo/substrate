@@ -4,6 +4,7 @@ import { ErrorState } from "../../feedback/error-state";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { ActivityRow, ActivityRowSkeleton, type ActivityEvent } from "./activity-row";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { ChevronDown } from "lucide-react";
 
 // Show the newest events first; older ones stay one click away.
@@ -55,7 +56,7 @@ export function TaskActivity({
           )}
           {error && <ErrorState compact title="Couldn’t load activity" onRetry={onRetry} />}
           {!loading && !error && !visible.length && (
-            <p className="text-sm text-muted-foreground">No activity yet.</p>
+            <ContentNotice variant="inline" title="No activity yet" />
           )}
           {shown.length > 0 && (
             <ul>

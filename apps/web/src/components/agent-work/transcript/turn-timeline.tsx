@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,7 +46,11 @@ export function TurnTimeline({
   outputLink: (entry: Extract<TranscriptEntry, { type: "output" }>) => RecordLink | undefined;
 }) {
   if (!entries.length)
-    return <p className="px-5 py-4 text-sm text-muted-foreground">Nothing has happened yet.</p>;
+    return (
+      <div className="px-5 py-4">
+        <ContentNotice variant="inline" title="Nothing has happened yet" />
+      </div>
+    );
   return (
     <ol className="grid gap-3 px-5 py-4">
       {entries.map((entry) => {

@@ -1,7 +1,7 @@
 import type { ConversationKind } from "@substrate/contracts/messaging/input";
 
 import { ContentNotice } from "@/components/feedback/content-notice";
-import { PaneState } from "@/components/feedback/pane-state";
+import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { Tag } from "@/components/feedback/tag";
@@ -107,16 +107,22 @@ export function ManagedConversations({
 }) {
   if (state === "error" || state === "unavailable")
     return (
-      <PaneState
-        label="Conversations unavailable"
-        error={error}
+      <ErrorState
+        title={
+          state === "unavailable" ? "Conversations unavailable" : "Couldn’t load conversations"
+        }
+        description={
+          state === "unavailable"
+            ? "Check that you still have access to this workspace."
+            : "Check your connection and try again."
+        }
         onRetry={state === "unavailable" ? undefined : onRetry}
       />
     );
   const loadingRows = loading && !rows;
   if (!loadingRows && !rows?.length && !error)
     return (
-      <div className="rounded-xl border">
+      <div className="rounded-lg border">
         <ContentNotice
           icon={Hash}
           title="No channels or group messages"
@@ -130,7 +136,7 @@ export function ManagedConversations({
         <StaleNotice onRetry={onRetry}>This list may be out of date.</StaleNotice>
       )}
       <div
-        className="overflow-hidden rounded-xl border bg-card"
+        className="overflow-hidden rounded-lg border bg-card"
         role={loadingRows ? "status" : undefined}
         aria-label={loadingRows ? "Loading conversations" : undefined}
       >

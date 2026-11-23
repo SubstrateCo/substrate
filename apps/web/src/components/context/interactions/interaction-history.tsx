@@ -6,6 +6,7 @@ import { MeetingSourceLink } from "@/components/calendar/meeting-source-link";
 import { CrmResourceState } from "@/components/crm/crm-resource-state";
 import { formText } from "@/components/crm/form-text";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { NativeField, NativeForm } from "@/components/forms/native-form";
@@ -55,12 +56,14 @@ export function InteractionHistory({
     <section className="space-y-3" aria-label="Interaction history">
       <h2 className="text-sm font-medium">Interaction history</h2>
       <CrmResourceState
+        compact
+        noun="interactions"
         pending={query.isPending}
         error={query.error}
         onRetry={() => void query.refetch()}
       />
       {!query.error && resourceState(query).data?.length === 0 && (
-        <p className="text-sm text-muted-foreground">No interactions recorded</p>
+        <ContentNotice variant="inline" title="No interactions recorded" />
       )}
       <ol className="divide-y">
         {(resourceState(query).data ?? []).map((interaction) => {

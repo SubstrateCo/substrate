@@ -31,7 +31,7 @@ test("a delayed catalog shows loading without blocking Needs you", async ({ acco
   try {
     await user.page.goto(`/agents?workspaceId=${account.organizationId}`);
     await expect(agents(user.page).getByRole("status", { name: "Loading agents" })).toBeVisible();
-    await expect(agents(user.page).getByText("You have no agents yet.")).toHaveCount(0);
+    await expect(agents(user.page).getByText("No agents yet")).toHaveCount(0);
     await expect(user.page.getByRole("heading", { name: "Needs you", exact: true })).toBeVisible();
     await expect(user.page.getByRole("heading", { name: "Nothing needs you" })).toBeVisible();
     await expect(sidebar(user.page).getByRole("link", { name: "Needs you" })).toBeEnabled();
@@ -55,7 +55,7 @@ test("an initial catalog failure can be retried without blocking Needs you", asy
   await expect(agents(user.page).getByRole("alert")).toContainText("Couldn’t load agents");
   await expect(user.page.getByRole("heading", { name: "Needs you", exact: true })).toBeVisible();
   await expect(user.page.getByRole("heading", { name: "Nothing needs you" })).toBeVisible();
-  await expect(agents(user.page).getByText("You have no agents yet.")).toHaveCount(0);
+  await expect(agents(user.page).getByText("No agents yet")).toHaveCount(0);
   await expect(user.page.getByText("Private diagnostic that must not be shown")).toHaveCount(0);
   failing = false;
   await agents(user.page).getByRole("button", { name: "Try again" }).click();

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { Message } from "@/api/messaging/requests";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
@@ -53,7 +54,7 @@ export function DiscussionPreview({
       )}
       {error && <ErrorState compact title="Couldn’t load discussion" onRetry={onRetry} />}
       {!loading && !error && !latest.length && (
-        <p className="text-sm text-muted-foreground">No messages yet. Start the conversation.</p>
+        <ContentNotice variant="inline" title="No messages yet" />
       )}
       {latest.length > 0 && (
         <ol className="space-y-4">

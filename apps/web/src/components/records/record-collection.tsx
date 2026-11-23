@@ -191,6 +191,15 @@ export function RecordCollection({
         showPipeline={dealPipelineView && !archived}
         dealPipelineView={dealPipelineView}
         page={cursors.length + 1}
+        filtered={debounced.query !== "" || archived}
+        onCreate={
+          records.canCreate
+            ? () => {
+                mutation.reset();
+                setCreating(true);
+              }
+            : undefined
+        }
         onPrevious={() => setCursors((previous) => previous.slice(0, -1))}
         onNext={(entityId) => setCursors((previous) => [...previous, entityId])}
       />
@@ -304,11 +313,15 @@ function RecordCollectionResults({
   showPipeline,
   dealPipelineView,
   page,
+  filtered,
+  onCreate,
   onPrevious,
   onNext,
 }: {
   organizationId: string;
   kind: CrmKind;
+  filtered: boolean;
+  onCreate?: () => void;
   records: ReturnType<typeof collectionRecords>;
   queries: ReturnType<typeof useCollectionQueries>;
   searchPending: boolean;
@@ -319,12 +332,19 @@ function RecordCollectionResults({
   onPrevious: () => void;
   onNext: (afterEntityId: string) => void;
 }) {
+  // One error per failed load: deals also need the pipeline and settings.
+  const dealsError = kind === "deals" ? (pipeline.error ?? settings.error) : null;
   return (
     <>
       <CrmResourceState
         pending={(searchPending || query.isPending) && !state.data}
-        error={state.data ? null : state.error}
-        onRetry={() => void query.refetch()}
+        error={(state.data ? null : state.error) ?? dealsError}
+        onRetry={() => {
+          void query.refetch();
+          if (kind !== "deals") return;
+          void pipeline.refetch();
+          void settings.refetch();
+        }}
         loading={
           showPipeline ? (
             <DealPipelineLoading />
@@ -338,20 +358,6 @@ function RecordCollectionResults({
           These records may be out of date.
         </StaleNotice>
       )}
-      {kind === "deals" && (
-        <>
-          <CrmResourceState
-            pending={false}
-            error={pipeline.error}
-            onRetry={() => void pipeline.refetch()}
-          />
-          <CrmResourceState
-            pending={false}
-            error={settings.error}
-            onRetry={() => void settings.refetch()}
-          />
-        </>
-      )}
       {state.data &&
         (showPipeline ? (
           <DealPipeline
@@ -360,9 +366,15 @@ function RecordCollectionResults({
             deals={(resourceState(deals).data ?? []).filter((deal) => deal.outcome === "open")}
           />
         ) : (
-          <RecordList organizationId={organizationId} kind={kind} rows={rows} />
+          <RecordList
+            organizationId={organizationId}
+            kind={kind}
+            rows={rows}
+            filtered={filtered}
+            onCreate={onCreate}
+          />
         ))}
-      {state.data && (
+      {state.data && (rows.length > 0 || page > 1) && (
         <RecordPagination
           page={page}
           rowCount={rows.length}

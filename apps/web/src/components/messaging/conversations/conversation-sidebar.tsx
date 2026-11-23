@@ -2,12 +2,12 @@ import type { LinkProps } from "@tanstack/react-router";
 
 import type { KeyboardEvent } from "react";
 
+import { ErrorState } from "@/components/feedback/error-state";
 import {
   PageSidebar,
   PageSidebarContent,
   PageSidebarHeader,
 } from "@/components/layout/page-layout";
-import { PageSidebarErrorState } from "@/components/layout/page-sidebar-error-state";
 import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-create-menu";
 import { ConversationSection } from "@/components/messaging/conversations/conversation-section";
 import type { Conversation } from "@/lib/messaging/conversations";
@@ -57,20 +57,23 @@ export function ConversationSidebar({
   error?: Error | null;
   onRetry?: () => void;
 }) {
-  const errorState = error && (
-    <PageSidebarErrorState
-      title="Couldn’t load conversations"
-      unavailable={state === "unavailable"}
-      onRetry={state === "unavailable" ? undefined : onRetry}
-    />
-  );
+  // With no conversations to show, the main pane shows the load error.
   const showList = state !== "unavailable" && (!error || conversations.length > 0);
   return (
     <PageSidebar id="conversation-sidebar" aria-label="Conversations" aria-busy={loading}>
       <PageSidebarHeader title="Messages" />
-      {showList ? (
+      {showList && (
         <PageSidebarContent className="pt-0" onKeyDown={moveBetweenConversations}>
-          {errorState}
+          {error && (
+            <div className="px-2">
+              <ErrorState
+                compact
+                title="Couldn’t load conversations"
+                description="Check your connection and try again."
+                onRetry={onRetry}
+              />
+            </div>
+          )}
           {(["channel", "partner", "dm"] as const).map((section) => (
             <ConversationSection
               key={section}
@@ -88,8 +91,6 @@ export function ConversationSidebar({
             />
           ))}
         </PageSidebarContent>
-      ) : (
-        errorState
       )}
     </PageSidebar>
   );

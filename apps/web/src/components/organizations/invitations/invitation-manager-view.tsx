@@ -3,13 +3,11 @@ import type { OrganizationRole } from "@substrate/contracts/auth/permissions";
 import { useState } from "react";
 
 import { ConfirmDialog } from "../../feedback/confirm-dialog";
-import { ContentNotice } from "../../feedback/content-notice";
 import { GroupTitle, SettingsCard } from "../../layout/settings-section";
 import { Spinner } from "../../ui/spinner";
 import { InvitationForm, type InvitationRoleOption } from "./invitation-form";
 import { InvitationTable } from "./invitation-table";
 import { FormMessage } from "@/components/feedback/form-message";
-import { Send } from "lucide-react";
 
 export type InvitationListItem = {
   id: string;
@@ -76,24 +74,16 @@ export function InvitationManager({
           Canceling invitation.
         </div>
       )}
-      {framed && !loading && !loadError && !invitations?.length ? (
-        <ContentNotice
-          icon={Send}
-          title="No invitations yet"
-          description="Invitations you send appear here until they are accepted."
-        />
-      ) : (
-        <InvitationTable
-          invitations={invitations}
-          loading={loading}
-          error={loadError}
-          busy={busy}
-          onRetry={onRetry}
-          onInvite={onInvite}
-          onCopyLink={onCopyLink}
-          onCancel={(id) => setConfirming(invitations?.find((invitation) => invitation.id === id))}
-        />
-      )}
+      <InvitationTable
+        invitations={invitations}
+        loading={loading}
+        error={loadError}
+        busy={busy}
+        onRetry={onRetry}
+        onInvite={onInvite}
+        onCopyLink={onCopyLink}
+        onCancel={(id) => setConfirming(invitations?.find((invitation) => invitation.id === id))}
+      />
       {confirming && (
         <ConfirmDialog
           destructive

@@ -145,7 +145,14 @@ function WorkspaceContent({
   if (state === "error" || state === "unavailable")
     return (
       <PaneState
-        label="Workspace unavailable"
+        label={
+          state === "unavailable" ? "Conversations unavailable" : "Couldn’t load conversations"
+        }
+        description={
+          state === "unavailable"
+            ? "Check that you still have access to this workspace."
+            : "Check your connection and try again."
+        }
         error={error}
         onRetry={state === "unavailable" ? undefined : onRetry}
       />

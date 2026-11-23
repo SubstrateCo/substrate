@@ -57,11 +57,7 @@ export function DealPipeline({
                 </li>
               ))}
             </ul>
-            {rows.length === 0 && (
-              <p className="py-4 text-center text-xs text-muted-foreground">
-                No deals in this stage
-              </p>
-            )}
+            {rows.length === 0 && <ContentNotice variant="inline" title="No deals in this stage" />}
           </PipelineColumn>
         );
       })}

@@ -23,10 +23,12 @@ function liveState(state: LiveState, change: Partial<LiveState>): LiveState {
   return { ...state, ...change };
 }
 
-/** A connected socket shows as connected only once the cache refresh after it is done. */
-function liveStatus({ socket, health }: LiveState): RealtimeStatus | "stale" {
+/**
+ * A connected socket shows as connected only once the cache refresh after it is done. A failed
+ * refresh also shows as connected: each failed load shows its own error or stale notice in-page.
+ */
+function liveStatus({ socket, health }: LiveState): RealtimeStatus {
   if (socket !== "connected") return socket;
-  if (health === "stale") return "stale";
   return health === "syncing" ? "connecting" : "connected";
 }
 
@@ -42,7 +44,6 @@ export function RealtimeConnection({
   const queryClient = useQueryClient();
   const router = useRouter();
   const [live, dispatch] = useReducer(liveState, { socket: "connecting", health: "fresh" });
-  // "stale" means the socket is up but the cache refresh after it failed.
   const status = liveStatus(live);
   const [container, setContainer] = useState<HTMLDivElement | null>(null);
   useEffect(() => {
@@ -98,7 +99,6 @@ export function RealtimeConnection({
   let statusText = "Live updates disconnected.";
   if (status === "connecting") statusText = "Reconnecting to live updates…";
   if (status === "forbidden") statusText = "Live updates unavailable. Check workspace access.";
-  if (status === "stale") statusText = "Live updates connected, but some data failed to refresh.";
   const notification = (
     <div
       // Center on the main page outlet when one is rendered; otherwise span the container.

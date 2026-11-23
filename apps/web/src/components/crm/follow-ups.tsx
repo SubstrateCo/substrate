@@ -5,6 +5,7 @@ import { useState } from "react";
 
 import { CrmResourceState } from "./crm-resource-state";
 import { FollowUpEditor } from "./follow-up-editor";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { DueDate } from "@/components/time/due-date";
@@ -57,6 +58,8 @@ function EnabledFollowUps({
         )}
       </div>
       <CrmResourceState
+        compact
+        noun="follow-ups"
         pending={query.isPending}
         error={query.error}
         onRetry={() => void query.refetch()}
@@ -85,7 +88,7 @@ function EnabledFollowUps({
       {data && !query.error && (
         <>
           {!data.nextAction && (
-            <p className="text-sm text-muted-foreground">No scheduled next action you can read</p>
+            <ContentNotice variant="inline" title="No scheduled next action you can read" />
           )}
           <ul className="divide-y">
             {data.tasks.map((task) => (

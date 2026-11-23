@@ -95,7 +95,7 @@ export function HomeSection({
   const empty = !data.loading && !data.error && !data.items.length;
   let content = emptyContent ?? (
     <ContentNotice
-      compact
+      variant="compact"
       icon={icon}
       title={emptyTitle}
       description={emptyDescription}
@@ -113,9 +113,7 @@ export function HomeSection({
   if (data.loading)
     content = <LoadingState label={`Loading ${title.toLowerCase()}`} variant="compact" rows={3} />;
   if (data.error)
-    content = (
-      <ErrorState compact title={`Couldn’t load ${title.toLowerCase()}`} onRetry={data.onRetry} />
-    );
+    content = <ErrorState compact title="Couldn’t load this section" onRetry={data.onRetry} />;
   return (
     <Card size="sm" className="min-h-0 min-w-0 flex-1" role="region" aria-label={title}>
       <CardHeader className="flex shrink-0 items-start justify-between gap-3">
@@ -134,10 +132,7 @@ export function HomeSection({
         )}
       </CardHeader>
       <CardContent
-        className={cn(
-          "min-h-0 flex-1 overflow-y-auto",
-          empty && "flex flex-col *:my-auto *:shrink-0",
-        )}
+        className="min-h-0 flex-1 overflow-y-auto"
         tabIndex={0}
         role="group"
         aria-label={`${title} items`}

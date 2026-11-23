@@ -277,7 +277,7 @@ function ProjectPaneState({ state, onRetry }: { state: ResourceStatus; onRetry: 
       {state === "loading" ? (
         <ProjectLoading />
       ) : (
-        <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
+        <div className="min-h-0 flex-1 overflow-y-auto">
           <ErrorState
             title={unavailable ? "Project unavailable" : "Couldn’t load project"}
             description={

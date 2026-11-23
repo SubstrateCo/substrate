@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 import { TaskBlockedCue } from "../list/task-list-item";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { TaskRelation } from "./task-relations";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -80,7 +81,7 @@ export function TaskLinks({
         </h3>
         {add}
       </div>
-      {!relations.length && <p className="text-sm text-muted-foreground">No linked tasks</p>}
+      {!relations.length && <ContentNotice variant="inline" title="No linked tasks" />}
       {groups.map(({ relation, rows }) => {
         const label = taskLinkRelationLabels[relation];
         return (

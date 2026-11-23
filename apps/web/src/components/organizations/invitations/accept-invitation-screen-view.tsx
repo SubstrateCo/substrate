@@ -64,7 +64,7 @@ export function AcceptInvitationScreen({
         </>
       }
     >
-      {loading && <LoadingState label="Loading invitation." rows={2} />}
+      {loading && <LoadingState label="Loading invitation…" rows={2} />}
       {!loading && failed && !unavailable && (
         <ErrorState
           compact

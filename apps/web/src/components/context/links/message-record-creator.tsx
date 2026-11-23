@@ -46,6 +46,7 @@ export function MessageRecordCreator({
         onClose={onClose}
       >
         <CrmResourceState
+          compact
           pending={loading}
           error={error}
           onRetry={() => {

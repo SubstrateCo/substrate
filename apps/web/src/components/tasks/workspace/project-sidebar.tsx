@@ -10,12 +10,13 @@ import { Skeleton } from "../../ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { ProjectIcon } from "../projects/project-icon";
 import type { Project } from "../types";
+import { ContentNotice } from "@/components/feedback/content-notice";
+import { ErrorState } from "@/components/feedback/error-state";
 import {
   PageSidebar,
   PageSidebarContent,
   PageSidebarHeader,
 } from "@/components/layout/page-layout";
-import { PageSidebarErrorState } from "@/components/layout/page-sidebar-error-state";
 import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { cn } from "cn";
@@ -52,13 +53,6 @@ export function ProjectSidebar({
   createButtonRef?: Ref<HTMLButtonElement>;
 }) {
   const visible = projects;
-  const errorState = error && (
-    <PageSidebarErrorState
-      title={state === "unavailable" ? "Projects unavailable" : "Couldn’t load projects"}
-      unavailable={state === "unavailable"}
-      onRetry={state === "unavailable" ? undefined : onRetry}
-    />
-  );
   return (
     <PageSidebar aria-label="Projects">
       <PageSidebarHeader
@@ -80,9 +74,8 @@ export function ProjectSidebar({
           </Tooltip>
         }
       />
-      {error && !visible.length ? (
-        errorState
-      ) : (
+      {/* With no projects to show, the main pane shows the load error. */}
+      {error && !visible.length ? null : (
         <PageSidebarContent className="pt-0">
           {loading && !visible.length && (
             <div
@@ -95,13 +88,28 @@ export function ProjectSidebar({
               ))}
             </div>
           )}
-          {errorState}
+          {error && (
+            <div className="px-2">
+              <ErrorState
+                compact
+                title={state === "unavailable" ? "Projects unavailable" : "Couldn’t load projects"}
+                description={
+                  state === "unavailable"
+                    ? "Check that you still have access to this workspace."
+                    : "Check your connection and try again."
+                }
+                onRetry={state === "unavailable" ? undefined : onRetry}
+              />
+            </div>
+          )}
           {!loading && !error && !visible.length && (
-            <p className="px-2 text-sm text-muted-foreground">
-              {archivedProjects.length
-                ? "No active projects. Create a project to start planning."
-                : "No projects yet. Create a project to start planning."}
-            </p>
+            <div className="px-2">
+              {/* The header's New project button and the main pane offer the create action. */}
+              <ContentNotice
+                variant="inline"
+                title={archivedProjects.length ? "No active projects" : "No projects yet"}
+              />
+            </div>
           )}
           <div className="flex gap-0.5 overflow-x-auto md:flex-col">
             {visible.map((project) => (

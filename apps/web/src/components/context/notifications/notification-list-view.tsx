@@ -228,23 +228,21 @@ function EmptyNotificationFeed({
   onShowAll: () => void;
 }) {
   return (
-    <div className="flex flex-1 items-center justify-center">
-      <ContentNotice
-        icon={Bell}
-        title={unreadOnly ? "You’re all caught up" : "No notifications yet"}
-        description={
-          unreadOnly
-            ? "Nothing new since you last looked."
-            : "Mentions, replies, and tasks assigned to you will show up here."
-        }
-        action={
-          unreadOnly && (
-            <Button variant="outline" size="sm" onClick={onShowAll}>
-              Show all
-            </Button>
-          )
-        }
-      />
-    </div>
+    <ContentNotice
+      icon={Bell}
+      title={unreadOnly ? "You’re all caught up" : "No notifications yet"}
+      description={
+        unreadOnly
+          ? "Nothing new since you last looked."
+          : "Mentions, replies, and tasks assigned to you will show up here."
+      }
+      action={
+        unreadOnly && (
+          <Button variant="outline" size="sm" onClick={onShowAll}>
+            Show all
+          </Button>
+        )
+      }
+    />
   );
 }

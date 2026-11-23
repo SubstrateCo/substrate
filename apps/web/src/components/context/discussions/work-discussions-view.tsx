@@ -64,7 +64,7 @@ export function WorkDiscussions({
     return (
       <section aria-label={label} className="space-y-1">
         <h3 className="flex h-7 items-center text-xs font-medium text-muted-foreground">{label}</h3>
-        <p className="text-sm text-muted-foreground">No linked discussions</p>
+        <ContentNotice variant="inline" title="No linked discussions" />
       </section>
     );
   const expanded = open ?? (uniqueRows.length > 0 || !!error || showLoading);

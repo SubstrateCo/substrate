@@ -242,7 +242,7 @@ function InvitationLoadNotice({
 }) {
   return (
     <>
-      {loading && <LoadingState label="Loading invitation." rows={2} />}
+      {loading && <LoadingState label="Loading invitation…" rows={2} />}
       {error &&
         (isPermanentFailure(error) ? (
           <WorkspacesLink />

@@ -20,6 +20,7 @@ import {
   RecordDetailLoading,
   DetailProperty,
 } from "@/components/crm/record-detail-view";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { AppAvailability } from "@/components/workspace/app-availability";
@@ -135,7 +136,7 @@ export function ContactDetail({
                 ))}
               </ul>
             ) : (
-              <p className="text-sm text-muted-foreground">No linked accounts you can read</p>
+              <ContentNotice variant="inline" title="No linked accounts you can read" />
             )}
           </section>
         </AppAvailability>

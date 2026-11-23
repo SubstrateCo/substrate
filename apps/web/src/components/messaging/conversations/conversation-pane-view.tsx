@@ -153,7 +153,12 @@ function PaneMessages({
   if (state === "error" || state === "unavailable")
     return (
       <PaneState
-        label="Conversation unavailable"
+        label={state === "unavailable" ? "Conversation unavailable" : "Couldn’t load messages"}
+        description={
+          state === "unavailable"
+            ? "This conversation was removed or you no longer have access."
+            : "Check your connection and try again."
+        }
         error={error}
         onRetry={state === "unavailable" ? undefined : onRetry}
       />
@@ -184,7 +189,7 @@ function EmptyConversation({
   else if (conversation.kind === "channel")
     emptyTitle = `Welcome to ${conversationLabel({ kind: "channel", private: conversation.private, name: title })}`;
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col justify-center overflow-y-auto p-4 wrap-anywhere">
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-y-auto p-4 wrap-anywhere">
       <ContentNotice
         title={emptyTitle}
         description={

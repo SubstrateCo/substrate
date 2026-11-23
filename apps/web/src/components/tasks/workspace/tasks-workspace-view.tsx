@@ -3,6 +3,7 @@ import type { LinkProps } from "@tanstack/react-router";
 import { useRef, useState, type ReactNode } from "react";
 
 import { ContentNotice } from "../../feedback/content-notice";
+import { ErrorState } from "../../feedback/error-state";
 import { Button } from "../../ui/button";
 import type { Project } from "../types";
 import { ProjectSidebar } from "./project-sidebar";
@@ -77,6 +78,17 @@ export function TasksWorkspace({
       {selectedProjectId && project}
       {!selectedProjectId && (
         <PageContent>
+          {error && !visible.length && (
+            <ErrorState
+              title={state === "unavailable" ? "Projects unavailable" : "Couldn’t load projects"}
+              description={
+                state === "unavailable"
+                  ? "Check that you still have access to this workspace."
+                  : "Check your connection and try again."
+              }
+              onRetry={state === "unavailable" ? undefined : onRetry}
+            />
+          )}
           {!loading && !error && (
             <ContentNotice
               icon={visible.length ? Unlink : FolderKanban}

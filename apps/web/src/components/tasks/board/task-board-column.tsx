@@ -3,6 +3,7 @@ import { taskStatusLabels, type TaskStatus } from "@substrate/contracts/tasks";
 import { useId, type ReactNode } from "react";
 
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useDroppable } from "@dnd-kit/core";
@@ -61,7 +62,11 @@ export function TaskBoardColumn({
         className="min-h-0 flex-1 space-y-3 overflow-y-auto px-3 pb-3"
       >
         {children}
-        {!count && <li className="py-2 text-xs text-muted-foreground">No tasks</li>}
+        {!count && (
+          <li>
+            <ContentNotice variant="inline" title="No tasks" />
+          </li>
+        )}
       </ul>
     </section>
   );

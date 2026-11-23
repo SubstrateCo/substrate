@@ -7,13 +7,14 @@ import type { ReactNode } from "react";
 
 import { isAccessFailure } from "@/api/access-failure";
 import type { listSharingConversations, listSharingInbox } from "@/api/messaging/sharing";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { Tag } from "@/components/feedback/tag";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { SettingsPanel } from "@/components/layout/settings-page";
-import { SettingsCard, SettingsNote } from "@/components/layout/settings-section";
+import { SettingsCard } from "@/components/layout/settings-section";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
 import { SharingManager } from "@/components/messaging/sharing/sharing-manager";
 import { Button } from "@/components/ui/button";
@@ -111,7 +112,7 @@ function SharingRequestsCard({
           </div>
         </div>
       )}
-      {requests?.length === 0 && <SettingsNote>No pending requests.</SettingsNote>}
+      {requests?.length === 0 && <ContentNotice variant="inline" title="No pending requests" />}
       {requests?.map((invite) => (
         <div key={invite.id} className="flex flex-wrap items-center justify-between gap-3">
           <SharingRequestContent
@@ -157,7 +158,9 @@ function SharedConversationsCard({
           </ul>
         </div>
       )}
-      {conversations?.length === 0 && <SettingsNote>No conversations to manage.</SettingsNote>}
+      {conversations?.length === 0 && (
+        <ContentNotice variant="inline" title="No conversations to manage" />
+      )}
       {!!conversations?.length && (
         <ul aria-label="Shared conversations" className="divide-y">
           {conversations.map((conversation) => (

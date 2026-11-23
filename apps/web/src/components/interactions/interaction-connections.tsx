@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
 import type { getInteractionProfile } from "@/api/context/interactions";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { eventDate } from "@/lib/calendar/days";
 import { calendarLink, linkedWorkLink } from "@/lib/navigation/record-links";
@@ -97,7 +98,7 @@ export function InteractionConnections({
   connections: InteractionConnection[];
 }) {
   if (!connections.length)
-    return <p className="text-sm text-muted-foreground">No linked records you can access</p>;
+    return <ContentNotice variant="inline" title="No linked records you can access" />;
   return (
     <ul className="divide-y">
       {connections.map((connection) => (
@@ -157,7 +158,9 @@ export function RelationshipMap({
             </li>
           ))}
           {!connections.length && (
-            <li className="text-sm text-muted-foreground">No saved connections you can access</li>
+            <li>
+              <ContentNotice variant="inline" title="No saved connections you can access" />
+            </li>
           )}
         </ul>
       </div>

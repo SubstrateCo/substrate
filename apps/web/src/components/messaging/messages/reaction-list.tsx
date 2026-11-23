@@ -3,6 +3,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useEffect } from "react";
 
 import type { Message } from "@/api/messaging/requests";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { ReactionNotice, ReactionPerson } from "@/components/messaging/messages/reaction-person";
 import { Button } from "@/components/ui/button";
 import { messageReactionsOptions } from "@/queries/messaging/reactions";
@@ -38,7 +39,7 @@ export function ReactionList({
           ))}
         </ul>
       ) : (
-        <p className="py-3 text-sm text-muted-foreground">No reactions yet</p>
+        <ContentNotice variant="inline" title="No reactions yet" />
       )}
       {people.isFetchNextPageError && (
         <p role="status" className="py-2 text-sm text-muted-foreground">

@@ -7,6 +7,7 @@ import { useState } from "react";
 import { CrmResourceState } from "./crm-resource-state";
 import { MeetingSourceLink } from "@/components/calendar/meeting-source-link";
 import { ContactLink } from "@/components/contacts/contact-link";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { Timestamp } from "@/components/time/timestamp";
@@ -56,6 +57,8 @@ export function InteractionRollup({
           : "Readable interactions from related contacts and explicit links. A touch does not mean it advanced this pursuit."}
       </p>
       <CrmResourceState
+        compact
+        noun="interactions"
         pending={query.isPending}
         error={query.error}
         onRetry={() => void query.refetch()}
@@ -77,7 +80,7 @@ export function InteractionRollup({
         }
       />
       {!query.isPending && !query.error && !rows.length && (
-        <p className="text-sm text-muted-foreground">No interactions in this view</p>
+        <ContentNotice variant="inline" title="No interactions in this view" />
       )}
       <ol className="divide-y">
         {rows.map((row) => (

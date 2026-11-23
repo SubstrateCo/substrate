@@ -246,7 +246,7 @@ test("agent definitions and run settings can be created, edited, persisted and d
   });
   await expect(firstAgent).toBeVisible();
   await user.page.reload();
-  await expect(sidebar.getByText("You have no agents yet.", { exact: true })).toBeVisible();
+  await expect(sidebar.getByText("No agents yet", { exact: true })).toBeVisible();
   await expect(firstAgent).toBeVisible();
 });
 

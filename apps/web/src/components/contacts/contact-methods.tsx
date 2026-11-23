@@ -6,6 +6,7 @@ import type { getContact } from "@/api/contacts/requests";
 import { CrmSelect } from "@/components/crm/crm-select";
 import { formText } from "@/components/crm/form-text";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { NativeField, NativeForm } from "@/components/forms/native-form";
@@ -51,7 +52,7 @@ export function ContactMethods({
         )}
       </div>
       {!identifiers.length && (
-        <p className="text-sm text-muted-foreground">No email addresses or phone numbers added</p>
+        <ContentNotice variant="inline" title="No email addresses or phone numbers added" />
       )}
       <ul className="divide-y">
         {identifiers.map((identifier) => (

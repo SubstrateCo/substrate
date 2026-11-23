@@ -110,6 +110,7 @@ function PublicationEditor({
         >
           <DialogBody>
             <CrmResourceState
+              compact
               pending={related.isPending}
               error={related.error}
               onRetry={() => void related.refetch()}

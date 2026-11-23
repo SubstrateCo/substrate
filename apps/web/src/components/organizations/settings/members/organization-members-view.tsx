@@ -84,7 +84,7 @@ export function OrganizationMembers({
           onRetry={onRetry}
         />
         {members?.length === 0 && (
-          <div className="rounded-xl border">
+          <div className="rounded-lg border">
             <ContentNotice
               icon={Users}
               title="No members yet"
@@ -95,7 +95,7 @@ export function OrganizationMembers({
         {!!members?.length && (
           <ul
             aria-label="Members"
-            className="@container divide-y overflow-hidden rounded-xl border bg-card"
+            className="@container divide-y overflow-hidden rounded-lg border bg-card"
           >
             {members.map((member) => (
               <MemberRow
@@ -140,7 +140,7 @@ function MemberListStatus({
         <div role="status" aria-label="Loading members">
           <ul
             aria-hidden="true"
-            className="@container divide-y overflow-hidden rounded-xl border bg-card"
+            className="@container divide-y overflow-hidden rounded-lg border bg-card"
           >
             {[0, 1, 2].map((key) => (
               <MemberRowSkeleton key={key} />

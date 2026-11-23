@@ -21,9 +21,7 @@ test("task discussion previews only the latest five root messages and opens the 
   const owner = await client(actor);
   await visit(owner, undefined, "/tasks", { projectId: created.id, taskId: target.id });
   const preview = owner.page.getByRole("region", { name: "Discussion", exact: true });
-  await expect(
-    preview.getByText("No messages yet. Start the conversation.", { exact: true }),
-  ).toBeVisible();
+  await expect(preview.getByText("No messages yet", { exact: true })).toBeVisible();
   const { conversationId } = await post<{ conversationId: string }>(actor, "tasks/discussion", {
     organizationId: actor.organizationId,
     projectEntityId: created.id,

@@ -13,6 +13,7 @@ import { RecordDetailView, RecordDetailLoading, DetailProperty } from "./record-
 import { RecordList } from "./record-list";
 import { ContactLink } from "@/components/contacts/contact-link";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { accountOptions } from "@/queries/crm/options";
 import { useRecordMutation } from "@/queries/records/mutations";
 
@@ -99,16 +100,20 @@ export function AccountDetail({
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-muted-foreground">No linked contacts you can read</p>
+            <ContentNotice variant="inline" title="No linked contacts you can read" />
           )}
         </section>
         <section className="space-y-3" aria-label="Account deals">
           <h2 className="text-sm font-medium">Deals</h2>
-          <RecordList
-            organizationId={organizationId}
-            kind="deals"
-            rows={deals.map((deal) => ({ ...deal, name: deal.title }))}
-          />
+          {deals.length ? (
+            <RecordList
+              organizationId={organizationId}
+              kind="deals"
+              rows={deals.map((deal) => ({ ...deal, name: deal.title }))}
+            />
+          ) : (
+            <ContentNotice variant="inline" title="No deals you can read" />
+          )}
         </section>
         <FollowUps
           organizationId={organizationId}

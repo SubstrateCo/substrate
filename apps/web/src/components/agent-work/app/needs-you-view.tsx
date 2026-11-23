@@ -64,13 +64,11 @@ export function NeedsYouView({
           </div>
         )}
         {!loading && !error && !entries.length && (
-          <div className="flex flex-1 items-center justify-center">
-            <ContentNotice
-              icon={CheckCheck}
-              title="Nothing needs you"
-              description="When an agent asks a question or proposes an action, it shows here."
-            />
-          </div>
+          <ContentNotice
+            icon={CheckCheck}
+            title="Nothing needs you"
+            description="When an agent asks a question or proposes an action, it shows here."
+          />
         )}
         {entries.length > 0 && (
           <ul aria-label="Needs you" className="grid gap-5">

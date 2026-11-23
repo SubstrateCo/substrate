@@ -14,10 +14,8 @@ export function PaneState({
 }) {
   if (error)
     return (
-      <div className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto p-6">
-        <div className="w-full max-w-sm">
-          <ErrorState title={label} description={description} onRetry={onRetry} />
-        </div>
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        <ErrorState title={label} description={description} onRetry={onRetry} />
       </div>
     );
   return (

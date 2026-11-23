@@ -80,13 +80,11 @@ export function InteractionDashboard({
         ))}
       </dl>
       {summary.total === 0 ? (
-        <Card>
-          <ContentNotice
-            title="No interactions in this period"
-            icon={Activity}
-            description="Create an interaction or try a longer period."
-          />
-        </Card>
+        <ContentNotice
+          title="No interactions in this period"
+          icon={Activity}
+          description="Create an interaction or try a longer period."
+        />
       ) : (
         <>
           <InteractionChart

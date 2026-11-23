@@ -2,6 +2,7 @@ import type { LinkProps } from "@tanstack/react-router";
 
 import { useState } from "react";
 
+import { ContentNotice } from "@/components/feedback/content-notice";
 import {
   ConversationCreateMenu,
   type DirectMessageAgent,
@@ -127,30 +128,15 @@ export function ConversationSection({
                 />
               ))}
             </div>
-            {!loading && items.length === 0 && (
-              <EmptySection section={section} onCreate={onCreate} />
+            {/* The section header's create button offers the action. */}
+            {!loading && items.length === 0 && section !== "partner" && (
+              <div className="px-2 py-1">
+                <ContentNotice variant="inline" title={emptyLabels[section]} />
+              </div>
             )}
           </div>
         </CollapsibleContent>
       </section>
     </Collapsible>
-  );
-}
-
-function EmptySection({
-  section,
-  onCreate,
-}: {
-  section: keyof typeof sectionLabels;
-  onCreate: (kind: Conversation["kind"]) => void;
-}) {
-  if (section === "partner") return null;
-  return (
-    <div className="flex items-center justify-between gap-2 px-2 py-1">
-      <p className="text-xs text-muted-foreground">{emptyLabels[section]}</p>
-      <Button type="button" variant="link" size="xs" onClick={() => onCreate(section)}>
-        Start one
-      </Button>
-    </div>
   );
 }

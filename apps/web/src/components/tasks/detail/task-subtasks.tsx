@@ -2,6 +2,7 @@ import { taskStatusLabels } from "@substrate/contracts/tasks";
 
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { Task } from "../types";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Plus } from "lucide-react";
@@ -45,7 +46,7 @@ export function TaskSubtasks({
           </Tooltip>
         )}
       </div>
-      {!subtasks.length && <p className="text-sm text-muted-foreground">No subtasks</p>}
+      {!subtasks.length && <ContentNotice variant="inline" title="No subtasks" />}
       {!!subtasks.length && (
         <ul className="-mx-2 grid gap-px">
           {subtasks.map((task) => (

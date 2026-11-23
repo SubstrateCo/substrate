@@ -12,7 +12,7 @@ import { Timestamp } from "@/components/time/timestamp";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useDelayedLoading } from "@/hooks/use-delayed-loading";
 import { cn } from "cn";
-import { History, Unlink } from "lucide-react";
+import { Unlink } from "lucide-react";
 
 export function ActivityList({
   items,
@@ -72,6 +72,7 @@ export function ActivityList({
       )}
       {unavailable && (
         <ContentNotice
+          variant="compact"
           icon={Unlink}
           title="Activity unavailable"
           description="You may no longer have access to this record’s activity."
@@ -86,11 +87,7 @@ export function ActivityList({
         />
       )}
       {!loading && !error && !items.length && (
-        <ContentNotice
-          icon={History}
-          title="No activity yet"
-          description="Record changes appear here when people or agents update this customer record."
-        />
+        <ContentNotice variant="inline" title="No activity yet" />
       )}
       {!unavailable && items.length > 0 && (
         <ol className="divide-y">

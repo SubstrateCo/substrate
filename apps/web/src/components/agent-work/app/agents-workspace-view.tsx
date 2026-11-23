@@ -3,6 +3,8 @@ import { Link, type LinkProps } from "@tanstack/react-router";
 import type { ReactNode, Ref } from "react";
 
 import { WorkIndicator } from "../work-indicator";
+import { ContentNotice } from "@/components/feedback/content-notice";
+import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import {
   PageContent,
@@ -11,7 +13,6 @@ import {
   PageSidebarContent,
   PageSidebarHeader,
 } from "@/components/layout/page-layout";
-import { PageSidebarErrorState } from "@/components/layout/page-sidebar-error-state";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -112,21 +113,25 @@ export function AgentsWorkspaceView({
                 <LoadingState label="Loading agents" variant="compact" />
               )}
               {catalogError && (
-                <PageSidebarErrorState
-                  title={
-                    catalogState === "unavailable" ? "Agents unavailable" : "Couldn’t load agents"
-                  }
-                  unavailable={catalogState === "unavailable"}
-                  description={
-                    catalogState === "unavailable"
-                      ? "Check that you’re signed in and still have access to your agents."
-                      : undefined
-                  }
-                  onRetry={catalogState === "unavailable" ? undefined : onRetryCatalog}
-                />
+                <div className="px-2">
+                  <ErrorState
+                    compact
+                    title={
+                      catalogState === "unavailable" ? "Agents unavailable" : "Couldn’t load agents"
+                    }
+                    description={
+                      catalogState === "unavailable"
+                        ? "Check that you’re signed in and still have access to your agents."
+                        : "Check your connection and try again."
+                    }
+                    onRetry={catalogState === "unavailable" ? undefined : onRetryCatalog}
+                  />
+                </div>
               )}
               {catalogState === "ready" && !agents.length && (
-                <p className="px-2 text-xs text-muted-foreground">You have no agents yet.</p>
+                <div className="px-2">
+                  <ContentNotice variant="inline" title="No agents yet" />
+                </div>
               )}
               {agents.map((agent) => (
                 <Button

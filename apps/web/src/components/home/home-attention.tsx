@@ -1,11 +1,11 @@
 import { Link } from "@tanstack/react-router";
 
 import { HomeRows, type HomeSectionData } from "./home-section";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { cn } from "cn";
 import { ArrowRight, CheckCheck, Hand } from "lucide-react";
 
 export function HomeAttention({
@@ -17,22 +17,19 @@ export function HomeAttention({
 }) {
   const quiet = !data.loading && !data.error && !data.items.length;
   let content = (
-    <div className="flex flex-wrap items-center gap-3">
-      <span className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-success/10 text-success">
-        <CheckCheck aria-hidden="true" className="size-5" />
-      </span>
-      <div className="min-w-0 flex-1 space-y-1">
-        <h2 className="text-sm font-medium">You’re caught up</h2>
-        <p className="text-xs text-muted-foreground">
-          No pending decisions or recent mentions here.
-        </p>
-      </div>
-      <Button asChild variant="ghost" size="xs">
-        <Link to="/notifications" search={{ workspaceId: organizationId }}>
-          Notifications <ArrowRight aria-hidden="true" />
-        </Link>
-      </Button>
-    </div>
+    <ContentNotice
+      variant="compact"
+      icon={CheckCheck}
+      title="You’re caught up"
+      description="No pending decisions or recent mentions here."
+      action={
+        <Button asChild variant="outline" size="sm">
+          <Link to="/notifications" search={{ workspaceId: organizationId }}>
+            Notifications <ArrowRight aria-hidden="true" />
+          </Link>
+        </Button>
+      }
+    />
   );
   if (data.items.length) content = <HomeRows items={data.items} featured />;
   if (data.loading)
@@ -64,10 +61,7 @@ export function HomeAttention({
         </CardHeader>
       )}
       <CardContent
-        className={cn(
-          "min-h-0 flex-1 overflow-y-auto",
-          quiet && "flex flex-col *:my-auto *:shrink-0",
-        )}
+        className="min-h-0 flex-1 overflow-y-auto"
         tabIndex={0}
         role="group"
         aria-label="Attention items"

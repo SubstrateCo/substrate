@@ -9,7 +9,7 @@ export function HomeEmptyWork({ organizationId }: { organizationId: string }) {
   return (
     <div className="space-y-6 py-3">
       <ContentNotice
-        compact
+        variant="compact"
         icon={ListTodo}
         title="No open tasks assigned to you"
         description="Find work in your projects, or create a task and assign it to yourself."

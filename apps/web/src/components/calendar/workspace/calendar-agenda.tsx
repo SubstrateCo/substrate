@@ -3,6 +3,7 @@ import type { CalendarEventSummary } from "@substrate/contracts/calendar";
 import { Link, type LinkProps } from "@tanstack/react-router";
 
 import { CalendarColorDot } from "../calendar-color";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { Tag } from "@/components/feedback/tag";
 import { agendaTimeLabel, eventEnded, eventTitle, type AgendaDay } from "@/lib/calendar/days";
 import { formatDayLabel, formatShortDate, isSameDay } from "@/lib/format/date";
@@ -41,9 +42,7 @@ export function CalendarAgenda({
               )}
             </h2>
             {events.length === 0 ? (
-              <p className="rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
-                No events
-              </p>
+              <ContentNotice variant="inline" title="No events" />
             ) : (
               <ul className="divide-y overflow-hidden rounded-lg border bg-card">
                 {events.map((event) => (

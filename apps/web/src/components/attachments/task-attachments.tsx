@@ -7,6 +7,7 @@ import { AttachFilesButton, AttachmentDraftList } from "./attachment-picker";
 import { FileDropZone } from "./file-drop-zone";
 import { taskAttachmentUrl, type TaskAttachmentTarget } from "@/api/files/attachments";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
@@ -67,7 +68,7 @@ function TaskAttachmentEmptyState({
   canEdit: boolean;
   hasDrafts: boolean;
 }) {
-  if (!canEdit) return <p className="text-sm text-muted-foreground">No attachments</p>;
+  if (!canEdit) return <ContentNotice variant="inline" title="No attachments" />;
   if (hasDrafts) return null;
   return (
     <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">

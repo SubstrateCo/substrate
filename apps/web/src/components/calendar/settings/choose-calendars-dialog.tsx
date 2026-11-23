@@ -174,7 +174,7 @@ function CalendarOptions({
   if (options.length === 0)
     return (
       <ContentNotice
-        compact
+        variant="compact"
         icon={CalendarDays}
         title="No calendars in this account"
         description="Create a calendar in Google Calendar, then try again."

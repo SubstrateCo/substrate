@@ -1,6 +1,7 @@
 import { useRef } from "react";
 
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
@@ -71,7 +72,7 @@ export function AgentMembersDialog({
   return (
     <>
       <ConfirmDialog {...common}>
-        {loading && <Spinner aria-label="Loading your agents" className="mx-auto" />}
+        {loading && <LoadingState label="Loading your agents" variant="compact" />}
         {!loading && (
           <ul ref={list} tabIndex={-1} aria-label="Your agents" className="-mx-2 grid gap-0.5">
             {agents.map((agent) => (
