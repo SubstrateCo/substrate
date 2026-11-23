@@ -113,6 +113,97 @@ test("deal contact links open over CRM and return to the same deal", async ({
   await expect(page.getByRole("link", { name: "Open contact", exact: true })).toBeVisible();
 });
 
+test("interaction sheets open over contacts and deals and return to them", async ({
+  account,
+  client,
+}) => {
+  const contact = await createCrm(account, { action: "createContact", displayName: "Avery Chen" });
+  const customer = await createCrm(account, { action: "createAccount", name: "Northstar" });
+  const stages = await result<{ id: string }[]>(await readCrm(account, "pipeline"));
+  const deal = await createCrm(account, {
+    action: "createDeal",
+    title: "Northstar winter launch",
+    accountEntityId: customer.entityId,
+    contactEntityIds: [contact.entityId],
+    primaryContactEntityId: contact.entityId,
+    stageId: stages[0]!.id,
+  });
+  for (const [kind, summary] of [
+    ["call", "Called about the winter launch budget."],
+    ["note", "Draft note to delete."],
+  ] as const)
+    await createCrm(account, {
+      action: "createInteraction",
+      contactEntityId: contact.entityId,
+      kind,
+      occurredAt: new Date().toISOString(),
+      summary,
+    });
+  const user = await client(account);
+  const { page } = user;
+  await page.emulateMedia({ colorScheme: "dark" });
+  await visit(user, undefined, "/contacts", { recordId: contact.entityId });
+  const contactSheet = page.getByRole("dialog", { name: "Contact", exact: true });
+  const sheet = page.getByRole("dialog", { name: "Interaction", exact: true });
+  const history = contactSheet.getByRole("region", { name: "Interaction history", exact: true });
+  await history
+    .getByRole("link", { name: "Open interaction: Called about the winter launch budget." })
+    .click();
+  await expect(
+    sheet.getByRole("heading", { name: "Call with Avery Chen", exact: true }),
+  ).toBeVisible();
+  await expect(contactSheet).toHaveCount(0);
+  expect(new URL(page.url()).searchParams.get("recordId")).toBe(contact.entityId);
+  await page.reload();
+  await expect(
+    sheet.getByRole("heading", { name: "Call with Avery Chen", exact: true }),
+  ).toBeVisible();
+  await captureCrm(page, "page-sheet-interaction-dark");
+  await sheet.getByRole("button", { name: "Edit", exact: true }).click();
+  const editor = page.getByRole("dialog", { name: "Edit interaction", exact: true });
+  await editor.getByLabel("Summary", { exact: true }).fill("Agreed on the winter launch budget.");
+  await editor.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(editor).toHaveCount(0);
+  await expect(
+    sheet.getByText("Agreed on the winter launch budget.", { exact: true }),
+  ).toBeVisible();
+  await sheet.getByRole("button", { name: "Close interaction", exact: true }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect(
+    contactSheet.getByRole("heading", { name: "Avery Chen", exact: true }),
+  ).toBeVisible();
+  expect(new URL(page.url()).searchParams.has("interactionId")).toBe(false);
+
+  await history.getByRole("link", { name: "Open interaction: Draft note to delete." }).click();
+  await sheet.getByRole("button", { name: "More actions", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Delete interaction", exact: true }).click();
+  const confirm = page.getByRole("dialog", { name: "Delete interaction?", exact: true });
+  await confirm.getByRole("button", { name: "Delete interaction", exact: true }).click();
+  await expect(sheet).toHaveCount(0);
+  await expect(history.getByText("Draft note to delete.", { exact: true })).toHaveCount(0);
+
+  await visit(user, undefined, "/crm", { section: "deals", recordId: deal.entityId });
+  const dealSheet = page.getByRole("dialog", { name: "Deal", exact: true });
+  await dealSheet.getByRole("radio", { name: "Related contacts", exact: true }).click();
+  await dealSheet
+    .getByRole("link", { name: "Open interaction: Agreed on the winter launch budget." })
+    .click();
+  await expect(
+    sheet.getByRole("heading", { name: "Call with Avery Chen", exact: true }),
+  ).toBeVisible();
+  await expect(dealSheet).toHaveCount(0);
+  await sheet.getByRole("link", { name: "Avery Chen", exact: true }).click();
+  await expect(
+    contactSheet.getByRole("heading", { name: "Avery Chen", exact: true }),
+  ).toBeVisible();
+  expect(new URL(page.url()).searchParams.has("interactionId")).toBe(false);
+  await contactSheet.getByRole("button", { name: "Close contact", exact: true }).click();
+  await expect(
+    dealSheet.getByRole("heading", { name: "Northstar winter launch", exact: true }),
+  ).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("recordId")).toBe(deal.entityId);
+});
+
 test("task sheet protects edits and uses the shared dark-mode surface", async ({
   account,
   client,

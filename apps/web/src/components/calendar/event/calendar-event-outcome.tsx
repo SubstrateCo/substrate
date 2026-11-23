@@ -4,10 +4,11 @@ import { Link } from "@tanstack/react-router";
 
 import { useId } from "react";
 
+import { InteractionLink } from "@/components/interactions/interaction-link";
 import { RecordSection } from "@/components/layout/record-section";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { meetingOutcomeSummary } from "@/lib/calendar/labels";
-import { interactionLink, personLink } from "@/lib/navigation/record-links";
+import { personLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
 import { CircleCheck, CircleSlash, Clock, Hourglass } from "lucide-react";
 
@@ -70,12 +71,12 @@ export function CalendarEventOutcome({
                 >
                   {interaction.contactName}
                 </Link>
-                <Link
-                  {...interactionLink(organizationId, interaction.entityId)}
+                <InteractionLink
+                  entityId={interaction.entityId}
                   className="shrink-0 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                 >
                   Open interaction
-                </Link>
+                </InteractionLink>
               </li>
             ))}
           </ul>

@@ -2,13 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
+import { InteractionChangeDialog, type InteractionChange } from "./interaction-change-dialog";
 import { MeetingSourceLink } from "@/components/calendar/meeting-source-link";
 import { CrmResourceState } from "@/components/crm/crm-resource-state";
-import { formText } from "@/components/crm/form-text";
-import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
-import { FormDialog } from "@/components/feedback/form-dialog";
-import { NativeField } from "@/components/forms/native-form";
+import { InteractionLink } from "@/components/interactions/interaction-link";
 import { InteractionRow } from "@/components/interactions/interaction-row";
 import { RecordSection, RecordSectionAction, recordRows } from "@/components/layout/record-section";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
@@ -39,11 +37,7 @@ export function InteractionHistory({
     resourceState(query).data ?? [],
     apps.enabled("calendar"),
   );
-  const [selected, setSelected] = useState<{
-    entityId: string;
-    summary: string;
-    action: "edit" | "delete";
-  } | null>(null);
+  const [selected, setSelected] = useState<InteractionChange | null>(null);
   return (
     <RecordSection
       aria-label="Interaction history"
@@ -75,7 +69,15 @@ export function InteractionHistory({
               key={interaction.entityId}
               kind={interaction.kind}
               occurredAt={interaction.occurredAt}
-              summary={interaction.summary}
+              summary={
+                <InteractionLink
+                  entityId={interaction.entityId}
+                  className="underline-offset-4 hover:underline"
+                  aria-label={`Open interaction: ${interaction.summary}`}
+                >
+                  {interaction.summary}
+                </InteractionLink>
+              }
               source={
                 <MeetingSourceLink
                   organizationId={organizationId}
@@ -116,56 +118,12 @@ export function InteractionHistory({
           );
         })}
       </ol>
-      {selected?.action === "edit" && canEdit && (
-        <FormDialog
-          title="Edit interaction"
-          description="The summary remains visible to everyone in the workspace."
-          saveLabel="Save"
-          nativeValidation
-          pending={mutation.isPending}
-          error={mutation.error}
-          errorDescription="Couldn’t update this interaction. Try again."
+      {selected && (selected.action === "edit" ? canEdit : canDelete) && (
+        <InteractionChangeDialog
+          organizationId={organizationId}
+          change={selected}
+          mutation={mutation}
           onClose={() => setSelected(null)}
-          onSubmit={(form) =>
-            mutation.mutate(
-              {
-                action: "updateInteraction",
-                organizationId,
-                entityId: selected.entityId,
-                summary: formText(form, "summary"),
-              },
-              { onSuccess: () => setSelected(null) },
-            )
-          }
-        >
-          <NativeField
-            id="edit-interaction-summary"
-            name="summary"
-            label="Summary"
-            multiline
-            defaultValue={selected.summary}
-            required
-            missingMessage="Enter a summary."
-            maxLength={10000}
-          />
-        </FormDialog>
-      )}
-      {selected?.action === "delete" && canDelete && (
-        <ConfirmDialog
-          title="Delete interaction?"
-          description="Remove this interaction from normal history. This does not delete its contact or linked source."
-          confirmLabel="Delete interaction"
-          destructive
-          pending={mutation.isPending}
-          error={mutation.error}
-          errorDescription="Couldn’t delete this interaction. Try again."
-          onClose={() => setSelected(null)}
-          onConfirm={() =>
-            mutation.mutate(
-              { action: "deleteInteraction", organizationId, entityId: selected.entityId },
-              { onSuccess: () => setSelected(null) },
-            )
-          }
         />
       )}
     </RecordSection>

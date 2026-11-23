@@ -119,6 +119,17 @@ test("an event opens beside the calendar from its link and shows what it recorde
   await page.reload();
   await expect(panel.getByRole("heading", { name: "Pricing review", exact: true })).toBeVisible();
   await expect(panel.getByText("Recorded", { exact: true })).toBeVisible();
+  // A recorded interaction opens over the calendar and closes back to the event.
+  await recorded.getByRole("link", { name: "Open interaction", exact: true }).click();
+  const interaction = page.getByRole("dialog", { name: "Interaction", exact: true });
+  await expect(interaction.getByRole("heading", { name: /with Jordan Lee$/ })).toBeVisible();
+  expect(new URL(page.url()).pathname).toBe("/calendar");
+  expect(new URL(page.url()).searchParams.get("eventId")).toBe(saved.eventId);
+  expect(new URL(page.url()).searchParams.get("interactionId")).toBeTruthy();
+  await interaction.getByRole("button", { name: "Close interaction", exact: true }).click();
+  await expect(interaction).toHaveCount(0);
+  expect(new URL(page.url()).searchParams.has("interactionId")).toBe(false);
+  await expect(panel.getByRole("heading", { name: "Pricing review", exact: true })).toBeVisible();
   await panel.getByRole("button", { name: "Close event", exact: true }).click();
   await expect(page).not.toHaveURL(/eventId=/);
   await expect(panel).toHaveCount(0);

@@ -1,12 +1,12 @@
-import { useNavigate } from "@tanstack/react-router";
+import { Link, useNavigate } from "@tanstack/react-router";
 
 import { useState } from "react";
 
 import { InteractionDashboard } from "./interaction-dashboard";
+import { InteractionDetail } from "./interaction-detail";
 import { InteractionDirectory } from "./interaction-directory";
 import { interactionWindow } from "./interaction-period";
 import { InteractionProfile } from "./interaction-profile";
-import { InteractionRecordDialog } from "./interaction-record-dialog";
 import { InteractionTimeline } from "./interaction-timeline";
 import type { InteractionSection } from "./interaction-types";
 import { NewInteraction } from "./new-interaction";
@@ -21,6 +21,7 @@ import {
   PageSidebarHeader,
   SidebarNav,
 } from "@/components/layout/page-layout";
+import { PageSheet } from "@/components/layout/page-sheet";
 import { Button } from "@/components/ui/button";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { Building2, LayoutDashboard, Plus, Users } from "lucide-react";
@@ -193,18 +194,42 @@ export function InteractionsWorkspace({
           onClose={() => setCreating(false)}
         />
       )}
-      {recordId && (
-        <InteractionRecordDialog
-          organizationId={organizationId}
-          entityId={recordId}
-          onClose={() =>
+      <PageSheet
+        open={!!recordId}
+        label="Interaction"
+        onOpenChange={(open) => {
+          if (!open)
             void navigate({
               to: "/interactions",
               search: (previous) => ({ ...previous, recordId: undefined }),
-            })
-          }
-        />
-      )}
+            });
+        }}
+      >
+        {recordId && (
+          <InteractionDetail
+            key={recordId}
+            organizationId={organizationId}
+            entityId={recordId}
+            contact={(contact) => (
+              <Link
+                from="/interactions/"
+                to="/interactions"
+                search={(previous) => ({
+                  ...previous,
+                  section: "person",
+                  profileId: contact.entityId,
+                  recordId: undefined,
+                  // The record can be older than the current period.
+                  days: "all",
+                })}
+                className="min-w-0 truncate underline-offset-4 hover:underline"
+              >
+                {contact.name}
+              </Link>
+            )}
+          />
+        )}
+      </PageSheet>
     </PageLayout>
   );
 }

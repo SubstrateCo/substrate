@@ -136,15 +136,36 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
     .getByRole("link", { name: `Open interaction: ${summaries.email}`, exact: true })
     .first()
     .click();
-  const sourceDetail = page.getByRole("dialog", { name: "Interaction details", exact: true });
+  const sourceDetail = page.getByRole("dialog", { name: "Interaction", exact: true });
+  await expect(
+    sourceDetail.getByRole("heading", { name: "Email with Maya Chen", exact: true }),
+  ).toBeVisible();
+  expect(new URL(page.url()).searchParams.get("recordId")).toBeTruthy();
   await expect(
     sourceDetail
       .getByRole("region", { name: "Source messages", exact: true })
       .getByText(summaries.email, { exact: true }),
   ).toBeVisible();
   await capture(page, "interaction-source-dark");
-  await page.keyboard.press("Escape");
+  // The sheet leaves the timeline usable, and another interaction replaces its content in place.
+  const shell = await sourceDetail.elementHandle();
+  await list
+    .getByRole("link", { name: `Open interaction: ${summaries.meeting}`, exact: true })
+    .first()
+    .click();
+  await expect(
+    sourceDetail.getByRole("heading", { name: "Meeting with Alex Rivera", exact: true }),
+  ).toBeVisible();
+  expect(await sourceDetail.evaluate((node, previous) => node === previous, shell)).toBe(true);
+  const meetingUrl = page.url();
+  await page.reload();
+  await expect(
+    sourceDetail.getByRole("heading", { name: "Meeting with Alex Rivera", exact: true }),
+  ).toBeVisible();
+  expect(page.url()).toBe(meetingUrl);
+  await sourceDetail.getByRole("button", { name: "Close interaction", exact: true }).click();
   await expect(sourceDetail).toHaveCount(0);
+  expect(new URL(page.url()).searchParams.has("recordId")).toBe(false);
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(
     true,
   );
@@ -410,10 +431,14 @@ test("create interactions, browse directories and profiles, and inspect source c
       exact: true,
     })
     .click();
-  const details = page.getByRole("dialog", { name: "Interaction details", exact: true });
+  const details = page.getByRole("dialog", { name: "Interaction", exact: true });
   await expect(
     details.getByText("Agreed on a pilot with the operations team.", { exact: true }),
   ).toBeVisible();
+  const tools = details.getByRole("group", { name: "Interaction actions", exact: true });
+  await expect(tools.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
+  await expect(tools.getByRole("button", { name: "Copy link", exact: true })).toBeVisible();
+  await expect(tools.getByRole("button", { name: "More actions", exact: true })).toBeVisible();
   await expect(details.getByRole("heading", { name: "Linked records", exact: true })).toBeVisible();
   await capture(page, "interaction-details-dark");
   await page.reload();

@@ -10,6 +10,7 @@ import { ContactLink } from "@/components/contacts/contact-link";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { SegmentedControl } from "@/components/forms/segmented-control";
+import { InteractionLink } from "@/components/interactions/interaction-link";
 import { InteractionRow } from "@/components/interactions/interaction-row";
 import { RecordSection, recordRows } from "@/components/layout/record-section";
 import { Pager, useCursorPages } from "@/components/table";
@@ -90,7 +91,15 @@ export function InteractionRollup({
               key={row.entityId}
               kind={row.kind}
               occurredAt={row.occurredAt}
-              summary={row.summary}
+              summary={
+                <InteractionLink
+                  entityId={row.entityId}
+                  className="underline-offset-4 hover:underline"
+                  aria-label={`Open interaction: ${row.summary}`}
+                >
+                  {row.summary}
+                </InteractionLink>
+              }
               details={[
                 <ContactLink
                   key="contact"
