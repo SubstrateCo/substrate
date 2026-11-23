@@ -8,7 +8,7 @@ import { joinActorAccount, joinedActorName } from "../../core/actors/joined-prof
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
-import { contactInteractions } from "../../core/contacts/interactions.schema";
+import { contactInteractions } from "../../core/contacts/interactions/interactions.schema";
 import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
 import { member } from "../../core/organizations/schema";
@@ -33,8 +33,8 @@ import { projects } from "../projects/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { requireWork } from "./access";
 import { crmContextTargets, crmContextTypes } from "./crm-targets";
-import { messageExcerpts } from "./message-excerpt";
-import { bodyMessagingReferences } from "./messaging-references";
+import { messageExcerpts } from "./message-references/message-excerpt";
+import { bodyMessagingReferences } from "./message-references/messaging-references";
 import { messageEntityReferences } from "./schema";
 import {
   and,

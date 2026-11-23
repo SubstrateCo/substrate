@@ -7,11 +7,11 @@ import {
   type MessagingSessionResolver,
 } from "../../core/session/messaging";
 import type { ResolvedWorkspace } from "../../core/session/workspace";
-import { conversationOperations } from "./conversations";
-import { messageMutationOperations } from "./message-mutations";
-import { messageOperations } from "./messages";
-import { reactionOperations } from "./reactions";
-import { readOperations } from "./read-state";
+import { conversationOperations } from "./conversations/conversations";
+import { messageMutationOperations } from "./messages/message-mutations";
+import { messageOperations } from "./messages/messages";
+import { reactionOperations } from "./messages/reactions";
+import { readOperations } from "./read-state/read-state";
 
 // Trusted server facade: identity and active organization must come from the session.
 function messagingOperations(

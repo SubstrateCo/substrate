@@ -8,7 +8,7 @@ import { effectsFor } from "../../core/effects";
 import { entities } from "../../core/entities/schema";
 import type { DatabaseExecutor } from "../../core/executor";
 import { member } from "../../core/organizations/schema";
-import { agentRequests } from "../agent-work/requests.schema";
+import { agentRequests } from "../agent-work/requests/requests.schema";
 import {
   messagingConversations,
   messagingMessages,

@@ -2,8 +2,8 @@ import type { CrmTimelineMode } from "@substrate/contracts/crm/input";
 
 import { requireAppEnabled } from "../../core/apps/access";
 import { interactionReadable } from "../../core/contacts/access";
-import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
-import { contactInteractions } from "../../core/contacts/interactions.schema";
+import { contactInteractionRepository } from "../../core/contacts/interactions/interactions.repository";
+import { contactInteractions } from "../../core/contacts/interactions/interactions.schema";
 import { entityLinks } from "../../core/links/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { pageSize } from "../../core/repository-context";

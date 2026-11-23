@@ -3,8 +3,8 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { requireContact } from "../../../core/contacts/access";
 import { parseInput } from "../../../core/contacts/inputs";
-import { contactInteractionRepository } from "../../../core/contacts/interactions.repository";
-import { contactInteractions } from "../../../core/contacts/interactions.schema";
+import { contactInteractionRepository } from "../../../core/contacts/interactions/interactions.repository";
+import { contactInteractions } from "../../../core/contacts/interactions/interactions.schema";
 import type { RepositoryContext } from "../../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../../errors";
 import { recordCrmActivity } from "../../crm/activity";

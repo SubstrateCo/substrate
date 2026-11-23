@@ -6,7 +6,7 @@ import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
-import { sendMessageAs } from "../messaging/messages";
+import { sendMessageAs } from "../messaging/messages/messages";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 

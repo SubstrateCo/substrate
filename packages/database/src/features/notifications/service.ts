@@ -13,7 +13,7 @@ import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError } from "../../errors";
 import { taskActivity } from "../activity/schema";
-import { messageExcerpts } from "../context/message-excerpt";
+import { messageExcerpts } from "../context/message-references/message-excerpt";
 import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";

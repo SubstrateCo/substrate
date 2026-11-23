@@ -6,8 +6,8 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { ValidationError } from "../../errors";
-import { createAsyncRequest } from "../agent-work/async-requests";
-import { checkProposalAccess } from "../agent-work/proposals";
+import { createAsyncRequest } from "../agent-work/requests/async-requests";
+import { checkProposalAccess } from "../agent-work/requests/proposals";
 import { replyTarget, turnPlace } from "./turn";
 import { agentWrites } from "./writes";
 

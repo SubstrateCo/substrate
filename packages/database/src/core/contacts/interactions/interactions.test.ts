@@ -1,0 +1,115 @@
+import { AccessDeniedError } from "../../../errors";
+import { setupDatabase } from "../../../testing/database";
+import { rejection } from "../../../testing/rejection";
+import { entities } from "../../entities/schema";
+import { RepositoryContext } from "../../repository-context";
+import { requireInteraction } from "../access";
+import { contactInteractions } from "./interactions.schema";
+import { describe, expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
+
+const f = setupDatabase();
+
+describe("contact interactions", () => {
+  test("shares history with the organization and hides it when the contact is deleted", async () => {
+    const repo = f.forActor(f.bob);
+    const admin = f.forActor(f.alice);
+    const contact = await repo.contacts.create({ displayName: "Jane" });
+    const interaction = await repo.contactInteractions.createManual({
+      contactEntityId: contact.entityId,
+      kind: "call",
+      occurredAt: new Date(),
+      summary: "Discussed the proposal",
+    });
+    expect(await repo.contactInteractions.listForContact(contact.entityId)).toHaveLength(1);
+    expect(
+      (await admin.contactInteractions.listForContact(contact.entityId)).map((row) => row.entityId),
+    ).toEqual([interaction.entityId]);
+    await rejection(f.forActor(f.outsider, f.orgB).contactInteractions.get(interaction.entityId));
+    await rejection(repo.entities.softDelete(contact.entityId));
+    await admin.entities.softDelete(contact.entityId);
+    await rejection(repo.contactInteractions.get(interaction.entityId));
+    await rejection(repo.contactInteractions.listForContact(contact.entityId));
+  });
+
+  test("rejects invalid times and rolls back interaction entities", async () => {
+    const repo = f.forActor(f.alice);
+    const contact = await repo.contacts.create({ displayName: "Jane" });
+    const before = await f.db
+      .select()
+      .from(entities)
+      .where(eq(entities.entityType, "contact_interaction"));
+    await rejection(
+      repo.contactInteractions.createManual({
+        contactEntityId: contact.entityId,
+        kind: "meeting",
+        occurredAt: new Date("2026-01-02"),
+        endedAt: new Date("2026-01-01"),
+        summary: "Invalid",
+      }),
+    );
+    expect(
+      await f.db.select().from(entities).where(eq(entities.entityType, "contact_interaction")),
+    ).toHaveLength(before.length);
+  });
+
+  test("an edit after a deletion is denied, and concurrent deletions delete once", async () => {
+    const repo = f.forActor(f.alice);
+    const contact = await repo.contacts.create({ displayName: "Jane" });
+    const interaction = await repo.contactInteractions.createManual({
+      contactEntityId: contact.entityId,
+      kind: "call",
+      occurredAt: new Date(),
+      summary: "Before",
+    });
+    // The edit checked the interaction before the deletions committed.
+    const checked = await requireInteraction(
+      new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.alice }),
+      interaction.entityId,
+    );
+    const deletions = await Promise.allSettled([
+      repo.contactInteractions.softDelete(interaction.entityId),
+      repo.contactInteractions.softDelete(interaction.entityId),
+    ]);
+    expect(deletions.some((result) => result.status === "fulfilled")).toBe(true);
+    for (const result of deletions)
+      if (result.status === "rejected") expect(result.reason).toBeInstanceOf(AccessDeniedError);
+    expect(
+      await rejection(
+        repo.contactInteractions.update(interaction.entityId, { summary: "After" }, checked),
+      ),
+    ).toBeInstanceOf(AccessDeniedError);
+    const [stored] = await f.db
+      .select({ summary: contactInteractions.summary })
+      .from(contactInteractions)
+      .where(eq(contactInteractions.entityId, interaction.entityId));
+    expect(stored!.summary).toBe("Before");
+  });
+
+  test("paginates equal timestamps without duplicates and rolls back with its caller", async () => {
+    const repo = f.forActor(f.alice);
+    const contact = await repo.contacts.create({ displayName: "Jane" });
+    const input = {
+      contactEntityId: contact.entityId,
+      kind: "call" as const,
+      occurredAt: new Date(),
+      summary: "Call",
+    };
+    await repo.contactInteractions.createManual(input);
+    await repo.contactInteractions.createManual(input);
+    const first = await repo.contactInteractions.listForContact(contact.entityId, { limit: 1 });
+    const next = await repo.contactInteractions.listForContact(contact.entityId, {
+      limit: 1,
+      before: { occurredAt: first[0]!.occurredAt, entityId: first[0]!.entityId },
+    });
+    expect(next).toHaveLength(1);
+    expect(next[0]!.entityId).not.toBe(first[0]!.entityId);
+    await rejection(
+      repo.transaction(async (tx) => {
+        await tx.contactInteractions.createManual(input);
+        throw new Error("rollback");
+      }),
+    );
+    expect(await repo.contactInteractions.listForContact(contact.entityId)).toHaveLength(2);
+  });
+});

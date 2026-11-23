@@ -11,7 +11,7 @@ import { member } from "../../core/organizations/schema";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";
 import { visibleConversations } from "./access";
-import { directConversationId } from "./direct-messages";
+import { directConversationId } from "./conversations/direct-messages";
 import { messagingConversations, messagingMessages, messagingReactions } from "./schema";
 import { and, eq, exists, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";

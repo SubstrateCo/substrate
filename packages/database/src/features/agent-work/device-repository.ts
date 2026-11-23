@@ -8,10 +8,10 @@ import {
   closeRequestForDevice,
   requestAnswersForDevice,
   type OpenRequestInput,
-} from "./device-requests";
+} from "./requests/device-requests";
 import { loadSourcesForDevice } from "./sources";
 import { publishStatusForDevice, type PublishStatusInput } from "./status";
-import { pullWakesForDevice, ackWakesForDevice } from "./wakes";
+import { pullWakesForDevice, ackWakesForDevice } from "./wakes/wakes";
 
 export function createDeviceWorkRepository(db: DatabaseExecutor, identity: ResolvedDeviceIdentity) {
   return {

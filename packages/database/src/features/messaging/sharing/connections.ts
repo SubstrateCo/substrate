@@ -8,7 +8,7 @@ import type { SessionIdentity } from "../../../core/session/identity";
 import { AccessDeniedError } from "../../../errors";
 import { withRemovalHints } from "../../realtime/routing";
 import { claimConversation } from "../access";
-import { endParticipation } from "../members";
+import { endParticipation } from "../conversations/members";
 import { partnerTargetAllowed } from "../policy";
 import { messagingConversations, messagingParticipants } from "../schema";
 import { messagingConnections, messagingInvitations } from "../sharing.schema";

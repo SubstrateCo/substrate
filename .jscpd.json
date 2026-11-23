@@ -23,7 +23,7 @@
   "boundaries": [
     {
       "name": "agent-admission",
-      "code": ["packages/database/src/features/agent-work/admission.ts"],
+      "code": ["packages/database/src/features/agent-work/wakes/admission.ts"],
       "notIn": ["apps/**", "packages/client-storage/**", "packages/harness-runtime/**"],
       "disable": ["semantic"]
     },

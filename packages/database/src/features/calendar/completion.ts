@@ -4,7 +4,7 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 import { user } from "../../core/authentication/schema";
 import { contactReadable } from "../../core/contacts/access";
 import { normalizedIdentifier } from "../../core/contacts/inputs";
-import { contactInteractions } from "../../core/contacts/interactions.schema";
+import { contactInteractions } from "../../core/contacts/interactions/interactions.schema";
 import { contactIdentifiers, contacts } from "../../core/contacts/schema";
 import { commit, type Committed } from "../../core/effects";
 import { entities } from "../../core/entities/schema";

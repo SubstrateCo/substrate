@@ -4,8 +4,8 @@ import type { TurnContext } from "@substrate/contracts/harness/mcp";
 import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
-import { audit } from "../agent-work/audit";
-import { agentInvocations } from "../agent-work/invocations.schema";
+import { audit } from "../agent-work/calls/audit";
+import { agentInvocations } from "../agent-work/calls/invocations.schema";
 import { and, eq, inArray } from "drizzle-orm";
 
 type Agent = SessionIdentity & { actorEntityId: string };

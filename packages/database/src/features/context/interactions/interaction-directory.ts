@@ -5,8 +5,8 @@ import {
 
 import { requireAppEnabled } from "../../../core/apps/access";
 import { parseInput } from "../../../core/contacts/inputs";
-import { readableInteractionPeriod } from "../../../core/contacts/interaction-workspace.repository";
-import { contactInteractions } from "../../../core/contacts/interactions.schema";
+import { readableInteractionPeriod } from "../../../core/contacts/interactions/interaction-workspace.repository";
+import { contactInteractions } from "../../../core/contacts/interactions/interactions.schema";
 import { contacts } from "../../../core/contacts/schema";
 import type { RepositoryContext } from "../../../core/repository-context";
 import { crmAccounts } from "../../crm/schema";

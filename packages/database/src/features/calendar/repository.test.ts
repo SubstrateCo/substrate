@@ -1,4 +1,4 @@
-import { contactInteractionRepository } from "../../core/contacts/interactions.repository";
+import { contactInteractionRepository } from "../../core/contacts/interactions/interactions.repository";
 import { relatedPair } from "../../core/links/repository";
 import { RepositoryContext } from "../../core/repository-context";
 import {

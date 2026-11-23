@@ -7,7 +7,7 @@ import { desktopDevices } from "../../core/devices/schema";
 import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ConflictError } from "../../errors";
-import { agentRequests } from "../agent-work/requests.schema";
+import { agentRequests } from "../agent-work/requests/requests.schema";
 import { agentToolRequests } from "./schema";
 import { and, eq } from "drizzle-orm";
 

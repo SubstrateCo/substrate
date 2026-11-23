@@ -1,6 +1,6 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import { contactInteractions } from "../../core/contacts/interactions.schema";
+import { contactInteractions } from "../../core/contacts/interactions/interactions.schema";
 import { contactIdentifiers, contacts } from "../../core/contacts/schema";
 import { entityLinks } from "../../core/links/schema";
 import { enableCalendar, insertCalendar, insertMeeting } from "../../testing/calendar-completion";

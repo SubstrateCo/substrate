@@ -74,7 +74,7 @@ Load the `database-table-design` skill before you add or change a table, relatio
 
 ## Agent work
 
-- Create every wake through `admit()` in `admission.ts`, and put every wake rule in the pure `decideAdmission`. `routeWake` stays the entry point inside the transaction that inserts the message. Wakes hold references, not message bodies; the home desktop reads bodies through the visibility-checked sources query.
+- Create every wake through `admit()` in `features/agent-work/wakes/admission.ts`, and put every wake rule in the pure `decideAdmission`. `routeWake` stays the entry point inside the transaction that inserts the message. Wakes hold references, not message bodies; the home desktop reads bodies through the visibility-checked sources query.
 - Callers: `decideAdmission` admits, holds or rate-limits a caller's message, and `admit()` records each call in `agent_invocations`. Decide calls with compare-and-set, check the call again at decision time, and create the wake in the decision's transaction. The source check (`loadSources` with invocation IDs) checks queued calls again and drops revoked ones.
 - Write `agent_audit_events` rows for caller policy and allowlist changes, call decisions, and MCP calls in caller turns. Store IDs and result codes, never message bodies. Only the agent's owner reads them.
 - Answer requests with compare-and-set: the first answer wins.

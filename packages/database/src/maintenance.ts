@@ -1,6 +1,6 @@
 import type { DatabaseExecutor } from "./core/executor";
-import { expireInvocations } from "./features/agent-work/invocations";
-import { deleteAckedWakes } from "./features/agent-work/retention";
+import { expireInvocations } from "./features/agent-work/calls/invocations";
+import { deleteAckedWakes } from "./features/agent-work/wakes/retention";
 import {
   deleteNotificationsOfDeletedEntities,
   deleteReadNotifications,

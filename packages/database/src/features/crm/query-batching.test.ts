@@ -6,7 +6,7 @@ import { rejection } from "../../testing/rejection";
 import { mcpCrmTools } from "../mcp/crm";
 import { recordCrmActivities } from "./activity";
 import { crmActivityEvents } from "./activity.schema";
-import { requireDealRelations } from "./deal-relations";
+import { requireDealRelations } from "./deals/deal-relations";
 import { expect, test } from "bun:test";
 import { inArray } from "drizzle-orm";
 

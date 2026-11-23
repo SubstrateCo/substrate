@@ -8,8 +8,8 @@ const ownedTables: OwnedInsertsOptions = {
       use: "`enqueue()` in packages/client-storage/src/agent-work/enqueue.ts, which takes the lane from the trigger registry",
     },
     agentWakes: {
-      files: ["packages/database/src/features/agent-work/admission.ts"],
-      use: "`admit()` in packages/database/src/features/agent-work/admission.ts, which applies `decideAdmission`",
+      files: ["packages/database/src/features/agent-work/wakes/admission.ts"],
+      use: "`admit()` in packages/database/src/features/agent-work/wakes/admission.ts, which applies `decideAdmission`",
     },
   },
 };

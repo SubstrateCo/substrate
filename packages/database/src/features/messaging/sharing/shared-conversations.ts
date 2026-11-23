@@ -5,7 +5,7 @@ import type { DatabaseExecutor } from "../../../core/executor";
 import { organization } from "../../../core/organizations/schema";
 import type { SessionIdentity } from "../../../core/session/identity";
 import { visibleConversations } from "../access";
-import { activeMembers } from "../members";
+import { activeMembers } from "../conversations/members";
 import { messagingConversations, messagingParticipants } from "../schema";
 import { messagingConnections, messagingInvitations } from "../sharing.schema";
 import { and, asc, eq, gt, inArray, isNull, ne } from "drizzle-orm";

@@ -1,4 +1,4 @@
-import { contactInteractions } from "../../../core/contacts/interactions.schema";
+import { contactInteractions } from "../../../core/contacts/interactions/interactions.schema";
 import { contextConversation } from "../../../testing/context";
 import { setupDatabase } from "../../../testing/database";
 import { rejection } from "../../../testing/rejection";

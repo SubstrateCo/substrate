@@ -5,7 +5,7 @@ import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";
 import { recordTaskSource } from "../context/service";
 import { requireMessage } from "../messaging/access";
-import { sendMessageAs } from "../messaging/messages";
+import { sendMessageAs } from "../messaging/messages/messages";
 import { taskRepository } from "../tasks/repository";
 
 type Agent = { entityId: string; name: string; type: "human" | "agent" };

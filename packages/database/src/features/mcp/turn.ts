@@ -5,7 +5,7 @@ import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { requirePlace } from "../agent-work/place";
-import { agentRequests } from "../agent-work/requests.schema";
+import { agentRequests } from "../agent-work/requests/requests.schema";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { agentToolRequests } from "./schema";
 import { and, eq, exists, ne, sql } from "drizzle-orm";

@@ -8,7 +8,7 @@ import { type ResolvedDeviceIdentity } from "../../core/session/device";
 import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { revokedInvocations } from "./invocations";
+import { revokedInvocations } from "./calls/invocations";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
 /**

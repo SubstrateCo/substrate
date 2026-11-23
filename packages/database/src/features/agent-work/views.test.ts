@@ -1,6 +1,6 @@
 import { sessionKeys } from "@substrate/contracts/agent-work";
 
-import type { agentRequests } from "./requests.schema";
+import type { agentRequests } from "./requests/requests.schema";
 import type { agentStatus } from "./status.schema";
 import { toRequestView, toStatusView } from "./views";
 import { expect, test } from "bun:test";

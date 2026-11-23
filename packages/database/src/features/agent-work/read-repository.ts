@@ -9,15 +9,15 @@ import {
   removeCallerInTransaction,
   saveCallerPolicyInTransaction,
 } from "../agents/callers";
-import { queryCallsLog } from "./audit";
+import { queryCallsLog } from "./calls/audit";
 import {
   approveProposalInTransaction,
   declineProposalInTransaction,
   respondToRequestInTransaction,
-} from "./decisions";
-import { decideInvocationInTransaction, invocationViews, queryMyCalls } from "./invocations";
-import { agentInvocations } from "./invocations.schema";
-import { queryConversationRequests, queryNeedsYou } from "./request-views";
+} from "./requests/decisions";
+import { decideInvocationInTransaction, invocationViews, queryMyCalls } from "./calls/invocations";
+import { agentInvocations } from "./calls/invocations.schema";
+import { queryConversationRequests, queryNeedsYou } from "./requests/request-views";
 import { statusViews } from "./status";
 import { eq } from "drizzle-orm";
 

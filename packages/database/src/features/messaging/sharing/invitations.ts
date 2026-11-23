@@ -19,7 +19,7 @@ import {
   visibleConversations,
   type Conversation,
 } from "../access";
-import { writeMembers } from "../members";
+import { writeMembers } from "../conversations/members";
 import { canShare, invitationTarget, validateExternalInvitations, type Viewer } from "../policy";
 import { messagingConversations, messagingParticipants } from "../schema";
 import { messagingConnections, messagingInvitations } from "../sharing.schema";

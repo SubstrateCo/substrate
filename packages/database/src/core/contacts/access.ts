@@ -4,7 +4,7 @@ import { actors } from "../actors/schema";
 import { entities } from "../entities/schema";
 import { organizationAdminCondition } from "../permissions/visibility";
 import type { AuthorizedAccess, EntityAccess, RepositoryContext } from "../repository-context";
-import { contactInteractions } from "./interactions.schema";
+import { contactInteractions } from "./interactions/interactions.schema";
 import { and, eq, inArray, isNull, sql, type SQLWrapper } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 

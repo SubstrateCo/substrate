@@ -4,7 +4,7 @@ import { entityGrants, member, storedFiles } from "../../schema";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
-import { agentWakes } from "../agent-work/wakes.schema";
+import { agentWakes } from "../agent-work/wakes/wakes.schema";
 import { messagingConversations } from "../messaging/schema";
 import { messagingMessages, messagingParticipants } from "../messaging/schema";
 import { createSharingService } from "../messaging/sharing/service";

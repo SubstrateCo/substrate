@@ -4,7 +4,7 @@ import type {
   AgentVisibleRequestView,
 } from "@substrate/contracts/agent-work";
 
-import type { agentRequests } from "./requests.schema";
+import type { agentRequests } from "./requests/requests.schema";
 import type { agentStatus } from "./status.schema";
 
 const iso = (value: Date | null) => value?.toISOString() ?? null;

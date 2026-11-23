@@ -5,7 +5,7 @@ import {
   type ContextTargetType,
 } from "@substrate/contracts/context/input";
 
-import { contactInteractions } from "../../core/contacts/interactions.schema";
+import { contactInteractions } from "../../core/contacts/interactions/interactions.schema";
 import { contacts } from "../../core/contacts/schema";
 import { entities } from "../../core/entities/schema";
 import type { RepositoryContext } from "../../core/repository-context";

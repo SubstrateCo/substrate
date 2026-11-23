@@ -2,7 +2,7 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { requireInteraction } from "../../../core/contacts/access";
 import { parseInput } from "../../../core/contacts/inputs";
-import { contactInteractionRepository } from "../../../core/contacts/interactions.repository";
+import { contactInteractionRepository } from "../../../core/contacts/interactions/interactions.repository";
 import type { RepositoryContext } from "../../../core/repository-context";
 import { recordCrmActivity } from "../../crm/activity";
 import { presentInteraction } from "../../crm/actor-views";

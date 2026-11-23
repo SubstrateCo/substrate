@@ -2,7 +2,7 @@ import type { CrmWrite } from "@substrate/contracts/crm/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { requireAppsEnabled } from "../../core/apps/access";
-import { contactInteractions } from "../../core/contacts/interactions.schema";
+import { contactInteractions } from "../../core/contacts/interactions/interactions.schema";
 import { relatedPair } from "../../core/links/repository";
 import { entityLinks } from "../../core/links/schema";
 import type { RepositoryContext } from "../../core/repository-context";

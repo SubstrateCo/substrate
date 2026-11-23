@@ -1,4 +1,4 @@
-import { contactInteractions } from "../../core/contacts/interactions.schema";
+import { contactInteractions } from "../../core/contacts/interactions/interactions.schema";
 import { contacts } from "../../core/contacts/schema";
 import { appEnabledCondition } from "../../core/permissions/app-visibility";
 import { crmAccounts, crmContactProfiles, crmDeals } from "../crm/schema";

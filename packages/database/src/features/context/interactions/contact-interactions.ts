@@ -1,8 +1,8 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { requireContact } from "../../../core/contacts/access";
-import { interactionWorkspaceRepository } from "../../../core/contacts/interaction-workspace.repository";
-import { contactInteractionRepository } from "../../../core/contacts/interactions.repository";
+import { interactionWorkspaceRepository } from "../../../core/contacts/interactions/interaction-workspace.repository";
+import { contactInteractionRepository } from "../../../core/contacts/interactions/interactions.repository";
 import { appEnabledCondition } from "../../../core/permissions/app-visibility";
 import type { RepositoryContext } from "../../../core/repository-context";
 import { AccessDeniedError } from "../../../errors";

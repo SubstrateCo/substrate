@@ -5,7 +5,7 @@ import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { contactApplicationRepository } from "../contacts/repository";
 import { contextContactInteractionRepository } from "../context/interactions/contact-interactions";
-import { requireDealRelations } from "../crm/deal-relations";
+import { requireDealRelations } from "../crm/deals/deal-relations";
 import { createCrmFromMessageInContext } from "../crm/from-message";
 import { crmRepository } from "../crm/repository";
 import { requireCrmAdmin } from "../crm/settings";

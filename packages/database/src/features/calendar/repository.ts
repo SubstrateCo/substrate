@@ -28,7 +28,7 @@ import { actors } from "../../core/actors/schema";
 import { requireAppEnabled } from "../../core/apps/access";
 import { account, user } from "../../core/authentication/schema";
 import { contactReadable, interactionReadable } from "../../core/contacts/access";
-import { contactInteractions } from "../../core/contacts/interactions.schema";
+import { contactInteractions } from "../../core/contacts/interactions/interactions.schema";
 import { contactIdentifiers, contacts } from "../../core/contacts/schema";
 import { entities } from "../../core/entities/schema";
 import { entityLinks } from "../../core/links/schema";
