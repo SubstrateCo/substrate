@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 
 import type { getInteractionProfile } from "@/api/context/interactions";
 import { ContentNotice } from "@/components/feedback/content-notice";
+import { recordRows } from "@/components/layout/record-section";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { eventDate } from "@/lib/calendar/days";
@@ -101,11 +102,11 @@ export function InteractionConnections({
   if (!connections.length)
     return <ContentNotice variant="inline" title="No linked records you can access" />;
   return (
-    <ul className="divide-y">
+    <ul className={recordRows}>
       {connections.map((connection) => (
         <li
           key={`${connection.entityType}:${connection.entityId}`}
-          className="flex items-center justify-between gap-3 py-2 text-sm"
+          className="flex items-center justify-between gap-3 px-2 py-1.5 text-sm"
         >
           <ConnectionLink organizationId={organizationId} connection={connection} />
           <span className="text-xs text-muted-foreground">{connection.relation}</span>
