@@ -1,5 +1,6 @@
 import { createCrm } from "../../server/integration/test-support/crm";
-import { test, visit } from "./test-support/fixtures";
+import { visit } from "./test-support/fixtures";
+import { test } from "./test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
 
 test("record lists can scroll to the last row of a long page", async ({ account, client }) => {

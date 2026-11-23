@@ -4,7 +4,8 @@ import type { ServiceResult } from "@substrate/contracts/result";
 import { result } from "../../server/integration/test-support/api";
 import { readCrm, writeCrm } from "../../server/integration/test-support/crm";
 import { captureCrm, selectCrmOption } from "./test-support/crm";
-import { conversation, post, test, visit } from "./test-support/fixtures";
+import { conversation, post, visit } from "./test-support/fixtures";
+import { test } from "./test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
 
 test("create CRM records from a private message only after audience consent and retain source navigation", async ({

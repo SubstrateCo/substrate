@@ -1,4 +1,5 @@
-import { test, visit } from "./test-support/fixtures";
+import { visit } from "./test-support/fixtures";
+import { test } from "./test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
 
 test("CRM settings use a centered settings column and grouped save footers", async ({

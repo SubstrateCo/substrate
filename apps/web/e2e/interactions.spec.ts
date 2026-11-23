@@ -1,7 +1,8 @@
 import type { InteractionKind } from "@substrate/contracts/context/interactions";
 
 import { createCrm, type CrmMutation } from "../../server/integration/test-support/crm";
-import { conversation, post, test, visit, type Actor } from "./test-support/fixtures";
+import { conversation, post, visit, type Actor } from "./test-support/fixtures";
+import { test } from "./test-support/workspace-fixtures";
 import { expect, type Page } from "@playwright/test";
 import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";

@@ -1,6 +1,7 @@
 import { result } from "../../server/integration/test-support/api";
 import { createCrm, readCrm } from "../../server/integration/test-support/crm";
-import { test, visit, type Actor } from "./test-support/fixtures";
+import { visit, type Actor } from "./test-support/fixtures";
+import { test } from "./test-support/workspace-fixtures";
 import { expect, type Page } from "@playwright/test";
 
 test.describe.configure({ timeout: 45_000 });

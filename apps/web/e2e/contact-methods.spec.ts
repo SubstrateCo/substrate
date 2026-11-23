@@ -1,5 +1,6 @@
 import { createCrm, writeCrm } from "../../server/integration/test-support/crm";
-import { test, visit } from "./test-support/fixtures";
+import { visit } from "./test-support/fixtures";
+import { test } from "./test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
 
 test.use({ viewport: { width: 1100, height: 700 } });

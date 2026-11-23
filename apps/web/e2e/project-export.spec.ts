@@ -1,4 +1,5 @@
-import { post, test, visit } from "./test-support/fixtures";
+import { post, visit } from "./test-support/fixtures";
+import { test } from "./test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
 
 test("project downloads save CSV and JSON files", async ({ account, client }) => {

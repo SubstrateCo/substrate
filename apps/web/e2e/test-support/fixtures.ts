@@ -108,7 +108,7 @@ export const test = base.extend<
     /** Signs the actor in again, for tests that sign out. */
     freshSession: (actor: Actor) => Promise<Actor>;
   },
-  { actors: Actors; contextPool: ContextPool }
+  { actors: Actors; contextPool: ContextPool; workspaceIdentity: Actor }
 >({
   actors: [
     async ({ playwright }, use, workerInfo) => {
@@ -145,6 +145,25 @@ export const test = base.extend<
         await use({ sender, member, partner });
       } finally {
         await Promise.all(requests.map((request) => request.dispose()));
+      }
+    },
+    { scope: "worker", timeout: 30_000 },
+  ],
+
+  workspaceIdentity: [
+    async ({ playwright }, use, workerInfo) => {
+      const request = await playwright.request.newContext({
+        baseURL: process.env.PLAYWRIGHT_API_URL,
+        extraHTTPHeaders: trustedOrigin(),
+      });
+      try {
+        await use(
+          await provisionActor(request, `Workspace owner ${workerInfo.parallelIndex}`, {
+            workspace: false,
+          }),
+        );
+      } finally {
+        await request.dispose();
       }
     },
     { scope: "worker", timeout: 30_000 },

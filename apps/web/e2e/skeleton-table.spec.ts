@@ -1,5 +1,6 @@
 import { createCrm } from "../../server/integration/test-support/crm";
-import { inviteMember, test, visit } from "./test-support/fixtures";
+import { inviteMember, visit } from "./test-support/fixtures";
+import { test } from "./test-support/workspace-fixtures";
 import { expect, type Locator, type Page, type Route } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 

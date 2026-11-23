@@ -6,7 +6,8 @@ import type { ServiceResult } from "@substrate/contracts/result";
 import { result } from "../../server/integration/test-support/api";
 import { createCrm, readCrm, recordMutationPath } from "../../server/integration/test-support/crm";
 import { captureCrm, selectCrmOption } from "./test-support/crm";
-import { conversation, post, test, visit } from "./test-support/fixtures";
+import { conversation, post, visit } from "./test-support/fixtures";
+import { test } from "./test-support/workspace-fixtures";
 import { expect, type Locator, type Page } from "@playwright/test";
 
 async function submitCrm(

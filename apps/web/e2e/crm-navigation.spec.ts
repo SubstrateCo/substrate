@@ -1,6 +1,7 @@
 import { createCrm } from "../../server/integration/test-support/crm";
 import { captureCrm } from "./test-support/crm";
-import { test, visit } from "./test-support/fixtures";
+import { visit } from "./test-support/fixtures";
+import { test } from "./test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
 
 test("contacts open in a sheet over their collection without a rail entry", async ({
