@@ -2,6 +2,7 @@ import { taskStatusLabels, type TaskStatus } from "@substrate/contracts/tasks";
 
 import { taskStatusOptions } from "../task-cues/task-options";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
+import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -9,6 +10,7 @@ import {
   DropdownMenuRadioItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 /** The status icon of a task row. For editors it opens a menu that changes the status. */
 export function TaskStatusMenu({
@@ -30,16 +32,22 @@ export function TaskStatusMenu({
     );
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <button
-          type="button"
-          disabled={disabled}
-          aria-label={`Change status of ${title}: ${taskStatusLabels[status]}`}
-          className="flex size-6 shrink-0 items-center justify-center rounded-md outline-none hover:bg-row-highlight focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-row-highlight"
-        >
-          <TaskStatusIcon status={status} />
-        </button>
-      </DropdownMenuTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button
+              type="button"
+              size="icon-xs"
+              variant="ghost"
+              disabled={disabled}
+              aria-label={`Change status of ${title}: ${taskStatusLabels[status]}`}
+            >
+              <TaskStatusIcon status={status} />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Change status</TooltipContent>
+      </Tooltip>
       <DropdownMenuContent align="start">
         <DropdownMenuRadioGroup
           value={status}

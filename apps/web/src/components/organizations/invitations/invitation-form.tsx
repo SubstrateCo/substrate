@@ -107,7 +107,6 @@ export function InvitationForm({
           className="@lg:col-span-3 @lg:col-start-10 @lg:row-start-2"
           disabled={disabled}
           pending={sending}
-          pendingLabel="Send invitation"
         >
           Send invitation
         </PendingButton>
@@ -117,7 +116,6 @@ export function InvitationForm({
           title="Invite an owner?"
           description={`${ownerInvite} will have full control of this organization, including invitations, roles, and other owners.`}
           confirmLabel="Send owner invitation"
-          pendingLabel="Send owner invitation"
           pending={sending}
           onClose={() => setOwnerInvite(undefined)}
           onRestoreFocus={() => inviteButton.current?.focus()}

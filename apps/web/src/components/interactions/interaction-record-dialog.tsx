@@ -67,7 +67,7 @@ export function InteractionRecordDialog({
               onRetry={() => void query.refetch()}
             />
           )}
-          {!query.error && !data && <LoadingState label="Loading interaction…" />}
+          {!query.error && !data && <LoadingState label="Loading interaction" />}
           {!query.error && data && (
             <>
               <div className="space-y-3">

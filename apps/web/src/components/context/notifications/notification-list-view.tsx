@@ -104,7 +104,6 @@ export function NotificationList({
                     size="sm"
                     variant="ghost"
                     pending={readingAll}
-                    pendingLabel="Marking all as read."
                     disabled={loading || !!error || !unread}
                     onClick={onReadAll}
                   >
@@ -179,7 +178,6 @@ export function NotificationList({
                       size="sm"
                       className="self-center"
                       pending={loadingMore}
-                      pendingLabel="Loading older notifications."
                       onClick={onMore}
                     >
                       Show older

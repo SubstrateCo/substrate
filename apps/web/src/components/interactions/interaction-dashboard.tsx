@@ -36,7 +36,7 @@ export function InteractionDashboard({
         onRetry={() => void activity.refetch()}
       />
     );
-  if (!activity.data) return <LoadingState label="Loading interaction activity…" rows={4} />;
+  if (!activity.data) return <LoadingState label="Loading interaction activity" rows={4} />;
   const { summary } = activity.data;
   const minutes = Math.round(summary.recordedMinutes);
   const metrics = [

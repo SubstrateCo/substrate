@@ -71,7 +71,6 @@ export function ChannelSearchResult({
                 className="w-14 shrink-0"
                 aria-label={`Join ${item.title}`}
                 pending={joining}
-                pendingLabel="Joining"
                 onClick={(event) => {
                   // Joining stays on the list; only the row itself opens the channel.
                   event.stopPropagation();

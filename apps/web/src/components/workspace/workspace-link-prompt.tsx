@@ -17,7 +17,7 @@ export function WorkspaceLinkPrompt({
         title="This link belongs to another workspace"
         description="Switch to that workspace to open it. You must be a member."
       />
-      <PendingButton pending={pending} pendingLabel="Switching workspace…" onClick={onSwitch}>
+      <PendingButton pending={pending} onClick={onSwitch}>
         Switch workspace to open link
       </PendingButton>
       <FormMessage

@@ -37,7 +37,7 @@ export function ThreadPane({
           {root && (
             <div className="max-h-7/20 shrink-0 overflow-y-auto border-b pt-4 pb-2">{root}</div>
           )}
-          {loading && !replies ? <MessageLoading label="Loading replies…" /> : replies}
+          {loading && !replies ? <MessageLoading label="Loading replies" /> : replies}
         </>
       )}
       {!blocked && <div className="mt-auto shrink-0">{composer}</div>}

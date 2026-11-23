@@ -69,7 +69,7 @@ export function TimeZonePicker({
         <span className="truncate">{current?.label ?? "Choose a time zone"}</span>
       </ComboboxTrigger>
       <ComboboxContent>
-        <ComboboxSearch aria-label="Search time zones" placeholder="Search time zones…" />
+        <ComboboxSearch aria-label="Search time zones" placeholder="Search time zones" />
         <ComboboxEmpty>No time zones match.</ComboboxEmpty>
         <ComboboxList>
           {(zone: ComboboxOption) => (

@@ -64,7 +64,6 @@ export function InboxReceiptView({
           title="Send now?"
           description="Stops the current work and starts again with this message."
           confirmLabel="Send now"
-          pendingLabel="Sending"
           pending={sending}
           onConfirm={() => {
             onSendNow();

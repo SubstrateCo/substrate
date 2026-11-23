@@ -31,13 +31,7 @@ export function InvitationAcceptedView({
         error={error}
         errorDescription="You joined the workspace, but we couldn’t open it. Try again without accepting the invitation again."
       />
-      <PendingButton
-        className="w-full"
-        size="lg"
-        pending={pending}
-        pendingLabel="Continue setup"
-        onClick={onContinue}
-      >
+      <PendingButton className="w-full" size="lg" pending={pending} onClick={onContinue}>
         Continue setup
       </PendingButton>
     </AuthFrame>

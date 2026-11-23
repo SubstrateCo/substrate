@@ -1,4 +1,5 @@
-import { Button } from "@/components/ui/button";
+import { PendingButton } from "@/components/feedback/pending-button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { WorkTone } from "@/lib/agent-work/status";
 import { cn } from "cn";
 import { Check, ChevronRight, CircleAlert, Square, X } from "lucide-react";
@@ -43,43 +44,47 @@ export function WorkStatus({
 }) {
   return (
     <span className="flex max-w-full min-w-0 items-center gap-1">
-      <button
-        type="button"
-        title="Open transcript"
-        onClick={onTranscript}
-        className="group/status flex max-w-full min-w-0 items-center gap-1.5 rounded-md px-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
-      >
-        <ToneIcon tone={tone} />
-        <span
-          className={cn(
-            "shrink-0 tabular-nums",
-            tone === "working" && "text-foreground",
-            tone === "attention" && "text-warning-text",
-            tone === "failed" && "text-destructive",
-          )}
-        >
-          {label}
-        </span>
-        {tone === "working" && activity && (
-          <span className="max-w-80 min-w-0 truncate">· {activity}</span>
-        )}
-        <ChevronRight
-          aria-hidden="true"
-          className="size-3 shrink-0 opacity-0 transition-opacity group-hover/status:opacity-100 group-focus-visible/status:opacity-100"
-        />
-        <span className="sr-only">Open transcript</span>
-      </button>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <button
+            type="button"
+            onClick={onTranscript}
+            className="group/status flex max-w-full min-w-0 items-center gap-1.5 rounded-md px-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+          >
+            <ToneIcon tone={tone} />
+            <span
+              className={cn(
+                "shrink-0 tabular-nums",
+                tone === "working" && "text-foreground",
+                tone === "attention" && "text-warning-text",
+                tone === "failed" && "text-destructive",
+              )}
+            >
+              {label}
+            </span>
+            {tone === "working" && activity && (
+              <span className="max-w-80 min-w-0 truncate">· {activity}</span>
+            )}
+            <ChevronRight
+              aria-hidden="true"
+              className="size-3 shrink-0 opacity-0 transition-opacity group-hover/status:opacity-100 group-focus-visible/status:opacity-100"
+            />
+            <span className="sr-only">Open transcript</span>
+          </button>
+        </TooltipTrigger>
+        <TooltipContent>Open transcript</TooltipContent>
+      </Tooltip>
       {onStop && (
-        <Button
+        <PendingButton
           type="button"
           size="xs"
           variant="destructive-ghost"
-          disabled={stopping}
+          pending={stopping}
           onClick={onStop}
         >
           <Square aria-hidden="true" />
-          {stopping ? "Stopping…" : "Stop"}
-        </Button>
+          Stop
+        </PendingButton>
       )}
     </span>
   );

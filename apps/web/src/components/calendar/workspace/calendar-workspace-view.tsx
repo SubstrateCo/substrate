@@ -119,7 +119,7 @@ export function CalendarWorkspaceView({
         )}
         {state === "loading" && (
           <div className="p-6">
-            <LoadingState label="Loading events…" rows={5} />
+            <LoadingState label="Loading events" rows={5} />
           </div>
         )}
         {state === "no-calendars" && (

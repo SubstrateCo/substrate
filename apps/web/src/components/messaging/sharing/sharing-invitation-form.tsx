@@ -58,7 +58,6 @@ export function SharingInvitationForm({
       title={title}
       description="Work with people from other organizations. They see this conversation only, never your workspace or its private records."
       saveLabel="Send invitation"
-      pendingLabel="Sending…"
       pending={pending}
       disabled={!available || !confirmed}
       onClose={onClose}

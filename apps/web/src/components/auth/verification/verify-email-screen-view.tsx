@@ -62,7 +62,7 @@ export function VerifyEmailScreen({
           error={error}
           errorDescription="We couldn’t send a verification email. Please try again."
         />
-        <PendingButton className="w-full" size="lg" pending={pending} pendingLabel={action}>
+        <PendingButton className="w-full" size="lg" pending={pending}>
           {action}
         </PendingButton>
       </NativeForm>

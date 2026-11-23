@@ -188,7 +188,6 @@ export function AgentActivityView({
             variant="outline"
             className="w-fit"
             pending={loadingMore}
-            pendingLabel="Loading older work…"
             onClick={onMore}
           >
             Show older work

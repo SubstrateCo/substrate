@@ -250,7 +250,7 @@ function ConversationThreadAside({
           canPost={conversation.canPost}
         />
       ) : (
-        <MessageLoading label="Loading replies…" />
+        <MessageLoading label="Loading replies" />
       )}
     </ThreadPaneFrame>
   );

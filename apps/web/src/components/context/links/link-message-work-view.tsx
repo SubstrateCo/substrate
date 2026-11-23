@@ -143,7 +143,7 @@ export function LinkMessageWork({
               )}
               <CommandInput
                 aria-label="Search work to link"
-                placeholder={`Search ${kindLabel.toLowerCase()}…`}
+                placeholder={`Search ${kindLabel.toLowerCase()}`}
                 value={query}
                 onValueChange={onQueryChange}
                 disabled={pending}
@@ -211,7 +211,6 @@ export function LinkMessageWork({
             <PendingButton
               type="button"
               pending={pending}
-              pendingLabel="Linking…"
               disabled={!selection.length || pending}
               onClick={() => onLink(selection)}
             >

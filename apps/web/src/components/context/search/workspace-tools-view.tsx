@@ -94,7 +94,7 @@ export function WorkspaceTools({
           <CommandInput
             ref={input}
             aria-label="Search workspace"
-            placeholder="Search workspace…"
+            placeholder="Search workspace"
             value={query}
             aria-expanded={open}
             onClick={() => setOpen(true)}

@@ -45,7 +45,6 @@ export function NeedsAttentionCard({
   const button = (
     action: NeedsAttentionAction,
     label: string,
-    pendingLabel: string,
     onClick: () => void,
     variant: "default" | "outline" | "ghost" = "outline",
   ) => (
@@ -55,7 +54,6 @@ export function NeedsAttentionCard({
       variant={variant}
       disabled={busy}
       pending={pending === action}
-      pendingLabel={pendingLabel}
       onClick={onClick}
     >
       {label}
@@ -73,14 +71,14 @@ export function NeedsAttentionCard({
       )}
       {onResend && onDiscard ? (
         <div className="flex flex-wrap gap-2">
-          {button("resend", "Resend", "Resending…", onResend, "default")}
-          {button("discard", "Discard", "Discarding…", onDiscard)}
+          {button("resend", "Resend", onResend, "default")}
+          {button("discard", "Discard", onDiscard)}
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {button("retry", "Retry", "Retrying…", onRetry, "default")}
-          {button("startFresh", "Start fresh", "Starting fresh…", onStartFresh)}
-          {button("dismiss", "Dismiss", "Dismissing…", onDismiss, "ghost")}
+          {button("retry", "Retry", onRetry, "default")}
+          {button("startFresh", "Start fresh", onStartFresh)}
+          {button("dismiss", "Dismiss", onDismiss, "ghost")}
         </div>
       )}
     </>

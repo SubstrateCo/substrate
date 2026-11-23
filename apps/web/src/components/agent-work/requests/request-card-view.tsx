@@ -145,7 +145,6 @@ export function RequestCardView({
                 proposalTargetHidden(target)
               }
               pending={pending?.kind === "approve"}
-              pendingLabel="Approving…"
               onClick={onApprove}
             >
               Approve
@@ -156,7 +155,6 @@ export function RequestCardView({
               variant="outline"
               disabled={busy}
               pending={pending?.kind === "decline"}
-              pendingLabel="Declining…"
               onClick={onDecline}
             >
               Decline

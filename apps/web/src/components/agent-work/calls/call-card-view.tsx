@@ -46,7 +46,6 @@ export function CallCardView({
           title={`Always allow ${call.caller.name}?`}
           description="This approves this call and lets future calls skip approval under Ask me first. The agent works with your full access."
           confirmLabel={`Always allow ${call.caller.name}`}
-          pendingLabel="Allowing…"
           pending={pending}
           error={error}
           errorDescription="We couldn’t allow this call. It may have changed or expired."

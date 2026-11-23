@@ -49,7 +49,6 @@ export function ApprovalRequest({
             variant={option.style === "approve" ? "default" : "outline"}
             disabled={pending}
             pending={option.id === pendingOptionId}
-            pendingLabel="Sending…"
             onClick={() => onRespond(option.id)}
           >
             {option.label}
@@ -64,10 +63,9 @@ export function ApprovalRequest({
                 variant="ghost"
                 disabled={pending}
                 pending={!!sendingMore}
-                pendingLabel={`Sending ${sendingMore?.label ?? ""}…`}
               >
                 More
-                <ChevronDown aria-hidden="true" />
+                <ChevronDown aria-hidden="true" data-icon="inline-end" />
               </PendingButton>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="start">

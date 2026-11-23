@@ -90,7 +90,7 @@ test("reply placeholders skip fast responses and appear for slow responses", asy
       .getByRole("button", { name: "1 reply", exact: true })
       .click();
     await flushUntil(user.page, held.ready);
-    const loading = user.page.locator('[role="status"][aria-label="Loading replies…"]');
+    const loading = user.page.locator('[role="status"][aria-label="Loading replies"]');
     try {
       await expectDelayedPlaceholder(user.page, loading, index === 1);
     } finally {

@@ -27,7 +27,6 @@ export function OlderMessages({
         variant="disclosure"
         disabled={!!pending}
         pending={pending === "older"}
-        pendingLabel={replies ? "Loading older replies." : "Loading older messages."}
         onClick={onOlder}
       >
         {replies ? "Older replies" : "Older messages"}
@@ -52,7 +51,6 @@ export function JumpToLatest({
         variant="outline"
         disabled={!!pending}
         pending={pending === "latest"}
-        pendingLabel={replies ? "Loading latest replies." : "Loading latest messages."}
         onClick={onLatest}
       >
         <ArrowDown aria-hidden="true" />

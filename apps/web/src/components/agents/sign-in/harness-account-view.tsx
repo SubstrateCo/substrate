@@ -42,7 +42,6 @@ function SignInButton({
         variant={variant}
         className="w-fit"
         disabled={disabled}
-        title={only.description}
         onClick={() => onSignIn(only)}
       >
         <LogIn aria-hidden="true" />
@@ -60,11 +59,7 @@ function SignInButton({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="start">
         {methods.map((method) => (
-          <DropdownMenuItem
-            key={method.id}
-            title={method.description}
-            onSelect={() => onSignIn(method)}
-          >
+          <DropdownMenuItem key={method.id} onSelect={() => onSignIn(method)}>
             {method.name}
           </DropdownMenuItem>
         ))}

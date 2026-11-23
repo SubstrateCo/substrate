@@ -31,7 +31,6 @@ export function FollowUpEditor({
       title="New follow-up"
       description="Create a task in an existing project. It links back to this customer record. No email or calendar invitation is sent."
       saveLabel="Create follow-up"
-      pendingLabel="Creating…"
       nativeValidation
       disabled={!projectId || !consent}
       pending={mutation.isPending}

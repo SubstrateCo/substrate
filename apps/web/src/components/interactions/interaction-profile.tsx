@@ -48,7 +48,7 @@ export function InteractionProfile({
         onRetry={() => void profile.refetch()}
       />
     );
-  if (!profile.data) return <LoadingState label="Loading interaction profile…" />;
+  if (!profile.data) return <LoadingState label="Loading interaction profile" />;
   const data = profile.data;
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6">

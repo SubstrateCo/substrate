@@ -97,7 +97,6 @@ export function ContactMethods({
           title="Remove contact method?"
           description="Remove this email address or phone number from the contact. This does not merge contacts or change any user’s identity."
           confirmLabel="Remove contact method"
-          pendingLabel="Removing…"
           destructive
           pending={mutation.isPending}
           error={mutation.error}

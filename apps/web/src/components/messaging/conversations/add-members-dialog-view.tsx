@@ -47,7 +47,6 @@ export function AddMembersDialog({
       description="Members of this workspace join right away. Anyone else gets an invitation."
       saveLabel={recipients.length > 1 ? `Add ${recipients.length} people` : "Add people"}
       pending={pending}
-      pendingLabel="Adding…"
       disabled={!recipients.length && !pendingText.trim()}
       status={recipients.length ? `${recipients.length} chosen` : "Choose people to add"}
       error={error}

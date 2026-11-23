@@ -161,7 +161,6 @@ function MemberChangeDialog({
         title={`Remove ${member.name}?`}
         description="They lose access to this organization’s conversations, projects, and tasks right away. You can invite them again later."
         confirmLabel="Remove member"
-        pendingLabel="Removing"
         errorDescription="We couldn’t remove this member. Please try again."
         onConfirm={() => onRemove(member.id, onClose)}
       />
@@ -176,7 +175,6 @@ function MemberChangeDialog({
       title={`Make ${member.name} ${nextRole}?`}
       description={`${member.name} is ${currentRole === "admin" ? "an" : "a"} ${currentRole} now. As ${nextRole}, they can ${roleCapabilities[role]}`}
       confirmLabel={`Make ${role}`}
-      pendingLabel="Changing"
       errorDescription="We couldn’t change this role. Please try again."
       onConfirm={() => onChangeRole(member.id, role, onClose)}
     />

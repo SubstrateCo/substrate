@@ -207,7 +207,6 @@ function InvitationOutcome({
           className="w-full"
           size="lg"
           pending={opening}
-          pendingLabel="Continue setup"
           onClick={() => onOpen(accepted)}
         >
           Continue setup

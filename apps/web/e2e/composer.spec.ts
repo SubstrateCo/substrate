@@ -113,7 +113,7 @@ test("channel and thread drafts stay isolated and restore reference labels", asy
     .filter({ hasText: source })
     .getByRole("button", { name: "Reply in thread", exact: true })
     .click();
-  const reply = page.getByRole("textbox", { name: "Reply in thread…", exact: true });
+  const reply = page.getByRole("textbox", { name: "Reply in thread", exact: true });
   await expect(reply).toBeEmpty();
   await reply.fill("thread draft");
   await expect(editor).toContainText("channel draft");

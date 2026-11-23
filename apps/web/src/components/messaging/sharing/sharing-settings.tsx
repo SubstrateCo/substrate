@@ -106,7 +106,7 @@ function SharingRequestsCard({
   return (
     <SettingsCard title="Requests">
       {pending && (
-        <div role="status" aria-label="Loading requests…">
+        <div role="status" aria-label="Loading requests">
           <div aria-hidden="true" className="flex flex-wrap items-center justify-between gap-3">
             <SharingRequestContent title={<SkeletonText width="12rem" />} />
           </div>
@@ -147,7 +147,7 @@ function SharedConversationsCard({
   return (
     <SettingsCard title="Shared conversations">
       {pending && (
-        <div role="status" aria-label="Loading shared conversations…">
+        <div role="status" aria-label="Loading shared conversations">
           <ul aria-hidden="true" className="divide-y">
             <li className="flex flex-wrap items-center justify-between gap-3 py-2">
               <SharedConversationTitle

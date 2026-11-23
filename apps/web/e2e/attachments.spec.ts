@@ -89,7 +89,7 @@ test("removing an active attachment aborts it and ignores its late completion", 
   try {
     await dropFiles(zone, "removed.txt", "This real upload must not be sent.");
     await completed.promise;
-    await expect(zone.getByText("Finishing upload…", { exact: true })).toBeVisible();
+    await expect(zone.getByText("Finishing upload", { exact: true })).toBeVisible();
     const aborted = page.waitForEvent("requestfailed", {
       predicate: (request) => new URL(request.url()).pathname.endsWith("/complete"),
     });

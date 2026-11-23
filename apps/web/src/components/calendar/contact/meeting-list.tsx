@@ -34,7 +34,7 @@ export function MeetingList({
           onRetry={onRetry}
         />
       )}
-      {!error && !meetings && <LoadingState label="Loading meetings…" variant="compact" rows={2} />}
+      {!error && !meetings && <LoadingState label="Loading meetings" variant="compact" rows={2} />}
       {!error && meetings?.length === 0 && (
         <ContentNotice
           variant="inline"

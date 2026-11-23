@@ -27,7 +27,6 @@ export function BackfillDialog({
           : `Meetings from the last ${backfillPastDays} days will appear in your calendar. “Create contacts and interactions” is off for this calendar, so they don’t create any.`
       }
       confirmLabel="Backfill past meetings"
-      pendingLabel="Starting backfill…"
       pending={pending}
       error={error}
       errorDescription="Couldn’t start the backfill. Try again."

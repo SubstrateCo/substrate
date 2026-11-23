@@ -4,8 +4,8 @@ import { useEffect } from "react";
 
 import type { Message } from "@/api/messaging/requests";
 import { ContentNotice } from "@/components/feedback/content-notice";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { ReactionNotice, ReactionPerson } from "@/components/messaging/messages/reaction-person";
-import { Button } from "@/components/ui/button";
 import { messageReactionsOptions } from "@/queries/messaging/reactions";
 
 export function ReactionList({
@@ -47,15 +47,15 @@ export function ReactionList({
         </p>
       )}
       {hasNextPage && (
-        <Button
+        <PendingButton
           size="sm"
           variant="ghost"
           className="mt-2 w-full"
-          disabled={isFetchingNextPage}
+          pending={isFetchingNextPage}
           onClick={() => void fetchNextPage()}
         >
-          {isFetchingNextPage ? "Loading reactions…" : "Load more"}
-        </Button>
+          Load more
+        </PendingButton>
       )}
     </div>
   );

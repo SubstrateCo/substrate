@@ -186,12 +186,7 @@ export function TaskForm({
       >
         Cancel
       </Button>
-      <PendingButton
-        type="submit"
-        pending={pending}
-        disabled={!attachmentsReady}
-        pendingLabel="Saving task."
-      >
+      <PendingButton type="submit" pending={pending} disabled={!attachmentsReady}>
         {submitLabel}
       </PendingButton>
     </>

@@ -97,7 +97,7 @@ export function RealtimeConnection({
     };
   }, [organizationId, userId, queryClient, router]);
   let statusText = "Live updates disconnected.";
-  if (status === "connecting") statusText = "Reconnecting to live updates…";
+  if (status === "connecting") statusText = "Reconnecting to live updates";
   if (status === "forbidden") statusText = "Live updates unavailable. Check workspace access.";
   const notification = (
     <div

@@ -1,4 +1,5 @@
 import type { listReactions } from "@/api/messaging/requests";
+import { LoadingState } from "@/components/feedback/loading-state";
 import { Tag } from "@/components/feedback/tag";
 import { PersonCardTarget } from "@/components/messaging/people/person-card-slot";
 import { PersonAvatar } from "@/components/people/person-avatar";
@@ -34,18 +35,13 @@ export function ReactionPerson({
 }
 
 export function ReactionNotice({ error, onRetry }: { error: boolean; onRetry: () => void }) {
+  if (!error) return <LoadingState label="Loading reactions" variant="compact" rows={2} />;
   return (
     <div className="py-3 text-sm text-muted-foreground" role="status">
-      {error ? (
-        <>
-          Couldn’t load reactions.{" "}
-          <Button size="xs" variant="link" onClick={onRetry}>
-            Try again
-          </Button>
-        </>
-      ) : (
-        "Loading reactions…"
-      )}
+      Couldn’t load reactions.{" "}
+      <Button size="xs" variant="link" onClick={onRetry}>
+        Try again
+      </Button>
     </div>
   );
 }

@@ -94,7 +94,7 @@ export function OrganizationApps({ organizationId }: { organizationId: string })
       title="Apps"
       description="Choose the tools your organization uses. Changes apply to everyone in this workspace."
     >
-      {settings.isPending && <LoadingState label="Loading apps…" />}
+      {settings.isPending && <LoadingState label="Loading apps" />}
       {settings.error && (
         <ErrorState
           title="Couldn’t load apps"
@@ -176,7 +176,6 @@ export function OrganizationApps({ organizationId }: { organizationId: string })
           title={`Disable ${disableCopy[disabling].label}?`}
           description={disableCopy[disabling].description}
           confirmLabel={`Disable ${disableCopy[disabling].label}`}
-          pendingLabel="Disabling"
           pending={mutation.isPending}
           error={mutation.error}
           errorDescription="Couldn’t disable this app. Please try again."

@@ -26,7 +26,6 @@ export function AffiliationEditor({
       title="Link account"
       description="Both records must be editable. Linking does not change access or move interaction history."
       saveLabel="Link account"
-      pendingLabel="Linking…"
       nativeValidation
       disabled={!accountId}
       pending={mutation.isPending}

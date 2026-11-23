@@ -55,7 +55,7 @@ export function LoginForm({
           error={error}
           errorDescription="We couldn’t sign you in. Check your details and try again."
         />
-        <PendingButton className="w-full" size="lg" pending={pending} pendingLabel="Sign in">
+        <PendingButton className="w-full" size="lg" pending={pending}>
           Sign in
         </PendingButton>
       </NativeForm>

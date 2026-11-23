@@ -44,7 +44,6 @@ export function DealTransition({
       title="Move deal"
       description="Stage and outcome changes are recorded in this deal’s history. Reopening removes it from current closed-period results."
       saveLabel="Move deal"
-      pendingLabel="Moving…"
       nativeValidation
       pending={pending}
       error={error}

@@ -97,7 +97,6 @@ export function ChooseCalendarsDialog({
                   variant="outline"
                   size="sm"
                   pending={reconnecting}
-                  pendingLabel="Opening Google…"
                   onClick={onReconnect}
                 >
                   <RotateCcw aria-hidden />
@@ -133,7 +132,6 @@ export function ChooseCalendarsDialog({
           </Button>
           <PendingButton
             pending={pending}
-            pendingLabel="Connecting…"
             disabled={accessRequired || count === 0 || available.length === 0}
             onClick={() => onConnect([...selected])}
           >
@@ -172,7 +170,7 @@ function CalendarOptions({
         onRetry={onRetry}
       />
     );
-  if (!options) return <LoadingState label="Loading calendars…" variant="compact" />;
+  if (!options) return <LoadingState label="Loading calendars" variant="compact" />;
   if (options.length === 0)
     return (
       <ContentNotice

@@ -193,7 +193,6 @@ export function MessageItem({
               title="Delete message?"
               description="The text and files will be removed. Replies, thread links, and linked work will remain with a deleted message placeholder."
               confirmLabel="Delete message"
-              pendingLabel="Deleting…"
               pending={remove.isPending}
               error={remove.error}
               errorDescription="Your message couldn’t be deleted. Try again."

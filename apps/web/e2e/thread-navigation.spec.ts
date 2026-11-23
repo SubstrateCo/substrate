@@ -23,7 +23,7 @@ test("cold thread navigation keeps the pane stable and cached navigation restore
   await visit(user, channel.id);
   await user.page.emulateMedia({ reducedMotion: "no-preference" });
   const thread = user.page.getByRole("complementary", { name: "Thread", exact: true });
-  const composer = thread.getByRole("textbox", { name: "Reply in thread…", exact: true });
+  const composer = thread.getByRole("textbox", { name: "Reply in thread", exact: true });
   let pane;
   let bounds;
   for (const [index, body] of ["First thread", "Second thread"].entries()) {
@@ -47,7 +47,7 @@ test("cold thread navigation keeps the pane stable and cached navigation restore
     await ready.promise;
     try {
       await expect(thread).toBeVisible();
-      await expect(thread.getByRole("status", { name: "Loading replies…" })).toBeVisible();
+      await expect(thread.getByRole("status", { name: "Loading replies" })).toBeVisible();
       await expect(composer).toHaveCount(0);
       if (pane) {
         expect(await pane.evaluate((element) => element.isConnected)).toBe(true);

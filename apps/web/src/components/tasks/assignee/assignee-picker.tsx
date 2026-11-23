@@ -60,7 +60,7 @@ export function AssigneePicker({
     >
       <ComboboxTrigger render={trigger}>{children}</ComboboxTrigger>
       <ComboboxContent>
-        <ComboboxSearch aria-label="Search assignees" placeholder="Assign to…" />
+        <ComboboxSearch aria-label="Search assignees" placeholder="Assign to" />
         <ComboboxEmpty>No one matches.</ComboboxEmpty>
         <ComboboxList>
           {(group: Group) => (

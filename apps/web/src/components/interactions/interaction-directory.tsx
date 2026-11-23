@@ -87,7 +87,7 @@ export function InteractionDirectory({
         <Input
           type="search"
           aria-label={type === "people" ? "Search people" : "Search organizations"}
-          placeholder={type === "people" ? "Search people…" : "Search organizations…"}
+          placeholder={type === "people" ? "Search people" : "Search organizations"}
           className="w-72 max-w-full"
           value={search}
           maxLength={200}
@@ -155,7 +155,7 @@ function DirectoryPage({
       data={query.data?.items ?? []}
       getRowId={(row) => row.entityId}
       loading={!query.data && !query.error}
-      loadingMessage="Loading interaction directory…"
+      loadingMessage="Loading interaction directory"
       fetching={query.isPlaceholderData}
       error={query.error}
       errorTitle="Couldn’t load the directory"

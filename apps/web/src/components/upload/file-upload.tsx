@@ -1,9 +1,8 @@
 import { useId, useRef, useState, type ReactNode, type Ref } from "react";
 
-import { Button } from "../ui/button";
+import { PendingButton } from "../feedback/pending-button";
 import { Field, FieldDescription, FieldError } from "../ui/field";
 import { Input } from "../ui/input";
-import { Spinner } from "../ui/spinner";
 import { validateFiles } from "./file-validation";
 import { cn } from "cn";
 
@@ -92,25 +91,17 @@ export function FileUpload({
             }}
           />
           <div className="flex flex-wrap items-center gap-2">
-            <Button
+            <PendingButton
               ref={chooseButtonRef}
               type="button"
               variant="outline"
-              aria-label={pending ? "Selecting" : label}
               disabled={blocked}
-              aria-busy={pending}
+              pending={pending}
               aria-describedby={describedBy}
               onClick={() => input.current?.click()}
             >
-              {pending ? (
-                <>
-                  <Spinner aria-hidden="true" role="presentation" />
-                  Selecting
-                </>
-              ) : (
-                label
-              )}
-            </Button>
+              {label}
+            </PendingButton>
             {actions}
           </div>
           <FieldDescription id={id}>{description}</FieldDescription>

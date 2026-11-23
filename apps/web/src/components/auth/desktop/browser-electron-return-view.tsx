@@ -32,13 +32,7 @@ export function BrowserElectronReturn({
         error={error}
         errorDescription="Could not return to Substrate. Please try again."
       />
-      <PendingButton
-        className="w-full"
-        size="lg"
-        pending={pending}
-        pendingLabel="Continue to Substrate"
-        onClick={onContinue}
-      >
+      <PendingButton className="w-full" size="lg" pending={pending} onClick={onContinue}>
         Continue to Substrate
       </PendingButton>
     </AuthFrame>

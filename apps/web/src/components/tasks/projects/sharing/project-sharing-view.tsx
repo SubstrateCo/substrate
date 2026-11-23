@@ -119,7 +119,6 @@ export function ProjectSharing({
               title={`Share ${project}`}
               description="Give a person in this workspace access."
               saveLabel="Share project"
-              pendingLabel="Sharing…"
               onClose={() => {
                 onClearError();
                 setAdding(false);
@@ -170,7 +169,6 @@ export function ProjectSharing({
               : `Remove ${review.name}’s direct access to ${project}? Organization owners and admins keep access through their role.`
           }
           confirmLabel={review.level ? "Change access" : "Remove access"}
-          pendingLabel="Updating access."
           destructive={!review.level}
           pending={pending}
           error={error}

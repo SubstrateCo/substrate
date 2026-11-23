@@ -16,7 +16,7 @@ export function HomeEmptyWork({ organizationId }: { organizationId: string }) {
         action={
           <Button asChild>
             <Link to="/tasks" search={search}>
-              Browse tasks <ArrowRight aria-hidden="true" />
+              Browse tasks <ArrowRight aria-hidden="true" data-icon="inline-end" />
             </Link>
           </Button>
         }

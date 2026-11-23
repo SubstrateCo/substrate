@@ -78,13 +78,7 @@ export function SearchResults({
       </CommandGroup>
       {hasMore && (
         <div className="px-2 pb-2 text-center">
-          <PendingButton
-            variant="ghost"
-            size="sm"
-            pending={loadingMore}
-            pendingLabel="Loading results."
-            onClick={onMore}
-          >
+          <PendingButton variant="ghost" size="sm" pending={loadingMore} onClick={onMore}>
             Show more
           </PendingButton>
         </div>

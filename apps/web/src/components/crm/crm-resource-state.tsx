@@ -70,7 +70,7 @@ export function CrmResourceState({
   if (pending)
     return (
       <div className={cn("contents", !showLoading && "invisible")}>
-        {loading ?? <LoadingState label="Loading CRM…" variant="table" />}
+        {loading ?? <LoadingState label="Loading CRM" variant="table" />}
       </div>
     );
   return null;

@@ -10,8 +10,9 @@ import { useRecordPeople } from "./record-people-directory";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { FormMessage } from "@/components/feedback/form-message";
+import { LoadingState } from "@/components/feedback/loading-state";
 import { SelectField } from "@/components/forms/select-field";
-import { FieldDescription, FieldLegend, FieldSet } from "@/components/ui/field";
+import { FieldLegend, FieldSet } from "@/components/ui/field";
 import type { PickedRecipient } from "@/lib/people/people-picker";
 import { crmGrantsOptions } from "@/queries/crm/management";
 import { useCrmMutation } from "@/queries/crm/mutations";
@@ -65,7 +66,6 @@ export function RecordSharing({
         title={`Share ${name}`}
         description="Manage direct access to this record. Organization owners and admins also have access. Linked customer records and discussions keep their own access."
         saveLabel={`Share ${noun}`}
-        pendingLabel="Sharing…"
         pending={mutation.isPending}
         disabled={!canSubmit}
         error={removing ? null : mutation.error}
@@ -88,7 +88,9 @@ export function RecordSharing({
       >
         <FieldSet className="min-w-0">
           <FieldLegend variant="label">Direct access</FieldLegend>
-          {grants.isPending && <FieldDescription>Loading direct access…</FieldDescription>}
+          {grants.isPending && (
+            <LoadingState label="Loading direct access" variant="compact" rows={2} />
+          )}
           <FormMessage
             error={grants.error}
             errorDescription="Couldn’t load direct access. Close this dialog and try again."
@@ -141,7 +143,6 @@ export function RecordSharing({
           description={`Remove their direct grant to “${name}”. Organization owners and admins may still have access. This does not change responsibility or access to linked records.`}
           destructive
           confirmLabel="Remove access"
-          pendingLabel="Removing…"
           pending={mutation.isPending}
           error={mutation.error}
           errorDescription="Couldn’t remove access. Keep at least one owner, or reload the record and try again."

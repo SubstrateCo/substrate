@@ -260,7 +260,6 @@ function CreateTaskForm({
         description={<span title={creationPlace}>{creationPlace}</span>}
         saveLabel={creatingParent ? "Create subtask" : "Create task"}
         size="lg"
-        pendingLabel="Saving task…"
         onClose={onCancel}
         onRestoreFocus={onRestoreFocus}
       >

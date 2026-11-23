@@ -18,7 +18,7 @@ export function LeftChannelNotice({
       className="mx-3 mb-1 w-auto"
       error={error && actionErrorMessage(error, "Couldn't join this channel. Try again.")}
       action={
-        <PendingButton size="sm" pending={pending} pendingLabel="Joining" onClick={onJoin}>
+        <PendingButton size="sm" pending={pending} onClick={onJoin}>
           Join channel
         </PendingButton>
       }

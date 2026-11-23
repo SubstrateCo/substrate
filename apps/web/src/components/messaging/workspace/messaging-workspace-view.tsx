@@ -169,7 +169,7 @@ function WorkspaceContent({
             className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface"
           >
             <ConversationHeader title={<SkeletonText width="10rem" />} addingMembers={false} />
-            <MessageLoading label="Loading your conversations…" />
+            <MessageLoading label="Loading your conversations" />
           </section>
         ) : (
           <WorkspaceEmpty onCreate={onCreate} />

@@ -77,7 +77,7 @@ function CalendarSettings({ organizationId }: { organizationId: string }) {
         onRetry={() => void query.refetch()}
       />
     );
-  if (!query.data) return <LoadingState label="Loading calendars…" />;
+  if (!query.data) return <LoadingState label="Loading calendars" />;
   const pendingCalendarId = savingCalendar(query.data.accounts, update, action, connect);
   const actions: CalendarAccountActions = {
     onRecordsInteractions: (calendar, recordsInteractions) => {
@@ -196,7 +196,6 @@ function CalendarSettingsDialog({
           title={`Disconnect ${dialog.calendar.name}?`}
           description="Substrate stops syncing this calendar. Contacts and interactions it already created are kept."
           confirmLabel="Disconnect calendar"
-          pendingLabel="Disconnecting…"
           pending={action.isPending}
           error={action.error}
           errorDescription="Couldn’t disconnect this calendar. Try again."
@@ -216,7 +215,6 @@ function CalendarSettingsDialog({
           title={`Remove ${calendarAccountName(dialog.account)}?`}
           description="Substrate loses access to this account in every organization. Its calendars stop syncing and move to Disconnected calendars; their contacts and interactions are kept."
           confirmLabel="Remove account"
-          pendingLabel="Removing…"
           pending={unlink.isPending}
           error={unlink.error}
           errorDescription="Couldn’t remove this account. Try again."

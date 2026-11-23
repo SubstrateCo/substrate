@@ -1,5 +1,6 @@
 import type { useRecordPeople } from "./record-people-directory";
 import { FormMessage } from "@/components/feedback/form-message";
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { PeoplePicker } from "@/components/people/people-picker";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import type { PickedRecipient } from "@/lib/people/people-picker";
@@ -31,9 +32,13 @@ export function RecordPersonField({
         allowEmail={false}
         max={1}
         disabled={disabled || directory.pending || !!directory.error}
-        placeholder="Search workspace people…"
+        placeholder="Search workspace people"
       />
-      {directory.pending && <FieldDescription>Loading workspace people…</FieldDescription>}
+      {directory.pending && (
+        <span role="status" aria-label="Loading workspace people">
+          <SkeletonText width="12rem" />
+        </span>
+      )}
       {!directory.pending && !directory.error && directory.people.length === 0 && (
         <FieldDescription>No eligible workspace people are available.</FieldDescription>
       )}

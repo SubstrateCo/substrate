@@ -116,7 +116,7 @@ export function InvitationTable({
       data={invitations}
       getRowId={(row) => row.id}
       loading={loading}
-      loadingMessage="Loading invitations…"
+      loadingMessage="Loading invitations"
       error={error}
       errorTitle="Couldn’t load invitations"
       errorDescription="Your team’s invitations are unavailable. Please try again."

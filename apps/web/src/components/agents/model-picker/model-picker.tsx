@@ -7,6 +7,7 @@ import { useState, type ReactNode } from "react";
 import type { StartSignIn } from "../sign-in/harness-account";
 import { PickerSignIn } from "../sign-in/harness-account-view";
 import { HarnessIcon } from "./harness-icon";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +23,7 @@ import { Spinner } from "@/components/ui/spinner";
 import { harnessLabel, harnessOptions, visibleHarnessOptions } from "@/lib/agents/harness-meta";
 import { harnessStatusQueryOptions } from "@/queries/agents/harness-status";
 import { harnessModelsQueryOptions } from "@/queries/agents/models";
-import { Check, ChevronsUpDown, CircleAlert, Laptop, RefreshCw } from "lucide-react";
+import { Check, ChevronDown, CircleAlert, Laptop, RefreshCw } from "lucide-react";
 
 type Choice = HarnessModel & { harness: HarnessKind; saved?: boolean };
 
@@ -100,7 +101,7 @@ function ModelCatalogStatus({
       </PickerNote>
     );
   if (loading)
-    return <PickerNote icon={<Spinner aria-hidden="true" />}>Loading {label} models…</PickerNote>;
+    return <PickerNote icon={<Spinner aria-hidden="true" />}>Loading {label} models</PickerNote>;
   return null;
 }
 
@@ -368,7 +369,7 @@ export function ModelPicker({
             <span className="truncate">{modelName}</span>
             <span className="truncate text-xs font-normal text-muted-foreground">{label}</span>
           </span>
-          <ChevronsUpDown aria-hidden="true" className="size-3.5 text-muted-foreground" />
+          <ChevronDown aria-hidden="true" className="text-muted-foreground" />
         </Button>
       </PopoverTrigger>
       <PopoverContent
@@ -408,7 +409,7 @@ export function ModelPicker({
           >
             <div className="p-2">
               <CommandInput
-                placeholder={`Search ${available ? "all models" : "models"}…`}
+                placeholder={`Search ${available ? "all models" : "models"}`}
                 maxLength={500}
                 value={search}
                 onValueChange={setSearch}
@@ -435,19 +436,17 @@ export function ModelPicker({
             error={selected.error}
             onRetry={refresh}
           />
-          <Button
+          <PendingButton
             type="button"
             variant="ghost"
             size="xs"
-            disabled={!available || refreshing}
+            disabled={!available}
+            pending={refreshing}
             onClick={refresh}
           >
-            <RefreshCw
-              aria-hidden="true"
-              className={refreshing ? "motion-safe:animate-spin" : ""}
-            />
+            <RefreshCw aria-hidden="true" />
             Refresh models
-          </Button>
+          </PendingButton>
         </div>
       </PopoverContent>
     </Popover>

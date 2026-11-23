@@ -58,7 +58,6 @@ export function CrmActivity({
             size="sm"
             className="mt-2"
             pending={query.isFetching && !query.isPending}
-            pendingLabel="Loading activity."
             onClick={() => {
               if (!query.isFetching) void query.fetchNextPage();
             }}

@@ -82,7 +82,7 @@ type AppTableProps<TData extends RowData> = {
   renderMobileRow?: (row: TData) => ReactNode;
 };
 
-const defaultLoadingMessage = "Loading…";
+const defaultLoadingMessage = "Loading";
 const defaultErrorTitle = "Couldn’t load results";
 const defaultErrorDescription = "Your results are unavailable. Please try again.";
 

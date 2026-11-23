@@ -3,6 +3,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 import { TechnicalDetails } from "../technical-details";
 import { TurnTimelineLoading } from "./turn-timeline";
 import { PaneState } from "@/components/feedback/pane-state";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageAside, useAsideCovers } from "@/components/layout/page-layout";
@@ -140,7 +141,7 @@ export function TurnTranscriptView({
   else
     body = (
       <PaneState
-        label={error ? "Transcript unavailable" : "Loading transcript…"}
+        label={error ? "Transcript unavailable" : "Loading transcript"}
         error={error}
         onRetry={onRetry}
       />
@@ -165,16 +166,16 @@ export function TurnTranscriptView({
               </span>
             )}
             {onStop && (
-              <Button
+              <PendingButton
                 type="button"
                 size="sm"
                 variant="destructive-ghost"
-                disabled={stopping}
+                pending={stopping}
                 onClick={onStop}
               >
                 <Square aria-hidden="true" />
-                {stopping ? "Stopping…" : "Stop"}
-              </Button>
+                Stop
+              </PendingButton>
             )}
             <Tooltip>
               <TooltipTrigger asChild>

@@ -23,7 +23,7 @@ test("messages and thread controls remain usable at 640px", async ({ actors, cli
   await expect(editor).toBeInViewport();
   await sender.page.getByRole("button", { name: "Reply in thread", exact: true }).click();
   const reply = `Layout reply ${channel.id}`;
-  await send(sender.page, reply, "Reply in thread…");
+  await send(sender.page, reply, "Reply in thread");
   await expect(
     sender.page
       .getByRole("complementary", { name: "Thread", exact: true })

@@ -114,7 +114,7 @@ export function ThreadPane({
               organizationId={organizationId}
               conversationId={conversationId}
               threadId={threadId}
-              label="Reply in thread…"
+              label="Reply in thread"
             />
           )}
         </>

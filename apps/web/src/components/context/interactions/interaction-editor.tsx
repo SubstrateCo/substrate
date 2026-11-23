@@ -33,7 +33,6 @@ export function InteractionEditor({
       title="New interaction"
       description="Record a past customer touch. This summary is visible to people who can read this contact."
       saveLabel="Create interaction"
-      pendingLabel="Recording…"
       nativeValidation
       disabled={!canSubmit}
       pending={pending}

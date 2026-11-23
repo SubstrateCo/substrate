@@ -33,13 +33,7 @@ export function DesktopSignIn({
             : "Could not open sign-in. Please try again."
         }
       />
-      <PendingButton
-        className="w-full"
-        size="lg"
-        pending={pending}
-        pendingLabel={waiting ? "Open browser again" : "Sign in with browser"}
-        onClick={onSignIn}
-      >
+      <PendingButton className="w-full" size="lg" pending={pending} onClick={onSignIn}>
         {waiting ? "Open browser again" : "Sign in with browser"}
       </PendingButton>
     </AuthFrame>

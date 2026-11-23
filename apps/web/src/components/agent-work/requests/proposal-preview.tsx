@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
+import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import { hiddenConversation } from "@/lib/agent-work/hidden-records";
 import type { ProposalRecord, ProposalTarget } from "@/lib/agent-work/proposal-target";
@@ -44,7 +45,12 @@ export function RecordName({
   record: ProposalRecord;
   kind: keyof typeof hiddenText;
 }) {
-  if (record.access === "loading") return <span className="text-muted-foreground">Loading…</span>;
+  if (record.access === "loading")
+    return (
+      <span role="status" aria-label="Loading">
+        <SkeletonText width="8rem" />
+      </span>
+    );
   if (record.access === "hidden")
     return <span className="text-muted-foreground">{hiddenText[kind]}</span>;
   return record.link ? (

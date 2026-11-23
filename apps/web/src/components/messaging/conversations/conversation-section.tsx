@@ -112,7 +112,7 @@ export function ConversationSection({
               {loading && conversations.length === 0 && (
                 <div
                   role="status"
-                  aria-label={section === "dm" ? "Loading direct messages…" : "Loading channels…"}
+                  aria-label={section === "dm" ? "Loading direct messages" : "Loading channels"}
                 >
                   <ConversationSidebarLoadingRow />
                   <ConversationSidebarLoadingRow />

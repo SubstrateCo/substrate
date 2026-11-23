@@ -82,7 +82,7 @@ const iconBox = "flex size-6 shrink-0 items-center justify-center rounded-md bg-
 
 export function SharingDetailsLoading() {
   return (
-    <div role="status" aria-label="Loading sharing…">
+    <div role="status" aria-label="Loading sharing">
       <ul aria-hidden="true" className="grid gap-0.5">
         {[0, 1].map((index) => (
           <Row

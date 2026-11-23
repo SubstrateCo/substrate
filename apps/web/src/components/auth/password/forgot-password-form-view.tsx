@@ -46,12 +46,7 @@ export function ForgotPasswordForm({
           error={error}
           errorDescription="We couldn’t send a reset link. Please try again."
         />
-        <PendingButton
-          className="w-full"
-          size="lg"
-          pending={pending}
-          pendingLabel="Send reset link"
-        >
+        <PendingButton className="w-full" size="lg" pending={pending}>
           Send reset link
         </PendingButton>
       </NativeForm>

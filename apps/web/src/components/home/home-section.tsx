@@ -98,7 +98,7 @@ export function HomeSection({
         <Button variant="outline" size="sm" asChild>
           <Link {...emptyLink}>
             {emptyAction}
-            <ArrowRight aria-hidden="true" />
+            <ArrowRight aria-hidden="true" data-icon="inline-end" />
           </Link>
         </Button>
       }
@@ -128,7 +128,7 @@ export function HomeSection({
                 {...link}
                 aria-label={linkLabel ? undefined : `View all ${title.toLowerCase()}`}
               >
-                {linkLabel ?? "View all"} <ArrowRight aria-hidden="true" />
+                {linkLabel ?? "View all"} <ArrowRight aria-hidden="true" data-icon="inline-end" />
               </Link>
             </Button>
           )}

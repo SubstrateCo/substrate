@@ -54,7 +54,7 @@ export function TaskDiscussion({
     >
       <MessageCircle aria-hidden="true" />
       <span className="underline">View full conversation</span>
-      <ArrowUpRight aria-hidden="true" />
+      <ArrowUpRight aria-hidden="true" data-icon="inline-end" />
     </Button>
   );
   return (
@@ -68,7 +68,7 @@ export function TaskDiscussion({
           <Button asChild variant="link" size="xs" className="-ml-2 w-fit">
             <Link {...messageLink(organizationId, conversationId)}>
               View full conversation
-              <ArrowUpRight aria-hidden="true" />
+              <ArrowUpRight aria-hidden="true" data-icon="inline-end" />
             </Link>
           </Button>
         ) : (

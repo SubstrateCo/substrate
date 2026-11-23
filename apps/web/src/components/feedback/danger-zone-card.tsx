@@ -19,7 +19,6 @@ export function DangerZoneCard({
   confirmTitle,
   confirmDescription,
   confirmLabel = title,
-  pendingLabel = "Deleting.",
   destructive = true,
   pending,
   error,
@@ -36,7 +35,6 @@ export function DangerZoneCard({
   confirmTitle: string;
   confirmDescription: ReactNode;
   confirmLabel?: string;
-  pendingLabel?: string;
   /** A solid red confirm. False for an action that can be undone, such as archive. */
   destructive?: boolean;
   pending: boolean;
@@ -75,7 +73,6 @@ export function DangerZoneCard({
           description={confirmDescription}
           destructive={destructive}
           confirmLabel={confirmLabel}
-          pendingLabel={pendingLabel}
           pending={pending}
           error={error}
           errorDescription={errorDescription}

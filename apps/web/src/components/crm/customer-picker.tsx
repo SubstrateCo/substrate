@@ -90,7 +90,7 @@ export function CustomerPicker({
           <span className="truncate">{current.label}</span>
         </ComboboxTrigger>
         <ComboboxContent>
-          <ComboboxSearch aria-label={`Search ${kind}`} placeholder={`Search ${kind}…`} />
+          <ComboboxSearch aria-label={`Search ${kind}`} placeholder={`Search ${kind}`} />
           <ComboboxEmpty>No matching customer records.</ComboboxEmpty>
           <ComboboxList>
             {(option: ComboboxOption) => (

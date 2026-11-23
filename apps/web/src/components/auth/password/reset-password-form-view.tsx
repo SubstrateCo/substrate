@@ -106,12 +106,7 @@ export function ResetPasswordForm({
           error={error}
           errorDescription="We couldn’t reset your password. Try again, or request a new reset link."
         />
-        <PendingButton
-          className="w-full"
-          size="lg"
-          pending={pending}
-          pendingLabel="Save new password"
-        >
+        <PendingButton className="w-full" size="lg" pending={pending}>
           Save new password
         </PendingButton>
       </NativeForm>

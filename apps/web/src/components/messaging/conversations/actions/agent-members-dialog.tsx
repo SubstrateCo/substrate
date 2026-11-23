@@ -58,12 +58,7 @@ export function AgentMembersDialog({
   };
   if (!loading && agents.length === 0)
     return (
-      <ConfirmDialog
-        {...common}
-        confirmLabel="Open Agents"
-        pendingLabel="Opening…"
-        onConfirm={onOpenAgents}
-      >
+      <ConfirmDialog {...common} confirmLabel="Open Agents" onConfirm={onOpenAgents}>
         <p className="text-sm text-muted-foreground">
           You don’t have an agent yet. Create one in Agents, then come back to add it here.
         </p>
@@ -106,7 +101,6 @@ export function AgentMembersDialog({
                     variant="outline"
                     disabled={!!busyId}
                     pending={busyId === agent.agentId}
-                    pendingLabel="Adding…"
                     onClick={() => onAdd(agent.agentId)}
                   >
                     Add
@@ -122,7 +116,6 @@ export function AgentMembersDialog({
           title={`Remove ${removing.name} from ${name}?`}
           description={`${removing.name} stops reading and replying here. Its earlier messages stay, and you can add it back later.`}
           confirmLabel={`Remove ${removing.name}`}
-          pendingLabel="Removing…"
           destructive
           onClose={removal.close}
           onRestoreFocus={removal.restoreFocus}

@@ -1,7 +1,7 @@
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 
 function impact(linkedWork?: number) {
-  if (linkedWork === undefined) return "Checking linked work…";
+  if (linkedWork === undefined) return "Checking linked work";
   if (linkedWork === 0) return "No tasks or projects you can see link to it.";
   const noun = linkedWork === 1 ? "task or project links" : "tasks or projects link";
   return `${linkedWork} ${noun} to its messages. They stay, and their history shows the discussion was removed.`;
@@ -38,7 +38,6 @@ export function DeleteConversationDialog({
         </>
       }
       confirmLabel={deleteLabel}
-      pendingLabel="Deleting…"
       destructive
       pending={pending}
       error={error}

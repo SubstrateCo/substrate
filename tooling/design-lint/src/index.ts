@@ -8,7 +8,9 @@ import { headingRole } from "./rules/heading-role.ts";
 import { iconButtonName, iconButtonTooltip } from "./rules/icon-buttons.ts";
 import { motion } from "./rules/motion.ts";
 import { noAdhocDateFormat } from "./rules/no-adhoc-date-format.ts";
+import { noEllipsis } from "./rules/no-ellipsis.ts";
 import { noNativeDialogs } from "./rules/no-native-dialogs.ts";
+import { noOpacityTint } from "./rules/no-opacity-tint.ts";
 import { noPressedOutline } from "./rules/no-pressed-outline.ts";
 import { noRawErrorMessage } from "./rules/no-raw-error-message.ts";
 import { noRawValidationText } from "./rules/no-raw-validation-text.ts";
@@ -36,7 +38,9 @@ export default {
     "icon-button-tooltip": iconButtonTooltip,
     motion,
     "no-adhoc-date-format": noAdhocDateFormat,
+    "no-ellipsis": noEllipsis,
     "no-native-dialogs": noNativeDialogs,
+    "no-opacity-tint": noOpacityTint,
     "no-pressed-outline": noPressedOutline,
     "no-raw-error-message": noRawErrorMessage,
     "no-raw-validation-text": noRawValidationText,

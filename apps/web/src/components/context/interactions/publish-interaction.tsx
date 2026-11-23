@@ -70,7 +70,6 @@ function PublicationEditor({
       description="Choose a linked message you can read. Confirm that this interaction belongs to this contact; a message author is not automatically a customer identity."
       size="lg"
       saveLabel="Create interaction"
-      pendingLabel="Recording…"
       nativeValidation
       disabled={!source || !consent || !!related.error}
       pending={mutation.isPending}

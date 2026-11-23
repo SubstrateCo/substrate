@@ -34,7 +34,6 @@ export function MessageRecordEditor({
         title={`Create ${singular} from this message?`}
         description="The fields you entered become visible to this CRM record’s readers and workspace admins. They can remain visible after the message is restricted or deleted. The private message stays separately restricted. Creating the record saves a source reference; removing a discussion association does not remove that provenance."
         confirmLabel={`Create ${singular} and save source`}
-        pendingLabel="Creating…"
         pending={pending}
         error={error}
         errorDescription="Couldn’t create this record from the message. Check your access and try again."

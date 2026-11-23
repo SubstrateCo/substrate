@@ -27,7 +27,7 @@ export function AgentMessagesEmpty({
       }
       action={
         enabled ? (
-          <PendingButton pending={pending} pendingLabel="Starting…" onClick={onStart}>
+          <PendingButton pending={pending} onClick={onStart}>
             Start conversation
           </PendingButton>
         ) : (

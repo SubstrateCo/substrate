@@ -27,7 +27,6 @@ const confirmCopy = {
     description:
       "Everyone from this organization loses access to messages, search, and agent sources here. Its pending invitations are revoked. Their earlier messages stay. A new invitation is needed to reconnect.",
     confirm: "Remove access",
-    pending: "Removing…",
     done: (name: string) => `${name} no longer has access.`,
   },
   remove: {
@@ -35,14 +34,12 @@ const confirmCopy = {
     description:
       "They lose access to messages, search, and agent sources here. Their earlier messages stay. A new invitation is needed to add them again.",
     confirm: "Remove access",
-    pending: "Removing…",
     done: (name: string) => `${name} no longer has access.`,
   },
   revoke: {
     title: (name: string) => `Revoke the invitation to ${name}?`,
     description: "The link in their email stops working. You can invite them again later.",
     confirm: "Revoke invitation",
-    pending: "Revoking…",
     done: (name: string) => `Invitation to ${name} revoked.`,
   },
 };
@@ -232,7 +229,6 @@ function SharingConfirmation({
       title={copy.title(confirmation.name)}
       description={copy.description}
       confirmLabel={copy.confirm}
-      pendingLabel={copy.pending}
       destructive
       pending={pending}
       error={error}

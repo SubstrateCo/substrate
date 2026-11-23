@@ -53,7 +53,6 @@ export function EditMessageComposer({
           autoFocus
           hasAttachments={message.attachments.length > 0}
           submitLabel="Save"
-          pendingLabel="Saving…"
           errorDescription="Your message couldn’t be updated. Try again."
           submitDisabled={body.trim() === message.body}
           pending={edit.isPending}

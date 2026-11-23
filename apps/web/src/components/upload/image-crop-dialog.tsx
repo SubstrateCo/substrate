@@ -17,6 +17,7 @@ import { ImageCropControls } from "./image-crop-controls";
 import { ImageCropper } from "./image-cropper";
 import { FormMessage } from "@/components/feedback/form-message";
 import { modalDialogProps } from "@/components/feedback/modal-dialog";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { usePictureUpload } from "@/components/upload/use-picture-upload";
 
 export interface ImageCropDialogProps {
@@ -154,14 +155,14 @@ export function ImageCropDialog({
           >
             Cancel
           </Button>
-          <Button
+          <PendingButton
             type="button"
-            aria-busy={pending}
-            disabled={pending || mediaFailed || (mode === "fill" && !area)}
+            pending={pending}
+            disabled={mediaFailed || (mode === "fill" && !area)}
             onClick={confirm}
           >
             Save picture
-          </Button>
+          </PendingButton>
         </DialogFooter>
       </DialogContent>
     </Dialog>

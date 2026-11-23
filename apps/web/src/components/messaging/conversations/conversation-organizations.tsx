@@ -24,7 +24,7 @@ export function ConversationOrganizations({
         <Button variant="disclosure" size="sm" aria-label="Organizations">
           <Globe aria-hidden="true" />
           <span>Organizations</span>
-          <ChevronDown aria-hidden="true" />
+          <ChevronDown aria-hidden="true" data-icon="inline-end" />
         </Button>
       </PopoverTrigger>
       <PopoverContent

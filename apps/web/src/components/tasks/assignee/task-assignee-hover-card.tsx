@@ -22,7 +22,7 @@ export function TaskAssigneeHoverCard({
           {children}
         </span>
       </HoverCardTrigger>
-      <HoverCardContent side="bottom" align="end" collisionPadding={8} className="w-76">
+      <HoverCardContent side="bottom" align="end" collisionPadding={8} className="w-80">
         <PersonIdentityCard name={assignee.name} image={assignee.image} type={assignee.type} />
       </HoverCardContent>
     </HoverCard>

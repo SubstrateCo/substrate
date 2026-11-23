@@ -24,7 +24,6 @@ export function RecordArchive({
           : "Hide this record from active lists and new customer links. History stays available. Related contacts, deals, and tasks are not archived or completed."
       }
       confirmLabel={archived ? "Restore record" : "Archive record"}
-      pendingLabel={archived ? "Restoring…" : "Archiving…"}
       pending={pending}
       error={error}
       errorDescription="Couldn’t change this record’s archive state. Try again."

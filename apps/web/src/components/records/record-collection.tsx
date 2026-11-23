@@ -156,7 +156,7 @@ export function RecordCollection({
           <Input
             type="search"
             aria-label={`Search ${kind}`}
-            placeholder={`Search ${kind}…`}
+            placeholder={`Search ${kind}`}
             className="w-72 max-w-full"
             value={search}
             onChange={(event) => {

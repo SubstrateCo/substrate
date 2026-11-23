@@ -44,7 +44,6 @@ export function FormDialog({
   error,
   onRestoreFocus,
   size = "default",
-  pendingLabel = "Saving…",
   disabled = false,
   errorDescription,
   status,
@@ -63,7 +62,6 @@ export function FormDialog({
   errorDescription?: string;
   onRestoreFocus?: () => void;
   size?: "default" | "lg";
-  pendingLabel?: string;
   disabled?: boolean;
   status?: string | null;
   formId?: string;
@@ -113,12 +111,7 @@ export function FormDialog({
               <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
                 Cancel
               </Button>
-              <PendingButton
-                type="submit"
-                disabled={disabled}
-                pending={pending}
-                pendingLabel={pendingLabel}
-              >
+              <PendingButton type="submit" disabled={disabled} pending={pending}>
                 {saveLabel}
               </PendingButton>
             </div>

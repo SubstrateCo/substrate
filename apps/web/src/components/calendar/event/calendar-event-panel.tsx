@@ -96,7 +96,7 @@ export function CalendarEventPanel({
       )}
       {!query.error && !event && (
         <div className="p-4">
-          <LoadingState label="Loading event…" variant="compact" />
+          <LoadingState label="Loading event" variant="compact" />
         </div>
       )}
       {!query.error && event && (

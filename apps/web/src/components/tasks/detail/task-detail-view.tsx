@@ -123,7 +123,7 @@ export function TaskDetail({
                   className="-mx-1 w-fit rounded-sm px-1 text-left text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
                   onClick={() => setEditing(true)}
                 >
-                  Add a description…
+                  Add a description
                 </button>
               )}
             </div>

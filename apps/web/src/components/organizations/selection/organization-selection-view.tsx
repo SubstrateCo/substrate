@@ -189,7 +189,7 @@ function CreateWorkspace({
             ref={createTrigger}
             type="button"
             variant="disclosure"
-            className="-ml-2.5 self-start"
+            className="-ml-2 self-start"
           >
             <Plus aria-hidden="true" />
             Create a workspace

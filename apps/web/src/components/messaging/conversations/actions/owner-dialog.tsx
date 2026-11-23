@@ -42,7 +42,6 @@ export function OwnerDialog({
           : "The new owner can add people, change the owner, and delete the conversation."
       }
       confirmLabel={leaving ? leaveLabel : "Change owner"}
-      pendingLabel={leaving ? "Leaving…" : "Saving…"}
       destructive={leaving}
       confirmDisabled={!owner}
       status={owner ? "" : "Choose a new owner"}

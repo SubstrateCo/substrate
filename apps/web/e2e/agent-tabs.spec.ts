@@ -27,7 +27,9 @@ test("an agent waits for its catalog before mounting its tab panels", async ({
       (event) => event.type === "ready",
       "The authenticated WebSocket completes its ready handshake",
     );
-    await expect(user.page.getByRole("status", { name: "Loading agent…" })).toBeVisible();
+    await expect(
+      user.page.getByRole("status", { name: "Loading agent", exact: true }),
+    ).toBeVisible();
     await expect(user.page.getByRole("tablist", { name: "Agent views" })).toHaveCount(0);
   } finally {
     release.resolve();

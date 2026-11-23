@@ -68,7 +68,7 @@ export function CreateOrganizationForm({
         error={error}
         errorDescription="We couldn’t create your workspace. Check the name and slug, then try again."
       />
-      <PendingButton className="w-full" size="lg" pending={pending} pendingLabel="Create workspace">
+      <PendingButton className="w-full" size="lg" pending={pending}>
         Create workspace
       </PendingButton>
     </NativeForm>

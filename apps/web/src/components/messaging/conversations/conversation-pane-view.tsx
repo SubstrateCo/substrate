@@ -163,7 +163,7 @@ function PaneMessages({
         onRetry={state === "unavailable" ? undefined : onRetry}
       />
     );
-  if (state === "loading") return <MessageLoading label="Loading messages…" />;
+  if (state === "loading") return <MessageLoading label="Loading messages" />;
   return (
     <>
       {state === "stale" && <StaleNotice>Messages may be out of date.</StaleNotice>}

@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Download } from "lucide-react";
 
@@ -88,11 +89,10 @@ function ViewerImage({ src, filename }: { src: string; filename: string }) {
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
   return (
     <div className="grid min-h-24 place-items-center gap-2">
-      {status !== "ready" && (
+      {status === "loading" && <Spinner aria-label="Loading image" />}
+      {status === "failed" && (
         <p role="status" className="text-sm text-muted-foreground">
-          {status === "failed"
-            ? "This image couldn’t be loaded. Try downloading the file."
-            : "Loading image…"}
+          This image couldn’t be loaded. Try downloading the file.
         </p>
       )}
       {status !== "failed" && (

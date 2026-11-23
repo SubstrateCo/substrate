@@ -52,7 +52,6 @@ export function RecordOwner({
       title={`Reassign ${name}`}
       description="Choose the person responsible for this record. Responsibility is not security ownership and does not grant access."
       saveLabel="Reassign responsibility"
-      pendingLabel="Reassigning…"
       pending={mutation.isPending}
       disabled={!canSubmit}
       error={mutation.error}

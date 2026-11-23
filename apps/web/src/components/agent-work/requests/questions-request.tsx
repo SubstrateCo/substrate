@@ -198,7 +198,6 @@ export function QuestionsRequest({
           size="sm"
           disabled={!answered}
           pending={pending}
-          pendingLabel="Sending…"
           onClick={next}
         >
           {last ? "Submit" : "Next"}

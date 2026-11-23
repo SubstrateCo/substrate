@@ -140,7 +140,6 @@ export function RoutineListView({
                         size="xs"
                         disabled={!!approvingId}
                         pending={approvingId === routine.id}
-                        pendingLabel="Approving…"
                         onClick={() => onApprove(routine)}
                       >
                         Approve

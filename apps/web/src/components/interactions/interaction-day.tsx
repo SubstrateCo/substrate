@@ -34,7 +34,7 @@ export function InteractionDay({ period }: { period: InteractionPeriod }) {
         onRetry={() => void query.refetch()}
       />
     );
-  if (!query.data) return <LoadingState label="Loading this day’s interactions…" />;
+  if (!query.data) return <LoadingState label="Loading this day’s interactions" />;
   const { items, nextCursor } = query.data;
   return (
     <div className="min-h-0 flex-1 overflow-y-auto">

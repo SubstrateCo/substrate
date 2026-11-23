@@ -91,7 +91,6 @@ export function InvitationManager({
           description={`${confirming.email} won’t be able to join with this invitation. You can invite them again later.`}
           cancelLabel="Keep invitation"
           confirmLabel="Cancel invitation"
-          pendingLabel="Cancel invitation"
           pending={canceling}
           onClose={() => setConfirming(undefined)}
           onConfirm={() => {

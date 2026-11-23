@@ -110,7 +110,6 @@ export function SharingAcceptanceForm({
           className="w-full"
           size="lg"
           pending={busy}
-          pendingLabel="Accept invitation"
           disabled={!organizationId || !confirmed}
           onClick={onAccept}
         >

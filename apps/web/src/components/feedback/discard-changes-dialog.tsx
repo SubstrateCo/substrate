@@ -15,7 +15,6 @@ export function DiscardChangesDialog(props: {
     <ConfirmDialog
       title="Discard unsaved changes?"
       confirmLabel="Discard changes"
-      pendingLabel="Discarding…"
       cancelLabel="Keep editing"
       destructive
       {...props}

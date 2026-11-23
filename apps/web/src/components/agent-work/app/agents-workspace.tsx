@@ -34,7 +34,7 @@ function MissingAgent({
   catalogState: ResourceState<unknown>;
   onRetry: () => void;
 }) {
-  if (catalogState.status === "loading") return <PaneState label="Loading agent…" />;
+  if (catalogState.status === "loading") return <PaneState label="Loading agent" />;
   if (catalogState.status === "unavailable" || catalogState.status === "ready")
     return (
       <ContentNotice

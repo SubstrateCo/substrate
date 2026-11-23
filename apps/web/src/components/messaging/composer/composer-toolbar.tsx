@@ -12,7 +12,7 @@ export function ComposerToolbar({
 }) {
   return (
     <>
-      {composerFormats.map(({ label, tooltip, key, icon: Icon, prefix, suffix }) => (
+      {composerFormats.map(({ label, key, icon: Icon, prefix, suffix }) => (
         <Tooltip key={label}>
           <TooltipTrigger asChild>
             <Button
@@ -28,7 +28,7 @@ export function ComposerToolbar({
             </Button>
           </TooltipTrigger>
           <TooltipContent>
-            {tooltip}
+            {label}
             <KbdGroup>
               <Kbd>Ctrl</Kbd>
               <Kbd>{key.toUpperCase()}</Kbd>

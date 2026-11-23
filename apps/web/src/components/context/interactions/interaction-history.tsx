@@ -155,7 +155,6 @@ export function InteractionHistory({
           title="Delete interaction?"
           description="Remove this interaction from normal history. This does not delete its contact or linked source."
           confirmLabel="Delete interaction"
-          pendingLabel="Deleting…"
           destructive
           pending={mutation.isPending}
           error={mutation.error}

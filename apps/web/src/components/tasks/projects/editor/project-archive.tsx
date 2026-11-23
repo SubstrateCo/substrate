@@ -19,7 +19,6 @@ export function ProjectArchive({
       description="Make this project and its tasks read-only. Project owners and admins can restore or delete it later."
       confirmTitle={`Archive “${project.name}”?`}
       confirmDescription="Its tasks, comments, and linked messages stay readable to people with access, but no one can change them, add tasks, or post comments until a project owner or admin restores it. It moves to Archived in the project list."
-      pendingLabel="Archiving project."
       destructive={false}
       pending={archive.isPending}
       error={archive.error}

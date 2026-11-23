@@ -351,7 +351,6 @@ function McpServerDialogs({
           title={`Delete ${deleting.name}?`}
           description="This removes the server from this agent on this desktop. New sessions won’t use it. You can’t undo this."
           confirmLabel="Delete server"
-          pendingLabel="Deleting."
           errorDescription="We couldn’t delete this server. Try again."
           destructive
           pending={removeServer.isPending}
@@ -511,7 +510,6 @@ export function AgentConfiguration({
           title="Reset Substrate defaults?"
           description="This replaces the agent’s instructions file and Substrate skills on this device with the saved agent settings. Local edits to those files are lost. Your other skills and MCP servers are not changed."
           confirmLabel="Reset defaults"
-          pendingLabel="Resetting…"
           errorDescription="We couldn’t reset the defaults. Try again."
           destructive
           pending={reset.isPending}
@@ -536,7 +534,6 @@ export function AgentConfiguration({
           title={`Delete ${deleting.name}?`}
           description="This deletes the skill’s file from this agent’s folder on this desktop. New sessions won’t use it. You can’t undo this."
           confirmLabel="Delete skill"
-          pendingLabel="Deleting…"
           errorDescription="We couldn’t delete this skill. Try again."
           destructive
           pending={remove.isPending}

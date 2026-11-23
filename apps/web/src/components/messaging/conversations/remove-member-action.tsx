@@ -46,7 +46,6 @@ export function RemoveMemberDialog({
           : "They and their agents will lose access through this organization. Access through another connected organization is unchanged. Their past messages and linked work will remain."
       }
       confirmLabel="Remove member"
-      pendingLabel="Removing…"
       pending={remove.isPending}
       error={remove.error}
       errorDescription="This member couldn’t be removed. Try again."

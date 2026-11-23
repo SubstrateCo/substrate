@@ -9,6 +9,7 @@ import { taskAttachmentUrl, type TaskAttachmentTarget } from "@/api/files/attach
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { FormMessage } from "@/components/feedback/form-message";
+import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { RecordSection } from "@/components/layout/record-section";
@@ -46,7 +47,6 @@ function TaskAttachmentDrafts({
           <PendingButton
             size="sm"
             pending={pending}
-            pendingLabel="Attaching…"
             disabled={!canAttach || !uploads.ready}
             onClick={onAttach}
           >
@@ -112,11 +112,7 @@ export function TaskAttachments({
           canEdit && <AttachFilesButton iconOnly disabled={!canPick} onFiles={uploads.add} />
         }
       >
-        {query.isPending && (
-          <p className="text-sm text-muted-foreground" role="status">
-            Loading attachments…
-          </p>
-        )}
+        {query.isPending && <LoadingState label="Loading attachments" variant="compact" rows={1} />}
         <FormMessage
           error={query.error}
           errorDescription="Couldn’t load attachments. Reopen the task to try again."
@@ -162,7 +158,6 @@ export function TaskAttachments({
           title={`Remove ${removing.filename}?`}
           description="This removes the file from this task."
           confirmLabel="Remove attachment"
-          pendingLabel="Removing…"
           pending={remove.isPending}
           error={remove.error}
           errorDescription="Couldn’t remove this attachment. Try again."

@@ -82,7 +82,6 @@ export function HarnessAccount({
           title={`Disconnect ${label}?`}
           description={`Agents on this desktop that use ${label} stop working until you connect it again.`}
           confirmLabel={`Disconnect ${label}`}
-          pendingLabel="Disconnecting"
           errorDescription={`Couldn’t disconnect ${label}. Try again.`}
           destructive
           pending={signOut.isPending}

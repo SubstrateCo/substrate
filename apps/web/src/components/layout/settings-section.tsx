@@ -1,6 +1,7 @@
 import { useId, type ReactNode } from "react";
 
 import { PendingButton } from "../feedback/pending-button";
+import { toneBorder } from "../feedback/tag";
 import { Button } from "../ui/button";
 import { cn } from "cn";
 
@@ -70,7 +71,7 @@ export function SettingsCard({
       aria-labelledby={!label && title ? `${id}-title` : undefined}
       className={cn(
         "min-w-0 overflow-hidden rounded-xl border bg-card",
-        tone === "destructive" && "border-destructive/30",
+        tone === "destructive" && toneBorder.destructive,
       )}
     >
       <div className={cn("grid min-w-0 gap-4 p-5", className)}>
@@ -222,7 +223,6 @@ export function SettingsFooter({
           type={onSave ? "button" : "submit"}
           form={form}
           pending={pending}
-          pendingLabel="Saving"
           disabled={!dirty}
           onClick={onSave}
         >

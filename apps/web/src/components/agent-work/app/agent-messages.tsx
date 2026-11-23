@@ -55,7 +55,7 @@ export function AgentMessages({
         }}
       />
     );
-  if (conversations.isPending) return <MessageLoading label="Loading agent messages…" />;
+  if (conversations.isPending) return <MessageLoading label="Loading agent messages" />;
   return (
     <AgentMessagesEmpty
       name={name}

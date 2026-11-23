@@ -14,7 +14,7 @@ function describe(label: string, state: HarnessAvailabilityState) {
     case "desktop-required":
       return { tone: "bg-muted-foreground", text: "Open the desktop app to check availability." };
     case "checking":
-      return { tone: "bg-muted-foreground", text: `Checking ${label}…` };
+      return { tone: "bg-muted-foreground", text: `Checking ${label}` };
     case "error":
       return { tone: "bg-destructive", text: "Couldn’t check availability." };
     case "ready":
@@ -60,7 +60,7 @@ export function HarnessAvailabilityView({
               disabled={refreshing}
               onClick={onRefresh}
             >
-              <RefreshCw className={refreshing ? "animate-spin" : ""} />
+              <RefreshCw className={refreshing ? "motion-safe:animate-spin" : ""} />
             </Button>
           </TooltipTrigger>
           <TooltipContent>Check again</TooltipContent>

@@ -5,6 +5,7 @@ import { useId } from "react";
 import { ProviderIcon } from "../provider-icon";
 import { CalendarRow, type CalendarRowActions } from "./calendar-row";
 import { InlineNotice } from "@/components/feedback/inline-notice";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { providerLabels } from "@/lib/calendar/labels";
 import { Plus, RotateCcw, TriangleAlert, Unlink } from "lucide-react";
@@ -79,15 +80,15 @@ export function CalendarAccountCard({
             icon={TriangleAlert}
             tone="warning"
             action={
-              <Button
+              <PendingButton
                 variant="outline"
                 size="sm"
-                disabled={reconnecting}
+                pending={reconnecting}
                 onClick={actions.onReconnectAccess}
               >
                 <RotateCcw aria-hidden />
                 Reconnect with calendar access
-              </Button>
+              </PendingButton>
             }
           >
             {account.hasCalendarAccess

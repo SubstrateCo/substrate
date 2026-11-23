@@ -46,7 +46,7 @@ export function InteractionTimeline({
         <Input
           type="search"
           aria-label="Search interactions"
-          placeholder="Search contacts or summaries…"
+          placeholder="Search contacts or summaries"
           className="w-72 max-w-full"
           value={search}
           maxLength={200}
@@ -126,7 +126,7 @@ function TimelinePage({
   );
   if (query.error)
     return <ErrorState title="Couldn’t load interactions" onRetry={() => void query.refetch()} />;
-  if (!query.data) return <LoadingState label="Loading interactions…" rows={5} />;
+  if (!query.data) return <LoadingState label="Loading interactions" rows={5} />;
   const { items, nextCursor } = query.data;
   const filtered = search || kind !== "all" || origin !== "all";
   return (

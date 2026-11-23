@@ -111,7 +111,6 @@ export function CreateConversationDialog({
       description={text.description}
       saveLabel={text.submit}
       pending={pending}
-      pendingLabel="Creating…"
       disabled={missing > 0 && !pendingText.trim()}
       status={missing > 0 ? recipientStatus(kind, chosen) : null}
       error={error}

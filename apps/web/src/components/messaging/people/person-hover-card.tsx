@@ -9,7 +9,7 @@ import { PersonCard } from "@/components/messaging/people/person-card-view";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useDirectMessage } from "@/queries/messaging/conversations";
 import { messagingProfileOptions } from "@/queries/messaging/profiles";
-import { MessageSquare } from "lucide-react";
+import { MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export function PersonHoverCard({
@@ -54,7 +54,7 @@ export function PersonHoverCard({
         side="bottom"
         align="start"
         collisionPadding={8}
-        className="w-76"
+        className="w-80"
         onPointerEnter={clearTimer}
         onPointerLeave={leave}
         onOpenAutoFocus={(event) => {
@@ -159,10 +159,9 @@ function PersonHoverCardBody({
               size="sm"
               variant="outline"
               pending={directMessage.isPending}
-              pendingLabel="Opening conversation."
               onClick={openDirectMessage}
             >
-              <MessageSquare aria-hidden="true" />
+              <MessageCircle aria-hidden="true" />
               Message
             </PendingButton>
           )

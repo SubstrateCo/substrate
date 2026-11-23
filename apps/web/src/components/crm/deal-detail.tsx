@@ -25,7 +25,7 @@ import { resourceState } from "@/lib/resource-state";
 import { contactsOptions } from "@/queries/contacts/options";
 import { accountsOptions, dealOptions, pipelineOptions } from "@/queries/crm/options";
 import { useRecordMutation } from "@/queries/records/mutations";
-import { ArrowRight } from "lucide-react";
+import { ArrowRightLeft } from "lucide-react";
 
 export function DealDetail({
   organizationId,
@@ -89,7 +89,7 @@ export function DealDetail({
             ? [
                 {
                   label: "Move deal",
-                  icon: <ArrowRight aria-hidden="true" />,
+                  icon: <ArrowRightLeft aria-hidden="true" />,
                   onSelect: () => open("transition"),
                 },
               ]

@@ -74,7 +74,6 @@ export function NotificationGroupEvents({
           size="sm"
           className="self-start"
           pending={events.isFetchingNextPage}
-          pendingLabel="Loading older events."
           onClick={() => {
             if (!events.isFetching) void events.fetchNextPage();
           }}

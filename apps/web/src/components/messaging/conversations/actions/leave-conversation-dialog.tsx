@@ -37,7 +37,6 @@ export function LeaveConversationDialog({
       title={`Leave ${name}?`}
       description={leaveConsequence(publicChannel)}
       confirmLabel={leaveLabel}
-      pendingLabel="Leaving…"
       destructive
       pending={pending}
       error={error}

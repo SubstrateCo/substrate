@@ -6,6 +6,7 @@ import { WorkIndicator } from "../work-indicator";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { toneFill } from "@/components/feedback/tag";
 import {
   PageContent,
   PageLayout,
@@ -19,6 +20,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { WorkStatus } from "@/lib/agent-work/status";
 import type { ResourceStatus } from "@/lib/resource-state";
+import { cn } from "cn";
 import { Hand, Plus } from "lucide-react";
 
 export type AgentListItem = {
@@ -96,7 +98,12 @@ export function AgentsWorkspaceView({
                   <Hand aria-hidden="true" />
                   <span className="min-w-0 flex-1 truncate text-left">Needs you</span>
                   {needsYouCount > 0 && (
-                    <span className="ml-auto shrink-0 rounded-full bg-warning/15 px-1.5 text-xs font-medium text-warning-text tabular-nums">
+                    <span
+                      className={cn(
+                        "ml-auto shrink-0 rounded-full px-1.5 text-xs font-medium text-warning-text tabular-nums",
+                        toneFill.warning,
+                      )}
+                    >
                       <span className="sr-only">, </span>
                       {needsYouCount}
                     </span>

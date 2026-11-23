@@ -100,7 +100,7 @@ test("notifications page complete groups, filter unread, and mark groups and all
   await reply(root.id, "Newest grouped reply");
   const recipient = await client(account);
   await visit(recipient, undefined, "/tasks");
-  await expect(recipient.page.getByText("Loading workspace details…")).toHaveCount(0);
+  await expect(recipient.page.getByText("Loading workspace details")).toHaveCount(0);
   await recipient.page
     .getByRole("navigation", { name: "Apps" })
     .getByRole("link", { name: /^Notifications/ })
@@ -151,7 +151,7 @@ test("thread replies deliver live notifications to another organization", async 
         new URL(response.url()).pathname === "/api/v1/messaging/messages" &&
         response.request().method() === "POST",
     ),
-    send(sender.page, reply, "Reply in thread…"),
+    send(sender.page, reply, "Reply in thread"),
   ]);
   expect(response.ok()).toBe(true);
   const { data: sent } = await response.json();

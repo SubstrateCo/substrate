@@ -92,13 +92,7 @@ export function AgentRunSettingsView({
         action={
           canRunHere &&
           !device?.current && (
-            <PendingButton
-              size="sm"
-              variant="outline"
-              pending={moving}
-              pendingLabel="Moving…"
-              onClick={onRunHere}
-            >
+            <PendingButton size="sm" variant="outline" pending={moving} onClick={onRunHere}>
               Run on this device
             </PendingButton>
           )

@@ -43,7 +43,7 @@ export function EntityReference({
   loading?: boolean;
 }) {
   if (reference) return <ResolvedReference reference={reference} />;
-  const label = loading ? "Loading reference…" : "Unavailable reference";
+  const label = loading ? "Loading reference" : "Unavailable reference";
   return (
     <span
       className={referenceClass}

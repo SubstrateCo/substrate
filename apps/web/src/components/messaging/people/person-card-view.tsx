@@ -101,7 +101,7 @@ export function PersonCard({
 }) {
   if (state === "loading")
     return (
-      <div role="status" aria-label={`Loading details for ${name}…`} className="space-y-3">
+      <div role="status" aria-label={`Loading details for ${name}`} className="space-y-3">
         <Header
           name={name}
           secondary={

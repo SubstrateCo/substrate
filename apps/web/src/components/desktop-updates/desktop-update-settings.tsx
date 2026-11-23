@@ -54,7 +54,7 @@ async function runUpdateCommand(action: UpdateCommand, setPending: (pending: boo
 function updateDescription({ install, state }: DesktopUpdateStatus) {
   switch (state.status) {
     case "checking":
-      return "Checking for updates…";
+      return "Checking for updates";
     case "current":
       return "You’re up to date.";
     case "available":
@@ -91,7 +91,7 @@ function DesktopUpdateSettingsView({
   let control;
   if (state.status === "ready" && install === "automatic")
     control = (
-      <PendingButton pending={pending} pendingLabel="Restarting" onClick={onInstall}>
+      <PendingButton pending={pending} onClick={onInstall}>
         Restart to update
       </PendingButton>
     );
@@ -107,7 +107,6 @@ function DesktopUpdateSettingsView({
       <PendingButton
         variant="outline"
         pending={pending || state.status === "checking"}
-        pendingLabel="Checking"
         disabled={state.status === "downloading"}
         onClick={onCheck}
       >

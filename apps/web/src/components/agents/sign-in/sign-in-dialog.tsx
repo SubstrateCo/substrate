@@ -146,7 +146,6 @@ function InputLine({
         type="submit"
         variant="outline"
         pending={pending}
-        pendingLabel="Sending"
         disabled={disabled || !text.trim()}
       >
         Send

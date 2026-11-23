@@ -60,7 +60,7 @@ export function MessageWorkTile({
                 <Unlink aria-hidden="true" />
               </Button>
             </TooltipTrigger>
-            <TooltipContent>Remove association; source history stays</TooltipContent>
+            <TooltipContent>Unlink</TooltipContent>
           </Tooltip>
         </span>
       )}

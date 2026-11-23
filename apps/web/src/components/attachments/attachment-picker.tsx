@@ -52,7 +52,7 @@ export function AttachFilesButton({
 function uploadStatus(item: AttachmentDraft) {
   if (item.status === "ready") return "Ready to attach";
   if (item.status === "failed") return "Upload failed. Try again.";
-  if (item.progress === 100) return "Finishing upload…";
+  if (item.progress === 100) return "Finishing upload";
   return `Uploading ${item.progress}%`;
 }
 export function AttachmentDraftList({

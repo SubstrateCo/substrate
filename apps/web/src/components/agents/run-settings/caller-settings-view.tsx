@@ -163,7 +163,6 @@ export function CallerSettingsView({
           title="Allow workspace calls?"
           description="This agent works with your full access, not the caller’s access. It can read and change anything you can. Your instructions still apply."
           confirmLabel="Allow calls"
-          pendingLabel="Saving…"
           pending={saving}
           error={error}
           errorDescription="We couldn’t save caller settings. Try again."
@@ -177,7 +176,6 @@ export function CallerSettingsView({
           title={`Remove ${removed.name}?`}
           description="Future calls from this person will need approval under Ask me first. Queued calls will be checked again before they run."
           confirmLabel={`Remove ${removed.name}`}
-          pendingLabel="Removing…"
           pending={removing}
           error={error}
           errorDescription="We couldn’t remove this caller. Try again."

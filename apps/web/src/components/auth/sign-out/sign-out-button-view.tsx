@@ -1,5 +1,4 @@
-import { Button } from "../../ui/button";
-import { Spinner } from "../../ui/spinner";
+import { PendingButton } from "../../feedback/pending-button";
 import { LogOut } from "lucide-react";
 
 export function SignOutButton({
@@ -10,9 +9,9 @@ export function SignOutButton({
   onSignOut: () => void;
 }) {
   return (
-    <Button variant="ghost" disabled={pending} aria-busy={pending} onClick={onSignOut}>
-      {pending ? <Spinner aria-hidden="true" role="presentation" /> : <LogOut aria-hidden="true" />}
+    <PendingButton variant="ghost" pending={pending} onClick={onSignOut}>
+      <LogOut aria-hidden="true" />
       Sign out
-    </Button>
+    </PendingButton>
   );
 }

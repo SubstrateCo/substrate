@@ -36,7 +36,7 @@ test("person details keep the known name visible until the profile loads", async
   const card = user.page.getByRole("dialog", { name: `${actors.member.name} profile` });
   try {
     await expect(
-      card.getByRole("status", { name: `Loading details for ${actors.member.name}…` }),
+      card.getByRole("status", { name: `Loading details for ${actors.member.name}` }),
     ).toBeVisible();
     await expect(card.getByText(actors.member.name, { exact: true })).toBeVisible();
     await expect(card.getByRole("button", { name: "Message", exact: true })).toHaveCount(0);

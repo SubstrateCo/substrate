@@ -4,6 +4,7 @@ import type { ReactNode } from "react";
 import { PendingButton } from "../../feedback/pending-button";
 import { Field } from "../../ui/field";
 import { InputGroup, InputGroupAddon } from "../../ui/input-group";
+import { Kbd, KbdGroup } from "../../ui/kbd";
 import { Popover, PopoverAnchor, PopoverContent } from "../../ui/popover";
 import type { WorkspaceReference } from "../references/entity-reference";
 import { ReferenceEditor } from "../references/reference-editor";
@@ -34,7 +35,6 @@ export function Composer({
   hasAttachments = false,
   attachmentsReady = true,
   submitLabel = "Send",
-  pendingLabel = "Sending…",
   errorDescription = "Your message couldn’t be sent. Try sending it again.",
   submitDisabled = false,
   secondaryAction,
@@ -51,7 +51,6 @@ export function Composer({
   label: string;
   draftKey: string;
   submitLabel?: string;
-  pendingLabel?: string;
   errorDescription?: string;
   /** Blocks submitting a draft that is otherwise sendable, such as an unchanged edit. */
   submitDisabled?: boolean;
@@ -247,7 +246,6 @@ export function Composer({
                   attachmentsReady={attachmentsReady}
                   pending={pending}
                   submitLabel={submitLabel}
-                  pendingLabel={pendingLabel}
                   submitDisabled={submitDisabled}
                   secondaryAction={secondaryAction}
                 />
@@ -273,7 +271,6 @@ function ComposerSendControls({
   attachmentsReady,
   pending,
   submitLabel,
-  pendingLabel,
   submitDisabled,
   secondaryAction,
 }: {
@@ -282,7 +279,6 @@ function ComposerSendControls({
   attachmentsReady: boolean;
   pending: boolean;
   submitLabel: string;
-  pendingLabel: string;
   submitDisabled: boolean;
   secondaryAction?: ReactNode;
 }) {
@@ -306,9 +302,12 @@ function ComposerSendControls({
         </span>
       ) : (
         <span className="hidden truncate text-xs font-normal text-muted-foreground opacity-0 transition-opacity group-focus-within/composer:opacity-100 motion-reduce:transition-none @lg:inline">
-          <strong className="font-medium">Enter</strong> to {submitLabel.toLowerCase()} ·{" "}
-          <strong className="font-medium">Shift+Enter</strong> for a new line ·{" "}
-          <strong className="font-medium">@</strong> to reference
+          <Kbd>Enter</Kbd> to {submitLabel.toLowerCase()} ·{" "}
+          <KbdGroup>
+            <Kbd>Shift</Kbd>
+            <Kbd>Enter</Kbd>
+          </KbdGroup>{" "}
+          for a new line · <Kbd>@</Kbd> to reference
         </span>
       )}
       {secondaryAction}
@@ -321,9 +320,8 @@ function ComposerSendControls({
           (!draft.trim() && !hasAttachments) || !attachmentsReady || overBy > 0 || submitDisabled
         }
         pending={pending}
-        pendingLabel={pendingLabel}
       >
-        <Send className="size-3.5" />
+        <Send aria-hidden="true" />
         {submitLabel}
       </PendingButton>
     </span>

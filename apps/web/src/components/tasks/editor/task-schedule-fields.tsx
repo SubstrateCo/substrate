@@ -124,7 +124,11 @@ export function TaskScheduleFields({
                     ? formatShortDate(parseDateOnly(field.state.value) ?? field.state.value)
                     : "Choose a date"}
                 </span>
-                <ChevronDown aria-hidden="true" className="text-muted-foreground" />
+                <ChevronDown
+                  aria-hidden="true"
+                  data-icon="inline-end"
+                  className="text-muted-foreground"
+                />
               </Button>
             </TaskDueDatePicker>
             <FieldError errors={field.state.meta.errors} />

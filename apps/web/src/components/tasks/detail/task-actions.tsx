@@ -47,7 +47,6 @@ export function TaskActions({
           description="This task and all its subtasks will be removed, including access to their comments and attachments. This cannot be undone in the app."
           destructive
           confirmLabel="Delete task"
-          pendingLabel="Deleting task…"
           pending={remove.isPending}
           error={remove.error}
           errorDescription="Couldn’t delete this task. Try again."

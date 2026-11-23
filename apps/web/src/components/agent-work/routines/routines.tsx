@@ -119,7 +119,6 @@ export function Routines({
           title={`Delete ${deleting.name}?`}
           description={`Its future runs stop (${describeSchedule(deleting.cron)}). Work it already did stays in ${name}’s activity and your conversations. You can’t undo this.`}
           confirmLabel="Delete routine"
-          pendingLabel="Deleting…"
           destructive
           pending={actions.remove.isPending}
           error={actions.remove.error}

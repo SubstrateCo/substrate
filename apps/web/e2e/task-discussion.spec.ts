@@ -118,7 +118,7 @@ test("a view-only task discussion cannot send, and revocation clears its open me
   await message.getByRole("button", { name: "Reply in thread", exact: true }).click();
   const thread = member.page.getByRole("complementary", { name: "Thread", exact: true });
   await expect(thread.getByText(body, { exact: true })).toBeVisible();
-  await expect(thread.getByRole("textbox", { name: "Reply in thread…", exact: true })).toHaveCount(
+  await expect(thread.getByRole("textbox", { name: "Reply in thread", exact: true })).toHaveCount(
     0,
   );
   await expect(thread.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);

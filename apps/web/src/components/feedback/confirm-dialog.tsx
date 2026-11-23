@@ -15,8 +15,8 @@ import {
 } from "@/components/ui/dialog";
 
 type ConfirmAction =
-  | { confirmLabel?: undefined; pendingLabel?: undefined; onConfirm?: undefined }
-  | { confirmLabel: string; pendingLabel: string; onConfirm: () => void };
+  | { confirmLabel?: undefined; onConfirm?: undefined }
+  | { confirmLabel: string; onConfirm: () => void };
 
 /**
  * Without confirmLabel, the dialog only informs and offers Close. A destructive confirm uses the
@@ -26,7 +26,6 @@ export function ConfirmDialog({
   title,
   description,
   confirmLabel,
-  pendingLabel,
   cancelLabel = "Cancel",
   destructive = false,
   confirmDisabled = false,
@@ -84,7 +83,6 @@ export function ConfirmDialog({
                 variant={destructive ? "destructive" : "default"}
                 disabled={confirmDisabled}
                 pending={pending}
-                pendingLabel={pendingLabel}
                 onClick={onConfirm}
               >
                 {confirmLabel}

@@ -82,7 +82,6 @@ export function AcceptInvitationScreen({
               className="w-full"
               size="lg"
               pending={pending}
-              pendingLabel="Accept invitation"
               disabled={declining}
               onClick={onAccept}
             >

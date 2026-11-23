@@ -103,7 +103,7 @@ export function ProjectAccessForm({
               )}
             </ComboboxTrigger>
             <ComboboxContent>
-              <ComboboxSearch aria-label="Search people" placeholder="Search people…" />
+              <ComboboxSearch aria-label="Search people" placeholder="Search people" />
               <ComboboxEmpty>No one else in this workspace.</ComboboxEmpty>
               <ComboboxList>
                 {(person: (typeof people)[number]) => (

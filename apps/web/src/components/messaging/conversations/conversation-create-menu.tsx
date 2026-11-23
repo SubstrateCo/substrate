@@ -152,7 +152,7 @@ export function ConversationCreateMenu({
           <div className="border-b p-2">
             <CommandInput
               aria-label="Search people"
-              placeholder="Message someone…"
+              placeholder="Message someone"
               value={query}
               onValueChange={setQuery}
             />

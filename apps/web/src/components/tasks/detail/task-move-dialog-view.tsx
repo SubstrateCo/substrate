@@ -3,6 +3,7 @@ import type { ReactNode } from "react";
 import type { Project, Task } from "../types";
 import { ErrorState } from "@/components/feedback/error-state";
 import { FormDialog } from "@/components/feedback/form-dialog";
+import { LoadingState } from "@/components/feedback/loading-state";
 import { SelectField } from "@/components/forms/select-field";
 
 export function TaskMoveDialog({
@@ -49,11 +50,7 @@ export function TaskMoveDialog({
   let destination: ReactNode;
   if (loadError) destination = <ErrorState title="Couldn’t load destination" onRetry={onRetry} />;
   else if (loading)
-    destination = (
-      <p role="status" className="text-sm text-muted-foreground">
-        Loading destination…
-      </p>
-    );
+    destination = <LoadingState label="Loading destination" variant="compact" rows={1} />;
   else if (canEdit)
     destination = (
       <SelectField
@@ -77,7 +74,6 @@ export function TaskMoveDialog({
       title="Move task"
       description={<>Choose a project and parent for “{title}”. Its subtasks move with it.</>}
       saveLabel="Move task"
-      pendingLabel="Moving task…"
       pending={pending}
       disabled={!canSubmit}
       error={error}

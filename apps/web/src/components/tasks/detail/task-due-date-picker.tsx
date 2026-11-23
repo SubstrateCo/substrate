@@ -6,6 +6,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatShortDate, parseDateOnly } from "@/lib/format/date";
+import { Check } from "lucide-react";
 
 // Days from today for each quick choice. Next week is the coming Monday.
 const quick: { label: string; days: (today: Date) => number }[] = [
@@ -56,22 +57,25 @@ function DueDateChoices({
       {quick.map((option) => {
         const date = new Date(today);
         date.setDate(date.getDate() + option.days(date));
+        const selected = dateOnly(date) === value;
         return (
           <Button
             key={option.label}
             type="button"
             variant="property"
             size="sm"
+            aria-current={selected || undefined}
             onClick={() => {
               choose(dateOnly(date));
             }}
           >
             {option.label}
             <span className="ml-auto text-xs text-muted-foreground">{formatShortDate(date)}</span>
+            {selected && <Check aria-hidden="true" data-icon="inline-end" />}
           </Button>
         );
       })}
-      <div className="mt-1 grid gap-1.5 border-t px-1 pt-2 pb-1">
+      <div className="mt-1 grid gap-1.5 border-t px-2 pt-2 pb-1">
         <label htmlFor={id} className="text-xs text-muted-foreground">
           Type a date
         </label>

@@ -47,7 +47,6 @@ export function CalendarSettingsView({
         variant={variant}
         size={variant === "outline" ? "sm" : "default"}
         pending={linking}
-        pendingLabel="Opening Google…"
         onClick={() => onConnect(provider)}
       >
         <ProviderIcon provider={provider} />
@@ -69,7 +68,6 @@ export function CalendarSettingsView({
                 variant="outline"
                 size="sm"
                 pending={linking}
-                pendingLabel="Opening Google…"
                 onClick={actions.onReconnectAccess}
               >
                 <RotateCcw aria-hidden />

@@ -23,7 +23,6 @@ export function CreateOrganizationForm({ destination = "/dashboard" }: { destina
           className="w-full"
           size="lg"
           pending={activate.isPending}
-          pendingLabel="Continue setup"
           onClick={() => activate.mutate(created.id)}
         >
           Continue setup
