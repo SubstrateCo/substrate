@@ -195,14 +195,24 @@ export const test = base.extend<
 
   contextPool: [
     async ({ browser }, use) => {
-      const idle: BrowserContext[] = [];
+      const idle = new Map<string, BrowserContext[]>();
+      const pools = new WeakMap<BrowserContext, BrowserContext[]>();
       await use({
-        take: async (viewport) =>
-          idle.pop() ??
-          (await browser.newContext({ baseURL: process.env.PLAYWRIGHT_BASE_URL, viewport })),
-        release: (contexts) => idle.push(...contexts),
+        take: async (viewport) => {
+          const key = JSON.stringify(viewport);
+          let pool = idle.get(key);
+          if (!pool) idle.set(key, (pool = []));
+          const context =
+            pool.pop() ??
+            (await browser.newContext({ baseURL: process.env.PLAYWRIGHT_BASE_URL, viewport }));
+          pools.set(context, pool);
+          return context;
+        },
+        release: (contexts) => {
+          for (const context of contexts) pools.get(context)!.push(context);
+        },
       });
-      await Promise.all(idle.map((context) => context.close()));
+      await Promise.all([...idle.values()].flat().map((context) => context.close()));
     },
     { scope: "worker" },
   ],
@@ -312,11 +322,17 @@ export async function visit(
     (event) => event.type === "ready",
     "The real authenticated WebSocket completes its ready handshake",
   );
-  await expect(
-    client.page.getByText(
-      /Reconnecting to live updates|Live updates disconnected|some data failed to refresh/,
-    ),
-  ).toHaveCount(0);
+  await expect
+    .poll(
+      () =>
+        client.page
+          .getByText(
+            /Reconnecting to live updates|Live updates disconnected|some data failed to refresh/,
+          )
+          .count(),
+      { message: "Live updates finish refreshing the initial page", intervals: [50] },
+    )
+    .toBe(0);
 }
 
 type MessagingInput =

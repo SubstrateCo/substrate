@@ -1,4 +1,12 @@
-import { conversation, expectChange, post, send, test, visit } from "./test-support/fixtures";
+import {
+  conversation,
+  expectChange,
+  isolateContext,
+  post,
+  send,
+  test,
+  visit,
+} from "./test-support/fixtures";
 import { expect, type WebSocketRoute } from "@playwright/test";
 
 test("a connected client recovers a committed message when its change hint is lost", async ({
@@ -7,6 +15,7 @@ test("a connected client recovers a committed message when its change hint is lo
 }) => {
   const channel = await conversation(actors.sender, [actors.member.email]);
   const recipient = await client(actors.member);
+  isolateContext(recipient.page);
   await recipient.page.clock.install();
   await recipient.page.routeWebSocket("**/api/v1/realtime?*", (socket) => {
     const server = socket.connectToServer();
