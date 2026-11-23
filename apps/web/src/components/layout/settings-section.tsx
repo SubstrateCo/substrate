@@ -83,24 +83,36 @@ export function SettingsCard({
   );
 }
 
-/** The title and description of one group of settings. */
+/**
+ * The title and description of one group of settings. `actions` stay on the title row's right
+ * edge, beside a long description instead of below it.
+ */
 export function GroupTitle({
   id,
   title,
   description,
+  actions,
 }: {
   id?: string;
   title?: string;
   description?: ReactNode;
+  actions?: ReactNode;
 }) {
-  return (
-    <div className="space-y-1">
+  const text = (
+    <div className={cn("space-y-1", actions && "min-w-0 flex-1")}>
       {title && (
         <h3 id={id} className="text-sm font-semibold">
           {title}
         </h3>
       )}
       {description && <p className="text-sm text-muted-foreground">{description}</p>}
+    </div>
+  );
+  if (!actions) return text;
+  return (
+    <div className="flex items-start justify-between gap-4">
+      {text}
+      <div className="flex shrink-0 items-center gap-2">{actions}</div>
     </div>
   );
 }

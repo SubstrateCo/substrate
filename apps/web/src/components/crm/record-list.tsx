@@ -39,7 +39,7 @@ function recordColumns(kind: CrmKind, organizationId: string) {
         </Link>
       ),
     }),
-    column.accessor((row) => (kind === "deals" ? dealStatus(row) : row.description || "-"), {
+    column.accessor((row) => (kind === "deals" ? dealStatus(row) : (row.description ?? "")), {
       id: "detail",
       header: { deals: "Stage / outcome", accounts: "Domain", contacts: "Notes" }[kind],
       cell: ({ getValue }) => (
@@ -48,11 +48,14 @@ function recordColumns(kind: CrmKind, organizationId: string) {
     }),
     ...(kind === "deals"
       ? [
-          column.accessor((row) => dealAmount(row.amount ?? null, row.currency ?? null), {
-            id: "amount",
-            header: "Amount",
-            meta: { align: "end" },
-          }),
+          column.accessor(
+            (row) => (row.amount == null ? "" : dealAmount(row.amount, row.currency ?? null)),
+            {
+              id: "amount",
+              header: "Amount",
+              meta: { align: "end" },
+            },
+          ),
         ]
       : []),
   ]);

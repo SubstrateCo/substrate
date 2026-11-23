@@ -1,5 +1,6 @@
 import type { HarnessAuthMethod } from "@substrate/contracts/harness";
 
+import { SettingsNote } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -133,13 +134,15 @@ export function HarnessAccountView({
       </div>
     ) : null;
   return (
-    <div className="grid min-w-0 gap-2 rounded-lg border border-dashed px-3 py-2.5 text-xs text-muted-foreground">
-      <p>Connect your {label} account so this agent can run.</p>
-      {state.methods.length > 0 ? (
-        <SignInButton label={label} methods={state.methods} disabled={busy} onSignIn={onSignIn} />
-      ) : (
-        <p>Sign in with the {label} CLI, then refresh.</p>
-      )}
-    </div>
+    <SettingsNote>
+      <div className="grid gap-2">
+        <p>Connect your {label} account so this agent can run.</p>
+        {state.methods.length > 0 ? (
+          <SignInButton label={label} methods={state.methods} disabled={busy} onSignIn={onSignIn} />
+        ) : (
+          <p>Sign in with the {label} CLI, then refresh.</p>
+        )}
+      </div>
+    </SettingsNote>
   );
 }

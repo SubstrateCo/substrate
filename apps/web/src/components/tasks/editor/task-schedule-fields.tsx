@@ -2,16 +2,14 @@ import { useId } from "react";
 
 import { assigneeLabel } from "../assignee/assignee-label";
 import { AssigneePicker } from "../assignee/assignee-picker";
-import { TaskDueDatePicker } from "../detail/task-due-date-picker";
 import { taskPriorityOptions, taskStatusOptions } from "../task-cues/task-options";
 import type { ProjectDetail } from "../types";
 import type { TaskEditorForm } from "./task-form-view";
+import { DateField } from "@/components/forms/date-field";
 import { SelectField } from "@/components/forms/select-field";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import { formatShortDate, parseDateOnly } from "@/lib/format/date";
-import { ChevronDown } from "lucide-react";
 
 /** Sets the value, then checks an invalid field again so its error clears on a valid choice. */
 function change<T>(
@@ -109,30 +107,13 @@ export function TaskScheduleFields({
       </form.Field>
       <form.Field name="dueDate">
         {(field) => (
-          <Field className="min-w-0" data-invalid={field.state.meta.errors.length > 0}>
-            <FieldLabel htmlFor={`${id}-due`}>Due date</FieldLabel>
-            <TaskDueDatePicker
-              value={field.state.value || null}
-              onChange={(value) => {
-                field.handleChange(value ?? "");
-                field.handleBlur();
-              }}
-            >
-              <Button id={`${id}-due`} type="button" variant="field" onBlur={field.handleBlur}>
-                <span>
-                  {field.state.value
-                    ? formatShortDate(parseDateOnly(field.state.value) ?? field.state.value)
-                    : "Choose a date"}
-                </span>
-                <ChevronDown
-                  aria-hidden="true"
-                  data-icon="inline-end"
-                  className="text-muted-foreground"
-                />
-              </Button>
-            </TaskDueDatePicker>
-            <FieldError errors={field.state.meta.errors} />
-          </Field>
+          <DateField
+            label="Due date"
+            value={field.state.value}
+            onChange={field.handleChange}
+            onBlur={field.handleBlur}
+            errors={field.state.meta.errors}
+          />
         )}
       </form.Field>
     </div>

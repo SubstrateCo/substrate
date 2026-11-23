@@ -108,6 +108,7 @@ export function InteractionRecordDialog({
                 organizationId={organizationId}
                 entityId={entityId}
                 label="Source messages"
+                emptyTitle="No source messages"
               />
               <FollowUps
                 organizationId={organizationId}

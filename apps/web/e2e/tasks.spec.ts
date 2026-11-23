@@ -232,7 +232,7 @@ test("project sharing needs confirmation and revocation removes cached private c
     sender.page.getByRole("dialog", { name: `Share ${created.name}`, exact: true }),
   ).toBeVisible();
   await select(sender.page, "Person", actors.member.name);
-  await select(sender.page, "Permission", "Can view");
+  await select(sender.page, "Access", "Can view");
   expect(
     (await detail(actors.sender, created.entityId)).members.map((item) => item.name),
   ).not.toContain(actors.member.name);

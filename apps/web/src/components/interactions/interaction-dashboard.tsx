@@ -95,7 +95,7 @@ export function InteractionDashboard({
           <section className="flex min-h-0 flex-1 flex-col gap-3">
             <div className="flex items-center justify-between gap-3">
               <h2 className="text-sm font-semibold">Day’s interactions</h2>
-              <Button variant="link" size="sm" asChild>
+              <Button variant="link" size="sm" className="-mr-2.5" asChild>
                 <Link
                   to="/interactions"
                   search={{ workspaceId: period.organizationId, section: "timeline", days }}

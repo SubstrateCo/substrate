@@ -2,7 +2,7 @@ import type { CrmWrite } from "@substrate/contracts/crm/input";
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useId, useState } from "react";
+import { useState } from "react";
 
 import { RecordGrants } from "./record-grants";
 import { RecordPersonField } from "./record-people";
@@ -13,7 +13,6 @@ import { FormMessage } from "@/components/feedback/form-message";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { SelectField } from "@/components/forms/select-field";
 import { FieldLegend, FieldSet } from "@/components/ui/field";
-import type { PickedRecipient } from "@/lib/people/people-picker";
 import { crmGrantsOptions } from "@/queries/crm/management";
 import { useCrmMutation } from "@/queries/crm/mutations";
 
@@ -45,20 +44,18 @@ export function RecordSharing({
   onClose,
   onRestoreFocus,
 }: RecordSharingProps) {
-  const id = useId();
   const mutation = useCrmMutation(organizationId);
   const directory = useRecordPeople(organizationId);
   const grants = useQuery({
     ...crmGrantsOptions(organizationId, entityId),
     enabled: level === "owner",
   });
-  const [people, setPeople] = useState<PickedRecipient[]>([]);
-  const [pendingText, setPendingText] = useState("");
+  const [personId, setPersonId] = useState("");
   const [permission, setPermission] = useState<Level>("view");
   const [removing, setRemoving] = useState<{ actorEntityId: string; name: string } | null>(null);
-  const actor = directory.people.find((candidate) => candidate.id === people[0]?.person?.id);
+  const actor = directory.people.find((candidate) => candidate.id === personId);
   const ready = !directory.pending && !directory.error && !grants.isPending && !grants.error;
-  const canSubmit = ready && !!actor && !pendingText.trim();
+  const canSubmit = ready && !!actor;
   if (level !== "owner") return null;
   return (
     <>
@@ -108,18 +105,14 @@ export function RecordSharing({
           )}
         </FieldSet>
         <RecordPersonField
-          id={`${id}-person`}
           directory={directory}
-          value={people}
+          value={personId}
           onValueChange={(value) => {
             mutation.reset();
-            setPeople(value);
-            const existing = grants.data?.find(
-              (grant) => grant.actorEntityId === value[0]?.person?.id,
-            );
+            setPersonId(value);
+            const existing = grants.data?.find((grant) => grant.actorEntityId === value);
             setPermission(existing?.level ?? "view");
           }}
-          onPendingTextChange={setPendingText}
           disabled={mutation.isPending}
         />
         <SelectField

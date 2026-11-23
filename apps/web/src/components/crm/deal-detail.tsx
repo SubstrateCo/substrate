@@ -177,7 +177,9 @@ function DealProperties({
     <>
       <Property label="Stage">{stage}</Property>
       <Property label="Outcome">{outcomeLabel(deal.outcome)}</Property>
-      <Property label="Amount">{dealAmount(deal.amount, deal.currency)}</Property>
+      <Property label="Amount">
+        {deal.amount === null ? <NotSet /> : dealAmount(deal.amount, deal.currency)}
+      </Property>
       <Property label="Expected close">
         {deal.expectedCloseDate ? formatDueDate(deal.expectedCloseDate)?.label : <NotSet />}
       </Property>

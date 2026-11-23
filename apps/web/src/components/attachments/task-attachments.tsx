@@ -14,6 +14,7 @@ import { PendingButton } from "@/components/feedback/pending-button";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { RecordSection } from "@/components/layout/record-section";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
+import { SettingsNote } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import { useTaskAttachmentMutations } from "@/queries/attachments/mutations";
 import { taskAttachmentsOptions } from "@/queries/files/attachments";
@@ -72,9 +73,9 @@ function TaskAttachmentEmptyState({
   if (!canEdit) return <ContentNotice variant="inline" title="No attachments" />;
   if (hasDrafts) return null;
   return (
-    <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+    <SettingsNote>
       Drop files here, or choose Attach files. Up to 10 files, 5 MiB each.
-    </p>
+    </SettingsNote>
   );
 }
 

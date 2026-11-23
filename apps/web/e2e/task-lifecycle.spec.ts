@@ -23,7 +23,7 @@ test("move a task with its subtasks, follow its old link, change parent, and del
   await visit(user, undefined, "/tasks", { projectId: source.entityId, taskId: parent.id });
   const oldLink = user.page.url();
   const inspector = user.page.getByRole("region", { name: "Task details", exact: true });
-  await inspector.getByRole("button", { name: "Task actions", exact: true }).click();
+  await inspector.getByRole("button", { name: "More actions", exact: true }).click();
   await user.page.getByRole("menuitem", { name: "Move task", exact: true }).click();
   const dialog = user.page.getByRole("dialog", { name: "Move task", exact: true });
   await select(user.page, "Destination project", destination.name);
@@ -38,7 +38,7 @@ test("move a task with its subtasks, follow its old link, change parent, and del
   await expect
     .poll(() => new URL(user.page.url()).searchParams.get("projectId"))
     .toBe(destination.entityId);
-  await inspector.getByRole("button", { name: "Task actions", exact: true }).click();
+  await inspector.getByRole("button", { name: "More actions", exact: true }).click();
   await user.page.getByRole("menuitem", { name: "Move task", exact: true }).click();
   await select(user.page, "Parent task", "No parent task");
   const moved = user.page.waitForResponse(
@@ -51,7 +51,7 @@ test("move a task with its subtasks, follow its old link, change parent, and del
   expect(response.ok()).toBe(true);
   expect(response.request().postDataJSON()).toMatchObject({ parentTaskEntityId: null });
   await expect(dialog).toHaveCount(0);
-  await inspector.getByRole("button", { name: "Task actions", exact: true }).click();
+  await inspector.getByRole("button", { name: "More actions", exact: true }).click();
   await user.page.getByRole("menuitem", { name: "Delete task", exact: true }).click();
   const deleted = user.page.waitForResponse(
     (response) =>

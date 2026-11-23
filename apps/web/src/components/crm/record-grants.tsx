@@ -1,5 +1,6 @@
 import type { CrmWrite } from "@substrate/contracts/crm/input";
 
+import { recordRows } from "@/components/layout/record-section";
 import { AccessRow } from "@/components/people/access-row";
 import { FieldDescription } from "@/components/ui/field";
 import type { PickerPerson } from "@/lib/people/people-picker";
@@ -31,13 +32,14 @@ export function RecordGrants({
       </FieldDescription>
     );
   return (
-    <ul aria-label="Direct access" className="divide-y rounded-lg border">
+    <ul aria-label="Direct access" className={recordRows}>
       {grants.map((grant) => {
         const person = people.find((candidate) => candidate.id === grant.actorEntityId);
         const name = person?.name ?? "Former member";
         return (
           <AccessRow
             key={grant.actorEntityId}
+            className="rounded-md px-2 py-1.5 hover:bg-row-hover"
             name={name}
             image={person?.image}
             level={levelLabels[grant.level]}

@@ -20,6 +20,7 @@ export function WorkDiscussions({
   error,
   onRetry,
   label = "Related discussions",
+  emptyTitle = "No linked discussions",
   variant = "inspector",
   children,
 }: {
@@ -28,6 +29,8 @@ export function WorkDiscussions({
   error?: Error | null;
   onRetry: () => void;
   label?: string;
+  /** The inline empty line in an inspector, such as "No source messages". */
+  emptyTitle?: string;
   variant?: "inspector" | "page";
   children?: ReactNode;
 }) {
@@ -64,7 +67,7 @@ export function WorkDiscussions({
   if (empty)
     return (
       <RecordSection aria-label={label} title={label}>
-        <ContentNotice variant="inline" title="No linked discussions" />
+        <ContentNotice variant="inline" title={emptyTitle} />
       </RecordSection>
     );
   const expanded = open ?? (uniqueRows.length > 0 || !!error || showLoading);

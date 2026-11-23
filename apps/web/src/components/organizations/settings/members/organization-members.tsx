@@ -54,7 +54,7 @@ export function OrganizationMembers({ organizationId }: { organizationId: string
       onRetry={() => void organization.refetch()}
       inviteAction={
         invitationRoles(viewerRole).length > 0 && (
-          <Button asChild variant="outline">
+          <Button asChild variant="outline" size="sm">
             <Link to="/settings/organization/invitations">
               <UserPlus aria-hidden="true" />
               Invite people

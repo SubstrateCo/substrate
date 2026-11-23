@@ -224,7 +224,7 @@ export function TaskLinkPicker({
           </SelectContent>
         </Select>
         <Command shouldFilter={false} label="Search tasks to link">
-          <CommandInput placeholder="Search tasks." value={query} onValueChange={onQueryChange} />
+          <CommandInput placeholder="Search tasks" value={query} onValueChange={onQueryChange} />
           <CommandList className="mt-1">
             {loading && (
               <p role="status" className="flex items-center gap-2 px-2 py-1.5 text-sm">

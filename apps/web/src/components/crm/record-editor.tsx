@@ -4,6 +4,7 @@ import type { CrmKind } from "./crm-types";
 import { CustomerPicker } from "./customer-picker";
 import { formText } from "./form-text";
 import { FormDialog } from "@/components/feedback/form-dialog";
+import { DateField } from "@/components/forms/date-field";
 import { NativeField } from "@/components/forms/native-form";
 import { SelectField } from "@/components/forms/select-field";
 import type { RecordWrite } from "@/queries/records/mutations";
@@ -227,6 +228,7 @@ function DealTermsFields({
   record?: RecordDraft;
   defaultCurrency?: string | null;
 }) {
+  const [closeDate, setCloseDate] = useState(record?.expectedCloseDate ?? "");
   return (
     <div className="grid grid-cols-3 gap-4">
       <NativeField
@@ -249,12 +251,11 @@ function DealTermsFields({
         placeholder="Not set"
         description="Used only when an amount is entered."
       />
-      <NativeField
-        id="crm-close"
-        name="closeDate"
+      <DateField
         label="Expected close"
-        type="date"
-        defaultValue={record?.expectedCloseDate ?? ""}
+        name="closeDate"
+        value={closeDate}
+        onChange={setCloseDate}
       />
     </div>
   );

@@ -11,12 +11,12 @@ import { ContactLink } from "@/components/contacts/contact-link";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { SegmentedControl } from "@/components/forms/segmented-control";
-import { PageHeader } from "@/components/layout/page-header";
+import { BackLink, PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { crmLink } from "@/lib/navigation/record-links";
 import { interactionProfileOptions } from "@/queries/context/interactions";
-import { ArrowLeft, ArrowUpRight, List, Network } from "lucide-react";
+import { ArrowUpRight, List, Network } from "lucide-react";
 
 export function InteractionProfile({
   organizationId,
@@ -53,7 +53,7 @@ export function InteractionProfile({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6">
       <div className="shrink-0 space-y-2">
-        <Button variant="link" size="sm" asChild>
+        <BackLink>
           <Link
             to="/interactions"
             search={(previous) => ({
@@ -63,10 +63,9 @@ export function InteractionProfile({
               tab: undefined,
             })}
           >
-            <ArrowLeft aria-hidden />
             Back to {type === "person" ? "people" : "organizations"}
           </Link>
-        </Button>
+        </BackLink>
         <PageHeader
           title={data.title}
           actions={

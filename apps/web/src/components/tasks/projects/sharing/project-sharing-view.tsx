@@ -80,28 +80,29 @@ export function ProjectSharing({
   const project = detail.project.name;
   return (
     <SettingsCard label="Project access" className="pb-0">
-      <div className="flex flex-wrap items-start justify-between gap-3">
-        <GroupTitle
-          title="Project access"
-          description="These people have direct access, as do their agents. Organization owners and admins and their agents can also access this project."
-        />
-        {canManage && canAdd && (
-          <Button
-            ref={addButton}
-            variant="outline"
-            size="sm"
-            disabled={pending}
-            onClick={() => {
-              addFocus.remember();
-              onClearError();
-              setAdding(true);
-            }}
-          >
-            <UserPlus aria-hidden="true" />
-            Add people
-          </Button>
-        )}
-      </div>
+      <GroupTitle
+        title="Project access"
+        description="These people have direct access, as do their agents. Organization owners and admins and their agents can also access this project."
+        actions={
+          canManage &&
+          canAdd && (
+            <Button
+              ref={addButton}
+              variant="outline"
+              size="sm"
+              disabled={pending}
+              onClick={() => {
+                addFocus.remember();
+                onClearError();
+                setAdding(true);
+              }}
+            >
+              <UserPlus aria-hidden="true" />
+              Add people
+            </Button>
+          )
+        }
+      />
       {adding && canManage && canAdd && (
         <ProjectAccessForm
           detail={detail}
