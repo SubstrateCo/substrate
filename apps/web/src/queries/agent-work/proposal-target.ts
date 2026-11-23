@@ -24,7 +24,6 @@ function state<T>(query: { data?: T; isPending: boolean; error: Error | null }) 
 
 function messageLabel(body: string) {
   const text = plainReferenceText(body).replace(/\s+/g, " ").trim();
-  // oxlint-disable-next-line design/no-ellipsis -- Truncation of a long message body, not copy; the label is also an accessible name, which CSS cannot shorten.
   return text.length > labelLength ? `${text.slice(0, labelLength - 1)}…` : text || "A message";
 }
 

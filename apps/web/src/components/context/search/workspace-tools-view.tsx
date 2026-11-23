@@ -89,7 +89,6 @@ export function WorkspaceTools({
           : "relative z-30 shrink-0 border-b bg-sidebar px-4 py-2 text-sm font-normal text-foreground"
       }
     >
-      {/* oxlint-disable-next-line design/page-width -- The title-bar search field, not a page column. */}
       <div className="relative mx-auto max-w-2xl">
         <Command shouldFilter={false} label="Search workspace">
           <CommandInput

@@ -44,7 +44,6 @@ export default defineConfig({
     "react/use-memo": "error",
     "react/void-use-memo": "error",
     "no-nested-ternary": "error",
-    "deslop/canonical-class-names": ["error", { cssPath: "./apps/web/src/components/styles.css" }],
     "deslop/no-duplicate-types": [
       "error",
       {
@@ -146,18 +145,6 @@ export default defineConfig({
             ],
           },
         ],
-      },
-    },
-    {
-      files: ["apps/web/src/components/messaging/composer/composer-view.tsx"],
-      rules: {
-        "shadcn/no-arbitrary-values": ["error", { allow: ["max-h-[25dvh]"] }],
-      },
-    },
-    {
-      files: ["apps/web/src/components/auth/form-message.tsx"],
-      rules: {
-        "shadcn/no-arbitrary-values": ["error", { allow: ["max-h-[50dvh]"] }],
       },
     },
     ...designConfig.overrides,

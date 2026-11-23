@@ -26,7 +26,6 @@ export function ReactionPreview({
   return (
     <>
       <p className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-        {/* oxlint-disable-next-line design/type-scale -- An emoji glyph, not text: it is sized to read beside the label. */}
         <span className="text-base text-foreground" aria-hidden="true">
           {emoji}
         </span>

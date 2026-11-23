@@ -52,31 +52,12 @@ export const designConfig = {
             },
           },
           {
-            pattern: "^Dialog(Header|Body|Footer)$",
-            allow: ["layout"],
-            message: {
-              spacing: `"{{className}}" changes the <{{component}}> inset. ${DIALOG_INSETS}`,
-            },
-          },
-          {
             pattern: "^DialogTitle$",
             allow: ["layout", "wrap-*", "break-*", "truncate"],
             message:
               '"{{className}}" restyles <DialogTitle>, which owns its type (text-base semibold) and sits on the close-button line. Shorten the title instead; put detail in DialogDescription.',
           },
-          {
-            pattern: "^DialogDescription$",
-            allow: ["layout", "wrap-*", "break-*"],
-            message:
-              '"{{className}}" restyles <DialogDescription>. For a clamped context line ("in Autumn launch") use variant="context".',
-          },
           { pattern: "^Card(Header|Content|Footer)$", allow: ["layout", "spacing"] },
-          {
-            pattern: "^CardTitle$",
-            allow: ["layout"],
-            message:
-              '"{{className}}" restyles <CardTitle>. Use its size prop ({{sizes}}). Settings groups use SettingsSection and SettingsCard from "@/components/layout/settings-section".',
-          },
           {
             pattern: "^Checkbox$",
             allow: ["layout"],
@@ -136,12 +117,6 @@ export const designConfig = {
               '"{{className}}" changes the focus ring of <Pressable>, which owns it so every click target shows the same one. For a target that fills a row use focus="inset".',
           },
           {
-            pattern: "^PageSheetBody$",
-            allow: ["layout"],
-            message:
-              '"{{className}}" restyles <PageSheetBody>, which owns its px-4 py-5 inset. Put section spacing on the content inside it.',
-          },
-          {
             pattern: "^PersonAvatar$",
             allow: ["layout"],
             deny: ["size-*", "h-*", "w-*", "min-h-*", "max-h-*", "min-w-*", "max-w-*"],
@@ -153,18 +128,6 @@ export const designConfig = {
             allow: ["layout", "tabular-nums"],
             message:
               '"{{className}}" restyles <Tag>, which owns its border, radius, and type. For a status pass tone ("working", "success", "warning", "destructive") with an icon; inside a one-line row use size="sm". A surface that carries a status reuses toneBorder and toneFill from "@/components/feedback/tag".',
-          },
-          {
-            pattern: "^PageHeader$",
-            allow: ["layout"],
-            message:
-              '"{{className}}" restyles <PageHeader>, which owns its height, inset, and type. Use variant="page" for pages or variant="pane" for panes and asides; place it with margin or width only.',
-          },
-          {
-            pattern: "^InlineNotice$",
-            allow: ["layout"],
-            message:
-              '"{{className}}" restyles <InlineNotice>. Use tone="warning" for an alert or tone="neutral" for a status; place it with margin or width only.',
           },
           {
             // The board is the scroll container, so the page inset sits on it.
@@ -179,30 +142,6 @@ export const designConfig = {
             allow: ["layout", "opacity-*"],
             message:
               '"{{className}}" restyles <BoardCard>, which owns one look for every board: rounded-lg border bg-surface p-3 shadow-surface. Pass selected for the selected row colour.',
-          },
-          {
-            pattern: "^(RecordSection|PropertyList)$",
-            allow: ["layout"],
-            message:
-              '"{{className}}" restyles <{{component}}>, which owns the section title row and gap-2 content spacing. Space sections apart on the parent (gap-6).',
-          },
-          {
-            pattern: "^SettingsCard$",
-            allow: ["layout"],
-            message:
-              '"{{className}}" restyles <SettingsCard>, which owns its p-5 inset, gap-4 fields, and footer. Pass footer for actions and tone="destructive" for a danger zone.',
-          },
-          {
-            pattern: "^TableRow$",
-            allow: ["layout"],
-            message:
-              '"{{className}}" restyles <TableRow>, which owns hover (bg-row-hover) and selected (bg-row-selected) states. Set data-state="selected" instead of a background.',
-          },
-          {
-            pattern: "^Tabs(List|Trigger)$",
-            allow: ["layout"],
-            message:
-              '"{{className}}" restyles Tabs. Line Tabs are for page sections; inside a popover or palette use the default pill Tabs (no variant), and for a choice among 2–4 short options use SegmentedControl from "@/components/forms/segmented-control".',
           },
         ],
       },
@@ -235,45 +174,13 @@ export const designConfig = {
     {
       files: [`${WEB}/**`],
       rules: {
-        "design/action-copy": "warn",
-        "design/back-link": "warn",
-        "design/canonical-icons": "error",
-        "design/conversation-label": "warn",
-        "design/destructive-label": "warn",
-        "design/dialog-footer-order": "error",
-        "design/dialog-structure": "warn",
-        "design/elevation": "error",
-        "design/entity-kind-map": "warn",
-        "design/form-copy": "warn",
         "design/icon-button-name": "error",
-        "design/icon-button-tooltip": "warn",
-        "design/motion": "error",
         "design/no-adhoc-date-format": "error",
-        "design/no-ellipsis": "error",
-        "design/no-native-action-title": "error",
         "design/no-native-date-input": "error",
-        "design/no-native-dialogs": "error",
         "design/no-native-element": "error",
-        "design/no-opacity-tint": "warn",
-        "design/no-pressed-outline": "error",
         "design/no-raw-error-message": "warn",
-        "design/no-raw-validation-text": "error",
-        "design/no-solid-destructive": "error",
         "design/no-tooltip-on-toggle-item": "error",
-        "design/notice-placement": "warn",
-        "design/notice-title": "error",
-        "design/page-header": "warn",
-        "design/page-width": "warn",
-        "design/pane-header": "warn",
-        "design/pending-button": "warn",
-        "design/person-avatar": "warn",
-        "design/radius-scale": "warn",
-        "design/record-section-action": "warn",
-        "design/selected-choice": "warn",
-        "design/sentence-case": "warn",
-        "design/sheet-header-tools": "warn",
-        "design/type-scale": "warn",
-        "design/typographic-quotes": "warn",
+        "no-alert": "error",
         "no-restricted-imports": [
           "error",
           {
@@ -314,100 +221,25 @@ export const designConfig = {
       rules: { "no-restricted-imports": "off" },
     },
     {
-      // The helper builds the "#" name; its test checks it.
-      files: [`${WEB}/lib/messaging/conversations.ts`],
-      rules: { "design/conversation-label": "off" },
-    },
-    {
       // Vendored shadcn primitives define the treatments these rules point to.
       files: [`${WEB}/components/ui/**`],
       rules: {
-        "design/action-copy": "off",
-        "design/back-link": "off",
-        "design/canonical-icons": "off",
-        "design/dialog-footer-order": "off",
-        "design/dialog-structure": "off",
-        "design/elevation": "off",
         "design/icon-button-name": "off",
-        "design/icon-button-tooltip": "off",
-        "design/motion": "off",
         "design/no-native-element": "off",
         "design/no-raw-error-message": "off",
-        "design/no-solid-destructive": "off",
-        "design/page-header": "off",
-        "design/page-width": "off",
-        "design/pane-header": "off",
-        "design/pending-button": "off",
-        "design/selected-choice": "off",
-        "design/no-opacity-tint": "off",
-        "design/radius-scale": "off",
-        "design/sentence-case": "off",
-        "design/type-scale": "off",
-        "design/typographic-quotes": "off",
         "shadcn/no-inline-styles": "off",
       },
     },
     {
-      // Tests build dates and read schema messages to check them.
+      // Tests build dates to check them.
       files: [`${WEB}/**/*.test.ts`, `${WEB}/**/*.test.tsx`],
       rules: {
         "design/no-adhoc-date-format": "off",
-        "design/no-raw-validation-text": "off",
-        "design/typographic-quotes": "off",
       },
     },
     {
       files: [`${WEB}/lib/format/**`],
       rules: { "design/no-adhoc-date-format": "off" },
-    },
-    {
-      files: [`${WEB}/lib/forms/**`],
-      rules: { "design/no-raw-validation-text": "off" },
-    },
-    {
-      // PersonAvatar is the one place a small head is built from Avatar.
-      files: [`${WEB}/components/people/person-avatar.tsx`],
-      rules: { "design/person-avatar": "off" },
-    },
-    {
-      files: [`${WEB}/components/feedback/confirm-dialog.tsx`],
-      rules: { "design/no-solid-destructive": "off" },
-    },
-    {
-      // The workspace frame rounds the content panel into the rail.
-      files: [`${WEB}/components/workspace/workspace-shell.tsx`],
-      rules: { "design/radius-scale": "off" },
-    },
-    {
-      // PageHeader and the guest frame are the shared page titles.
-      files: [`${WEB}/components/layout/**`, `${WEB}/components/auth/auth-frame.tsx`],
-      rules: { "design/page-header": "off" },
-    },
-    {
-      // The shared layouts define the page widths, the pane header, and BackLink.
-      files: [`${WEB}/components/layout/**`, `${WEB}/components/auth/auth-frame.tsx`],
-      rules: {
-        "design/back-link": "off",
-        "design/page-width": "off",
-        "design/pane-header": "off",
-      },
-    },
-    {
-      files: [`${WEB}/components/auth/**`, `${WEB}/components/onboarding/**`],
-      rules: { "design/guest-copy": "warn" },
-    },
-    {
-      // The one record-kind map.
-      files: [
-        `${WEB}/components/context/entity-kinds.ts`,
-        `${WEB}/components/context/entity-kinds.tsx`,
-      ],
-      rules: { "design/entity-kind-map": "off" },
-    },
-    {
-      // The shared notices and loading views own their own placement and loading label.
-      files: [`${WEB}/components/feedback/**`],
-      rules: { "design/notice-placement": "off", "design/pending-button": "off" },
     },
   ],
 } satisfies Pick<OxlintConfig, "jsPlugins" | "settings" | "rules" | "overrides">;

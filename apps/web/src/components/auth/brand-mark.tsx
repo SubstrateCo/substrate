@@ -3,7 +3,6 @@ import { cn } from "cn";
 /** The Substrate app mark and wordmark. */
 export function BrandMark({ className }: { className?: string }) {
   return (
-    // oxlint-disable-next-line design/type-scale -- The wordmark is the one tight-tracked text below text-xl (DESIGN § 1 Type and radius).
     <span className={cn("flex items-center gap-2 text-sm font-semibold tracking-tight", className)}>
       <svg
         aria-hidden="true"

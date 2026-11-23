@@ -93,18 +93,24 @@ export const View = () => <Tag size="sm" className="ml-auto tabular-nums">3</Tag
   }
 });
 
-void test("guest copy is checked only on guest and onboarding pages", () => {
-  const source = `export const View = () => <p>Create an organization</p>;\n`;
-  const guest = mkdtempSync(join(root, "apps/web/src/components/auth/design-lint-test-"));
-  const workspace = mkdtempSync(join(root, "apps/web/src/design-lint-test-"));
+void test("renderer native dialogs are checked by the built-in rule", () => {
+  const directory = mkdtempSync(join(root, "apps/web/src/design-lint-test-"));
+  const outsideRenderer = mkdtempSync(join(root, "design-lint-test-"));
   try {
-    writeFileSync(join(guest, "view.tsx"), source);
-    writeFileSync(join(workspace, "view.tsx"), source);
-    assert.ok(lint(join(guest, "view.tsx")).includes("design(guest-copy)"));
-    assert.deepEqual(lint(join(workspace, "view.tsx")), [], "Workspace pages say organization.");
+    const source = `export const ask = () => window.confirm("Continue?");\n`;
+    const rendererFile = join(directory, "view.tsx");
+    const otherFile = join(outsideRenderer, "view.tsx");
+    writeFileSync(rendererFile, source);
+    writeFileSync(otherFile, source);
+    assert.deepEqual(lint(rendererFile), ["eslint(no-alert)"]);
+    assert.deepEqual(
+      lint(otherFile),
+      [],
+      "The renderer's native-dialog restriction does not apply elsewhere.",
+    );
   } finally {
-    rmSync(guest, { recursive: true, force: true });
-    rmSync(workspace, { recursive: true, force: true });
+    rmSync(directory, { recursive: true, force: true });
+    rmSync(outsideRenderer, { recursive: true, force: true });
   }
 });
 

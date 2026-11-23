@@ -59,7 +59,7 @@ function InvitationActions({
   return (
     <>
       {!invitation.expired && (
-        // oxlint-disable-next-line design/icon-button-name, design/icon-button-tooltip -- CopyButton uses `label` as its aria-label and tooltip.
+        // oxlint-disable-next-line design/icon-button-name -- CopyButton uses `label` as its aria-label.
         <CopyButton
           grouped
           size="icon-sm"
