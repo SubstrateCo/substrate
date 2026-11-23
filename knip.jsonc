@@ -21,8 +21,8 @@
     },
     "apps/web": {
       // Vite, TanStack Router, and Playwright discover renderer and test entries.
-      "entry": [],
-      "project": ["src/**/*.{ts,tsx,css}", "e2e/**/*.ts", "*.config.ts"],
+      "entry": ["e2e/test-support/screenshots.ts"],
+      "project": ["src/**/*.{ts,tsx,css}", "e2e/**/*.ts", "scripts/**/*.ts", "*.config.ts"],
       // Vendored shadcn components retain their upstream exports.
       "ignore": ["src/components/ui/**"],
     },

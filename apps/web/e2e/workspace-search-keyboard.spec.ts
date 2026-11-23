@@ -1,5 +1,6 @@
 import { createCrm } from "../../server/integration/test-support/crm";
-import { test, visit } from "./test-support/fixtures";
+import { visit } from "./test-support/fixtures";
+import { test } from "./test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
 
 test("a workspace search result opens with Enter and closes the search panel", async ({

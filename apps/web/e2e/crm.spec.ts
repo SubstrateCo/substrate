@@ -5,7 +5,7 @@ import type { ServiceResult } from "@substrate/contracts/result";
 
 import { result } from "../../server/integration/test-support/api";
 import { createCrm, readCrm, recordMutationPath } from "../../server/integration/test-support/crm";
-import { captureCrm, selectCrmOption } from "./test-support/crm";
+import { selectCrmOption } from "./test-support/crm";
 import { conversation, post, visit } from "./test-support/fixtures";
 import { test } from "./test-support/workspace-fixtures";
 import { expect, type Locator, type Page } from "@playwright/test";
@@ -53,7 +53,6 @@ test("create customer records, record a call, and advance a linked deal", async 
     accountDialog.getByRole("button", { name: "Create account", exact: true }),
   );
   await expect(page.getByRole("heading", { name: "Northstar Labs", exact: true })).toBeVisible();
-  await captureCrm(page, "01-account-detail");
 
   const contact = await createCrm(account, {
     action: "createContact",
@@ -75,7 +74,6 @@ test("create customer records, record a call, and advance a linked deal", async 
   await expect(page.getByText(summary, { exact: true })).toBeVisible();
   await page.reload();
   await expect(page.getByText(summary, { exact: true })).toBeVisible();
-  await captureCrm(page, "02-contact-interaction");
   await expect(page.locator("html")).toHaveClass(/dark/);
 
   await visit(user, undefined, "/crm", { section: "deals" });
@@ -153,16 +151,12 @@ test("create customer records, record a call, and advance a linked deal", async 
     // People carry no tag; only agents are marked.
     await expect(event.getByText("Agent", { exact: true })).toHaveCount(0);
   }
-  await captureCrm(page, "03-deal-detail");
-  await activity.scrollIntoViewIfNeeded();
-  await captureCrm(page, "09-deal-activity");
   await page.getByRole("button", { name: "Close deal", exact: true }).click();
   await expect(
     page
       .getByRole("region", { name: "Discovery", exact: true })
       .getByRole("link", { name: /Northstar workspace rollout/ }),
   ).toBeVisible();
-  await captureCrm(page, "04-deal-pipeline");
 
   await page
     .getByRole("region", { name: "Discovery", exact: true })
@@ -193,7 +187,6 @@ test("create customer records, record a call, and advance a linked deal", async 
       .getByRole("region", { name: "Task details", exact: true })
       .getByRole("heading", { name: "Send the rollout plan", exact: true }),
   ).toBeVisible();
-  await captureCrm(page, "05-follow-up-task");
 
   const channel = await conversation(account);
   const message = await post<{ id: string }>(account, "messaging/messages", {
@@ -224,7 +217,6 @@ test("create customer records, record a call, and advance a linked deal", async 
   const thread = page.getByRole("complementary", { name: "Thread", exact: true });
   const back = thread.getByRole("link", { name: "Northstar workspace rollout", exact: true });
   await expect(back).toBeVisible();
-  await captureCrm(page, "06-linked-discussion");
   await back.click();
   await expect(
     page.getByRole("heading", { name: "Northstar workspace rollout", exact: true }),
@@ -267,12 +259,10 @@ test("CRM default currency prefills new deal drafts and preserves an existing US
   await expect(page.getByRole("combobox", { name: "Default currency", exact: true })).toContainText(
     "EUR",
   );
-  await captureCrm(page, "07-currency-settings");
   await visit(user, undefined, "/crm", { section: "deals" });
   await page.getByRole("button", { name: "New deal", exact: true }).click();
   const draft = page.getByRole("dialog", { name: "New deal", exact: true });
   await expect(draft.getByLabel("Currency", { exact: true })).toHaveValue("EUR");
-  await captureCrm(page, "08-eur-deal-draft");
   await draft.getByRole("button", { name: "Cancel", exact: true }).click();
   await visit(user, undefined, "/crm", { section: "deals", recordId: existing.entityId });
   await page.getByRole("button", { name: "Edit", exact: true }).click();

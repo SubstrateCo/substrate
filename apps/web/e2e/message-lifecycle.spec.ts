@@ -50,7 +50,7 @@ test("editing and deleting a thread root retains its replies and permalink", asy
 test("editing a message inserts a workspace reference from the picker", async ({
   actors,
   client,
-}, testInfo) => {
+}) => {
   const channel = await conversation(actors.sender, [actors.member.email]);
   const response = await actors.sender.request.get("/api/v1/messaging/conversations", {
     params: { organizationId: actors.sender.organizationId },
@@ -80,11 +80,6 @@ test("editing a message inserts a workspace reference from the picker", async ({
   await field.pressSequentially(` @${actors.member.name.split(" ")[0]}`);
   const option = page.getByRole("option", { name: actors.member.name, exact: true });
   await expect(option).toBeVisible();
-  await page.screenshot({
-    path: process.env.E2E_SCREENSHOTS_DIR
-      ? `${process.env.E2E_SCREENSHOTS_DIR}/edit-message-reference-picker.png`
-      : testInfo.outputPath("edit-message-reference-picker.png"),
-  });
   await option.click();
   await expect(field).toContainText(actors.member.name);
   await expect(field).toBeFocused();

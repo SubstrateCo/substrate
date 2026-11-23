@@ -4,8 +4,6 @@ import { createCrm, type CrmMutation } from "../../server/integration/test-suppo
 import { conversation, post, visit, type Actor } from "./test-support/fixtures";
 import { test } from "./test-support/workspace-fixtures";
 import { expect, type Page } from "@playwright/test";
-import { mkdir } from "node:fs/promises";
-import { resolve } from "node:path";
 
 const kinds: InteractionKind[] = ["email", "meeting", "call", "message", "note", "other"];
 const summaries = {
@@ -62,14 +60,6 @@ async function sampleInteractions(actor: Actor) {
   return contacts;
 }
 
-async function capture(page: Page, name: string) {
-  const directory = resolve(".runtime/interactions-screenshots");
-  await mkdir(directory, { recursive: true });
-  const path = resolve(directory, `${name}.png`);
-  await page.screenshot({ path, animations: "disabled", fullPage: true });
-  await test.info().attach(name, { path, contentType: "image/png" });
-}
-
 function total(page: Page) {
   return page.getByRole("definition").first();
 }
@@ -112,7 +102,6 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   await expect(page.getByRole("status").filter({ hasText: "Email" })).toBeVisible();
   await page.keyboard.press("Escape");
   await page.getByRole("heading", { name: "Interaction dashboard", exact: true }).click();
-  await capture(page, "dashboard-7-days-dark");
   await expect(
     page.getByText("A clear picture of your contact activity.", { exact: true }),
   ).toHaveCount(0);
@@ -133,7 +122,6 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   await expect(
     page.getByRole("img", { name: "Daily interaction activity over 30 days", exact: true }),
   ).toBeVisible();
-  await capture(page, "dashboard-30-days-dark");
   await page.getByRole("link", { name: "View timeline", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "Interaction timeline", exact: true }),
@@ -142,7 +130,6 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
     .getByRole("region", { name: "Interactions workspace", exact: true })
     .getByRole("list", { name: "Interactions", exact: true });
   await expect(list.getByRole("listitem")).toHaveCount(50);
-  await capture(page, "timeline-dark");
   await page
     .getByRole("link", { name: `Open interaction: ${summaries.email}`, exact: true })
     .first()
@@ -157,7 +144,6 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
       .getByRole("region", { name: "Source messages", exact: true })
       .getByText(summaries.email, { exact: true }),
   ).toBeVisible();
-  await capture(page, "interaction-source-dark");
   // The sheet leaves the timeline usable, and another interaction replaces its content in place.
   const shell = await sourceDetail.elementHandle();
   await list
@@ -208,7 +194,6 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   await expect(
     page.getByRole("img", { name: "Daily interaction activity over 30 days", exact: true }),
   ).toBeVisible();
-  await capture(page, "dashboard-narrow-dark");
   await page.getByRole("link", { name: "View timeline", exact: true }).click();
   await expect(
     page.getByRole("searchbox", { name: "Search interactions", exact: true }),
@@ -311,6 +296,12 @@ test("dashboard selects today, browses day-specific pages, and handles empty day
       name: "Daily interaction activity over 7 days",
       exact: true,
     });
+    await expect
+      .poll(async () => {
+        const box = await dailyChart.boundingBox();
+        return !!box && box.x + box.width <= width;
+      })
+      .toBe(true);
     const bar = await dailyChart.locator("rect").evaluateAll((rectangles) => {
       const bounds = rectangles
         .map((rect) => rect.getBoundingClientRect())
@@ -376,7 +367,6 @@ test("create interactions, browse directories and profiles, and inspect source c
   await dialog
     .getByLabel("Summary", { exact: true })
     .fill("Agreed on a pilot with the operations team.");
-  await capture(page, "new-interaction-dark");
   await dialog.getByRole("button", { name: "Create interaction", exact: true }).click();
   await expect(dialog).toHaveCount(0);
   await expect(total(page)).toHaveText("1");
@@ -410,7 +400,6 @@ test("create interactions, browse directories and profiles, and inspect source c
   await expect(page.getByRole("table", { name: "People directory", exact: true })).toBeVisible();
   await expect(page.locator("html")).not.toHaveAttribute("data-loading-flash", "true");
   await page.evaluate(() => window.dispatchEvent(new Event("stop-loading-check")));
-  await capture(page, "people-dark");
   await page.getByRole("link", { name: "Morgan Stone", exact: true }).click();
   await page.getByRole("tab", { name: "Relationship map", exact: true }).click();
   await expect(
@@ -418,7 +407,6 @@ test("create interactions, browse directories and profiles, and inspect source c
       .getByRole("region", { name: "Relationship map", exact: true })
       .getByRole("link", { name: "Northstar Labs", exact: true }),
   ).toBeVisible();
-  await capture(page, "relationship-map-dark");
   await page.getByRole("link", { name: "Organizations", exact: true }).click();
   await page
     .getByRole("table", { name: "Organization directory", exact: true })
@@ -450,7 +438,6 @@ test("create interactions, browse directories and profiles, and inspect source c
   await expect(tools.getByRole("button", { name: "Copy link", exact: true })).toBeVisible();
   await expect(tools.getByRole("button", { name: "More actions", exact: true })).toBeVisible();
   await expect(details.getByRole("heading", { name: "Linked records", exact: true })).toBeVisible();
-  await capture(page, "interaction-details-dark");
   await page.reload();
   await expect(details).toBeVisible();
   await page.keyboard.press("Escape");
@@ -475,12 +462,10 @@ test("empty dark dashboard and timeline do not invent activity", async ({ accoun
   ).toBeVisible();
   await expect(page.getByRole("img", { name: /Daily interaction activity/ })).toHaveCount(0);
   await expect(page.locator("html")).toHaveClass(/dark/);
-  await capture(page, "dashboard-empty-dark");
   await visit(user, undefined, "/interactions", { section: "timeline" });
   await expect(
     page.getByRole("heading", { name: "No interactions in this period", exact: true }),
   ).toBeVisible();
-  await capture(page, "timeline-empty-dark");
   await page.getByRole("searchbox", { name: "Search interactions", exact: true }).fill("unmatched");
   await expect(
     page.getByRole("heading", { name: "No matching interactions", exact: true }),
@@ -536,10 +521,6 @@ test("people and organization tables paginate and reset after filtering", async 
       exact: true,
     });
     await expect(table.getByRole("row")).toHaveCount(26);
-    await capture(
-      page,
-      type === "people" ? "people-paginated-dark" : "organizations-paginated-dark",
-    );
     await page.getByRole("button", { name: "Next page", exact: true }).click();
     await expect(table.getByRole("row")).toHaveCount(2);
     await expect(page.getByText("Page 2", { exact: true })).toBeVisible();

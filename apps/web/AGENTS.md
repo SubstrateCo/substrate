@@ -31,6 +31,7 @@
 - Test application policies and complete workflows. Do not test Better Auth internals or third-party guarantees.
 - Do not add Storybook or presentation package boundary tests.
 - Use headless Playwright in `e2e` for shared renderer workflows and responsive layout checks. Check native behavior, accessibility, and desktop rendering manually in Electron.
+- Do not add manual `page.screenshot()` calls to E2E specs. Failure screenshots run automatically; when visual review screenshots are needed, use `captureScreenshot` from `e2e/test-support/screenshots.ts` with `E2E_CAPTURE_SCREENSHOTS=1` or `E2E_SCREENSHOTS_DIR`.
 - Do not assert against rendered HTML strings or HTML snapshots, including markup substring checks.
 - Keep non-UI rules and cache logic in unit tests. Put HTTP security and permission matrices in `apps/server/integration`, not in long UI journeys or viewport loops.
 

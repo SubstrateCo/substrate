@@ -61,16 +61,6 @@ test("task discussion previews only the latest five root messages and opens the 
     0,
   );
   await expect(preview.getByRole("textbox")).toHaveCount(0);
-  if (process.env.CAPTURE_TASK_DISCUSSION_SCREENSHOTS === "1") {
-    for (const theme of ["light", "dark"] as const) {
-      await owner.page.emulateMedia({ colorScheme: theme });
-      await expect(owner.page.locator("html")).toHaveClass(theme === "dark" ? /dark/ : /light/);
-      await owner.page.screenshot({
-        path: test.info().outputPath(`task-discussion-${theme}.png`),
-        animations: "disabled",
-      });
-    }
-  }
   await preview.getByRole("link", { name: "View full conversation", exact: true }).click();
   await expect(owner.page.getByRole("textbox", { name: /^Message / })).toBeVisible();
   expect(new URL(owner.page.url()).searchParams.get("conversationId")).toBe(conversationId);

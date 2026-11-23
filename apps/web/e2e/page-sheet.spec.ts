@@ -1,8 +1,8 @@
 import { result } from "../../server/integration/test-support/api";
 import { createCrm, readCrm } from "../../server/integration/test-support/crm";
-import { captureCrm } from "./test-support/crm";
-import { post, test, visit } from "./test-support/fixtures";
+import { post, visit } from "./test-support/fixtures";
 import { project } from "./test-support/tasks";
+import { test } from "./test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
 
 // Keep normal-motion coverage for sheet transitions and focus restoration.
@@ -38,7 +38,6 @@ test("contact sheets keep the list stable, replace records, and restore focus in
   await expect(page.locator("html")).toHaveClass(/dark/);
   await expect(sheet).toHaveCSS("animation-duration", "0.2s");
   expect(await search.boundingBox()).toEqual(before);
-  await captureCrm(page, "page-sheet-contact-dark");
   const shell = await sheet.elementHandle();
   await page.getByRole("link", { name: "Morgan Lee", exact: true }).click();
   await expect(sheet.getByRole("heading", { name: "Morgan Lee", exact: true })).toBeVisible();
@@ -59,7 +58,6 @@ test("contact sheets keep the list stable, replace records, and restore focus in
   expect(bounds!.width).toBeCloseTo(workspaceBounds!.width, 0);
   await page.emulateMedia({ reducedMotion: "reduce" });
   await expect(sheet).toHaveCSS("animation-name", "none");
-  await captureCrm(page, "page-sheet-contact-narrow-dark");
 });
 
 test("deal contact links open over CRM and return to the same deal", async ({
@@ -88,7 +86,6 @@ test("deal contact links open over CRM and return to the same deal", async ({
   await expect(
     sheet.getByRole("heading", { name: "Northstar winter launch", exact: true }),
   ).toBeVisible();
-  await captureCrm(page, "page-sheet-deal-dark");
   await sheet.getByRole("link", { name: "Avery Chen", exact: true }).click();
   const contactSheet = page.getByRole("dialog", { name: "Contact", exact: true });
   await expect(
@@ -97,7 +94,6 @@ test("deal contact links open over CRM and return to the same deal", async ({
   await expect(sheet).toHaveCount(0);
   expect(new URL(page.url()).pathname).toBe("/crm");
   expect(new URL(page.url()).searchParams.get("recordId")).toBe(deal.entityId);
-  await captureCrm(page, "page-sheet-contact-over-crm-dark");
   await contactSheet.getByRole("button", { name: "Close contact", exact: true }).click();
   await expect(
     sheet.getByRole("heading", { name: "Northstar winter launch", exact: true }),
@@ -164,7 +160,6 @@ test("interaction sheets open over contacts and deals and return to them", async
   await expect(
     sheet.getByRole("heading", { name: "Call with Avery Chen", exact: true }),
   ).toBeVisible();
-  await captureCrm(page, "page-sheet-interaction-dark");
   await sheet.getByRole("button", { name: "Edit", exact: true }).click();
   const editor = page.getByRole("dialog", { name: "Edit interaction", exact: true });
   await editor.getByLabel("Summary", { exact: true }).fill("Agreed on the winter launch budget.");
@@ -230,7 +225,6 @@ test("task sheet protects edits and uses the shared dark-mode surface", async ({
   await expect(
     sheet.getByRole("heading", { name: "Prepare winter launch", exact: true }),
   ).toBeVisible();
-  await captureCrm(page, "page-sheet-task-dark");
   await sheet.getByRole("button", { name: "Edit task", exact: true }).click();
   await sheet
     .getByRole("textbox", { name: "Task title", exact: true })

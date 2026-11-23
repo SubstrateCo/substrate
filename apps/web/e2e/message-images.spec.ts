@@ -7,7 +7,7 @@ test.use({ reducedMotion: "reduce" });
 test("message images open a keyboard-accessible viewer and disappear live on deletion", async ({
   actors,
   client,
-}, testInfo) => {
+}) => {
   test.setTimeout(60_000);
   const channel = await conversation(actors.sender, [actors.member.email]);
   const sender = await client(actors.sender);
@@ -77,7 +77,6 @@ test("message images open a keyboard-accessible viewer and disappear live on del
       .getByRole("list", { name: "Image attachments", exact: true })
       .getByText("launch-dashboard.png", { exact: true }),
   ).toHaveCount(0);
-  await member.page.screenshot({ path: testInfo.outputPath("message-images-inline-dark.png") });
   await thumbnail.click();
   const viewer = member.page.getByRole("dialog");
   await expect(
@@ -102,7 +101,6 @@ test("message images open a keyboard-accessible viewer and disappear live on del
   expect(closeBounds).not.toBeNull();
   expect(downloadBounds!.y).toBe(closeBounds!.y);
   expect(downloadBounds!.height).toBe(closeBounds!.height);
-  await member.page.screenshot({ path: testInfo.outputPath("message-image-viewer-dark.png") });
   const downloadEvent = member.page.waitForEvent("download");
   await downloadLink.click();
   const download = await downloadEvent;

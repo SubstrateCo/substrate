@@ -1,9 +1,8 @@
 import { provisionWorkspaceSession } from "../../server/integration/test-support/organizations";
-import { post, test, visit } from "./test-support/fixtures";
+import { post, visit } from "./test-support/fixtures";
 import { detail, project } from "./test-support/tasks";
+import { test } from "./test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
-import { mkdir } from "node:fs/promises";
-import { resolve } from "node:path";
 
 test("Home has useful empty states and Messages has its own route", async ({ account, client }) => {
   const user = await client(account);
@@ -51,11 +50,6 @@ test("Home fills the grid when Tasks and CRM are disabled", async ({ account, cl
   expect(updates!.y - bottom(attention!)).toBeLessThanOrEqual(16);
   expect(conversations!.y - bottom(agents!)).toBeLessThanOrEqual(16);
   expect(Math.abs(bottom(updates!) - bottom(conversations!))).toBeLessThanOrEqual(1);
-  if (process.env.E2E_SCREENSHOTS_DIR) {
-    const directory = resolve(process.env.E2E_SCREENSHOTS_DIR);
-    await mkdir(directory, { recursive: true });
-    await page.screenshot({ path: resolve(directory, "home-apps-disabled-dark.png") });
-  }
 });
 
 test("Home shows assigned work, opens the exact task, and refreshes after completion", async ({

@@ -37,12 +37,6 @@ test("task discussion opens shared messaging and links back to its task", async 
   await expect(entry).toBeVisible();
   await expect(details.getByRole("textbox")).toHaveCount(0);
   await expect(details.getByRole("region", { name: "Task comments", exact: true })).toHaveCount(0);
-  if (process.env.CAPTURE_TASK_DISCUSSION_SCREENSHOTS === "1") {
-    await sender.page.screenshot({
-      path: test.info().outputPath("task-discussion-entry.png"),
-      animations: "disabled",
-    });
-  }
   await entry.click();
   await expect(sender.page.getByRole("textbox", { name: /^Message / })).toBeVisible();
   const conversationId = new URL(sender.page.url()).searchParams.get("conversationId");
@@ -57,12 +51,6 @@ test("task discussion opens shared messaging and links back to its task", async 
   await expect(message.getByText(actors.sender.name, { exact: true })).toBeVisible();
   const backlink = sender.page.getByRole("link", { name: title, exact: true });
   await expect(backlink).toHaveAttribute("href", new RegExp(`taskId=${target.id}`));
-  if (process.env.CAPTURE_TASK_DISCUSSION_SCREENSHOTS === "1") {
-    await sender.page.screenshot({
-      path: test.info().outputPath("task-discussion-messages.png"),
-      animations: "disabled",
-    });
-  }
   await backlink.click();
   await expect(details.getByRole("heading", { name: title, exact: true })).toBeVisible();
   await expect(

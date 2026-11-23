@@ -4,7 +4,7 @@ import { windowBridge } from "./bridges";
 
 const production =
   typeof window === "undefined"
-    ? import.meta.env.PROD
-    : (windowBridge()?.production ?? import.meta.env.PROD);
+    ? import.meta.env.MODE === "production"
+    : (windowBridge()?.production ?? import.meta.env.MODE === "production");
 
 export const desktop = desktopIdentity(production);

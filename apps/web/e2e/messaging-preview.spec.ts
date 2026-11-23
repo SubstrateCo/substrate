@@ -1,13 +1,11 @@
 import { conversationButton, inviteMember, post, test, visit } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
-import { mkdir } from "node:fs/promises";
-import { join } from "node:path";
 
 test("MVP message controls preserve discussions and show clear ownership actions", async ({
   account,
   actors: sharedActors,
   client,
-}, testInfo) => {
+}) => {
   test.setTimeout(60_000);
   const invitation = await inviteMember(account, sharedActors.member.email);
   expect(
@@ -106,16 +104,11 @@ test("MVP message controls preserve discussions and show clear ownership actions
     await expect(
       conversationButton(page, actors.member.name).getByLabel("1 unread message", { exact: true }),
     ).toBeVisible();
-    const output = process.env.E2E_SCREENSHOTS_DIR ?? testInfo.outputPath("screenshots");
-    await mkdir(output, { recursive: true });
-    const capture = (name: string) =>
-      page.screenshot({ path: join(output, `${name}.png`), fullPage: true });
     const message = page.getByRole("article").filter({ hasText: original });
     await message.getByRole("button", { name: "More message actions", exact: true }).click();
     await page.getByRole("menuitem", { name: "Edit message", exact: true }).click();
     const edit = message.getByRole("textbox", { name: "Edit message", exact: true });
     await edit.fill(corrected);
-    await capture("02-edit-message");
     await page.getByRole("button", { name: "Save", exact: true }).click();
     await expect(edit).toHaveCount(0);
     const edited = page.getByRole("article").filter({ hasText: corrected });
@@ -123,23 +116,19 @@ test("MVP message controls preserve discussions and show clear ownership actions
     await page
       .getByRole("textbox", { name: /^Message / })
       .fill("I’ll post the release notes here once the rollout starts.");
-    await capture("01-messaging");
     await page.getByRole("button", { name: "Members, 2 members", exact: true }).click();
     await page.getByRole("button", { name: "Remove Maya Chen", exact: true }).click();
     const removal = page.getByRole("dialog", { name: /Remove Maya Chen/ });
     await expect(removal).toBeVisible();
-    await capture("03-member-access");
     await removal.getByRole("button", { name: "Cancel", exact: true }).click();
     await page.keyboard.press("Escape");
     await edited.getByRole("button", { name: "More message actions", exact: true }).click();
     await page.getByRole("menuitem", { name: "Delete message", exact: true }).click();
     const deletion = page.getByRole("dialog", { name: "Delete message?", exact: true });
     await expect(deletion).toBeVisible();
-    await capture("04-delete-message");
     await deletion.getByRole("button", { name: "Delete message", exact: true }).click();
     await expect(page.getByText(corrected, { exact: true })).toHaveCount(0);
     await expect(page.getByText("Message deleted", { exact: true })).toBeVisible();
-    await capture("05-deleted-message");
   } finally {
     expect(
       (

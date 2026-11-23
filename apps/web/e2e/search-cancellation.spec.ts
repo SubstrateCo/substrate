@@ -1,6 +1,7 @@
-import { conversation, post, test, visit } from "./test-support/fixtures";
+import { conversation, post, visit } from "./test-support/fixtures";
 import { pauseClock, searches } from "./test-support/search";
 import { project } from "./test-support/tasks";
+import { test } from "./test-support/workspace-fixtures";
 import { expect, type Page, type Request } from "@playwright/test";
 
 async function holdSearch(page: Page, query: string) {

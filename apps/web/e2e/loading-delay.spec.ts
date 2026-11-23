@@ -1,6 +1,7 @@
 import { result } from "../../server/integration/test-support/api";
 import { createCrm, readCrm } from "../../server/integration/test-support/crm";
-import { conversation, isolateContext, post, test, visit } from "./test-support/fixtures";
+import { conversation, isolateContext, post, visit } from "./test-support/fixtures";
+import { test } from "./test-support/workspace-fixtures";
 import { expect, type Locator, type Page } from "@playwright/test";
 
 async function pauseClock(page: Page) {

@@ -1,5 +1,4 @@
 import { createCrm } from "../../server/integration/test-support/crm";
-import { captureCrm } from "./test-support/crm";
 import { visit } from "./test-support/fixtures";
 import { test } from "./test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
@@ -20,7 +19,6 @@ test("contacts open in a sheet over their collection without a rail entry", asyn
   await expect(navigation.getByRole("link")).toHaveCount(3);
   for (const name of ["Deals", "Accounts", "Settings"])
     await expect(navigation.getByRole("link", { name, exact: true })).toBeVisible();
-  await captureCrm(user.page, "32-crm-without-reports");
   await navigation.getByRole("link", { name: "Settings", exact: true }).click();
   await expect(user.page.getByRole("heading", { name: "CRM settings", exact: true })).toBeVisible();
   const apps = user.page.getByRole("navigation", { name: "Apps", exact: true });

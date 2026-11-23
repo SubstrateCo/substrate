@@ -24,8 +24,13 @@ export async function provisionVerifiedAccount(
     "Verify your Substrate email",
     "/api/auth/verify-email",
   );
-  const verified = await page.request.get(link);
-  expect(verified.ok(), "The test account verifies its email").toBe(true);
+  // Hit the API baseURL directly and stop at the redirect rather than loading the /login HTML.
+  const verifyURL = new URL(link);
+  const verified = await page.request.get(`${verifyURL.pathname}${verifyURL.search}`, {
+    maxRedirects: 0,
+  });
+  expect(verified.status(), "The test account verifies its email").toBeGreaterThanOrEqual(200);
+  expect(verified.status(), "The test account verifies its email").toBeLessThan(400);
   const signedIn = await page.request.post("/api/auth/sign-in/email", {
     headers: { origin },
     data: { email: account.email, password: account.password },

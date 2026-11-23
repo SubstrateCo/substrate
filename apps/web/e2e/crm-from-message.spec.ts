@@ -3,7 +3,7 @@ import type { ServiceResult } from "@substrate/contracts/result";
 
 import { result } from "../../server/integration/test-support/api";
 import { readCrm, writeCrm } from "../../server/integration/test-support/crm";
-import { captureCrm, selectCrmOption } from "./test-support/crm";
+import { selectCrmOption } from "./test-support/crm";
 import { conversation, post, visit } from "./test-support/fixtures";
 import { test } from "./test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
@@ -56,7 +56,6 @@ test("create CRM records from a private message only after audience consent and 
     exact: true,
   });
   await expect(consent).toContainText("workspace admins");
-  await captureCrm(page, "20-message-create-consent");
   await consent.getByRole("button", { name: "Cancel", exact: true }).click();
   await page
     .getByRole("dialog", { name: "Link existing records", exact: true })
@@ -77,7 +76,6 @@ test("create CRM records from a private message only after audience consent and 
       await expect(editor.getByRole("combobox", { name: "Stage", exact: true })).toContainText(
         "Qualification",
       );
-      await captureCrm(page, "21-message-deal-draft");
     }
     await editor.getByRole("button", { name: `Create ${kind}`, exact: true }).click();
     const confirmation = page.getByRole("dialog", {
@@ -116,7 +114,6 @@ test("create CRM records from a private message only after audience consent and 
       .getByRole("region", { name: "Related discussions", exact: true })
       .locator(`a[href*="messageId=${message.id}"]`);
     await expect(discussion).toBeVisible();
-    if (kind === "deal") await captureCrm(page, "22-message-created-deal-source");
     await discussion.click();
     await expect(
       page

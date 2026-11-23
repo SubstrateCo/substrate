@@ -1,4 +1,5 @@
-import { test, visit } from "./test-support/fixtures";
+import { visit } from "./test-support/fixtures";
+import { test } from "./test-support/workspace-fixtures";
 import { expect, type Page } from "@playwright/test";
 
 const apps = (page: Page) => page.getByRole("navigation", { name: "Apps", exact: true });

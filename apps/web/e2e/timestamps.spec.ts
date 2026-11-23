@@ -1,5 +1,5 @@
 import { createCrm } from "../../server/integration/test-support/crm";
-import { test } from "./test-support/fixtures";
+import { test } from "./test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
 import { z } from "zod";
 

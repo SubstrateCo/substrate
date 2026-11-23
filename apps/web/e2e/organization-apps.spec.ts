@@ -1,19 +1,9 @@
 import { createCrm } from "../../server/integration/test-support/crm";
 import { provisionWorkspaceSession } from "../../server/integration/test-support/organizations";
-import { test, visit } from "./test-support/fixtures";
+import { visit } from "./test-support/fixtures";
 import { project } from "./test-support/tasks";
-import { expect, type Page } from "@playwright/test";
-import { mkdir } from "node:fs/promises";
-import { resolve } from "node:path";
-
-async function captureApps(page: Page, name: string) {
-  if (!process.env.E2E_SCREENSHOTS_DIR) return;
-  const directory = resolve(process.env.E2E_SCREENSHOTS_DIR);
-  await mkdir(directory, { recursive: true });
-  const path = resolve(directory, `${name}.png`);
-  await page.screenshot({ path, animations: "disabled", fullPage: true });
-  await test.info().attach(name, { path, contentType: "image/png" });
-}
+import { test } from "./test-support/workspace-fixtures";
+import { expect } from "@playwright/test";
 
 test("owner enables independent apps, confirms disable, and restores preserved projects", async ({
   account,
@@ -43,7 +33,6 @@ test("owner enables independent apps, confirms disable, and restores preserved p
   expect(agentsBounds).not.toBeNull();
   expect(messagesBounds!.y).toBe(agentsBounds!.y);
   expect(messagesBounds!.x).toBeLessThan(agentsBounds!.x);
-  await captureApps(page, "apps-owner-default");
   await page.setViewportSize({ width: 800, height: 900 });
   await expect
     .poll(async () => {
@@ -52,13 +41,11 @@ test("owner enables independent apps, confirms disable, and restores preserved p
       return first && second && second.y >= first.y + first.height;
     })
     .toBe(true);
-  await captureApps(page, "apps-owner-narrow");
   await page.setViewportSize({ width: 1440, height: 900 });
 
   await crmSwitch.click();
   await expect(crmSwitch).toBeChecked();
   await expect(tasksSwitch).not.toBeChecked();
-  await captureApps(page, "apps-owner-mixed");
   await visit(user, undefined, "/tasks");
   await expect(page.getByRole("heading", { name: "Tasks is disabled", exact: true })).toBeVisible();
   await expect(
@@ -89,7 +76,6 @@ test("owner enables independent apps, confirms disable, and restores preserved p
   await tasksSwitch.click();
   const confirm = page.getByRole("dialog", { name: "Disable Tasks?", exact: true });
   await expect(confirm).toContainText("Existing projects and tasks are preserved.");
-  await captureApps(page, "apps-disable-confirmation");
   await confirm.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(tasksSwitch).toBeChecked();
   await tasksSwitch.click();
@@ -115,5 +101,4 @@ test("member can view organization apps but cannot change them", async ({ actors
   const settings = user.page.getByRole("navigation", { name: "Settings sections", exact: true });
   await expect(settings.getByRole("link", { name: "Apps", exact: true })).toBeVisible();
   await expect(settings.getByRole("link", { name: "Members", exact: true })).toHaveCount(0);
-  await captureApps(user.page, "apps-member-read-only");
 });

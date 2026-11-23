@@ -1,5 +1,6 @@
 import { createCrm } from "../../server/integration/test-support/crm";
-import { test, visit } from "./test-support/fixtures";
+import { visit } from "./test-support/fixtures";
+import { test } from "./test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
 
 test("search shows inert loading rows until real results can be opened", async ({

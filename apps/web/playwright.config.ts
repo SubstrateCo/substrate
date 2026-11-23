@@ -59,15 +59,13 @@ export default defineConfig({
       },
     },
     {
-      command: "bun run dev",
+      command: "bun scripts/start-e2e.ts",
       url: baseURL,
       timeout: 120_000,
       reuseExistingServer: false,
       env: {
         SUBSTRATE_WEB_URL: baseURL,
         SUBSTRATE_API_URL: apiURL,
-        VITE_CACHE_DIR: "node_modules/.vite-e2e",
-        E2E_WARMUP: "1",
       },
     },
   ],

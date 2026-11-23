@@ -1,4 +1,4 @@
-import { test } from "./test-support/fixtures";
+import { test } from "./test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
 
 test("member rows stay inert while the organization loads and become real rows", async ({
