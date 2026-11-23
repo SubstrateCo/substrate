@@ -15,7 +15,7 @@ import { windowBridge } from "@/lib/desktop/bridges";
  * Call it in the browser that will complete the OAuth callback: the state cookie belongs there.
  * The auth client runs without its redirect plugin, so this navigates to Google itself.
  */
-export async function linkGoogleProduct(product: GoogleProduct, callbackURL: string) {
+async function linkGoogleProduct(product: GoogleProduct, callbackURL: string) {
   const result = await authClient.linkSocial({
     provider: "google",
     scopes: [...googleProductScopes[product]],

@@ -39,7 +39,7 @@ export interface CalendarSyncDependencies<Claim, Meeting> {
 }
 
 /** Calendars synced per run. Each one holds a lease, so a small batch keeps leases short. */
-export const calendarSyncBatch = 10;
+const calendarSyncBatch = 10;
 
 export class CalendarSyncWorker<Claim, Meeting> {
   private running: Promise<void> | undefined;

@@ -133,12 +133,3 @@ export function PageSheetHeader({ title, actions }: { title: ReactNode; actions?
 export function PageSheetBody({ className, ...props }: ComponentProps<"div">) {
   return <div className={cn("min-h-0 flex-1 overflow-y-auto p-5", className)} {...props} />;
 }
-
-export function PageSheetFooter({ className, ...props }: ComponentProps<"div">) {
-  return (
-    <div
-      className={cn("flex shrink-0 justify-end gap-2 border-t px-5 py-3", className)}
-      {...props}
-    />
-  );
-}

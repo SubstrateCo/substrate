@@ -39,7 +39,7 @@ function titleCase(part: string) {
  * least two letters, split by `.`, `_` or `-`, title-cased. A `+tag` is dropped first. Null for
  * role mailboxes and for anything else that does not look like a name.
  */
-export function nameFromEmail(email: string): string | null {
+function nameFromEmail(email: string): string | null {
   const at = email.lastIndexOf("@");
   if (at <= 0) return null;
   const local = email.slice(0, at).split("+")[0]!.normalize("NFC");

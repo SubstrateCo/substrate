@@ -9,4 +9,4 @@ export {
   GoogleScopeMissing,
   GoogleUnavailable,
 } from "./errors";
-export { googlePages, type GooglePage, type GooglePages } from "./paging";
+export { googlePages } from "./paging";

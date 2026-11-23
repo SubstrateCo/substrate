@@ -20,7 +20,7 @@ type ScreenNotificationViews = {
 };
 
 /** One card view per kind. A new kind adds its view here. */
-export const screenNotificationViews: ScreenNotificationViews = {
+const screenNotificationViews: ScreenNotificationViews = {
   meeting: MeetingCard,
 };
 

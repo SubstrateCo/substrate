@@ -13,7 +13,7 @@ import {
 } from "electron";
 
 /** Lets the overlay's exit animation finish before the window hides. */
-export const overlayHideDelayMs = 250;
+const overlayHideDelayMs = 250;
 const displayChangeDebounceMs = 500;
 
 /**
@@ -169,4 +169,3 @@ export function createOverlayWindow(options: {
     },
   };
 }
-export type OverlayWindow = ReturnType<typeof createOverlayWindow>;

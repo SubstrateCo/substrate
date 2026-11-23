@@ -1,10 +1,6 @@
+import { seedCalendar } from "./test-support/calendar";
 import { test, visit, type Actor } from "./test-support/fixtures";
 import { expect } from "@playwright/test";
-
-// These workflows need the server's /api/v1/calendar routes. They do not need Google: an account
-// with no linked provider shows the empty states. Workflows with events need seeded calendar data
-// (a linked Google credential, a calendar, and synced events); they are marked `fixme` below until
-// the server offers a fixture that seeds them without calling Google.
 
 async function setApps(actor: Actor, calendar: boolean) {
   const response = await actor.request.patch("/api/v1/organizations/apps", {
@@ -91,8 +87,7 @@ test("the week view and agenda share the period controls", async ({ account, cli
   const { page } = user;
   // A past week, so "Today" is always available.
   await visit(user, undefined, "/calendar", { date: "2020-01-15" });
-  const view = page.getByRole("group", { name: "Calendar view", exact: true });
-  await view.getByRole("radio", { name: "Week", exact: true }).click();
+  await page.getByRole("radio", { name: "Week", exact: true }).click();
   await expect(page).toHaveURL(/view=week/);
   await expect(page.getByRole("heading", { name: "January 2020", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Next week", exact: true }).click();
@@ -101,33 +96,70 @@ test("the week view and agenda share the period controls", async ({ account, cli
   await expect(page).not.toHaveURL(/date=/);
 });
 
-// Needs seeded data: a linked Google account with one calendar, a past meeting with an outside
-// attendee that recorded an interaction, and a private event that was skipped.
-test.fixme("an event opens beside the calendar from its link and shows what it recorded", async ({
+test("an event opens beside the calendar from its link and shows what it recorded", async ({
   account,
   client,
 }) => {
   await setApps(account, true);
+  const saved = await seedCalendar(account);
   const user = await client(account);
   const { page } = user;
-  await visit(user, undefined, "/calendar");
+  await visit(user, undefined, "/calendar", { date: "2020-01-15" });
   await page.getByRole("link", { name: /Pricing review/ }).click();
-  await expect(page).toHaveURL(/eventId=/);
+  await expect(page).toHaveURL(new RegExp(`eventId=${saved.eventId}`));
   const panel = page.getByRole("complementary", { name: "Event details", exact: true });
   await expect(panel.getByRole("heading", { name: "Pricing review", exact: true })).toBeVisible();
   await expect(panel.getByText("Will be added as contact")).toHaveCount(0);
   await expect(panel.getByText("Recorded", { exact: true })).toBeVisible();
+  const recorded = panel.getByRole("list", { name: "Recorded interactions", exact: true });
+  await expect(recorded.getByRole("link", { name: "Jordan Lee", exact: true })).toHaveAttribute(
+    "href",
+    new RegExp(`recordId=${saved.contactEntityId}`),
+  );
+  await page.reload();
+  await expect(panel.getByRole("heading", { name: "Pricing review", exact: true })).toBeVisible();
+  await expect(panel.getByText("Recorded", { exact: true })).toBeVisible();
   await panel.getByRole("button", { name: "Close event", exact: true }).click();
   await expect(page).not.toHaveURL(/eventId=/);
+  await expect(panel).toHaveCount(0);
+  await page.getByRole("link", { name: /Private review/ }).click();
+  await expect(page).toHaveURL(new RegExp(`eventId=${saved.privateEventId}`));
+  await expect(panel.getByText("Skipped", { exact: true })).toBeVisible();
+  await expect(panel.getByText("Private event", { exact: true })).toBeVisible();
+  await expect(panel.getByRole("list", { name: "Recorded interactions", exact: true })).toHaveCount(
+    0,
+  );
+  await expect(panel.getByText("Will be added as contact")).toHaveCount(0);
 });
 
-// Needs seeded data: a recorded calendar interaction on a contact.
-test.fixme("a calendar interaction links back to its meeting from the contact", async ({
+test("a calendar interaction links back to its meeting from the contact", async ({
   account,
   client,
 }) => {
+  await setApps(account, true);
+  const saved = await seedCalendar(account);
   const user = await client(account);
   const { page } = user;
-  await expect(page.getByText("From meeting:")).toBeVisible();
-  await expect(page.getByRole("region", { name: "Meetings", exact: true })).toBeVisible();
+  await visit(user, undefined, "/contacts", { recordId: saved.contactEntityId });
+  const contact = page.getByRole("dialog", { name: "Contact", exact: true });
+  await expect(contact.getByRole("heading", { name: "Jordan Lee", exact: true })).toBeVisible();
+  const history = contact.getByRole("region", { name: "Interaction history", exact: true });
+  await expect(history.getByText("From meeting:", { exact: true })).toBeVisible();
+  const source = history.getByRole("link", { name: "Pricing review", exact: true });
+  await expect(source).toHaveAttribute("href", new RegExp(`eventId=${saved.eventId}`));
+  const meetings = contact.getByRole("region", { name: "Meetings", exact: true });
+  const meeting = meetings.getByRole("link", { name: /Pricing review/ });
+  await expect(meeting).toBeVisible();
+  await expect(meeting).toHaveAttribute("href", new RegExp(`eventId=${saved.eventId}`));
+  await expect(meetings.getByRole("link", { name: /Private review/ })).toHaveCount(0);
+  await source.click();
+  await expect(page).toHaveURL(new RegExp(`eventId=${saved.eventId}`));
+  const panel = page.getByRole("complementary", { name: "Event details", exact: true });
+  await expect(panel.getByRole("heading", { name: "Pricing review", exact: true })).toBeVisible();
+  await expect(panel.getByText("Recorded", { exact: true })).toBeVisible();
+  await page.goBack();
+  await expect(contact.getByRole("heading", { name: "Jordan Lee", exact: true })).toBeVisible();
+  await meetings.getByRole("link", { name: /Pricing review/ }).click();
+  await expect(page).toHaveURL(new RegExp(`eventId=${saved.eventId}`));
+  await expect(panel.getByRole("heading", { name: "Pricing review", exact: true })).toBeVisible();
 });

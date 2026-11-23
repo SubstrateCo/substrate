@@ -125,9 +125,21 @@ test("create customer records, record a call, and advance a linked deal", async 
   expect(Number(persisted.deal.amount)).toBe(48000);
   await expect(page.getByRole("link", { name: "Jordan Lee", exact: true })).toHaveAttribute(
     "href",
-    new RegExp(`/contacts\\?.*recordId=${contact.entityId}`),
+    new RegExp(`/crm\\?.*recordId=${deal.entityId}.*contactId=${contact.entityId}`),
   );
-  const activity = page.getByRole("region", { name: "Activity", exact: true });
+  await page.getByRole("link", { name: "Jordan Lee", exact: true }).click();
+  const contactSheet = page.getByRole("dialog", { name: "Contact", exact: true });
+  await expect(
+    contactSheet.getByRole("heading", { name: "Jordan Lee", exact: true }),
+  ).toBeVisible();
+  await contactSheet.getByRole("button", { name: "Close contact", exact: true }).click();
+  await expect(contactSheet).toHaveCount(0);
+  await expect(
+    page.getByRole("heading", { name: "Northstar workspace rollout", exact: true }),
+  ).toBeVisible();
+  const activity = page
+    .getByRole("dialog", { name: "Deal", exact: true })
+    .getByRole("region", { name: "Activity", exact: true });
   for (const action of ["Created record", "Changed stage or outcome"]) {
     const event = activity.getByRole("listitem").filter({ hasText: action });
     await expect(event.getByText(account.name, { exact: true })).toBeVisible();
@@ -136,7 +148,7 @@ test("create customer records, record a call, and advance a linked deal", async 
   await captureCrm(page, "03-deal-detail");
   await activity.scrollIntoViewIfNeeded();
   await captureCrm(page, "09-deal-activity");
-  await page.getByRole("link", { name: "Back to deals", exact: true }).click();
+  await page.getByRole("button", { name: "Close deal", exact: true }).click();
   await expect(
     page
       .getByRole("region", { name: "Discovery", exact: true })

@@ -42,7 +42,7 @@ export const meetingSkipReasonLabels: Record<MeetingSkipReason, string> = {
 };
 
 /** Why an event of each non-meeting kind is skipped. */
-export const nonMeetingKindLabels: Record<Exclude<CalendarEventKind, "default">, string> = {
+const nonMeetingKindLabels: Record<Exclude<CalendarEventKind, "default">, string> = {
   from_gmail: "Added by Gmail from a confirmation email",
   focus_time: "Focus time",
   out_of_office: "Out of office",

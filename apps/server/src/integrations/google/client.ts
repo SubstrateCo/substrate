@@ -14,13 +14,7 @@ import { z } from "zod";
 export type GoogleFetch = (url: string, init: RequestInit) => Promise<Response>;
 
 /** A JSON request body. */
-export type GoogleJson =
-  | string
-  | number
-  | boolean
-  | null
-  | GoogleJson[]
-  | { [key: string]: GoogleJson };
+type GoogleJson = string | number | boolean | null | GoogleJson[] | { [key: string]: GoogleJson };
 
 export interface GoogleClient {
   /** Parses the response with `schema`; a mismatch throws the schema's error. */

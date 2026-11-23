@@ -15,7 +15,7 @@ export type CalendarViewMode = "agenda" | "week";
 type CalendarEventTimes = Pick<CalendarEventSummary, "startsAt" | "endsAt" | "allDay">;
 
 /** The agenda shows two weeks from its first day. */
-export const agendaDays = 14;
+const agendaDays = 14;
 
 export const startOfDay = (date: Date) =>
   new Date(date.getFullYear(), date.getMonth(), date.getDate());
@@ -23,7 +23,7 @@ export const startOfDay = (date: Date) =>
 export const addDays = (date: Date, days: number) =>
   new Date(date.getFullYear(), date.getMonth(), date.getDate() + days);
 /** Weeks start on Sunday. */
-export const startOfWeek = (date: Date) => addDays(startOfDay(date), -date.getDay());
+const startOfWeek = (date: Date) => addDays(startOfDay(date), -date.getDay());
 
 /** The day a view is anchored to: the `date` search value, or today. */
 export function viewAnchor(date: string | undefined, now: Date = new Date()) {

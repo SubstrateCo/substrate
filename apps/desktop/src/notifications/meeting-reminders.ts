@@ -338,4 +338,3 @@ export function createMeetingReminders(options: {
 
   return { connect, disconnect, receive, refresh };
 }
-export type MeetingReminders = ReturnType<typeof createMeetingReminders>;

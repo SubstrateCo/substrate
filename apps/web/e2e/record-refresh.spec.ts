@@ -118,13 +118,20 @@ for (const kind of ["accounts", "deals", "contacts"] as const) {
     });
     if (kind !== "contacts") search.set("section", kind);
     await user.page.goto(`${kind === "contacts" ? "/contacts" : "/crm"}?${search}`);
-    await expect(user.page.getByText("Couldn’t load CRM", { exact: true })).toBeVisible();
-    await expect(user.page.getByText(saved.name, { exact: true })).toHaveCount(0);
-    await expect(user.page.getByText("This record may be out of date.")).toHaveCount(0);
+    const detail =
+      kind === "accounts"
+        ? user.page
+        : user.page.getByRole("dialog", {
+            name: kind === "contacts" ? "Contact" : "Deal",
+            exact: true,
+          });
+    await expect(detail.getByText("Couldn’t load CRM", { exact: true })).toBeVisible();
+    await expect(detail.getByText(saved.name, { exact: true })).toHaveCount(0);
+    await expect(detail.getByText("This record may be out of date.")).toHaveCount(0);
     setStatus(200);
-    await user.page.getByRole("button", { name: "Try again", exact: true }).click();
-    await expect(user.page.getByRole("heading", { name: saved.name, exact: true })).toBeVisible();
-    await expect(user.page.getByText("Couldn’t load CRM", { exact: true })).toHaveCount(0);
+    await detail.getByRole("button", { name: "Try again", exact: true }).click();
+    await expect(detail.getByRole("heading", { name: saved.name, exact: true })).toBeVisible();
+    await expect(detail.getByText("Couldn’t load CRM", { exact: true })).toHaveCount(0);
   });
 
   test(`${kind} detail keeps readable cached data, retries, and hides it after access loss`, async ({
@@ -138,9 +145,13 @@ for (const kind of ["accounts", "deals", "contacts"] as const) {
       section: kind === "contacts" ? undefined : kind,
       recordId: saved.entityId,
     });
-    const heading = page.getByRole("heading", { name: saved.name, exact: true });
+    const detail =
+      kind === "accounts"
+        ? page
+        : page.getByRole("dialog", { name: kind === "contacts" ? "Contact" : "Deal", exact: true });
+    const heading = detail.getByRole("heading", { name: saved.name, exact: true });
     await expect(heading).toBeVisible();
-    await expect(page.getByText(saved.summary, { exact: true })).toBeVisible();
+    await expect(detail.getByText(saved.summary, { exact: true })).toBeVisible();
     const setStatus = await failReads(
       page,
       kind === "contacts"
@@ -148,12 +159,12 @@ for (const kind of ["accounts", "deals", "contacts"] as const) {
         : `/api/v1/crm/${kind === "accounts" ? "account" : "deal"}`,
     );
     await saved.refresh();
-    const stale = page.getByRole("status").filter({ hasText: "This record may be out of date." });
+    const stale = detail.getByRole("status").filter({ hasText: "This record may be out of date." });
     await expect(stale).toBeVisible();
     await expect(heading).toBeVisible();
-    await expect(page.getByText(saved.summary, { exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
-    await expect(page.getByText("Couldn’t load CRM", { exact: true })).toHaveCount(0);
+    await expect(detail.getByText(saved.summary, { exact: true })).toBeVisible();
+    await expect(detail.getByRole("button", { name: "Edit", exact: true })).toBeVisible();
+    await expect(detail.getByText("Couldn’t load CRM", { exact: true })).toHaveCount(0);
     await expect(page.getByText("Unreviewed private server message")).toHaveCount(0);
     setStatus(200);
     await stale.getByRole("button", { name: "Try again", exact: true }).click();
@@ -161,11 +172,11 @@ for (const kind of ["accounts", "deals", "contacts"] as const) {
     await expect(heading).toBeVisible();
     setStatus(403);
     await saved.refresh();
-    await expect(page.getByText("Record unavailable", { exact: true })).toBeVisible();
+    await expect(detail.getByText("Record unavailable", { exact: true })).toBeVisible();
     await expect(heading).toHaveCount(0);
-    await expect(page.getByText(saved.summary, { exact: true })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
-    await expect(page.getByRole("button", { name: "Try again", exact: true })).toHaveCount(0);
+    await expect(detail.getByText(saved.summary, { exact: true })).toHaveCount(0);
+    await expect(detail.getByRole("button", { name: "Edit", exact: true })).toHaveCount(0);
+    await expect(detail.getByRole("button", { name: "Try again", exact: true })).toHaveCount(0);
   });
 }
 

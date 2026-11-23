@@ -45,7 +45,7 @@ export const calendarEventOptions = (organizationId: string, entityId: string) =
     retry: false,
   });
 
-export const contactMeetingsLimit = 20;
+const contactMeetingsLimit = 20;
 
 export const contactMeetingsOptions = (organizationId: string, contactEntityId: string) =>
   queryOptions({
