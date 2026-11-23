@@ -4,7 +4,7 @@ import { Button } from "../../ui/button";
 import { PageSidebarGroupTitle } from "./page-sidebar";
 import type { LucideIcon } from "lucide-react";
 
-export type SidebarNavItem = {
+type SidebarNavItem = {
   key: string;
   label: string;
   icon: LucideIcon;
@@ -13,7 +13,7 @@ export type SidebarNavItem = {
   current?: boolean;
 };
 
-export type SidebarNavGroup = { label: string; items: readonly SidebarNavItem[] };
+type SidebarNavGroup = { label: string; items: readonly SidebarNavItem[] };
 
 /**
  * The link list of a page sidebar: a column of `h-8` rows, or a scrolling row below `md`.

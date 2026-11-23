@@ -48,7 +48,7 @@ export type AppTablePagination =
       onPageSizeChange?: (pageSize: number) => void;
     };
 
-export type AppTableEmpty = {
+type AppTableEmpty = {
   title: string;
   /** Where rows come from or how to add one, such as "Invitations you send appear here." */
   description: string;

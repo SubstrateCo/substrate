@@ -8,4 +8,4 @@ export {
   PageSidebarGroupTitle,
   PageSidebarHeader,
 } from "./page-sidebar";
-export { SidebarNav, type SidebarNavGroup, type SidebarNavItem } from "./sidebar-nav";
+export { SidebarNav } from "./sidebar-nav";
