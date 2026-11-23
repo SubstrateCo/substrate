@@ -11,7 +11,7 @@
 - Keep runtime server code, secrets, database access, setup, and actor provisioning out of the renderer. Share browser-safe contracts through `@substrate/contracts`.
 - The server validates untrusted input and derives identity and actor scope. Organization owners and admins are super users for their organization's records and conversation management; other roles do not bypass entity grants.
 - Do not use dynamic imports to bypass dependency injection, server-only boundaries, or import configuration. Fix the underlying issue.
-- Add or change UI primitives in `src/components/ui` with the shadcn CLI. Do not hand-write replacements.
+- Add or change UI primitives in `src/components/ui` with the shadcn CLI. Do not hand-write replacements. Hand-write a primitive only when shadcn has none, as with `Heading`, `Image`, and `Pressable`.
 - Put reusable TanStack Query option factories in `src/queries/<domain>/`. Use the shared query-key factory. Include the organization ID in organization-scoped keys.
 - Use TanStack Query for fetched application state. Invalidate affected queries after mutations and clear private state on sign-out.
 - Use Better Auth client APIs for authentication and organization actions. The server owns session and membership checks.

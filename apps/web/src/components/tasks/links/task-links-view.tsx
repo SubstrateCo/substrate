@@ -24,6 +24,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Pressable } from "@/components/ui/pressable";
 import {
   Select,
   SelectContent,
@@ -34,10 +35,13 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { RecordLink } from "@/lib/navigation/record-links";
+import { cn } from "cn";
 import { LockKeyhole, Plus, X } from "lucide-react";
 
+// Pressable owns the focus ring of the button row; the link row draws the same one.
 const rowClass =
-  "flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left text-sm outline-none hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring/50";
+  "flex h-8 min-w-0 flex-1 items-center gap-2 rounded-md px-2 text-left text-sm hover:bg-row-hover";
+const linkFocus = "outline-none focus-visible:ring-2 focus-visible:ring-ring/50";
 
 /**
  * A task's links to other tasks, grouped by relation. A task in this project opens in place; a
@@ -115,16 +119,12 @@ export function TaskLinks({
                       </span>
                     )}
                     {other && other.projectEntityId === projectEntityId && (
-                      <button
-                        type="button"
-                        className={rowClass}
-                        onClick={() => onSelect(other.entityId)}
-                      >
+                      <Pressable className={rowClass} onClick={() => onSelect(other.entityId)}>
                         {content}
-                      </button>
+                      </Pressable>
                     )}
                     {other && other.projectEntityId !== projectEntityId && (
-                      <Link {...linkFor(other)} className={rowClass}>
+                      <Link {...linkFor(other)} className={cn(rowClass, linkFocus)}>
                         {content}
                       </Link>
                     )}

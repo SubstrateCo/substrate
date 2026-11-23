@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Item, ItemActions, ItemContent, ItemTitle } from "@/components/ui/item";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { calendarActions, lastSyncedLabel } from "@/lib/calendar/labels";
@@ -71,9 +72,9 @@ export function CalendarRow({
           <ItemActions>
             {!disconnected && (
               <div className="flex items-center gap-2">
-                <label htmlFor={`${id}-interactions`} className="text-xs text-muted-foreground">
+                <Label variant="caption" htmlFor={`${id}-interactions`}>
                   Create contacts and interactions
-                </label>
+                </Label>
                 <Switch
                   id={`${id}-interactions`}
                   checked={calendar.recordsInteractions}

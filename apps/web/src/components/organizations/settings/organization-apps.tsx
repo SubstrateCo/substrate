@@ -13,6 +13,7 @@ import { Tag } from "@/components/feedback/tag";
 import { SettingsPanel } from "@/components/layout/settings-page";
 import { SettingsSection } from "@/components/layout/settings-section";
 import { Item, ItemContent, ItemHeader, ItemMedia, ItemTitle } from "@/components/ui/item";
+import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { workspaceApps } from "@/components/workspace/workspace-apps";
 import { organizationAppsOptions, useUpdateOrganizationApps } from "@/queries/organizations/apps";
@@ -128,7 +129,7 @@ export function OrganizationApps({ organizationId }: { organizationId: string })
                             </ItemMedia>
                             <ItemTitle>
                               {!entry.required && canManage ? (
-                                <label htmlFor={`organization-app-${entry.id}`}>{app.label}</label>
+                                <Label htmlFor={`organization-app-${entry.id}`}>{app.label}</Label>
                               ) : (
                                 app.label
                               )}

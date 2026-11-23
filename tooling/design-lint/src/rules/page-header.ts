@@ -1,31 +1,15 @@
-import {
-  attribute,
-  classTokens,
-  elementName,
-  type NodeOf,
-  possibleStrings,
-  type Rule,
-} from "../ast.ts";
+import { attribute, attributeString, elementImport, type NodeOf, type Rule } from "../ast.ts";
 import { see } from "../design-doc.ts";
 
-const PAGE_SCALE = new Set(["text-lg", "text-xl", "text-2xl", "text-3xl"]);
-
-/**
- * A heading whose only content is a record's own field, such as `{task.title}` in an inspector,
- * is the record's content, not page or section chrome.
- */
-function showsRecordField(opening: NodeOf<"JSXOpeningElement">) {
-  const element = opening.parent;
-  if (element.type !== "JSXElement") return false;
-  const content = element.children.filter(
-    (child) => child.type !== "JSXText" || child.value.trim() !== "",
-  );
-  const [only] = content;
-  return (
-    content.length === 1 &&
-    only.type === "JSXExpressionContainer" &&
-    only.expression.type === "MemberExpression"
-  );
+/** The heading level when it is a number literal, such as `level={1}`. */
+function staticLevel(node: NodeOf<"JSXOpeningElement">) {
+  const value = attribute(node, "level")?.value;
+  if (value?.type !== "JSXExpressionContainer") return undefined;
+  const expression = value.expression;
+  // oxlint-disable-next-line deslop/no-runtime-typeof -- ESTree Literal values include strings, numbers, booleans, and null.
+  return expression.type === "Literal" && typeof expression.value === "number"
+    ? expression.value
+    : undefined;
 }
 
 export const pageHeader: Rule = {
@@ -33,26 +17,22 @@ export const pageHeader: Rule = {
     type: "suggestion",
     docs: { description: "Build page and section titles from the shared header components." },
     messages: {
-      pageTitle: `A raw <h1> builds a page title by hand, so the title size, inset, and action alignment drift between pages. Use <PageHeader title="…" description="…" actions={…}> from "@/components/layout/page-header" (variant="pane" for 48px pane headers), SettingsPanel from "@/components/layout/settings-page" for a settings section, or AuthFrame from "@/components/auth/auth-frame" for guest pages. ${see("3 Pages and settings")}`,
-      sectionTitle: `<{{tag}} className="{{size}}"> is a page-scale heading built by hand. Page titles use <PageHeader> from "@/components/layout/page-header"; settings groups use SettingsSection or SettingsCard title="…" from "@/components/layout/settings-section"; dialog titles use DialogTitle. ${see("3 Pages and settings")}`,
+      pageTitle: `A <Heading> page title built by hand lets the title size, inset, and action alignment drift between pages. Use <PageHeader title="." description="." actions={.}> from "@/components/layout/page-header" (variant="pane" for 48px pane headers), SettingsPanel from "@/components/layout/settings-page" for a settings section, or AuthFrame from "@/components/auth/auth-frame" for guest pages. ${see("3 Pages and settings")}`,
+      sectionTitle: `<Heading variant="section"> is the settings section title. Use SettingsSection or SettingsCard title="." from "@/components/layout/settings-section"; a record's own name is variant="record". ${see("3 Pages and settings")}`,
     },
     schema: [],
   },
   create(context) {
     return {
       JSXOpeningElement(node) {
-        const tag = elementName(node.name);
-        if (tag === "h1") {
+        const imported = elementImport(context, node);
+        if (imported?.name !== "Heading") return;
+        const module = imported.source.replace(/\.[jt]sx?$/, "");
+        if (!module.endsWith("/ui/heading") || !/^(?:@\/components\/|\.\.?\/)/.test(module)) return;
+        const variant = attributeString(node, "variant");
+        if (staticLevel(node) === 1 || variant === "page")
           context.report({ node, messageId: "pageTitle" });
-          return;
-        }
-        if (tag !== "h2" && tag !== "h3") return;
-        if (showsRecordField(node)) return;
-        const size = possibleStrings(attribute(node, "className")?.value)
-          .flatMap((site) => classTokens(site.value))
-          .find(({ base }) => PAGE_SCALE.has(base.split("/")[0] ?? base));
-        if (size)
-          context.report({ node, messageId: "sectionTitle", data: { tag, size: size.token } });
+        else if (variant === "section") context.report({ node, messageId: "sectionTitle" });
       },
     };
   },

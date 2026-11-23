@@ -1,8 +1,8 @@
 import { Button } from "@/components/ui/button";
 import { DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Image } from "@/components/ui/image";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { PicturePreview } from "@/components/upload/picture-preview";
 import { initials } from "@/lib/people/initials";
 
 export function SwitcherTrigger({
@@ -32,11 +32,7 @@ export function SwitcherTrigger({
               {pending ? (
                 <Spinner aria-hidden="true" role="presentation" />
               ) : (
-                <PicturePreview
-                  src={logo}
-                  className="size-full object-contain"
-                  fallback={initials(name)}
-                />
+                <Image src={logo} className="size-full object-contain" fallback={initials(name)} />
               )}
             </span>
           </Button>

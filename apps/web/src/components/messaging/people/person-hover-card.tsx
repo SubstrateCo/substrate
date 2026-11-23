@@ -7,6 +7,7 @@ import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { PersonCard } from "@/components/messaging/people/person-card-view";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Pressable } from "@/components/ui/pressable";
 import { useDirectMessage } from "@/queries/messaging/conversations";
 import { messagingProfileOptions } from "@/queries/messaging/profiles";
 import { MessageCircle } from "lucide-react";
@@ -30,9 +31,8 @@ export function PersonHoverCard({
   return (
     <Popover open={mode !== "closed"} onOpenChange={onOpenChange}>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="max-w-full rounded-sm text-left align-baseline focus-visible:outline-2 focus-visible:outline-ring"
+        <Pressable
+          className="max-w-full text-left align-baseline"
           onPointerEnter={(event) => {
             if (event.pointerType === "mouse") enter();
           }}
@@ -46,7 +46,7 @@ export function PersonHoverCard({
           }}
         >
           {children}
-        </button>
+        </Pressable>
       </PopoverTrigger>
       <PopoverContent
         ref={content}

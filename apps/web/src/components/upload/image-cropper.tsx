@@ -1,5 +1,6 @@
 import type { PictureKind } from "@substrate/contracts/files/pictures";
 
+import { Image } from "../ui/image";
 import type { CropArea } from "./crop-image";
 import "react-easy-crop/react-easy-crop.css";
 import Cropper from "react-easy-crop";
@@ -36,9 +37,10 @@ export function ImageCropper({
       aria-label="Image crop preview"
     >
       {mode === "fit" ? (
-        <img
+        <Image
           src={src}
           alt="Logo fit preview"
+          loading="eager"
           className="size-full rotate-(--rotation) object-contain"
           style={{ "--rotation": `${rotation}deg` }}
           onError={onError}

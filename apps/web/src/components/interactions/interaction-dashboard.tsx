@@ -12,6 +12,7 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import { formatShortDate } from "@/lib/format/date";
 import { interactionActivityOptions } from "@/queries/context/interactions";
 import { Activity } from "lucide-react";
@@ -98,7 +99,7 @@ export function InteractionDashboard({
           />
           <section className="flex min-h-0 flex-1 flex-col gap-3">
             <div className="flex items-center justify-between gap-3">
-              <h2 className="text-sm font-semibold">Day’s interactions</h2>
+              <Heading level={2}>Day’s interactions</Heading>
               <Button variant="link" size="sm" className="-mr-2.5" asChild>
                 <Link
                   to="/interactions"

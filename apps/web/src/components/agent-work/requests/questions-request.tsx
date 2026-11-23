@@ -6,6 +6,7 @@ import { PendingButton } from "@/components/feedback/pending-button";
 import { useFocusAfterRender } from "@/components/feedback/use-focus-after-render";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Kbd } from "@/components/ui/kbd";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
@@ -25,9 +26,6 @@ function typingTarget(target: EventTarget | null) {
     (target.isContentEditable || ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName))
   );
 }
-
-const optionRow =
-  "flex cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-row-hover has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-row-selected has-disabled:cursor-default has-disabled:opacity-60";
 
 /**
  * Mount one panel per request, keyed by request ID, so drafts belong to that request. Number
@@ -86,12 +84,12 @@ export function QuestionsRequest({
     choose(option.label);
   };
   const optionText = (option: Questions["questions"][number]["options"][number]) => (
-    <span className="min-w-0 flex-1">
-      <span className="block">{option.label}</span>
+    <FieldContent className="min-w-0">
+      <span>{option.label}</span>
       {option.description && (
-        <span className="block text-xs text-muted-foreground">{option.description}</span>
+        <span className="text-xs font-normal text-muted-foreground">{option.description}</span>
       )}
-    </span>
+    </FieldContent>
   );
   const shortcut = (index: number) =>
     index < 9 && (
@@ -128,20 +126,21 @@ export function QuestionsRequest({
       {question.multiSelect ? (
         <div role="group" aria-labelledby={`${id}-question`} className="grid gap-2">
           {question.options.map((option, index) => (
-            <label key={option.label} htmlFor={`${id}-${step}-${index}`} className={optionRow}>
-              <Checkbox
-                id={`${id}-${step}-${index}`}
-                checked={
-                  selectedLabels?.has(option.label) ??
-                  (firstSelection === option.label || secondSelection === option.label)
-                }
-                disabled={pending}
-                onCheckedChange={() => choose(option.label)}
-                className="mt-0.5"
-              />
-              {optionText(option)}
-              {shortcut(index)}
-            </label>
+            <FieldLabel key={option.label} htmlFor={`${id}-${step}-${index}`}>
+              <Field orientation="horizontal">
+                <Checkbox
+                  id={`${id}-${step}-${index}`}
+                  checked={
+                    selectedLabels?.has(option.label) ??
+                    (firstSelection === option.label || secondSelection === option.label)
+                  }
+                  disabled={pending}
+                  onCheckedChange={() => choose(option.label)}
+                />
+                {optionText(option)}
+                {shortcut(index)}
+              </Field>
+            </FieldLabel>
           ))}
         </div>
       ) : (
@@ -152,15 +151,13 @@ export function QuestionsRequest({
           onValueChange={choose}
         >
           {question.options.map((option, index) => (
-            <label key={option.label} htmlFor={`${id}-${step}-${index}`} className={optionRow}>
-              <RadioGroupItem
-                id={`${id}-${step}-${index}`}
-                value={option.label}
-                className="mt-0.5"
-              />
-              {optionText(option)}
-              {shortcut(index)}
-            </label>
+            <FieldLabel key={option.label} htmlFor={`${id}-${step}-${index}`}>
+              <Field orientation="horizontal">
+                <RadioGroupItem id={`${id}-${step}-${index}`} value={option.label} />
+                {optionText(option)}
+                {shortcut(index)}
+              </Field>
+            </FieldLabel>
           ))}
         </RadioGroup>
       )}

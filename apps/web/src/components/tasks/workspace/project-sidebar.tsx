@@ -6,6 +6,7 @@ import { SkeletonText } from "../../feedback/skeleton-text";
 import { Button } from "../../ui/button";
 import { buttonVariants } from "../../ui/button-variants";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
+import { Heading } from "../../ui/heading";
 import { Skeleton } from "../../ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { ProjectIcon } from "../projects/project-icon";
@@ -160,7 +161,7 @@ function ArchivedProjects({
   return (
     <Collapsible asChild open={open} onOpenChange={setOpen}>
       <section aria-label="Archived projects" className="group/archived flex flex-col gap-0.5">
-        <h3 className="flex h-7 items-center px-2">
+        <Heading level={3} variant="inherit" className="flex h-7 items-center px-2">
           <CollapsibleTrigger asChild>
             <Button type="button" variant="disclosure" size="xs" className="-ml-2">
               Archived
@@ -171,7 +172,7 @@ function ArchivedProjects({
               />
             </Button>
           </CollapsibleTrigger>
-        </h3>
+        </Heading>
         <CollapsibleContent>
           <div className="flex flex-col gap-0.5">
             {projects.map((project) => (

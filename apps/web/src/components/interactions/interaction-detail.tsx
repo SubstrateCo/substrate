@@ -25,6 +25,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Heading } from "@/components/ui/heading";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { interactionLink } from "@/lib/navigation/record-links";
@@ -129,10 +130,9 @@ export function InteractionDetail({
       <PageSheetBody>
         <div className="grid min-w-0 gap-6 wrap-anywhere">
           <div className="grid gap-2">
-            {/* oxlint-disable-next-line design/page-header -- The interaction's own name, the sheet body title (DESIGN § 3 Record sheets). */}
-            <h2 className="min-w-0 text-lg/snug font-semibold wrap-break-word">
+            <Heading level={2} variant="record" className="min-w-0">
               {interaction.kind === "other" ? "Interaction" : kind} with {interaction.contactName}
-            </h2>
+            </Heading>
             <p className="text-sm/relaxed wrap-break-word whitespace-pre-wrap">
               {interaction.summary}
             </p>

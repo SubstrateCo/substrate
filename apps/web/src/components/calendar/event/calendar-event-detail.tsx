@@ -8,10 +8,10 @@ import { CalendarEventOutcome } from "./calendar-event-outcome";
 import { Tag } from "@/components/feedback/tag";
 import { PageSheetBody } from "@/components/layout/page-sheet";
 import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import { eventSpan, eventTitle, eventWhenLabel } from "@/lib/calendar/days";
 import { plainTextDescription } from "@/lib/calendar/description";
 import { formatTimeZone, localTimeZone } from "@/lib/format/date";
-import { cn } from "cn";
 import { ArrowUpRight, Clock, MapPin, Video } from "lucide-react";
 
 function Detail({ icon, children }: { icon: ReactNode; children: ReactNode }) {
@@ -46,15 +46,13 @@ export function CalendarEventDetail({
             <span className="truncate">{event.calendarName}</span>
             {event.kind === "from_gmail" && <span className="shrink-0">· Added by Gmail</span>}
           </div>
-          {/* oxlint-disable-next-line design/page-header -- The event's own title, the aside body title (DESIGN § 3 Record sheets). */}
-          <h2
-            className={cn(
-              "text-lg/snug font-semibold wrap-break-word",
-              cancelled && "text-muted-foreground line-through",
+          <Heading level={2} variant="record">
+            {cancelled ? (
+              <s className="text-muted-foreground">{eventTitle(event.title)}</s>
+            ) : (
+              eventTitle(event.title)
             )}
-          >
-            {eventTitle(event.title)}
-          </h2>
+          </Heading>
           {(cancelled || event.status === "tentative") && (
             <Tag className="w-fit">{cancelled ? "Cancelled" : "Tentative"}</Tag>
           )}

@@ -2,6 +2,7 @@ import { useId, type ComponentProps, type ReactNode, type Ref } from "react";
 
 import { ContentNotice } from "../feedback/content-notice";
 import { Button } from "../ui/button";
+import { Heading } from "../ui/heading";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "cn";
 import { Plus } from "lucide-react";
@@ -56,9 +57,9 @@ export function BoardColumn({
     >
       <header className="flex h-6 shrink-0 items-center gap-2">
         {icon}
-        <h2 id={labelId} className="min-w-0 flex-1 truncate text-sm font-semibold">
+        <Heading level={2} id={labelId} className="min-w-0 flex-1 truncate">
           {label}
-        </h2>
+        </Heading>
         <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
         {onAdd && addLabel && (
           <Tooltip>
@@ -86,7 +87,10 @@ export function BoardColumn({
   );
 }
 
-/** A board card. Put `boardCardTarget` on its title link or button so the whole card opens it. */
+/**
+ * A board card. Put `boardCardTarget` on its title link, or use `Pressable focus="stretched"` for a
+ * title button, so the whole card opens it.
+ */
 export function BoardCard({
   ref,
   selected = false,

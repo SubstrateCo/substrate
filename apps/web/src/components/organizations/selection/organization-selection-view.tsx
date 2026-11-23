@@ -6,6 +6,7 @@ import { SkeletonText } from "../../feedback/skeleton-text";
 import { useFocusAfterRender } from "../../feedback/use-focus-after-render";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
+import { Heading } from "../../ui/heading";
 import { Item } from "../../ui/item";
 import { Separator } from "../../ui/separator";
 import { WorkspaceTile } from "../workspace-tile";
@@ -124,9 +125,9 @@ function WorkspaceList({
 }) {
   return (
     <section className="space-y-2" aria-labelledby="your-workspaces-title">
-      <h2 id="your-workspaces-title" className="text-xs font-medium text-muted-foreground">
+      <Heading level={2} variant="label" id="your-workspaces-title">
         Your workspaces
-      </h2>
+      </Heading>
       <ul
         aria-labelledby="your-workspaces-title"
         className="-mx-2.5 max-h-72 space-y-0.5 overflow-y-auto"
@@ -200,14 +201,15 @@ function CreateWorkspace({
         {collapsible && <Separator />}
         <section className="space-y-4 pt-4" aria-labelledby="create-workspace-title">
           <div className="flex items-center justify-between gap-2">
-            <h2
+            <Heading
+              level={2}
               id="create-workspace-title"
               ref={headingRef}
               tabIndex={-1}
-              className="text-sm font-semibold outline-none"
+              className="outline-none"
             >
               Create a workspace
-            </h2>
+            </Heading>
             {collapsible && (
               <Button
                 type="button"

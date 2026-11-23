@@ -8,6 +8,7 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import { providerLabels } from "@/lib/calendar/labels";
 import { Plus, RotateCcw, TriangleAlert, Unlink } from "lucide-react";
 
@@ -49,9 +50,9 @@ export function CalendarAccountCard({
             <ProviderIcon provider={account.provider} />
           </div>
           <div className="min-w-0">
-            <h3 id={`${id}-title`} className="truncate text-sm font-semibold" title={name}>
+            <Heading level={3} id={`${id}-title`} className="truncate" title={name}>
               {name}
-            </h3>
+            </Heading>
             <p className="text-xs text-muted-foreground">{provider} Calendar</p>
           </div>
         </div>

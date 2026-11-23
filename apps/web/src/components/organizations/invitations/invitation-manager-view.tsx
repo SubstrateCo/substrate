@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { ConfirmDialog } from "../../feedback/confirm-dialog";
 import { GroupTitle, SettingsCard } from "../../layout/settings-section";
+import { Heading } from "../../ui/heading";
 import { Spinner } from "../../ui/spinner";
 import { InvitationForm, type InvitationRoleOption } from "./invitation-form";
 import { InvitationTable } from "./invitation-table";
@@ -113,9 +114,9 @@ export function InvitationManager({
   return (
     <section className="space-y-4" aria-labelledby="invite-team-title">
       <header className="space-y-1">
-        <h2 id="invite-team-title" className="text-sm font-semibold">
+        <Heading level={2} id="invite-team-title">
           Invite your team
-        </h2>
+        </Heading>
         <p className="text-sm text-muted-foreground">{inviteDescription}</p>
       </header>
       {form}

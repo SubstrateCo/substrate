@@ -4,6 +4,7 @@ import { dateOnly, parseTaskDate } from "./task-date";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { formatShortDate, parseDateOnly } from "@/lib/format/date";
 import { Check } from "lucide-react";
@@ -76,9 +77,9 @@ function DueDateChoices({
         );
       })}
       <div className="mt-1 grid gap-1.5 border-t px-2 pt-2 pb-1">
-        <label htmlFor={id} className="text-xs text-muted-foreground">
+        <Label variant="caption" htmlFor={id}>
           Type a date
-        </label>
+        </Label>
         <Input
           id={id}
           placeholder="Tomorrow, Fri, or Nov 20"

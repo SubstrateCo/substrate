@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Card, CardContent, CardDescription, CardHeader } from "../ui/card";
+import { Heading } from "../ui/heading";
 import { BrandMark } from "./brand-mark";
 import { cn } from "cn";
 
@@ -46,7 +47,9 @@ export function AuthFrame({
         </div>
         <Card>
           <CardHeader>
-            <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
+            <Heading level={1} variant="page">
+              {title}
+            </Heading>
             {description && <CardDescription>{description}</CardDescription>}
           </CardHeader>
           {children && (

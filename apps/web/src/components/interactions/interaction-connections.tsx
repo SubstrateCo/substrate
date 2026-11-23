@@ -5,6 +5,7 @@ import type { getInteractionProfile } from "@/api/context/interactions";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { recordRows } from "@/components/layout/record-section";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Heading } from "@/components/ui/heading";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { eventDate } from "@/lib/calendar/days";
 import { calendarLink, linkedWorkLink } from "@/lib/navigation/record-links";
@@ -132,7 +133,9 @@ export function RelationshipMap({
     <Card size="sm" role="region" aria-label="Relationship map" className="min-h-0 flex-1">
       <CardHeader>
         <CardTitle>
-          <h2>Relationship map</h2>
+          <Heading level={2} variant="inherit">
+            Relationship map
+          </Heading>
         </CardTitle>
         <CardDescription>
           Saved affiliations and explicit record links. Names in summaries do not establish a

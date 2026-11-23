@@ -20,6 +20,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Heading } from "@/components/ui/heading";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { recordLink } from "@/lib/navigation/record-links";
 import { Archive, Ellipsis, Pencil, RotateCcw } from "lucide-react";
@@ -303,8 +304,9 @@ function RecordTitle({
   return (
     <div className="grid gap-2">
       <div className="flex items-start gap-2">
-        {/* oxlint-disable-next-line design/page-header -- The record's own name, the sheet body title (DESIGN § 3 Record sheets). */}
-        <h2 className="min-w-0 text-lg/snug font-semibold wrap-break-word">{name}</h2>
+        <Heading level={2} variant="record" className="min-w-0">
+          {name}
+        </Heading>
         {archived && <Tag className="mt-0.5 shrink-0">Archived</Tag>}
       </div>
       {children}

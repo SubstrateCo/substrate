@@ -58,6 +58,41 @@ export const View = () => (
   }
 });
 
+void test("renderer design configuration keeps primitive libraries behind components/ui", () => {
+  const directory = mkdtempSync(join(root, "apps/web/src/design-lint-test-"));
+  try {
+    const file = join(directory, "view.tsx");
+    writeFileSync(
+      file,
+      `
+import { Command } from "cmdk";
+import { Popover } from "radix-ui";
+import { Toaster } from "sonner";
+export const parts = [Command, Popover, Toaster];
+`,
+    );
+    assert.equal(
+      lint(file).filter((code) => code === "eslint(no-restricted-imports)").length,
+      3,
+      "Libraries that a primitive wraps must come through components/ui.",
+    );
+
+    writeFileSync(
+      file,
+      `
+import { Slot } from "radix-ui";
+import type { Layout } from "react-resizable-panels";
+import { toast } from "sonner";
+export const parts = [Slot, toast];
+export const saved: Layout = {};
+`,
+    );
+    assert.deepEqual(lint(file), [], "Slot, toast, and type-only panel imports remain allowed.");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 function lint(file: string): string[] {
   const result = spawnSync(process.execPath, [cli, "--format", "json", file], {
     cwd: root,

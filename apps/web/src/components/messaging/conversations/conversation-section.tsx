@@ -13,6 +13,7 @@ import {
 } from "@/components/messaging/conversations/conversation-sidebar-item";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Heading } from "@/components/ui/heading";
 import type { Conversation } from "@/lib/messaging/conversations";
 import type { PickerPerson } from "@/lib/people/people-picker";
 import { ChevronRight } from "lucide-react";
@@ -63,7 +64,7 @@ export function ConversationSection({
     <Collapsible open={!collapsed} onOpenChange={(open) => setCollapsed(!open)} asChild>
       <section aria-label={sectionLabels[section]}>
         <div className="flex h-7 items-center justify-between gap-1 pr-1 pl-2">
-          <h2 className="min-w-0">
+          <Heading level={2} variant="inherit" className="min-w-0">
             <CollapsibleTrigger asChild>
               <Button type="button" variant="disclosure" size="xs" className="-ml-2">
                 {sectionLabels[section]}
@@ -83,7 +84,7 @@ export function ConversationSection({
                 />
               </Button>
             </CollapsibleTrigger>
-          </h2>
+          </Heading>
           {section !== "partner" && (
             <ConversationCreateMenu
               section={section}

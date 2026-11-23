@@ -8,6 +8,7 @@ import { ConversationActionsMenu } from "@/components/messaging/conversations/ac
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { AppTable, createAppColumnHelper } from "@/components/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Pressable } from "@/components/ui/pressable";
 import type { ConversationMember } from "@/lib/messaging/conversations";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { Hash, LockKeyhole, UserPlus, Users } from "lucide-react";
@@ -35,9 +36,8 @@ function MemberSummary({ members }: { members: ConversationMember[] }) {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <button
-          type="button"
-          className="flex items-center gap-2 rounded-md text-sm text-muted-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+        <Pressable
+          className="flex items-center gap-2 rounded-md text-sm text-muted-foreground"
           aria-label={`View ${label}`}
         >
           <span className="flex gap-0.5">
@@ -51,7 +51,7 @@ function MemberSummary({ members }: { members: ConversationMember[] }) {
             ))}
           </span>
           <span className="whitespace-nowrap tabular-nums">{label}</span>
-        </button>
+        </Pressable>
       </PopoverTrigger>
       <PopoverContent align="start" collisionPadding={8}>
         <p className="px-2 text-sm font-medium">Members</p>

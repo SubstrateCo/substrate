@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
 import { Button } from "../ui/button";
 import { Field, FieldDescription } from "../ui/field";
+import { Image } from "../ui/image";
 import { Skeleton } from "../ui/skeleton";
 import { Spinner } from "../ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
@@ -12,7 +13,6 @@ import { openPicture, pictureErrorMessage } from "./crop-image";
 import { FileUpload, FileUploadContent, FileUploadLayout } from "./file-upload";
 import { pictureAccept, pictureMaxSize } from "./file-validation";
 import { ImageCropDialog, type PictureUploadContext } from "./image-crop-dialog";
-import { PicturePreview } from "./picture-preview";
 import { initials } from "@/lib/people/initials";
 import { ImageIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";
@@ -223,12 +223,7 @@ function CurrentPicture({
   }
   return (
     <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted">
-      <PicturePreview
-        src={value}
-        alt={name}
-        className="size-full object-contain"
-        fallback={fallback}
-      />
+      <Image src={value} alt={name} className="size-full object-contain" fallback={fallback} />
     </div>
   );
 }

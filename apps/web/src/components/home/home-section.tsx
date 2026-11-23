@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Heading } from "@/components/ui/heading";
 import {
   Item,
   ItemActions,
@@ -121,10 +122,10 @@ export function HomeSection({
         <CardHeader className="flex shrink-0 items-start justify-between gap-3">
           <div className="space-y-1">
             <CardTitle>
-              <h2 className="flex items-center gap-2">
+              <Heading level={2} variant="inherit" className="flex items-center gap-2">
                 {titleIcon}
                 {title}
-              </h2>
+              </Heading>
             </CardTitle>
             {description && <CardDescription>{description}</CardDescription>}
           </div>

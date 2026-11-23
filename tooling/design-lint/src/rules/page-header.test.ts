@@ -1,36 +1,34 @@
 import { ruleTester } from "../test-support.ts";
 import { pageHeader } from "./page-header.ts";
 
+const heading = 'import { Heading } from "@/components/ui/heading";';
+
 ruleTester.run("page-header", pageHeader, {
   valid: [
     'export const a = <PageHeader title="Needs you" />;',
-    'export const a = <h2 className="text-sm font-semibold">Activity</h2>;',
-    "export const a = <h2>{title}</h2>;",
-    // A record's own title in its inspector is content, not a page header.
-    'export const a = <h2 className="text-lg/snug font-semibold">{task.title}</h2>;',
+    `${heading} export const a = <Heading level={2}>Activity</Heading>;`,
+    // A record's own name in its sheet is content, not a page header.
+    `${heading} export const a = <Heading level={2} variant="record">{task.title}</Heading>;`,
+    'import { Heading } from "another-library"; export const a = <Heading level={1} />;',
+    `${heading} function View(Heading) { return <Heading level={1} variant="page" />; }`,
   ],
   invalid: [
     {
-      code: 'export const a = <h1 className="text-xl font-semibold tracking-tight">Needs you</h1>;',
-      errors: [
-        {
-          message:
-            'A raw <h1> builds a page title by hand, so the title size, inset, and action alignment drift between pages. Use <PageHeader title="…" description="…" actions={…}> from "@/components/layout/page-header" (variant="pane" for 48px pane headers), SettingsPanel from "@/components/layout/settings-page" for a settings section, or AuthFrame from "@/components/auth/auth-frame" for guest pages. See apps/web/DESIGN.md § 3 Pages and settings.',
-        },
-      ],
+      code: `${heading} export const a = <Heading level={1} variant="page">Needs you</Heading>;`,
+      errors: [{ messageId: "pageTitle" }],
     },
     {
-      code: 'export const a = <h2 className="mb-7 text-xl font-semibold tracking-tight">{title}</h2>;',
-      errors: [{ messageId: "sectionTitle", data: { tag: "h2", size: "text-xl" } }],
+      // An h1 is the page's title whatever it looks like.
+      code: `${heading} export const a = <Heading level={1}>Needs you</Heading>;`,
+      errors: [{ messageId: "pageTitle" }],
     },
     {
-      code: 'export const a = <h3 className={cn("font-semibold", "text-lg/snug")}>Project</h3>;',
-      errors: [{ messageId: "sectionTitle", data: { tag: "h3", size: "text-lg/snug" } }],
+      code: 'import * as Type from "../ui/heading"; export const a = <Type.Heading level={2} variant="page" />;',
+      errors: [{ messageId: "pageTitle" }],
     },
     {
-      // A record field beside fixed text is still a hand-built heading.
-      code: 'export const a = <h2 className="text-lg">Settings for {project.name}</h2>;',
-      errors: [{ messageId: "sectionTitle", data: { tag: "h2", size: "text-lg" } }],
+      code: `${heading} export const a = <Heading level={2} variant="section">General</Heading>;`,
+      errors: [{ messageId: "sectionTitle" }],
     },
   ],
 });

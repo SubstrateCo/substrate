@@ -10,6 +10,7 @@ import {
 
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { FieldDescription, FieldError } from "@/components/ui/field";
+import { Pressable } from "@/components/ui/pressable";
 import {
   addTypedRecipients,
   isEmailAddress,
@@ -271,6 +272,7 @@ export function PeoplePicker({
           />
         ))}
         {showInput && (
+          // oxlint-disable-next-line design/no-native-element -- The typing area of a token field: the people-picker container draws the field border and focus ring, so the Input chrome would double them.
           <input
             ref={input}
             id={id}
@@ -440,15 +442,14 @@ function RecipientChip({
         <Mail aria-hidden="true" className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
       )}
       <span className="truncate">{label}</span>
-      <button
-        type="button"
+      <Pressable
         disabled={disabled}
         aria-label={`Remove ${label}`}
-        className="flex size-5 shrink-0 items-center justify-center rounded-sm text-muted-foreground outline-none hover:bg-row-highlight hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+        className="flex size-5 shrink-0 items-center justify-center text-muted-foreground hover:bg-row-highlight hover:text-foreground"
         onClick={onRemove}
       >
         <X aria-hidden="true" className="size-3" />
-      </button>
+      </Pressable>
     </span>
   );
 }

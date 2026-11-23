@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Image } from "@/components/ui/image";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Download } from "lucide-react";
@@ -96,9 +97,10 @@ function ViewerImage({ src, filename }: { src: string; filename: string }) {
         </p>
       )}
       {status !== "failed" && (
-        <img
+        <Image
           src={src}
           alt={filename}
+          loading="eager"
           className="max-h-96 w-full object-contain"
           onLoad={() => setStatus("ready")}
           onError={() => setStatus("failed")}

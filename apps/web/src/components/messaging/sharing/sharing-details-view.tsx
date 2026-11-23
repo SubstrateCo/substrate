@@ -6,6 +6,7 @@ import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import {
   Item,
   ItemActions,
@@ -43,7 +44,9 @@ function pendingStatus(invite: Invitation, now: number) {
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <section className="grid gap-1">
-      <h3 className="text-xs font-medium text-muted-foreground">{title}</h3>
+      <Heading level={3} variant="label">
+        {title}
+      </Heading>
       <ul className="grid gap-0.5">{children}</ul>
     </section>
   );
@@ -239,7 +242,9 @@ export function SharingDetailsView({
       )}
       {details.events.length > 0 && (
         <section className="grid gap-1">
-          <h3 className="text-xs font-medium text-muted-foreground">Activity</h3>
+          <Heading level={3} variant="label">
+            Activity
+          </Heading>
           <ul className="grid gap-1.5">
             {details.events.map((event) => (
               <li key={event.id} className="flex items-baseline gap-2 text-sm">

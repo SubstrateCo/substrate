@@ -1,6 +1,7 @@
 import { createContext, useContext, useId, type ComponentType, type ReactNode } from "react";
 
 import { toneBorder, toneFill } from "@/components/feedback/tag";
+import { Heading } from "@/components/ui/heading";
 import { cn } from "cn";
 
 type Tone = "default" | "attention";
@@ -48,9 +49,9 @@ export function MessageCard({
               tone === "attention" ? "text-warning" : "text-muted-foreground",
             )}
           />
-          <h3 id={titleId} className="shrink-0 text-sm font-semibold">
+          <Heading level={3} id={titleId} className="shrink-0">
             {title}
-          </h3>
+          </Heading>
           {meta && (
             <span className="min-w-0 truncate text-xs text-muted-foreground tabular-nums">
               {meta}

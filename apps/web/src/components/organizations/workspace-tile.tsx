@@ -1,6 +1,6 @@
+import { Image } from "../ui/image";
 import { Skeleton } from "../ui/skeleton";
 import { Spinner } from "../ui/spinner";
-import { PicturePreview } from "../upload/picture-preview";
 import { initials } from "@/lib/people/initials";
 
 /**
@@ -30,7 +30,7 @@ export function WorkspaceTile({
       {opening ? (
         <Spinner aria-hidden="true" role="presentation" />
       ) : (
-        <PicturePreview
+        <Image
           src={logo}
           className="size-full rounded-lg object-contain"
           fallback={initials(name)}

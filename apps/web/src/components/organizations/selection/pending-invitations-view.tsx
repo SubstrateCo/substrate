@@ -5,6 +5,7 @@ import { WorkspaceTile } from "../workspace-tile";
 import { ErrorState } from "@/components/feedback/error-state";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import { Item, ItemActions, ItemContent, ItemDescription } from "@/components/ui/item";
 import { roleLabel } from "@/lib/organizations/member-policy";
 
@@ -34,9 +35,9 @@ export function PendingInvitations({
   if (invitations.length === 0 && !error) return null;
   return (
     <section className="space-y-2" aria-labelledby="pending-invitations-title">
-      <h2 id="pending-invitations-title" className="text-xs font-medium text-muted-foreground">
+      <Heading level={2} variant="label" id="pending-invitations-title">
         Invitations
-      </h2>
+      </Heading>
       {error && (
         <ErrorState
           compact

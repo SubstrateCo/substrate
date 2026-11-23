@@ -17,6 +17,8 @@ import { TaskListItem } from "./task-list-item";
 import { TaskFilterLayout, TaskGroupHeaderLayout } from "./task-list-layout";
 import { TaskListToolbar } from "./task-list-toolbar";
 import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
+import { Pressable } from "@/components/ui/pressable";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChevronRight, ListTodo, Plus, SearchX } from "lucide-react";
 
@@ -133,10 +135,9 @@ export function TaskList({
             return (
               <div key={status} role="group" aria-labelledby={`${listId}-${status}-label`}>
                 <TaskGroupHeaderLayout>
-                  <h2 className="min-w-0 flex-1">
-                    <button
-                      type="button"
-                      className="flex h-8 items-center gap-1.5 rounded-md px-1.5 text-sm font-medium outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                  <Heading level={2} variant="inherit" className="min-w-0 flex-1">
+                    <Pressable
+                      className="flex h-8 items-center gap-1.5 rounded-md px-1.5 text-sm font-medium"
                       aria-expanded={open}
                       aria-controls={`${listId}-${status}`}
                       onClick={() => setCollapsed((current) => ({ ...current, [status]: open }))}
@@ -150,8 +151,8 @@ export function TaskList({
                       <span className="font-normal text-muted-foreground tabular-nums">
                         {rows.length}
                       </span>
-                    </button>
-                  </h2>
+                    </Pressable>
+                  </Heading>
                   {onCreate && (
                     <span className="opacity-0 transition-opacity duration-150 group-hover/header:opacity-100 has-focus-visible:opacity-100">
                       <Tooltip>

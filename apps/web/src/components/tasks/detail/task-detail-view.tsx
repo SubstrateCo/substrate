@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "../../ui/button";
+import { Heading } from "../../ui/heading";
+import { Pressable } from "../../ui/pressable";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { ProjectIcon } from "../projects/project-icon";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
@@ -70,13 +72,12 @@ export function TaskDetail({
                 {parent ? (
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <button
-                        type="button"
-                        className="min-w-0 truncate rounded-sm outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                      <Pressable
+                        className="min-w-0 truncate hover:text-foreground"
                         onClick={() => onSelectTask(parent.entityId)}
                       >
                         {parent.title}
-                      </button>
+                      </Pressable>
                     </TooltipTrigger>
                     <TooltipContent>{parent.title}</TooltipContent>
                   </Tooltip>
@@ -115,20 +116,21 @@ export function TaskDetail({
             renderEditor(() => setEditing(false))
           ) : (
             <div className="grid gap-2">
-              <h2 className="text-lg/snug font-semibold wrap-break-word">{task.title}</h2>
+              <Heading level={2} variant="record">
+                {task.title}
+              </Heading>
               {task.description && (
                 <p className="text-sm/relaxed wrap-break-word whitespace-pre-wrap">
                   {task.description}
                 </p>
               )}
               {!task.description && canEdit && (
-                <button
-                  type="button"
-                  className="-mx-1 w-fit rounded-sm px-1 text-left text-sm text-muted-foreground outline-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50"
+                <Pressable
+                  className="-mx-1 w-fit px-1 text-left text-sm text-muted-foreground hover:text-foreground"
                   onClick={() => setEditing(true)}
                 >
                   Add a description
-                </button>
+                </Pressable>
               )}
             </div>
           )}

@@ -11,6 +11,7 @@ import { useMemo, useState } from "react";
 import { interactionKinds, interactionTypes, type InteractionActivity } from "./interaction-types";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Heading } from "@/components/ui/heading";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDayLabel, formatShortDate, parseDateOnly } from "@/lib/format/date";
 import { ChevronLeft, ChevronRight } from "lucide-react";
@@ -123,7 +124,9 @@ export function InteractionChart({
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div className="space-y-1">
             <CardTitle>
-              <h2>Activity by interaction type</h2>
+              <Heading level={2} variant="inherit">
+                Activity by interaction type
+              </Heading>
             </CardTitle>
             <CardDescription>
               Select a bar to see that day’s interactions · your local time

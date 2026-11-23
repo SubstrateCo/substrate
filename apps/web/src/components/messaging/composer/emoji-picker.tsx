@@ -1,6 +1,7 @@
 import { useRef, useState } from "react";
 
 import { Button } from "../../ui/button";
+import { Heading } from "../../ui/heading";
 import { Input } from "../../ui/input";
 import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
@@ -24,7 +25,9 @@ function EmojiGrid({
 }) {
   return (
     <section aria-label={label} className="space-y-1">
-      <h4 className="px-1 text-xs font-medium text-muted-foreground">{label}</h4>
+      <Heading level={4} variant="label" className="px-1">
+        {label}
+      </Heading>
       <div className="grid grid-cols-8 gap-0.5">
         {emojis.map(({ emoji, name }, index) => (
           <Tooltip key={emoji}>

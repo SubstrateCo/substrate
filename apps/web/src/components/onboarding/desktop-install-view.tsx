@@ -2,6 +2,7 @@ import { Link, type LinkProps } from "@tanstack/react-router";
 
 import { ErrorState } from "@/components/feedback/error-state";
 import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ArrowUpRight, Download, Laptop } from "lucide-react";
 
@@ -71,9 +72,9 @@ export function DesktopInstallView({
             <Laptop className="size-4" />
           </span>
           <div className="min-w-0 space-y-1">
-            <h2 id="desktop-install-title" className="text-sm font-semibold">
+            <Heading level={2} id="desktop-install-title">
               {title}
-            </h2>
+            </Heading>
             {summary}
           </div>
         </div>

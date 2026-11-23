@@ -3,6 +3,8 @@ import { useId, type ReactNode } from "react";
 import { PendingButton } from "../feedback/pending-button";
 import { toneBorder } from "../feedback/tag";
 import { Button } from "../ui/button";
+import { FieldLabel } from "../ui/field";
+import { Heading } from "../ui/heading";
 import { Item, ItemActions, ItemContent } from "../ui/item";
 import { cn } from "cn";
 
@@ -30,9 +32,9 @@ export function SettingsSection({
     >
       <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
         <div className="min-w-0 flex-1 basis-72 space-y-1">
-          <h2 id={`${id}-title`} className="text-base font-semibold">
+          <Heading level={2} variant="section" id={`${id}-title`}>
             {title}
-          </h2>
+          </Heading>
           {description && <p className="text-sm text-muted-foreground">{description}</p>}
         </div>
         {/* Always on the title row's right edge, even when it wraps below a long description. */}
@@ -102,9 +104,9 @@ export function GroupTitle({
   const text = (
     <div className={cn("space-y-1", actions && "min-w-0 flex-1")}>
       {title && (
-        <h3 id={id} className="text-sm font-semibold">
+        <Heading level={3} id={id}>
           {title}
-        </h3>
+        </Heading>
       )}
       {description && <p className="text-sm text-muted-foreground">{description}</p>}
     </div>
@@ -137,9 +139,7 @@ export function SettingsRow({
     <Item>
       <ItemContent className="min-w-0 basis-56">
         {htmlFor ? (
-          <label htmlFor={htmlFor} className="font-medium">
-            {label}
-          </label>
+          <FieldLabel htmlFor={htmlFor}>{label}</FieldLabel>
         ) : (
           <p className="font-medium">{label}</p>
         )}

@@ -4,6 +4,7 @@ import { CalendarColorDot } from "../calendar-color";
 import { ProviderIcon } from "../provider-icon";
 import { PageSidebarGroupTitle } from "@/components/layout/page-layout";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import type { CalendarGroup } from "@/lib/calendar/groups";
 import { Unlink } from "lucide-react";
 
@@ -41,10 +42,7 @@ export function CalendarFilter({
               const checkboxId = `${id}-${calendar.entityId}`;
               return (
                 <li key={calendar.entityId}>
-                  <label
-                    htmlFor={checkboxId}
-                    className="flex h-8 cursor-pointer items-center gap-2 rounded-md px-2 text-sm transition-colors hover:bg-row-hover"
-                  >
+                  <Label variant="row" htmlFor={checkboxId}>
                     <Checkbox
                       id={checkboxId}
                       checked={!hidden.has(calendar.entityId)}
@@ -57,7 +55,7 @@ export function CalendarFilter({
                     {calendar.syncStatus === "disconnected" && (
                       <span className="shrink-0 text-xs text-muted-foreground">Disconnected</span>
                     )}
-                  </label>
+                  </Label>
                 </li>
               );
             })}

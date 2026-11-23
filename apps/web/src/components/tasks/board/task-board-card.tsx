@@ -6,11 +6,12 @@ import { TaskStatusMenu } from "../list/task-status-menu";
 import { taskPriorityLabels } from "../task-cues/task-labels";
 import { TaskPriorityIcon } from "../task-cues/task-priority-icon";
 import type { ProjectDetail, Task } from "../types";
-import { BoardCard, boardCardTarget } from "@/components/layout/board";
+import { BoardCard } from "@/components/layout/board";
 import { actionRow, RowActions } from "@/components/layout/row-actions";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { DueDate } from "@/components/time/due-date";
 import { Button } from "@/components/ui/button";
+import { Pressable } from "@/components/ui/pressable";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useDraggable } from "@dnd-kit/core";
 import { cn } from "cn";
@@ -55,15 +56,15 @@ export function TaskBoardCard({
             disabled={statusPending}
           />
         </span>
-        <button
-          type="button"
+        <Pressable
           aria-label={`Open ${task.title}`}
           aria-current={selected || undefined}
           onClick={onSelect}
-          className={cn(boardCardTarget, "min-w-0 flex-1 py-0.5 text-left")}
+          focus="stretched"
+          className="min-w-0 flex-1 py-0.5 text-left font-medium wrap-break-word"
         >
           {task.title}
-        </button>
+        </Pressable>
       </div>
       {onStatusChange && (
         <RowActions label={`Actions for ${task.title}`} className="absolute top-2 right-2 z-10">

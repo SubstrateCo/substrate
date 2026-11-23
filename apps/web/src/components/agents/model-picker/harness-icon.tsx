@@ -4,6 +4,7 @@ import claude from "./icons/claude.svg";
 import codex from "./icons/codex.svg";
 import opencodeDark from "./icons/opencode-dark.svg";
 import opencodeLight from "./icons/opencode-light.svg";
+import { Image } from "@/components/ui/image";
 
 const icons = { claude, codex };
 
@@ -19,13 +20,11 @@ export function HarnessIcon({
   const mark =
     harness === "opencode" ? (
       <span aria-hidden="true" className={`${size} shrink-0`}>
-        <img src={opencodeLight} alt="" className="size-full object-contain dark:hidden" />
-        <img src={opencodeDark} alt="" className="hidden size-full object-contain dark:block" />
+        <Image src={opencodeLight} darkSrc={opencodeDark} className="size-full object-contain" />
       </span>
     ) : (
-      <img
+      <Image
         src={icons[harness]}
-        alt=""
         className={`${size} shrink-0 object-contain ${harness === "codex" ? "dark:invert" : ""}`}
       />
     );

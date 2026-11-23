@@ -6,6 +6,7 @@ import { CalendarColorDot } from "../calendar-color";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { Tag } from "@/components/feedback/tag";
 import { SettingsList } from "@/components/layout/settings-section";
+import { Heading } from "@/components/ui/heading";
 import { Item, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { agendaTimeLabel, eventEnded, eventTitle, type AgendaDay } from "@/lib/calendar/days";
 import { formatDayLabel, formatShortDate, isSameDay } from "@/lib/format/date";
@@ -33,17 +34,14 @@ export function CalendarAgenda({
           const today = isSameDay(group.day, now);
           return (
             <li key={group.key} aria-labelledby={`agenda-${group.key}`} className="space-y-2">
-              <h2
-                id={`agenda-${group.key}`}
-                className="flex items-baseline gap-2 text-sm font-semibold"
-              >
+              <Heading level={2} id={`agenda-${group.key}`} className="flex items-baseline gap-2">
                 <span className={cn(today && "text-primary")}>{label}</span>
                 {(label === "Today" || label === "Yesterday") && (
                   <span className="text-xs font-normal text-muted-foreground">
                     {formatShortDate(group.day, now)}
                   </span>
                 )}
-              </h2>
+              </Heading>
               {events.length === 0 ? (
                 <ContentNotice variant="inline" title="No events" />
               ) : (

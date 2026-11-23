@@ -20,6 +20,7 @@ export const noNativeActionTitle: Rule = {
           const module = imported.source.replace(/\.[jt]sx?$/, "");
           const action =
             (imported.name === "Button" && module.endsWith("/ui/button")) ||
+            (imported.name === "Pressable" && module.endsWith("/ui/pressable")) ||
             (/^DropdownMenu(?:Checkbox|Radio)?Item$/.test(imported.name) &&
               module.endsWith("/ui/dropdown-menu"));
           if (!action || !/^(?:@\/components\/|\.\.?\/)/.test(module)) return;

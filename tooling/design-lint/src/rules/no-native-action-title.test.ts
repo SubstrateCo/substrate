@@ -23,6 +23,10 @@ ruleTester.run("no-native-action-title", noNativeActionTitle, {
       errors: [{ messageId: "title" }],
     },
     {
+      code: 'import { Pressable } from "@/components/ui/pressable"; <Pressable title="Open task" />;',
+      errors: [{ messageId: "title" }],
+    },
+    {
       code: 'import * as Menu from "../ui/dropdown-menu"; <Menu.DropdownMenuItem title="Delete task" />;',
       errors: [{ messageId: "title" }],
     },

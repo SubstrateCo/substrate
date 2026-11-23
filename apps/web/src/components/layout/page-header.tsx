@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import { Button } from "../ui/button";
+import { Heading } from "../ui/heading";
 import { cva } from "class-variance-authority";
 import { cn } from "cn";
 import { ArrowLeft } from "lucide-react";
@@ -57,21 +58,23 @@ export function PageHeader({
       <div
         className={cn("min-w-0", page ? "flex-1 basis-60 space-y-1" : "flex items-center gap-2")}
       >
-        <h1
+        <Heading
+          level={1}
+          variant={page ? "page" : "title"}
           className={cn(
-            "min-w-0 font-semibold",
+            "min-w-0",
             page
               ? cn(
-                  "text-xl tracking-tight wrap-break-word",
+                  "wrap-break-word",
                   // The caller sizes a page icon, such as a size-6 project image.
                   icon && "flex items-center gap-2",
                 )
-              : "flex items-center gap-2 truncate text-sm [&_svg]:size-4 [&_svg]:shrink-0",
+              : "flex items-center gap-2 truncate [&_svg]:size-4 [&_svg]:shrink-0",
           )}
         >
           {icon}
           <span className={page ? "min-w-0" : "truncate"}>{title}</span>
-        </h1>
+        </Heading>
         {page && description && <p className="text-sm text-muted-foreground">{description}</p>}
       </div>
       {actions && (

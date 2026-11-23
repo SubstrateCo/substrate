@@ -4,6 +4,8 @@ import {
   type HarnessKind,
 } from "@substrate/contracts/harness";
 
+import { Heading } from "@/components/ui/heading";
+
 export function StartupInstructions({
   harness,
   name,
@@ -25,9 +27,9 @@ export function StartupInstructions({
   return (
     <section aria-labelledby="startup-instructions-title" className="grid gap-3">
       <div className="space-y-1">
-        <h4 id="startup-instructions-title" className="sr-only">
+        <Heading level={4} variant="inherit" id="startup-instructions-title" className="sr-only">
           Substrate instructions
-        </h4>
+        </Heading>
         <p className="text-xs text-muted-foreground">
           Written to {harnessInstructionsFiles[harness]} before your additional instructions for new
           sessions. Existing agent-folder files are kept; Reset defaults in Skills rewrites them.

@@ -1,6 +1,7 @@
 import type { ComponentProps, ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "cn";
 
@@ -30,11 +31,11 @@ export function RecordSection({
   return (
     <section className={cn("grid min-w-0 content-start gap-2", className)} {...section}>
       <div className="flex min-h-7 items-center justify-between gap-2">
-        <h3 className="flex min-w-0 items-center gap-1.5 text-xs font-medium text-muted-foreground">
+        <Heading level={3} variant="label" className="flex min-w-0 items-center gap-1.5">
           {title}
           {count !== undefined && <span className="font-normal tabular-nums">{count}</span>}
           {cue}
-        </h3>
+        </Heading>
         {actions && <div className="flex shrink-0 items-center gap-0.5">{actions}</div>}
       </div>
       {description && <p className="text-xs text-muted-foreground">{description}</p>}

@@ -8,6 +8,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "../ui/empty";
+import { Heading } from "../ui/heading";
 import { cn } from "cn";
 import { Inbox, type LucideIcon } from "lucide-react";
 
@@ -59,7 +60,9 @@ export function ContentNotice({
         <div className="min-w-0 space-y-3">
           <div className="space-y-1">
             <EmptyTitle>
-              <h2>{title}</h2>
+              <Heading level={2} variant="inherit">
+                {title}
+              </Heading>
             </EmptyTitle>
             {description && (
               <EmptyDescription className="wrap-break-word">{description}</EmptyDescription>
@@ -76,7 +79,9 @@ export function ContentNotice({
           <Icon aria-hidden="true" />
         </EmptyMedia>
         <EmptyTitle>
-          <h2>{title}</h2>
+          <Heading level={2} variant="inherit">
+            {title}
+          </Heading>
         </EmptyTitle>
         {description && (
           <EmptyDescription className="wrap-break-word">{description}</EmptyDescription>

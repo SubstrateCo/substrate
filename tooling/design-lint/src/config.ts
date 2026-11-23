@@ -106,6 +106,26 @@ export const designConfig = {
             },
           },
           {
+            pattern: "^Heading$",
+            // outline-none: a heading that takes focus with tabIndex={-1} after a step changes.
+            allow: ["layout", "spacing", "wrap-*", "break-*", "truncate", "outline-none"],
+            message:
+              '"{{className}}" restyles <Heading>. Pick the type role with variant ({{variants}}); use variant="inherit" when a container such as CardTitle sets the type.',
+          },
+          {
+            pattern: "^Image$",
+            allow: ["layout", "shape", "invert", "rotate-*"],
+            message:
+              '"{{className}}" restyles <Image>. Size, fit, and radius are fine; for a mark drawn for one background, pass darkSrc instead of recoloring it.',
+          },
+          {
+            pattern: "^Pressable$",
+            allow: ["layout", "spacing", "typography", "color", "shape", "motion"],
+            deny: ["ring-*", "outline-*"],
+            message:
+              '"{{className}}" changes the focus ring of <Pressable>, which owns it so every click target shows the same one. For a target that fills a row use focus="inset".',
+          },
+          {
             pattern: "^PageSheetBody$",
             allow: ["layout"],
             message:
@@ -161,7 +181,6 @@ export const designConfig = {
         "design/dialog-footer-order": "error",
         "design/dialog-structure": "warn",
         "design/elevation": "error",
-        "design/heading-role": "warn",
         "design/icon-button-name": "error",
         "design/icon-button-tooltip": "warn",
         "design/motion": "error",
@@ -170,6 +189,7 @@ export const designConfig = {
         "design/no-native-action-title": "error",
         "design/no-native-date-input": "error",
         "design/no-native-dialogs": "error",
+        "design/no-native-element": "error",
         "design/no-opacity-tint": "warn",
         "design/no-pressed-outline": "error",
         "design/no-raw-error-message": "warn",
@@ -186,11 +206,32 @@ export const designConfig = {
         "no-restricted-imports": [
           "error",
           {
+            paths: [
+              {
+                name: "radix-ui",
+                allowImportNames: ["Slot"],
+                message: `Use the primitive in ${WEB}/components/ui that wraps this Radix part. Add one with the shadcn CLI if it is missing.`,
+              },
+              {
+                name: "sonner",
+                allowImportNames: ["toast"],
+                message: 'Only toast comes from sonner. The Toaster is "@/components/ui/sonner".',
+              },
+              {
+                name: "react-resizable-panels",
+                allowTypeImports: true,
+                message: 'Use the panels from "@/components/ui/resizable".',
+              },
+            ],
             patterns: [
               {
                 group: ["**/ui/table", "**/ui/table.*"],
                 message:
                   'Use AppTable from "@/components/table/app-table". Only its implementation imports the raw table primitives.',
+              },
+              {
+                group: ["@radix-ui/*", "@base-ui/*", "cmdk", "react-day-picker", "vaul"],
+                message: `Use the primitive in ${WEB}/components/ui that wraps this library. Add one with the shadcn CLI if it is missing.`,
               },
             ],
           },
@@ -214,10 +255,10 @@ export const designConfig = {
         "design/dialog-footer-order": "off",
         "design/dialog-structure": "off",
         "design/elevation": "off",
-        "design/heading-role": "off",
         "design/icon-button-name": "off",
         "design/icon-button-tooltip": "off",
         "design/motion": "off",
+        "design/no-native-element": "off",
         "design/no-raw-error-message": "off",
         "design/no-solid-destructive": "off",
         "design/page-header": "off",

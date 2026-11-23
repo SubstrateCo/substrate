@@ -13,6 +13,7 @@ import {
 import { TaskStatusMenu } from "./task-status-menu";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { DueDate } from "@/components/time/due-date";
+import { Pressable } from "@/components/ui/pressable";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "cn";
 import { Ban, CornerDownRight } from "lucide-react";
@@ -69,14 +70,12 @@ export function TaskListItem({
         onChange={onStatusChange}
         disabled={statusPending}
       />
-      <button
-        type="button"
+      <Pressable
+        focus="inset"
         aria-current={selected || undefined}
         onClick={onSelect}
-        className={cn(
-          taskRowContentClassName,
-          "rounded-sm text-left outline-none focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset",
-        )}
+        // oxlint-disable-next-line shadcn/require-static-classes -- A static layout string shared with the loading rows in project-loading.tsx, so the skeleton lines up with the row.
+        className={cn(taskRowContentClassName, "text-left")}
       >
         <span className="flex min-w-0 flex-1 items-center gap-2">
           <span className="sr-only">{taskStatusLabels[task.status]}: </span>
@@ -116,7 +115,7 @@ export function TaskListItem({
             </>
           )}
         </span>
-      </button>
+      </Pressable>
       <TaskListAssignee assignee={assignee} assigned={Boolean(task.assigneeActorEntityId)} />
     </li>
   );

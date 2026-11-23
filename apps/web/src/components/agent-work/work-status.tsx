@@ -1,4 +1,5 @@
 import { PendingButton } from "@/components/feedback/pending-button";
+import { Pressable } from "@/components/ui/pressable";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { WorkTone } from "@/lib/agent-work/status";
 import { cn } from "cn";
@@ -46,10 +47,9 @@ export function WorkStatus({
     <span className="flex max-w-full min-w-0 items-center gap-1">
       <Tooltip>
         <TooltipTrigger asChild>
-          <button
-            type="button"
+          <Pressable
             onClick={onTranscript}
-            className="group/status flex max-w-full min-w-0 items-center gap-1.5 rounded-md px-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none"
+            className="group/status flex max-w-full min-w-0 items-center gap-1.5 rounded-md px-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <ToneIcon tone={tone} />
             <span
@@ -70,7 +70,7 @@ export function WorkStatus({
               className="size-3 shrink-0 opacity-0 transition-opacity group-hover/status:opacity-100 group-focus-visible/status:opacity-100"
             />
             <span className="sr-only">Open transcript</span>
-          </button>
+          </Pressable>
         </TooltipTrigger>
         <TooltipContent>Open transcript</TooltipContent>
       </Tooltip>

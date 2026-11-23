@@ -1,4 +1,4 @@
-import { PicturePreview } from "@/components/upload/picture-preview";
+import { Image } from "@/components/ui/image";
 import { cn } from "cn";
 import { FolderKanban } from "lucide-react";
 
@@ -11,7 +11,7 @@ export function ProjectIcon({ image, className }: { image?: string | null; class
         className,
       )}
     >
-      <PicturePreview
+      <Image
         src={image}
         alt=""
         className="size-full object-cover"

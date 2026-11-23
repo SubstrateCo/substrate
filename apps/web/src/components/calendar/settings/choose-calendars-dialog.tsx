@@ -23,10 +23,8 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { CalendarDays, RotateCcw, TriangleAlert } from "lucide-react";
-
-const optionRow =
-  "flex cursor-pointer items-center gap-2.5 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-row-hover has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-row-selected has-disabled:cursor-default has-disabled:opacity-60 has-disabled:hover:bg-transparent";
 
 /** The calendars to preselect: the primary one, unless it is connected already. */
 const initialSelection = (options: readonly ProviderCalendarOption[]) =>
@@ -202,20 +200,22 @@ function CalendarOptionList({
       {options.map((option, index) => {
         const connected = !!option.connectedEntityId;
         return (
-          <label key={option.providerCalendarId} htmlFor={`${id}-${index}`} className={optionRow}>
-            <Checkbox
-              id={`${id}-${index}`}
-              checked={connected || selected.has(option.providerCalendarId)}
-              disabled={connected || pending}
-              onCheckedChange={(checked) => onToggle(option.providerCalendarId, checked === true)}
-            />
-            <CalendarColorDot color={option.color} />
-            <span className="min-w-0 flex-1 truncate" title={option.name}>
-              {option.name}
-            </span>
-            {option.isPrimary && <Tag>Primary</Tag>}
-            {connected && <Tag>Connected</Tag>}
-          </label>
+          <FieldLabel key={option.providerCalendarId} htmlFor={`${id}-${index}`}>
+            <Field orientation="horizontal">
+              <Checkbox
+                id={`${id}-${index}`}
+                checked={connected || selected.has(option.providerCalendarId)}
+                disabled={connected || pending}
+                onCheckedChange={(checked) => onToggle(option.providerCalendarId, checked === true)}
+              />
+              <CalendarColorDot color={option.color} />
+              <span className="min-w-0 flex-1 truncate" title={option.name}>
+                {option.name}
+              </span>
+              {option.isPrimary && <Tag>Primary</Tag>}
+              {connected && <Tag>Connected</Tag>}
+            </Field>
+          </FieldLabel>
         );
       })}
     </div>
