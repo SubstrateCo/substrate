@@ -9,7 +9,7 @@ import { PendingButton } from "@/components/feedback/pending-button";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
 import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
-import { SettingsSection } from "@/components/layout/settings-section";
+import { SettingsList, SettingsSection } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import { formatDateTime, formatTimeZone, formatZonedDateTime } from "@/lib/format/date";
 import { cn } from "cn";
@@ -26,7 +26,7 @@ function RoutineContent({ children }: { children: ReactNode }) {
 function RoutineRowsLoading() {
   return (
     <div role="status" aria-label="Loading routines">
-      <ul aria-hidden="true" className="divide-y overflow-hidden rounded-xl border bg-card">
+      <SettingsList hidden>
         {[0, 1].map((i) => (
           <RoutineRow key={i}>
             <RoutineContent>
@@ -42,7 +42,7 @@ function RoutineRowsLoading() {
             </RoutineContent>
           </RoutineRow>
         ))}
-      </ul>
+      </SettingsList>
     </div>
   );
 }
@@ -106,7 +106,7 @@ export function RoutineListView({
         />
       )}
       {routines.length > 0 && (
-        <ul aria-label="Routines" className="divide-y overflow-hidden rounded-xl border bg-card">
+        <SettingsList label="Routines">
           {routines.map((routine) => {
             const needsApproval = routine.approvedRevision !== routine.revision;
             const next = nextRun(routine);
@@ -162,7 +162,7 @@ export function RoutineListView({
               </RoutineRow>
             );
           })}
-        </ul>
+        </SettingsList>
       )}
       {error && routines.length > 0 && (
         <ErrorState compact title="Couldn’t refresh routines" onRetry={onRetry} />

@@ -157,7 +157,7 @@ function PaneMessages({
         description={
           state === "unavailable"
             ? "This conversation was removed or you no longer have access."
-            : "Check your connection and try again."
+            : undefined
         }
         error={error}
         onRetry={state === "unavailable" ? undefined : onRetry}

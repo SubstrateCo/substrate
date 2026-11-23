@@ -53,9 +53,6 @@ export function CrmResourceState({
       <ErrorState
         compact={compact}
         title={noun ? `Couldn’t load ${noun}` : "Couldn’t load CRM"}
-        description={
-          noun ? "Check your connection and try again." : "Your records are unavailable. Try again."
-        }
         onRetry={onRetry}
       />
     );

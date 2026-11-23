@@ -78,7 +78,8 @@ test("create customer records, record a call, and advance a linked deal", async 
   await expect(page.locator("html")).toHaveClass(/dark/);
 
   await visit(user, undefined, "/crm", { section: "deals" });
-  await page.getByRole("button", { name: "New deal", exact: true }).click();
+  // The header and the empty board both offer "New deal".
+  await page.getByRole("button", { name: "New deal", exact: true }).first().click();
   const dealDialog = page.getByRole("dialog", { name: "New deal", exact: true });
   await dealDialog.getByLabel("Title", { exact: true }).fill("Northstar workspace rollout");
   await selectCrmOption(page, "Account", "Northstar Labs");

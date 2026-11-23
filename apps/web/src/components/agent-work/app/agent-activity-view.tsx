@@ -7,7 +7,7 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
-import { SettingsSection } from "@/components/layout/settings-section";
+import { SettingsList, SettingsSection } from "@/components/layout/settings-section";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import { Timestamp } from "@/components/time/timestamp";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -44,7 +44,7 @@ function ActivityRowContent({
 function ActivityRowsLoading() {
   return (
     <div role="status" aria-label="Loading activity">
-      <ul aria-hidden="true" className="divide-y overflow-hidden rounded-xl border bg-card">
+      <SettingsList hidden>
         {[0, 1, 2].map((i) => (
           <li key={i} className="grid">
             <div className={activityRowClass}>
@@ -69,7 +69,7 @@ function ActivityRowsLoading() {
             </div>
           </li>
         ))}
-      </ul>
+      </SettingsList>
     </div>
   );
 }
@@ -141,7 +141,7 @@ export function AgentActivityView({
           />
         )}
         {rows.length > 0 && (
-          <ul aria-label="Activity" className="divide-y overflow-hidden rounded-xl border bg-card">
+          <SettingsList label="Activity">
             {rows.map((row) => (
               <li key={row.id} className="grid">
                 <button
@@ -179,7 +179,7 @@ export function AgentActivityView({
                 {row.attention}
               </li>
             ))}
-          </ul>
+          </SettingsList>
         )}
         {hasMore && (
           <PendingButton
@@ -199,7 +199,7 @@ export function AgentActivityView({
           title="Helpers"
           description="Short tasks this agent handed to helpers, with their reports."
         >
-          <ul aria-label="Helpers" className="divide-y overflow-hidden rounded-xl border bg-card">
+          <SettingsList label="Helpers">
             {helpers.map((helper) => (
               <li key={helper.id} className="text-sm">
                 <Collapsible className="group/helper">
@@ -239,7 +239,7 @@ export function AgentActivityView({
                 </Collapsible>
               </li>
             ))}
-          </ul>
+          </SettingsList>
         </SettingsSection>
       )}
     </div>

@@ -21,7 +21,7 @@ import { SortHeader } from "./sort-header";
 export type AppColumnMeta = {
   /** Amounts and counts are right-aligned with tabular figures. */
   align?: "start" | "end";
-  width?: "w-20" | "w-24" | "w-28" | "w-36" | "w-56";
+  width?: "w-20" | "w-24" | "w-28" | "w-36" | "w-44" | "w-56";
   /** Hide the column in a container narrower than this. */
   hideBelow?: "@3xl" | "@4xl";
   /** The cell holds a control (button, select), so it uses less vertical padding. */

@@ -4,6 +4,7 @@ import { useId } from "react";
 
 import { ProviderIcon } from "../provider-icon";
 import { CalendarRow, type CalendarRowActions } from "./calendar-row";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { InlineNotice } from "@/components/feedback/inline-notice";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
@@ -110,9 +111,9 @@ export function CalendarAccountCard({
           ))}
         </ul>
       ) : (
-        <p className="border-t px-5 py-4 text-sm text-muted-foreground">
-          No calendars connected from this account yet
-        </p>
+        <div className="border-t px-5 py-4">
+          <ContentNotice variant="inline" title="No calendars connected from this account yet" />
+        </div>
       )}
     </section>
   );

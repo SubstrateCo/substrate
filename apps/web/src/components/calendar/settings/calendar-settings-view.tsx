@@ -80,14 +80,13 @@ export function CalendarSettingsView({
         )}
         {error && <FormMessage error={error} errorDescription={errorDescription} />}
         {settings.accounts.length === 0 ? (
-          <div className="rounded-xl border bg-card p-5">
-            <ContentNotice
-              icon={CalendarDays}
-              title="No calendars connected"
-              description="Connect a calendar to see your meetings here and keep contacts up to date."
-              action={settings.providers.length > 0 ? connect("default") : undefined}
-            />
-          </div>
+          <ContentNotice
+            variant="compact"
+            icon={CalendarDays}
+            title="No calendars connected"
+            description="Connect a calendar to see your meetings here and keep contacts up to date."
+            action={settings.providers.length > 0 ? connect("default") : undefined}
+          />
         ) : (
           <div className="grid gap-4">
             {settings.accounts.map((account) => (

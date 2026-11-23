@@ -19,7 +19,7 @@ import { ConversationKindIcon } from "@/components/messaging/conversations/conve
 import { SharingManager } from "@/components/messaging/sharing/sharing-manager";
 import { Button } from "@/components/ui/button";
 import { sharingConversationOptions, sharingInboxOptions } from "@/queries/messaging/sharing";
-import { Globe } from "lucide-react";
+import { Globe, Inbox } from "lucide-react";
 
 export function SharingSettings({ organizationId }: { organizationId: string }) {
   const conversations = useQuery(sharingConversationOptions(organizationId));
@@ -112,7 +112,14 @@ function SharingRequestsCard({
           </div>
         </div>
       )}
-      {requests?.length === 0 && <ContentNotice variant="inline" title="No pending requests" />}
+      {requests?.length === 0 && (
+        <ContentNotice
+          variant="compact"
+          icon={Inbox}
+          title="No pending requests"
+          description="Invitations from other organizations to share a conversation appear here."
+        />
+      )}
       {requests?.map((invite) => (
         <div key={invite.id} className="flex flex-wrap items-center justify-between gap-3">
           <SharingRequestContent
@@ -159,7 +166,12 @@ function SharedConversationsCard({
         </div>
       )}
       {conversations?.length === 0 && (
-        <ContentNotice variant="inline" title="No conversations to manage" />
+        <ContentNotice
+          variant="compact"
+          icon={Globe}
+          title="No conversations to manage"
+          description="Conversations shared with other organizations appear here."
+        />
       )}
       {!!conversations?.length && (
         <ul aria-label="Shared conversations" className="divide-y">

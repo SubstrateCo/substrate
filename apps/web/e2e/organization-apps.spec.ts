@@ -73,7 +73,8 @@ test("owner enables independent apps, confirms disable, and restores preserved p
   await expect(page.getByRole("tab", { name: "Projects", exact: true })).toHaveCount(0);
   await page.keyboard.press("Escape");
   await visit(user, undefined, "/crm");
-  await expect(page.getByRole("button", { name: "New deal", exact: true })).toBeVisible();
+  // The header and the empty board both offer "New deal".
+  await expect(page.getByRole("button", { name: "New deal", exact: true }).first()).toBeVisible();
   const contact = await createCrm(account, { action: "createContact", displayName: "App contact" });
   await visit(user, undefined, "/contacts", { recordId: contact.entityId });
   await expect(page.getByRole("heading", { name: "App contact", exact: true })).toBeVisible();

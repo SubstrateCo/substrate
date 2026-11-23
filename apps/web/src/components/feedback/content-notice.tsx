@@ -8,6 +8,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from "../ui/empty";
+import { cn } from "cn";
 import { Inbox, type LucideIcon } from "lucide-react";
 
 /**
@@ -16,7 +17,8 @@ import { Inbox, type LucideIcon } from "lucide-react";
  *
  * - `pane`: the only content of a page or pane. Centered horizontally, top-anchored.
  * - `compact`: in a card or page section with its own heading.
- * - `inline`: one muted line in a sheet section, sidebar list, or board column.
+ * - `inline`: one muted line (red with `tone="error"`) in a sheet section, sidebar list, or board
+ *   column.
  */
 export function ContentNotice({
   title,
@@ -39,7 +41,10 @@ export function ContentNotice({
     return (
       <div
         role={role}
-        className="flex flex-wrap items-center gap-x-2 text-sm text-muted-foreground"
+        className={cn(
+          "flex flex-wrap items-center gap-x-2 text-sm",
+          tone === "error" ? "text-destructive" : "text-muted-foreground",
+        )}
       >
         <span>{title}</span>
         {action}

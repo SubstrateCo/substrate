@@ -58,7 +58,7 @@ export function memberColumns({
     }),
     column.accessor("joinedAt", {
       header: "Joined",
-      meta: { hideBelow: "@3xl" },
+      meta: { width: "w-28", hideBelow: "@3xl" },
       cell: ({ getValue }) => (
         <span className="text-muted-foreground">
           <Timestamp value={getValue()} format="date" />

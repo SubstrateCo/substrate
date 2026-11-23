@@ -53,7 +53,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
       className={cn(
         "h-9 px-3 text-left align-middle text-xs font-medium whitespace-nowrap text-muted-foreground has-[[role=checkbox]]:pr-0",
         tableColumnClasses,
-        "data-[width=w-20]:w-20 data-[width=w-24]:w-24 data-[width=w-28]:w-28 data-[width=w-36]:w-36 data-[width=w-56]:w-56",
+        "data-[width=w-20]:w-20 data-[width=w-24]:w-24 data-[width=w-28]:w-28 data-[width=w-36]:w-36 data-[width=w-44]:w-44 data-[width=w-56]:w-56",
         className,
       )}
       {...props}

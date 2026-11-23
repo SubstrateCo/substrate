@@ -66,12 +66,7 @@ export function ConversationSidebar({
         <PageSidebarContent onKeyDown={moveBetweenConversations}>
           {error && (
             <div className="px-2">
-              <ErrorState
-                compact
-                title="Couldn’t load conversations"
-                description="Check your connection and try again."
-                onRetry={onRetry}
-              />
+              <ErrorState inline title="Couldn’t load conversations" onRetry={onRetry} />
             </div>
           )}
           {(["channel", "partner", "dm"] as const).map((section) => (

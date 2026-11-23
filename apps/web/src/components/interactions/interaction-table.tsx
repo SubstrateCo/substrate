@@ -46,7 +46,7 @@ function interactionColumns(
             profileId: row.original.contactEntityId,
             recordId: undefined,
           })}
-          className={tableLink}
+          className="block truncate text-muted-foreground underline-offset-4 hover:underline"
           title={row.original.contactName}
         >
           {row.original.contactName}
@@ -65,7 +65,7 @@ function interactionColumns(
               workspaceId: organizationId,
               recordId: row.original.entityId,
             })}
-            className="block truncate underline-offset-4 hover:underline"
+            className={tableLink}
             aria-label={`Open interaction: ${row.original.summary}`}
             title={row.original.summary}
           >
@@ -138,7 +138,6 @@ export function InteractionTable({
   return (
     <AppTable
       name="Day’s interactions"
-      layout="fixed"
       columns={columns}
       data={rows}
       getRowId={(row) => row.entityId}

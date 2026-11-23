@@ -85,7 +85,9 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   ).toHaveCount(0);
   await expect(total(page)).toHaveText("51");
   await expect(page.getByRole("radio", { name: "Last 30 days", exact: true })).toBeChecked();
-  await expect(page.getByLabel("Selected day: Today", { exact: true })).toBeVisible();
+  // The dashboard opens on the latest day with interactions, so the day's table has rows.
+  await expect(page.getByLabel(/^Selected day: /)).toBeVisible();
+  await expect(page.getByRole("link", { name: /^Open interaction:/ }).first()).toBeVisible();
   await page.getByRole("radio", { name: "Last 7 days", exact: true }).click();
   await expect(total(page)).toHaveText("6");
   await expect(page.locator("html")).toHaveClass(/dark/);

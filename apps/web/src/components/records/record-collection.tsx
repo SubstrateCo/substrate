@@ -327,6 +327,7 @@ function RecordCollectionResults({
   return (
     <>
       <CrmResourceState
+        noun={kind}
         pending={(searchPending || query.isPending) && !state.data}
         error={(state.data ? null : state.error) ?? dealsError}
         onRetry={() => {
@@ -355,6 +356,7 @@ function RecordCollectionResults({
               organizationId={organizationId}
               stages={stages}
               deals={(resourceState(deals).data ?? []).filter((deal) => deal.outcome === "open")}
+              onCreate={filtered ? undefined : onCreate}
             />
             {(pagination.pageIndex > 0 || pagination.hasNextPage) && (
               <Pager

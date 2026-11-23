@@ -11,7 +11,7 @@ import { FormDialog, type FormDialogEditor } from "@/components/feedback/form-di
 import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import type { ResourceStatus } from "@/lib/resource-state";
-import { FolderKanban, Unlink } from "lucide-react";
+import { FolderKanban, Plus, Unlink } from "lucide-react";
 
 export function TasksWorkspace({
   projects,
@@ -84,7 +84,7 @@ export function TasksWorkspace({
               description={
                 state === "unavailable"
                   ? "Check that you still have access to this workspace."
-                  : "Check your connection and try again."
+                  : undefined
               }
               onRetry={state === "unavailable" ? undefined : onRetry}
             />
@@ -98,7 +98,14 @@ export function TasksWorkspace({
                   ? "This project was removed or you no longer have access. Choose another project."
                   : "Create a project to plan work with tasks, subtasks, and comments."
               }
-              action={!visible.length && <Button onClick={openCreate}>New project</Button>}
+              action={
+                !visible.length && (
+                  <Button onClick={openCreate}>
+                    <Plus aria-hidden />
+                    New project
+                  </Button>
+                )
+              }
             />
           )}
         </PageContent>

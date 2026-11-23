@@ -17,13 +17,20 @@ const columns = column.columns([
   column.accessor("email", {
     header: "Email",
     cell: ({ row }) => (
-      <span className="block wrap-anywhere whitespace-normal">{row.original.email}</span>
+      <span className="block truncate" title={row.original.email}>
+        {row.original.email}
+      </span>
     ),
   }),
-  column.accessor((invitation) => roleLabel(invitation.role), { id: "role", header: "Role" }),
+  column.accessor((invitation) => roleLabel(invitation.role), {
+    id: "role",
+    header: "Role",
+    meta: { width: "w-28" },
+  }),
   column.accessor((invitation) => invitationState(invitation.status, invitation.expired).label, {
     id: "status",
     header: "Status",
+    meta: { width: "w-28" },
     cell: ({ row }) => (
       <InvitationStatus status={row.original.status} expired={row.original.expired} />
     ),
@@ -97,6 +104,7 @@ export function InvitationTable({
   const rowActions = useMemo(
     () => ({
       label: () => "Invitation actions",
+      width: "w-28" as const,
       render: (invitation: InvitationListItem) => (
         <InvitationActions
           invitation={invitation}
@@ -119,7 +127,6 @@ export function InvitationTable({
       loadingMessage="Loading invitations"
       error={error}
       errorTitle="Couldn’t load invitations"
-      errorDescription="Your team’s invitations are unavailable. Please try again."
       onRetry={onRetry}
       empty={{
         title: "No invitations yet",

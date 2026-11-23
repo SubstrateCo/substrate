@@ -25,9 +25,7 @@ export function InteractionDashboard({
   dates: string[];
   days: "7" | "30";
 }) {
-  const today = dates.at(-1)!;
-  const [selectedDay, setSelectedDay] = useState(today);
-  const day = dates.includes(selectedDay) ? selectedDay : today;
+  const [selectedDay, setSelectedDay] = useState<string>();
   const activity = useQuery(interactionActivityOptions(period));
   if (activity.error)
     return (
@@ -38,6 +36,12 @@ export function InteractionDashboard({
     );
   if (!activity.data) return <LoadingState label="Loading interaction activity" rows={4} />;
   const { summary } = activity.data;
+  // Opens on the latest day with interactions, so the table under the chart is not empty.
+  const latestActive =
+    dates
+      .filter((date) => activity.data.activity.some((row) => row.day === date && row.count > 0))
+      .at(-1) ?? dates.at(-1)!;
+  const day = selectedDay && dates.includes(selectedDay) ? selectedDay : latestActive;
   const minutes = Math.round(summary.recordedMinutes);
   const metrics = [
     {

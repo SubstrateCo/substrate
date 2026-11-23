@@ -70,13 +70,7 @@ function CalendarSettings({ organizationId }: { organizationId: string }) {
   };
   const close = () => setDialog(null);
   if (query.error)
-    return (
-      <ErrorState
-        title="Couldn’t load your calendars"
-        description="Try again to see your calendar accounts."
-        onRetry={() => void query.refetch()}
-      />
-    );
+    return <ErrorState title="Couldn’t load your calendars" onRetry={() => void query.refetch()} />;
   if (!query.data) return <LoadingState label="Loading calendars" />;
   const pendingCalendarId = savingCalendar(query.data.accounts, update, action, connect);
   const actions: CalendarAccountActions = {

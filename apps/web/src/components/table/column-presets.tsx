@@ -3,6 +3,7 @@ import type { RowData } from "@tanstack/react-table";
 import { dateTimeValue, type DateTimeInput } from "./date-time";
 import { createAppColumnHelper } from "./table";
 
+/** A sortable date and time column, `w-44` wide ("Nov 8, 2025, 3:40 PM"). */
 export function dateTimeColumn<TData extends RowData>(
   accessor: (row: TData) => DateTimeInput,
   { id, header }: { id: string; header: string },
@@ -10,6 +11,7 @@ export function dateTimeColumn<TData extends RowData>(
   return createAppColumnHelper<TData>().accessor((row) => dateTimeValue(accessor(row)), {
     id,
     header,
+    meta: { width: "w-44" },
     sortFn: "basic",
     sortDescFirst: false,
     sortUndefined: "last",

@@ -53,7 +53,7 @@ function recordColumns(kind: CrmKind, organizationId: string) {
             {
               id: "amount",
               header: "Amount",
-              meta: { align: "end" },
+              meta: { align: "end", width: "w-36" },
             },
           ),
         ]

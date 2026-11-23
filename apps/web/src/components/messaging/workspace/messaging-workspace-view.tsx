@@ -151,7 +151,7 @@ function WorkspaceContent({
         description={
           state === "unavailable"
             ? "Check that you still have access to this workspace."
-            : "Check your connection and try again."
+            : undefined
         }
         error={error}
         onRetry={state === "unavailable" ? undefined : onRetry}

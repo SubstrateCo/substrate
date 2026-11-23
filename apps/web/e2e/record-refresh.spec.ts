@@ -206,7 +206,11 @@ for (const kind of ["accounts", "deals"] as const) {
     await expect(name).toBeVisible();
     setStatus(403);
     await saved.refresh();
-    await expect(page.getByText("Record unavailable", { exact: true })).toBeVisible();
+    await expect(
+      page.getByText(`${kind.charAt(0).toUpperCase()}${kind.slice(1)} unavailable`, {
+        exact: true,
+      }),
+    ).toBeVisible();
     await expect(name).toHaveCount(0);
     await expect(page.getByText(/Page 1 ·/)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Try again", exact: true })).toHaveCount(0);
@@ -224,12 +228,12 @@ for (const kind of ["accounts", "deals"] as const) {
       section: kind,
     });
     await user.page.goto(`/crm?${search}`);
-    await expect(user.page.getByText("Couldn’t load CRM", { exact: true })).toBeVisible();
+    await expect(user.page.getByText(`Couldn’t load ${kind}`, { exact: true })).toBeVisible();
     await expect(user.page.getByText(saved.name, { exact: true })).toHaveCount(0);
     await expect(user.page.getByText("These records may be out of date.")).toHaveCount(0);
     setStatus(200);
     await user.page.getByRole("button", { name: "Try again", exact: true }).click();
     await expect(user.page.getByText(saved.name, { exact: true })).toBeVisible();
-    await expect(user.page.getByText("Couldn’t load CRM", { exact: true })).toHaveCount(0);
+    await expect(user.page.getByText(`Couldn’t load ${kind}`, { exact: true })).toHaveCount(0);
   });
 }

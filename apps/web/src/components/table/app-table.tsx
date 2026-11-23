@@ -59,8 +59,10 @@ type AppTableEmpty = {
 type AppTableProps<TData extends RowData> = {
   /** The table's accessible name, also used for its pager. */
   name: string;
-  /** Column widths come from meta.width, and long text truncates. */
-  layout?: "auto" | "fixed";
+  /**
+   * The table layout is fixed: columns take `meta.width`, the rest share the remaining space,
+   * and long text truncates.
+   */
   columns: AppColumnDef<TData>[];
   data: TData[];
   getRowId: (row: TData) => string;
@@ -73,10 +75,16 @@ type AppTableProps<TData extends RowData> = {
   error?: Error | null;
   onRetry?: () => void;
   errorTitle?: string;
-  errorDescription?: string;
   empty: AppTableEmpty;
-  /** Icon row actions (`RowAction`). They add a trailing column and show on hover or focus. */
-  rowActions?: { label: (row: TData) => string; render: (row: TData) => ReactNode };
+  /**
+   * Icon row actions (`RowAction`). They add a trailing column and show on hover or focus. The
+   * column is `w-20` (one action); pass `w-24` for two and `w-28` for three.
+   */
+  rowActions?: {
+    label: (row: TData) => string;
+    render: (row: TData) => ReactNode;
+    width?: AppColumnMeta["width"];
+  };
   selectedRowId?: string | null;
   /** A card per row below the container's `40rem` breakpoint. */
   renderMobileRow?: (row: TData) => ReactNode;
@@ -84,11 +92,9 @@ type AppTableProps<TData extends RowData> = {
 
 const defaultLoadingMessage = "Loading";
 const defaultErrorTitle = "Couldn’t load results";
-const defaultErrorDescription = "Your results are unavailable. Please try again.";
 
 export function AppTable<TData extends RowData>({
   name,
-  layout = "auto",
   columns,
   data,
   getRowId,
@@ -99,7 +105,6 @@ export function AppTable<TData extends RowData>({
   error,
   onRetry,
   errorTitle = defaultErrorTitle,
-  errorDescription = defaultErrorDescription,
   empty,
   rowActions,
   selectedRowId,
@@ -126,13 +131,13 @@ export function AppTable<TData extends RowData>({
     onPaginationChange: server ? undefined : setClientPage,
   });
   const rows = table.getRowModel().rows;
-  // With no rows, show only the notice: sortable headers over nothing are noise.
+  // With no rows, show only the notice, without the frame: sortable headers over nothing are noise.
   const hasRows = rows.length > 0;
   const initialLoading = loading && !hasRows && !error;
   const showLoading = useDelayedLoading(initialLoading);
   const pager = pagerProps(table, name, pagination, fetching);
   const notice = error ? (
-    <ErrorState title={errorTitle} description={errorDescription} onRetry={onRetry} />
+    <ErrorState title={errorTitle} onRetry={onRetry} />
   ) : (
     <ContentNotice {...empty} />
   );
@@ -149,26 +154,18 @@ export function AppTable<TData extends RowData>({
             {loadingMessage}
           </span>
         )}
-        {error && hasRows && (
-          <ErrorState compact title={errorTitle} description={errorDescription} onRetry={onRetry} />
+        {error && hasRows && <ErrorState compact title={errorTitle} onRetry={onRetry} />}
+        {renderMobileRow && hasRows && (
+          <MobileTableRows name={name} rows={rows} renderRow={renderMobileRow} />
         )}
-        {renderMobileRow && !initialLoading && (
-          <MobileTableRows name={name} rows={rows} renderRow={renderMobileRow}>
-            {notice}
-          </MobileTableRows>
-        )}
-        <div
-          className={cn(
-            "min-w-0 rounded-xl border",
-            renderMobileRow && !initialLoading && "hidden @min-[40rem]:block",
-          )}
-        >
-          {hasRows || initialLoading ? (
-            <Table
-              aria-label={name}
-              aria-busy={loading}
-              className={layout === "fixed" ? "min-w-xl table-fixed" : undefined}
-            >
+        {hasRows || initialLoading ? (
+          <div
+            className={cn(
+              "min-w-0 rounded-xl border",
+              renderMobileRow && hasRows && "hidden @min-[40rem]:block",
+            )}
+          >
+            <Table aria-label={name} aria-busy={loading} className="min-w-xl table-fixed">
               <AppTableHeader table={table} sortable={!initialLoading} />
               <TableBody>
                 {initialLoading ? (
@@ -195,10 +192,10 @@ export function AppTable<TData extends RowData>({
                 )}
               </TableBody>
             </Table>
-          ) : (
-            notice
-          )}
-        </div>
+          </div>
+        ) : (
+          notice
+        )}
         {pager && (hasRows || pager.pageIndex > 0) && !initialLoading && <Pager {...pager} />}
       </div>
     </table.AppTable>
@@ -218,7 +215,7 @@ function withRowActions<TData extends RowData>(
     column.display({
       id: rowActionsColumn,
       header: () => <span className="sr-only">Actions</span>,
-      meta: { align: "end", controls: true },
+      meta: { align: "end", controls: true, width: rowActions.width ?? "w-20" },
       cell: ({ row }) => (
         <RowActions label={rowActions.label(row.original)} className="justify-end">
           {rowActions.render(row.original)}
@@ -320,26 +317,18 @@ function MobileTableRows<TData extends RowData>({
   name,
   rows,
   renderRow,
-  children,
 }: {
   name: string;
   rows: { id: string; original: TData }[];
   renderRow: (row: TData) => ReactNode;
-  children: ReactNode;
 }) {
   return (
-    <div className="space-y-3 @min-[40rem]:hidden">
-      {rows.length === 0 ? (
-        children
-      ) : (
-        <ul aria-label={name} className="space-y-3">
-          {rows.map((row) => (
-            <li key={row.id} className="group/row min-w-0 space-y-3 rounded-lg border p-3">
-              {renderRow(row.original)}
-            </li>
-          ))}
-        </ul>
-      )}
-    </div>
+    <ul aria-label={name} className="space-y-3 @min-[40rem]:hidden">
+      {rows.map((row) => (
+        <li key={row.id} className="group/row min-w-0 space-y-3 rounded-lg border p-3">
+          {renderRow(row.original)}
+        </li>
+      ))}
+    </ul>
   );
 }
