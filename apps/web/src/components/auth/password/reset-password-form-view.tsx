@@ -8,14 +8,18 @@ import { AuthLink } from "../auth-link";
 import { FormMessage } from "@/components/feedback/form-message";
 import type { authLink } from "@/lib/auth/navigation";
 
-/** Marks the confirmation invalid while it differs, so the form shows the mismatch inline. */
-function checkPasswordsMatch(form: HTMLFormElement | null) {
+/**
+ * Marks the confirmation invalid while it differs, so the form shows the mismatch inline. After a
+ * password change, `revalidate` lets the form refresh an error already shown on the confirmation.
+ */
+function checkPasswordsMatch(form: HTMLFormElement | null, revalidate = false) {
   const password = form?.elements.namedItem("password");
   const confirm = form?.elements.namedItem("confirm");
   if (!(password instanceof HTMLInputElement) || !(confirm instanceof HTMLInputElement)) return;
   confirm.setCustomValidity(
     confirm.value && confirm.value !== password.value ? "The passwords don’t match." : "",
   );
+  if (revalidate) confirm.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
 export function ResetPasswordForm({
@@ -84,7 +88,7 @@ export function ResetPasswordForm({
           minLength={8}
           missingMessage="Choose a new password."
           required
-          onInput={(event) => checkPasswordsMatch(event.currentTarget.form)}
+          onInput={(event) => checkPasswordsMatch(event.currentTarget.form, true)}
         />
         <NativeField
           id="confirm"
