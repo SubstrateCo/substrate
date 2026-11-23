@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 
 import { useState } from "react";
 
@@ -19,6 +19,7 @@ import {
   PageSidebar,
   PageSidebarContent,
   PageSidebarHeader,
+  SidebarNav,
 } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
@@ -156,30 +157,27 @@ export function InteractionsWorkspace({
       <PageSidebar aria-label="Interactions">
         <PageSidebarHeader title="Interactions" />
         <PageSidebarContent>
-          <nav aria-label="Interactions views">
-            <ul className="flex gap-0.5 overflow-x-auto md:flex-col">
-              {sections.map(({ value, label, icon: Icon }) =>
-                value === "accounts" && !apps.enabled("crm") ? null : (
-                  <li key={value} className="shrink-0">
-                    <Button variant="sidebar" className="w-full justify-start" asChild>
-                      <Link
-                        to="/interactions"
-                        search={{
-                          workspaceId: organizationId,
-                          section: value,
-                          days: value === "dashboard" && days === "all" ? "30" : days,
-                        }}
-                        aria-current={directorySection === value ? "page" : undefined}
-                      >
-                        <Icon aria-hidden className="text-muted-foreground" />
-                        {label}
-                      </Link>
-                    </Button>
-                  </li>
-                ),
-              )}
-            </ul>
-          </nav>
+          <SidebarNav
+            label="Interactions views"
+            items={sections.flatMap(({ value, label, icon }) =>
+              value === "accounts" && !apps.enabled("crm")
+                ? []
+                : {
+                    key: value,
+                    label,
+                    icon,
+                    link: {
+                      to: "/interactions",
+                      search: {
+                        workspaceId: organizationId,
+                        section: value,
+                        days: value === "dashboard" && days === "all" ? "30" : days,
+                      },
+                    },
+                    current: directorySection === value,
+                  },
+            )}
+          />
         </PageSidebarContent>
       </PageSidebar>
       <PageContent className="@container">

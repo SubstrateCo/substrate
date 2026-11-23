@@ -77,8 +77,8 @@ export function PageLayout({
           className={cn(
             "min-h-0 min-w-0 flex-1",
             hasAside
-              ? "max-lg:contents! max-lg:*:data-panel:contents!"
-              : "max-md:contents! max-md:*:data-panel:contents!",
+              ? "max-lg:contents! max-lg:*:data-panel:*:contents! max-lg:*:data-panel:contents!"
+              : "max-md:contents! max-md:*:data-panel:*:contents! max-md:*:data-panel:contents!",
           )}
         >
           {children}

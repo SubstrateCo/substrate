@@ -45,7 +45,9 @@ test("switching workspaces clears private messages, reconnects in the selected o
   await user.page
     .getByRole("combobox", { name: "Search workspace", exact: true })
     .fill("discard on workspace switch");
-  await user.page.getByRole("button", { name: `${firstName} ▾`, exact: true }).click();
+  await user.page
+    .getByRole("button", { name: `Switch workspace, current: ${firstName}`, exact: true })
+    .click();
   await user.page.clock.resume();
   await Promise.all([reconnect, user.page.getByRole("menuitem", { name, exact: true }).click()]);
   await expect(user.page).toHaveURL(/\/dashboard$/);
@@ -81,7 +83,9 @@ test("switching workspaces clears private messages, reconnects in the selected o
   await expect(fullName).not.toHaveAttribute("aria-invalid", "true");
   await user.page.getByLabel("Full name", { exact: true }).fill("Unsaved profile name");
   const switchBack = async () => {
-    await user.page.getByRole("button", { name: `${name} ▾`, exact: true }).click();
+    await user.page
+      .getByRole("button", { name: `Switch workspace, current: ${name}`, exact: true })
+      .click();
     await user.page.getByRole("menuitem", { name: firstName, exact: true }).click();
   };
   await switchBack();
@@ -145,7 +149,10 @@ test("an owner invites a teammate, who accepts without receiving project access 
   ).toBeVisible();
   await invitee.page.goto("/dashboard");
   await expect(
-    invitee.page.getByRole("button", { name: `${actors.sender.organizationName} ▾`, exact: true }),
+    invitee.page.getByRole("button", {
+      name: `Switch workspace, current: ${actors.sender.organizationName}`,
+      exact: true,
+    }),
   ).toBeVisible();
   await invitee.page
     .getByRole("button", { name: `Signed in as ${account.name}`, exact: true })

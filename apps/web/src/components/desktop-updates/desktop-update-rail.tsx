@@ -27,7 +27,7 @@ function ConnectedUpdateRail({ bridge }: { bridge: DesktopUpdatesAPI }) {
             <CircleArrowUp aria-hidden="true" className="size-5" />
             <span
               aria-hidden="true"
-              className="absolute top-1 right-1 size-1.5 rounded-full bg-warning ring-1 ring-rail"
+              className="absolute top-2 right-2 size-2 rounded-full bg-warning ring-2 ring-rail"
             />
           </Link>
         </Button>

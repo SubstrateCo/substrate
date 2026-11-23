@@ -43,10 +43,9 @@ export function SearchResults({
   if (loading && results.length === 0 && !error) {
     return (
       <CommandList label="Search results" className="max-h-96 min-h-0">
-        <div className="overflow-hidden p-1">
-          <div className="px-2 py-2 text-xs font-medium text-muted-foreground">{heading}</div>
+        <CommandGroup heading={heading}>
           <SearchResultLoading browsing={browsing} />
-        </div>
+        </CommandGroup>
       </CommandList>
     );
   }

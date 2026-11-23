@@ -21,7 +21,7 @@ export function SwitcherTrigger({
           <Button
             variant="workspace"
             size="icon-lg"
-            aria-label={`${name} ▾`}
+            aria-label={`Switch workspace, current: ${name}`}
             disabled={pending}
             aria-busy={pending}
           >

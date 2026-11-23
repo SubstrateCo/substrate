@@ -20,7 +20,7 @@ import {
 import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { cn } from "cn";
-import { ChevronDown, Plus, RotateCcw } from "lucide-react";
+import { ChevronRight, Plus, RotateCcw } from "lucide-react";
 
 export function ProjectSidebar({
   projects,
@@ -164,15 +164,15 @@ function ArchivedProjects({
   } else if (!containsSelected && openedFor) setOpenedFor(undefined);
   return (
     <Collapsible asChild open={open} onOpenChange={setOpen}>
-      <section aria-label="Archived projects" className="group/archived mt-4 space-y-1">
+      <section aria-label="Archived projects" className="group/archived flex flex-col gap-0.5">
         <h3 className="flex h-7 items-center px-2">
           <CollapsibleTrigger asChild>
             <Button type="button" variant="disclosure" size="xs" className="-ml-2">
               Archived
               <span className="font-normal tabular-nums">{projects.length}</span>
-              <ChevronDown
+              <ChevronRight
                 aria-hidden="true"
-                className="transition-transform duration-150 ease-out group-data-[state=closed]/archived:-rotate-90"
+                className="transition-transform duration-150 ease-out group-data-[state=open]/archived:rotate-90"
               />
             </Button>
           </CollapsibleTrigger>

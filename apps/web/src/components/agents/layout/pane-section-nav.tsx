@@ -1,21 +1,22 @@
 import { useMemo } from "react";
 
+import { PageSidebarGroupTitle } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
 import type { LucideIcon } from "lucide-react";
 
-type SettingsNavItem<T extends string> = { value: T; label: string; icon: LucideIcon };
-export type SettingsNavGroup<T extends string> = {
+type PaneSectionNavItem<T extends string> = { value: T; label: string; icon: LucideIcon };
+export type PaneSectionNavGroup<T extends string> = {
   id: string;
   /** A small heading above the group in the wide layout. */
   label?: string;
-  items: readonly SettingsNavItem<T>[];
+  items: readonly PaneSectionNavItem<T>[];
 };
 
 /**
  * The section list of a page: a column beside the content in wide panes and a scrolling row
  * above it in narrow panes. Its parent must be a `@container`.
  */
-export function SettingsNav<T extends string>({
+export function PaneSectionNav<T extends string>({
   label,
   groups,
   value,
@@ -24,7 +25,7 @@ export function SettingsNav<T extends string>({
   disabled,
 }: {
   label: string;
-  groups: readonly SettingsNavGroup<T>[];
+  groups: readonly PaneSectionNavGroup<T>[];
   value: T;
   /** Items that hold unsaved changes. They get a dot. */
   marked?: readonly T[];
@@ -45,12 +46,9 @@ export function SettingsNav<T extends string>({
           className="flex shrink-0 gap-1 @3xl:flex-col @3xl:gap-0.5"
         >
           {group.label && (
-            <p
-              aria-hidden="true"
-              className="hidden px-2 pb-1 text-xs font-medium text-muted-foreground @3xl:block"
-            >
+            <PageSidebarGroupTitle as="p" aria-hidden="true" className="hidden @3xl:flex">
               {group.label}
-            </p>
+            </PageSidebarGroupTitle>
           )}
           {group.items.map(({ value: item, label: itemLabel, icon: Icon }) => (
             <Button

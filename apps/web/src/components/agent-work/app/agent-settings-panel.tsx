@@ -1,5 +1,8 @@
 import { AgentSettings } from "@/components/agents/agent-settings";
-import { SettingsNav, type SettingsNavGroup } from "@/components/agents/layout/settings-nav";
+import {
+  PaneSectionNav,
+  type PaneSectionNavGroup,
+} from "@/components/agents/layout/pane-section-nav";
 import { useDraftKeys } from "@/components/feedback/unsaved-drafts";
 import { SettingsContent } from "@/components/layout/settings-page";
 import { isAgentSettingsSection, type AgentSettingsSection } from "@/lib/agent-work/agent-sections";
@@ -16,7 +19,7 @@ const groups = [
       { value: "run", label: "Run settings", icon: Zap },
     ],
   },
-] as const satisfies readonly SettingsNavGroup<AgentSettingsSection>[];
+] as const satisfies readonly PaneSectionNavGroup<AgentSettingsSection>[];
 
 export function AgentSettingsPanel({
   userId,
@@ -37,7 +40,7 @@ export function AgentSettingsPanel({
   return (
     <div className="@container">
       <div className="flex min-w-0 flex-col gap-6 @3xl:flex-row @3xl:items-start @3xl:gap-10">
-        <SettingsNav
+        <PaneSectionNav
           label="Agent sections"
           groups={groups}
           value={section}

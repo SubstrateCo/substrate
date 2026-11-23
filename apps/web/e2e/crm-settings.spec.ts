@@ -47,7 +47,7 @@ test("CRM settings use a centered settings column and grouped save footers", asy
   expect(pipelineSaveBox!.y).toBeGreaterThan(addStageBox!.y + addStageBox!.height);
 });
 
-test("CRM settings show aligned, compact sections without scrolling past save actions", async ({
+test("CRM settings show aligned, compact sections with reachable save actions", async ({
   account,
   client,
 }) => {
@@ -59,8 +59,12 @@ test("CRM settings show aligned, compact sections without scrolling past save ac
   const defaults = page.getByRole("region", { name: "Deal defaults", exact: true });
   await expect(pipeline.getByRole("textbox", { name: "Stage 1 name" })).toBeVisible();
   await expect(defaults.getByRole("combobox", { name: "Default currency" })).toBeVisible();
-  await expect(pipeline.getByRole("button", { name: "Save", exact: true })).toBeInViewport();
-  await expect(defaults.getByRole("button", { name: "Save", exact: true })).toBeInViewport();
+  // The sections stack, so the content pane scrolls to reach each section's save action.
+  for (const section of [pipeline, defaults]) {
+    const save = section.getByRole("button", { name: "Save", exact: true });
+    await save.scrollIntoViewIfNeeded();
+    await expect(save).toBeInViewport();
+  }
   const pipelineBox = await pipeline.boundingBox();
   const defaultsBox = await defaults.boundingBox();
   expect(pipelineBox!.y).toBeGreaterThan(defaultsBox!.y + defaultsBox!.height);

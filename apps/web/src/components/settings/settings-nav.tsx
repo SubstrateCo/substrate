@@ -1,11 +1,9 @@
-import { Link } from "@tanstack/react-router";
-
 import {
   PageSidebar,
   PageSidebarContent,
   PageSidebarHeader,
+  SidebarNav,
 } from "@/components/layout/page-layout";
-import { Button } from "@/components/ui/button";
 import type { LucideIcon } from "lucide-react";
 
 type SettingsPath =
@@ -31,27 +29,18 @@ export function SettingsNav({ groups }: { groups: readonly SettingsNavGroup[] })
     <PageSidebar aria-label="Settings">
       <PageSidebarHeader title="Settings" />
       <PageSidebarContent>
-        <nav aria-label="Settings sections" className="space-y-5">
-          {groups.map((group) => (
-            <div key={group.label} className="space-y-1">
-              <h2 className="truncate px-2 text-xs font-medium text-muted-foreground">
-                {group.label}
-              </h2>
-              <ul className="flex gap-0.5 overflow-x-auto md:flex-col">
-                {group.items.map(({ to, label, icon: Icon }) => (
-                  <li key={to} className="shrink-0">
-                    <Button asChild variant="sidebar" className="w-full justify-start">
-                      <Link to={to} activeOptions={{ exact: true, includeSearch: false }}>
-                        <Icon aria-hidden="true" className="text-muted-foreground" />
-                        <span className="truncate">{label}</span>
-                      </Link>
-                    </Button>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </nav>
+        <SidebarNav
+          label="Settings sections"
+          groups={groups.map((group) => ({
+            label: group.label,
+            items: group.items.map(({ to, label, icon }) => ({
+              key: to,
+              label,
+              icon,
+              link: { to, activeOptions: { exact: true, includeSearch: false } },
+            })),
+          }))}
+        />
       </PageSidebarContent>
     </PageSidebar>
   );

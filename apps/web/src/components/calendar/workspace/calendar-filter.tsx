@@ -2,6 +2,7 @@ import { useId } from "react";
 
 import { CalendarColorDot } from "../calendar-color";
 import { ProviderIcon } from "../provider-icon";
+import { PageSidebarGroupTitle } from "@/components/layout/page-layout";
 import { Checkbox } from "@/components/ui/checkbox";
 import type { CalendarGroup } from "@/lib/calendar/groups";
 import { Unlink } from "lucide-react";
@@ -20,11 +21,12 @@ export function CalendarFilter({
   return (
     <div className="space-y-5">
       {groups.map((group, groupIndex) => (
-        <section key={group.key} aria-labelledby={`${id}-${groupIndex}`} className="space-y-1">
-          <h2
-            id={`${id}-${groupIndex}`}
-            className="flex items-center gap-2 px-2 text-xs font-medium text-muted-foreground"
-          >
+        <section
+          key={group.key}
+          aria-labelledby={`${id}-${groupIndex}`}
+          className="flex flex-col gap-0.5"
+        >
+          <PageSidebarGroupTitle id={`${id}-${groupIndex}`}>
             {group.provider ? (
               <ProviderIcon provider={group.provider} />
             ) : (
@@ -33,7 +35,7 @@ export function CalendarFilter({
             <span className="min-w-0 truncate" title={group.label}>
               {group.label}
             </span>
-          </h2>
+          </PageSidebarGroupTitle>
           <ul className="flex flex-col gap-0.5">
             {group.calendars.map((calendar) => {
               const checkboxId = `${id}-${calendar.entityId}`;

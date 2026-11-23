@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 
 import { AccountDetail } from "./account-detail";
 import { CrmSettings } from "./crm-settings";
@@ -10,10 +10,10 @@ import {
   PageSidebar,
   PageSidebarContent,
   PageSidebarHeader,
+  SidebarNav,
 } from "@/components/layout/page-layout";
 import { PageSheet } from "@/components/layout/page-sheet";
 import { RecordCollection } from "@/components/records/record-collection";
-import { Button } from "@/components/ui/button";
 import { crmLink } from "@/lib/navigation/record-links";
 import { Building2, Handshake, Settings } from "lucide-react";
 
@@ -44,24 +44,16 @@ export function CrmWorkspace({
       <PageSidebar aria-label="CRM">
         <PageSidebarHeader title="CRM" />
         <PageSidebarContent>
-          <nav aria-label="CRM">
-            <ul className="flex gap-0.5 overflow-x-auto md:flex-col">
-              {sections.map(({ value, label, icon: Icon }) => (
-                <li key={value} className="shrink-0">
-                  <Button variant="sidebar" className="w-full justify-start" asChild>
-                    <Link
-                      to="/crm"
-                      search={{ workspaceId: organizationId, section: value }}
-                      aria-current={section === value ? "page" : undefined}
-                    >
-                      <Icon aria-hidden className="text-muted-foreground" />
-                      {label}
-                    </Link>
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          </nav>
+          <SidebarNav
+            label="CRM"
+            items={sections.map(({ value, label, icon }) => ({
+              key: value,
+              label,
+              icon,
+              link: { to: "/crm", search: { workspaceId: organizationId, section: value } },
+              current: section === value,
+            }))}
+          />
         </PageSidebarContent>
       </PageSidebar>
       <PageContent className="@container">{content}</PageContent>

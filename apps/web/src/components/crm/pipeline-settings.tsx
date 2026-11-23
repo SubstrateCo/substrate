@@ -73,7 +73,7 @@ export function PipelineSettings({
           )
         }
       >
-        <ol className="space-y-2">
+        <ol className="max-w-lg space-y-2">
           {rows.map((stage, index) => (
             <PipelineStageRow
               key={stage.key}
@@ -182,7 +182,7 @@ export function PipelineSettingsLoading() {
   return (
     <div role="status" aria-label="Loading pipeline settings">
       <PipelineSection>
-        <ol className="space-y-2" aria-hidden="true">
+        <ol className="max-w-lg space-y-2" aria-hidden="true">
           {[0, 1, 2].map((key) => (
             <PipelineStageRow
               key={key}

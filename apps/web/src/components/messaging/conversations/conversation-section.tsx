@@ -67,6 +67,12 @@ export function ConversationSection({
             <CollapsibleTrigger asChild>
               <Button type="button" variant="disclosure" size="xs" className="-ml-2">
                 {sectionLabels[section]}
+                {collapsed && items.length > 0 && (
+                  <span className="font-normal tabular-nums">
+                    {items.length}
+                    <span className="sr-only"> conversations</span>
+                  </span>
+                )}
                 <ChevronRight
                   aria-hidden="true"
                   className={
@@ -75,12 +81,6 @@ export function ConversationSection({
                       : "rotate-90 transition-transform duration-150 ease-out"
                   }
                 />
-                {collapsed && items.length > 0 && (
-                  <span className="text-muted-foreground tabular-nums">
-                    {items.length}
-                    <span className="sr-only"> conversations</span>
-                  </span>
-                )}
               </Button>
             </CollapsibleTrigger>
           </h2>

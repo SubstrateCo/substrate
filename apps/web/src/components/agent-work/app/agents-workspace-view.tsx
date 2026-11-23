@@ -11,6 +11,7 @@ import {
   PageLayout,
   PageSidebar,
   PageSidebarContent,
+  PageSidebarGroupTitle,
   PageSidebarHeader,
 } from "@/components/layout/page-layout";
 import { PersonAvatar } from "@/components/people/person-avatar";
@@ -95,7 +96,7 @@ export function AgentsWorkspaceView({
                   <Hand aria-hidden="true" />
                   <span className="min-w-0 flex-1 truncate text-left">Needs you</span>
                   {needsYouCount > 0 && (
-                    <span className="rounded-full bg-warning/15 px-1.5 text-xs font-medium text-warning-text tabular-nums">
+                    <span className="ml-auto shrink-0 rounded-full bg-warning/15 px-1.5 text-xs font-medium text-warning-text tabular-nums">
                       <span className="sr-only">, </span>
                       {needsYouCount}
                     </span>
@@ -108,7 +109,7 @@ export function AgentsWorkspaceView({
               aria-busy={catalogState === "loading"}
               className="grid gap-0.5"
             >
-              <h2 className="px-2 pb-1 text-xs font-medium text-muted-foreground">Your agents</h2>
+              <PageSidebarGroupTitle>Your agents</PageSidebarGroupTitle>
               {catalogState === "loading" && (
                 <LoadingState label="Loading agents" variant="compact" />
               )}

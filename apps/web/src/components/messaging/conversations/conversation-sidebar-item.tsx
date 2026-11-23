@@ -122,7 +122,7 @@ function ConversationUnreadBadge({ conversation }: { conversation: Conversation 
   if (mentionCount)
     return (
       <span
-        className="ml-auto min-w-5 shrink-0 rounded-full bg-primary px-1.5 text-center text-xs leading-5 font-medium text-primary-foreground"
+        className="ml-auto min-w-5 shrink-0 rounded-full bg-primary px-1.5 text-center text-xs leading-5 font-medium text-primary-foreground tabular-nums"
         aria-label={`${mentionCount} ${mentionCount === 1 ? "mention" : "mentions"}, ${unreadCount} unread ${unreadCount === 1 ? "message" : "messages"}`}
       >
         {mentionCount > 99 ? "99+" : mentionCount}
@@ -131,7 +131,7 @@ function ConversationUnreadBadge({ conversation }: { conversation: Conversation 
   if (!unreadCount) return null;
   return (
     <span
-      className="ml-auto shrink-0 text-xs font-medium"
+      className="ml-auto shrink-0 text-xs font-medium tabular-nums"
       aria-label={`${unreadCount} unread ${unreadCount === 1 ? "message" : "messages"}`}
     >
       {unreadCount > 99 ? "99+" : unreadCount}

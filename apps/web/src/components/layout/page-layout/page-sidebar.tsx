@@ -67,6 +67,24 @@ export function PageSidebarHeader({
   );
 }
 
+/** The title of a group of sidebar rows: one `h-7` band. The rows follow at `gap-0.5`. */
+export function PageSidebarGroupTitle({
+  as: Title = "h2",
+  className,
+  ...props
+}: ComponentProps<"h2"> & { as?: "h2" | "h3" | "p" }) {
+  return (
+    <Title
+      data-slot="page-sidebar-group-title"
+      className={cn(
+        "flex h-7 min-w-0 items-center gap-2 truncate px-2 text-xs font-medium text-muted-foreground",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 export function PageSidebarContent({ className, ...props }: ComponentProps<"div">) {
   // Always follows PageSidebarHeader, so it needs no top padding.
   return (
