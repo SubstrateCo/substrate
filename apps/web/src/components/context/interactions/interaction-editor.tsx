@@ -2,10 +2,10 @@ import type { InteractionKind } from "@substrate/contracts/context/interactions"
 
 import { useState, type ReactNode } from "react";
 
-import { CrmSelect } from "@/components/crm/crm-select";
 import { formText } from "@/components/crm/form-text";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { NativeField } from "@/components/forms/native-form";
+import { SelectField } from "@/components/forms/select-field";
 
 export function InteractionEditor({
   pending,
@@ -52,15 +52,7 @@ export function InteractionEditor({
       }
     >
       {contactField}
-      <CrmSelect
-        label="Kind"
-        value={kind}
-        onValueChange={(value) => {
-          const choice = kinds.find((item) => item.value === value);
-          if (choice) setKind(choice.value);
-        }}
-        options={kinds}
-      />
+      <SelectField label="Kind" value={kind} onChange={setKind} options={kinds} />
       <NativeField
         id="interaction-occurred"
         name="occurredAt"

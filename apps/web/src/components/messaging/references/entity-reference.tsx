@@ -4,21 +4,14 @@ import { Link } from "@tanstack/react-router";
 
 import { Spinner } from "../../ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
-import type { ReferenceKind } from "./reference-picker";
+import type { ReferenceKind } from "./reference-picker-view";
+import { entityKinds } from "@/components/context/entity-kinds";
 import { useHasPersonCard } from "@/components/messaging/people/person-card-context";
 import { PersonCardTarget } from "@/components/messaging/people/person-card-slot";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { plainReferenceText } from "@/lib/messaging/reference-token";
 import type { RecordLink } from "@/lib/navigation/record-links";
-import {
-  AtSign,
-  Bot,
-  ListTodo,
-  FolderKanban,
-  LockKeyhole,
-  Hash,
-  MessagesSquare,
-} from "lucide-react";
+import { AtSign, LockKeyhole } from "lucide-react";
 
 export type WorkspaceReference = {
   id: string;
@@ -29,13 +22,14 @@ export type WorkspaceReference = {
   status?: { value: TaskStatus; label: string };
 };
 
+// A person mention keeps the `@` glyph; every other kind uses its shared icon.
 const referenceIcons = {
   person: AtSign,
-  agent: Bot,
-  task: ListTodo,
-  project: FolderKanban,
-  channel: Hash,
-  thread: MessagesSquare,
+  agent: entityKinds.agent.icon,
+  task: entityKinds.task.icon,
+  project: entityKinds.project.icon,
+  channel: entityKinds.channel.icon,
+  thread: entityKinds.thread.icon,
 };
 
 const referenceClass =

@@ -35,7 +35,7 @@ function optionDescription(item: {
   return parts.filter(Boolean).join(" · ") || undefined;
 }
 
-export function ReferencePicker({
+export function ReferencePickerView({
   query,
   kind,
   kinds,

@@ -1,11 +1,11 @@
 import { useState } from "react";
 
-import { CrmSelect } from "./crm-select";
 import type { CrmKind } from "./crm-types";
 import { CustomerPicker } from "./customer-picker";
 import { formText } from "./form-text";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { NativeField } from "@/components/forms/native-form";
+import { SelectField } from "@/components/forms/select-field";
 import type { RecordWrite } from "@/queries/records/mutations";
 
 export type RecordDraft = {
@@ -156,10 +156,10 @@ export function RecordEditor({
               initialLabel={contacts.find((contact) => contact.value === contactId)?.label}
             />
           </div>
-          <CrmSelect
+          <SelectField
             label="Stage"
             value={stageId}
-            onValueChange={setStageId}
+            onChange={setStageId}
             options={stages}
             disabled={!!record}
           />

@@ -5,9 +5,9 @@ import { AssigneePicker } from "../assignee/assignee-picker";
 import { TaskDueDatePicker } from "../detail/task-due-date-picker";
 import { TaskAssigneeAvatar } from "../task-cues/task-assignee-avatar";
 import { taskPriorityOptions, taskStatusOptions } from "../task-cues/task-options";
-import { TaskSelect } from "../task-select";
 import type { ProjectDetail } from "../types";
 import type { TaskEditorForm } from "./task-form-view";
+import { SelectField } from "@/components/forms/select-field";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { formatShortDate, parseDateOnly } from "@/lib/format/date";
@@ -40,7 +40,7 @@ export function TaskScheduleFields({
     <div className="grid min-w-0 gap-4 @sm:grid-cols-2">
       <form.Field name="status">
         {(field) => (
-          <TaskSelect
+          <SelectField
             label="Status"
             value={field.state.value}
             onChange={(value) => change(field, value)}
@@ -52,7 +52,7 @@ export function TaskScheduleFields({
       </form.Field>
       <form.Field name="priority">
         {(field) => (
-          <TaskSelect
+          <SelectField
             label="Priority"
             value={field.state.value}
             onChange={(value) => change(field, value)}
@@ -77,8 +77,7 @@ export function TaskScheduleFields({
                   field.handleChange(next ?? "unassigned");
                   void field.validate("blur");
                 }}
-              >
-                {() => (
+                trigger={
                   <Button
                     id={`${id}-assignee`}
                     type="button"
@@ -88,20 +87,15 @@ export function TaskScheduleFields({
                     onBlur={field.handleBlur}
                     aria-invalid={invalid}
                     aria-describedby={invalid ? `${id}-assignee-error` : undefined}
-                  >
-                    <TaskAssigneeAvatar
-                      name={actor?.name}
-                      image={actor?.image}
-                      type={actor?.type}
-                    />
-                    <span className="min-w-0 flex-1 truncate text-left">
-                      {value && !actor
-                        ? "Former member. Choose someone else."
-                        : assigneeLabel(value, actors)}
-                    </span>
-                    <ChevronDown aria-hidden="true" className="text-muted-foreground" />
-                  </Button>
-                )}
+                  />
+                }
+              >
+                <TaskAssigneeAvatar name={actor?.name} image={actor?.image} type={actor?.type} />
+                <span className="min-w-0 flex-1 truncate text-left">
+                  {value && !actor
+                    ? "Former member. Choose someone else."
+                    : assigneeLabel(value, actors)}
+                </span>
               </AssigneePicker>
               <FieldError id={`${id}-assignee-error`} errors={field.state.meta.errors} />
             </Field>

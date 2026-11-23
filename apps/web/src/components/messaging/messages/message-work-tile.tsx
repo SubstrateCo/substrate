@@ -3,8 +3,9 @@ import { Link } from "@tanstack/react-router";
 import { Button } from "../../ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { MessageWorkLink } from "./message-work";
+import { entityKinds } from "@/components/context/entity-kinds";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
-import { Building2, Contact, FolderKanban, Handshake, MessageSquare, Unlink } from "lucide-react";
+import { Unlink } from "lucide-react";
 
 /** One linked record: status or kind icon, title, status label, and unlink on hover. */
 export function MessageWorkTile({
@@ -25,14 +26,7 @@ export function MessageWorkTile({
   const meta = [link.statusName, link.purpose === "source" ? "Created here" : null]
     .filter(Boolean)
     .join(" · ");
-  const Icon = {
-    task: FolderKanban,
-    project: FolderKanban,
-    contact: Contact,
-    account: Building2,
-    deal: Handshake,
-    contact_interaction: MessageSquare,
-  }[link.entityType];
+  const Icon = entityKinds[link.entityType].icon;
   return (
     <li className="group/work flex h-8 min-w-0 items-center gap-1 rounded-md border bg-card pr-1 text-sm transition-colors hover:bg-row-hover">
       <Link

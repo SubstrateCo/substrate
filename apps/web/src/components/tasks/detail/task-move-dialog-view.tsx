@@ -1,9 +1,9 @@
 import type { ReactNode } from "react";
 
-import { TaskSelect } from "../task-select";
 import type { Project, Task } from "../types";
 import { ErrorState } from "@/components/feedback/error-state";
 import { FormDialog } from "@/components/feedback/form-dialog";
+import { SelectField } from "@/components/forms/select-field";
 
 export function TaskMoveDialog({
   title,
@@ -56,7 +56,7 @@ export function TaskMoveDialog({
     );
   else if (canEdit)
     destination = (
-      <TaskSelect
+      <SelectField
         label="Parent task"
         value={parentId}
         onChange={onParentChange}
@@ -88,7 +88,7 @@ export function TaskMoveDialog({
         if (canSubmit) onSubmit();
       }}
     >
-      <TaskSelect
+      <SelectField
         label="Destination project"
         value={projectId}
         onChange={onProjectChange}

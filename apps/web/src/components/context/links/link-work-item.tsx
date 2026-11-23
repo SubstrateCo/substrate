@@ -1,11 +1,12 @@
 import type { ContextEntityType } from "@substrate/contracts/context/input";
 
 import { SkeletonText } from "../../feedback/skeleton-text";
+import { Tag } from "../../feedback/tag";
 import { Checkbox } from "../../ui/checkbox";
 import { CommandItem } from "../../ui/command";
 import { Skeleton } from "../../ui/skeleton";
+import { entityKinds } from "../entity-kinds";
 import { cn } from "cn";
-import { FolderKanban, ListTodo, Building2, Contact, Handshake, MessageSquare } from "lucide-react";
 
 // oxlint-disable-next-line shadcn/no-restyle -- These are the command item's existing geometry, shared with inert loading rows.
 const linkWorkRowClass = "flex min-w-0 items-center gap-2 px-2 py-1.5 text-sm";
@@ -29,23 +30,9 @@ export function LinkWorkItem({
   disabled: boolean;
   onChoose: () => void;
 }) {
-  const Icon = {
-    task: ListTodo,
-    project: FolderKanban,
-    contact: Contact,
-    account: Building2,
-    deal: Handshake,
-    contact_interaction: MessageSquare,
-  }[kind];
+  const { icon: Icon, label } = entityKinds[kind];
   const selected = chosen && !linked;
-  let subtitle = {
-    task: "Task",
-    project: "Project",
-    contact: "Contact",
-    account: "Account",
-    deal: "Deal",
-    contact_interaction: "Interaction",
-  }[kind];
+  let subtitle: string = label;
   if (kind === "task") subtitle = projectName ? `Task · ${projectName}` : "Task";
   return (
     <CommandItem
@@ -73,9 +60,7 @@ export function LinkWorkItem({
         }
         action={
           linked ? (
-            <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-              Linked
-            </span>
+            <Tag className="shrink-0">Linked</Tag>
           ) : (
             <Checkbox
               aria-hidden="true"

@@ -1,17 +1,18 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 
 import { timeZones } from "./schedule";
 import { Button } from "@/components/ui/button";
 import {
-  Command,
-  CommandEmpty,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxSearch,
+  ComboboxTrigger,
+  type ComboboxOption,
+} from "@/components/ui/combobox";
 import { formatTimeZone } from "@/lib/format/date";
-import { Check, ChevronsUpDown } from "lucide-react";
 
 /** A searchable list of IANA time zones. */
 export function TimeZonePicker({
@@ -29,57 +30,55 @@ export function TimeZonePicker({
   disabled?: boolean;
   onChange: (zone: string) => void;
 }) {
-  const [open, setOpen] = useState(false);
   const zones = useMemo(
-    () => timeZones(value).map((zone) => ({ zone, label: formatTimeZone(zone) })),
+    () =>
+      timeZones(value).map((zone): ComboboxOption => ({
+        value: zone,
+        label: formatTimeZone(zone),
+      })),
     [value],
   );
+  const current = zones.find((zone) => zone.value === value) ?? null;
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          id={id}
-          type="button"
-          variant="field"
-          role="combobox"
-          aria-expanded={open}
-          aria-invalid={invalid || undefined}
-          aria-describedby={describedBy}
-          disabled={disabled}
-        >
-          <span className="truncate">{value ? formatTimeZone(value) : "Choose a time zone"}</span>
-          <ChevronsUpDown aria-hidden="true" className="size-3.5 text-muted-foreground" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent
-        variant="reference"
-        align="start"
-        className="w-(--radix-popover-trigger-width) min-w-72"
+    <Combobox
+      items={zones}
+      value={current}
+      onValueChange={(next) => {
+        if (next) onChange(next.value);
+      }}
+      isItemEqualToValue={(item, chosen) => item.value === chosen.value}
+      // Match the zone name too, so "Toronto" and "America/Toronto" both find it.
+      filter={(zone, query) => {
+        const text = query.trim().toLowerCase();
+        return zone.label.toLowerCase().includes(text) || zone.value.toLowerCase().includes(text);
+      }}
+      disabled={disabled}
+    >
+      <ComboboxTrigger
+        render={
+          <Button
+            id={id}
+            type="button"
+            variant="field"
+            role="combobox"
+            aria-invalid={invalid || undefined}
+            aria-describedby={describedBy}
+          />
+        }
       >
-        <Command defaultValue={value}>
-          <CommandInput placeholder="Search time zones…" />
-          <CommandList>
-            <CommandEmpty>No time zones match.</CommandEmpty>
-            {zones.map(({ zone, label }) => (
-              <CommandItem
-                key={zone}
-                value={zone}
-                keywords={[label]}
-                onSelect={() => {
-                  onChange(zone);
-                  setOpen(false);
-                }}
-              >
-                <Check
-                  aria-hidden="true"
-                  className={`size-3.5 ${zone === value ? "text-primary" : "invisible"}`}
-                />
-                <span className="truncate">{label}</span>
-              </CommandItem>
-            ))}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+        <span className="truncate">{current?.label ?? "Choose a time zone"}</span>
+      </ComboboxTrigger>
+      <ComboboxContent>
+        <ComboboxSearch aria-label="Search time zones" placeholder="Search time zones…" />
+        <ComboboxEmpty>No time zones match.</ComboboxEmpty>
+        <ComboboxList>
+          {(zone: ComboboxOption) => (
+            <ComboboxItem key={zone.value} value={zone}>
+              <span className="truncate">{zone.label}</span>
+            </ComboboxItem>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
   );
 }

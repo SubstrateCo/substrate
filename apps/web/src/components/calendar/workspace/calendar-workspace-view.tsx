@@ -4,13 +4,13 @@ import { Link, type LinkProps } from "@tanstack/react-router";
 
 import type { ComponentProps, ReactNode } from "react";
 
-import { ReconnectNotice } from "../reconnect-notice";
 import { CalendarAgenda } from "./calendar-agenda";
 import { CalendarFilter } from "./calendar-filter";
 import { CalendarToolbar } from "./calendar-toolbar";
 import { CalendarWeek } from "./calendar-week";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { LoadingState } from "@/components/feedback/loading-state";
 import {
   PageContent,
@@ -23,7 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { AgendaDay, CalendarViewMode } from "@/lib/calendar/days";
 import type { CalendarGroup } from "@/lib/calendar/groups";
-import { CalendarDays, Settings } from "lucide-react";
+import { CalendarDays, Settings, TriangleAlert } from "lucide-react";
 
 export type CalendarBodyState = "loading" | "error" | "no-calendars" | "ready";
 
@@ -97,7 +97,9 @@ export function CalendarWorkspaceView({
         <CalendarToolbar {...toolbar} />
         {needsReconnect && (
           <div className="shrink-0 px-4 pt-3">
-            <ReconnectNotice
+            <InlineNotice
+              icon={TriangleAlert}
+              tone="warning"
               action={
                 <SettingsLink variant="outline" size="sm">
                   Reconnect calendar
@@ -105,7 +107,7 @@ export function CalendarWorkspaceView({
               }
             >
               A calendar needs to be reconnected. Its events may be out of date.
-            </ReconnectNotice>
+            </InlineNotice>
           </div>
         )}
         {state === "error" && (

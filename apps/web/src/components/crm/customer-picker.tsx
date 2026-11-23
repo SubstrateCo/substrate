@@ -1,22 +1,26 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { useDeferredValue, useId, useState } from "react";
+import { useDeferredValue, useId, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
+  Combobox,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxItem,
+  ComboboxList,
+  ComboboxSearch,
+  ComboboxStatus,
+  ComboboxTrigger,
+  type ComboboxOption,
+} from "@/components/ui/combobox";
 import { Field, FieldLabel } from "@/components/ui/field";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Spinner } from "@/components/ui/spinner";
 import { resourceState } from "@/lib/resource-state";
 import { contactsOptions } from "@/queries/contacts/options";
 import { accountsOptions } from "@/queries/crm/options";
-import { Check, ChevronDown } from "lucide-react";
+
+const none: ComboboxOption = { value: "", label: "None" };
 
 export function CustomerPicker({
   organizationId,
@@ -37,7 +41,9 @@ export function CustomerPicker({
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const querySearch = useDeferredValue(search);
-  const [selectedLabel, setSelectedLabel] = useState(initialLabel);
+  const [selected, setSelected] = useState<ComboboxOption>(
+    value ? { value, label: initialLabel ?? "Selected record" } : none,
+  );
   const accounts = useQuery({
     ...accountsOptions(organizationId, querySearch),
     enabled: open && kind === "accounts",
@@ -47,7 +53,7 @@ export function CustomerPicker({
     enabled: open && kind === "contacts",
   });
   const query = { accounts, contacts }[kind];
-  const options = {
+  const options: ComboboxOption[] = {
     accounts: (resourceState(accounts).data ?? []).map((row) => ({
       value: row.entityId,
       label: row.name,
@@ -57,78 +63,45 @@ export function CustomerPicker({
       label: contact.displayName,
     })),
   }[kind];
-  const selected = options.find((option) => option.value === value);
+  let status: ReactNode = null;
+  if (query.isFetching) status = <Spinner className="size-3.5" aria-label={`Searching ${kind}`} />;
+  else if (query.error) status = "Couldn’t load customer records.";
+  else if (options.length === 100) status = "First 100 matches. Refine your search.";
+  const current = value ? (options.find((option) => option.value === value) ?? selected) : none;
   return (
     <Field>
       <FieldLabel htmlFor={id}>{label}</FieldLabel>
-      <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            id={id}
-            variant="field"
-            role="combobox"
-            aria-expanded={open}
-            className="justify-between"
-          >
-            <span className="truncate">
-              {value ? (selected?.label ?? selectedLabel ?? "Selected record") : "None"}
-            </span>
-            <ChevronDown aria-hidden className="text-muted-foreground" />
-          </Button>
-        </PopoverTrigger>
-        <PopoverContent variant="menu" align="start" className="w-80">
-          <Command shouldFilter={false}>
-            <CommandInput
-              aria-label={`Search ${kind}`}
-              placeholder={`Search ${kind}…`}
-              value={search}
-              onValueChange={setSearch}
-            />
-            <CommandList>
-              <CommandEmpty>
-                {query.error ? "Couldn’t load customer records." : "No matching customer records."}
-              </CommandEmpty>
-              <CommandGroup>
-                <CommandItem
-                  value="none"
-                  onSelect={() => {
-                    onChange("");
-                    setSelectedLabel(undefined);
-                    setOpen(false);
-                  }}
-                >
-                  None{!value && <Check aria-hidden />}
-                </CommandItem>
-                {!query.error &&
-                  options.map((option) => (
-                    <CommandItem
-                      key={option.value}
-                      value={option.value}
-                      onSelect={() => {
-                        onChange(option.value);
-                        setSelectedLabel(option.label);
-                        setOpen(false);
-                      }}
-                    >
-                      <span className="flex-1 truncate">{option.label}</span>
-                      {value === option.value && <Check aria-hidden />}
-                    </CommandItem>
-                  ))}
-              </CommandGroup>
-            </CommandList>
-          </Command>
-          {query.isFetching && (
-            <p role="status" className="px-2 py-1 text-xs text-muted-foreground">
-              Searching…
-            </p>
-          )}
-          {options.length === 100 && (
-            <p className="px-2 py-1 text-xs text-muted-foreground">
-              First 100 matches. Refine your search.
-            </p>
-          )}
-        </PopoverContent>
-      </Popover>
+      <Combobox
+        items={query.error ? [none] : [none, ...options]}
+        value={current}
+        onValueChange={(next) => {
+          const option = next ?? none;
+          setSelected(option);
+          onChange(option.value);
+        }}
+        isItemEqualToValue={(item, chosen) => item.value === chosen.value}
+        filter={null}
+        open={open}
+        onOpenChange={setOpen}
+        inputValue={search}
+        onInputValueChange={setSearch}
+      >
+        <ComboboxTrigger render={<Button id={id} type="button" variant="field" role="combobox" />}>
+          <span className="truncate">{current.label}</span>
+        </ComboboxTrigger>
+        <ComboboxContent>
+          <ComboboxSearch aria-label={`Search ${kind}`} placeholder={`Search ${kind}…`} />
+          <ComboboxEmpty>No matching customer records.</ComboboxEmpty>
+          <ComboboxList>
+            {(option: ComboboxOption) => (
+              <ComboboxItem key={option.value} value={option}>
+                <span className="truncate">{option.label}</span>
+              </ComboboxItem>
+            )}
+          </ComboboxList>
+          <ComboboxStatus>{status}</ComboboxStatus>
+        </ComboboxContent>
+      </Combobox>
     </Field>
   );
 }

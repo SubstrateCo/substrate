@@ -88,7 +88,7 @@ export function TaskProperties({
     <>
       <TaskAssigneeAvatar name={assignee?.name} image={assignee?.image} type={assignee?.type} />
       <span className={`truncate ${assignee ? "" : "text-muted-foreground"}`}>{assigneeText}</span>
-      {assignee?.type === "agent" && <Tag className="py-0">Agent</Tag>}
+      {assignee?.type === "agent" && <Tag size="sm">Agent</Tag>}
     </>
   );
   const dueValue = task.dueDate ? (
@@ -134,23 +134,18 @@ export function TaskProperties({
             value={task.assigneeActorEntityId}
             assignees={assignableActors(detail, task.assigneeActorEntityId)}
             onChange={(assigneeActorEntityId) => onChange({ assigneeActorEntityId })}
-          >
-            {() => (
+            trigger={
               <Button
                 type="button"
                 variant="property"
                 size="sm"
                 role="combobox"
                 aria-label={`Assignee: ${assigneeText}`}
-                className={`${trigger} group/property`}
-              >
-                <span className="flex min-w-0 items-center gap-2">{assigneeValue}</span>
-                <ChevronDown
-                  aria-hidden="true"
-                  className="text-muted-foreground opacity-0 group-hover/property:opacity-100 group-focus-visible/property:opacity-100"
-                />
-              </Button>
-            )}
+                className={trigger}
+              />
+            }
+          >
+            <span className="flex min-w-0 items-center gap-2">{assigneeValue}</span>
           </AssigneePicker>
         ) : (
           <span className="flex min-w-0 items-center gap-2">{assigneeValue}</span>

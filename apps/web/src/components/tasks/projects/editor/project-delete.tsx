@@ -1,6 +1,6 @@
 import { useNavigate } from "@tanstack/react-router";
 
-import { DeleteRecordCard } from "@/components/feedback/delete-record-card";
+import { DangerZoneCard } from "@/components/feedback/danger-zone-card";
 import type { Project } from "@/components/tasks/types";
 import { useTasksMutation } from "@/queries/tasks/mutations";
 
@@ -14,7 +14,7 @@ export function ProjectDelete({
   const remove = useTasksMutation(organizationId);
   const navigate = useNavigate();
   return (
-    <DeleteRecordCard
+    <DangerZoneCard
       title="Delete project"
       description="Remove this archived project and all its tasks and subtasks."
       confirmTitle={`Delete “${project.name}”?`}
@@ -23,7 +23,7 @@ export function ProjectDelete({
       error={remove.error}
       errorDescription="Couldn’t delete this project. Try again."
       onReset={() => remove.reset()}
-      onDelete={(onDeleted) =>
+      onConfirm={(onDeleted) =>
         remove.mutate(
           { action: "deleteProject", organizationId, projectEntityId: project.entityId },
           {

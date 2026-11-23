@@ -3,11 +3,11 @@ import type { CalendarAccountView } from "@substrate/contracts/calendar";
 import { useId } from "react";
 
 import { ProviderIcon } from "../provider-icon";
-import { ReconnectNotice } from "../reconnect-notice";
 import { CalendarRow, type CalendarRowActions } from "./calendar-row";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { Button } from "@/components/ui/button";
 import { providerLabels } from "@/lib/calendar/labels";
-import { Plus, RotateCcw, Unlink } from "lucide-react";
+import { Plus, RotateCcw, TriangleAlert, Unlink } from "lucide-react";
 
 export interface CalendarAccountActions extends CalendarRowActions {
   onAddCalendars: (account: CalendarAccountView) => void;
@@ -75,7 +75,9 @@ export function CalendarAccountCard({
       </header>
       {needsAccess && (
         <div className="px-5 pb-4">
-          <ReconnectNotice
+          <InlineNotice
+            icon={TriangleAlert}
+            tone="warning"
             action={
               <Button
                 variant="outline"
@@ -91,7 +93,7 @@ export function CalendarAccountCard({
             {account.hasCalendarAccess
               ? `${provider} stopped sharing calendars with Substrate. Reconnect to resume syncing.`
               : "This account was linked without calendar access. Reconnect to choose calendars."}
-          </ReconnectNotice>
+          </InlineNotice>
         </div>
       )}
       {account.calendars.length > 0 ? (

@@ -4,10 +4,10 @@ import { useState } from "react";
 
 import type { WorkspaceReference } from "@/components/messaging/references/entity-reference";
 import {
-  ReferencePicker as ReferencePickerView,
+  ReferencePickerView,
   type ReferenceKind,
   type ReferenceTab,
-} from "@/components/messaging/references/reference-picker";
+} from "@/components/messaging/references/reference-picker-view";
 import type { ReferenceQuery } from "@/components/messaging/references/reference-query";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";

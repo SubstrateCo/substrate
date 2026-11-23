@@ -1,10 +1,7 @@
 import type { PermissionLevel } from "@substrate/contracts/tasks";
 
-import { useId } from "react";
-
-import { TaskAssigneeAvatar } from "../../task-cues/task-assignee-avatar";
 import { projectPermissionLabels, projectPermissionOptions, type ProjectDetail } from "../../types";
-import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
+import { AccessRow } from "@/components/people/access-row";
 import {
   Select,
   SelectContent,
@@ -12,8 +9,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { cn } from "cn";
-import { UserMinus } from "lucide-react";
 
 /**
  * One person with project access. Owners change the level from the menu and remove access with
@@ -34,27 +29,22 @@ export function ProjectMemberRow({
   onChange: (level: PermissionLevel) => void;
   onRemove: () => void;
 }) {
-  const labelId = useId();
   const editable = canManage && !lastOwner;
   return (
-    <li className={cn(actionRow, "flex min-h-12 items-center gap-3 px-5 py-2")}>
-      <TaskAssigneeAvatar
-        name={member.name}
-        image={member.image}
-        type={member.type}
-        className="size-7"
-      />
-      <div className="min-w-0 flex-1">
-        <p id={labelId} className="truncate text-sm font-medium">
-          {member.name}
-        </p>
-        <p className="text-xs text-muted-foreground">
+    <AccessRow
+      className="min-h-12 px-5"
+      name={member.name}
+      image={member.image}
+      agent={member.type === "agent"}
+      meta={
+        <>
           {member.type === "agent" ? "Agent" : "Person"}
           {lastOwner && canManage && " · Only owner. Add another owner to change this."}
-        </p>
-      </div>
-      {editable ? (
-        <>
+        </>
+      }
+      level={projectPermissionLabels[member.level]}
+      levelControl={
+        editable ? (
           <Select
             value={member.level}
             disabled={pending}
@@ -79,25 +69,10 @@ export function ProjectMemberRow({
               ))}
             </SelectContent>
           </Select>
-          <RowActions label={`Actions for ${member.name}`}>
-            <RowAction
-              label={`Remove ${member.name}’s access`}
-              destructive
-              disabled={pending}
-              onClick={onRemove}
-            >
-              <UserMinus aria-hidden="true" />
-            </RowAction>
-          </RowActions>
-        </>
-      ) : (
-        <>
-          <span className="w-30 shrink-0 pr-2 text-right text-sm text-muted-foreground">
-            {projectPermissionLabels[member.level]}
-          </span>
-          <span className="w-7 shrink-0" />
-        </>
-      )}
-    </li>
+        ) : undefined
+      }
+      disabled={pending}
+      onRemove={editable ? onRemove : undefined}
+    />
   );
 }

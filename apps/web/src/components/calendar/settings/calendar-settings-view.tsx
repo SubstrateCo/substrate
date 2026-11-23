@@ -4,15 +4,15 @@ import type {
 } from "@substrate/contracts/calendar";
 
 import { ProviderIcon } from "../provider-icon";
-import { ReconnectNotice } from "../reconnect-notice";
 import { CalendarAccountCard, type CalendarAccountActions } from "./calendar-account-card";
 import { CalendarRow } from "./calendar-row";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { FormMessage } from "@/components/feedback/form-message";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { SettingsList, SettingsSection } from "@/components/layout/settings-section";
 import { providerLabels } from "@/lib/calendar/labels";
-import { CalendarDays, RotateCcw } from "lucide-react";
+import { CalendarDays, RotateCcw, TriangleAlert } from "lucide-react";
 
 /** The viewer's calendar accounts in one organization. */
 export function CalendarSettingsView({
@@ -61,7 +61,9 @@ export function CalendarSettingsView({
         actions={settings.accounts.length > 0 ? connect("outline") : undefined}
       >
         {accessRequired && (
-          <ReconnectNotice
+          <InlineNotice
+            icon={TriangleAlert}
+            tone="warning"
             action={
               <PendingButton
                 variant="outline"
@@ -76,7 +78,7 @@ export function CalendarSettingsView({
             }
           >
             Substrate lost access to this calendar. Reconnect to grant calendar access again.
-          </ReconnectNotice>
+          </InlineNotice>
         )}
         {error && <FormMessage error={error} errorDescription={errorDescription} />}
         {settings.accounts.length === 0 ? (

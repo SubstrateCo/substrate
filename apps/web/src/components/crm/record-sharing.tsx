@@ -10,20 +10,19 @@ import { useRecordPeople } from "./record-people-directory";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { FormMessage } from "@/components/feedback/form-message";
-import { Field, FieldDescription, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { SelectField } from "@/components/forms/select-field";
+import { FieldDescription, FieldLegend, FieldSet } from "@/components/ui/field";
 import type { PickedRecipient } from "@/lib/people/people-picker";
 import { crmGrantsOptions } from "@/queries/crm/management";
 import { useCrmMutation } from "@/queries/crm/mutations";
 
 type Level = Extract<CrmWrite, { action: "share" }>["level"];
-const permissions: Level[] = ["view", "comment", "edit", "owner"];
+const permissions: { value: Level; label: string }[] = [
+  { value: "view", label: "Can view" },
+  { value: "comment", label: "Can comment" },
+  { value: "edit", label: "Can edit" },
+  { value: "owner", label: "Can manage access" },
+];
 
 export type RecordSharingProps = {
   organizationId: string;
@@ -121,34 +120,20 @@ export function RecordSharing({
           onPendingTextChange={setPendingText}
           disabled={mutation.isPending}
         />
-        <Field>
-          <FieldLabel htmlFor={`${id}-permission`}>Access</FieldLabel>
-          <Select
-            value={permission}
-            onValueChange={(value) => {
-              const selected = permissions.find((permission) => permission === value);
-              if (selected) {
-                mutation.reset();
-                setPermission(selected);
-              }
-            }}
-          >
-            <SelectTrigger id={`${id}-permission`}>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="view">Can view</SelectItem>
-              <SelectItem value="comment">Can comment</SelectItem>
-              <SelectItem value="edit">Can edit</SelectItem>
-              <SelectItem value="owner">Can manage access</SelectItem>
-            </SelectContent>
-          </Select>
-          <FieldDescription>
-            {permission === "owner"
+        <SelectField
+          label="Access"
+          value={permission}
+          onChange={(value) => {
+            mutation.reset();
+            setPermission(value);
+          }}
+          options={permissions}
+          description={
+            permission === "owner"
               ? "This person can edit this record and manage access. This does not make them responsible for it."
-              : "Confirming sets this person’s direct access to the selected level. Their agent can act with their access."}
-          </FieldDescription>
-        </Field>
+              : "Confirming sets this person’s direct access to the selected level. Their agent can act with their access."
+          }
+        />
       </FormDialog>
       {removing && (
         <ConfirmDialog

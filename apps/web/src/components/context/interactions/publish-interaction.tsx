@@ -6,10 +6,10 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { CrmResourceState } from "@/components/crm/crm-resource-state";
-import { CrmSelect } from "@/components/crm/crm-select";
 import { formText } from "@/components/crm/form-text";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { NativeField } from "@/components/forms/native-form";
+import { SelectField } from "@/components/forms/select-field";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
@@ -100,15 +100,17 @@ function PublicationEditor({
         error={related.error}
         onRetry={() => void related.refetch()}
       />
-      <CrmSelect
+      <SelectField
         label="Source message"
         value={messageId}
-        onValueChange={setMessageId}
-        optional
-        options={sources.map((row) => ({
-          value: row.messageId,
-          label: `${row.authorName} · ${row.conversationName ?? "Discussion"} · ${formatDateTime(row.createdAt)}`,
-        }))}
+        onChange={setMessageId}
+        options={[
+          { value: "", label: "None" },
+          ...sources.map((row) => ({
+            value: row.messageId,
+            label: `${row.authorName} · ${row.conversationName ?? "Discussion"} · ${formatDateTime(row.createdAt)}`,
+          })),
+        ]}
       />
       {source && (
         <Button variant="link" size="sm" asChild>
@@ -117,15 +119,7 @@ function PublicationEditor({
           </Link>
         </Button>
       )}
-      <CrmSelect
-        label="Kind"
-        value={kind}
-        onValueChange={(next) => {
-          const choice = publicationKinds.find((item) => item.value === next);
-          if (choice) setKind(choice.value);
-        }}
-        options={publicationKinds}
-      />
+      <SelectField label="Kind" value={kind} onChange={setKind} options={publicationKinds} />
       <NativeField
         id="publication-occurred"
         name="occurredAt"

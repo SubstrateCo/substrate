@@ -4,13 +4,13 @@ import type { ReactNode } from "react";
 
 import { Button } from "../../ui/button";
 import { buttonVariants } from "../../ui/button-variants";
-import type { ReferenceKind } from "./reference-picker";
+import type { ReferenceKind } from "./reference-picker-view";
+import { entityKinds } from "@/components/context/entity-kinds";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { plainReferenceText } from "@/lib/messaging/reference-token";
 import { cn } from "cn";
-import { FolderKanban, Hash, ListTodo, MessagesSquare, UserRound } from "lucide-react";
 
 function OptionContent({
   icon,
@@ -73,14 +73,7 @@ export function ReferencePickerOption({
   onFocus: () => void;
   onSelect: () => void;
 }) {
-  const Icon = {
-    task: ListTodo,
-    project: FolderKanban,
-    person: UserRound,
-    agent: UserRound,
-    channel: Hash,
-    thread: MessagesSquare,
-  }[kind];
+  const Icon = entityKinds[kind].icon;
   let icon = <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />;
   if (status) icon = <TaskStatusIcon status={status} />;
   if (kind === "person" || kind === "agent")

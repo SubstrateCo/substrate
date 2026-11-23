@@ -1,5 +1,6 @@
 import { createContext, useContext, useId, type ComponentType, type ReactNode } from "react";
 
+import { toneBorder, toneFill } from "@/components/feedback/tag";
 import { cn } from "cn";
 
 type Tone = "default" | "attention";
@@ -31,13 +32,13 @@ export function MessageCard({
         data-slot="message-card"
         className={cn(
           "mt-2.5 w-full max-w-180 overflow-hidden rounded-lg border bg-card text-card-foreground [&+&]:mt-2",
-          tone === "attention" && "border-warning/50",
+          tone === "attention" && toneBorder.warning,
         )}
       >
         <header
           className={cn(
             "flex min-h-10 min-w-0 items-center gap-2.5 py-1.5 pr-1.5 pl-3",
-            tone === "attention" && "bg-warning/10",
+            tone === "attention" && toneFill.warning,
           )}
         >
           <Icon
@@ -74,7 +75,7 @@ export function MessageCardBody({
     <div
       className={cn(
         "grid min-w-0 gap-2.5 border-t p-3 text-sm",
-        tone === "attention" && "border-warning/30",
+        tone === "attention" && toneBorder.warning,
         className,
       )}
     >

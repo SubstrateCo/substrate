@@ -127,8 +127,7 @@ export function PersonCard({
   const secondary = profile.agent ? agentLine(profile.agent) : profile.email;
   const tags = [
     profile.type === "agent" && (
-      <Tag key="agent" className="inline-flex items-center gap-1">
-        <Bot aria-hidden="true" className="size-3" />
+      <Tag key="agent" icon={<Bot aria-hidden="true" className="size-3" />}>
         Agent
       </Tag>
     ),

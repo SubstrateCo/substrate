@@ -208,7 +208,7 @@ function DealProperties({
                 >
                   {contact.displayName}
                 </ContactLink>
-                {isPrimary && <Tag className="py-0">Primary</Tag>}
+                {isPrimary && <Tag size="sm">Primary</Tag>}
               </li>
             ))}
           </ul>
