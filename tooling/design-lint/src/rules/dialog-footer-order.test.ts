@@ -15,7 +15,7 @@ ruleTester.run("dialog-footer-order", dialogFooterOrder, {
       errors: [
         {
           message:
-            'In <DialogFooter>, Cancel comes after <Button>. Footers read Cancel (variant="outline") then the primary action, right-aligned, so the confirming button is always in the bottom-right corner. Move Cancel first; ConfirmDialog from "@/components/feedback/confirm-dialog" already does this. See apps/web/DESIGN.md § 1 Primitives (Footer order).',
+            'In <DialogFooter>, Cancel comes after <Button>. Footers read Cancel (variant="outline") then the primary action, right-aligned, so the confirming button is always in the bottom-right corner. Move Cancel first; ConfirmDialog from "@/components/feedback/confirm-dialog" already does this.',
         },
       ],
     },

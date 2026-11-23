@@ -8,7 +8,6 @@ import {
   type NodeOf,
   type Rule,
 } from "../ast.ts";
-import { see } from "../design-doc.ts";
 
 type Element = NodeOf<"JSXElement">;
 
@@ -46,9 +45,12 @@ export const dialogStructure: Rule = {
     type: "suggestion",
     docs: { description: "Build dialogs from DialogHeader, DialogBody, and DialogFooter." },
     messages: {
-      noTitle: `<DialogContent> has no DialogTitle, so screen readers announce an unnamed dialog and the close X has no title line to sit on. Start with <DialogHeader><DialogTitle>New task</DialogTitle><DialogDescription>…</DialogDescription></DialogHeader> from "@/components/ui/dialog". ${see("1 Primitives (Dialogs)")}`,
-      titleOutsideHeader: `<DialogTitle> sits outside DialogHeader, so it loses the header inset (px-5 pt-5 pb-4) and no longer lines up with the close X. Wrap the title and description in <DialogHeader> from "@/components/ui/dialog". ${see("1 Primitives (Dialogs)")}`,
-      actionOutsideFooter: `This submit button sits outside DialogFooter, so it scrolls away with the body and breaks the fixed footer band. Put actions in <DialogFooter> (inside the <form>, after <DialogBody>): Cancel (variant="outline") first, then the primary action. ${see("1 Primitives (Dialogs)")}`,
+      noTitle:
+        '<DialogContent> has no DialogTitle, so screen readers announce an unnamed dialog and the close X has no title line to sit on. Start with <DialogHeader><DialogTitle>New task</DialogTitle><DialogDescription>…</DialogDescription></DialogHeader> from "@/components/ui/dialog".',
+      titleOutsideHeader:
+        '<DialogTitle> sits outside DialogHeader, so it loses the header inset (px-5 pt-5 pb-4) and no longer lines up with the close X. Wrap the title and description in <DialogHeader> from "@/components/ui/dialog".',
+      actionOutsideFooter:
+        'This submit button sits outside DialogFooter, so it scrolls away with the body and breaks the fixed footer band. Put actions in <DialogFooter> (inside the <form>, after <DialogBody>): Cancel (variant="outline") first, then the primary action.',
     },
     schema: [],
   },

@@ -12,7 +12,7 @@ ruleTester.run("no-tooltip-on-toggle-item", noTooltipOnToggleItem, {
       errors: [
         {
           message:
-            '<TooltipTrigger asChild> around <ToggleGroupItem> overwrites the item\'s data-state with "closed", so the chosen option loses its selected look. For a choice among 2–4 options use <SegmentedControl iconOnly> from "@/components/forms/segmented-control", which already wraps each item for its tooltip; otherwise put the trigger on a wrapping <span>. See apps/web/DESIGN.md § 1 Primitives.',
+            '<TooltipTrigger asChild> around <ToggleGroupItem> overwrites the item\'s data-state with "closed", so the chosen option loses its selected look. For a choice among 2–4 options use <SegmentedControl iconOnly> from "@/components/forms/segmented-control", which already wraps each item for its tooltip; otherwise put the trigger on a wrapping <span>.',
         },
       ],
     },

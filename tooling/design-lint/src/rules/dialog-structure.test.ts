@@ -26,7 +26,7 @@ ruleTester.run("dialog-structure", dialogStructure, {
       errors: [
         {
           message:
-            '<DialogContent> has no DialogTitle, so screen readers announce an unnamed dialog and the close X has no title line to sit on. Start with <DialogHeader><DialogTitle>New task</DialogTitle><DialogDescription>…</DialogDescription></DialogHeader> from "@/components/ui/dialog". See apps/web/DESIGN.md § 1 Primitives (Dialogs).',
+            '<DialogContent> has no DialogTitle, so screen readers announce an unnamed dialog and the close X has no title line to sit on. Start with <DialogHeader><DialogTitle>New task</DialogTitle><DialogDescription>…</DialogDescription></DialogHeader> from "@/components/ui/dialog".',
         },
       ],
     },

@@ -6,7 +6,6 @@ import {
   possibleStrings,
   type Rule,
 } from "../ast.ts";
-import { see } from "../design-doc.ts";
 
 type Element = NodeOf<"JSXElement">;
 type Child = Element["children"][number];
@@ -59,7 +58,8 @@ export const dialogFooterOrder: Rule = {
     type: "problem",
     docs: { description: "Put Cancel before the primary action in DialogFooter." },
     messages: {
-      order: `In <DialogFooter>, Cancel comes after <{{primary}}>. Footers read Cancel (variant="outline") then the primary action, right-aligned, so the confirming button is always in the bottom-right corner. Move Cancel first; ConfirmDialog from "@/components/feedback/confirm-dialog" already does this. ${see("1 Primitives (Footer order)")}`,
+      order:
+        'In <DialogFooter>, Cancel comes after <{{primary}}>. Footers read Cancel (variant="outline") then the primary action, right-aligned, so the confirming button is always in the bottom-right corner. Move Cancel first; ConfirmDialog from "@/components/feedback/confirm-dialog" already does this.',
     },
     schema: [],
   },
