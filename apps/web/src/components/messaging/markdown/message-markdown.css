@@ -37,18 +37,8 @@
   & strong {
     font-weight: 650;
   }
-  /* Reference chips are links too, but keep their own chip style. */
-  & a:not([data-slot="entity-reference"]) {
-    color: var(--primary);
-    text-decoration: underline;
-    text-decoration-color: color-mix(in oklch, var(--primary) 40%, transparent);
-    text-underline-offset: 3px;
-    border-radius: calc(var(--radius) * 0.6);
-  }
-  & a:not([data-slot="entity-reference"]):hover {
-    text-decoration-color: currentColor;
-  }
-  & a:focus-visible {
+  /* Links are TextLink, which owns its style. Reference chips keep their own. */
+  & a[data-slot="entity-reference"]:focus-visible {
     outline: 2px solid var(--ring);
     outline-offset: 3px;
   }

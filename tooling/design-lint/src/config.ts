@@ -119,6 +119,12 @@ export const designConfig = {
               '"{{className}}" restyles <Image>. Size, fit, and radius are fine; for a mark drawn for one background, pass darkSrc instead of recoloring it.',
           },
           {
+            pattern: "^TextLink$",
+            allow: ["layout", "truncate", "wrap-*", "break-*"],
+            message:
+              '"{{className}}" restyles <TextLink>. Use variant="default" for a link in text or variant="quiet" for a link that is the whole value, such as a website.',
+          },
+          {
             pattern: "^Pressable$",
             allow: ["layout", "spacing", "typography", "color", "shape", "motion"],
             deny: ["ring-*", "outline-*"],

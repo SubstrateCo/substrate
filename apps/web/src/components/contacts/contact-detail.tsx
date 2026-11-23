@@ -24,6 +24,7 @@ import {
   recordRows,
 } from "@/components/layout/record-section";
 import { Item, ItemActions, ItemContent, ItemTitle } from "@/components/ui/item";
+import { TextLink } from "@/components/ui/text-link";
 import { AppAvailability } from "@/components/workspace/app-availability";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { crmLink } from "@/lib/navigation/record-links";
@@ -76,14 +77,9 @@ export function ContactDetail({
           data.urls.length > 0 &&
           data.urls.map((url) => (
             <Property key={url.id} label={url.label || "Website"}>
-              <a
-                href={url.url}
-                target="_blank"
-                rel="noreferrer"
-                className="min-w-0 truncate underline-offset-4 hover:underline"
-              >
+              <TextLink variant="quiet" href={url.url} className="min-w-0 truncate">
                 {url.url}
-              </a>
+              </TextLink>
             </Property>
           ))
         }

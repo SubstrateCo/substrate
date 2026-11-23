@@ -1,6 +1,7 @@
 import type { WorkspaceReference } from "../references/entity-reference";
 import { remarkWorkspaceReferences } from "./remark-workspace-references";
 import { MarkdownReference } from "@/components/messaging/markdown/markdown-reference";
+import { TextLink } from "@/components/ui/text-link";
 import { referenceKey } from "@/lib/messaging/reference-token";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
@@ -29,11 +30,7 @@ export function MessageMarkdown({
               {children}
             </MarkdownReference>
           ),
-          a: ({ children, href }) => (
-            <a href={href} target="_blank" rel="noopener noreferrer">
-              {children}
-            </a>
-          ),
+          a: ({ children, href }) => <TextLink href={href}>{children}</TextLink>,
           img: ({ alt }) => (
             <span className="text-muted-foreground">[Image: {alt || "attachment"}]</span>
           ),

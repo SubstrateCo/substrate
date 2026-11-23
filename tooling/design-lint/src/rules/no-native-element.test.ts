@@ -9,6 +9,8 @@ ruleTester.run("no-native-element", noNativeElement, {
     '<input type={"file"} hidden onChange={onFiles} />',
     "<section><p>Body</p></section>",
     '<a href="https://example.com">Docs</a>',
+    "<a href={csv} download>Download CSV</a>",
+    '<Button asChild size="sm"><a href={url} target="_blank" rel="noreferrer">Join</a></Button>',
     '<Item asChild size="xs"><button type="button">Helper</button></Item>',
   ],
   invalid: [
@@ -28,6 +30,10 @@ ruleTester.run("no-native-element", noNativeElement, {
     },
     { code: "<select><option>One</option></select>", errors: [{ messageId: "native" }] },
     { code: "<pre>{output}</pre>", errors: [{ messageId: "native" }] },
+    {
+      code: '<a href={site} target="_blank" rel="noreferrer">{site}</a>',
+      errors: [{ messageId: "native" }],
+    },
     { code: '<progress aria-label="Uploading picture" />', errors: [{ messageId: "native" }] },
     {
       code: "<details><summary>Rules</summary>{rules}</details>",

@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Spinner } from "@/components/ui/spinner";
+import { TextLink } from "@/components/ui/text-link";
 import { outputSegments } from "@/lib/agents/sign-in-output";
 import { CircleAlert, CircleCheck, CircleSlash } from "lucide-react";
 
@@ -89,15 +90,9 @@ function OutputLog({ output, label }: { output: string; label: string }) {
         {output ? (
           positionedSegments(output).map((segment) =>
             segment.href ? (
-              <a
-                key={segment.start}
-                href={segment.href}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline underline-offset-2"
-              >
+              <TextLink key={segment.start} href={segment.href}>
                 {segment.text}
-              </a>
+              </TextLink>
             ) : (
               <span key={segment.start}>{segment.text}</span>
             ),

@@ -39,6 +39,12 @@ const NATIVE_INPUT_TYPES = new Set(["hidden", "file"]);
 // Primitives that style the element they render through `asChild`, such as <Item asChild><li>.
 const STYLING_PARENTS = new Set(["Item", "Button"]);
 
+/** A link that opens outside the app; in-app links are router Links and downloads stay raw. */
+function externalLink(node: NodeOf<"JSXOpeningElement">) {
+  if (attributeString(node, "target") !== "_blank") return undefined;
+  return `${ui("TextLink", "text-link")}, which opens a new tab with a safe rel. Inside <Button asChild> a raw <a> stays fine`;
+}
+
 function styledByParent(node: NodeOf<"JSXOpeningElement">) {
   const parent = node.parent.parent;
   if (parent?.type !== "JSXElement") return false;
@@ -60,7 +66,7 @@ export const noNativeElement: Rule = {
     return {
       JSXOpeningElement(node) {
         const tag = elementName(node.name);
-        const replacement = REPLACEMENTS[tag];
+        const replacement = tag === "a" ? externalLink(node) : REPLACEMENTS[tag];
         if (!replacement) return;
         if (tag === "input" && NATIVE_INPUT_TYPES.has(attributeString(node, "type") ?? "")) return;
         if (styledByParent(node)) return;

@@ -16,6 +16,7 @@ import { WorkDiscussions } from "@/components/context/discussions/work-discussio
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { NotSet, Property, RecordSection, recordRows } from "@/components/layout/record-section";
 import { Item, ItemActions, ItemContent, ItemTitle } from "@/components/ui/item";
+import { TextLink } from "@/components/ui/text-link";
 import { accountOptions } from "@/queries/crm/options";
 import { useRecordMutation } from "@/queries/records/mutations";
 
@@ -61,14 +62,9 @@ export function AccountDetail({
             <Property label="Domain">{account.domain || <NotSet />}</Property>
             <Property label="Website">
               {account.website ? (
-                <a
-                  href={account.website}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="min-w-0 truncate underline-offset-4 hover:underline"
-                >
+                <TextLink variant="quiet" href={account.website} className="min-w-0 truncate">
                   {account.website}
-                </a>
+                </TextLink>
               ) : (
                 <NotSet />
               )}
