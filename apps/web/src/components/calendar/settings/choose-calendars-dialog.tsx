@@ -3,11 +3,11 @@ import type { ProviderCalendarOption } from "@substrate/contracts/calendar";
 import { useId, useState } from "react";
 
 import { CalendarColorDot } from "../calendar-color";
-import { ReconnectNotice } from "../reconnect-notice";
 import { calendarErrorCopy } from "./error-copy";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { FormMessage } from "@/components/feedback/form-message";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { modalDialogProps } from "@/components/feedback/modal-dialog";
 import { PendingButton } from "@/components/feedback/pending-button";
@@ -23,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { CalendarDays, RotateCcw } from "lucide-react";
+import { CalendarDays, RotateCcw, TriangleAlert } from "lucide-react";
 
 const optionRow =
   "flex cursor-pointer items-center gap-2.5 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-row-hover has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-row-selected has-disabled:cursor-default has-disabled:opacity-60 has-disabled:hover:bg-transparent";
@@ -89,7 +89,9 @@ export function ChooseCalendarsDialog({
         </DialogHeader>
         <DialogBody>
           {accessRequired && (
-            <ReconnectNotice
+            <InlineNotice
+              icon={TriangleAlert}
+              tone="warning"
               action={
                 <PendingButton
                   variant="outline"
@@ -104,7 +106,7 @@ export function ChooseCalendarsDialog({
               }
             >
               Substrate can’t read this account’s calendars. Reconnect to grant calendar access.
-            </ReconnectNotice>
+            </InlineNotice>
           )}
           <CalendarOptions
             options={options}

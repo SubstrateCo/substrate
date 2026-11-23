@@ -13,7 +13,6 @@ import {
 import { CallerSettingsLoading } from "@/components/agents/run-settings/caller-settings-view";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { SettingsList, SettingsSection } from "@/components/layout/settings-section";
-import { FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AgentSettingsSection } from "@/lib/agent-work/agent-sections";
 
@@ -75,13 +74,12 @@ export function AgentSettingsLoading({ section }: { section: AgentSettingsSectio
         <CallerSettingsLoading />
         <TriggerCard>
           {Object.entries(agentTriggers).map(([kind, meta]) => (
-            <TriggerRow key={kind}>
-              <FieldContent>
-                <FieldLabel>{meta.title}</FieldLabel>
-                <FieldDescription>{meta.description}</FieldDescription>
-              </FieldContent>
-              <Skeleton className="h-5 w-9" />
-            </TriggerRow>
+            <TriggerRow
+              key={kind}
+              label={meta.title}
+              description={meta.description}
+              control={<Skeleton className="h-5 w-9" />}
+            />
           ))}
         </TriggerCard>
       </SettingsSection>

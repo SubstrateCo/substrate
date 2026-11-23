@@ -1,74 +1,87 @@
-import { useState, type ReactNode } from "react";
+import type { ReactElement, ReactNode } from "react";
 
 import { TaskAssigneeAvatar } from "../task-cues/task-assignee-avatar";
 import type { ProjectDetail } from "../types";
 import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Check } from "lucide-react";
+  Combobox,
+  ComboboxCollection,
+  ComboboxContent,
+  ComboboxEmpty,
+  ComboboxGroup,
+  ComboboxItem,
+  ComboboxLabel,
+  ComboboxList,
+  ComboboxSearch,
+  ComboboxTrigger,
+} from "@/components/ui/combobox";
 
 type Actor = ProjectDetail["actors"][number];
+type Option = { value: string | null; label: string; actor?: Actor };
+type Group = { value: string; label?: string; items: Option[] };
+
+const unassigned: Option = { value: null, label: "Unassigned" };
 
 /**
- * A searchable list of people and agents. `children` renders the trigger, which must forward its
- * props to a button.
+ * A searchable list of people and agents. `trigger` is the button element, without children;
+ * `children` is its content. The trigger adds the chevron.
  */
 export function AssigneePicker({
   value,
   assignees,
   onChange,
+  trigger,
   children,
 }: {
   value: string | null;
   /** Who can be chosen now. */
   assignees: readonly Actor[];
   onChange: (value: string | null) => void;
-  children: (props: { open: boolean }) => ReactNode;
+  trigger: ReactElement;
+  children: ReactNode;
 }) {
-  const [open, setOpen] = useState(false);
-  const people = assignees.filter((actor) => actor.type === "human");
-  const agents = assignees.filter((actor) => actor.type === "agent");
-  const choose = (next: string | null) => {
-    setOpen(false);
-    if (next !== value) onChange(next);
-  };
-  const row = (actor: Actor) => (
-    <CommandItem
-      key={actor.entityId}
-      value={`${actor.name} ${actor.entityId}`}
-      onSelect={() => choose(actor.entityId)}
-    >
-      <TaskAssigneeAvatar name={actor.name} image={actor.image} type={actor.type} />
-      <span className="min-w-0 flex-1 truncate">{actor.name}</span>
-      {actor.entityId === value && <Check aria-hidden="true" />}
-    </CommandItem>
-  );
+  const option = (actor: Actor): Option => ({ value: actor.entityId, label: actor.name, actor });
+  const people = assignees.filter((actor) => actor.type === "human").map(option);
+  const agents = assignees.filter((actor) => actor.type === "agent").map(option);
+  const groups: Group[] = [
+    { value: "unassigned", items: [unassigned] },
+    { value: "people", label: "People", items: people },
+    { value: "agents", label: "Agents", items: agents },
+  ].filter((group) => group.items.length > 0);
+  const current = [...people, ...agents].find((candidate) => candidate.value === value);
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>{children({ open })}</PopoverTrigger>
-      <PopoverContent variant="menu" align="start" className="w-64">
-        <Command>
-          <CommandInput aria-label="Search assignees" placeholder="Assign to…" />
-          <CommandList className="mt-1">
-            <CommandEmpty>No one matches.</CommandEmpty>
-            <CommandGroup>
-              <CommandItem value="Unassigned" onSelect={() => choose(null)}>
-                <TaskAssigneeAvatar />
-                <span className="flex-1">Unassigned</span>
-                {!value && <Check aria-hidden="true" />}
-              </CommandItem>
-            </CommandGroup>
-            {!!people.length && <CommandGroup heading="People">{people.map(row)}</CommandGroup>}
-            {!!agents.length && <CommandGroup heading="Agents">{agents.map(row)}</CommandGroup>}
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <Combobox
+      items={groups}
+      value={value ? (current ?? { value, label: "" }) : unassigned}
+      onValueChange={(next) => {
+        const chosen = next?.value ?? null;
+        if (chosen !== value) onChange(chosen);
+      }}
+      isItemEqualToValue={(item, chosen) => item.value === chosen.value}
+    >
+      <ComboboxTrigger render={trigger}>{children}</ComboboxTrigger>
+      <ComboboxContent>
+        <ComboboxSearch aria-label="Search assignees" placeholder="Assign to…" />
+        <ComboboxEmpty>No one matches.</ComboboxEmpty>
+        <ComboboxList>
+          {(group: Group) => (
+            <ComboboxGroup key={group.value} items={group.items}>
+              {group.label && <ComboboxLabel>{group.label}</ComboboxLabel>}
+              <ComboboxCollection>
+                {(item: Option) => (
+                  <ComboboxItem key={item.value ?? "unassigned"} value={item}>
+                    <TaskAssigneeAvatar
+                      name={item.actor?.name}
+                      image={item.actor?.image}
+                      type={item.actor?.type}
+                    />
+                    <span className="min-w-0 flex-1 truncate">{item.label}</span>
+                  </ComboboxItem>
+                )}
+              </ComboboxCollection>
+            </ComboboxGroup>
+          )}
+        </ComboboxList>
+      </ComboboxContent>
+    </Combobox>
   );
 }

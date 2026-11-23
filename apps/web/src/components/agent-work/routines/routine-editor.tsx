@@ -22,6 +22,7 @@ import {
 import { TimeZonePicker } from "./time-zone-picker";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { SegmentedControl } from "@/components/forms/segmented-control";
+import { SelectField } from "@/components/forms/select-field";
 import {
   Field,
   FieldContent,
@@ -32,13 +33,6 @@ import {
   FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
@@ -186,40 +180,19 @@ export function RoutineEditor({
           ) : (
             <div className="grid gap-4 sm:grid-cols-2">
               {schedule.frequency === "weekly" && (
-                <Field>
-                  <FieldLabel htmlFor={`${id}-weekday`}>On</FieldLabel>
-                  <Select
-                    value={String(schedule.weekday)}
-                    onValueChange={(value) => setScheduleField({ weekday: Number(value) })}
-                  >
-                    <SelectTrigger id={`${id}-weekday`} className="w-full">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {weekdayNames.map((day, index) => (
-                        <SelectItem key={day} value={String(index)}>
-                          {day}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </Field>
+                <SelectField
+                  label="On"
+                  value={String(schedule.weekday)}
+                  onChange={(value) => setScheduleField({ weekday: Number(value) })}
+                  options={weekdayNames.map((day, index) => ({ value: String(index), label: day }))}
+                />
               )}
-              <Field>
-                <FieldLabel htmlFor={`${id}-time`}>At</FieldLabel>
-                <Select value={schedule.time} onValueChange={(time) => setScheduleField({ time })}>
-                  <SelectTrigger id={`${id}-time`} className="w-full">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {timeOptions(schedule.time).map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </Field>
+              <SelectField
+                label="At"
+                value={schedule.time}
+                onChange={(time) => setScheduleField({ time })}
+                options={timeOptions(schedule.time)}
+              />
             </div>
           )}
         </FieldSet>

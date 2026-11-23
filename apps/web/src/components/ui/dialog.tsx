@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
+import { ComboboxPortalContainer, isComboboxEscape } from "@/components/ui/combobox";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "cn";
 import { XIcon } from "lucide-react";
@@ -66,18 +67,24 @@ function DialogContent({
   showCloseButton = true,
   onOpenAutoFocus,
   onCloseAutoFocus,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> &
   VariantProps<typeof dialogContentVariants> & {
     showCloseButton?: boolean;
   }) {
   const opener = React.useRef<Element | null>(null);
+  const [container, setContainer] = React.useState<HTMLDivElement | null>(null);
   return (
     <DialogPortal>
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
         className={cn(dialogContentVariants({ size }), className)}
+        onEscapeKeyDown={(event) => {
+          if (isComboboxEscape(event)) event.preventDefault();
+          else onEscapeKeyDown?.(event);
+        }}
         onOpenAutoFocus={(event) => {
           opener.current = document.activeElement;
           onOpenAutoFocus?.(event);
@@ -94,7 +101,8 @@ function DialogContent({
         }}
         {...props}
       >
-        {children}
+        <ComboboxPortalContainer value={container}>{children}</ComboboxPortalContainer>
+        <div ref={setContainer} data-slot="dialog-popups" className="contents" />
         {showCloseButton && (
           <DialogPrimitive.Close data-slot="dialog-close" asChild>
             <Button variant="ghost" className="absolute top-4 right-4" size="icon-sm">

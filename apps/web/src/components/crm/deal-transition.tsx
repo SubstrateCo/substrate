@@ -2,10 +2,10 @@ import type { DealOutcome } from "@substrate/contracts/crm/input";
 
 import { useState } from "react";
 
-import { CrmSelect } from "./crm-select";
 import { formText } from "./form-text";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { NativeField } from "@/components/forms/native-form";
+import { SelectField } from "@/components/forms/select-field";
 
 export function DealTransition({
   stageId: initialStageId,
@@ -59,13 +59,11 @@ export function DealTransition({
         )
       }
     >
-      <CrmSelect label="Stage" value={stageId} onValueChange={setStageId} options={stages} />
-      <CrmSelect
+      <SelectField label="Stage" value={stageId} onChange={setStageId} options={stages} />
+      <SelectField
         label="Outcome"
         value={outcome}
-        onValueChange={(next) => {
-          if (next === "open" || next === "won" || next === "lost") setOutcome(next);
-        }}
+        onChange={setOutcome}
         options={[
           { value: "open", label: "Open" },
           { value: "won", label: "Won" },

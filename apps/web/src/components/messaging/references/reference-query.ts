@@ -1,4 +1,4 @@
-import type { ReferenceKind } from "./reference-picker";
+import type { ReferenceKind } from "./reference-picker-view";
 
 export type ReferenceQuery = {
   start: number;

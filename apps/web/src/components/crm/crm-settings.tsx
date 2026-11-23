@@ -5,10 +5,10 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { CrmResourceState } from "./crm-resource-state";
-import { CrmSelect, CrmSelectLoading } from "./crm-select";
 import { PipelineSettings, PipelineSettingsLoading } from "./pipeline-settings";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
+import { SelectField, SelectFieldLoading } from "@/components/forms/select-field";
 import { SettingsPanel } from "@/components/layout/settings-page";
 import {
   SettingsCard,
@@ -51,7 +51,7 @@ export function CrmSettings({ organizationId }: { organizationId: string }) {
               <div role="status" aria-label="Loading CRM settings">
                 <DealDefaultsSection>
                   <div className="max-w-56">
-                    <CrmSelectLoading label="Default currency" />
+                    <SelectFieldLoading label="Default currency" />
                   </div>
                 </DealDefaultsSection>
               </div>
@@ -93,13 +93,11 @@ export function CrmSettings({ organizationId }: { organizationId: string }) {
                 }
               >
                 <div className="max-w-56">
-                  <CrmSelect
+                  <SelectField
                     label="Default currency"
                     value={currency ?? ""}
-                    onValueChange={(next) => setDraft({ currency: next || null })}
-                    options={currencyChoices}
-                    optional
-                    emptyLabel="Not set"
+                    onChange={(next) => setDraft({ currency: next || null })}
+                    options={[{ value: "", label: "Not set" }, ...currencyChoices]}
                     disabled={!canEdit || mutation.isPending}
                   />
                 </div>

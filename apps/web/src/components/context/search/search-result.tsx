@@ -6,6 +6,7 @@ import { Link } from "@tanstack/react-router";
 import { useRef, type ReactNode } from "react";
 
 import { CommandItem } from "../../ui/command";
+import { entityKinds } from "../entity-kinds";
 import { ChannelSearchResultContent } from "./channel-search-result";
 import { searchRowClass, SearchRowFrame } from "./search-row";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
@@ -14,17 +15,7 @@ import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { formatFullTimestamp, formatRelativeTime } from "@/lib/format/date";
 import { conversationLabel } from "@/lib/messaging/conversations";
 import type { RecordLink } from "@/lib/navigation/record-links";
-import {
-  FolderKanban,
-  Building2,
-  Contact,
-  Handshake,
-  MessageSquare,
-  ListTodo,
-  LockKeyhole,
-  MessageSquareText,
-  type LucideIcon,
-} from "lucide-react";
+import { LockKeyhole, type LucideIcon } from "lucide-react";
 
 export type SearchResultItem = {
   id: string;
@@ -86,37 +77,31 @@ function Highlight({ text, query }: { text: string; query: string }) {
   return parts;
 }
 
+const recordKinds = ["project", "contact", "account", "deal", "contact_interaction"] as const;
+
 function describe(item: SearchResultItem) {
   const icon = (Icon: LucideIcon) => (
     <Icon className="size-4 text-muted-foreground" aria-hidden="true" />
   );
   if (item.kind === "task")
     return {
-      icon: item.status ? <TaskStatusIcon status={item.status} /> : icon(ListTodo),
+      icon: item.status ? <TaskStatusIcon status={item.status} /> : icon(entityKinds.task.icon),
       title: item.title,
-      kind: "Task",
+      kind: entityKinds.task.label,
       detail: [item.projectName, item.status && taskStatusLabels[item.status]]
         .filter(Boolean)
         .join(" · "),
     };
-  if (item.kind === "project")
-    return { icon: icon(FolderKanban), title: item.title, kind: "Project", detail: "Project" };
-  const crmKinds = {
-    contact: { Icon: Contact, label: "Contact" },
-    account: { Icon: Building2, label: "Account" },
-    deal: { Icon: Handshake, label: "Deal" },
-    contact_interaction: { Icon: MessageSquare, label: "Interaction" },
-  };
-  const crmKind = Object.entries(crmKinds).find(([kind]) => kind === item.kind)?.[1];
-  if (crmKind) {
-    const { Icon, label } = crmKind;
+  const recordKind = recordKinds.find((kind) => kind === item.kind);
+  if (recordKind) {
+    const { icon: Icon, label } = entityKinds[recordKind];
     return { icon: icon(Icon), title: item.title, kind: label, detail: label };
   }
   if (item.kind === "message")
     return {
-      icon: icon(MessageSquareText),
+      icon: icon(entityKinds.message.icon),
       title: item.excerpt ?? item.title,
-      kind: "Message",
+      kind: entityKinds.message.label,
       detail: (
         <>
           <Place item={item} />

@@ -19,7 +19,7 @@ export function StartupSkills({ skills, scanned }: { skills: HarnessSkill[]; sca
         <li key={skill.id} className="grid gap-1 px-4 py-3">
           <div className="flex min-w-0 items-center gap-2">
             <p className="min-w-0 truncate text-sm font-medium">{skill.name}</p>
-            <Tag>{scanned ? "Managed" : "Default"}</Tag>
+            <Tag className="shrink-0">{scanned ? "Managed" : "Default"}</Tag>
           </div>
           <p className="line-clamp-2 text-xs text-muted-foreground">{skill.description}</p>
         </li>
@@ -45,7 +45,7 @@ export function McpServerRow({
         <p className="text-sm font-medium wrap-anywhere">{name}</p>
         {detail && <p className="truncate text-xs text-muted-foreground">{detail}</p>}
       </div>
-      {builtIn && <Tag>Built-in</Tag>}
+      {builtIn && <Tag className="shrink-0">Built-in</Tag>}
     </li>
   );
 }

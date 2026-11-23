@@ -48,7 +48,11 @@ export function ActivityRow({ event }: { event: ActivityEvent }) {
             size="xs"
           />
           <span className="truncate font-medium">{event.actorName ?? "Unknown"}</span>
-          {event.actorType === "agent" && <Tag className="shrink-0 py-0">Agent</Tag>}
+          {event.actorType === "agent" && (
+            <Tag size="sm" className="shrink-0">
+              Agent
+            </Tag>
+          )}
           <span className="truncate text-muted-foreground">{known?.verb ?? event.action}</span>
           {event.source && (
             <Link

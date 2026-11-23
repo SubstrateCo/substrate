@@ -1,6 +1,7 @@
 import * as React from "react";
 
 import { Button } from "@/components/ui/button";
+import { ComboboxPortalContainer, isComboboxEscape } from "@/components/ui/combobox";
 import { cn } from "cn";
 import { XIcon } from "lucide-react";
 import { Dialog } from "radix-ui";
@@ -40,25 +41,32 @@ function SheetContent({
   side = "right",
   showCloseButton = true,
   container,
+  onEscapeKeyDown,
   ...props
 }: React.ComponentProps<typeof Dialog.Content> & {
   side?: "top" | "right" | "bottom" | "left";
   showCloseButton?: boolean;
   container?: React.ComponentProps<typeof Dialog.Portal>["container"];
 }) {
+  const [popupContainer, setPopupContainer] = React.useState<HTMLDivElement | null>(null);
   return (
     <SheetPortal container={container}>
       <SheetOverlay className="pointer-events-auto absolute" />
       <Dialog.Content
         data-slot="sheet-content"
         data-side={side}
+        onEscapeKeyDown={(event) => {
+          if (isComboboxEscape(event)) event.preventDefault();
+          else onEscapeKeyDown?.(event);
+        }}
         className={cn(
           "pointer-events-auto absolute z-20 flex flex-col overflow-hidden bg-surface text-sm text-foreground shadow-floating duration-200 ease-drawer outline-none data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:border-t data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:border-r data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:border-l data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:border-b motion-reduce:animate-none! data-open:animate-in data-open:fade-in-0 data-[side=bottom]:data-open:slide-in-from-bottom-full data-[side=left]:data-open:slide-in-from-left-full data-[side=right]:data-open:slide-in-from-right-full data-[side=top]:data-open:slide-in-from-top-full data-closed:animate-out data-closed:duration-150 data-closed:fade-out-0 data-[side=bottom]:data-closed:slide-out-to-bottom-full data-[side=left]:data-closed:slide-out-to-left-full data-[side=right]:data-closed:slide-out-to-right-full data-[side=top]:data-closed:slide-out-to-top-full",
           className,
         )}
         {...props}
       >
-        {children}
+        <ComboboxPortalContainer value={popupContainer}>{children}</ComboboxPortalContainer>
+        <div ref={setPopupContainer} data-slot="sheet-popups" className="contents" />
         {showCloseButton && (
           <Dialog.Close data-slot="sheet-close" asChild>
             <Button variant="ghost" className="absolute top-3 right-3" size="icon-sm">

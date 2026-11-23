@@ -1,10 +1,8 @@
 import type { CrmWrite } from "@substrate/contracts/crm/input";
 
-import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
-import { PersonAvatar } from "@/components/people/person-avatar";
+import { AccessRow } from "@/components/people/access-row";
 import { FieldDescription } from "@/components/ui/field";
 import type { PickerPerson } from "@/lib/people/people-picker";
-import { UserMinus } from "lucide-react";
 
 type Level = Extract<CrmWrite, { action: "share" }>["level"];
 const levelLabels: Record<Level, string> = {
@@ -38,24 +36,14 @@ export function RecordGrants({
         const person = people.find((candidate) => candidate.id === grant.actorEntityId);
         const name = person?.name ?? "Former member";
         return (
-          <li
+          <AccessRow
             key={grant.actorEntityId}
-            className={`${actionRow} flex items-center gap-3 px-3 py-2`}
-          >
-            <PersonAvatar name={name} image={person?.image} />
-            <span className="min-w-0 flex-1 truncate text-sm font-medium">{name}</span>
-            <span className="text-xs text-muted-foreground">{levelLabels[grant.level]}</span>
-            <RowActions label={`Actions for ${name}`}>
-              <RowAction
-                label={`Remove ${name}’s access`}
-                destructive
-                disabled={disabled}
-                onClick={() => onRemove({ actorEntityId: grant.actorEntityId, name })}
-              >
-                <UserMinus aria-hidden="true" />
-              </RowAction>
-            </RowActions>
-          </li>
+            name={name}
+            image={person?.image}
+            level={levelLabels[grant.level]}
+            disabled={disabled}
+            onRemove={() => onRemove({ actorEntityId: grant.actorEntityId, name })}
+          />
         );
       })}
     </ul>

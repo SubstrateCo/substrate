@@ -1,8 +1,8 @@
 import { useState } from "react";
 
 import { leaveConsequence } from "./leave-consequence";
-import { OwnerSelect } from "./owner-select";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { SelectField } from "@/components/forms/select-field";
 
 // "leave" is shown to the owner, who must hand over the conversation before leaving it.
 // Handing it over alone is a plain primary action; leaving is destructive like any other leave.
@@ -52,7 +52,13 @@ export function OwnerDialog({
       onClose={onClose}
       onRestoreFocus={onRestoreFocus}
     >
-      <OwnerSelect candidates={candidates} value={owner} onChange={setOwner} />
+      <SelectField
+        label="New owner"
+        value={owner ?? ""}
+        onChange={setOwner}
+        placeholder="Choose a member"
+        options={candidates.map((person) => ({ value: person.userId, label: person.name }))}
+      />
     </ConfirmDialog>
   );
 }

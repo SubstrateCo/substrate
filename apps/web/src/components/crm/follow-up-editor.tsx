@@ -2,10 +2,10 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
-import { CrmSelect } from "./crm-select";
 import { formText } from "./form-text";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { NativeField } from "@/components/forms/native-form";
+import { SelectField } from "@/components/forms/select-field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import { resourceState } from "@/lib/resource-state";
@@ -64,15 +64,17 @@ export function FollowUpEditor({
         required
         missingMessage="Enter a follow-up title."
       />
-      <CrmSelect
+      <SelectField
         label="Project"
         value={projectId}
-        onValueChange={setProjectId}
-        options={(resourceState(projects).data ?? []).map((project) => ({
-          value: project.entityId,
-          label: project.name,
-        }))}
-        optional
+        onChange={setProjectId}
+        options={[
+          { value: "", label: "None" },
+          ...(resourceState(projects).data ?? []).map((project) => ({
+            value: project.entityId,
+            label: project.name,
+          })),
+        ]}
       />
       <NativeField
         id="followup-due"

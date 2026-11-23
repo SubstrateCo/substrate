@@ -1,4 +1,5 @@
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { InlineNotice } from "@/components/feedback/inline-notice";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Hash } from "lucide-react";
 
@@ -12,22 +13,17 @@ export function LeftChannelNotice({
   onJoin: () => void;
 }) {
   return (
-    <div
-      role="status"
-      className="mx-3 mb-1 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border bg-inset px-3 py-2 text-sm text-muted-foreground"
+    <InlineNotice
+      icon={Hash}
+      className="mx-3 mb-1 w-auto"
+      error={error && actionErrorMessage(error, "Couldn't join this channel. Try again.")}
+      action={
+        <PendingButton size="sm" pending={pending} pendingLabel="Joining" onClick={onJoin}>
+          Join channel
+        </PendingButton>
+      }
     >
-      <Hash aria-hidden="true" className="size-4 shrink-0" />
-      <span className="min-w-0 flex-1">
-        You’re not in this channel. Join it, or post a message, to add it to your sidebar.
-      </span>
-      {error && (
-        <span role="alert" className="text-destructive">
-          {actionErrorMessage(error, "Couldn’t join this channel. Try again.")}
-        </span>
-      )}
-      <PendingButton size="sm" pending={pending} pendingLabel="Joining" onClick={onJoin}>
-        Join channel
-      </PendingButton>
-    </div>
+      You’re not in this channel. Join it, or post a message, to add it to your sidebar.
+    </InlineNotice>
   );
 }

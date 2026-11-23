@@ -8,7 +8,7 @@ import { AgentConfiguration } from "./device/agent-configuration";
 import { AgentForm, type AgentSection } from "./editors/agent-form";
 import { AgentPicture } from "./editors/agent-picture";
 import { AgentRunSettings } from "./run-settings/agent-run-settings";
-import { DeleteRecordCard } from "@/components/feedback/delete-record-card";
+import { DangerZoneCard } from "@/components/feedback/danger-zone-card";
 import { ErrorState } from "@/components/feedback/error-state";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { useFocusReturn } from "@/components/feedback/use-focus-return";
@@ -121,7 +121,7 @@ export function AgentSettings({
             )
           }
           deleteAction={
-            <DeleteRecordCard
+            <DangerZoneCard
               title="Delete agent"
               actionLabel={`Delete ${agent.name}`}
               description={`Removes ${agent.name} and its settings. Messages it posted stay.`}
@@ -131,7 +131,7 @@ export function AgentSettings({
               error={remove.error}
               errorDescription="We couldn’t delete this agent. Try again."
               onReset={() => remove.reset()}
-              onDelete={(onDeleted) =>
+              onConfirm={(onDeleted) =>
                 remove.mutate(agent.id, {
                   onSuccess: () => {
                     toast.success("Agent deleted.");

@@ -1,7 +1,9 @@
 import { TechnicalDetails } from "./technical-details";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { toneBorder, toneFill } from "@/components/feedback/tag";
 import { MessageCard, MessageCardBody } from "@/components/messaging/messages/message-card";
 import { stoppedNeedsYouLabel } from "@/lib/agent-work/status";
+import { cn } from "cn";
 import { CircleAlert, TriangleAlert } from "lucide-react";
 
 export type NeedsAttentionAction = "retry" | "dismiss" | "startFresh" | "resend" | "discard";
@@ -87,7 +89,11 @@ export function NeedsAttentionCard({
     return (
       <section
         aria-label={stoppedNeedsYouLabel}
-        className="grid min-w-0 gap-2.5 border-t border-warning/30 bg-warning/5 px-4 py-3 text-sm"
+        className={cn(
+          "grid min-w-0 gap-2.5 border-t px-4 py-3 text-sm",
+          toneBorder.warning,
+          toneFill.warning,
+        )}
       >
         {content}
       </section>

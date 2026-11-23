@@ -3,12 +3,12 @@ import type { ContactIdentifierType } from "@substrate/contracts/contacts/input"
 import { useState } from "react";
 
 import type { getContact } from "@/api/contacts/requests";
-import { CrmSelect } from "@/components/crm/crm-select";
 import { formText } from "@/components/crm/form-text";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { NativeField } from "@/components/forms/native-form";
+import { SelectField } from "@/components/forms/select-field";
 import { RecordSection, RecordSectionAction, recordRows } from "@/components/layout/record-section";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { useRecordMutation } from "@/queries/records/mutations";
@@ -156,12 +156,10 @@ function ContactMethodEditor({
         );
       }}
     >
-      <CrmSelect
+      <SelectField
         label="Type"
         value={type}
-        onValueChange={(next) => {
-          if (next === "email" || next === "phone") setType(next);
-        }}
+        onChange={setType}
         options={[
           { value: "email", label: "Email" },
           { value: "phone", label: "Phone" },

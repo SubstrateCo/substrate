@@ -21,8 +21,8 @@ import {
   useDraftKeys,
 } from "@/components/feedback/unsaved-drafts";
 import { FormTextField } from "@/components/forms/form-text-field";
-import { SettingsFooter } from "@/components/layout/settings-section";
-import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { SettingsFooter, SettingsRow } from "@/components/layout/settings-section";
+import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import {
   agentSettingsSections,
@@ -316,20 +316,19 @@ export function AgentForm({
                     {picture}
                     <form.Field name="enabled">
                       {(field) => (
-                        <Field orientation="horizontal" className="items-center">
-                          <FieldContent>
-                            <FieldLabel htmlFor={`${formId}-enabled`}>Enabled</FieldLabel>
-                            <FieldDescription>
-                              Allow this agent to join conversations and respond to its triggers.
-                            </FieldDescription>
-                          </FieldContent>
-                          <Switch
-                            id={`${formId}-enabled`}
-                            checked={field.state.value}
-                            disabled={busy}
-                            onCheckedChange={(value) => field.handleChange(value)}
-                          />
-                        </Field>
+                        <SettingsRow
+                          label="Enabled"
+                          description="Allow this agent to join conversations and respond to its triggers."
+                          htmlFor={`${formId}-enabled`}
+                          control={
+                            <Switch
+                              id={`${formId}-enabled`}
+                              checked={field.state.value}
+                              disabled={busy}
+                              onCheckedChange={(value) => field.handleChange(value)}
+                            />
+                          }
+                        />
                       )}
                     </form.Field>
                   </>

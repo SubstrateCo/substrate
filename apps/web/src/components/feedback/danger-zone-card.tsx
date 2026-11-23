@@ -4,32 +4,46 @@ import { ConfirmDialog } from "./confirm-dialog";
 import { useFocusReturn } from "./use-focus-return";
 import { SettingsCard } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
-import { Trash2 } from "lucide-react";
+import { Trash2, type LucideIcon } from "lucide-react";
 
-export function DeleteRecordCard({
+/**
+ * The danger zone of a settings area: a `destructive` card with one quiet red button that asks
+ * first. Delete is the default; archive passes its own icon, labels, and `destructive={false}`,
+ * because it can be undone.
+ */
+export function DangerZoneCard({
   title,
   actionLabel,
+  icon: Icon = Trash2,
   description,
   confirmTitle,
   confirmDescription,
+  confirmLabel = title,
+  pendingLabel = "Deleting.",
+  destructive = true,
   pending,
   error,
   errorDescription,
-  onDelete,
+  onConfirm,
   onReset,
   onRestoreFocus,
 }: {
   title: string;
   /** Names the record for assistive technology when the visible title is generic. */
   actionLabel?: string;
+  icon?: LucideIcon;
   description: ReactNode;
   confirmTitle: string;
   confirmDescription: ReactNode;
+  confirmLabel?: string;
+  pendingLabel?: string;
+  /** A solid red confirm. False for an action that can be undone, such as archive. */
+  destructive?: boolean;
   pending: boolean;
   error?: Error | string | null;
   errorDescription: string;
-  /** Starts the delete mutation. Call `onDeleted` once the record is gone. */
-  onDelete: (onDeleted: () => void) => void;
+  /** Starts the mutation. Call `onDone` once it succeeds. */
+  onConfirm: (onDone: () => void) => void;
   onReset: () => void;
   onRestoreFocus?: () => void;
 }) {
@@ -51,7 +65,7 @@ export function DeleteRecordCard({
             setConfirming(true);
           }}
         >
-          <Trash2 aria-hidden="true" />
+          <Icon aria-hidden="true" />
           {title}
         </Button>
       </SettingsCard>
@@ -59,9 +73,9 @@ export function DeleteRecordCard({
         <ConfirmDialog
           title={confirmTitle}
           description={confirmDescription}
-          destructive
-          confirmLabel={title}
-          pendingLabel="Deleting…"
+          destructive={destructive}
+          confirmLabel={confirmLabel}
+          pendingLabel={pendingLabel}
           pending={pending}
           error={error}
           errorDescription={errorDescription}
@@ -73,7 +87,7 @@ export function DeleteRecordCard({
             setConfirming(false);
             onReset();
           }}
-          onConfirm={() => onDelete(() => setConfirming(false))}
+          onConfirm={() => onConfirm(() => setConfirming(false))}
         />
       )}
     </>

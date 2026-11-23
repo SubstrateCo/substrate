@@ -4,7 +4,7 @@ import {
   type AgentTriggerSetting,
 } from "@substrate/contracts/agents";
 
-import { useState, type ReactNode } from "react";
+import { useState, type ComponentProps, type ReactNode } from "react";
 
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { PendingButton } from "@/components/feedback/pending-button";
@@ -12,9 +12,9 @@ import { useRegisterDraft } from "@/components/feedback/unsaved-drafts";
 import {
   SettingsCard,
   SettingsFooter,
+  SettingsRow,
   SettingsSection,
 } from "@/components/layout/settings-section";
-import { Field, FieldContent, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { homeDeviceLabel } from "@/lib/agents/triggers";
 import { Laptop } from "lucide-react";
@@ -41,12 +41,10 @@ export function TriggerCard({ children, footer }: { children: ReactNode; footer?
   );
 }
 
-export function TriggerRow({ children }: { children: ReactNode }) {
+export function TriggerRow(props: ComponentProps<typeof SettingsRow>) {
   return (
     <li className="px-5 py-4">
-      <Field orientation="horizontal" className="items-center">
-        {children}
-      </Field>
+      <SettingsRow {...props} />
     </li>
   );
 }
@@ -129,18 +127,20 @@ export function AgentRunSettingsView({
           const meta = agentTriggers[trigger.kind];
           const id = `agent-trigger-${trigger.kind}`;
           return (
-            <TriggerRow key={trigger.kind}>
-              <FieldContent>
-                <FieldLabel htmlFor={id}>{meta.title}</FieldLabel>
-                <FieldDescription>{meta.description}</FieldDescription>
-              </FieldContent>
-              <Switch
-                id={id}
-                checked={trigger.enabled}
-                disabled={saving}
-                onCheckedChange={(enabled) => update(trigger.kind, { enabled })}
-              />
-            </TriggerRow>
+            <TriggerRow
+              key={trigger.kind}
+              label={meta.title}
+              description={meta.description}
+              htmlFor={id}
+              control={
+                <Switch
+                  id={id}
+                  checked={trigger.enabled}
+                  disabled={saving}
+                  onCheckedChange={(enabled) => update(trigger.kind, { enabled })}
+                />
+              }
+            />
           );
         })}
       </TriggerCard>
