@@ -26,7 +26,7 @@ export function FirstAgentView({ onCreate }: { onCreate: () => void }) {
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
       <div className="mx-auto grid w-full max-w-4xl gap-8">
         <div className="grid justify-items-start gap-5">
-          <span className="grid size-11 place-items-center rounded-xl bg-accent text-accent-foreground">
+          <span className="grid size-11 place-items-center rounded-lg bg-muted text-foreground">
             <Bot aria-hidden="true" className="size-5" />
           </span>
           <PageHeader
