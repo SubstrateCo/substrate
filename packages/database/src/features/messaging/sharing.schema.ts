@@ -5,7 +5,6 @@ import { organization } from "../../core/organizations/schema";
 import { messagingConversations } from "./schema";
 import { sql } from "drizzle-orm";
 import {
-  check,
   foreignKey,
   index,
   integer,
@@ -77,11 +76,6 @@ export const messagingInvitations = pgTable(
     index("messaging_invitation_delivery_idx")
       .on(t.nextDeliveryAt)
       .where(sql`${t.status} = 'pending' AND ${t.deliveredAt} IS NULL`),
-    check(
-      "messaging_invitation_status_check",
-      sql`${t.status} IN ('pending', 'accepted', 'declined', 'revoked')`,
-    ),
-    check("messaging_invitation_purpose_check", sql`${t.purpose} IN ('organization', 'person')`),
   ],
 );
 

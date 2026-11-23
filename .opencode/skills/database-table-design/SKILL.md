@@ -99,7 +99,8 @@ If a required connection is out of scope, report the gap. Do not build a disconn
 - Each organization-owned table has `organization_id`.
 - A column that refers to an entity ends in `_entity_id` and names the role: `project_entity_id`, `assignee_actor_entity_id`.
 - Timestamps use `{ withTimezone: true }`.
-- For a small closed set of values, use `text().$type<...>()` and a `check`. Use `pgEnum` only for a type that many tables share.
+- For a small closed set of values, use `text().$type<...>()` with the union from `@substrate/contracts`, and validate external input with `z.enum` at the boundary. Do not add a `check` that limits a column to a list of values: each new value then needs a migration. `schema/value-checks.test.ts` fails on such a check. Use `pgEnum` only for a type that many tables share.
+- Use a `check` for rules that types cannot express: rules across columns, lengths, ranges, formats, and the fixed value that a composite foreign key needs.
 - `entities` has `created_at`, `updated_at`, and `deleted_at`. Do not repeat them on an entity-backed table.
 
 **Foreign keys**
@@ -167,9 +168,9 @@ An enum value alone is not an implemented domain. A new type needs all of these:
 1. The value in `entityType` in `core/entities/schema.ts`.
 2. The domain table, with `entityIdentity("<type>")`.
 3. The export in `schema/index.ts`.
-4. `message_reference_type_check` in `features/context/schema.ts`, if messages can reference the type.
+4. `contextEntityTypes` in `@substrate/contracts/context/input`, if messages can reference the type.
 5. `adminEntityTypes` in `core/permissions/visibility.ts`, only if the domain is shared with the organization.
-6. Any activity table that lists entity types in a check, such as `crm_activity_entity_type`.
+6. Any activity table that narrows its entity types, such as the `entityType` column type in `features/crm/activity.schema.ts` and the type check in `features/crm/activity.ts`.
 
 ## 6. Access
 

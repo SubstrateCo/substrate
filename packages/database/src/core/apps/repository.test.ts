@@ -7,7 +7,7 @@ import { RepositoryContext } from "../repository-context";
 import { enabledApps, requireAppEnabled, requireAppsEnabled } from "./access";
 import { appRepository } from "./repository";
 import { expect, test } from "bun:test";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 function context(db: RepositoryContext["db"] = f.db, organizationId = f.orgA) {
@@ -30,14 +30,7 @@ test("an organization without settings has only the required apps", async () => 
   expect(await rejection(requireAppEnabled(context(), "inbox"))).toBeInstanceOf(AppDisabledError);
 });
 
-test("app rows reject unknown apps and missing organizations", async () => {
-  expect(
-    await rejection(
-      f.db.execute(
-        sql`INSERT INTO organization_apps (organization_id, app_id) VALUES (${f.orgA}, 'email')`,
-      ),
-    ),
-  ).toBeInstanceOf(Error);
+test("app rows reject missing organizations", async () => {
   expect(
     await rejection(
       f.db.insert(organizationApps).values({
@@ -74,6 +67,11 @@ test("owners and admins update their organization, members read but cannot updat
 test("invalid settings and rolled-back updates leave apps unchanged", async () => {
   expect(
     await rejection(f.db.transaction((tx) => repository(context(tx)).update(["tasks"]))),
+  ).toBeInstanceOf(ValidationError);
+  // SAFETY: Deliberately bypass the input type to verify runtime rejection of an unknown app.
+  const unknown = ["messages", "agents", "email"] as never;
+  expect(
+    await rejection(f.db.transaction((tx) => repository(context(tx)).update(unknown))),
   ).toBeInstanceOf(ValidationError);
   expect(
     await rejection(

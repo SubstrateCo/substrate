@@ -1,20 +1,15 @@
-import {
-  agentAuditActions,
-  agentInvocationDropReasons,
-  agentInvocationKinds,
-  agentInvocationStatuses,
-  type AgentAuditAction,
-  type AgentInvocationDropReason,
-  type AgentInvocationKind,
-  type AgentInvocationStatus,
+import type {
+  AgentAuditAction,
+  AgentInvocationDropReason,
+  AgentInvocationKind,
+  AgentInvocationStatus,
 } from "@substrate/contracts/agent-work";
-import { agentCallerPolicies, type AgentCallerPolicy } from "@substrate/contracts/agents";
+import type { AgentCallerPolicy } from "@substrate/contracts/agents";
 
 import { actors } from "../../../core/actors/schema";
 import { userAgents } from "../../../core/actors/user-agents.schema";
 import { user } from "../../../core/authentication/schema";
 import { messagingMessages } from "../../messaging/schema";
-import { checkValues } from "../check-values";
 import { agentWakes } from "../wakes/wakes.schema";
 import { sql } from "drizzle-orm";
 import {
@@ -92,22 +87,6 @@ export const agentInvocations = pgTable(
     index("agent_invocations_owner_status_idx").on(table.ownerUserId, table.status),
     index("agent_invocations_caller_idx").on(table.userAgentId, table.callerUserId, table.status),
     index("agent_invocations_conversation_idx").on(table.conversationId, table.callerUserId),
-    check(
-      "agent_invocation_status_check",
-      sql`${table.status} IN (${checkValues(agentInvocationStatuses)})`,
-    ),
-    check(
-      "agent_invocation_drop_reason_check",
-      sql`${table.dropReason} IS NULL OR ${table.dropReason} IN (${checkValues(agentInvocationDropReasons)})`,
-    ),
-    check(
-      "agent_invocation_kind_check",
-      sql`${table.kind} IN (${checkValues(agentInvocationKinds)})`,
-    ),
-    check(
-      "agent_invocation_policy_check",
-      sql`${table.policy} IN (${checkValues(agentCallerPolicies)})`,
-    ),
     check("agent_invocation_caller_check", sql`${table.callerUserId} <> ${table.ownerUserId}`),
     check("agent_invocation_session_key_check", sql`length(${table.sessionKey}) BETWEEN 1 AND 200`),
   ],
@@ -146,10 +125,5 @@ export const agentAuditEvents = pgTable(
       foreignColumns: [actors.organizationId, actors.userAgentId],
     }).onDelete("cascade"),
     index("agent_audit_events_agent_idx").on(table.userAgentId, table.createdAt),
-    check("agent_audit_action_check", sql`${table.action} IN (${checkValues(agentAuditActions)})`),
-    check(
-      "agent_audit_access_check",
-      sql`${table.access} IS NULL OR ${table.access} IN ('read', 'write')`,
-    ),
   ],
 );

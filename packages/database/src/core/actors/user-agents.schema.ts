@@ -40,10 +40,6 @@ export const userAgents = pgTable(
   },
   (table) => [
     unique("user_agents_owner_id_unique").on(table.userId, table.id),
-    check(
-      "user_agent_caller_policy_check",
-      sql`${table.callerPolicy} IN ('owner', 'anyone', 'ask')`,
-    ),
     foreignKey({
       name: "user_agent_home_device_owner_fk",
       columns: [table.userId, table.homeDeviceId],

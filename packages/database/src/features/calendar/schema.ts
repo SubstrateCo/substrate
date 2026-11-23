@@ -1,22 +1,16 @@
-import {
-  attendeeResponseStatuses,
-  calendarEventKinds,
-  calendarEventStatuses,
-  calendarEventVisibilities,
-  calendarProviders,
-  calendarSyncStatuses,
-  type AttendeeResponseStatus,
-  type CalendarEventKind,
-  type CalendarEventStatus,
-  type CalendarEventVisibility,
-  type CalendarProvider,
-  type CalendarSyncStatus,
+import type {
+  AttendeeResponseStatus,
+  CalendarEventKind,
+  CalendarEventStatus,
+  CalendarEventVisibility,
+  CalendarProvider,
+  CalendarSyncStatus,
 } from "@substrate/contracts/calendar";
 
 import { actors } from "../../core/actors/schema";
 import { account } from "../../core/authentication/schema";
 import { entities, entityType } from "../../core/entities/schema";
-import { sql, type SQLWrapper } from "drizzle-orm";
+import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
@@ -29,10 +23,6 @@ import {
   unique,
   uuid,
 } from "drizzle-orm/pg-core";
-
-function oneOf(column: SQLWrapper, values: readonly string[]) {
-  return sql`${column} IN (${sql.raw(values.map((value) => `'${value}'`).join(", "))})`;
-}
 
 // One row per organization, owner, and provider calendar. Connection and sync state live here.
 // Calendars are personal: only the owner's grant reaches them, and admins get no access.
@@ -90,8 +80,6 @@ export const calendars = pgTable(
       table.providerCalendarId,
     ),
     check("calendars_type_check", sql`${table.entityType}::text = 'calendar'`),
-    check("calendars_provider_check", oneOf(table.provider, calendarProviders)),
-    check("calendars_sync_status_check", oneOf(table.syncStatus, calendarSyncStatuses)),
     check("calendars_name_check", sql`length(trim(${table.name})) BETWEEN 1 AND 500`),
     // A NULL credential means the provider account was unlinked. Reads then treat the calendar
     // as disconnected, whatever its stored status, and the sync worker never claims it.
@@ -154,9 +142,6 @@ export const calendarEvents = pgTable(
       table.providerEventId,
     ),
     check("calendar_events_type_check", sql`${table.entityType}::text = 'calendar_event'`),
-    check("calendar_events_kind_check", oneOf(table.kind, calendarEventKinds)),
-    check("calendar_events_status_check", oneOf(table.status, calendarEventStatuses)),
-    check("calendar_events_visibility_check", oneOf(table.visibility, calendarEventVisibilities)),
     check("calendar_events_time_check", sql`${table.endsAt} >= ${table.startsAt}`),
     // Agenda views read a calendar's events by start time.
     index("calendar_events_agenda_idx").on(
@@ -198,10 +183,6 @@ export const calendarEventAttendees = pgTable(
       table.organizationId,
       table.eventEntityId,
       table.normalizedEmail,
-    ),
-    check(
-      "calendar_event_attendees_response_check",
-      oneOf(table.responseStatus, attendeeResponseStatuses),
     ),
     check("calendar_event_attendees_email_check", sql`length(trim(${table.normalizedEmail})) > 0`),
     // A contact's meetings are found by its email identifiers.

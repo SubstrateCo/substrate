@@ -40,10 +40,6 @@ export const notifications = pgTable(
       "notification_target_check",
       sql`(${table.entityId} IS NULL) <> (${table.messageId} IS NULL)`,
     ),
-    check(
-      "notification_kind_check",
-      sql`${table.kind} IN ('assignment', 'mention', 'reply', 'message')`,
-    ),
     index("notification_recipient_idx").on(
       table.organizationId,
       table.recipientActorEntityId,

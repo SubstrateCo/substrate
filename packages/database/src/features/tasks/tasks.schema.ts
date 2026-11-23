@@ -49,14 +49,6 @@ export const tasks = pgTable(
       foreignColumns: [actors.organizationId, actors.entityId],
     }),
     check("tasks_title_check", sql`length(trim(${table.title})) BETWEEN 1 AND 300`),
-    check(
-      "tasks_status_check",
-      sql`${table.status} IN ('not_started', 'in_progress', 'in_review', 'completed', 'canceled')`,
-    ),
-    check(
-      "tasks_priority_check",
-      sql`${table.priority} IN ('none', 'low', 'medium', 'high', 'urgent')`,
-    ),
     check("tasks_parent_check", sql`${table.entityId} <> ${table.parentTaskEntityId}`),
     index("tasks_search_idx").using("gin", searchDocument(table.title, table.description)),
     index("tasks_title_trgm_idx").using("gin", sql`${trigramKey(table.title)} gin_trgm_ops`),

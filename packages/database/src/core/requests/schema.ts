@@ -1,8 +1,7 @@
 import { actors } from "../actors/schema";
 import { entities } from "../entities/schema";
 import { organization } from "../organizations/schema";
-import { sql } from "drizzle-orm";
-import { check, foreignKey, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
+import { foreignKey, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const requestOperations = [
   "account",
@@ -42,9 +41,5 @@ export const idempotentRequests = pgTable(
       columns: [t.organizationId, t.entityId],
       foreignColumns: [entities.organizationId, entities.entityId],
     }),
-    check(
-      "idempotent_request_operation",
-      sql.raw(`operation in (${requestOperations.map((value) => `'${value}'`).join(", ")})`),
-    ),
   ],
 );

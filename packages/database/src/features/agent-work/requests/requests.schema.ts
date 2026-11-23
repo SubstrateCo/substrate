@@ -1,22 +1,18 @@
-import {
-  agentRequestKinds,
-  agentRequestModes,
-  agentRequestStatuses,
-  type AgentRequestKind,
-  type AgentRequestMode,
-  type AgentRequestPayload,
-  type AgentRequestResponse,
-  type AgentRequestStatus,
-  type ProposalAction,
-  type ProposalOutcome,
-  type ProposalTargetBasis,
+import type {
+  AgentRequestKind,
+  AgentRequestMode,
+  AgentRequestPayload,
+  AgentRequestResponse,
+  AgentRequestStatus,
+  ProposalAction,
+  ProposalOutcome,
+  ProposalTargetBasis,
 } from "@substrate/contracts/agent-work";
 
 import { actors } from "../../../core/actors/schema";
 import { userAgents } from "../../../core/actors/user-agents.schema";
 import { user } from "../../../core/authentication/schema";
 import { messagingConversations, messagingMessages } from "../../messaging/schema";
-import { checkValues } from "../check-values";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -101,12 +97,6 @@ export const agentRequests = pgTable(
     index("agent_requests_owner_status_idx").on(table.ownerUserId, table.status),
     index("agent_requests_conversation_idx").on(table.conversationId, table.createdAt),
     index("agent_requests_turn_idx").on(table.turnId),
-    check("agent_request_kind_check", sql`${table.kind} IN (${checkValues(agentRequestKinds)})`),
-    check("agent_request_mode_check", sql`${table.mode} IN (${checkValues(agentRequestModes)})`),
-    check(
-      "agent_request_status_check",
-      sql`${table.status} IN (${checkValues(agentRequestStatuses)})`,
-    ),
     check(
       "agent_request_blocking_check",
       sql`${table.mode} <> 'blocking' OR ${table.nativeRequestId} IS NOT NULL`,

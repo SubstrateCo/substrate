@@ -1,23 +1,9 @@
-import {
-  crmActivityActions,
-  crmActivityFields,
-  type CrmActivityInput,
-} from "@substrate/contracts/crm/activity";
+import type { CrmActivityInput } from "@substrate/contracts/crm/activity";
 
 import { actors } from "../../core/actors/schema";
 import { entities, entityType } from "../../core/entities/schema";
 import { organization } from "../../core/organizations/schema";
-import { sql } from "drizzle-orm";
-import {
-  check,
-  foreignKey,
-  index,
-  jsonb,
-  pgTable,
-  text,
-  timestamp,
-  uuid,
-} from "drizzle-orm/pg-core";
+import { foreignKey, index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const crmActivityEvents = pgTable(
   "crm_activity_events",
@@ -27,7 +13,7 @@ export const crmActivityEvents = pgTable(
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
     entityId: uuid("entity_id").notNull(),
-    entityType: entityType("entity_type").notNull(),
+    entityType: entityType("entity_type").$type<"account" | "contact" | "deal">().notNull(),
     actorEntityId: uuid("actor_entity_id").notNull(),
     action: text("action").$type<CrmActivityInput["action"]>().notNull(),
     changedFields: jsonb("changed_fields")
@@ -53,18 +39,6 @@ export const crmActivityEvents = pgTable(
       columns: [t.organizationId, t.relatedEntityId],
       foreignColumns: [entities.organizationId, entities.entityId],
     }),
-    check("crm_activity_entity_type", sql`${t.entityType}::text in ('account', 'contact', 'deal')`),
-    check(
-      "crm_activity_action",
-      sql`${t.action} in (${sql.join(
-        crmActivityActions.map((action) => sql.raw(`'${action.replaceAll("'", "''")}'`)),
-        sql`, `,
-      )})`,
-    ),
-    check(
-      "crm_activity_fields",
-      sql`jsonb_typeof(${t.changedFields}) = 'array' and ${t.changedFields} <@ ${sql.raw(`'${JSON.stringify(crmActivityFields).replaceAll("'", "''")}'::jsonb`)}`,
-    ),
     index("crm_activity_page_idx").on(t.organizationId, t.entityId, t.createdAt, t.id),
   ],
 );

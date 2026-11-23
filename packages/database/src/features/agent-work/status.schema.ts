@@ -1,14 +1,9 @@
-import {
-  agentActivityMaxLength,
-  agentStatusStates,
-  type AgentStatusState,
-} from "@substrate/contracts/agent-work";
+import { agentActivityMaxLength, type AgentStatusState } from "@substrate/contracts/agent-work";
 
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { organization } from "../../core/organizations/schema";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { checkValues } from "./check-values";
 import { sql } from "drizzle-orm";
 import {
   bigint,
@@ -63,7 +58,6 @@ export const agentStatus = pgTable(
       "agent_status_live_place_check",
       sql`${table.liveThreadId} IS NULL OR ${table.liveConversationId} IS NOT NULL`,
     ),
-    check("agent_status_state_check", sql`${table.state} IN (${checkValues(agentStatusStates)})`),
     check(
       "agent_status_activity_check",
       sql`${table.activity} IS NULL OR length(${table.activity}) <= ${sql.raw(String(agentActivityMaxLength))}`,

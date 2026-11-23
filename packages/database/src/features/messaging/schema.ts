@@ -56,7 +56,6 @@ export const messagingConversations = pgTable(
     uniqueIndex("messaging_conversations_dm_key_unique")
       .on(table.dmKey)
       .where(sql`${table.dmKey} IS NOT NULL`),
-    check("messaging_kind_check", sql`${table.kind} IN ('dm', 'group', 'channel')`),
     check("messaging_visibility_check", sql`${table.kind} = 'channel' OR ${table.private}`),
     check(
       "messaging_channel_name_check",

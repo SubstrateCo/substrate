@@ -1,12 +1,7 @@
-import {
-  agentWakeSources,
-  type AgentWakeSource,
-  type AgentWakeSourceRef,
-} from "@substrate/contracts/agent-work";
+import type { AgentWakeSource, AgentWakeSourceRef } from "@substrate/contracts/agent-work";
 
 import { actors } from "../../../core/actors/schema";
 import { userAgents } from "../../../core/actors/user-agents.schema";
-import { checkValues } from "../check-values";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -58,7 +53,6 @@ export const agentWakes = pgTable(
     index("agent_wakes_pending_idx")
       .on(table.userAgentId, table.createdAt, table.id)
       .where(sql`${table.ackedAt} IS NULL`),
-    check("agent_wake_source_check", sql`${table.source} IN (${checkValues(agentWakeSources)})`),
     check("agent_wake_session_key_check", sql`length(${table.sessionKey}) BETWEEN 1 AND 200`),
   ],
 );

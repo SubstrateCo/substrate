@@ -57,6 +57,13 @@
       "when": 1795413426120,
       "tag": "0007_inbox_app",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795476797307,
+      "tag": "0008_drop_value_list_checks",
+      "breakpoints": true
     }
   ]
 }

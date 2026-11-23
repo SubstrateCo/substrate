@@ -29,16 +29,6 @@ describe("projects and tasks", () => {
       await rejection(alice.tasks.update(task.entityId, { status: "blocked" as never })),
     ).toBeInstanceOf(ValidationError);
     expect((await alice.tasks.get(task.entityId)).status).toBe("canceled");
-    // SAFETY: Deliberately bypass the column type to verify PostgreSQL rejects an invalid status.
-    expect(
-      await rejection(
-        fixture.db
-          .update(tasks)
-          .set({ status: "blocked" as never })
-          .where(eq(tasks.entityId, task.entityId))
-          .execute(),
-      ),
-    ).toMatchObject({ cause: { code: "23514" } });
   });
 
   test("project sharing grants tasks and subtasks the same access, and revocation removes it", async () => {
