@@ -50,7 +50,7 @@ export function BoardColumn({
       ref={ref}
       aria-labelledby={labelId}
       className={cn(
-        "flex min-h-0 w-64 shrink-0 flex-col gap-3 rounded-lg bg-inset p-3",
+        "flex min-h-0 max-w-72 min-w-48 flex-1 flex-col gap-3 rounded-lg bg-inset p-3",
         isOver && "bg-row-highlight ring-2 ring-ring/50",
       )}
     >

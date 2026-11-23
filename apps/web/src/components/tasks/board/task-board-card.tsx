@@ -74,7 +74,7 @@ export function TaskBoardCard({
                 variant="ghost"
                 size="icon-xs"
                 disabled={statusPending}
-                className="cursor-grab touch-none active:cursor-grabbing"
+                className="cursor-grab touch-none active:scale-100 active:cursor-grabbing"
                 {...attributes}
                 {...listeners}
                 aria-label={`Drag ${task.title}`}
