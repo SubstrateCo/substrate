@@ -150,7 +150,7 @@ export function AgentActivityView({
                   onClick={() => onTranscript(row.id)}
                   className={cn(
                     activityRowClass,
-                    "transition-colors hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset",
+                    "transition-colors hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50 focus-visible:outline-none",
                     row.selected && "bg-row-selected hover:bg-row-selected",
                   )}
                 >
@@ -207,7 +207,7 @@ export function AgentActivityView({
                   <CollapsibleTrigger asChild>
                     <button
                       type="button"
-                      className="flex w-full min-w-0 items-center gap-2 px-4 py-2.5 text-left transition-colors hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none focus-visible:ring-inset"
+                      className="flex w-full min-w-0 items-center gap-2 px-4 py-2.5 text-left transition-colors hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50 focus-visible:outline-none"
                     >
                       <ChevronRight
                         aria-hidden="true"
@@ -218,7 +218,7 @@ export function AgentActivityView({
                     </button>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <div className="grid gap-3 border-t bg-muted/30 px-4 py-3 pl-10">
+                    <div className="grid gap-3 border-t bg-inset px-4 py-3 pl-10">
                       <div className="grid gap-1">
                         <p className="text-xs font-medium text-muted-foreground">Task</p>
                         <p className="text-sm wrap-anywhere whitespace-pre-wrap">{helper.task}</p>

@@ -12,7 +12,7 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
-import { Card, CardHeader } from "@/components/ui/card";
+import { Card, CardHeader, CardTitle } from "@/components/ui/card";
 import { formatShortDate } from "@/lib/format/date";
 import { interactionActivityOptions } from "@/queries/context/interactions";
 import { Activity } from "lucide-react";
@@ -71,7 +71,7 @@ export function InteractionDashboard({
         {metrics.map(({ label, value, hint }) => (
           <div
             key={label}
-            className="flex items-center justify-between gap-2 rounded-md border bg-card px-3 py-2"
+            className="flex items-center justify-between gap-2 rounded-xl border bg-card px-3 py-2"
             title={hint}
           >
             <dt className="text-xs text-muted-foreground">{label}</dt>
@@ -96,7 +96,9 @@ export function InteractionDashboard({
           <Card size="sm" className="min-h-0 flex-1">
             <CardHeader>
               <div className="flex items-center justify-between gap-3">
-                <h2 className="text-sm font-medium">Day’s interactions</h2>
+                <CardTitle>
+                  <h2>Day’s interactions</h2>
+                </CardTitle>
                 <Button variant="link" size="sm" asChild>
                   <Link
                     to="/interactions"

@@ -82,7 +82,7 @@ function OutputLog({ output, label }: { output: string; label: string }) {
         const element = event.currentTarget;
         following.current = element.scrollHeight - element.scrollTop - element.clientHeight < 16;
       }}
-      className="max-h-72 min-h-32 overflow-y-auto rounded-lg border bg-muted/50 p-3 font-mono text-xs leading-relaxed wrap-anywhere whitespace-pre-wrap focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+      className="max-h-72 min-h-32 overflow-y-auto rounded-lg border bg-inset p-3 font-mono text-xs/relaxed wrap-anywhere whitespace-pre-wrap focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
     >
       {output ? (
         positionedSegments(output).map((segment) =>

@@ -205,6 +205,7 @@ function CurrentPicture({
   owner,
 }: Pick<PictureUploadProps, "kind" | "value"> & { name: string; owner?: string }) {
   const fallback = owner?.trim() ? (
+    // oxlint-disable-next-line design/type-scale -- Initials fill the size-16 picture preview, like an avatar fallback.
     <span className="text-lg font-medium text-muted-foreground">{initials(owner)}</span>
   ) : (
     <ImageIcon
@@ -221,7 +222,7 @@ function CurrentPicture({
     );
   }
   return (
-    <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-border bg-muted">
+    <div className="flex size-16 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-muted">
       <PicturePreview
         src={value}
         alt={name}

@@ -1,15 +1,8 @@
 import type { HarnessSkill } from "@substrate/contracts/harness";
 
+import { Tag } from "@/components/feedback/tag";
 import { SettingsList } from "@/components/layout/settings-section";
 import { Blocks } from "lucide-react";
-
-function Tag({ children }: { children: string }) {
-  return (
-    <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs text-muted-foreground">
-      {children}
-    </span>
-  );
-}
 
 /** Skills that Substrate writes into the agent folder. */
 export function StartupSkills({ skills, scanned }: { skills: HarnessSkill[]; scanned: boolean }) {

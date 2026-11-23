@@ -36,7 +36,7 @@ export function ApprovalRequest({
   return (
     <div className="grid gap-2.5">
       {payload.detail && (
-        <pre className="max-h-48 overflow-auto rounded-md bg-muted p-2 font-mono text-xs wrap-anywhere whitespace-pre-wrap">
+        <pre className="max-h-48 overflow-auto rounded-lg bg-inset p-2 font-mono text-xs wrap-anywhere whitespace-pre-wrap">
           {payload.detail}
         </pre>
       )}

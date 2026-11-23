@@ -50,7 +50,7 @@ export function FileDropZone({
       {children}
       {over && !disabled && (
         <div
-          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-md border-2 border-dashed border-primary bg-background/95 p-4 text-sm font-medium"
+          className="pointer-events-none absolute inset-0 z-10 flex items-center justify-center gap-2 rounded-lg border-2 border-dashed border-primary bg-background/95 p-4 text-sm font-medium"
           role="status"
         >
           <Paperclip className="size-4" />

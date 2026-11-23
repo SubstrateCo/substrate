@@ -25,7 +25,7 @@ export function ShareHistoryField({
 }) {
   const people = invited === 1 ? "1 person isn’t" : `${invited} people aren’t`;
   return (
-    <div className="grid gap-3 rounded-lg border bg-muted/40 p-3">
+    <div className="grid gap-3 rounded-lg border bg-inset p-3">
       <p className="flex gap-2 text-sm">
         <Globe aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
         <span>

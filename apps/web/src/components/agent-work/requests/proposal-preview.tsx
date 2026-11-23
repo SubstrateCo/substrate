@@ -117,7 +117,7 @@ export function ProposalPreview({
             </Field>
           )}
         </dl>
-        <blockquote className="rounded-md border bg-muted/40 px-3 py-2">
+        <blockquote className="rounded-lg border bg-inset px-3 py-2">
           <MessageMarkdown body={action.input.body} />
         </blockquote>
       </div>

@@ -63,7 +63,7 @@ export function InteractionList({
                   workspaceId: organizationId,
                   recordId: row.entityId,
                 })}
-                className="block text-sm/5 wrap-break-word whitespace-pre-wrap underline-offset-4 hover:underline"
+                className="block text-sm wrap-break-word whitespace-pre-wrap underline-offset-4 hover:underline"
                 aria-label={`Open interaction: ${row.summary}`}
               >
                 {row.summary}

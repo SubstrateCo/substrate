@@ -33,7 +33,7 @@ export function StartupInstructions({
           sessions. Existing agent-folder files are kept; Reset defaults in Skills rewrites them.
         </p>
       </div>
-      <pre className="max-h-64 overflow-y-auto rounded-lg bg-muted/50 p-3 font-mono text-xs leading-relaxed wrap-anywhere whitespace-pre-wrap text-muted-foreground">
+      <pre className="max-h-64 overflow-y-auto rounded-lg bg-inset p-3 font-mono text-xs/relaxed wrap-anywhere whitespace-pre-wrap text-muted-foreground">
         {text}
       </pre>
     </section>

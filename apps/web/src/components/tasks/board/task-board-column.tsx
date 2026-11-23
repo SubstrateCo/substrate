@@ -31,13 +31,13 @@ export function TaskBoardColumn({
       ref={setNodeRef}
       aria-labelledby={labelId}
       className={cn(
-        "flex min-h-0 w-56 min-w-56 flex-1 flex-col rounded-lg border bg-muted/20",
+        "flex min-h-0 w-56 min-w-56 flex-1 flex-col rounded-lg border bg-inset",
         isOver && "border-ring bg-row-highlight ring-2 ring-ring/50",
       )}
     >
       <header className="flex shrink-0 items-center gap-2 p-3">
         <TaskStatusIcon status={status} />
-        <h2 id={labelId} className="flex-1 text-sm font-medium">
+        <h2 id={labelId} className="flex-1 text-sm font-semibold">
           {label}
         </h2>
         <span className="text-xs text-muted-foreground tabular-nums">{count}</span>

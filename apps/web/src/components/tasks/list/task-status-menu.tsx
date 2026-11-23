@@ -35,7 +35,7 @@ export function TaskStatusMenu({
           type="button"
           disabled={disabled}
           aria-label={`Change status of ${title}: ${taskStatusLabels[status]}`}
-          className="flex size-6 shrink-0 items-center justify-center rounded-md outline-none hover:bg-foreground/10 focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-foreground/10"
+          className="flex size-6 shrink-0 items-center justify-center rounded-md outline-none hover:bg-row-highlight focus-visible:ring-2 focus-visible:ring-ring/50 aria-expanded:bg-row-highlight"
         >
           <TaskStatusIcon status={status} />
         </button>

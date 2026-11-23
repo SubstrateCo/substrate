@@ -52,7 +52,7 @@ export function TaskForm({
             disabled={save.isPending}
             onFiles={uploads.add}
           >
-            <div className="grid gap-3 rounded-md border border-dashed p-3">
+            <div className="grid gap-3 rounded-lg border border-dashed p-3">
               <div className="flex items-center justify-between gap-2">
                 <p className="text-xs text-muted-foreground">Drop files here · Up to 5 MiB each</p>
                 <AttachFilesButton disabled={save.isPending} onFiles={uploads.add} />

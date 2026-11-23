@@ -146,6 +146,8 @@ export const designConfig = {
         "design/destructive-label": "warn",
         "design/dialog-footer-order": "error",
         "design/dialog-structure": "warn",
+        "design/elevation": "error",
+        "design/heading-role": "warn",
         "design/icon-button-name": "error",
         "design/icon-button-tooltip": "warn",
         "design/motion": "error",
@@ -158,7 +160,9 @@ export const designConfig = {
         "design/no-tooltip-on-toggle-item": "error",
         "design/page-header": "warn",
         "design/person-avatar": "warn",
+        "design/radius-scale": "warn",
         "design/sentence-case": "warn",
+        "design/type-scale": "warn",
         "design/typographic-quotes": "warn",
       },
     },
@@ -174,13 +178,17 @@ export const designConfig = {
         "design/canonical-icons": "off",
         "design/dialog-footer-order": "off",
         "design/dialog-structure": "off",
+        "design/elevation": "off",
+        "design/heading-role": "off",
         "design/icon-button-name": "off",
         "design/icon-button-tooltip": "off",
         "design/motion": "off",
         "design/no-raw-error-message": "off",
         "design/no-solid-destructive": "off",
         "design/page-header": "off",
+        "design/radius-scale": "off",
         "design/sentence-case": "off",
+        "design/type-scale": "off",
         "design/typographic-quotes": "off",
         "shadcn/no-inline-styles": "off",
       },
@@ -210,6 +218,11 @@ export const designConfig = {
     {
       files: [`${WEB}/components/feedback/confirm-dialog.tsx`],
       rules: { "design/no-solid-destructive": "off" },
+    },
+    {
+      // The workspace frame rounds the content panel into the rail.
+      files: [`${WEB}/components/workspace/workspace-shell.tsx`],
+      rules: { "design/radius-scale": "off" },
     },
     {
       // PageHeader and the guest frame are the shared page titles.

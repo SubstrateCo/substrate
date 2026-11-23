@@ -72,7 +72,7 @@ function TaskAttachmentEmptyState({
   if (!canEdit) return <ContentNotice variant="inline" title="No attachments" />;
   if (hasDrafts) return null;
   return (
-    <p className="rounded-md border border-dashed p-4 text-sm text-muted-foreground">
+    <p className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
       Drop files here, or choose Attach files. Up to 10 files, 5 MiB each.
     </p>
   );

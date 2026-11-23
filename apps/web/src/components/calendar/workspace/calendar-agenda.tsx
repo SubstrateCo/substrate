@@ -45,7 +45,7 @@ export function CalendarAgenda({
               {events.length === 0 ? (
                 <ContentNotice variant="inline" title="No events" />
               ) : (
-                <ul className="divide-y overflow-hidden rounded-lg border bg-card">
+                <ul className="divide-y overflow-hidden rounded-xl border bg-card">
                   {events.map((event) => (
                     <AgendaRow
                       key={event.entityId}
@@ -87,7 +87,7 @@ function AgendaRow({
         {...link}
         aria-current={selected ? "true" : undefined}
         className={cn(
-          "flex items-start gap-3 px-4 py-2.5 transition-colors outline-none hover:bg-row-hover focus-visible:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:ring-inset",
+          "flex items-start gap-3 px-4 py-2.5 transition-colors outline-none hover:bg-row-hover focus-visible:bg-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",
           selected && "bg-row-selected text-row-selected-foreground hover:bg-row-selected",
         )}
       >
