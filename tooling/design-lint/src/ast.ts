@@ -126,6 +126,32 @@ export function classStringVisitors(check: (site: StringSite) => void) {
   };
 }
 
+export type ClassList = { tokens: ReturnType<typeof classTokens>; node: AstNode };
+
+/**
+ * Visitors that call `check` once for every class list: all tokens one `className` can produce
+ * (every branch of a `cn(...)`), or the arguments of one class helper outside a `className`.
+ * Use it when a rule needs to see tokens together, such as a size beside its weight.
+ */
+export function classListVisitors(check: (list: ClassList) => void) {
+  const tokensOf = (sites: StringSite[]) => sites.flatMap((site) => classTokens(site.value));
+  return {
+    JSXAttribute(node: JsxAttribute) {
+      if (node.name.type !== "JSXIdentifier" || !CLASS_ATTRIBUTES.has(node.name.name)) return;
+      check({ tokens: tokensOf(possibleStrings(node.value)), node });
+    },
+    CallExpression(node: NodeOf<"CallExpression">) {
+      if (!isClassFunction(node.callee) || insideClassAttribute(node)) return;
+      const sites = node.arguments.flatMap((argument) =>
+        argument.type === "ObjectExpression"
+          ? objectValueStrings(argument)
+          : possibleStrings(argument),
+      );
+      check({ tokens: tokensOf(sites), node });
+    },
+  };
+}
+
 function objectValueStrings(node: NodeOf<"ObjectExpression">): StringSite[] {
   return node.properties.flatMap((property) => {
     if (property.type !== "Property") return [];

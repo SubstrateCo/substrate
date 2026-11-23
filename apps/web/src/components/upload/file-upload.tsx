@@ -58,7 +58,7 @@ export function FileUpload({
     <Field>
       <FileUploadLayout
         data-dragging={dragging || undefined}
-        className={cn(error && "border-destructive/50", dragging && "border-primary bg-accent")}
+        className={cn(error && "border-destructive", dragging && "border-primary bg-accent")}
         onDragOver={(event) => {
           event.preventDefault();
           if (!blocked) setDragging(true);

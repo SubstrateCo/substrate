@@ -31,7 +31,7 @@ export function ImageCropper({
 }: ImageCropperProps) {
   return (
     <div
-      className="relative mx-auto aspect-square w-full max-w-crop-preview overflow-hidden rounded-lg border border-border bg-muted"
+      className="relative mx-auto aspect-square w-full max-w-crop-preview overflow-hidden rounded-lg border bg-muted"
       role="group"
       aria-label="Image crop preview"
     >

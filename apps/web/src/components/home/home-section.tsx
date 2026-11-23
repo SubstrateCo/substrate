@@ -6,7 +6,7 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { cn } from "cn";
 import { ArrowRight, type LucideIcon } from "lucide-react";
 
@@ -45,7 +45,7 @@ export function HomeRows({
             className={cn(
               "flex min-w-0 items-center gap-3 rounded-md px-3 text-sm outline-none hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring",
               compact ? "py-2" : "py-3",
-              featured && "items-start rounded-lg border bg-muted/20",
+              featured && "items-start rounded-lg border bg-inset",
             )}
           >
             <span className="relative flex size-8 shrink-0 items-center justify-center text-muted-foreground">
@@ -121,7 +121,7 @@ export function HomeSection({
           <CardTitle>
             <h2>{title}</h2>
           </CardTitle>
-          {description && <p className="text-xs text-muted-foreground">{description}</p>}
+          {description && <CardDescription>{description}</CardDescription>}
         </div>
         {!empty && (
           <Button asChild variant="ghost" size="xs">

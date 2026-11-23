@@ -150,9 +150,7 @@ export function NotificationItem({
         />
         {canExpand && (
           <CollapsibleContent>
-            <div className="mt-1 mb-3 ml-12 border-l border-border pl-3">
-              {expanded && renderEvents()}
-            </div>
+            <div className="mt-1 mb-3 ml-12 border-l pl-3">{expanded && renderEvents()}</div>
           </CollapsibleContent>
         )}
       </li>
@@ -258,7 +256,7 @@ function NotificationSummary({
         <p
           className={cn(
             "mt-0.5 line-clamp-2 text-sm wrap-anywhere",
-            item.read ? "text-muted-foreground" : "text-foreground/80",
+            item.read ? "text-muted-foreground" : "text-foreground",
           )}
         >
           {detail}

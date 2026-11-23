@@ -39,6 +39,7 @@ function EmojiGrid({
             onFocus={() => onFocus(offset + index)}
             onClick={() => onPick(emoji)}
           >
+            {/* oxlint-disable-next-line design/type-scale -- An emoji glyph, not text: it fills the picker cell. */}
             <span className="text-lg leading-none">{emoji}</span>
           </Button>
         ))}

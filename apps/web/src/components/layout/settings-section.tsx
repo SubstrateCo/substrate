@@ -77,7 +77,7 @@ export function SettingsCard({
         {(title || description) && <GroupTitle id={`${id}-title`} {...{ title, description }} />}
         {children}
       </div>
-      {footer && <div className="border-t bg-muted/30 px-5 py-3">{footer}</div>}
+      {footer && <div className="border-t bg-inset px-5 py-3">{footer}</div>}
     </section>
   );
 }
@@ -95,7 +95,7 @@ export function GroupTitle({
   return (
     <div className="space-y-1">
       {title && (
-        <h3 id={id} className="text-sm font-medium">
+        <h3 id={id} className="text-sm font-semibold">
           {title}
         </h3>
       )}
@@ -149,16 +149,7 @@ export function SettingsList({
   const id = useId();
   return (
     <div className="grid min-w-0 gap-3">
-      {(title || description) && (
-        <div className="space-y-1">
-          {title && (
-            <h3 id={`${id}-title`} className="text-sm font-medium">
-              {title}
-            </h3>
-          )}
-          {description && <p className="text-xs text-muted-foreground">{description}</p>}
-        </div>
-      )}
+      {(title || description) && <GroupTitle id={`${id}-title`} {...{ title, description }} />}
       <ul
         aria-labelledby={title ? `${id}-title` : undefined}
         className="divide-y overflow-hidden rounded-xl border bg-card"
@@ -172,7 +163,7 @@ export function SettingsList({
 /** A quiet note inside a section, such as "Open the desktop app". */
 export function SettingsNote({ icon, children }: { icon?: ReactNode; children: ReactNode }) {
   return (
-    <div className="flex items-start gap-3 rounded-xl border border-dashed px-4 py-3 text-sm text-muted-foreground">
+    <div className="flex items-start gap-3 rounded-lg border border-dashed px-4 py-3 text-sm text-muted-foreground">
       {icon && <span className="mt-0.5 shrink-0 [&_svg]:size-4">{icon}</span>}
       <div className="min-w-0">{children}</div>
     </div>

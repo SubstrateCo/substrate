@@ -37,10 +37,10 @@ export function MeetingCard({
         />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <p className="truncate text-sm leading-5 font-medium" title={payload.title}>
+        <p className="truncate text-sm font-medium" title={payload.title}>
           {payload.title}
         </p>
-        <p className="truncate text-sm leading-5 text-muted-foreground">
+        <p className="truncate text-sm text-muted-foreground">
           <span className={cn(started && "font-medium text-primary")}>{timing.relative}</span>
           {meta && ` · ${meta}`}
         </p>

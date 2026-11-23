@@ -19,7 +19,7 @@ export function CallCardView({
 }) {
   const [confirm, setConfirm] = useState(false);
   return (
-    <div className="grid gap-4 rounded-lg border p-5">
+    <div className="grid gap-4 rounded-xl border bg-card p-5">
       <p className="text-sm font-medium">
         {call.caller.name} wants to call {call.agent.name}
       </p>

@@ -44,6 +44,7 @@
   --color-foreground: var(--foreground);
   --color-background: var(--background);
   --color-surface: var(--surface);
+  --color-inset: var(--inset);
   --color-success: var(--success);
   --color-warning: var(--warning);
   --color-warning-text: var(--warning-text);
@@ -123,6 +124,8 @@
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
   --surface: oklch(0.994 0.002 275);
+  /* Recessed fills: code, quotes, callouts, card footers, board columns. */
+  --inset: oklch(0.968 0.005 275);
   --success: oklch(0.43 0.1 165);
   --warning: oklch(0.6 0.15 62);
   --warning-text: oklch(0.5 0.12 60);
@@ -185,6 +188,7 @@
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
   --surface: oklch(0.215 0.014 275);
+  --inset: oklch(0.19 0.013 275);
   --success: oklch(0.76 0.12 165);
   --warning: oklch(0.82 0.14 80);
   --warning-text: oklch(0.82 0.14 80);

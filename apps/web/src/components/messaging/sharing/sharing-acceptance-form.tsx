@@ -42,7 +42,7 @@ export function SharingAcceptanceForm({
       <div className="flex items-start gap-3 rounded-lg border p-3 wrap-anywhere">
         <span
           aria-hidden="true"
-          className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground"
+          className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground"
         >
           <Globe className="size-4" />
         </span>

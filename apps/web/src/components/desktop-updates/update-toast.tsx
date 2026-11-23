@@ -22,8 +22,8 @@ export function UpdateToast({
         <CircleAlert aria-hidden="true" className="mt-0.5 size-4 shrink-0 text-destructive" />
       )}
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <p className="text-sm leading-5 font-medium">{content.title}</p>
-        <p className="text-sm leading-5 text-muted-foreground">{content.description}</p>
+        <p className="text-sm font-medium">{content.title}</p>
+        <p className="text-sm text-muted-foreground">{content.description}</p>
         {content.action && (
           <div className="mt-3 flex gap-2">
             <Button

@@ -122,7 +122,7 @@ export function ManagedConversations({
   const loadingRows = loading && !rows;
   if (!loadingRows && !rows?.length && !error)
     return (
-      <div className="rounded-lg border">
+      <div className="rounded-xl border">
         <ContentNotice
           icon={Hash}
           title="No channels or group messages"
@@ -136,7 +136,7 @@ export function ManagedConversations({
         <StaleNotice onRetry={onRetry}>This list may be out of date.</StaleNotice>
       )}
       <div
-        className="overflow-hidden rounded-lg border bg-card"
+        className="overflow-hidden rounded-xl border bg-card"
         role={loadingRows ? "status" : undefined}
         aria-label={loadingRows ? "Loading conversations" : undefined}
       >

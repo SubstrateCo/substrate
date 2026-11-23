@@ -116,7 +116,7 @@ function DiscussionItemLayout({
   descriptionId?: string;
 }) {
   return (
-    <li className="relative flex min-w-0 gap-3 rounded-lg border bg-card p-3 transition-colors hover:border-foreground/15 hover:bg-row-hover">
+    <li className="relative flex min-w-0 gap-3 rounded-lg border bg-card p-3 transition-colors hover:bg-row-hover">
       {avatar}
       <div className="flex min-w-0 flex-1 flex-col gap-1">
         <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">

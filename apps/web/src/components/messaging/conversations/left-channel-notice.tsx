@@ -14,7 +14,7 @@ export function LeftChannelNotice({
   return (
     <div
       role="status"
-      className="mx-3 mb-1 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
+      className="mx-3 mb-1 flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border bg-inset px-3 py-2 text-sm text-muted-foreground"
     >
       <Hash aria-hidden="true" className="size-4 shrink-0" />
       <span className="min-w-0 flex-1">

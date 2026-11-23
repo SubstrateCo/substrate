@@ -19,7 +19,7 @@ export function MessageMarkdown({
     references &&
     new Map(references.map((item) => [referenceKey(item.kind, item.id), item] as const));
   return (
-    <div className="message-markdown mt-0.5 text-sm leading-relaxed">
+    <div className="message-markdown mt-0.5 text-sm/relaxed">
       <ReactMarkdown
         remarkPlugins={references ? [remarkGfm, remarkWorkspaceReferences] : [remarkGfm]}
         skipHtml

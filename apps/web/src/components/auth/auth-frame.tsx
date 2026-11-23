@@ -46,9 +46,7 @@ export function AuthFrame({
         </div>
         <Card>
           <CardHeader>
-            <h1 className="font-heading text-xl leading-snug font-semibold tracking-tight">
-              {title}
-            </h1>
+            <h1 className="text-xl font-semibold tracking-tight">{title}</h1>
             {description && <CardDescription>{description}</CardDescription>}
           </CardHeader>
           {children && (

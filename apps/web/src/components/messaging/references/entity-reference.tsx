@@ -39,7 +39,7 @@ const referenceIcons = {
 };
 
 const referenceClass =
-  "inline-flex max-w-full items-baseline gap-1 rounded-md bg-primary/10 px-1 align-baseline text-sm leading-5 font-medium text-primary no-underline ring-1 ring-border/50 ring-inset";
+  "inline-flex max-w-full items-baseline gap-1 rounded-md bg-accent px-1 align-baseline text-sm font-medium text-accent-foreground no-underline ring-1 ring-border ring-inset";
 
 export function EntityReference({
   reference,
@@ -91,7 +91,7 @@ function ResolvedReference({ reference }: { reference: WorkspaceReference }) {
   )
     return (
       <PersonCardTarget actorId={reference.id} name={label}>
-        <span className={`${referenceClass} hover:bg-accent/80`}>{content}</span>
+        <span className={`${referenceClass} hover:bg-row-selected`}>{content}</span>
       </PersonCardTarget>
     );
   return (
@@ -101,7 +101,7 @@ function ResolvedReference({ reference }: { reference: WorkspaceReference }) {
           <Link
             {...reference.link}
             data-slot="entity-reference"
-            className={`${referenceClass} hover:bg-accent/80 focus-visible:outline-2 focus-visible:outline-ring`}
+            className={`${referenceClass} hover:bg-row-selected focus-visible:outline-2 focus-visible:outline-ring`}
           >
             {content}
           </Link>

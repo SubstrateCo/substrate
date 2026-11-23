@@ -68,7 +68,7 @@ export function DealPipeline({
 function PipelineHeading({ name, count }: { name: React.ReactNode; count: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-2">
-      <h2 className="text-sm font-medium">{name}</h2>
+      <h2 className="text-sm font-semibold">{name}</h2>
       <span className="text-xs text-muted-foreground tabular-nums">{count}</span>
     </div>
   );
@@ -112,7 +112,7 @@ function PipelineColumn({
   "aria-label"?: string;
 }) {
   return (
-    <section className="flex w-64 shrink-0 flex-col gap-3 rounded-lg bg-muted/30 p-3" {...props}>
+    <section className="flex w-64 shrink-0 flex-col gap-3 rounded-lg bg-inset p-3" {...props}>
       {children}
     </section>
   );

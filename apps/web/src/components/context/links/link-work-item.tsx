@@ -1,6 +1,7 @@
 import type { ContextEntityType } from "@substrate/contracts/context/input";
 
 import { SkeletonText } from "../../feedback/skeleton-text";
+import { Tag } from "../../feedback/tag";
 import { Checkbox } from "../../ui/checkbox";
 import { CommandItem } from "../../ui/command";
 import { Skeleton } from "../../ui/skeleton";
@@ -59,7 +60,7 @@ export function LinkWorkItem({
           <span
             className={cn(
               "flex size-8 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground",
-              selected && "bg-primary/10 text-primary",
+              selected && "bg-row-selected text-row-selected-foreground",
             )}
           >
             <Icon aria-hidden="true" />
@@ -73,9 +74,7 @@ export function LinkWorkItem({
         }
         action={
           linked ? (
-            <span className="shrink-0 rounded-md bg-muted px-1.5 py-0.5 text-xs font-medium text-muted-foreground">
-              Linked
-            </span>
+            <Tag className="shrink-0">Linked</Tag>
           ) : (
             <Checkbox
               aria-hidden="true"

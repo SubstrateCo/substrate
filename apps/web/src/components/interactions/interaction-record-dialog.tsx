@@ -81,7 +81,7 @@ export function InteractionRecordDialog({
                     // The record can be older than the current period.
                     days: "all",
                   })}
-                  className="text-base font-medium underline-offset-4 hover:underline"
+                  className="text-sm font-medium underline-offset-4 hover:underline"
                 >
                   {data.interaction.contactName}
                 </Link>

@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 
 import type { getInteractionProfile } from "@/api/context/interactions";
 import { ContentNotice } from "@/components/feedback/content-notice";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { eventDate } from "@/lib/calendar/days";
 import { calendarLink, linkedWorkLink } from "@/lib/navigation/record-links";
@@ -127,18 +128,17 @@ export function RelationshipMap({
 }) {
   const Icon = type === "person" ? UserRound : Building2;
   return (
-    <section
-      aria-label="Relationship map"
-      className="min-h-0 flex-1 overflow-y-auto rounded-lg border p-5"
-    >
-      <div className="mb-5 space-y-1">
-        <h2 className="text-sm font-medium">Relationship map</h2>
-        <p className="text-xs text-muted-foreground">
+    <Card size="sm" role="region" aria-label="Relationship map" className="min-h-0 flex-1">
+      <CardHeader>
+        <CardTitle>
+          <h2>Relationship map</h2>
+        </CardTitle>
+        <CardDescription>
           Saved affiliations and explicit record links. Names in summaries do not establish a
           relationship.
-        </p>
-      </div>
-      <div className="flex flex-wrap items-start gap-4">
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="flex min-h-0 flex-wrap items-start gap-4 overflow-y-auto">
         <div className="flex items-center gap-2 rounded-lg border bg-card p-4 text-sm font-medium">
           <Icon aria-hidden className="size-4 text-muted-foreground" />
           {title}
@@ -163,7 +163,7 @@ export function RelationshipMap({
             </li>
           )}
         </ul>
-      </div>
-    </section>
+      </CardContent>
+    </Card>
   );
 }

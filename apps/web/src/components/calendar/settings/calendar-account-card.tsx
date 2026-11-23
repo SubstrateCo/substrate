@@ -47,7 +47,7 @@ export function CalendarAccountCard({
             <ProviderIcon provider={account.provider} />
           </div>
           <div className="min-w-0">
-            <h3 id={`${id}-title`} className="truncate text-sm font-medium" title={name}>
+            <h3 id={`${id}-title`} className="truncate text-sm font-semibold" title={name}>
               {name}
             </h3>
             <p className="text-xs text-muted-foreground">{provider} Calendar</p>

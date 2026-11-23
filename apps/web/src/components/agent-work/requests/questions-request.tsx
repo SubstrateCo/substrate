@@ -27,7 +27,7 @@ function typingTarget(target: EventTarget | null) {
 }
 
 const optionRow =
-  "flex cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-row-hover has-[[data-state=checked]]:border-primary/50 has-[[data-state=checked]]:bg-primary/5 has-disabled:cursor-default has-disabled:opacity-60";
+  "flex cursor-pointer items-start gap-2.5 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-row-hover has-[[data-state=checked]]:border-ring has-[[data-state=checked]]:bg-row-selected has-disabled:cursor-default has-disabled:opacity-60";
 
 /**
  * Mount one panel per request, keyed by request ID, so drafts belong to that request. Number
