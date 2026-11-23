@@ -42,15 +42,15 @@ test("message text fills the conversation and stays within wide and narrow threa
   await sender.page.setViewportSize({ width: 2400, height: 1000 });
   await visit(sender, channel.id);
   const timeline = sender.page.getByRole("log", { name: "Messages", exact: true });
-  await expectFullWidth(timeline.locator(".message-markdown"));
+  await expectFullWidth(timeline.locator("[data-slot=message-markdown]"));
   await timeline.getByRole("button", { name: "Reply in thread", exact: true }).click();
   const thread = sender.page.getByRole("complementary", { name: "Thread", exact: true });
-  await expect(thread.locator(".message-markdown")).toHaveCount(2);
-  for (const markdown of await thread.locator(".message-markdown").all()) {
+  await expect(thread.locator("[data-slot=message-markdown]")).toHaveCount(2);
+  for (const markdown of await thread.locator("[data-slot=message-markdown]").all()) {
     await expectFullWidth(markdown);
   }
   await sender.page.setViewportSize({ width: 640, height: 900 });
-  for (const markdown of await thread.locator(".message-markdown").all()) {
+  for (const markdown of await thread.locator("[data-slot=message-markdown]").all()) {
     await expectFullWidth(markdown);
   }
   expect(

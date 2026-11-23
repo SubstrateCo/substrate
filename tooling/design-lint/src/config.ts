@@ -171,8 +171,14 @@ export const designConfig = {
     "shadcn/no-unknown-classes": [
       "error",
       {
-        // Hooks for component stylesheets (desktop-frame.css, message-markdown.css) and Sonner.
-        allow: ["desktop-title-bar", "desktop-title-bar-search", "message-markdown", "toaster"],
+        // Hooks for component stylesheets (desktop-frame.css, typeset.css) and Sonner.
+        allow: [
+          "desktop-title-bar",
+          "desktop-title-bar-search",
+          "typeset",
+          "typeset-message",
+          "toaster",
+        ],
       },
     ],
     "shadcn/require-static-classes": "error",
