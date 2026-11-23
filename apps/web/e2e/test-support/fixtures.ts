@@ -61,12 +61,8 @@ export function isolateContext(page: Page) {
   changedContexts.add(page.context());
 }
 
-/**
- * The server accepts writes only from its trusted renderer origin. Worker contexts sit idle between
- * tests, and reusing an idle keep-alive socket races the dev server proxy closing it (ECONNRESET),
- * so each request uses a new connection.
- */
-const trustedOrigin = () => ({ origin: process.env.PLAYWRIGHT_BASE_URL!, connection: "close" });
+// Setup calls use the API directly, with the same trusted origin as the renderer.
+const trustedOrigin = () => ({ origin: process.env.PLAYWRIGHT_BASE_URL! });
 
 /** Invites an email to the actor's organization through Better Auth, as an owner does. */
 export async function inviteMember(
@@ -119,7 +115,7 @@ export const test = base.extend<
       const requests: APIRequestContext[] = [];
       const account = async (role: string) => {
         const request = await playwright.request.newContext({
-          baseURL: process.env.PLAYWRIGHT_BASE_URL,
+          baseURL: process.env.PLAYWRIGHT_API_URL,
           extraHTTPHeaders: trustedOrigin(),
         });
         requests.push(request);
@@ -155,9 +151,9 @@ export const test = base.extend<
   ],
 
   // API requests carry the trusted origin, so specs and helpers need no per-call header.
-  request: async ({ playwright, baseURL }, use) => {
+  request: async ({ playwright }, use) => {
     const request = await playwright.request.newContext({
-      baseURL,
+      baseURL: process.env.PLAYWRIGHT_API_URL,
       extraHTTPHeaders: trustedOrigin(),
     });
     await use(request);
@@ -174,7 +170,7 @@ export const test = base.extend<
     try {
       await use(async (actor) => {
         const request = await playwright.request.newContext({
-          baseURL: process.env.PLAYWRIGHT_BASE_URL,
+          baseURL: process.env.PLAYWRIGHT_API_URL,
           extraHTTPHeaders: trustedOrigin(),
         });
         requests.push(request);

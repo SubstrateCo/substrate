@@ -5,6 +5,7 @@ const baseURL = "http://localhost:3100";
 const apiURL = "http://localhost:3101";
 // Existing API provisioning helpers use the same trusted renderer origin.
 process.env.PLAYWRIGHT_BASE_URL = baseURL;
+process.env.PLAYWRIGHT_API_URL = apiURL;
 
 export default defineConfig({
   testDir: "./e2e",
