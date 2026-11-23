@@ -1,28 +1,17 @@
-import type {
-  AttendeeRole,
-  CalendarAttendeeView,
-  MeetingOutcome,
-} from "@substrate/contracts/calendar";
+import type { CalendarAttendeeView, MeetingOutcome } from "@substrate/contracts/calendar";
 
 import { Link } from "@tanstack/react-router";
 
 import { useId } from "react";
 
 import { Tag } from "@/components/feedback/tag";
+import { RecordSection, recordRows } from "@/components/layout/record-section";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { attendeeRoleLabel, sortAttendees } from "@/lib/calendar/labels";
 import { personLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
-import { LogOut } from "lucide-react";
-
-const roleTag: Partial<Record<AttendeeRole, string>> = {
-  new_contact: "border-primary/40 bg-primary/5 text-primary",
-  declined: "border-destructive/30 text-destructive",
-};
-// A skipped meeting adds no one, so its outside guests carry no highlight.
-const tagClass = (role: AttendeeRole, outcome: MeetingOutcome["state"]) =>
-  role === "new_contact" && outcome === "skipped" ? undefined : roleTag[role];
+import { MapPin } from "lucide-react";
 
 /** The event's guests, each with what Substrate knows about them. */
 export function CalendarAttendees({
@@ -39,19 +28,23 @@ export function CalendarAttendees({
   const crmEnabled = useOrganizationApps().enabled("crm");
   if (!attendees.length) return null;
   return (
-    <section aria-labelledby={`${id}-title`} className="space-y-2">
-      <h3 id={`${id}-title`} className="text-sm font-medium">
-        {`Guests · ${attendees.length}`}
-      </h3>
-      <ul className="divide-y overflow-hidden rounded-lg border">
+    <RecordSection
+      aria-labelledby={`${id}-title`}
+      title={<span id={`${id}-title`}>Guests</span>}
+      count={attendees.length}
+    >
+      <ul className={recordRows}>
         {sortAttendees(attendees).map((attendee) => {
           const name = attendee.contact?.displayName ?? attendee.displayName ?? attendee.email;
           const declined = attendee.role === "declined";
           return (
-            <li key={attendee.email} className="flex items-center gap-3 px-3 py-2">
+            <li
+              key={attendee.email}
+              className="flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-row-hover"
+            >
               {attendee.role === "resource" ? (
                 <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                  <LogOut aria-hidden className="size-3.5" />
+                  <MapPin aria-hidden className="size-3.5" />
                 </span>
               ) : (
                 <PersonAvatar name={name} />
@@ -81,14 +74,12 @@ export function CalendarAttendees({
               <div className="flex shrink-0 flex-wrap justify-end gap-1">
                 {attendee.isOrganizer && <Tag>Organizer</Tag>}
                 {attendee.isOptional && !declined && <Tag>Optional</Tag>}
-                <Tag className={tagClass(attendee.role, outcome)}>
-                  {attendeeRoleLabel(attendee.role, outcome)}
-                </Tag>
+                <Tag>{attendeeRoleLabel(attendee.role, outcome)}</Tag>
               </div>
             </li>
           );
         })}
       </ul>
-    </section>
+    </RecordSection>
   );
 }

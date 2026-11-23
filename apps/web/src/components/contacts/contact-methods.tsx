@@ -10,6 +10,7 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { NativeField, NativeForm } from "@/components/forms/native-form";
+import { RecordSection, RecordSectionAction, recordRows } from "@/components/layout/record-section";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -41,22 +42,26 @@ export function ContactMethods({
   const [removing, setRemoving] = useState<Identifier | null>(null);
   const mutation = useRecordMutation(organizationId, "contacts");
   return (
-    <section aria-label="Contact methods" className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-medium">Contact methods</h2>
-        {canEdit && (
-          <Button variant="outline" size="sm" onClick={() => setEditor({})}>
-            <Plus aria-hidden />
-            Add contact method
-          </Button>
-        )}
-      </div>
+    <RecordSection
+      aria-label="Contact methods"
+      title="Contact methods"
+      actions={
+        canEdit && (
+          <RecordSectionAction label="Add contact method" onClick={() => setEditor({})}>
+            <Plus aria-hidden="true" />
+          </RecordSectionAction>
+        )
+      }
+    >
       {!identifiers.length && (
         <ContentNotice variant="inline" title="No email addresses or phone numbers added" />
       )}
-      <ul className="divide-y">
+      <ul className={recordRows}>
         {identifiers.map((identifier) => (
-          <li key={identifier.id} className="group/row flex items-center gap-3 py-2">
+          <li
+            key={identifier.id}
+            className="group/row flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-row-hover"
+          >
             <div className="min-w-0 flex-1">
               <p className="text-sm wrap-break-word">
                 {identifier.value}
@@ -117,7 +122,7 @@ export function ContactMethods({
           }
         />
       )}
-    </section>
+    </RecordSection>
   );
 }
 

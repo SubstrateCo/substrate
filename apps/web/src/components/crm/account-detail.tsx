@@ -9,11 +9,18 @@ import { FollowUps } from "./follow-ups";
 import { InteractionRollup } from "./interaction-rollup";
 import type { RecordChangeDialog } from "./record-change-dialog";
 import { RecordChangeDialogs } from "./record-change-dialogs";
-import { RecordDetailView, RecordDetailLoading, DetailProperty } from "./record-detail-view";
+import { RecordDetailView, RecordDetailLoading } from "./record-detail-view";
 import { RecordList } from "./record-list";
 import { ContactLink } from "@/components/contacts/contact-link";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
 import { ContentNotice } from "@/components/feedback/content-notice";
+import {
+  NotSet,
+  Property,
+  RecordSection,
+  recordRow,
+  recordRows,
+} from "@/components/layout/record-section";
 import { accountOptions } from "@/queries/crm/options";
 import { useRecordMutation } from "@/queries/records/mutations";
 
@@ -56,55 +63,49 @@ export function AccountDetail({
         onArchive={() => open("archive")}
         properties={
           <>
-            <DetailProperty label="Domain">{account.domain || "Not set"}</DetailProperty>
-            <DetailProperty label="Website">
+            <Property label="Domain">{account.domain || <NotSet />}</Property>
+            <Property label="Website">
               {account.website ? (
                 <a
                   href={account.website}
                   target="_blank"
                   rel="noreferrer"
-                  className="underline underline-offset-4"
+                  className="min-w-0 truncate underline-offset-4 hover:underline"
                 >
                   {account.website}
                 </a>
               ) : (
-                "Not set"
+                <NotSet />
               )}
-            </DetailProperty>
-            <DetailProperty label="Access">
-              {accessLabel(level)}. Customer links do not share access.
-            </DetailProperty>
+            </Property>
+            <Property label="Access">{accessLabel(level)}</Property>
           </>
         }
       >
-        <section className="space-y-3" aria-label="Account contacts">
-          <h2 className="text-sm font-medium">Contacts</h2>
+        <RecordSection
+          aria-label="Account contacts"
+          title="Contacts"
+          count={contacts.length || undefined}
+        >
           {contacts.length ? (
-            <ul className="divide-y rounded-lg border">
+            <ul className={recordRows}>
               {contacts.map(({ contact, affiliation }) => (
-                <li
-                  key={contact.entityId}
-                  className="flex items-center justify-between gap-4 px-4 py-2"
-                >
-                  <ContactLink
-                    entityId={contact.entityId}
-                    className="text-sm font-medium hover:underline"
-                  >
-                    {contact.displayName}
+                <li key={contact.entityId}>
+                  <ContactLink entityId={contact.entityId} className={recordRow}>
+                    <span className="min-w-0 truncate font-medium">{contact.displayName}</span>
+                    <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+                      {affiliation.title}
+                      {affiliation.isPrimary ? " · Primary account" : ""}
+                    </span>
                   </ContactLink>
-                  <span className="text-xs text-muted-foreground">
-                    {affiliation.title}
-                    {affiliation.isPrimary ? " · Primary account" : ""}
-                  </span>
                 </li>
               ))}
             </ul>
           ) : (
             <ContentNotice variant="inline" title="No linked contacts you can read" />
           )}
-        </section>
-        <section className="space-y-3" aria-label="Account deals">
-          <h2 className="text-sm font-medium">Deals</h2>
+        </RecordSection>
+        <RecordSection aria-label="Account deals" title="Deals" count={deals.length || undefined}>
           {deals.length ? (
             <RecordList
               organizationId={organizationId}
@@ -114,15 +115,15 @@ export function AccountDetail({
           ) : (
             <ContentNotice variant="inline" title="No deals you can read" />
           )}
-        </section>
+        </RecordSection>
         <FollowUps
           organizationId={organizationId}
           entityId={entityId}
           canCreate={canEdit && !archived}
         />
         <InteractionRollup organizationId={organizationId} entityId={entityId} kind="account" />
-        <CrmActivity organizationId={organizationId} entityId={entityId} />
         <WorkDiscussions organizationId={organizationId} entityId={entityId} />
+        <CrmActivity organizationId={organizationId} entityId={entityId} />
       </RecordDetailView>
       {dialog && (
         <RecordChangeDialogs

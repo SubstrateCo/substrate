@@ -7,9 +7,14 @@ import { CrmResourceState } from "./crm-resource-state";
 import { FollowUpEditor } from "./follow-up-editor";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
+import {
+  RecordSection,
+  RecordSectionAction,
+  recordRow,
+  recordRows,
+} from "@/components/layout/record-section";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { DueDate } from "@/components/time/due-date";
-import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { workLink } from "@/lib/navigation/record-links";
@@ -47,16 +52,18 @@ function EnabledFollowUps({
   const [creating, setCreating] = useState(false);
   const data = resourceState(query).data;
   return (
-    <section aria-label="Follow-ups" className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-medium">Follow-ups</h2>
-        {canCreate && (
-          <Button variant="outline" size="sm" onClick={() => setCreating(true)}>
-            <Plus aria-hidden />
-            New follow-up
-          </Button>
-        )}
-      </div>
+    <RecordSection
+      aria-label="Follow-ups"
+      title="Follow-ups"
+      count={data?.tasks.length || undefined}
+      actions={
+        canCreate && (
+          <RecordSectionAction label="New follow-up" onClick={() => setCreating(true)}>
+            <Plus aria-hidden="true" />
+          </RecordSectionAction>
+        )
+      }
+    >
       <CrmResourceState
         compact
         noun="follow-ups"
@@ -65,20 +72,18 @@ function EnabledFollowUps({
         onRetry={() => void query.refetch()}
         loading={
           <div role="status" aria-label="Loading follow-ups">
-            <ul className="divide-y" aria-hidden="true">
+            <ul className={recordRows} aria-hidden="true">
               {[0, 1, 2].map((key) => (
-                <li key={key}>
-                  <FollowUpRow>
-                    <span className="size-4 shrink-0 overflow-hidden rounded-full">
-                      <Skeleton className="size-full" />
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <SkeletonText width="10rem" />
-                    </span>
-                    <span className="text-xs">
-                      <SkeletonText width="5rem" />
-                    </span>
-                  </FollowUpRow>
+                <li key={key} className={recordRow}>
+                  <span className="size-4 shrink-0 overflow-hidden rounded-full">
+                    <Skeleton className="size-full" />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <SkeletonText width="10rem" />
+                  </span>
+                  <span className="text-xs">
+                    <SkeletonText width="5rem" />
+                  </span>
                 </li>
               ))}
             </ul>
@@ -90,14 +95,14 @@ function EnabledFollowUps({
           {!data.nextAction && (
             <ContentNotice variant="inline" title="No scheduled next action you can read" />
           )}
-          <ul className="divide-y">
-            {data.tasks.map((task) => (
-              <li key={task.entityId}>
-                <Link
-                  {...workLink(organizationId, task.projectEntityId, task.entityId)}
-                  className="rounded-md hover:bg-row-hover"
-                >
-                  <FollowUpRow>
+          {data.tasks.length > 0 && (
+            <ul className={recordRows}>
+              {data.tasks.map((task) => (
+                <li key={task.entityId}>
+                  <Link
+                    {...workLink(organizationId, task.projectEntityId, task.entityId)}
+                    className={recordRow}
+                  >
                     <TaskStatusIcon status={task.status} />
                     <span className="min-w-0 flex-1 truncate">{task.title}</span>
                     {task.dueDate ? (
@@ -105,14 +110,11 @@ function EnabledFollowUps({
                     ) : (
                       <span className="text-xs text-muted-foreground">Unscheduled</span>
                     )}
-                  </FollowUpRow>
-                </Link>
-              </li>
-            ))}
-          </ul>
-          <p className="text-xs text-muted-foreground">
-            Readable linked open tasks only. Open a task to assign, reschedule, or complete it.
-          </p>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
         </>
       )}
       {creating && (
@@ -122,10 +124,6 @@ function EnabledFollowUps({
           onClose={() => setCreating(false)}
         />
       )}
-    </section>
+    </RecordSection>
   );
-}
-
-function FollowUpRow({ children }: { children: React.ReactNode }) {
-  return <div className="flex items-center gap-2 px-2 py-2 text-sm">{children}</div>;
 }

@@ -10,6 +10,7 @@ import { FollowUps } from "@/components/crm/follow-ups";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Tag } from "@/components/feedback/tag";
+import { RecordSection } from "@/components/layout/record-section";
 import { Timestamp } from "@/components/time/timestamp";
 import {
   Dialog,
@@ -50,7 +51,14 @@ export function InteractionRecordDialog({
     >
       <DialogContent size="lg">
         <DialogHeader>
-          <DialogTitle>Interaction details</DialogTitle>
+          <div className="flex items-center gap-1 pr-8">
+            <DialogTitle>Interaction details</DialogTitle>
+            {data && (
+              <div className="ml-auto">
+                <CopyLink link={interactionLink(organizationId, entityId)} grouped />
+              </div>
+            )}
+          </div>
           <DialogDescription>
             Summary, source messages, linked records, and follow-ups.
           </DialogDescription>
@@ -66,7 +74,6 @@ export function InteractionRecordDialog({
           {!query.error && data && (
             <>
               <div className="space-y-3">
-                <CopyLink link={interactionLink(organizationId, entityId)} />
                 <Link
                   to="/interactions"
                   search={(previous) => ({
@@ -110,10 +117,9 @@ export function InteractionRecordDialog({
                 entityId={entityId}
                 canCreate={!data.archived && (data.level === "owner" || data.level === "edit")}
               />
-              <section className="space-y-2" aria-label="Linked records">
-                <h2 className="text-sm font-medium">Linked records</h2>
+              <RecordSection aria-label="Linked records" title="Linked records">
                 <InteractionConnections organizationId={organizationId} connections={data.links} />
-              </section>
+              </RecordSection>
             </>
           )}
         </DialogBody>

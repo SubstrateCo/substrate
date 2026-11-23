@@ -14,7 +14,7 @@ import {
   type TaskFilters,
 } from "./task-filters";
 import { TaskListItem } from "./task-list-item";
-import { TaskGroupHeaderLayout } from "./task-list-layout";
+import { TaskFilterLayout, TaskGroupHeaderLayout } from "./task-list-layout";
 import { TaskListToolbar } from "./task-list-toolbar";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -62,6 +62,12 @@ export function TaskList({
   const clearFilters = () => setFilters({ ...filters, query: "", assignee: "any", scope: "all" });
   return (
     <section aria-label="Project tasks" className="@container flex min-h-0 min-w-0 flex-1 flex-col">
+      {/* An empty project has nothing to filter, but keeps the view toggle in its place. */}
+      {!detail.tasks.length && viewControl && (
+        <TaskFilterLayout>
+          <div className="ml-auto">{viewControl}</div>
+        </TaskFilterLayout>
+      )}
       {!!detail.tasks.length && (
         <TaskListToolbar
           filters={filters}

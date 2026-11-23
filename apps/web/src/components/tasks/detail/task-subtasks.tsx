@@ -3,8 +3,12 @@ import { taskStatusLabels } from "@substrate/contracts/tasks";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { Task } from "../types";
 import { ContentNotice } from "@/components/feedback/content-notice";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  RecordSection,
+  RecordSectionAction,
+  recordRow,
+  recordRows,
+} from "@/components/layout/record-section";
 import { Plus } from "lucide-react";
 
 /** A task's subtasks as compact rows. Editors add one from the section header. */
@@ -19,43 +23,24 @@ export function TaskSubtasks({
 }) {
   const done = subtasks.filter((task) => task.status === "completed").length;
   return (
-    <section aria-label="Subtasks" className="space-y-1">
-      <div className="flex h-7 items-center justify-between gap-2">
-        <h3 className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-          Subtasks
-          {!!subtasks.length && (
-            <span className="font-normal tabular-nums">
-              {done}/{subtasks.length}
-            </span>
-          )}
-        </h3>
-        {onCreate && (
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label="Add subtask"
-                onClick={onCreate}
-              >
-                <Plus aria-hidden="true" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Add subtask</TooltipContent>
-          </Tooltip>
-        )}
-      </div>
+    <RecordSection
+      aria-label="Subtasks"
+      title="Subtasks"
+      count={subtasks.length ? `${done}/${subtasks.length}` : undefined}
+      actions={
+        onCreate && (
+          <RecordSectionAction label="Add subtask" onClick={onCreate}>
+            <Plus aria-hidden="true" />
+          </RecordSectionAction>
+        )
+      }
+    >
       {!subtasks.length && <ContentNotice variant="inline" title="No subtasks" />}
       {!!subtasks.length && (
-        <ul className="-mx-2 grid gap-px">
+        <ul className={recordRows}>
           {subtasks.map((task) => (
             <li key={task.entityId}>
-              <button
-                type="button"
-                className="flex h-8 w-full min-w-0 items-center gap-2 rounded-md px-2 text-left text-sm outline-none hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring/50"
-                onClick={() => onSelect(task.entityId)}
-              >
+              <button type="button" className={recordRow} onClick={() => onSelect(task.entityId)}>
                 <span className="sr-only">{taskStatusLabels[task.status]}: </span>
                 <TaskStatusIcon status={task.status} />
                 <span
@@ -68,6 +53,6 @@ export function TaskSubtasks({
           ))}
         </ul>
       )}
-    </section>
+    </RecordSection>
   );
 }

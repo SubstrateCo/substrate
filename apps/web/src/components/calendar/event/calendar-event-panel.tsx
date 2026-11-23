@@ -13,9 +13,10 @@ import { PageAside, useAsideCovers } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { eventDate } from "@/lib/calendar/days";
+import { providerLabels } from "@/lib/calendar/labels";
 import { calendarLink } from "@/lib/navigation/record-links";
 import { calendarEventOptions } from "@/queries/calendar/options";
-import { Unlink, X } from "lucide-react";
+import { ArrowUpRight, Unlink, X } from "lucide-react";
 
 /** The side pane for one event, opened from the calendar and named in its URL. */
 export function CalendarEventPanel({
@@ -48,6 +49,23 @@ export function CalendarEventPanel({
                 grouped
                 link={calendarLink(organizationId, event.entityId, eventDate(event))}
               />
+            )}
+            {event?.htmlLink && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon-sm" asChild>
+                    <a
+                      href={event.htmlLink}
+                      target="_blank"
+                      rel="noreferrer"
+                      aria-label={`Open in ${providerLabels[event.provider]} Calendar`}
+                    >
+                      <ArrowUpRight aria-hidden="true" />
+                    </a>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{`Open in ${providerLabels[event.provider]} Calendar`}</TooltipContent>
+              </Tooltip>
             )}
             <Tooltip>
               <TooltipTrigger asChild>

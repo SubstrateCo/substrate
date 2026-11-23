@@ -15,14 +15,15 @@ import { crmResource } from "@/components/crm/crm-resource";
 import { FollowUps } from "@/components/crm/follow-ups";
 import { recordChangeDialog, type RecordChangeDialog } from "@/components/crm/record-change-dialog";
 import { RecordChangeDialogs } from "@/components/crm/record-change-dialogs";
-import {
-  RecordDetailView,
-  RecordDetailLoading,
-  DetailProperty,
-} from "@/components/crm/record-detail-view";
+import { RecordDetailView, RecordDetailLoading } from "@/components/crm/record-detail-view";
 import { ContentNotice } from "@/components/feedback/content-notice";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import {
+  Property,
+  RecordSection,
+  RecordSectionAction,
+  recordRow,
+  recordRows,
+} from "@/components/layout/record-section";
 import { AppAvailability } from "@/components/workspace/app-availability";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { crmLink } from "@/lib/navigation/record-links";
@@ -71,74 +72,56 @@ export function ContactDetail({
         level={level}
         onEdit={() => open("edit")}
         onArchive={() => open("archive")}
-        actions={
-          canChange && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="New interaction"
-                  onClick={() => open("interaction")}
-                >
-                  <Plus aria-hidden />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>New interaction</TooltipContent>
-            </Tooltip>
-          )
-        }
         properties={
           data.urls.length > 0 &&
           data.urls.map((url) => (
-            <DetailProperty key={url.id} label={url.label || "Website"}>
+            <Property key={url.id} label={url.label || "Website"}>
               <a
                 href={url.url}
                 target="_blank"
                 rel="noreferrer"
-                className="underline underline-offset-4"
+                className="min-w-0 truncate underline-offset-4 hover:underline"
               >
                 {url.url}
               </a>
-            </DetailProperty>
+            </Property>
           ))
         }
       >
         <AppAvailability app="crm">
-          <section className="space-y-3" aria-label="Contact accounts">
-            <div className="flex items-center justify-between gap-3">
-              <h2 className="text-sm font-medium">Accounts</h2>
-              {canChange && (
-                <Button variant="outline" size="sm" onClick={() => open("affiliation")}>
-                  <Plus aria-hidden />
-                  Link account
-                </Button>
-              )}
-            </div>
+          <RecordSection
+            aria-label="Contact accounts"
+            title="Accounts"
+            count={affiliations.length || undefined}
+            actions={
+              canChange && (
+                <RecordSectionAction label="Link account" onClick={() => open("affiliation")}>
+                  <Plus aria-hidden="true" />
+                </RecordSectionAction>
+              )
+            }
+          >
             {affiliations.length ? (
-              <ul className="divide-y rounded-lg border">
+              <ul className={recordRows}>
                 {affiliations.map(({ account, affiliation }) => (
-                  <li
-                    key={account.entityId}
-                    className="flex items-center justify-between gap-4 px-4 py-2"
-                  >
+                  <li key={account.entityId}>
                     <Link
                       {...crmLink(organizationId, "accounts", account.entityId)}
-                      className="text-sm font-medium hover:underline"
+                      className={recordRow}
                     >
-                      {account.name}
+                      <span className="min-w-0 truncate font-medium">{account.name}</span>
+                      <span className="ml-auto shrink-0 text-xs text-muted-foreground">
+                        {affiliation.title}
+                        {affiliation.isPrimary ? " · Primary" : ""}
+                      </span>
                     </Link>
-                    <span className="text-xs text-muted-foreground">
-                      {affiliation.title}
-                      {affiliation.isPrimary ? " · Primary" : ""}
-                    </span>
                   </li>
                 ))}
               </ul>
             ) : (
               <ContentNotice variant="inline" title="No linked accounts you can read" />
             )}
-          </section>
+          </RecordSection>
         </AppAvailability>
         <ContactMethods
           organizationId={organizationId}
@@ -151,6 +134,7 @@ export function ContactDetail({
           contactEntityId={entityId}
           canEdit={canChange}
           canDelete={!archived}
+          onCreate={canChange ? () => open("interaction") : undefined}
         />
         <ContactMeetings organizationId={organizationId} contactEntityId={entityId} />
         <FollowUps organizationId={organizationId} entityId={entityId} canCreate={canChange} />

@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 
 import { useId } from "react";
 
+import { RecordSection } from "@/components/layout/record-section";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { meetingOutcomeSummary } from "@/lib/calendar/labels";
 import { interactionLink, personLink } from "@/lib/navigation/record-links";
@@ -34,9 +35,8 @@ export function CalendarEventOutcome({
   const { title, description } = meetingOutcomeSummary(outcome, kind);
   const Icon = icons[outcome.state];
   return (
-    <section aria-labelledby={`${id}-title`} className="space-y-2">
-      <h3 className="text-sm font-medium">Interactions</h3>
-      <div className="space-y-3 rounded-lg border bg-card p-4">
+    <RecordSection aria-labelledby={`${id}-title`} title="Interactions">
+      <div className="space-y-3 rounded-lg border bg-card p-3">
         <div className="flex items-start gap-2.5">
           <Icon
             aria-hidden
@@ -72,7 +72,7 @@ export function CalendarEventOutcome({
                 </Link>
                 <Link
                   {...interactionLink(organizationId, interaction.entityId)}
-                  className="shrink-0 text-xs text-muted-foreground underline underline-offset-4"
+                  className="shrink-0 text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                 >
                   Open interaction
                 </Link>
@@ -81,6 +81,6 @@ export function CalendarEventOutcome({
           </ul>
         )}
       </div>
-    </section>
+    </RecordSection>
   );
 }

@@ -13,6 +13,7 @@ import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { TaskDueDatePicker } from "./task-due-date-picker";
 import { Tag } from "@/components/feedback/tag";
+import { Property, PropertyList } from "@/components/layout/record-section";
 import { DueDate } from "@/components/time/due-date";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,15 +34,6 @@ function dueText(value: string | null) {
   const due = value ? formatDueDate(value) : undefined;
   if (!due) return "none";
   return due.state === "overdue" ? `${due.label}, overdue` : due.label;
-}
-
-function Property({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <div className="flex min-h-8 items-center gap-2">
-      <dt className="w-24 shrink-0 text-xs text-muted-foreground">{label}</dt>
-      <dd className="flex min-w-0 flex-1 items-center text-sm">{children}</dd>
-    </div>
-  );
 }
 
 function PropertySelect<T extends string>({
@@ -105,7 +97,7 @@ export function TaskProperties({
     <span className="text-muted-foreground">No due date</span>
   );
   return (
-    <dl className="grid">
+    <PropertyList>
       <Property label="Status">
         {canEdit ? (
           <PropertySelect
@@ -191,6 +183,6 @@ export function TaskProperties({
           </span>
         )}
       </Property>
-    </dl>
+    </PropertyList>
   );
 }

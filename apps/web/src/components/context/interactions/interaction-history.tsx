@@ -10,6 +10,7 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { NativeField, NativeForm } from "@/components/forms/native-form";
+import { RecordSection, RecordSectionAction, recordRows } from "@/components/layout/record-section";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
@@ -26,18 +27,20 @@ import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { resourceState } from "@/lib/resource-state";
 import { useInteractionSources } from "@/queries/calendar/interaction-sources";
 import { useInteractionMutation, interactionsOptions } from "@/queries/context/interactions";
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Plus, Trash2 } from "lucide-react";
 
 export function InteractionHistory({
   organizationId,
   contactEntityId,
   canEdit,
   canDelete,
+  onCreate,
 }: {
   organizationId: string;
   contactEntityId: string;
   canEdit: boolean;
   canDelete: boolean;
+  onCreate?: () => void;
 }) {
   const query = useQuery(interactionsOptions(organizationId, contactEntityId));
   const mutation = useInteractionMutation(organizationId);
@@ -53,8 +56,17 @@ export function InteractionHistory({
     action: "edit" | "delete";
   } | null>(null);
   return (
-    <section className="space-y-3" aria-label="Interaction history">
-      <h2 className="text-sm font-medium">Interaction history</h2>
+    <RecordSection
+      aria-label="Interaction history"
+      title="Interaction history"
+      actions={
+        onCreate && (
+          <RecordSectionAction label="New interaction" onClick={onCreate}>
+            <Plus aria-hidden="true" />
+          </RecordSectionAction>
+        )
+      }
+    >
       <CrmResourceState
         compact
         noun="interactions"
@@ -65,12 +77,15 @@ export function InteractionHistory({
       {!query.error && resourceState(query).data?.length === 0 && (
         <ContentNotice variant="inline" title="No interactions recorded" />
       )}
-      <ol className="divide-y">
+      <ol className={recordRows}>
         {(resourceState(query).data ?? []).map((interaction) => {
           // Authors delete their own interactions, and admins delete any.
           const deletable = canDelete && interaction.canDelete;
           return (
-            <li key={interaction.entityId} className="group/row space-y-2 py-3">
+            <li
+              key={interaction.entityId}
+              className="group/row grid gap-1 rounded-md px-2 py-1.5 hover:bg-row-hover"
+            >
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span>{interactionLabels[interaction.kind]}</span>
                 <Timestamp value={interaction.occurredAt} format="datetime" />
@@ -189,7 +204,7 @@ export function InteractionHistory({
           }
         />
       )}
-    </section>
+    </RecordSection>
   );
 }
 

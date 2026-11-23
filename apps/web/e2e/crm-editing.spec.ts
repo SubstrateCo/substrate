@@ -165,7 +165,8 @@ test("moving an already lost deal preserves its saved lost reason", async ({ acc
   );
   const user = await client(account);
   await visit(user, undefined, "/crm", { section: "deals", recordId: deal.entityId });
-  await user.page.getByRole("button", { name: "Move deal", exact: true }).click();
+  await user.page.getByRole("button", { name: "More actions", exact: true }).click();
+  await user.page.getByRole("menuitem", { name: "Move deal", exact: true }).click();
   const editor = user.page.getByRole("dialog", { name: "Move deal", exact: true });
   await expect(editor.getByLabel("Lost reason", { exact: true })).toHaveValue(
     "Budget approval declined",

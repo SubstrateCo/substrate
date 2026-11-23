@@ -110,7 +110,8 @@ test("deal reassignment requires existing access by default and never silently g
   const record = await managedRecord(actors.sender, "deals");
   const owner = await client(actors.sender);
   await visit(owner, undefined, "/crm", { section: "deals", recordId: record.entityId });
-  await owner.page.getByRole("button", { name: "Change owner", exact: true }).click();
+  await owner.page.getByRole("button", { name: "More actions", exact: true }).click();
+  await owner.page.getByRole("menuitem", { name: "Change owner", exact: true }).click();
   const editor = owner.page.getByRole("dialog", { name: `Reassign ${record.name}`, exact: true });
   await choosePerson(owner.page, actors.member.name);
   await expect(

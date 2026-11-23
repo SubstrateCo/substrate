@@ -13,6 +13,7 @@ import { TaskBlockedCue } from "../list/task-list-item";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { TaskRelation } from "./task-relations";
 import { ContentNotice } from "@/components/feedback/content-notice";
+import { RecordSection } from "@/components/layout/record-section";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -70,23 +71,19 @@ export function TaskLinks({
     }))
     .filter((group) => group.rows.length);
   return (
-    <section aria-label="Linked tasks" className="space-y-1">
-      <div className="flex h-7 items-center justify-between gap-2">
-        <h3 className="flex items-center gap-2 text-xs font-medium text-muted-foreground">
-          Linked tasks
-          {!!relations.length && (
-            <span className="font-normal tabular-nums">{relations.length}</span>
-          )}
-          {blocked && <TaskBlockedCue />}
-        </h3>
-        {add}
-      </div>
+    <RecordSection
+      aria-label="Linked tasks"
+      title="Linked tasks"
+      count={relations.length || undefined}
+      cue={blocked && <TaskBlockedCue />}
+      actions={add}
+    >
       {!relations.length && <ContentNotice variant="inline" title="No linked tasks" />}
       {groups.map(({ relation, rows }) => {
         const label = taskLinkRelationLabels[relation];
         return (
           <div key={relation} role="group" aria-label={label}>
-            <p aria-hidden="true" className="pt-1 text-xs text-muted-foreground">
+            <p aria-hidden="true" className="text-xs text-muted-foreground">
               {label}
             </p>
             <ul className="-mx-2 grid gap-px">
@@ -155,7 +152,7 @@ export function TaskLinks({
           </div>
         );
       })}
-    </section>
+    </RecordSection>
   );
 }
 

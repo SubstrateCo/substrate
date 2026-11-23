@@ -105,8 +105,8 @@ export function TaskDetail({
           </>
         }
       />
-      <PageSheetBody className="p-0">
-        <div className="grid min-w-0 gap-5 px-5 pt-4 pb-8 wrap-anywhere">
+      <PageSheetBody>
+        <div className="grid min-w-0 gap-6 wrap-anywhere">
           {editing && canEdit ? (
             renderEditor(() => setEditing(false))
           ) : (

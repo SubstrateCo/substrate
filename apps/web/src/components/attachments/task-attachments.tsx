@@ -11,6 +11,7 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
+import { RecordSection } from "@/components/layout/record-section";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { Button } from "@/components/ui/button";
 import { useTaskAttachmentMutations } from "@/queries/attachments/mutations";
@@ -86,7 +87,7 @@ export function TaskAttachments({
   canEdit: boolean;
   visible: boolean;
 }) {
-  const heading = useRef<HTMLHeadingElement>(null);
+  const heading = useRef<HTMLSpanElement>(null);
   const options = taskAttachmentsOptions(target);
   const query = useQuery({ ...options, enabled: visible });
   const uploads = useAttachmentUploads(query.data?.length ?? 0);
@@ -101,13 +102,16 @@ export function TaskAttachments({
         name="Task attachments"
         description="Your selected files haven’t been attached."
       />
-      <div className="grid gap-3">
-        <div className="flex items-center justify-between gap-2">
-          <h3 ref={heading} tabIndex={-1} className="text-sm font-medium">
+      <RecordSection
+        title={
+          <span ref={heading} tabIndex={-1} className="rounded-sm outline-none">
             Attachments
-          </h3>
-          {canEdit && <AttachFilesButton disabled={!canPick} onFiles={uploads.add} />}
-        </div>
+          </span>
+        }
+        actions={
+          canEdit && <AttachFilesButton iconOnly disabled={!canPick} onFiles={uploads.add} />
+        }
+      >
         {query.isPending && (
           <p className="text-sm text-muted-foreground" role="status">
             Loading attachments…
@@ -149,7 +153,7 @@ export function TaskAttachments({
           error={add.error}
           onAttach={() => add.mutate(uploads.fileIds, { onSuccess: () => uploads.clear() })}
         />
-      </div>
+      </RecordSection>
       {removing && (
         <ConfirmDialog
           onClose={() => setRemoving(null)}

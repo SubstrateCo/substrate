@@ -11,14 +11,14 @@ import { FollowUps } from "./follow-ups";
 import { InteractionRollup } from "./interaction-rollup";
 import { recordChangeDialog, type RecordChangeDialog } from "./record-change-dialog";
 import { RecordChangeDialogs } from "./record-change-dialogs";
-import { RecordDetailView, RecordDetailLoading, DetailProperty } from "./record-detail-view";
+import { RecordDetailView, RecordDetailLoading } from "./record-detail-view";
 import type { RecordDraft } from "./record-editor";
 import type { getDeal } from "@/api/crm/requests";
 import { ContactLink } from "@/components/contacts/contact-link";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
+import { Tag } from "@/components/feedback/tag";
+import { NotSet, Property } from "@/components/layout/record-section";
 import { Timestamp } from "@/components/time/timestamp";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDueDate } from "@/lib/format/date";
 import { crmLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
@@ -84,23 +84,16 @@ export function DealDetail({
         }}
         onEdit={() => open("edit")}
         onArchive={() => open("archive")}
-        actions={
-          canEdit &&
-          !archived && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Move deal"
-                  onClick={() => open("transition")}
-                >
-                  <ArrowRight aria-hidden />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Move deal</TooltipContent>
-            </Tooltip>
-          )
+        tools={
+          canEdit && !archived
+            ? [
+                {
+                  label: "Move deal",
+                  icon: <ArrowRight aria-hidden="true" />,
+                  onSelect: () => open("transition"),
+                },
+              ]
+            : []
         }
         properties={
           <DealProperties
@@ -116,8 +109,8 @@ export function DealDetail({
           canCreate={canEdit && !archived}
         />
         <InteractionRollup organizationId={organizationId} entityId={entityId} kind="deal" />
-        <CrmActivity organizationId={organizationId} entityId={entityId} />
         <WorkDiscussions organizationId={organizationId} entityId={entityId} />
+        <CrmActivity organizationId={organizationId} entityId={entityId} />
       </RecordDetailView>
       {change && (
         <RecordChangeDialogs
@@ -182,45 +175,46 @@ function DealProperties({
 }) {
   return (
     <>
-      <DetailProperty label="Stage">{stage}</DetailProperty>
-      <DetailProperty label="Outcome">{outcomeLabel(deal.outcome)}</DetailProperty>
-      <DetailProperty label="Amount">{dealAmount(deal.amount, deal.currency)}</DetailProperty>
-      <DetailProperty label="Expected close">
-        {deal.expectedCloseDate ? formatDueDate(deal.expectedCloseDate)?.label : "Not set"}
-      </DetailProperty>
+      <Property label="Stage">{stage}</Property>
+      <Property label="Outcome">{outcomeLabel(deal.outcome)}</Property>
+      <Property label="Amount">{dealAmount(deal.amount, deal.currency)}</Property>
+      <Property label="Expected close">
+        {deal.expectedCloseDate ? formatDueDate(deal.expectedCloseDate)?.label : <NotSet />}
+      </Property>
       {deal.closedAt && (
-        <DetailProperty label="Actual close">
+        <Property label="Actual close">
           <Timestamp value={deal.closedAt} format="datetime" />
-        </DetailProperty>
+        </Property>
       )}
-      {deal.lostReason && <DetailProperty label="Lost reason">{deal.lostReason}</DetailProperty>}
+      {deal.lostReason && <Property label="Lost reason">{deal.lostReason}</Property>}
       {deal.accountEntityId && (
-        <DetailProperty label="Account">
+        <Property label="Account">
           <Link
             {...crmLink(organizationId, "accounts", account.entityId)}
-            className="underline underline-offset-4"
+            className="underline-offset-4 hover:underline"
           >
             {account.name}
           </Link>
-        </DetailProperty>
+        </Property>
       )}
       {contacts.length > 0 && (
-        <DetailProperty label="Contacts">
-          <ul className="space-y-1">
+        <Property label="Contacts">
+          <ul className="grid gap-1 py-1.5">
             {contacts.map(({ contact, isPrimary }) => (
-              <li key={contact.entityId}>
-                <ContactLink entityId={contact.entityId} className="underline underline-offset-4">
+              <li key={contact.entityId} className="flex items-center gap-2">
+                <ContactLink
+                  entityId={contact.entityId}
+                  className="underline-offset-4 hover:underline"
+                >
                   {contact.displayName}
                 </ContactLink>
-                {isPrimary && <span className="ml-2 text-xs text-muted-foreground">Primary</span>}
+                {isPrimary && <Tag className="py-0">Primary</Tag>}
               </li>
             ))}
           </ul>
-        </DetailProperty>
+        </Property>
       )}
-      <DetailProperty label="Access">
-        {accessLabel(level)}. Related records keep their own access.
-      </DetailProperty>
+      <Property label="Access">{accessLabel(level)}</Property>
     </>
   );
 }

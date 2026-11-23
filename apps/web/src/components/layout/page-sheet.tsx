@@ -131,5 +131,5 @@ export function PageSheetHeader({ title, actions }: { title: ReactNode; actions?
 }
 
 export function PageSheetBody({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("min-h-0 flex-1 overflow-y-auto p-5", className)} {...props} />;
+  return <div className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-5", className)} {...props} />;
 }

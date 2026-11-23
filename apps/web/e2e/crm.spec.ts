@@ -96,7 +96,8 @@ test("create customer records, record a call, and advance a linked deal", async 
   await expect(
     page.getByRole("heading", { name: "Northstar workspace rollout", exact: true }),
   ).toBeVisible();
-  await page.getByRole("button", { name: "Move deal", exact: true }).click();
+  await page.getByRole("button", { name: "More actions", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Move deal", exact: true }).click();
   await selectCrmOption(page, "Stage", "Discovery");
   const transition = page.getByRole("dialog", { name: "Move deal", exact: true });
   await submitCrm(
@@ -143,7 +144,8 @@ test("create customer records, record a call, and advance a linked deal", async 
   for (const action of ["Created record", "Changed stage or outcome"]) {
     const event = activity.getByRole("listitem").filter({ hasText: action });
     await expect(event.getByText(account.name, { exact: true })).toBeVisible();
-    await expect(event.getByText("Person", { exact: true })).toBeVisible();
+    // People carry no tag; only agents are marked.
+    await expect(event.getByText("Agent", { exact: true })).toHaveCount(0);
   }
   await captureCrm(page, "03-deal-detail");
   await activity.scrollIntoViewIfNeeded();

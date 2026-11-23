@@ -5,6 +5,7 @@ import { ErrorState } from "../../feedback/error-state";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { DiscussionItem, DiscussionItemSkeleton, type Discussion } from "./discussion-item";
+import { RecordSection } from "@/components/layout/record-section";
 import { useDelayedLoading } from "@/hooks/use-delayed-loading";
 import { cn } from "cn";
 import { ChevronDown, MessagesSquare } from "lucide-react";
@@ -62,36 +63,40 @@ export function WorkDiscussions({
     );
   if (empty)
     return (
-      <section aria-label={label} className="space-y-1">
-        <h3 className="flex h-7 items-center text-xs font-medium text-muted-foreground">{label}</h3>
+      <RecordSection aria-label={label} title={label}>
         <ContentNotice variant="inline" title="No linked discussions" />
-      </section>
+      </RecordSection>
     );
   const expanded = open ?? (uniqueRows.length > 0 || !!error || showLoading);
   return (
     <Collapsible asChild open={expanded} onOpenChange={setOpen}>
-      <section aria-label={label} className="group/discussions space-y-2">
-        <h3 className="flex h-7 items-center">
+      <RecordSection
+        aria-label={label}
+        className="group/discussions"
+        title={
           <CollapsibleTrigger asChild>
             <Button type="button" variant="disclosure" size="xs" className="-ml-2">
               {label}
-              {!!uniqueRows.length && <span className="tabular-nums">{uniqueRows.length}</span>}
+              {!!uniqueRows.length && (
+                <span className="font-normal tabular-nums">{uniqueRows.length}</span>
+              )}
               <ChevronDown
                 aria-hidden="true"
                 className="transition-transform duration-150 ease-out group-data-[state=closed]/discussions:-rotate-90"
               />
             </Button>
           </CollapsibleTrigger>
-        </h3>
+        }
+      >
         <CollapsibleContent>
-          <div className="space-y-2">
+          <div className="grid gap-2">
             {children}
             {showLoading && <DiscussionLoading />}
             {failure}
             {list}
           </div>
         </CollapsibleContent>
-      </section>
+      </RecordSection>
     </Collapsible>
   );
 }

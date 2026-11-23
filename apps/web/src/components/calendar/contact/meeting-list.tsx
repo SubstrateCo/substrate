@@ -3,9 +3,11 @@ import type { CalendarEventSummary } from "@substrate/contracts/calendar";
 import { Link, type LinkProps } from "@tanstack/react-router";
 
 import { CalendarColorDot } from "../calendar-color";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Tag } from "@/components/feedback/tag";
+import { RecordSection, recordRow, recordRows } from "@/components/layout/record-section";
 import { eventTitle, eventWhenLabel } from "@/lib/calendar/days";
 
 /** The viewer's meetings with one contact, newest first. Each row opens the event. */
@@ -23,8 +25,7 @@ export function MeetingList({
   meetingLink: (meeting: CalendarEventSummary) => LinkProps;
 }) {
   return (
-    <section className="space-y-3" aria-label="Meetings">
-      <h2 className="text-sm font-medium">Meetings</h2>
+    <RecordSection aria-label="Meetings" title="Meetings" count={meetings?.length || undefined}>
       {error && (
         <ErrorState
           compact
@@ -35,18 +36,16 @@ export function MeetingList({
       )}
       {!error && !meetings && <LoadingState label="Loading meetings…" variant="compact" rows={2} />}
       {!error && meetings?.length === 0 && (
-        <p className="text-sm text-muted-foreground">
-          No meetings with this contact in your connected calendars
-        </p>
+        <ContentNotice
+          variant="inline"
+          title="No meetings with this contact in your connected calendars"
+        />
       )}
       {!error && meetings && meetings.length > 0 && (
-        <ul className="divide-y rounded-lg border">
+        <ul className={recordRows}>
           {meetings.map((meeting) => (
             <li key={meeting.entityId}>
-              <Link
-                {...meetingLink(meeting)}
-                className="flex items-center gap-3 px-4 py-2 transition-colors hover:bg-row-hover"
-              >
+              <Link {...meetingLink(meeting)} className={recordRow}>
                 <CalendarColorDot color={meeting.color} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">
@@ -65,6 +64,6 @@ export function MeetingList({
           ))}
         </ul>
       )}
-    </section>
+    </RecordSection>
   );
 }

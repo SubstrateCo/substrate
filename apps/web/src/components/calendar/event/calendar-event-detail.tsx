@@ -6,17 +6,17 @@ import { CalendarColorDot } from "../calendar-color";
 import { CalendarAttendees } from "./calendar-attendees";
 import { CalendarEventOutcome } from "./calendar-event-outcome";
 import { Tag } from "@/components/feedback/tag";
+import { PageSheetBody } from "@/components/layout/page-sheet";
 import { Button } from "@/components/ui/button";
 import { eventSpan, eventTitle, eventWhenLabel } from "@/lib/calendar/days";
 import { plainTextDescription } from "@/lib/calendar/description";
-import { providerLabels } from "@/lib/calendar/labels";
 import { formatTimeZone, localTimeZone } from "@/lib/format/date";
 import { cn } from "cn";
 import { ArrowUpRight, Clock, MapPin, Video } from "lucide-react";
 
 function Detail({ icon, children }: { icon: ReactNode; children: ReactNode }) {
   return (
-    <div className="flex items-start gap-3 text-sm">
+    <div className="flex min-h-8 items-start gap-3 py-1.5 text-sm">
       <span className="mt-0.5 shrink-0 text-muted-foreground [&_svg]:size-4">{icon}</span>
       <div className="min-w-0 flex-1 space-y-0.5">{children}</div>
     </div>
@@ -38,80 +38,70 @@ export function CalendarEventDetail({
   const description = plainTextDescription(event.description);
   const cancelled = event.status === "cancelled";
   return (
-    <div className="min-h-0 flex-1 space-y-6 overflow-y-auto p-4">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <CalendarColorDot color={event.color} />
-          <span className="truncate">{event.calendarName}</span>
-          {event.kind === "from_gmail" && <span className="shrink-0">· Added by Gmail</span>}
+    <PageSheetBody>
+      <div className="grid min-w-0 gap-6">
+        <div className="grid gap-2">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <CalendarColorDot color={event.color} />
+            <span className="truncate">{event.calendarName}</span>
+            {event.kind === "from_gmail" && <span className="shrink-0">· Added by Gmail</span>}
+          </div>
+          {/* oxlint-disable-next-line design/page-header -- The event's own title, the aside body title (DESIGN § 3 Record sheets). */}
+          <h2
+            className={cn(
+              "text-lg/snug font-semibold wrap-break-word",
+              cancelled && "text-muted-foreground line-through",
+            )}
+          >
+            {eventTitle(event.title)}
+          </h2>
+          {(cancelled || event.status === "tentative") && (
+            <Tag className="w-fit">{cancelled ? "Cancelled" : "Tentative"}</Tag>
+          )}
+          {description && (
+            <p className="text-sm/relaxed wrap-break-word whitespace-pre-wrap">{description}</p>
+          )}
         </div>
-        <h3
-          className={cn(
-            "text-base font-semibold wrap-break-word",
-            cancelled && "text-muted-foreground line-through",
-          )}
-        >
-          {eventTitle(event.title)}
-        </h3>
-        {(cancelled || event.status === "tentative") && (
-          <Tag>{cancelled ? "Cancelled" : "Tentative"}</Tag>
-        )}
-      </div>
-      <div className="space-y-3">
-        <Detail icon={<Clock aria-hidden />}>
-          <p>{eventWhenLabel(event, now)}</p>
-          {!event.allDay && (
-            <p className="text-xs text-muted-foreground">
-              {`Times in ${formatTimeZone(zone, start)}`}
-              {event.timeZone && event.timeZone !== zone
-                ? ` · Event time zone ${formatTimeZone(event.timeZone, start)}`
-                : ""}
-            </p>
-          )}
-        </Detail>
-        {event.location && (
-          <Detail icon={<MapPin aria-hidden />}>
-            <p className="wrap-break-word">{event.location}</p>
+        <div className="grid">
+          <Detail icon={<Clock aria-hidden />}>
+            <p>{eventWhenLabel(event, now)}</p>
+            {!event.allDay && (
+              <p className="text-xs text-muted-foreground">
+                {`Times in ${formatTimeZone(zone, start)}`}
+                {event.timeZone && event.timeZone !== zone
+                  ? ` · Event time zone ${formatTimeZone(event.timeZone, start)}`
+                  : ""}
+              </p>
+            )}
           </Detail>
-        )}
-        {event.conferenceUrl && (
-          <Detail icon={<Video aria-hidden />}>
-            <Button size="sm" asChild>
-              <a href={event.conferenceUrl} target="_blank" rel="noreferrer">
-                Join
-                <ArrowUpRight aria-hidden />
-              </a>
-            </Button>
-          </Detail>
-        )}
+          {event.location && (
+            <Detail icon={<MapPin aria-hidden />}>
+              <p className="wrap-break-word">{event.location}</p>
+            </Detail>
+          )}
+          {event.conferenceUrl && (
+            <Detail icon={<Video aria-hidden />}>
+              <Button size="sm" asChild>
+                <a href={event.conferenceUrl} target="_blank" rel="noreferrer">
+                  Join
+                  <ArrowUpRight aria-hidden />
+                </a>
+              </Button>
+            </Detail>
+          )}
+        </div>
+        <CalendarEventOutcome
+          organizationId={organizationId}
+          outcome={event.outcome}
+          kind={event.kind}
+          interactions={event.interactions}
+        />
+        <CalendarAttendees
+          organizationId={organizationId}
+          attendees={event.attendees}
+          outcome={event.outcome.state}
+        />
       </div>
-      {event.htmlLink && (
-        <Button variant="outline" size="sm" asChild>
-          <a href={event.htmlLink} target="_blank" rel="noreferrer">
-            {`Open in ${providerLabels[event.provider]} Calendar`}
-            <ArrowUpRight aria-hidden />
-          </a>
-        </Button>
-      )}
-      {description && (
-        <section aria-label="Description" className="space-y-2">
-          <h3 className="text-sm font-medium">Description</h3>
-          <p className="text-sm/relaxed wrap-break-word whitespace-pre-wrap text-muted-foreground">
-            {description}
-          </p>
-        </section>
-      )}
-      <CalendarEventOutcome
-        organizationId={organizationId}
-        outcome={event.outcome}
-        kind={event.kind}
-        interactions={event.interactions}
-      />
-      <CalendarAttendees
-        organizationId={organizationId}
-        attendees={event.attendees}
-        outcome={event.outcome.state}
-      />
-    </div>
+    </PageSheetBody>
   );
 }

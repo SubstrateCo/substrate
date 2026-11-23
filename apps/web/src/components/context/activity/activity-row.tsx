@@ -3,11 +3,12 @@ import type { ConversationKind } from "@substrate/contracts/messaging/input";
 import { Link } from "@tanstack/react-router";
 
 import { SkeletonText } from "@/components/feedback/skeleton-text";
+import { Tag } from "@/components/feedback/tag";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
 import type { RecordLink } from "@/lib/navigation/record-links";
-import { Bot, CircleDot, Link2, MessageCircle, MessageSquare, Unlink } from "lucide-react";
+import { CircleDot, Link2, MessageCircle, MessageSquare, Unlink } from "lucide-react";
 
 export type ActivityEvent = {
   id: string;
@@ -47,17 +48,12 @@ export function ActivityRow({ event }: { event: ActivityEvent }) {
             size="xs"
           />
           <span className="truncate font-medium">{event.actorName ?? "Unknown"}</span>
-          {event.actorType === "agent" && (
-            <span className="inline-flex shrink-0 items-center gap-0.5 rounded-sm border px-1 text-xs font-medium text-muted-foreground">
-              <Bot aria-hidden="true" className="size-3" />
-              Agent
-            </span>
-          )}
-          <span className="shrink-0 text-muted-foreground">{known?.verb ?? event.action}</span>
+          {event.actorType === "agent" && <Tag className="shrink-0 py-0">Agent</Tag>}
+          <span className="truncate text-muted-foreground">{known?.verb ?? event.action}</span>
           {event.source && (
             <Link
               {...event.source.link}
-              className="inline-flex min-w-0 items-center gap-0.5 rounded-sm bg-muted px-1 font-medium outline-none hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex min-w-0 items-center gap-0.5 rounded-sm bg-muted px-1 font-medium outline-none hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring"
             >
               {event.source.conversationKind ? (
                 <ConversationKindIcon

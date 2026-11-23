@@ -1,79 +1,62 @@
-import { useRef, useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { RecordOwner, type RecordOwnerProps } from "./record-owner";
 import { RecordSharing, type RecordSharingProps } from "./record-sharing";
-import { usePageSheet } from "@/components/layout/page-sheet";
-import { Button } from "@/components/ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { UserPlus, UserRound } from "lucide-react";
 
 export type ResponsibleRecord = RecordOwnerProps["record"];
 
-export function RecordManagement({
+/** A record header action: a labelled button on the page, a menu item in a sheet. */
+export type RecordTool = { label: string; icon: ReactNode; onSelect: () => void };
+
+/** The Share and Change owner tools of an account or deal, and the dialogs they open. */
+export function useRecordManagement({
   organizationId,
   entityId,
   name,
   level,
   record,
+  enabled,
+  onRestoreFocus,
 }: {
   organizationId: string;
   entityId: string;
   name: string;
   level: RecordSharingProps["level"];
   record?: ResponsibleRecord;
+  enabled: boolean;
+  /** Focuses the launcher of the tool with this label after its dialog closes. */
+  onRestoreFocus: (label: string) => void;
 }) {
-  const sheet = usePageSheet();
   const [dialog, setDialog] = useState<"share" | "owner" | null>(null);
-  const shareButton = useRef<HTMLButtonElement>(null);
-  const ownerButton = useRef<HTMLButtonElement>(null);
-  const canEdit = level === "edit" || level === "owner";
-  return (
+  const canShare = enabled && level === "owner";
+  const canReassign = enabled && (level === "edit" || level === "owner") && !!record;
+  const tools: RecordTool[] = [];
+  if (canShare)
+    tools.push({
+      label: "Share",
+      icon: <UserPlus aria-hidden="true" />,
+      onSelect: () => setDialog("share"),
+    });
+  if (canReassign)
+    tools.push({
+      label: "Change owner",
+      icon: <UserRound aria-hidden="true" />,
+      onSelect: () => setDialog("owner"),
+    });
+  const dialogs = (
     <>
-      {level === "owner" && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              ref={shareButton}
-              variant={sheet ? "ghost" : "outline"}
-              size={sheet ? "icon-sm" : "sm"}
-              aria-label="Share"
-              onClick={() => setDialog("share")}
-            >
-              <UserPlus aria-hidden="true" />
-              {!sheet && "Share"}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Share</TooltipContent>
-        </Tooltip>
-      )}
-      {canEdit && record && (
-        <Tooltip>
-          <TooltipTrigger asChild>
-            <Button
-              ref={ownerButton}
-              variant={sheet ? "ghost" : "outline"}
-              size={sheet ? "icon-sm" : "sm"}
-              aria-label="Change owner"
-              onClick={() => setDialog("owner")}
-            >
-              <UserRound aria-hidden="true" />
-              {!sheet && "Change owner"}
-            </Button>
-          </TooltipTrigger>
-          <TooltipContent>Change owner</TooltipContent>
-        </Tooltip>
-      )}
-      {dialog === "share" && level === "owner" && (
+      {dialog === "share" && canShare && (
         <RecordSharing
           organizationId={organizationId}
           entityId={entityId}
           name={name}
           level={level}
           onClose={() => setDialog(null)}
-          onRestoreFocus={() => shareButton.current?.focus()}
+          onRestoreFocus={() => onRestoreFocus("Share")}
         />
       )}
-      {dialog === "owner" && canEdit && record && (
+      {dialog === "owner" && canReassign && (
         <RecordOwner
           organizationId={organizationId}
           entityId={entityId}
@@ -81,9 +64,10 @@ export function RecordManagement({
           level={level}
           record={record}
           onClose={() => setDialog(null)}
-          onRestoreFocus={() => ownerButton.current?.focus()}
+          onRestoreFocus={() => onRestoreFocus("Change owner")}
         />
       )}
     </>
   );
+  return { tools, dialogs };
 }

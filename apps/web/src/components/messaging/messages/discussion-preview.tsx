@@ -4,6 +4,7 @@ import type { Message } from "@/api/messaging/requests";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
+import { RecordSection } from "@/components/layout/record-section";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
@@ -27,13 +28,7 @@ export function DiscussionPreview({
 }) {
   const latest = messages.filter((message) => !message.threadId).slice(-previewLimit);
   return (
-    <section aria-label="Discussion" className="min-w-0 space-y-3 border-t pt-4">
-      <div className="flex items-baseline justify-between gap-2">
-        <h3 className="text-xs font-medium text-muted-foreground">Discussion</h3>
-        {latest.length > 0 && (
-          <span className="text-xs text-muted-foreground">Latest {latest.length}</span>
-        )}
-      </div>
+    <RecordSection aria-label="Discussion" title="Discussion" count={latest.length || undefined}>
       {loading && latest.length === 0 && (
         <div role="status" aria-label="Loading discussion">
           <ol aria-hidden="true" className="space-y-4">
@@ -98,7 +93,7 @@ export function DiscussionPreview({
         </ol>
       )}
       {conversationLink}
-    </section>
+    </RecordSection>
   );
 }
 
