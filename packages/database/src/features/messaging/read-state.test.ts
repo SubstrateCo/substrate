@@ -20,6 +20,12 @@ const mark = (conversationId: string, messageId: string) =>
       messageId,
     ),
   );
+const unread = (conversationId: string, unreadCount: number, firstUnreadMessageId: string) => ({
+  conversationId,
+  unreadCount,
+  mentionCount: 0,
+  firstUnreadMessageId,
+});
 
 test("read positions persist, exclude own messages, and never move backwards", async () => {
   await f.verifyEmails();
@@ -28,16 +34,70 @@ test("read positions persist, exclude own messages, and never move backwards", a
   const first = await alice.sendMessage(conversation.id, "first");
   await f.messaging("bob").sendMessage(conversation.id, "own");
   const last = await alice.sendMessage(conversation.id, "last");
-  expect(await reads().unreadCounts()).toEqual([
-    { conversationId: conversation.id, unreadCount: 2 },
-  ]);
+  expect(await reads().unreadCounts()).toEqual([unread(conversation.id, 2, first.id)]);
   await mark(conversation.id, last.id);
   await mark(conversation.id, first.id);
   expect(await reads().unreadCounts()).toEqual([]);
-  await alice.sendMessage(conversation.id, "new");
+  const next = await alice.sendMessage(conversation.id, "new");
+  expect(await reads().unreadCounts()).toEqual([unread(conversation.id, 1, next.id)]);
+});
+
+test("each reader's first unread message follows their own read position and skips their own messages", async () => {
+  await f.verifyEmails();
+  const alice = f.messaging("alice");
+  const bob = f.messaging("bob");
+  const channel = await alice.createConversation({ kind: "channel", name: "Launch" });
+  await bob.joinConversation(channel.id);
+  const fromAlice = await alice.sendMessage(channel.id, "from Alice");
+  const fromBob = await bob.sendMessage(channel.id, "from Bob");
+  const later = await alice.sendMessage(channel.id, "later from Alice");
+  expect(await reads("bob").unreadCounts()).toEqual([unread(channel.id, 2, fromAlice.id)]);
+  expect(await reads("alice").unreadCounts()).toEqual([unread(channel.id, 1, fromBob.id)]);
+  await mark(channel.id, fromAlice.id);
+  expect(await reads("bob").unreadCounts()).toEqual([unread(channel.id, 1, later.id)]);
+  // Bob's position does not move Alice's.
+  expect(await reads("alice").unreadCounts()).toEqual([unread(channel.id, 1, fromBob.id)]);
+});
+
+test("unread thread replies count but are not the timeline's first unread message", async () => {
+  await f.verifyEmails();
+  const alice = f.messaging("alice");
+  const conversation = await alice.createConversation({ kind: "dm", emails: ["bob@example.com"] });
+  const root = await alice.sendMessage(conversation.id, "root");
+  await mark(conversation.id, root.id);
+  await alice.sendMessage(conversation.id, "reply", root.id);
   expect(await reads().unreadCounts()).toEqual([
-    { conversationId: conversation.id, unreadCount: 1 },
+    {
+      conversationId: conversation.id,
+      unreadCount: 1,
+      mentionCount: 0,
+      firstUnreadMessageId: null,
+    },
   ]);
+  const next = await alice.sendMessage(conversation.id, "next");
+  expect(await reads().unreadCounts()).toEqual([unread(conversation.id, 2, next.id)]);
+});
+
+test("mention counts include only the reader's unread mentions and follow edits and deletions", async () => {
+  await f.verifyEmails();
+  const alice = f.messaging("alice");
+  const bob = f.messaging("bob");
+  const channel = await alice.createConversation({ kind: "channel", name: "Launch" });
+  await bob.joinConversation(channel.id);
+  const plain = await alice.sendMessage(channel.id, "plain");
+  const mention = await alice.sendMessage(channel.id, `@[person:${f.bob}] look`);
+  await alice.sendMessage(channel.id, `@[PERSON:${f.bob.toUpperCase()}] again`);
+  await bob.sendMessage(channel.id, `@[person:${f.alice}] and @[person:${f.bob}] own`);
+  const counts = await reads().unreadCounts();
+  expect(counts).toEqual([
+    { conversationId: channel.id, unreadCount: 3, mentionCount: 2, firstUnreadMessageId: plain.id },
+  ]);
+  // Alice has read her own messages; Bob's message is her one unread mention.
+  expect(await reads("alice").unreadCounts()).toMatchObject([{ unreadCount: 1, mentionCount: 1 }]);
+  await alice.editMessage(mention.id, "no mention now");
+  expect(await reads().unreadCounts()).toMatchObject([{ unreadCount: 3, mentionCount: 1 }]);
+  await mark(channel.id, mention.id);
+  expect(await reads().unreadCounts()).toMatchObject([{ unreadCount: 1, mentionCount: 1 }]);
 });
 
 test("unread counts cover only conversations the Messages list shows, not task discussions", async () => {
@@ -57,14 +117,14 @@ test("unread counts cover only conversations the Messages list shows, not task d
   });
   await f.messaging("alice").sendMessage(discussion, "Discussion start");
   const bob = f.messaging("bob");
-  await bob.sendMessage(discussion, "Discussion reply");
-  await bob.sendMessage(dm.id, "Direct reply");
-  // The discussion has an unread message, but only its task can open it.
+  await bob.sendMessage(discussion, `@[person:${f.alice}] Discussion reply`);
+  const direct = await bob.sendMessage(dm.id, "Direct reply");
+  // The discussion has an unread mention, but only its task can open it.
   expect((await f.messaging("alice").listMessages(discussion)).map((row) => row.body)).toEqual([
     "Discussion start",
-    "Discussion reply",
+    `@[person:${f.alice}] Discussion reply`,
   ]);
-  expect(await reads("alice").unreadCounts()).toEqual([{ conversationId: dm.id, unreadCount: 1 }]);
+  expect(await reads("alice").unreadCounts()).toEqual([unread(dm.id, 1, direct.id)]);
 });
 
 test("unchanged and older read positions publish no refresh hints", async () => {
@@ -96,9 +156,7 @@ test("a message at the read position's time counts when it sorts after the read 
     .set({ createdAt: at })
     .where(eq(messagingMessages.conversationId, conversation.id));
   await mark(conversation.id, sent[0]!.id);
-  expect(await reads().unreadCounts()).toEqual([
-    { conversationId: conversation.id, unreadCount: 1 },
-  ]);
+  expect(await reads().unreadCounts()).toEqual([unread(conversation.id, 1, sent[1]!.id)]);
 });
 
 test("unread counts and read mutations enforce conversation and organization access", async () => {

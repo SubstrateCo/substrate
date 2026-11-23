@@ -29,7 +29,7 @@ import { workLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { messageTargetOptions } from "@/queries/context/links";
 import { useConversationManagement } from "@/queries/messaging/management";
-import { useConversationRead } from "@/queries/messaging/read-state";
+import { useConversationRead, useOpeningUnread } from "@/queries/messaging/read-state";
 
 export function ConversationPane({
   organizationId,
@@ -69,7 +69,7 @@ export function ConversationPane({
   const activeThreadId = messageId && !target.error ? target.data?.root.id : undefined;
   const [addingMembers, setAddingMembers] = useState(false);
   const [removingMember, setRemovingMember] = useState<HeaderMember | null>(null);
-  const { messages, history, loadOlder, timeline } = useConversationTimeline({
+  const { messages, history, loadOlder, timeline, unread } = useConversationTimeline({
     organizationId,
     conversationId: conversation.id,
     aroundMessageId: target.data?.root.id,
@@ -83,6 +83,9 @@ export function ConversationPane({
   else if (timeline.length > 0)
     messageContent = (
       <MessageList
+        // A new conversation gets a fresh first scroll.
+        key={conversation.id}
+        {...unread}
         messages={timeline}
         organizationId={organizationId}
         conversationId={conversation.id}
@@ -214,14 +217,35 @@ export function ConversationPane({
 function useConversationTimeline(options: Parameters<typeof useMessageHistory>[0]) {
   const { messages, history, loadOlder } = useMessageHistory(options);
   const timeline = messages.data ?? [];
-  // Only mark the conversation read when the current result reaches its newest message.
-  const canMarkRead = !messages.error && !messages.isPlaceholderData && !history.hasPrevious;
+  // Read before the read position can move, so the divider marks what was new on opening.
+  const opening = useOpeningUnread(options.organizationId, options.conversationId);
+  // The conversation whose newest message is in view; a pane reused for another one starts unseen.
+  const [latestVisibleIn, setLatestVisibleIn] = useState<string>();
+  // Only mark the conversation read when the current result reaches its newest message and the
+  // person can see it.
+  const canMarkRead =
+    opening.ready &&
+    latestVisibleIn === options.conversationId &&
+    !messages.error &&
+    !messages.isPlaceholderData &&
+    !history.hasPrevious;
   useConversationRead(
     options.organizationId,
     options.conversationId,
     canMarkRead ? timeline.at(-1)?.id : undefined,
   );
-  return { messages, history, loadOlder, timeline };
+  return {
+    messages,
+    history,
+    loadOlder,
+    timeline,
+    unread: {
+      firstUnreadMessageId: opening.messageId,
+      positionReady: opening.ready,
+      onLatestVisibleChange: (visible: boolean) =>
+        setLatestVisibleIn(visible ? options.conversationId : undefined),
+    },
+  };
 }
 
 function canRemoveMember(conversation: Conversation, userId: string, member: HeaderMember) {

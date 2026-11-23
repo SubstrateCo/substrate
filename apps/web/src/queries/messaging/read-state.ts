@@ -1,6 +1,6 @@
-import { queryOptions, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 
 import { markConversationRead, unreadCounts } from "@/api/messaging/read-state";
 import { queryKeys } from "@/queries/keys";
@@ -11,6 +11,24 @@ export const unreadCountsOptions = (organizationId: string) =>
     queryFn: ({ signal }) => unreadCounts({ data: { organizationId }, signal }),
     retry: false,
   });
+
+/**
+ * The conversation's first unread timeline message when it opened, or `null` when nothing was
+ * unread. It stays the same while the conversation is open, so the "New" divider does not move as
+ * the read position does. Mark the conversation read only once `ready` is true.
+ */
+export function useOpeningUnread(organizationId: string, conversationId: string) {
+  const unread = useQuery(unreadCountsOptions(organizationId));
+  const [opening, setOpening] = useState<{ conversationId: string; messageId: string | null }>();
+  if (opening?.conversationId === conversationId)
+    return { ready: true, messageId: opening.messageId };
+  // A failed count shows no divider; it must not keep the conversation unread.
+  if (unread.isPending) return { ready: false, messageId: null };
+  const messageId =
+    unread.data?.find((row) => row.conversationId === conversationId)?.firstUnreadMessageId ?? null;
+  setOpening({ conversationId, messageId });
+  return { ready: true, messageId };
+}
 
 // Reading a historical page or a background window does not advance the read position.
 export function useConversationRead(

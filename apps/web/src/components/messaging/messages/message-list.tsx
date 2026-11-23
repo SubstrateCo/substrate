@@ -8,6 +8,7 @@ import type { Message } from "@/api/messaging/requests";
 import { DayDivider } from "@/components/messaging/messages/day-divider";
 import { messageRows } from "@/components/messaging/messages/message-grouping";
 import { MessageList as MessageListView } from "@/components/messaging/messages/message-list-view";
+import { NewMessagesDivider } from "@/components/messaging/messages/new-messages-divider";
 import { isSameDay } from "@/lib/format/date";
 import { messagePageOptions } from "@/queries/context/links";
 
@@ -21,6 +22,9 @@ export function MessageList({
   previousDate,
   olderPage,
   canPost = true,
+  firstUnreadMessageId,
+  positionReady,
+  onLatestVisibleChange,
 }: {
   messages: Message[];
   organizationId: string;
@@ -33,6 +37,10 @@ export function MessageList({
   previousDate?: Message["createdAt"];
   olderPage?: boolean;
   canPost?: boolean;
+  /** The "New" divider goes above this message. */
+  firstUnreadMessageId?: string | null;
+  positionReady?: boolean;
+  onLatestVisibleChange?: (visible: boolean) => void;
 }) {
   const context = useQuery(
     messagePageOptions(
@@ -48,6 +56,8 @@ export function MessageList({
       header={header}
       footer={footer}
       olderPage={olderPage}
+      positionReady={positionReady}
+      onLatestVisibleChange={onLatestVisibleChange}
     >
       {messageRows(messages).map(({ message, newDay, grouped }, index) => (
         <Fragment key={message.id}>
@@ -55,6 +65,7 @@ export function MessageList({
             !(index === 0 && previousDate && isSameDay(previousDate, message.createdAt)) && (
               <DayDivider date={message.createdAt} />
             )}
+          {message.id === firstUnreadMessageId && <NewMessagesDivider />}
           <MessageRow
             message={message}
             grouped={grouped}

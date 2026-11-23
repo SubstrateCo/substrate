@@ -8,6 +8,8 @@ import type { listConversations } from "@/api/messaging/requests";
  */
 export type Conversation = Awaited<ReturnType<typeof listConversations>>[number] & {
   unreadCount?: number;
+  /** Unread messages that mention the viewer. */
+  mentionCount?: number;
 };
 
 /**

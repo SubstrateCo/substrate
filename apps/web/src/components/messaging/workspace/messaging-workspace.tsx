@@ -72,12 +72,16 @@ export function MessagingWorkspace({
   // The sidebar lists joined conversations. Other public channels stay reachable by link and search.
   const sidebarConversations = visibleConversations
     .filter((conversation) => conversation.joined && !conversation.task)
-    .map((conversation) => ({
-      ...conversation,
-      unreadCount: !unread.error
-        ? (unread.data?.find((row) => row.conversationId === conversation.id)?.unreadCount ?? 0)
-        : 0,
-    }));
+    .map((conversation) => {
+      const row = !unread.error
+        ? unread.data?.find((item) => item.conversationId === conversation.id)
+        : undefined;
+      return {
+        ...conversation,
+        unreadCount: row?.unreadCount ?? 0,
+        mentionCount: row?.mentionCount ?? 0,
+      };
+    });
   const selected = conversationId
     ? visibleConversations.find((conversation) => conversation.id === conversationId)
     : sidebarConversations[0];

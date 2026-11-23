@@ -25,10 +25,20 @@ export function readOperations(
     async unreadCounts() {
       const { actor } = await authenticate(db);
       if (scope.actorEntityId) throw new AccessDeniedError();
+      // Person mentions are the body's `@[person:<actor>]` tokens, which sending and editing
+      // check. Matching is case-insensitive, like the parser.
+      const mention = `@[person:${actor.entityId.toLowerCase()}]`;
       return db
         .select({
           conversationId: messagingConversations.id,
           unreadCount: sql<number>`count(*)::int`,
+          mentionCount: sql<number>`(count(*) FILTER (WHERE
+            strpos(lower(${messagingMessages.body}), ${mention}) > 0))::int`,
+          // The oldest unread message of the main timeline, where the "New" divider goes. Unread
+          // thread replies count but stay in their thread.
+          firstUnreadMessageId: sql<string | null>`(array_agg(${messagingMessages.id}
+            ORDER BY ${messagingMessages.createdAt}, ${messagingMessages.id})
+            FILTER (WHERE ${messagingMessages.threadId} IS NULL))[1]`,
         })
         .from(messagingConversations)
         .innerJoin(

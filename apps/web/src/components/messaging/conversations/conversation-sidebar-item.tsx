@@ -105,13 +105,23 @@ export function ConversationSidebarItem({
               <TooltipContent>Includes people from another organization</TooltipContent>
             </Tooltip>
           )}
-          {!!conversation.unreadCount && (
+          {/* A mention badge replaces the unread count; the row stays bold either way. */}
+          {conversation.mentionCount ? (
             <span
-              className="ml-auto shrink-0 text-xs font-medium"
-              aria-label={`${conversation.unreadCount} unread ${conversation.unreadCount === 1 ? "message" : "messages"}`}
+              className="ml-auto min-w-5 shrink-0 rounded-full bg-primary px-1.5 text-center text-xs leading-5 font-medium text-primary-foreground"
+              aria-label={`${conversation.mentionCount} ${conversation.mentionCount === 1 ? "mention" : "mentions"}, ${conversation.unreadCount} unread ${conversation.unreadCount === 1 ? "message" : "messages"}`}
             >
-              {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
+              {conversation.mentionCount > 99 ? "99+" : conversation.mentionCount}
             </span>
+          ) : (
+            !!conversation.unreadCount && (
+              <span
+                className="ml-auto shrink-0 text-xs font-medium"
+                aria-label={`${conversation.unreadCount} unread ${conversation.unreadCount === 1 ? "message" : "messages"}`}
+              >
+                {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
+              </span>
+            )
           )}
         </SidebarItemContent>
       </Link>

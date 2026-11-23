@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "../../ui/button";
 import { ArrowDown } from "lucide-react";
@@ -8,6 +8,8 @@ export function MessageList({
   header,
   footer,
   olderPage = false,
+  positionReady = true,
+  onLatestVisibleChange,
   children,
 }: {
   lastId?: string;
@@ -16,15 +18,40 @@ export function MessageList({
   /** Floats over the bottom edge without taking space. */
   footer?: ReactNode;
   olderPage?: boolean;
+  /**
+   * The first scroll waits for this. It opens at the "New" divider when there is one, otherwise at
+   * the newest message.
+   */
+  positionReady?: boolean;
+  /** Reports whether the newest message is in view. */
+  onLatestVisibleChange?: (visible: boolean) => void;
   children: ReactNode;
 }) {
   const container = useRef<HTMLDivElement>(null);
   const follow = useRef(true);
+  const positioned = useRef(false);
   const [away, setAway] = useState(false);
-  useEffect(() => {
-    if (follow.current && container.current)
-      container.current.scrollTop = container.current.scrollHeight;
-  }, [lastId]);
+  const measure = () => {
+    const node = container.current;
+    if (!node) return;
+    follow.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100;
+    setAway(!follow.current);
+    onLatestVisibleChange?.(follow.current);
+  };
+  useLayoutEffect(() => {
+    const node = container.current;
+    if (!node || !positionReady) return;
+    if (!positioned.current) {
+      positioned.current = true;
+      const divider = node.querySelector<HTMLElement>("[data-unread-divider]");
+      node.scrollTop = divider
+        ? node.scrollTop + divider.getBoundingClientRect().top - node.getBoundingClientRect().top
+        : node.scrollHeight;
+    } else if (follow.current) node.scrollTop = node.scrollHeight;
+    // Setting the same scroll position fires no scroll event, so measure here too.
+    measure();
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- Position again only when the newest message changes or the first position becomes known.
+  }, [lastId, positionReady]);
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div
@@ -32,13 +59,7 @@ export function MessageList({
         role="log"
         aria-label="Messages"
         className="min-h-0 flex-1 overflow-y-auto pt-4 pb-3"
-        onScroll={() => {
-          const node = container.current;
-          if (node) {
-            follow.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100;
-            setAway(!follow.current);
-          }
-        }}
+        onScroll={measure}
       >
         {header}
         {children}
