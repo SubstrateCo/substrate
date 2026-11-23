@@ -1,3 +1,4 @@
+import { utcTimestamp } from "../timestamps.ts";
 import { organizationId } from "../workspace.ts";
 import { z } from "zod";
 
@@ -21,8 +22,8 @@ export const calendarUpdate = calendarWorkspace
 
 export const calendarEventRange = calendarWorkspace
   .extend({
-    from: z.iso.datetime(),
-    until: z.iso.datetime(),
+    from: utcTimestamp,
+    until: utcTimestamp,
     calendarEntityIds: z
       .union([z.uuid(), z.array(z.uuid()).max(50)])
       .transform((value) => (Array.isArray(value) ? value : [value]))

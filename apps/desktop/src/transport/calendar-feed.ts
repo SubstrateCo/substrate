@@ -3,6 +3,7 @@ import {
   calendarEventKinds,
   calendarEventStatuses,
 } from "@substrate/contracts/calendar";
+import { utcTimestamp } from "@substrate/contracts/timestamps";
 
 import { z } from "zod";
 
@@ -12,8 +13,8 @@ const calendarEvent = z.object({
   calendarName: z.string(),
   color: z.string().nullable(),
   title: z.string(),
-  startsAt: z.iso.datetime({ offset: true }),
-  endsAt: z.iso.datetime({ offset: true }),
+  startsAt: utcTimestamp,
+  endsAt: utcTimestamp,
   allDay: z.boolean(),
   status: z.enum(calendarEventStatuses),
   kind: z.enum(calendarEventKinds),

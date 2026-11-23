@@ -1,3 +1,5 @@
+import { utcTimestamp } from "@substrate/contracts/timestamps";
+
 import { z } from "zod";
 
 const feed = z.object({
@@ -5,8 +7,8 @@ const feed = z.object({
   data: z.array(
     z.object({
       id: z.uuid(),
-      createdAt: z.iso.datetime({ offset: true }),
-      readAt: z.iso.datetime({ offset: true }).nullable(),
+      createdAt: utcTimestamp,
+      readAt: utcTimestamp.nullable(),
       kind: z.enum(["message", "mention", "reply", "assignment"]),
       conversationId: z.uuid().nullable(),
       messageId: z.uuid().nullable(),

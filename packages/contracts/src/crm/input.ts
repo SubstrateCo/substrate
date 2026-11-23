@@ -1,5 +1,6 @@
 import { createTaskFields } from "../tasks/input.ts";
 import { permissionLevels } from "../tasks/status.ts";
+import { utcTimestamp } from "../timestamps.ts";
 import { organizationId, recordListFields } from "../workspace.ts";
 import { crmReportFilters } from "./report-input.ts";
 import { z } from "zod";
@@ -13,7 +14,7 @@ export const crmContact = crmWorkspace.extend({ contactEntityId: z.uuid() });
 export const crmTimeline = crmRecord
   .extend({
     limit: z.coerce.number().int().min(1).max(100).optional(),
-    beforeOccurredAt: z.iso.datetime().optional(),
+    beforeOccurredAt: utcTimestamp.optional(),
     beforeEntityId: z.uuid().optional(),
     mode: z.enum(["participants", "linked"]).default("participants"),
   })
@@ -24,8 +25,8 @@ export const crmTimeline = crmRecord
 export type CrmTimelineMode = z.output<typeof crmTimeline>["mode"];
 export const crmReport = crmWorkspace.extend({
   ...crmReportFilters.shape,
-  from: z.iso.datetime(),
-  to: z.iso.datetime(),
+  from: utcTimestamp,
+  to: utcTimestamp,
 });
 export const accountFields = z.object({
   name: z.string().trim().min(1).max(300),

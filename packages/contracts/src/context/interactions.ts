@@ -1,3 +1,4 @@
+import { utcTimestamp } from "../timestamps.ts";
 import { organizationId } from "../workspace.ts";
 import { z } from "zod";
 
@@ -7,8 +8,8 @@ export const contactInteractionList = workspace.extend({ contactEntityId: z.uuid
 export const interactionFields = z.object({
   contactEntityId: z.uuid(),
   kind: z.enum(["email", "meeting", "call", "message", "note", "other"]),
-  occurredAt: z.iso.datetime(),
-  endedAt: z.iso.datetime().nullable().optional(),
+  occurredAt: utcTimestamp,
+  endedAt: utcTimestamp.nullable().optional(),
   summary: z.string().trim().min(1).max(10000),
 });
 export type InteractionKind = z.output<typeof interactionFields>["kind"];
@@ -30,8 +31,8 @@ export type InteractionWrite = z.output<typeof interactionWrite>;
 
 export const interactionPeriod = workspace
   .extend({
-    from: z.iso.datetime(),
-    until: z.iso.datetime(),
+    from: utcTimestamp,
+    until: utcTimestamp,
     timeZone: z
       .string()
       .max(100)
@@ -57,7 +58,7 @@ export const interactionTimeline = interactionPeriod
     kind: interactionFields.shape.kind.optional(),
     origin: z.enum(["manual", "message_publication", "calendar_event"]).optional(),
     search: z.string().trim().max(200).optional(),
-    beforeOccurredAt: z.iso.datetime().optional(),
+    beforeOccurredAt: utcTimestamp.optional(),
     beforeEntityId: z.uuid().optional(),
   })
   .refine(

@@ -1,3 +1,4 @@
+import { utcTimestamp } from "../timestamps.ts";
 import type { BridgeAPI } from "./ipc.ts";
 import { z } from "zod";
 
@@ -15,9 +16,9 @@ const base = {
   /** A stable dedupe key, such as `meeting:<entityId>:<startsAt>`. */
   id,
   priority: z.enum(["normal", "high"]),
-  createdAt: z.iso.datetime(),
+  createdAt: utcTimestamp,
   /** Main removes the card at this time. */
-  expiresAt: z.iso.datetime(),
+  expiresAt: utcTimestamp,
 };
 
 export const screenNotificationAction = z.enum(["join", "open", "snooze", "dismiss"]);
@@ -28,8 +29,8 @@ export const meetingNotification = z.object({
   kind: z.literal("meeting"),
   payload: z.object({
     title: z.string().max(500),
-    startsAt: z.iso.datetime(),
-    endsAt: z.iso.datetime(),
+    startsAt: utcTimestamp,
+    endsAt: utcTimestamp,
     calendarName: z.string().max(200),
     color: z.string().max(32).nullable(),
     phase: z.enum(["upcoming", "started"]),

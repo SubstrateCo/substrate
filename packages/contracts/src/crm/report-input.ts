@@ -1,8 +1,9 @@
+import { utcTimestamp } from "../timestamps.ts";
 import { organizationId } from "../workspace.ts";
 import { z } from "zod";
 
 export const crmReportFilters = z.object({
-  asOf: z.iso.datetime().optional(),
+  asOf: utcTimestamp.optional(),
   staleDays: z.coerce.number().int().min(1).max(3650).default(30),
   stageId: z.uuid().optional(),
   ownerActorEntityId: z.uuid().optional(),
@@ -13,8 +14,8 @@ export const crmReportDeals = crmReportFilters
   .extend({
     organizationId,
     cohort: z.enum(["open", "closed", "overdue", "due_today", "no_next_action", "stale"]),
-    from: z.iso.datetime().optional(),
-    to: z.iso.datetime().optional(),
+    from: utcTimestamp.optional(),
+    to: utcTimestamp.optional(),
     limit: z.coerce.number().int().min(1).max(100).default(50),
     afterEntityId: z.uuid().optional(),
   })

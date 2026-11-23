@@ -1,7 +1,8 @@
+import { utcTimestamp } from "../timestamps.ts";
 import { organizationId } from "../workspace";
 import { z } from "zod";
 
-const position = z.object({ at: z.iso.datetime({ offset: true }), id: z.uuid() });
+const position = z.object({ at: utcTimestamp, id: z.uuid() });
 
 export function notificationPosition(value: string) {
   return position.parse(JSON.parse(value));

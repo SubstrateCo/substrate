@@ -1,3 +1,4 @@
+import { utcTimestamp } from "../timestamps.ts";
 import { organizationId } from "../workspace.ts";
 import { z } from "zod";
 
@@ -63,7 +64,7 @@ export const crmActivityInput = z.strictObject({
   relatedEntityId: z.uuid().optional(),
 });
 export const crmActivityCursor = z.strictObject({
-  createdAt: z.iso.datetime({ offset: true }),
+  createdAt: utcTimestamp,
   id: z.uuid(),
 });
 export const crmActivityOptions = z.strictObject({
@@ -75,7 +76,7 @@ export const crmActivityList = z
     organizationId,
     entityId: z.uuid(),
     limit: z.coerce.number().int().min(1).max(100).optional(),
-    beforeCreatedAt: z.iso.datetime({ offset: true }).optional(),
+    beforeCreatedAt: utcTimestamp.optional(),
     beforeId: z.uuid().optional(),
   })
   .refine(

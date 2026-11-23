@@ -1,5 +1,6 @@
 import { taskTools } from "../harness/tools/tasks.ts";
 import { conversationKind } from "../messaging/input.ts";
+import { utcTimestamp } from "../timestamps.ts";
 import { z } from "zod";
 
 const id = z.uuid();
@@ -36,7 +37,7 @@ export type ProposalAction = z.output<typeof proposalAction>;
 
 export const proposalSummary = z.string().trim().min(1).max(2000);
 
-const version = z.iso.datetime({ offset: true });
+const version = utcTimestamp;
 
 /**
  * The state of the action's targets when it was proposed. Approval runs the action only while the

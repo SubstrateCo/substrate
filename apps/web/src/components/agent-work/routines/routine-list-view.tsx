@@ -11,13 +11,7 @@ import { Tag } from "@/components/feedback/tag";
 import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
 import { SettingsSection } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
-import {
-  formatDateTime,
-  formatDateTimeInZone,
-  formatFullTimestamp,
-  formatTimeZone,
-  formatZonedDateTime,
-} from "@/lib/format/date";
+import { formatDateTime, formatTimeZone, formatZonedDateTime } from "@/lib/format/date";
 import { cn } from "cn";
 import { CalendarClock, Hand, Pencil, Plus, Trash2 } from "lucide-react";
 
@@ -53,17 +47,13 @@ function RoutineRowsLoading() {
   );
 }
 
-/** "Next run Wed, Nov 11, 9:00 AM EST": in the routine's own zone, so it matches its schedule. */
+/** Next run in the viewer's zone, with the schedule's own clock in the tooltip. */
 function nextRun(routine: AgentRoutineView) {
   if (routine.approvedRevision !== routine.revision || !routine.enabled || !routine.nextFireAt)
     return undefined;
-  const own = formatDateTimeInZone(routine.nextFireAt, routine.timezone);
-  // The viewer's own clock, only for a person in another zone than the schedule.
-  const local = formatDateTime(routine.nextFireAt);
   return {
-    text: `Next run ${formatZonedDateTime(routine.nextFireAt, routine.timezone)}`,
-    title:
-      own === local ? undefined : `${formatFullTimestamp(routine.nextFireAt)} in your time zone`,
+    text: `Next run ${formatDateTime(routine.nextFireAt)} in your time zone`,
+    title: `${formatZonedDateTime(routine.nextFireAt, routine.timezone)} in the schedule’s time zone`,
   };
 }
 

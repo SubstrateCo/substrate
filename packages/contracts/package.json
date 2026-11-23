@@ -53,7 +53,8 @@
     "./paths": "./src/paths.ts",
     "./result": "./src/result.ts",
     "./testing/timers": "./src/testing/timers.ts",
-    "./state-machine": "./src/state-machine.ts"
+    "./state-machine": "./src/state-machine.ts",
+    "./timestamps": "./src/timestamps.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit",
