@@ -4,10 +4,10 @@ import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
-import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
+import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { PersonAvatar } from "@/components/people/person-avatar";
+import { Item, ItemActions, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { Spinner } from "@/components/ui/spinner";
-import { cn } from "cn";
 import { UserMinus } from "lucide-react";
 
 type ConversationAgentOption = {
@@ -71,42 +71,47 @@ export function AgentMembersDialog({
         {!loading && (
           <ul ref={list} tabIndex={-1} aria-label="Your agents" className="-mx-2 grid gap-0.5">
             {agents.map((agent) => (
-              <li
-                key={agent.agentId}
-                className={cn(actionRow, "flex h-10 items-center gap-2 rounded-md px-2")}
-              >
-                <PersonAvatar name={agent.name} image={agent.image} agent />
-                <span className="min-w-0 flex-1 truncate text-sm font-medium">{agent.name}</span>
-                {agent.actorId && (
-                  <span className="text-xs text-muted-foreground">In this conversation</span>
-                )}
-                {agent.actorId && busyId === agent.agentId && (
-                  <Spinner aria-label={`Removing ${agent.name}`} className="size-4" />
-                )}
-                {agent.actorId && busyId !== agent.agentId && (
-                  <RowActions label={`Actions for ${agent.name}`}>
-                    <RowAction
-                      label={`Remove ${agent.name}`}
-                      destructive
-                      disabled={!!busyId}
-                      onClick={() => removal.open(agent)}
-                    >
-                      <UserMinus />
-                    </RowAction>
-                  </RowActions>
-                )}
-                {!agent.actorId && (
-                  <PendingButton
-                    size="sm"
-                    variant="outline"
-                    disabled={!!busyId}
-                    pending={busyId === agent.agentId}
-                    onClick={() => onAdd(agent.agentId)}
-                  >
-                    Add
-                  </PendingButton>
-                )}
-              </li>
+              <Item key={agent.agentId} asChild size="xs" className="group/row">
+                <li>
+                  <ItemMedia>
+                    <PersonAvatar name={agent.name} image={agent.image} agent />
+                  </ItemMedia>
+                  <ItemContent className="min-w-0">
+                    <ItemTitle className="max-w-full">{agent.name}</ItemTitle>
+                  </ItemContent>
+                  <ItemActions>
+                    {agent.actorId && (
+                      <span className="text-xs text-muted-foreground">In this conversation</span>
+                    )}
+                    {agent.actorId && busyId === agent.agentId && (
+                      <Spinner aria-label={`Removing ${agent.name}`} className="size-4" />
+                    )}
+                    {agent.actorId && busyId !== agent.agentId && (
+                      <RowActions label={`Actions for ${agent.name}`}>
+                        <RowAction
+                          label={`Remove ${agent.name}`}
+                          destructive
+                          disabled={!!busyId}
+                          onClick={() => removal.open(agent)}
+                        >
+                          <UserMinus />
+                        </RowAction>
+                      </RowActions>
+                    )}
+                    {!agent.actorId && (
+                      <PendingButton
+                        size="sm"
+                        variant="outline"
+                        disabled={!!busyId}
+                        pending={busyId === agent.agentId}
+                        onClick={() => onAdd(agent.agentId)}
+                      >
+                        Add
+                      </PendingButton>
+                    )}
+                  </ItemActions>
+                </li>
+              </Item>
             ))}
           </ul>
         )}

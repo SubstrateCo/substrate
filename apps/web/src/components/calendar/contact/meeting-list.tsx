@@ -7,7 +7,15 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Tag } from "@/components/feedback/tag";
-import { RecordSection, recordRow, recordRows } from "@/components/layout/record-section";
+import { RecordSection, recordRows } from "@/components/layout/record-section";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { eventTitle, eventWhenLabel } from "@/lib/calendar/days";
 
 /** The viewer's meetings with one contact, newest first. Each row opens the event. */
@@ -38,21 +46,23 @@ export function MeetingList({
         <ul className={recordRows}>
           {meetings.map((meeting) => (
             <li key={meeting.entityId}>
-              <Link {...meetingLink(meeting)} className={recordRow}>
-                <CalendarColorDot color={meeting.color} />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">
-                    {eventTitle(meeting.title)}
-                  </span>
-                  <span className="block truncate text-xs text-muted-foreground">
-                    {eventWhenLabel(meeting, now)}
-                  </span>
-                </span>
-                {meeting.status === "cancelled" && <Tag>Cancelled</Tag>}
-                {Date.parse(meeting.startsAt) > now && meeting.status !== "cancelled" && (
-                  <Tag>Upcoming</Tag>
-                )}
-              </Link>
+              <Item asChild size="xs">
+                <Link {...meetingLink(meeting)}>
+                  <ItemMedia>
+                    <CalendarColorDot color={meeting.color} />
+                  </ItemMedia>
+                  <ItemContent className="min-w-0">
+                    <ItemTitle className="max-w-full">{eventTitle(meeting.title)}</ItemTitle>
+                    <ItemDescription>{eventWhenLabel(meeting, now)}</ItemDescription>
+                  </ItemContent>
+                  <ItemActions>
+                    {meeting.status === "cancelled" && <Tag>Cancelled</Tag>}
+                    {Date.parse(meeting.startsAt) > now && meeting.status !== "cancelled" && (
+                      <Tag>Upcoming</Tag>
+                    )}
+                  </ItemActions>
+                </Link>
+              </Item>
             </li>
           ))}
         </ul>

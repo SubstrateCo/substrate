@@ -6,6 +6,7 @@ import { CalendarColorDot } from "../calendar-color";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { Tag } from "@/components/feedback/tag";
 import { SettingsList } from "@/components/layout/settings-section";
+import { Item, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { agendaTimeLabel, eventEnded, eventTitle, type AgendaDay } from "@/lib/calendar/days";
 import { formatDayLabel, formatShortDate, isSameDay } from "@/lib/format/date";
 import { cn } from "cn";
@@ -84,54 +85,61 @@ function AgendaRow({
   const cancelled = event.status === "cancelled";
   return (
     <li>
-      <Link
-        {...link}
-        aria-current={selected ? "true" : undefined}
-        className={cn(
-          "flex items-start gap-3 px-4 py-2.5 transition-colors outline-none hover:bg-row-hover focus-visible:bg-row-hover focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/50",
-          selected && "bg-row-selected text-row-selected-foreground hover:bg-row-selected",
-        )}
-      >
-        <span className="w-36 shrink-0 pt-0.5 text-xs text-muted-foreground tabular-nums">
-          {agendaTimeLabel(event, day)}
-        </span>
-        <CalendarColorDot color={event.color} className="mt-1.5" />
-        <span className="min-w-0 flex-1 space-y-0.5">
-          <span className="flex min-w-0 items-center gap-2">
-            <span
-              className={cn(
-                "truncate text-sm font-medium",
-                ended && !selected && "text-muted-foreground",
-                cancelled && "text-muted-foreground line-through",
-              )}
-            >
-              {eventTitle(event.title)}
+      <Item asChild>
+        <Link
+          {...link}
+          aria-current={selected ? "true" : undefined}
+          className={cn(
+            "items-start focus-visible:bg-row-hover",
+            selected &&
+              "[a]:bg-row-selected [a]:text-row-selected-foreground [a]:hover:bg-row-selected [a]:focus-visible:bg-row-selected",
+          )}
+        >
+          <ItemMedia className="w-36">
+            <span className="text-xs text-muted-foreground tabular-nums">
+              {agendaTimeLabel(event, day)}
             </span>
-            {cancelled && <Tag>Cancelled</Tag>}
-          </span>
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
-            <span className="truncate">{event.calendarName}</span>
-            {event.location && (
-              <span className="inline-flex min-w-0 items-center gap-1">
-                <MapPin aria-hidden className="size-3 shrink-0" />
-                <span className="truncate">{event.location}</span>
+          </ItemMedia>
+          <ItemMedia>
+            <CalendarColorDot color={event.color} className="mt-1.5" />
+          </ItemMedia>
+          <ItemContent className="min-w-0">
+            <ItemTitle className="max-w-full">
+              <span
+                className={cn(
+                  "truncate text-sm font-medium",
+                  ended && !selected && "text-muted-foreground",
+                  cancelled && "text-muted-foreground line-through",
+                )}
+              >
+                {eventTitle(event.title)}
               </span>
-            )}
-            {event.conferenceUrl && (
-              <span className="inline-flex items-center gap-1">
-                <Video aria-hidden className="size-3 shrink-0" />
-                Video call
-              </span>
-            )}
-            {event.attendeeCount > 1 && (
-              <span className="inline-flex items-center gap-1">
-                <Users aria-hidden className="size-3 shrink-0" />
-                {`${event.attendeeCount} people`}
-              </span>
-            )}
-          </span>
-        </span>
-      </Link>
+              {cancelled && <Tag>Cancelled</Tag>}
+            </ItemTitle>
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
+              <span className="truncate">{event.calendarName}</span>
+              {event.location && (
+                <span className="inline-flex min-w-0 items-center gap-1">
+                  <MapPin aria-hidden className="size-3 shrink-0" />
+                  <span className="truncate">{event.location}</span>
+                </span>
+              )}
+              {event.conferenceUrl && (
+                <span className="inline-flex items-center gap-1">
+                  <Video aria-hidden className="size-3 shrink-0" />
+                  Video call
+                </span>
+              )}
+              {event.attendeeCount > 1 && (
+                <span className="inline-flex items-center gap-1">
+                  <Users aria-hidden className="size-3 shrink-0" />
+                  {`${event.attendeeCount} people`}
+                </span>
+              )}
+            </span>
+          </ItemContent>
+        </Link>
+      </Item>
     </li>
   );
 }

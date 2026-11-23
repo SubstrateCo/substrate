@@ -10,6 +10,7 @@ import { ConversationKindIcon } from "@/components/messaging/conversations/conve
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
+import { Item, ItemContent, ItemMedia } from "@/components/ui/item";
 import { plainReferenceText } from "@/lib/messaging/reference-token";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
@@ -125,17 +126,19 @@ function DiscussionItemLayout({
   descriptionId?: string;
 }) {
   return (
-    <li className="relative flex min-w-0 gap-3 rounded-lg border bg-card p-3 transition-colors hover:bg-row-hover">
-      {avatar}
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-          {meta}
-        </div>
-        <div id={descriptionId} className="flex min-w-0 flex-col gap-1">
-          {content}
-        </div>
-      </div>
-    </li>
+    <Item asChild variant="outline" className="relative items-start">
+      <li>
+        <ItemMedia>{avatar}</ItemMedia>
+        <ItemContent className="min-w-0">
+          <div className="flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
+            {meta}
+          </div>
+          <div id={descriptionId} className="flex min-w-0 flex-col gap-1">
+            {content}
+          </div>
+        </ItemContent>
+      </li>
+    </Item>
   );
 }
 

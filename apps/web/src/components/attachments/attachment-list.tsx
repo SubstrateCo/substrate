@@ -2,7 +2,14 @@ import type { Attachment } from "@substrate/contracts/files/attachments";
 
 import type { ReactNode } from "react";
 
-import { actionRow } from "@/components/layout/row-actions";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { cn } from "cn";
 import { File, Download } from "lucide-react";
 
@@ -24,36 +31,39 @@ export function AttachmentList({
       className={cn("my-2 grid", compact ? "max-w-xs gap-1" : "max-w-md gap-2")}
     >
       {attachments.map((attachment) => (
-        <li
+        <Item
           key={attachment.id}
-          className={cn(
-            actionRow,
-            "flex min-w-0 items-center rounded-md border bg-background pr-2 hover:bg-row-hover",
-          )}
+          asChild
+          variant="outline"
+          size={compact ? "xs" : "default"}
+          className="group/row"
         >
-          <a
-            href={href(attachment)}
-            download={attachment.filename}
-            className={cn(
-              "flex min-w-0 flex-1 items-center rounded-md text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-              compact ? "gap-2 px-2 py-1.5" : "gap-3 px-3 py-2",
-            )}
-            aria-label={`Download ${attachment.filename}`}
-          >
-            <File aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-            <span className="min-w-0 flex-1">
-              <span className="block truncate font-medium">{attachment.filename}</span>
-              <span className="block text-xs text-muted-foreground">
-                {attachment.size < 1024
-                  ? `${attachment.size} B`
-                  : `${Math.ceil(attachment.size / 1024)} KiB`}{" "}
-                · Unscanned file
-              </span>
-            </span>
-            <Download aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-          </a>
-          {actions?.(attachment)}
-        </li>
+          <li>
+            <a
+              href={href(attachment)}
+              download={attachment.filename}
+              aria-label={`Download ${attachment.filename}`}
+              className="flex min-w-0 flex-1 items-center gap-2 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+            >
+              <ItemMedia variant="icon">
+                <File aria-hidden="true" className="text-muted-foreground" />
+              </ItemMedia>
+              <ItemContent className="min-w-0">
+                <ItemTitle className="max-w-full">{attachment.filename}</ItemTitle>
+                <ItemDescription>
+                  {attachment.size < 1024
+                    ? `${attachment.size} B`
+                    : `${Math.ceil(attachment.size / 1024)} KiB`}{" "}
+                  · Unscanned file
+                </ItemDescription>
+              </ItemContent>
+              <ItemActions>
+                <Download aria-hidden="true" className="size-4 text-muted-foreground" />
+              </ItemActions>
+            </a>
+            {actions && <ItemActions>{actions(attachment)}</ItemActions>}
+          </li>
+        </Item>
       ))}
     </ul>
   );

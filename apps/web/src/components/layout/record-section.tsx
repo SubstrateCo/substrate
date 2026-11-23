@@ -4,12 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "cn";
 
-/** The list of rows in a record section. Rows hang 8px into the gutter so their text aligns. */
-export const recordRows = "-mx-2 grid gap-px";
-
-/** One row in `recordRows`: a link, button, or item that fills the row, 32px for one line of text. */
-export const recordRow =
-  "flex w-full min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm outline-none hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring/50";
+/** Align the content of `Item size="xs"` with the record section's heading. */
+export const recordRows = "-mx-2.5 grid gap-px";
 
 /**
  * A section of a record sheet or aside: a 28px title row (muted title, count, cues, actions on the

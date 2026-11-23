@@ -8,19 +8,23 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
-import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
+import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { SettingsList, SettingsSection } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { formatDateTime, formatTimeZone, formatZonedDateTime } from "@/lib/format/date";
-import { cn } from "cn";
 import { CalendarClock, Hand, Pencil, Plus, Trash2 } from "lucide-react";
 
 function RoutineRow({ children }: { children: ReactNode }) {
-  return <li className={cn(actionRow, "flex min-w-0 items-start gap-3 px-4 py-3")}>{children}</li>;
+  return (
+    <Item asChild size="xs" className="group/row">
+      <li>{children}</li>
+    </Item>
+  );
 }
 
 function RoutineContent({ children }: { children: ReactNode }) {
-  return <div className="grid min-w-0 flex-1 gap-0.5">{children}</div>;
+  return <ItemContent className="min-w-0">{children}</ItemContent>;
 }
 
 function RoutineRowsLoading() {
@@ -113,20 +117,16 @@ export function RoutineListView({
             return (
               <RoutineRow key={routine.id}>
                 <RoutineContent>
-                  <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
+                  <ItemTitle className="max-w-full">
                     <span className="truncate">{routine.name}</span>
                     {!needsApproval && !routine.enabled && <Tag>Paused</Tag>}
-                  </p>
-                  <p className="truncate text-xs text-muted-foreground">
+                  </ItemTitle>
+                  <ItemDescription>
                     {describeSchedule(routine.cron)} ·{" "}
                     {formatTimeZone(routine.timezone, routine.nextFireAt ?? undefined)}
-                  </p>
-                  {next && (
-                    <p className="truncate text-xs text-muted-foreground" title={next.title}>
-                      {next.text}
-                    </p>
-                  )}
-                  <p className="line-clamp-2 text-xs text-muted-foreground">{routine.prompt}</p>
+                  </ItemDescription>
+                  {next && <ItemDescription title={next.title}>{next.text}</ItemDescription>}
+                  <ItemDescription>{routine.prompt}</ItemDescription>
                   {needsApproval && (
                     <div className="mt-2 flex flex-wrap items-center gap-2">
                       <span className="flex items-center gap-1.5 text-xs font-medium text-warning-text">
@@ -147,18 +147,20 @@ export function RoutineListView({
                     </div>
                   )}
                 </RoutineContent>
-                <RowActions label={`Actions for ${routine.name}`}>
-                  <RowAction label={`Edit ${routine.name}`} onClick={() => onEdit(routine.id)}>
-                    <Pencil />
-                  </RowAction>
-                  <RowAction
-                    label={`Delete ${routine.name}`}
-                    destructive
-                    onClick={() => onDelete(routine)}
-                  >
-                    <Trash2 />
-                  </RowAction>
-                </RowActions>
+                <ItemActions>
+                  <RowActions label={`Actions for ${routine.name}`}>
+                    <RowAction label={`Edit ${routine.name}`} onClick={() => onEdit(routine.id)}>
+                      <Pencil />
+                    </RowAction>
+                    <RowAction
+                      label={`Delete ${routine.name}`}
+                      destructive
+                      onClick={() => onDelete(routine)}
+                    >
+                      <Trash2 />
+                    </RowAction>
+                  </RowActions>
+                </ItemActions>
               </RoutineRow>
             );
           })}

@@ -3,6 +3,7 @@ import { useId, type ReactNode } from "react";
 import { PendingButton } from "../feedback/pending-button";
 import { toneBorder } from "../feedback/tag";
 import { Button } from "../ui/button";
+import { Item, ItemActions, ItemContent } from "../ui/item";
 import { cn } from "cn";
 
 /** One settings page or tab: a title, a short description, optional actions, then its groups. */
@@ -133,19 +134,19 @@ export function SettingsRow({
   control: ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 flex-wrap items-center justify-between gap-x-6 gap-y-3">
-      <div className="min-w-0 flex-1 basis-56 space-y-1">
+    <Item>
+      <ItemContent className="min-w-0 basis-56">
         {htmlFor ? (
-          <label htmlFor={htmlFor} className="text-sm font-medium">
+          <label htmlFor={htmlFor} className="font-medium">
             {label}
           </label>
         ) : (
-          <p className="text-sm font-medium">{label}</p>
+          <p className="font-medium">{label}</p>
         )}
-        {description && <p className="text-sm text-muted-foreground">{description}</p>}
-      </div>
-      <div className="flex shrink-0 items-center">{control}</div>
-    </div>
+        {description && <p className="text-muted-foreground">{description}</p>}
+      </ItemContent>
+      <ItemActions>{control}</ItemActions>
+    </Item>
   );
 }
 

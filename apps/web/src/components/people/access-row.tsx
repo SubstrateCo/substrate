@@ -1,8 +1,15 @@
 import type { ReactNode } from "react";
 
-import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
+import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { PersonAvatar } from "@/components/people/person-avatar";
-import { cn } from "cn";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { UserMinus } from "lucide-react";
 
 /**
@@ -18,7 +25,6 @@ export function AccessRow({
   levelControl,
   disabled = false,
   onRemove,
-  className,
 }: {
   name: string;
   image?: string | null;
@@ -30,28 +36,33 @@ export function AccessRow({
   levelControl?: ReactNode;
   disabled?: boolean;
   onRemove?: () => void;
-  className?: string;
 }) {
   return (
-    <li className={cn(actionRow, "flex items-center gap-3 px-3 py-2", className)}>
-      <PersonAvatar name={name} image={image} agent={agent} />
-      <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium">{name}</p>
-        {meta && <p className="text-xs text-muted-foreground">{meta}</p>}
-      </div>
-      {levelControl ?? <span className="shrink-0 text-sm text-muted-foreground">{level}</span>}
-      {onRemove && (
-        <RowActions label={`Actions for ${name}`}>
-          <RowAction
-            label={`Remove ${name}’s access`}
-            destructive
-            disabled={disabled}
-            onClick={onRemove}
-          >
-            <UserMinus aria-hidden="true" />
-          </RowAction>
-        </RowActions>
-      )}
-    </li>
+    <Item asChild size="xs" className="group/row">
+      <li>
+        <ItemMedia>
+          <PersonAvatar name={name} image={image} agent={agent} />
+        </ItemMedia>
+        <ItemContent className="min-w-0">
+          <ItemTitle className="max-w-full">{name}</ItemTitle>
+          {meta && <ItemDescription>{meta}</ItemDescription>}
+        </ItemContent>
+        <ItemActions>
+          {levelControl ?? <span className="shrink-0 text-sm text-muted-foreground">{level}</span>}
+          {onRemove && (
+            <RowActions label={`Actions for ${name}`}>
+              <RowAction
+                label={`Remove ${name}’s access`}
+                destructive
+                disabled={disabled}
+                onClick={onRemove}
+              >
+                <UserMinus aria-hidden="true" />
+              </RowAction>
+            </RowActions>
+          )}
+        </ItemActions>
+      </li>
+    </Item>
   );
 }

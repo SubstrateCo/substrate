@@ -2,6 +2,14 @@ import type { HarnessSkill } from "@substrate/contracts/harness";
 
 import { Tag } from "@/components/feedback/tag";
 import { SettingsList } from "@/components/layout/settings-section";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { Blocks } from "lucide-react";
 
 /** Skills that Substrate writes into the agent folder. */
@@ -16,13 +24,17 @@ export function StartupSkills({ skills, scanned }: { skills: HarnessSkill[]; sca
       }
     >
       {skills.map((skill) => (
-        <li key={skill.id} className="grid gap-1 px-4 py-3">
-          <div className="flex min-w-0 items-center gap-2">
-            <p className="min-w-0 truncate text-sm font-medium">{skill.name}</p>
-            <Tag className="shrink-0">{scanned ? "Managed" : "Default"}</Tag>
-          </div>
-          <p className="line-clamp-2 text-xs text-muted-foreground">{skill.description}</p>
-        </li>
+        <Item key={skill.id} asChild size="xs">
+          <li>
+            <ItemContent className="min-w-0">
+              <ItemTitle className="max-w-full">{skill.name}</ItemTitle>
+              <ItemDescription>{skill.description}</ItemDescription>
+            </ItemContent>
+            <ItemActions>
+              <Tag>{scanned ? "Managed" : "Default"}</Tag>
+            </ItemActions>
+          </li>
+        </Item>
       ))}
     </SettingsList>
   );
@@ -39,13 +51,21 @@ export function McpServerRow({
   builtIn?: boolean;
 }) {
   return (
-    <li className="flex min-w-0 items-center gap-3 px-4 py-3">
-      <Blocks aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-      <div className="grid min-w-0 flex-1 gap-0.5">
-        <p className="text-sm font-medium wrap-anywhere">{name}</p>
-        {detail && <p className="truncate text-xs text-muted-foreground">{detail}</p>}
-      </div>
-      {builtIn && <Tag className="shrink-0">Built-in</Tag>}
-    </li>
+    <Item asChild size="xs">
+      <li>
+        <ItemMedia variant="icon">
+          <Blocks aria-hidden="true" className="text-muted-foreground" />
+        </ItemMedia>
+        <ItemContent className="min-w-0">
+          <ItemTitle className="max-w-full">{name}</ItemTitle>
+          {detail && <ItemDescription>{detail}</ItemDescription>}
+        </ItemContent>
+        {builtIn && (
+          <ItemActions>
+            <Tag>Built-in</Tag>
+          </ItemActions>
+        )}
+      </li>
+    </Item>
   );
 }

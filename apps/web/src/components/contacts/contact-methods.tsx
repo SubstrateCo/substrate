@@ -11,6 +11,7 @@ import { NativeField } from "@/components/forms/native-form";
 import { SelectField } from "@/components/forms/select-field";
 import { RecordSection, RecordSectionAction, recordRows } from "@/components/layout/record-section";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
+import { Item, ItemActions, ItemContent, ItemDescription } from "@/components/ui/item";
 import { useRecordMutation } from "@/queries/records/mutations";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
@@ -47,41 +48,42 @@ export function ContactMethods({
       )}
       <ul className={recordRows}>
         {identifiers.map((identifier) => (
-          <li
-            key={identifier.id}
-            className="group/row flex items-center gap-2 rounded-md px-2 py-1.5 hover:bg-row-hover"
-          >
-            <div className="min-w-0 flex-1">
-              <p className="text-sm wrap-break-word">
-                {identifier.value}
-                {identifier.extension ? ` ext. ${identifier.extension}` : ""}
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {identifier.label || (identifier.type === "email" ? "Email" : "Phone")}
-                {identifier.isPrimary ? " · Primary" : ""}
-              </p>
-            </div>
-            {canEdit && (
-              <RowActions label="Contact method actions">
-                <RowAction
-                  label="Edit contact method"
-                  onClick={() => setEditor({ record: identifier })}
-                >
-                  <Pencil aria-hidden />
-                </RowAction>
-                <RowAction
-                  label="Remove contact method"
-                  destructive
-                  onClick={() => {
-                    mutation.reset();
-                    setRemoving(identifier);
-                  }}
-                >
-                  <Trash2 aria-hidden />
-                </RowAction>
-              </RowActions>
-            )}
-          </li>
+          <Item key={identifier.id} asChild size="xs" className="group/row">
+            <li>
+              <ItemContent className="min-w-0">
+                <p className="wrap-anywhere">
+                  {identifier.value}
+                  {identifier.extension ? ` ext. ${identifier.extension}` : ""}
+                </p>
+                <ItemDescription>
+                  {identifier.label || (identifier.type === "email" ? "Email" : "Phone")}
+                  {identifier.isPrimary ? " · Primary" : ""}
+                </ItemDescription>
+              </ItemContent>
+              {canEdit && (
+                <ItemActions>
+                  <RowActions label="Contact method actions">
+                    <RowAction
+                      label="Edit contact method"
+                      onClick={() => setEditor({ record: identifier })}
+                    >
+                      <Pencil aria-hidden />
+                    </RowAction>
+                    <RowAction
+                      label="Remove contact method"
+                      destructive
+                      onClick={() => {
+                        mutation.reset();
+                        setRemoving(identifier);
+                      }}
+                    >
+                      <Trash2 aria-hidden />
+                    </RowAction>
+                  </RowActions>
+                </ItemActions>
+              )}
+            </li>
+          </Item>
         ))}
       </ul>
       {editor && (

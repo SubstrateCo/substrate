@@ -7,6 +7,7 @@ import { Tag } from "@/components/feedback/tag";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
+import { Item, ItemActions, ItemContent, ItemMedia } from "@/components/ui/item";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import { CircleDot, Link2, MessageCircle, MessageSquare, Unlink } from "lucide-react";
 
@@ -94,11 +95,17 @@ function ActivityRowLayout({
   meta: React.ReactNode;
 }) {
   return (
-    <li className="-mx-2 flex min-w-0 items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-row-hover">
-      {icon}
-      <span className="flex min-w-0 flex-1 items-center gap-1.5">{content}</span>
-      <span className="shrink-0 text-xs text-muted-foreground">{meta}</span>
-    </li>
+    <Item asChild size="xs" className="-mx-2.5 w-auto">
+      <li>
+        <ItemMedia>{icon}</ItemMedia>
+        <ItemContent className="min-w-0">
+          <span className="flex min-w-0 items-center gap-1.5">{content}</span>
+        </ItemContent>
+        <ItemActions>
+          <span className="text-xs text-muted-foreground">{meta}</span>
+        </ItemActions>
+      </li>
+    </Item>
   );
 }
 

@@ -43,7 +43,7 @@ export function TriggerCard({ children, footer }: { children: ReactNode; footer?
 
 export function TriggerRow(props: ComponentProps<typeof SettingsRow>) {
   return (
-    <li className="px-5 py-4">
+    <li className="px-2">
       <SettingsRow {...props} />
     </li>
   );

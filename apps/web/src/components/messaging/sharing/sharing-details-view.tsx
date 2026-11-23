@@ -2,12 +2,19 @@ import type { ReactNode } from "react";
 
 import type { SharingDetails } from "@/api/messaging/sharing";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
-import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
+import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "cn";
 import { Building2, Mail, RotateCcw, TriangleAlert, UserMinus, X } from "lucide-react";
 
 type Invitation = SharingDetails["invitations"][number];
@@ -56,25 +63,27 @@ function Row({
   actions?: ReactNode;
 }) {
   return (
-    <li className={cn(actionRow, "flex min-h-11 items-center gap-3 rounded-md py-1.5")}>
-      {icon}
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-medium">{title}</span>
-        <span
-          className={
-            warning
-              ? "flex items-center gap-1 text-xs font-medium text-warning-text"
-              : "block truncate text-xs text-muted-foreground"
-          }
-        >
-          {warning && (
-            <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0 text-warning" />
-          )}
-          {status}
-        </span>
-      </span>
-      {actions}
-    </li>
+    <Item asChild size="xs" className="group/row">
+      <li>
+        <ItemMedia>{icon}</ItemMedia>
+        <ItemContent className="min-w-0">
+          <ItemTitle className="max-w-full">{title}</ItemTitle>
+          <ItemDescription>
+            <span
+              className={
+                warning ? "flex items-center gap-1 font-medium text-warning-text" : undefined
+              }
+            >
+              {warning && (
+                <TriangleAlert aria-hidden="true" className="size-3.5 shrink-0 text-warning" />
+              )}
+              {status}
+            </span>
+          </ItemDescription>
+        </ItemContent>
+        {actions && <ItemActions>{actions}</ItemActions>}
+      </li>
+    </Item>
   );
 }
 

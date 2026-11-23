@@ -14,13 +14,8 @@ import { RecordList } from "./record-list";
 import { ContactLink } from "@/components/contacts/contact-link";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
 import { ContentNotice } from "@/components/feedback/content-notice";
-import {
-  NotSet,
-  Property,
-  RecordSection,
-  recordRow,
-  recordRows,
-} from "@/components/layout/record-section";
+import { NotSet, Property, RecordSection, recordRows } from "@/components/layout/record-section";
+import { Item, ItemActions, ItemContent, ItemTitle } from "@/components/ui/item";
 import { accountOptions } from "@/queries/crm/options";
 import { useRecordMutation } from "@/queries/records/mutations";
 
@@ -91,13 +86,19 @@ export function AccountDetail({
             <ul className={recordRows}>
               {contacts.map(({ contact, affiliation }) => (
                 <li key={contact.entityId}>
-                  <ContactLink entityId={contact.entityId} className={recordRow}>
-                    <span className="min-w-0 truncate font-medium">{contact.displayName}</span>
-                    <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-                      {affiliation.title}
-                      {affiliation.isPrimary ? " · Primary account" : ""}
-                    </span>
-                  </ContactLink>
+                  <Item asChild size="xs">
+                    <ContactLink entityId={contact.entityId}>
+                      <ItemContent className="min-w-0">
+                        <ItemTitle className="max-w-full">{contact.displayName}</ItemTitle>
+                      </ItemContent>
+                      <ItemActions>
+                        <span className="text-xs text-muted-foreground">
+                          {affiliation.title}
+                          {affiliation.isPrimary ? " · Primary account" : ""}
+                        </span>
+                      </ItemActions>
+                    </ContactLink>
+                  </Item>
                 </li>
               ))}
             </ul>

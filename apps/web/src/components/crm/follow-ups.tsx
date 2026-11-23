@@ -7,14 +7,10 @@ import { CrmResourceState } from "./crm-resource-state";
 import { FollowUpEditor } from "./follow-up-editor";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
-import {
-  RecordSection,
-  RecordSectionAction,
-  recordRow,
-  recordRows,
-} from "@/components/layout/record-section";
+import { RecordSection, RecordSectionAction, recordRows } from "@/components/layout/record-section";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { DueDate } from "@/components/time/due-date";
+import { Item, ItemActions, ItemContent, ItemMedia } from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { workLink } from "@/lib/navigation/record-links";
@@ -74,17 +70,23 @@ function EnabledFollowUps({
           <div role="status" aria-label="Loading follow-ups">
             <ul className={recordRows} aria-hidden="true">
               {[0, 1, 2].map((key) => (
-                <li key={key} className={recordRow}>
-                  <span className="size-4 shrink-0 overflow-hidden rounded-full">
-                    <Skeleton className="size-full" />
-                  </span>
-                  <span className="min-w-0 flex-1">
-                    <SkeletonText width="10rem" />
-                  </span>
-                  <span className="text-xs">
-                    <SkeletonText width="5rem" />
-                  </span>
-                </li>
+                <Item key={key} asChild size="xs">
+                  <li>
+                    <ItemMedia>
+                      <span className="size-4 overflow-hidden rounded-full">
+                        <Skeleton className="size-full" />
+                      </span>
+                    </ItemMedia>
+                    <ItemContent className="min-w-0">
+                      <SkeletonText width="10rem" />
+                    </ItemContent>
+                    <ItemActions>
+                      <span className="text-xs">
+                        <SkeletonText width="5rem" />
+                      </span>
+                    </ItemActions>
+                  </li>
+                </Item>
               ))}
             </ul>
           </div>
@@ -99,18 +101,23 @@ function EnabledFollowUps({
             <ul className={recordRows}>
               {data.tasks.map((task) => (
                 <li key={task.entityId}>
-                  <Link
-                    {...workLink(organizationId, task.projectEntityId, task.entityId)}
-                    className={recordRow}
-                  >
-                    <TaskStatusIcon status={task.status} />
-                    <span className="min-w-0 flex-1 truncate">{task.title}</span>
-                    {task.dueDate ? (
-                      <DueDate value={task.dueDate} />
-                    ) : (
-                      <span className="text-xs text-muted-foreground">Unscheduled</span>
-                    )}
-                  </Link>
+                  <Item asChild size="xs">
+                    <Link {...workLink(organizationId, task.projectEntityId, task.entityId)}>
+                      <ItemMedia>
+                        <TaskStatusIcon status={task.status} />
+                      </ItemMedia>
+                      <ItemContent className="min-w-0">
+                        <span className="truncate">{task.title}</span>
+                      </ItemContent>
+                      <ItemActions>
+                        {task.dueDate ? (
+                          <DueDate value={task.dueDate} />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Unscheduled</span>
+                        )}
+                      </ItemActions>
+                    </Link>
+                  </Item>
                 </li>
               ))}
             </ul>

@@ -2,6 +2,14 @@ import { useRef } from "react";
 
 import { FormMessage } from "@/components/feedback/form-message";
 import { Button } from "@/components/ui/button";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { AttachmentDraft, AttachmentUploads } from "@/queries/files/use-attachment-uploads";
 import { FileText, Paperclip, RefreshCw, X } from "lucide-react";
@@ -67,50 +75,51 @@ export function AttachmentDraftList({
       {!!uploads.items.length && (
         <ul aria-label="Selected attachments" className="grid gap-2">
           {uploads.items.map((item) => (
-            <li
-              key={item.id}
-              className="flex min-w-0 items-center gap-2 rounded-md border bg-background px-3 py-2 text-sm"
-            >
-              <FileText aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate">{item.file.name}</p>
-                <p className="text-xs text-muted-foreground" role="status">
-                  {uploadStatus(item)}
-                </p>
-              </div>
-              {item.status === "failed" && (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon-sm"
-                      aria-label={`Retry ${item.file.name}`}
-                      disabled={disabled}
-                      onClick={() => uploads.retry(item.id)}
-                    >
-                      <RefreshCw />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Retry {item.file.name}</TooltipContent>
-                </Tooltip>
-              )}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon-sm"
-                    aria-label={`Remove ${item.file.name}`}
-                    disabled={disabled}
-                    onClick={() => uploads.remove(item.id)}
-                  >
-                    <X />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Remove {item.file.name}</TooltipContent>
-              </Tooltip>
-            </li>
+            <Item key={item.id} asChild variant="outline" size="xs">
+              <li>
+                <ItemMedia variant="icon">
+                  <FileText aria-hidden="true" className="text-muted-foreground" />
+                </ItemMedia>
+                <ItemContent className="min-w-0">
+                  <ItemTitle className="max-w-full">{item.file.name}</ItemTitle>
+                  <ItemDescription role="status">{uploadStatus(item)}</ItemDescription>
+                </ItemContent>
+                <ItemActions>
+                  {item.status === "failed" && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          aria-label={`Retry ${item.file.name}`}
+                          disabled={disabled}
+                          onClick={() => uploads.retry(item.id)}
+                        >
+                          <RefreshCw />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Retry {item.file.name}</TooltipContent>
+                    </Tooltip>
+                  )}
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon-sm"
+                        aria-label={`Remove ${item.file.name}`}
+                        disabled={disabled}
+                        onClick={() => uploads.remove(item.id)}
+                      >
+                        <X />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Remove {item.file.name}</TooltipContent>
+                  </Tooltip>
+                </ItemActions>
+              </li>
+            </Item>
           ))}
         </ul>
       )}

@@ -7,6 +7,14 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { ArrowRight, type LucideIcon } from "lucide-react";
 
 export type HomeItem = {
@@ -30,24 +38,22 @@ function HomeRows({ items }: { items: HomeItem[] }) {
     <ul className="flex flex-col gap-0.5">
       {items.map((item) => (
         <li key={item.id}>
-          <Link
-            {...item.link}
-            title={item.title}
-            className="flex min-w-0 items-center gap-3 rounded-md px-3 py-2 text-sm outline-none hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring"
-          >
-            <span className="relative flex size-8 shrink-0 items-center justify-center text-muted-foreground">
-              {item.icon}
-            </span>
-            <span className="min-w-0 flex-1 space-y-1">
-              <span className="block truncate font-medium">{item.title}</span>
-              <span className="block truncate text-xs text-muted-foreground">
-                {item.description}
-              </span>
-            </span>
-            {item.trailing && (
-              <span className="shrink-0 text-xs text-muted-foreground">{item.trailing}</span>
-            )}
-          </Link>
+          <Item asChild size="xs">
+            <Link {...item.link} title={item.title}>
+              <ItemMedia className="relative">
+                <span className="text-muted-foreground">{item.icon}</span>
+              </ItemMedia>
+              <ItemContent className="min-w-0">
+                <ItemTitle className="max-w-full">{item.title}</ItemTitle>
+                <ItemDescription>{item.description}</ItemDescription>
+              </ItemContent>
+              {item.trailing && (
+                <ItemActions>
+                  <span className="text-xs text-muted-foreground">{item.trailing}</span>
+                </ItemActions>
+              )}
+            </Link>
+          </Item>
         </li>
       ))}
     </ul>

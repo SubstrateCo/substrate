@@ -32,7 +32,6 @@ export function ProjectMemberRow({
   const editable = canManage && !lastOwner;
   return (
     <AccessRow
-      className="min-h-12 px-5"
       name={member.name}
       image={member.image}
       agent={member.type === "agent"}

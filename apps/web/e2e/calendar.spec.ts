@@ -109,6 +109,15 @@ test("an event opens beside the calendar from its link and shows what it recorde
   await expect(page).toHaveURL(new RegExp(`eventId=${saved.eventId}`));
   const panel = page.getByRole("complementary", { name: "Event details", exact: true });
   await expect(panel.getByRole("heading", { name: "Pricing review", exact: true })).toBeVisible();
+  const selectedRow = page.getByRole("link", { name: /Pricing review/ });
+  await page.getByRole("heading", { name: "Pricing review", exact: true }).hover();
+  const selectedBackground = await selectedRow.evaluate(
+    (element) => getComputedStyle(element).backgroundColor,
+  );
+  await selectedRow.hover();
+  await expect
+    .poll(() => selectedRow.evaluate((element) => getComputedStyle(element).backgroundColor))
+    .toBe(selectedBackground);
   await expect(panel.getByText("Will be added as contact")).toHaveCount(0);
   await expect(panel.getByText("Recorded", { exact: true })).toBeVisible();
   const recorded = panel.getByRole("list", { name: "Recorded interactions", exact: true });

@@ -9,6 +9,7 @@ import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { SettingsCard, SettingsFooter } from "@/components/layout/settings-section";
 import { Field, FieldLabel } from "@/components/ui/field";
+import { Item, ItemActions, ItemContent } from "@/components/ui/item";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { UserMinus } from "lucide-react";
 
@@ -139,22 +140,25 @@ export function CallerSettingsView({
         )}
         <ul className="divide-y">
           {settings.allowlist.map((caller) => (
-            <li
-              key={caller.actorId}
-              className="group/row flex items-center justify-between gap-4 py-2"
-            >
-              <span className="text-sm">{caller.name}</span>
-              <RowActions label={`Actions for ${caller.name}`}>
-                <RowAction
-                  destructive
-                  label={`Remove ${caller.name}`}
-                  disabled={removing}
-                  onClick={() => setRemoved(caller)}
-                >
-                  <UserMinus />
-                </RowAction>
-              </RowActions>
-            </li>
+            <Item key={caller.actorId} asChild size="xs" className="group/row">
+              <li>
+                <ItemContent className="min-w-0">
+                  <span className="truncate">{caller.name}</span>
+                </ItemContent>
+                <ItemActions>
+                  <RowActions label={`Actions for ${caller.name}`}>
+                    <RowAction
+                      destructive
+                      label={`Remove ${caller.name}`}
+                      disabled={removing}
+                      onClick={() => setRemoved(caller)}
+                    >
+                      <UserMinus />
+                    </RowAction>
+                  </RowActions>
+                </ItemActions>
+              </li>
+            </Item>
           ))}
         </ul>
       </AllowedCallersCard>

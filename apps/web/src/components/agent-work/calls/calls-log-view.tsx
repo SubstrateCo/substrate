@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { SettingsSection } from "@/components/layout/settings-section";
 import { Timestamp } from "@/components/time/timestamp";
+import { Item, ItemActions, ItemContent, ItemHeader, ItemTitle } from "@/components/ui/item";
 import { callDropReason } from "@/lib/agent-work/calls";
 import { ScrollText } from "lucide-react";
 
@@ -20,13 +21,17 @@ function CallRow({
   detail: ReactNode;
 }) {
   return (
-    <li className="grid gap-2 py-4">
-      <div className="flex flex-wrap items-center justify-between gap-2 text-sm">
-        <span className="font-medium">{title}</span>
-        {time}
-      </div>
-      <p className="text-xs wrap-anywhere text-muted-foreground">{detail}</p>
-    </li>
+    <Item asChild size="xs">
+      <li>
+        <ItemHeader>
+          <ItemTitle className="max-w-full min-w-0">{title}</ItemTitle>
+          <ItemActions>{time}</ItemActions>
+        </ItemHeader>
+        <ItemContent className="min-w-0">
+          <p className="text-xs wrap-anywhere text-muted-foreground">{detail}</p>
+        </ItemContent>
+      </li>
+    </Item>
   );
 }
 

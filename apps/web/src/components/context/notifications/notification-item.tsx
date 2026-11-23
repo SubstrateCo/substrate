@@ -8,7 +8,7 @@ import { Timestamp } from "../../time/timestamp";
 import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
-import { actionRow } from "@/components/layout/row-actions";
+import { Item, ItemActions, ItemContent, ItemMedia } from "@/components/ui/item";
 import { conversationLabel } from "@/lib/messaging/conversations";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
@@ -173,12 +173,8 @@ function NotificationRowLayout({
   action?: ReactNode;
 }) {
   return (
-    <div
-      className={cn(
-        actionRow,
-        "relative flex items-start gap-3 rounded-lg px-3 py-3 hover:bg-row-hover has-[a:focus-visible]:bg-row-hover",
-      )}
-    >
+    // oxlint-disable-next-line shadcn/no-restyle -- This multi-control notification is not an anchor; its whole row must respond to hover and link focus.
+    <Item className="group/row relative items-start hover:bg-row-hover has-[a:focus-visible]:bg-row-hover">
       <span
         aria-hidden="true"
         className={cn(
@@ -186,13 +182,15 @@ function NotificationRowLayout({
           unread ? "bg-primary" : "bg-transparent",
         )}
       />
-      <span aria-hidden="true" className="relative mt-0.5 shrink-0">
+      <ItemMedia aria-hidden="true" className="relative">
         {avatar}
-      </span>
-      <div className="min-w-0 flex-1">{content}</div>
-      <span className="mt-0.5 shrink-0 text-xs text-muted-foreground">{meta}</span>
-      <div className="w-8 shrink-0">{action}</div>
-    </div>
+      </ItemMedia>
+      <ItemContent className="min-w-0">{content}</ItemContent>
+      <ItemActions>
+        <span className="text-xs text-muted-foreground">{meta}</span>
+        {action}
+      </ItemActions>
+    </Item>
   );
 }
 

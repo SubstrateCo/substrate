@@ -1,9 +1,16 @@
 import type { ReactNode } from "react";
 
 import { SkeletonText } from "@/components/feedback/skeleton-text";
-import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
+import { RowAction, RowActions } from "@/components/layout/row-actions";
+import {
+  Item,
+  ItemActions,
+  ItemContent,
+  ItemDescription,
+  ItemMedia,
+  ItemTitle,
+} from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "cn";
 import { Pencil, Settings, Trash2 } from "lucide-react";
 
 function CatalogRowLayout({
@@ -20,16 +27,18 @@ function CatalogRowLayout({
   mono?: boolean;
 }) {
   return (
-    <li className={cn(actionRow, "flex items-center justify-between gap-3 px-4 py-3")}>
-      <div className="flex min-w-0 items-center gap-3">
-        {picture}
-        <div className="grid min-w-0 gap-1">
-          <p className={cn("text-sm font-medium wrap-anywhere", mono && "font-mono")}>{name}</p>
-          <p className="line-clamp-2 text-xs wrap-anywhere text-muted-foreground">{detail}</p>
-        </div>
-      </div>
-      {actions}
-    </li>
+    <Item asChild size="xs" className="group/row">
+      <li>
+        {picture && <ItemMedia>{picture}</ItemMedia>}
+        <ItemContent className="min-w-0">
+          <ItemTitle className="max-w-full wrap-anywhere">
+            {mono ? <code>{name}</code> : name}
+          </ItemTitle>
+          <ItemDescription className="wrap-anywhere">{detail}</ItemDescription>
+        </ItemContent>
+        {actions && <ItemActions>{actions}</ItemActions>}
+      </li>
+    </Item>
   );
 }
 

@@ -39,7 +39,6 @@ export function RecordGrants({
         return (
           <AccessRow
             key={grant.actorEntityId}
-            className="rounded-md px-2 py-1.5 hover:bg-row-hover"
             name={name}
             image={person?.image}
             level={levelLabels[grant.level]}

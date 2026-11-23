@@ -21,9 +21,9 @@ import {
   Property,
   RecordSection,
   RecordSectionAction,
-  recordRow,
   recordRows,
 } from "@/components/layout/record-section";
+import { Item, ItemActions, ItemContent, ItemTitle } from "@/components/ui/item";
 import { AppAvailability } from "@/components/workspace/app-availability";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { crmLink } from "@/lib/navigation/record-links";
@@ -105,16 +105,19 @@ export function ContactDetail({
               <ul className={recordRows}>
                 {affiliations.map(({ account, affiliation }) => (
                   <li key={account.entityId}>
-                    <Link
-                      {...crmLink(organizationId, "accounts", account.entityId)}
-                      className={recordRow}
-                    >
-                      <span className="min-w-0 truncate font-medium">{account.name}</span>
-                      <span className="ml-auto shrink-0 text-xs text-muted-foreground">
-                        {affiliation.title}
-                        {affiliation.isPrimary ? " · Primary" : ""}
-                      </span>
-                    </Link>
+                    <Item asChild size="xs">
+                      <Link {...crmLink(organizationId, "accounts", account.entityId)}>
+                        <ItemContent className="min-w-0">
+                          <ItemTitle className="max-w-full">{account.name}</ItemTitle>
+                        </ItemContent>
+                        <ItemActions>
+                          <span className="text-xs text-muted-foreground">
+                            {affiliation.title}
+                            {affiliation.isPrimary ? " · Primary" : ""}
+                          </span>
+                        </ItemActions>
+                      </Link>
+                    </Item>
                   </li>
                 ))}
               </ul>

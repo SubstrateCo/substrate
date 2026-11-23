@@ -3,12 +3,8 @@ import { taskStatusLabels } from "@substrate/contracts/tasks";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { Task } from "../types";
 import { ContentNotice } from "@/components/feedback/content-notice";
-import {
-  RecordSection,
-  RecordSectionAction,
-  recordRow,
-  recordRows,
-} from "@/components/layout/record-section";
+import { RecordSection, RecordSectionAction, recordRows } from "@/components/layout/record-section";
+import { Item, ItemContent, ItemMedia } from "@/components/ui/item";
 import { Plus } from "lucide-react";
 
 /** A task's subtasks as compact rows. Editors add one from the section header. */
@@ -40,15 +36,25 @@ export function TaskSubtasks({
         <ul className={recordRows}>
           {subtasks.map((task) => (
             <li key={task.entityId}>
-              <button type="button" className={recordRow} onClick={() => onSelect(task.entityId)}>
-                <span className="sr-only">{taskStatusLabels[task.status]}: </span>
-                <TaskStatusIcon status={task.status} />
-                <span
-                  className={`truncate ${task.status === "completed" || task.status === "canceled" ? "text-muted-foreground" : ""}`}
+              <Item asChild size="xs">
+                <button
+                  type="button"
+                  className="text-left hover:bg-row-hover"
+                  onClick={() => onSelect(task.entityId)}
                 >
-                  {task.title}
-                </span>
-              </button>
+                  <span className="sr-only">{taskStatusLabels[task.status]}: </span>
+                  <ItemMedia>
+                    <TaskStatusIcon status={task.status} />
+                  </ItemMedia>
+                  <ItemContent className="min-w-0">
+                    <span
+                      className={`truncate ${task.status === "completed" || task.status === "canceled" ? "text-muted-foreground" : ""}`}
+                    >
+                      {task.title}
+                    </span>
+                  </ItemContent>
+                </button>
+              </Item>
             </li>
           ))}
         </ul>
