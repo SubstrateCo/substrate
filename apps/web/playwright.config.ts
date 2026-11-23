@@ -10,7 +10,7 @@ process.env.PLAYWRIGHT_API_URL = apiURL;
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: true,
-  workers: Number(process.env.E2E_WORKERS ?? 4),
+  workers: Number(process.env.E2E_WORKERS ?? (process.env.CI ? 4 : 6)),
   timeout: 15_000,
   expect: { timeout: expectTimeout },
   retries: 0,
