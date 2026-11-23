@@ -1,16 +1,26 @@
 import { Link } from "@tanstack/react-router";
 
-import { useState } from "react";
-
 import { PendingButton } from "../../feedback/pending-button";
-import { useNativeValidation } from "../../forms/use-native-validation";
+import { NativeField, NativeForm } from "../../forms/native-form";
 import { Button } from "../../ui/button";
-import { Field, FieldDescription, FieldError, FieldLabel } from "../../ui/field";
-import { Input } from "../../ui/input";
 import { AuthFrame } from "../auth-frame";
 import { AuthLink } from "../auth-link";
 import { FormMessage } from "@/components/feedback/form-message";
 import type { authLink } from "@/lib/auth/navigation";
+
+/**
+ * Marks the confirmation invalid while it differs, so the form shows the mismatch inline. After a
+ * password change, `revalidate` lets the form refresh an error already shown on the confirmation.
+ */
+function checkPasswordsMatch(form: HTMLFormElement | null, revalidate = false) {
+  const password = form?.elements.namedItem("password");
+  const confirm = form?.elements.namedItem("confirm");
+  if (!(password instanceof HTMLInputElement) || !(confirm instanceof HTMLInputElement)) return;
+  confirm.setCustomValidity(
+    confirm.value && confirm.value !== password.value ? "The passwords don’t match." : "",
+  );
+  if (revalidate) confirm.dispatchEvent(new Event("input", { bubbles: true }));
+}
 
 export function ResetPasswordForm({
   invalid = false,
@@ -29,10 +39,6 @@ export function ResetPasswordForm({
   loginLink: ReturnType<typeof authLink>;
   requestResetLink: ReturnType<typeof authLink>;
 }) {
-  const validation = useNativeValidation();
-  const [mismatch, setMismatch] = useState("");
-  const passwordError = validation.errors.password;
-  const confirmError = validation.errors.confirm || mismatch;
   const backToSignIn = <AuthLink {...loginLink}>Back to sign in</AuthLink>;
 
   if (invalid)
@@ -70,70 +76,45 @@ export function ResetPasswordForm({
         </>
       }
     >
-      <form
-        className="space-y-4"
-        onInvalidCapture={validation.onInvalid}
-        onInputCapture={(event) => {
-          validation.onInput(event);
-          setMismatch("");
-        }}
-        onSubmit={(event) => {
-          event.preventDefault();
-          if (pending) return;
-          const form = new FormData(event.currentTarget);
-          if (form.get("password") !== form.get("confirm")) {
-            setMismatch("The passwords don’t match.");
-            event.currentTarget.querySelector<HTMLInputElement>("#confirm")?.focus();
-            return;
-          }
-          onSubmit(form);
-        }}
-      >
-        <Field data-invalid={Boolean(passwordError)}>
-          <FieldLabel htmlFor="password">New password</FieldLabel>
-          <Input
-            {...validation.inputProps("password")}
-            aria-describedby={passwordError ? "password-error" : "password-description"}
-            id="password"
-            name="password"
-            type="password"
-            autoComplete="new-password"
-            autoFocus
-            minLength={8}
-            data-missing-message="Choose a new password."
-            required
-          />
-          {passwordError ? (
-            <FieldError id="password-error">{passwordError}</FieldError>
-          ) : (
-            <FieldDescription id="password-description">
-              Use at least 8 characters.
-            </FieldDescription>
-          )}
-        </Field>
-        <Field data-invalid={Boolean(confirmError)}>
-          <FieldLabel htmlFor="confirm">Confirm password</FieldLabel>
-          <Input
-            aria-invalid={confirmError ? true : undefined}
-            aria-describedby={confirmError ? "confirm-error" : undefined}
-            id="confirm"
-            name="confirm"
-            type="password"
-            autoComplete="new-password"
-            minLength={8}
-            data-missing-message="Enter the new password again."
-            required
-          />
-          <FieldError id="confirm-error">{confirmError}</FieldError>
-        </Field>
+      <NativeForm pending={pending} onSubmit={onSubmit}>
+        <NativeField
+          id="password"
+          name="password"
+          label="New password"
+          description="Use at least 8 characters."
+          type="password"
+          autoComplete="new-password"
+          autoFocus
+          minLength={8}
+          missingMessage="Choose a new password."
+          required
+          onInput={(event) => checkPasswordsMatch(event.currentTarget.form, true)}
+        />
+        <NativeField
+          id="confirm"
+          name="confirm"
+          label="Confirm password"
+          type="password"
+          autoComplete="new-password"
+          minLength={8}
+          missingMessage="Enter the new password again."
+          required
+          // Runs before the form's own input handler, which then reads the updated validity.
+          onInput={(event) => checkPasswordsMatch(event.currentTarget.form)}
+        />
         <FormMessage
           error={error}
           errorDescription="We couldn’t reset your password. Try again, or request a new reset link."
         />
-        <PendingButton className="w-full" size="lg" pending={pending} pendingLabel="Saving.">
+        <PendingButton
+          className="w-full"
+          size="lg"
+          pending={pending}
+          pendingLabel="Save new password"
+        >
           Save new password
         </PendingButton>
-      </form>
+      </NativeForm>
     </AuthFrame>
   );
 }

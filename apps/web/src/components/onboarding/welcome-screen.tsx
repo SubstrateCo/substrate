@@ -10,12 +10,12 @@ export function WelcomeScreen() {
   return (
     <AuthFrame
       title="Your team’s connected workspace"
-      description="Create your account and organization in the browser. Install the desktop app when you’re ready."
+      description="Create your account and workspace in the browser. Install the desktop app when you’re ready."
       footer={<AuthLink to="/download">Download the desktop app</AuthLink>}
     >
       <div className="grid gap-2">
         <Button asChild size="lg">
-          <Link {...authLink("/signup", "/onboarding")}>Create organization</Link>
+          <Link {...authLink("/signup", "/onboarding")}>Create account</Link>
         </Button>
         <Button asChild size="lg" variant="outline">
           <Link {...authLink("/login", "/onboarding")}>Sign in</Link>

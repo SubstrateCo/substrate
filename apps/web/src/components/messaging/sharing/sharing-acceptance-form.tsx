@@ -42,7 +42,7 @@ export function SharingAcceptanceForm({
       <div className="flex items-start gap-3 rounded-lg border p-3 wrap-anywhere">
         <span
           aria-hidden="true"
-          className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent text-accent-foreground"
+          className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground"
         >
           <Globe className="size-4" />
         </span>
@@ -54,21 +54,21 @@ export function SharingAcceptanceForm({
           <p className="text-muted-foreground">Invited email: {invitation.email}</p>
           <p className="text-muted-foreground">
             {invitation.purpose === "organization"
-              ? "An owner or admin must approve for your organization. Other members can request approval."
-              : "Only you are invited. Other members of your organization don’t get access."}
+              ? "An owner or admin must approve for your workspace. Other members can request approval."
+              : "Only you are invited. Other members of your workspace don’t get access."}
           </p>
         </div>
       </div>
       <Field>
         <div className="flex items-center justify-between gap-3">
-          <FieldLabel htmlFor="sharing-organization">Your organization</FieldLabel>
+          <FieldLabel htmlFor="sharing-organization">Your workspace</FieldLabel>
           {!invitation.targetOrganizationId && (
             <AuthLink
               className="text-sm font-normal text-muted-foreground hover:text-foreground"
               to="/onboarding"
               search={{ redirect: `/accept-sharing/${invitation.id}` }}
             >
-              Create an organization
+              Create a workspace
             </AuthLink>
           )}
         </div>
@@ -78,7 +78,7 @@ export function SharingAcceptanceForm({
           disabled={busy || !!invitation.targetOrganizationId}
         >
           <SelectTrigger id="sharing-organization" className="w-full">
-            <SelectValue placeholder="Choose your organization" />
+            <SelectValue placeholder="Choose your workspace" />
           </SelectTrigger>
           <SelectContent>
             {organizations
@@ -105,18 +105,20 @@ export function SharingAcceptanceForm({
         </FieldLabel>
       </Field>
       <FormMessage error={error} />
-      <div className="flex flex-wrap justify-end gap-2">
-        <Button variant="outline" disabled={busy} onClick={onDecline}>
-          Decline invitation
-        </Button>
+      <div className="flex flex-col gap-2">
         <PendingButton
+          className="w-full"
+          size="lg"
           pending={busy}
-          pendingLabel="Saving."
+          pendingLabel="Accept invitation"
           disabled={!organizationId || !confirmed}
           onClick={onAccept}
         >
           Accept invitation
         </PendingButton>
+        <Button variant="outline" size="lg" className="w-full" disabled={busy} onClick={onDecline}>
+          Decline invitation
+        </Button>
       </div>
     </div>
   );

@@ -16,7 +16,11 @@ export function DownloadScreen({ destination }: { destination: string }) {
         </>
       }
     >
-      <DesktopInstall destination={destination} browserLink={authLink("/login", destination)} />
+      <DesktopInstall
+        destination={destination}
+        browserLink={authLink("/login", destination)}
+        heading={false}
+      />
     </AuthFrame>
   );
 }

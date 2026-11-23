@@ -19,7 +19,7 @@ export function OrganizationSelection({ destination = "/dashboard" }: { destinat
   const now = useExpiryTime(invitations.data?.map((item) => item.expiresAt));
   const select = useActivateOrganization(destination);
   const decline = useDeclineInvitationConfirm();
-  // A failed invitation list stays out of the way; "Your invitations" shows the error.
+  // A failed invitation list shows its error in the Invitations group; workspaces still open.
   const pending = (resourceState(invitations).data ?? []).map((item) => ({
     ...item,
     expired: new Date(item.expiresAt).getTime() <= now,
@@ -48,6 +48,8 @@ export function OrganizationSelection({ destination = "/dashboard" }: { destinat
         <>
           <PendingInvitations
             invitations={pending}
+            error={invitations.error}
+            onRetry={() => void invitations.refetch()}
             decliningId={decline.pendingId}
             onDecline={decline.request}
           />

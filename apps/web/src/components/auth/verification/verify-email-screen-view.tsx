@@ -27,6 +27,7 @@ export function VerifyEmailScreen({
   loginLink: ReturnType<typeof authLink>;
 }) {
   const footer = <AuthLink {...loginLink}>Back to sign in</AuthLink>;
+  const action = invalid ? "Send a new link" : "Resend verification email";
   if (sentTo)
     return (
       <AuthFrame
@@ -40,7 +41,7 @@ export function VerifyEmailScreen({
         }
         footer={footer}
       >
-        <Button type="button" variant="outline" className="w-full" onClick={onReset}>
+        <Button type="button" variant="outline" size="lg" className="w-full" onClick={onReset}>
           Use a different email
         </Button>
       </AuthFrame>
@@ -51,7 +52,7 @@ export function VerifyEmailScreen({
       description={
         invalid
           ? "It may have expired or already been used. Send a new one and open it from your inbox."
-          : "Open the link we emailed you to finish setting up your account. Need a new one? Send it again."
+          : "Open the link we emailed you to finish setting up your account. Need a new one? Resend it below."
       }
       footer={footer}
     >
@@ -61,8 +62,8 @@ export function VerifyEmailScreen({
           error={error}
           errorDescription="We couldn’t send a verification email. Please try again."
         />
-        <PendingButton className="w-full" size="lg" pending={pending} pendingLabel="Sending.">
-          {invalid ? "Send a new link" : "Resend verification email"}
+        <PendingButton className="w-full" size="lg" pending={pending} pendingLabel={action}>
+          {action}
         </PendingButton>
       </NativeForm>
     </AuthFrame>

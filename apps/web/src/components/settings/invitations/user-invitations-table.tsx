@@ -8,7 +8,7 @@ import { Button } from "../../ui/button";
 import { InvitationStatus } from "@/components/organizations/invitations/invitation-status";
 import { useDelayedLoading } from "@/hooks/use-delayed-loading";
 import { roleLabel } from "@/lib/organizations/member-policy";
-import { ArrowUpRight, Mail } from "lucide-react";
+import { Mail } from "lucide-react";
 
 type UserInvitation = {
   id: string;
@@ -35,7 +35,7 @@ function InvitationActions({
     <div className="flex gap-2">
       <Button
         type="button"
-        variant="ghost"
+        variant="destructive-ghost"
         size="sm"
         disabled={declining}
         aria-label={`Decline invitation to ${organization}`}
@@ -43,14 +43,13 @@ function InvitationActions({
       >
         Decline
       </Button>
-      <Button asChild variant="outline" size="sm">
+      <Button asChild size="sm">
         <Link
           to="/accept-invitation/$invitationId"
           params={{ invitationId: invitation.id }}
-          aria-label={`Review invitation to ${organization}`}
+          aria-label={`Accept invitation to ${organization}`}
         >
-          Review
-          <ArrowUpRight aria-hidden="true" />
+          Accept
         </Link>
       </Button>
     </div>
@@ -135,7 +134,7 @@ export function UserInvitationsTable({
         table={table}
         name="Your invitations"
         loading={loading}
-        loadingMessage="Loading your invitations…"
+        loadingMessage="Loading your invitations"
         error={error}
         errorTitle="Couldn’t load your invitations"
         errorDescription="Your invitations are unavailable. Please try again."

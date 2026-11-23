@@ -8,17 +8,9 @@ import { ErrorState } from "../../feedback/error-state";
 import { LoadingState } from "../../feedback/loading-state";
 import { PendingButton } from "../../feedback/pending-button";
 import { Button } from "../../ui/button";
+import { WorkspaceTile } from "../workspace-tile";
 import { FormMessage } from "@/components/feedback/form-message";
-import { initials } from "@/lib/people/initials";
-
-/** "admin,member" -> "Admin, Member". */
-function roleLabel(role: string) {
-  return role
-    .split(",")
-    .map((value) => value.trim())
-    .map((value) => value.charAt(0).toUpperCase() + value.slice(1))
-    .join(", ");
-}
+import { roleLabel } from "@/lib/organizations/member-policy";
 
 export function AcceptInvitationScreen({
   invitation,
@@ -64,7 +56,7 @@ export function AcceptInvitationScreen({
         </>
       }
     >
-      {loading && <LoadingState label="Loading invitation…" rows={2} />}
+      {loading && <LoadingState label="Loading invitation" rows={2} />}
       {!loading && failed && !unavailable && (
         <ErrorState
           compact
@@ -90,7 +82,7 @@ export function AcceptInvitationScreen({
               className="w-full"
               size="lg"
               pending={pending}
-              pendingLabel="Joining."
+              pendingLabel="Accept invitation"
               disabled={declining}
               onClick={onAccept}
             >
@@ -98,7 +90,7 @@ export function AcceptInvitationScreen({
             </PendingButton>
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               className="w-full"
               size="lg"
               disabled={pending || declining}
@@ -136,29 +128,22 @@ function invitationCopy(ready: Invitation | false | undefined, missing: boolean)
 
 function InvitationDetails({ invitation }: { invitation: Invitation }) {
   return (
-    <>
-      <div className="flex items-center gap-3 rounded-lg border p-3 wrap-anywhere">
-        <span
-          aria-hidden="true"
-          className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-accent-foreground"
-        >
-          {initials(invitation.organizationName)}
-        </span>
-        <dl className="min-w-0 text-sm">
-          <dt className="sr-only">Workspace</dt>
-          <dd className="font-medium">{invitation.organizationName}</dd>
-          <dt className="sr-only">Role</dt>
-          <dd className="text-muted-foreground">Joining as {roleLabel(invitation.role)}</dd>
-        </dl>
-      </div>
-      <p className="text-sm wrap-anywhere text-muted-foreground">
-        Invited email: {invitation.email}
-      </p>
-      {invitation.inviterEmail && (
-        <p className="text-sm wrap-anywhere text-muted-foreground">
-          Invited by: {invitation.inviterEmail}
-        </p>
-      )}
-    </>
+    <div className="flex items-start gap-3 rounded-lg border p-3 wrap-anywhere">
+      <WorkspaceTile name={invitation.organizationName} />
+      <dl className="min-w-0 space-y-0.5 text-sm">
+        <dt className="sr-only">Workspace</dt>
+        <dd className="font-medium">{invitation.organizationName}</dd>
+        <dt className="sr-only">Role</dt>
+        <dd className="text-muted-foreground">Joining as {roleLabel(invitation.role)}</dd>
+        <dt className="sr-only">Invited email</dt>
+        <dd className="text-muted-foreground">Invited email: {invitation.email}</dd>
+        {invitation.inviterEmail && (
+          <>
+            <dt className="sr-only">Invited by</dt>
+            <dd className="text-muted-foreground">Invited by: {invitation.inviterEmail}</dd>
+          </>
+        )}
+      </dl>
+    </div>
   );
 }

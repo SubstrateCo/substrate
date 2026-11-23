@@ -26,6 +26,8 @@ export type NativeFieldState = {
   title?: string;
   /** A field-specific message for an empty required field, such as "Enter your name." */
   missingMessage?: string;
+  /** Product copy the page set with `setCustomValidity`, such as a cross-field check. */
+  customMessage?: string;
 };
 
 const lower = (label: string) => label.charAt(0).toLowerCase() + label.slice(1);
@@ -58,7 +60,7 @@ export function nativeValidationMessage(field: NativeFieldState): string {
   if (validity.rangeUnderflow && field.min) return `Enter ${field.min} or more.`;
   if (validity.rangeOverflow && field.max) return `Enter ${field.max} or less.`;
   if (validity.badInput || validity.stepMismatch) return `Enter a valid ${name}.`;
-  return `Check the ${name}.`;
+  return field.customMessage || `Check the ${name}.`;
 }
 
 /**

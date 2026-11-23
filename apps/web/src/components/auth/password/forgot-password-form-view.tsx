@@ -29,7 +29,7 @@ export function ForgotPasswordForm({
         description="If an account exists for that email, we sent a link to choose a new password."
         footer={footer}
       >
-        <Button type="button" variant="outline" className="w-full" onClick={onReset}>
+        <Button type="button" variant="outline" size="lg" className="w-full" onClick={onReset}>
           Use a different email
         </Button>
       </AuthFrame>
@@ -46,7 +46,12 @@ export function ForgotPasswordForm({
           error={error}
           errorDescription="We couldn’t send a reset link. Please try again."
         />
-        <PendingButton className="w-full" size="lg" pending={pending} pendingLabel="Sending.">
+        <PendingButton
+          className="w-full"
+          size="lg"
+          pending={pending}
+          pendingLabel="Send reset link"
+        >
           Send reset link
         </PendingButton>
       </NativeForm>

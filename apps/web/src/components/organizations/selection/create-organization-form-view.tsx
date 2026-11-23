@@ -27,7 +27,7 @@ export function CreateOrganizationForm({
         id="organization-name"
         name="name"
         label="Workspace name"
-        placeholder="Your company"
+        placeholder="For example: Northwind Labs"
         autoComplete="organization"
         missingMessage="Enter a workspace name."
         value={name}
@@ -40,7 +40,7 @@ export function CreateOrganizationForm({
           name="slug"
           label="Workspace slug"
           description="Filled in from the name. Use lowercase letters, numbers, and hyphens."
-          placeholder="your-company"
+          placeholder="For example: northwind-labs"
           pattern="[a-z0-9]+(-[a-z0-9]+)*"
           title="Use lowercase letters, numbers, and single hyphens between words."
           missingMessage="Enter a workspace slug."
@@ -51,19 +51,24 @@ export function CreateOrganizationForm({
           required
         />
       ) : (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span className="min-w-0 wrap-anywhere">Workspace slug: {slug || "—"}</span>
-          <Button type="button" variant="ghost" size="sm" onClick={() => setEditingSlug(true)}>
-            Edit
-          </Button>
+        <>
+          {/* The derived slug shows once there is one; an empty name has nothing to show. */}
+          {slug && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="min-w-0 wrap-anywhere">Workspace slug: {slug}</span>
+              <Button type="button" variant="link" size="sm" onClick={() => setEditingSlug(true)}>
+                Edit
+              </Button>
+            </div>
+          )}
           <input type="hidden" name="slug" value={slug} />
-        </div>
+        </>
       )}
       <FormMessage
         error={error}
         errorDescription="We couldn’t create your workspace. Check the name and slug, then try again."
       />
-      <PendingButton className="w-full" size="lg" pending={pending} pendingLabel="Creating.">
+      <PendingButton className="w-full" size="lg" pending={pending} pendingLabel="Create workspace">
         Create workspace
       </PendingButton>
     </NativeForm>
