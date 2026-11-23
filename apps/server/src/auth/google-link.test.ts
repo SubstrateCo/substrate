@@ -1,5 +1,6 @@
 import { googleProductScopes } from "@substrate/contracts/integrations/google";
 
+import { calendarSocialProviders } from "./calendar-accounts";
 import { createGoogleLinkTickets, googleLinkTicketTTL } from "./google-link";
 import { betterAuth, getAuthStateVerificationIdentifier } from "better-auth";
 import { memoryAdapter } from "better-auth/adapters/memory";
@@ -18,14 +19,10 @@ async function fixture() {
     secret: "google-link-test-secret-with-32-characters",
     database: memoryAdapter(db),
     emailAndPassword: { enabled: true },
-    socialProviders: {
-      google: {
-        clientId: "client-id",
-        clientSecret: "client-secret",
-        disableDefaultScope: true,
-        scope: ["openid", "email", "profile"],
-      },
-    },
+    socialProviders: calendarSocialProviders({
+      google: { clientId: "client-id", clientSecret: "client-secret" },
+      microsoft: undefined,
+    }),
     logger: { disabled: true },
   });
   const context = await auth.$context;

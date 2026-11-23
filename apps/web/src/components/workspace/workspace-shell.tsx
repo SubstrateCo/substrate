@@ -1,3 +1,5 @@
+import { isOptionalApp } from "@substrate/contracts/apps";
+
 import { useContext, type ReactNode } from "react";
 
 import { ErrorState } from "../feedback/error-state";
@@ -53,9 +55,7 @@ export function WorkspaceShell({
     messages: { unread: hasUnreadMessages, unreadLabel: "unread messages" },
     agents: { unread: agentsNeedYou, unreadLabel: "needs you", dotTone: "warning" },
   };
-  const visibleApps = workspaceApps.filter(
-    ({ id }) => (id !== "tasks" && id !== "crm" && id !== "calendar") || apps.enabled(id),
-  );
+  const visibleApps = workspaceApps.filter(({ id }) => !isOptionalApp(id) || apps.enabled(id));
   // Agents sit at the bottom of the rail, above Notifications.
   const topApps = visibleApps.filter(({ id }) => id !== "agents");
   const bottomApps = visibleApps.filter(({ id }) => id === "agents");

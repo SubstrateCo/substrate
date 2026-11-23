@@ -28,16 +28,20 @@ async function readVerifiedSession(
   fetchAPI: (url: string, init: RequestInit) => Promise<Response>,
   backend: string,
   disableCookieCache = false,
+  signal?: AbortSignal,
 ) {
   const url = new URL("/api/auth/get-session", backend);
   if (disableCookieCache) url.searchParams.set("disableCookieCache", "true");
   const response = await fetchAPI(url.href, {
     method: "GET",
     redirect: "error",
+    signal,
   });
+  signal?.throwIfAborted();
   if (deniedStatuses.has(response.status)) throw new HarnessAccessDenied("Session ended.");
   if (!response.ok) throw new Error("Session unavailable.");
   const result = verifiedSessionSchema.safeParse(await response.json());
+  signal?.throwIfAborted();
   // A valid answer without a verified user and an active organization denies access.
   if (!result.success) throw new HarnessAccessDenied("Session is not verified.");
   return result.data;
@@ -50,6 +54,7 @@ type AuthorityOptions = {
 
 export class DesktopSessionAuthority {
   generation = 0;
+  private lifetime = new AbortController();
   identity: string | undefined;
   private verified: Promise<Authorization> | undefined;
   private verifiedAt = 0;
@@ -71,6 +76,8 @@ export class DesktopSessionAuthority {
 
   invalidate() {
     this.generation++;
+    this.lifetime.abort(new Error("Session changed."));
+    this.lifetime = new AbortController();
     this.invalidated = true;
     this.verified = undefined;
     this.cachedCatalog = undefined;
@@ -85,35 +92,47 @@ export class DesktopSessionAuthority {
   }
 
   appSettings() {
-    const generation = this.generation;
-    const pending = (this.cachedApps ??= (async () => {
-      const auth = await this.verify();
-      const url = new URL("/api/v1/organizations/apps", this.options.backend);
-      url.searchParams.set("organizationId", auth.organizationId);
-      const response = await this.options.fetchAPI(url.href, { method: "GET", redirect: "error" });
-      if (deniedStatuses.has(response.status))
-        throw new HarnessAccessDenied("App settings access ended.");
-      if (!response.ok) throw new Error("App settings unavailable.");
-      const { data } = appSettingsSchema.parse(await response.json());
-      if (generation !== this.generation || data.organizationId !== auth.organizationId)
-        throw new Error("Session changed.");
-      return data;
-    })());
+    const pending = (this.cachedApps ??= this.verify().then((auth) => this.readAppSettings(auth)));
     pending.catch(() => {
       if (this.cachedApps === pending) this.cachedApps = undefined;
     });
     return pending;
   }
 
+  /** Mail reads private local data and can run without the renderer or a realtime connection. */
+  async readAppSettings(auth: Authorization, caller?: AbortSignal) {
+    const signal = caller ? AbortSignal.any([this.lifetime.signal, caller]) : this.lifetime.signal;
+    const url = new URL("/api/v1/organizations/apps", this.options.backend);
+    url.searchParams.set("organizationId", auth.organizationId);
+    const response = await this.options.fetchAPI(url.href, {
+      method: "GET",
+      redirect: "error",
+      signal,
+    });
+    signal.throwIfAborted();
+    if (deniedStatuses.has(response.status))
+      throw new HarnessAccessDenied("App settings access ended.");
+    if (!response.ok) throw new Error("App settings unavailable.");
+    const { data } = appSettingsSchema.parse(await response.json());
+    signal.throwIfAborted();
+    if (data.organizationId !== auth.organizationId) throw new Error("Session changed.");
+    return data;
+  }
+
   /** A catalog request must not configure a worker after the backend workspace changed. */
-  async confirm(auth: Authorization) {
-    const generation = this.generation;
-    const latest = await readVerifiedSession(this.options.fetchAPI, this.options.backend);
+  async confirm(auth: Authorization, caller?: AbortSignal) {
+    const signal = caller ? AbortSignal.any([this.lifetime.signal, caller]) : this.lifetime.signal;
+    signal.throwIfAborted();
+    const latest = await readVerifiedSession(
+      this.options.fetchAPI,
+      this.options.backend,
+      false,
+      signal,
+    );
+    // A late response from an old generation cannot invalidate the current one.
+    signal.throwIfAborted();
     if (latest.user.id !== auth.userId) throw new HarnessAccessDenied("Account changed.");
-    if (
-      generation !== this.generation ||
-      latest.session.activeOrganizationId !== auth.organizationId
-    ) {
+    if (latest.session.activeOrganizationId !== auth.organizationId) {
       this.invalidate();
       throw new Error("Session changed.");
     }
@@ -123,7 +142,7 @@ export class DesktopSessionAuthority {
     if (this.verified && Date.now() - this.verifiedAt < 60_000) return this.verified;
     const generation = this.generation;
     this.verifiedAt = Date.now();
-    const pending = this.readAuthorization(this.invalidated).then((auth) => {
+    const pending = this.readAuthorization(this.invalidated, this.lifetime.signal).then((auth) => {
       if (generation !== this.generation) throw new Error("Session changed.");
       this.invalidated = false;
       this.identity = auth.identity;
@@ -136,16 +155,24 @@ export class DesktopSessionAuthority {
     return pending;
   }
 
-  private async readAuthorization(disableCookieCache: boolean) {
+  private async readAuthorization(disableCookieCache: boolean, signal: AbortSignal) {
     const options = this.options;
-    const data = await readVerifiedSession(options.fetchAPI, options.backend, disableCookieCache);
+    const data = await readVerifiedSession(
+      options.fetchAPI,
+      options.backend,
+      disableCookieCache,
+      signal,
+    );
+    signal.throwIfAborted();
     const organizationId = data.session.activeOrganizationId;
     const membershipURL = new URL("/api/auth/organization/get-active-member-role", options.backend);
     membershipURL.searchParams.set("organizationId", organizationId);
     const membership = await options.fetchAPI(membershipURL.href, {
       method: "GET",
       redirect: "error",
+      signal,
     });
+    signal.throwIfAborted();
     if (deniedStatuses.has(membership.status))
       throw new HarnessAccessDenied("Organization membership ended.");
     if (!membership.ok) throw new Error("Organization unavailable.");

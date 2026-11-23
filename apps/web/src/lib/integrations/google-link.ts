@@ -9,8 +9,7 @@ import { windowBridge } from "@/lib/desktop/bridges";
 
 /**
  * Starts a Google link that asks for one product's scopes, then returns to `callbackURL`. The
- * server adds the identity scopes, offline access, consent, and earlier grants. Linking an
- * account again adds the product to it.
+ * server adds identity scopes, offline access and consent. Desktop Gmail uses its own client.
  *
  * Call it in the browser that will complete the OAuth callback: the state cookie belongs there.
  * The auth client runs without its redirect plugin, so this navigates to Google itself.

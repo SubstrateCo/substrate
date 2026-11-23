@@ -3,6 +3,7 @@ import {
   formatDateOnly,
   formatDateTimeInZone,
   formatDayLabel,
+  formatMailListDate,
   formatDueDate,
   formatRelativeTime,
   formatShortDate,
@@ -44,6 +45,12 @@ test("day dividers name today and yesterday, then the weekday and date", () => {
   expect(formatDayLabel(new Date(2026, 10, 7, 23, 59), now)).toBe("Yesterday");
   expect(formatDayLabel(new Date(2026, 10, 2, 9), now)).toBe("Monday, November 2");
   expect(formatDayLabel(new Date(2025, 10, 2, 9), now)).toBe("Sunday, November 2, 2025");
+});
+test("mail list dates switch at local midnight, not after 24 hours", () => {
+  const today = new Date(2026, 10, 22, 0, 2);
+  expect(formatMailListDate(new Date(2026, 10, 22, 0, 1), today)).toBe("12:01 AM");
+  expect(formatMailListDate(new Date(2026, 10, 21, 23, 59), today)).toBe("Nov 21");
+  expect(formatMailListDate(new Date(2025, 10, 22, 17), today)).toBe("Nov 22, 2025");
 });
 
 test("events a week or older show a date, with the year only outside the current year", () => {

@@ -2,7 +2,7 @@ import { googleProducts, type GoogleProduct } from "./google.ts";
 import { z } from "zod";
 
 export const googleProduct = z.enum(googleProducts);
-export const googleLinkTicketInput = z.object({ product: googleProduct });
+export const googleLinkTicketInput = z.strictObject({ product: googleProduct });
 
 /** A single-use link ticket: 32 random bytes, base64url without padding. */
 export const googleLinkTicket = z.string().regex(/^[A-Za-z0-9_-]{43}$/);

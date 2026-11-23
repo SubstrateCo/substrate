@@ -8,6 +8,7 @@ import { createAgentWorkService } from "../agents/service.ts";
 import { sessionTokenCookie } from "../auth/auth-client.ts";
 import { createHarnessController } from "../harness/controller/harness-controller.ts";
 import { createHarnessProcess } from "../harness/worker/harness-process.ts";
+import { createMailService } from "../mail/service.ts";
 import {
   createMeetingReminders,
   type CalendarEventTarget,
@@ -30,6 +31,7 @@ export function composeDesktop(options: {
   device: { name: string; platform: string };
   workerEntry: string;
   migrationsDirectory?: string;
+  mailListWorkerEntry?: string;
   emit(channel: string, value: AgentWorkChange | RealtimeUpdate): void;
   showMessageNotification?: (onClick: () => Promise<void>) => () => void;
   openMessage?: (target: {
@@ -42,6 +44,7 @@ export function composeDesktop(options: {
   openCalendarEvent?: (target: CalendarEventTarget) => void;
 }) {
   const authority = new DesktopSessionAuthority(options);
+  const mail = createMailService({ ...options, authority });
   const agentWork = createAgentWorkService({
     ...options,
     authority,
@@ -94,6 +97,8 @@ export function composeDesktop(options: {
     getCookie: () => options.getCookie(),
     emit: (event) => {
       options.emit(realtimeEventChannel, event);
+      if (event.type === "change" && (event.domain === "access" || event.domain === "organization"))
+        void mail.stop();
       agentWork.onRealtime(event);
       void meetingReminders?.receive(event);
       if (event.type === "ready") void notifications.connect(notificationOrganization);
@@ -125,7 +130,9 @@ export function composeDesktop(options: {
     },
   };
   const lifecycle = createLifecycle({
-    stopAgentWork: () => agentWork.stop(),
+    stopAgentWork: async () => {
+      await Promise.all([agentWork.stop(), mail.stop()]);
+    },
     closeSessions: () => harness.closeSessions(),
     disposeWorker: () => {
       harness.disconnect();
@@ -138,5 +145,5 @@ export function composeDesktop(options: {
       screen?.deactivate();
     },
   });
-  return { harness, agentWork, realtime, authority, meetingReminders, ...lifecycle };
+  return { harness, agentWork, realtime, authority, mail, meetingReminders, ...lifecycle };
 }

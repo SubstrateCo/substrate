@@ -3,6 +3,7 @@ import type { ScreenNotificationsBridge } from "@substrate/contracts/desktop/scr
 import type { DesktopUpdatesAPI } from "@substrate/contracts/desktop/updates-ipc";
 import type { DesktopSettingsAPI, DesktopWindowAPI } from "@substrate/contracts/desktop/window";
 import type { HarnessAPI } from "@substrate/contracts/harness/desktop";
+import type { MailAPI } from "@substrate/contracts/mail/ipc";
 import type { RealtimeAPI } from "@substrate/contracts/realtime";
 
 import type { ExposedBridges, ElectronClientOptions } from "@better-auth/electron/client";
@@ -10,6 +11,7 @@ import type { ExposedBridges, ElectronClientOptions } from "@better-auth/electro
 declare global {
   interface Window extends Partial<ExposedBridges<ElectronClientOptions>> {
     readonly substrateHarness?: HarnessAPI;
+    readonly substrateMail?: MailAPI;
     readonly substrateAgentWork?: AgentWorkAPI;
     readonly substrateWindow?: DesktopWindowAPI;
     readonly substrateDesktopSettings?: DesktopSettingsAPI;
@@ -21,6 +23,7 @@ declare global {
 }
 
 export const harnessBridge = () => window.substrateHarness;
+export const mailBridge = () => window.substrateMail;
 export const agentWorkBridge = () => window.substrateAgentWork;
 export const windowBridge = () => window.substrateWindow;
 export const desktopSettingsBridge = () => window.substrateDesktopSettings;

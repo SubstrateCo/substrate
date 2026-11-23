@@ -18,7 +18,7 @@ test("Google is offered only when configured, with identity scopes, offline acce
       clientSecret: "secret",
       disableDefaultScope: true,
       scope: ["openid", "email", "profile"],
-      includeGrantedScopes: true,
+      includeGrantedScopes: false,
       accessType: "offline",
       prompt: "consent",
       disableSignUp: true,

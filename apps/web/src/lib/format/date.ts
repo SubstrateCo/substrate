@@ -150,6 +150,10 @@ export function isSameDay(a: DateInput, b: DateInput) {
   const second = toDate(b);
   return !!first && !!second && first.toDateString() === second.toDateString();
 }
+/** Inbox list: a clock for the current local calendar day, otherwise a date. */
+export function formatMailListDate(value: DateInput, today: DateInput = Date.now()) {
+  return isSameDay(value, today) ? formatTime(value) : formatShortDate(value, today);
+}
 
 /** A day divider: "Today", "Yesterday", "Monday, November 2", with the year outside this year. */
 export function formatDayLabel(value: DateInput, now: DateInput = Date.now()) {

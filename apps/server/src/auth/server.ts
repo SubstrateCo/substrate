@@ -16,6 +16,8 @@ import type { CommittedPublisher } from "../shared/committed";
 import { isTrustedOrigin } from "../shared/origin-check";
 import {
   calendarSocialProviders,
+  checkGoogleGrantForStorage,
+  googleRedirectLink,
   isCalendarProviderSignIn,
   requestedProvider,
 } from "./calendar-accounts";
@@ -156,8 +158,9 @@ export function createAuth(deps: {
         delete: { after: publishSessionChange },
       },
       account: {
-        create: { after: publishSessionChange },
+        create: { before: checkGoogleGrantForStorage, after: publishSessionChange },
         update: {
+          before: checkGoogleGrantForStorage,
           // Bulk password updates return a count; onPasswordReset supplies their owner.
           after: async (account: { userId: string } | number | null) => {
             const owner = accountOwner.safeParse(account);
@@ -169,9 +172,18 @@ export function createAuth(deps: {
     },
     hooks: {
       before: createAuthMiddleware(async (ctx) => {
-        if (isCalendarProviderSignIn(ctx.path, requestedProvider.parse(ctx.body).provider))
+        const { provider } = requestedProvider.parse(ctx.body);
+        if (isCalendarProviderSignIn(ctx.path, provider))
           throw new APIError("FORBIDDEN", {
             message: "Calendar accounts cannot be used to sign in.",
+          });
+        if (
+          ctx.path === "/link-social" &&
+          provider === "google" &&
+          !googleRedirectLink.safeParse(ctx.body).success
+        )
+          throw new APIError("BAD_REQUEST", {
+            message: "Link a Google calendar using its supported permissions.",
           });
         const mutation = readPictureMutation({ path: ctx.path, body: ctx.body ?? {} });
         if (!mutation) return;

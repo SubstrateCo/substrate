@@ -35,6 +35,8 @@ Substrate is an Electron workspace for email, messages, docs, tasks, agents, and
 - Keep presentation in `apps/web/src/components`, grouped by domain. Split large views into focused components and assemble them with composer components.
 - Keep data fetching, authorization, and persistence separate from visual components where useful. Pass data, resolved capabilities, navigation targets, and callbacks to views.
 - Do not add Storybook or a separate presentation package. Validate UI workflows through the Electron app.
+- Keep prototypes local and untracked. Production code and tests must not import them.
+- Push fixes to an open PR as new commits. Preserve published commits and review progress; do not squash or rewrite their history.
 - Group code by domain and responsibility. Avoid long, catch-all files.
 - Keep database schemas in separate domain files, such as authentication, actors, entities, contacts, and CRM.
 - Split repositories and tests by domain. Keep test files beside the code they test, with shared fixtures in a test-support module.

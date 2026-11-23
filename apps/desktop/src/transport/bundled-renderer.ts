@@ -160,7 +160,9 @@ export function bundledRenderer({
       headers.set("Cache-Control", "no-cache");
       headers.set(
         "Content-Security-Policy",
-        `default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:${storageSources}; connect-src 'self'${storageSources}; frame-src 'none'; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'`,
+        url.pathname === "/mail-body.html"
+          ? "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; sandbox allow-same-origin"
+          : `default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:${storageSources}; connect-src 'self'${storageSources}; frame-src ${origin}/mail-body.html; frame-ancestors 'none'; object-src 'none'; base-uri 'none'; form-action 'self'`,
       );
       return new Response(request.method === "HEAD" ? null : response.body, {
         status: response.status,

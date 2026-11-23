@@ -1,3 +1,5 @@
+import { googleProductScopes } from "@substrate/contracts/integrations/google";
+
 import { rejected, result } from "../test-support/api";
 import { appOrigin } from "../test-support/environment";
 import { test } from "../test-support/fixtures";
@@ -51,7 +53,12 @@ test("a ticket opens Google's consent screen once, in a browser without a Substr
   );
   const first = await start(anonymous, ticket);
   expect(first.status()).toBe(302);
-  expect(new URL(first.headers()["location"] ?? "").origin).toBe("https://accounts.google.com");
+  const consent = new URL(first.headers()["location"] ?? "");
+  expect(consent.origin).toBe("https://accounts.google.com");
+  expect(consent.searchParams.get("scope")?.split(" ").sort()).toEqual(
+    ["openid", "email", "profile", ...googleProductScopes.calendar].sort(),
+  );
+  expect(consent.searchParams.get("include_granted_scopes")).not.toBe("true");
   const cookies = first
     .headersArray()
     .filter((header) => header.name.toLowerCase() === "set-cookie");
@@ -63,4 +70,39 @@ test("a ticket opens Google's consent screen once, in a browser without a Substr
   const replay = await start(anonymous, ticket);
   expect(replay.status()).toBe(400);
   expect(replay.headers()["location"]).toBeUndefined();
+});
+
+test("the Calendar connection accepts a product, not desktop client files, Gmail permissions or imported tokens", async ({
+  actors: { owner },
+}) => {
+  const getAccounts = async () => {
+    const response = await owner.request.get("/api/auth/list-accounts");
+    expect(response.ok()).toBe(true);
+    return response.json();
+  };
+  const before = await getAccounts();
+  const installed = {
+    client_id: "local-fixture.apps.googleusercontent.com",
+    client_secret: "synthetic-desktop-only",
+  };
+  const invalidTicket = await owner.request.post(tickets, {
+    headers: { origin },
+    data: { product: "calendar", installed },
+  });
+  expect(invalidTicket.status()).toBe(400);
+  for (const input of [
+    { scopes: ["https://www.googleapis.com/auth/gmail.readonly"] },
+    { idToken: { token: "synthetic-imported-id", refreshToken: "synthetic-desktop-refresh" } },
+    { additionalData: { installed } },
+  ]) {
+    const denied = await owner.request.post("/api/auth/link-social", {
+      headers: { origin },
+      data: { provider: "google", callbackURL: "/", disableRedirect: true, ...input },
+    });
+    expect(denied.status()).toBe(400);
+    expect(await denied.json()).toMatchObject({
+      message: "Link a Google calendar using its supported permissions.",
+    });
+  }
+  expect(await getAccounts()).toEqual(before);
 });

@@ -7,6 +7,8 @@
     "./calendar": "./src/calendar/index.ts",
     "./calendar/input": "./src/calendar/input.ts",
     "./calendar/qualification": "./src/calendar/qualification.ts",
+    "./mail": "./src/mail/inbox.ts",
+    "./mail/ipc": "./src/mail/ipc.ts",
     "./contacts/input": "./src/contacts/input.ts",
     "./context/interactions": "./src/context/interactions.ts",
     "./integrations/google": "./src/integrations/google.ts",

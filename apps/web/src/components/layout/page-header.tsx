@@ -43,6 +43,8 @@ export function PageHeader({
   actions,
   variant = "page",
   className,
+  leading,
+  children,
 }: {
   title: ReactNode;
   description?: ReactNode;
@@ -51,12 +53,19 @@ export function PageHeader({
   actions?: ReactNode;
   variant?: "page" | "pane";
   className?: string;
+  leading?: ReactNode;
+  children?: ReactNode;
 }) {
   const page = variant === "page";
   return (
     <header data-slot="page-header" className={cn(pageHeaderVariants({ variant }), className)}>
+      {leading}
       <div
-        className={cn("min-w-0", page ? "flex-1 basis-60 space-y-1" : "flex items-center gap-2")}
+        className={cn(
+          "min-w-0",
+          page ? "flex-1 basis-60 space-y-1" : "flex items-center gap-2",
+          children && "max-w-1/3",
+        )}
       >
         <Heading
           level={1}
@@ -77,6 +86,7 @@ export function PageHeader({
         </Heading>
         {page && description && <p className="text-sm text-muted-foreground">{description}</p>}
       </div>
+      {children && <div className="min-w-0 flex-1">{children}</div>}
       {actions && (
         <div className={cn("flex shrink-0 items-center", page ? "gap-2" : "gap-0.5")}>
           {actions}

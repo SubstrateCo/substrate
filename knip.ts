@@ -29,7 +29,7 @@ export default {
     },
     // Package entry points come from each package.json exports map.
     "packages/client-storage": {
-      entry: [],
+      entry: ["src/mail/list-worker-entry.ts"],
       project: ["src/**/*.ts", "*.config.ts"],
     },
     "packages/contracts": {

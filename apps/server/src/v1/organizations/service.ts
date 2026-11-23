@@ -3,6 +3,7 @@ import { roles, type OrganizationRole } from "@substrate/contracts/auth/permissi
 import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
 import { desktopHandoffURL } from "@substrate/contracts/desktop/links";
 
+import type { CommittedPublisher } from "../../shared/committed";
 import type { SettingsScope, WorkspaceScope } from "../../shared/scope-types";
 import { ServiceError, serviceResult } from "../../shared/service-result";
 
@@ -24,14 +25,14 @@ function canShareInvitation(viewerRole: string, invitationRole: string | null) {
   return canInvite && (viewer.includes("owner") || !storedRoles(invitationRole).includes("owner"));
 }
 
-export function createOrganizationService(deps: { apiURL: string }) {
+export function createOrganizationService(deps: { apiURL: string; publish: CommittedPublisher }) {
   return {
     apps(scope: WorkspaceScope) {
       return serviceResult(() => scope.repositories.organizations.apps());
     },
     updateApps(scope: WorkspaceScope, apps: AppId[]) {
-      return serviceResult(
-        async () => (await scope.repositories.organizations.updateApps(apps)).result,
+      return serviceResult(async () =>
+        deps.publish(await scope.repositories.organizations.updateApps(apps)),
       );
     },
     settingsAccess({ session, role }: SettingsScope) {

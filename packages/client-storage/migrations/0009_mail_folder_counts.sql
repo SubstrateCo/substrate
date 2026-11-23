@@ -1,0 +1,1 @@
+CREATE INDEX `mail_folder_counts` ON `mail_messages` (`organization_id`,`mailbox_id`,`flags`,`timestamp`);

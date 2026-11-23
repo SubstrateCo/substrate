@@ -36,6 +36,7 @@ import { Route as AuthenticatedStandaloneSetupCompleteRouteImport } from './rout
 import { Route as AuthenticatedFrameWorkspaceCalendarIndexRouteImport } from './routes/_authenticated/_frame/_workspace/calendar/index'
 import { Route as AuthenticatedFrameWorkspaceContactsIndexRouteImport } from './routes/_authenticated/_frame/_workspace/contacts/index'
 import { Route as AuthenticatedFrameWorkspaceCrmIndexRouteImport } from './routes/_authenticated/_frame/_workspace/crm/index'
+import { Route as AuthenticatedFrameWorkspaceInboxIndexRouteImport } from './routes/_authenticated/_frame/_workspace/inbox/index'
 import { Route as AuthenticatedFrameWorkspaceInteractionsIndexRouteImport } from './routes/_authenticated/_frame/_workspace/interactions/index'
 import { Route as AuthenticatedFrameWorkspaceTasksIndexRouteImport } from './routes/_authenticated/_frame/_workspace/tasks/index'
 import { Route as AuthenticatedFrameSettingsOrganizationIndexRouteImport } from './routes/_authenticated/_frame/settings/organization/index'
@@ -194,6 +195,12 @@ const AuthenticatedFrameWorkspaceCrmIndexRoute =
     path: '/crm/',
     getParentRoute: () => AuthenticatedFrameWorkspaceRouteRoute,
   } as any)
+const AuthenticatedFrameWorkspaceInboxIndexRoute =
+  AuthenticatedFrameWorkspaceInboxIndexRouteImport.update({
+    id: '/inbox/',
+    path: '/inbox/',
+    getParentRoute: () => AuthenticatedFrameWorkspaceRouteRoute,
+  } as any)
 const AuthenticatedFrameWorkspaceInteractionsIndexRoute =
   AuthenticatedFrameWorkspaceInteractionsIndexRouteImport.update({
     id: '/interactions/',
@@ -297,6 +304,7 @@ export interface FileRoutesByFullPath {
   '/calendar/': typeof AuthenticatedFrameWorkspaceCalendarIndexRoute
   '/contacts/': typeof AuthenticatedFrameWorkspaceContactsIndexRoute
   '/crm/': typeof AuthenticatedFrameWorkspaceCrmIndexRoute
+  '/inbox/': typeof AuthenticatedFrameWorkspaceInboxIndexRoute
   '/interactions/': typeof AuthenticatedFrameWorkspaceInteractionsIndexRoute
   '/tasks/': typeof AuthenticatedFrameWorkspaceTasksIndexRoute
   '/settings/organization/': typeof AuthenticatedFrameSettingsOrganizationIndexRoute
@@ -331,6 +339,7 @@ export interface FileRoutesByTo {
   '/calendar': typeof AuthenticatedFrameWorkspaceCalendarIndexRoute
   '/contacts': typeof AuthenticatedFrameWorkspaceContactsIndexRoute
   '/crm': typeof AuthenticatedFrameWorkspaceCrmIndexRoute
+  '/inbox': typeof AuthenticatedFrameWorkspaceInboxIndexRoute
   '/interactions': typeof AuthenticatedFrameWorkspaceInteractionsIndexRoute
   '/tasks': typeof AuthenticatedFrameWorkspaceTasksIndexRoute
   '/settings/organization': typeof AuthenticatedFrameSettingsOrganizationIndexRoute
@@ -373,6 +382,7 @@ export interface FileRoutesById {
   '/_authenticated/_frame/_workspace/calendar/': typeof AuthenticatedFrameWorkspaceCalendarIndexRoute
   '/_authenticated/_frame/_workspace/contacts/': typeof AuthenticatedFrameWorkspaceContactsIndexRoute
   '/_authenticated/_frame/_workspace/crm/': typeof AuthenticatedFrameWorkspaceCrmIndexRoute
+  '/_authenticated/_frame/_workspace/inbox/': typeof AuthenticatedFrameWorkspaceInboxIndexRoute
   '/_authenticated/_frame/_workspace/interactions/': typeof AuthenticatedFrameWorkspaceInteractionsIndexRoute
   '/_authenticated/_frame/_workspace/tasks/': typeof AuthenticatedFrameWorkspaceTasksIndexRoute
   '/_authenticated/_frame/settings/organization/': typeof AuthenticatedFrameSettingsOrganizationIndexRoute
@@ -410,6 +420,7 @@ export interface FileRouteTypes {
     | '/calendar/'
     | '/contacts/'
     | '/crm/'
+    | '/inbox/'
     | '/interactions/'
     | '/tasks/'
     | '/settings/organization/'
@@ -444,6 +455,7 @@ export interface FileRouteTypes {
     | '/calendar'
     | '/contacts'
     | '/crm'
+    | '/inbox'
     | '/interactions'
     | '/tasks'
     | '/settings/organization'
@@ -485,6 +497,7 @@ export interface FileRouteTypes {
     | '/_authenticated/_frame/_workspace/calendar/'
     | '/_authenticated/_frame/_workspace/contacts/'
     | '/_authenticated/_frame/_workspace/crm/'
+    | '/_authenticated/_frame/_workspace/inbox/'
     | '/_authenticated/_frame/_workspace/interactions/'
     | '/_authenticated/_frame/_workspace/tasks/'
     | '/_authenticated/_frame/settings/organization/'
@@ -687,6 +700,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFrameWorkspaceCrmIndexRouteImport
       parentRoute: typeof AuthenticatedFrameWorkspaceRouteRoute
     }
+    '/_authenticated/_frame/_workspace/inbox/': {
+      id: '/_authenticated/_frame/_workspace/inbox/'
+      path: '/inbox'
+      fullPath: '/inbox/'
+      preLoaderRoute: typeof AuthenticatedFrameWorkspaceInboxIndexRouteImport
+      parentRoute: typeof AuthenticatedFrameWorkspaceRouteRoute
+    }
     '/_authenticated/_frame/_workspace/interactions/': {
       id: '/_authenticated/_frame/_workspace/interactions/'
       path: '/interactions'
@@ -782,6 +802,7 @@ interface AuthenticatedFrameWorkspaceRouteRouteChildren {
   AuthenticatedFrameWorkspaceCalendarIndexRoute: typeof AuthenticatedFrameWorkspaceCalendarIndexRoute
   AuthenticatedFrameWorkspaceContactsIndexRoute: typeof AuthenticatedFrameWorkspaceContactsIndexRoute
   AuthenticatedFrameWorkspaceCrmIndexRoute: typeof AuthenticatedFrameWorkspaceCrmIndexRoute
+  AuthenticatedFrameWorkspaceInboxIndexRoute: typeof AuthenticatedFrameWorkspaceInboxIndexRoute
   AuthenticatedFrameWorkspaceInteractionsIndexRoute: typeof AuthenticatedFrameWorkspaceInteractionsIndexRoute
   AuthenticatedFrameWorkspaceTasksIndexRoute: typeof AuthenticatedFrameWorkspaceTasksIndexRoute
 }
@@ -802,6 +823,8 @@ const AuthenticatedFrameWorkspaceRouteRouteChildren: AuthenticatedFrameWorkspace
       AuthenticatedFrameWorkspaceContactsIndexRoute,
     AuthenticatedFrameWorkspaceCrmIndexRoute:
       AuthenticatedFrameWorkspaceCrmIndexRoute,
+    AuthenticatedFrameWorkspaceInboxIndexRoute:
+      AuthenticatedFrameWorkspaceInboxIndexRoute,
     AuthenticatedFrameWorkspaceInteractionsIndexRoute:
       AuthenticatedFrameWorkspaceInteractionsIndexRoute,
     AuthenticatedFrameWorkspaceTasksIndexRoute:

@@ -47,6 +47,7 @@
   },
   "devDependencies": {
     "@playwright/test": "catalog:tooling",
+    "@substrate/client-storage": "workspace:*",
     "@tailwindcss/vite": "^4.3.4",
     "@tanstack/router-plugin": "^1.168.48",
     "@types/bun": "catalog:tooling",

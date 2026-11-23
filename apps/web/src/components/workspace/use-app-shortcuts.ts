@@ -1,3 +1,5 @@
+import { isOptionalApp } from "@substrate/contracts/apps";
+
 import { useHotkeys } from "@tanstack/react-hotkeys";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -19,12 +21,7 @@ export function useAppShortcuts() {
       hotkey: app.hotkey,
       callback: (event: KeyboardEvent) => {
         if (inDialog(event.target)) return;
-        if (
-          "id" in app &&
-          (app.id === "tasks" || app.id === "crm" || app.id === "calendar") &&
-          !apps.enabled(app.id)
-        )
-          return;
+        if ("id" in app && isOptionalApp(app.id) && !apps.enabled(app.id)) return;
         void navigate({ to: app.to });
       },
     })),

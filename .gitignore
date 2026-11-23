@@ -2,6 +2,8 @@ node_modules/
 .turbo/
 dist/
 storybook-static/
+prototypes/
+prototype/
 coverage/
 /docs/
 .tanstack/

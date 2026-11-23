@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./mail": "./src/mail/index.ts",
     "./agent-work": "./src/agent-work/index.ts"
   },
   "scripts": {

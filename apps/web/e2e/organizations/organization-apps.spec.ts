@@ -25,6 +25,12 @@ test("owner enables independent apps, confirms disable, and restores preserved p
   const crmSwitch = apps.getByRole("switch", { name: "CRM", exact: true });
   await expect(tasksSwitch).not.toBeChecked();
   await expect(crmSwitch).not.toBeChecked();
+  await expect(apps.getByRole("switch", { name: "Inbox", exact: true })).not.toBeChecked();
+  await expect(
+    page
+      .getByRole("navigation", { name: "Apps", exact: true })
+      .getByRole("link", { name: /^Inbox/ }),
+  ).toHaveCount(0);
   const messagesCard = apps.getByRole("region", { name: "Messages", exact: true });
   const agentsCard = apps.getByRole("region", { name: "Agents", exact: true });
   const messagesBounds = await messagesCard.boundingBox();
@@ -97,6 +103,9 @@ test("member can view organization apps but cannot change them", async ({ actors
   await visit(user, undefined, "/settings/organization/apps");
   await expect(user.page.getByRole("heading", { name: "Apps", exact: true })).toBeVisible();
   await expect(user.page.getByRole("region", { name: "Tasks", exact: true })).toBeVisible();
+  await expect(user.page.getByRole("region", { name: "Inbox", exact: true })).toContainText(
+    "Disabled",
+  );
   await expect(user.page.getByRole("switch")).toHaveCount(0);
   const settings = user.page.getByRole("navigation", { name: "Settings sections", exact: true });
   await expect(settings.getByRole("link", { name: "Apps", exact: true })).toBeVisible();

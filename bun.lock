@@ -22,6 +22,7 @@
       "name": "@substrate/desktop",
       "version": "0.1.0",
       "dependencies": {
+        "@better-auth/core": "1.7.18",
         "@better-auth/electron": "catalog:auth",
         "@substrate/client-storage": "workspace:*",
         "@substrate/contracts": "workspace:*",
@@ -30,6 +31,7 @@
         "conf": "^16.0.0",
         "croner": "^11",
         "electron-updater": "^6.8.11",
+        "entities": "4.5.0",
         "ws": "^8.22.1",
         "zod": "catalog:",
       },
@@ -105,6 +107,7 @@
       },
       "devDependencies": {
         "@playwright/test": "catalog:tooling",
+        "@substrate/client-storage": "workspace:*",
         "@tailwindcss/vite": "^4.3.4",
         "@tanstack/router-plugin": "^1.168.48",
         "@types/bun": "catalog:tooling",
@@ -1598,6 +1601,8 @@
     "enhanced-resolve": ["enhanced-resolve@5.26.1", "", { "dependencies": { "graceful-fs": "^4.2.4", "tapable": "^2.3.3" } }, "sha512-PPnnSJq3azKOIewXR/uppBV/6h98dprBJ/WaQ9Qgj10xX1lJLNfg+XShpbsrSqcDSy2yYYyhfXM1wWhftqgyzw=="],
 
     "enquirer": ["enquirer@2.4.1", "", { "dependencies": { "ansi-colors": "^4.1.1", "strip-ansi": "^6.0.1" } }, "sha512-rRqJg/6gd538VHvR3PSrdRBb/1Vy2YfzHqzvbhGIQpDRKIa4FgV/54b5Q1xYSxOOwKvjXweS26E0Q+nAMwp2pQ=="],
+
+    "entities": ["entities@4.5.0", "", {}, "sha512-V0hjH4dGPh9Ao5p0MoRY6BVqtwCjhz6vI5LT8AJ55H+4g9/4vbHx1I54fS0XuclLhDHArPQCiMjDxjaL8fPxhw=="],
 
     "env-paths": ["env-paths@4.0.0", "", { "dependencies": { "is-safe-filename": "^0.1.0" } }, "sha512-pxP8eL2SwwaTRi/KHYwLYXinDs7gL3jxFcBYmEdYfZmZXbaVDvdppd0XBU8qVz03rDfKZMXg1omHCbsJjZrMsw=="],
 

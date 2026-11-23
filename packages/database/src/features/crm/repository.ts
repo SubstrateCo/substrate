@@ -51,6 +51,7 @@ export function crmRepository(context: RepositoryContext) {
           entity.entityType === "account"
             ? { archivedAt }
             : { archivedAt, version: sql`${crmDeals.version} + 1` };
+        await ctx.touch(id);
         // The old state is in the WHERE, so one of two concurrent calls records the change.
         const [flipped] = await ctx.db
           .update(table)
@@ -63,7 +64,6 @@ export function crmRepository(context: RepositoryContext) {
           )
           .returning({ entityId: table.entityId });
         if (!flipped) await ctx.db.update(table).set(set).where(target(table, id));
-        await ctx.touch(id);
         changed(ctx, id);
         if (flipped)
           await recordCrmActivity(

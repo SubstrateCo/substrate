@@ -8,6 +8,7 @@ import {
   CalendarDays,
   Handshake,
   House,
+  Inbox,
   ListTodo,
   MessageSquare,
   type LucideIcon,
@@ -46,6 +47,7 @@ export const workspaceApps = [
     to: "/tasks",
     hotkey: ["G", "T"],
   },
+  { id: "inbox", label: "Inbox", icon: Inbox, to: "/inbox", hotkey: ["G", "E"] },
   { id: "crm", label: "CRM", icon: Handshake, to: "/crm", hotkey: ["G", "C"] },
   {
     id: "interactions",

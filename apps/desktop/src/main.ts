@@ -6,6 +6,7 @@ import { defaultMeetingReminderSettings } from "@substrate/contracts/desktop/scr
 import * as settingsIPC from "@substrate/contracts/desktop/settings-ipc";
 import { desktopSettingsChannel } from "@substrate/contracts/desktop/window";
 import * as harnessIPC from "@substrate/contracts/harness/ipc";
+import * as mailIPC from "@substrate/contracts/mail/ipc";
 import { realtimeChannel } from "@substrate/contracts/realtime";
 import * as realtimeIPC from "@substrate/contracts/realtime/ipc";
 
@@ -284,6 +285,9 @@ function main() {
           migrationsDirectory: app.isPackaged
             ? fileURLToPath(new URL("./client-storage-migrations/", import.meta.url))
             : undefined,
+          mailListWorkerEntry: app.isPackaged
+            ? join(process.resourcesPath, "app.asar.unpacked", "mail-list-worker.mjs")
+            : undefined,
           emit: (channel, value) => emitToRenderer(mainWindow, channel, value, rendererURL),
           showMessageNotification: (onClick) => {
             if (!Notification.isSupported() || mainWindow?.isFocused()) return () => {};
@@ -318,6 +322,11 @@ function main() {
           },
         });
         const composed = services;
+        ipcMain.handle(mailIPC.channel, (event, method, value) => {
+          if (!trustedSender(event, mainWindow?.webContents, rendererURL))
+            throw new Error("Mail unavailable.");
+          return composed.mail.call(method, value);
+        });
         ({ agentWork, realtime } = composed);
         const dispatchRealtime = handleBridge(realtimeChannel, realtimeIPC.methods, {
           connect: (input) => composed.realtime.connect(input),

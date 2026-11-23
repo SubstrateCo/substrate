@@ -26,6 +26,18 @@ const result = await Bun.build({
   external: ["electron"],
 });
 if (!result.success) throw new AggregateError(result.logs, "Desktop main build failed.");
+const mailWorker = await Bun.build({
+  entrypoints: [
+    fileURLToPath(
+      new URL("../../../packages/client-storage/src/mail/list-worker-entry.ts", import.meta.url),
+    ),
+  ],
+  outdir: `${desktop}/dist`,
+  naming: "mail-list-worker.mjs",
+  target: "node",
+  format: "esm",
+});
+if (!mailWorker.success) throw new AggregateError(mailWorker.logs, "Mail reader bundle failed.");
 await bundlePreload(`${desktop}/dist`);
 await bundleHarnessWorker(`${desktop}/dist`);
 const harnessDependencies = await stageHarnessProductionAssets(`${desktop}/dist`);

@@ -1,8 +1,10 @@
 import { organizationId } from "../workspace.ts";
 import { z } from "zod";
 
-export const optionalAppIds = ["tasks", "crm", "calendar"] as const;
+export const optionalAppIds = ["tasks", "crm", "calendar", "inbox"] as const;
 export type OptionalAppId = (typeof optionalAppIds)[number];
+export const isOptionalApp = (id: string): id is OptionalAppId =>
+  optionalAppIds.some((app) => app === id);
 export const coreAppIds = ["messages", "agents"] as const;
 export const appIds = [...coreAppIds, ...optionalAppIds] as const;
 export type AppId = (typeof appIds)[number];

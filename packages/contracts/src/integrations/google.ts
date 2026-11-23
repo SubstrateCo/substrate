@@ -1,12 +1,11 @@
 /**
- * Google products that a linked Google account can grant. Each product asks for its own scopes
- * when the owner links it (incremental consent), so an account holds only the access its owner
- * chose. Add a product here with its scopes before any code uses it.
+ * Google products whose grants the Substrate server may hold. Inbox has a separate native
+ * desktop grant; Gmail scopes must not be added to this registry.
  */
 export const googleProducts = ["calendar"] as const;
 export type GoogleProduct = (typeof googleProducts)[number];
 
-/** The identity scopes of every Google grant. Better Auth reads the ID token from `openid`. */
+/** Identity scopes of a server-linked Google account. Better Auth reads the ID token from `openid`. */
 export const googleBaseScopes = ["openid", "email", "profile"] as const;
 
 /** The scopes each product needs, in addition to the base scopes. */

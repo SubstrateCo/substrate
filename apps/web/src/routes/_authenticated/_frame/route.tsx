@@ -19,6 +19,7 @@ function FrameLayout() {
     >
       <OrganizationAppsProvider
         key={session.session.activeOrganizationId ?? ""}
+        userId={session.user.id}
         organizationId={session.session.activeOrganizationId}
       >
         <WorkspaceFrame

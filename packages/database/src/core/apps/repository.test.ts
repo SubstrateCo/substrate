@@ -27,6 +27,7 @@ test("an organization without settings has only the required apps", async () => 
   expect(await enabledApps(context())).toEqual(["messages", "agents"]);
   expect(await rejection(requireAppEnabled(context(), "tasks"))).toBeInstanceOf(AppDisabledError);
   expect(await rejection(requireAppEnabled(context(), "crm"))).toBeInstanceOf(AppDisabledError);
+  expect(await rejection(requireAppEnabled(context(), "inbox"))).toBeInstanceOf(AppDisabledError);
 });
 
 test("app rows reject unknown apps and missing organizations", async () => {
@@ -49,7 +50,7 @@ test("app rows reject unknown apps and missing organizations", async () => {
 });
 
 test("owners and admins update their organization, members read but cannot update", async () => {
-  const apps = ["messages", "agents", "crm"] as const;
+  const apps = ["messages", "agents", "crm", "inbox"] as const;
   await f.db.transaction((tx) => repository(context(tx)).update([...apps]));
   expect(await repository(context(), "bob").get()).toEqual({
     organizationId: f.orgA,

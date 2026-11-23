@@ -1,5 +1,6 @@
 import { applicationURL } from "../src/shell/navigation.ts";
 import { backendURL } from "../src/transport/bundled-renderer.ts";
+import { prepareDevelopmentProtocol } from "./dev-protocol.ts";
 import { developmentServices, ensureDevelopmentServices } from "./dev-services.js";
 import { bundleHarnessWorker } from "./harness-worker.ts";
 import { bundlePreload } from "./preload.js";
@@ -25,6 +26,9 @@ process.on("SIGTERM", stop);
 try {
   await bundlePreload();
   await bundleHarnessWorker();
+  const executable = z.string().safeParse(electron);
+  if (!executable.success) throw new Error("Electron did not provide an executable path.");
+  prepareDevelopmentProtocol(executable.data);
   await ensureDevelopmentServices(
     developmentServices(applicationURL, backendURL(process.env.SUBSTRATE_API_URL, false)),
     (service) => {
@@ -43,8 +47,6 @@ try {
     const env = { ...process.env };
     delete env.ELECTRON_RUN_AS_NODE;
     // Electron's Node entry returns its executable path, not its declared API namespace.
-    const executable = z.string().safeParse(electron);
-    if (!executable.success) throw new Error("Electron did not provide an executable path.");
     windowProcess = Bun.spawn(
       [executable.data, fileURLToPath(new URL("../src/main.ts", import.meta.url))],
       {

@@ -13,7 +13,10 @@ test("settings access grants only owner or admin access in the resolved workspac
     [null, null],
   ] as const) {
     expect(
-      await createOrganizationService({ apiURL: "https://api.example.com" }).settingsAccess({
+      await createOrganizationService({
+        apiURL: "https://api.example.com",
+        publish: async (commit) => commit.result,
+      }).settingsAccess({
         session: sessionFixture(),
         role,
       }),

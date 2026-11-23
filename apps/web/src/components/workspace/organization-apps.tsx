@@ -22,9 +22,11 @@ const AppsContext = createContext<{
 });
 
 export function OrganizationAppsProvider({
+  userId,
   organizationId,
   children,
 }: {
+  userId: string;
   organizationId?: string | null;
   children: ReactNode;
 }) {
@@ -44,14 +46,14 @@ export function OrganizationAppsProvider({
     // can start a new read that the cache cleanup immediately cancels.
     let active = true;
     const cleanup =
-      applied === undefined ? Promise.resolve() : clearAppData(client, organizationId!);
+      applied === undefined ? Promise.resolve() : clearAppData(client, organizationId!, userId);
     void cleanup.then(() => {
       if (active) setApplied(signature);
     });
     return () => {
       active = false;
     };
-  }, [applied, client, organizationId, signature]);
+  }, [applied, client, organizationId, signature, userId]);
   return (
     <AppsContext.Provider
       value={{

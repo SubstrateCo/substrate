@@ -43,6 +43,41 @@
       "when": 1795126417563,
       "tag": "0005_agent_mcp_servers",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1795379851351,
+      "tag": "0006_local_mail",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1795388270426,
+      "tag": "0007_mail_thread",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1795405800100,
+      "tag": "0008_mail_label_filters",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1795419093821,
+      "tag": "0009_mail_folder_counts",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1795419967718,
+      "tag": "0010_mail_unread_total",
+      "breakpoints": true
     }
   ]
 }

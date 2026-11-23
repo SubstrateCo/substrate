@@ -198,6 +198,7 @@ export function crmDealsRepository(context: RepositoryContext) {
         if (moneyKey(previous.amount) !== moneyKey(value.amount)) changedFields.push("amount");
         if (participantKey(priorParticipants) !== participantKey(nextParticipants))
           changedFields.push("contacts");
+        await ctx.touch(id);
         const [row] = await ctx.db
           .update(crmDeals)
           .set({
@@ -210,7 +211,6 @@ export function crmDealsRepository(context: RepositoryContext) {
         // The row is now held by this write, so the participant rewrite cannot interleave.
         if (!row) throw dealChanged();
         await participants(ctx, id, value, retained);
-        await ctx.touch(id);
         changed(ctx, id);
         if (changedFields.length)
           await recordCrmActivity(ctx, { entityId: id, action: "updated", changedFields }, access);
@@ -240,6 +240,7 @@ export function crmDealsRepository(context: RepositoryContext) {
         const now = new Date();
         let closedAt = previous.outcome === input.outcome ? previous.closedAt : now;
         if (input.outcome === "open") closedAt = null;
+        await ctx.touch(id);
         const [row] = await ctx.db
           .update(crmDeals)
           .set({
@@ -254,7 +255,6 @@ export function crmDealsRepository(context: RepositoryContext) {
           .returning();
         if (!row) throw dealChanged();
         await recordRequest(ctx, "deal_transition", input.requestId, id);
-        await ctx.touch(id);
         changed(ctx, id);
         const changedFields: NonNullable<CrmActivityInput["changedFields"]> = [];
         if (previous.stageId !== input.stageId) changedFields.push("stage");

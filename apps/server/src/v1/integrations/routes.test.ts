@@ -34,10 +34,9 @@ test("a ticket needs a verified session, a trusted origin and a known product", 
   ).toBe(403);
   for (const body of [{ product: "gmail" }, {}, { product: "calendar", userId: "other" }]) {
     const response = await createTicket(app, body);
-    if (response.status === 200) expect(created.at(-1)?.userId).toBe("user-1");
-    else expect(response.status).toBe(400);
+    expect(response.status).toBe(400);
   }
-  expect(created.every((entry) => entry.product === "calendar")).toBe(true);
+  expect(created).toHaveLength(0);
 
   const response = await createTicket(app, { product: "calendar" });
   expect(response.status).toBe(200);
@@ -51,7 +50,7 @@ test("a ticket needs a verified session, a trusted origin and a known product", 
     }),
   });
   expect((await createTicket(anonymous, { product: "calendar" })).status).toBe(401);
-  expect(created).toHaveLength(2);
+  expect(created).toHaveLength(1);
 });
 
 test("the start page redirects to Google with the state cookie, or shows an expired page", async () => {

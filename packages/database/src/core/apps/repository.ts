@@ -4,6 +4,7 @@ import {
   updateApps,
   type AppSettings,
 } from "@substrate/contracts/apps";
+import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { adminRoleCondition } from "../organizations/roles";
@@ -59,6 +60,10 @@ export function appRepository(context: RepositoryContext, identity: SessionIdent
         RETURNING app_id
       `);
       if (!written.length) throw new AccessDeniedError();
+      context.effects.hint({
+        audience: realtimeKeys.organization(identity.organizationId),
+        domain: "organization",
+      });
       return {
         organizationId: identity.organizationId,
         enabledApps: [...coreAppIds, ...optionalAppIds.filter((app) => apps.includes(app))],

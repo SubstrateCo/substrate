@@ -16,6 +16,7 @@ import {
 } from "@substrate/contracts/desktop/window";
 import * as windowIPC from "@substrate/contracts/desktop/window-ipc";
 import * as harnessIPC from "@substrate/contracts/harness/ipc";
+import * as mailIPC from "@substrate/contracts/mail/ipc";
 import {
   realtimeChannel,
   realtimeEventChannel,
@@ -32,6 +33,10 @@ const origin = process.argv
   ?.slice("--substrate-origin=".length);
 if (process.isMainFrame && window.location.origin === origin) {
   setupRenderer();
+  contextBridge.exposeInMainWorld(
+    "substrateMail",
+    exposeBridge(mailIPC.channel, mailIPC.methods, ipcRenderer.invoke.bind(ipcRenderer)),
+  );
   const realtime: RealtimeAPI = {
     ...exposeBridge(realtimeChannel, realtimeIPC.methods, ipcRenderer.invoke.bind(ipcRenderer)),
     onEvent: (callback: (event: RealtimeUpdate) => void) => {

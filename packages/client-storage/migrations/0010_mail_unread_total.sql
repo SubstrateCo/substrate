@@ -1,0 +1,1 @@
+ALTER TABLE `mail_connections` ADD `unread_total` integer;

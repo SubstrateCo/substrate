@@ -7,7 +7,7 @@
   "type": "module",
   "main": "dist/main.js",
   "scripts": {
-    "dev": "install-electron && bun scripts/dev.ts",
+    "dev": "install-electron && bun --env-file=../../.env scripts/dev.ts",
     "build": "bun scripts/build.ts",
     "build:dir": "bun run build && electron-builder --win --dir",
     "package": "bun run package:win",
@@ -17,6 +17,7 @@
     "test": "bun test src scripts"
   },
   "dependencies": {
+    "@better-auth/core": "1.7.18",
     "@better-auth/electron": "catalog:auth",
     "@substrate/client-storage": "workspace:*",
     "@substrate/contracts": "workspace:*",
@@ -25,6 +26,7 @@
     "conf": "^16.0.0",
     "croner": "^11",
     "electron-updater": "^6.8.11",
+    "entities": "4.5.0",
     "ws": "^8.22.1",
     "zod": "catalog:"
   },
@@ -46,6 +48,7 @@
     ],
     "asar": true,
     "asarUnpack": [
+      "mail-list-worker.mjs",
       "harness-worker-entry.mjs",
       "client-storage-migrations/**",
       "node_modules/**/*"

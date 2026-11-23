@@ -1,0 +1,1 @@
+CREATE INDEX `mail_thread` ON `mail_messages` (`organization_id`,`mailbox_id`,`thread_id`,`timestamp`,`id`);

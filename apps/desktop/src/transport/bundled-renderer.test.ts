@@ -57,6 +57,10 @@ describe("bundled assets and responses", () => {
     await mkdir(join(directory, "dist"));
     await writeFile(join(directory, "dist", "index.html"), "<h1>Workspace</h1>");
     await writeFile(join(directory, "dist", "app.js"), "console.log('workspace')");
+    await writeFile(
+      join(directory, "dist", "mail-body.html"),
+      "<!doctype html><title>Mail content</title>",
+    );
     await writeFile(join(directory, "dist", "overlay.html"), "<h1>Overlay</h1>");
     await writeFile(join(directory, "private.txt"), "secret");
     await symlink(directory, join(directory, "dist", "linked"), "junction");
@@ -119,6 +123,18 @@ describe("bundled assets and responses", () => {
     );
     expect(response.status).toBe(200);
     expect(await response.text()).toBe("");
+  });
+  test("only the fixed mail frame can be embedded; its content cannot run scripts or request external resources", async () => {
+    const serve = handler(),
+      app = await serve(new Request(`${bundledApplicationURL}/inbox`));
+    expect(app.headers.get("content-security-policy")).toContain(
+      `frame-src ${bundledApplicationURL}/mail-body.html;`,
+    );
+    const mail = await serve(new Request(`${bundledApplicationURL}/mail-body.html`));
+    expect(mail.status).toBe(200);
+    expect(mail.headers.get("content-security-policy")).toBe(
+      "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-ancestors 'self'; base-uri 'none'; form-action 'none'; sandbox allow-same-origin",
+    );
   });
 
   test("allows blob image previews and only configured storage connections and images", async () => {

@@ -13,6 +13,7 @@ test("app changes discard records, task discussions, and cross-app previews with
     [...queryKeys.context("org"), "search", "private"],
     [...queryKeys.messaging("org"), "task-discussion"],
     queryKeys.calendarEvent("org", "meeting"),
+    [...queryKeys.mail("user", "org"), "body", "message"],
   ];
   const retained = [
     queryKeys.calendar("other"),
@@ -22,10 +23,11 @@ test("app changes discard records, task discussions, and cross-app previews with
     queryKeys.messaging("other"),
     queryKeys.organizationApps("org"),
     queryKeys.organizationSummary("org"),
+    queryKeys.mail("user", "other"),
   ];
   for (const key of [...removed, ...retained]) client.setQueryData(key, { title: "Private data" });
   try {
-    await clearAppData(client, "org");
+    await clearAppData(client, "org", "user");
     for (const key of removed) expect(client.getQueryData(key)).toBeUndefined();
     for (const key of retained) expect(client.getQueryData(key)).toEqual({ title: "Private data" });
   } finally {

@@ -1,0 +1,2 @@
+ALTER TABLE "organization_apps" DROP CONSTRAINT "organization_apps_app_id_check";--> statement-breakpoint
+ALTER TABLE "organization_apps" ADD CONSTRAINT "organization_apps_app_id_check" CHECK ("organization_apps"."app_id" IN ('tasks', 'crm', 'calendar', 'inbox'));

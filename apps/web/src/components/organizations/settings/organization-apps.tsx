@@ -1,4 +1,4 @@
-import type { AppId } from "@substrate/contracts/apps";
+import type { AppId, OptionalAppId } from "@substrate/contracts/apps";
 import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
 
 import { useQuery } from "@tanstack/react-query";
@@ -53,6 +53,12 @@ const catalog = [
     required: false,
     agentSupport: { mcp: false },
   },
+  {
+    id: "inbox",
+    description: "Read Gmail messages from connected mailboxes on this device.",
+    required: false,
+    agentSupport: { mcp: false },
+  },
 ] as const satisfies ReadonlyArray<{
   id: AppId;
   description: string;
@@ -76,13 +82,18 @@ const disableCopy = {
     description:
       "Calendar and calendar settings will be unavailable to everyone in this organization. Contacts and interactions from past meetings are preserved. Enable Calendar again to restore access.",
   },
-} as const;
+  inbox: {
+    label: "Inbox",
+    description:
+      "Inbox will be hidden and Gmail sync will pause for everyone in this organization. Connected mailboxes and cached mail stay on each device.",
+  },
+} as const satisfies Record<OptionalAppId, { label: string; description: string }>;
 
 export function OrganizationApps({ organizationId }: { organizationId: string }) {
   const settings = useQuery(organizationAppsOptions(organizationId));
   const organization = useQuery(currentOrganizationQueryOptions(organizationId));
   const mutation = useUpdateOrganizationApps(organizationId);
-  const [disabling, setDisabling] = useState<"tasks" | "crm" | "calendar" | null>(null);
+  const [disabling, setDisabling] = useState<OptionalAppId | null>(null);
   const canManage = organizationSettingsAccess(organization.data?.role).allowed;
   const change = (app: AppId, enabled: boolean) => {
     if (!settings.data || !canManage) return;
