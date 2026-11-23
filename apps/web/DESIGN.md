@@ -199,7 +199,6 @@ Record overlays use `PageSheet`: slide and fade from the right, 200ms open and 1
 
 - Sentence case everywhere: "Not started", "No priority", "Project access". Do not use `uppercase` or `capitalize` to change the case of labels and headings; write the text in the case it should read (labels come from maps such as `tasks/task-cues/task-labels.ts`).
 - Small group labels use `text-xs font-medium text-muted-foreground`, not an uppercase eyebrow.
-- Titles of notices and empty states have no trailing period.
 - Use typographic apostrophes and quotes in copy: "doesn’t", “ro”. Search and notices already do.
 - A loading region shows `LoadingState` or a skeleton; its label is for screen readers only. A pending button is `PendingButton`: keep its label and show an indicator. Visual truncation stays in CSS (`truncate`, `line-clamp-*`).
 - Create actions: the trigger and dialog title say "New <thing>", and the submit says "Create <thing>". An edit dialog submits with "Save". A domain verb is only for actions that do not create: "Link account", "Move deal", "Share deal", "Start conversation".

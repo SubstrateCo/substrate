@@ -18,6 +18,7 @@ import { noRawErrorMessage } from "./rules/no-raw-error-message.ts";
 import { noRawValidationText } from "./rules/no-raw-validation-text.ts";
 import { noSolidDestructive } from "./rules/no-solid-destructive.ts";
 import { noTooltipOnToggleItem } from "./rules/no-tooltip-on-toggle-item.ts";
+import { noticeTitle } from "./rules/notice-title.ts";
 import { pageHeader } from "./rules/page-header.ts";
 import { personAvatar } from "./rules/person-avatar.ts";
 import { radiusScale } from "./rules/radius-scale.ts";
@@ -50,6 +51,7 @@ export default {
     "no-raw-validation-text": noRawValidationText,
     "no-solid-destructive": noSolidDestructive,
     "no-tooltip-on-toggle-item": noTooltipOnToggleItem,
+    "notice-title": noticeTitle,
     "page-header": pageHeader,
     "person-avatar": personAvatar,
     "radius-scale": radiusScale,

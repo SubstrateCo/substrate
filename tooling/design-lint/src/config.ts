@@ -176,6 +176,7 @@ export const designConfig = {
         "design/no-raw-validation-text": "error",
         "design/no-solid-destructive": "error",
         "design/no-tooltip-on-toggle-item": "error",
+        "design/notice-title": "error",
         "design/page-header": "warn",
         "design/person-avatar": "warn",
         "design/radius-scale": "warn",
