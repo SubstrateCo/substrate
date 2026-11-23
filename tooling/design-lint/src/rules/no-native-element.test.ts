@@ -27,6 +27,12 @@ ruleTester.run("no-native-element", noNativeElement, {
       errors: [{ messageId: "native" }],
     },
     { code: "<select><option>One</option></select>", errors: [{ messageId: "native" }] },
+    { code: "<pre>{output}</pre>", errors: [{ messageId: "native" }] },
+    { code: '<progress aria-label="Uploading picture" />', errors: [{ messageId: "native" }] },
+    {
+      code: "<details><summary>Rules</summary>{rules}</details>",
+      errors: [{ messageId: "native" }, { messageId: "native" }],
+    },
     {
       code: "<table><tbody><tr><td>One</td></tr></tbody></table>",
       errors: [

@@ -1,6 +1,7 @@
 import type { AgentRequestPayload } from "@substrate/contracts/agent-work";
 
 import { PendingButton } from "@/components/feedback/pending-button";
+import { CodeBlock, CodeBlockContent } from "@/components/ui/code-block";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -36,9 +37,11 @@ export function ApprovalRequest({
   return (
     <div className="grid gap-2.5">
       {payload.detail && (
-        <pre className="max-h-48 overflow-auto rounded-lg bg-inset p-2 font-mono text-xs wrap-anywhere whitespace-pre-wrap">
-          {payload.detail}
-        </pre>
+        <CodeBlock size="sm">
+          <CodeBlockContent wrap className="max-h-48">
+            {payload.detail}
+          </CodeBlockContent>
+        </CodeBlock>
       )}
       <div className="flex flex-wrap gap-2">
         {primary.map((option) => (

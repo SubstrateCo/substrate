@@ -130,6 +130,25 @@ export default defineConfig({
       },
     },
     {
+      // Line numbers and diff markers draw their gutter with CSS counters and generated content.
+      files: ["apps/web/src/components/ui/code-block.tsx"],
+      rules: {
+        "shadcn/no-arbitrary-values": [
+          "error",
+          {
+            allow: [
+              "grid-cols-[auto_1fr]",
+              "in-data-numbered:[counter-increment:line]",
+              "content-[counter(line)]",
+              "in-data-numbered:supports-[content:counter(line)/'']:before:content-[counter(line)/'']",
+              "content-['+']",
+              "content-['−']",
+            ],
+          },
+        ],
+      },
+    },
+    {
       files: ["apps/web/src/components/messaging/composer/composer-view.tsx"],
       rules: {
         "shadcn/no-arbitrary-values": ["error", { allow: ["max-h-[25dvh]"] }],

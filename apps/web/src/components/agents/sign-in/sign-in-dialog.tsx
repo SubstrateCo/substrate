@@ -5,6 +5,7 @@ import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
+import { CodeBlock, CodeBlockContent } from "@/components/ui/code-block";
 import {
   Dialog,
   DialogBody,
@@ -73,37 +74,39 @@ function OutputLog({ output, label }: { output: string; label: string }) {
     if (element && following.current) element.scrollTop = element.scrollHeight;
   }, [output]);
   return (
-    <pre
-      ref={log}
-      role="log"
-      aria-label={`${label} sign-in output`}
-      tabIndex={0}
-      onScroll={(event) => {
-        const element = event.currentTarget;
-        following.current = element.scrollHeight - element.scrollTop - element.clientHeight < 16;
-      }}
-      className="max-h-72 min-h-32 overflow-y-auto rounded-lg border bg-inset p-3 font-mono text-xs/relaxed wrap-anywhere whitespace-pre-wrap focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-    >
-      {output ? (
-        positionedSegments(output).map((segment) =>
-          segment.href ? (
-            <a
-              key={segment.start}
-              href={segment.href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary underline underline-offset-2"
-            >
-              {segment.text}
-            </a>
-          ) : (
-            <span key={segment.start}>{segment.text}</span>
-          ),
-        )
-      ) : (
-        <span className="text-muted-foreground">No output yet.</span>
-      )}
-    </pre>
+    <CodeBlock size="sm">
+      <CodeBlockContent
+        ref={log}
+        role="log"
+        aria-label={`${label} sign-in output`}
+        wrap
+        onScroll={(event) => {
+          const element = event.currentTarget;
+          following.current = element.scrollHeight - element.scrollTop - element.clientHeight < 16;
+        }}
+        className="max-h-72 min-h-32"
+      >
+        {output ? (
+          positionedSegments(output).map((segment) =>
+            segment.href ? (
+              <a
+                key={segment.start}
+                href={segment.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline underline-offset-2"
+              >
+                {segment.text}
+              </a>
+            ) : (
+              <span key={segment.start}>{segment.text}</span>
+            ),
+          )
+        ) : (
+          <span className="text-muted-foreground">No output yet.</span>
+        )}
+      </CodeBlockContent>
+    </CodeBlock>
   );
 }
 

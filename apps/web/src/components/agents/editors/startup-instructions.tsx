@@ -4,6 +4,7 @@ import {
   type HarnessKind,
 } from "@substrate/contracts/harness";
 
+import { CodeBlock, CodeBlockContent } from "@/components/ui/code-block";
 import { Heading } from "@/components/ui/heading";
 
 export function StartupInstructions({
@@ -35,9 +36,11 @@ export function StartupInstructions({
           sessions. Existing agent-folder files are kept; Reset defaults in Skills rewrites them.
         </p>
       </div>
-      <pre className="max-h-64 overflow-y-auto rounded-lg bg-inset p-3 font-mono text-xs/relaxed wrap-anywhere whitespace-pre-wrap text-muted-foreground">
-        {text}
-      </pre>
+      <CodeBlock size="sm" variant="muted">
+        <CodeBlockContent wrap className="max-h-64">
+          {text}
+        </CodeBlockContent>
+      </CodeBlock>
     </section>
   );
 }

@@ -3,7 +3,9 @@ import { harnessInstructionsFiles, type HarnessKind } from "@substrate/contracts
 import { useId, type ComponentProps } from "react";
 
 import { StartupInstructions } from "./startup-instructions";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import { Pressable } from "@/components/ui/pressable";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "cn";
 import { ChevronRight } from "lucide-react";
@@ -69,23 +71,29 @@ export function AgentInstructions({
         )}
       </Field>
       {defaults && (
-        <details className="group rounded-lg border">
-          <summary className="flex cursor-pointer list-none items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground select-none hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none [&::-webkit-details-marker]:hidden">
-            <ChevronRight
-              aria-hidden="true"
-              className="size-4 shrink-0 transition-transform duration-150 ease-out group-open:rotate-90 motion-reduce:transition-none"
-            />
-            View built-in Substrate rules
-          </summary>
-          <div className="max-h-64 overflow-y-auto border-t p-3">
-            <StartupInstructions
-              harness={harness}
-              name={name}
-              agentId={agentId}
-              organizationId={organizationId}
-            />
+        <Collapsible asChild>
+          <div className="group/rules rounded-lg border">
+            <CollapsibleTrigger asChild>
+              <Pressable className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm text-muted-foreground select-none hover:text-foreground">
+                <ChevronRight
+                  aria-hidden="true"
+                  className="size-4 shrink-0 transition-transform duration-150 ease-out group-data-[state=open]/rules:rotate-90 motion-reduce:transition-none"
+                />
+                View built-in Substrate rules
+              </Pressable>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="max-h-64 overflow-y-auto border-t p-3">
+                <StartupInstructions
+                  harness={harness}
+                  name={name}
+                  agentId={agentId}
+                  organizationId={organizationId}
+                />
+              </div>
+            </CollapsibleContent>
           </div>
-        </details>
+        </Collapsible>
       )}
     </div>
   );

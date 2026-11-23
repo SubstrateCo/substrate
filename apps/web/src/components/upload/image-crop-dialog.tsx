@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "../ui/dialog";
+import { Progress } from "../ui/progress";
 import type { CropArea } from "./crop-image";
 import { ImageCropControls } from "./image-crop-controls";
 import { ImageCropper } from "./image-cropper";
@@ -139,10 +140,7 @@ export function ImageCropDialog({
           </fieldset>
           <FormMessage error={error} />
           {pending && (
-            <progress
-              aria-label={committing ? "Finishing picture" : "Uploading picture"}
-              className="w-full accent-primary"
-            />
+            <Progress aria-label={committing ? "Finishing picture" : "Uploading picture"} />
           )}
         </DialogBody>
         <DialogFooter>

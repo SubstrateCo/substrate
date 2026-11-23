@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import { CodeBlock, CodeBlockContent } from "@/components/ui/code-block";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronRight } from "lucide-react";
 
@@ -19,9 +20,11 @@ export function TechnicalDetails({ children }: { children: string }) {
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent>
-        <pre className="mt-1.5 max-h-40 overflow-auto rounded-lg border bg-inset p-2 font-mono text-xs wrap-anywhere whitespace-pre-wrap text-muted-foreground">
-          {children}
-        </pre>
+        <CodeBlock size="sm" variant="muted" className="mt-1.5">
+          <CodeBlockContent wrap className="max-h-40">
+            {children}
+          </CodeBlockContent>
+        </CodeBlock>
       </CollapsibleContent>
     </Collapsible>
   );
