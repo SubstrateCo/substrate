@@ -52,12 +52,7 @@ export function SignupForm({
           error={error}
           errorDescription="We couldn’t create your account. Please try again."
         />
-        <PendingButton
-          className="w-full"
-          size="lg"
-          pending={pending}
-          pendingLabel="Creating account."
-        >
+        <PendingButton className="w-full" size="lg" pending={pending} pendingLabel="Create account">
           Create account
         </PendingButton>
       </NativeForm>

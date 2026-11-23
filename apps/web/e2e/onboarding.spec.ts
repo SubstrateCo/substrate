@@ -11,7 +11,7 @@ test("a visitor creates an organization before installing and can resume setup",
   const email = `public-setup-${id}@example.test`;
   const password = `Setup-${id}!`;
   await page.goto("/");
-  await page.getByRole("link", { name: "Create organization", exact: true }).click();
+  await page.getByRole("link", { name: "Create account", exact: true }).click();
   await signUp(page, email, password);
   await verifyEmail(page, request, email);
   await signIn(page, email, password);
@@ -107,9 +107,7 @@ test("a desktop-sent teammate invitation can be accepted by a new user in the br
 test("public setup remains usable on a narrow screen", async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto("/");
-  await expect(
-    page.getByRole("link", { name: "Create organization", exact: true }),
-  ).toBeInViewport();
+  await expect(page.getByRole("link", { name: "Create account", exact: true })).toBeInViewport();
   await page.goto("/download");
   await expect(
     page.getByRole("link", { name: "Download for Windows", exact: true }),

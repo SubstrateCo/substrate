@@ -86,11 +86,11 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
       description={
         missing
           ? "It may have expired or been sent to another email. Sign in with the invited email, or ask the sender for a new invitation."
-          : "Join from your own organization. You won’t become a member of the inviting workspace."
+          : "Join from your own workspace. You won’t become a member of the inviting workspace."
       }
       actions={
         <>
-          <AuthNavLink to="/onboarding">Workspaces</AuthNavLink>
+          <AuthNavLink to="/organizations">Workspaces</AuthNavLink>
           <SignOutButton destination={path} />
         </>
       }
@@ -99,7 +99,7 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
       {organizations.error && (
         <ErrorState
           compact
-          title="Couldn’t load organizations"
+          title="Couldn’t load workspaces"
           onRetry={() => void organizations.refetch()}
         />
       )}
@@ -207,7 +207,7 @@ function InvitationOutcome({
           className="w-full"
           size="lg"
           pending={opening}
-          pendingLabel="Opening."
+          pendingLabel="Continue setup"
           onClick={() => onOpen(accepted)}
         >
           Continue setup
@@ -218,10 +218,10 @@ function InvitationOutcome({
     return (
       <>
         <p role="status" className="text-sm">
-          Approval requested. An owner or admin of your organization must approve this connection in
+          Approval requested. An owner or admin of your workspace must approve this connection in
           External collaboration settings. No access has been granted yet.
         </p>
-        <Button variant="outline" onClick={onCheckApproval}>
+        <Button variant="outline" size="lg" className="w-full" onClick={onCheckApproval}>
           <RefreshCw aria-hidden="true" />
           Check approval
         </Button>
@@ -242,7 +242,7 @@ function InvitationLoadNotice({
 }) {
   return (
     <>
-      {loading && <LoadingState label="Loading invitation…" rows={2} />}
+      {loading && <LoadingState label="Loading invitation" rows={2} />}
       {error &&
         (isPermanentFailure(error) ? (
           <WorkspacesLink />
@@ -261,7 +261,7 @@ function InvitationLoadNotice({
 function WorkspacesLink() {
   return (
     <Button asChild className="w-full" size="lg">
-      <Link to="/onboarding">Go to your workspaces</Link>
+      <Link to="/organizations">Go to your workspaces</Link>
     </Button>
   );
 }

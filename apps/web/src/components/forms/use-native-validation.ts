@@ -18,6 +18,8 @@ function messageFor(control: Control) {
     label: control.labels?.[0]?.textContent ?? control.getAttribute("aria-label") ?? undefined,
     title: control.title || undefined,
     missingMessage: control.dataset.missingMessage,
+    // oxlint-disable-next-line design/no-raw-validation-text -- With customError set, this is the product copy the page passed to setCustomValidity, not browser text.
+    customMessage: control.validity.customError ? control.validationMessage : undefined,
   });
 }
 

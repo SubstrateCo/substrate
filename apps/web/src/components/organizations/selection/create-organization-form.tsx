@@ -20,8 +20,10 @@ export function CreateOrganizationForm({ destination = "/dashboard" }: { destina
           errorDescription="Your workspace was created, but we couldn’t open it. Try again without creating another one."
         />
         <PendingButton
+          className="w-full"
+          size="lg"
           pending={activate.isPending}
-          pendingLabel="Opening…"
+          pendingLabel="Continue setup"
           onClick={() => activate.mutate(created.id)}
         >
           Continue setup

@@ -11,10 +11,12 @@ import { desktopReleaseQueryOptions } from "@/queries/desktop/release";
 export function DesktopInstall({
   destination,
   browserLink,
+  heading,
 }: {
   destination: string;
   /** Where "Continue in browser" goes. */
   browserLink: LinkProps;
+  heading?: boolean;
 }) {
   const release = useQuery(desktopReleaseQueryOptions());
   const path = desktopPath.safeParse(safeRedirect(destination));
@@ -26,6 +28,7 @@ export function DesktopInstall({
       loading={release.isPending}
       error={release.error}
       onRetry={() => void release.refetch()}
+      heading={heading}
     />
   );
 }

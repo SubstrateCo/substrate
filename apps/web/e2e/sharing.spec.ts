@@ -11,7 +11,7 @@ import {
 import { expect, type Page } from "@playwright/test";
 
 async function chooseOrganization(page: Page, name: string) {
-  await page.getByRole("combobox", { name: "Your organization", exact: true }).click();
+  await page.getByRole("combobox", { name: "Your workspace", exact: true }).click();
   await page.getByRole("option", { name, exact: true }).click();
 }
 async function accept(page: Page) {
@@ -63,7 +63,7 @@ test("a new partner signs up, creates their own org, and accepts a desktop chann
   });
   expect(invitationCheck.ok(), await invitationCheck.text()).toBe(true);
   await expect(page.getByText(history, { exact: true })).toHaveCount(0);
-  await page.getByRole("link", { name: "Create an organization", exact: true }).click();
+  await page.getByRole("link", { name: "Create a workspace", exact: true }).click();
   const name = `Partner ${crypto.randomUUID()}`;
   await page.getByLabel("Workspace name", { exact: true }).fill(name);
   await page.getByRole("button", { name: "Edit", exact: true }).click();

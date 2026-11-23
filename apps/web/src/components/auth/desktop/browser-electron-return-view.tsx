@@ -36,7 +36,7 @@ export function BrowserElectronReturn({
         className="w-full"
         size="lg"
         pending={pending}
-        pendingLabel="Returning."
+        pendingLabel="Continue to Substrate"
         onClick={onContinue}
       >
         Continue to Substrate

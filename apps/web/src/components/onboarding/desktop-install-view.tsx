@@ -17,6 +17,7 @@ export function DesktopInstallView({
   loading,
   error,
   onRetry,
+  heading = true,
 }: {
   openHref: string;
   browserLink: LinkProps;
@@ -24,6 +25,8 @@ export function DesktopInstallView({
   loading: boolean;
   error: Error | null;
   onRetry: () => void;
+  /** Whether the step shows its own title. Off when the page title already names the app. */
+  heading?: boolean;
 }) {
   const openInstalled = (
     <Button asChild size="lg" variant="outline">
@@ -46,26 +49,37 @@ export function DesktopInstallView({
     description = "Keep working in your browser for now. If you already have the app, open it.";
   }
 
+  const summary = loading ? (
+    <Skeleton className="h-4 w-56" />
+  ) : (
+    <p className="text-sm text-muted-foreground">{description}</p>
+  );
+
   return (
-    <section className="space-y-4" aria-labelledby="desktop-install-title" aria-busy={loading}>
-      <div className="flex items-start gap-3">
-        <span
-          aria-hidden="true"
-          className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground"
-        >
-          <Laptop className="size-4" />
-        </span>
-        <div className="min-w-0 space-y-1">
-          <h2 id="desktop-install-title" className="text-sm font-semibold">
-            {title}
-          </h2>
-          {loading ? (
-            <Skeleton className="h-4 w-56" />
-          ) : (
-            <p className="text-sm text-muted-foreground">{description}</p>
-          )}
+    <section
+      className="space-y-4"
+      aria-labelledby={heading ? "desktop-install-title" : undefined}
+      aria-label={heading ? undefined : title}
+      aria-busy={loading}
+    >
+      {heading ? (
+        <div className="flex items-start gap-3">
+          <span
+            aria-hidden="true"
+            className="flex size-9 shrink-0 items-center justify-center rounded-lg bg-accent text-accent-foreground"
+          >
+            <Laptop className="size-4" />
+          </span>
+          <div className="min-w-0 space-y-1">
+            <h2 id="desktop-install-title" className="text-sm font-semibold">
+              {title}
+            </h2>
+            {summary}
+          </div>
         </div>
-      </div>
+      ) : (
+        summary
+      )}
       {error && (
         <ErrorState
           compact

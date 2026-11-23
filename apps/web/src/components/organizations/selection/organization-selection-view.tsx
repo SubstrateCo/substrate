@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { AuthFrame } from "../../auth/auth-frame";
-import { AuthNavLink } from "../../auth/auth-link";
-import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
 import { SkeletonText } from "../../feedback/skeleton-text";
 import { useFocusAfterRender } from "../../feedback/use-focus-after-render";
@@ -10,11 +8,11 @@ import { Button } from "../../ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { Item } from "../../ui/item";
 import { Separator } from "../../ui/separator";
-import { Skeleton } from "../../ui/skeleton";
-import { Spinner } from "../../ui/spinner";
-import { initials } from "@/lib/people/initials";
+import { WorkspaceTile } from "../workspace-tile";
 import type { ResourceStatus } from "@/lib/resource-state";
-import { Building2, ChevronRight, Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
+
+type Workspace = { id: string; name: string; logo?: string | null };
 
 export function OrganizationSelection({
   organizations,
@@ -29,7 +27,7 @@ export function OrganizationSelection({
   invitations,
   hasInvitations = false,
 }: {
-  organizations?: { id: string; name: string }[];
+  organizations?: Workspace[];
   state: ResourceStatus;
   loading?: boolean;
   /** The workspace being opened, while it opens. */
@@ -65,16 +63,7 @@ export function OrganizationSelection({
       : "Open a workspace you belong to, or create one for your team.";
 
   return (
-    <AuthFrame
-      title="Choose a workspace"
-      description={description}
-      actions={
-        <>
-          <AuthNavLink to="/settings/user/invitations">Your invitations</AuthNavLink>
-          {signOut}
-        </>
-      }
-    >
+    <AuthFrame title="Choose a workspace" description={description} actions={signOut}>
       {invitations}
       {state === "loading" && !organizations?.length && <WorkspaceListLoading />}
       {loadError && (
@@ -86,13 +75,6 @@ export function OrganizationSelection({
             retryOrigin.current = document.activeElement;
             onRetry();
           }}
-        />
-      )}
-      {!loading && !loadError && organizations?.length === 0 && !hasInvitations && (
-        <ContentNotice
-          icon={Building2}
-          title="No workspaces yet"
-          description="Create one below, or open an invitation link from your email."
         />
       )}
       {listed.length > 0 && (
@@ -135,33 +117,45 @@ function WorkspaceList({
   firstChoiceRef,
   onSelect,
 }: {
-  organizations: { id: string; name: string }[];
+  organizations: Workspace[];
   openingId?: string;
   firstChoiceRef: RefObject<HTMLButtonElement | null>;
   onSelect: (id: string) => void;
 }) {
   return (
-    <ul aria-label="Your workspaces" className="-mx-2.5 max-h-72 space-y-0.5 overflow-y-auto">
-      {organizations.map((organization, index) => {
-        const opening = openingId === organization.id;
-        return (
-          <li key={organization.id}>
-            <Item asChild size="xs">
-              <button
-                ref={index === 0 ? firstChoiceRef : undefined}
-                type="button"
-                className="flex-nowrap text-left font-medium hover:bg-row-hover disabled:pointer-events-none disabled:opacity-60 aria-busy:opacity-100"
-                disabled={openingId !== undefined}
-                aria-busy={opening}
-                onClick={() => onSelect(organization.id)}
-              >
-                <WorkspaceChoiceContent name={organization.name} opening={opening} />
-              </button>
-            </Item>
-          </li>
-        );
-      })}
-    </ul>
+    <section className="space-y-2" aria-labelledby="your-workspaces-title">
+      <h2 id="your-workspaces-title" className="text-xs font-medium text-muted-foreground">
+        Your workspaces
+      </h2>
+      <ul
+        aria-labelledby="your-workspaces-title"
+        className="-mx-2.5 max-h-72 space-y-0.5 overflow-y-auto"
+      >
+        {organizations.map((organization, index) => {
+          const opening = openingId === organization.id;
+          return (
+            <li key={organization.id}>
+              <Item asChild size="xs">
+                <button
+                  ref={index === 0 ? firstChoiceRef : undefined}
+                  type="button"
+                  className="flex-nowrap text-left font-medium hover:bg-row-hover disabled:pointer-events-none disabled:opacity-60 aria-busy:opacity-100"
+                  disabled={openingId !== undefined}
+                  aria-busy={opening}
+                  onClick={() => onSelect(organization.id)}
+                >
+                  <WorkspaceChoiceContent
+                    name={organization.name}
+                    logo={organization.logo}
+                    opening={opening}
+                  />
+                </button>
+              </Item>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 
@@ -219,6 +213,7 @@ function CreateWorkspace({
                 type="button"
                 variant="ghost"
                 size="sm"
+                className="-mr-2.5"
                 onClick={() => {
                   setCreating(false);
                   focusAfterRender(() => createTrigger.current);
@@ -235,19 +230,18 @@ function CreateWorkspace({
   );
 }
 
-function WorkspaceChoiceContent({ name, opening }: { name?: string; opening?: boolean }) {
+function WorkspaceChoiceContent({
+  name,
+  logo,
+  opening,
+}: {
+  name?: string;
+  logo?: string | null;
+  opening?: boolean;
+}) {
   return (
     <>
-      {name === undefined ? (
-        <Skeleton className="size-8 shrink-0" />
-      ) : (
-        <span
-          aria-hidden="true"
-          className="flex size-8 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-accent-foreground"
-        >
-          {opening ? <Spinner aria-hidden="true" role="presentation" /> : initials(name)}
-        </span>
-      )}
+      <WorkspaceTile name={name} logo={logo} opening={opening} />
       <span className="min-w-0 flex-1 wrap-anywhere">{name ?? <SkeletonText width="9rem" />}</span>
       <ChevronRight
         aria-hidden="true"

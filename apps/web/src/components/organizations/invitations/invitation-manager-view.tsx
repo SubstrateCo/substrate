@@ -69,9 +69,9 @@ export function InvitationManager({
     <section aria-labelledby="sent-invitations-title" className="space-y-3">
       <GroupTitle id="sent-invitations-title" title="Sent invitations" />
       {canceling && (
-        <div role="status" className="flex items-center gap-2 text-sm text-muted-foreground">
+        <div role="status" className="flex items-center text-muted-foreground">
           <Spinner aria-hidden="true" role="presentation" />
-          Canceling invitation.
+          <span className="sr-only">Canceling invitation</span>
         </div>
       )}
       <InvitationTable
@@ -91,7 +91,7 @@ export function InvitationManager({
           description={`${confirming.email} won’t be able to join with this invitation. You can invite them again later.`}
           cancelLabel="Keep invitation"
           confirmLabel="Cancel invitation"
-          pendingLabel="Canceling"
+          pendingLabel="Cancel invitation"
           pending={canceling}
           onClose={() => setConfirming(undefined)}
           onConfirm={() => {
@@ -112,7 +112,7 @@ export function InvitationManager({
       </>
     );
   return (
-    <section className="space-y-6" aria-labelledby="invite-team-title">
+    <section className="space-y-4" aria-labelledby="invite-team-title">
       <header className="space-y-1">
         <h2 id="invite-team-title" className="text-sm font-semibold">
           Invite your team

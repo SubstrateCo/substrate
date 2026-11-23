@@ -37,7 +37,7 @@ export function DesktopSignIn({
         className="w-full"
         size="lg"
         pending={pending}
-        pendingLabel="Opening browser."
+        pendingLabel={waiting ? "Open browser again" : "Sign in with browser"}
         onClick={onSignIn}
       >
         {waiting ? "Open browser again" : "Sign in with browser"}

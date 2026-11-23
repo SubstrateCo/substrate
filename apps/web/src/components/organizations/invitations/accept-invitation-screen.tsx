@@ -34,12 +34,16 @@ export function AcceptInvitationScreen({ invitationId }: { invitationId: string 
     new Date(invitation.data.expiresAt).getTime() >= now &&
     invitation.data.status === "pending";
   const accepted = accept.data;
+  const signOut = (
+    <SignOutButton destination={`/accept-invitation/${encodeURIComponent(invitationId)}`} />
+  );
   if (accepted) {
     return (
       <InvitationAcceptedView
         pending={activate.isPending}
         error={activate.error}
         onContinue={() => activate.mutate(accepted.member.organizationId)}
+        signOut={signOut}
       />
     );
   }
@@ -66,9 +70,7 @@ export function AcceptInvitationScreen({ invitationId }: { invitationId: string 
         })
       }
       declineDialog={decline.dialog}
-      signOut={
-        <SignOutButton destination={`/accept-invitation/${encodeURIComponent(invitationId)}`} />
-      }
+      signOut={signOut}
     />
   );
 }

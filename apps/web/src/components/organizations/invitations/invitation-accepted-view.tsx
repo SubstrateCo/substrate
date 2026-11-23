@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { AuthNavLink } from "@/components/auth/auth-link";
 import { FormMessage } from "@/components/feedback/form-message";
@@ -7,16 +9,23 @@ export function InvitationAcceptedView({
   pending,
   error,
   onContinue,
+  signOut,
 }: {
   pending: boolean;
   error: Error | null;
   onContinue: () => void;
+  signOut: ReactNode;
 }) {
   return (
     <AuthFrame
       title="Invitation accepted"
       description="You’re a member now. Continue to open the workspace."
-      actions={<AuthNavLink to="/organizations">Workspaces</AuthNavLink>}
+      actions={
+        <>
+          <AuthNavLink to="/organizations">Workspaces</AuthNavLink>
+          {signOut}
+        </>
+      }
     >
       <FormMessage
         error={error}
@@ -26,7 +35,7 @@ export function InvitationAcceptedView({
         className="w-full"
         size="lg"
         pending={pending}
-        pendingLabel="Opening."
+        pendingLabel="Continue setup"
         onClick={onContinue}
       >
         Continue setup

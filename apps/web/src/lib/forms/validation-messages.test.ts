@@ -62,6 +62,22 @@ test("format and length failures explain how to correct the value", () => {
   ).toBe("Use lowercase letters.");
 });
 
+test("a custom validity message shows only when no built-in constraint fails", () => {
+  expect(field({}, { type: "password", customMessage: "The passwords don’t match." })).toBe(
+    "The passwords don’t match.",
+  );
+  expect(
+    field(
+      { valueMissing: true },
+      {
+        type: "password",
+        missingMessage: "Enter the new password again.",
+        customMessage: "The passwords don’t match.",
+      },
+    ),
+  ).toBe("Enter the new password again.");
+});
+
 test("schema issues without their own message never show library text", () => {
   z.config({ customError: schemaIssueMessage });
   const messages = (schema: z.ZodType<string>, value: string) =>

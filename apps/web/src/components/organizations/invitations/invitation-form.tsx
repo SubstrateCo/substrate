@@ -67,7 +67,7 @@ export function InvitationForm({
             name="email"
             type="email"
             autoComplete="email"
-            placeholder="teammate@company.com"
+            placeholder="For example: teammate@company.com"
             data-missing-message="Enter an email address to invite."
             required
           />
@@ -98,25 +98,26 @@ export function InvitationForm({
             </SelectContent>
           </Select>
         </Field>
+        {/* Before the button in the DOM, so a stacked form keeps the hint under the role. */}
+        <FieldDescription id={`${id}-role-description`} className="@lg:col-span-12 @lg:row-start-4">
+          {roleOption.description}
+        </FieldDescription>
         <PendingButton
           ref={inviteButton}
           className="@lg:col-span-3 @lg:col-start-10 @lg:row-start-2"
           disabled={disabled}
           pending={sending}
-          pendingLabel="Sending"
+          pendingLabel="Send invitation"
         >
           Send invitation
         </PendingButton>
-        <FieldDescription id={`${id}-role-description`} className="@lg:col-span-12 @lg:row-start-4">
-          {roleOption.description}
-        </FieldDescription>
       </form>
       {ownerInvite && (
         <ConfirmDialog
           title="Invite an owner?"
           description={`${ownerInvite} will have full control of this organization, including invitations, roles, and other owners.`}
           confirmLabel="Send owner invitation"
-          pendingLabel="Sending"
+          pendingLabel="Send owner invitation"
           pending={sending}
           onClose={() => setOwnerInvite(undefined)}
           onRestoreFocus={() => inviteButton.current?.focus()}

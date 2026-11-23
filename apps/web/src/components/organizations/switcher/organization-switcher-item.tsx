@@ -1,8 +1,6 @@
 import { SkeletonText } from "../../feedback/skeleton-text";
 import { DropdownMenuItem } from "../../ui/dropdown-menu";
-import { Skeleton } from "../../ui/skeleton";
-import { PicturePreview } from "../../upload/picture-preview";
-import { initials } from "@/lib/people/initials";
+import { WorkspaceTile } from "../workspace-tile";
 import { Check } from "lucide-react";
 
 export function OrganizationSwitcherItem({
@@ -43,22 +41,7 @@ function SwitcherItemContent({
 }) {
   return (
     <>
-      {organization ? (
-        <span
-          aria-hidden="true"
-          className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-surface text-xs font-semibold text-foreground shadow-surface"
-        >
-          <PicturePreview
-            src={organization.logo}
-            className="size-full rounded-lg object-contain"
-            fallback={initials(organization.name)}
-          />
-        </span>
-      ) : (
-        <span className="size-8 shrink-0 overflow-hidden rounded-lg">
-          <Skeleton className="size-full" />
-        </span>
-      )}
+      <WorkspaceTile name={organization?.name} logo={organization?.logo} />
       <span className="min-w-0 flex-1 truncate">
         {organization?.name ?? <SkeletonText width="8rem" />}
       </span>
