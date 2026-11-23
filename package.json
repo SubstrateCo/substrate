@@ -22,7 +22,7 @@
     "dup:check": "jscpd --fail-on-new-clones --reporters ai",
     "dup:baseline": "jscpd --update-baseline --reporters silent",
     "format": "oxfmt --write .",
-    "typecheck": "bun check && turbo run typecheck",
+    "typecheck": "turbo run typecheck",
     "test": "bun --env-file=.env scripts/check-test-services.ts && turbo run test",
     "db:generate": "bun run --filter @substrate/database db:generate",
     "db:migrate": "bun run --filter @substrate/database db:migrate",
