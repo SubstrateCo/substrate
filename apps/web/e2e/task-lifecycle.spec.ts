@@ -142,7 +142,7 @@ test("saving a description does not overwrite a title changed by another client"
       response.url().endsWith("/tasks/mutations") &&
       response.request().postDataJSON()?.action === "updateTask",
   );
-  await user.page.getByRole("button", { name: "Save task", exact: true }).click();
+  await user.page.getByRole("button", { name: "Save", exact: true }).click();
   const response = await saved;
   expect(response.ok()).toBe(true);
   expect(response.request().postDataJSON()).toMatchObject({ description: "My description edit" });

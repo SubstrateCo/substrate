@@ -20,6 +20,7 @@ export function OrganizationGeneral({ organizationId }: { organizationId: string
           title="Name"
           description="Usually your company or team name."
           label="Organization name"
+          missingMessage="Enter an organization name."
           value={organization.data.name}
           pending={rename.isPending}
           error={rename.error}

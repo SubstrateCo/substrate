@@ -5,7 +5,7 @@ import type { ImageCropDialogProps } from "@/components/upload/image-crop-dialog
 
 /**
  * Crops the picture, then hands the PNG to the caller's upload mutation. Both steps share one
- * abort signal, so Cancel upload stops either one until the upload commits.
+ * abort signal, so the dialog's Cancel stops either one until the upload commits.
  */
 export function usePictureUpload({
   file,

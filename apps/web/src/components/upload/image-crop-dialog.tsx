@@ -16,6 +16,7 @@ import type { CropArea } from "./crop-image";
 import { ImageCropControls } from "./image-crop-controls";
 import { ImageCropper } from "./image-cropper";
 import { FormMessage } from "@/components/feedback/form-message";
+import { modalDialogProps } from "@/components/feedback/modal-dialog";
 import { usePictureUpload } from "@/components/upload/use-picture-upload";
 
 export interface ImageCropDialogProps {
@@ -84,27 +85,10 @@ export function ImageCropDialog({
     setRotation(0);
     upload.clearError();
   }
+  const modal = modalDialogProps({ pending, onClose: onCancel, onRestoreFocus });
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open && !pending) onCancel();
-      }}
-    >
-      <DialogContent
-        onCloseAutoFocus={(event) => {
-          if (onRestoreFocus) {
-            event.preventDefault();
-            onRestoreFocus();
-          }
-        }}
-        onEscapeKeyDown={(event) => {
-          if (pending) event.preventDefault();
-        }}
-        onPointerDownOutside={(event) => {
-          if (pending) event.preventDefault();
-        }}
-      >
+    <Dialog {...modal.root}>
+      <DialogContent {...modal.content}>
         <DialogHeader>
           <DialogTitle>
             {
@@ -154,19 +138,20 @@ export function ImageCropDialog({
           </fieldset>
           <FormMessage error={error} />
           {pending && (
-            <div className="space-y-2">
-              <progress
-                aria-label={committing ? "Finishing picture" : "Uploading picture"}
-                className="w-full accent-primary"
-              />
-              <Button type="button" variant="outline" disabled={committing} onClick={cancelUpload}>
-                Cancel upload
-              </Button>
-            </div>
+            <progress
+              aria-label={committing ? "Finishing picture" : "Uploading picture"}
+              className="w-full accent-primary"
+            />
           )}
         </DialogBody>
         <DialogFooter>
-          <Button type="button" variant="outline" disabled={pending} onClick={onCancel}>
+          {/* While uploading, Cancel stops the upload; once it commits, nothing can stop it. */}
+          <Button
+            type="button"
+            variant="outline"
+            disabled={committing}
+            onClick={pending ? cancelUpload : onCancel}
+          >
             Cancel
           </Button>
           <Button

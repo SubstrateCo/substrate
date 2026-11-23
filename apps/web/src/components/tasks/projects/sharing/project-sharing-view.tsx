@@ -118,7 +118,6 @@ export function ProjectSharing({
               {...editor}
               title={`Share ${project}`}
               description="Give a person in this workspace access."
-              size="default"
               saveLabel="Share project"
               pendingLabel="Sharing…"
               onClose={() => {

@@ -38,6 +38,7 @@ export function UserProfile() {
             title="Name"
             description="Your full name or the name your team knows you by."
             label="Full name"
+            missingMessage="Enter your name."
             value={user.name}
             pending={rename.isPending}
             error={rename.error}

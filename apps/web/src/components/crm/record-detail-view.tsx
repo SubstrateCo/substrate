@@ -65,6 +65,7 @@ export function RecordDetailView({
     organizationId,
     entityId,
     name,
+    noun: { accounts: "account", contacts: "contact", deals: "deal" }[kind],
     level,
     record: ownerRecord,
     // Every member edits contacts, so they have no sharing or owner.

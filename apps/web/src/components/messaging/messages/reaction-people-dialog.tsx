@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import type { Message } from "@/api/messaging/requests";
+import { modalDialogProps } from "@/components/feedback/modal-dialog";
 import { ReactionList } from "@/components/messaging/messages/reaction-list";
 import {
   Dialog,
@@ -26,19 +27,10 @@ export function ReactionPeopleDialog({
   restoreFocus: () => void;
 }) {
   const [emoji, setEmoji] = useState(initialEmoji);
+  const modal = modalDialogProps({ onClose, onRestoreFocus: restoreFocus });
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <DialogContent
-        onCloseAutoFocus={(event) => {
-          event.preventDefault();
-          restoreFocus();
-        }}
-      >
+    <Dialog {...modal.root}>
+      <DialogContent {...modal.content}>
         <DialogHeader>
           <DialogTitle>Reactions</DialogTitle>
           <DialogDescription>See who reacted to this message.</DialogDescription>

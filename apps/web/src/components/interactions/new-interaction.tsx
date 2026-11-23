@@ -20,7 +20,6 @@ export function NewInteraction({
       pending={mutation.isPending}
       error={mutation.error}
       canSubmit={!!contact}
-      submitLabel="Create interaction"
       contactField={
         <CustomerPicker
           organizationId={organizationId}

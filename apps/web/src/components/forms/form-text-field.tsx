@@ -41,7 +41,9 @@ export function FormTextField({
   fieldClassName?: string;
 }) {
   const invalid = !field.state.meta.isValid;
-  const describedBy = [description && `${id}-description`, invalid && `${id}-error`]
+  // The error replaces the description so the two never stack.
+  const hint = invalid ? undefined : description;
+  const describedBy = [hint && `${id}-description`, invalid && `${id}-error`]
     .filter(Boolean)
     .join(" ");
   const control = {
@@ -65,7 +67,7 @@ export function FormTextField({
         <Input {...control} onChange={(event) => onChange(event.target.value)} />
       )}
       {invalid && <FieldError id={`${id}-error`} errors={field.state.meta.errors} />}
-      {description && <FieldDescription id={`${id}-description`}>{description}</FieldDescription>}
+      {hint && <FieldDescription id={`${id}-description`}>{hint}</FieldDescription>}
     </Field>
   );
 }

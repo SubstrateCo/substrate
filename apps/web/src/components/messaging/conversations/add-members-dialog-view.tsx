@@ -45,7 +45,6 @@ export function AddMembersDialog({
     <FormDialog
       title={title}
       description="Members of this workspace join right away. Anyone else gets an invitation."
-      size="default"
       saveLabel={recipients.length > 1 ? `Add ${recipients.length} people` : "Add people"}
       pending={pending}
       pendingLabel="Adding…"

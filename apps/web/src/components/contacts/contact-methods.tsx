@@ -7,21 +7,10 @@ import { CrmSelect } from "@/components/crm/crm-select";
 import { formText } from "@/components/crm/form-text";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
-import { FormMessage } from "@/components/feedback/form-message";
-import { PendingButton } from "@/components/feedback/pending-button";
-import { NativeField, NativeForm } from "@/components/forms/native-form";
+import { FormDialog } from "@/components/feedback/form-dialog";
+import { NativeField } from "@/components/forms/native-form";
 import { RecordSection, RecordSectionAction, recordRows } from "@/components/layout/record-section";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
 import { useRecordMutation } from "@/queries/records/mutations";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
@@ -140,88 +129,67 @@ function ContactMethodEditor({
   const mutation = useRecordMutation(organizationId, "contacts");
   const [type, setType] = useState<ContactIdentifierType>(record?.type ?? "email");
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open && !mutation.isPending) onClose();
+    <FormDialog
+      title={record ? "Edit contact method" : "New contact method"}
+      description="Contact details do not create a user, invite anyone, or merge matching contacts."
+      saveLabel={record ? "Save" : "Create contact method"}
+      nativeValidation
+      pending={mutation.isPending}
+      error={mutation.error}
+      errorDescription="Couldn’t save this contact method. Check the email address or international phone number."
+      onClose={onClose}
+      onSubmit={(form) => {
+        const fields = {
+          organizationId,
+          contactEntityId,
+          type,
+          value: formText(form, "value"),
+          label: formText(form, "label") || null,
+          extension: record?.extension ?? null,
+          isPrimary: record?.isPrimary ?? false,
+        };
+        mutation.mutate(
+          record
+            ? { action: "updateIdentifier", id: record.id, ...fields }
+            : { action: "addIdentifier", ...fields },
+          { onSuccess: onClose },
+        );
       }}
     >
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>{record ? "Edit contact method" : "New contact method"}</DialogTitle>
-          <DialogDescription>
-            Contact details do not create a user, invite anyone, or merge matching contacts.
-          </DialogDescription>
-        </DialogHeader>
-        <NativeForm
-          pending={mutation.isPending}
-          onSubmit={(form) => {
-            const fields = {
-              organizationId,
-              contactEntityId,
-              type,
-              value: formText(form, "value"),
-              label: formText(form, "label") || null,
-              extension: record?.extension ?? null,
-              isPrimary: record?.isPrimary ?? false,
-            };
-            mutation.mutate(
-              record
-                ? { action: "updateIdentifier", id: record.id, ...fields }
-                : { action: "addIdentifier", ...fields },
-              { onSuccess: onClose },
-            );
-          }}
-        >
-          <DialogBody>
-            <CrmSelect
-              label="Type"
-              value={type}
-              onValueChange={(next) => {
-                if (next === "email" || next === "phone") setType(next);
-              }}
-              options={[
-                { value: "email", label: "Email" },
-                { value: "phone", label: "Phone" },
-              ]}
-            />
-            <NativeField
-              id="contact-method-value"
-              name="value"
-              label={type === "email" ? "Email address" : "Phone number"}
-              type={type === "email" ? "email" : "tel"}
-              defaultValue={record?.value ?? ""}
-              description={
-                type === "phone"
-                  ? "Use the international format with + and the country calling code."
-                  : undefined
-              }
-              required
-              maxLength={1000}
-            />
-            <NativeField
-              id="contact-method-label"
-              name="label"
-              label="Label"
-              defaultValue={record?.label ?? ""}
-              placeholder="Work"
-              maxLength={1000}
-            />
-            <FormMessage
-              error={mutation.error}
-              errorDescription="Couldn’t save this contact method. Check the email address or international phone number."
-            />
-          </DialogBody>
-          <DialogFooter>
-            <Button variant="outline" disabled={mutation.isPending} onClick={onClose}>
-              Cancel
-            </Button>
-            <PendingButton type="submit" pending={mutation.isPending} pendingLabel="Saving…">
-              {record ? "Save" : "Add contact method"}
-            </PendingButton>
-          </DialogFooter>
-        </NativeForm>
-      </DialogContent>
-    </Dialog>
+      <CrmSelect
+        label="Type"
+        value={type}
+        onValueChange={(next) => {
+          if (next === "email" || next === "phone") setType(next);
+        }}
+        options={[
+          { value: "email", label: "Email" },
+          { value: "phone", label: "Phone" },
+        ]}
+      />
+      <NativeField
+        id="contact-method-value"
+        name="value"
+        label={type === "email" ? "Email address" : "Phone number"}
+        type={type === "email" ? "email" : "tel"}
+        defaultValue={record?.value ?? ""}
+        description={
+          type === "phone"
+            ? "Use the international format with + and the country calling code."
+            : undefined
+        }
+        required
+        missingMessage={type === "email" ? "Enter an email address." : "Enter a phone number."}
+        maxLength={1000}
+      />
+      <NativeField
+        id="contact-method-label"
+        name="label"
+        label="Label"
+        defaultValue={record?.label ?? ""}
+        placeholder="For example: Work"
+        maxLength={1000}
+      />
+    </FormDialog>
   );
 }

@@ -14,6 +14,7 @@ export function useRecordManagement({
   organizationId,
   entityId,
   name,
+  noun,
   level,
   record,
   enabled,
@@ -22,6 +23,8 @@ export function useRecordManagement({
   organizationId: string;
   entityId: string;
   name: string;
+  /** The record kind in copy, such as "deal". */
+  noun: string;
   level: RecordSharingProps["level"];
   record?: ResponsibleRecord;
   enabled: boolean;
@@ -51,6 +54,7 @@ export function useRecordManagement({
           organizationId={organizationId}
           entityId={entityId}
           name={name}
+          noun={noun}
           level={level}
           onClose={() => setDialog(null)}
           onRestoreFocus={() => onRestoreFocus("Share")}

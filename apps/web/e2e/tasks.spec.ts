@@ -147,7 +147,7 @@ test("create a project, task and subtask, then edit and reload the task", async 
   await sender.page.getByLabel("Task title", { exact: true }).fill("Ship reviewed release");
   await select(sender.page, "Status", "In progress");
   await select(sender.page, "Priority", "High");
-  await sender.page.getByRole("button", { name: "Save task", exact: true }).click();
+  await sender.page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(
     task.getByRole("heading", { name: "Ship reviewed release", exact: true }),
   ).toBeVisible();

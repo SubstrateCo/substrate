@@ -51,7 +51,6 @@ export function AgentInstructions({
         <FieldLabel htmlFor={id}>
           {creating ? "What should it help with? (optional)" : "Additional instructions (optional)"}
         </FieldLabel>
-        <FieldDescription id={`${id}-description`}>{description}</FieldDescription>
         <Textarea
           id={id}
           placeholder="For example: Review releases and summarize risks."
@@ -61,9 +60,13 @@ export function AgentInstructions({
           onBlur={onBlur}
           onChange={(event) => onChange(event.target.value)}
           aria-invalid={invalid}
-          aria-describedby={`${id}-description${invalid ? ` ${id}-error` : ""}`}
+          aria-describedby={invalid ? `${id}-error` : `${id}-description`}
         />
-        {invalid && <FieldError id={`${id}-error`} errors={errors} />}
+        {invalid ? (
+          <FieldError id={`${id}-error`} errors={errors} />
+        ) : (
+          <FieldDescription id={`${id}-description`}>{description}</FieldDescription>
+        )}
       </Field>
       {defaults && (
         <details className="group rounded-lg border">

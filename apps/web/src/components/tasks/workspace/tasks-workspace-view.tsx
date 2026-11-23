@@ -111,7 +111,6 @@ export function TasksWorkspace({
               {...editor}
               title="New project"
               description="Organization owners and admins can access every project. Share this project to give others access to its tasks."
-              size="default"
               saveLabel="Create project"
               pendingLabel="Creating project…"
               onClose={() => setCreating(false)}

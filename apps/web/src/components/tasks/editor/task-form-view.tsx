@@ -117,7 +117,7 @@ export function TaskForm({
   let submitLabel = parentTaskEntityId ? "Create subtask" : "Create task";
   if (task) {
     formLabel = "Edit task";
-    submitLabel = "Save task";
+    submitLabel = "Save";
   }
   const submit = () => {
     if (!pending && attachmentsReady) void form.handleSubmit();
@@ -186,7 +186,12 @@ export function TaskForm({
       >
         Cancel
       </Button>
-      <PendingButton pending={pending} disabled={!attachmentsReady} pendingLabel="Saving task.">
+      <PendingButton
+        type="submit"
+        pending={pending}
+        disabled={!attachmentsReady}
+        pendingLabel="Saving task."
+      >
         {submitLabel}
       </PendingButton>
     </>

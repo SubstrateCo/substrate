@@ -70,7 +70,8 @@ export function SkillEditor({
       {(isSubmitting) => (
         <FormDialog
           title={skill ? `Edit ${openingName(skill)}` : "New skill"}
-          saveLabel={skill ? "Save skill" : "Create skill"}
+          saveLabel={skill ? "Save" : "Create skill"}
+          size="lg"
           description="A skill is a short guide the agent opens when a task matches its description. It’s saved as a file in this agent’s folder on this desktop."
           pending={pending || isSubmitting}
           onClose={onClose}

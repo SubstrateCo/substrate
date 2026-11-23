@@ -1,16 +1,35 @@
-import { createContext, useContext, type ComponentProps, type ReactNode } from "react";
+import {
+  createContext,
+  useContext,
+  type ChangeEventHandler,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 
 import { Field, FieldDescription, FieldError, FieldLabel } from "../ui/field";
 import { Input } from "../ui/input";
+import { Textarea } from "../ui/textarea";
 import { useNativeValidation } from "./use-native-validation";
 
 const NativeValidation = createContext<ReturnType<typeof useNativeValidation> | null>(null);
+
+/** Gives NativeField the validation state of a form that is not NativeForm, such as FormDialog. */
+export function NativeValidationScope({
+  validation,
+  children,
+}: {
+  validation: ReturnType<typeof useNativeValidation>;
+  children: ReactNode;
+}) {
+  return <NativeValidation.Provider value={validation}>{children}</NativeValidation.Provider>;
+}
 
 /** A form that shows constraint failures inline in product copy and submits its FormData once. */
 export function NativeForm({
   pending,
   onSubmit,
-  className = "space-y-4",
+  // Gap, not space-y: a form inside a dialog is display: contents, and margins would still apply.
+  className = "flex flex-col gap-4",
   children,
 }: {
   pending: boolean;
@@ -20,7 +39,7 @@ export function NativeForm({
 }) {
   const validation = useNativeValidation();
   return (
-    <NativeValidation.Provider value={validation}>
+    <NativeValidationScope validation={validation}>
       <form
         className={className}
         onInvalidCapture={validation.onInvalid}
@@ -33,29 +52,44 @@ export function NativeForm({
       >
         {children}
       </form>
-    </NativeValidation.Provider>
+    </NativeValidationScope>
   );
 }
 
+type ControlProps = Omit<
+  ComponentProps<typeof Input> & ComponentProps<typeof Textarea>,
+  "id" | "onChange" | "aria-invalid" | "aria-describedby" | "required"
+>;
+
+type MissingValue =
+  | { required: true; missingMessage: string }
+  | { required?: false; missingMessage?: undefined };
+
 /**
- * A labelled input inside NativeForm. Its error and description ids derive from `id`. An empty
- * required field shows "Enter <label>." unless `missingMessage` gives better copy.
+ * A labelled input, or a textarea with `multiline`, inside NativeForm or a FormDialog with
+ * `nativeValidation`. Its error and description ids derive from `id`. A required field names
+ * what is missing in `missingMessage` ("Enter a contact name.").
  */
 export function NativeField({
   id,
   label,
   description,
   missingMessage,
+  required,
   labelAction,
+  multiline = false,
+  onChange,
   ...props
-}: ComponentProps<typeof Input> & {
-  id: string;
-  label: string;
-  description?: ReactNode;
-  missingMessage?: string;
-  /** A small link on the label row, such as "Forgot password?". */
-  labelAction?: ReactNode;
-}) {
+}: ControlProps &
+  MissingValue & {
+    id: string;
+    label: string;
+    description?: ReactNode;
+    /** A small link on the label row, such as "Forgot password?". */
+    labelAction?: ReactNode;
+    multiline?: boolean;
+    onChange?: ChangeEventHandler<HTMLInputElement | HTMLTextAreaElement>;
+  }) {
   const validation = useContext(NativeValidation);
   if (!validation) throw new Error("NativeField must be inside NativeForm.");
   const error = validation.errors[id];
@@ -65,15 +99,16 @@ export function NativeField({
     .filter(Boolean)
     .join(" ");
   const fieldLabel = <FieldLabel htmlFor={id}>{label}</FieldLabel>;
-  const input = (
-    <Input
-      {...props}
-      id={id}
-      data-missing-message={missingMessage}
-      aria-invalid={error ? true : undefined}
-      aria-describedby={describedBy || undefined}
-    />
-  );
+  const control = {
+    ...props,
+    id,
+    required,
+    onChange,
+    "data-missing-message": missingMessage,
+    "aria-invalid": error ? true : undefined,
+    "aria-describedby": describedBy || undefined,
+  };
+  const input = multiline ? <Textarea {...control} /> : <Input {...control} />;
   return (
     <Field data-invalid={Boolean(error)}>
       {labelAction ? (
@@ -114,6 +149,7 @@ export function EmailField({
       defaultValue={defaultValue}
       autoFocus={autoFocus}
       required
+      missingMessage="Enter your email address."
     />
   );
 }

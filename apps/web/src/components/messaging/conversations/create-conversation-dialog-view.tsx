@@ -95,7 +95,9 @@ export function CreateConversationDialog({
           field={field}
           id="conversation-name"
           label={kind === "channel" ? "Channel name" : "Group name (optional)"}
-          placeholder={kind === "channel" ? "e.g. product-updates" : "e.g. Launch team"}
+          placeholder={
+            kind === "channel" ? "For example: product-updates" : "For example: Launch team"
+          }
           maxLength={80}
           disabled={pending}
           required={kind === "channel"}
@@ -107,7 +109,6 @@ export function CreateConversationDialog({
     <FormDialog
       title={text.title}
       description={text.description}
-      size="default"
       saveLabel={text.submit}
       pending={pending}
       pendingLabel="Creating…"

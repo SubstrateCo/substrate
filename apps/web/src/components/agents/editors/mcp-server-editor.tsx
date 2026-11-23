@@ -5,7 +5,14 @@ import { useId, useState, type ReactNode } from "react";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { Button } from "@/components/ui/button";
-import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import {
+  Field,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+  FieldLegend,
+  FieldSet,
+} from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
@@ -45,7 +52,9 @@ function TextField({
   type?: string;
   onChange: (value: string) => void;
 }) {
-  const describedBy = [error && `${id}-error`, description && `${id}-description`]
+  // The error replaces the description so the two never stack.
+  const hint = error ? undefined : description;
+  const describedBy = [error && `${id}-error`, hint && `${id}-description`]
     .filter(Boolean)
     .join(" ");
   return (
@@ -61,7 +70,7 @@ function TextField({
         onChange={(event) => props.onChange(event.target.value)}
       />
       {error && <FieldError id={`${id}-error`}>{error}</FieldError>}
-      {description && <FieldDescription id={`${id}-description`}>{description}</FieldDescription>}
+      {hint && <FieldDescription id={`${id}-description`}>{hint}</FieldDescription>}
     </Field>
   );
 }
@@ -98,13 +107,9 @@ function RowGroup({
   children: ReactNode[];
 }) {
   return (
-    <div role="group" aria-labelledby={`${id}-title`} className="grid min-w-0 gap-2">
-      <div className="space-y-1">
-        <p id={`${id}-title`} className="text-sm font-medium">
-          {title}
-        </p>
-        <p className="text-sm text-muted-foreground">{description}</p>
-      </div>
+    <FieldSet id={id} className="min-w-0">
+      <FieldLegend variant="label">{title}</FieldLegend>
+      <FieldDescription>{description}</FieldDescription>
       {children.length ? (
         <ul className="grid min-w-0 gap-2">{children}</ul>
       ) : (
@@ -114,12 +119,8 @@ function RowGroup({
         <Plus />
         {addLabel}
       </Button>
-    </div>
+    </FieldSet>
   );
-}
-
-function RowError({ id, error }: { id: string; error?: string }) {
-  return error ? <FieldError id={id}>{error}</FieldError> : null;
 }
 
 function StdioFields({
@@ -180,7 +181,7 @@ function StdioFields({
                   onClick={() => update({ args: draft.args.filter((_, at) => at !== index) })}
                 />
               </div>
-              <RowError id={`${id}-arg-${index}-error`} error={error} />
+              <FieldError id={`${id}-arg-${index}-error`}>{error}</FieldError>
             </li>
           );
         })}
@@ -232,7 +233,7 @@ function StdioFields({
                   }
                 />
               </div>
-              <RowError id={describedBy ?? ""} error={error} />
+              <FieldError id={describedBy}>{error}</FieldError>
             </li>
           );
         })}
@@ -271,7 +272,8 @@ export function McpServerEditor({
   return (
     <FormDialog
       title={server ? `Edit ${server.name}` : "New MCP server"}
-      saveLabel={server ? "Save server" : "Create server"}
+      saveLabel={server ? "Save" : "Create server"}
+      size="lg"
       description="A tool server this agent can use. Substrate keeps it on this desktop and gives it to the agent when each session starts. Credentials stay with the server or the agent, never here."
       pending={pending}
       error={error}
@@ -295,10 +297,8 @@ export function McpServerEditor({
         error={errors?.name}
         onChange={(name) => update({ name })}
       />
-      <div className="grid gap-2">
-        <p id={`${id}-transport`} className="text-sm font-medium">
-          Connection
-        </p>
+      <FieldSet className="min-w-0">
+        <FieldLegend variant="label">Connection</FieldLegend>
         <div className="w-fit">
           <SegmentedControl
             aria-label="Connection"
@@ -307,7 +307,7 @@ export function McpServerEditor({
             onValueChange={(transport) => update({ transport })}
           />
         </div>
-      </div>
+      </FieldSet>
       {draft.transport === "stdio" ? (
         <StdioFields id={id} draft={draft} errors={errors} update={update} />
       ) : (

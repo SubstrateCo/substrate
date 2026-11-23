@@ -340,7 +340,7 @@ test("create interactions, browse directories and profiles, and inspect source c
   const date = new Date();
   const localDay = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
   await dialog.getByLabel("Occurred at", { exact: true }).fill(`${localDay}T10:00`);
-  await dialog.getByLabel("Ended at", { exact: true }).fill(`${localDay}T10:20`);
+  await dialog.getByLabel("Ended at (optional)", { exact: true }).fill(`${localDay}T10:20`);
   await dialog
     .getByLabel("Summary", { exact: true })
     .fill("Agreed on a pilot with the operations team.");

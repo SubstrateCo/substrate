@@ -10,7 +10,7 @@ import { useRecordPeople } from "./record-people-directory";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { FormMessage } from "@/components/feedback/form-message";
-import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
+import { Field, FieldDescription, FieldLabel, FieldLegend, FieldSet } from "@/components/ui/field";
 import {
   Select,
   SelectContent,
@@ -29,6 +29,8 @@ export type RecordSharingProps = {
   organizationId: string;
   entityId: string;
   name: string;
+  /** The record kind in copy, such as "deal". */
+  noun: string;
   level: Level;
   onClose: () => void;
   onRestoreFocus?: () => void;
@@ -38,6 +40,7 @@ export function RecordSharing({
   organizationId,
   entityId,
   name,
+  noun,
   level,
   onClose,
   onRestoreFocus,
@@ -62,8 +65,7 @@ export function RecordSharing({
       <FormDialog
         title={`Share ${name}`}
         description="Manage direct access to this record. Organization owners and admins also have access. Linked customer records and discussions keep their own access."
-        size="default"
-        saveLabel="Set access"
+        saveLabel={`Share ${noun}`}
         pendingLabel="Sharing…"
         pending={mutation.isPending}
         disabled={!canSubmit}
@@ -85,8 +87,8 @@ export function RecordSharing({
           );
         }}
       >
-        <div className="space-y-2">
-          <p className="text-sm font-medium">Direct access</p>
+        <FieldSet className="min-w-0">
+          <FieldLegend variant="label">Direct access</FieldLegend>
           {grants.isPending && <FieldDescription>Loading direct access…</FieldDescription>}
           <FormMessage
             error={grants.error}
@@ -103,7 +105,7 @@ export function RecordSharing({
               }}
             />
           )}
-        </div>
+        </FieldSet>
         <RecordPersonField
           id={`${id}-person`}
           directory={directory}

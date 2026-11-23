@@ -1,3 +1,5 @@
+import { useId } from "react";
+
 import { Field, FieldLabel } from "@/components/ui/field";
 import {
   Select,
@@ -27,15 +29,16 @@ export function CrmSelect({
   disabled?: boolean;
   emptyLabel?: string;
 }) {
+  const id = useId();
   return (
-    <CrmSelectField label={label} id={`crm-${name ?? label}`}>
+    <CrmSelectField label={label} id={id}>
       <Select
         name={name}
         value={value || "none"}
         onValueChange={(next) => onValueChange?.(next === "none" ? "" : next)}
         disabled={disabled}
       >
-        <SelectTrigger id={`crm-${name ?? label}`} className="w-full">
+        <SelectTrigger id={id} className="w-full">
           <SelectValue placeholder={`Choose ${label.toLowerCase()}`} />
         </SelectTrigger>
         <SelectContent>

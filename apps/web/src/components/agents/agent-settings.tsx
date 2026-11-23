@@ -159,6 +159,7 @@ export function AgentSettings({
               description="An agent answers your messages and helps in conversations you add it to. It runs on your desktop, and you can change everything later."
               saveLabel="Create agent"
               pendingLabel="Creating…"
+              size="lg"
               onClose={onClose}
               onRestoreFocus={createFocus.restore}
             >

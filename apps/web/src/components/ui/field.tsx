@@ -17,6 +17,24 @@ function FieldSet({ className, ...props }: React.ComponentProps<"fieldset">) {
   );
 }
 
+function FieldLegend({
+  className,
+  variant = "legend",
+  ...props
+}: React.ComponentProps<"legend"> & { variant?: "legend" | "label" }) {
+  return (
+    <legend
+      data-slot="field-legend"
+      data-variant={variant}
+      className={cn(
+        "mb-1.5 font-medium data-[variant=label]:text-sm data-[variant=legend]:text-base",
+        className,
+      )}
+      {...props}
+    />
+  );
+}
+
 // An invalid field marks the control border and FieldError only; the label stays foreground.
 const fieldVariants = cva("group/field flex w-full gap-2", {
   variants: {
@@ -136,4 +154,4 @@ function FieldError({
   );
 }
 
-export { Field, FieldLabel, FieldDescription, FieldError, FieldSet, FieldContent };
+export { Field, FieldLabel, FieldLegend, FieldDescription, FieldError, FieldSet, FieldContent };

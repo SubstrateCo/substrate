@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { useDeferredValue, useState } from "react";
+import { useDeferredValue, useId, useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -16,7 +16,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { resourceState } from "@/lib/resource-state";
 import { contactsOptions } from "@/queries/contacts/options";
 import { accountsOptions } from "@/queries/crm/options";
-import { Check, ChevronsUpDown } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 
 export function CustomerPicker({
   organizationId,
@@ -33,6 +33,7 @@ export function CustomerPicker({
   initialLabel?: string;
   onChange: (value: string) => void;
 }) {
+  const id = useId();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const querySearch = useDeferredValue(search);
@@ -59,21 +60,20 @@ export function CustomerPicker({
   const selected = options.find((option) => option.value === value);
   return (
     <Field>
-      <FieldLabel htmlFor={`customer-${label}`}>{label}</FieldLabel>
+      <FieldLabel htmlFor={id}>{label}</FieldLabel>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
           <Button
-            id={`customer-${label}`}
+            id={id}
             variant="field"
             role="combobox"
             aria-expanded={open}
-            aria-label={label}
             className="justify-between"
           >
             <span className="truncate">
               {value ? (selected?.label ?? selectedLabel ?? "Selected record") : "None"}
             </span>
-            <ChevronsUpDown aria-hidden />
+            <ChevronDown aria-hidden className="text-muted-foreground" />
           </Button>
         </PopoverTrigger>
         <PopoverContent variant="menu" align="start" className="w-80">

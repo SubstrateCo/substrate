@@ -76,7 +76,6 @@ export function TaskMoveDialog({
     <FormDialog
       title="Move task"
       description={<>Choose a project and parent for “{title}”. Its subtasks move with it.</>}
-      size="default"
       saveLabel="Move task"
       pendingLabel="Moving task…"
       pending={pending}

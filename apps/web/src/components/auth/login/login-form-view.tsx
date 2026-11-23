@@ -49,6 +49,7 @@ export function LoginForm({
             </AuthLink>
           }
           required
+          missingMessage="Enter your password."
         />
         <FormMessage
           error={error}

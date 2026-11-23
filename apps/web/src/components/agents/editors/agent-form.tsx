@@ -275,10 +275,10 @@ export function AgentForm({
                 {nameField}
                 <Field>
                   <FieldLabel htmlFor={`${formId}-model`}>Model</FieldLabel>
+                  {modelField}
                   <FieldDescription>
                     The model it thinks with. Leave the default if you’re not sure.
                   </FieldDescription>
-                  {modelField}
                 </Field>
                 {instructionsField}
               </>

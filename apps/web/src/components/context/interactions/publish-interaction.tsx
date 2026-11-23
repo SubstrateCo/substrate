@@ -8,21 +8,11 @@ import { useState } from "react";
 import { CrmResourceState } from "@/components/crm/crm-resource-state";
 import { CrmSelect } from "@/components/crm/crm-select";
 import { formText } from "@/components/crm/form-text";
-import { FormMessage } from "@/components/feedback/form-message";
-import { PendingButton } from "@/components/feedback/pending-button";
-import { NativeField, NativeForm } from "@/components/forms/native-form";
+import { FormDialog } from "@/components/feedback/form-dialog";
+import { NativeField } from "@/components/forms/native-form";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
+import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import { formatDateTime } from "@/lib/format/date";
 import { messageLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
@@ -75,119 +65,99 @@ function PublicationEditor({
   });
   const source = sources.find((row) => row.messageId === messageId);
   return (
-    <Dialog
-      open
-      onOpenChange={(next) => {
-        if (!next && !mutation.isPending) onClose();
+    <FormDialog
+      title="Record interaction from discussion"
+      description="Choose a linked message you can read. Confirm that this interaction belongs to this contact; a message author is not automatically a customer identity."
+      size="lg"
+      saveLabel="Create interaction"
+      pendingLabel="Recording…"
+      nativeValidation
+      disabled={!source || !consent || !!related.error}
+      pending={mutation.isPending}
+      error={mutation.error}
+      errorDescription="Couldn’t publish this interaction. Check your source access, then try again."
+      onClose={onClose}
+      onSubmit={(form) => {
+        if (!source || !consent || related.error) return;
+        mutation.mutate(
+          {
+            action: "publishInteraction",
+            organizationId,
+            contactEntityId,
+            messageId: source.messageId,
+            kind,
+            occurredAt: new Date(formText(form, "occurredAt")).toISOString(),
+            summary: formText(form, "summary"),
+            consentToContactAudience: true,
+          },
+          { onSuccess: onClose },
+        );
       }}
     >
-      <DialogContent size="lg">
-        <DialogHeader>
-          <DialogTitle>Record interaction from discussion</DialogTitle>
-          <DialogDescription>
-            Choose a linked message you can read. Confirm that this interaction belongs to this
-            contact; a message author is not automatically a customer identity.
-          </DialogDescription>
-        </DialogHeader>
-        <NativeForm
-          pending={mutation.isPending}
-          onSubmit={(form) => {
-            if (!source || !consent || related.error) return;
-            mutation.mutate(
-              {
-                action: "publishInteraction",
-                organizationId,
-                contactEntityId,
-                messageId: source.messageId,
-                kind,
-                occurredAt: new Date(formText(form, "occurredAt")).toISOString(),
-                summary: formText(form, "summary"),
-                consentToContactAudience: true,
-              },
-              { onSuccess: onClose },
-            );
-          }}
-        >
-          <DialogBody>
-            <CrmResourceState
-              compact
-              pending={related.isPending}
-              error={related.error}
-              onRetry={() => void related.refetch()}
-            />
-            <CrmSelect
-              label="Source message"
-              value={messageId}
-              onValueChange={setMessageId}
-              optional
-              options={sources.map((row) => ({
-                value: row.messageId,
-                label: `${row.authorName} · ${row.conversationName ?? "Discussion"} · ${formatDateTime(row.createdAt)}`,
-              }))}
-            />
-            {source && (
-              <Button variant="link" size="sm" asChild>
-                <Link {...messageLink(organizationId, source.conversationId, source.messageId)}>
-                  Review source message
-                </Link>
-              </Button>
-            )}
-            <CrmSelect
-              label="Kind"
-              value={kind}
-              onValueChange={(next) => {
-                const choice = publicationKinds.find((item) => item.value === next);
-                if (choice) setKind(choice.value);
-              }}
-              options={publicationKinds}
-            />
-            <NativeField
-              id="publication-occurred"
-              name="occurredAt"
-              label="Occurred at"
-              type="datetime-local"
-              required
-            />
-            <NativeField
-              id="publication-summary"
-              name="summary"
-              label="Approved summary"
-              required
-              maxLength={10000}
-              description="Write only the customer facts you approve for everyone in the workspace. Source content is not copied automatically."
-            />
-            <div className="flex items-start gap-2">
-              <Checkbox
-                id="publication-consent"
-                checked={consent}
-                onCheckedChange={(checked) => setConsent(checked === true)}
-              />
-              <Label htmlFor="publication-consent">
-                I approve this summary becoming visible to everyone in the workspace. It can remain
-                visible after the source message is restricted or deleted.
-              </Label>
-            </div>
-            <FormMessage
-              error={mutation.error}
-              errorDescription="Couldn’t publish this interaction. Check your source access, then try again."
-            />
-          </DialogBody>
-          <DialogFooter>
-            <Button variant="outline" disabled={mutation.isPending} onClick={onClose}>
-              Cancel
-            </Button>
-            <PendingButton
-              type="submit"
-              pending={mutation.isPending}
-              pendingLabel="Recording…"
-              disabled={!source || !consent || !!related.error}
-            >
-              Record interaction
-            </PendingButton>
-          </DialogFooter>
-        </NativeForm>
-      </DialogContent>
-    </Dialog>
+      <CrmResourceState
+        compact
+        pending={related.isPending}
+        error={related.error}
+        onRetry={() => void related.refetch()}
+      />
+      <CrmSelect
+        label="Source message"
+        value={messageId}
+        onValueChange={setMessageId}
+        optional
+        options={sources.map((row) => ({
+          value: row.messageId,
+          label: `${row.authorName} · ${row.conversationName ?? "Discussion"} · ${formatDateTime(row.createdAt)}`,
+        }))}
+      />
+      {source && (
+        <Button variant="link" size="sm" asChild>
+          <Link {...messageLink(organizationId, source.conversationId, source.messageId)}>
+            Review source message
+          </Link>
+        </Button>
+      )}
+      <CrmSelect
+        label="Kind"
+        value={kind}
+        onValueChange={(next) => {
+          const choice = publicationKinds.find((item) => item.value === next);
+          if (choice) setKind(choice.value);
+        }}
+        options={publicationKinds}
+      />
+      <NativeField
+        id="publication-occurred"
+        name="occurredAt"
+        label="Occurred at"
+        type="datetime-local"
+        required
+        missingMessage="Choose when it happened."
+      />
+      <NativeField
+        id="publication-summary"
+        name="summary"
+        label="Approved summary"
+        multiline
+        required
+        missingMessage="Enter the approved summary."
+        maxLength={10000}
+        description="Write only the customer facts you approve for everyone in the workspace. Source content is not copied automatically."
+      />
+      <Field orientation="horizontal">
+        <Checkbox
+          id="publication-consent"
+          checked={consent}
+          onCheckedChange={(checked) => setConsent(checked === true)}
+        />
+        <FieldContent>
+          <FieldLabel htmlFor="publication-consent">
+            I approve this summary becoming visible to everyone in the workspace. It can remain
+            visible after the source message is restricted or deleted.
+          </FieldLabel>
+        </FieldContent>
+      </Field>
+    </FormDialog>
   );
 }
 

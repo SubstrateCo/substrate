@@ -9,6 +9,7 @@ import { CopyLink } from "@/components/context/links/copy-link";
 import { FollowUps } from "@/components/crm/follow-ups";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { modalDialogProps } from "@/components/feedback/modal-dialog";
 import { Tag } from "@/components/feedback/tag";
 import { RecordSection } from "@/components/layout/record-section";
 import { Timestamp } from "@/components/time/timestamp";
@@ -42,14 +43,10 @@ export function InteractionRecordDialog({
     data ? [data.interaction] : [],
     apps.enabled("calendar"),
   );
+  const modal = modalDialogProps({ onClose });
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open) onClose();
-      }}
-    >
-      <DialogContent size="lg">
+    <Dialog {...modal.root}>
+      <DialogContent size="lg" {...modal.content}>
         <DialogHeader>
           <div className="flex items-center gap-1 pr-8">
             <DialogTitle>Interaction details</DialogTitle>

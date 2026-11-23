@@ -11,6 +11,7 @@ export function NameSettingsCard({
   title,
   description,
   label,
+  missingMessage,
   value,
   maxLength = 100,
   readOnlyNote,
@@ -23,6 +24,8 @@ export function NameSettingsCard({
   title: string;
   description: string;
   label: string;
+  /** Shown when the name is empty or only spaces, such as "Enter your name." */
+  missingMessage: string;
   value: string;
   maxLength?: number;
   /** Shown under a read-only field, instead of the Save controls, when the viewer can't edit. */
@@ -81,7 +84,8 @@ export function NameSettingsCard({
             required
             // A name made only of spaces is empty.
             pattern=".*\S.*"
-            title={`Enter ${label.toLowerCase()}.`}
+            title={missingMessage}
+            missingMessage={missingMessage}
             readOnly={Boolean(readOnlyNote)}
             description={readOnlyNote}
             onChange={(event) => setDraft(event.target.value)}

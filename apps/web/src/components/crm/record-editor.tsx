@@ -4,19 +4,8 @@ import { CrmSelect } from "./crm-select";
 import type { CrmKind } from "./crm-types";
 import { CustomerPicker } from "./customer-picker";
 import { formText } from "./form-text";
-import { FormMessage } from "@/components/feedback/form-message";
-import { PendingButton } from "@/components/feedback/pending-button";
-import { NativeField, NativeForm } from "@/components/forms/native-form";
-import { Button } from "@/components/ui/button";
-import {
-  Dialog,
-  DialogBody,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { FormDialog } from "@/components/feedback/form-dialog";
+import { NativeField } from "@/components/forms/native-form";
 import type { RecordWrite } from "@/queries/records/mutations";
 
 export type RecordDraft = {
@@ -129,80 +118,71 @@ export function RecordEditor({
     }
   }
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open && !pending) onClose();
-      }}
+    <FormDialog
+      title={record ? `Edit ${singular}` : `New ${singular}`}
+      description={
+        record
+          ? "Update this record without changing its access."
+          : "Records start with your access. Linking a customer does not share either record."
+      }
+      size={kind === "deals" ? "lg" : "default"}
+      saveLabel={record ? "Save" : `Create ${singular}`}
+      nativeValidation
+      pending={pending}
+      error={validation ?? error}
+      errorDescription="Couldn’t save this record. Refresh it and try again."
+      onClose={onClose}
+      onSubmit={submit}
     >
-      <DialogContent size="lg">
-        <DialogHeader>
-          <DialogTitle>{record ? `Edit ${singular}` : `New ${singular}`}</DialogTitle>
-          <DialogDescription>
-            {record
-              ? "Update this record without changing its access."
-              : "Records start with your access. Linking a customer does not share either record."}
-          </DialogDescription>
-        </DialogHeader>
-        <NativeForm pending={pending} onSubmit={submit}>
-          <DialogBody>
-            <RecordNameField kind={kind} record={record} />
-            {kind === "accounts" && <AccountFields record={record} />}
-            {kind === "deals" && (
-              <>
-                <div className="grid grid-cols-2 gap-4">
-                  <CustomerPicker
-                    organizationId={organizationId}
-                    kind="accounts"
-                    label="Account"
-                    value={accountId}
-                    onChange={setAccountId}
-                    initialLabel={accounts.find((account) => account.value === accountId)?.label}
-                  />
-                  <CustomerPicker
-                    organizationId={organizationId}
-                    kind="contacts"
-                    label="Primary contact"
-                    value={contactId}
-                    onChange={setContactId}
-                    initialLabel={contacts.find((contact) => contact.value === contactId)?.label}
-                  />
-                </div>
-                <CrmSelect
-                  label="Stage"
-                  value={stageId}
-                  onValueChange={setStageId}
-                  options={stages}
-                  disabled={!!record}
-                />
-                <DealTermsFields record={record} defaultCurrency={defaultCurrency} />
-              </>
-            )}
-            <NativeField
-              id="crm-summary"
-              name="summary"
-              label={kind === "contacts" ? "Notes" : "Summary"}
-              defaultValue={record?.summary ?? record?.notes ?? ""}
-              maxLength={20000}
+      <RecordNameField kind={kind} record={record} />
+      {kind === "accounts" && <AccountFields record={record} />}
+      {kind === "deals" && (
+        <>
+          <div className="grid grid-cols-2 gap-4">
+            <CustomerPicker
+              organizationId={organizationId}
+              kind="accounts"
+              label="Account"
+              value={accountId}
+              onChange={setAccountId}
+              initialLabel={accounts.find((account) => account.value === accountId)?.label}
             />
-            <FormMessage
-              error={validation ?? error}
-              errorDescription="Couldn’t save this record. Refresh it and try again."
+            <CustomerPicker
+              organizationId={organizationId}
+              kind="contacts"
+              label="Primary contact"
+              value={contactId}
+              onChange={setContactId}
+              initialLabel={contacts.find((contact) => contact.value === contactId)?.label}
             />
-          </DialogBody>
-          <DialogFooter>
-            <Button variant="outline" disabled={pending} onClick={onClose}>
-              Cancel
-            </Button>
-            <PendingButton type="submit" pending={pending} pendingLabel="Saving…">
-              {record ? "Save" : `Create ${singular}`}
-            </PendingButton>
-          </DialogFooter>
-        </NativeForm>
-      </DialogContent>
-    </Dialog>
+          </div>
+          <CrmSelect
+            label="Stage"
+            value={stageId}
+            onValueChange={setStageId}
+            options={stages}
+            disabled={!!record}
+          />
+          <DealTermsFields record={record} defaultCurrency={defaultCurrency} />
+        </>
+      )}
+      <NativeField
+        id="crm-summary"
+        name="summary"
+        label={kind === "contacts" ? "Notes" : "Summary"}
+        multiline
+        defaultValue={record?.summary ?? record?.notes ?? ""}
+        maxLength={20000}
+      />
+    </FormDialog>
   );
 }
+
+const missingName = {
+  accounts: "Enter an account name.",
+  contacts: "Enter a contact name.",
+  deals: "Enter a deal title.",
+} satisfies Record<CrmKind, string>;
 
 function RecordNameField({ kind, record }: { kind: CrmKind; record?: RecordDraft }) {
   return (
@@ -212,6 +192,7 @@ function RecordNameField({ kind, record }: { kind: CrmKind; record?: RecordDraft
       label={kind === "deals" ? "Title" : "Name"}
       defaultValue={record?.name ?? record?.displayName ?? record?.title ?? ""}
       required
+      missingMessage={missingName[kind]}
       maxLength={kind === "contacts" ? 1000 : 300}
     />
   );

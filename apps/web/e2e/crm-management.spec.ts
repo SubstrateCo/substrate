@@ -68,7 +68,7 @@ test("an owner shares and revokes a private account through its detail", async (
   const sharing = owner.page.getByRole("dialog", { name: `Share ${record.name}`, exact: true });
   await choosePerson(owner.page, actors.member.name);
   const shared = managementWrite(owner.page, "share");
-  await sharing.getByRole("button", { name: "Set access", exact: true }).click();
+  await sharing.getByRole("button", { name: "Share account", exact: true }).click();
   expect((await shared).status()).toBe(200);
   await expect(sharing).toHaveCount(0);
 
@@ -169,7 +169,7 @@ test("a creator who removes their own access closes management and sees only the
   await user.page.getByRole("combobox", { name: "Access", exact: true }).click();
   await user.page.getByRole("option", { name: "Can manage access", exact: true }).click();
   const shared = managementWrite(user.page, "share");
-  await user.page.getByRole("button", { name: "Set access", exact: true }).click();
+  await user.page.getByRole("button", { name: "Share account", exact: true }).click();
   expect((await shared).status()).toBe(200);
   await user.page.getByRole("button", { name: "Share", exact: true }).click();
   const ownGrant = user.page

@@ -37,7 +37,8 @@ test("create customer records, record a call, and advance a linked deal", async 
   const { page } = user;
   await page.emulateMedia({ colorScheme: "dark" });
   await visit(user, undefined, "/crm", { section: "accounts" });
-  await page.getByRole("button", { name: "New account", exact: true }).click();
+  // The empty list offers the same action; use the page header's.
+  await page.getByRole("button", { name: "New account", exact: true }).first().click();
   const accountDialog = page.getByRole("dialog", { name: "New account", exact: true });
   await accountDialog.getByLabel("Name", { exact: true }).fill("Northstar Labs");
   await accountDialog.getByLabel("Website", { exact: true }).fill("https://northstar.example");
@@ -68,7 +69,7 @@ test("create customer records, record a call, and advance a linked deal", async 
   await submitCrm(
     page,
     "createInteraction",
-    interactionDialog.getByRole("button", { name: "Record interaction", exact: true }),
+    interactionDialog.getByRole("button", { name: "Create interaction", exact: true }),
   );
   await expect(page.getByText(summary, { exact: true })).toBeVisible();
   await page.reload();

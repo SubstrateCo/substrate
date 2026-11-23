@@ -28,6 +28,8 @@ import {
   FieldDescription,
   FieldError,
   FieldLabel,
+  FieldLegend,
+  FieldSet,
 } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import {
@@ -118,14 +120,15 @@ export function RoutineEditor({
     <FormDialog
       title={editing ? `Edit ${editing}` : "New routine"}
       description={`${agentName} runs it on its desktop and posts in your direct message with it. Each saved change needs your approval before it runs.`}
-      saveLabel={editing ? "Save routine" : "Create routine"}
+      saveLabel={editing ? "Save" : "Create routine"}
+      size="lg"
       pending={pending}
       error={error}
       onClose={onCancel}
       onRestoreFocus={onRestoreFocus}
       onSubmit={() => form.handleSubmit()}
     >
-      <div ref={fieldsRef} className="grid min-w-0 gap-4">
+      <div ref={fieldsRef} className="contents">
         <Field data-invalid={!!errors.name}>
           <FieldLabel htmlFor={fieldId("name")}>Name</FieldLabel>
           <Input
@@ -151,17 +154,9 @@ export function RoutineEditor({
           />
           {fieldError("prompt")}
         </Field>
-        <div role="group" aria-labelledby={`${id}-schedule`} className="grid gap-3">
-          <div className="grid gap-1">
-            <p id={`${id}-schedule`} className="text-sm font-medium">
-              Schedule
-            </p>
-            {summary && (
-              <p className="text-sm text-muted-foreground" aria-live="polite">
-                {summary}
-              </p>
-            )}
-          </div>
+        <FieldSet className="min-w-0">
+          <FieldLegend variant="label">Schedule</FieldLegend>
+          {summary && <FieldDescription aria-live="polite">{summary}</FieldDescription>}
           <SegmentedControl
             aria-label="Repeats"
             value={schedule.frequency}
@@ -180,15 +175,16 @@ export function RoutineEditor({
                 maxLength={routineLimits.cron}
                 value={schedule.cron}
                 onChange={(event) => setScheduleField({ cron: event.target.value })}
-                {...errorProps("cron", true)}
+                {...errorProps("cron", !errors.cron)}
               />
-              {fieldError("cron")}
-              <FieldDescription id={`${fieldId("cron")}-description`}>
-                Five fields: minute, hour, day of month, month, and weekday.
-              </FieldDescription>
+              {fieldError("cron") || (
+                <FieldDescription id={`${fieldId("cron")}-description`}>
+                  Five fields: minute, hour, day of month, month, and weekday.
+                </FieldDescription>
+              )}
             </Field>
           ) : (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-4 sm:grid-cols-2">
               {schedule.frequency === "weekly" && (
                 <Field>
                   <FieldLabel htmlFor={`${id}-weekday`}>On</FieldLabel>
@@ -226,7 +222,7 @@ export function RoutineEditor({
               </Field>
             </div>
           )}
-        </div>
+        </FieldSet>
         <Field data-invalid={!!errors.timezone}>
           <FieldLabel htmlFor={fieldId("timezone")}>Time zone</FieldLabel>
           <TimeZonePicker

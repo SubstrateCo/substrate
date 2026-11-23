@@ -51,7 +51,6 @@ export function RecordOwner({
     <FormDialog
       title={`Reassign ${name}`}
       description="Choose the person responsible for this record. Responsibility is not security ownership and does not grant access."
-      size="default"
       saveLabel="Reassign responsibility"
       pendingLabel="Reassigning…"
       pending={mutation.isPending}

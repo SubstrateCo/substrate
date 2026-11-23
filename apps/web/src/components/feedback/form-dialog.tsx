@@ -1,7 +1,10 @@
 import type { KeyboardEventHandler, ReactNode } from "react";
 
 import { FormMessage } from "./form-message";
+import { modalDialogProps } from "./modal-dialog";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { NativeValidationScope } from "@/components/forms/native-form";
+import { useNativeValidation } from "@/components/forms/use-native-validation";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,6 +28,11 @@ export type FormDialogEditor = {
   onKeyDown?: KeyboardEventHandler<HTMLFormElement>;
 };
 
+/**
+ * The shell of every modal form. With `nativeValidation`, `NativeField` children validate with
+ * the browser's constraints and show product copy inline; otherwise the caller validates
+ * (TanStack Form) and the form is `noValidate`.
+ */
 export function FormDialog({
   title,
   saveLabel,
@@ -35,13 +43,14 @@ export function FormDialog({
   onSubmit,
   error,
   onRestoreFocus,
-  size = "lg",
+  size = "default",
   pendingLabel = "Saving…",
   disabled = false,
   errorDescription,
   status,
   formId,
   onKeyDown,
+  nativeValidation = false,
 }: {
   title: string;
   saveLabel: string;
@@ -49,7 +58,7 @@ export function FormDialog({
   children: ReactNode;
   pending: boolean;
   onClose: () => void;
-  onSubmit: () => Promise<void> | void;
+  onSubmit: (form: FormData) => Promise<void> | void;
   error?: Error | string | null;
   errorDescription?: string;
   onRestoreFocus?: () => void;
@@ -59,31 +68,13 @@ export function FormDialog({
   status?: string | null;
   formId?: string;
   onKeyDown?: KeyboardEventHandler<HTMLFormElement>;
+  nativeValidation?: boolean;
 }) {
+  const modal = modalDialogProps({ pending, onClose, onRestoreFocus });
+  const validation = useNativeValidation();
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => {
-        if (!open && !pending) onClose();
-      }}
-    >
-      <DialogContent
-        size={size}
-        onEscapeKeyDown={(event) => {
-          if (pending) event.preventDefault();
-        }}
-        onPointerDownOutside={(event) => {
-          if (pending) event.preventDefault();
-        }}
-        onCloseAutoFocus={
-          onRestoreFocus
-            ? (event) => {
-                event.preventDefault();
-                onRestoreFocus();
-              }
-            : undefined
-        }
-      >
+    <Dialog {...modal.root}>
+      <DialogContent size={size} {...modal.content}>
         <DialogHeader>
           <DialogTitle>{title}</DialogTitle>
           <DialogDescription>{description}</DialogDescription>
@@ -91,16 +82,22 @@ export function FormDialog({
         <form
           id={formId}
           onKeyDown={onKeyDown}
-          noValidate
+          noValidate={!nativeValidation}
+          onInvalidCapture={nativeValidation ? validation.onInvalid : undefined}
+          onInput={nativeValidation ? validation.onInput : undefined}
           onSubmit={(event) => {
             event.preventDefault();
             if (pending) return;
-            void onSubmit();
+            void onSubmit(new FormData(event.currentTarget));
           }}
         >
           <DialogBody>
             <FieldSet disabled={pending} className="min-w-0">
-              {children}
+              {nativeValidation ? (
+                <NativeValidationScope validation={validation}>{children}</NativeValidationScope>
+              ) : (
+                children
+              )}
             </FieldSet>
             <FormMessage error={error} errorDescription={errorDescription} />
           </DialogBody>
