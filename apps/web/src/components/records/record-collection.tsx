@@ -130,62 +130,20 @@ export function RecordCollection({
     cursors.at(-1),
     creating,
   );
-  const { deals, pipeline, settings } = queries;
-  const { query, state, rows, accountRows, contactRows, stages, canCreate } = collectionRecords(
-    kind,
-    queries,
-  );
-  const singular = singularLabels[kind];
+  const records = collectionRecords(kind, queries);
   const dealPipelineView = kind === "deals" && view === "pipeline";
-  const compactActions = kind !== "contacts";
-  const createButton = (
-    <Button
-      size={compactActions ? "icon-sm" : "sm"}
-      variant={compactActions ? "ghost" : "default"}
-      aria-label={`New ${singular}`}
-      disabled={!canCreate}
-      onClick={() => {
-        mutation.reset();
-        setCreating(true);
-      }}
-    >
-      <Plus aria-hidden />
-      {!compactActions && <>New {singular}</>}
-    </Button>
-  );
-  const actions = (
-    <>
-      <CrmExport
-        organizationId={organizationId}
-        kind={kind}
-        archived={archived ? "archived" : "active"}
-        search={debounced.query}
-        iconOnly={compactActions}
-      />
-      {compactActions ? (
-        <Tooltip>
-          <TooltipTrigger asChild>{createButton}</TooltipTrigger>
-          <TooltipContent>New {singular}</TooltipContent>
-        </Tooltip>
-      ) : (
-        createButton
-      )}
-    </>
-  );
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto p-6">
-      <PageHeader
-        title={sectionLabels[kind]}
-        description={
-          {
-            accounts: "Customer businesses and their connected people and pursuits.",
-            contacts: "Customer relationships, contact history, and shared context.",
-            deals: "Track each pursuit. Keep stages and closed outcomes separate.",
-          }[kind]
-        }
-        actions={
-          compactActions ? <ButtonGroup aria-label="CRM actions">{actions}</ButtonGroup> : actions
-        }
+      <RecordCollectionHeader
+        organizationId={organizationId}
+        kind={kind}
+        archived={archived}
+        search={debounced.query}
+        canCreate={records.canCreate}
+        onCreate={() => {
+          mutation.reset();
+          setCreating(true);
+        }}
       />
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="w-72 max-w-full">
@@ -224,12 +182,151 @@ export function RecordCollection({
           )}
         </div>
       </div>
+      <RecordCollectionResults
+        organizationId={organizationId}
+        kind={kind}
+        records={records}
+        queries={queries}
+        searchPending={debounced.pending}
+        showPipeline={dealPipelineView && !archived}
+        dealPipelineView={dealPipelineView}
+        page={cursors.length + 1}
+        onPrevious={() => setCursors((previous) => previous.slice(0, -1))}
+        onNext={(entityId) => setCursors((previous) => [...previous, entityId])}
+      />
+      {creating && (
+        <RecordEditor
+          kind={kind}
+          organizationId={organizationId}
+          defaultCurrency={resourceState(queries.settings).data?.defaultCurrency}
+          accounts={records.accountRows.map((row) => ({
+            value: row.entityId,
+            label: row.name,
+          }))}
+          contacts={records.contactRows.map((row) => ({
+            value: row.entityId,
+            label: row.name,
+          }))}
+          stages={records.stages.map((stage) => ({ value: stage.id, label: stage.name }))}
+          pending={mutation.isPending}
+          error={mutation.error}
+          onClose={() => setCreating(false)}
+          onSubmit={(write) =>
+            mutation.mutate(write, {
+              onSuccess: (result) => {
+                setCreating(false);
+                if ("entityId" in result)
+                  void navigate(
+                    kind === "contacts"
+                      ? contactLink(organizationId, result.entityId)
+                      : crmLink(organizationId, kind, result.entityId),
+                  );
+              },
+            })
+          }
+        />
+      )}
+    </div>
+  );
+}
+
+function RecordCollectionHeader({
+  organizationId,
+  kind,
+  archived,
+  search,
+  canCreate,
+  onCreate,
+}: {
+  organizationId: string;
+  kind: CrmKind;
+  archived: boolean;
+  search: string;
+  canCreate: boolean;
+  onCreate: () => void;
+}) {
+  const singular = singularLabels[kind];
+  const compactActions = kind !== "contacts";
+  const createButton = (
+    <Button
+      size={compactActions ? "icon-sm" : "sm"}
+      variant={compactActions ? "ghost" : "default"}
+      aria-label={`New ${singular}`}
+      disabled={!canCreate}
+      onClick={onCreate}
+    >
+      <Plus aria-hidden />
+      {!compactActions && <>New {singular}</>}
+    </Button>
+  );
+  const actions = (
+    <>
+      <CrmExport
+        organizationId={organizationId}
+        kind={kind}
+        archived={archived ? "archived" : "active"}
+        search={search}
+        iconOnly={compactActions}
+      />
+      {compactActions ? (
+        <Tooltip>
+          <TooltipTrigger asChild>{createButton}</TooltipTrigger>
+          <TooltipContent>New {singular}</TooltipContent>
+        </Tooltip>
+      ) : (
+        createButton
+      )}
+    </>
+  );
+  return (
+    <PageHeader
+      title={sectionLabels[kind]}
+      description={
+        {
+          accounts: "Customer businesses and their connected people and pursuits.",
+          contacts: "Customer relationships, contact history, and shared context.",
+          deals: "Track each pursuit. Keep stages and closed outcomes separate.",
+        }[kind]
+      }
+      actions={
+        compactActions ? <ButtonGroup aria-label="CRM actions">{actions}</ButtonGroup> : actions
+      }
+    />
+  );
+}
+
+function RecordCollectionResults({
+  organizationId,
+  kind,
+  records: { query, state, rows, stages },
+  queries: { deals, pipeline, settings },
+  searchPending,
+  showPipeline,
+  dealPipelineView,
+  page,
+  onPrevious,
+  onNext,
+}: {
+  organizationId: string;
+  kind: CrmKind;
+  records: ReturnType<typeof collectionRecords>;
+  queries: ReturnType<typeof useCollectionQueries>;
+  searchPending: boolean;
+  /** Open deals as a pipeline board instead of a list. */
+  showPipeline: boolean;
+  dealPipelineView: boolean;
+  page: number;
+  onPrevious: () => void;
+  onNext: (afterEntityId: string) => void;
+}) {
+  return (
+    <>
       <CrmResourceState
-        pending={(debounced.pending || query.isPending) && !state.data}
+        pending={(searchPending || query.isPending) && !state.data}
         error={state.data ? null : state.error}
         onRetry={() => void query.refetch()}
         loading={
-          dealPipelineView && !archived ? (
+          showPipeline ? (
             <DealPipelineLoading />
           ) : (
             <RecordList organizationId={organizationId} kind={kind} rows={[]} loading />
@@ -256,7 +353,7 @@ export function RecordCollection({
         </>
       )}
       {state.data &&
-        (dealPipelineView && !archived ? (
+        (showPipeline ? (
           <DealPipeline
             organizationId={organizationId}
             stages={stages}
@@ -267,50 +364,18 @@ export function RecordCollection({
         ))}
       {state.data && (
         <RecordPagination
-          page={cursors.length + 1}
+          page={page}
           rowCount={rows.length}
           fetching={query.isFetching}
           dealPipelineView={dealPipelineView}
-          onPrevious={() => setCursors((previous) => previous.slice(0, -1))}
+          onPrevious={onPrevious}
           onNext={() => {
             const last = rows.at(-1);
-            if (last) setCursors((previous) => [...previous, last.entityId]);
+            if (last) onNext(last.entityId);
           }}
         />
       )}
-      {creating && (
-        <RecordEditor
-          kind={kind}
-          organizationId={organizationId}
-          defaultCurrency={resourceState(settings).data?.defaultCurrency}
-          accounts={accountRows.map((row) => ({
-            value: row.entityId,
-            label: row.name,
-          }))}
-          contacts={contactRows.map((row) => ({
-            value: row.entityId,
-            label: row.name,
-          }))}
-          stages={stages.map((stage) => ({ value: stage.id, label: stage.name }))}
-          pending={mutation.isPending}
-          error={mutation.error}
-          onClose={() => setCreating(false)}
-          onSubmit={(write) =>
-            mutation.mutate(write, {
-              onSuccess: (result) => {
-                setCreating(false);
-                if ("entityId" in result)
-                  void navigate(
-                    kind === "contacts"
-                      ? contactLink(organizationId, result.entityId)
-                      : crmLink(organizationId, kind, result.entityId),
-                  );
-              },
-            })
-          }
-        />
-      )}
-    </div>
+    </>
   );
 }
 

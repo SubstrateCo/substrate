@@ -1,24 +1,17 @@
-import type {
-  HarnessAuthMethod,
-  HarnessKind,
-  HarnessSignInState,
-} from "@substrate/contracts/harness";
+import type { HarnessAuthMethod, HarnessKind } from "@substrate/contracts/harness";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
-import { useEffect, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { HarnessAccountView, type HarnessAccountState } from "./harness-account-view";
-import { SignInDialog, type SignInDialogState } from "./sign-in-dialog";
+import { SignInDialog } from "./sign-in-dialog";
+import { useHarnessSignIn } from "./use-harness-sign-in";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { harnessLabel } from "@/lib/agents/harness-meta";
 import { harnessBridge } from "@/lib/desktop/bridges";
 import { harnessModelsQueryOptions } from "@/queries/agents/models";
-import { harnessSignInQueryOptions, useHarnessSignInMutations } from "@/queries/agents/sign-in";
-import { queryKeys } from "@/queries/keys";
 import { toast } from "sonner";
-
-type ActiveSignIn = { harness: HarnessKind; method: HarnessAuthMethod; loginId?: string };
 
 /** Starts a sign-in for a harness with one of its advertised methods. */
 export type StartSignIn = (harness: HarnessKind, method: HarnessAuthMethod) => void;
@@ -54,84 +47,34 @@ export function HarnessAccount({
 }) {
   const desktop = !!harnessBridge() && !!organizationId;
   const org = organizationId ?? "";
-  const client = useQueryClient();
   const catalog = useQuery({
     ...harnessModelsQueryOptions(userId, org, harness, agentId),
     enabled: desktop,
   });
-  const { start, send, cancel, signOut, refreshCatalogs } = useHarnessSignInMutations(userId, org);
-  const [active, setActive] = useState<ActiveSignIn>();
+  const signIn = useHarnessSignIn(userId, org, desktop);
+  const { signOut } = signIn;
   const [signingOut, setSigningOut] = useState(false);
-  const signInKey = queryKeys.harnessSignIn(userId, org, active?.loginId ?? "");
-  const progress = useQuery({
-    ...harnessSignInQueryOptions(userId, org, active?.loginId, () =>
-      client.getQueryData<HarnessSignInState>(signInKey),
-    ),
-    enabled: desktop && !!active?.loginId,
-  });
-  const status = progress.data?.status;
-  const activeLabel = active ? harnessLabel(active.harness) : "";
-
-  // A finished sign-in closes its dialog; the catalogs and the toast follow the agent's answer.
-  const open = !!active && status !== "succeeded";
-  useEffect(() => {
-    if (status !== "succeeded") return;
-    void refreshCatalogs();
-    toast.success(`${activeLabel} account connected`);
-  }, [status, activeLabel, refreshCatalogs]);
-
-  function begin(nextHarness: HarnessKind, method: HarnessAuthMethod) {
-    send.reset();
-    cancel.reset();
-    setActive({ harness: nextHarness, method });
-    start.mutate(
-      { harness: nextHarness, methodId: method.id },
-      {
-        onSuccess: (state) =>
-          setActive((current) =>
-            current?.method.id === method.id ? { ...current, loginId: state.loginId } : current,
-          ),
-      },
-    );
-  }
-
-  function stop() {
-    if (active?.loginId) cancel.mutate(active.loginId);
-    setActive(undefined);
-    start.reset();
-  }
-
-  const dialogState: SignInDialogState | undefined = active && {
-    type: active.method.type,
-    status: start.isError || progress.isError ? "failed" : (status ?? "starting"),
-    output: progress.data?.output ?? "",
-  };
   const label = harnessLabel(harness);
   return (
     <>
-      {children(desktop ? begin : undefined)}
+      {children(desktop ? signIn.begin : undefined)}
       <HarnessAccountView
         label={label}
         state={desktop ? accountState(catalog.data) : { kind: "hidden" }}
-        busy={open || signOut.isPending}
-        onSignIn={(method) => begin(harness, method)}
+        busy={signIn.open || signOut.isPending}
+        onSignIn={(method) => signIn.begin(harness, method)}
         onSignOut={() => setSigningOut(true)}
       />
-      {open && dialogState && (
+      {signIn.open && signIn.dialogState && (
         <SignInDialog
-          label={activeLabel}
-          state={dialogState}
-          error={start.error ?? progress.error ?? send.error}
-          sending={send.isPending}
-          onSend={async (text) => {
-            if (active.loginId) await send.mutateAsync({ loginId: active.loginId, text });
-          }}
-          onCancel={stop}
-          onRetry={() => begin(active.harness, active.method)}
-          onClose={() => {
-            setActive(undefined);
-            start.reset();
-          }}
+          label={signIn.activeLabel}
+          state={signIn.dialogState}
+          error={signIn.error}
+          sending={signIn.sending}
+          onSend={signIn.send}
+          onCancel={signIn.stop}
+          onRetry={signIn.retry}
+          onClose={signIn.close}
         />
       )}
       {signingOut && (

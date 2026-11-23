@@ -1,11 +1,5 @@
 import type { ReactNode } from "react";
 
-export const projectTabs = [
-  { value: "tasks", label: "Tasks" },
-  { value: "discussions", label: "Discussions" },
-  { value: "settings", label: "Settings" },
-] as const;
-
 export function ProjectHeaderLayout({ children }: { children: ReactNode }) {
   return <div className="shrink-0 border-b px-6 pt-5">{children}</div>;
 }

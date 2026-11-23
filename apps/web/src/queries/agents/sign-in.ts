@@ -61,18 +61,22 @@ export function useHarnessSignInMutations(userId: string, organizationId: string
     onSuccess: (state) =>
       client.setQueryData(queryKeys.harnessSignIn(userId, organizationId, state.loginId), state),
   });
+  // Input and cancelling change the sign-in's output and status; read them now, not at the next poll.
+  const signInKey = (loginId: string) => queryKeys.harnessSignIn(userId, organizationId, loginId);
   const send = useMutation({
     mutationFn: (input: { loginId: string; text: string }) =>
       withHarnessSession(organizationId, (bridge) => bridge.sendSignInInput(input)),
+    onSuccess: (_, input) => client.invalidateQueries({ queryKey: signInKey(input.loginId) }),
   });
   const cancel = useMutation({
     mutationFn: (loginId: string) =>
       withHarnessSession(organizationId, (bridge) => bridge.cancelSignIn({ loginId })),
+    onSuccess: (_, loginId) => client.invalidateQueries({ queryKey: signInKey(loginId) }),
   });
   const signOut = useMutation({
     mutationFn: (harness: HarnessKind) =>
       withHarnessSession(organizationId, (bridge) => bridge.signOut({ harness })),
-    onSuccess: refreshCatalogs,
+    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.allHarnessModels(userId) }),
   });
   return { start, send, cancel, signOut, refreshCatalogs };
 }

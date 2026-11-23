@@ -8,18 +8,15 @@ import { AgentPage } from "./agent-page";
 import { AgentsWorkspaceView } from "./agents-workspace-view";
 import { FirstAgentView } from "./first-agent-view";
 import { NeedsYou } from "./needs-you";
+import { useWorkspaceAgents } from "./use-workspace-agents";
 import { AgentSettings } from "@/components/agents/agent-settings";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { PaneState } from "@/components/feedback/pane-state";
 import { useFocusAfterRender } from "@/components/feedback/use-focus-after-render";
 import type { AgentPageSection } from "@/lib/agent-work/agent-sections";
 import { needsYouCount } from "@/lib/agent-work/needs-you";
-import { agentStatus } from "@/lib/agent-work/status";
-import { resourceState } from "@/lib/resource-state";
-import { hasAgentWorkBridge } from "@/queries/agent-work/bridge";
-import { localAgentsOptions } from "@/queries/agent-work/local";
-import { agentStatusOptions, needsYouOptions } from "@/queries/agent-work/server";
-import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
+import type { ResourceState } from "@/lib/resource-state";
+import { needsYouOptions } from "@/queries/agent-work/server";
 import { Unlink } from "lucide-react";
 
 type AgentsSearch = {
@@ -28,6 +25,26 @@ type AgentsSearch = {
   messageId?: string;
   section?: AgentPageSection;
 };
+
+/** The pane for an agent the catalog doesn't list: still loading, gone, or failed to load. */
+function MissingAgent({
+  catalogState,
+  onRetry,
+}: {
+  catalogState: ResourceState<unknown>;
+  onRetry: () => void;
+}) {
+  if (catalogState.status === "loading") return <PaneState label="Loading agent…" />;
+  if (catalogState.status === "unavailable" || catalogState.status === "ready")
+    return (
+      <ContentNotice
+        icon={Unlink}
+        title="Agent unavailable"
+        description="This agent may have been deleted or you may no longer have access."
+      />
+    );
+  return <PaneState label="Couldn’t load agent" error={catalogState.error} onRetry={onRetry} />;
+}
 
 /**
  * The Agents app. Needs you comes from the server, so it works on every device. Activity,
@@ -52,14 +69,9 @@ export function AgentsWorkspace({
   const [creating, setCreating] = useState(false);
   const newAgentButton = useRef<HTMLButtonElement>(null);
   const focusAfterRender = useFocusAfterRender();
-  const catalog = useQuery(agentCatalogQueryOptions(userId));
-  const catalogState = resourceState(catalog);
-  const statuses = useQuery(agentStatusOptions(userId, organizationId));
+  const { catalogState, retryCatalog, agents, status, selected, homedHere, firstAgent } =
+    useWorkspaceAgents(userId, organizationId, agentId);
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
-  const local = useQuery({
-    ...localAgentsOptions(userId, organizationId),
-    enabled: hasAgentWorkBridge(),
-  });
   const agentLink = ({ section: next, ...search }: AgentsSearch) =>
     linkOptions({
       to: "/agents",
@@ -70,20 +82,6 @@ export function AgentsWorkspace({
       },
     });
   const go = (search: AgentsSearch) => void navigate(agentLink(search));
-  const status = (id: string) => statuses.data?.find((entry) => entry.userAgentId === id);
-  const agents = (catalogState.data?.agents ?? []).map((agent) => {
-    const published = status(agent.id);
-    return {
-      id: agent.id,
-      name: agent.name,
-      enabled: agent.enabled,
-      image: agent.image,
-      status: published && agentStatus(published),
-    };
-  });
-  const selected = agents.find((agent) => agent.id === agentId);
-  const homedHere = !!agentId && !!local.data?.some((entry) => entry.userAgentId === agentId);
-  const firstAgent = catalogState.status === "ready" && !agents.length;
   let content;
   if (!agentId)
     content = firstAgent ? (
@@ -91,24 +89,7 @@ export function AgentsWorkspace({
     ) : (
       <NeedsYou userId={userId} organizationId={organizationId} />
     );
-  else if (!selected && catalogState.status === "loading")
-    content = <PaneState label="Loading agent…" />;
-  else if (!selected && (catalogState.status === "unavailable" || catalogState.status === "ready"))
-    content = (
-      <ContentNotice
-        icon={Unlink}
-        title="Agent unavailable"
-        description="This agent may have been deleted or you may no longer have access."
-      />
-    );
-  else if (!selected)
-    content = (
-      <PaneState
-        label="Couldn’t load agent"
-        error={catalogState.error}
-        onRetry={() => void catalog.refetch()}
-      />
-    );
+  else if (!selected) content = <MissingAgent catalogState={catalogState} onRetry={retryCatalog} />;
   else
     content = (
       <AgentPage
@@ -137,7 +118,7 @@ export function AgentsWorkspace({
       agents={agents}
       catalogState={catalogState.status}
       catalogError={catalogState.error}
-      onRetryCatalog={() => void catalog.refetch()}
+      onRetryCatalog={retryCatalog}
       needsYouCount={needsYouCount(needsYou.data)}
       selectedAgentId={agentId}
       agentLink={(id) => agentLink({ agentId: id })}
@@ -158,7 +139,7 @@ export function AgentsWorkspace({
       }
       content={content}
       aside={
-        agentId &&
+        // A selected agent is the one agentId names.
         section === "activity" &&
         selected &&
         turnId && (
@@ -166,12 +147,12 @@ export function AgentsWorkspace({
             key={turnId}
             userId={userId}
             organizationId={organizationId}
-            agentId={agentId}
+            agentId={selected.id}
             agentName={selected.name}
             homedHere={homedHere}
-            device={status(agentId)?.device?.name}
+            device={status(selected.id)?.device?.name}
             turnId={turnId}
-            onClose={() => go({ agentId, section: "activity" })}
+            onClose={() => go({ agentId: selected.id, section: "activity" })}
           />
         )
       }

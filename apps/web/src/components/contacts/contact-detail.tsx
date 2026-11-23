@@ -11,13 +11,10 @@ import { InteractionHistory } from "@/components/context/interactions/interactio
 import { PublishInteraction } from "@/components/context/interactions/publish-interaction";
 import { AffiliationEditor } from "@/components/crm/affiliation-editor";
 import { CrmActivity } from "@/components/crm/crm-activity";
-import { crmResource } from "@/components/crm/crm-resource-state";
+import { crmResource } from "@/components/crm/crm-resource";
 import { FollowUps } from "@/components/crm/follow-ups";
-import {
-  RecordChangeDialogs,
-  recordChangeDialog,
-  type RecordChangeDialog,
-} from "@/components/crm/record-change-dialogs";
+import { recordChangeDialog, type RecordChangeDialog } from "@/components/crm/record-change-dialog";
+import { RecordChangeDialogs } from "@/components/crm/record-change-dialogs";
 import {
   RecordDetailView,
   RecordDetailLoading,

@@ -78,13 +78,7 @@ function CalendarSettings({ organizationId }: { organizationId: string }) {
       />
     );
   if (!query.data) return <LoadingState label="Loading calendars…" />;
-  const pendingCalendarId =
-    (update.isPending && update.variables.calendarEntityId) ||
-    (action.isPending && action.variables.calendarEntityId) ||
-    (connect.isPending && connect.variables.providerCalendarIds.length === 1
-      ? connectingCalendar(query.data.accounts, connect.variables)
-      : null) ||
-    null;
+  const pendingCalendarId = savingCalendar(query.data.accounts, update, action, connect);
   const actions: CalendarAccountActions = {
     onRecordsInteractions: (calendar, recordsInteractions) => {
       reset();
@@ -133,7 +127,41 @@ function CalendarSettings({ organizationId }: { organizationId: string }) {
           link.mutate();
         }}
       />
-      {dialog?.kind === "choose" && (
+      {dialog && (
+        <CalendarSettingsDialog
+          dialog={dialog}
+          organizationId={organizationId}
+          action={action}
+          connect={connect}
+          link={link}
+          unlink={unlink}
+          onClose={close}
+        />
+      )}
+    </>
+  );
+}
+
+function CalendarSettingsDialog({
+  dialog,
+  organizationId,
+  action,
+  connect,
+  link,
+  unlink,
+  onClose,
+}: {
+  dialog: Dialog;
+  organizationId: string;
+  action: ReturnType<typeof useCalendarAction>;
+  connect: ReturnType<typeof useConnectCalendars>;
+  link: ReturnType<typeof useCalendarAccountLink>;
+  unlink: ReturnType<typeof useUnlinkCalendarAccount>;
+  onClose: () => void;
+}) {
+  switch (dialog.kind) {
+    case "choose":
+      return (
         <ChooseCalendars
           organizationId={organizationId}
           credentialAccountId={dialog.account.credentialAccountId}
@@ -142,25 +170,27 @@ function CalendarSettings({ organizationId }: { organizationId: string }) {
           reconnecting={link.isPending}
           reconnectError={link.error}
           onReconnect={() => link.mutate()}
-          onClose={close}
+          onClose={onClose}
         />
-      )}
-      {dialog?.kind === "backfill" && (
+      );
+    case "backfill":
+      return (
         <BackfillDialog
           calendarName={dialog.calendar.name}
           recordsInteractions={dialog.calendar.recordsInteractions}
           pending={action.isPending}
           error={action.error}
-          onClose={close}
+          onClose={onClose}
           onConfirm={() =>
             action.mutate(
               { calendarEntityId: dialog.calendar.entityId, action: "backfill" },
-              { onSuccess: close },
+              { onSuccess: onClose },
             )
           }
         />
-      )}
-      {dialog?.kind === "disconnect" && (
+      );
+    case "disconnect":
+      return (
         <ConfirmDialog
           destructive
           title={`Disconnect ${dialog.calendar.name}?`}
@@ -170,16 +200,17 @@ function CalendarSettings({ organizationId }: { organizationId: string }) {
           pending={action.isPending}
           error={action.error}
           errorDescription="Couldn’t disconnect this calendar. Try again."
-          onClose={close}
+          onClose={onClose}
           onConfirm={() =>
             action.mutate(
               { calendarEntityId: dialog.calendar.entityId, action: "disconnect" },
-              { onSuccess: close },
+              { onSuccess: onClose },
             )
           }
         />
-      )}
-      {dialog?.kind === "remove" && (
+      );
+    case "remove":
+      return (
         <ConfirmDialog
           destructive
           title={`Remove ${calendarAccountName(dialog.account)}?`}
@@ -189,11 +220,29 @@ function CalendarSettings({ organizationId }: { organizationId: string }) {
           pending={unlink.isPending}
           error={unlink.error}
           errorDescription="Couldn’t remove this account. Try again."
-          onClose={close}
-          onConfirm={() => unlink.mutate(dialog.account.credentialAccountId, { onSuccess: close })}
+          onClose={onClose}
+          onConfirm={() =>
+            unlink.mutate(dialog.account.credentialAccountId, { onSuccess: onClose })
+          }
         />
-      )}
-    </>
+      );
+  }
+}
+
+// The calendar row whose change is saving, so only that row shows it.
+function savingCalendar(
+  accounts: readonly CalendarAccountView[],
+  update: ReturnType<typeof useUpdateCalendar>,
+  action: ReturnType<typeof useCalendarAction>,
+  connect: ReturnType<typeof useConnectCalendars>,
+) {
+  return (
+    (update.isPending && update.variables.calendarEntityId) ||
+    (action.isPending && action.variables.calendarEntityId) ||
+    (connect.isPending && connect.variables.providerCalendarIds.length === 1
+      ? connectingCalendar(accounts, connect.variables)
+      : null) ||
+    null
   );
 }
 

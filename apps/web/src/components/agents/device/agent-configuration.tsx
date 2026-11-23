@@ -208,6 +208,173 @@ function SkillList({
   );
 }
 
+function RefreshConfiguration({
+  disabled,
+  fetching,
+  onRefresh,
+}: {
+  disabled: boolean;
+  fetching: boolean;
+  onRefresh: () => void;
+}) {
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          size="icon-sm"
+          variant="ghost"
+          aria-label="Read the agent’s files again"
+          disabled={disabled}
+          onClick={onRefresh}
+        >
+          <RefreshCw className={fetching ? "motion-safe:animate-spin" : ""} />
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>Read the agent’s files again</TooltipContent>
+    </Tooltip>
+  );
+}
+
+function SkillsSection({
+  skills,
+  managedSkills,
+  scanned,
+  available,
+  fetching,
+  refresh,
+  status,
+  resetting,
+  removing,
+  onReset,
+  onCreate,
+  onEdit,
+  onDelete,
+}: {
+  skills: readonly HarnessSkill[];
+  managedSkills: ReturnType<typeof skillLists>["managedSkills"];
+  scanned: boolean;
+  available: boolean;
+  fetching: boolean;
+  refresh: ReactNode;
+  status: ReactNode;
+  /** A reset of the defaults is running. */
+  resetting: boolean;
+  /** A delete is running. */
+  removing: boolean;
+  onReset: () => void;
+  onCreate: () => void;
+  onEdit: (id: string) => void;
+  onDelete: (skill: { id: string; name: string }) => void;
+}) {
+  return (
+    <SettingsSection
+      title="Skills"
+      description="How-to guides the agent opens when a task matches. Each skill is a file in its folder on its desktop."
+      actions={
+        <>
+          {refresh}
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            disabled={!available || resetting}
+            onClick={onReset}
+          >
+            <RotateCcw />
+            Reset defaults
+          </Button>
+          <Button type="button" size="sm" disabled={!available || fetching} onClick={onCreate}>
+            <Plus />
+            New skill
+          </Button>
+        </>
+      }
+    >
+      {status}
+      {managedSkills.length > 0 && <StartupSkills skills={managedSkills} scanned={scanned} />}
+      {scanned && (
+        <SkillList skills={skills} removing={removing} onEdit={onEdit} onDelete={onDelete} />
+      )}
+    </SettingsSection>
+  );
+}
+
+type ConfigurationMutations = ReturnType<typeof useAgentConfigurationMutations>;
+
+/** The editor and the delete prompt for the agent's own MCP servers. */
+function McpServerDialogs({
+  editing,
+  deleting,
+  servers,
+  saveServer,
+  removeServer,
+  onRestoreFocus,
+  onEditDone,
+  onDeleteDone,
+}: {
+  /** The server being edited, or an empty object for a new one. */
+  editing?: { server?: HarnessMcpServer };
+  deleting?: HarnessMcpServer;
+  servers: readonly HarnessMcpServer[];
+  saveServer: ConfigurationMutations["saveServer"];
+  removeServer: ConfigurationMutations["removeServer"];
+  onRestoreFocus: () => void;
+  onEditDone: () => void;
+  onDeleteDone: () => void;
+}) {
+  return (
+    <>
+      {editing && (
+        <McpServerEditor
+          server={editing.server}
+          servers={servers}
+          pending={saveServer.isPending}
+          error={saveServer.error}
+          onRestoreFocus={onRestoreFocus}
+          onClose={() => {
+            onEditDone();
+            saveServer.reset();
+          }}
+          onSave={(server) =>
+            saveServer.mutate(server, {
+              onSuccess: () => {
+                toast.success(editing.server ? "Server saved." : "Server added.");
+                onEditDone();
+              },
+            })
+          }
+        />
+      )}
+      {deleting && (
+        <ConfirmDialog
+          title={`Delete ${deleting.name}?`}
+          description="This removes the server from this agent on this desktop. New sessions won’t use it. You can’t undo this."
+          confirmLabel="Delete server"
+          pendingLabel="Deleting."
+          errorDescription="We couldn’t delete this server. Try again."
+          destructive
+          pending={removeServer.isPending}
+          error={removeServer.error}
+          onRestoreFocus={onRestoreFocus}
+          onConfirm={() =>
+            removeServer.mutate(deleting.id, {
+              onSuccess: () => {
+                toast.success("Server deleted.");
+                onDeleteDone();
+              },
+            })
+          }
+          onClose={() => {
+            onDeleteDone();
+            removeServer.reset();
+          }}
+        />
+      )}
+    </>
+  );
+}
+
 export function AgentConfiguration({
   userId,
   organizationId,
@@ -238,21 +405,11 @@ export function AgentConfiguration({
   const servers = configuration.data?.mcpServers ?? [];
   const skill = skills.find((item) => item.id === editing?.id);
   const refresh = (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <Button
-          type="button"
-          size="icon-sm"
-          variant="ghost"
-          aria-label="Read the agent’s files again"
-          disabled={!available || configuration.isFetching}
-          onClick={() => void configuration.refetch()}
-        >
-          <RefreshCw className={configuration.isFetching ? "motion-safe:animate-spin" : ""} />
-        </Button>
-      </TooltipTrigger>
-      <TooltipContent>Read the agent’s files again</TooltipContent>
-    </Tooltip>
+    <RefreshConfiguration
+      disabled={!available || configuration.isFetching}
+      fetching={configuration.isFetching}
+      onRefresh={() => void configuration.refetch()}
+    />
   );
   const status = (
     <ConfigurationStatus
@@ -266,59 +423,33 @@ export function AgentConfiguration({
   );
   const content =
     section === "skills" ? (
-      <SettingsSection
-        title="Skills"
-        description="How-to guides the agent opens when a task matches. Each skill is a file in its folder on its desktop."
-        actions={
-          <>
-            {refresh}
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              disabled={!available || reset.isPending}
-              onClick={() => {
-                rememberLauncher();
-                setResetting(true);
-              }}
-            >
-              <RotateCcw />
-              Reset defaults
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              disabled={!available || configuration.isFetching}
-              onClick={() => {
-                rememberLauncher();
-                setEditing({});
-              }}
-            >
-              <Plus />
-              New skill
-            </Button>
-          </>
-        }
-      >
-        {status}
-        {managedSkills.length > 0 && (
-          <StartupSkills skills={managedSkills} scanned={!!configuration.data} />
-        )}
-        {configuration.data && (
-          <SkillList
-            skills={skills}
-            removing={remove.isPending}
-            onEdit={(id) => {
-              rememberLauncher();
-              setEditing({ id });
-            }}
-            onDelete={(skill) => {
-              rememberLauncher();
-              setDeleting(skill);
-            }}
-          />
-        )}
-      </SettingsSection>
+      <SkillsSection
+        skills={skills}
+        managedSkills={managedSkills}
+        scanned={!!configuration.data}
+        available={available}
+        fetching={configuration.isFetching}
+        refresh={refresh}
+        status={status}
+        resetting={reset.isPending}
+        removing={remove.isPending}
+        onReset={() => {
+          rememberLauncher();
+          setResetting(true);
+        }}
+        onCreate={() => {
+          rememberLauncher();
+          setEditing({});
+        }}
+        onEdit={(id) => {
+          rememberLauncher();
+          setEditing({ id });
+        }}
+        onDelete={(skill) => {
+          rememberLauncher();
+          setDeleting(skill);
+        }}
+      />
     ) : (
       <McpServersSection
         servers={servers}
@@ -365,52 +496,16 @@ export function AgentConfiguration({
           }
         />
       )}
-      {editingServer && (
-        <McpServerEditor
-          server={editingServer.server}
-          servers={servers}
-          pending={saveServer.isPending}
-          error={saveServer.error}
-          onRestoreFocus={restoreFocus}
-          onClose={() => {
-            setEditingServer(undefined);
-            saveServer.reset();
-          }}
-          onSave={(server) =>
-            saveServer.mutate(server, {
-              onSuccess: () => {
-                toast.success(editingServer.server ? "Server saved." : "Server added.");
-                setEditingServer(undefined);
-              },
-            })
-          }
-        />
-      )}
-      {deletingServer && (
-        <ConfirmDialog
-          title={`Delete ${deletingServer.name}?`}
-          description="This removes the server from this agent on this desktop. New sessions won’t use it. You can’t undo this."
-          confirmLabel="Delete server"
-          pendingLabel="Deleting."
-          errorDescription="We couldn’t delete this server. Try again."
-          destructive
-          pending={removeServer.isPending}
-          error={removeServer.error}
-          onRestoreFocus={restoreFocus}
-          onConfirm={() =>
-            removeServer.mutate(deletingServer.id, {
-              onSuccess: () => {
-                toast.success("Server deleted.");
-                setDeletingServer(undefined);
-              },
-            })
-          }
-          onClose={() => {
-            setDeletingServer(undefined);
-            removeServer.reset();
-          }}
-        />
-      )}
+      <McpServerDialogs
+        editing={editingServer}
+        deleting={deletingServer}
+        servers={servers}
+        saveServer={saveServer}
+        removeServer={removeServer}
+        onRestoreFocus={restoreFocus}
+        onEditDone={() => setEditingServer(undefined)}
+        onDeleteDone={() => setDeletingServer(undefined)}
+      />
       {resetting && (
         <ConfirmDialog
           title="Reset Substrate defaults?"

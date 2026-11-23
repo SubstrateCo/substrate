@@ -27,16 +27,7 @@ function ConnectedUpdateSettings({ bridge }: { bridge: DesktopUpdatesAPI }) {
   const [pending, setPending] = useState(false);
   if (!status || status.install === "unavailable") return null;
 
-  async function run(action: UpdateCommand) {
-    setPending(true);
-    try {
-      await action();
-    } catch {
-      toast.error("We couldn’t finish the update. Try again.");
-    } finally {
-      setPending(false);
-    }
-  }
+  const run = (action: UpdateCommand) => runUpdateCommand(action, setPending);
   return (
     <DesktopUpdateSettingsView
       status={status}
@@ -46,6 +37,18 @@ function ConnectedUpdateSettings({ bridge }: { bridge: DesktopUpdatesAPI }) {
       onDownload={() => void run(() => bridge.openDownloadPage())}
     />
   );
+}
+
+// Outside the component: React Compiler cannot compile try/finally.
+async function runUpdateCommand(action: UpdateCommand, setPending: (pending: boolean) => void) {
+  setPending(true);
+  try {
+    await action();
+  } catch {
+    toast.error("We couldn’t finish the update. Try again.");
+  } finally {
+    setPending(false);
+  }
 }
 
 function updateDescription({ install, state }: DesktopUpdateStatus) {

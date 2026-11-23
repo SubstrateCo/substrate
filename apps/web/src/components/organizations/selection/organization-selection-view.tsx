@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode, type RefObject } from "react";
 
 import { AuthFrame } from "../../auth/auth-frame";
 import { AuthNavLink } from "../../auth/auth-link";
@@ -47,9 +47,6 @@ export function OrganizationSelection({
   const retryOrigin = useRef<Element | null>(null);
   const firstChoice = useRef<HTMLButtonElement | null>(null);
   const creationHeading = useRef<HTMLHeadingElement | null>(null);
-  const createTrigger = useRef<HTMLButtonElement | null>(null);
-  const [creating, setCreating] = useState(false);
-  const focusAfterRender = useFocusAfterRender();
   useEffect(() => {
     const origin = retryOrigin.current;
     if (!origin || loading || loadError) return;
@@ -62,7 +59,6 @@ export function OrganizationSelection({
   const listed = organizations ?? [];
   // With workspaces to open or invitations to answer, creating one is a secondary, collapsed step.
   const collapsible = listed.length > 0 || hasInvitations;
-  const showCreate = creating || (!loading && !collapsible);
   const description =
     hasInvitations && !loading && listed.length === 0
       ? "Join a workspace you were invited to, or create one for your team."
@@ -80,19 +76,7 @@ export function OrganizationSelection({
       }
     >
       {invitations}
-      {state === "loading" && !organizations?.length && (
-        <div role="status" aria-label="Loading workspaces">
-          <ul aria-hidden="true" className="-mx-2.5 max-h-72 space-y-0.5 overflow-y-auto">
-            {[0, 1].map((key) => (
-              <li key={key}>
-                <Item size="xs">
-                  <WorkspaceChoiceContent />
-                </Item>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {state === "loading" && !organizations?.length && <WorkspaceListLoading />}
       {loadError && (
         <ErrorState
           compact
@@ -112,79 +96,142 @@ export function OrganizationSelection({
         />
       )}
       {listed.length > 0 && (
-        <ul aria-label="Your workspaces" className="-mx-2.5 max-h-72 space-y-0.5 overflow-y-auto">
-          {listed.map((organization, index) => {
-            const opening = openingId === organization.id;
-            return (
-              <li key={organization.id}>
-                <Item asChild size="xs">
-                  <button
-                    ref={index === 0 ? firstChoice : undefined}
-                    type="button"
-                    className="flex-nowrap text-left font-medium hover:bg-row-hover disabled:pointer-events-none disabled:opacity-60 aria-busy:opacity-100"
-                    disabled={openingId !== undefined}
-                    aria-busy={opening}
-                    onClick={() => onSelect(organization.id)}
-                  >
-                    <WorkspaceChoiceContent name={organization.name} opening={opening} />
-                  </button>
-                </Item>
-              </li>
-            );
-          })}
-        </ul>
+        <WorkspaceList
+          organizations={listed}
+          openingId={openingId}
+          firstChoiceRef={firstChoice}
+          onSelect={onSelect}
+        />
       )}
-      <Collapsible
-        open={showCreate}
-        onOpenChange={(open) => {
-          setCreating(open);
-          if (open) focusAfterRender(() => document.getElementById("organization-name"));
-        }}
-      >
-        {!showCreate && (
-          <CollapsibleTrigger asChild>
-            <Button
-              ref={createTrigger}
-              type="button"
-              variant="disclosure"
-              className="-ml-2.5 self-start"
-            >
-              <Plus aria-hidden="true" />
-              Create a workspace
-            </Button>
-          </CollapsibleTrigger>
-        )}
-        <CollapsibleContent>
-          {collapsible && <Separator />}
-          <section className="space-y-4 pt-4" aria-labelledby="create-workspace-title">
-            <div className="flex items-center justify-between gap-2">
-              <h2
-                id="create-workspace-title"
-                ref={creationHeading}
-                tabIndex={-1}
-                className="text-sm font-semibold outline-none"
-              >
-                Create a workspace
-              </h2>
-              {collapsible && (
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => {
-                    setCreating(false);
-                    focusAfterRender(() => createTrigger.current);
-                  }}
-                >
-                  Cancel
-                </Button>
-              )}
-            </div>
-            {createForm}
-          </section>
-        </CollapsibleContent>
-      </Collapsible>
+      <CreateWorkspace
+        collapsible={collapsible}
+        loading={loading}
+        headingRef={creationHeading}
+        createForm={createForm}
+      />
     </AuthFrame>
+  );
+}
+
+function WorkspaceListLoading() {
+  return (
+    <div role="status" aria-label="Loading workspaces">
+      <ul aria-hidden="true" className="-mx-2.5 max-h-72 space-y-0.5 overflow-y-auto">
+        {[0, 1].map((key) => (
+          <li key={key}>
+            <Item size="xs">
+              <WorkspaceChoiceContent />
+            </Item>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function WorkspaceList({
+  organizations,
+  openingId,
+  firstChoiceRef,
+  onSelect,
+}: {
+  organizations: { id: string; name: string }[];
+  openingId?: string;
+  firstChoiceRef: RefObject<HTMLButtonElement | null>;
+  onSelect: (id: string) => void;
+}) {
+  return (
+    <ul aria-label="Your workspaces" className="-mx-2.5 max-h-72 space-y-0.5 overflow-y-auto">
+      {organizations.map((organization, index) => {
+        const opening = openingId === organization.id;
+        return (
+          <li key={organization.id}>
+            <Item asChild size="xs">
+              <button
+                ref={index === 0 ? firstChoiceRef : undefined}
+                type="button"
+                className="flex-nowrap text-left font-medium hover:bg-row-hover disabled:pointer-events-none disabled:opacity-60 aria-busy:opacity-100"
+                disabled={openingId !== undefined}
+                aria-busy={opening}
+                onClick={() => onSelect(organization.id)}
+              >
+                <WorkspaceChoiceContent name={organization.name} opening={opening} />
+              </button>
+            </Item>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function CreateWorkspace({
+  collapsible,
+  loading,
+  headingRef,
+  createForm,
+}: {
+  /** Whether creating is a secondary, collapsed step. */
+  collapsible: boolean;
+  loading: boolean;
+  headingRef: RefObject<HTMLHeadingElement | null>;
+  createForm: ReactNode;
+}) {
+  const createTrigger = useRef<HTMLButtonElement | null>(null);
+  const [creating, setCreating] = useState(false);
+  const focusAfterRender = useFocusAfterRender();
+  const showCreate = creating || (!loading && !collapsible);
+  return (
+    <Collapsible
+      open={showCreate}
+      onOpenChange={(open) => {
+        setCreating(open);
+        if (open) focusAfterRender(() => document.getElementById("organization-name"));
+      }}
+    >
+      {!showCreate && (
+        <CollapsibleTrigger asChild>
+          <Button
+            ref={createTrigger}
+            type="button"
+            variant="disclosure"
+            className="-ml-2.5 self-start"
+          >
+            <Plus aria-hidden="true" />
+            Create a workspace
+          </Button>
+        </CollapsibleTrigger>
+      )}
+      <CollapsibleContent>
+        {collapsible && <Separator />}
+        <section className="space-y-4 pt-4" aria-labelledby="create-workspace-title">
+          <div className="flex items-center justify-between gap-2">
+            <h2
+              id="create-workspace-title"
+              ref={headingRef}
+              tabIndex={-1}
+              className="text-sm font-semibold outline-none"
+            >
+              Create a workspace
+            </h2>
+            {collapsible && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setCreating(false);
+                  focusAfterRender(() => createTrigger.current);
+                }}
+              >
+                Cancel
+              </Button>
+            )}
+          </div>
+          {createForm}
+        </section>
+      </CollapsibleContent>
+    </Collapsible>
   );
 }
 

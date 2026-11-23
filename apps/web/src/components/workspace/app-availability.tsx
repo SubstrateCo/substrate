@@ -17,7 +17,7 @@ export function AppAvailability({ app, children }: { app: AppId; children: React
   if (apps.error) return <ErrorState title="Couldn’t load available apps" onRetry={apps.retry} />;
   if (!apps.ready) return <LoadingState label="Loading available apps…" />;
   if (apps.enabled(app)) return children;
-  const label = workspaceApps.find((item) => item.id === app)!.label;
+  const label = workspaceApps.find((item) => item.id === app)?.label ?? "This app";
   return (
     <ContentNotice
       icon={Blocks}

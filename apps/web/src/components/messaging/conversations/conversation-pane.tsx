@@ -49,24 +49,14 @@ export function ConversationPane({
   onNavigate?: (target: { messageId?: string; turnId?: string }) => void;
 }) {
   const navigate = useNavigate();
-  const navigateConversation = (target: { messageId?: string; turnId?: string }) => {
-    if (onNavigate) return onNavigate(target);
-    void navigate({
-      to: "/messages",
-      search: { workspaceId: organizationId, conversationId: conversation.id, ...target },
-    });
-  };
+  const navigateConversation = useConversationNavigation(
+    organizationId,
+    conversation.id,
+    onNavigate,
+  );
   const { join } = useConversationManagement(organizationId);
   const task = conversation.task;
-  const target = useQuery({
-    ...messageTargetOptions(
-      organizationId,
-      conversation.id,
-      messageId ?? "00000000-0000-0000-0000-000000000000",
-    ),
-    enabled: !!messageId,
-  });
-  const activeThreadId = messageId && !target.error ? target.data?.root.id : undefined;
+  const target = useMessageTarget(organizationId, conversation.id, messageId);
   const [addingMembers, setAddingMembers] = useState(false);
   const [removingMember, setRemovingMember] = useState<HeaderMember | null>(null);
   const { messages, history, loadOlder, timeline, unread } = useConversationTimeline({
@@ -113,28 +103,13 @@ export function ConversationPane({
     );
   else if (messageId && !target.error)
     aside = (
-      <ThreadPaneFrame
-        conversationLabel={conversationLabel({
-          ...conversation,
-          name: conversationName(conversation),
-        })}
+      <ConversationThreadAside
+        organizationId={organizationId}
+        conversation={conversation}
+        target={target.data}
+        contextMessageIds={timeline.map((message) => message.id)}
         onClose={() => navigateConversation({})}
-      >
-        {activeThreadId ? (
-          <ThreadPane
-            key={activeThreadId}
-            organizationId={organizationId}
-            conversationId={conversation.id}
-            threadId={activeThreadId}
-            contextMessageIds={timeline.map((message) => message.id)}
-            root={target.data?.root}
-            targetMessage={target.data?.message}
-            canPost={conversation.canPost}
-          />
-        ) : (
-          <MessageLoading label="Loading replies…" />
-        )}
-      </ThreadPaneFrame>
+      />
     );
   return (
     <ConversationAgentWork
@@ -211,6 +186,73 @@ export function ConversationPane({
         />
       )}
     </ConversationAgentWork>
+  );
+}
+
+function useConversationNavigation(
+  organizationId: string,
+  conversationId: string,
+  onNavigate?: (target: { messageId?: string; turnId?: string }) => void,
+) {
+  const navigate = useNavigate();
+  return (target: { messageId?: string; turnId?: string }) => {
+    if (onNavigate) return onNavigate(target);
+    void navigate({
+      to: "/messages",
+      search: { workspaceId: organizationId, conversationId, ...target },
+    });
+  };
+}
+
+function useMessageTarget(organizationId: string, conversationId: string, messageId?: string) {
+  return useQuery({
+    ...messageTargetOptions(
+      organizationId,
+      conversationId,
+      messageId ?? "00000000-0000-0000-0000-000000000000",
+    ),
+    enabled: !!messageId,
+  });
+}
+
+/** The open thread. Render it only for a message whose target loaded without error. */
+function ConversationThreadAside({
+  organizationId,
+  conversation,
+  target,
+  contextMessageIds,
+  onClose,
+}: {
+  organizationId: string;
+  conversation: Conversation;
+  target: ReturnType<typeof useMessageTarget>["data"];
+  contextMessageIds: string[];
+  onClose: () => void;
+}) {
+  const activeThreadId = target?.root.id;
+  return (
+    <ThreadPaneFrame
+      conversationLabel={conversationLabel({
+        ...conversation,
+        name: conversationName(conversation),
+      })}
+      onClose={onClose}
+    >
+      {activeThreadId ? (
+        <ThreadPane
+          key={activeThreadId}
+          organizationId={organizationId}
+          conversationId={conversation.id}
+          threadId={activeThreadId}
+          contextMessageIds={contextMessageIds}
+          root={target.root}
+          targetMessage={target.message}
+          canPost={conversation.canPost}
+        />
+      ) : (
+        <MessageLoading label="Loading replies…" />
+      )}
+    </ThreadPaneFrame>
   );
 }
 

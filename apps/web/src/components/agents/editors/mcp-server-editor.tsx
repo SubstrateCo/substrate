@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   draftFromServer,
+  newArgRow,
+  newEnvironmentRow,
   serverFromDraft,
   type McpServerDraft,
   type McpServerDraftErrors,
@@ -150,13 +152,12 @@ function StdioFields({
         description="One argument per row, in order."
         addLabel="Add argument"
         empty="No arguments."
-        onAdd={() => update({ args: [...draft.args, ""] })}
+        onAdd={() => update({ args: [...draft.args, newArgRow()] })}
       >
         {draft.args.map((arg, index) => {
           const error = errors?.args[index];
           return (
-            // oxlint-disable-next-line react/no-array-index-key -- rows are positional and have no ID.
-            <li key={index} className="grid gap-1">
+            <li key={arg.id} className="grid gap-1">
               <div className="flex min-w-0 gap-2">
                 <Input
                   aria-label={`Argument ${index + 1}`}
@@ -167,9 +168,11 @@ function StdioFields({
                   maxLength={10000}
                   className="min-w-0 flex-1"
                   placeholder={index === 0 ? "-y" : undefined}
-                  value={arg}
+                  value={arg.value}
                   onChange={(event) =>
-                    update({ args: replaceAt(draft.args, index, event.target.value) })
+                    update({
+                      args: replaceAt(draft.args, index, { ...arg, value: event.target.value }),
+                    })
                   }
                 />
                 <RemoveRow
@@ -188,7 +191,7 @@ function StdioFields({
         description="Settings the server reads when it starts. Substrate refuses tokens, keys, and passwords."
         addLabel="Add variable"
         empty="No environment variables."
-        onAdd={() => update({ environment: [...draft.environment, { key: "", value: "" }] })}
+        onAdd={() => update({ environment: [...draft.environment, newEnvironmentRow()] })}
       >
         {draft.environment.map((row, index) => {
           const error = errors?.environment[index];
@@ -196,8 +199,7 @@ function StdioFields({
             update({ environment: replaceAt(draft.environment, index, { ...row, ...change }) });
           const describedBy = error ? `${id}-env-${index}-error` : undefined;
           return (
-            // oxlint-disable-next-line react/no-array-index-key -- rows are positional and have no ID.
-            <li key={index} className="grid gap-1">
+            <li key={row.id} className="grid gap-1">
               <div className="flex min-w-0 gap-2">
                 <Input
                   aria-label={`Variable ${index + 1} name`}

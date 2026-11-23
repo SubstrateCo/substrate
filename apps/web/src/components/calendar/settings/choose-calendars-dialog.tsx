@@ -67,7 +67,6 @@ export function ChooseCalendarsDialog({
   onConnect: (providerCalendarIds: string[]) => void;
   onClose: () => void;
 }) {
-  const id = useId();
   const [chosen, setChosen] = useState<Set<string> | null>(null);
   const selected = chosen ?? (options ? initialSelection(options) : new Set<string>());
   const toggle = (calendarId: string, checked: boolean) => {
@@ -107,52 +106,15 @@ export function ChooseCalendarsDialog({
               Substrate can’t read this account’s calendars. Reconnect to grant calendar access.
             </ReconnectNotice>
           )}
-          {loadError && !accessRequired && (
-            <ErrorState
-              compact
-              title="Couldn’t load your calendars"
-              description="Try again to see the calendars in this account."
-              onRetry={onRetry}
-            />
-          )}
-          {!loadError && !options && <LoadingState label="Loading calendars…" variant="compact" />}
-          {!loadError && options?.length === 0 && (
-            <ContentNotice
-              compact
-              icon={CalendarDays}
-              title="No calendars in this account"
-              description="Create a calendar in Google Calendar, then try again."
-            />
-          )}
-          {!loadError && options && options.length > 0 && (
-            <div role="group" aria-label="Calendars" className="grid gap-2">
-              {options.map((option, index) => {
-                const connected = !!option.connectedEntityId;
-                return (
-                  <label
-                    key={option.providerCalendarId}
-                    htmlFor={`${id}-${index}`}
-                    className={optionRow}
-                  >
-                    <Checkbox
-                      id={`${id}-${index}`}
-                      checked={connected || selected.has(option.providerCalendarId)}
-                      disabled={connected || pending}
-                      onCheckedChange={(checked) =>
-                        toggle(option.providerCalendarId, checked === true)
-                      }
-                    />
-                    <CalendarColorDot color={option.color} />
-                    <span className="min-w-0 flex-1 truncate" title={option.name}>
-                      {option.name}
-                    </span>
-                    {option.isPrimary && <Tag>Primary</Tag>}
-                    {connected && <Tag>Connected</Tag>}
-                  </label>
-                );
-              })}
-            </div>
-          )}
+          <CalendarOptions
+            options={options}
+            loadError={loadError}
+            accessRequired={accessRequired}
+            selected={selected}
+            pending={pending}
+            onToggle={toggle}
+            onRetry={onRetry}
+          />
           {!accessRequired && (
             <FormMessage
               error={error}
@@ -178,5 +140,89 @@ export function ChooseCalendarsDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+/** The account's calendars, or why they cannot be shown yet. */
+function CalendarOptions({
+  options,
+  loadError,
+  accessRequired,
+  selected,
+  pending,
+  onToggle,
+  onRetry,
+}: {
+  options: readonly ProviderCalendarOption[] | undefined;
+  loadError: Error | null;
+  accessRequired: boolean;
+  selected: ReadonlySet<string>;
+  pending: boolean;
+  onToggle: (calendarId: string, checked: boolean) => void;
+  onRetry: () => void;
+}) {
+  if (loadError)
+    return accessRequired ? null : (
+      <ErrorState
+        compact
+        title="Couldn’t load your calendars"
+        description="Try again to see the calendars in this account."
+        onRetry={onRetry}
+      />
+    );
+  if (!options) return <LoadingState label="Loading calendars…" variant="compact" />;
+  if (options.length === 0)
+    return (
+      <ContentNotice
+        compact
+        icon={CalendarDays}
+        title="No calendars in this account"
+        description="Create a calendar in Google Calendar, then try again."
+      />
+    );
+  return (
+    <CalendarOptionList
+      options={options}
+      selected={selected}
+      pending={pending}
+      onToggle={onToggle}
+    />
+  );
+}
+
+function CalendarOptionList({
+  options,
+  selected,
+  pending,
+  onToggle,
+}: {
+  options: readonly ProviderCalendarOption[];
+  selected: ReadonlySet<string>;
+  pending: boolean;
+  onToggle: (calendarId: string, checked: boolean) => void;
+}) {
+  const id = useId();
+  return (
+    <div role="group" aria-label="Calendars" className="grid gap-2">
+      {options.map((option, index) => {
+        const connected = !!option.connectedEntityId;
+        return (
+          <label key={option.providerCalendarId} htmlFor={`${id}-${index}`} className={optionRow}>
+            <Checkbox
+              id={`${id}-${index}`}
+              checked={connected || selected.has(option.providerCalendarId)}
+              disabled={connected || pending}
+              onCheckedChange={(checked) => onToggle(option.providerCalendarId, checked === true)}
+            />
+            <CalendarColorDot color={option.color} />
+            <span className="min-w-0 flex-1 truncate" title={option.name}>
+              {option.name}
+            </span>
+            {option.isPrimary && <Tag>Primary</Tag>}
+            {connected && <Tag>Connected</Tag>}
+          </label>
+        );
+      })}
+    </div>
   );
 }

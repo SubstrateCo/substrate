@@ -35,7 +35,7 @@ export function AcceptInvitationScreen({
   declineDialog,
   signOut,
 }: {
-  invitation?: { organizationName: string; role: string; email: string; inviterEmail?: string };
+  invitation?: Invitation;
   loading?: boolean;
   pending?: boolean;
   error?: Error | null;
@@ -52,16 +52,7 @@ export function AcceptInvitationScreen({
 }) {
   const missing = !loading && (unavailable || (!!invitation && !available));
   const ready = !loading && !failed && !missing && invitation;
-  let title = "Join your team";
-  let description = "Accept your invitation to open the workspace.";
-  if (ready) {
-    title = `Join ${ready.organizationName}`;
-    description = "You were invited to this workspace. Accept to open it.";
-  } else if (missing) {
-    title = "This invitation isn’t available";
-    description =
-      "It may have expired, been canceled, or been sent to another email. Sign in with the invited email, or ask the owner for a new invitation.";
-  }
+  const { title, description } = invitationCopy(ready, missing);
   return (
     <AuthFrame
       title={title}
@@ -89,28 +80,7 @@ export function AcceptInvitationScreen({
       )}
       {ready && (
         <>
-          <div className="flex items-center gap-3 rounded-lg border p-3 wrap-anywhere">
-            <span
-              aria-hidden="true"
-              className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-accent-foreground"
-            >
-              {initials(ready.organizationName)}
-            </span>
-            <dl className="min-w-0 text-sm">
-              <dt className="sr-only">Workspace</dt>
-              <dd className="font-medium">{ready.organizationName}</dd>
-              <dt className="sr-only">Role</dt>
-              <dd className="text-muted-foreground">Joining as {roleLabel(ready.role)}</dd>
-            </dl>
-          </div>
-          <p className="text-sm wrap-anywhere text-muted-foreground">
-            Invited email: {ready.email}
-          </p>
-          {ready.inviterEmail && (
-            <p className="text-sm wrap-anywhere text-muted-foreground">
-              Invited by: {ready.inviterEmail}
-            </p>
-          )}
+          <InvitationDetails invitation={ready} />
           <>
             <FormMessage
               error={error}
@@ -141,5 +111,54 @@ export function AcceptInvitationScreen({
         </>
       )}
     </AuthFrame>
+  );
+}
+
+type Invitation = { organizationName: string; role: string; email: string; inviterEmail?: string };
+
+function invitationCopy(ready: Invitation | false | undefined, missing: boolean) {
+  if (ready)
+    return {
+      title: `Join ${ready.organizationName}`,
+      description: "You were invited to this workspace. Accept to open it.",
+    };
+  if (missing)
+    return {
+      title: "This invitation isn’t available",
+      description:
+        "It may have expired, been canceled, or been sent to another email. Sign in with the invited email, or ask the owner for a new invitation.",
+    };
+  return {
+    title: "Join your team",
+    description: "Accept your invitation to open the workspace.",
+  };
+}
+
+function InvitationDetails({ invitation }: { invitation: Invitation }) {
+  return (
+    <>
+      <div className="flex items-center gap-3 rounded-lg border p-3 wrap-anywhere">
+        <span
+          aria-hidden="true"
+          className="flex size-9 shrink-0 items-center justify-center rounded-md bg-accent text-xs font-semibold text-accent-foreground"
+        >
+          {initials(invitation.organizationName)}
+        </span>
+        <dl className="min-w-0 text-sm">
+          <dt className="sr-only">Workspace</dt>
+          <dd className="font-medium">{invitation.organizationName}</dd>
+          <dt className="sr-only">Role</dt>
+          <dd className="text-muted-foreground">Joining as {roleLabel(invitation.role)}</dd>
+        </dl>
+      </div>
+      <p className="text-sm wrap-anywhere text-muted-foreground">
+        Invited email: {invitation.email}
+      </p>
+      {invitation.inviterEmail && (
+        <p className="text-sm wrap-anywhere text-muted-foreground">
+          Invited by: {invitation.inviterEmail}
+        </p>
+      )}
+    </>
   );
 }

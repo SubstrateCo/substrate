@@ -6,7 +6,8 @@ import {
   taskRowContentClassName,
   taskRowDueDateClassName,
 } from "../list/task-list-layout";
-import { ProjectHeaderLayout, ProjectTabLayout, projectTabs } from "./project-layout";
+import { ProjectHeaderLayout, ProjectTabLayout } from "./project-layout";
+import { projectTabs } from "./project-tabs";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { PageHeader } from "@/components/layout/page-header";
 import { Skeleton } from "@/components/ui/skeleton";

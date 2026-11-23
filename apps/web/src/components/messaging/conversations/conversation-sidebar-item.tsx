@@ -68,24 +68,7 @@ export function ConversationSidebarItem({
         onClick={onSelect}
       >
         <SidebarItemContent
-          icon={
-            conversation.kind === "channel" && conversation.private ? (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span role="img" aria-label="Private channel" tabIndex={0} className="shrink-0">
-                    <ConversationKindIcon kind="channel" private className="size-4" />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent>Private channel</TooltipContent>
-              </Tooltip>
-            ) : (
-              <ConversationKindIcon
-                kind={conversation.kind}
-                private={conversation.private}
-                className="size-4 shrink-0"
-              />
-            )
-          }
+          icon={<ConversationSidebarIcon conversation={conversation} />}
           title={conversationName(conversation)}
           unread={!!conversation.unreadCount}
         >
@@ -105,26 +88,53 @@ export function ConversationSidebarItem({
               <TooltipContent>Includes people from another organization</TooltipContent>
             </Tooltip>
           )}
-          {/* A mention badge replaces the unread count; the row stays bold either way. */}
-          {conversation.mentionCount ? (
-            <span
-              className="ml-auto min-w-5 shrink-0 rounded-full bg-primary px-1.5 text-center text-xs leading-5 font-medium text-primary-foreground"
-              aria-label={`${conversation.mentionCount} ${conversation.mentionCount === 1 ? "mention" : "mentions"}, ${conversation.unreadCount} unread ${conversation.unreadCount === 1 ? "message" : "messages"}`}
-            >
-              {conversation.mentionCount > 99 ? "99+" : conversation.mentionCount}
-            </span>
-          ) : (
-            !!conversation.unreadCount && (
-              <span
-                className="ml-auto shrink-0 text-xs font-medium"
-                aria-label={`${conversation.unreadCount} unread ${conversation.unreadCount === 1 ? "message" : "messages"}`}
-              >
-                {conversation.unreadCount > 99 ? "99+" : conversation.unreadCount}
-              </span>
-            )
-          )}
+          <ConversationUnreadBadge conversation={conversation} />
         </SidebarItemContent>
       </Link>
     </Button>
+  );
+}
+
+function ConversationSidebarIcon({ conversation }: { conversation: Conversation }) {
+  if (conversation.kind === "channel" && conversation.private)
+    return (
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span role="img" aria-label="Private channel" tabIndex={0} className="shrink-0">
+            <ConversationKindIcon kind="channel" private className="size-4" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>Private channel</TooltipContent>
+      </Tooltip>
+    );
+  return (
+    <ConversationKindIcon
+      kind={conversation.kind}
+      private={conversation.private}
+      className="size-4 shrink-0"
+    />
+  );
+}
+
+/** A mention badge replaces the unread count; the row stays bold either way. */
+function ConversationUnreadBadge({ conversation }: { conversation: Conversation }) {
+  const { mentionCount, unreadCount } = conversation;
+  if (mentionCount)
+    return (
+      <span
+        className="ml-auto min-w-5 shrink-0 rounded-full bg-primary px-1.5 text-center text-xs leading-5 font-medium text-primary-foreground"
+        aria-label={`${mentionCount} ${mentionCount === 1 ? "mention" : "mentions"}, ${unreadCount} unread ${unreadCount === 1 ? "message" : "messages"}`}
+      >
+        {mentionCount > 99 ? "99+" : mentionCount}
+      </span>
+    );
+  if (!unreadCount) return null;
+  return (
+    <span
+      className="ml-auto shrink-0 text-xs font-medium"
+      aria-label={`${unreadCount} unread ${unreadCount === 1 ? "message" : "messages"}`}
+    >
+      {unreadCount > 99 ? "99+" : unreadCount}
+    </span>
   );
 }

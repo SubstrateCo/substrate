@@ -18,65 +18,57 @@ type AppTableRows<TData extends RowData> = ReturnType<
   AppTableInstance<TData>["getRowModel"]
 >["rows"];
 
-export function AppTable<TData extends RowData>({
-  table,
-  name,
-  loading = false,
-  loadingMessage = "Loading…",
-  error,
-  onRetry,
-  emptyMessage = "No results.",
-  emptyDescription = "",
-  emptyIcon,
-  errorTitle = "Couldn’t load results",
-  errorDescription = "Your results are unavailable. Please try again.",
-  renderMobileRow,
-}: {
-  table: AppTableInstance<TData>;
-  name: string;
-  loading?: boolean;
+const defaultLoadingMessage = "Loading…";
+const defaultErrorTitle = "Couldn’t load results";
+const defaultErrorDescription = "Your results are unavailable. Please try again.";
+
+type AppTableMessages = {
   loadingMessage?: string;
-  error?: Error | null;
-  onRetry?: () => void;
   emptyMessage?: string;
   /** Where items come from or how to add one, such as "Invitations you send appear here." */
   emptyDescription?: string;
   emptyIcon?: LucideIcon;
   errorTitle?: string;
   errorDescription?: string;
+};
+
+export function AppTable<TData extends RowData>({
+  table,
+  name,
+  loading = false,
+  error,
+  onRetry,
+  renderMobileRow,
+  ...messages
+}: {
+  table: AppTableInstance<TData>;
+  name: string;
+  loading?: boolean;
+  error?: Error | null;
+  onRetry?: () => void;
   renderMobileRow?: (row: TData) => ReactNode;
-}) {
+} & AppTableMessages) {
   const rows = table.getRowModel().rows;
   // With no rows, show only the notice: sortable headers over nothing are noise.
   const hasRows = rows.length > 0;
   const initialLoading = loading && !hasRows && !error;
-  let emptyContent = (
-    <ContentNotice title={emptyMessage} description={emptyDescription} icon={emptyIcon} />
+  const emptyContent = (
+    <AppTableEmpty loading={loading} error={error} onRetry={onRetry} {...messages} />
   );
-  if (error) {
-    emptyContent = (
-      <ErrorState title={errorTitle} description={errorDescription} onRetry={onRetry} />
-    );
-  } else if (loading) {
-    emptyContent = <LoadingState label={loadingMessage} variant="table" />;
-  }
   return (
     <table.AppTable>
       <div className="@container min-w-0 space-y-3">
-        {loading && (hasRows || initialLoading) && (
-          <span
-            role="status"
-            className={cn(
-              "sr-only",
-              initialLoading && renderMobileRow && "hidden @min-[40rem]:block",
-            )}
-          >
-            {loadingMessage}
-          </span>
-        )}
-        {error && hasRows && (
-          <ErrorState compact title={errorTitle} description={errorDescription} onRetry={onRetry} />
-        )}
+        <AppTableAlerts
+          loading={loading}
+          initialLoading={initialLoading}
+          hasRows={hasRows}
+          hasMobileRows={Boolean(renderMobileRow)}
+          error={error}
+          onRetry={onRetry}
+          loadingMessage={messages.loadingMessage}
+          errorTitle={messages.errorTitle}
+          errorDescription={messages.errorDescription}
+        />
         {renderMobileRow && (
           <MobileTableRows name={name} rows={rows} renderRow={renderMobileRow}>
             {emptyContent}
@@ -102,6 +94,66 @@ export function AppTable<TData extends RowData>({
         {hasRows && table.getPageCount() > 1 && <TablePagination table={table} name={name} />}
       </div>
     </table.AppTable>
+  );
+}
+
+function AppTableEmpty({
+  loading,
+  error,
+  onRetry,
+  loadingMessage = defaultLoadingMessage,
+  emptyMessage = "No results.",
+  emptyDescription = "",
+  emptyIcon,
+  errorTitle = defaultErrorTitle,
+  errorDescription = defaultErrorDescription,
+}: {
+  loading: boolean;
+  error?: Error | null;
+  onRetry?: () => void;
+} & AppTableMessages) {
+  if (error)
+    return <ErrorState title={errorTitle} description={errorDescription} onRetry={onRetry} />;
+  if (loading) return <LoadingState label={loadingMessage} variant="table" />;
+  return <ContentNotice title={emptyMessage} description={emptyDescription} icon={emptyIcon} />;
+}
+
+/** The loading announcement and the error banner shown above existing rows. */
+function AppTableAlerts({
+  loading,
+  initialLoading,
+  hasRows,
+  hasMobileRows,
+  error,
+  onRetry,
+  loadingMessage = defaultLoadingMessage,
+  errorTitle = defaultErrorTitle,
+  errorDescription = defaultErrorDescription,
+}: {
+  loading: boolean;
+  initialLoading: boolean;
+  hasRows: boolean;
+  hasMobileRows: boolean;
+  error?: Error | null;
+  onRetry?: () => void;
+  loadingMessage?: string;
+  errorTitle?: string;
+  errorDescription?: string;
+}) {
+  return (
+    <>
+      {loading && (hasRows || initialLoading) && (
+        <span
+          role="status"
+          className={cn("sr-only", initialLoading && hasMobileRows && "hidden @min-[40rem]:block")}
+        >
+          {loadingMessage}
+        </span>
+      )}
+      {error && hasRows && (
+        <ErrorState compact title={errorTitle} description={errorDescription} onRetry={onRetry} />
+      )}
+    </>
   );
 }
 

@@ -51,6 +51,19 @@ function statusLine(label: string, state: SignInDialogState): StatusLine {
   }
 }
 
+/**
+ * Output segments with the character offset where each starts. Output only grows, so the
+ * offset identifies a segment across reads.
+ */
+function positionedSegments(output: string) {
+  let start = 0;
+  return outputSegments(output).map((segment) => {
+    const positioned = { ...segment, start };
+    start += segment.text.length;
+    return positioned;
+  });
+}
+
 /** Terminal output with links that open in the system browser. Follows new output at the end. */
 function OutputLog({ output, label }: { output: string; label: string }) {
   const log = useRef<HTMLPreElement>(null);
@@ -72,12 +85,10 @@ function OutputLog({ output, label }: { output: string; label: string }) {
       className="max-h-72 min-h-32 overflow-y-auto rounded-lg border bg-muted/50 p-3 font-mono text-xs leading-relaxed wrap-anywhere whitespace-pre-wrap focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
     >
       {output ? (
-        outputSegments(output).map((segment, index) =>
+        positionedSegments(output).map((segment) =>
           segment.href ? (
             <a
-              // Output only grows, so a segment keeps its index.
-              // oxlint-disable-next-line react/no-array-index-key -- segments have no other identity.
-              key={index}
+              key={segment.start}
               href={segment.href}
               target="_blank"
               rel="noopener noreferrer"
@@ -86,8 +97,7 @@ function OutputLog({ output, label }: { output: string; label: string }) {
               {segment.text}
             </a>
           ) : (
-            // oxlint-disable-next-line react/no-array-index-key -- segments have no other identity.
-            <span key={index}>{segment.text}</span>
+            <span key={segment.start}>{segment.text}</span>
           ),
         )
       ) : (
@@ -116,11 +126,10 @@ function InputLine({
         // React events cross portals; the agent form around the launcher must not submit.
         event.stopPropagation();
         if (disabled || pending || !text.trim()) return;
-        // A failed send keeps the text; the dialog shows the error.
-        void onSend(text.trim()).then(
-          () => setText(""),
-          () => {},
-        );
+        // A failed send keeps the text. The send mutation holds the error, and the dialog shows it.
+        void onSend(text.trim())
+          .then(() => setText(""))
+          .catch(() => {});
       }}
     >
       <Input

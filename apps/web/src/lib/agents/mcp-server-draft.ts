@@ -6,15 +6,28 @@ import {
 
 import type { z } from "zod";
 
+/** One argument row. The id only keys the row in the editor; it is not saved. */
+export type McpServerArgRow = { id: string; value: string };
+/** One environment variable row. The id only keys the row in the editor; it is not saved. */
+export type McpServerEnvironmentRow = { id: string; key: string; value: string };
+
 /** One editable server: every field of both transports, so switching keeps what was typed. */
 export type McpServerDraft = {
   name: string;
   transport: HarnessMcpServer["transport"];
   command: string;
-  args: string[];
-  environment: { key: string; value: string }[];
+  args: McpServerArgRow[];
+  environment: McpServerEnvironmentRow[];
   url: string;
 };
+
+export const newArgRow = (value = ""): McpServerArgRow => ({ id: crypto.randomUUID(), value });
+
+export const newEnvironmentRow = (key = "", value = ""): McpServerEnvironmentRow => ({
+  id: crypto.randomUUID(),
+  key,
+  value,
+});
 
 export type McpServerDraftErrors = {
   name?: string;
@@ -34,10 +47,12 @@ export function draftFromServer(server?: HarnessMcpServer): McpServerDraft {
     name: server?.name ?? "",
     transport: server?.transport ?? "stdio",
     command: server?.transport === "stdio" ? server.command : "",
-    args: server?.transport === "stdio" ? [...(server.args ?? [])] : [],
+    args: server?.transport === "stdio" ? (server.args ?? []).map((arg) => newArgRow(arg)) : [],
     environment:
       server?.transport === "stdio"
-        ? Object.entries(server.environment ?? {}).map(([key, value]) => ({ key, value }))
+        ? Object.entries(server.environment ?? {}).map(([key, value]) =>
+            newEnvironmentRow(key, value),
+          )
         : [],
     url: server?.transport === "http" ? server.url : "",
   };
@@ -133,8 +148,8 @@ export function serverFromDraft(
   if (!options.id && id && options.servers.some((server) => server.id === id))
     errors.name = "Another server already has this name.";
   // Each saved argument remembers its row, so an error lands under the right input.
-  const argRows = draft.args.flatMap((arg, index) => (arg.trim() ? [index] : []));
-  const args = argRows.map((index) => draft.args[index]!.trim());
+  const argRows = draft.args.flatMap((arg, index) => (arg.value.trim() ? [index] : []));
+  const args = argRows.map((index) => draft.args[index]!.value.trim());
   const environment: Record<string, string> = {};
   draft.environment.forEach((row, index) => {
     const key = row.key.trim();

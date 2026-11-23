@@ -149,7 +149,13 @@ function useModelCatalogs({
     options,
     choices,
     groups,
-    selected,
+    selected: {
+      unavailable: selected.data?.status === "unavailable",
+      signIn: selected.data?.status === "sign-in",
+      methods: selected.data?.auth?.methods ?? [],
+      loading: selected.isPending && selected.fetchStatus === "fetching",
+      error: selected.error,
+    },
     refreshing: catalogs.some((catalog) => catalog.isFetching),
     refresh: () => {
       catalogs.forEach((catalog, index) => {
@@ -157,6 +163,134 @@ function useModelCatalogs({
       });
     },
   };
+}
+
+/** A search can name a model the catalog lacks. OpenCode models need a provider/model ID. */
+function customModelAllowed(harness: HarnessKind, query: string) {
+  return query.length > 0 && (harness !== "opencode" || /^[^/\s]+\/\S+$/.test(query));
+}
+
+function choiceKey(choice: Choice) {
+  return `${choice.harness}/${choice.id}`;
+}
+
+/** One model row. A search names the runtime of each row. */
+function ModelItem({
+  choice,
+  groupLabel,
+  query,
+  checked,
+  onSelect,
+}: {
+  choice: Choice;
+  groupLabel: string;
+  query: string;
+  checked: boolean;
+  onSelect: () => void;
+}) {
+  return (
+    <CommandItem
+      aria-label={choice.name}
+      value={choiceKey(choice)}
+      keywords={[choice.name, choice.provider ?? "", groupLabel]}
+      title={choice.description}
+      onSelect={onSelect}
+    >
+      <Check aria-hidden="true" className={`size-3.5 ${checked ? "text-primary" : "invisible"}`} />
+      <span className="grid min-w-0 flex-1 gap-0.5">
+        <span className="truncate">{choice.name}</span>
+        {(query || choice.provider) && (
+          <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
+            {query && <HarnessIcon harness={choice.harness} compact />}
+            <span className="truncate">
+              {[query && groupLabel, choice.provider !== groupLabel && choice.provider]
+                .filter(Boolean)
+                .join(" · ")}
+            </span>
+          </span>
+        )}
+      </span>
+      {choice.saved && <span className="text-xs text-muted-foreground">Current</span>}
+    </CommandItem>
+  );
+}
+
+/** The models of each listed runtime, then a custom model for the search text. */
+function ModelList({
+  groups,
+  choices,
+  query,
+  harness,
+  model,
+  browseHarness,
+  customAllowed,
+  onSelect,
+}: {
+  groups: { value: HarnessKind; label: string }[];
+  choices: Choice[];
+  query: string;
+  harness: HarnessKind;
+  model?: string;
+  browseHarness: HarnessKind;
+  customAllowed: boolean;
+  onSelect: (harness: HarnessKind, id: string) => void;
+}) {
+  return (
+    <CommandList className="min-h-0 flex-1">
+      <CommandEmpty>No models match “{query}”.</CommandEmpty>
+      {groups.map((option) => {
+        const nativeDefault = choices.find(
+          (choice) => choice.harness === option.value && choice.isDefault,
+        );
+        const models = choices.filter((choice) => choice.harness === option.value);
+        return (
+          <CommandGroup key={option.value} heading={query ? option.label : undefined}>
+            {!query && !models.some((choice) => choice.id === "default") && (
+              <CommandItem
+                aria-label={defaultModelLabel}
+                value={`${option.value}/default`}
+                onSelect={() => onSelect(option.value, "")}
+              >
+                <Check
+                  aria-hidden="true"
+                  className={`size-3.5 ${harness === option.value && !model ? "text-primary" : "invisible"}`}
+                />
+                <span className="grid min-w-0 gap-0.5">
+                  <span>{defaultModelLabel}</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    {nativeDefault
+                      ? `Currently ${nativeDefault.name}`
+                      : `${option.label} picks its own default`}
+                  </span>
+                </span>
+              </CommandItem>
+            )}
+            {models.map((choice) => (
+              <ModelItem
+                key={choiceKey(choice)}
+                choice={choice}
+                groupLabel={option.label}
+                query={query}
+                checked={
+                  harness === choice.harness &&
+                  (model === choice.id || (!model && choice.id === "default"))
+                }
+                onSelect={() => onSelect(choice.harness, choice.id)}
+              />
+            ))}
+          </CommandGroup>
+        );
+      })}
+      {customAllowed &&
+        !choices.some((choice) => choice.harness === browseHarness && choice.id === query) && (
+          <CommandGroup heading="Custom model">
+            <CommandItem value={`Use ${query}`} onSelect={() => onSelect(browseHarness, query)}>
+              <span className="truncate">Use “{query}”</span>
+            </CommandItem>
+          </CommandGroup>
+        )}
+    </CommandList>
+  );
 }
 
 // T3 Code's grouped model rows, adapted to our native bridge and UI primitives.
@@ -188,15 +322,7 @@ export function ModelPicker({
   const [search, setSearch] = useState("");
   const browseHarness = browseOverride ?? harness;
   const query = search.trim();
-  const {
-    available,
-    options,
-    choices,
-    groups,
-    selected: selectedCatalog,
-    refreshing,
-    refresh,
-  } = useModelCatalogs({
+  const { available, options, choices, groups, selected, refreshing, refresh } = useModelCatalogs({
     userId,
     organizationId,
     agentId,
@@ -208,16 +334,6 @@ export function ModelPicker({
   const modelName = includeSavedModel(choices, harness, model)?.name ?? defaultModelLabel;
   const label = harnessLabel(harness);
   const selectedLabel = harnessLabel(browseHarness);
-  const selectedUnavailable = selectedCatalog.data?.status === "unavailable";
-  const selectedSignIn = selectedCatalog.data?.status === "sign-in";
-  const customAllowed =
-    !selectedUnavailable &&
-    !selectedSignIn &&
-    query.length > 0 &&
-    (browseHarness !== "opencode" || /^[^/\s]+\/\S+$/.test(query));
-  function key(choice: Choice) {
-    return `${choice.harness}/${choice.id}`;
-  }
   function select(nextHarness: HarnessKind, id: string) {
     onChange(nextHarness, id || undefined);
     setOpen(false);
@@ -271,10 +387,10 @@ export function ModelPicker({
             onValueChange={chooseHarness}
           />
         </div>
-        {selectedSignIn && (
+        {selected.signIn && (
           <PickerSignIn
             label={selectedLabel}
-            methods={selectedCatalog.data?.auth?.methods ?? []}
+            methods={selected.methods}
             onSignIn={
               onSignIn &&
               ((method) => {
@@ -284,7 +400,7 @@ export function ModelPicker({
             }
           />
         )}
-        {!selectedUnavailable && !selectedSignIn && (
+        {!selected.unavailable && !selected.signIn && (
           <Command
             key={`${open}/${browseHarness}`}
             className="min-h-0 flex-1"
@@ -298,95 +414,25 @@ export function ModelPicker({
                 onValueChange={setSearch}
               />
             </div>
-            <CommandList className="min-h-0 flex-1">
-              <CommandEmpty>No models match “{query}”.</CommandEmpty>
-              {groups.map((option) => {
-                const nativeDefault = choices.find(
-                  (choice) => choice.harness === option.value && choice.isDefault,
-                );
-                const models = choices.filter((choice) => choice.harness === option.value);
-                return (
-                  <CommandGroup key={option.value} heading={query ? option.label : undefined}>
-                    {!query && !models.some((choice) => choice.id === "default") && (
-                      <CommandItem
-                        aria-label={defaultModelLabel}
-                        value={`${option.value}/default`}
-                        onSelect={() => select(option.value, "")}
-                      >
-                        <Check
-                          aria-hidden="true"
-                          className={`size-3.5 ${harness === option.value && !model ? "text-primary" : "invisible"}`}
-                        />
-                        <span className="grid min-w-0 gap-0.5">
-                          <span>{defaultModelLabel}</span>
-                          <span className="truncate text-xs text-muted-foreground">
-                            {nativeDefault
-                              ? `Currently ${nativeDefault.name}`
-                              : `${option.label} picks its own default`}
-                          </span>
-                        </span>
-                      </CommandItem>
-                    )}
-                    {models.map((choice) => (
-                      <CommandItem
-                        key={key(choice)}
-                        aria-label={choice.name}
-                        value={key(choice)}
-                        keywords={[choice.name, choice.provider ?? "", option.label]}
-                        title={choice.description}
-                        onSelect={() => select(choice.harness, choice.id)}
-                      >
-                        <Check
-                          aria-hidden="true"
-                          className={`size-3.5 ${harness === choice.harness && (model === choice.id || (!model && choice.id === "default")) ? "text-primary" : "invisible"}`}
-                        />
-                        <span className="grid min-w-0 flex-1 gap-0.5">
-                          <span className="truncate">{choice.name}</span>
-                          {(query || choice.provider) && (
-                            <span className="flex min-w-0 items-center gap-1 text-xs text-muted-foreground">
-                              {query && <HarnessIcon harness={choice.harness} compact />}
-                              <span className="truncate">
-                                {[
-                                  query && option.label,
-                                  choice.provider !== option.label && choice.provider,
-                                ]
-                                  .filter(Boolean)
-                                  .join(" · ")}
-                              </span>
-                            </span>
-                          )}
-                        </span>
-                        {choice.saved && (
-                          <span className="text-xs text-muted-foreground">Current</span>
-                        )}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
-                );
-              })}
-              {customAllowed &&
-                !choices.some(
-                  (choice) => choice.harness === browseHarness && choice.id === query,
-                ) && (
-                  <CommandGroup heading="Custom model">
-                    <CommandItem
-                      value={`Use ${query}`}
-                      onSelect={() => select(browseHarness, query)}
-                    >
-                      <span className="truncate">Use “{query}”</span>
-                    </CommandItem>
-                  </CommandGroup>
-                )}
-            </CommandList>
+            <ModelList
+              groups={groups}
+              choices={choices}
+              query={query}
+              harness={harness}
+              model={model}
+              browseHarness={browseHarness}
+              customAllowed={customModelAllowed(browseHarness, query)}
+              onSelect={select}
+            />
           </Command>
         )}
         <div className="flex shrink-0 items-center justify-end gap-3 border-t px-3 py-2">
           <ModelCatalogStatus
             available={available}
             label={selectedLabel}
-            unavailable={selectedUnavailable}
-            loading={selectedCatalog.isPending && selectedCatalog.fetchStatus === "fetching"}
-            error={selectedCatalog.error}
+            unavailable={selected.unavailable}
+            loading={selected.loading}
+            error={selected.error}
             onRetry={refresh}
           />
           <Button

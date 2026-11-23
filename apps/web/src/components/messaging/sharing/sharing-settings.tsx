@@ -6,7 +6,7 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { isAccessFailure } from "@/api/access-failure";
-import type { listSharingConversations } from "@/api/messaging/sharing";
+import type { listSharingConversations, listSharingInbox } from "@/api/messaging/sharing";
 import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { StaleNotice } from "@/components/feedback/stale-notice";
@@ -42,88 +42,13 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
         hasLists={!!(conversations.data && inbox.data)}
         onRetry={retry}
       />
+      {!blocked && <SharingRequestsCard pending={inbox.isPending} requests={inbox.data} />}
       {!blocked && (
-        <SettingsCard title="Requests">
-          {inbox.isPending && (
-            <div role="status" aria-label="Loading requests…">
-              <div aria-hidden="true" className="flex flex-wrap items-center justify-between gap-3">
-                <SharingRequestContent title={<SkeletonText width="12rem" />} />
-              </div>
-            </div>
-          )}
-          {inbox.data?.length === 0 && <SettingsNote>No pending requests.</SettingsNote>}
-          {inbox.data?.map((invite) => (
-            <div key={invite.id} className="flex flex-wrap items-center justify-between gap-3">
-              <SharingRequestContent
-                title={
-                  <>
-                    {invite.name ?? "Conversation"} · {invite.email}
-                  </>
-                }
-                action={
-                  <Button asChild variant="outline">
-                    <Link to="/accept-sharing/$invitationId" params={{ invitationId: invite.id }}>
-                      Review
-                    </Link>
-                  </Button>
-                }
-              />
-            </div>
-          ))}
-        </SettingsCard>
-      )}
-      {!blocked && (
-        <SettingsCard title="Shared conversations">
-          {conversations.isPending && (
-            <div role="status" aria-label="Loading shared conversations…">
-              <ul aria-hidden="true" className="divide-y">
-                <li className="flex flex-wrap items-center justify-between gap-3 py-2">
-                  <SharedConversationTitle
-                    icon={<SkeletonText width="1rem" />}
-                    title={<SkeletonText width="10rem" />}
-                  />
-                </li>
-              </ul>
-            </div>
-          )}
-          {conversations.data?.length === 0 && (
-            <SettingsNote>No conversations to manage.</SettingsNote>
-          )}
-          {!!conversations.data?.length && (
-            <ul aria-label="Shared conversations" className="divide-y">
-              {conversations.data.map((conversation) => (
-                <li
-                  key={conversation.id}
-                  className="flex flex-wrap items-center justify-between gap-3 py-2"
-                >
-                  <SharedConversationTitle
-                    icon={
-                      conversation.kind === "channel" ? (
-                        <Globe
-                          aria-hidden="true"
-                          className="size-4 shrink-0 text-muted-foreground"
-                        />
-                      ) : (
-                        <ConversationKindIcon
-                          kind={conversation.kind}
-                          className="size-4 shrink-0 text-muted-foreground"
-                        />
-                      )
-                    }
-                    title={sharedConversationTitle(conversation)}
-                    details={sharedConversationDetails(conversation)}
-                    status={
-                      conversation.status && <Tag>{sharedStatusLabels[conversation.status]}</Tag>
-                    }
-                  />
-                  <Button variant="ghost" onClick={() => open(conversation.id)}>
-                    Manage
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </SettingsCard>
+        <SharedConversationsCard
+          pending={conversations.isPending}
+          conversations={conversations.data}
+          onManage={open}
+        />
       )}
       {selected && !blocked && (
         <SharingManager
@@ -166,6 +91,104 @@ function CollaborationLoadNotice({
         />
       );
   return notice;
+}
+
+type SharingRequest = Awaited<ReturnType<typeof listSharingInbox>>[number];
+
+function SharingRequestsCard({
+  pending,
+  requests,
+}: {
+  pending: boolean;
+  requests?: SharingRequest[];
+}) {
+  return (
+    <SettingsCard title="Requests">
+      {pending && (
+        <div role="status" aria-label="Loading requests…">
+          <div aria-hidden="true" className="flex flex-wrap items-center justify-between gap-3">
+            <SharingRequestContent title={<SkeletonText width="12rem" />} />
+          </div>
+        </div>
+      )}
+      {requests?.length === 0 && <SettingsNote>No pending requests.</SettingsNote>}
+      {requests?.map((invite) => (
+        <div key={invite.id} className="flex flex-wrap items-center justify-between gap-3">
+          <SharingRequestContent
+            title={
+              <>
+                {invite.name ?? "Conversation"} · {invite.email}
+              </>
+            }
+            action={
+              <Button asChild variant="outline">
+                <Link to="/accept-sharing/$invitationId" params={{ invitationId: invite.id }}>
+                  Review
+                </Link>
+              </Button>
+            }
+          />
+        </div>
+      ))}
+    </SettingsCard>
+  );
+}
+
+function SharedConversationsCard({
+  pending,
+  conversations,
+  onManage,
+}: {
+  pending: boolean;
+  conversations?: SharedConversation[];
+  onManage: (conversationId: string) => void;
+}) {
+  return (
+    <SettingsCard title="Shared conversations">
+      {pending && (
+        <div role="status" aria-label="Loading shared conversations…">
+          <ul aria-hidden="true" className="divide-y">
+            <li className="flex flex-wrap items-center justify-between gap-3 py-2">
+              <SharedConversationTitle
+                icon={<SkeletonText width="1rem" />}
+                title={<SkeletonText width="10rem" />}
+              />
+            </li>
+          </ul>
+        </div>
+      )}
+      {conversations?.length === 0 && <SettingsNote>No conversations to manage.</SettingsNote>}
+      {!!conversations?.length && (
+        <ul aria-label="Shared conversations" className="divide-y">
+          {conversations.map((conversation) => (
+            <li
+              key={conversation.id}
+              className="flex flex-wrap items-center justify-between gap-3 py-2"
+            >
+              <SharedConversationTitle
+                icon={
+                  conversation.kind === "channel" ? (
+                    <Globe aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                  ) : (
+                    <ConversationKindIcon
+                      kind={conversation.kind}
+                      className="size-4 shrink-0 text-muted-foreground"
+                    />
+                  )
+                }
+                title={sharedConversationTitle(conversation)}
+                details={sharedConversationDetails(conversation)}
+                status={conversation.status && <Tag>{sharedStatusLabels[conversation.status]}</Tag>}
+              />
+              <Button variant="ghost" onClick={() => onManage(conversation.id)}>
+                Manage
+              </Button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </SettingsCard>
+  );
 }
 
 function SharingRequestContent({ title, action }: { title: ReactNode; action?: ReactNode }) {

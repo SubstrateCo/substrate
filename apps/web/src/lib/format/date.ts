@@ -205,9 +205,11 @@ export function formatTimeRange(start: DateInput, end: DateInput) {
   return from && until ? `${from} – ${until}` : from;
 }
 
+const localZone = new Intl.DateTimeFormat();
+
 /** The viewer's IANA time zone, such as "America/New_York". */
 export function localTimeZone() {
-  return new Intl.DateTimeFormat().resolvedOptions().timeZone;
+  return localZone.resolvedOptions().timeZone;
 }
 
 /** A calendar date stored as YYYY-MM-DD, read in local time so it never shifts a day. */

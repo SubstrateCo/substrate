@@ -4,33 +4,53 @@ import {
   credentialsMessage,
   draftFromServer,
   mcpServerId,
+  newArgRow,
+  newEnvironmentRow,
   serverFromDraft,
   type McpServerDraft,
 } from "./mcp-server-draft";
 import { describe, expect, test } from "bun:test";
 
+const args = (...values: string[]) => values.map((value) => newArgRow(value));
+const environment = (...rows: [string, string][]) =>
+  rows.map(([key, value]) => newEnvironmentRow(key, value));
+
 const stdio = (overrides: Partial<McpServerDraft> = {}): McpServerDraft => ({
   ...draftFromServer(),
   name: "Linear",
   command: "npx",
-  args: ["-y", "linear-mcp", ""],
+  args: args("-y", "linear-mcp", ""),
   ...overrides,
 });
 
 describe("MCP server drafts", () => {
   test("a new stdio server takes its ID from its name and drops empty rows", () => {
-    expect(
-      serverFromDraft(stdio({ environment: [{ key: "", value: "" }] }), { servers: [] }),
-    ).toEqual({
-      server: {
-        id: "linear",
-        name: "Linear",
-        transport: "stdio",
-        command: "npx",
-        args: ["-y", "linear-mcp"],
+    expect(serverFromDraft(stdio({ environment: environment(["", ""]) }), { servers: [] })).toEqual(
+      {
+        server: {
+          id: "linear",
+          name: "Linear",
+          transport: "stdio",
+          command: "npx",
+          args: ["-y", "linear-mcp"],
+        },
       },
-    });
+    );
     expect(mcpServerId("  My Docs Server ")).toBe("my-docs-server");
+  });
+
+  test("a saved stdio server round-trips through its draft without row IDs", () => {
+    const server: HarnessMcpServer = {
+      id: "linear",
+      name: "Linear",
+      transport: "stdio",
+      command: "npx",
+      args: ["-y", "linear-mcp"],
+      environment: { REGION: "us" },
+    };
+    expect(serverFromDraft(draftFromServer(server), { id: server.id, servers: [server] })).toEqual({
+      server,
+    });
   });
 
   test("editing keeps the server's ID when the name changes", () => {
@@ -45,11 +65,8 @@ describe("MCP server drafts", () => {
   test("rejects credentials in arguments and environment variables", () => {
     const result = serverFromDraft(
       stdio({
-        args: ["--token=abc"],
-        environment: [
-          { key: "REGION", value: "us" },
-          { key: "GITHUB_TOKEN", value: "x" },
-        ],
+        args: args("--token=abc"),
+        environment: environment(["REGION", "us"], ["GITHUB_TOKEN", "x"]),
       }),
       { servers: [] },
     );
@@ -79,7 +96,7 @@ describe("MCP server drafts", () => {
 
   test("names each missing field", () => {
     const result = serverFromDraft(
-      stdio({ name: "", command: "", environment: [{ key: "", value: "1" }] }),
+      stdio({ name: "", command: "", environment: environment(["", "1"]) }),
       { servers: [] },
     );
     expect(result.errors?.name).toBeDefined();

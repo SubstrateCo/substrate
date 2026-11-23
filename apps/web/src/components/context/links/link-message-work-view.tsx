@@ -86,11 +86,12 @@ export function LinkMessageWork({
   const [chosen, setChosen] = useState(() => new Map<string, LinkableWork>());
   const visible = results;
   const kindLabel = kindLabels[kind];
+  const kindSet = new Set(kinds);
   // Items that became linked, for example after a partial failure, leave the selection.
   const selection =
     state === "unavailable"
       ? []
-      : [...chosen.values()].filter((item) => kinds.includes(item.kind) && !linkedIds.has(item.id));
+      : [...chosen.values()].filter((item) => kindSet.has(item.kind) && !linkedIds.has(item.id));
   const toggle = (item: LinkableWork) =>
     setChosen((current) => {
       const next = new Map(current);

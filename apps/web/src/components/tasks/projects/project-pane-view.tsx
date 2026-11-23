@@ -1,20 +1,21 @@
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
-import { useRef, useState, type ComponentProps, type ReactNode, type RefObject } from "react";
+import { useState, type ComponentProps, type ReactNode, type RefObject } from "react";
 
 import { TaskInspectorActive } from "../detail/task-inspector-context";
 import { TaskList } from "../list/task-list";
 import type { ProjectDetail, Task } from "../types";
+import { useGuardedTab } from "./pane/use-guarded-tab";
 import { useTaskPanel } from "./pane/use-task-panel";
 import { ProjectIcon } from "./project-icon";
-import { ProjectHeaderLayout, ProjectTabLayout, projectTabs } from "./project-layout";
+import { ProjectHeaderLayout, ProjectTabLayout } from "./project-layout";
+import { projectTabs } from "./project-tabs";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { DiscardChangesDialog } from "@/components/feedback/discard-changes-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
 import { FormDialog, type FormDialogEditor } from "@/components/feedback/form-dialog";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { UnsavedDraftsProvider, useDraftKeys } from "@/components/feedback/unsaved-drafts";
-import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageAside, PageContent } from "@/components/layout/page-layout";
@@ -97,42 +98,24 @@ function ProjectPaneContent({
   context?: ReactNode;
   statusPending?: boolean;
 }) {
-  const [tab, setTab] = useState("tasks");
   const [view, setView] = useState<"list" | "board">("list");
   const taskDirty = useDraftKeys().length > 0;
-  const [pendingTab, setPendingTab] = useState<string | null>(null);
-  const tabsRef = useRef<HTMLDivElement>(null);
-  const lastInspectorFocus = useRef<HTMLElement | null>(null);
   const detail = data;
   const { panel, inspector, newTaskButton, restoreFocus } = useTaskPanel({
     selectedTaskId,
     onSelectTask,
     ready: !!detail,
   });
-  const tabFocus = useFocusReturn(inspector);
+  const { tab, setTab, tabsRef, ...tabGuard } = useGuardedTab(inspector, taskDirty);
   if (!detail) return <ProjectPaneState state={state} onRetry={onRetry} />;
   const { canEdit } = capabilities;
   const { selectedTaskId: openTaskId } = panel;
   const selected = detail.tasks.find((task) => task.entityId === openTaskId);
   const tasksById = new Map(detail.tasks.map((task) => [task.entityId, task] as const));
-  const creatingParent = panel.creating?.parentTaskEntityId;
-  const creationPlace = creatingParent
-    ? `In ${detail.project.name}, under ${tasksById.get(creatingParent)?.title ?? "a task you can’t open"}`
-    : `In ${detail.project.name}`;
   return (
     <>
       <PageContent>
-        <Tabs
-          value={tab}
-          onValueChange={(next) => {
-            if (tab === "tasks" && next !== "tasks" && taskDirty) {
-              // Keep editing returns to where the person was working in the inspector.
-              tabFocus.remember(lastInspectorFocus.current);
-              setPendingTab(next);
-            } else setTab(next);
-          }}
-          className="min-h-0 min-w-0 flex-1"
-        >
+        <Tabs value={tab} onValueChange={tabGuard.change} className="min-h-0 min-w-0 flex-1">
           <div className="flex min-h-0 flex-1 flex-col">
             <ProjectHeaderLayout>
               <ProjectPaneHeader
@@ -208,9 +191,7 @@ function ProjectPaneContent({
       <TaskAside
         open={Boolean(openTaskId && tab === "tasks")}
         inspector={inspector}
-        onFocusCapture={(event) => {
-          if (event.target instanceof HTMLElement) lastInspectorFocus.current = event.target;
-        }}
+        onFocusCapture={tabGuard.trackInspectorFocus}
       >
         {selected ? (
           renderTaskDetail({
@@ -224,50 +205,71 @@ function ProjectPaneContent({
           <UnavailableTask onClose={panel.close} />
         )}
       </TaskAside>
-      {panel.creating &&
-        canEdit &&
-        renderTaskForm({
-          detail,
-          parentTaskEntityId: creatingParent,
-          onSaved: (id) => {
+      {panel.creating && canEdit && (
+        <CreateTaskForm
+          detail={detail}
+          creating={panel.creating}
+          renderTaskForm={renderTaskForm}
+          onSaved={(id) => {
             setTab("tasks");
             panel.saved(id);
-          },
-          onCancel: panel.cancel,
-          status: panel.creating.status,
-          renderCreate: ({ fields, ...editor }) => (
-            <FormDialog
-              {...editor}
-              title={creatingParent ? "New subtask" : "New task"}
-              description={<span title={creationPlace}>{creationPlace}</span>}
-              saveLabel={creatingParent ? "Create subtask" : "Create task"}
-              pendingLabel="Saving task…"
-              onClose={panel.cancel}
-              onRestoreFocus={restoreFocus}
-            >
-              {fields}
-            </FormDialog>
-          ),
-        })}
-      {pendingTab && (
+          }}
+          onCancel={panel.cancel}
+          onRestoreFocus={restoreFocus}
+        />
+      )}
+      {tabGuard.pendingTab && (
         <DiscardChangesDialog
           description="Your task edits or comment haven’t been saved."
-          onClose={() => setPendingTab(null)}
-          onRestoreFocus={tabFocus.restore}
-          onConfirm={() => {
-            // Focus goes to the tab the person chose instead of back into the inspector.
-            tabFocus.remember(
-              tabsRef.current?.querySelector(
-                `[role="tab"][aria-controls$="-content-${CSS.escape(pendingTab)}"]`,
-              ) ?? null,
-            );
-            setTab(pendingTab);
-            setPendingTab(null);
-          }}
+          onClose={tabGuard.cancel}
+          onRestoreFocus={tabGuard.restoreFocus}
+          onConfirm={tabGuard.confirm}
         />
       )}
     </>
   );
+}
+
+function CreateTaskForm({
+  detail,
+  creating,
+  renderTaskForm,
+  onSaved,
+  onCancel,
+  onRestoreFocus,
+}: {
+  detail: ProjectDetail;
+  creating: { parentTaskEntityId?: string; status?: TaskStatus };
+  renderTaskForm: ComponentProps<typeof ProjectPaneContent>["renderTaskForm"];
+  onSaved: (id: string) => void;
+  onCancel: () => void;
+  onRestoreFocus: () => void;
+}) {
+  const creatingParent = creating.parentTaskEntityId;
+  const parentTitle = detail.tasks.find((task) => task.entityId === creatingParent)?.title;
+  const creationPlace = creatingParent
+    ? `In ${detail.project.name}, under ${parentTitle ?? "a task you can’t open"}`
+    : `In ${detail.project.name}`;
+  return renderTaskForm({
+    detail,
+    parentTaskEntityId: creatingParent,
+    onSaved,
+    onCancel,
+    status: creating.status,
+    renderCreate: ({ fields, ...editor }) => (
+      <FormDialog
+        {...editor}
+        title={creatingParent ? "New subtask" : "New task"}
+        description={<span title={creationPlace}>{creationPlace}</span>}
+        saveLabel={creatingParent ? "Create subtask" : "Create task"}
+        pendingLabel="Saving task…"
+        onClose={onCancel}
+        onRestoreFocus={onRestoreFocus}
+      >
+        {fields}
+      </FormDialog>
+    ),
+  });
 }
 
 function ProjectPaneState({ state, onRetry }: { state: ResourceStatus; onRetry: () => void }) {

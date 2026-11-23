@@ -4,7 +4,6 @@ import { Link, type LinkProps } from "@tanstack/react-router";
 
 import { useLayoutEffect, useRef } from "react";
 
-import { calendarColor } from "../calendar-color";
 import { compareEvents, eventEnded, eventOnDay, eventTitle } from "@/lib/calendar/days";
 import {
   dayMinutes,
@@ -226,7 +225,7 @@ function EventBlock({
       aria-current={selected ? "true" : undefined}
       aria-label={`${title}, ${time}`}
       title={`${title} · ${time}`}
-      style={{ "--calendar-color": calendarColor(event.color) }}
+      style={{ "--calendar-color": event.color ?? "var(--primary)" }}
       className={cn(
         blockClass,
         "px-1.5 py-0.5",
@@ -270,7 +269,7 @@ function EventChip({
       {...link}
       aria-current={selected ? "true" : undefined}
       title={eventTitle(event.title)}
-      style={{ "--calendar-color": calendarColor(event.color) }}
+      style={{ "--calendar-color": event.color ?? "var(--primary)" }}
       className={cn(
         blockClass,
         "truncate px-1.5 py-0.5 font-medium",

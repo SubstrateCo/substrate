@@ -4,16 +4,13 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { CrmActivity } from "./crm-activity";
-import { crmResource } from "./crm-resource-state";
+import { crmResource } from "./crm-resource";
 import { accessLabel, dealAmount, outcomeLabel } from "./crm-types";
 import { DealTransition } from "./deal-transition";
 import { FollowUps } from "./follow-ups";
 import { InteractionRollup } from "./interaction-rollup";
-import {
-  RecordChangeDialogs,
-  recordChangeDialog,
-  type RecordChangeDialog,
-} from "./record-change-dialogs";
+import { recordChangeDialog, type RecordChangeDialog } from "./record-change-dialog";
+import { RecordChangeDialogs } from "./record-change-dialogs";
 import { RecordDetailView, RecordDetailLoading, DetailProperty } from "./record-detail-view";
 import type { RecordDraft } from "./record-editor";
 import type { getDeal } from "@/api/crm/requests";

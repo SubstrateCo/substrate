@@ -4,11 +4,12 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { CrmActivity } from "./crm-activity";
-import { crmResource } from "./crm-resource-state";
+import { crmResource } from "./crm-resource";
 import { accessLabel } from "./crm-types";
 import { FollowUps } from "./follow-ups";
 import { InteractionRollup } from "./interaction-rollup";
-import { RecordChangeDialogs, type RecordChangeDialog } from "./record-change-dialogs";
+import type { RecordChangeDialog } from "./record-change-dialog";
+import { RecordChangeDialogs } from "./record-change-dialogs";
 import { RecordDetailView, RecordDetailLoading, DetailProperty } from "./record-detail-view";
 import { RecordList } from "./record-list";
 import { WorkDiscussions } from "@/components/context/discussions/work-discussions";
