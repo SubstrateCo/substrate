@@ -1,7 +1,7 @@
 ---
 name: code-review
 description: >
-  Code review focused on over-engineering, test value, and concise docs. Finds what to delete:
+  Code review focused on over-engineering, domain grouping, shared UI reuse, test value, and concise docs. Finds what to delete:
   reinvented standard library, unneeded dependencies, speculative abstractions,
   dead flexibility. Use when the user says "review for over-engineering", "what can we
   delete", "is this over-engineered", "simplify review", or invokes
@@ -25,6 +25,8 @@ Tags:
 - `yagni:` abstraction with one implementation, config nobody sets, layer with one caller.
 - `shrink:` same logic, fewer lines. Show the shorter form.
 - `inputs:` whole objects or parameters the function does not need. Pass only required values, preserve domain types, and reject missing invariants.
+- `structure:` files added to flat directories despite clear domain or subdomain groups. Name concrete destination paths.
+- `ui:` hand-built web rows or compact cards that duplicate shared Item components. Name the components to use.
 
 ## Examples
 
@@ -41,6 +43,21 @@ considered whether all these validation rules are needed at this stage?"
 
 ✅ `L30-44: shrink: manual loop builds dict. dict(zip(keys, values)), 1 line.`
 
+✅ `approval-row.tsx:L1: structure: approval files mixed into the flat agents directory. Group them under agents/approvals/, with their tests.`
+
+✅ `record-row.tsx:L24: ui: custom record-row markup duplicates Item layout. Use Item size="xs", ItemContent, and ItemActions.`
+
+## Domain grouping
+
+- Flag changes that add to flat directories where files form clear domain or subdomain groups. Propose concrete destination paths and keep related tests beside the code.
+- Do not flag file count alone or add folders without a meaningful grouping.
+
+## Shared Item components
+
+- In `apps/web`, flag hand-built record rows and compact card-like blocks that duplicate `@/components/ui/item`. Compose them with `Item` and its content, media, title, description, and action components as needed.
+- Keep useful domain components, but build their layout with Item. Preserve list and interactive semantics; do not replace specialized tables, navigation, boards, or message layouts.
+- Follow `apps/web/AGENTS.md` and the Items and card-like UI guidance in `apps/web/DESIGN.md`.
+
 ## Tests
 
 - Never test third-party code, such as Zod's parsing behavior. Assume third-party systems work as documented; test our own rules and behavior.
@@ -53,7 +70,7 @@ considered whether all these validation rules are needed at this stage?"
 
 ## Boundaries
 
-Scope: over-engineering, test value, and changed docs. Code correctness bugs, security holes,
+Scope: over-engineering, domain grouping, shared UI reuse, test value, and changed docs. Code correctness bugs, security holes,
 and performance are explicitly out of scope. Route them to a normal review
 pass, not this one. A single smoke test or `assert`-based
 self-check is the ponytail minimum, not bloat, never flag it for deletion.
