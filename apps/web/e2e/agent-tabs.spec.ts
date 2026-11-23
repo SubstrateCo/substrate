@@ -10,9 +10,9 @@ test("an agent waits for its catalog before mounting its tab panels", async ({
   const user = await client(account);
   const release = Promise.withResolvers<void>();
   await user.page.route("**/api/v1/agents/list", async (route) => {
-    const response = await route.fetch();
+    // Hold the browser request, not a fetched response that can outlive a canceled query.
     await release.promise;
-    if (!user.page.isClosed()) await route.fulfill({ response });
+    await route.continue();
   });
   try {
     const since = user.events.length;
@@ -54,9 +54,8 @@ test("agent tabs keep distinct panels and load calls only when opened", async ({
   let callsRequested = false;
   await user.page.route("**/api/v1/agent-work/calls?*", async (route) => {
     callsRequested = true;
-    const response = await route.fetch();
     await release.promise;
-    if (!user.page.isClosed()) await route.fulfill({ response });
+    await route.continue();
   });
   try {
     await visit(user, undefined, "/agents", { agentId: agent.id });
@@ -70,18 +69,22 @@ test("agent tabs keep distinct panels and load calls only when opened", async ({
     expect(await calls.getAttribute("id")).not.toBe(messagesId);
     await expect(user.page.getByRole("tab", { name: "Settings", exact: true })).toBeEnabled();
     await expect(messages).toBeHidden();
+    await expect.poll(() => callsRequested).toBe(true);
+    // Leaving a pending query cancels it. Reopening must still load the real response.
+    await user.page.getByRole("tab", { name: "Settings", exact: true }).click();
+    await expect(
+      user.page
+        .getByRole("tabpanel", { name: "Settings", exact: true })
+        .getByRole("navigation", { name: "Agent sections" }),
+    ).toBeVisible();
+    await user.page.getByRole("tab", { name: "Calls", exact: true }).click();
+    await expect(calls.getByRole("status", { name: "Loading calls" })).toBeVisible();
   } finally {
     release.resolve();
     await user.page.unrouteAll({ behavior: "wait" });
   }
   await expect(
     user.page.getByRole("tabpanel", { name: "Calls", exact: true }).getByText("No calls yet"),
-  ).toBeVisible();
-  await user.page.getByRole("tab", { name: "Settings", exact: true }).click();
-  await expect(
-    user.page
-      .getByRole("tabpanel", { name: "Settings", exact: true })
-      .getByRole("navigation", { name: "Agent sections" }),
   ).toBeVisible();
   await user.page.getByRole("tab", { name: "Messages", exact: true }).click();
   await expect(

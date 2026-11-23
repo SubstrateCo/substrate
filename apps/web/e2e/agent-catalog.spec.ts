@@ -24,9 +24,9 @@ test("a delayed catalog shows loading without blocking Needs you", async ({ acco
   const user = await client(account);
   const release = Promise.withResolvers<void>();
   await user.page.route(catalogPath, async (route) => {
-    const response = await route.fetch();
+    // Refetches can cancel the initial query while the catalog is held.
     await release.promise;
-    if (!user.page.isClosed()) await route.fulfill({ response });
+    await route.continue();
   });
   try {
     await user.page.goto(`/agents?workspaceId=${account.organizationId}`);
