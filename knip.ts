@@ -5,6 +5,8 @@ export default {
     ".": {
       entry: [],
       project: ["*.{js,ts}"],
+      // oxlint's type-aware linting uses it; no source file imports it.
+      ignoreDependencies: ["tsrs"],
     },
     "apps/desktop": {
       // Bun's custom bundlers and Electron load these outside the import graph.
