@@ -1,1 +1,0 @@
-ALTER TABLE `mail_connections` ADD `show_label_filters` integer DEFAULT true NOT NULL;

@@ -1,9 +1,9 @@
 CREATE EXTENSION IF NOT EXISTS pg_trgm;--> statement-breakpoint
-CREATE TYPE "public"."entity_type" AS ENUM('actor', 'contact', 'contact_interaction', 'project', 'task', 'account', 'deal');--> statement-breakpoint
+CREATE TYPE "public"."entity_type" AS ENUM('actor', 'contact', 'contact_interaction', 'project', 'task', 'account', 'deal', 'calendar', 'calendar_event', 'meeting_archive', 'meeting');--> statement-breakpoint
 CREATE TYPE "public"."actor_type" AS ENUM('human', 'agent');--> statement-breakpoint
 CREATE TYPE "public"."contact_identifier_type" AS ENUM('email', 'phone');--> statement-breakpoint
 CREATE TYPE "public"."contact_interaction_kind" AS ENUM('email', 'meeting', 'call', 'message', 'note', 'other');--> statement-breakpoint
-CREATE TYPE "public"."contact_interaction_origin" AS ENUM('manual', 'message_publication');--> statement-breakpoint
+CREATE TYPE "public"."contact_interaction_origin" AS ENUM('manual', 'message_publication', 'calendar_event');--> statement-breakpoint
 CREATE TYPE "public"."permission_level" AS ENUM('view', 'comment', 'edit', 'owner');--> statement-breakpoint
 CREATE TYPE "public"."relation_type" AS ENUM('related_to', 'blocks', 'duplicates');--> statement-breakpoint
 CREATE TABLE "account" (
@@ -86,11 +86,19 @@ CREATE TABLE "organization" (
 	CONSTRAINT "organization_slug_unique" UNIQUE("slug")
 );
 --> statement-breakpoint
+CREATE TABLE "organization_apps" (
+	"organization_id" text NOT NULL,
+	"app_id" text NOT NULL,
+	"enabled" boolean DEFAULT false NOT NULL,
+	CONSTRAINT "organization_apps_organization_id_app_id_pk" PRIMARY KEY("organization_id","app_id")
+);
+--> statement-breakpoint
 CREATE TABLE "entities" (
-	"entity_id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"entity_id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"organization_id" text NOT NULL,
 	"entity_type" "entity_type" NOT NULL,
 	"access_entity_id" uuid NOT NULL,
+	"access_version" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"deleted_at" timestamp with time zone,
@@ -118,7 +126,7 @@ CREATE TABLE "actors" (
 );
 --> statement-breakpoint
 CREATE TABLE "user_agents" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"user_id" text NOT NULL,
 	"name" text NOT NULL,
 	"instructions" text NOT NULL,
@@ -132,12 +140,11 @@ CREATE TABLE "user_agents" (
 	"caller_policy" text DEFAULT 'owner' NOT NULL,
 	"deleted_at" timestamp with time zone,
 	CONSTRAINT "user_agents_owner_id_unique" UNIQUE("user_id","id"),
-	CONSTRAINT "user_agent_caller_policy_check" CHECK ("user_agents"."caller_policy" IN ('owner', 'anyone', 'ask')),
 	CONSTRAINT "user_agent_picture_purpose" CHECK ("user_agents"."picture_purpose" = 'avatar')
 );
 --> statement-breakpoint
 CREATE TABLE "desktop_devices" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"user_id" text NOT NULL,
 	"installation_id" uuid NOT NULL,
 	"name" text NOT NULL,
@@ -151,7 +158,7 @@ CREATE TABLE "desktop_devices" (
 );
 --> statement-breakpoint
 CREATE TABLE "contact_identifiers" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"organization_id" text NOT NULL,
 	"contact_entity_id" uuid NOT NULL,
 	"type" "contact_identifier_type" NOT NULL,
@@ -183,7 +190,7 @@ CREATE TABLE "contacts" (
 );
 --> statement-breakpoint
 CREATE TABLE "contact_addresses" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"organization_id" text NOT NULL,
 	"contact_entity_id" uuid NOT NULL,
 	"label" text,
@@ -202,7 +209,7 @@ CREATE TABLE "contact_addresses" (
 );
 --> statement-breakpoint
 CREATE TABLE "contact_urls" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"organization_id" text NOT NULL,
 	"contact_entity_id" uuid NOT NULL,
 	"label" text,
@@ -241,7 +248,7 @@ CREATE TABLE "entity_grants" (
 );
 --> statement-breakpoint
 CREATE TABLE "entity_links" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"organization_id" text NOT NULL,
 	"source_entity_id" uuid NOT NULL,
 	"target_entity_id" uuid NOT NULL,
@@ -259,10 +266,9 @@ CREATE TABLE "idempotent_requests" (
 	"operation" text NOT NULL,
 	"request_id" uuid NOT NULL,
 	"fingerprint" text NOT NULL,
-	"entity_id" uuid NOT NULL,
+	"entity_id" uuid,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "idempotent_requests_organization_id_actor_entity_id_operation_request_id_pk" PRIMARY KEY("organization_id","actor_entity_id","operation","request_id"),
-	CONSTRAINT "idempotent_request_operation" CHECK (operation in ('account', 'deal', 'deal_transition', 'crm_from_message', 'crm_follow_up', 'task_from_message'))
+	CONSTRAINT "idempotent_requests_organization_id_actor_entity_id_operation_request_id_pk" PRIMARY KEY("organization_id","actor_entity_id","operation","request_id")
 );
 --> statement-breakpoint
 CREATE TABLE "file_uploads" (
@@ -311,7 +317,7 @@ CREATE TABLE "stored_files" (
 );
 --> statement-breakpoint
 CREATE TABLE "message_attachments" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"file_organization_id" text NOT NULL,
 	"file_id" uuid NOT NULL,
 	"file_purpose" text DEFAULT 'file' NOT NULL,
@@ -326,7 +332,7 @@ CREATE TABLE "message_attachments" (
 );
 --> statement-breakpoint
 CREATE TABLE "task_attachments" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"file_organization_id" text NOT NULL,
 	"file_id" uuid NOT NULL,
 	"file_purpose" text DEFAULT 'file' NOT NULL,
@@ -341,8 +347,69 @@ CREATE TABLE "task_attachments" (
 	CONSTRAINT "task_attachment_position" CHECK ("task_attachments"."position" >= 0)
 );
 --> statement-breakpoint
+CREATE TABLE "meeting_archives" (
+	"entity_id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" text NOT NULL,
+	"entity_type" "entity_type" NOT NULL,
+	"owner_actor_entity_id" uuid NOT NULL,
+	"revision" integer DEFAULT 0 NOT NULL,
+	CONSTRAINT "meeting_archives_owner" UNIQUE("organization_id","owner_actor_entity_id"),
+	CONSTRAINT "meeting_archives_scope" UNIQUE("organization_id","entity_id"),
+	CONSTRAINT "meeting_archive_type" CHECK ("meeting_archives"."entity_type"::text = 'meeting_archive')
+);
+--> statement-breakpoint
+CREATE TABLE "meeting_originals" (
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
+	"organization_id" text NOT NULL,
+	"archive_entity_id" uuid NOT NULL,
+	"connection_id" uuid NOT NULL,
+	"provider" text NOT NULL,
+	"source_key" text NOT NULL,
+	"meeting_entity_id" uuid,
+	"candidate_entity_id" uuid,
+	"occurrence" text,
+	"digest" text NOT NULL,
+	"metadata" jsonb NOT NULL,
+	"notes" text,
+	"turns" jsonb NOT NULL,
+	"raw" text NOT NULL,
+	"has_transcript" boolean NOT NULL,
+	"search_text" text NOT NULL,
+	CONSTRAINT "meeting_original_identity" UNIQUE("connection_id","source_key"),
+	CONSTRAINT "meeting_original_target" CHECK (num_nonnulls("meeting_originals"."meeting_entity_id", "meeting_originals"."candidate_entity_id") = 1)
+);
+--> statement-breakpoint
+CREATE TABLE "meeting_connections" (
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
+	"organization_id" text NOT NULL,
+	"archive_entity_id" uuid NOT NULL,
+	"provider" text NOT NULL,
+	"source_key" text NOT NULL,
+	"label" text NOT NULL,
+	CONSTRAINT "meeting_source_identity" UNIQUE("archive_entity_id","provider","source_key"),
+	CONSTRAINT "meeting_source_scope" UNIQUE("organization_id","archive_entity_id","id","provider")
+);
+--> statement-breakpoint
+CREATE TABLE "meetings" (
+	"entity_id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" text NOT NULL,
+	"archive_entity_id" uuid NOT NULL,
+	"entity_type" "entity_type" NOT NULL,
+	"title" text NOT NULL,
+	"local_start" text NOT NULL,
+	"start_ms" bigint,
+	"duration_ms" bigint,
+	"platform" text,
+	"people" jsonb NOT NULL,
+	"providers" jsonb NOT NULL,
+	"has_notes" boolean NOT NULL,
+	"has_transcript" boolean NOT NULL,
+	CONSTRAINT "meeting_in_archive" UNIQUE("organization_id","archive_entity_id","entity_id"),
+	CONSTRAINT "meeting_type" CHECK ("meetings"."entity_type"::text = 'meeting')
+);
+--> statement-breakpoint
 CREATE TABLE "messaging_conversations" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"organization_id" text NOT NULL,
 	"kind" text NOT NULL,
 	"task_entity_id" uuid,
@@ -351,16 +418,16 @@ CREATE TABLE "messaging_conversations" (
 	"private" boolean DEFAULT true NOT NULL,
 	"created_by" text NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
+	"version" integer DEFAULT 0 NOT NULL,
 	CONSTRAINT "messaging_conversation_organization_unique" UNIQUE("organization_id","id"),
 	CONSTRAINT "messaging_conversation_task_unique" UNIQUE("task_entity_id"),
 	CONSTRAINT "messaging_task_discussion_check" CHECK ("messaging_conversations"."task_entity_id" IS NULL OR ("messaging_conversations"."kind" = 'group' AND "messaging_conversations"."private" AND "messaging_conversations"."dm_key" IS NULL)),
-	CONSTRAINT "messaging_kind_check" CHECK ("messaging_conversations"."kind" IN ('dm', 'group', 'channel')),
 	CONSTRAINT "messaging_visibility_check" CHECK ("messaging_conversations"."kind" = 'channel' OR "messaging_conversations"."private"),
 	CONSTRAINT "messaging_channel_name_check" CHECK ("messaging_conversations"."kind" <> 'channel' OR length(trim("messaging_conversations"."name")) > 0 AND "messaging_conversations"."name" IS NOT NULL)
 );
 --> statement-breakpoint
 CREATE TABLE "messaging_messages" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"conversation_id" uuid NOT NULL,
 	"author_actor_entity_id" uuid NOT NULL,
 	"author_organization_id" text NOT NULL,
@@ -411,7 +478,7 @@ CREATE TABLE "messaging_connections" (
 );
 --> statement-breakpoint
 CREATE TABLE "messaging_invitations" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"conversation_id" uuid NOT NULL,
 	"host_organization_id" text NOT NULL,
 	"sender_organization_id" text NOT NULL,
@@ -425,13 +492,11 @@ CREATE TABLE "messaging_invitations" (
 	"expires_at" timestamp with time zone NOT NULL,
 	"delivered_at" timestamp with time zone,
 	"delivery_attempts" integer DEFAULT 0 NOT NULL,
-	"next_delivery_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "messaging_invitation_status_check" CHECK ("messaging_invitations"."status" IN ('pending', 'accepted', 'declined', 'revoked')),
-	CONSTRAINT "messaging_invitation_purpose_check" CHECK ("messaging_invitations"."purpose" IN ('organization', 'person'))
+	"next_delivery_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "messaging_sharing_events" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"conversation_id" uuid NOT NULL,
 	"organization_id" text NOT NULL,
 	"user_id" text NOT NULL,
@@ -448,8 +513,11 @@ CREATE TABLE "projects" (
 	"name" text NOT NULL,
 	"description" text DEFAULT '' NOT NULL,
 	"image" text,
+	"archived_at" timestamp with time zone,
+	"archived_by_actor_entity_id" uuid,
 	CONSTRAINT "projects_organization_entity_unique" UNIQUE("organization_id","entity_id"),
 	CONSTRAINT "projects_name_check" CHECK (length(trim("projects"."name")) BETWEEN 1 AND 200),
+	CONSTRAINT "projects_archive_check" CHECK (("projects"."archived_at" IS NULL) = ("projects"."archived_by_actor_entity_id" IS NULL)),
 	CONSTRAINT "projects_image_check" CHECK ("projects"."image" IS NULL OR "projects"."image" ~ ('^/api/v1/files/pictures/project-icon/' || "projects"."entity_id"::text || '[?]v=[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'))
 );
 --> statement-breakpoint
@@ -468,8 +536,6 @@ CREATE TABLE "tasks" (
 	CONSTRAINT "tasks_organization_entity_unique" UNIQUE("organization_id","entity_id"),
 	CONSTRAINT "tasks_project_entity_unique" UNIQUE("organization_id","project_entity_id","entity_id"),
 	CONSTRAINT "tasks_title_check" CHECK (length(trim("tasks"."title")) BETWEEN 1 AND 300),
-	CONSTRAINT "tasks_status_check" CHECK ("tasks"."status" IN ('not_started', 'in_progress', 'in_review', 'completed', 'canceled')),
-	CONSTRAINT "tasks_priority_check" CHECK ("tasks"."priority" IN ('none', 'low', 'medium', 'high', 'urgent')),
 	CONSTRAINT "tasks_parent_check" CHECK ("tasks"."entity_id" <> "tasks"."parent_task_entity_id")
 );
 --> statement-breakpoint
@@ -483,12 +549,11 @@ CREATE TABLE "message_entity_references" (
 	"created_by_actor_entity_id" uuid NOT NULL,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "message_entity_references_message_id_entity_id_purpose_pk" PRIMARY KEY("message_id","entity_id","purpose"),
-	CONSTRAINT "message_reference_type_check" CHECK ("message_entity_references"."entity_type"::text IN ('task', 'project', 'contact', 'account', 'deal', 'contact_interaction')),
-	CONSTRAINT "message_reference_purpose_check" CHECK ("message_entity_references"."purpose" IN ('source', 'mention', 'association'))
+	CONSTRAINT "message_reference_meeting_source" CHECK ("message_entity_references"."entity_type"::text <> 'meeting' OR "message_entity_references"."purpose" = 'source')
 );
 --> statement-breakpoint
 CREATE TABLE "task_activity" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"organization_id" text NOT NULL,
 	"task_entity_id" uuid NOT NULL,
 	"actor_entity_id" uuid NOT NULL,
@@ -498,7 +563,7 @@ CREATE TABLE "task_activity" (
 );
 --> statement-breakpoint
 CREATE TABLE "notifications" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"organization_id" text NOT NULL,
 	"recipient_actor_entity_id" uuid NOT NULL,
 	"kind" text NOT NULL,
@@ -508,8 +573,7 @@ CREATE TABLE "notifications" (
 	"read_at" timestamp with time zone,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "notification_event_recipient_unique" UNIQUE("recipient_actor_entity_id","event_key"),
-	CONSTRAINT "notification_target_check" CHECK (("notifications"."entity_id" IS NULL) <> ("notifications"."message_id" IS NULL)),
-	CONSTRAINT "notification_kind_check" CHECK ("notifications"."kind" IN ('assignment', 'mention', 'reply', 'message'))
+	CONSTRAINT "notification_target_check" CHECK (("notifications"."entity_id" IS NULL) <> ("notifications"."message_id" IS NULL))
 );
 --> statement-breakpoint
 CREATE TABLE "agent_tool_requests" (
@@ -518,7 +582,7 @@ CREATE TABLE "agent_tool_requests" (
 	"tool" text NOT NULL,
 	"request_id" uuid NOT NULL,
 	"fingerprint" text NOT NULL,
-	"result" jsonb NOT NULL,
+	"result" jsonb,
 	"turn_id" uuid,
 	"attempt" integer,
 	CONSTRAINT "agent_tool_requests_organization_id_actor_entity_id_tool_request_id_pk" PRIMARY KEY("organization_id","actor_entity_id","tool","request_id")
@@ -529,8 +593,7 @@ CREATE TABLE "user_agent_triggers" (
 	"kind" text NOT NULL,
 	"enabled" boolean DEFAULT true NOT NULL,
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "user_agent_triggers_user_agent_id_kind_pk" PRIMARY KEY("user_agent_id","kind"),
-	CONSTRAINT "user_agent_trigger_kind_check" CHECK ("user_agent_triggers"."kind" IN ('direct_message', 'mention', 'thread_reply'))
+	CONSTRAINT "user_agent_triggers_user_agent_id_kind_pk" PRIMARY KEY("user_agent_id","kind")
 );
 --> statement-breakpoint
 CREATE TABLE "user_agent_callers" (
@@ -544,7 +607,7 @@ CREATE TABLE "user_agent_callers" (
 );
 --> statement-breakpoint
 CREATE TABLE "agent_wakes" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"organization_id" text NOT NULL,
 	"user_agent_id" uuid NOT NULL,
 	"agent_actor_entity_id" uuid NOT NULL,
@@ -556,12 +619,11 @@ CREATE TABLE "agent_wakes" (
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"acked_at" timestamp with time zone,
 	CONSTRAINT "agent_wakes_dedupe_unique" UNIQUE("user_agent_id","dedupe_key"),
-	CONSTRAINT "agent_wake_source_check" CHECK ("agent_wakes"."source" IN ('owner_message', 'answer', 'approval_result', 'caller_message')),
 	CONSTRAINT "agent_wake_session_key_check" CHECK (length("agent_wakes"."session_key") BETWEEN 1 AND 200)
 );
 --> statement-breakpoint
 CREATE TABLE "agent_requests" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"organization_id" text NOT NULL,
 	"user_agent_id" uuid NOT NULL,
 	"owner_user_id" text NOT NULL,
@@ -587,9 +649,6 @@ CREATE TABLE "agent_requests" (
 	"resolved_at" timestamp with time zone,
 	"delivered_at" timestamp with time zone,
 	"expires_at" timestamp with time zone,
-	CONSTRAINT "agent_request_kind_check" CHECK ("agent_requests"."kind" IN ('permission', 'question', 'proposal')),
-	CONSTRAINT "agent_request_mode_check" CHECK ("agent_requests"."mode" IN ('blocking', 'async')),
-	CONSTRAINT "agent_request_status_check" CHECK ("agent_requests"."status" IN ('pending', 'resolved', 'delivered', 'executing', 'executed', 'failed', 'cancelled', 'expired', 'orphaned', 'undelivered')),
 	CONSTRAINT "agent_request_blocking_check" CHECK ("agent_requests"."mode" <> 'blocking' OR "agent_requests"."native_request_id" IS NOT NULL),
 	CONSTRAINT "agent_request_proposal_check" CHECK (("agent_requests"."kind" = 'proposal') = ("agent_requests"."proposed_action" IS NOT NULL AND "agent_requests"."action_hash" IS NOT NULL) AND ("agent_requests"."kind" <> 'proposal' OR "agent_requests"."mode" = 'async')),
 	CONSTRAINT "agent_request_place_check" CHECK ("agent_requests"."conversation_id" IS NOT NULL OR ("agent_requests"."anchor_message_id" IS NULL AND "agent_requests"."thread_id" IS NULL)),
@@ -597,7 +656,7 @@ CREATE TABLE "agent_requests" (
 );
 --> statement-breakpoint
 CREATE TABLE "agent_audit_events" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"organization_id" text NOT NULL,
 	"user_agent_id" uuid NOT NULL,
 	"owner_user_id" text NOT NULL,
@@ -610,13 +669,11 @@ CREATE TABLE "agent_audit_events" (
 	"target_ids" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"result" text,
 	"turn_id" uuid,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "agent_audit_action_check" CHECK ("agent_audit_events"."action" IN ('policy_changed', 'caller_allowed', 'caller_removed', 'invocation_admitted', 'invocation_held', 'invocation_rate_limited', 'invocation_approved', 'invocation_declined', 'invocation_expired', 'invocation_cancelled', 'invocation_dropped', 'mcp_call')),
-	CONSTRAINT "agent_audit_access_check" CHECK ("agent_audit_events"."access" IS NULL OR "agent_audit_events"."access" IN ('read', 'write'))
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
 );
 --> statement-breakpoint
 CREATE TABLE "agent_invocations" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"organization_id" text NOT NULL,
 	"user_agent_id" uuid NOT NULL,
 	"agent_actor_entity_id" uuid NOT NULL,
@@ -638,10 +695,6 @@ CREATE TABLE "agent_invocations" (
 	"wake_id" uuid,
 	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
 	CONSTRAINT "agent_invocations_message_unique" UNIQUE("user_agent_id","message_id"),
-	CONSTRAINT "agent_invocation_status_check" CHECK ("agent_invocations"."status" IN ('received', 'pending_approval', 'admitted', 'rate_limited', 'declined', 'expired', 'cancelled', 'dropped')),
-	CONSTRAINT "agent_invocation_drop_reason_check" CHECK ("agent_invocations"."drop_reason" IS NULL OR "agent_invocations"."drop_reason" IN ('revoked', 'desktop_needs_update')),
-	CONSTRAINT "agent_invocation_kind_check" CHECK ("agent_invocations"."kind" IN ('mention', 'thread_reply')),
-	CONSTRAINT "agent_invocation_policy_check" CHECK ("agent_invocations"."policy" IN ('owner', 'anyone', 'ask')),
 	CONSTRAINT "agent_invocation_caller_check" CHECK ("agent_invocations"."caller_user_id" <> "agent_invocations"."owner_user_id"),
 	CONSTRAINT "agent_invocation_session_key_check" CHECK (length("agent_invocations"."session_key") BETWEEN 1 AND 200)
 );
@@ -658,7 +711,6 @@ CREATE TABLE "agent_status" (
 	"updated_at" timestamp with time zone DEFAULT now() NOT NULL,
 	"version" bigint NOT NULL,
 	CONSTRAINT "agent_status_live_place_check" CHECK ("agent_status"."live_thread_id" IS NULL OR "agent_status"."live_conversation_id" IS NOT NULL),
-	CONSTRAINT "agent_status_state_check" CHECK ("agent_status"."state" IN ('idle', 'working', 'queued', 'needs_you')),
 	CONSTRAINT "agent_status_activity_check" CHECK ("agent_status"."activity" IS NULL OR length("agent_status"."activity") <= 200),
 	CONSTRAINT "agent_status_queued_check" CHECK ("agent_status"."queued_count" >= 0)
 );
@@ -688,7 +740,7 @@ CREATE TABLE "crm_accounts" (
 );
 --> statement-breakpoint
 CREATE TABLE "crm_affiliations" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"organization_id" text NOT NULL,
 	"contact_entity_id" uuid NOT NULL,
 	"account_entity_id" uuid NOT NULL,
@@ -704,7 +756,7 @@ CREATE TABLE "crm_contact_profiles" (
 );
 --> statement-breakpoint
 CREATE TABLE "crm_deal_contacts" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"organization_id" text NOT NULL,
 	"deal_entity_id" uuid NOT NULL,
 	"contact_entity_id" uuid NOT NULL,
@@ -733,11 +785,11 @@ CREATE TABLE "crm_deals" (
 	CONSTRAINT "crm_deals_organization_id_entity_id_unique" UNIQUE("organization_id","entity_id"),
 	CONSTRAINT "crm_deal_type" CHECK ("crm_deals"."entity_type"::text = 'deal'),
 	CONSTRAINT "crm_deal_money" CHECK (("crm_deals"."amount" is null and "crm_deals"."currency" is null) or ("crm_deals"."amount" is not null and "crm_deals"."currency" is not null and "crm_deals"."amount" >= 0 and "crm_deals"."currency" ~ '^[A-Z]{3}$')),
-	CONSTRAINT "crm_deal_outcome" CHECK ("crm_deals"."outcome" in ('open','won','lost') and (("crm_deals"."outcome" = 'open') = ("crm_deals"."closed_at" is null)))
+	CONSTRAINT "crm_deal_outcome" CHECK (("crm_deals"."outcome" = 'open') = ("crm_deals"."closed_at" is null))
 );
 --> statement-breakpoint
 CREATE TABLE "crm_stages" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"organization_id" text NOT NULL,
 	"name" text NOT NULL,
 	"position" integer NOT NULL,
@@ -748,11 +800,12 @@ CREATE TABLE "crm_stages" (
 CREATE TABLE "crm_settings" (
 	"organization_id" text PRIMARY KEY NOT NULL,
 	"default_currency" text,
+	"pipeline_version" integer DEFAULT 0 NOT NULL,
 	CONSTRAINT "crm_settings_currency" CHECK ("crm_settings"."default_currency" is null or "crm_settings"."default_currency" ~ '^[A-Z]{3}$')
 );
 --> statement-breakpoint
 CREATE TABLE "crm_activity_events" (
-	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
 	"organization_id" text NOT NULL,
 	"entity_id" uuid NOT NULL,
 	"entity_type" "entity_type" NOT NULL,
@@ -760,10 +813,83 @@ CREATE TABLE "crm_activity_events" (
 	"action" text NOT NULL,
 	"changed_fields" jsonb DEFAULT '[]'::jsonb NOT NULL,
 	"related_entity_id" uuid,
-	"created_at" timestamp with time zone DEFAULT now() NOT NULL,
-	CONSTRAINT "crm_activity_entity_type" CHECK ("crm_activity_events"."entity_type"::text in ('account', 'contact', 'deal')),
-	CONSTRAINT "crm_activity_action" CHECK ("crm_activity_events"."action" in ('created', 'updated', 'stage_changed', 'owner_changed', 'discussion_linked', 'discussion_unlinked', 'context_linked', 'context_unlinked', 'interaction_created', 'interaction_updated', 'interaction_deleted', 'follow_up_created', 'shared', 'unshared', 'archived', 'restored')),
-	CONSTRAINT "crm_activity_fields" CHECK (jsonb_typeof("crm_activity_events"."changed_fields") = 'array' and "crm_activity_events"."changed_fields" <@ '["name","website","domain","summary","displayName","givenName","familyName","notes","middleName","namePrefix","nameSuffix","nickname","title","account","contacts","primaryContact","stage","amount","currency","expectedCloseDate","outcome","lostReason","owner","identifier","address","url","affiliation","role","kind","occurredAt","endedAt","sharing"]'::jsonb)
+	"created_at" timestamp with time zone DEFAULT now() NOT NULL
+);
+--> statement-breakpoint
+CREATE TABLE "calendar_event_attendees" (
+	"id" uuid PRIMARY KEY DEFAULT uuidv7() NOT NULL,
+	"organization_id" text NOT NULL,
+	"event_entity_id" uuid NOT NULL,
+	"email" text NOT NULL,
+	"normalized_email" text NOT NULL,
+	"display_name" text,
+	"response_status" text NOT NULL,
+	"is_organizer" boolean DEFAULT false NOT NULL,
+	"is_self" boolean DEFAULT false NOT NULL,
+	"is_optional" boolean DEFAULT false NOT NULL,
+	"is_resource" boolean DEFAULT false NOT NULL,
+	CONSTRAINT "calendar_event_attendees_email_unique" UNIQUE("organization_id","event_entity_id","normalized_email"),
+	CONSTRAINT "calendar_event_attendees_email_check" CHECK (length(trim("calendar_event_attendees"."normalized_email")) > 0)
+);
+--> statement-breakpoint
+CREATE TABLE "calendar_events" (
+	"entity_id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" text NOT NULL,
+	"entity_type" "entity_type" NOT NULL,
+	"calendar_entity_id" uuid NOT NULL,
+	"provider_event_id" text NOT NULL,
+	"ical_uid" text,
+	"recurring_event_id" text,
+	"kind" text NOT NULL,
+	"status" text NOT NULL,
+	"title" text DEFAULT '' NOT NULL,
+	"description" text,
+	"location" text,
+	"conference_url" text,
+	"html_link" text,
+	"visibility" text DEFAULT 'default' NOT NULL,
+	"starts_at" timestamp with time zone NOT NULL,
+	"ends_at" timestamp with time zone NOT NULL,
+	"all_day" boolean DEFAULT false NOT NULL,
+	"time_zone" text,
+	"provider_updated_at" timestamp with time zone,
+	"sync_generation" integer NOT NULL,
+	"interactions_recorded_at" timestamp with time zone,
+	CONSTRAINT "calendar_events_organization_entity_unique" UNIQUE("organization_id","entity_id"),
+	CONSTRAINT "calendar_events_provider_unique" UNIQUE("organization_id","calendar_entity_id","provider_event_id"),
+	CONSTRAINT "calendar_events_type_check" CHECK ("calendar_events"."entity_type"::text = 'calendar_event'),
+	CONSTRAINT "calendar_events_time_check" CHECK ("calendar_events"."ends_at" >= "calendar_events"."starts_at")
+);
+--> statement-breakpoint
+CREATE TABLE "calendars" (
+	"entity_id" uuid PRIMARY KEY NOT NULL,
+	"organization_id" text NOT NULL,
+	"entity_type" "entity_type" NOT NULL,
+	"owner_actor_entity_id" uuid NOT NULL,
+	"owner_user_id" text NOT NULL,
+	"provider" text NOT NULL,
+	"credential_account_id" text,
+	"provider_calendar_id" text NOT NULL,
+	"name" text NOT NULL,
+	"color" text,
+	"time_zone" text,
+	"is_primary" boolean DEFAULT false NOT NULL,
+	"records_interactions" boolean DEFAULT false NOT NULL,
+	"interactions_from" timestamp with time zone NOT NULL,
+	"sync_window_start" timestamp with time zone NOT NULL,
+	"sync_status" text DEFAULT 'pending' NOT NULL,
+	"sync_cursor" text,
+	"sync_generation" integer DEFAULT 0 NOT NULL,
+	"next_sync_at" timestamp with time zone,
+	"last_synced_at" timestamp with time zone,
+	"sync_error_code" text,
+	"sync_lease_token" uuid,
+	"sync_lease_expires_at" timestamp with time zone,
+	CONSTRAINT "calendars_organization_entity_unique" UNIQUE("organization_id","entity_id"),
+	CONSTRAINT "calendars_owner_calendar_unique" UNIQUE("organization_id","owner_actor_entity_id","provider","provider_calendar_id"),
+	CONSTRAINT "calendars_type_check" CHECK ("calendars"."entity_type"::text = 'calendar'),
+	CONSTRAINT "calendars_name_check" CHECK (length(trim("calendars"."name")) BETWEEN 1 AND 500),
+	CONSTRAINT "calendars_lease_check" CHECK (("calendars"."sync_lease_token" IS NULL) = ("calendars"."sync_lease_expires_at" IS NULL))
 );
 --> statement-breakpoint
 ALTER TABLE "account" ADD CONSTRAINT "account_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -772,6 +898,7 @@ ALTER TABLE "invitation" ADD CONSTRAINT "invitation_organization_id_organization
 ALTER TABLE "invitation" ADD CONSTRAINT "invitation_inviter_id_user_id_fk" FOREIGN KEY ("inviter_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "member" ADD CONSTRAINT "member_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "member" ADD CONSTRAINT "member_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "organization_apps" ADD CONSTRAINT "organization_apps_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entities" ADD CONSTRAINT "entities_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "entities" ADD CONSTRAINT "entities_organization_id_access_entity_id_entities_organization_id_entity_id_fk" FOREIGN KEY ("organization_id","access_entity_id") REFERENCES "public"."entities"("organization_id","entity_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "actors" ADD CONSTRAINT "actors_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -809,6 +936,15 @@ ALTER TABLE "message_attachments" ADD CONSTRAINT "message_attachments_file_organ
 ALTER TABLE "task_attachments" ADD CONSTRAINT "task_attachments_organization_id_task_entity_id_tasks_organization_id_entity_id_fk" FOREIGN KEY ("organization_id","task_entity_id") REFERENCES "public"."tasks"("organization_id","entity_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "task_attachments" ADD CONSTRAINT "task_attachments_file_organization_id_file_id_file_purpose_stored_files_organization_id_id_purpose_fk" FOREIGN KEY ("file_organization_id","file_id","file_purpose") REFERENCES "public"."stored_files"("organization_id","id","purpose") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "task_attachments" ADD CONSTRAINT "task_attachments_file_organization_id_added_by_actor_entity_id_actors_organization_id_entity_id_fk" FOREIGN KEY ("file_organization_id","added_by_actor_entity_id") REFERENCES "public"."actors"("organization_id","entity_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "meeting_archives" ADD CONSTRAINT "meeting_archive_entity" FOREIGN KEY ("organization_id","entity_id","entity_type") REFERENCES "public"."entities"("organization_id","entity_id","entity_type") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "meeting_archives" ADD CONSTRAINT "meeting_archive_owner" FOREIGN KEY ("organization_id","owner_actor_entity_id") REFERENCES "public"."actors"("organization_id","entity_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "meeting_originals" ADD CONSTRAINT "meeting_original_connection" FOREIGN KEY ("organization_id","archive_entity_id","connection_id","provider") REFERENCES "public"."meeting_connections"("organization_id","archive_entity_id","id","provider") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "meeting_originals" ADD CONSTRAINT "meeting_original_meeting" FOREIGN KEY ("organization_id","archive_entity_id","meeting_entity_id") REFERENCES "public"."meetings"("organization_id","archive_entity_id","entity_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "meeting_originals" ADD CONSTRAINT "meeting_original_candidate" FOREIGN KEY ("organization_id","archive_entity_id","candidate_entity_id") REFERENCES "public"."meetings"("organization_id","archive_entity_id","entity_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "meeting_connections" ADD CONSTRAINT "meeting_source_archive" FOREIGN KEY ("organization_id","archive_entity_id") REFERENCES "public"."meeting_archives"("organization_id","entity_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "meetings" ADD CONSTRAINT "meeting_entity" FOREIGN KEY ("organization_id","entity_id","entity_type") REFERENCES "public"."entities"("organization_id","entity_id","entity_type") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "meetings" ADD CONSTRAINT "meeting_archive_fk" FOREIGN KEY ("organization_id","archive_entity_id") REFERENCES "public"."meeting_archives"("organization_id","entity_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "meetings" ADD CONSTRAINT "meeting_access_container" FOREIGN KEY ("organization_id","entity_id","archive_entity_id") REFERENCES "public"."entities"("organization_id","entity_id","access_entity_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messaging_conversations" ADD CONSTRAINT "messaging_conversations_organization_id_organization_id_fk" FOREIGN KEY ("organization_id") REFERENCES "public"."organization"("id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messaging_conversations" ADD CONSTRAINT "messaging_conversations_created_by_user_id_fk" FOREIGN KEY ("created_by") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messaging_conversations" ADD CONSTRAINT "messaging_conversations_organization_id_task_entity_id_tasks_organization_id_entity_id_fk" FOREIGN KEY ("organization_id","task_entity_id") REFERENCES "public"."tasks"("organization_id","entity_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
@@ -835,6 +971,7 @@ ALTER TABLE "messaging_sharing_events" ADD CONSTRAINT "messaging_sharing_events_
 ALTER TABLE "messaging_sharing_events" ADD CONSTRAINT "messaging_sharing_events_target_organization_id_organization_id_fk" FOREIGN KEY ("target_organization_id") REFERENCES "public"."organization"("id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "messaging_sharing_events" ADD CONSTRAINT "messaging_sharing_events_invitation_id_messaging_invitations_id_fk" FOREIGN KEY ("invitation_id") REFERENCES "public"."messaging_invitations"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "projects" ADD CONSTRAINT "projects_organization_id_entity_id_entity_type_entities_organization_id_entity_id_entity_type_fk" FOREIGN KEY ("organization_id","entity_id","entity_type") REFERENCES "public"."entities"("organization_id","entity_id","entity_type") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "projects" ADD CONSTRAINT "projects_organization_id_archived_by_actor_entity_id_actors_organization_id_entity_id_fk" FOREIGN KEY ("organization_id","archived_by_actor_entity_id") REFERENCES "public"."actors"("organization_id","entity_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_organization_id_entity_id_entity_type_entities_organization_id_entity_id_entity_type_fk" FOREIGN KEY ("organization_id","entity_id","entity_type") REFERENCES "public"."entities"("organization_id","entity_id","entity_type") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_organization_id_project_entity_id_projects_organization_id_entity_id_fk" FOREIGN KEY ("organization_id","project_entity_id") REFERENCES "public"."projects"("organization_id","entity_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "tasks" ADD CONSTRAINT "tasks_organization_id_entity_id_project_entity_id_entities_organization_id_entity_id_access_entity_id_fk" FOREIGN KEY ("organization_id","entity_id","project_entity_id") REFERENCES "public"."entities"("organization_id","entity_id","access_entity_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
@@ -902,6 +1039,13 @@ ALTER TABLE "crm_activity_events" ADD CONSTRAINT "crm_activity_events_organizati
 ALTER TABLE "crm_activity_events" ADD CONSTRAINT "crm_activity_entity_fk" FOREIGN KEY ("organization_id","entity_id","entity_type") REFERENCES "public"."entities"("organization_id","entity_id","entity_type") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "crm_activity_events" ADD CONSTRAINT "crm_activity_actor_fk" FOREIGN KEY ("organization_id","actor_entity_id") REFERENCES "public"."actors"("organization_id","entity_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 ALTER TABLE "crm_activity_events" ADD CONSTRAINT "crm_activity_related_fk" FOREIGN KEY ("organization_id","related_entity_id") REFERENCES "public"."entities"("organization_id","entity_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "calendar_event_attendees" ADD CONSTRAINT "calendar_event_attendees_organization_id_event_entity_id_calendar_events_organization_id_entity_id_fk" FOREIGN KEY ("organization_id","event_entity_id") REFERENCES "public"."calendar_events"("organization_id","entity_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "calendar_events" ADD CONSTRAINT "calendar_events_organization_id_entity_id_entity_type_entities_organization_id_entity_id_entity_type_fk" FOREIGN KEY ("organization_id","entity_id","entity_type") REFERENCES "public"."entities"("organization_id","entity_id","entity_type") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "calendar_events" ADD CONSTRAINT "calendar_events_organization_id_calendar_entity_id_calendars_organization_id_entity_id_fk" FOREIGN KEY ("organization_id","calendar_entity_id") REFERENCES "public"."calendars"("organization_id","entity_id") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "calendar_events" ADD CONSTRAINT "calendar_events_organization_id_entity_id_calendar_entity_id_entities_organization_id_entity_id_access_entity_id_fk" FOREIGN KEY ("organization_id","entity_id","calendar_entity_id") REFERENCES "public"."entities"("organization_id","entity_id","access_entity_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "calendars" ADD CONSTRAINT "calendars_credential_account_id_account_id_fk" FOREIGN KEY ("credential_account_id") REFERENCES "public"."account"("id") ON DELETE set null ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "calendars" ADD CONSTRAINT "calendars_organization_id_entity_id_entity_type_entities_organization_id_entity_id_entity_type_fk" FOREIGN KEY ("organization_id","entity_id","entity_type") REFERENCES "public"."entities"("organization_id","entity_id","entity_type") ON DELETE cascade ON UPDATE no action;--> statement-breakpoint
+ALTER TABLE "calendars" ADD CONSTRAINT "calendars_organization_id_owner_actor_entity_id_owner_user_id_actors_organization_id_entity_id_user_id_fk" FOREIGN KEY ("organization_id","owner_actor_entity_id","owner_user_id") REFERENCES "public"."actors"("organization_id","entity_id","user_id") ON DELETE no action ON UPDATE no action;--> statement-breakpoint
 CREATE INDEX "account_user_idx" ON "account" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "session_user_idx" ON "session" USING btree ("user_id");--> statement-breakpoint
 CREATE INDEX "verification_identifier_idx" ON "verification" USING btree ("identifier");--> statement-breakpoint
@@ -919,12 +1063,18 @@ CREATE UNIQUE INDEX "contact_addresses_primary_unique" ON "contact_addresses" US
 CREATE UNIQUE INDEX "contact_urls_value_unique" ON "contact_urls" USING btree ("organization_id","contact_entity_id","url");--> statement-breakpoint
 CREATE UNIQUE INDEX "contact_urls_primary_unique" ON "contact_urls" USING btree ("organization_id","contact_entity_id") WHERE "contact_urls"."is_primary";--> statement-breakpoint
 CREATE INDEX "contact_interactions_timeline_idx" ON "contact_interactions" USING btree ("organization_id","contact_entity_id","occurred_at" DESC NULLS LAST,"entity_id" DESC NULLS LAST);--> statement-breakpoint
+CREATE INDEX "contact_interactions_org_timeline_idx" ON "contact_interactions" USING btree ("organization_id","occurred_at" DESC NULLS LAST,"entity_id" DESC NULLS LAST);--> statement-breakpoint
 CREATE INDEX "entity_grants_actor_idx" ON "entity_grants" USING btree ("organization_id","actor_entity_id","entity_id");--> statement-breakpoint
 CREATE INDEX "entity_links_target_idx" ON "entity_links" USING btree ("organization_id","target_entity_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "entity_links_directed_pair_unique" ON "entity_links" USING btree ("organization_id","relation_type",least("source_entity_id", "target_entity_id"),greatest("source_entity_id", "target_entity_id")) WHERE "entity_links"."relation_type" IN ('blocks', 'duplicates');--> statement-breakpoint
 CREATE INDEX "file_upload_expiry_idx" ON "file_uploads" USING btree ("expires_at") WHERE "file_uploads"."temporary_cleaned_at" IS NULL;--> statement-breakpoint
 CREATE INDEX "file_upload_uploader_idx" ON "file_uploads" USING btree ("uploaded_by","expires_at") WHERE "file_uploads"."purpose" = 'file' AND "file_uploads"."deleted_at" IS NULL;--> statement-breakpoint
 CREATE INDEX "message_attachment_file_idx" ON "message_attachments" USING btree ("file_id");--> statement-breakpoint
 CREATE INDEX "task_attachment_file_idx" ON "task_attachments" USING btree ("file_id");--> statement-breakpoint
+CREATE INDEX "meeting_originals_attached" ON "meeting_originals" USING btree ("archive_entity_id","meeting_entity_id");--> statement-breakpoint
+CREATE INDEX "meeting_originals_occurrence" ON "meeting_originals" USING btree ("archive_entity_id","occurrence");--> statement-breakpoint
+CREATE INDEX "meetings_by_date" ON "meetings" USING btree ("archive_entity_id","local_start","entity_id");--> statement-breakpoint
+CREATE INDEX "meetings_by_instant" ON "meetings" USING btree ("archive_entity_id","start_ms");--> statement-breakpoint
 CREATE UNIQUE INDEX "messaging_conversations_dm_key_unique" ON "messaging_conversations" USING btree ("dm_key") WHERE "messaging_conversations"."dm_key" IS NOT NULL;--> statement-breakpoint
 CREATE INDEX "messaging_conversations_name_trgm_idx" ON "messaging_conversations" USING gin (lower("name") gin_trgm_ops);--> statement-breakpoint
 CREATE INDEX "messaging_messages_search_idx" ON "messaging_messages" USING gin (to_tsvector('simple', regexp_replace("body", '[!-/:-@[-`{-~]', ' ', 'g')));--> statement-breakpoint
@@ -968,5 +1118,36 @@ CREATE INDEX "agent_invocations_owner_status_idx" ON "agent_invocations" USING b
 CREATE INDEX "agent_invocations_caller_idx" ON "agent_invocations" USING btree ("user_agent_id","caller_user_id","status");--> statement-breakpoint
 CREATE INDEX "agent_invocations_conversation_idx" ON "agent_invocations" USING btree ("conversation_id","caller_user_id");--> statement-breakpoint
 CREATE INDEX "crm_affiliations_account_idx" ON "crm_affiliations" USING btree ("organization_id","account_entity_id");--> statement-breakpoint
+CREATE UNIQUE INDEX "crm_affiliations_primary_unique" ON "crm_affiliations" USING btree ("organization_id","contact_entity_id") WHERE "crm_affiliations"."is_primary";--> statement-breakpoint
 CREATE INDEX "crm_deals_stage_idx" ON "crm_deals" USING btree ("organization_id","stage_id");--> statement-breakpoint
-CREATE INDEX "crm_activity_page_idx" ON "crm_activity_events" USING btree ("organization_id","entity_id","created_at","id");
+CREATE INDEX "crm_activity_page_idx" ON "crm_activity_events" USING btree ("organization_id","entity_id","created_at","id");--> statement-breakpoint
+CREATE INDEX "calendar_event_attendees_email_idx" ON "calendar_event_attendees" USING btree ("organization_id","normalized_email");--> statement-breakpoint
+CREATE INDEX "calendar_events_agenda_idx" ON "calendar_events" USING btree ("organization_id","calendar_entity_id","starts_at");--> statement-breakpoint
+CREATE INDEX "calendar_events_completion_idx" ON "calendar_events" USING btree ("ends_at") WHERE "calendar_events"."interactions_recorded_at" IS NULL AND "calendar_events"."kind" = 'default' AND "calendar_events"."status" <> 'cancelled';--> statement-breakpoint
+CREATE INDEX "calendars_due_idx" ON "calendars" USING btree ("next_sync_at") WHERE "calendars"."sync_status" IN ('pending', 'active', 'error');--> statement-breakpoint
+-- Attachment-only messages are valid only after the parent and its files commit together.
+CREATE FUNCTION require_message_content() RETURNS trigger LANGUAGE plpgsql AS $$
+DECLARE target_id uuid;
+BEGIN
+  IF TG_TABLE_NAME = 'messaging_messages' THEN
+    target_id := NEW.id;
+  ELSE
+    target_id := OLD.message_id;
+  END IF;
+  IF EXISTS (
+    SELECT 1 FROM messaging_messages m
+    WHERE m.id = target_id AND m.deleted_at IS NULL AND length(btrim(m.body)) = 0
+      AND NOT EXISTS (SELECT 1 FROM message_attachments a WHERE a.message_id = m.id)
+  ) THEN
+    RAISE EXCEPTION 'A message needs text or an attachment.' USING ERRCODE = '23514';
+  END IF;
+  RETURN NULL;
+END $$;
+--> statement-breakpoint
+CREATE CONSTRAINT TRIGGER message_requires_content
+AFTER INSERT OR UPDATE ON messaging_messages
+DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION require_message_content();
+--> statement-breakpoint
+CREATE CONSTRAINT TRIGGER attachment_preserves_message_content
+AFTER DELETE OR UPDATE ON message_attachments
+DEFERRABLE INITIALLY DEFERRED FOR EACH ROW EXECUTE FUNCTION require_message_content();

@@ -1,5 +1,5 @@
 {
-  "id": "7640befe-8a3e-4975-868a-03ba349f771f",
+  "id": "6923d4f3-c7d6-45bf-99b2-973239c1737d",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -649,6 +649,60 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.organization_apps": {
+      "name": "organization_apps",
+      "schema": "",
+      "columns": {
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "app_id": {
+          "name": "app_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "enabled": {
+          "name": "enabled",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "organization_apps_organization_id_organization_id_fk": {
+          "name": "organization_apps_organization_id_organization_id_fk",
+          "tableFrom": "organization_apps",
+          "tableTo": "organization",
+          "columnsFrom": [
+            "organization_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "organization_apps_organization_id_app_id_pk": {
+          "name": "organization_apps_organization_id_app_id_pk",
+          "columns": [
+            "organization_id",
+            "app_id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.entities": {
       "name": "entities",
       "schema": "",
@@ -658,7 +712,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "organization_id": {
           "name": "organization_id",
@@ -678,6 +732,13 @@
           "type": "uuid",
           "primaryKey": false,
           "notNull": true
+        },
+        "access_version": {
+          "name": "access_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         },
         "created_at": {
           "name": "created_at",
@@ -977,7 +1038,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "user_id": {
           "name": "user_id",
@@ -1134,10 +1195,6 @@
       },
       "policies": {},
       "checkConstraints": {
-        "user_agent_caller_policy_check": {
-          "name": "user_agent_caller_policy_check",
-          "value": "\"user_agents\".\"caller_policy\" IN ('owner', 'anyone', 'ask')"
-        },
         "user_agent_picture_purpose": {
           "name": "user_agent_picture_purpose",
           "value": "\"user_agents\".\"picture_purpose\" = 'avatar'"
@@ -1154,7 +1211,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "user_id": {
           "name": "user_id",
@@ -1252,7 +1309,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "organization_id": {
           "name": "organization_id",
@@ -1572,7 +1629,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "organization_id": {
           "name": "organization_id",
@@ -1742,7 +1799,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "organization_id": {
           "name": "organization_id",
@@ -1949,6 +2006,33 @@
             },
             {
               "expression": "contact_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurred_at",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            },
+            {
+              "expression": "entity_id",
+              "isExpression": false,
+              "asc": false,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "contact_interactions_org_timeline_idx": {
+          "name": "contact_interactions_org_timeline_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2207,7 +2291,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "organization_id": {
           "name": "organization_id",
@@ -2266,6 +2350,40 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "entity_links_directed_pair_unique": {
+          "name": "entity_links_directed_pair_unique",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "relation_type",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "least(\"source_entity_id\", \"target_entity_id\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "greatest(\"source_entity_id\", \"target_entity_id\")",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"entity_links\".\"relation_type\" IN ('blocks', 'duplicates')",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -2382,7 +2500,7 @@
           "name": "entity_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "created_at": {
           "name": "created_at",
@@ -2451,12 +2569,7 @@
       },
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "idempotent_request_operation": {
-          "name": "idempotent_request_operation",
-          "value": "operation in ('account', 'deal', 'deal_transition', 'crm_from_message', 'crm_follow_up', 'task_from_message')"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.file_uploads": {
@@ -2847,7 +2960,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "file_organization_id": {
           "name": "file_organization_id",
@@ -3003,7 +3116,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "file_organization_id": {
           "name": "file_organization_id",
@@ -3150,6 +3263,619 @@
       },
       "isRLSEnabled": false
     },
+    "public.meeting_archives": {
+      "name": "meeting_archives",
+      "schema": "",
+      "columns": {
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_type": {
+          "name": "entity_type",
+          "type": "entity_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_actor_entity_id": {
+          "name": "owner_actor_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "revision": {
+          "name": "revision",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "meeting_archive_entity": {
+          "name": "meeting_archive_entity",
+          "tableFrom": "meeting_archives",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "organization_id",
+            "entity_id",
+            "entity_type"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id",
+            "entity_type"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "meeting_archive_owner": {
+          "name": "meeting_archive_owner",
+          "tableFrom": "meeting_archives",
+          "tableTo": "actors",
+          "columnsFrom": [
+            "organization_id",
+            "owner_actor_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "meeting_archives_owner": {
+          "name": "meeting_archives_owner",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "owner_actor_entity_id"
+          ]
+        },
+        "meeting_archives_scope": {
+          "name": "meeting_archives_scope",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "entity_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "meeting_archive_type": {
+          "name": "meeting_archive_type",
+          "value": "\"meeting_archives\".\"entity_type\"::text = 'meeting_archive'"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.meeting_originals": {
+      "name": "meeting_originals",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "uuidv7()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "archive_entity_id": {
+          "name": "archive_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "connection_id": {
+          "name": "connection_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_key": {
+          "name": "source_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "meeting_entity_id": {
+          "name": "meeting_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "candidate_entity_id": {
+          "name": "candidate_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "occurrence": {
+          "name": "occurrence",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "digest": {
+          "name": "digest",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notes": {
+          "name": "notes",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "turns": {
+          "name": "turns",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "raw": {
+          "name": "raw",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "has_transcript": {
+          "name": "has_transcript",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "search_text": {
+          "name": "search_text",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "meeting_originals_attached": {
+          "name": "meeting_originals_attached",
+          "columns": [
+            {
+              "expression": "archive_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "meeting_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "meeting_originals_occurrence": {
+          "name": "meeting_originals_occurrence",
+          "columns": [
+            {
+              "expression": "archive_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "occurrence",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "meeting_original_connection": {
+          "name": "meeting_original_connection",
+          "tableFrom": "meeting_originals",
+          "tableTo": "meeting_connections",
+          "columnsFrom": [
+            "organization_id",
+            "archive_entity_id",
+            "connection_id",
+            "provider"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "archive_entity_id",
+            "id",
+            "provider"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "meeting_original_meeting": {
+          "name": "meeting_original_meeting",
+          "tableFrom": "meeting_originals",
+          "tableTo": "meetings",
+          "columnsFrom": [
+            "organization_id",
+            "archive_entity_id",
+            "meeting_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "archive_entity_id",
+            "entity_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "meeting_original_candidate": {
+          "name": "meeting_original_candidate",
+          "tableFrom": "meeting_originals",
+          "tableTo": "meetings",
+          "columnsFrom": [
+            "organization_id",
+            "archive_entity_id",
+            "candidate_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "archive_entity_id",
+            "entity_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "meeting_original_identity": {
+          "name": "meeting_original_identity",
+          "nullsNotDistinct": false,
+          "columns": [
+            "connection_id",
+            "source_key"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "meeting_original_target": {
+          "name": "meeting_original_target",
+          "value": "num_nonnulls(\"meeting_originals\".\"meeting_entity_id\", \"meeting_originals\".\"candidate_entity_id\") = 1"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.meeting_connections": {
+      "name": "meeting_connections",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "uuidv7()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "archive_entity_id": {
+          "name": "archive_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "source_key": {
+          "name": "source_key",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "label": {
+          "name": "label",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "meeting_source_archive": {
+          "name": "meeting_source_archive",
+          "tableFrom": "meeting_connections",
+          "tableTo": "meeting_archives",
+          "columnsFrom": [
+            "organization_id",
+            "archive_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "meeting_source_identity": {
+          "name": "meeting_source_identity",
+          "nullsNotDistinct": false,
+          "columns": [
+            "archive_entity_id",
+            "provider",
+            "source_key"
+          ]
+        },
+        "meeting_source_scope": {
+          "name": "meeting_source_scope",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "archive_entity_id",
+            "id",
+            "provider"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.meetings": {
+      "name": "meetings",
+      "schema": "",
+      "columns": {
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "archive_entity_id": {
+          "name": "archive_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_type": {
+          "name": "entity_type",
+          "type": "entity_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "local_start": {
+          "name": "local_start",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "start_ms": {
+          "name": "start_ms",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "duration_ms": {
+          "name": "duration_ms",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "platform": {
+          "name": "platform",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "people": {
+          "name": "people",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "providers": {
+          "name": "providers",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "has_notes": {
+          "name": "has_notes",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "has_transcript": {
+          "name": "has_transcript",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true
+        }
+      },
+      "indexes": {
+        "meetings_by_date": {
+          "name": "meetings_by_date",
+          "columns": [
+            {
+              "expression": "archive_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "local_start",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "meetings_by_instant": {
+          "name": "meetings_by_instant",
+          "columns": [
+            {
+              "expression": "archive_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "start_ms",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "meeting_entity": {
+          "name": "meeting_entity",
+          "tableFrom": "meetings",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "organization_id",
+            "entity_id",
+            "entity_type"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id",
+            "entity_type"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "meeting_archive_fk": {
+          "name": "meeting_archive_fk",
+          "tableFrom": "meetings",
+          "tableTo": "meeting_archives",
+          "columnsFrom": [
+            "organization_id",
+            "archive_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "meeting_access_container": {
+          "name": "meeting_access_container",
+          "tableFrom": "meetings",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "organization_id",
+            "entity_id",
+            "archive_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id",
+            "access_entity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "meeting_in_archive": {
+          "name": "meeting_in_archive",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "archive_entity_id",
+            "entity_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "meeting_type": {
+          "name": "meeting_type",
+          "value": "\"meetings\".\"entity_type\"::text = 'meeting'"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.messaging_conversations": {
       "name": "messaging_conversations",
       "schema": "",
@@ -3159,7 +3885,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "organization_id": {
           "name": "organization_id",
@@ -3210,6 +3936,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         }
       },
       "indexes": {
@@ -3312,10 +4045,6 @@
           "name": "messaging_task_discussion_check",
           "value": "\"messaging_conversations\".\"task_entity_id\" IS NULL OR (\"messaging_conversations\".\"kind\" = 'group' AND \"messaging_conversations\".\"private\" AND \"messaging_conversations\".\"dm_key\" IS NULL)"
         },
-        "messaging_kind_check": {
-          "name": "messaging_kind_check",
-          "value": "\"messaging_conversations\".\"kind\" IN ('dm', 'group', 'channel')"
-        },
         "messaging_visibility_check": {
           "name": "messaging_visibility_check",
           "value": "\"messaging_conversations\".\"kind\" = 'channel' OR \"messaging_conversations\".\"private\""
@@ -3336,7 +4065,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "conversation_id": {
           "name": "conversation_id",
@@ -3994,7 +4723,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "conversation_id": {
           "name": "conversation_id",
@@ -4268,16 +4997,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "messaging_invitation_status_check": {
-          "name": "messaging_invitation_status_check",
-          "value": "\"messaging_invitations\".\"status\" IN ('pending', 'accepted', 'declined', 'revoked')"
-        },
-        "messaging_invitation_purpose_check": {
-          "name": "messaging_invitation_purpose_check",
-          "value": "\"messaging_invitations\".\"purpose\" IN ('organization', 'person')"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.messaging_sharing_events": {
@@ -4289,7 +5009,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "conversation_id": {
           "name": "conversation_id",
@@ -4491,6 +5211,18 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "archived_by_actor_entity_id": {
+          "name": "archived_by_actor_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -4542,6 +5274,21 @@
           ],
           "onDelete": "cascade",
           "onUpdate": "no action"
+        },
+        "projects_organization_id_archived_by_actor_entity_id_actors_organization_id_entity_id_fk": {
+          "name": "projects_organization_id_archived_by_actor_entity_id_actors_organization_id_entity_id_fk",
+          "tableFrom": "projects",
+          "tableTo": "actors",
+          "columnsFrom": [
+            "organization_id",
+            "archived_by_actor_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -4560,6 +5307,10 @@
         "projects_name_check": {
           "name": "projects_name_check",
           "value": "length(trim(\"projects\".\"name\")) BETWEEN 1 AND 200"
+        },
+        "projects_archive_check": {
+          "name": "projects_archive_check",
+          "value": "(\"projects\".\"archived_at\" IS NULL) = (\"projects\".\"archived_by_actor_entity_id\" IS NULL)"
         },
         "projects_image_check": {
           "name": "projects_image_check",
@@ -4810,14 +5561,6 @@
           "name": "tasks_title_check",
           "value": "length(trim(\"tasks\".\"title\")) BETWEEN 1 AND 300"
         },
-        "tasks_status_check": {
-          "name": "tasks_status_check",
-          "value": "\"tasks\".\"status\" IN ('not_started', 'in_progress', 'in_review', 'completed', 'canceled')"
-        },
-        "tasks_priority_check": {
-          "name": "tasks_priority_check",
-          "value": "\"tasks\".\"priority\" IN ('none', 'low', 'medium', 'high', 'urgent')"
-        },
         "tasks_parent_check": {
           "name": "tasks_parent_check",
           "value": "\"tasks\".\"entity_id\" <> \"tasks\".\"parent_task_entity_id\""
@@ -4995,13 +5738,9 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "message_reference_type_check": {
-          "name": "message_reference_type_check",
-          "value": "\"message_entity_references\".\"entity_type\"::text IN ('task', 'project', 'contact', 'account', 'deal', 'contact_interaction')"
-        },
-        "message_reference_purpose_check": {
-          "name": "message_reference_purpose_check",
-          "value": "\"message_entity_references\".\"purpose\" IN ('source', 'mention', 'association')"
+        "message_reference_meeting_source": {
+          "name": "message_reference_meeting_source",
+          "value": "\"message_entity_references\".\"entity_type\"::text <> 'meeting' OR \"message_entity_references\".\"purpose\" = 'source'"
         }
       },
       "isRLSEnabled": false
@@ -5015,7 +5754,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "organization_id": {
           "name": "organization_id",
@@ -5166,7 +5905,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "organization_id": {
           "name": "organization_id",
@@ -5401,10 +6140,6 @@
         "notification_target_check": {
           "name": "notification_target_check",
           "value": "(\"notifications\".\"entity_id\" IS NULL) <> (\"notifications\".\"message_id\" IS NULL)"
-        },
-        "notification_kind_check": {
-          "name": "notification_kind_check",
-          "value": "\"notifications\".\"kind\" IN ('assignment', 'mention', 'reply', 'message')"
         }
       },
       "isRLSEnabled": false
@@ -5447,7 +6182,7 @@
           "name": "result",
           "type": "jsonb",
           "primaryKey": false,
-          "notNull": true
+          "notNull": false
         },
         "turn_id": {
           "name": "turn_id",
@@ -5571,12 +6306,7 @@
       },
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "user_agent_trigger_kind_check": {
-          "name": "user_agent_trigger_kind_check",
-          "value": "\"user_agent_triggers\".\"kind\" IN ('direct_message', 'mention', 'thread_reply')"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.user_agent_callers": {
@@ -5710,7 +6440,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "organization_id": {
           "name": "organization_id",
@@ -5866,10 +6596,6 @@
       },
       "policies": {},
       "checkConstraints": {
-        "agent_wake_source_check": {
-          "name": "agent_wake_source_check",
-          "value": "\"agent_wakes\".\"source\" IN ('owner_message', 'answer', 'approval_result', 'caller_message')"
-        },
         "agent_wake_session_key_check": {
           "name": "agent_wake_session_key_check",
           "value": "length(\"agent_wakes\".\"session_key\") BETWEEN 1 AND 200"
@@ -5886,7 +6612,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "organization_id": {
           "name": "organization_id",
@@ -6237,18 +6963,6 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "agent_request_kind_check": {
-          "name": "agent_request_kind_check",
-          "value": "\"agent_requests\".\"kind\" IN ('permission', 'question', 'proposal')"
-        },
-        "agent_request_mode_check": {
-          "name": "agent_request_mode_check",
-          "value": "\"agent_requests\".\"mode\" IN ('blocking', 'async')"
-        },
-        "agent_request_status_check": {
-          "name": "agent_request_status_check",
-          "value": "\"agent_requests\".\"status\" IN ('pending', 'resolved', 'delivered', 'executing', 'executed', 'failed', 'cancelled', 'expired', 'orphaned', 'undelivered')"
-        },
         "agent_request_blocking_check": {
           "name": "agent_request_blocking_check",
           "value": "\"agent_requests\".\"mode\" <> 'blocking' OR \"agent_requests\".\"native_request_id\" IS NOT NULL"
@@ -6277,7 +6991,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "organization_id": {
           "name": "organization_id",
@@ -6457,16 +7171,7 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
-      "checkConstraints": {
-        "agent_audit_action_check": {
-          "name": "agent_audit_action_check",
-          "value": "\"agent_audit_events\".\"action\" IN ('policy_changed', 'caller_allowed', 'caller_removed', 'invocation_admitted', 'invocation_held', 'invocation_rate_limited', 'invocation_approved', 'invocation_declined', 'invocation_expired', 'invocation_cancelled', 'invocation_dropped', 'mcp_call')"
-        },
-        "agent_audit_access_check": {
-          "name": "agent_audit_access_check",
-          "value": "\"agent_audit_events\".\"access\" IS NULL OR \"agent_audit_events\".\"access\" IN ('read', 'write')"
-        }
-      },
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.agent_invocations": {
@@ -6478,7 +7183,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "organization_id": {
           "name": "organization_id",
@@ -6793,22 +7498,6 @@
       },
       "policies": {},
       "checkConstraints": {
-        "agent_invocation_status_check": {
-          "name": "agent_invocation_status_check",
-          "value": "\"agent_invocations\".\"status\" IN ('received', 'pending_approval', 'admitted', 'rate_limited', 'declined', 'expired', 'cancelled', 'dropped')"
-        },
-        "agent_invocation_drop_reason_check": {
-          "name": "agent_invocation_drop_reason_check",
-          "value": "\"agent_invocations\".\"drop_reason\" IS NULL OR \"agent_invocations\".\"drop_reason\" IN ('revoked', 'desktop_needs_update')"
-        },
-        "agent_invocation_kind_check": {
-          "name": "agent_invocation_kind_check",
-          "value": "\"agent_invocations\".\"kind\" IN ('mention', 'thread_reply')"
-        },
-        "agent_invocation_policy_check": {
-          "name": "agent_invocation_policy_check",
-          "value": "\"agent_invocations\".\"policy\" IN ('owner', 'anyone', 'ask')"
-        },
         "agent_invocation_caller_check": {
           "name": "agent_invocation_caller_check",
           "value": "\"agent_invocations\".\"caller_user_id\" <> \"agent_invocations\".\"owner_user_id\""
@@ -6968,10 +7657,6 @@
         "agent_status_live_place_check": {
           "name": "agent_status_live_place_check",
           "value": "\"agent_status\".\"live_thread_id\" IS NULL OR \"agent_status\".\"live_conversation_id\" IS NOT NULL"
-        },
-        "agent_status_state_check": {
-          "name": "agent_status_state_check",
-          "value": "\"agent_status\".\"state\" IN ('idle', 'working', 'queued', 'needs_you')"
         },
         "agent_status_activity_check": {
           "name": "agent_status_activity_check",
@@ -7193,7 +7878,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "organization_id": {
           "name": "organization_id",
@@ -7246,6 +7931,28 @@
             }
           ],
           "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "crm_affiliations_primary_unique": {
+          "name": "crm_affiliations_primary_unique",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "contact_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"crm_affiliations\".\"is_primary\"",
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -7355,7 +8062,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "organization_id": {
           "name": "organization_id",
@@ -7654,7 +8361,7 @@
         },
         "crm_deal_outcome": {
           "name": "crm_deal_outcome",
-          "value": "\"crm_deals\".\"outcome\" in ('open','won','lost') and ((\"crm_deals\".\"outcome\" = 'open') = (\"crm_deals\".\"closed_at\" is null))"
+          "value": "(\"crm_deals\".\"outcome\" = 'open') = (\"crm_deals\".\"closed_at\" is null)"
         }
       },
       "isRLSEnabled": false
@@ -7668,7 +8375,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "organization_id": {
           "name": "organization_id",
@@ -7742,6 +8449,13 @@
           "type": "text",
           "primaryKey": false,
           "notNull": false
+        },
+        "pipeline_version": {
+          "name": "pipeline_version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
         }
       },
       "indexes": {},
@@ -7780,7 +8494,7 @@
           "type": "uuid",
           "primaryKey": true,
           "notNull": true,
-          "default": "gen_random_uuid()"
+          "default": "uuidv7()"
         },
         "organization_id": {
           "name": "organization_id",
@@ -7934,18 +8648,665 @@
       "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.calendar_event_attendees": {
+      "name": "calendar_event_attendees",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "uuidv7()"
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "event_entity_id": {
+          "name": "event_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "email": {
+          "name": "email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "normalized_email": {
+          "name": "normalized_email",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "display_name": {
+          "name": "display_name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "response_status": {
+          "name": "response_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "is_organizer": {
+          "name": "is_organizer",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_self": {
+          "name": "is_self",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_optional": {
+          "name": "is_optional",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "is_resource": {
+          "name": "is_resource",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        }
+      },
+      "indexes": {
+        "calendar_event_attendees_email_idx": {
+          "name": "calendar_event_attendees_email_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "normalized_email",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "calendar_event_attendees_organization_id_event_entity_id_calendar_events_organization_id_entity_id_fk": {
+          "name": "calendar_event_attendees_organization_id_event_entity_id_calendar_events_organization_id_entity_id_fk",
+          "tableFrom": "calendar_event_attendees",
+          "tableTo": "calendar_events",
+          "columnsFrom": [
+            "organization_id",
+            "event_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "calendar_event_attendees_email_unique": {
+          "name": "calendar_event_attendees_email_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "event_entity_id",
+            "normalized_email"
+          ]
+        }
+      },
+      "policies": {},
       "checkConstraints": {
-        "crm_activity_entity_type": {
-          "name": "crm_activity_entity_type",
-          "value": "\"crm_activity_events\".\"entity_type\"::text in ('account', 'contact', 'deal')"
+        "calendar_event_attendees_email_check": {
+          "name": "calendar_event_attendees_email_check",
+          "value": "length(trim(\"calendar_event_attendees\".\"normalized_email\")) > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.calendar_events": {
+      "name": "calendar_events",
+      "schema": "",
+      "columns": {
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
         },
-        "crm_activity_action": {
-          "name": "crm_activity_action",
-          "value": "\"crm_activity_events\".\"action\" in ('created', 'updated', 'stage_changed', 'owner_changed', 'discussion_linked', 'discussion_unlinked', 'context_linked', 'context_unlinked', 'interaction_created', 'interaction_updated', 'interaction_deleted', 'follow_up_created', 'shared', 'unshared', 'archived', 'restored')"
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
         },
-        "crm_activity_fields": {
-          "name": "crm_activity_fields",
-          "value": "jsonb_typeof(\"crm_activity_events\".\"changed_fields\") = 'array' and \"crm_activity_events\".\"changed_fields\" <@ '[\"name\",\"website\",\"domain\",\"summary\",\"displayName\",\"givenName\",\"familyName\",\"notes\",\"middleName\",\"namePrefix\",\"nameSuffix\",\"nickname\",\"title\",\"account\",\"contacts\",\"primaryContact\",\"stage\",\"amount\",\"currency\",\"expectedCloseDate\",\"outcome\",\"lostReason\",\"owner\",\"identifier\",\"address\",\"url\",\"affiliation\",\"role\",\"kind\",\"occurredAt\",\"endedAt\",\"sharing\"]'::jsonb"
+        "entity_type": {
+          "name": "entity_type",
+          "type": "entity_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "calendar_entity_id": {
+          "name": "calendar_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider_event_id": {
+          "name": "provider_event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ical_uid": {
+          "name": "ical_uid",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "recurring_event_id": {
+          "name": "recurring_event_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "title": {
+          "name": "title",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "''"
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "location": {
+          "name": "location",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "conference_url": {
+          "name": "conference_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "html_link": {
+          "name": "html_link",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "visibility": {
+          "name": "visibility",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'default'"
+        },
+        "starts_at": {
+          "name": "starts_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "ends_at": {
+          "name": "ends_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "all_day": {
+          "name": "all_day",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "time_zone": {
+          "name": "time_zone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "provider_updated_at": {
+          "name": "provider_updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sync_generation": {
+          "name": "sync_generation",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "interactions_recorded_at": {
+          "name": "interactions_recorded_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "calendar_events_agenda_idx": {
+          "name": "calendar_events_agenda_idx",
+          "columns": [
+            {
+              "expression": "organization_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "calendar_entity_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "starts_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "calendar_events_completion_idx": {
+          "name": "calendar_events_completion_idx",
+          "columns": [
+            {
+              "expression": "ends_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"calendar_events\".\"interactions_recorded_at\" IS NULL AND \"calendar_events\".\"kind\" = 'default' AND \"calendar_events\".\"status\" <> 'cancelled'",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "calendar_events_organization_id_entity_id_entity_type_entities_organization_id_entity_id_entity_type_fk": {
+          "name": "calendar_events_organization_id_entity_id_entity_type_entities_organization_id_entity_id_entity_type_fk",
+          "tableFrom": "calendar_events",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "organization_id",
+            "entity_id",
+            "entity_type"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id",
+            "entity_type"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "calendar_events_organization_id_calendar_entity_id_calendars_organization_id_entity_id_fk": {
+          "name": "calendar_events_organization_id_calendar_entity_id_calendars_organization_id_entity_id_fk",
+          "tableFrom": "calendar_events",
+          "tableTo": "calendars",
+          "columnsFrom": [
+            "organization_id",
+            "calendar_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "calendar_events_organization_id_entity_id_calendar_entity_id_entities_organization_id_entity_id_access_entity_id_fk": {
+          "name": "calendar_events_organization_id_entity_id_calendar_entity_id_entities_organization_id_entity_id_access_entity_id_fk",
+          "tableFrom": "calendar_events",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "organization_id",
+            "entity_id",
+            "calendar_entity_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id",
+            "access_entity_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "calendar_events_organization_entity_unique": {
+          "name": "calendar_events_organization_entity_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "entity_id"
+          ]
+        },
+        "calendar_events_provider_unique": {
+          "name": "calendar_events_provider_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "calendar_entity_id",
+            "provider_event_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "calendar_events_type_check": {
+          "name": "calendar_events_type_check",
+          "value": "\"calendar_events\".\"entity_type\"::text = 'calendar_event'"
+        },
+        "calendar_events_time_check": {
+          "name": "calendar_events_time_check",
+          "value": "\"calendar_events\".\"ends_at\" >= \"calendar_events\".\"starts_at\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.calendars": {
+      "name": "calendars",
+      "schema": "",
+      "columns": {
+        "entity_id": {
+          "name": "entity_id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "organization_id": {
+          "name": "organization_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "entity_type": {
+          "name": "entity_type",
+          "type": "entity_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_actor_entity_id": {
+          "name": "owner_actor_entity_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "owner_user_id": {
+          "name": "owner_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "provider": {
+          "name": "provider",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "credential_account_id": {
+          "name": "credential_account_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "provider_calendar_id": {
+          "name": "provider_calendar_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "color": {
+          "name": "color",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "time_zone": {
+          "name": "time_zone",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "is_primary": {
+          "name": "is_primary",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "records_interactions": {
+          "name": "records_interactions",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
+        },
+        "interactions_from": {
+          "name": "interactions_from",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sync_window_start": {
+          "name": "sync_window_start",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "sync_status": {
+          "name": "sync_status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'pending'"
+        },
+        "sync_cursor": {
+          "name": "sync_cursor",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sync_generation": {
+          "name": "sync_generation",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 0
+        },
+        "next_sync_at": {
+          "name": "next_sync_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "last_synced_at": {
+          "name": "last_synced_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sync_error_code": {
+          "name": "sync_error_code",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sync_lease_token": {
+          "name": "sync_lease_token",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "sync_lease_expires_at": {
+          "name": "sync_lease_expires_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        }
+      },
+      "indexes": {
+        "calendars_due_idx": {
+          "name": "calendars_due_idx",
+          "columns": [
+            {
+              "expression": "next_sync_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "where": "\"calendars\".\"sync_status\" IN ('pending', 'active', 'error')",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "calendars_credential_account_id_account_id_fk": {
+          "name": "calendars_credential_account_id_account_id_fk",
+          "tableFrom": "calendars",
+          "tableTo": "account",
+          "columnsFrom": [
+            "credential_account_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "calendars_organization_id_entity_id_entity_type_entities_organization_id_entity_id_entity_type_fk": {
+          "name": "calendars_organization_id_entity_id_entity_type_entities_organization_id_entity_id_entity_type_fk",
+          "tableFrom": "calendars",
+          "tableTo": "entities",
+          "columnsFrom": [
+            "organization_id",
+            "entity_id",
+            "entity_type"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id",
+            "entity_type"
+          ],
+          "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "calendars_organization_id_owner_actor_entity_id_owner_user_id_actors_organization_id_entity_id_user_id_fk": {
+          "name": "calendars_organization_id_owner_actor_entity_id_owner_user_id_actors_organization_id_entity_id_user_id_fk",
+          "tableFrom": "calendars",
+          "tableTo": "actors",
+          "columnsFrom": [
+            "organization_id",
+            "owner_actor_entity_id",
+            "owner_user_id"
+          ],
+          "columnsTo": [
+            "organization_id",
+            "entity_id",
+            "user_id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {
+        "calendars_organization_entity_unique": {
+          "name": "calendars_organization_entity_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "entity_id"
+          ]
+        },
+        "calendars_owner_calendar_unique": {
+          "name": "calendars_owner_calendar_unique",
+          "nullsNotDistinct": false,
+          "columns": [
+            "organization_id",
+            "owner_actor_entity_id",
+            "provider",
+            "provider_calendar_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "calendars_type_check": {
+          "name": "calendars_type_check",
+          "value": "\"calendars\".\"entity_type\"::text = 'calendar'"
+        },
+        "calendars_name_check": {
+          "name": "calendars_name_check",
+          "value": "length(trim(\"calendars\".\"name\")) BETWEEN 1 AND 500"
+        },
+        "calendars_lease_check": {
+          "name": "calendars_lease_check",
+          "value": "(\"calendars\".\"sync_lease_token\" IS NULL) = (\"calendars\".\"sync_lease_expires_at\" IS NULL)"
         }
       },
       "isRLSEnabled": false
@@ -7962,7 +9323,11 @@
         "project",
         "task",
         "account",
-        "deal"
+        "deal",
+        "calendar",
+        "calendar_event",
+        "meeting_archive",
+        "meeting"
       ]
     },
     "public.actor_type": {
@@ -7998,7 +9363,8 @@
       "schema": "public",
       "values": [
         "manual",
-        "message_publication"
+        "message_publication",
+        "calendar_event"
       ]
     },
     "public.permission_level": {

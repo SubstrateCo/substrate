@@ -1,4 +1,18 @@
-DROP TABLE `native_session_refs`;
+CREATE TABLE `agent_mcp_servers` (
+	`organization_id` text NOT NULL,
+	`agent_id` text NOT NULL,
+	`id` text NOT NULL,
+	`name` text NOT NULL,
+	`transport` text NOT NULL,
+	`command` text,
+	`args` text DEFAULT '[]' NOT NULL,
+	`environment` text DEFAULT '{}' NOT NULL,
+	`url` text,
+	`created_at` integer NOT NULL,
+	`updated_at` integer NOT NULL,
+	PRIMARY KEY(`organization_id`, `agent_id`, `id`),
+	CONSTRAINT "agent_mcp_servers_transport" CHECK(("agent_mcp_servers"."transport" = 'stdio' AND "agent_mcp_servers"."command" IS NOT NULL AND "agent_mcp_servers"."url" IS NULL) OR ("agent_mcp_servers"."transport" = 'http' AND "agent_mcp_servers"."url" IS NOT NULL AND "agent_mcp_servers"."command" IS NULL))
+);
 --> statement-breakpoint
 CREATE TABLE `handoffs` (
 	`session_id` text NOT NULL,
@@ -27,6 +41,7 @@ CREATE UNIQUE INDEX `helpers_request` ON `helpers` (`parent_session_id`,`request
 CREATE INDEX `helpers_agent_status` ON `helpers` (`user_agent_id`,`status`);--> statement-breakpoint
 CREATE TABLE `inbox` (
 	`id` text PRIMARY KEY NOT NULL,
+	`organization_id` text NOT NULL,
 	`session_id` text NOT NULL,
 	`user_agent_id` text NOT NULL,
 	`source` text NOT NULL,
@@ -42,12 +57,55 @@ CREATE TABLE `inbox` (
 	`steered` integer DEFAULT false NOT NULL,
 	`reason` text,
 	`turn_id` text,
-	`created_at` integer NOT NULL
+	`created_at` integer NOT NULL,
+	FOREIGN KEY (`organization_id`,`session_id`) REFERENCES `sessions`(`organization_id`,`id`) ON UPDATE no action ON DELETE no action
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `inbox_agent_dedupe` ON `inbox` (`user_agent_id`,`dedupe_key`);--> statement-breakpoint
 CREATE INDEX `inbox_session_status` ON `inbox` (`session_id`,`status`);--> statement-breakpoint
+CREATE INDEX `inbox_organization_status` ON `inbox` (`organization_id`,`status`);--> statement-breakpoint
 CREATE INDEX `inbox_turn` ON `inbox` (`turn_id`);--> statement-breakpoint
+CREATE TABLE `mail_connections` (
+	`organization_id` text NOT NULL,
+	`id` text NOT NULL,
+	`provider` text NOT NULL,
+	`provider_account_id` text NOT NULL,
+	`address` text NOT NULL,
+	`nickname` text,
+	`protected_grant` text NOT NULL,
+	`can_modify` integer DEFAULT false NOT NULL,
+	`cursor` text,
+	`labels` text DEFAULT '[]' NOT NULL,
+	`show_label_filters` integer DEFAULT true NOT NULL,
+	`last_sync` integer,
+	`unread_total` integer,
+	`status` text DEFAULT 'idle' NOT NULL,
+	PRIMARY KEY(`organization_id`, `id`)
+);
+--> statement-breakpoint
+CREATE UNIQUE INDEX `mail_connections_organization_id_provider_provider_account_id_unique` ON `mail_connections` (`organization_id`,`provider`,`provider_account_id`);--> statement-breakpoint
+CREATE TABLE `mail_messages` (
+	`organization_id` text NOT NULL,
+	`mailbox_id` text NOT NULL,
+	`remote_id` text NOT NULL,
+	`id` text PRIMARY KEY NOT NULL,
+	`thread_id` text,
+	`timestamp` integer NOT NULL,
+	`subject` text NOT NULL,
+	`from_address` text NOT NULL,
+	`to_addresses` text NOT NULL,
+	`snippet` text NOT NULL,
+	`body` text NOT NULL,
+	`flags` integer NOT NULL,
+	`label_ids` text NOT NULL,
+	`scan` text,
+	FOREIGN KEY (`organization_id`,`mailbox_id`) REFERENCES `mail_connections`(`organization_id`,`id`) ON UPDATE no action ON DELETE cascade
+);
+--> statement-breakpoint
+CREATE INDEX `mail_recent` ON `mail_messages` (`organization_id`,`timestamp`,`id`);--> statement-breakpoint
+CREATE INDEX `mail_folder_counts` ON `mail_messages` (`organization_id`,`mailbox_id`,`flags`,`timestamp`);--> statement-breakpoint
+CREATE INDEX `mail_thread` ON `mail_messages` (`organization_id`,`mailbox_id`,`thread_id`,`timestamp`,`id`);--> statement-breakpoint
+CREATE UNIQUE INDEX `mail_messages_organization_id_mailbox_id_remote_id_unique` ON `mail_messages` (`organization_id`,`mailbox_id`,`remote_id`);--> statement-breakpoint
 CREATE TABLE `outputs` (
 	`turn_id` text NOT NULL,
 	`target_kind` text NOT NULL,
@@ -59,6 +117,7 @@ CREATE TABLE `outputs` (
 	PRIMARY KEY(`turn_id`, `target_kind`, `target_id`)
 );
 --> statement-breakpoint
+CREATE INDEX `outputs_target_kind` ON `outputs` (`target_kind`);--> statement-breakpoint
 CREATE TABLE `routines` (
 	`id` text PRIMARY KEY NOT NULL,
 	`organization_id` text NOT NULL,
@@ -104,6 +163,10 @@ CREATE TABLE `sessions` (
 );
 --> statement-breakpoint
 CREATE UNIQUE INDEX `sessions_agent_key` ON `sessions` (`user_agent_id`,`key`);--> statement-breakpoint
+CREATE UNIQUE INDEX `sessions_organization_id` ON `sessions` (`organization_id`,`id`);--> statement-breakpoint
+CREATE INDEX `sessions_organization_agent` ON `sessions` (`organization_id`,`user_agent_id`);--> statement-breakpoint
+CREATE INDEX `sessions_origin_conversation` ON `sessions` (`origin_conversation_id`);--> statement-breakpoint
+CREATE INDEX `sessions_destination_conversation` ON `sessions` (`destination_conversation_id`);--> statement-breakpoint
 CREATE TABLE `turn_events` (
 	`turn_id` text NOT NULL,
 	`seq` integer NOT NULL,
@@ -147,4 +210,5 @@ CREATE TABLE `turns` (
 );
 --> statement-breakpoint
 CREATE INDEX `turns_session` ON `turns` (`session_id`,`created_at`);--> statement-breakpoint
+CREATE INDEX `turns_agent_page` ON `turns` (`organization_id`,`user_agent_id`,`created_at`,`id`);--> statement-breakpoint
 CREATE INDEX `turns_status` ON `turns` (`status`);

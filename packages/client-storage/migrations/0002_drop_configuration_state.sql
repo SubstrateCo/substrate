@@ -1,1 +1,0 @@
-DROP TABLE `configuration_state`;
