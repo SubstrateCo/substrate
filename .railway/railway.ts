@@ -21,7 +21,7 @@ export default defineRailway(() => {
   const storage = bucket("storage", { region: "iad" });
 
   const api = service("api", {
-    source: github(repository, { branch: "main" }),
+    source: github(repository),
     build: {
       builder: "DOCKERFILE",
       dockerfilePath: "deploy/api/Dockerfile",
@@ -63,7 +63,7 @@ export default defineRailway(() => {
   });
 
   const web = service("web", {
-    source: github(repository, { branch: "main" }),
+    source: github(repository),
     build: {
       builder: "DOCKERFILE",
       dockerfilePath: "deploy/web/Dockerfile",
@@ -79,7 +79,7 @@ export default defineRailway(() => {
   });
 
   const redirect = service("redirect", {
-    source: github(repository, { branch: "main" }),
+    source: github(repository),
     build: {
       builder: "DOCKERFILE",
       dockerfilePath: "deploy/redirect/Dockerfile",
