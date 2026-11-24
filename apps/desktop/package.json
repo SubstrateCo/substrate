@@ -69,6 +69,7 @@
       "releaseType": "draft"
     },
     "win": {
+      "icon": "assets/icon.ico",
       "target": [
         "nsis"
       ],
@@ -80,6 +81,7 @@
       "artifactName": "${productName}-Setup.${ext}"
     },
     "mac": {
+      "icon": "assets/icon.icns",
       "category": "public.app-category.productivity",
       "artifactName": "${productName}-mac-${arch}.${ext}",
       "target": [

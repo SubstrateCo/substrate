@@ -43,6 +43,7 @@ await bundleHarnessWorker(`${desktop}/dist`);
 const harnessDependencies = await stageHarnessProductionAssets(`${desktop}/dist`);
 const { name, version, description, author } = manifest;
 await Promise.all([
+  cp(`${desktop}/assets`, `${desktop}/dist/assets`, { recursive: true }),
   cp(`${web}/dist`, `${desktop}/dist/renderer`, { recursive: true }),
   cp(`${desktop}/src/shell/offline.html`, `${desktop}/dist/offline.html`),
   cp(`${desktop}/src/shell/offline.css`, `${desktop}/dist/offline.css`),

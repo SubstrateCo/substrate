@@ -4,6 +4,7 @@ import { BrowserWindow, shell, type Session } from "electron";
 
 export function createShellWindow(options: {
   name: string;
+  icon: string;
   production: boolean;
   rendererURL: string;
   partition: string;
@@ -21,6 +22,7 @@ export function createShellWindow(options: {
   };
   const window = new BrowserWindow({
     title: options.name,
+    icon: options.icon,
     width: 1440,
     height: 960,
     minWidth: 320,

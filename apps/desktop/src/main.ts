@@ -32,6 +32,7 @@ import {
   type BrowserWindow,
   ipcMain,
   Menu,
+  nativeImage,
   Notification,
   session,
   shell,
@@ -39,7 +40,7 @@ import {
 } from "electron";
 import { readFileSync } from "node:fs";
 import { hostname } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 function main() {
@@ -55,6 +56,12 @@ function main() {
     import.meta.url,
   ).href;
   const errorPage = fileURLToPath(errorPageURL);
+  const icon = fileURLToPath(
+    new URL(
+      `${app.isPackaged ? "./" : "../"}assets/icon.${process.platform === "win32" ? "ico" : "png"}`,
+      import.meta.url,
+    ),
+  );
   app.setName(identity.name);
   if (process.platform === "win32") app.setAppUserModelId(identity.appId);
   // Keep each environment's lock and local state under its own data root.
@@ -154,6 +161,7 @@ function main() {
   function createWindow() {
     const window = createShellWindow({
       name: identity.name,
+      icon,
       production: app.isPackaged,
       rendererURL,
       partition: sessionPartition,
@@ -183,9 +191,12 @@ function main() {
   }
 
   // The tray keeps the app reachable while its window is hidden and agents run.
-  async function createTray() {
-    const icon = await app.getFileIcon(process.execPath, { size: "small" });
-    tray = new Tray(icon);
+  function createTray() {
+    const trayIcon =
+      process.platform === "darwin"
+        ? nativeImage.createFromPath(join(dirname(icon), "trayTemplate.png"))
+        : icon;
+    tray = new Tray(trayIcon);
     tray.setToolTip(identity.name);
     tray.setContextMenu(
       Menu.buildFromTemplate([
@@ -411,6 +422,7 @@ function main() {
             { role: "windowMenu" },
           ]),
         );
+        if (process.platform === "darwin") app.dock?.setIcon(icon);
         createWindow();
         setupDesktopUpdates({
           enabled: !smokeTest,
@@ -424,7 +436,7 @@ function main() {
           if (!mainWindow) createWindow();
           else mainWindow.show();
         });
-        if (!smokeTest) void createTray().catch(console.error);
+        if (!smokeTest) createTray();
       })
       .catch((error) => {
         console.error(error);
