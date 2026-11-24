@@ -1,5 +1,6 @@
 import { taskLinkRelations } from "../../tasks/links.ts";
 import { taskPriorityValues, taskStatusValues } from "../../tasks/status.ts";
+import { recordLinks } from "./links.ts";
 import { actor, id, messageRef, page, pageInput, requestId, timed, timestamp } from "./shared.ts";
 import { z } from "zod";
 
@@ -62,8 +63,10 @@ export const taskResult = z.object({
   discussionConversationId: id
     .nullable()
     .describe("The shared task discussion, if it has been opened."),
-  linkedMessageCount: z.number().int(),
   links: z.array(taskLink).describe("Links to other tasks."),
+  linked: recordLinks.describe(
+    "Linked messages and non-task records you can read. Links to other tasks are in links.",
+  ),
   createdAt: timestamp,
   updatedAt: timestamp,
 });
@@ -82,10 +85,16 @@ export const taskTools = {
   get_project: {
     title: "Get project",
     description:
-      "Read a project's name, description and task counts by status. Use list_tasks for the tasks themselves.",
+      "Read a project's name, description, task counts by status, and its linked messages and records. Use list_tasks for the tasks themselves.",
     readOnly: true,
     input: z.object({ projectId: id }).strict(),
-    output: z.object({ id, name: z.string(), description: z.string(), taskCounts }),
+    output: z.object({
+      id,
+      name: z.string(),
+      description: z.string(),
+      taskCounts,
+      linked: recordLinks,
+    }),
   },
   list_tasks: {
     title: "List tasks",
@@ -112,7 +121,7 @@ export const taskTools = {
   get_task: {
     title: "Get task",
     description:
-      "Read a task in full, including its source message, shared discussion conversation ID, task links and linked-message count. Use read_conversation for an existing discussion, get_task_discussion to open one, or list_task_activity for change history.",
+      "Read a task in full, including its source message, shared discussion conversation ID, task links, and its newest linked messages and records. Use read_conversation for an existing discussion, get_task_discussion to open one, or list_task_activity for change history.",
     readOnly: true,
     input: z.object({ taskId: id }).strict(),
     output: taskResult,

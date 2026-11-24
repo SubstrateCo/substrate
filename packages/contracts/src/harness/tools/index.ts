@@ -11,7 +11,7 @@ export {
   type ServerToolName,
   type ToolScope,
 } from "./registry.ts";
-export { linkKinds } from "./links.ts";
+export { linkKinds, linkPreview } from "./links.ts";
 export { proposeResult, replyResult } from "./messaging.ts";
 export { taskResult } from "./tasks.ts";
 export type { ToolDefinition } from "./shared.ts";

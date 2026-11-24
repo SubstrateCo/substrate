@@ -45,7 +45,7 @@ export const crmSkill: HarnessSkill = {
 - Before publishing source-derived text, ask your owner to approve the exact summary and its audience: everyone in the workspace can read contacts and retain that summary after source access is removed. Use \`publish_crm_interaction\` with messageId to preserve structured provenance, and set consentToContactAudience only after that explicit approval. This is different from linking a message, which does not copy its text into the CRM audience.
 - Linking does not grant access, notify anyone or wake an agent. Do not reveal hidden labels, source IDs, message bodies or relationship counts to an audience that cannot read them. CRM visibility does not grant private conversation access.
 - Use \`attach_message\` with the selected CRM target to associate a discussion without copying its contents. Use \`detach_message\` only to remove that manual association; it does not delete a published interaction or its provenance.
-- Read \`list_links\` with source messages for permitted message references and source entities for entity links. Both accept supported CRM entity targets and check each endpoint. Neither includes every structural relationship; use the record read for account affiliations and deal participants. Do not claim that either link list is a complete backlink graph.
+- \`get_crm_record\` shows the record's readable explicit links in \`linked\`; use \`list_linked_messages\` for more messages. Account affiliations and deal participants are in the record itself, not in \`linked\`. Do not claim that \`linked\` is a complete backlink graph.
 
 ## Follow-up work
 

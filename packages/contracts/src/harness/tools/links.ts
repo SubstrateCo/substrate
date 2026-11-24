@@ -3,51 +3,65 @@ import { actor, excerpt, id, messageRef, page, pageInput, timestamp } from "./sh
 import { z } from "zod";
 
 export const linkKinds = ["origin", "mention", "attachment"] as const;
-const entityRef = z.object({ type: z.enum(contextEntityTypes), id }).strict();
-const link = { messageId: id, target: z.object({ type: z.enum(contextEntityTypes), id }).strict() };
+/** How many links a record read shows before list_linked_messages is needed. */
+export const linkPreview = { messages: 5, records: 50 } as const;
+
+const recordType = z.enum(contextEntityTypes);
+const entityRef = z.object({ type: recordType, id }).strict();
+const link = { messageId: id, target: entityRef };
+const kind = z
+  .enum(linkKinds)
+  .describe(
+    "origin: the record was created from the message. mention: the message mentions the record. attachment: someone linked them by hand.",
+  );
+
+/** A record that a message references. */
+export const messageRecord = z.object({ type: recordType, id, title: z.string(), kind });
+
+const linkedMessage = messageRef.extend({ author: actor, ...excerpt, createdAt: timestamp, kind });
+
+/** The explicit links of a task, project or CRM record that the reader can see. */
+export const recordLinks = z
+  .object({
+    messages: z
+      .array(linkedMessage)
+      .describe(
+        `The ${linkPreview.messages} newest message links. Use list_linked_messages when messageCount is larger.`,
+      ),
+    messageCount: z.number().int().describe("All message links you can read."),
+    records: z
+      .array(
+        z.object({
+          type: recordType,
+          id,
+          title: z.string(),
+          relation: z.enum(["related_to", "blocks", "duplicates"]),
+          direction: z
+            .enum(["outgoing", "incoming", "none"])
+            .describe("related_to has none. blocks and duplicates point from source to target."),
+        }),
+      )
+      .describe(`Up to ${linkPreview.records} linked records, newest first.`),
+    recordCount: z.number().int().describe("All linked records you can read."),
+  })
+  .describe(
+    "Explicit links you can read. Structural relationships, such as a deal's account, are in the record itself. A link never grants access.",
+  );
 
 export const linkTools = {
-  list_links: {
-    title: "List links",
+  list_linked_messages: {
+    title: "List linked messages",
     description:
-      "List permitted explicit links for tasks, projects or CRM records. source messages (default) reads message references; target message reads its linked records. source entities reads entity links (related records and task blocks/duplicates relations), not structural account/participant relationships. Read both sources for explicit context; neither is a complete relationship graph. Linking never grants access or wakes agents.",
+      "Page through all messages linked to a task, project or CRM record, newest link first. get_task, get_project and get_crm_record already show the newest ones in linked.messages; use this only when linked.messageCount is larger. Use read_thread to read a message in full.",
     readOnly: true,
     input: z
       .object({
-        target: z.union([entityRef, z.object({ type: z.literal("message"), id }).strict()]),
-        source: z.enum(["messages", "entities"]).default("messages"),
-        kind: z.enum(linkKinds).optional().describe("Return only links of this kind."),
+        target: entityRef,
+        kind: kind.optional().describe("Return only links of this kind."),
         ...pageInput,
       })
-      .strict()
-      .refine(
-        (value) => value.source !== "entities" || (value.target.type !== "message" && !value.kind),
-        "Entity links require an entity target and do not use message kind filters.",
-      ),
-    output: page(
-      z.object({
-        kind: z.enum([...linkKinds, "entity"]),
-        createdAt: timestamp,
-        message: messageRef
-          .extend({ author: actor, ...excerpt, createdAt: timestamp })
-          .optional()
-          .describe("Set for message references to an entity target."),
-        work: z
-          .object({ type: z.enum(contextEntityTypes), id, title: z.string() })
-          .optional()
-          .describe("Set when the target is a message."),
-        entity: entityRef
-          .extend({
-            title: z.string(),
-            relation: z.enum(["related_to", "blocks", "duplicates"]),
-            direction: z.enum(["outgoing", "incoming", "none"]),
-          })
-          .optional()
-          .describe(
-            "The readable opposite endpoint of an entity link. related_to has direction none; blocks and duplicates point from source to target.",
-          ),
-      }),
-    ),
+      .strict(),
+    output: page(linkedMessage),
   },
   attach_message: {
     title: "Attach message",

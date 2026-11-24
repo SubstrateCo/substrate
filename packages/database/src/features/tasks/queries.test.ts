@@ -180,7 +180,6 @@ test("task detail loads structural discussion, counts and first visible source i
       parent: null,
       assignee: null,
     },
-    linkedMessageCount: 2,
     source: { id: first.id, conversationId: visible.id, threadId: null },
   });
   expect(queries).toHaveLength(1);
@@ -191,7 +190,6 @@ test("task detail loads structural discussion, counts and first visible source i
       subtaskCount: 0,
       discussionConversationId: null,
     },
-    linkedMessageCount: 0,
     source: undefined,
   });
   expect(queries).toHaveLength(1);

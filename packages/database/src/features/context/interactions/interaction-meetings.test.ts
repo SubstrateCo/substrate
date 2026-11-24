@@ -7,7 +7,7 @@ import {
 } from "../../../testing/calendar-completion";
 import { setupDatabase } from "../../../testing/database";
 import { recordMeetingInteractions } from "../../calendar/completion";
-import { listLinks } from "../../mcp/links";
+import { linkSummary } from "../../mcp/links";
 import { expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
 
@@ -69,17 +69,9 @@ test("the owner sees no meeting link while the calendar app is disabled", async 
   expect(record.links).toEqual([]);
 });
 
-test("agent link lists on a meeting interaction leave out the meeting", async () => {
+test("agent link summaries on a meeting interaction leave out the meeting", async () => {
   const { interaction } = await recordedMeeting();
   const ctx = new RepositoryContext(f.db, { organizationId: f.orgA, actorEntityId: f.alice });
-  const page = await listLinks(
-    ctx,
-    { userId: "alice", organizationId: f.orgA },
-    {
-      target: { type: "contact_interaction", id: interaction },
-      source: "entities",
-      limit: 25,
-    },
-  );
-  expect(page.items).toEqual([]);
+  const linked = await linkSummary(ctx, { userId: "alice", organizationId: f.orgA }, interaction);
+  expect(linked).toMatchObject({ records: [], recordCount: 0 });
 });

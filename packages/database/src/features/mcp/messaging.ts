@@ -10,9 +10,10 @@ import { AccessDeniedError } from "../../errors";
 import { requireMessage, visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
+import { authorSelection } from "./authors";
 import { excerpt, iso } from "./formatting";
+import { recordsOfMessages } from "./links";
 import { pagination } from "./pagination";
-import { authorSelection } from "./tasks";
 import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 
 export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIdentity) {
@@ -108,6 +109,10 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
         .orderBy(sql`${activity} desc`, desc(messagingMessages.id))
         .offset(p.offset)
         .limit(p.take);
+      const records = await recordsOfMessages(
+        ctx,
+        rows.slice(0, input.limit).map((row) => row.id),
+      );
       return p.page(
         rows.map(({ body, posted, ...row }): McpOutput<"read_conversation">["items"][number] => ({
           ...row,
@@ -115,6 +120,7 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
           createdAt: iso(row.createdAt),
           lastReplyAt: row.lastReplyAt ? iso(row.lastReplyAt) : null,
           includedBecause: posted ? "posted" : "thread_activity",
+          records: records.get(row.id) ?? [],
         })),
       );
     },
@@ -146,7 +152,15 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
         .orderBy(asc(messagingMessages.createdAt), asc(messagingMessages.id))
         .offset(p.offset)
         .limit(p.take);
-      const format = (row: typeof root) => ({ ...row, createdAt: iso(row.createdAt) });
+      const records = await recordsOfMessages(ctx, [
+        root.id,
+        ...rows.slice(0, input.limit).map((row) => row.id),
+      ]);
+      const format = (row: typeof root) => ({
+        ...row,
+        createdAt: iso(row.createdAt),
+        records: records.get(row.id) ?? [],
+      });
       return {
         conversationId: message.conversationId,
         root: format(root),

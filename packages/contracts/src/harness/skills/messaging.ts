@@ -30,7 +30,7 @@ Example: \`Done in @[task:3f1c9a2e-8b7d-4c6a-9e5f-1a2b3c4d5e6f]. @[person:7d2e4f
 
 What a mention does:
 
-- A task or project mention creates a link of kind \`mention\`. It appears in \`list_links\` and in the task's linked messages.
+- A task or project mention creates a link of kind \`mention\`. It appears in the message's \`records\` and in the record's \`linked.messages\`.
 - A person mention notifies that person.
 
 Rules. If you break one, the whole message fails to send:

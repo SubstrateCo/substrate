@@ -741,17 +741,13 @@ test("CRM MCP message associations link only the chosen record without publishin
   ]);
   expect(await f.db.select().from(agentWakes)).toEqual(wakes);
   expect(await f.db.select().from(contactInteractions)).toEqual([]);
-  expect(
-    (await call("list_links", { target: { type: "message", id: reply.id } })).items,
-  ).toMatchObject([
-    {
-      kind: "attachment",
-      work: { type: "account", id: account.record.entityId, title: "Customer" },
-    },
+  const thread = await call("read_thread", { messageId: reply.id });
+  expect(thread.replies.items.find((item) => item.id === reply.id)?.records).toEqual([
+    { type: "account", id: account.record.entityId, title: "Customer", kind: "attachment" },
   ]);
   expect(
-    (await call("list_links", { target: { type: "account", id: account.record.entityId } })).items,
-  ).toMatchObject([{ kind: "attachment", message: { id: reply.id } }]);
+    (await call("get_crm_record", { kind: "account", entityId: account.record.entityId })).linked,
+  ).toMatchObject({ messages: [{ kind: "attachment", id: reply.id }], messageCount: 1 });
   expect(await call("detach_message", input)).toEqual({ changed: true });
   expect(await f.db.select().from(messageEntityReferences)).toEqual([]);
   expect(
@@ -848,28 +844,19 @@ test("CRM follow-up tools use existing project tasks and expose permission-filte
   expect(task.project.id).toBe(project.entityId);
   expect(task.dueDate).toBe("2026-11-20");
   expect(await call("create_crm_follow_up", input)).toEqual(task);
-  const links = await call("list_links", {
-    target: { type: "account", id: account.record.entityId },
-    source: "entities",
+  const { linked } = await call("get_crm_record", {
+    kind: "account",
+    entityId: account.record.entityId,
   });
-  expect(links.items).toMatchObject([
-    {
-      kind: "entity",
-      entity: { type: "task", id: task.id, relation: "related_to", direction: "none" },
-    },
+  expect(linked.records).toMatchObject([
+    { type: "task", id: task.id, relation: "related_to", direction: "none" },
   ]);
-  expect(links.items).toHaveLength(1);
-  const reverse = await call("list_links", {
-    target: { type: "task", id: task.id },
-    source: "entities",
-  });
-  expect(reverse.items).toMatchObject([
-    { entity: { type: "account", id: account.record.entityId, direction: "none" } },
+  expect(linked).toMatchObject({ recordCount: 1 });
+  expect((await call("get_task", { taskId: task.id })).linked.records).toMatchObject([
+    { type: "account", id: account.record.entityId, direction: "none" },
   ]);
   expect(
-    await rejection(
-      call("list_links", { target: { type: "account", id: hidden.entityId }, source: "entities" }),
-    ),
+    await rejection(call("get_crm_record", { kind: "account", entityId: hidden.entityId })),
   ).toBeInstanceOf(AccessDeniedError);
 });
 
@@ -906,29 +893,32 @@ test("CRM message and entity links resolve all supported customer record types",
   ] as const;
   for (const target of targets) {
     await call("attach_message", { messageId: reply.id, target });
-    expect((await call("list_links", { target })).items).toMatchObject([
-      { message: { id: reply.id } },
+    expect((await call("list_linked_messages", { target })).items).toMatchObject([
+      { id: reply.id, kind: "attachment" },
     ]);
     if (target.type !== "account")
       await f
         .forActor(f.alice)
         .links.create({ entityId: account.record.entityId, otherEntityId: target.id });
   }
-  const messages = await call("list_links", { target: { type: "message", id: reply.id } });
+  const thread = await call("read_thread", { messageId: reply.id });
   expect(
-    messages.items.map((item) => item.work?.type ?? "").toSorted((a, b) => a.localeCompare(b)),
+    thread.replies.items
+      .find((item) => item.id === reply.id)!
+      .records.map((record) => record.type)
+      .toSorted((a, b) => a.localeCompare(b)),
   ).toEqual(targets.map((target) => target.type).toSorted((a, b) => a.localeCompare(b)));
-  const core = await call("list_links", { target: targets[0]!, source: "entities", limit: 1 });
-  expect(core.items).toHaveLength(1);
-  expect(core.nextCursor).not.toBeNull();
-  const next = await call("list_links", {
-    target: targets[0]!,
-    source: "entities",
-    limit: 1,
-    cursor: core.nextCursor,
+  const { linked } = await call("get_crm_record", {
+    kind: "account",
+    entityId: account.record.entityId,
   });
-  expect(next.items).toHaveLength(1);
-  expect(next.items[0]?.entity?.id).not.toBe(core.items[0]?.entity?.id);
+  expect(linked.records.map((record) => record.id).toSorted()).toEqual(
+    targets
+      .slice(1)
+      .map((target) => target.id)
+      .toSorted(),
+  );
+  expect(linked.recordCount).toBe(3);
 });
 
 test("committed MCP reads use one transaction and raw validation opens none", async () => {
@@ -1190,7 +1180,7 @@ test("task tools use the owner's access, attribute writes and keep the source me
   expect(updated).toMatchObject({
     status: "completed",
     discussionConversationId: conversationId,
-    linkedMessageCount: 1,
+    linked: { messageCount: 1 },
   });
   expect((await call("get_project", { projectId: project.entityId })).taskCounts).toMatchObject({
     completed: 1,
@@ -1209,24 +1199,20 @@ test("task tools use the owner's access, attribute writes and keep the source me
   const link = { messageId: message.id, target: { type: "task", id: created.id } };
   const attached = [await call("attach_message", link), await call("attach_message", link)];
   expect(attached).toEqual([{ changed: true }, { changed: false }]);
+  const messageRecords = async () =>
+    (await call("read_thread", { messageId: message.id })).root.records;
   expect(
-    (await call("list_links", { target: { type: "message", id: message.id } })).items
-      .map((item) => `${item.kind}:${item.work?.id}`)
-      .toSorted(),
+    (await messageRecords()).map((record) => `${record.kind}:${record.id}`).toSorted(),
   ).toEqual([`attachment:${created.id}`, `origin:${created.id}`]);
   expect(await call("detach_message", link)).toEqual({ changed: true });
   expect(
-    (await call("list_links", { target: { type: "task", id: created.id } })).items.map(
-      (item) => item.kind,
-    ),
+    (await call("get_task", { taskId: created.id })).linked.messages.map((item) => item.kind),
   ).toEqual(["origin"]);
   await f.db
     .update(entities)
     .set({ deletedAt: new Date() })
     .where(eq(entities.entityId, created.id));
-  expect((await call("list_links", { target: { type: "message", id: message.id } })).items).toEqual(
-    [],
-  );
+  expect(await messageRecords()).toEqual([]);
   await f.db.update(entities).set({ deletedAt: null }).where(eq(entities.entityId, created.id));
   await f
     .forActor(f.bob)
@@ -1241,13 +1227,13 @@ test("a task created from a thread reply links to a message that read_thread can
   const first = await human.sendMessage(channel.id, "We need a checklist", root.id);
   await human.sendMessage(channel.id, "Agreed", root.id);
   const task = await createTask({ title: "Write checklist", sourceMessageId: first.id });
-  const [linked] = (await call("list_links", { target: { type: "task", id: task.id } })).items;
-  expect(linked.message).toMatchObject({
+  const [linked] = (await call("get_task", { taskId: task.id })).linked.messages;
+  expect(linked).toMatchObject({
     id: first.id,
     threadId: root.id,
     text: "We need a checklist",
   });
-  const thread = await call("read_thread", { messageId: linked!.message!.id });
+  const thread = await call("read_thread", { messageId: linked!.id });
   expect(thread.root.body).toBe("Launch plan");
   expect(thread.replies.items.map((item) => item.body)).toEqual(["We need a checklist", "Agreed"]);
 });
@@ -1308,13 +1294,14 @@ test("task counts and links leave out messages in conversations the caller canno
   await bob.sendMessage(hidden.id, `See @[task:${task.id}]`);
   const visible = await human.createConversation({ kind: "channel", name: "general" });
   const mention = await human.sendMessage(visible.id, `Working on @[task:${task.id}]`);
-  expect(await call("get_task", { taskId: task.id })).toMatchObject({ linkedMessageCount: 1 });
+  const { linked } = await call("get_task", { taskId: task.id });
+  expect(linked.messageCount).toBe(1);
+  expect(linked.messages.map((item) => [item.kind, item.id])).toEqual([["mention", mention.id]]);
   expect(
-    (await call("list_links", { target: { type: "task", id: task.id } })).items.map((item) => [
-      item.kind,
-      item.message?.id,
-    ]),
-  ).toEqual([["mention", mention.id]]);
+    (await call("list_linked_messages", { target: { type: "task", id: task.id } })).items.map(
+      (item) => item.id,
+    ),
+  ).toEqual([mention.id]);
 });
 
 test("get_task returns the parent and counts only live subtasks", async () => {

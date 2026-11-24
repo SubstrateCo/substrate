@@ -13,20 +13,7 @@ import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { liveProjectTasks, liveTask } from "./access";
 import { tasks } from "./tasks.schema";
-import {
-  and,
-  asc,
-  countDistinct,
-  desc,
-  eq,
-  gt,
-  gte,
-  inArray,
-  isNull,
-  lt,
-  or,
-  sql,
-} from "drizzle-orm";
+import { and, asc, desc, eq, gt, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 interface QueryPage {
@@ -128,10 +115,6 @@ export async function queryTaskDetail(
     eq(messageEntityReferences.entityId, taskId),
     inArray(messageEntityReferences.conversationId, visibleConversationIds(db, identity)),
   );
-  const linked = db
-    .select({ total: countDistinct(messageEntityReferences.messageId) })
-    .from(messageEntityReferences)
-    .where(references);
   const source = db
     .select({
       message: sql`json_build_object('id', ${messagingMessages.id},
@@ -152,7 +135,6 @@ export async function queryTaskDetail(
         parent: { id: parent.entityId, title: parent.title },
         subtaskCount: sql<number>`(${subtaskCount})`.mapWith(Number),
         discussionConversationId: sql<string | null>`(${discussion})`,
-        linkedMessageCount: sql<number>`(${linked})`.mapWith(Number),
         source: sql<{
           id: string;
           conversationId: string;
@@ -181,8 +163,8 @@ export async function queryTaskDetail(
     )
     .where(and(eq(tasks.organizationId, scope.organizationId), eq(tasks.entityId, taskId)));
   if (!row) throw new AccessDeniedError();
-  const { linkedMessageCount, source: sourceMessage, ...detail } = row;
-  return { detail, linkedMessageCount, source: sourceMessage ?? undefined };
+  const { source: sourceMessage, ...detail } = row;
+  return { detail, source: sourceMessage ?? undefined };
 }
 
 export async function queryTaskActivity(

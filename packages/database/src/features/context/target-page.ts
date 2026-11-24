@@ -33,7 +33,22 @@ export function requireReadableTargetPage(ctx: RepositoryContext, entityIds: str
   return targetPage<ContextTargetType>(ctx, entityIds, contextTargetTypes);
 }
 
+/** Linkable records the reader can open. Records they cannot open are left out. */
+export function contextTargetsOf(ctx: RepositoryContext, entityIds: string[]) {
+  return targetRows<ContextEntityType>(ctx, entityIds, contextEntityTypes);
+}
+
 async function targetPage<T extends ContextTargetType>(
+  ctx: RepositoryContext,
+  entityIds: string[],
+  types: readonly T[],
+): Promise<Map<string, ContextTarget<T>>> {
+  const rows = await targetRows(ctx, entityIds, types);
+  if (rows.size !== new Set(entityIds).size) throw new AccessDeniedError();
+  return rows;
+}
+
+async function targetRows<T extends ContextTargetType>(
   ctx: RepositoryContext,
   entityIds: string[],
   types: readonly T[],
@@ -118,6 +133,5 @@ async function targetPage<T extends ContextTargetType>(
         isNotNull(title),
       ),
     );
-  if (rows.length !== ids.length) throw new AccessDeniedError();
   return new Map(rows.map((row) => [row.id, row]));
 }

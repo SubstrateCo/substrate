@@ -9,6 +9,7 @@ import { requireDealRelations } from "../crm/deals/deal-relations";
 import { createCrmFromMessageInContext } from "../crm/from-message";
 import { crmRepository } from "../crm/repository";
 import { requireCrmAdmin } from "../crm/settings";
+import { linkSummary } from "./links";
 import { mcpTaskQueries } from "./tasks";
 
 /** Called only behind the MCP turn/device/write gates, on the caller's transaction. */
@@ -84,7 +85,8 @@ export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentit
       };
     },
     async get(input: McpInput<"get_crm_record">) {
-      return { record: await read(input) };
+      const record = await read(input);
+      return { record, linked: await linkSummary(context, identity, input.entityId) };
     },
     async pipeline() {
       return { stages: await crm.pipeline() };

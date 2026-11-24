@@ -57,14 +57,3 @@ test("tools reject reversed windows and empty changes", () => {
     mcpTools.update_task.input.safeParse({ taskId: crypto.randomUUID(), changes: {} }).success,
   ).toBe(false);
 });
-
-test("entity links need an entity target and take no message kind filter", () => {
-  const list = (input: z.input<typeof mcpTools.list_links.input>) =>
-    mcpTools.list_links.input.safeParse(input).success;
-  const account = { type: "account", id: crypto.randomUUID() } as const;
-  const message = { type: "message", id: crypto.randomUUID() } as const;
-  expect(list({ target: account, source: "entities" })).toBe(true);
-  expect(list({ target: message, source: "messages" })).toBe(true);
-  expect(list({ target: message, source: "entities" })).toBe(false);
-  expect(list({ target: account, source: "entities", kind: "attachment" })).toBe(false);
-});

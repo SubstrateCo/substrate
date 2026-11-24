@@ -2,9 +2,6 @@ import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
 import type { TaskStatus } from "@substrate/contracts/tasks";
 import { taskLinkRelation } from "@substrate/contracts/tasks/links";
 
-import { actorAuthorKind } from "../../core/actors/display-name";
-import { joinedActorName } from "../../core/actors/joined-profile";
-import { actors } from "../../core/actors/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { queryProjects } from "../projects/queries";
@@ -13,17 +10,8 @@ import { linksOfTask } from "../tasks/links";
 import { queryTasks, queryTaskActivity, queryTaskDetail } from "../tasks/queries";
 import { taskRepository } from "../tasks/repository";
 import { iso, messageRef } from "./formatting";
+import { linkSummary } from "./links";
 import { pagination } from "./pagination";
-
-export const actorSelection = {
-  id: actors.entityId,
-  name: joinedActorName(),
-  type: actors.type,
-};
-/** An actor that wrote quoted text, labeled owner, member or agent for the reading agent. */
-export function authorSelection(ownerUserId: string) {
-  return { ...actorSelection, kind: actorAuthorKind(ownerUserId) };
-}
 
 export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity) {
   const { scope } = ctx;
@@ -51,6 +39,7 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
         name: project.name,
         description: project.description,
         taskCounts,
+        linked: await linkSummary(ctx, identity, project.entityId),
       };
     },
     async listTasks(input: McpInput<"list_tasks">) {
@@ -79,7 +68,7 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
     },
     async getTask(taskId: string): Promise<McpOutput<"get_task">> {
       const task = await taskRepository(ctx).get(taskId);
-      const { detail, linkedMessageCount, source } = await queryTaskDetail(ctx, identity, task);
+      const { detail, source } = await queryTaskDetail(ctx, identity, task);
       return {
         id: task.entityId,
         title: task.title,
@@ -93,7 +82,6 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
         subtaskCount: detail!.subtaskCount,
         source: source ? messageRef(source) : null,
         discussionConversationId: detail!.discussionConversationId,
-        linkedMessageCount,
         links: (await linksOfTask(ctx, taskId)).map((link) => {
           const side = link.source?.entityId === taskId ? "source" : "target";
           const other = side === "source" ? link.target : link.source;
@@ -109,6 +97,8 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
             blocking: link.blocking,
           };
         }),
+        // Task-to-task links are already in links.
+        linked: await linkSummary(ctx, identity, taskId, ["task"]),
         createdAt: iso(detail!.createdAt),
         updatedAt: iso(detail!.updatedAt),
       };

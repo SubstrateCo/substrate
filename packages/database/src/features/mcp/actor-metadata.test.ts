@@ -9,7 +9,7 @@ import {
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
-import { listLinks } from "./links";
+import { listLinkedMessages } from "./links";
 import { mcpMessagingQueries } from "./messaging";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -78,16 +78,14 @@ test("MCP conversation, thread and link authors join current human and agent nam
     type: "agent",
     kind: "agent",
   });
-  const links = await listLinks(ctx, identity, {
+  const links = await listLinkedMessages(ctx, identity, {
     target: { type: "project", id: project.entityId },
-    source: "messages",
     limit: 20,
   });
-  expect(
-    links.items
-      .map((item) => item.message?.author.name)
-      .sort((a, b) => (a ?? "").localeCompare(b ?? "")),
-  ).toEqual(["New agent name", "New human name"]);
+  expect(links.items.map((item) => item.author.name).sort((a, b) => a.localeCompare(b))).toEqual([
+    "New agent name",
+    "New human name",
+  ]);
   const authorQueries = queries.filter(
     (query) => query.includes('left join "user"') && query.includes('left join "user_agents"'),
   );

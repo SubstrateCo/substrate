@@ -19,7 +19,7 @@ export const contextTools = {
   search: {
     title: "Search the workspace",
     description:
-      "Search tasks, projects, messages and conversations you can access. Matches words in titles, descriptions and message text. Returns references and short snippets, not full content. Use get_task, get_project or read_thread to read a result.",
+      "Search tasks, projects, messages and conversations you can access. Matches words in titles, descriptions and message text. Returns references and short snippets, not full content. Use get_task, get_project or read_thread to read a result. Use this to find a record by its words, not to catch up on recent activity: use list_conversations with activeSince for that.",
     readOnly: true,
     input: z
       .object({

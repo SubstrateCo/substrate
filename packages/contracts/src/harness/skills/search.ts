@@ -15,7 +15,8 @@ export const searchSkill: HarnessSkill = {
 | See what happened recently | \`list_conversations\` with \`activeSince\`, then \`read_conversation\` with \`since\` |
 | Browse work | \`list_projects\`, then \`list_tasks\` |
 | Find a person to assign | \`list_assignees\` |
-| Find what a record is connected to | \`list_links\` |
+| Find what a record is connected to | \`linked\` in \`get_task\`, \`get_project\` or \`get_crm_record\` |
+| Find what a message is about | \`records\` on each message in \`read_thread\` or \`read_conversation\` |
 
 ## How search matches
 
@@ -34,10 +35,10 @@ export const searchSkill: HarnessSkill = {
 
 ## After a result
 
-- Message: call \`read_thread\` with its \`id\`. This works for a reply too, and returns the whole thread.
-- Task: call \`get_task\`. It shows the source message and the number of comments and linked messages.
+- Message: call \`read_thread\` with its \`id\`. This works for a reply too, and returns the whole thread. Each message lists the records it references in \`records\`.
+- Task: call \`get_task\`. It shows the source message, task links, and the newest linked messages and records in \`linked\`.
 - Project: call \`get_project\`, then \`list_tasks\`.
-- Any record: call \`list_links\` to see related messages or work.
+- Follow the IDs in \`records\` and \`linked\` to read connected work. When \`linked.messageCount\` is larger than the messages shown, call \`list_linked_messages\`.
 
 ## Catching up
 

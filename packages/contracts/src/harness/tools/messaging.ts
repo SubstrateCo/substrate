@@ -1,10 +1,14 @@
 import { proposalAction, proposalSummary } from "../../agent-work/proposals.ts";
 import { agentAsk } from "../../agent-work/requests.ts";
 import { conversationKind } from "../../messaging/input.ts";
+import { messageRecord } from "./links.ts";
 import { author, excerpt, id, page, pageInput, requestId, timed, timestamp } from "./shared.ts";
 import { z } from "zod";
 
-const message = z.object({ id, author, body: z.string(), createdAt: timestamp });
+const records = z
+  .array(messageRecord)
+  .describe("Tasks, projects and CRM records this message references that you can read.");
+const message = z.object({ id, author, body: z.string(), createdAt: timestamp, records });
 
 /** What reply returns. The place is always the posted message's own conversation and thread. */
 export const replyResult = z.object({
@@ -21,7 +25,7 @@ export const messagingTools = {
   list_conversations: {
     title: "List conversations",
     description:
-      "List channels, group chats and DMs you can access, most recently active first. DMs and group chats are named after their other participants. activeSince returns only conversations with new messages or thread replies since that time.",
+      "List channels, group chats and DMs you can access, most recently active first. DMs and group chats are named after their other participants. activeSince returns only conversations with new messages or thread replies since that time. Use this, not search, to catch up on recent activity or to find a DM by person.",
     readOnly: true,
     input: z
       .object({
@@ -44,7 +48,7 @@ export const messagingTools = {
   read_conversation: {
     title: "Read conversation",
     description:
-      'Read top-level messages in a conversation, most recent activity first. Each message shows its reply count. With since or until, the results also include older messages whose threads got replies in the window, marked includedBecause "thread_activity". Long text is cut; use read_thread to read a message and its replies in full.',
+      'Read top-level messages in a conversation, most recent activity first. Each message shows its reply count. With since or until, the results also include older messages whose threads got replies in the window, marked includedBecause "thread_activity". Each message lists the records it references; open them with get_task, get_project or get_crm_record. Long text is cut; use read_thread to read a message and its replies in full.',
     readOnly: true,
     input: timed({ conversationId: id, ...pageInput }),
     output: page(
@@ -56,13 +60,14 @@ export const messagingTools = {
         replyCount: z.number().int(),
         lastReplyAt: timestamp.nullable(),
         includedBecause: z.enum(["posted", "thread_activity"]),
+        records,
       }),
     ),
   },
   read_thread: {
     title: "Read thread",
     description:
-      "Read one message with its whole thread: the root message and its replies, oldest first. messageId can be the root or any reply. Use this to open any message ID returned by another tool.",
+      "Read one message with its whole thread: the root message and its replies, oldest first. messageId can be the root or any reply. Use this to open any message ID returned by another tool. Each message lists the records it references.",
     readOnly: true,
     input: z
       .object({

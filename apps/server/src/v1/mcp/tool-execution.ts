@@ -23,7 +23,7 @@ import {
   requireCallerTurn,
   mcpContextQueries,
   mcpCrmTools,
-  listLinks,
+  listLinkedMessages,
   mcpMessagingQueries,
   publishingTools,
   mcpTaskQueries,
@@ -135,7 +135,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     list_conversations: (value) => messaging.listConversations(value),
     read_conversation: (value) => messaging.readConversation(value),
     read_thread: (value) => messaging.readThread(value),
-    list_links: (value) => listLinks(ctx, identity, value),
+    list_linked_messages: (value) => listLinkedMessages(ctx, identity, value),
     create_task: (value) => writes.createTask(value),
     update_task: (value) => writes.updateTask(value),
     async get_task_discussion(value) {

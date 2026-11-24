@@ -8,6 +8,7 @@ import {
 } from "../../crm/activity.ts";
 import { crmFromMessage } from "../../crm/from-message.ts";
 import { crmList, crmWrite } from "../../crm/input.ts";
+import { recordLinks } from "./links.ts";
 import { id, requestId, timestamp } from "./shared.ts";
 import { taskResult } from "./tasks.ts";
 import { z } from "zod";
@@ -123,10 +124,10 @@ export const crmTools = {
   get_crm_record: {
     title: "Read CRM record",
     description:
-      "Read an account, contact or deal and its permitted related records. Read the deal version before updates or transitions. Relationships never grant access to another record.",
+      "Read an account, contact or deal, its permitted related records, and its newest linked messages and records. Read the deal version before updates or transitions. Relationships never grant access to another record.",
     readOnly: true,
     input: z.object({ kind, entityId: id }).strict(),
-    output: z.object({ record }),
+    output: z.object({ record, linked: recordLinks }),
   },
   get_crm_pipeline: {
     title: "Read CRM pipeline",
