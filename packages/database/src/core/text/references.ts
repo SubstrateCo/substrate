@@ -5,7 +5,7 @@ export type Reference = {
   id: string;
 };
 const token = /@\[(task|project|person|agent|channel|thread):([0-9a-f-]{36})\]/gi;
-export const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 export function messageReferences(body: string): Reference[] {
   const result = new Map<string, Reference>();

@@ -23,11 +23,6 @@ type ContextTarget<T extends ContextTargetType> = {
   contactEntityId: string | null;
 };
 
-/** Linkable and referenceable records. Use it where the result names a record people can link. */
-export function requireContextTargetPage(ctx: RepositoryContext, entityIds: string[]) {
-  return targetPage<ContextEntityType>(ctx, entityIds, contextEntityTypes);
-}
-
 /** Every record a context view shows as related, including the meetings a reader can open. */
 export function requireReadableTargetPage(ctx: RepositoryContext, entityIds: string[]) {
   return targetPage<ContextTargetType>(ctx, entityIds, contextTargetTypes);
