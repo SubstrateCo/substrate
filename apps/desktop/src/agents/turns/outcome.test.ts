@@ -121,6 +121,6 @@ test("failed calls, read tools and unknown result shapes produce nothing", () =>
     toolOutputs(call("reply"), { success: false, error: { code: "X", message: "x" } }),
   ).toBeNull();
   expect(
-    toolOutputs(call("search"), { success: true, data: { messageId: ids.message } }),
+    toolOutputs(call("search_content"), { success: true, data: { messageId: ids.message } }),
   ).toBeNull();
 });

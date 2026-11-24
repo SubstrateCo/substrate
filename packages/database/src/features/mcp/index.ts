@@ -12,6 +12,7 @@ export { mcpContextQueries } from "./context";
 export { mcpCrmTools } from "./crm";
 export { listLinkedMessages } from "./links";
 export { mcpMessagingQueries } from "./messaging";
+export { mcpSearchQueries } from "./search";
 export { publishingTools } from "./publishing";
 export {
   claimToolReceipt,

@@ -109,7 +109,7 @@ function joinMessageConversationAndAuthor<T extends PgSelectQueryBuilder>(query:
 
 // Case-insensitive substring match for short fields such as names and titles. Three or more
 // characters can use the trigram index on lower(column); shorter queries scan.
-function containsText(column: SQLWrapper, query: string) {
+export function containsText(column: SQLWrapper, query: string) {
   if (query.length < 3) return sql`strpos(${trigramKey(column)}, lower(${query})) > 0`;
   const pattern = `%${query.replace(/[\\%_]/g, "\\$&")}%`;
   return sql`${trigramKey(column)} LIKE lower(${pattern})`;
@@ -118,7 +118,7 @@ function containsText(column: SQLWrapper, query: string) {
 // Every word of the query as a word prefix, for the word indexes. PostgreSQL splits the query with
 // the expression that built the index, so both sides get the same words and punctuation separates
 // them. A query with no words gives NULL, which matches nothing.
-function wordPrefixQuery(query: string) {
+export function wordPrefixQuery(query: string) {
   return sql`(
     SELECT string_agg('''' || replace(replace(lexeme, '\\', '\\\\'), '''', '''''') || ''':*', ' & ')::tsquery
     FROM (
@@ -127,7 +127,7 @@ function wordPrefixQuery(query: string) {
   )`;
 }
 
-function matchesWords(document: SQL, words: SQL) {
+export function matchesWords(document: SQL, words: SQL) {
   return sql`${document} @@ ${words}`;
 }
 

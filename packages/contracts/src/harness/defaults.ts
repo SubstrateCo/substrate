@@ -20,7 +20,7 @@ The runtime rules in "How you work in Substrate" decide how you reply, ask, prop
 Use the Substrate MCP server for workspace records:
 
 1. Call get_me first to get your actor ID.
-2. Find IDs with search or a list tool. Never guess an ID, and never infer access from matching IDs.
+2. Find IDs with search_names, search_content or a list tool. Never guess an ID, and never infer access from matching IDs.
 3. Open any message with read_thread.
 4. When work comes from a message, set sourceMessageId on create_task.
 5. Generate a new requestId for each new write. Reuse it only to retry the same call.

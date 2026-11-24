@@ -1375,18 +1375,18 @@ test("get_me returns the agent, its owner's actor and the organization", async (
   });
 });
 
-test("search pages with a cursor bound to its query", async () => {
+test("name search pages with a cursor bound to its query", async () => {
   const { call, createTask } = await fixture();
   for (const title of ["Launch one", "Launch two", "Launch three"]) await createTask({ title });
   const input = { query: "Launch", type: "task", limit: 2 };
-  const first = await call("search", input);
+  const first = await call("search_names", input);
   expect(first.items).toHaveLength(2);
-  const second = await call("search", { ...input, cursor: first.nextCursor });
+  const second = await call("search_names", { ...input, cursor: first.nextCursor });
   expect(second.items).toHaveLength(1);
   expect(second.nextCursor).toBeNull();
   expect(new Set([...first.items, ...second.items].map((item) => item.id)).size).toBe(3);
   expect(
-    await rejection(call("search", { ...input, query: "Other", cursor: first.nextCursor })),
+    await rejection(call("search_names", { ...input, query: "Other", cursor: first.nextCursor })),
   ).toMatchObject({ message: expect.stringContaining("cursor") });
 });
 

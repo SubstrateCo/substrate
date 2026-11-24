@@ -25,7 +25,7 @@ export const messagingTools = {
   list_conversations: {
     title: "List conversations",
     description:
-      "List channels, group chats and DMs you can access, most recently active first. DMs and group chats are named after their other participants. activeSince returns only conversations with new messages or thread replies since that time. Use this, not search, to catch up on recent activity or to find a DM by person.",
+      "List channels, group chats and DMs you can access, most recently active first. DMs and group chats are named after their other participants. activeSince returns only conversations with new messages or thread replies since that time. Use this, not search_names or search_content, to catch up on recent activity or to find a DM by person.",
     readOnly: true,
     input: z
       .object({

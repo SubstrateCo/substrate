@@ -1,5 +1,4 @@
 import type { ActorScope } from "../../core/repository-context";
-import { uuidPattern } from "../../core/text/references";
 import { ValidationError } from "../../errors";
 import { createHash } from "node:crypto";
 
@@ -34,23 +33,26 @@ function cursorCodec(scope: ActorScope, tool: string, input: { cursor?: string }
   };
 }
 
-/** Pages by the last item's ID, for queries that sort by ID. */
-export function keysetPagination(
+/**
+ * Pages newest first by (time, ID), for queries sorted that way. The cursor holds the last item's
+ * time in milliseconds and its ID, so each page reads only rows older than that point.
+ */
+export function newestFirstPagination(
   scope: ActorScope,
   tool: string,
   input: { cursor?: string; limit: number },
 ) {
   const codec = cursorCodec(scope, tool, input);
+  const position = codec.position(/^\d{1,15}_[0-9a-f]{8}(-[0-9a-f]{4}){3}-[0-9a-f]{12}$/);
+  const [ms, id] = position?.split("_") ?? [];
   return {
-    after: codec.position(uuidPattern),
+    before: position ? { at: new Date(Number(ms)).toISOString(), id: id! } : undefined,
     take: input.limit + 1,
-    page<T extends { id: string }>(rows: T[]) {
+    page<T extends { id: string; ms: number }>(rows: T[]) {
       const items = rows.slice(0, input.limit);
       const last = items.at(-1);
-      return {
-        items,
-        nextCursor: rows.length > input.limit && last ? codec.encode(last.id) : null,
-      };
+      const hasMore = rows.length > input.limit && last;
+      return { items, nextCursor: hasMore ? codec.encode(`${last.ms}_${last.id}`) : null };
     },
   };
 }

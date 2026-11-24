@@ -25,6 +25,7 @@ import {
   mcpCrmTools,
   listLinkedMessages,
   mcpMessagingQueries,
+  mcpSearchQueries,
   publishingTools,
   mcpTaskQueries,
   requireTurn,
@@ -100,6 +101,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
   const context = mcpContextQueries(ctx, identity);
   const queries = mcpTaskQueries(ctx, identity);
   const messaging = mcpMessagingQueries(ctx, identity);
+  const search = mcpSearchQueries(ctx, identity);
   const crm = () => mcpCrmTools(ctx, identity);
   const publishing = () => {
     if (!userAgentId) throw new AccessDeniedError();
@@ -125,7 +127,8 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     create_crm_interaction: async (value) => crm().createInteraction(value),
     publish_crm_interaction: async (value) => crm().publishInteraction(value),
     get_me: () => context.getMe(actor, userName),
-    search: (value) => context.search(value),
+    search_names: (value) => search.names(value),
+    search_content: (value) => search.content(value),
     list_assignees: (value) => context.listAssignees(value),
     list_projects: (value) => queries.listProjects(value),
     get_project: (value) => queries.getProject(value),

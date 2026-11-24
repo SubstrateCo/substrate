@@ -38,7 +38,7 @@ To find your own tasks, call \`list_tasks\` with \`assigneeActorId: "me"\`. To a
 - Put context, links and acceptance criteria in the description. It accepts Markdown.
 - If the task comes from a message, set \`sourceMessageId\`. The task then links back to the message. Pasting the message text into the description is not enough.
 - For a subtask, set \`parentTaskId\`. A subtask must be in the same project as its parent.
-- Before you create a task, search for an existing one with the same work. If you find one, use its shared discussion instead.
+- Before you create a task, look for an existing one with the same work: \`search_names\` with \`type: "task"\` for its title, and \`search_content\` for words in its description. If you find one, use its shared discussion instead.
 
 ## Updating tasks
 

@@ -4,9 +4,7 @@ import { actors } from "../../core/actors/schema";
 import { organization } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
-import { contextSearch } from "../context/search";
 import { projectRepository } from "../projects/repository";
-import { keysetPagination } from "./pagination";
 import { and, eq, sql } from "drizzle-orm";
 
 type Actor = { id: string; name: string; type: "human" | "agent" };
@@ -38,31 +36,6 @@ export function mcpContextQueries(ctx: RepositoryContext, identity: SessionIdent
         owner: { id: row?.ownerId ?? null, name: ownerName },
         organization: workspace!,
       };
-    },
-    async search(input: McpInput<"search">) {
-      const p = keysetPagination(scope, "search", input);
-      // Search applies each record type's access rules and sorts all results by ID.
-      const rows = await contextSearch(ctx, identity, {
-        query: input.query,
-        kind: input.type ?? "all",
-        after: p.after,
-        limit: p.take,
-      });
-      const hits: McpOutput<"search">["items"] = rows.map((row) => {
-        if (row.kind === "task")
-          return { type: "task", id: row.id, title: row.title, projectId: row.projectEntityId! };
-        if (row.kind === "project") return { type: "project", id: row.id, title: row.title };
-        if (row.kind === "message")
-          return {
-            type: "message",
-            id: row.id,
-            conversationId: row.conversationId!,
-            threadId: row.threadId ?? null,
-            text: row.title,
-          };
-        return { type: "conversation", id: row.id, title: row.title };
-      });
-      return p.page(hits);
     },
     async listAssignees(input: McpInput<"list_assignees">) {
       const query = input.query?.toLowerCase();
