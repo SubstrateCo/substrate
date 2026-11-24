@@ -1,5 +1,6 @@
 import { entityIdentity } from "../entities/identity";
 import { entities } from "../entities/schema";
+import { idColumn } from "../ids";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -42,7 +43,7 @@ export const contactIdentifierType = pgEnum("contact_identifier_type", ["email",
 export const contactIdentifiers = pgTable(
   "contact_identifiers",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     organizationId: text("organization_id").notNull(),
     contactEntityId: uuid("contact_entity_id").notNull(),
     type: contactIdentifierType("type").notNull(),

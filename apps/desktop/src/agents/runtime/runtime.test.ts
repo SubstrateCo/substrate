@@ -61,6 +61,29 @@ test("an owner message runs after the debounce, its events are stored, and a qui
   });
 });
 
+test("agent activity sends the agent's sessions and helpers once, on the first page", async () => {
+  const f = await started();
+  const parent = await f.store.sessions.ensure(
+    {
+      organizationId,
+      userAgentId: agentId,
+      agentId,
+      key: sessionKeys.dm(crypto.randomUUID()),
+      kind: "dm",
+      harness: "claude",
+      origin: { conversationId: crypto.randomUUID(), threadId: null },
+    },
+    0,
+  );
+  await f.store.helpers.start(parent.id, { requestId: crypto.randomUUID(), task: "Research" }, 0);
+  const first = await f.runtime.agentActivity(agentId);
+  expect(first.helpers.map((helper) => helper.task)).toEqual(["Research"]);
+  expect(first.sessions.length).toBeGreaterThan(0);
+  // Later pages carry only turns, so "Show older work" neither repeats nor reloads them.
+  const later = await f.runtime.agentActivity(agentId, "9999999999999:last-turn");
+  expect(later).toMatchObject({ sessions: [], helpers: [] });
+});
+
 test("a message the owner can no longer see is dropped and starts no turn", async () => {
   const f = await started();
   f.ownerMessage({ visible: false });

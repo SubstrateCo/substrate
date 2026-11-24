@@ -5,7 +5,7 @@ import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
 import { entityCursor, type RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
-import { AccessDeniedError } from "../../errors";
+import { AccessDeniedError, ValidationError } from "../../errors";
 import { taskActivity } from "../activity/schema";
 import { messageEntityReferences } from "../context/schema";
 import { visibleConversationIds, visibleConversations } from "../messaging/access";
@@ -13,18 +13,38 @@ import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { projects } from "../projects/schema";
 import { liveProjectTasks, liveTask } from "./access";
 import { tasks } from "./tasks.schema";
-import { and, asc, desc, eq, gt, gte, inArray, isNull, lt, or, sql } from "drizzle-orm";
+import {
+  and,
+  asc,
+  desc,
+  eq,
+  gt,
+  gte,
+  inArray,
+  isNull,
+  lt,
+  or,
+  sql,
+  type SQL,
+  type SQLWrapper,
+} from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 interface QueryPage {
-  offset?: number;
   limit?: number;
   since?: Date;
   until?: Date;
   ascending?: boolean;
+  /** Newest-first pages: rows older than this whole-millisecond time and ID. */
+  before?: { at: string; id: string };
 }
 
 const assigneeDisplayName = joinedActorName();
+// Whole milliseconds, so the order and a JavaScript cursor agree on equal times.
+const updatedMs = sql`date_trunc('milliseconds', ${entities.updatedAt})`;
+const activityMs = sql`date_trunc('milliseconds', ${taskActivity.createdAt})`;
+const olderThan = (time: SQL, id: SQLWrapper, before?: { at: string; id: string }) =>
+  before ? sql`(${time}, ${id}) < (${before.at}::timestamptz, ${before.id}::uuid)` : undefined;
 
 export async function queryTasks(
   ctx: RepositoryContext,
@@ -39,6 +59,9 @@ export async function queryTasks(
   const { entity } = await ctx.requireAccess(input.projectEntityId, "view");
   if (entity.entityType !== "project") throw new AccessDeniedError();
   const afterEntityId = entityCursor(input.afterEntityId);
+  // Each cursor matches one order: an ID cursor the ID order, a time cursor the newest order.
+  if (afterEntityId && !input.ascending) throw new ValidationError("Invalid cursor.");
+  if (input.before && input.ascending) throw new ValidationError("Invalid cursor.");
   let parentFilter;
   if (input.parentTaskEntityId === null) parentFilter = isNull(tasks.parentTaskEntityId);
   else if (input.parentTaskEntityId)
@@ -70,14 +93,12 @@ export async function queryTasks(
           : undefined,
         parentFilter,
         afterEntityId ? gt(tasks.entityId, afterEntityId) : undefined,
+        olderThan(updatedMs, tasks.entityId, input.before),
       ),
     )
     .orderBy(
-      ...(input.ascending
-        ? [asc(tasks.entityId)]
-        : [desc(entities.updatedAt), desc(tasks.entityId)]),
-    )
-    .offset(input.offset ?? 0);
+      ...(input.ascending ? [asc(tasks.entityId)] : [desc(updatedMs), desc(tasks.entityId)]),
+    );
   return input.limit === undefined ? query : query.limit(input.limit);
 }
 
@@ -202,9 +223,9 @@ export async function queryTaskActivity(
         or(isNull(taskActivity.sourceMessageId), visibleConversations(ctx.db, identity)),
         page.since ? gte(taskActivity.createdAt, page.since) : undefined,
         page.until ? lt(taskActivity.createdAt, page.until) : undefined,
+        olderThan(activityMs, taskActivity.id, page.before),
       ),
     )
-    .orderBy(desc(taskActivity.createdAt), desc(taskActivity.id))
-    .offset(page.offset ?? 0);
+    .orderBy(desc(activityMs), desc(taskActivity.id));
   return page.limit === undefined ? query : query.limit(page.limit);
 }

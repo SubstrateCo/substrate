@@ -105,6 +105,9 @@ export const queryKeys = {
     [...queryKeys.notifications(organizationId), "unread-status"] as const,
   notificationGroups: (organizationId: string, filter: NotificationFilter) =>
     [...queryKeys.notifications(organizationId), "groups", filter] as const,
+  // Home's newest groups: one page, apart from the panel's paged feed.
+  notificationPreview: (organizationId: string) =>
+    [...queryKeys.notifications(organizationId), "preview"] as const,
   // Without a group key, every group's events.
   notificationEvents: (organizationId: string, groupKey?: string) =>
     [

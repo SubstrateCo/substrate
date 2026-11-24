@@ -44,7 +44,7 @@ services:
       - "127.0.0.1:1025:1025"
       - "127.0.0.1:8025:8025"
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: substrate
       POSTGRES_PASSWORD: substrate
@@ -52,14 +52,14 @@ services:
     ports:
       - "127.0.0.1:5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U substrate -d substrate"]
       interval: 2s
       timeout: 3s
       retries: 30
   postgres-e2e:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     profiles: [test]
     environment:
       POSTGRES_USER: substrate_e2e
@@ -68,14 +68,14 @@ services:
     ports:
       - "127.0.0.1:5434:5432"
     tmpfs:
-      - /var/lib/postgresql/data
+      - /var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U substrate_e2e -d substrate_e2e_test"]
       interval: 1s
       timeout: 3s
       retries: 30
   postgres-test:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     profiles: [test]
     environment:
       POSTGRES_USER: substrate_test
@@ -84,7 +84,7 @@ services:
     ports:
       - "127.0.0.1:5433:5432"
     tmpfs:
-      - /var/lib/postgresql/data
+      - /var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U substrate_test -d substrate_test"]
       interval: 2s

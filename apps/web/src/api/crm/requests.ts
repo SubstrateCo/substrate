@@ -1,4 +1,4 @@
-import type { CrmTimelineMode, CrmWrite } from "@substrate/contracts/crm/input";
+import type { CrmTimelineMode, CrmWrite, DealOutcome } from "@substrate/contracts/crm/input";
 
 import { api, type ApiInput } from "../client";
 import type { RecordListInput } from "../records/input";
@@ -6,7 +6,10 @@ import { readResult } from "../result";
 
 export const listAccounts = ({ data, signal }: ApiInput<RecordListInput>) =>
   readResult(api.crm.accounts.$get({ query: { ...data, limit: "100" } }, { init: { signal } }));
-export const listDeals = ({ data, signal }: ApiInput<RecordListInput>) =>
+export const listDeals = ({
+  data,
+  signal,
+}: ApiInput<RecordListInput & { outcome?: DealOutcome }>) =>
   readResult(api.crm.deals.$get({ query: { ...data, limit: "100" } }, { init: { signal } }));
 export const getAccount = ({
   data,

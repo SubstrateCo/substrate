@@ -28,7 +28,7 @@ import { messagePeople, messageWorkLinks } from "./message-references/message-me
 import { messagePage } from "./message-references/message-page";
 import { messageEntityReferences } from "./schema";
 import { contextSearch } from "./search";
-import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { and, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
 import { alias, type PgSelectQueryBuilder } from "drizzle-orm/pg-core";
 
 interface ReferenceMessage {
@@ -353,9 +353,18 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
             visibleConversations(db, scope),
           ),
         )
-        .orderBy(asc(messageEntityReferences.createdAt))
+        .orderBy(desc(messagingMessages.createdAt), desc(messagingMessages.id))
         .limit(relatedLimit);
-      if (!projectTasks || referenced.length >= relatedLimit) return referenced;
+      // Keep the newest discussions and show them oldest first.
+      const newestFirst = (a: (typeof referenced)[number], b: (typeof referenced)[number]) => {
+        const time = b.createdAt.getTime() - a.createdAt.getTime();
+        if (time !== 0 || a.messageId === b.messageId) return time;
+        return a.messageId < b.messageId ? 1 : -1;
+      };
+      const chronological = (rows: typeof referenced) =>
+        // The renderer types this result with an ES2022 library, so no toSorted here.
+        [...rows].sort(newestFirst).slice(0, relatedLimit).reverse();
+      if (!projectTasks) return chronological(referenced);
       // A project's discussions also include the threads of its tasks' own discussions. Those
       // messages belong to the task by their conversation, so they have no reference row.
       const taskThreads = await joinActorProfile(
@@ -384,9 +393,9 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
             visibleConversations(db, scope),
           ),
         )
-        .orderBy(asc(messagingMessages.createdAt))
-        .limit(relatedLimit - referenced.length);
-      return [...referenced, ...taskThreads];
+        .orderBy(desc(messagingMessages.createdAt), desc(messagingMessages.id))
+        .limit(relatedLimit);
+      return chronological([...referenced, ...taskThreads]);
     },
     messageTargets,
     async messageTarget(conversationId: string, messageId: string) {

@@ -1,0 +1,1 @@
+CREATE INDEX "contact_interactions_org_timeline_idx" ON "contact_interactions" USING btree ("organization_id","occurred_at" DESC NULLS LAST,"entity_id" DESC NULLS LAST);

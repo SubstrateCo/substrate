@@ -1,4 +1,5 @@
 import { actors } from "../../core/actors/schema";
+import { idColumn } from "../../core/ids";
 import { messagingMessages } from "../messaging/schema";
 import { tasks } from "../tasks/tasks.schema";
 import { sql } from "drizzle-orm";
@@ -7,7 +8,7 @@ import { foreignKey, index, pgTable, text, timestamp, uuid } from "drizzle-orm/p
 export const taskActivity = pgTable(
   "task_activity",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     organizationId: text("organization_id").notNull(),
     taskEntityId: uuid("task_entity_id").notNull(),
     actorEntityId: uuid("actor_entity_id").notNull(),

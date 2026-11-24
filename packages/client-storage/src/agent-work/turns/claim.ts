@@ -6,6 +6,7 @@ import {
   liveTurnStatuses,
   triggerRegistry,
 } from "@substrate/contracts/agent-work";
+import { newId } from "@substrate/contracts/ids";
 
 import type { LocalTransaction } from "../../database.ts";
 import { inbox, sessions, turns } from "../../schema/index.ts";
@@ -159,7 +160,7 @@ export async function claimTurns(
       batch.some((item) => triggerRegistry[item.source].turnMode === "interactive");
     const recovery = batch.find((item) => item.sourceRef.source === "recovery");
     const turn: TurnRow = {
-      id: crypto.randomUUID(),
+      id: newId(),
       sessionId: group.session.id,
       userAgentId: group.session.userAgentId,
       organizationId: group.session.organizationId,

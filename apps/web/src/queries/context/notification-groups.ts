@@ -38,6 +38,18 @@ export const notificationGroupsOptions = (organizationId: string, filter: Notifi
     retry: false,
   });
 
+/**
+ * The newest groups, one page, for Home. A separate key keeps Home from holding every page the
+ * panel loaded, which each refresh would read again.
+ */
+export const notificationPreviewOptions = (organizationId: string) =>
+  queryOptions({
+    queryKey: queryKeys.notificationPreview(organizationId),
+    queryFn: ({ signal }) =>
+      getNotificationGroups({ data: { organizationId, filter: "all", limit: 20 }, signal }),
+    retry: false,
+  });
+
 export const notificationGroupEventsOptions = (organizationId: string, groupKey: string) =>
   infiniteQueryOptions({
     queryKey: queryKeys.notificationEvents(organizationId, groupKey),
@@ -71,30 +83,31 @@ export function markNotificationGroupsRead(
   target: GroupRead,
 ) {
   const readAt = new Date().toISOString();
-  type Groups = InfiniteData<Awaited<ReturnType<typeof getNotificationGroups>>>;
+  type GroupPage = Awaited<ReturnType<typeof getNotificationGroups>>;
+  type Groups = InfiniteData<GroupPage>;
+  const markPage = (page: GroupPage, filter: NotificationFilter) => ({
+    ...page,
+    items: page.items
+      .map((item) => {
+        if (
+          target &&
+          (item.groupKey !== target.groupKey || !atOrBefore(item.newestCursor, target.through))
+        )
+          return item;
+        return { ...item, unreadCount: 0, readAt: item.readAt ?? readAt };
+      })
+      .filter((item) => filter !== "unread" || item.unreadCount > 0),
+  });
   for (const filter of ["all", "unread"] as const) {
     client.setQueryData<Groups>(
       queryKeys.notificationGroups(organizationId, filter),
-      (feed) =>
-        feed && {
-          ...feed,
-          pages: feed.pages.map((page) => ({
-            ...page,
-            items: page.items
-              .map((item) => {
-                if (
-                  target &&
-                  (item.groupKey !== target.groupKey ||
-                    !atOrBefore(item.newestCursor, target.through))
-                )
-                  return item;
-                return { ...item, unreadCount: 0, readAt: item.readAt ?? readAt };
-              })
-              .filter((item) => filter !== "unread" || item.unreadCount > 0),
-          })),
-        },
+      (feed) => feed && { ...feed, pages: feed.pages.map((page) => markPage(page, filter)) },
     );
   }
+  client.setQueryData<GroupPage>(
+    queryKeys.notificationPreview(organizationId),
+    (page) => page && markPage(page, "all"),
+  );
   type Events = InfiniteData<Awaited<ReturnType<typeof getNotificationGroupEvents>>>;
   client.setQueriesData<Events>(
     { queryKey: queryKeys.notificationEvents(organizationId, target?.groupKey) },

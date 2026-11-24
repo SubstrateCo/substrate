@@ -10,7 +10,7 @@ import { pageSize } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { presentInteractions } from "./actor-views";
 import { crmAffiliations, crmDealContacts } from "./schema";
-import { and, desc, eq, exists, or, sql, type SQLWrapper } from "drizzle-orm";
+import { and, desc, eq, exists, inArray, or, sql, type SQLWrapper } from "drizzle-orm";
 
 type Options = {
   limit?: number;
@@ -71,6 +71,56 @@ export function interactionScope(
   )!;
 }
 
+/**
+ * The same scope as `interactionScope`, as IDs: interactions linked to the record and, unless
+ * only links count, the contacts affiliated with the account or taking part in the deal.
+ */
+async function scopeMembers(
+  context: RepositoryContext,
+  entityType: "account" | "deal",
+  entityId: string,
+  linkedOnly: boolean,
+) {
+  const { db, scope } = context;
+  const links = and(
+    eq(entityLinks.organizationId, scope.organizationId),
+    eq(entityLinks.relationType, "related_to"),
+  );
+  const linked = await db
+    .select({ id: entityLinks.targetEntityId })
+    .from(entityLinks)
+    .where(and(links, eq(entityLinks.sourceEntityId, entityId)))
+    .union(
+      db
+        .select({ id: entityLinks.sourceEntityId })
+        .from(entityLinks)
+        .where(and(links, eq(entityLinks.targetEntityId, entityId))),
+    );
+  const interactionIds = linked.map((row) => row.id);
+  if (linkedOnly) return { contactIds: [], interactionIds };
+  const contactRows =
+    entityType === "account"
+      ? await db
+          .select({ id: crmAffiliations.contactEntityId })
+          .from(crmAffiliations)
+          .where(
+            and(
+              eq(crmAffiliations.organizationId, scope.organizationId),
+              eq(crmAffiliations.accountEntityId, entityId),
+            ),
+          )
+      : await db
+          .select({ id: crmDealContacts.contactEntityId })
+          .from(crmDealContacts)
+          .where(
+            and(
+              eq(crmDealContacts.organizationId, scope.organizationId),
+              eq(crmDealContacts.dealEntityId, entityId),
+            ),
+          );
+  return { contactIds: contactRows.map((row) => row.id), interactionIds };
+}
+
 export async function timeline(
   context: RepositoryContext,
   entityId: string,
@@ -98,8 +148,17 @@ export async function timeline(
   if (entity.entityType !== "account" && entity.entityType !== "deal")
     throw new AccessDeniedError();
   const { db, scope } = context;
+  const { contactIds, interactionIds } = await scopeMembers(
+    context,
+    entity.entityType,
+    entityId,
+    options.mode === "linked",
+  );
+  if (!contactIds.length && !interactionIds.length) return [];
   // A rollup is one row per canonical interaction. It does not copy source identifiers or private
   // previews; navigation to discussion anchors is independently resolved by the context domain.
+  // The scope is resolved to IDs first, so each page reads those contacts' timeline index and
+  // the linked rows instead of testing every interaction in the organization.
   return db
     .select({
       entityId: contactInteractions.entityId,
@@ -115,7 +174,10 @@ export async function timeline(
       and(
         eq(contactInteractions.organizationId, scope.organizationId),
         interactionReadable(context, contactInteractions.entityId),
-        interactionScope(context, entity.entityType, entityId, options.mode === "linked"),
+        or(
+          contactIds.length ? inArray(contactInteractions.contactEntityId, contactIds) : undefined,
+          interactionIds.length ? inArray(contactInteractions.entityId, interactionIds) : undefined,
+        ),
         before
           ? sql`(${contactInteractions.occurredAt}, ${contactInteractions.entityId}) < (${before.occurredAt.toISOString()}::timestamptz, ${before.entityId}::uuid)`
           : undefined,

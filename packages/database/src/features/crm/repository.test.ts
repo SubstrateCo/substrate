@@ -123,6 +123,28 @@ describe("connected CRM", () => {
     expect(reopened.closedAt).toBeNull();
     expect(await stageChanges()).toHaveLength(2);
   });
+  test("deal lists filter by outcome before the page limit", async () => {
+    const a = f.forActor(f.alice);
+    const account = await a.crm.createAccount({ name: "Customer" });
+    const stages = await a.crm.ensurePipeline();
+    const create = (title: string) =>
+      a.crm.createDeal({ title, accountEntityId: account.entityId, stageId: stages[0]!.id });
+    const deals = [await create("One"), await create("Two"), await create("Three")];
+    const closed = deals.toSorted((x, y) => x.entityId.localeCompare(y.entityId)).slice(0, 2);
+    for (const deal of closed)
+      await a.crm.transitionDeal(deal.entityId, {
+        expectedVersion: deal.version,
+        requestId: crypto.randomUUID(),
+        stageId: stages[0]!.id,
+        outcome: "won",
+        lostReason: null,
+      });
+    // The first ID-ordered page of one deal is closed; the open filter still finds the open one.
+    const open = await a.crm.listDeals({ outcome: "open", limit: 1 });
+    expect(open.map((deal) => deal.title)).toEqual(
+      deals.flatMap((deal) => (closed.includes(deal) ? [] : [deal.title])),
+    );
+  });
   test("rejects unrelated deals, invalid money, and cross-tenant relationships", async () => {
     const a = f.forActor(f.alice);
     const stages = await a.crm.ensurePipeline();

@@ -10,6 +10,7 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { notificationGroupEventsOptions } from "@/queries/context/notification-groups";
+import { useFirstPageOnLeave } from "@/queries/first-page";
 
 export function NotificationGroupEvents({
   organizationId,
@@ -20,7 +21,9 @@ export function NotificationGroupEvents({
   groupKey: string;
   onOpen: (item: Notification, event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
-  const events = useInfiniteQuery(notificationGroupEventsOptions(organizationId, groupKey));
+  const options = notificationGroupEventsOptions(organizationId, groupKey);
+  const events = useInfiniteQuery(options);
+  useFirstPageOnLeave(options.queryKey);
   const apps = useOrganizationApps();
   if (events.isPending) return <NotificationRowsLoading label="Loading events" />;
   if (isAccessFailure(events.error))

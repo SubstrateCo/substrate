@@ -63,8 +63,7 @@ export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentit
     },
     async list(input: McpInput<"list_crm_records">) {
       const limit = input.limit ?? 25;
-      const options = { ...input, limit };
-      const list = () => {
+      const list = (options: typeof input) => {
         switch (input.kind) {
           case "account":
             return crm.listAccounts(options);
@@ -74,15 +73,15 @@ export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentit
             return crm.listDeals(options);
         }
       };
-      const rows = await list();
+      const rows = await list({ ...input, limit });
       const last = rows.at(-1);
-      let nextAfterEntityId: string | null = null;
-      if (rows.length === limit && last)
-        nextAfterEntityId = "contact" in last ? last.contact.entityId : last.entityId;
-      return {
-        items: rows,
-        nextAfterEntityId,
-      };
+      const lastId = last && ("contact" in last ? last.contact.entityId : last.entityId);
+      // A full page has more only if a record follows it: a one-row ID seek, not an empty page.
+      const more =
+        rows.length === limit &&
+        lastId !== undefined &&
+        (await list({ ...input, afterEntityId: lastId, limit: 1 })).length > 0;
+      return { items: rows, nextAfterEntityId: more ? lastId : null };
     },
     async get(input: McpInput<"get_crm_record">) {
       const record = await read(input);
@@ -114,19 +113,21 @@ export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentit
       return { record: await crm.transitionDeal(entityId, change) };
     },
     async listInteractions(input: McpInput<"list_crm_interactions">) {
-      const items = await interactions.listInteractions(input.contactEntityId, {
-        limit: input.limit,
-        before: input.before
-          ? { ...input.before, occurredAt: new Date(input.before.occurredAt) }
-          : undefined,
-      });
+      const page = (limit: number, before?: { occurredAt: Date; entityId: string }) =>
+        interactions.listInteractions(input.contactEntityId, { limit, before });
+      const items = await page(
+        input.limit,
+        input.before && { ...input.before, occurredAt: new Date(input.before.occurredAt) },
+      );
       const last = items.at(-1);
+      const cursor = last && { occurredAt: last.occurredAt, entityId: last.entityId };
+      // A full page has more only if an interaction follows it.
+      const more = items.length === input.limit && cursor && (await page(1, cursor)).length > 0;
       return {
         items,
-        nextBefore:
-          items.length === input.limit && last
-            ? { occurredAt: last.occurredAt.toISOString(), entityId: last.entityId }
-            : null,
+        nextBefore: more
+          ? { occurredAt: cursor.occurredAt.toISOString(), entityId: cursor.entityId }
+          : null,
       };
     },
     async createInteraction(input: McpInput<"create_crm_interaction">) {

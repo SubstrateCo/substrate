@@ -5,6 +5,7 @@ import {
   type AgentSessionKind,
 } from "@substrate/contracts/agent-work";
 import type { HarnessFolder, HarnessKind, TurnPlace } from "@substrate/contracts/harness";
+import { newId } from "@substrate/contracts/ids";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { sessions } from "../schema/index.ts";
@@ -52,7 +53,7 @@ export async function ensureSession(tx: LocalTransaction, input: EnsureSessionIn
   await tx
     .insert(sessions)
     .values({
-      id: crypto.randomUUID(),
+      id: newId(),
       organizationId: input.organizationId,
       userAgentId: input.userAgentId,
       agentId: input.agentId,

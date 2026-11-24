@@ -1,3 +1,4 @@
+import { idColumn } from "../ids";
 import { organization } from "../organizations/schema";
 import {
   foreignKey,
@@ -26,7 +27,7 @@ export const entityType = pgEnum("entity_type", [
 export const entities = pgTable(
   "entities",
   {
-    entityId: uuid("entity_id").defaultRandom().primaryKey(),
+    entityId: idColumn("entity_id"),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),

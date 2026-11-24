@@ -1,5 +1,5 @@
 import { openMailStore, type SyncedMail } from "@substrate/client-storage/mail";
-import { conversationKey, mailFlag } from "@substrate/contracts/mail";
+import { conversationKey, mailFlag, type MailConversation } from "@substrate/contracts/mail";
 import type { OlderMailQuery } from "@substrate/contracts/mail/ipc";
 
 import { gmailReader } from "./gmail-reader.ts";
@@ -143,6 +143,47 @@ test("unified Next merges uneven mailboxes without gaps, duplicate threads or re
     store.close();
     await rm(dir, { recursive: true, force: true });
   }
+});
+
+test("a page with a few free slots still reads a batch of IDs, not one per round trip", async () => {
+  const shown = (i: number): MailConversation => ({
+    id: `m${i}`,
+    mailboxId: "box",
+    subject: "",
+    from: "",
+    to: "",
+    timestamp: 10_000 - i,
+    snippet: "",
+    flags: mailFlag.inbox,
+    labelIds: [],
+    threadId: null,
+    messageCount: 1,
+    unreadMessages: 0,
+    hasUnread: false,
+    hasStar: false,
+  });
+  const limits: number[] = [];
+  const q: OlderMailQuery = {
+    mailboxId: null,
+    view: "inbox",
+    search: "",
+    before: 20_000,
+    // Earlier reads reached the 48th cached conversation, and Gmail has more.
+    sources: [{ mailboxId: "box", before: 20_000, token: "next", through: 10_000 - 47 }],
+    seen: [],
+  };
+  const page = await nextMailPage(
+    q,
+    [{ id: "box", status: "idle" }],
+    // 48 of 50 slots are filled; the mailbox may still hold older mail.
+    async () => ({ items: Array.from({ length: 48 }, (_, i) => shown(i)), hasMore: false }),
+    async (mailboxId, _source, limit) => {
+      limits.push(limit);
+      return { mailboxId, before: q.before, token: null, through: 0 };
+    },
+  );
+  expect(page.items).toHaveLength(48);
+  expect(limits).toEqual([10]);
 });
 
 test("an expired older-page token restarts at the overlapping second with the same label and search", async () => {

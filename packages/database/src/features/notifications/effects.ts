@@ -54,7 +54,7 @@ export async function notify(
   // one alert per recipient.
   const candidates = ctx.db
     .select({
-      id: sql<string>`gen_random_uuid()`.as("id"),
+      id: sql<string>`uuidv7()`.as("id"),
       organizationId: actors.organizationId,
       recipientActorEntityId: actors.entityId,
       kind: kind.as("kind"),

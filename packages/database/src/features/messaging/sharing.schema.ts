@@ -1,6 +1,7 @@
 import type { SharingInvitationStatus } from "@substrate/contracts/messaging/sharing";
 
 import { user } from "../../core/authentication/schema";
+import { idColumn } from "../../core/ids";
 import { organization } from "../../core/organizations/schema";
 import { messagingConversations } from "./schema";
 import { sql } from "drizzle-orm";
@@ -41,7 +42,7 @@ export const messagingConnections = pgTable(
 export const messagingInvitations = pgTable(
   "messaging_invitations",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     conversationId: uuid("conversation_id").notNull(),
     hostOrganizationId: text("host_organization_id").notNull(),
     senderOrganizationId: text("sender_organization_id")
@@ -82,7 +83,7 @@ export const messagingInvitations = pgTable(
 export const messagingSharingEvents = pgTable(
   "messaging_sharing_events",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     conversationId: uuid("conversation_id")
       .notNull()
       .references(() => messagingConversations.id, { onDelete: "cascade" }),

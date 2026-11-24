@@ -1,0 +1,1 @@
+CREATE INDEX `turns_agent_page` ON `turns` (`organization_id`,`user_agent_id`,`created_at`,`id`);

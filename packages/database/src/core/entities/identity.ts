@@ -1,3 +1,5 @@
+import { newId } from "@substrate/contracts/ids";
+
 import { entityType } from "./schema";
 import { sql } from "drizzle-orm";
 import { text, uuid } from "drizzle-orm/pg-core";
@@ -6,7 +8,7 @@ import { text, uuid } from "drizzle-orm/pg-core";
 export function rootEntityValues(
   organizationId: string,
   type: (typeof entityType.enumValues)[number],
-  entityId: string = crypto.randomUUID(),
+  entityId: string = newId(),
 ) {
   return { entityId, organizationId, entityType: type, accessEntityId: entityId };
 }

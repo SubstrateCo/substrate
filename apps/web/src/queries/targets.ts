@@ -199,6 +199,7 @@ function workTargets(
     { queryKey: queryKeys.messagePages(organizationId), linksTo: taskIds },
     { queryKey: queryKeys.notificationGroups(organizationId, "all") },
     { queryKey: queryKeys.notificationGroups(organizationId, "unread") },
+    { queryKey: queryKeys.notificationPreview(organizationId) },
     { queryKey: queryKeys.notificationEvents(organizationId) },
     ...shared,
   ];

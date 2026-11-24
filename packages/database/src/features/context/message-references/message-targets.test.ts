@@ -79,6 +79,20 @@ test("project discussions include the thread roots of its tasks' own discussions
   expect(await context().related(project.entityId)).toEqual([]);
 });
 
+test("a long-lived project keeps its newest 100 discussions, oldest first", async () => {
+  const { project, repos, chat, conversation } = await setup();
+  const mentions = [];
+  for (let index = 0; index < 100; index++)
+    mentions.push(
+      await chat.sendMessage(conversation.id, `${index} @[project:${project.entityId}]`),
+    );
+  const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Draft" });
+  const discussion = await repos.tasks.ensureDiscussion(task.entityId);
+  const newest = await f.messaging("alice").sendMessage(discussion, "Newest thread");
+  const related = (await context().related(project.entityId)).map((item) => item.messageId);
+  expect(related).toEqual([...mentions.slice(1).map((message) => message.id), newest.id]);
+});
+
 test("message targets retain timeline reaction and reply summaries for roots and replies, and mismatched conversations fail", async () => {
   const { chat, reply, root, conversation } = await setup();
   await chat.addMembers(conversation.id, ["bob@example.com"]);

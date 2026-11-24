@@ -39,6 +39,15 @@ const heartbeatMs = 60_000;
 const hintWindowMs = 300;
 const activityPageSize = 30;
 
+/** An activity cursor is `<createdAt>:<turnId>` of the last turn on the previous page. */
+function activityCursor(cursor: string) {
+  const split = cursor.indexOf(":");
+  const createdAt = Number(cursor.slice(0, split));
+  const id = cursor.slice(split + 1);
+  if (split < 1 || !Number.isSafeInteger(createdAt) || !id) throw new Error("Invalid cursor.");
+  return { createdAt, id };
+}
+
 export interface RuntimeTimers {
   every(callback: () => void, milliseconds: number): () => void;
   later(callback: () => void, milliseconds: number): () => void;
@@ -328,21 +337,24 @@ export function createAgentWorkRuntime(
     },
     agents: () => status.summaries(),
     async agentActivity(agentId: string, cursor?: string): Promise<AgentActivityPage> {
+      const before = cursor === undefined ? undefined : activityCursor(cursor);
+      const page = await context.store.turns.forAgent(context.organizationId, agentId, {
+        before,
+        limit: activityPageSize,
+      });
+      const last = page.rows.at(-1);
+      const turns = await context.store.views.turns(page.rows);
+      const nextCursor = page.more && last ? `${last.createdAt}:${last.id}` : null;
+      // Sessions and helpers are the agent's, not the page's. Only the first page carries them.
+      if (before) return { sessions: [], turns, helpers: [], nextCursor };
       const sessions = await context.store.sessions.forAgent(context.organizationId, agentId);
-      const before = cursor === undefined ? undefined : Number(cursor);
-      if (before !== undefined && !Number.isFinite(before)) throw new Error("Invalid cursor.");
-      const rows = await context.store.turns.forSessions(
-        sessions.map((session) => session.id),
-        { before, limit: activityPageSize },
-      );
+      const sessionIds = new Set(sessions.map((session) => session.id));
       const helpers = await context.store.helpers.forAgent(agentId);
       return {
         sessions: sessions.map(sessionView),
-        turns: await context.store.views.turns(rows),
-        helpers: helpers
-          .filter((helper) => sessions.some((session) => session.id === helper.parentSessionId))
-          .map(helperView),
-        nextCursor: rows.length === activityPageSize ? String(rows.at(-1)!.createdAt) : null,
+        turns,
+        helpers: helpers.filter((helper) => sessionIds.has(helper.parentSessionId)).map(helperView),
+        nextCursor,
       };
     },
     sendNow: (itemId: string) => steering.sendNow(itemId),

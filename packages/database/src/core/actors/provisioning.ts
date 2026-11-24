@@ -1,3 +1,5 @@
+import { newId } from "@substrate/contracts/ids";
+
 import { AccessDeniedError, ValidationError, violatedConstraint } from "../../errors";
 import { rootEntityValues } from "../entities/identity";
 import { entities } from "../entities/schema";
@@ -167,7 +169,7 @@ async function insertMissingActors(
   identities: ({ type: "human"; userId: string } | { type: "agent"; userAgentId: string })[],
 ) {
   const rows = identities.map((identity) => ({
-    entityId: crypto.randomUUID(),
+    entityId: newId(),
     organizationId,
     type: identity.type,
     userId: identity.type === "human" ? identity.userId : null,

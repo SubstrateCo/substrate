@@ -1,4 +1,4 @@
-import { filterLabels, mailFlag } from "@substrate/contracts/mail";
+import { conversationKey, filterLabels, mailFlag } from "@substrate/contracts/mail";
 
 import { openMailStore, type SyncedMail } from "./store.ts";
 import { expect, test } from "bun:test";
@@ -85,6 +85,64 @@ test("the opening page shows 50 matching conversations across any dates, after f
     expect((await db.list({ ...q, search: "quiet-3" })).items).toMatchObject([
       { subject: "quiet-3" },
     ]);
+  } finally {
+    db.close();
+    await rm(dir, { recursive: true, force: true });
+  }
+});
+
+test("older pages from the last shown time return every conversation once, also across ties", async () => {
+  const dir = await mkdtemp(join(tmpdir(), "mail-deep-"));
+  const db = await openMailStore(join(dir, "mail.sqlite"), "workspace");
+  try {
+    const id = await db.connect({
+      provider: "gmail",
+      providerAccountId: "deep",
+      address: "deep@example.test",
+      nickname: null,
+      protectedGrant: "fixture",
+    });
+    // 30 messages share one timestamp, so a page boundary falls inside the tie.
+    const times = Array.from({ length: 140 }, (_, i) => (i >= 40 && i < 70 ? 1_000 : 2_000 - i));
+    await db.commit(id, null, {
+      cursor: "cached",
+      done: true,
+      removed: [],
+      messages: times.map((timestamp, i) => ({
+        remoteId: `m${i}`,
+        threadId: i % 7 === 0 ? `t${i % 3}` : null,
+        timestamp,
+        subject: `m${i}`,
+        from: "",
+        to: "",
+        snippet: "",
+        flags: mailFlag.inbox,
+        labelIds: [],
+        body: { format: "plain", text: "" },
+      })),
+    });
+    const q = { mailboxId: null, view: "inbox" as const, search: "", sources: [], before: 5_000 };
+    const pages = async (bounded: boolean) => {
+      const shown: { id: string; key: string; timestamp: number }[] = [];
+      for (;;) {
+        const page = await db.cachedPage({
+          ...q,
+          seen: shown.map((row) => row.key),
+          shownThrough: bounded ? shown.at(-1)?.timestamp : undefined,
+        });
+        shown.push(
+          ...page.items.map((row) => ({
+            id: row.id,
+            key: conversationKey(row),
+            timestamp: row.timestamp,
+          })),
+        );
+        if (!page.hasMore) return shown.map((row) => row.id);
+      }
+    };
+    const bounded = await pages(true);
+    expect(new Set(bounded).size).toBe(bounded.length);
+    expect(bounded).toEqual(await pages(false));
   } finally {
     db.close();
     await rm(dir, { recursive: true, force: true });

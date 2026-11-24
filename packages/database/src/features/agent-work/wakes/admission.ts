@@ -11,6 +11,7 @@ import {
   type AgentWakeSourceRef,
 } from "@substrate/contracts/agent-work";
 import type { AgentCallerPolicy } from "@substrate/contracts/agents";
+import { newId } from "@substrate/contracts/ids";
 import type { ConversationKind } from "@substrate/contracts/messaging/input";
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
@@ -353,7 +354,7 @@ async function callerFacts(
           allowlisted: row?.allowlisted ?? false,
           pending: row?.pending ?? 0,
           admittedToday: row?.admittedToday ?? 0,
-          invocationId: crypto.randomUUID(),
+          invocationId: newId(),
         },
       ];
     }),

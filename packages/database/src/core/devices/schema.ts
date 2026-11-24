@@ -1,4 +1,5 @@
 import { user } from "../authentication/schema";
+import { idColumn } from "../ids";
 import { sql } from "drizzle-orm";
 import { check, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 
@@ -7,7 +8,7 @@ import { check, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-co
 export const desktopDevices = pgTable(
   "desktop_devices",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),

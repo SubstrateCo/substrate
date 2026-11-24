@@ -8,6 +8,8 @@ import { z } from "zod";
 export const crmWorkspace = z.object({ organizationId });
 export const crmHome = crmWorkspace.extend({ today: z.iso.date() });
 export const crmList = crmWorkspace.extend(recordListFields);
+/** The pipeline board reads only open deals, so closed ones do not fill its pages. */
+export const crmDealList = crmList.extend({ outcome: z.enum(["open", "won", "lost"]).optional() });
 export type RecordArchiveFilter = z.output<typeof crmList>["archived"];
 export const crmRecord = crmWorkspace.extend({ entityId: z.uuid() });
 export const crmContact = crmWorkspace.extend({ contactEntityId: z.uuid() });

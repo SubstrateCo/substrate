@@ -2,6 +2,7 @@ import { crmActivityList } from "@substrate/contracts/crm/activity";
 import {
   crmWorkspace,
   crmHome,
+  crmDealList,
   crmList,
   crmRecord,
   crmReport,
@@ -55,7 +56,7 @@ export function createCrmRoutes(service: CrmService, scopes: Scopes) {
     .get("/account", v("query", crmRecord), scopes.workspace("query"), async (c) =>
       respond(c, await service.getAccount(c.var.scope, c.req.valid("query").entityId)),
     )
-    .get("/deals", v("query", crmList), scopes.workspace("query"), async (c) =>
+    .get("/deals", v("query", crmDealList), scopes.workspace("query"), async (c) =>
       respond(c, await service.listDeals(c.var.scope, c.req.valid("query"))),
     )
     .get("/deal", v("query", crmRecord), scopes.workspace("query"), async (c) =>

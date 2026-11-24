@@ -15,9 +15,11 @@ import { join } from "node:path";
 export async function openTestStore() {
   await mkdir(join(tmpdir(), "opencode"), { recursive: true });
   const root = await mkdtemp(join(tmpdir(), "opencode", "agent-work-store-"));
-  const store = await AgentWorkStore.open(join(root, "agent-work.sqlite"));
+  const path = join(root, "agent-work.sqlite");
+  const store = await AgentWorkStore.open(path);
   return {
     store,
+    path,
     async cleanup() {
       store.close();
       await rm(root, { recursive: true, force: true });

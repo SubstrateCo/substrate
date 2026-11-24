@@ -36,6 +36,11 @@ export type MailPageSource = z.output<typeof source>;
 const older = folder.extend({
   before: z.int().nonnegative(),
   seen: z.array(z.string()),
+  /**
+   * The timestamp of the last conversation shown. Every complete earlier page holds all cached
+   * candidates newer than it, so a page starts there instead of walking back from `before`.
+   */
+  shownThrough: z.int().nonnegative().optional(),
   sources: z.array(source),
 });
 export type OlderMailQuery = z.output<typeof older>;

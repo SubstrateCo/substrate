@@ -3,6 +3,7 @@ import {
   type InboxSource,
   type InboxSourceRef,
 } from "@substrate/contracts/agent-work";
+import { newId } from "@substrate/contracts/ids";
 
 import type { LocalTransaction } from "../database.ts";
 import { inbox, sessions, turns } from "../schema/index.ts";
@@ -109,7 +110,7 @@ export async function enqueue(tx: LocalTransaction, item: NewInboxItem, now: num
   const inserted = await tx
     .insert(inbox)
     .values({
-      id: crypto.randomUUID(),
+      id: newId(),
       organizationId: session.organizationId,
       sessionId: item.sessionId,
       userAgentId: item.userAgentId,

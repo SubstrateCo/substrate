@@ -2,6 +2,7 @@ import type { AgentWakeSource, AgentWakeSourceRef } from "@substrate/contracts/a
 
 import { actors } from "../../../core/actors/schema";
 import { userAgents } from "../../../core/actors/user-agents.schema";
+import { idColumn } from "../../../core/ids";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -20,7 +21,7 @@ import {
 export const agentWakes = pgTable(
   "agent_wakes",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     organizationId: text("organization_id").notNull(),
     userAgentId: uuid("user_agent_id").notNull(),
     agentActorEntityId: uuid("agent_actor_entity_id").notNull(),

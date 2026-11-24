@@ -10,9 +10,9 @@ import { previousRequest, recordRequest, requestFingerprint } from "../../../cor
 import { AccessDeniedError, ConflictError, ValidationError } from "../../../errors";
 import { recordCrmActivity } from "../activity";
 import { createOnce } from "../creation";
-import { requireDealRelations } from "./deal-relations";
 import { crmRecordAccess, type ListOptions } from "../record-access";
 import { crmAccounts, crmStages, crmDeals, crmDealContacts } from "../schema";
+import { requireDealRelations } from "./deal-relations";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
 import { z } from "zod";
 type DealInput = z.input<typeof dealFields>;
@@ -274,7 +274,12 @@ export function crmDealsRepository(context: RepositoryContext) {
       const rows = await db
         .select()
         .from(crmDeals)
-        .where(listWhere(crmDeals, options))
+        .where(
+          and(
+            listWhere(crmDeals, options),
+            options.outcome ? eq(crmDeals.outcome, options.outcome) : undefined,
+          ),
+        )
         .orderBy(asc(crmDeals.entityId))
         .limit(pageSize(options.limit));
       const accountIds = [

@@ -651,6 +651,30 @@ test("CRM interaction pagination reaches the 51st entry with stable occurrence-t
   expect(new Set(actual).size).toBe(51);
 });
 
+test("CRM lists give no cursor when the last page is exactly full", async () => {
+  const { call } = await fixture();
+  const repos = f.forActor(f.alice);
+  const contact = await repos.contacts.create({ displayName: "Buyer" });
+  for (const summary of ["One", "Two"])
+    await repos.contactInteractions.createManual({
+      contactEntityId: contact.entityId,
+      kind: "call",
+      occurredAt: new Date("2026-11-12T10:00:00Z"),
+      summary,
+    });
+  const interactions = { contactEntityId: contact.entityId, limit: 2 };
+  expect((await call("list_crm_interactions", interactions)).nextBefore).toBeNull();
+  const first = await call("list_crm_interactions", { ...interactions, limit: 1 });
+  expect(first.nextBefore).not.toBeNull();
+
+  await repos.contacts.create({ displayName: "Second buyer" });
+  expect(
+    (await call("list_crm_records", { kind: "contact", limit: 2 })).nextAfterEntityId,
+  ).toBeNull();
+  const page = await call("list_crm_records", { kind: "contact", limit: 1 });
+  expect(page.nextAfterEntityId).not.toBeNull();
+});
+
 test("CRM deal replay rechecks related account access and stages reject stale versions", async () => {
   const { call } = await fixture();
   await f.db.update(member).set({ role: "member" }).where(eq(member.id, "alice-a"));
@@ -1336,6 +1360,68 @@ test("assignees resolve by name and list_tasks accepts me for the agent's own ta
       (item) => item.id,
     ),
   ).toEqual([mine.id]);
+});
+
+test("list_tasks reaches every match while the agent completes the tasks it has read", async () => {
+  const { call, createTask, project } = await fixture();
+  const created = [];
+  for (const title of ["One", "Two", "Three", "Four", "Five"])
+    created.push((await createTask({ title })).id);
+  const input = { projectId: project.entityId, statuses: ["not_started"], limit: 2 };
+  const seen: string[] = [];
+  let cursor: string | null = null;
+  do {
+    const page: McpOutput<"list_tasks"> = await call(
+      "list_tasks",
+      cursor ? { ...input, cursor } : input,
+    );
+    for (const item of page.items) {
+      seen.push(item.id);
+      await call("update_task", {
+        requestId: crypto.randomUUID(),
+        taskId: item.id,
+        changes: { status: "completed" },
+      });
+    }
+    cursor = page.nextCursor;
+  } while (cursor);
+  expect(seen).toEqual(created.toReversed());
+});
+
+test("conversation pages never repeat a conversation or a thread that moves up", async () => {
+  const { human, call } = await fixture();
+  const names = ["first", "second", "third"];
+  const channels = [];
+  for (const [index, name] of names.entries()) {
+    const channel = await human.createConversation({ kind: "channel", name });
+    const root = await human.sendMessage(channel.id, name);
+    await setCreatedAt(root.id, `2026-11-0${index + 1}T00:00:00Z`);
+    channels.push({ channel, root });
+  }
+  const [first] = channels;
+  const listed = await call("list_conversations", { limit: 1 });
+  expect(listed.items.map((item) => item.name)).toEqual(["third"]);
+  // Activity in the oldest conversation moves it above the cursor while the agent pages.
+  await human.sendMessage(first!.channel.id, "new activity");
+  const rest = await call("list_conversations", { limit: 1, cursor: listed.nextCursor });
+  expect(rest.items.map((item) => item.name)).toEqual(["second"]);
+
+  const general = await human.createConversation({ kind: "channel", name: "general" });
+  const roots = [];
+  for (const [index, body] of ["a", "b", "c"].entries()) {
+    const root = await human.sendMessage(general.id, body);
+    await setCreatedAt(root.id, `2026-11-0${index + 1}T00:00:00Z`);
+    roots.push(root);
+  }
+  const page = await call("read_conversation", { conversationId: general.id, limit: 1 });
+  expect(page.items.map((item) => item.text)).toEqual(["c"]);
+  await human.sendMessage(general.id, "a reply moves a up", roots[0]!.id);
+  const next = await call("read_conversation", {
+    conversationId: general.id,
+    limit: 1,
+    cursor: page.nextCursor,
+  });
+  expect(next.items.map((item) => item.text)).toEqual(["b"]);
 });
 
 test("conversations are named after other participants and sorted by latest activity", async () => {

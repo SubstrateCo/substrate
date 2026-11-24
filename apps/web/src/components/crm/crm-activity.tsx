@@ -7,6 +7,7 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { resourceState } from "@/lib/resource-state";
 import { crmActivityOptions } from "@/queries/crm/activity";
+import { useFirstPageOnLeave } from "@/queries/first-page";
 import { Unlink } from "lucide-react";
 
 /** A CRM record's internal changes, in the same rows as task activity. */
@@ -17,7 +18,9 @@ export function CrmActivity({
   organizationId: string;
   entityId: string;
 }) {
-  const query = useInfiniteQuery(crmActivityOptions(organizationId, entityId));
+  const options = crmActivityOptions(organizationId, entityId);
+  const query = useInfiniteQuery(options);
+  useFirstPageOnLeave(options.queryKey);
   const items = resourceState(query).data?.pages.flatMap((page) => page.items) ?? [];
   const unavailable = isAccessFailure(query.error);
   return (

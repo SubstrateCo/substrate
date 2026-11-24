@@ -1,7 +1,7 @@
 import type { AgentRequestView } from "@substrate/contracts/agent-work";
 import { taskStatusLabels } from "@substrate/contracts/tasks";
 
-import { useInfiniteQuery, useQuery, type QueryObserverResult } from "@tanstack/react-query";
+import { useQuery, type QueryObserverResult } from "@tanstack/react-query";
 
 import { HomeDashboardView } from "./home-dashboard-view";
 import type { HomeItem, HomeSectionData } from "./home-section";
@@ -22,7 +22,7 @@ import { formatDateOnly, formatShortDate } from "@/lib/format/date";
 import { conversationName } from "@/lib/messaging/conversations";
 import { agentLink, crmLink, messageLink, workLink } from "@/lib/navigation/record-links";
 import { agentStatusOptions, needsYouOptions } from "@/queries/agent-work/server";
-import { notificationGroupsOptions } from "@/queries/context/notification-groups";
+import { notificationPreviewOptions } from "@/queries/context/notification-groups";
 import { homeDealsOptions } from "@/queries/crm/options";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 import { unreadCountsOptions } from "@/queries/messaging/read-state";
@@ -56,8 +56,8 @@ export function HomeDashboard({
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
   const conversations = useQuery(conversationsQueryOptions(organizationId));
   const unread = useQuery(unreadCountsOptions(organizationId));
-  const notifications = useInfiniteQuery(notificationGroupsOptions(organizationId, "all"));
-  const groups = (notifications.data?.pages[0]?.items ?? []).filter(
+  const notifications = useQuery(notificationPreviewOptions(organizationId));
+  const groups = (notifications.data?.items ?? []).filter(
     (item) => apps.enabled("tasks") || (!item.projectEntityId && item.kind !== "assignment"),
   );
   const mentions = groups.filter((item) => item.kind === "mention" && item.unreadCount > 0);

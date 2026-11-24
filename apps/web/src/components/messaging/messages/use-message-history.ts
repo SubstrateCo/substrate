@@ -13,7 +13,14 @@ type HistoryPosition = {
   beforeMessageId?: string;
   /** The person's last move through history, and when they made it. */
   request?: { kind: "older" | "latest"; at: number };
+  /** The window an Older move left, to return to when nothing is older. */
+  previous?: Pick<HistoryPosition, "aroundMessageId" | "beforeMessageId">;
+  /** The oldest message: an Older move from it found nothing. */
+  oldestId?: string;
 };
+
+/** The server's page size. A full page is the only sign that older messages may exist. */
+const historyPageSize = 50;
 
 export function useMessageHistory({
   organizationId,
@@ -64,6 +71,17 @@ export function useMessageHistory({
     }
     setPosition(next);
   }
+  // A full page can be the last one. When the next older page is empty, return to the window
+  // the move left and remember its oldest message, instead of showing an empty conversation.
+  const olderPageEmpty =
+    messages.isSuccess && !messages.isPlaceholderData && messages.data.length === 0;
+  if (current.beforeMessageId && current.previous && olderPageEmpty)
+    setPosition({
+      ...current,
+      ...current.previous,
+      previous: undefined,
+      oldestId: current.beforeMessageId,
+    });
   // A move is pending until its page arrives. Later background refreshes are not the person's.
   const { request } = current;
   const pending =
@@ -75,7 +93,9 @@ export function useMessageHistory({
     messages,
     history: {
       pending,
-      hasOlder: messages.data?.length === 50,
+      hasOlder:
+        messages.data?.length === historyPageSize &&
+        !messages.data.some((message) => message.id === current.oldestId),
       hasPrevious:
         pending === "latest" ||
         (!!latest.data?.length &&
@@ -97,6 +117,10 @@ export function useMessageHistory({
         beforeMessageId: messageId,
         aroundMessageId: undefined,
         request: { kind: "older", at: Date.now() },
+        previous: {
+          beforeMessageId: current.beforeMessageId,
+          aroundMessageId: current.aroundMessageId,
+        },
       }),
   };
 }

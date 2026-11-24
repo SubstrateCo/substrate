@@ -9,6 +9,7 @@ import type { AgentCallerPolicy } from "@substrate/contracts/agents";
 import { actors } from "../../../core/actors/schema";
 import { userAgents } from "../../../core/actors/user-agents.schema";
 import { user } from "../../../core/authentication/schema";
+import { idColumn } from "../../../core/ids";
 import { messagingMessages } from "../../messaging/schema";
 import { agentWakes } from "../wakes/wakes.schema";
 import { sql } from "drizzle-orm";
@@ -30,7 +31,7 @@ import {
 export const agentInvocations = pgTable(
   "agent_invocations",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     organizationId: text("organization_id").notNull(),
     userAgentId: uuid("user_agent_id").notNull(),
     agentActorEntityId: uuid("agent_actor_entity_id").notNull(),
@@ -97,7 +98,7 @@ export const agentInvocations = pgTable(
 export const agentAuditEvents = pgTable(
   "agent_audit_events",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     organizationId: text("organization_id").notNull(),
     userAgentId: uuid("user_agent_id").notNull(),
     ownerUserId: text("owner_user_id").notNull(),

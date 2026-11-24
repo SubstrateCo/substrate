@@ -1,4 +1,5 @@
 import { MAX_FILE_BYTES, type CreateUploadInput } from "@substrate/contracts/files/input";
+import { newId } from "@substrate/contracts/ids";
 import {
   finalObjectKey,
   type StorageRepository,
@@ -23,7 +24,7 @@ export function createFileService(deps: FileServiceDependencies) {
   return {
     createUpload(scope: StorageScope, input: CreateUploadInput) {
       return serviceResult(async () => {
-        const id = crypto.randomUUID();
+        const id = newId();
         const upload = await repository.createUpload(
           scope,
           input,

@@ -1,5 +1,6 @@
 import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
+import { idColumn } from "../../core/ids";
 import { messagingMessages } from "../messaging/schema";
 import { sql } from "drizzle-orm";
 import {
@@ -16,7 +17,7 @@ import {
 export const notifications = pgTable(
   "notifications",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     organizationId: text("organization_id").notNull(),
     recipientActorEntityId: uuid("recipient_actor_entity_id").notNull(),
     kind: text("kind").$type<"assignment" | "mention" | "reply" | "message">().notNull(),

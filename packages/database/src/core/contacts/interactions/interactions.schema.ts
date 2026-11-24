@@ -77,6 +77,12 @@ export const contactInteractions = pgTable(
       table.occurredAt.desc(),
       table.entityId.desc(),
     ),
+    // Workspace timelines and period summaries read the whole organization by time.
+    index("contact_interactions_org_timeline_idx").on(
+      table.organizationId,
+      table.occurredAt.desc(),
+      table.entityId.desc(),
+    ),
     unique("contact_interactions_org_entity_contact_unique").on(
       table.organizationId,
       table.entityId,

@@ -1,4 +1,5 @@
 import { actors } from "../../core/actors/schema";
+import { idColumn } from "../../core/ids";
 import { storedFiles } from "../../core/storage/schema";
 import { messagingMessages } from "../messaging/schema";
 import { tasks } from "../tasks/tasks.schema";
@@ -16,7 +17,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 const fields = () => ({
-  id: uuid("id").defaultRandom().primaryKey(),
+  id: idColumn(),
   fileOrganizationId: text("file_organization_id").notNull(),
   fileId: uuid("file_id").notNull(),
   filePurpose: text("file_purpose").default("file").notNull(),

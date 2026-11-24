@@ -6,6 +6,8 @@ import type { gmailReader } from "./gmail-reader.ts";
 import { ReconnectRequired } from "./provider.ts";
 
 type OlderReader = Pick<ReturnType<typeof gmailReader>, "olderIds" | "olderMessages">;
+/** The fewest message IDs one Gmail read asks for. */
+const minimumOlderBatch = 10;
 type SourceRead = (
   mailbox: string,
   source: MailPageSource | undefined,
@@ -86,7 +88,9 @@ export async function nextMailPage(
     const need = pending()
       .filter((b) => boundary(b.id) >= floor)
       .slice(0, mailPageSize);
-    const limit = Math.max(1, Math.ceil(remaining / need.length));
+    // Fetched IDs can belong to threads already shown, so a few free slots still read a batch;
+    // extra messages land in the cache for the next page.
+    const limit = Math.max(minimumOlderBatch, Math.ceil(remaining / need.length));
     let issue: OlderMailPage["issue"];
     await Promise.all(
       need.map(async (b) => {

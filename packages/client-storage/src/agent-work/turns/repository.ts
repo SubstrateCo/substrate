@@ -16,7 +16,7 @@ import { settleUncertainTurn } from "../uncertain.ts";
 import { claimTurns, type ClaimOptions, type TurnRow } from "./claim.ts";
 import { finishTurn, type FinishTurnInput } from "./finish.ts";
 import { recoverTurn, recoverTurns, requeueTurn } from "./recovery.ts";
-import { and, desc, eq, inArray, lt } from "drizzle-orm";
+import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
 
 const liveStatuses = [...liveTurnStatuses];
 async function retryTurn(tx: LocalTransaction, turn: TurnRow, now: number, epoch?: number) {
@@ -49,6 +49,29 @@ async function attentionTurn(tx: LocalTransaction, turnId: string) {
   const turn = await tx.select().from(turns).where(eq(turns.id, turnId)).get();
   if (!turn || turn.status !== "needs_attention") throw new Error("This work does not need you.");
   return turn;
+}
+
+/** The query for one page of an agent's turns, with one extra row to tell whether more follow. */
+export function agentTurnsPage(
+  db: Pick<LocalTransaction, "select">,
+  organizationId: string,
+  userAgentId: string,
+  { before, limit }: { before?: { createdAt: number; id: string }; limit: number },
+) {
+  return db
+    .select()
+    .from(turns)
+    .where(
+      and(
+        eq(turns.organizationId, organizationId),
+        eq(turns.userAgentId, userAgentId),
+        // A row value lets SQLite seek turns_agent_page; an OR of the two parts walks the index
+        // from the newest turn, so deep pages would get slower.
+        before && sql`(${turns.createdAt}, ${turns.id}) < (${before.createdAt}, ${before.id})`,
+      ),
+    )
+    .orderBy(desc(turns.createdAt), desc(turns.id))
+    .limit(limit + 1);
 }
 
 export function turnRepository(run: RunTransaction) {
@@ -85,11 +108,25 @@ export function turnRepository(run: RunTransaction) {
                   options.before === undefined ? undefined : lt(turns.createdAt, options.before),
                 ),
               )
-              .orderBy(desc(turns.createdAt))
+              .orderBy(desc(turns.createdAt), desc(turns.id))
               .limit(options.limit ?? 50)
               .all()
           : [],
       ),
+    /**
+     * One page of an agent's turns, newest first. A claim gives several turns the same start
+     * time, so the cursor is the last turn's start time and ID.
+     */
+    forAgent: (
+      organizationId: string,
+      userAgentId: string,
+      options: { before?: { createdAt: number; id: string }; limit: number },
+    ) =>
+      run(async (tx) => {
+        const rows = await agentTurnsPage(tx, organizationId, userAgentId, options).all();
+        const { limit } = options;
+        return { rows: rows.slice(0, limit), more: rows.length > limit };
+      }),
     /** Records the rendered input before the turn command. */
     prepared: (
       id: string,

@@ -1,5 +1,6 @@
 import { sessionKeys } from "@substrate/contracts/agent-work";
 import type { HarnessKind } from "@substrate/contracts/harness";
+import { newId } from "@substrate/contracts/ids";
 
 import type { RunTransaction } from "../database.ts";
 import { inbox, routines, sessions } from "../schema/index.ts";
@@ -39,7 +40,7 @@ export function routineRepository(run: RunTransaction) {
       run(async (tx) => {
         const [row] = await tx
           .insert(routines)
-          .values({ id: crypto.randomUUID(), ...input, createdAt: now })
+          .values({ id: newId(), ...input, createdAt: now })
           .returning();
         return row!;
       }),

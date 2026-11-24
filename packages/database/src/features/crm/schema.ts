@@ -3,6 +3,7 @@ import type { DealOutcome } from "@substrate/contracts/crm/input";
 import { actors } from "../../core/actors/schema";
 import { contacts } from "../../core/contacts/schema";
 import { entities, entityType } from "../../core/entities/schema";
+import { idColumn } from "../../core/ids";
 import { organization } from "../../core/organizations/schema";
 import { sql } from "drizzle-orm";
 import {
@@ -65,7 +66,7 @@ export const crmContactProfiles = pgTable(
 export const crmAffiliations = pgTable(
   "crm_affiliations",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     organizationId: text("organization_id").notNull(),
     contactEntityId: uuid("contact_entity_id").notNull(),
     accountEntityId: uuid("account_entity_id").notNull(),
@@ -91,7 +92,7 @@ export const crmAffiliations = pgTable(
 export const crmStages = pgTable(
   "crm_stages",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
@@ -152,7 +153,7 @@ export const crmDeals = pgTable(
 export const crmDealContacts = pgTable(
   "crm_deal_contacts",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     organizationId: text("organization_id").notNull(),
     dealEntityId: uuid("deal_entity_id").notNull(),
     contactEntityId: uuid("contact_entity_id").notNull(),

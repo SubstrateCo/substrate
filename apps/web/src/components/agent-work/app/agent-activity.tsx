@@ -99,7 +99,10 @@ export function AgentActivity({
       onRetry={() => void activity.refetch()}
       hasMore={activity.hasNextPage}
       loadingMore={activity.isFetchingNextPage}
-      onMore={() => void activity.fetchNextPage()}
+      onMore={() => {
+        // A next page during a refresh would cancel the refresh.
+        if (!activity.isFetching) void activity.fetchNextPage();
+      }}
       onTranscript={onTranscript}
     />
   );

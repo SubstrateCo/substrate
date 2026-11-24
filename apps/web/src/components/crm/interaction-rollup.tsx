@@ -18,6 +18,7 @@ import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { resourceState } from "@/lib/resource-state";
 import { useInteractionSources } from "@/queries/calendar/interaction-sources";
 import { crmTimelineOptions } from "@/queries/crm/options";
+import { keepPageWhileTurning } from "@/queries/page-turn";
 
 export function InteractionRollup({
   organizationId,
@@ -30,7 +31,8 @@ export function InteractionRollup({
 }) {
   const [mode, setMode] = useState<CrmTimelineMode>(kind === "deal" ? "linked" : "participants");
   const pages = useCursorPages<{ beforeOccurredAt: string; beforeEntityId: string }>();
-  const query = useQuery(crmTimelineOptions(organizationId, entityId, mode, pages.cursor ?? null));
+  const options = crmTimelineOptions(organizationId, entityId, mode, pages.cursor ?? null);
+  const query = useQuery({ ...options, placeholderData: keepPageWhileTurning(options.queryKey) });
   const rows = resourceState(query).data ?? [];
   const apps = useOrganizationApps();
   const sources = useInteractionSources(organizationId, rows, apps.enabled("calendar"));
@@ -81,7 +83,7 @@ export function InteractionRollup({
           </div>
         }
       />
-      {!query.isPending && !query.error && !rows.length && (
+      {query.isSuccess && !rows.length && (
         <ContentNotice variant="inline" title="No interactions in this view" />
       )}
       {rows.length > 0 && (

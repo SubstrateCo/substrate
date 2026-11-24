@@ -116,7 +116,7 @@ export const crmTools = {
   list_crm_records: {
     title: "List and search CRM records",
     description:
-      "List readable customer accounts, contacts or deals. Set search to find candidates before creating a record. A name or domain match is not identity proof. Results use afterEntityId pagination.",
+      "List readable customer accounts, contacts or deals. Set search to find candidates before creating a record. A name or domain match is not identity proof. To continue, pass nextAfterEntityId as afterEntityId with the same kind, search and archived; with other filters it skips matches.",
     readOnly: true,
     input: crmList.omit({ organizationId: true }).extend({ kind }).strict(),
     output: z.object({ items: z.array(record), nextAfterEntityId: id.nullable() }),
@@ -238,9 +238,7 @@ export const crmTools = {
       items: z.array(record),
       nextBefore: interactionCursor
         .nullable()
-        .describe(
-          "Continuation when the page is full. Following it can return an empty final page.",
-        ),
+        .describe("Continuation when more interactions follow; null on the last page."),
     }),
   },
   create_crm_interaction: {

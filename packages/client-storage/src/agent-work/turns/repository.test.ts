@@ -1,7 +1,10 @@
 import { inboxLaneAgingMs, sessionKeys } from "@substrate/contracts/agent-work";
 
 import { background, createSession, item, openTestStore, system } from "../test-support.ts";
+import { agentTurnsPage } from "./repository.ts";
+import { Database } from "bun:sqlite";
 import { afterEach, beforeEach, expect, test } from "bun:test";
+import { drizzle } from "drizzle-orm/sqlite-proxy";
 import { rejects } from "node:assert/strict";
 
 let fixture: Awaited<ReturnType<typeof openTestStore>>;
@@ -25,6 +28,61 @@ test("an agent's sessions share one main slot, so only one of them runs at a tim
   expect(second.map((claimed) => claimed.session.id)).toEqual([
     first[0]!.session.id === dm.id ? thread.id : dm.id,
   ]);
+});
+
+test("an agent's turns page newest first without skipping turns that share a start time", async () => {
+  const { store } = fixture;
+  const session = await createSession(store);
+  const created: string[] = [];
+  for (let i = 0; i < 4; i++) {
+    await store.inbox.intake([item(session)], 0);
+    const [claimed] = await store.turns.claim(5, { organizationId: "org-1" });
+    await store.turns.finish(claimed!.turn.id, { status: "completed" }, 5);
+    created.push(claimed!.turn.id);
+  }
+  await createSession(store, { userAgentId: "other" }).then((other) =>
+    store.inbox.intake([item(other)], 0),
+  );
+  await store.turns.claim(5, { organizationId: "org-1" });
+
+  const first = await store.turns.forAgent("org-1", "agent-1", { limit: 3 });
+  expect(first.rows).toHaveLength(3);
+  const last = first.rows.at(-1)!;
+  const second = await store.turns.forAgent("org-1", "agent-1", {
+    limit: 3,
+    before: { createdAt: last.createdAt, id: last.id },
+  });
+  expect(second.more).toBe(false);
+  const paged = [...first.rows, ...second.rows].map((turn) => turn.id);
+  expect(first.more).toBe(true);
+  expect(paged.toSorted()).toEqual(created.toSorted());
+  expect(paged).toEqual(created.toReversed());
+});
+
+test("a deep activity page seeks the agent index from its cursor", () => {
+  const query = agentTurnsPage(
+    drizzle(async () => ({ rows: [] })),
+    "org-1",
+    "agent-1",
+    {
+      before: { createdAt: 5, id: "turn" },
+      limit: 30,
+    },
+  ).toSQL();
+  const sqlite = new Database(fixture.path, { readonly: true });
+  try {
+    // SAFETY: these are the statement's own bound values.
+    const params = query.params as never[];
+    const plan = sqlite
+      .query<{ detail: string }, never[]>(`explain query plan ${query.sql}`)
+      .all(...params);
+    // The seek starts at the cursor; a scan of the agent's range would grow with each page.
+    expect(plan.map((step) => step.detail)).toContain(
+      "SEARCH turns USING INDEX turns_agent_page (organization_id=? AND user_agent_id=? AND (created_at,id)<(?,?))",
+    );
+  } finally {
+    sqlite.close();
+  }
 });
 
 test("the device runs at most three live turns", async () => {

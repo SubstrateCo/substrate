@@ -130,6 +130,10 @@ export function AppTable<TData extends RowData>({
     },
     onPaginationChange: server ? undefined : setClientPage,
   });
+  // Removing the last row of the last page would leave an empty page with no pager to go back.
+  const lastPage = Math.max(0, table.getPageCount() - 1);
+  if (!server && clientPage.pageIndex > lastPage)
+    setClientPage({ ...clientPage, pageIndex: lastPage });
   const rows = table.getRowModel().rows;
   // With no rows, show only the notice, without the frame: sortable headers over nothing are noise.
   const hasRows = rows.length > 0;

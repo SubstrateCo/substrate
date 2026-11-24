@@ -1,10 +1,10 @@
+import { newId } from "@substrate/contracts/ids";
 import type { MailColor, MailLabel } from "@substrate/contracts/mail";
 import type { LabelDisplayChange } from "@substrate/contracts/mail/ipc";
 
 import type { RunTransaction } from "../database.ts";
 import { mailConnections, mailMessages } from "../schema/mail.ts";
 import { and, eq, isNull, lt, ne, or } from "drizzle-orm";
-import { randomUUID } from "node:crypto";
 
 type Grant = Pick<
   typeof mailConnections.$inferInsert,
@@ -86,7 +86,7 @@ export function mailConnectionRepository(run: RunTransaction, org: string) {
       run(async (tx) => {
         const [row] = await tx
           .insert(mailConnections)
-          .values({ ...grant, id: randomUUID(), organizationId: org })
+          .values({ ...grant, id: newId(), organizationId: org })
           .onConflictDoUpdate({
             target: [
               mailConnections.organizationId,

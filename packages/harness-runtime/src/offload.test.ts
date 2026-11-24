@@ -31,6 +31,33 @@ test("small outputs stay inline", async () => {
   expect(await readdir(root)).toEqual([]);
 });
 
+test("an offloaded page names its cursor, which the preview would cut off", async () => {
+  const page = await offloadOutput(root, turnId, "list_projects", 1, {
+    ...large,
+    nextCursor: "page-2",
+  });
+  expect(page?.summary.slice(0, 300)).toContain('200 items, nextCursor: "page-2"');
+
+  const message = (index: number) => ({
+    id: crypto.randomUUID(),
+    author: {
+      id: crypto.randomUUID(),
+      name: "Alice",
+      type: "human" as const,
+      kind: "owner" as const,
+    },
+    body: `Reply ${index} ${"x".repeat(80)}`,
+    createdAt: "2026-11-24T12:00:00.000Z",
+    records: [],
+  });
+  const thread = await offloadOutput(root, turnId, "read_thread", 2, {
+    conversationId: crypto.randomUUID(),
+    root: message(0),
+    replies: { items: Array.from({ length: 200 }, (_, index) => message(index)), nextCursor: null },
+  });
+  expect(thread?.summary.slice(0, 300)).toContain("replies: 200 items, nextCursor: null");
+});
+
 test("offload refuses path segments and redirected folders", async () => {
   await rejects(offloadOutput(root, "../escape", "get_me", 1, large), {
     code: "invalid-id",

@@ -14,14 +14,11 @@ import { tasks } from "../tasks/tasks.schema";
 import { authorSelection } from "./authors";
 import { excerpt, iso } from "./formatting";
 import { recordsOfMessages } from "./links";
-import { newestFirstPagination } from "./pagination";
+import { newest, newestFirstPagination } from "./pagination";
 import { and, desc, eq, isNull, sql, type SQL, type SQLWrapper } from "drizzle-orm";
 
 type Timestamp = Date | string;
 type Page = ReturnType<typeof newestFirstPagination>;
-
-// Sort by whole milliseconds, so SQL, the merged page and the cursor agree on equal times.
-const newest = (column: SQLWrapper) => sql<Timestamp>`date_trunc('milliseconds', ${column})`;
 
 /** Each type's query reads one page of rows older than the cursor, in the same order. */
 function window(p: Page, time: SQL, id: SQLWrapper) {
@@ -50,7 +47,7 @@ async function newestPage<T extends { id: string; at: Timestamp }>(
     if (a.id === b.id) return 0;
     return a.id < b.id ? 1 : -1;
   });
-  const page = p.page(rows);
+  const page = p.page(rows, (row) => row);
   return { items: page.items.map(({ row }) => row), nextCursor: page.nextCursor };
 }
 

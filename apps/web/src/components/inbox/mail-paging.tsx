@@ -112,12 +112,16 @@ export function useMailPages(
     const shown = current.pages[current.index]!.length;
     const retryPage = !shown || (shown < mailPageSize && !!current.issue);
     const previous = retryPage ? current.pages.slice(0, -1) : current.pages;
+    // Complete pages hold every cached conversation newer than their last one. A page kept
+    // despite a provider issue may not, so the next read walks from `before` again.
+    const complete = retryPage || !current.issue;
     setHistory({ ...current, pending: true, issue: undefined });
     load.mutate(
       {
         ...folder,
         before: current.before,
         seen: previous.flat().map(conversationKey),
+        shownThrough: complete ? previous.at(-1)?.at(-1)?.timestamp : undefined,
         sources: current.sources,
       },
       {

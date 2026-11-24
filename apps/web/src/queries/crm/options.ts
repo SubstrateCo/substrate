@@ -52,6 +52,32 @@ export const dealsOptions = (
       }),
     retry: false,
   });
+/** The most open deals the pipeline board loads. Each request reads one page of 100. */
+export const pipelineDealLimit = 1000;
+
+/**
+ * Every open deal for the pipeline board, up to the limit. A board shows all open deals by
+ * stage, so it reads pages of open deals until the last one instead of one page of all deals.
+ */
+export const pipelineDealsOptions = (organizationId: string, search = "") =>
+  queryOptions({
+    queryKey: [...queryKeys.crmList(organizationId, "deals", search, false), "pipeline"],
+    queryFn: async ({ signal }) => {
+      const deals = [];
+      let afterEntityId: string | undefined;
+      for (;;) {
+        const page = await listDeals({
+          data: { organizationId, search, archived: "active", afterEntityId, outcome: "open" },
+          signal,
+        });
+        deals.push(...page);
+        afterEntityId = page.at(-1)?.entityId;
+        if (page.length < 100 || !afterEntityId || deals.length >= pipelineDealLimit)
+          return { deals, truncated: page.length === 100 };
+      }
+    },
+    retry: false,
+  });
 export const accountOptions = (organizationId: string, entityId: string) =>
   queryOptions({
     queryKey: queryKeys.crmRecord(organizationId, "accounts", entityId),

@@ -1,5 +1,7 @@
 import type { ActorScope } from "../../core/repository-context";
 import { ValidationError } from "../../errors";
+import { iso } from "./formatting";
+import { sql, type SQL, type SQLWrapper } from "drizzle-orm";
 import { createHash } from "node:crypto";
 
 const maximumOffset = 1_000_000;
@@ -48,14 +50,34 @@ export function newestFirstPagination(
   return {
     before: position ? { at: new Date(Number(ms)).toISOString(), id: id! } : undefined,
     take: input.limit + 1,
-    page<T extends { id: string; ms: number }>(rows: T[]) {
+    /** `position` reads a row's time in milliseconds and its ID, the order's sort key. */
+    page<T>(rows: T[], position: (row: T) => { id: string; ms: number }) {
       const items = rows.slice(0, input.limit);
-      const last = items.at(-1);
-      const hasMore = rows.length > input.limit && last;
-      return { items, nextCursor: hasMore ? codec.encode(`${last.ms}_${last.id}`) : null };
+      const last = rows.length > input.limit ? items.at(-1) : undefined;
+      if (last === undefined) return { items, nextCursor: null };
+      const { ms, id } = position(last);
+      return { items, nextCursor: codec.encode(`${ms}_${id}`) };
     },
   };
 }
+
+type NewestFirst = ReturnType<typeof newestFirstPagination>;
+
+/** Whole milliseconds, so the SQL order, a merged page and the cursor agree on equal times. */
+export const newest = (time: SQLWrapper) => sql<Date | string>`date_trunc('milliseconds', ${time})`;
+
+/** Rows after the cursor in a `newest(time) desc, id desc` order. */
+export function olderThan(p: NewestFirst, time: SQL, id: SQLWrapper) {
+  return p.before
+    ? sql`(${time}, ${id}) < (${p.before.at}::timestamptz, ${p.before.id}::uuid)`
+    : undefined;
+}
+
+/** The cursor position of a row that selected its `newest(...)` sort time as `at`. */
+export const position = (row: { id: string; at: Date | string }) => ({
+  id: row.id,
+  ms: Date.parse(iso(row.at)),
+});
 
 export function pagination(
   scope: ActorScope,

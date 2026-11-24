@@ -13,7 +13,7 @@ import { alias } from "drizzle-orm/sqlite-core";
 export async function cachedConversations(
   tx: LocalTransaction,
   org: string,
-  q: MailFolder & Partial<Pick<OlderMailQuery, "before" | "seen">>,
+  q: MailFolder & Partial<Pick<OlderMailQuery, "before" | "seen" | "shownThrough">>,
 ) {
   const now = Date.now();
   const { match, priority, inbox } = conversationFilter(q, now);
@@ -55,6 +55,9 @@ export async function cachedConversations(
         eq(mailMessages.organizationId, org),
         q.mailboxId === null ? undefined : eq(mailMessages.mailboxId, q.mailboxId),
         q.before === undefined ? undefined : lte(mailMessages.timestamp, q.before),
+        // Start at the last shown time, so a deep page does not walk every shown row again.
+        // Ties at that time stay in range; `seen` drops the shown ones.
+        q.shownThrough === undefined ? undefined : lte(mailMessages.timestamp, q.shownThrough),
         priority,
         inbox ? or(match, exists(inInbox)) : undefined,
         // Match conversationKey regardless of which reply represents a previously visited thread.

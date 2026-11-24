@@ -13,7 +13,7 @@ import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { authorSelection } from "./authors";
 import { excerpt, iso } from "./formatting";
 import { recordsOfMessages } from "./links";
-import { pagination } from "./pagination";
+import { newest, newestFirstPagination, olderThan, pagination, position } from "./pagination";
 import { and, asc, desc, eq, sql, type SQL } from "drizzle-orm";
 
 export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIdentity) {
@@ -23,9 +23,13 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
   const replyCount = sql<number>`(select count(*)::int ${replies()})`;
   const lastReplyAt = sql<string | null>`(select max(r.created_at)::text ${replies()})`;
   return {
+    // New messages move a conversation to the top while the agent pages. Pages continue from the
+    // last conversation's position, so a move cannot repeat or skip the others.
     async listConversations(input: McpInput<"list_conversations">) {
-      const p = pagination(scope, "list_conversations", input);
+      const p = newestFirstPagination(scope, "list_conversations", input);
       const lastActivity = sql<Date | null>`(select max(m.created_at) from ${messagingMessages} m where m.conversation_id = ${messagingConversations.id})`;
+      // A conversation without messages is as active as its creation.
+      const activeAt = newest(sql`coalesce(${lastActivity}, ${messagingConversations.createdAt})`);
       const rows = await db
         .select({
           id: messagingConversations.id,
@@ -35,6 +39,7 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
             excludeActorId: scope.actorEntityId,
           }),
           lastActivityAt: lastActivity,
+          at: activeAt,
         })
         .from(messagingConversations)
         .where(
@@ -44,17 +49,21 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
             input.activeSince
               ? sql`${lastActivity} >= ${input.activeSince}::timestamptz`
               : undefined,
+            olderThan(p, activeAt, messagingConversations.id),
           ),
         )
-        .orderBy(sql`${lastActivity} desc nulls last`, desc(messagingConversations.id))
-        .offset(p.offset)
+        .orderBy(desc(activeAt), desc(messagingConversations.id))
         .limit(p.take);
-      return p.page(
-        rows.map((row) => ({
-          ...row,
+      const page = p.page(rows, position);
+      return {
+        items: page.items.map((row) => ({
+          id: row.id,
+          kind: row.kind,
+          name: row.name,
           lastActivityAt: row.lastActivityAt ? iso(row.lastActivityAt) : null,
         })),
-      );
+        nextCursor: page.nextCursor,
+      };
     },
     async readConversation(input: McpInput<"read_conversation">) {
       const [conversation] = await db
@@ -67,7 +76,8 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
           ),
         );
       if (!conversation) throw new AccessDeniedError();
-      const p = pagination(scope, "read_conversation", input);
+      // A reply moves its root to the top; pages continue from the last root's position.
+      const p = newestFirstPagination(scope, "read_conversation", input);
       const bounds = (column: SQL) =>
         sql.join(
           [
@@ -82,9 +92,11 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
         string | null
       >`(select max(r.created_at) ${replies(windowed ? sql`and ${bounds(sql`r.created_at`)}` : sql``)})`;
       // A root is shown when it was posted in the window or its thread got a reply in the window.
-      const activity = windowed
-        ? sql`greatest(case when ${posted} then ${messagingMessages.createdAt} end, ${replyInWindow}::timestamptz)`
-        : sql`greatest(${messagingMessages.createdAt}, ${lastReplyAt}::timestamptz)`;
+      const activity = newest(
+        windowed
+          ? sql`greatest(case when ${posted} then ${messagingMessages.createdAt} end, ${replyInWindow}::timestamptz)`
+          : sql`greatest(${messagingMessages.createdAt}, ${lastReplyAt}::timestamptz)`,
+      );
       const rows = await db
         .select({
           id: messagingMessages.id,
@@ -94,6 +106,7 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
           replyCount,
           lastReplyAt,
           posted: sql<boolean>`${posted}`,
+          at: activity,
         })
         .from(messagingMessages)
         .innerJoin(actors, eq(actors.entityId, messagingMessages.authorActorEntityId))
@@ -104,25 +117,29 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
             eq(messagingMessages.conversationId, input.conversationId),
             sql`${messagingMessages.threadId} is null`,
             windowed ? sql`(${posted} or ${replyInWindow} is not null)` : undefined,
+            olderThan(p, activity, messagingMessages.id),
           ),
         )
-        .orderBy(sql`${activity} desc`, desc(messagingMessages.id))
-        .offset(p.offset)
+        .orderBy(desc(activity), desc(messagingMessages.id))
         .limit(p.take);
+      const page = p.page(rows, position);
       const records = await recordsOfMessages(
         ctx,
-        rows.slice(0, input.limit).map((row) => row.id),
+        page.items.map((row) => row.id),
       );
-      return p.page(
-        rows.map(({ body, posted, ...row }): McpOutput<"read_conversation">["items"][number] => ({
-          ...row,
-          ...excerpt(body),
-          createdAt: iso(row.createdAt),
-          lastReplyAt: row.lastReplyAt ? iso(row.lastReplyAt) : null,
-          includedBecause: posted ? "posted" : "thread_activity",
-          records: records.get(row.id) ?? [],
-        })),
-      );
+      return {
+        items: page.items.map(
+          ({ body, posted, at: _at, ...row }): McpOutput<"read_conversation">["items"][number] => ({
+            ...row,
+            ...excerpt(body),
+            createdAt: iso(row.createdAt),
+            lastReplyAt: row.lastReplyAt ? iso(row.lastReplyAt) : null,
+            includedBecause: posted ? "posted" : "thread_activity",
+            records: records.get(row.id) ?? [],
+          }),
+        ),
+        nextCursor: page.nextCursor,
+      };
     },
     async readThread(input: McpInput<"read_thread">): Promise<McpOutput<"read_thread">> {
       const { message } = await requireMessage(db, identity, input.messageId);

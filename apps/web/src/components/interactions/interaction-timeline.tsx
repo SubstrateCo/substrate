@@ -1,6 +1,6 @@
 import type { InteractionTimeline as TimelineInput } from "@substrate/contracts/context/interactions";
 
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { useState, type ReactNode } from "react";
 
@@ -83,7 +83,9 @@ export function InteractionTimeline({
         </Select>
       </div>
       <TimelinePage
-        key={`${debounced.query}:${kind}:${origin}`}
+        // Each period and filter pages from its own start: a cursor from another one would
+        // skip that list's newest interactions.
+        key={JSON.stringify([period, debounced.query, kind, origin])}
         period={period}
         search={debounced.query}
         kind={kind}
@@ -118,7 +120,12 @@ function TimelinePage({
     ...pages.cursor,
   };
   const apps = useOrganizationApps();
-  const query = useQuery({ ...interactionTimelineOptions(input), enabled: !pending });
+  // The view remounts for each filter, so a placeholder here is always the previous page.
+  const query = useQuery({
+    ...interactionTimelineOptions(input),
+    enabled: !pending,
+    placeholderData: keepPreviousData,
+  });
   const sources = useInteractionSources(
     period.organizationId,
     query.data?.items ?? [],

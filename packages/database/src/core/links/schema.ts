@@ -1,5 +1,6 @@
 import { actors } from "../actors/schema";
 import { entities } from "../entities/schema";
+import { idColumn } from "../ids";
 import { sql } from "drizzle-orm";
 import {
   check,
@@ -23,7 +24,7 @@ export const relationType = pgEnum("relation_type", relationTypes);
 export const entityLinks = pgTable(
   "entity_links",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     organizationId: text("organization_id").notNull(),
     sourceEntityId: uuid("source_entity_id").notNull(),
     targetEntityId: uuid("target_entity_id").notNull(),

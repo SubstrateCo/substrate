@@ -52,7 +52,8 @@ export function ReactionList({
           variant="ghost"
           className="mt-2 w-full"
           pending={isFetchingNextPage}
-          onClick={() => void fetchNextPage()}
+          // Do not cancel a refresh that a reaction change started.
+          onClick={() => void fetchNextPage({ cancelRefetch: false })}
         >
           Load more
         </PendingButton>

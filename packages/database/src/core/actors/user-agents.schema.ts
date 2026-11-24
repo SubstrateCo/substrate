@@ -2,6 +2,7 @@ import type { AgentCallerPolicy } from "@substrate/contracts/agents";
 
 import { user } from "../authentication/schema";
 import { desktopDevices } from "../devices/schema";
+import { idColumn } from "../ids";
 import { storedFiles } from "../storage/schema";
 import { sql } from "drizzle-orm";
 import {
@@ -20,7 +21,7 @@ import {
 export const userAgents = pgTable(
   "user_agents",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     userId: text("user_id")
       .notNull()
       .references(() => user.id, { onDelete: "cascade" }),

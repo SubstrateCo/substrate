@@ -12,6 +12,7 @@ import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { resourceState } from "@/lib/resource-state";
 import { notificationGroupsOptions, type GroupRead } from "@/queries/context/notification-groups";
 import { useReadNotifications } from "@/queries/context/notification-mutations";
+import { useFirstPageOnLeave } from "@/queries/first-page";
 import { toast } from "sonner";
 
 export function NotificationList({
@@ -24,6 +25,9 @@ export function NotificationList({
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const apps = useOrganizationApps();
   const feed = useInfiniteQuery(notificationGroupsOptions(organizationId, filter));
+  // Switching filters keeps each feed's loaded pages; closing the panel keeps only the first.
+  useFirstPageOnLeave(notificationGroupsOptions(organizationId, "all").queryKey);
+  useFirstPageOnLeave(notificationGroupsOptions(organizationId, "unread").queryKey);
   const resource = resourceState(feed);
   const read = useReadNotifications(organizationId);
   const markRead = (target: GroupRead) =>

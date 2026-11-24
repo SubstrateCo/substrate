@@ -12,6 +12,7 @@ import type {
 import { actors } from "../../../core/actors/schema";
 import { userAgents } from "../../../core/actors/user-agents.schema";
 import { user } from "../../../core/authentication/schema";
+import { idColumn } from "../../../core/ids";
 import { messagingConversations, messagingMessages } from "../../messaging/schema";
 import { sql } from "drizzle-orm";
 import {
@@ -32,7 +33,7 @@ import {
 export const agentRequests = pgTable(
   "agent_requests",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     organizationId: text("organization_id").notNull(),
     userAgentId: uuid("user_agent_id").notNull(),
     ownerUserId: text("owner_user_id").notNull(),

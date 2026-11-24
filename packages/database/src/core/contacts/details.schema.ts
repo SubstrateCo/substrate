@@ -1,3 +1,4 @@
+import { idColumn } from "../ids";
 import { contacts } from "./schema";
 import { sql } from "drizzle-orm";
 import {
@@ -14,7 +15,7 @@ import {
 
 function detailColumns() {
   return {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     organizationId: text("organization_id").notNull(),
     contactEntityId: uuid("contact_entity_id").notNull(),
     label: text("label"),

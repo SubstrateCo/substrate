@@ -10,6 +10,7 @@ import type {
 import { actors } from "../../core/actors/schema";
 import { account } from "../../core/authentication/schema";
 import { entities, entityType } from "../../core/entities/schema";
+import { idColumn } from "../../core/ids";
 import { sql } from "drizzle-orm";
 import {
   boolean,
@@ -162,7 +163,7 @@ export const calendarEvents = pgTable(
 export const calendarEventAttendees = pgTable(
   "calendar_event_attendees",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     organizationId: text("organization_id").notNull(),
     eventEntityId: uuid("event_entity_id").notNull(),
     email: text("email").notNull(),

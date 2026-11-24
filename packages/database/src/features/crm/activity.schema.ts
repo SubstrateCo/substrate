@@ -2,13 +2,14 @@ import type { CrmActivityInput } from "@substrate/contracts/crm/activity";
 
 import { actors } from "../../core/actors/schema";
 import { entities, entityType } from "../../core/entities/schema";
+import { idColumn } from "../../core/ids";
 import { organization } from "../../core/organizations/schema";
 import { foreignKey, index, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 
 export const crmActivityEvents = pgTable(
   "crm_activity_events",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),

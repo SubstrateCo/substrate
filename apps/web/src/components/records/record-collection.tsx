@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, type QueryKey } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
 import { useState } from "react";
@@ -12,7 +12,7 @@ import { RecordList } from "@/components/crm/record-list";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
-import { Pager, useCursorPages, type AppTablePagination } from "@/components/table";
+import { useCursorPages, type AppTablePagination } from "@/components/table";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
@@ -25,9 +25,12 @@ import { contactsOptions } from "@/queries/contacts/options";
 import {
   accountsOptions,
   dealsOptions,
+  pipelineDealLimit,
+  pipelineDealsOptions,
   pipelineOptions,
   crmSettingsOptions,
 } from "@/queries/crm/options";
+import { keepPageWhileTurning } from "@/queries/page-turn";
 import { useRecordMutation } from "@/queries/records/mutations";
 import { cn } from "cn";
 import { Plus } from "lucide-react";
@@ -41,27 +44,39 @@ function useCollectionQueries(
   archived: boolean,
   afterEntityId: string | undefined,
   creating: boolean,
+  /** The pipeline board reads all open deals instead of one page of deals. */
+  board: boolean,
 ) {
   const apps = useOrganizationApps();
   const scopedFilters = (section: CrmKind) =>
     kind === section
       ? ([search, archived, afterEntityId] as const)
       : (["", false, undefined] as const);
+  // A page turn keeps the current page on screen until the next one arrives.
+  const paged = <T extends { queryKey: QueryKey }>(options: T) => ({
+    ...options,
+    placeholderData: keepPageWhileTurning(options.queryKey),
+  });
   const accounts = useQuery({
-    ...accountsOptions(organizationId, ...scopedFilters("accounts")),
+    ...paged(accountsOptions(organizationId, ...scopedFilters("accounts"))),
     enabled: apps.enabled("crm") && !pending && (kind === "accounts" || creating),
   });
   const contacts = useQuery({
-    ...contactsOptions(organizationId, ...scopedFilters("contacts")),
+    ...paged(contactsOptions(organizationId, ...scopedFilters("contacts"))),
     enabled: !pending && (kind === "contacts" || creating),
   });
+  // The list also loads under the board, so switching views shows rows at once.
   const deals = useQuery({
-    ...dealsOptions(organizationId, search, archived, afterEntityId),
+    ...paged(dealsOptions(organizationId, search, archived, afterEntityId)),
     enabled: kind === "deals" && !pending,
+  });
+  const boardDeals = useQuery({
+    ...pipelineDealsOptions(organizationId, search),
+    enabled: kind === "deals" && !pending && board,
   });
   const pipeline = useQuery({ ...pipelineOptions(organizationId), enabled: kind === "deals" });
   const settings = useQuery({ ...crmSettingsOptions(organizationId), enabled: kind === "deals" });
-  return { accounts, contacts, deals, pipeline, settings };
+  return { accounts, contacts, deals, boardDeals, pipeline, settings };
 }
 
 function collectionRecords(
@@ -122,6 +137,7 @@ export function RecordCollection({
   const pages = useCursorPages<string>();
   const navigate = useNavigate();
   const mutation = useRecordMutation(organizationId, kind);
+  const showPipeline = kind === "deals" && view === "pipeline" && !archived;
   const queries = useCollectionQueries(
     organizationId,
     kind,
@@ -129,9 +145,9 @@ export function RecordCollection({
     archived,
     pages.cursor,
     creating,
+    showPipeline,
   );
   const records = collectionRecords(kind, queries);
-  const showPipeline = kind === "deals" && view === "pipeline" && !archived;
   return (
     // The pipeline's columns scroll on their own, so the page does not.
     <div
@@ -291,8 +307,8 @@ function RecordCollectionHeader({
 function RecordCollectionResults({
   organizationId,
   kind,
-  records: { query, state, rows, stages },
-  queries: { deals, pipeline, settings },
+  records: { query: listQuery, state: listState, rows, stages },
+  queries: { boardDeals, pipeline, settings },
   searchPending,
   showPipeline,
   pages,
@@ -312,6 +328,9 @@ function RecordCollectionResults({
 }) {
   // One error per failed load: deals also need the pipeline and settings.
   const dealsError = kind === "deals" ? (pipeline.error ?? settings.error) : null;
+  const boardState = resourceState(boardDeals);
+  const query = showPipeline ? boardDeals : listQuery;
+  const state = showPipeline ? boardState : listState;
   // The API returns up to `pageSize` records after a cursor and no total.
   const pagination = {
     mode: "server",
@@ -355,19 +374,14 @@ function RecordCollectionResults({
             <DealPipeline
               organizationId={organizationId}
               stages={stages}
-              deals={(resourceState(deals).data ?? []).filter((deal) => deal.outcome === "open")}
+              deals={boardState.data?.deals ?? []}
               onCreate={filtered ? undefined : onCreate}
             />
-            {(pagination.pageIndex > 0 || pagination.hasNextPage) && (
-              <Pager
-                name="Deals"
-                pageIndex={pagination.pageIndex}
-                pageCount={-1}
-                canPrevious={pagination.pageIndex > 0}
-                canNext={pagination.hasNextPage}
-                disabled={query.isFetching}
-                onPageChange={pagination.onPageChange}
-              />
+            {boardState.data?.truncated && (
+              <p className="text-sm text-muted-foreground">
+                The board shows the first {pipelineDealLimit.toLocaleString()} open deals. Search or
+                use the list to find others.
+              </p>
             )}
           </>
         ) : (

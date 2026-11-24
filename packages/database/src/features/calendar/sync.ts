@@ -5,6 +5,7 @@ import {
   type ProviderCalendarEvent,
   type ProviderSyncResult,
 } from "@substrate/contracts/calendar";
+import { newId } from "@substrate/contracts/ids";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { activeActorCondition } from "../../core/actors/access";
@@ -293,7 +294,7 @@ async function writeCalendarSync(
     for (const row of rows) existing.set(row.providerEventId, row.entityId);
   }
   const created = [...incoming.keys()].flatMap((id) =>
-    existing.has(id) ? [] : [[id, crypto.randomUUID()] as const],
+    existing.has(id) ? [] : [[id, newId()] as const],
   );
   // Events are children of the calendar, which is a root and so its own access container. The
   // lease stands in for createChildEntity's access check: only the owner's sync holds it.

@@ -11,7 +11,7 @@ import { queryTasks, queryTaskActivity, queryTaskDetail } from "../tasks/queries
 import { taskRepository } from "../tasks/repository";
 import { iso, messageRef } from "./formatting";
 import { linkSummary } from "./links";
-import { pagination } from "./pagination";
+import { newestFirstPagination, pagination } from "./pagination";
 
 export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity) {
   const { scope } = ctx;
@@ -42,15 +42,17 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
         linked: await linkSummary(ctx, identity, project.entityId),
       };
     },
+    // Updates move a task to the top, often the agent's own while it pages, so pages continue
+    // from the last task's position instead of an offset that such moves would shift.
     async listTasks(input: McpInput<"list_tasks">) {
-      const p = pagination(scope, "list_tasks", input);
+      const p = newestFirstPagination(scope, "list_tasks", input);
       const assignee = input.assigneeActorId === "me" ? scope.actorEntityId : input.assigneeActorId;
       const rows = await queryTasks(ctx, {
         projectEntityId: input.projectId,
         statuses: input.statuses,
         assigneeActorEntityId: assignee,
         parentTaskEntityId: input.parentTaskId,
-        offset: p.offset,
+        before: p.before,
         limit: p.take,
       });
       return p.page(
@@ -64,6 +66,7 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
           parentTaskId: task.parentTaskEntityId,
           updatedAt: iso(updatedAt),
         })),
+        (task) => ({ id: task.id, ms: Date.parse(task.updatedAt) }),
       );
     },
     async getTask(taskId: string): Promise<McpOutput<"get_task">> {
@@ -104,11 +107,11 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
       };
     },
     async listActivity(input: McpInput<"list_task_activity">) {
-      const p = pagination(scope, "list_task_activity", input);
+      const p = newestFirstPagination(scope, "list_task_activity", input);
       const rows = await queryTaskActivity(ctx, identity, input.taskId, {
         since: input.since ? new Date(input.since) : undefined,
         until: input.until ? new Date(input.until) : undefined,
-        offset: p.offset,
+        before: p.before,
         limit: p.take,
       });
       return p.page(
@@ -120,6 +123,7 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
               ? messageRef({ id: sourceMessageId, conversationId, threadId })
               : null,
         })),
+        (event) => ({ id: event.id, ms: Date.parse(event.createdAt) }),
       );
     },
   };

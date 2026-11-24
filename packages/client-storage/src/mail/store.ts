@@ -1,3 +1,4 @@
+import { newId } from "@substrate/contracts/ids";
 import type { MailBody, MailHeader, MailLabel } from "@substrate/contracts/mail";
 
 import { openLocalDatabase, serialTransactions } from "../database.ts";
@@ -5,7 +6,6 @@ import { mailConnections, mailMessages } from "../schema/mail.ts";
 import { mailConnectionRepository } from "./connections.ts";
 import { mailReads } from "./reads.ts";
 import { and, eq, inArray, sql } from "drizzle-orm";
-import { randomUUID } from "node:crypto";
 
 export type SyncedMail = Omit<MailHeader, "id" | "mailboxId"> & {
   remoteId: string;
@@ -58,7 +58,7 @@ export async function openMailStore(path: string, org: string, migrations?: stri
         for (const m of messages)
           await tx
             .insert(mailMessages)
-            .values({ ...m, id: randomUUID(), organizationId: org, mailboxId: id })
+            .values({ ...m, id: newId(), organizationId: org, mailboxId: id })
             .onConflictDoNothing();
       }),
     labels: (id: string, labels: Pick<MailLabel, "id" | "name">[]) =>
@@ -99,7 +99,7 @@ export async function openMailStore(path: string, org: string, migrations?: stri
         for (const message of page.messages) {
           await tx
             .insert(mailMessages)
-            .values({ ...message, id: randomUUID(), organizationId: org, mailboxId: id })
+            .values({ ...message, id: newId(), organizationId: org, mailboxId: id })
             .onConflictDoUpdate({
               target: [mailMessages.organizationId, mailMessages.mailboxId, mailMessages.remoteId],
               set: message,

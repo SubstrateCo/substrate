@@ -1,4 +1,5 @@
 import { helperMachine, maxLiveHelpers, sessionKeys } from "@substrate/contracts/agent-work";
+import { newId } from "@substrate/contracts/ids";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
 import { helpers, inbox } from "../schema/index.ts";
@@ -96,7 +97,7 @@ export function helperRepository(run: RunTransaction) {
           .where(and(eq(helpers.userAgentId, parent.userAgentId), eq(helpers.status, "running")))
           .all();
         if (running.length >= maxLiveHelpers) throw new HelperLimitError();
-        const id = crypto.randomUUID();
+        const id = newId();
         const session = await ensureSession(
           tx,
           {

@@ -2,6 +2,7 @@ import type { ConversationKind } from "@substrate/contracts/messaging/input";
 
 import { actors, actorType } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
+import { idColumn } from "../../core/ids";
 import { organization } from "../../core/organizations/schema";
 import { searchDocument, trigramKey } from "../../core/search/indexing";
 import { tasks } from "../tasks/tasks.schema";
@@ -25,7 +26,7 @@ import {
 export const messagingConversations = pgTable(
   "messaging_conversations",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     organizationId: text("organization_id")
       .notNull()
       .references(() => organization.id, { onDelete: "cascade" }),
@@ -101,7 +102,7 @@ export const messagingParticipants = pgTable(
 export const messagingMessages = pgTable(
   "messaging_messages",
   {
-    id: uuid("id").defaultRandom().primaryKey(),
+    id: idColumn(),
     conversationId: uuid("conversation_id")
       .notNull()
       .references(() => messagingConversations.id, { onDelete: "cascade" }),

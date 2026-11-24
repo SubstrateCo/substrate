@@ -1,4 +1,4 @@
-import type { RecordArchiveFilter } from "@substrate/contracts/crm/input";
+import type { DealOutcome, RecordArchiveFilter } from "@substrate/contracts/crm/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import {
@@ -20,6 +20,8 @@ export type ListOptions = {
   afterEntityId?: string;
   search?: string;
   archived?: RecordArchiveFilter;
+  /** Deals only. */
+  outcome?: DealOutcome;
 };
 
 export function crmRecordAccess(context: RepositoryContext) {

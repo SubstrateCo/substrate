@@ -87,3 +87,17 @@ test("a task change refreshes Home work only in its workspace", async () => {
   expect(client.getQueryState(other)?.isInvalidated).toBe(false);
   client.clear();
 });
+
+test("a task change refreshes Home's notification preview, which has its own key", async () => {
+  const client = new QueryClient();
+  const preview = queryKeys.notificationPreview("org");
+  // Home reads one page apart from the panel's feed, so it never holds the panel's pages.
+  expect(preview.slice(0, -1)).not.toEqual(queryKeys.notificationGroups("org", "all"));
+  client.setQueryData(preview, { items: [], nextCursor: null });
+  await invalidateTargets(
+    client,
+    domainTargets("tasks", "org", undefined, undefined, { projectId: "project", taskIds: ["t"] }),
+  );
+  expect(client.getQueryState(preview)?.isInvalidated).toBe(true);
+  client.clear();
+});
