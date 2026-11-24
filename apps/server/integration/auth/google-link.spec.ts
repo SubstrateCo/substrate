@@ -92,6 +92,7 @@ test("the Calendar connection accepts a product, not desktop client files, Gmail
   expect(invalidTicket.status()).toBe(400);
   for (const input of [
     { scopes: ["https://www.googleapis.com/auth/gmail.readonly"] },
+    { scopes: ["https://www.googleapis.com/auth/gmail.modify"] },
     { idToken: { token: "synthetic-imported-id", refreshToken: "synthetic-desktop-refresh" } },
     { additionalData: { installed } },
   ]) {

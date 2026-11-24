@@ -20,6 +20,7 @@ export const mailConnections = sqliteTable(
     address: text("address").notNull(),
     nickname: text("nickname"),
     protectedGrant: text("protected_grant").notNull(),
+    canModify: integer("can_modify", { mode: "boolean" }).notNull().default(false),
     cursor: text("cursor"),
     labels: text("labels", { mode: "json" }).$type<MailLabel[]>().notNull().default([]),
     showLabelFilters: integer("show_label_filters", { mode: "boolean" }).notNull().default(true),

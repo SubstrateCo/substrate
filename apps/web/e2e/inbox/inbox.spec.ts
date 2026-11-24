@@ -1,6 +1,44 @@
 import { test } from "../test-support/inbox";
-import { newsletterImages } from "../test-support/inbox-seed";
+import { fieldNotesSubject, newsletterImages } from "../test-support/inbox-seed";
 import { expect } from "@playwright/test";
+
+test("marking read keeps the email open; moving it to Gmail Trash preserves its conversation", async ({
+  inbox: page,
+  gmailPages,
+}) => {
+  const sidebar = page.getByRole("complementary", { name: "Mailbox navigation" });
+  const rows = page.getByRole("region", { name: "Messages", exact: true }).getByRole("button");
+  const proof = rows.filter({ hasText: "Atlas cover proofs" });
+  const reader = page.getByRole("complementary", { name: "Message reader" });
+  await sidebar.getByRole("button", { name: "Unread 3", exact: true }).click();
+  await proof.click();
+  const mark = reader.getByRole("button", { name: "Mark as read" });
+  gmailPages.unavailable = true;
+  await mark.click();
+  await expect(reader.getByRole("alert")).toContainText("Gmail hasn’t confirmed");
+  await expect(proof).toBeVisible();
+  gmailPages.unavailable = false;
+  await mark.click();
+  await expect(proof).toHaveCount(0);
+  await expect(mark).toHaveCount(0);
+  await expect(reader.getByRole("heading", { name: "Atlas cover proofs" })).toBeVisible();
+  await expect(sidebar.getByRole("button", { name: "Unread 2", exact: true })).toBeVisible();
+  const trash = reader.getByRole("button", { name: "Move to Trash", exact: true });
+  await trash.focus();
+  await expect(page.getByRole("tooltip", { name: "Move to Trash" })).toBeVisible();
+  await trash.press("Enter");
+  const confirm = page.getByRole("dialog", { name: "Move this message to Trash?" });
+  await confirm.getByRole("button", { name: "Move to Trash" }).click();
+  await expect(reader).toHaveCount(0);
+  await expect(page.getByRole("searchbox", { name: "Search messages" })).toBeFocused();
+  await sidebar.getByRole("button", { name: "Trash", exact: true }).click();
+  await proof.click();
+  await expect(reader.getByText("3 messages in this conversation")).toBeVisible();
+  await expect(reader.getByRole("button", { name: "Move to Trash" })).toHaveCount(0);
+  await reader.getByRole("button", { name: "Close message" }).click();
+  await sidebar.getByRole("button", { name: "Inbox", exact: true }).click();
+  await expect(proof).toBeVisible();
+});
 
 test("switching Inbox off blocks the rail, shortcut and deep link; switching it back on restores cached mail", async ({
   inbox: page,
@@ -40,6 +78,29 @@ test("switching Inbox off blocks the rail, shortcut and deep link; switching it 
 
 test.describe("a mailbox spanning several months", () => {
   test.use({ historySize: 113 });
+  test("a change on page two invalidates frozen pages and leaves other unread messages alone", async ({
+    inbox: page,
+  }) => {
+    const nav = page.getByRole("navigation", { name: "Message pages" });
+    const next = nav.getByRole("button", { name: "Next page" });
+    const rows = page.getByRole("region", { name: "Messages", exact: true }).getByRole("button");
+    const match = rows.filter({ hasText: "History message 46" });
+    await next.click();
+    await expect(nav).toContainText("Page 2");
+    await expect(match).toHaveAccessibleName(/^Unread\./);
+    await match.click();
+    const reader = page.getByRole("complementary", { name: "Message reader" });
+    await reader.getByRole("button", { name: "Mark as read" }).click();
+    await expect(nav).toContainText("Page 1");
+    await reader.getByRole("button", { name: "Close message" }).click();
+    await next.click();
+    await expect(match).toBeVisible();
+    await expect(match).not.toHaveAccessibleName(/^Unread\./);
+    await expect(rows.filter({ hasText: "History message 47" })).toHaveAccessibleName(/^Unread\./);
+    await nav.getByRole("button", { name: "Previous page" }).click();
+    await next.click();
+    await expect(match).not.toHaveAccessibleName(/^Unread\./);
+  });
   test("loads 50, 50 and 17; retries fill the same page and revisiting a page uses the cache", async ({
     inbox: page,
     gmailPages,
@@ -200,7 +261,7 @@ test("mailbox management updates the unified inbox and evicts an open message on
   await work.getByRole("button", { name: "Save", exact: true }).click();
   await expect(work.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
   await closeSettings.click();
-  await expect(reader.getByRole("heading", { name: "Press", exact: true })).toBeVisible();
+  await expect(reader.getByText("Press", { exact: true })).toBeVisible();
   await page
     .getByRole("complementary", { name: "Mailbox navigation" })
     .getByRole("button", { name: "Labels", exact: true })
@@ -292,6 +353,10 @@ test("unified unread expands by address; labels filter whole conversations, and 
     "https://meet.google.com/abc-defg-hij",
   );
   await expect(reader.getByText("Eastern Time – Toronto")).toBeVisible();
+  await expect(
+    reader.getByRole("button", { name: "Reconnect to enable Gmail actions" }),
+  ).toBeVisible();
+  await expect(reader.getByRole("button", { name: "Move to Trash" })).toBeDisabled();
   await reader.getByRole("button", { name: "Full invitation" }).click();
   await expect(reader.getByText(/Join by phone/)).toBeVisible();
 });
@@ -350,7 +415,7 @@ test("a label menu independently controls the sidebar and row, including conditi
   await expect(page.getByRole("menuitem", { name: "Promotions", exact: true })).toBeVisible();
 });
 
-test("all nine folders show matching mail; opening and searching a thread preserve Gmail's unread status", async ({
+test("all nine folders show matching mail; searching and briefly opening a thread leave it unread", async ({
   inbox: page,
 }) => {
   const folders = page.getByRole("navigation", { name: "Mail views" });
@@ -487,33 +552,35 @@ test("labels do not shift the mailbox picker; the toolbar stays on one row and d
   expect(Math.abs(name!.y + name!.height / 2 - (search!.y + search!.height / 2))).toBeLessThan(2);
 });
 
-test("message labels fit one line with the subject and disclose exactly how many are hidden", async ({
+test("wide Inbox rows fit labels beside the subject and disclose exactly how many are hidden", async ({
   inbox: page,
 }) => {
   const list = page.getByRole("region", { name: "Messages", exact: true });
   const row = list.getByRole("button", { name: /Notes from ÉCOLE/ });
   const labels = row.getByLabel("Labels", { exact: true });
   const chips = labels.locator(":scope > span:visible");
-  for (const width of [2200, 1100, 390, 2200]) {
+  for (const width of [2200, 1100, 2200]) {
     await page.setViewportSize({ width, height: 900 });
     await expect(row).toBeVisible();
     if (width === 2200) await expect(chips).toHaveCount(5);
     else await expect(chips.last()).toHaveText(/^\+\d+$/);
-    const text = await chips.allTextContents();
-    const hidden = text.at(-1)?.match(/^\+(\d+)$/);
-    expect(hidden ? text.length - 1 + Number(hidden[1]) : text.length).toBe(5);
-    const centers = await chips.evaluateAll((items) =>
-      items.map((item) => {
-        const { y, height } = item.getBoundingClientRect();
-        return y + height / 2;
-      }),
-    );
-    const subject = await row.getByText("Notes from ÉCOLE", { exact: true }).boundingBox();
-    centers.push(subject!.y + subject!.height / 2);
-    expect(Math.max(...centers) - Math.min(...centers)).toBeLessThanOrEqual(1);
-    const plain = await list
-      .getByRole("button", { name: /Dates for the gallery visit/ })
-      .boundingBox();
-    expect((await row.boundingBox())!.height).toBeLessThanOrEqual(plain!.height + 6);
+    // The labels refit after a resize observer runs, so check one settled layout at a time.
+    await expect(async () => {
+      const shown = await chips.evaluateAll((items) =>
+        items.map((item) => {
+          const { y, height } = item.getBoundingClientRect();
+          return { text: item.textContent ?? "", center: y + height / 2 };
+        }),
+      );
+      const hidden = shown.at(-1)?.text.match(/^\+(\d+)$/);
+      expect(hidden ? shown.length - 1 + Number(hidden[1]) : shown.length).toBe(5);
+      const subject = await row.getByText(fieldNotesSubject, { exact: true }).boundingBox();
+      const centers = [...shown.map((chip) => chip.center), subject!.y + subject!.height / 2];
+      expect(Math.max(...centers) - Math.min(...centers)).toBeLessThanOrEqual(1);
+      const plain = await list
+        .getByRole("button", { name: /Dates for the gallery visit/ })
+        .boundingBox();
+      expect((await row.boundingBox())!.height).toBeLessThanOrEqual(plain!.height + 6);
+    }).toPass();
   }
 });

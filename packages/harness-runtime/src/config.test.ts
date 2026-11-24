@@ -29,7 +29,7 @@ const agent = (harness: HarnessKind, overrides: Partial<HarnessAgent> = {}): Har
 });
 const configuration = (...agents: HarnessAgent[]): HarnessConfiguration => ({
   organizationId: "org-a",
-  enabledApps: ["messages", "agents", "tasks", "crm"],
+  enabledApps: ["messages", "agents", "tasks", "crm", "inbox"],
   agents,
 });
 const read = (directory: string, path: string) => readFile(join(directory, path), "utf8");
@@ -134,6 +134,7 @@ test("disabled apps remove only owned skill files and preserve adjacent user fil
   config.enabledApps = ["messages", "agents"];
   await materialize(root, config);
   expect(await exists(directory, `${tasks}/SKILL.md`)).toBe(false);
+  expect(await exists(directory, ".agents/skills/substrate-inbox/SKILL.md")).toBe(false);
   expect(await read(directory, `${tasks}/notes.md`)).toBe("User notes");
   expect(await read(directory, ".agents/skills/substrate-crm/SKILL.md")).toBe("User file");
   expect(await exists(directory, ".agents/skills/substrate-search/SKILL.md")).toBe(true);

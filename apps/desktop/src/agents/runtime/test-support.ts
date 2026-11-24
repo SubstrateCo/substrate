@@ -26,6 +26,7 @@ import {
 } from "@substrate/harness-runtime";
 
 import { createOpenSessions } from "../../harness/worker/open-sessions.ts";
+import type { AgentInbox } from "../../mail/agent-access.ts";
 import type { AgentWorkServer, CatalogAgent } from "../server/agent-work-server.ts";
 import { createAgentWorkRuntime } from "./runtime.ts";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
@@ -133,6 +134,7 @@ export async function runtimeFixture(
     failOpen?: boolean;
     now?: number;
     agents?: CatalogAgent[];
+    inbox?: AgentInbox;
   } = {},
 ) {
   // A restart reuses the given file. Other tests need no file.
@@ -142,6 +144,7 @@ export async function runtimeFixture(
   const accountDirectory = await mkdtemp(join(tmpdir(), "opencode", "agent-work-host-"));
   let now = options.now ?? Date.parse("2026-06-01T10:00:00Z");
   const apps: AppSettings = { organizationId, enabledApps: ["messages", "agents"] };
+  if (options.inbox) apps.enabledApps.push("inbox");
   const wakes: AgentWakeView[] = [];
   const acked = new Set<string>();
   const messages = new Map<string, AgentSourceMessage>();
@@ -287,17 +290,23 @@ export async function runtimeFixture(
 
   /** A new harness worker: its host has the organization's configuration. */
   async function startHost() {
-    host = await createHarnessHost({ accountDirectory, connect, clock: { now: () => now, later } });
+    host = await createHarnessHost({
+      accountDirectory,
+      connect,
+      clock: { now: () => now, later },
+      localTools: (request) => runtime.handleLocalTool(request),
+    });
     unsubscribe = host.subscribe(deliver);
     await host.configure({
       organizationId,
+      enabledApps: apps.enabledApps,
       agents: catalog.map((agent) => ({
         id: agent.id,
         name: agent.name,
         instructions: "",
         harness: agent.harness,
         enabled: agent.enabled,
-        useStartupDefaults: false,
+        useStartupDefaults: Boolean(options.inbox),
       })),
     });
   }
@@ -377,6 +386,7 @@ export async function runtimeFixture(
         },
         profile: async () => "",
         enabledApps: async () => apps.enabledApps,
+        inbox: options.inbox,
         now: () => now,
         log: () => {},
       },
@@ -486,6 +496,7 @@ export async function runtimeFixture(
     },
     /** Sessions open in the host. */
     nativeSessions: () => [...open.keys()],
+    toolEndpoint: (sessionId: string) => open.get(sessionId)?.context.lease?.endpoint,
     realtime,
     synchronizations,
     /** Runs the runtime's periodic tick once. */

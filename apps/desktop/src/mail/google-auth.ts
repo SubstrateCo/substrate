@@ -8,6 +8,7 @@ import { createServer } from "node:http";
 import { z } from "zod";
 
 const readScope = "https://www.googleapis.com/auth/gmail.readonly";
+const modifyScope = "https://www.googleapis.com/auth/gmail.modify";
 type GoogleRequest = (url: string, init: RequestInit) => Promise<Response>;
 const tokenResponse = z.object({
   access_token: z.string().min(1),
@@ -45,7 +46,10 @@ async function tokens(
   const result = tokenResponse.parse(await response.json());
   if (result.scope !== undefined) {
     const granted = parseGrantedScopes(result.scope);
-    if (!granted.includes(readScope) || granted.some((s) => s !== readScope && s !== "openid"))
+    if (
+      (!granted.includes(readScope) && !granted.includes(modifyScope)) ||
+      granted.some((s) => s !== readScope && s !== modifyScope && s !== "openid")
+    )
       throw new ReconnectRequired("Unexpected Gmail permissions.");
   }
   return result;
@@ -76,13 +80,13 @@ export async function connectGoogle(
       options: { clientId: client.client_id },
       authorizationEndpoint: "https://accounts.google.com/o/oauth2/v2/auth",
       redirectURI: redirect,
-      scopes: ["openid", readScope],
+      scopes: ["openid", modifyScope],
       accessType: "offline",
       prompt: "select_account consent",
       state,
       codeVerifier: verifier,
     });
-    const code = await new Promise<string>((resolve, reject) => {
+    const code = await new Promise<string | null>((resolve, reject) => {
       signal.throwIfAborted();
       const cancel = () => reject(new Error("Google authorization ended."));
       signal.addEventListener("abort", cancel, { once: true });
@@ -99,10 +103,12 @@ export async function connectGoogle(
           .end("Return to Substrate. You can close this tab.");
         signal.removeEventListener("abort", cancel);
         if (value) resolve(value);
-        else reject(new Error("Google connection cancelled."));
+        else if (url.searchParams.get("error") === "access_denied") resolve(null);
+        else reject(new Error("Google connection unavailable."));
       });
       void open(auth.href).catch(reject);
     });
+    if (code === null) return null;
     const grant = await tokens(
       client,
       { grant_type: "authorization_code", code, code_verifier: verifier, redirect_uri: redirect },
@@ -110,6 +116,10 @@ export async function connectGoogle(
       request,
     );
     if (!grant.refresh_token) throw new Error("Google did not grant offline access.");
+    // On a new authorization, omitted scope means exactly the scopes requested (RFC 6749).
+    // A partial consent must not replace an existing grant on reconnect.
+    if (grant.scope !== undefined && !parseGrantedScopes(grant.scope).includes(modifyScope))
+      throw new ReconnectRequired("Google did not grant permission to change mail.");
     const readIdentity: RequestInit = {
       headers: { authorization: `Bearer ${grant.access_token}` },
       redirect: "error",
@@ -134,6 +144,7 @@ export function gmailAccess(
   signal: AbortSignal,
   saveReplacement: (refreshToken: string) => Promise<void>,
   request: GoogleRequest = fetch,
+  onReadOnly?: () => Promise<void>,
 ) {
   let cached: { token: string; until: number } | undefined;
   let refreshing: Promise<string> | undefined;
@@ -146,6 +157,8 @@ export function gmailAccess(
       request,
     )
       .then(async (grant) => {
+        if (grant.scope !== undefined && !parseGrantedScopes(grant.scope).includes(modifyScope))
+          await onReadOnly?.();
         if (grant.refresh_token && grant.refresh_token !== refresh) {
           await saveReplacement(grant.refresh_token);
           refresh = grant.refresh_token;

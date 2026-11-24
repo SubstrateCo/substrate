@@ -37,6 +37,16 @@ test("MCP calls require a verified owner, active workspace, trusted origin and s
     (await owner.post("/api/v1/mcp/call", { headers: { origin }, data: withoutTurn })).status(),
   ).toBe(400);
   const valid = await owner.post("/api/v1/mcp/call", { headers: { origin }, data });
+  for (const call of [
+    { tool: "search_inbox", input: { unreadOnly: true } },
+    { tool: "read_inbox_message", input: { messageId: crypto.randomUUID() } },
+  ]) {
+    expect(
+      (
+        await owner.post("/api/v1/mcp/call", { headers: { origin }, data: { ...data, ...call } })
+      ).status(),
+    ).toBe(400);
+  }
   expect(valid.ok()).toBe(true);
   expect(await valid.json()).toEqual({ success: true, data: { items: [], nextCursor: null } });
   expect((await anonymous.post("/api/v1/mcp/call", { headers: { origin }, data })).status()).toBe(

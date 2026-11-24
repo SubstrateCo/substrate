@@ -58,6 +58,7 @@ test("reconnect keeps the verified mailbox and checkpoint; disconnect purges onl
       await db.commit(id, null, page);
     }
     const first = (await local.list({ ...query, mailboxId: a })).items[0]!;
+    expect((await local.connection(a))?.canModify).toBe(false);
     expect(await local.reconnect(a, second)).toBe(false);
     expect(await other.reconnect(a, source)).toBe(false);
     expect((await local.connection(a))?.protectedGrant).toBe("old-grant");
@@ -66,6 +67,7 @@ test("reconnect keeps the verified mailbox and checkpoint; disconnect purges onl
       await local.reconnect(a, {
         ...source,
         address: "new@example.test",
+        canModify: true,
         protectedGrant: "new-grant",
       }),
     ).toBe(true);
@@ -73,14 +75,18 @@ test("reconnect keeps the verified mailbox and checkpoint; disconnect purges onl
       id: a,
       nickname: "Press",
       address: "new@example.test",
+      canModify: true,
       protectedGrant: "new-grant",
       cursor: "checkpoint",
     });
     await rejects(local.rotateGrant(a, "old-grant", "late-rotation"), /authorization changed/);
+    await rejects(local.applyMessageState(a, "one", "old-grant", null), /authorization changed/);
+    await local.disableWrites(a, "old-grant");
     await local.fail(a, "old-grant", "reconnect");
     await local.rotateGrant(a, "new-grant", "rotated-grant");
     expect(await local.connection(a)).toMatchObject({
       protectedGrant: "rotated-grant",
+      canModify: true,
       status: "idle",
       cursor: "checkpoint",
     });

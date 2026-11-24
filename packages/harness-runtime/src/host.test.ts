@@ -188,6 +188,32 @@ test("MCP calls are accepted only while a turn is bound to the session", async (
   }
 });
 
+test("changing Inbox availability renews the lease even with an unchanged agent definition", async () => {
+  const f = await host();
+  try {
+    await f.host.execute(open);
+    const old = f.native.state.context!.lease!.endpoint!;
+    expect(old.tools).not.toContain("search_inbox");
+    await f.host.configure({
+      organizationId: "org-a",
+      agents: [agent()],
+      enabledApps: ["messages", "agents", "tasks", "crm", "inbox"],
+    });
+    expect(old.touch()).toBe(false);
+    await f.host.execute(open);
+    const endpoint = f.native.state.context!.lease!.endpoint!;
+    expect(endpoint.tools).toContain("read_inbox_message");
+    await f.host.configure({
+      organizationId: "org-a",
+      agents: [agent()],
+      enabledApps: ["messages", "agents", "tasks", "crm"],
+    });
+    expect(endpoint.touch()).toBe(false);
+  } finally {
+    await f.host.dispose();
+  }
+});
+
 test("steered calls join the bound MCP context and do not leak into the next turn", async () => {
   const calls: WorkspaceApiRequest[] = [];
   const f = await host({ calls, steer: true });

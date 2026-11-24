@@ -3,6 +3,7 @@ import type { MailFolder, OlderMailQuery } from "@substrate/contracts/mail/ipc";
 
 import { openLocalReader, serialTransactions, type RunTransaction } from "../database.ts";
 import { mailConnections, mailMessages } from "../schema/mail.ts";
+import { agentMailReads } from "./agent-reads.ts";
 import { membership, threadHeaders } from "./conversations.ts";
 import { cachedConversations } from "./older-conversations.ts";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -14,6 +15,7 @@ export function openMailReads(path: string, org: string) {
 
 export function mailReads(run: RunTransaction, org: string) {
   return {
+    ...agentMailReads(run, org),
     unreadDifferences: (mailbox: string, ids: string[]) =>
       run(async (tx) => {
         const scope = and(
@@ -41,6 +43,7 @@ export function mailReads(run: RunTransaction, org: string) {
             id: mailConnections.id,
             address: mailConnections.address,
             nickname: mailConnections.nickname,
+            canModify: mailConnections.canModify,
             labels: mailConnections.labels,
             showLabelFilters: mailConnections.showLabelFilters,
             lastSync: mailConnections.lastSync,

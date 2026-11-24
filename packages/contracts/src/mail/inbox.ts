@@ -58,6 +58,7 @@ export type Mailbox = {
   id: string;
   address: string;
   nickname: string | null;
+  canModify: boolean;
   labels: MailLabel[];
   showLabelFilters: boolean;
   unreadLabelIds: string[];
@@ -85,6 +86,8 @@ export type MailHeader = {
   labelIds: string[];
 };
 export type MailBody = { text: string; format: "plain" | "html"; plainText?: string };
+export const mailMessageActions = ["markRead", "markUnread", "trashMessage"] as const;
+export type MailMessageAction = (typeof mailMessageActions)[number];
 /** In a filtered view the row's id identifies the matching message to expand. */
 export type MailConversation = MailHeader & {
   threadId: string | null;

@@ -8,7 +8,7 @@ import { and, eq, isNull, lt, ne, or } from "drizzle-orm";
 
 type Grant = Pick<
   typeof mailConnections.$inferInsert,
-  "provider" | "providerAccountId" | "address" | "protectedGrant"
+  "provider" | "providerAccountId" | "address" | "protectedGrant" | "canModify"
 >;
 
 export function mailConnectionRepository(run: RunTransaction, org: string) {
@@ -72,6 +72,13 @@ export function mailConnectionRepository(run: RunTransaction, org: string) {
       ),
     connection: (id: string) =>
       run((tx) => tx.select().from(mailConnections).where(connection(id)).get()),
+    disableWrites: (id: string, grant: string) =>
+      run(async (tx) => {
+        await tx
+          .update(mailConnections)
+          .set({ canModify: false })
+          .where(and(connection(id), eq(mailConnections.protectedGrant, grant)));
+      }),
     // A late refresh must neither replace a newly reconnected grant nor recreate a removed one.
     rotateGrant: (id: string, previous: string, protectedGrant: string) =>
       run(async (tx) => {
@@ -96,6 +103,7 @@ export function mailConnectionRepository(run: RunTransaction, org: string) {
             set: {
               address: grant.address,
               protectedGrant: grant.protectedGrant,
+              canModify: grant.canModify ?? false,
               status: "idle",
               nickname: grant.nickname || undefined,
             },
@@ -108,7 +116,12 @@ export function mailConnectionRepository(run: RunTransaction, org: string) {
       run(async (tx) => {
         const renewed = await tx
           .update(mailConnections)
-          .set({ address: grant.address, protectedGrant: grant.protectedGrant, status: "idle" })
+          .set({
+            address: grant.address,
+            protectedGrant: grant.protectedGrant,
+            canModify: grant.canModify ?? false,
+            status: "idle",
+          })
           .where(
             and(
               connection(id),

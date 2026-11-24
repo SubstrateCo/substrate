@@ -1,9 +1,10 @@
-import type {
-  LocalToolProxy,
-  OffloadedOutput,
-  TurnContext,
-  WorkspaceApiProxy,
-  WorkspaceApiResult,
+import {
+  mcpOutputOffloadBytes,
+  type LocalToolProxy,
+  type OffloadedOutput,
+  type TurnContext,
+  type WorkspaceApiProxy,
+  type WorkspaceApiResult,
 } from "@substrate/contracts/harness/mcp";
 import {
   mcpTools,
@@ -80,7 +81,7 @@ export interface McpLease {
 export const mcpServerInfo = { name: "substrate", version: "1.0.0" };
 
 export const mcpInstructions =
-  "Substrate connects workspace search, messages, and enabled workspace apps. Tasks and CRM are optional. " +
+  "Substrate connects workspace search, messages, and enabled workspace apps. Tasks, CRM and Inbox are optional. " +
   "Use your harness's tool discovery to discover relevant operations when their schemas are not loaded; " +
   "do not assume a capability is unavailable just because its tool is not listed in context. " +
   "Load the relevant domain skills for workflow guidance. Only tools offered to this session are available; " +
@@ -236,7 +237,16 @@ async function callTool(
       };
     const data = mcpTools[name].output.parse(result.data);
     const sequence = (lease.outputs.get(name) ?? 0) + 1;
-    const offloaded = await offloadOutput(lease.options.folder, turn.turnId, name, sequence, data);
+    // Inbox excerpts are private to the bound owner turn; never persist them to the agent folder.
+    const inbox = name === "search_inbox" || name === "read_inbox_message";
+    if (
+      inbox &&
+      (lease.context !== turn || Buffer.byteLength(JSON.stringify(data)) > mcpOutputOffloadBytes)
+    )
+      return unavailable;
+    const offloaded = inbox
+      ? undefined
+      : await offloadOutput(lease.options.folder, turn.turnId, name, sequence, data);
     if (offloaded) lease.outputs.set(name, sequence);
     const structured = offloaded ?? data;
     return {

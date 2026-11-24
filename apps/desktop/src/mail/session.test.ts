@@ -1,72 +1,12 @@
 import type { SyncPage } from "@substrate/client-storage/mail";
 import { mailFlag } from "@substrate/contracts/mail";
 
-import { DesktopSessionAuthority } from "../session/desktop-session-authority.ts";
 import { syncMailbox } from "./provider.ts";
-import { createMailSession } from "./session.ts";
+import { mailFixture, owner } from "./test-support.ts";
 import { expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
-import { mkdtemp, rm } from "node:fs/promises";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-
-const owner = { userId: "user", organizationId: "first" };
-type FixtureBackend = {
-  scope: typeof owner;
-  inbox: boolean;
-  beforeNextCheck?: () => Promise<void>;
-};
-async function fixture() {
-  const dir = await mkdtemp(join(tmpdir(), "mail-session-"));
-  const backend: FixtureBackend = { scope: owner, inbox: true };
-  const authority = new DesktopSessionAuthority({
-    backend: "https://api.example.test",
-    fetchAPI: async (url) => {
-      if (new URL(url).pathname === "/api/auth/get-session") {
-        const pause = backend.beforeNextCheck,
-          scope = backend.scope;
-        backend.beforeNextCheck = undefined;
-        await pause?.();
-        return Response.json({
-          user: { id: scope.userId, emailVerified: true },
-          session: { activeOrganizationId: scope.organizationId },
-        });
-      }
-      if (new URL(url).pathname === "/api/v1/organizations/apps")
-        return Response.json({
-          success: true,
-          data: {
-            organizationId: backend.scope.organizationId,
-            enabledApps: backend.inbox ? ["messages", "agents", "inbox"] : ["messages", "agents"],
-          },
-        });
-      return Response.json({ role: "member" });
-    },
-  });
-  const session = createMailSession({ authority, accountsDirectory: dir }, () => {});
-  const connect = (id: string) =>
-    session.use(owner, (l) =>
-      l.db.connect({
-        provider: "gmail",
-        providerAccountId: id,
-        address: `${id}@example.test`,
-        protectedGrant: "local-fixture",
-        nickname: null,
-      }),
-    );
-  return {
-    session,
-    authority,
-    backend,
-    connect,
-    close: async () => {
-      await session.stop();
-      await rm(dir, { recursive: true, force: true });
-    },
-  };
-}
 test("disabling Inbox fences native reads and sync; re-enabling reopens the same local mailbox", async () => {
-  const f = await fixture();
+  const f = await mailFixture();
   try {
     const id = await f.connect("original");
     const signal = await f.session.use(owner, async (local) => local.abort.signal);
@@ -85,7 +25,7 @@ test("disabling Inbox fences native reads and sync; re-enabling reopens the same
 });
 
 test("one stalled session check cannot block an authorized mailbox read or return old data after a switch", async () => {
-  const f = await fixture(),
+  const f = await mailFixture(),
     entered = Promise.withResolvers<void>(),
     release = Promise.withResolvers<void>();
   try {
@@ -112,7 +52,7 @@ test("one stalled session check cannot block an authorized mailbox read or retur
 });
 
 test("a workspace switch releases a sync waiting on an old session confirmation", async () => {
-  const f = await fixture(),
+  const f = await mailFixture(),
     entered = Promise.withResolvers<void>(),
     release = Promise.withResolvers<void>();
   try {
@@ -143,7 +83,7 @@ test("a workspace switch releases a sync waiting on an old session confirmation"
 });
 
 test("a mailbox waiting on a cancelled provider does not hold up another mailbox's checkpoint or reader", async () => {
-  const f = await fixture(),
+  const f = await mailFixture(),
     entered = Promise.withResolvers<void>(),
     cancelled = Promise.withResolvers<void>(),
     release = Promise.withResolvers<void>();

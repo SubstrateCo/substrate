@@ -2,8 +2,9 @@ import { appEnabled, type AppId } from "../../apps/index.ts";
 import { turnContextSchema } from "../turn-context.ts";
 import { contextTools } from "./context.ts";
 import { crmTools } from "./crm.ts";
+import { inboxTools } from "./inbox.ts";
 import { linkTools } from "./links.ts";
-import { localTools } from "./local.ts";
+import { localTools as agentTools } from "./local.ts";
 import { messagingTools } from "./messaging.ts";
 import type { ToolDefinition } from "./shared.ts";
 import { taskTools } from "./tasks.ts";
@@ -31,6 +32,7 @@ function required<T extends Record<string, ToolDefinition>>(tools: T, apps: read
 }
 
 type Scoped<T, S extends ToolScope> = { [K in keyof T]: T[K] & { scope: S } };
+const localTools = { ...agentTools, ...required(inboxTools, ["inbox"]) };
 function scoped<T extends Record<string, ToolDefinition>, S extends ToolScope>(
   tools: T,
   scope: S,

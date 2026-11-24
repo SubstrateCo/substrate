@@ -1,12 +1,13 @@
 import type { SyncedMail, SyncPage } from "@substrate/client-storage/mail";
-import { mailFlag, mailPageSize } from "@substrate/contracts/mail";
+import { mailPageSize, type MailMessageAction } from "@substrate/contracts/mail";
 import type { MailFolder } from "@substrate/contracts/mail/ipc";
 
+import { changeGmailLabels, gmailBase, type GmailRequest } from "./gmail-actions.ts";
+import { flagsFor, gmailFlags, gmailMessageState } from "./gmail-labels.ts";
 import { ReconnectRequired, type MailChanges } from "./provider.ts";
 import { setTimeout } from "node:timers/promises";
 import { z } from "zod";
 
-const base = "https://gmail.googleapis.com/gmail/v1/users/me/";
 const gmailViewLabel: Record<MailFolder["view"], string | undefined> = {
   inbox: "INBOX",
   new: "INBOX",
@@ -67,15 +68,6 @@ const item = ref.extend({
   labelIds: z.array(z.string()).default([]),
   payload: partSchema,
 });
-const gmailFlags = new Map(
-  Object.entries(mailFlag).map(([key, value]) => [
-    key === "drafts" ? "DRAFT" : key.toUpperCase(),
-    value,
-  ]),
-);
-const flagsFor = (labels: string[]) =>
-  labels.reduce((bits, label) => bits | (gmailFlags.get(label) ?? 0), 0);
-const messageLabels = ref.extend({ labelIds: z.array(z.string()).default([]) });
 class GoogleReadError extends Error {
   readonly status: number;
   constructor(status: number) {
@@ -114,14 +106,13 @@ function bodyPart(part: Part, mime: string): Part | undefined {
   }
 }
 
-type ReadRequest = (url: URL, init: RequestInit) => Promise<Response>;
 export function gmailReader(
   token: () => Promise<string>,
   signal: AbortSignal,
-  request: ReadRequest = fetch,
+  request: GmailRequest = fetch,
 ) {
   async function get(path: string, params: Record<string, string> = {}, interactive = false) {
-    const url = new URL(path, base);
+    const url = new URL(path, gmailBase);
     for (const [key, value] of Object.entries(params)) url.searchParams.set(key, value);
     for (let attempt = 0; ; attempt++) {
       signal.throwIfAborted();
@@ -318,25 +309,35 @@ export function gmailReader(
     };
   }
   return {
+    changeLabels: (
+      action: MailMessageAction,
+      target: Parameters<typeof changeGmailLabels>[1],
+      check: () => Promise<void>,
+    ) => changeGmailLabels(action, target, token, signal, check, request),
     // The unread list excludes spam and trash, just like the local view. Listing IDs
     // also counts older unread messages whose bodies have never been opened on this device.
     unreadIds: () => listIds({ labelIds: "UNREAD", includeSpamTrash: "false" }, Infinity),
     messageLabels: (ids: Iterable<string>) =>
       readIds(ids, async (id) => {
-        const data = messageLabels.parse(
+        return gmailMessageState(id).parse(
           await get(`messages/${encodeURIComponent(id)}`, {
             format: "minimal",
             fields: "id,labelIds",
           }),
         );
-        return { remoteId: data.id, labelIds: data.labelIds, flags: flagsFor(data.labelIds) };
       }),
     /** A separate, user-driven Gmail list. Its opaque token is valid only with the
      * original mailbox, filter and time boundary; it is never a history checkpoint. */
-    async olderIds(folder: MailFolder, before: number, token: string | null, limit: number) {
+    async olderIds(
+      folder: MailFolder & { unreadOnly?: boolean },
+      before: number,
+      token: string | null,
+      limit: number,
+    ) {
       const view = folder.view;
       const label = folder.label?.id ?? gmailViewLabel[view];
       const terms = [`before:${Math.floor(before / 1000) + 1}`];
+      if (folder.unreadOnly) terms.push("is:unread");
       if (!folder.label && view === "archive") terms.push("-in:inbox -in:sent -in:drafts");
       if (!folder.label && view === "new") terms.push("newer_than:1d");
       const search = folder.search.trim().replace(/["\\]/g, " ").trim();

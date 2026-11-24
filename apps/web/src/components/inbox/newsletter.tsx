@@ -117,8 +117,8 @@ export function Newsletter({
         <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
           <span>{show && missing ? "Some images are unavailable." : "External images"}</span>
           <Button
-            variant="link"
-            size="xs"
+            variant="outline"
+            size="sm"
             onClick={() => {
               setMissing(false);
               setAllowed(show ? undefined : layout);

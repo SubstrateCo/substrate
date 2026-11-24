@@ -1,10 +1,12 @@
 import { mailListWorker, openMailStore } from "@substrate/client-storage/mail";
 import { handleBridge, type IpcValue } from "@substrate/contracts/desktop/ipc";
-import { mailFlag } from "@substrate/contracts/mail";
+import { mailFlag, type MailMessageAction } from "@substrate/contracts/mail";
 import { channel, methods } from "@substrate/contracts/mail/ipc";
 
 import { gmailReader } from "../../../desktop/src/mail/gmail-reader";
+import { applyMailActions } from "../../../desktop/src/mail/message-actions";
 import { nextMailPage, readOlderSource } from "../../../desktop/src/mail/older-page";
+import { mailboxSyncJobs } from "../../../desktop/src/mail/sync-jobs";
 import { test as base, visit } from "./fixtures";
 import { fixturePicture, seedInbox } from "./inbox-seed";
 import { expect, type Page } from "@playwright/test";
@@ -24,7 +26,7 @@ export const test = base.extend<{
   inbox: Page;
   historySize: number;
   cachedHistory: number[];
-  gmailPages: { lists: number; details: string[]; unavailable: boolean };
+  gmailPages: { lists: number; details: string[]; unavailable: boolean; refuseWrite?: string };
 }>({
   historySize: [0, { option: true }],
   cachedHistory: [[50], { option: true }],
@@ -76,7 +78,80 @@ export const test = base.extend<{
             })),
           );
         }
+        const local = {
+          db: store,
+          jobs: mailboxSyncJobs(),
+          abort: new AbortController(),
+          auth: {
+            accountKey: "fixture",
+            userId: "fixture-owner",
+            organizationId: account.organizationId,
+            identity: "fixture",
+          },
+        };
+        async function change(
+          ids: string[],
+          action: MailMessageAction,
+          mode: "message" | "conversation",
+        ) {
+          const messages = (await Promise.all(ids.map((id) => store.thread(id)))).flat();
+          const targets = await store.actionTargets(messages.map((m) => m.id));
+          const remote = targets.map((target) => {
+            const msg = messages.find((m) => m.id === target.id)!;
+            const labels = new Set(msg.labelIds);
+            for (const [name, bit] of Object.entries(mailFlag))
+              if (msg.flags & bit) labels.add(name === "drafts" ? "DRAFT" : name.toUpperCase());
+            return { ...target, labels };
+          });
+          return applyMailActions(
+            local,
+            ids,
+            mode,
+            action,
+            async (_l, box, signal, work) =>
+              work(
+                gmailReader(
+                  async () => "fixture",
+                  signal,
+                  async (url, init) => {
+                    const [kind, id, verb] = url.pathname.split("/me/")[1]!.split("/");
+                    if (gmailPages.unavailable || id === gmailPages.refuseWrite)
+                      return new Response(null, { status: 429 });
+                    const members = remote.filter(
+                      (m) =>
+                        m.mailboxId === box &&
+                        (kind === "threads" ? m.threadId : m.remoteId) === id,
+                    );
+                    if (!members.length) return new Response(null, { status: 404 });
+                    if (init.method === "POST")
+                      for (const m of members) {
+                        if (verb === "trash") {
+                          m.labels.add("TRASH");
+                          m.labels.delete("INBOX");
+                        } else if (init.body === '{"addLabelIds":["UNREAD"]}')
+                          m.labels.add("UNREAD");
+                        else m.labels.delete("UNREAD");
+                      }
+                    const states = members.map((m) => ({
+                      id: m.remoteId,
+                      labelIds: [...m.labels],
+                    }));
+                    return Response.json(kind === "threads" ? { id, messages: states } : states[0]);
+                  },
+                ),
+                () => "test-only",
+              ),
+            async () => {},
+            () => {},
+          );
+        }
+        const one = async (id: string, action: MailMessageAction) =>
+          (await change([id], action, "message"))[0]!.result;
         const dispatch = handleBridge(channel, methods, {
+          markRead: (q) => one(q.id, "markRead"),
+          markUnread: (q) => one(q.id, "markUnread"),
+          trashMessage: (q) => one(q.id, "trashMessage"),
+          changeConversations: (q) => change(q.ids, q.action, "conversation"),
           accounts: () => reads.accounts(),
           list: (q) => reads.list(q),
           nextPage: async (q) =>

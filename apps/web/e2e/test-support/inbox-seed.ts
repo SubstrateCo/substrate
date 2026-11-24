@@ -1,6 +1,8 @@
 import type { MailStore, SyncedMail } from "@substrate/client-storage/mail";
 import { mailFlag } from "@substrate/contracts/mail";
 
+export const fieldNotesSubject =
+  "Notes from ÉCOLE: revised gallery schedule and a checklist for the installation team";
 export const newsletterImages = [
   "https://images.example.test/logo.png",
   "https://images.example.test/poster.png",
@@ -53,6 +55,7 @@ export async function seedInbox(store: MailStore) {
       address,
       nickname: null,
       protectedGrant: "test-only",
+      canModify: address === work,
     });
     await store.labels(
       id,
@@ -92,7 +95,8 @@ export async function seedInbox(store: MailStore) {
                 text: '<a href="https://foldpress.example/proofs">View cover proofs</a><img src="https://images.example.test/proof.png" alt="Color proof">',
               },
             }),
-            message("unicode", "Notes from ÉCOLE", 95, {
+            message("unicode", fieldNotesSubject, 95, {
+              from: "Fieldwork Exhibition Coordination <gallery@fieldwork.example>",
               labelIds: ["print", "review", "studio", "deadline", "notes"],
             }),
             message("draft", "Unsent proposal", 10, { flags: mailFlag.drafts }),

@@ -25,7 +25,7 @@ export function ConnectMailbox({
       size="default"
       title="Connect Gmail"
       saveLabel="Continue with Google"
-      description="If prompted, choose the Desktop app JSON you downloaded from Google Cloud. Then sign in with Google for read-only mail access."
+      description="Sign in with Google to read mail, mark messages as read, and move them to Trash. If prompted, choose your Google Desktop app client file."
       onClose={onClose}
       onRestoreFocus={onRestoreFocus}
       error={error}

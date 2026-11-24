@@ -37,6 +37,13 @@ test("an unsupported Google grant cannot create or overwrite a server account, e
     refreshToken: "synthetic-unexpected-mail-token",
   };
   await rejects(accounts.createAccount({ ...base, ...unsupported }), /unsupported permissions/);
+  await rejects(
+    accounts.createAccount({
+      ...base,
+      scope: `${base.scope},https://www.googleapis.com/auth/gmail.modify`,
+    }),
+    /unsupported permissions/,
+  );
   expect(await accounts.findAccounts("alice")).toHaveLength(0);
   const calendar = await accounts.createAccount({
     ...base,

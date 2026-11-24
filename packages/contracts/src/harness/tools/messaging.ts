@@ -67,7 +67,7 @@ export const messagingTools = {
   read_thread: {
     title: "Read thread",
     description:
-      "Read one message with its whole thread: the root message and its replies, oldest first. messageId can be the root or any reply. Use this to open any message ID returned by another tool. Each message lists the records it references.",
+      "Read a workspace message with its whole thread: the root message and its replies, oldest first. messageId can be the root or any reply. Use this to open any workspace message ID returned by another tool. Each message lists the records it references. For Gmail message IDs from search_inbox use read_inbox_message.",
     readOnly: true,
     input: z
       .object({

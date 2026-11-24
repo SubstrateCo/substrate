@@ -10,6 +10,7 @@ import type {
   Usage,
 } from "@substrate/contracts/harness";
 
+import type { AgentInbox } from "../../mail/agent-access.ts";
 import type { AgentWorkServer, CatalogAgent } from "../server/agent-work-server.ts";
 
 /** The harness controller, as the runtime uses it. Main checks account and organization. */
@@ -47,6 +48,7 @@ export interface RuntimeContext {
   /** memory/profile.md of the agent folder, or empty. */
   profile(agentId: string): Promise<string>;
   enabledApps?(): Promise<readonly AppId[]>;
+  inbox?: AgentInbox;
   now(): number;
   log(message: string): void;
   /** Local work changed: tell the renderer, publish status, and run the claim loop. */
@@ -68,6 +70,9 @@ export interface LiveTurn {
   folderKey: string;
   harness: HarnessKind;
   kind: TurnKind;
+  /** Set only from rechecked owner-authored source messages in this agent's DM. */
+  ownerDm: boolean;
+  attempt: number;
   generation: number;
   epoch: number;
   handoff: boolean;

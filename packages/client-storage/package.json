@@ -13,9 +13,11 @@
   },
   "dependencies": {
     "@substrate/contracts": "workspace:*",
-    "drizzle-orm": "catalog:database"
+    "drizzle-orm": "catalog:database",
+    "html-to-text": "^10.0.1"
   },
   "devDependencies": {
+    "@types/html-to-text": "^9.0.4",
     "@types/node": "catalog:tooling",
     "drizzle-kit": "catalog:database"
   }

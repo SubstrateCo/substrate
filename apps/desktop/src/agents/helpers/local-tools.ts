@@ -6,7 +6,9 @@ import {
 } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type LocalToolName, type McpOutput } from "@substrate/contracts/harness/tools";
 
+import { InboxToolError } from "../../mail/agent-error.ts";
 import type { RuntimeContext } from "../runtime/context.ts";
+import { runPrivateInbox } from "../runtime/private-inbox.ts";
 import type { Steering } from "../runtime/steering.ts";
 import type { TurnExecutor } from "../runtime/turn-executor.ts";
 
@@ -19,7 +21,7 @@ class ToolError extends Error {
 }
 
 /**
- * Local MCP tools the desktop runs itself: save_handoff and the helper tools. The call must come
+ * Dispatch the desktop's Inbox, handoff and helper tools. The call must come
  * from a live turn of the session it names, for the organization and agent of that session.
  */
 export function createLocalTools(
@@ -58,6 +60,11 @@ export function createLocalTools(
     const current = await session(request);
     const now = context.now();
     switch (request.tool) {
+      case "search_inbox":
+      case "read_inbox_message":
+        return runPrivateInbox(context, current, request, () =>
+          deps.executor.live.get(request.turn.turnId),
+        );
       case "save_handoff": {
         const input = mcpTools.save_handoff.input.parse(request.input);
         await context.store.epochs.saveHandoff(current.id, current.epoch, input, now);
@@ -125,11 +132,15 @@ export function createLocalTools(
       // SAFETY: tool results are plain JSON objects built above.
       return { success: true, data: (await run(request)) as never };
     } catch (error) {
-      if (error instanceof ToolError || error instanceof HelperLimitError)
+      if (
+        error instanceof ToolError ||
+        error instanceof HelperLimitError ||
+        error instanceof InboxToolError
+      )
         return {
           success: false,
           error: {
-            code: error instanceof ToolError ? error.code : "LIMIT",
+            code: error instanceof HelperLimitError ? "LIMIT" : error.code,
             message: error.message,
           },
         };

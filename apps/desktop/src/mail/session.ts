@@ -6,6 +6,7 @@ import {
   type DesktopSessionAuthority,
   HarnessAccessDenied,
 } from "../session/desktop-session-authority.ts";
+import { InboxToolError } from "./agent-error.ts";
 import { mailboxSyncJobs } from "./sync-jobs.ts";
 import { addAbortListener } from "node:events";
 import { lstat, mkdir } from "node:fs/promises";
@@ -100,7 +101,7 @@ export function createMailSession(
         signal?.throwIfAborted();
         checkAuthority();
         if (!apps.enabledApps.includes("inbox")) {
-          const error = new Error("Inbox is disabled.");
+          const error = new InboxToolError("APP_DISABLED", "Inbox is disabled.");
           if (current?.auth.organizationId === auth.organizationId) void stop(error);
           throw error;
         }
@@ -158,6 +159,8 @@ export function createMailSession(
               unreadDifferences: reads.unreadDifferences,
               list: reads.list,
               cachedPage: reads.cachedPage,
+              inboxHeaders: reads.inboxHeaders,
+              inboxMessage: reads.inboxMessage,
             },
             reads,
             closeWriter: store.close,

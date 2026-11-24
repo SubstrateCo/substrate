@@ -2,6 +2,8 @@ import { bridgeOutput, type BridgeAPI } from "../desktop/ipc.ts";
 import {
   mailColors,
   labelFilterModes,
+  mailMessageActions,
+  mailPageSize,
   mailViews,
   type MailBody,
   type Mailbox,
@@ -60,7 +62,24 @@ const labelDisplay = z.discriminatedUnion("area", [
   z.object({ area: z.literal("rows"), labelId: z.string().min(1), visible: z.boolean() }),
 ]);
 export type LabelDisplayChange = z.output<typeof labelDisplay>;
+const messageAction = {
+  input: context.extend({ id: z.uuid() }).strict(),
+  output: z.enum(["updated", "missing", "reconnect", "retry"]),
+};
+export type MailActionResult = z.output<typeof messageAction.output>;
 export const methods = {
+  markRead: messageAction,
+  markUnread: messageAction,
+  trashMessage: messageAction,
+  changeConversations: {
+    input: context
+      .extend({
+        ids: z.array(z.uuid()).min(1).max(mailPageSize),
+        action: z.enum(mailMessageActions),
+      })
+      .strict(),
+    output: z.array(z.strictObject({ id: z.uuid(), result: messageAction.output })),
+  },
   accounts: {
     input: context,
     output: bridgeOutput<Mailbox[]>(),

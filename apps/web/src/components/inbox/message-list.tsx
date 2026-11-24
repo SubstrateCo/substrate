@@ -12,15 +12,19 @@ import { useEffect, useState } from "react";
 import { ink, labelName, visibleLabels } from "./mail-colors";
 import { MessageLabels } from "./message-labels";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { formatMailListDate, formatFullTimestamp } from "@/lib/format/date";
 import { snippetText } from "@/lib/mail/body-text";
-import { Star } from "lucide-react";
+import { Mail, Star } from "lucide-react";
 
 function MessageRow({
   message,
   mailbox,
   color,
   selected,
+  checked,
+  disabled,
+  onCheck,
   unified,
   allTags,
   today,
@@ -30,6 +34,9 @@ function MessageRow({
   mailbox: Mailbox;
   color: MailColor;
   selected: boolean;
+  checked: boolean;
+  disabled: boolean;
+  onCheck: () => void;
   unified: boolean;
   allTags: boolean;
   today: Date;
@@ -46,78 +53,79 @@ function MessageRow({
     stamp = formatMailListDate(timestamp, today);
   const labels = visibleLabels(mailbox, message.labelIds, true).map(labelName);
   const weight = message.hasUnread ? "font-semibold text-foreground" : "font-normal";
-  const address = (
-    <span title={mailbox.address} className={ink[color]}>
-      {mailboxName(mailbox)}
-    </span>
-  );
-  const time = (
-    <time dateTime={new Date(timestamp).toISOString()} title={formatFullTimestamp(timestamp)}>
-      {stamp}
-    </time>
-  );
+  const background = message.hasUnread ? "bg-background" : "bg-surface";
   const label = `${message.hasUnread ? "Unread. " : ""}${sender}: ${subject}. ${message.messageCount} messages. ${mailbox.address}, ${stamp}${labels.length ? `. Labels: ${labels.join(", ")}` : ""}`;
-  const props = {
-    variant: "sidebar" as const,
-    "aria-label": label,
-    "aria-current": selected ? ("page" as const) : undefined,
-    onClick: () => onOpen(message),
-  };
-  const titleLine = (
-    <span className="relative flex min-w-0 flex-1 items-center gap-1">
-      <MessageLabels mailbox={mailbox} ids={message.labelIds} compact all={allTags} />
-      <span className="min-w-0 flex-1 truncate">
-        {message.hasStar && (
-          <Star
-            aria-hidden
-            className="mr-1 inline size-3 fill-current align-baseline text-primary"
-          />
-        )}
-        <span className={weight}>{subject}</span>
-        <span className="ml-2 hidden text-xs font-normal text-muted-foreground @lg:inline">
-          {snippetText(message.snippet)}
-        </span>
-      </span>
-    </span>
-  );
-  const from = (
-    <span className="flex min-w-0 items-baseline gap-1">
-      <span className={`min-w-0 truncate ${weight}`}>{sender}</span>
-      {message.messageCount > 1 && (
-        <span
-          title={`${message.messageCount} messages in this conversation · ${message.unreadMessages} unread`}
-          className="shrink-0 text-xs font-normal text-muted-foreground tabular-nums"
-        >
-          ({message.messageCount})
-        </span>
-      )}
-    </span>
-  );
   return (
     <li
       id={`message-${id}`}
-      className={`border-b px-1 ${message.hasUnread ? "bg-background" : "bg-surface"}`}
+      className={`flex items-start gap-1 border-b pr-1 pl-3 @3xl:items-center ${checked || selected ? "bg-row-selected" : background}`}
     >
-      <Button {...props} size="chip" className="hidden w-full justify-start text-left @lg:flex">
-        <span className="flex w-full min-w-0 items-center gap-2 text-sm/4">
-          <span className={`w-20 shrink-0 text-xs tabular-nums ${weight}`}>{time}</span>
-          <span className="w-20 min-w-0 shrink-0 @xl:w-24 @2xl:w-32 @4xl:w-40">{from}</span>
-          {titleLine}
-          {unified && (
-            <span className="w-24 shrink-0 truncate text-xs @2xl:w-32 @4xl:w-48">{address}</span>
-          )}
-        </span>
-      </Button>
-      <Button {...props} size="selection" className="w-full text-left @lg:hidden">
-        <span className={`mr-2 w-20 shrink-0 text-xs whitespace-normal tabular-nums ${weight}`}>
-          {time}
-        </span>
-        <span className="grid min-w-0 flex-1">
-          <span className="flex min-w-0 items-center justify-between gap-2">
-            {from}
-            {unified && <span className="max-w-1/3 truncate text-xs">{address}</span>}
+      <Checkbox
+        aria-label={`Select conversation: ${subject}, ${mailbox.address}`}
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onCheck}
+        className="mt-1.5 @3xl:mt-0"
+      />
+      <Button
+        variant="sidebar"
+        size="chip"
+        aria-label={label}
+        aria-current={selected ? "page" : undefined}
+        data-mail-open
+        disabled={disabled}
+        onClick={() => onOpen(message)}
+        className="min-w-0 flex-1 justify-start text-left"
+      >
+        <span className="relative flex w-full min-w-0 flex-col gap-1 @3xl:flex-row @3xl:items-center @3xl:gap-2">
+          <span className="flex min-w-0 items-baseline justify-between gap-2 @3xl:contents">
+            <span className="flex min-w-0 items-baseline gap-1 text-sm/4 @3xl:order-2 @3xl:w-32 @3xl:shrink-0 @4xl:w-40">
+              <span className={`min-w-0 truncate ${weight}`} title={sender}>
+                {sender}
+              </span>
+              {message.messageCount > 1 && (
+                <span
+                  title={`${message.messageCount} messages in this conversation · ${message.unreadMessages} unread`}
+                  className="shrink-0 text-xs font-normal text-muted-foreground tabular-nums"
+                >
+                  ({message.messageCount})
+                </span>
+              )}
+            </span>
+            <time
+              dateTime={new Date(timestamp).toISOString()}
+              title={formatFullTimestamp(timestamp)}
+              className="shrink-0 text-xs font-normal whitespace-nowrap text-muted-foreground tabular-nums @3xl:order-1 @3xl:w-16"
+            >
+              {stamp}
+            </time>
           </span>
-          {titleLine}
+          <span className="min-w-0 text-sm/5 text-foreground @3xl:order-4 @3xl:flex-1 @3xl:truncate @3xl:leading-4">
+            <span title={subject} className={`line-clamp-2 wrap-anywhere @3xl:inline ${weight}`}>
+              {message.hasStar && (
+                <Star
+                  aria-hidden
+                  className="mr-1 inline size-3 fill-current align-baseline text-primary"
+                />
+              )}
+              {subject}
+            </span>
+            <span className="ml-2 hidden text-xs font-normal text-muted-foreground @3xl:inline">
+              {snippetText(message.snippet)}
+            </span>
+          </span>
+          <span className="relative flex min-w-0 items-center justify-between gap-2 empty:hidden @3xl:contents">
+            {unified && (
+              <span
+                title={mailbox.address}
+                className="flex min-w-0 items-center gap-1 text-xs font-normal text-muted-foreground @3xl:order-5 @3xl:w-32 @3xl:shrink-0 @4xl:w-44"
+              >
+                <Mail aria-hidden className={`size-3 ${ink[color]}`} />
+                <span className="truncate">{mailboxName(mailbox)}</span>
+              </span>
+            )}
+            <MessageLabels mailbox={mailbox} ids={message.labelIds} compact all={allTags} />
+          </span>
         </span>
       </Button>
     </li>
@@ -128,6 +136,9 @@ export function MessageList({
   mailboxes,
   colors,
   selected,
+  checked,
+  disabled,
+  onCheck,
   unified,
   allTags,
   onOpen,
@@ -136,6 +147,9 @@ export function MessageList({
   mailboxes: Mailbox[];
   colors: ReadonlyMap<string, MailColor>;
   selected: string | null;
+  checked: ReadonlySet<string>;
+  disabled: boolean;
+  onCheck: (message: MailConversation) => void;
   unified: boolean;
   allTags: boolean;
   onOpen: (message: MailConversation) => void;
@@ -168,6 +182,9 @@ export function MessageList({
                 mailbox={mailbox}
                 color={colors.get(mailbox.id)!}
                 selected={selected === conversationKey(message)}
+                checked={checked.has(conversationKey(message))}
+                disabled={disabled}
+                onCheck={() => onCheck(message)}
                 unified={unified}
                 allTags={allTags}
                 today={today}

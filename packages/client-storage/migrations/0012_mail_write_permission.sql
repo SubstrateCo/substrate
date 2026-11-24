@@ -1,0 +1,1 @@
+ALTER TABLE `mail_connections` ADD `can_modify` integer DEFAULT false NOT NULL;

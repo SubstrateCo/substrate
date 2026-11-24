@@ -3,7 +3,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { Blocks, Sparkles, type LucideIcon } from "lucide-react";
 
 /** What agents get from one app: MCP tools and the Substrate skill that explains them. */
-export type AppAgentSupport = { mcp: boolean; skill?: string };
+export type AppAgentSupport = { mcp: boolean | "read-only"; skill?: string };
 
 /** The footer of an app tile: icons that name what they mean on hover or focus. */
 export function AppAgentSupportFooter({ app, support }: { app: string; support: AppAgentSupport }) {
@@ -15,7 +15,11 @@ export function AppAgentSupportFooter({ app, support }: { app: string; support: 
           <SupportIcon
             icon={Blocks}
             label="MCP enabled"
-            description={`Agents can read and change ${app} through MCP tools.`}
+            description={
+              support.mcp === "read-only"
+                ? `Ask your agent privately about ${app} on its home desktop. Agents have read-only access.`
+                : `Agents can read and change ${app} through MCP tools.`
+            }
           />
         )}
         {support.skill && (

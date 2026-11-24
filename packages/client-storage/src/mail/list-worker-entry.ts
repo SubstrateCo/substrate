@@ -8,6 +8,14 @@ const reads = openMailReads(path, org);
 parentPort!.on("message", async (message: ListRequest) => {
   try {
     switch (message.kind) {
+      case "inboxHeaders":
+        message.reply.postMessage(await reads.inboxHeaders(message.query));
+        break;
+      case "inboxMessage":
+        message.reply.postMessage(
+          await reads.inboxMessage(message.id, message.offset, message.limit),
+        );
+        break;
       case "unreadDifferences":
         message.reply.postMessage(await reads.unreadDifferences(message.mailbox, message.ids));
         break;

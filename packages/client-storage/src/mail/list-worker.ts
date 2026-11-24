@@ -1,10 +1,13 @@
-import type { Mailbox, MailPage } from "@substrate/contracts/mail";
+import type { Mailbox, MailHeader, MailPage } from "@substrate/contracts/mail";
 import type { MailFolder, OlderMailQuery } from "@substrate/contracts/mail/ipc";
 
+import type { InboxHeaderQuery } from "./agent-reads.ts";
 import type { EventEmitter } from "node:events";
 import { MessageChannel, Worker, type MessagePort } from "node:worker_threads";
 
 type Read =
+  | { kind: "inboxHeaders"; query: InboxHeaderQuery }
+  | { kind: "inboxMessage"; id: string; offset: number; limit: number }
   | { kind: "accounts" }
   | { kind: "unreadDifferences"; mailbox: string; ids: string[] }
   | { kind: "list"; query: MailFolder }
@@ -57,6 +60,14 @@ export function mailListWorker(
     });
   }
   return {
+    inboxHeaders: (query: InboxHeaderQuery) => read<MailHeader[]>({ kind: "inboxHeaders", query }),
+    inboxMessage: (id: string, offset: number, limit: number) =>
+      read<(MailHeader & { text: string; more: boolean }) | undefined>({
+        kind: "inboxMessage",
+        id,
+        offset,
+        limit,
+      }),
     accounts: () => read<Mailbox[]>({ kind: "accounts" }),
     unreadDifferences: (mailbox: string, ids: string[]) =>
       read<string[]>({ kind: "unreadDifferences", mailbox, ids }),

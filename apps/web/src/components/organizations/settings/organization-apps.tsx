@@ -55,9 +55,10 @@ const catalog = [
   },
   {
     id: "inbox",
-    description: "Read Gmail messages from connected mailboxes on this device.",
+    description:
+      "Read and manage Gmail on this device. In a private DM, your agent can use its configured model to answer questions about your inbox.",
     required: false,
-    agentSupport: { mcp: false },
+    agentSupport: { mcp: "read-only", skill: "substrate-inbox" },
   },
 ] as const satisfies ReadonlyArray<{
   id: AppId;
@@ -85,7 +86,7 @@ const disableCopy = {
   inbox: {
     label: "Inbox",
     description:
-      "Inbox will be hidden and Gmail sync will pause for everyone in this organization. Connected mailboxes and cached mail stay on each device.",
+      "Inbox will be hidden, Gmail sync will pause, and agents will lose Inbox access in this organization. Connected mailboxes and cached mail stay on each device.",
   },
 } as const satisfies Record<OptionalAppId, { label: string; description: string }>;
 

@@ -8,8 +8,8 @@ import {
   CalendarDays,
   Handshake,
   House,
-  Inbox,
   ListTodo,
+  Mail,
   MessageSquare,
   type LucideIcon,
 } from "lucide-react";
@@ -47,7 +47,7 @@ export const workspaceApps = [
     to: "/tasks",
     hotkey: ["G", "T"],
   },
-  { id: "inbox", label: "Inbox", icon: Inbox, to: "/inbox", hotkey: ["G", "E"] },
+  { id: "inbox", label: "Inbox", icon: Mail, to: "/inbox", hotkey: ["G", "E"] },
   { id: "crm", label: "CRM", icon: Handshake, to: "/crm", hotkey: ["G", "C"] },
   {
     id: "interactions",

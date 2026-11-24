@@ -2,6 +2,7 @@ import {
   conversationKey,
   filterLabels,
   type MailConversation,
+  type MailMessageAction,
   type MailView,
 } from "@substrate/contracts/mail";
 import type { MailAPI, MailScope, MailLabelFilter } from "@substrate/contracts/mail/ipc";
@@ -18,8 +19,8 @@ import { views } from "./mail-views";
 import { MailboxPicker, MailboxSidebar, MobileViewPicker } from "./mailboxes";
 import { ManageMailboxes } from "./manage-mailboxes";
 import { LabelDisplayToggle } from "./message-labels";
-import { MessageList } from "./message-list";
 import { Reader } from "./reader";
+import { SelectableMessageList } from "./selectable-message-list";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
@@ -42,6 +43,7 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
   const [label, setLabel] = useState<MailLabelFilter>();
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState<MailConversation>();
+  const [listVisit, setListVisit] = useState(0);
   const field = useRef<HTMLInputElement>(null);
   const dialog = useStateDialog<"connect" | "manage">(() =>
     document.getElementById("mailbox-switch")?.focus(),
@@ -116,12 +118,29 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
     paging.reset();
   }
   function closeReader() {
-    setSelected(undefined);
-    requestAnimationFrame(() => {
-      const buttons =
-        document.getElementById(`message-${selected?.id}`)?.querySelectorAll("button") ?? [];
-      (Array.from(buttons).find((b) => b.offsetWidth > 0) ?? field.current)?.focus();
-    });
+    const key = selected && conversationKey(selected);
+    setSelected((current) => (current && conversationKey(current) === key ? undefined : current));
+    requestAnimationFrame(focusList);
+  }
+  function focusList() {
+    if (document.getElementById("inbox-reader-heading")) return;
+    const opener = document
+      .getElementById(`message-${selected?.id}`)
+      ?.querySelector<HTMLButtonElement>("[data-mail-open]");
+    (opener ?? field.current)?.focus();
+  }
+  async function changeMessage(id: string, action: MailMessageAction) {
+    const result = await api[action]({ ...scope, id });
+    if (result === "updated" || result === "missing") paging.reset();
+    await client.invalidateQueries({ queryKey: local.root });
+    if (result === "missing" || (result === "updated" && action === "trashMessage")) closeReader();
+    return result;
+  }
+  async function changeConversations(ids: string[], action: MailMessageAction) {
+    const results = await api.changeConversations({ ...scope, ids, action });
+    if (results.some((r) => r.result === "updated" || r.result === "missing")) paging.reset();
+    await client.invalidateQueries({ queryKey: local.root });
+    return results;
   }
   const labelActions: LabelActions = {
     onLabelColor: async (mailboxId, labelId, color) => {
@@ -199,14 +218,17 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
       );
     if (paging.items?.length)
       return (
-        <MessageList
-          key={paging.index}
+        <SelectableMessageList
+          key={JSON.stringify([userId, organizationId, folder, boxes.map((b) => b.id), listVisit])}
           messages={paging.items}
           mailboxes={boxes}
           colors={nav.colors}
           selected={selected ? conversationKey(selected) : null}
           unified={!account}
           onOpen={setSelected}
+          onBeginSelection={() => setSelected(undefined)}
+          onManage={nav.onManage}
+          onChange={changeConversations}
           allTags={allTags}
         />
       );
@@ -317,7 +339,13 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
           )}
           {list()}
           {!!boxes.length && !!data && (
-            <MailPagination paging={paging} onTurn={() => setSelected(undefined)} />
+            <MailPagination
+              paging={paging}
+              onTurn={() => {
+                setSelected(undefined);
+                setListVisit((v) => v + 1);
+              }}
+            />
           )}
         </PageContent>
         {selected && selectedBox && (
@@ -328,6 +356,8 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
             messages={thread.data}
             bodyOptions={local.body}
             readPicture={readPicture}
+            active={!dialog.value}
+            actions={{ onAction: changeMessage, onManage: nav.onManage, focusList }}
             onClose={closeReader}
           />
         )}

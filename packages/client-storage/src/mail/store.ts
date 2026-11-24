@@ -3,6 +3,7 @@ import type { MailBody, MailHeader, MailLabel } from "@substrate/contracts/mail"
 
 import { openLocalDatabase, serialTransactions } from "../database.ts";
 import { mailConnections, mailMessages } from "../schema/mail.ts";
+import { mailActions } from "./actions.ts";
 import { mailConnectionRepository } from "./connections.ts";
 import { mailReads } from "./reads.ts";
 import { and, eq, inArray, sql } from "drizzle-orm";
@@ -31,6 +32,7 @@ export async function openMailStore(path: string, org: string, migrations?: stri
   return {
     close,
     ...mailReads(run, org),
+    ...mailActions(run, org),
     ...mailConnectionRepository(run, org),
     cachedDates: (id: string, ids: string[]) =>
       run(async (tx) => {

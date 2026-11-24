@@ -90,6 +90,7 @@ function MailboxSettings({
           {box.address}
         </Heading>
         <div className="flex flex-wrap gap-x-2 text-xs text-muted-foreground">
+          <span>{box.canModify ? "Gmail actions enabled" : "Read-only Gmail access"}</span>
           {box.lastSync ? (
             <span>
               Last synced <Timestamp value={box.lastSync} format="datetime" />
@@ -140,7 +141,7 @@ function MailboxSettings({
           pending={pending === "reconnect"}
           onClick={() => void reconnect(false)}
         >
-          Reconnect Gmail
+          {box.canModify ? "Reconnect Gmail" : "Reconnect to enable Gmail actions"}
         </PendingButton>
         <Button variant="ghost" size="xs" disabled={!!pending} onClick={() => void reconnect(true)}>
           Choose a different client file

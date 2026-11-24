@@ -398,6 +398,18 @@ export function createTurnExecutor(
       harness: session.harness,
       kind: turn.kind,
       generation: turn.generation,
+      attempt: turn.attempt,
+      ownerDm:
+        session.kind === "dm" &&
+        remaining.some((item) => {
+          if (item.sourceRef.source !== "owner_message") return false;
+          const source = messages.get(item.sourceRef.messageId);
+          return (
+            source?.conversationKind === "dm" &&
+            source.author.kind === "owner" &&
+            source.conversationId === session.originConversationId
+          );
+        }),
       epoch: turn.epoch,
       handoff: turn.handoff,
       startedAt: context.now(),

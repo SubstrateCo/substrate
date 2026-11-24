@@ -1,62 +1,21 @@
 import { handleBridge } from "@substrate/contracts/desktop/ipc";
-import { channel, methods } from "@substrate/contracts/mail/ipc";
+import type { MailMessageAction } from "@substrate/contracts/mail";
+import { channel, methods, type MailScope } from "@substrate/contracts/mail/ipc";
 
-import { gmailReader, syncFailureKind } from "./gmail-reader.ts";
-import { connectGoogle, gmailAccess } from "./google-auth.ts";
+import { agentInbox } from "./agent-access.ts";
+import { checkKeyring, openGrant, sealGrant, withGmail } from "./gmail-connection.ts";
+import { syncFailureKind } from "./gmail-reader.ts";
+import { connectGoogle } from "./google-auth.ts";
 import { pickGoogleClient } from "./google-client-picker.ts";
-import {
-  clientForConsent,
-  environmentGoogleClient,
-  packGoogleGrant,
-  unpackGoogleGrant,
-  type GoogleClient,
-} from "./google-client.ts";
+import { clientForConsent, environmentGoogleClient } from "./google-client.ts";
+import { applyMailActions } from "./message-actions.ts";
 import { nextMailPage, readOlderSource } from "./older-page.ts";
 import { readMailPicture, referencedPicture } from "./pictures.ts";
-import { ReconnectRequired, syncMailbox } from "./provider.ts";
+import { syncMailbox } from "./provider.ts";
 import { createMailSession, type LocalMail, type MailSessionOptions } from "./session.ts";
-import { safeStorage, shell } from "electron";
-function checkKeyring() {
-  if (
-    !safeStorage.isEncryptionAvailable() ||
-    (process.platform === "linux" && safeStorage.getSelectedStorageBackend() === "basic_text")
-  )
-    throw new Error("A system credential store is required for Gmail.");
-}
-function sealGrant(client: GoogleClient, refreshToken: string) {
-  return safeStorage.encryptString(packGoogleGrant(client, refreshToken)).toString("base64");
-}
+import { shell } from "electron";
 export function createMailService(options: MailSessionOptions) {
   const { use, stop, checked } = createMailSession(options, requestSync);
-  async function withGmail<T>(
-    local: LocalMail,
-    id: string,
-    signal: AbortSignal,
-    work: (reader: ReturnType<typeof gmailReader>, grant: () => string) => Promise<T>,
-    background = false,
-  ) {
-    const c = await local.db.connection(id);
-    if (!c) throw new Error("Mailbox unavailable.");
-    signal.throwIfAborted();
-    let sealed = c.protectedGrant;
-    try {
-      checkKeyring();
-      if (c.provider !== "gmail") throw new Error("Provider unavailable.");
-      const grant = unpackGoogleGrant(safeStorage.decryptString(Buffer.from(sealed, "base64")));
-      const client = grant.client ?? environmentGoogleClient();
-      if (!client) throw new ReconnectRequired("Reconnect Gmail.");
-      const access = gmailAccess(client, grant.refreshToken, signal, async (replacement) => {
-        const next = sealGrant(client, replacement);
-        await local.db.rotateGrant(id, sealed, next);
-        sealed = next;
-      });
-      return await work(gmailReader(access, signal), () => sealed);
-    } catch (error) {
-      if (!signal.aborted && (background || error instanceof ReconnectRequired))
-        await local.db.fail(id, sealed, error instanceof ReconnectRequired ? "reconnect" : "retry");
-      throw error;
-    }
-  }
   function requestSync(local: LocalMail, id: string) {
     if (local.abort.signal.aborted) return;
     const job = local.jobs.request(id, async (mailboxSignal) => {
@@ -88,10 +47,7 @@ export function createMailService(options: MailSessionOptions) {
     const client = await clientForConsent(
       chooseClient,
       environmentGoogleClient(),
-      () =>
-        sealed
-          ? unpackGoogleGrant(safeStorage.decryptString(Buffer.from(sealed, "base64"))).client
-          : undefined,
+      () => (sealed ? openGrant(sealed).client : undefined),
       () => pickGoogleClient(signal),
     );
     if (!client) return null;
@@ -100,16 +56,46 @@ export function createMailService(options: MailSessionOptions) {
     await checked(local.auth, signal);
     const grant = await connectGoogle(client, (url) => shell.openExternal(url), signal);
     local.abort.signal.throwIfAborted();
+    if (!grant) return null;
     return {
       provider: "gmail",
       providerAccountId: grant.providerAccountId,
       address: grant.address,
+      canModify: true,
       protectedGrant: sealGrant(client, grant.refreshToken),
     };
   }
+  function change(
+    scope: MailScope,
+    ids: string[],
+    mode: "message" | "conversation",
+    action: MailMessageAction,
+  ) {
+    return use(scope, (local) =>
+      applyMailActions(
+        local,
+        ids,
+        mode,
+        action,
+        withGmail,
+        async (signal) => {
+          await checked(local.auth, signal);
+        },
+        requestSync,
+      ),
+    );
+  }
+  async function changeMessage(q: MailScope & { id: string }, action: MailMessageAction) {
+    return (await change(q, [q.id], "message", action))[0]!.result;
+  }
   return {
     stop,
+    forAgent: agentInbox({ use, checked }, withGmail),
     call: handleBridge(channel, methods, {
+      markRead: (q) => changeMessage(q, "markRead"),
+      markUnread: (q) => changeMessage(q, "markUnread"),
+      trashMessage: (q) => changeMessage(q, "trashMessage"),
+      changeConversations: (q) => change(q, q.ids, "conversation", q.action),
       accounts: (scope) =>
         use(scope, async (local) =>
           (await local.db.accounts()).map((box) => ({

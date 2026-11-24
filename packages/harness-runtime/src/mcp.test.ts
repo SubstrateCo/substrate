@@ -286,6 +286,47 @@ test("results above the offload limit are written inside the folder and returned
   }
 });
 
+test("Inbox discovery advertises read-only tools; an oversized private result is never written to the agent folder", async () => {
+  const messageId = crypto.randomUUID();
+  const mcp = await connected(
+    {
+      local: async () => ({
+        success: true,
+        data: {
+          messageId,
+          mailboxId: crypto.randomUUID(),
+          mailbox: "Work",
+          subject: "Renewal",
+          from: "Alex",
+          to: "Owner",
+          date: new Date().toISOString(),
+          unread: true,
+          text: "💌".repeat(3000),
+          truncated: false,
+          nextOffset: null,
+          coverage: "gmail",
+        },
+      }),
+    },
+    leaseOptions({ tools: leaseTools("main", ["inbox"]) }),
+  );
+  try {
+    const tools = new Map((await mcp.client.listTools()).tools.map((tool) => [tool.name, tool]));
+    for (const name of ["search_inbox", "read_inbox_message"])
+      expect(tools.get(name)?.annotations?.readOnlyHint).toBe(true);
+    mcp.lease.bind(turn);
+    const result = await mcp.client.callTool({
+      name: "read_inbox_message",
+      arguments: { messageId },
+    });
+    expect(result.isError).toBe(true);
+    expect(text(result)).not.toContain("💌");
+    expect(await readdir(folder)).toEqual([]);
+  } finally {
+    await mcp.close();
+  }
+});
+
 test("API failures reach the agent with their message and a next step", async () => {
   const mcp = await connected({
     workspace: async () => ({

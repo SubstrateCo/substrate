@@ -7,9 +7,11 @@ import type {
   WorkspaceApiRequest,
   WorkspaceApiResult,
 } from "@substrate/contracts/harness/mcp";
+import type { MailScope } from "@substrate/contracts/mail/ipc";
 import type { RealtimeUpdate } from "@substrate/contracts/realtime";
 
 import type { LocalMcpServers } from "../harness/controller/local-configuration.ts";
+import type { AgentInbox } from "../mail/agent-access.ts";
 import {
   DesktopSessionAuthority,
   HarnessAccessDenied,
@@ -72,6 +74,7 @@ export function createAgentWorkService(options: {
   fetchAPI: (url: string, init: RequestInit) => Promise<Response>;
   authority: DesktopSessionAuthority;
   harness: HarnessPort;
+  inbox?(scope: MailScope): AgentInbox;
   accountsDirectory: string;
   migrationsDirectory?: string;
   notify(change: AgentWorkChange): void;
@@ -153,6 +156,7 @@ export function createAgentWorkService(options: {
         store,
         server,
         harness: options.harness,
+        inbox: options.inbox?.({ userId: auth.userId, organizationId: auth.organizationId }),
         agents,
         enabledApps: async () => (await authority.appSettings()).enabledApps,
         profile: (agentId) => options.harness.readProfile(agentId).catch(() => ""),

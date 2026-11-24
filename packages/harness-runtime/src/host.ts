@@ -601,7 +601,15 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         const next = configuration.agents.find(
           (agent) => agent.id === live.ref.agentId && agent.enabled,
         );
-        if (next && JSON.stringify(next) === JSON.stringify(live.agent)) continue;
+        const tools = next?.useStartupDefaults
+          ? leaseTools(live.ref.folder === "main" ? "main" : "helper", configuration.enabledApps)
+          : [];
+        if (
+          next &&
+          JSON.stringify(next) === JSON.stringify(live.agent) &&
+          JSON.stringify(tools) === JSON.stringify(live.lease?.endpoint?.tools ?? [])
+        )
+          continue;
         // A live turn finishes on the configuration it started with; the session closes after.
         await closeWhenIdle(live, "configuration");
       }

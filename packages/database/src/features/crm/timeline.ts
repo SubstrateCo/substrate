@@ -10,7 +10,7 @@ import { pageSize } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { presentInteractions } from "./actor-views";
 import { crmAffiliations, crmDealContacts } from "./schema";
-import { and, desc, eq, exists, inArray, or, sql, type SQLWrapper } from "drizzle-orm";
+import { and, eq, exists, inArray, or, sql, type SQLWrapper } from "drizzle-orm";
 
 type Options = {
   limit?: number;
@@ -183,6 +183,10 @@ export async function timeline(
           : undefined,
       ),
     )
-    .orderBy(desc(contactInteractions.occurredAt), desc(contactInteractions.entityId))
+    // Match the timeline index's NULLS LAST order so the index serves the page without a sort.
+    .orderBy(
+      sql`${contactInteractions.occurredAt} desc nulls last`,
+      sql`${contactInteractions.entityId} desc nulls last`,
+    )
     .limit(pageSize(options.limit));
 }

@@ -78,13 +78,13 @@ function RowLabels({ labels, all }: { labels: MailLabel[]; all: boolean }) {
     <span
       aria-label="Labels"
       title={labels.map(labelName).join(", ")}
-      className="inline-flex max-w-1/2 min-w-0 shrink-0 items-center gap-1 overflow-hidden whitespace-nowrap"
+      className="inline-flex max-w-2/5 min-w-0 shrink-0 items-center gap-1 overflow-hidden whitespace-nowrap @3xl:order-3 @3xl:max-w-1/4"
     >
       {all && labels.length > 1 && (
         <span
           ref={measure}
           aria-hidden
-          className="pointer-events-none invisible absolute left-0 flex w-1/2 gap-1 overflow-hidden *:max-w-none *:shrink-0"
+          className="pointer-events-none invisible absolute left-0 flex w-2/5 gap-1 overflow-hidden *:max-w-none *:shrink-0 @3xl:w-1/4"
         >
           {labels.map((l) => (
             <LabelTag key={l.id} label={l} />
@@ -117,7 +117,7 @@ export function MessageLabels({
   return (
     <span
       aria-label="Labels"
-      className="mt-2 flex flex-wrap gap-1"
+      className="flex min-w-0 flex-wrap gap-1"
       title={labels.map(labelName).join(", ")}
     >
       {labels.map((l) => (

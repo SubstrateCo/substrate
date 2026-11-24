@@ -48,6 +48,7 @@ export function composeDesktop(options: {
   const agentWork = createAgentWorkService({
     ...options,
     authority,
+    inbox: mail.forAgent,
     harness: {
       synchronize: () => harness.run("synchronize").then(() => {}),
       execute: (command) => harness.execute(command),
