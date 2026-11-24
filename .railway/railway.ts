@@ -1,4 +1,13 @@
-import { bucket, defineRailway, github, postgres, project, redis, service } from "railway/iac";
+import {
+  bucket,
+  defineRailway,
+  github,
+  postgres,
+  preserve,
+  project,
+  redis,
+  service,
+} from "railway/iac";
 
 const repository = "SubstrateCo/substrate";
 const region = "us-east4-eqdc4a";
@@ -22,8 +31,11 @@ export default defineRailway(() => {
     healthcheck: "/health",
     healthcheckTimeout: 120,
     replicas: { [region]: 1 },
+    domains: [{ domain: "api.substrateco.xyz", port: Number(port) }],
     env: {
       NODE_ENV: "production",
+      // Secrets are set with `railway variables --set` and never written here.
+      BETTER_AUTH_SECRET: preserve(),
       PORT: port,
       SERVER_PORT: port,
       SUBSTRATE_API_URL: apiURL,
@@ -35,6 +47,12 @@ export default defineRailway(() => {
       S3_BUCKET: "${{storage.BUCKET}}",
       S3_ACCESS_KEY_ID: "${{storage.ACCESS_KEY_ID}}",
       S3_SECRET_ACCESS_KEY: "${{storage.SECRET_ACCESS_KEY}}",
+      // Resend SMTP. Outbound SMTP needs the Railway Pro plan.
+      SMTP_HOST: "smtp.resend.com",
+      SMTP_PORT: "465",
+      SMTP_SECURE: "true",
+      SMTP_USER: "resend",
+      SMTP_PASSWORD: preserve(),
       EMAIL_FROM: "Substrate <noreply@substrateco.xyz>",
       SUBSTRATE_WINDOWS_DOWNLOAD_URL:
         "https://github.com/SubstrateCo/substrate/releases/latest/download/Substrate-Setup.exe",
@@ -50,6 +68,7 @@ export default defineRailway(() => {
     },
     healthcheck: "/",
     replicas: { [region]: 1 },
+    domains: [{ domain: "app.substrateco.xyz", port: Number(port) }],
     env: {
       PORT: port,
       API_UPSTREAM: `http://\${{api.RAILWAY_PRIVATE_DOMAIN}}:${port}`,
@@ -64,6 +83,10 @@ export default defineRailway(() => {
       watchPatterns: ["deploy/redirect/**"],
     },
     replicas: { [region]: 1 },
+    domains: [
+      { domain: "substrateco.xyz", port: Number(port) },
+      { domain: "www.substrateco.xyz", port: Number(port) },
+    ],
     env: {
       PORT: port,
       REDIRECT_TARGET: webURL,
