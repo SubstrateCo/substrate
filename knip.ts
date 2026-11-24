@@ -4,7 +4,7 @@ export default {
   workspaces: {
     ".": {
       entry: [],
-      project: ["*.{js,ts}"],
+      project: ["*.{js,ts}", ".railway/*.ts"],
       // oxlint's type-aware linting uses it; no source file imports it.
       ignoreDependencies: ["tsrs"],
     },

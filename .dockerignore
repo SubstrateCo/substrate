@@ -1,0 +1,10 @@
+.git
+**/node_modules
+**/.turbo
+**/dist
+**/test-results
+**/playwright-report
+apps/desktop/release
+.env
+.env.*
+.railway

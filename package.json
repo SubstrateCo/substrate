@@ -38,6 +38,7 @@
     "knip": "^6.44.2",
     "oxfmt": "^0.79.0",
     "oxlint": "catalog:tooling",
+    "railway": "3.17.0",
     "tsrs": "7.1.0-beta.tsrs4",
     "turbo": "^2.11.10"
   },
