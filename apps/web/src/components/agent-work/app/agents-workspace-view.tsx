@@ -21,7 +21,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import type { WorkStatus } from "@/lib/agent-work/status";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { cn } from "cn";
-import { Hand, Plus } from "lucide-react";
+import { ArrowLeft, Hand, Plus } from "lucide-react";
 
 export type AgentListItem = {
   id: string;
@@ -162,7 +162,19 @@ export function AgentsWorkspaceView({
             </section>
           </PageSidebarContent>
         </PageSidebar>
-        <PageContent>{content}</PageContent>
+        <PageContent>
+          {selectedAgentId && (
+            <div className="shrink-0 border-b px-4 py-2 md:hidden">
+              <Button asChild variant="ghost" size="sm">
+                <Link {...agentLink()}>
+                  <ArrowLeft aria-hidden="true" />
+                  All agents
+                </Link>
+              </Button>
+            </div>
+          )}
+          {content}
+        </PageContent>
         {aside}
       </PageLayout>
       {editor}

@@ -1,4 +1,9 @@
-import { AccessDeniedError, AppDisabledError, ConflictError, ValidationError } from "../../../errors";
+import {
+  AccessDeniedError,
+  AppDisabledError,
+  ConflictError,
+  ValidationError,
+} from "../../../errors";
 import { proposalFailure } from "./decisions";
 import { expect, test } from "bun:test";
 

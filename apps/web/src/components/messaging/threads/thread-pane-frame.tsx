@@ -35,7 +35,9 @@ export function ThreadPaneFrame({
           <span className="flex min-w-0 items-baseline gap-2">
             Thread
             <Button variant="link" size="xs" className="min-w-0" onClick={onClose}>
-              <span className="truncate font-normal text-muted-foreground">{conversationLabel}</span>
+              <span className="truncate font-normal text-muted-foreground">
+                {conversationLabel}
+              </span>
             </Button>
           </span>
         }

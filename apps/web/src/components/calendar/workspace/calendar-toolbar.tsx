@@ -53,9 +53,10 @@ export function CalendarToolbar({
   return (
     <PageHeader
       variant="pane"
-      title={title}
+      title={<span className="my-2 block">{title}</span>}
+      className="h-auto min-h-12 flex-wrap [&>div:last-child]:max-w-full [&>div:last-child]:shrink"
       actions={
-        <div className="flex items-center gap-2">
+        <div className="my-2 flex max-w-full flex-wrap items-center gap-2">
           <Button variant="outline" size="sm" disabled={showsToday} onClick={onToday}>
             Today
           </Button>

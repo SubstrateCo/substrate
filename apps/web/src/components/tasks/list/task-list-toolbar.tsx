@@ -6,6 +6,7 @@ import { TaskFilterLayout } from "./task-list-layout";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Select,
   SelectContent,
@@ -14,7 +15,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { ArrowUpDown, UserRound, X } from "lucide-react";
+import { useMediaQuery } from "@/hooks/use-media-query";
+import { ArrowUpDown, SlidersHorizontal, UserRound, X } from "lucide-react";
 
 const sortOptions: { value: TaskSort; label: string }[] = [
   { value: "default", label: "Task ID" },
@@ -49,27 +51,24 @@ export function TaskListToolbar({
   /** The view toggle, last at the right end. */
   viewControl?: ReactNode;
 }) {
+  const compact = useMediaQuery("(max-width: 639px)");
   const set = (patch: Partial<TaskFilters>) => onChange({ ...filters, ...patch });
   let assigneeName =
     assignees.find((actor) => actor.entityId === filters.assignee)?.name ?? "Former member";
   if (filters.assignee === "any") assigneeName = "Any assignee";
   if (filters.assignee === "unassigned") assigneeName = "Unassigned";
-  return (
-    <TaskFilterLayout toolbar>
-      <Input
-        className="w-72 max-w-full"
-        type="search"
-        aria-label="Search tasks"
-        placeholder="Search tasks"
-        value={filters.query}
-        onChange={(event) => set({ query: event.target.value })}
-        onKeyDown={(event) => {
-          if (event.key === "Escape" && filters.query) {
-            event.preventDefault();
-            set({ query: "" });
-          }
-        }}
-      />
+  const clearFilters = (
+    <Button
+      type="button"
+      variant="ghost"
+      onClick={() => set({ query: "", assignee: "any", scope: "all" })}
+    >
+      <X aria-hidden="true" />
+      Clear filters
+    </Button>
+  );
+  const controls = (
+    <>
       <SegmentedControl
         aria-label="Show tasks"
         value={filters.scope}
@@ -77,7 +76,11 @@ export function TaskListToolbar({
         onValueChange={(scope) => set({ scope })}
       />
       <Select value={filters.assignee} onValueChange={(assignee) => set({ assignee })}>
-        <SelectTrigger aria-label="Filter by assignee" title={assigneeName} className="max-w-48">
+        <SelectTrigger
+          aria-label="Filter by assignee"
+          title={assigneeName}
+          className={compact ? "w-full" : "max-w-48"}
+        >
           <UserRound aria-hidden="true" className="text-muted-foreground" />
           <span className="min-w-0 truncate">
             <SelectValue />
@@ -101,7 +104,7 @@ export function TaskListToolbar({
           if (option) set({ sort: option.value });
         }}
       >
-        <SelectTrigger aria-label="Sort tasks">
+        <SelectTrigger aria-label="Sort tasks" className={compact ? "w-full" : undefined}>
           <ArrowUpDown aria-hidden="true" className="text-muted-foreground" />
           <span>
             <SelectValue />
@@ -115,18 +118,46 @@ export function TaskListToolbar({
           ))}
         </SelectContent>
       </Select>
+    </>
+  );
+  return (
+    <TaskFilterLayout toolbar>
+      <Input
+        className="w-full max-w-full @lg:w-72"
+        type="search"
+        aria-label="Search tasks"
+        placeholder="Search tasks"
+        value={filters.query}
+        onChange={(event) => set({ query: event.target.value })}
+        onKeyDown={(event) => {
+          if (event.key === "Escape" && filters.query) {
+            event.preventDefault();
+            set({ query: "" });
+          }
+        }}
+      />
+      {compact ? (
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant={filtered || filters.sort !== "default" ? "secondary" : "outline"}>
+              <SlidersHorizontal aria-hidden="true" />
+              Filters
+              {(filtered || filters.sort !== "default") && (
+                <span className="sr-only">, active</span>
+              )}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" aria-label="Task filters and sort">
+            {controls}
+            {filtered && clearFilters}
+          </PopoverContent>
+        </Popover>
+      ) : (
+        controls
+      )}
       {filtered && (
         <>
-          {shown > 0 && (
-            <Button
-              type="button"
-              variant="ghost"
-              onClick={() => set({ query: "", assignee: "any", scope: "all" })}
-            >
-              <X aria-hidden="true" />
-              Clear filters
-            </Button>
-          )}
+          {!compact && shown > 0 && clearFilters}
           <p role="status" className="text-xs text-muted-foreground tabular-nums">
             {shown} of {total}
           </p>

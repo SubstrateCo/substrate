@@ -67,7 +67,7 @@ function ToolButton({
   );
 }
 
-/** Zoom, rotate, and reset, on one row under the image. Fit mode has nothing to zoom. */
+/** Zoom, rotate, and reset under the image. Fit mode has nothing to zoom. */
 export function ImageCropControls({
   kind,
   mode,
@@ -86,7 +86,7 @@ export function ImageCropControls({
   onReset: () => void;
 }) {
   const zoomControl = (
-    <div className="flex min-w-0 flex-1 items-center">
+    <div className="flex min-w-0 flex-1 basis-full items-center sm:basis-auto">
       <ToolButton
         label="Zoom out"
         disabled={zoom <= minZoom}
@@ -114,7 +114,7 @@ export function ImageCropControls({
   );
   return (
     <div className="space-y-2">
-      <div className="flex items-center gap-0.5">
+      <div className="flex flex-wrap items-center gap-x-0.5 gap-y-2 sm:flex-nowrap">
         {kind === "organization-logo" ? (
           <ImageSizingControl mode={mode} onModeChange={onModeChange} />
         ) : (

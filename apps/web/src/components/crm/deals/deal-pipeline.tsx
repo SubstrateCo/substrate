@@ -62,7 +62,7 @@ export function DealPipeline({
               <BoardCard key={deal.entityId}>
                 <Link
                   {...crmLink(organizationId, "deals", deal.entityId)}
-                  className={cn(boardCardTarget, "block")}
+                  className={cn(boardCardTarget, "block wrap-anywhere")}
                 >
                   {deal.title}
                 </Link>

@@ -12,8 +12,8 @@ import {
   liveApprovedParticipant,
   visibleConversations,
 } from "../access";
-import { messagingReadPositions } from "./read-state.schema";
 import { messagingConversations, messagingMessages, messagingParticipants } from "../schema";
+import { messagingReadPositions } from "./read-state.schema";
 import { and, eq, isNull, ne, notInArray, sql } from "drizzle-orm";
 
 export function readOperations(

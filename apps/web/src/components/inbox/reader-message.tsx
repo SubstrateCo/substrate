@@ -77,8 +77,11 @@ function MessageHeading({ message }: { message: MailHeader }) {
     ] as const
   ).find(([, flag]) => message.flags & flag)?.[0];
   return (
-    <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1">
-      <span className="min-w-0 truncate text-sm font-medium text-foreground" title={message.from}>
+    <span className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-1 @max-md:whitespace-normal">
+      <span
+        className="min-w-0 truncate text-sm font-medium text-foreground @max-md:wrap-anywhere @max-md:whitespace-normal"
+        title={message.from}
+      >
         {message.from || "Unknown sender"}
       </span>
       {folder && <Tag size="sm">{folder}</Tag>}
@@ -121,8 +124,12 @@ export function ReaderMessage({
               )}
             </span>
             <span className="flex shrink-0 items-center gap-1">
-              <span className="group-aria-expanded:hidden">Show message</span>
-              <span className="hidden group-aria-expanded:inline">Hide message</span>
+              <span className="sr-only group-aria-expanded:hidden @md:not-sr-only">
+                Show message
+              </span>
+              <span className="sr-only hidden group-aria-expanded:inline @md:not-sr-only">
+                Hide message
+              </span>
               <ChevronDown aria-hidden className="group-aria-expanded:rotate-180" />
             </span>
           </span>

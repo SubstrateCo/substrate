@@ -51,7 +51,7 @@ export function DesktopInstallView({
   }
 
   const summary = loading ? (
-    <Skeleton className="h-4 w-56" />
+    <Skeleton className="h-4 w-56 max-w-full" />
   ) : (
     <p className="text-sm text-muted-foreground">{description}</p>
   );
@@ -72,7 +72,8 @@ export function DesktopInstallView({
             <Laptop className="size-4" />
           </span>
           <div className="min-w-0 space-y-1">
-            <Heading level={2} id="desktop-install-title">
+            {/* oxlint-disable-next-line shadcn/no-restyle -- Balance mobile line breaks without changing the heading's type role. */}
+            <Heading level={2} id="desktop-install-title" className="max-sm:text-balance">
               {title}
             </Heading>
             {summary}
@@ -100,8 +101,8 @@ export function DesktopInstallView({
         ) : (
           !loading && !error && continueInBrowser(true)
         )}
-        {/* The two quieter paths share one row, so the primary action stands alone above them. */}
-        <div className="flex gap-2 *:flex-1">
+        {/* Keep the quieter paths below the primary action; share a row when space allows. */}
+        <div className="flex flex-col gap-2 *:flex-1 sm:flex-row">
           {openInstalled}
           {(windowsAvailable || error) && continueInBrowser(false)}
         </div>

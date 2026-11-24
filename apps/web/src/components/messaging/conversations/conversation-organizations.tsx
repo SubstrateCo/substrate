@@ -1,6 +1,8 @@
 import { Tag } from "@/components/feedback/tag";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { ChevronDown, Globe } from "lucide-react";
 
 export type ChannelOrganization = {
@@ -17,16 +19,22 @@ export function ConversationOrganizations({
   organizations: ChannelOrganization[];
   members: { organizationId: string }[];
 }) {
+  const wide = useMediaQuery("(min-width: 768px)");
   const ordered = [...organizations].sort((a, b) => Number(b.own) - Number(a.own));
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="disclosure" size="sm" aria-label="Organizations">
-          <Globe aria-hidden="true" />
-          <span>Organizations</span>
-          <ChevronDown aria-hidden="true" data-icon="inline-end" />
-        </Button>
-      </PopoverTrigger>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <PopoverTrigger asChild>
+            <Button variant="disclosure" size={wide ? "sm" : "icon-sm"} aria-label="Organizations">
+              <Globe aria-hidden="true" />
+              <span className="max-md:hidden">Organizations</span>
+              <ChevronDown aria-hidden="true" data-icon="inline-end" className="max-md:hidden" />
+            </Button>
+          </PopoverTrigger>
+        </TooltipTrigger>
+        <TooltipContent>Organizations</TooltipContent>
+      </Tooltip>
       <PopoverContent
         variant="reference"
         align="end"

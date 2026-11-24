@@ -54,10 +54,12 @@ export function PictureUploadLoading({ kind, label }: { kind: PictureKind; label
               </span>
             }
           >
-            <div className="flex flex-wrap items-center gap-2">
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
               <Skeleton className="h-9 w-28" />
             </div>
-            <FieldDescription>Drop an image here. JPEG, PNG, or WebP, up to 5 MB.</FieldDescription>
+            <FieldDescription className="basis-full">
+              Drop an image here. JPEG, PNG, or WebP, up to 5 MB.
+            </FieldDescription>
           </FileUploadContent>
         </FileUploadLayout>
       </Field>

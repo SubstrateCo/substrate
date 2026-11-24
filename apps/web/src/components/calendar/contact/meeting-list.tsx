@@ -47,12 +47,16 @@ export function MeetingList({
           {meetings.map((meeting) => (
             <li key={meeting.entityId}>
               <Item asChild size="xs">
-                <Link {...meetingLink(meeting)}>
+                <Link {...meetingLink(meeting)} className="flex-nowrap">
                   <ItemMedia>
                     <CalendarColorDot color={meeting.color} />
                   </ItemMedia>
                   <ItemContent className="min-w-0">
-                    <ItemTitle className="max-w-full">{eventTitle(meeting.title)}</ItemTitle>
+                    <ItemTitle className="max-w-full">
+                      <span className="truncate" title={eventTitle(meeting.title)}>
+                        {eventTitle(meeting.title)}
+                      </span>
+                    </ItemTitle>
                     <ItemDescription>{eventWhenLabel(meeting, now)}</ItemDescription>
                   </ItemContent>
                   <ItemActions>

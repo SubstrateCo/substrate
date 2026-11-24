@@ -15,7 +15,7 @@ export function WorkspaceTools({
   locationKey: string;
   /** A new value opens the panel with an empty query and focuses the input. */
   openRequest?: number;
-  renderSearch: (query: string) => ReactNode;
+  renderSearch: (query: string, onClose: () => void) => ReactNode;
 }) {
   const [panel, setPanel] = useState({ locationKey, open: false });
   const { setLocalSearchTarget } = useWorkspaceSearch();
@@ -131,10 +131,7 @@ export function WorkspaceTools({
               setOpen(true);
             }}
           >
-            <KbdGroup
-              className={desktop ? "max-sm:hidden" : undefined}
-              aria-label={isMac ? "Command K" : "Control K"}
-            >
+            <KbdGroup className="max-sm:hidden" aria-label={isMac ? "Command K" : "Control K"}>
               <Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd>
               <Kbd>K</Kbd>
             </KbdGroup>
@@ -149,7 +146,7 @@ export function WorkspaceTools({
                   : "absolute inset-x-0 top-full mt-2 overflow-hidden rounded-xl border bg-popover shadow-floating"
               }
             >
-              {renderSearch(query)}
+              {renderSearch(query, close)}
             </div>
           )}
         </Command>

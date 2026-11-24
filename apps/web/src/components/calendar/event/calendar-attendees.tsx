@@ -46,7 +46,7 @@ export function CalendarAttendees({
           const name = attendee.contact?.displayName ?? attendee.displayName ?? attendee.email;
           const declined = attendee.role === "declined";
           return (
-            <Item key={attendee.email} asChild size="xs">
+            <Item key={attendee.email} asChild size="xs" className="@container">
               <li>
                 <ItemMedia>
                   {attendee.role === "resource" ? (
@@ -74,9 +74,11 @@ export function CalendarAttendees({
                       </span>
                     )}
                   </ItemTitle>
-                  {name !== attendee.email && <ItemDescription>{attendee.email}</ItemDescription>}
+                  {name !== attendee.email && (
+                    <ItemDescription className="wrap-anywhere">{attendee.email}</ItemDescription>
+                  )}
                 </ItemContent>
-                <ItemActions className="flex-wrap justify-end">
+                <ItemActions className="flex-wrap justify-end @max-[24rem]:ml-8 @max-[24rem]:basis-full @max-[24rem]:justify-start">
                   {attendee.isOrganizer && <Tag>Organizer</Tag>}
                   {attendee.isOptional && !declined && <Tag>Optional</Tag>}
                   <Tag>{attendeeRoleLabel(attendee.role, outcome)}</Tag>

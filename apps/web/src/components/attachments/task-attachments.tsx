@@ -41,7 +41,7 @@ function TaskAttachmentDrafts({
     <>
       <AttachmentDraftList uploads={uploads} disabled={pending} />
       {!!uploads.items.length && (
-        <div className="flex justify-end gap-2">
+        <div className="flex flex-wrap justify-end gap-2">
           <Button variant="outline" size="sm" disabled={pending} onClick={() => uploads.clear()}>
             Cancel
           </Button>

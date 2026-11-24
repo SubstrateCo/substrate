@@ -159,34 +159,40 @@ export async function timeline(
   // previews; navigation to discussion anchors is independently resolved by the context domain.
   // The scope is resolved to IDs first, so each page reads those contacts' timeline index and
   // the linked rows instead of testing every interaction in the organization.
-  return db
-    .select({
-      entityId: contactInteractions.entityId,
-      contactEntityId: contactInteractions.contactEntityId,
-      kind: contactInteractions.kind,
-      occurredAt: contactInteractions.occurredAt,
-      endedAt: contactInteractions.endedAt,
-      summary: contactInteractions.summary,
-      origin: contactInteractions.origin,
-    })
-    .from(contactInteractions)
-    .where(
-      and(
-        eq(contactInteractions.organizationId, scope.organizationId),
-        interactionReadable(context, contactInteractions.entityId),
-        or(
-          contactIds.length ? inArray(contactInteractions.contactEntityId, contactIds) : undefined,
-          interactionIds.length ? inArray(contactInteractions.entityId, interactionIds) : undefined,
+  return (
+    db
+      .select({
+        entityId: contactInteractions.entityId,
+        contactEntityId: contactInteractions.contactEntityId,
+        kind: contactInteractions.kind,
+        occurredAt: contactInteractions.occurredAt,
+        endedAt: contactInteractions.endedAt,
+        summary: contactInteractions.summary,
+        origin: contactInteractions.origin,
+      })
+      .from(contactInteractions)
+      .where(
+        and(
+          eq(contactInteractions.organizationId, scope.organizationId),
+          interactionReadable(context, contactInteractions.entityId),
+          or(
+            contactIds.length
+              ? inArray(contactInteractions.contactEntityId, contactIds)
+              : undefined,
+            interactionIds.length
+              ? inArray(contactInteractions.entityId, interactionIds)
+              : undefined,
+          ),
+          before
+            ? sql`(${contactInteractions.occurredAt}, ${contactInteractions.entityId}) < (${before.occurredAt.toISOString()}::timestamptz, ${before.entityId}::uuid)`
+            : undefined,
         ),
-        before
-          ? sql`(${contactInteractions.occurredAt}, ${contactInteractions.entityId}) < (${before.occurredAt.toISOString()}::timestamptz, ${before.entityId}::uuid)`
-          : undefined,
-      ),
-    )
-    // Match the timeline index's NULLS LAST order so the index serves the page without a sort.
-    .orderBy(
-      sql`${contactInteractions.occurredAt} desc nulls last`,
-      sql`${contactInteractions.entityId} desc nulls last`,
-    )
-    .limit(pageSize(options.limit));
+      )
+      // Match the timeline index's NULLS LAST order so the index serves the page without a sort.
+      .orderBy(
+        sql`${contactInteractions.occurredAt} desc nulls last`,
+        sql`${contactInteractions.entityId} desc nulls last`,
+      )
+      .limit(pageSize(options.limit))
+  );
 }

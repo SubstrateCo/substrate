@@ -37,7 +37,7 @@ export function InteractionDay({ period }: { period: InteractionPeriod }) {
   if (!query.data) return <LoadingState label="Loading this day’s interactions" />;
   const { items, nextCursor } = query.data;
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto">
+    <div className="overflow-y-auto md:min-h-0 md:flex-1">
       <InteractionTable
         rows={items}
         organizationId={period.organizationId}

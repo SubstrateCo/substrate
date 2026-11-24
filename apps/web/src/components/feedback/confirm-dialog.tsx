@@ -68,13 +68,18 @@ export function ConfirmDialog({
             <FormMessage error={error} errorDescription={errorDescription} />
           </DialogBody>
         )}
-        <DialogFooter className={status ? "items-center sm:justify-between" : undefined}>
+        <DialogFooter
+          className={status !== undefined ? "sm:flex-wrap sm:justify-between" : undefined}
+        >
           {status !== undefined && (
-            <p className="text-sm text-muted-foreground" aria-live="polite">
+            <p
+              className="min-w-0 text-sm wrap-anywhere text-muted-foreground sm:flex-1"
+              aria-live="polite"
+            >
               {status}
             </p>
           )}
-          <div className="flex flex-col-reverse gap-2 sm:flex-row">
+          <div className="flex w-full max-w-full min-w-0 flex-col-reverse gap-2 sm:w-auto sm:flex-row sm:flex-wrap [&_button]:h-auto [&_button]:max-w-full [&_button]:py-1 [&_button]:wrap-anywhere [&_button]:whitespace-normal sm:[&_button]:min-h-8">
             <Button variant="outline" disabled={pending} onClick={onClose}>
               {confirmLabel ? cancelLabel : "Close"}
             </Button>

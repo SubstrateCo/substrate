@@ -46,7 +46,7 @@ export function HarnessAvailabilityView({
       ) : (
         <span aria-hidden="true" className={`size-2 shrink-0 rounded-full ${tone}`} />
       )}
-      <span role="status" className="min-w-0 flex-1 truncate" title={text}>
+      <span role="status" className="min-w-0 flex-1 wrap-anywhere">
         {text}
       </span>
       {onRefresh && (

@@ -119,7 +119,7 @@ export function MatchReview({ scope, queries }: { scope: MeetingScope; queries: 
             </ItemActions>
           </Item>
           {inspect === r.originalId && <OriginalText id={r.originalId} queries={queries} />}
-          <div className="flex justify-end gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="outline"
               disabled={act.isPending}

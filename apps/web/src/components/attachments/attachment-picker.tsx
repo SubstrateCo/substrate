@@ -75,13 +75,15 @@ export function AttachmentDraftList({
       {!!uploads.items.length && (
         <ul aria-label="Selected attachments" className="grid gap-2">
           {uploads.items.map((item) => (
-            <Item key={item.id} asChild variant="outline" size="xs">
+            <Item key={item.id} asChild variant="outline" size="xs" className="min-w-0 flex-nowrap">
               <li>
                 <ItemMedia variant="icon">
                   <FileText aria-hidden="true" className="text-muted-foreground" />
                 </ItemMedia>
                 <ItemContent className="min-w-0">
-                  <ItemTitle className="max-w-full">{item.file.name}</ItemTitle>
+                  <ItemTitle className="max-w-full">
+                    <span className="truncate">{item.file.name}</span>
+                  </ItemTitle>
                   <ItemDescription role="status">{uploadStatus(item)}</ItemDescription>
                 </ItemContent>
                 <ItemActions>

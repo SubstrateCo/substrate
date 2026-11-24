@@ -92,7 +92,7 @@ export function EmojiPicker({
       </Tooltip>
       <PopoverContent
         variant="reference"
-        className="w-80"
+        className="max-h-(--radix-popover-content-available-height) w-80"
         align="start"
         collisionPadding={8}
         aria-label="Emoji"
@@ -134,7 +134,7 @@ function EmojiPanel({ onPick: pick }: { onPick: (emoji: string) => void }) {
   };
   return (
     <>
-      <div className="border-b p-2">
+      <div className="shrink-0 border-b p-2">
         <Input
           type="search"
           aria-label="Search emoji"
@@ -158,7 +158,7 @@ function EmojiPanel({ onPick: pick }: { onPick: (emoji: string) => void }) {
       </div>
       <div
         ref={list}
-        className={`${search ? "max-h-72" : "h-72 max-h-(--radix-popover-content-available-height)"} space-y-3 overflow-y-auto p-2`}
+        className={`${search ? "max-h-72" : "h-72"} min-h-0 space-y-3 overflow-y-auto p-2`}
         onKeyDown={(event) => {
           const delta = { ArrowLeft: -1, ArrowRight: 1, ArrowUp: -8, ArrowDown: 8 }[event.key];
           if (delta !== undefined) {

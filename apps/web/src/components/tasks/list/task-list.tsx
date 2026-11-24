@@ -144,7 +144,7 @@ export function TaskList({
                     >
                       <ChevronRight
                         aria-hidden="true"
-                        className={`size-3 text-muted-foreground opacity-0 transition-transform duration-150 ease-out group-focus-within/header:opacity-100 group-hover/header:opacity-100 ${open ? "rotate-90" : ""}`}
+                        className={`size-3 text-muted-foreground transition-transform duration-150 ease-out group-focus-within/header:opacity-100 group-hover/header:opacity-100 [@media(hover:hover)]:opacity-0 ${open ? "rotate-90" : ""}`}
                       />
                       <TaskStatusIcon status={status} />
                       <span id={`${listId}-${status}-label`}>{label}</span>
@@ -154,7 +154,7 @@ export function TaskList({
                     </Pressable>
                   </Heading>
                   {onCreate && (
-                    <span className="opacity-0 transition-opacity duration-150 group-hover/header:opacity-100 has-focus-visible:opacity-100">
+                    <span className="transition-opacity duration-150 group-hover/header:opacity-100 has-focus-visible:opacity-100 [@media(hover:hover)]:opacity-0">
                       <Tooltip>
                         <TooltipTrigger asChild>
                           <Button

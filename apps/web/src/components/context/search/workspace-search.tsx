@@ -24,10 +24,12 @@ export function WorkspaceSearch({
   organizationId,
   initialKind = "all",
   query,
+  onClose,
 }: {
   organizationId: string;
   initialKind?: SearchKind;
   query: string;
+  onClose: () => void;
 }) {
   const apps = useOrganizationApps();
   const kinds: SearchKind[] = apps.enabled("tasks")
@@ -42,6 +44,7 @@ export function WorkspaceSearch({
   return (
     <WorkspaceSearchView
       query={query}
+      onClose={onClose}
       kind={kind}
       kinds={kinds}
       results={(search.pending ? [] : (resourceState(results).data?.pages.flat() ?? []))

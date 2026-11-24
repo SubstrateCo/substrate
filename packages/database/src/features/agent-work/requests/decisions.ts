@@ -12,12 +12,17 @@ import { effectsFor } from "../../../core/effects";
 import type { DatabaseExecutor } from "../../../core/executor";
 import type { SessionIdentity } from "../../../core/session/identity";
 import { workspaceContext } from "../../../core/session/workspace";
-import { AccessDeniedError, AppDisabledError, ConflictError, ValidationError } from "../../../errors";
+import {
+  AccessDeniedError,
+  AppDisabledError,
+  ConflictError,
+  ValidationError,
+} from "../../../errors";
 import { inStates } from "../machine-sql";
+import { wakeForRequest } from "../wakes/wakes";
 import { runProposalAction } from "./proposals";
 import { answerableBy, ownedRequests } from "./request-views";
 import { agentRequests } from "./requests.schema";
-import { wakeForRequest } from "../wakes/wakes";
 import { and, eq, inArray, sql } from "drizzle-orm";
 
 const closed = "This request was already answered or has closed.";

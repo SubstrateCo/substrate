@@ -87,7 +87,7 @@ export function CalendarWorkspaceView({
             </Tooltip>
           }
         />
-        <PageSidebarContent>
+        <PageSidebarContent className="max-md:max-h-48">
           {calendarGroups.length > 0 && (
             <CalendarFilter groups={calendarGroups} hidden={hidden} onToggle={onToggleCalendar} />
           )}

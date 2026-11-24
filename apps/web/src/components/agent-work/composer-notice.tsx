@@ -40,9 +40,11 @@ export function ComposerNotice({
       className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 px-4 pt-2 text-xs text-muted-foreground"
     >
       {lines.map((line) => (
-        <span key={line.key} className="flex min-w-0 items-center gap-1.5">
+        <span key={line.key} className="flex min-w-0 flex-wrap items-center gap-1.5">
           <Bot aria-hidden="true" className="size-3.5 shrink-0" />
-          <span className="font-medium text-foreground">{line.agentName}</span>
+          <span className="min-w-0 font-medium wrap-anywhere text-foreground">
+            {line.agentName}
+          </span>
           <span
             className={cn(
               "min-w-0 truncate tabular-nums",

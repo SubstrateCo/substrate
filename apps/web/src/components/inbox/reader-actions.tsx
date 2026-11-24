@@ -78,7 +78,8 @@ export function ReaderActionBar({
         )}
         {!writable && (
           <Button variant="outline" size="sm" onClick={onManage}>
-            Reconnect to enable Gmail actions
+            Reconnect
+            <span className="sr-only @md:not-sr-only"> to enable Gmail actions</span>
           </Button>
         )}
       </div>

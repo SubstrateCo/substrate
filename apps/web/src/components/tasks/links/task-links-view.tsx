@@ -201,65 +201,72 @@ export function TaskLinkPicker({
         </TooltipTrigger>
         <TooltipContent>Link a task</TooltipContent>
       </Tooltip>
-      <PopoverContent variant="menu" align="end" className="w-80">
-        <Select
-          value={relation}
-          onValueChange={(next) => {
-            const value = taskLinkRelations.find((candidate) => candidate === next);
-            if (value) onRelationChange(value);
-          }}
-        >
-          <SelectTrigger aria-label="How this task relates" className="w-full">
-            <span className="min-w-0 truncate">
-              <span className="text-muted-foreground">This task </span>
-              <SelectValue />
-            </span>
-          </SelectTrigger>
-          <SelectContent position="popper" align="start">
-            {taskLinkRelations.map((value) => (
-              <SelectItem key={value} value={value}>
-                {taskLinkRelationLabels[value].toLowerCase()}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Command shouldFilter={false} label="Search tasks to link">
-          <CommandInput placeholder="Search tasks" value={query} onValueChange={onQueryChange} />
-          <CommandList className="mt-1">
-            {loading && (
-              <p role="status" className="flex items-center gap-2 px-2 py-1.5 text-sm">
-                <Spinner aria-hidden="true" className="size-3.5" />
-                Searching tasks.
-              </p>
-            )}
-            {!loading && searchError && (
-              <p role="alert" className="px-2 py-1.5 text-sm text-destructive">
-                Couldn’t search tasks.
-              </p>
-            )}
-            {!loading && !searchError && <CommandEmpty>No tasks match.</CommandEmpty>}
-            {!loading && !!results.length && (
-              <CommandGroup>
-                {results.map((task) => (
-                  <CommandItem
-                    key={task.id}
-                    value={task.id}
-                    disabled={pending}
-                    onSelect={() => onPick(task.id)}
-                  >
-                    {task.status && <TaskStatusIcon status={task.status} />}
-                    <span className="min-w-0 flex-1 truncate">{task.title}</span>
-                    {task.projectName && (
-                      <span className="max-w-2/5 shrink-0 truncate text-xs text-muted-foreground">
-                        {task.projectName}
-                      </span>
-                    )}
-                  </CommandItem>
-                ))}
-              </CommandGroup>
-            )}
-          </CommandList>
-        </Command>
+      <PopoverContent
+        variant="menu"
+        align="end"
+        collisionPadding={8}
+        className="max-h-(--radix-popover-content-available-height) w-80 overflow-y-auto overscroll-contain"
+      >
+        <div className="grid min-w-0 gap-2 p-1">
+          <Select
+            value={relation}
+            onValueChange={(next) => {
+              const value = taskLinkRelations.find((candidate) => candidate === next);
+              if (value) onRelationChange(value);
+            }}
+          >
+            <SelectTrigger aria-label="How this task relates" className="w-full">
+              <span className="min-w-0 truncate">
+                <span className="text-muted-foreground">This task </span>
+                <SelectValue />
+              </span>
+            </SelectTrigger>
+            <SelectContent position="popper" align="start">
+              {taskLinkRelations.map((value) => (
+                <SelectItem key={value} value={value}>
+                  {taskLinkRelationLabels[value].toLowerCase()}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Command shouldFilter={false} label="Search tasks to link">
+            <CommandInput placeholder="Search tasks" value={query} onValueChange={onQueryChange} />
+            <CommandList className="mt-1">
+              {loading && (
+                <p role="status" className="flex items-center gap-2 px-2 py-1.5 text-sm">
+                  <Spinner aria-hidden="true" className="size-3.5" />
+                  Searching tasks.
+                </p>
+              )}
+              {!loading && searchError && (
+                <p role="alert" className="px-2 py-1.5 text-sm text-destructive">
+                  Couldn’t search tasks.
+                </p>
+              )}
+              {!loading && !searchError && <CommandEmpty>No tasks match.</CommandEmpty>}
+              {!loading && !!results.length && (
+                <CommandGroup>
+                  {results.map((task) => (
+                    <CommandItem
+                      key={task.id}
+                      value={task.id}
+                      disabled={pending}
+                      onSelect={() => onPick(task.id)}
+                    >
+                      {task.status && <TaskStatusIcon status={task.status} />}
+                      <span className="min-w-0 flex-1 truncate">{task.title}</span>
+                      {task.projectName && (
+                        <span className="max-w-2/5 shrink-0 truncate text-xs text-muted-foreground">
+                          {task.projectName}
+                        </span>
+                      )}
+                    </CommandItem>
+                  ))}
+                </CommandGroup>
+              )}
+            </CommandList>
+          </Command>
+        </div>
       </PopoverContent>
     </Popover>
   );

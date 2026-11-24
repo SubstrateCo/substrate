@@ -249,7 +249,7 @@ export function PeoplePicker({
   }, [expanded]);
 
   return (
-    <div className="grid gap-1">
+    <div className="grid min-w-0 gap-1">
       <div
         ref={anchor}
         data-slot="people-picker"
@@ -289,7 +289,7 @@ export function PeoplePicker({
             aria-activedescendant={showOptions ? optionId(activeIndex) : undefined}
             aria-invalid={invalid || undefined}
             aria-describedby={description}
-            className="h-6 min-w-32 flex-1 bg-transparent px-1.5 text-base outline-none placeholder:text-muted-foreground md:text-sm"
+            className="h-6 min-w-0 flex-1 basis-32 bg-transparent px-1.5 text-base outline-none placeholder:text-muted-foreground md:text-sm"
             onChange={(event) => {
               setText(event.target.value);
               setActive(0);

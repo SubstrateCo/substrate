@@ -64,7 +64,7 @@ export function PageHeader({
         className={cn(
           "min-w-0",
           page ? "flex-1 basis-60 space-y-1" : "flex items-center gap-2",
-          children && "max-w-1/3",
+          children && (page ? "sm:max-w-1/3" : "max-w-1/3"),
         )}
       >
         <Heading
@@ -74,7 +74,7 @@ export function PageHeader({
             "min-w-0",
             page
               ? cn(
-                  "wrap-break-word",
+                  "wrap-anywhere",
                   // The caller sizes a page icon, such as a size-6 project image.
                   icon && "flex items-center gap-2",
                 )
@@ -84,11 +84,20 @@ export function PageHeader({
           {icon}
           <span className={page ? "min-w-0" : "truncate"}>{title}</span>
         </Heading>
-        {page && description && <p className="text-sm text-muted-foreground">{description}</p>}
+        {page && description && (
+          <p className="text-sm wrap-anywhere text-muted-foreground">{description}</p>
+        )}
       </div>
-      {children && <div className="min-w-0 flex-1">{children}</div>}
+      {children && (
+        <div className={cn("min-w-0 flex-1", page && "basis-full sm:basis-0")}>{children}</div>
+      )}
       {actions && (
-        <div className={cn("flex shrink-0 items-center", page ? "gap-2" : "gap-0.5")}>
+        <div
+          className={cn(
+            "flex items-center",
+            page ? "max-w-full min-w-0 flex-wrap gap-2" : "shrink-0 gap-0.5",
+          )}
+        >
           {actions}
         </div>
       )}

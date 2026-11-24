@@ -67,7 +67,7 @@ export function InvitationForm({
             name="email"
             type="email"
             autoComplete="email"
-            placeholder="For example: teammate@company.com"
+            placeholder="name@company.com"
             data-missing-message="Enter an email address to invite."
             required
           />

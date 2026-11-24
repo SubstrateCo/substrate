@@ -60,7 +60,8 @@ function SheetContent({
           else onEscapeKeyDown?.(event);
         }}
         className={cn(
-          "pointer-events-auto absolute z-20 flex flex-col overflow-hidden bg-surface text-sm text-foreground shadow-floating duration-200 ease-drawer outline-none data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:border-t data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:border-r data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:border-l data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:border-b motion-reduce:animate-none! data-open:animate-in data-open:fade-in-0 data-[side=bottom]:data-open:slide-in-from-bottom-full data-[side=left]:data-open:slide-in-from-left-full data-[side=right]:data-open:slide-in-from-right-full data-[side=top]:data-open:slide-in-from-top-full data-closed:animate-out data-closed:duration-150 data-closed:fade-out-0 data-[side=bottom]:data-closed:slide-out-to-bottom-full data-[side=left]:data-closed:slide-out-to-left-full data-[side=right]:data-closed:slide-out-to-right-full data-[side=top]:data-closed:slide-out-to-top-full",
+          "pointer-events-auto z-20 flex max-h-dvh max-w-full flex-col overflow-hidden bg-surface text-sm text-foreground shadow-floating duration-200 ease-drawer outline-none data-[side=bottom]:inset-x-0 data-[side=bottom]:bottom-0 data-[side=bottom]:border-t data-[side=left]:inset-y-0 data-[side=left]:left-0 data-[side=left]:border-r data-[side=right]:inset-y-0 data-[side=right]:right-0 data-[side=right]:border-l data-[side=top]:inset-x-0 data-[side=top]:top-0 data-[side=top]:border-b motion-reduce:animate-none! max-sm:overflow-y-auto max-sm:overscroll-contain data-open:animate-in data-open:fade-in-0 data-[side=bottom]:data-open:slide-in-from-bottom-full data-[side=left]:data-open:slide-in-from-left-full data-[side=right]:data-open:slide-in-from-right-full data-[side=top]:data-open:slide-in-from-top-full data-closed:animate-out data-closed:duration-150 data-closed:fade-out-0 data-[side=bottom]:data-closed:slide-out-to-bottom-full data-[side=left]:data-closed:slide-out-to-left-full data-[side=right]:data-closed:slide-out-to-right-full data-[side=top]:data-closed:slide-out-to-top-full",
+          "absolute",
           className,
         )}
         {...props}
@@ -69,7 +70,11 @@ function SheetContent({
         <div ref={setPopupContainer} data-slot="sheet-popups" className="contents" />
         {showCloseButton && (
           <Dialog.Close data-slot="sheet-close" asChild>
-            <Button variant="ghost" className="absolute top-3 right-3" size="icon-sm">
+            <Button
+              variant="ghost"
+              className="absolute top-3 right-3 max-sm:top-2 max-sm:right-2 max-sm:size-11"
+              size="icon-sm"
+            >
               <XIcon />
               <span className="sr-only">Close</span>
             </Button>
@@ -84,7 +89,7 @@ function SheetHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-header"
-      className={cn("flex flex-col gap-0.5 p-4", className)}
+      className={cn("flex shrink-0 flex-col gap-0.5 p-4", className)}
       {...props}
     />
   );
@@ -94,7 +99,10 @@ function SheetFooter({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="sheet-footer"
-      className={cn("mt-auto flex flex-col gap-2 p-4", className)}
+      className={cn(
+        "mt-auto flex shrink-0 flex-col gap-2 p-4 max-sm:[&_button]:h-auto max-sm:[&_button]:min-h-11 max-sm:[&_button]:whitespace-normal",
+        className,
+      )}
       {...props}
     />
   );
@@ -104,7 +112,10 @@ function SheetTitle({ className, ...props }: React.ComponentProps<typeof Dialog.
   return (
     <Dialog.Title
       data-slot="sheet-title"
-      className={cn("font-heading text-base font-medium text-foreground", className)}
+      className={cn(
+        "font-heading text-base font-medium wrap-anywhere text-foreground max-sm:pr-12",
+        className,
+      )}
       {...props}
     />
   );
@@ -117,7 +128,7 @@ function SheetDescription({
   return (
     <Dialog.Description
       data-slot="sheet-description"
-      className={cn("text-sm text-muted-foreground", className)}
+      className={cn("text-sm wrap-anywhere text-muted-foreground", className)}
       {...props}
     />
   );

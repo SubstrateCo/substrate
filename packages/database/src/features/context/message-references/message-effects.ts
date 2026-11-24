@@ -4,7 +4,11 @@ import type { RepositoryContext } from "../../../core/repository-context";
 import type { SessionIdentity } from "../../../core/session/identity";
 import { messageReferences } from "../../../core/text/references";
 import { AccessDeniedError, ValidationError } from "../../../errors";
-import { liveAgentMember, liveApprovedParticipant, mentionablePerson } from "../../messaging/access";
+import {
+  liveAgentMember,
+  liveApprovedParticipant,
+  mentionablePerson,
+} from "../../messaging/access";
 import {
   messagingConversations,
   messagingMessages,
@@ -12,8 +16,8 @@ import {
 } from "../../messaging/schema";
 import { notify } from "../../notifications/effects";
 import { readableWorkTargets } from "../../notifications/targets";
-import { checkMessagingReferences } from "./messaging-references";
 import { messageEntityReferences } from "../schema";
+import { checkMessagingReferences } from "./messaging-references";
 import { and, eq, inArray, isNull, or, sql } from "drizzle-orm";
 
 // `referenced` reports saved work or messaging references, and `work` the referenced tasks and

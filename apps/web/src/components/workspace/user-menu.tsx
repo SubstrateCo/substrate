@@ -7,6 +7,7 @@ import { Button } from "../ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
 import { Separator } from "../ui/separator";
 import { ThemeControl } from "@/components/theme/theme-control";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import { initials } from "@/lib/people/initials";
 import { Building2, Settings } from "lucide-react";
 
@@ -37,6 +38,7 @@ export function UserMenu({
   signOut: ReactNode;
 }) {
   const [open, setOpen] = useState(false);
+  const desktop = useMediaQuery("(min-width: 768px)");
   const avatar = (
     <Avatar variant="user" className="size-full">
       <AvatarImage src={image ?? undefined} alt="" />
@@ -58,10 +60,11 @@ export function UserMenu({
       </PopoverTrigger>
       <PopoverContent
         aria-label="User actions"
-        side="right"
+        side={desktop ? "right" : "top"}
         align="end"
         sideOffset={12}
         variant="menu"
+        className="max-h-(--radix-popover-content-available-height) overflow-y-auto"
         onKeyDown={moveFocusWithArrows}
       >
         <div className="flex min-w-0 items-center gap-2.5 p-2">

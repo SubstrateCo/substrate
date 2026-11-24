@@ -13,10 +13,10 @@ import { conversationDisplayName } from "../../messaging/display-name";
 import { messagingConversations } from "../../messaging/schema";
 import { awaitingOwner, desktopUpdateViews, invocationViews } from "../calls/invocations";
 import { inStates } from "../machine-sql";
-import { agentRequests } from "./requests.schema";
 import { statusViews } from "../status";
 import { agentStatus } from "../status.schema";
 import { toRequestView } from "../views";
+import { agentRequests } from "./requests.schema";
 import { and, desc, eq, exists, gt, inArray, or, sql, type SQL } from "drizzle-orm";
 
 /** Requests of the owner's own agents in the organization. */

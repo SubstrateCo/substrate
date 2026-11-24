@@ -136,6 +136,7 @@ export function ConversationCreateMenu({
       <PopoverContent
         align="start"
         variant="reference"
+        collisionPadding={16}
         className="w-80"
         onCloseAutoFocus={(event) => {
           const choice = chosen.current;

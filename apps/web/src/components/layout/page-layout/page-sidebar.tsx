@@ -17,6 +17,7 @@ export function PageSidebar({
 }: ComponentProps<"aside"> & { "aria-label": string; defaultWidth?: number }) {
   const layout = usePageLayout("PageSidebar");
   const [saved] = useState(() => readPaneWidth(layout.id, "sidebar"));
+  const covered = layout.hasAside && layout.asideCovers;
   return (
     <>
       <ResizablePanel
@@ -30,9 +31,12 @@ export function PageSidebar({
         <aside
           data-slot="page-sidebar"
           aria-label={label}
+          inert={covered || undefined}
+          aria-hidden={covered || undefined}
           className={cn(
             "flex h-full min-h-0 w-full min-w-0 flex-col bg-sidebar text-sidebar-foreground",
-            layout.mobileView === undefined && "max-md:h-auto max-md:shrink-0 max-md:border-b",
+            layout.mobileView === undefined &&
+              "max-md:h-auto max-md:max-h-1/2 max-md:shrink-0 max-md:border-b",
             layout.mobileView === "sidebar" && "max-md:h-auto max-md:flex-1",
             layout.mobileView === "content" && "max-md:hidden",
             className,

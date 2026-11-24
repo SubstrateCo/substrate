@@ -15,7 +15,7 @@ const inputGroupVariants = cva(
         default: "",
         composer: "bg-card *:data-[align=block-start]:border-b dark:bg-card",
         titlebar:
-          "h-7 rounded-md border-control-border bg-surface dark:bg-popover [&_[data-slot=input-group-control]]:h-6 [&_[data-slot=input-group-control]]:text-xs [&_[data-slot=input-group-control]]:font-normal",
+          "h-7 rounded-md border-control-border bg-surface dark:bg-popover [&_[data-slot=input-group-control]]:h-6 [&_[data-slot=input-group-control]]:font-normal md:[&_[data-slot=input-group-control]]:text-xs",
       },
     },
     defaultVariants: { variant: "default" },
@@ -117,7 +117,7 @@ function InputGroupInput({ className, ...props }: React.ComponentProps<"input">)
     <Input
       data-slot="input-group-control"
       className={cn(
-        "flex-1 rounded-none border-0 bg-transparent shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent aria-invalid:ring-0 dark:bg-transparent dark:disabled:bg-transparent",
+        "flex-1 rounded-none border-0 bg-transparent shadow-none ring-0 focus-visible:ring-0 disabled:bg-transparent disabled:opacity-100 aria-invalid:ring-0 dark:bg-transparent dark:disabled:bg-transparent",
         className,
       )}
       {...props}

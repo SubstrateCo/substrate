@@ -54,7 +54,7 @@ export function PersonHoverCard({
         side="bottom"
         align="start"
         collisionPadding={8}
-        className="w-80"
+        className="w-80 max-w-(--radix-popover-content-available-width)"
         onPointerEnter={clearTimer}
         onPointerLeave={leave}
         onOpenAutoFocus={(event) => {

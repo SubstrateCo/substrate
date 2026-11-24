@@ -1,8 +1,8 @@
 import { storedFiles, user, userAgents } from "../../../schema";
 import { ownedAgent } from "../../../testing/agents";
 import { setupDatabase } from "../../../testing/database";
-import { selectMessages } from "./messages";
 import { messagingMessages, messagingParticipants } from "../schema";
+import { selectMessages } from "./messages";
 import { expect, test } from "bun:test";
 import { eq, sql } from "drizzle-orm";
 

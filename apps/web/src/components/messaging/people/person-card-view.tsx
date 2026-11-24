@@ -56,7 +56,7 @@ function Header({
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <p className="font-semibold wrap-break-word">{name}</p>
+        <p className="font-semibold wrap-anywhere">{name}</p>
         {secondary}
         {tags && <div className="mt-1 flex flex-wrap gap-1">{tags}</div>}
         {action && <div className="mt-2">{action}</div>}

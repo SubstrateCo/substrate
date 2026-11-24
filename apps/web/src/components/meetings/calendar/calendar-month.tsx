@@ -167,7 +167,12 @@ export function CalendarMonth({
               </Tooltip>
             ))}
             {count > previews.length && (
-              <Button variant="link" size="xs" className="relative z-1 justify-start" onClick={go}>
+              <Button
+                variant="link"
+                size="calendar-entry"
+                className="relative z-1 justify-start"
+                onClick={go}
+              >
                 +{count - previews.length} more
               </Button>
             )}

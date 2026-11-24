@@ -26,7 +26,7 @@ export function CalendarAgenda({
   eventLink: (event: CalendarEventSummary) => LinkProps;
 }) {
   return (
-    <div className="p-6">
+    <div className="@container p-4 sm:p-6">
       <ol aria-label="Agenda" className="mx-auto w-full max-w-4xl space-y-6">
         {days.map((group) => {
           const label = formatDayLabel(group.day, now);
@@ -93,7 +93,7 @@ function AgendaRow({
               "[a]:bg-row-selected [a]:text-row-selected-foreground [a]:hover:bg-row-selected [a]:focus-visible:bg-row-selected",
           )}
         >
-          <ItemMedia className="w-36">
+          <ItemMedia className="basis-full justify-start @min-[32rem]:w-36 @min-[32rem]:basis-auto">
             <span className="text-xs text-muted-foreground tabular-nums">
               {agendaTimeLabel(event, day)}
             </span>
@@ -102,7 +102,7 @@ function AgendaRow({
             <CalendarColorDot color={event.color} className="mt-1.5" />
           </ItemMedia>
           <ItemContent className="min-w-0">
-            <ItemTitle className="max-w-full">
+            <ItemTitle className="max-w-full flex-wrap">
               <span
                 className={cn(
                   "truncate text-sm font-medium",
@@ -117,7 +117,7 @@ function AgendaRow({
             <span className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted-foreground">
               <span className="truncate">{event.calendarName}</span>
               {event.location && (
-                <span className="inline-flex min-w-0 items-center gap-1">
+                <span className="inline-flex max-w-full min-w-0 items-center gap-1">
                   <MapPin aria-hidden className="size-3 shrink-0" />
                   <span className="truncate">{event.location}</span>
                 </span>

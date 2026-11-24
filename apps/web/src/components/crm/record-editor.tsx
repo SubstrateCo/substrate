@@ -139,7 +139,7 @@ export function RecordEditor({
       {kind === "accounts" && <AccountFields record={record} />}
       {kind === "deals" && (
         <>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <CustomerPicker
               organizationId={organizationId}
               kind="accounts"
@@ -201,7 +201,7 @@ function RecordNameField({ kind, record }: { kind: CrmKind; record?: RecordDraft
 
 function AccountFields({ record }: { record?: RecordDraft }) {
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
       <NativeField
         id="crm-website"
         name="website"
@@ -230,7 +230,7 @@ function DealTermsFields({
 }) {
   const [closeDate, setCloseDate] = useState(record?.expectedCloseDate ?? "");
   return (
-    <div className="grid grid-cols-3 gap-4">
+    <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
       <NativeField
         id="crm-amount"
         name="amount"

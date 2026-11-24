@@ -48,7 +48,13 @@ function HomePanel({
   children: ReactNode;
 }) {
   return (
-    <div className={cn("flex min-h-0 min-w-0 flex-1", active !== id && "max-md:hidden", className)}>
+    <div
+      className={cn(
+        "flex min-h-0 min-w-0 flex-1 max-md:flex-none",
+        active !== id && "max-md:hidden",
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -72,14 +78,18 @@ export function HomeDashboardView({
   return (
     <PageLayout id="home" aria-label="Home">
       <PageContent>
-        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden p-6" data-home-dashboard>
+        <div
+          className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 max-md:overflow-y-auto md:gap-6 md:p-6"
+          data-home-dashboard
+        >
           <PageHeader
+            className="max-md:[&>div:first-child]:basis-auto"
             title="Home"
             description={date}
             actions={
               <div className="w-48 md:hidden">
                 <Select value={activeSection} onValueChange={setActiveSection}>
-                  <SelectTrigger aria-label="Dashboard section">
+                  <SelectTrigger className="w-full" aria-label="Dashboard section">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -97,7 +107,7 @@ export function HomeDashboardView({
               </div>
             }
           />
-          <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row">
+          <div className="flex min-h-0 flex-1 flex-col gap-4 max-md:flex-none md:flex-row">
             <div className="flex min-h-0 min-w-0 flex-col gap-4 max-md:contents md:flex-1 xl:flex-7">
               <HomePanel
                 id="attention"

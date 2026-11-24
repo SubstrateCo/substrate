@@ -15,8 +15,8 @@ import {
   messagingMessages,
   messagingParticipants,
 } from "../../messaging/schema";
-import { applyMessageEffects } from "./message-effects";
 import { messageEntityReferences } from "../schema";
+import { applyMessageEffects } from "./message-effects";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 

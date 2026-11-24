@@ -21,13 +21,16 @@ export function SettingsContent({
   const column = (
     <div
       data-slot="settings-content"
-      className={cn("@container/content mx-auto w-full max-w-4xl min-w-0 space-y-6", className)}
+      className={cn(
+        "@container/content mx-auto w-full max-w-4xl min-w-0 space-y-4 sm:space-y-6",
+        className,
+      )}
     >
       {children}
     </div>
   );
   // The inset wraps the column, so the column is as wide in a tab panel as beside a sidebar.
-  return inset ? <div className="p-6">{column}</div> : column;
+  return inset ? <div className="min-w-0 p-4 sm:p-6">{column}</div> : column;
 }
 
 /** One settings section: a page header, then its cards and lists. */

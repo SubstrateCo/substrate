@@ -90,7 +90,7 @@ export function FileUpload({
               select(files);
             }}
           />
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
             <PendingButton
               ref={chooseButtonRef}
               type="button"
@@ -104,7 +104,9 @@ export function FileUpload({
             </PendingButton>
             {actions}
           </div>
-          <FieldDescription id={id}>{description}</FieldDescription>
+          <FieldDescription id={id} className="basis-full">
+            {description}
+          </FieldDescription>
         </FileUploadContent>
       </FileUploadLayout>
       <FieldError id={`${id}-error`}>{error}</FieldError>
@@ -122,7 +124,9 @@ export function FileUploadContent({
   return (
     <>
       {preview}
-      <div className="grid min-w-0 flex-1 gap-2">{children}</div>
+      <div className={cn("grid min-w-0 flex-1 gap-2", preview && "contents sm:grid")}>
+        {children}
+      </div>
     </>
   );
 }
@@ -131,7 +135,7 @@ export function FileUploadLayout({ className, ...props }: React.ComponentProps<"
   return (
     <div
       className={cn(
-        "flex min-w-0 items-center gap-4 rounded-lg border border-dashed p-3 transition-colors duration-150 ease-out",
+        "flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-dashed p-3 transition-colors duration-150 ease-out sm:flex-nowrap sm:gap-4",
         className,
       )}
       {...props}

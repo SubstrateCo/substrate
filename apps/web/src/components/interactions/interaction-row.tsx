@@ -46,12 +46,16 @@ export function InteractionRow({
         )}
         <ItemContent className="min-w-0">
           <div className="flex min-h-6 min-w-0 flex-wrap items-center gap-x-2 text-xs text-muted-foreground">
-            {contact && <span className="text-sm font-medium text-foreground">{contact}</span>}
+            {contact && (
+              <span className="min-w-0 text-sm font-medium wrap-anywhere text-foreground">
+                {contact}
+              </span>
+            )}
             {!icon && <span>{label}</span>}
             <Timestamp value={occurredAt} format="datetime" />
             {actions && <span className="ml-auto">{actions}</span>}
           </div>
-          <div className="text-sm wrap-break-word whitespace-pre-wrap">{summary}</div>
+          <div className="text-sm wrap-anywhere whitespace-pre-wrap">{summary}</div>
           {details.length > 0 && (
             <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
               {details.map((detail, index) => (

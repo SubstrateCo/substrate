@@ -23,7 +23,7 @@ import {
   RecordSectionAction,
   recordRows,
 } from "@/components/layout/record-section";
-import { Item, ItemActions, ItemContent, ItemTitle } from "@/components/ui/item";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { TextLink } from "@/components/ui/text-link";
 import { AppAvailability } from "@/components/workspace/app-availability";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
@@ -84,7 +84,7 @@ export function ContactDetail({
           ))
         }
       >
-        <AppAvailability app="crm">
+        <AppAvailability app="crm" variant="compact">
           <RecordSection
             aria-label="Contact accounts"
             title="Accounts"
@@ -104,9 +104,13 @@ export function ContactDetail({
                     <Item asChild size="xs">
                       <Link {...crmLink(organizationId, "accounts", account.entityId)}>
                         <ItemContent className="min-w-0">
-                          <ItemTitle className="max-w-full">{account.name}</ItemTitle>
+                          <ItemTitle className="max-w-full min-w-0">{account.name}</ItemTitle>
+                          <ItemDescription className="wrap-anywhere sm:hidden">
+                            {affiliation.title}
+                            {affiliation.isPrimary ? " · Primary" : ""}
+                          </ItemDescription>
                         </ItemContent>
-                        <ItemActions>
+                        <ItemActions className="hidden sm:flex">
                           <span className="text-xs text-muted-foreground">
                             {affiliation.title}
                             {affiliation.isPrimary ? " · Primary" : ""}

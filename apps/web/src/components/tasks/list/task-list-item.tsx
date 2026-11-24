@@ -77,11 +77,11 @@ export function TaskListItem({
         // oxlint-disable-next-line shadcn/require-static-classes -- A static layout string shared with the loading rows in project-loading.tsx, so the skeleton lines up with the row.
         className={cn(taskRowContentClassName, "text-left")}
       >
-        <span className="flex min-w-0 flex-1 items-center gap-2">
+        <span className="flex min-w-0 flex-1 flex-col items-start gap-1 @md:flex-row @md:items-center @md:gap-2">
           <span className="sr-only">{taskStatusLabels[task.status]}: </span>
           <span
             className={cn(
-              "truncate",
+              "line-clamp-2 wrap-anywhere @md:line-clamp-none @md:truncate",
               selected && "font-medium",
               closed && !selected && "text-muted-foreground",
             )}

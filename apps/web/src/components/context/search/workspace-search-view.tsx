@@ -2,6 +2,7 @@ import { useHotkeys } from "@tanstack/react-hotkeys";
 
 import { useLayoutEffect, useRef, useState } from "react";
 
+import { Button } from "../../ui/button";
 import { Kbd } from "../../ui/kbd";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import type { SearchResultItem } from "./search-result";
@@ -46,6 +47,7 @@ export function WorkspaceSearch({
   onJoin,
   onMore,
   onRetry,
+  onClose,
 }: {
   query: string;
   kind: SearchKind;
@@ -60,6 +62,7 @@ export function WorkspaceSearch({
   onJoin: (conversationId: string) => void;
   onMore: () => void;
   onRetry: () => void;
+  onClose: () => void;
 }) {
   const panel = useRef<HTMLElement>(null);
   const [panelTop, setPanelTop] = useState(0);
@@ -109,7 +112,7 @@ export function WorkspaceSearch({
         }}
         className="min-h-0"
       >
-        <div className="shrink-0 border-b p-2">
+        <div className="shrink-0 overflow-x-auto border-b p-2">
           <TabsList aria-label="Search type" aria-keyshortcuts="Control+Tab">
             {kinds.map((type) => (
               <TabsTrigger key={type} value={type} className="flex-none">
@@ -135,23 +138,27 @@ export function WorkspaceSearch({
           />
         </TabsContent>
       </Tabs>
-      <footer
-        aria-hidden="true"
-        className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t px-3 py-2 text-xs text-muted-foreground"
-      >
+      <footer className="flex shrink-0 flex-wrap items-center gap-x-4 gap-y-1 border-t px-3 py-2 text-xs text-muted-foreground">
         {results.length > 0 && (
           <>
             <span className="tabular-nums">
               {results.length}
               {hasMore ? "+" : ""} {results.length === 1 && !hasMore ? "result" : "results"}
             </span>
-            <Hint keys={["↑", "↓"]} label="Navigate" /> <Hint keys={["↵"]} label="Open" />
+            <span aria-hidden="true" className="hidden sm:contents">
+              <Hint keys={["↑", "↓"]} label="Navigate" /> <Hint keys={["↵"]} label="Open" />
+            </span>
           </>
         )}
-        <Hint keys={[isMac ? "⌃" : "Ctrl", "Tab"]} label="Switch type" />
-        <span className="ml-auto">
+        <span aria-hidden="true" className="hidden sm:contents">
+          <Hint keys={[isMac ? "⌃" : "Ctrl", "Tab"]} label="Switch type" />
+        </span>
+        <span aria-hidden="true" className="ml-auto hidden sm:inline">
           <Hint keys={["Esc"]} label="Close" />
         </span>
+        <Button variant="ghost" size="sm" className="ml-auto sm:hidden" onClick={onClose}>
+          Close
+        </Button>
       </footer>
     </section>
   );

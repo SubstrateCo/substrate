@@ -4,8 +4,8 @@ import { requireAppEnabled, requireAppEnabledForActiveActor } from "../../../cor
 import { parseInput } from "../../../core/contacts/inputs";
 import { RepositoryContext } from "../../../core/repository-context";
 import { ValidationError } from "../../../errors";
-import { reportQuery, type ReportFilters } from "./report-queries";
 import { crmDeals } from "../schema";
+import { reportQuery, type ReportFilters } from "./report-queries";
 import { and, asc, eq, gt, gte, lt, sql } from "drizzle-orm";
 import type { z } from "zod";
 

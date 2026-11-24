@@ -53,10 +53,10 @@ export function PendingInvitations({
             const name = invitation.organizationName || "Workspace";
             return (
               <li key={invitation.id}>
-                <Item size="xs" className="flex-nowrap">
+                <Item size="xs" className="sm:flex-nowrap">
                   <WorkspaceTile name={name} />
                   <ItemContent className="min-w-0">
-                    <p className="truncate font-medium">{name}</p>
+                    <p className="font-medium wrap-anywhere sm:truncate">{name}</p>
                     <ItemDescription>
                       {roleLabel(invitation.role)} ·{" "}
                       {invitation.expired ? (
@@ -69,7 +69,7 @@ export function PendingInvitations({
                     </ItemDescription>
                   </ItemContent>
                   {!invitation.expired && (
-                    <ItemActions className="shrink-0">
+                    <ItemActions className="basis-full justify-end sm:shrink-0 sm:basis-auto">
                       <Button
                         type="button"
                         variant="destructive-ghost"

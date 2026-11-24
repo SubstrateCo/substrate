@@ -232,12 +232,12 @@ function RecordDetailFrame({ children }: { children: ReactNode }) {
   const sheet = usePageSheet();
   if (sheet)
     return (
-      <div className="flex min-h-0 flex-1 flex-col *:data-[slot=page-header]:shrink-0">
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col *:data-[slot=page-header]:shrink-0">
         {children}
       </div>
     );
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto p-6">
+    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
       <div className="mx-auto max-w-4xl space-y-6">{children}</div>
     </div>
   );
@@ -307,8 +307,8 @@ function RecordTitle({
 }) {
   return (
     <div className="grid gap-2">
-      <div className="flex items-start gap-2">
-        <Heading level={2} variant="record" className="min-w-0">
+      <div className="flex flex-wrap items-start gap-2">
+        <Heading level={2} variant="record" className="min-w-0 wrap-anywhere">
           {name}
         </Heading>
         {archived && <Tag className="mt-0.5 shrink-0">Archived</Tag>}
@@ -319,12 +319,12 @@ function RecordTitle({
 }
 
 function RecordSummary({ children }: { children: ReactNode }) {
-  return <p className="text-sm/relaxed wrap-break-word whitespace-pre-wrap">{children}</p>;
+  return <p className="text-sm/relaxed wrap-anywhere whitespace-pre-wrap">{children}</p>;
 }
 
 function RecordProperties({ children }: { children: ReactNode }) {
   return (
-    <aside aria-label="Record details">
+    <aside aria-label="Record details" className="min-w-0">
       <PropertyList>{children}</PropertyList>
     </aside>
   );

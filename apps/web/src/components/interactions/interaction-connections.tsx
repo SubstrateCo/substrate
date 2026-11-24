@@ -38,7 +38,7 @@ function ConnectionLink({
           // The linked record can be older than the current period.
           days: "all",
         })}
-        className="font-medium underline-offset-4 hover:underline"
+        className="min-w-0 font-medium wrap-anywhere underline-offset-4 hover:underline"
       >
         {connection.title}
       </Link>
@@ -55,7 +55,7 @@ function ConnectionLink({
           workspaceId: organizationId,
           recordId: connection.entityId,
         })}
-        className="underline underline-offset-4"
+        className="min-w-0 wrap-anywhere underline underline-offset-4"
       >
         {connection.title}
       </Link>
@@ -63,7 +63,7 @@ function ConnectionLink({
   return (
     <Link
       {...linkedWorkLink(organizationId, connection, apps.enabled("crm"))}
-      className="underline underline-offset-4"
+      className="min-w-0 wrap-anywhere underline underline-offset-4"
     >
       {connection.title}
     </Link>
@@ -107,10 +107,10 @@ export function InteractionConnections({
       {connections.map((connection) => (
         <li
           key={`${connection.entityType}:${connection.entityId}`}
-          className="flex items-center justify-between gap-3 px-2 py-1.5 text-sm"
+          className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-2 py-1.5 text-sm"
         >
           <ConnectionLink organizationId={organizationId} connection={connection} />
-          <span className="text-xs text-muted-foreground">{connection.relation}</span>
+          <span className="text-xs wrap-anywhere text-muted-foreground">{connection.relation}</span>
         </li>
       ))}
     </ul>
@@ -130,7 +130,7 @@ export function RelationshipMap({
 }) {
   const Icon = type === "person" ? UserRound : Building2;
   return (
-    <Card size="sm" role="region" aria-label="Relationship map" className="min-h-0 flex-1">
+    <Card size="sm" role="region" aria-label="Relationship map" className="min-h-0 min-w-0 flex-1">
       <CardHeader>
         <CardTitle>
           <Heading level={2} variant="inherit">
@@ -142,23 +142,26 @@ export function RelationshipMap({
           relationship.
         </CardDescription>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-wrap items-start gap-4 overflow-y-auto">
-        <div className="flex items-center gap-2 rounded-lg border bg-card p-4 text-sm font-medium">
-          <Icon aria-hidden className="size-4 text-muted-foreground" />
+      <CardContent className="flex min-h-0 flex-col items-start gap-4 overflow-y-auto @2xl:flex-row">
+        <div className="flex max-w-full items-center gap-2 rounded-lg border bg-card p-4 text-sm font-medium wrap-anywhere @2xl:max-w-1/2">
+          <Icon aria-hidden className="size-4 shrink-0 text-muted-foreground" />
           {title}
         </div>
-        <ArrowRight aria-hidden className="mt-4 size-4 text-muted-foreground" />
-        <ul className="min-w-0 flex-1 space-y-2">
+        <ArrowRight
+          aria-hidden
+          className="size-4 shrink-0 rotate-90 self-center text-muted-foreground @2xl:mt-4 @2xl:rotate-0 @2xl:self-start"
+        />
+        <ul className="w-full min-w-0 space-y-2 @2xl:w-auto @2xl:flex-1">
           {connections.map((connection) => (
             <li
               key={connection.entityId}
               className="space-y-1 rounded-lg border bg-card px-4 py-3 text-sm"
             >
-              <div className="flex items-center gap-2">
-                <Link2 aria-hidden className="size-3.5 text-muted-foreground" />
+              <div className="flex min-w-0 items-center gap-2">
+                <Link2 aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
                 <ConnectionLink organizationId={organizationId} connection={connection} />
               </div>
-              <p className="text-xs text-muted-foreground">{connection.relation}</p>
+              <p className="text-xs wrap-anywhere text-muted-foreground">{connection.relation}</p>
             </li>
           ))}
           {!connections.length && (

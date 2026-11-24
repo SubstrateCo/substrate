@@ -28,7 +28,7 @@ export function RowActions({
       role="group"
       aria-label={label}
       className={cn(
-        "flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-150 group-focus-within/row:opacity-100 group-hover/row:opacity-100 has-aria-expanded:opacity-100 motion-reduce:transition-none pointer-coarse:opacity-100",
+        "flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity duration-150 group-focus-within/row:opacity-100 group-hover/row:opacity-100 has-aria-expanded:opacity-100 motion-reduce:transition-none any-pointer-coarse:opacity-100",
         className,
       )}
     >

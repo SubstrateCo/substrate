@@ -28,10 +28,10 @@ export function SettingsSection({
     <section
       aria-label={label}
       aria-labelledby={label ? undefined : `${id}-title`}
-      className="grid min-w-0 gap-6"
+      className="grid min-w-0 gap-4 sm:gap-6"
     >
       <header className="flex flex-wrap items-start justify-between gap-x-4 gap-y-3">
-        <div className="min-w-0 flex-1 basis-72 space-y-1">
+        <div className="min-w-0 flex-1 basis-72 space-y-1 wrap-anywhere">
           <Heading level={2} variant="section" id={`${id}-title`}>
             {title}
           </Heading>
@@ -39,7 +39,7 @@ export function SettingsSection({
         </div>
         {/* Always on the title row's right edge, even when it wraps below a long description. */}
         {actions && (
-          <div className="ml-auto flex shrink-0 flex-wrap items-center justify-end gap-2">
+          <div className="ml-auto flex max-w-full min-w-0 flex-wrap items-center justify-end gap-2">
             {actions}
           </div>
         )}
@@ -77,11 +77,11 @@ export function SettingsCard({
         tone === "destructive" && toneBorder.destructive,
       )}
     >
-      <div className={cn("grid min-w-0 gap-4 p-5", className)}>
+      <div className={cn("grid min-w-0 gap-3 p-4 sm:gap-4 sm:p-5", className)}>
         {(title || description) && <GroupTitle id={`${id}-title`} {...{ title, description }} />}
         {children}
       </div>
-      {footer && <div className="border-t bg-inset px-5 py-3">{footer}</div>}
+      {footer && <div className="border-t bg-inset px-4 py-3 sm:px-5">{footer}</div>}
     </section>
   );
 }
@@ -102,7 +102,7 @@ export function GroupTitle({
   actions?: ReactNode;
 }) {
   const text = (
-    <div className={cn("space-y-1", actions && "min-w-0 flex-1")}>
+    <div className={cn("min-w-0 space-y-1 wrap-anywhere", actions && "flex-1 basis-48")}>
       {title && (
         <Heading level={3} id={id}>
           {title}
@@ -113,9 +113,9 @@ export function GroupTitle({
   );
   if (!actions) return text;
   return (
-    <div className="flex items-start justify-between gap-4">
+    <div className="flex flex-wrap items-start justify-between gap-4">
       {text}
-      <div className="flex shrink-0 items-center gap-2">{actions}</div>
+      <div className="ml-auto flex max-w-full min-w-0 flex-wrap items-center gap-2">{actions}</div>
     </div>
   );
 }
@@ -136,8 +136,8 @@ export function SettingsRow({
   control: ReactNode;
 }) {
   return (
-    <Item>
-      <ItemContent className="min-w-0 basis-56">
+    <Item className="max-sm:-mx-3 max-sm:w-auto">
+      <ItemContent className="min-w-0 basis-56 wrap-anywhere">
         {htmlFor ? (
           <FieldLabel htmlFor={htmlFor}>{label}</FieldLabel>
         ) : (
@@ -145,7 +145,7 @@ export function SettingsRow({
         )}
         {description && <p className="text-muted-foreground">{description}</p>}
       </ItemContent>
-      <ItemActions>{control}</ItemActions>
+      <ItemActions className="max-w-full min-w-0 flex-wrap">{control}</ItemActions>
     </Item>
   );
 }
@@ -216,7 +216,7 @@ export function SettingsFooter({
 }) {
   return (
     <footer className="flex w-full flex-wrap items-center justify-end gap-x-3 gap-y-2">
-      <div className="mr-auto min-w-0 text-sm">
+      <div className="mr-auto min-w-0 text-sm wrap-anywhere">
         {error ? (
           <p role="alert" className="text-destructive">
             {error}
@@ -227,7 +227,7 @@ export function SettingsFooter({
           </p>
         )}
       </div>
-      <div className="flex shrink-0 gap-2">
+      <div className="flex max-w-full min-w-0 flex-wrap gap-2">
         {dirty && (
           <Button
             type="button"

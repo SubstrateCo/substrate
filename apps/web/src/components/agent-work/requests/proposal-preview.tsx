@@ -30,8 +30,8 @@ type TaskChanges = Partial<{
 
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="flex min-w-0 gap-3">
-      <dt className="w-24 shrink-0 text-muted-foreground">{label}</dt>
+    <div className="flex min-w-0 flex-col gap-1 sm:flex-row sm:gap-3">
+      <dt className="shrink-0 text-muted-foreground sm:w-24">{label}</dt>
       <dd className="min-w-0 flex-1 wrap-anywhere">{children}</dd>
     </div>
   );

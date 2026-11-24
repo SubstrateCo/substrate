@@ -33,8 +33,8 @@ export function MessageRowLayout({
       <div className="min-w-0 flex-1">
         {byline && <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">{byline}</div>}
         {children}
+        {toolbar}
       </div>
-      {toolbar}
     </article>
   );
 }

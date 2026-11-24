@@ -14,7 +14,7 @@ import {
 import { Image } from "@/components/ui/image";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Download } from "lucide-react";
+import { ChevronLeft, ChevronRight, Download } from "lucide-react";
 
 export function ImageViewer({
   attachment,
@@ -80,6 +80,31 @@ export function ImageViewer({
         </DialogHeader>
         <DialogBody>
           <ViewerImage key={src} src={src} filename={attachment.filename} />
+          {count > 1 && (
+            <div className="mt-2 hidden justify-center gap-2 pointer-coarse:flex">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    aria-label="Previous image"
+                    onClick={onPrevious}
+                  >
+                    <ChevronLeft aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Previous image</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="outline" size="icon-sm" aria-label="Next image" onClick={onNext}>
+                    <ChevronRight aria-hidden="true" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Next image</TooltipContent>
+              </Tooltip>
+            </div>
+          )}
         </DialogBody>
       </DialogContent>
     </Dialog>

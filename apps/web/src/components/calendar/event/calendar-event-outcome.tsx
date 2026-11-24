@@ -63,7 +63,7 @@ export function CalendarEventOutcome({
             {interactions.map((interaction) => (
               <li
                 key={interaction.entityId}
-                className="flex items-center justify-between gap-3 py-2 text-sm last:pb-0"
+                className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 py-2 text-sm last:pb-0"
               >
                 <Link
                   {...personLink(organizationId, interaction.contactEntityId, crmEnabled)}

@@ -236,7 +236,7 @@ export function Composer({
               </PopoverContent>
             )}
             <InputGroupAddon align="block-end">
-              <div className="-ml-1 flex w-full min-w-0 items-center gap-0.5">
+              <div className="-ml-1 flex w-full min-w-0 flex-wrap items-center gap-0.5">
                 <ComposerToolbar pending={pending} onInsert={insert} />
                 <EmojiPicker onSelect={(emoji) => insert(emoji)} disabled={pending} />
                 {attachmentControls}
@@ -286,13 +286,18 @@ function ComposerSendControls({
   const overBy = draft.length - messageMaxLength;
   const nearLimit = overBy > -1000;
   return (
-    <span className="ml-auto flex min-w-0 items-center gap-3 pl-2">
+    <span
+      className={cn(
+        "ml-auto min-w-0 items-center gap-3 pl-2",
+        nearLimit ? "contents @lg:flex" : "flex",
+      )}
+    >
       {nearLimit ? (
         <span
           id={limitId}
           aria-live="polite"
           className={cn(
-            "truncate text-xs font-normal tabular-nums",
+            "order-last w-full pt-1 text-xs font-normal tabular-nums @lg:order-none @lg:w-auto @lg:truncate @lg:pt-0",
             overBy > 0 ? "text-destructive" : "text-muted-foreground",
           )}
         >
@@ -314,7 +319,7 @@ function ComposerSendControls({
       <PendingButton
         type="submit"
         size="sm"
-        className="min-w-16"
+        className={cn("min-w-16", nearLimit && "ml-auto @lg:ml-0")}
         aria-describedby={nearLimit ? limitId : undefined}
         disabled={
           (!draft.trim() && !hasAttachments) || !attachmentsReady || overBy > 0 || submitDisabled

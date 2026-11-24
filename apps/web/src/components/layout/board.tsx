@@ -11,7 +11,10 @@ import { Plus } from "lucide-react";
 export function Board({ className, ...props }: ComponentProps<"section">) {
   return (
     <section
-      className={cn("flex min-h-0 min-w-0 flex-1 gap-4 overflow-x-auto", className)}
+      className={cn(
+        "flex min-h-0 max-w-full min-w-0 flex-1 gap-4 overflow-x-auto overscroll-x-contain",
+        className,
+      )}
       {...props}
     />
   );
@@ -51,7 +54,7 @@ export function BoardColumn({
       ref={ref}
       aria-labelledby={labelId}
       className={cn(
-        "flex min-h-0 max-w-72 min-w-48 flex-1 flex-col gap-3 rounded-lg bg-inset p-3",
+        "flex min-h-0 max-w-72 min-w-60 flex-1 flex-col gap-3 rounded-lg bg-inset p-3 sm:min-w-48",
         isOver && "bg-row-highlight ring-2 ring-ring/50",
       )}
     >

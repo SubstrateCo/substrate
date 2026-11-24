@@ -29,6 +29,17 @@ export function MarkdownBody({
         components={{
           ...components,
           a: ({ children, href }) => <TextLink href={href}>{children}</TextLink>,
+          table: ({ children }) => (
+            <div
+              className="typeset-scroll sm:overflow-visible"
+              role="region"
+              aria-label="Message table"
+              tabIndex={0}
+            >
+              {/* oxlint-disable-next-line design/no-native-element -- Markdown tables are authored content, not application data for AppTable. */}
+              <table className="sm:w-auto sm:max-w-full">{children}</table>
+            </div>
+          ),
           pre: ({ node }) => (
             <CodeBlock size="sm">
               <CodeBlockContent>{textOf(node).replace(/\n$/, "")}</CodeBlockContent>

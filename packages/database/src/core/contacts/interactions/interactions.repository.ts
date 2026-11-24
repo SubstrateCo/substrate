@@ -13,9 +13,9 @@ import {
   requireInteraction,
 } from "../access";
 import { parseInput } from "../inputs";
+import { contacts } from "../schema";
 import { interactionWorkspaceRepository } from "./interaction-workspace.repository";
 import { contactInteractions } from "./interactions.schema";
-import { contacts } from "../schema";
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import { z } from "zod";
 

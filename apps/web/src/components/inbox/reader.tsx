@@ -75,7 +75,7 @@ export function Reader({
               variant="record"
               ref={subject}
               tabIndex={-1}
-              className="outline-none"
+              className="min-w-0 wrap-anywhere outline-none"
             >
               {message.subject || "(No subject)"}
             </Heading>

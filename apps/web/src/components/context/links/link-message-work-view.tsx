@@ -18,6 +18,7 @@ import {
 } from "../../ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "../../ui/tabs";
 import { LinkWorkItem, LinkWorkLoading } from "./link-work-item";
+import { useMediaQuery } from "@/hooks/use-media-query";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { Link2, Plus } from "lucide-react";
 
@@ -84,6 +85,7 @@ export function LinkMessageWork({
 }) {
   // Selection survives tab and search changes, so tasks and projects can be linked together.
   const [chosen, setChosen] = useState(() => new Map<string, LinkableWork>());
+  const compact = useMediaQuery("(max-width: 639px)");
   const visible = results;
   const kindLabel = kindLabels[kind];
   const kindSet = new Set(kinds);
@@ -123,22 +125,26 @@ export function LinkMessageWork({
                   if (option) onKindChange(option);
                 }}
               >
-                <TabsList aria-label="Record type" className="flex-wrap">
-                  {kinds.map((option) => (
-                    <TabsTrigger key={option} value={option} disabled={pending}>
-                      {kindLabels[option]}
-                    </TabsTrigger>
-                  ))}
-                </TabsList>
+                <div className="min-w-0 overflow-x-auto">
+                  <TabsList aria-label="Record type">
+                    {kinds.map((option) => (
+                      <TabsTrigger key={option} value={option} disabled={pending}>
+                        {kindLabels[option]}
+                      </TabsTrigger>
+                    ))}
+                  </TabsList>
+                </div>
               </Tabs>
               {onCreate && (kind === "account" || kind === "contact" || kind === "deal") && (
                 <Button
                   type="button"
                   variant="outline"
+                  size={compact ? "sm-wrap" : "default"}
                   disabled={pending || state === "unavailable"}
                   onClick={() => onCreate(kind)}
                 >
-                  <Plus aria-hidden="true" /> Create {kind} from this message
+                  <Plus aria-hidden="true" />
+                  <span className="min-w-0 whitespace-normal">Create {kind} from this message</span>
                 </Button>
               )}
               <CommandInput
@@ -173,7 +179,7 @@ export function LinkMessageWork({
                 </div>
               )}
               <div className="rounded-lg border p-1">
-                <CommandList aria-label={kindLabel} className="h-72">
+                <CommandList aria-label={kindLabel} className="h-48 sm:h-72">
                   <LinkSearchStatus
                     error={error}
                     loading={loading}
@@ -204,7 +210,7 @@ export function LinkMessageWork({
           <p className="text-sm text-muted-foreground" aria-live="polite">
             {selection.length ? `${selection.length} selected` : "Select one or more items"}
           </p>
-          <div className="flex flex-col-reverse gap-2 sm:flex-row">
+          <div className="flex w-full flex-col-reverse gap-2 sm:w-auto sm:flex-row">
             <Button type="button" variant="outline" disabled={pending} onClick={onClose}>
               Cancel
             </Button>

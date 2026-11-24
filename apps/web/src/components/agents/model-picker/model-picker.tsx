@@ -48,7 +48,7 @@ function PickerNote({
   action?: ReactNode;
 }) {
   return (
-    <div className="flex min-w-0 flex-1 items-start gap-2 text-xs text-muted-foreground [&>svg]:mt-px [&>svg]:size-4 [&>svg]:shrink-0">
+    <div className="flex min-w-0 flex-1 basis-48 items-start gap-2 text-xs text-muted-foreground sm:basis-0 [&>svg]:mt-px [&>svg]:size-4 [&>svg]:shrink-0">
       {icon}
       <div className="grid min-w-0 flex-1 gap-2">
         <p>{children}</p>
@@ -377,7 +377,7 @@ export function ModelPicker({
         align="start"
         side="bottom"
         collisionPadding={8}
-        className="max-h-(--radix-popover-content-available-height) w-(--radix-popover-trigger-width) min-w-88"
+        className="max-h-(--radix-popover-content-available-height) w-88 max-w-(--radix-popover-content-available-width) sm:w-(--radix-popover-trigger-width) sm:min-w-88"
         aria-label="Choose a model"
       >
         <div className="border-b p-2">
@@ -427,7 +427,7 @@ export function ModelPicker({
             />
           </Command>
         )}
-        <div className="flex shrink-0 items-center justify-end gap-3 border-t px-3 py-2">
+        <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t px-3 py-2 sm:flex-nowrap">
           <ModelCatalogStatus
             available={available}
             label={selectedLabel}

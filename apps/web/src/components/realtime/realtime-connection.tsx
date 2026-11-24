@@ -102,10 +102,11 @@ export function RealtimeConnection({
   const notification = (
     <div
       // Center on the main page outlet when one is rendered; otherwise span the container.
-      className={`${container ? "absolute" : "fixed"} pointer-events-none inset-x-page-outlet bottom-3 z-50 flex justify-center`}
+      // oxlint-disable-next-line shadcn/no-arbitrary-values -- Safe-area clearance is device-dependent; the minimum uses the spacing token.
+      className={`${container ? "absolute" : "fixed"} pointer-events-none inset-x-page-outlet bottom-[max(--spacing(3),env(safe-area-inset-bottom))] z-50 flex justify-center`}
     >
-      <Alert role="status" className="pointer-events-auto w-max max-w-full">
-        <AlertDescription>{statusText}</AlertDescription>
+      <Alert role="status" className="pointer-events-auto w-max max-w-full min-w-0">
+        <AlertDescription className="min-w-0 wrap-anywhere">{statusText}</AlertDescription>
       </Alert>
     </div>
   );

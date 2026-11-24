@@ -32,7 +32,7 @@ export function MessageCard({
         aria-labelledby={titleId}
         data-slot="message-card"
         className={cn(
-          "mt-2.5 w-full max-w-180 overflow-hidden rounded-lg border bg-card text-card-foreground [&+&]:mt-2",
+          "@container mt-2.5 w-full max-w-180 overflow-hidden rounded-lg border bg-card text-card-foreground [&+&]:mt-2",
           tone === "attention" && toneBorder.warning,
         )}
       >
@@ -49,14 +49,16 @@ export function MessageCard({
               tone === "attention" ? "text-warning" : "text-muted-foreground",
             )}
           />
-          <Heading level={3} id={titleId} className="shrink-0">
-            {title}
-          </Heading>
-          {meta && (
-            <span className="min-w-0 truncate text-xs text-muted-foreground tabular-nums">
-              {meta}
-            </span>
-          )}
+          <div className="flex min-w-0 flex-1 flex-col gap-1 @sm:flex-row @sm:items-center @sm:gap-2.5">
+            <Heading level={3} id={titleId} className="min-w-0 wrap-anywhere">
+              {title}
+            </Heading>
+            {meta && (
+              <span className="min-w-0 truncate text-xs text-muted-foreground tabular-nums">
+                {meta}
+              </span>
+            )}
+          </div>
         </header>
         {children}
       </section>

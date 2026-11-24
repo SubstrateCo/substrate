@@ -114,7 +114,7 @@ export function Newsletter({
   return (
     <div className="w-full min-w-0">
       {layout.sources.length > 0 && (
-        <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="mb-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span>{show && missing ? "Some images are unavailable." : "External images"}</span>
           <Button
             variant="outline"

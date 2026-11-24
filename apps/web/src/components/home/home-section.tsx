@@ -47,9 +47,14 @@ function HomeRows({ items }: { items: HomeItem[] }) {
               <ItemContent className="min-w-0">
                 <ItemTitle className="max-w-full">{item.title}</ItemTitle>
                 <ItemDescription>{item.description}</ItemDescription>
+                {item.trailing && (
+                  <ItemActions className="mt-1 md:hidden">
+                    <span className="text-xs text-muted-foreground">{item.trailing}</span>
+                  </ItemActions>
+                )}
               </ItemContent>
               {item.trailing && (
-                <ItemActions>
+                <ItemActions className="max-md:hidden">
                   <span className="text-xs text-muted-foreground">{item.trailing}</span>
                 </ItemActions>
               )}

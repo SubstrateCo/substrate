@@ -151,9 +151,9 @@ function PipelineStageRow({
   actions?: React.ReactNode;
 }) {
   return (
-    <li className="group/row flex items-center gap-2">
-      <span className="w-5 text-xs text-muted-foreground tabular-nums">{number}</span>
-      {control}
+    <li className="group/row flex min-w-0 items-center gap-2">
+      <span className="w-5 shrink-0 text-xs text-muted-foreground tabular-nums">{number}</span>
+      <div className="min-w-0 flex-1">{control}</div>
       {actions}
     </li>
   );

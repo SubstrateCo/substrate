@@ -25,9 +25,9 @@ function OptionContent({
     <span className="flex min-w-0 items-center gap-2">
       {icon}
       <span className="flex min-w-0 flex-col items-start text-left">
-        <span className="wrap-break-word">{title}</span>
+        <span className="wrap-anywhere">{title}</span>
         {description && (
-          <span className="text-xs font-normal wrap-break-word text-muted-foreground">
+          <span className="text-xs font-normal wrap-anywhere text-muted-foreground">
             {description}
           </span>
         )}
@@ -87,7 +87,7 @@ export function ReferencePickerOption({
       variant="option"
       size="default"
       tabIndex={selected ? 0 : -1}
-      className="w-full"
+      className="w-full whitespace-normal"
       onFocus={onFocus}
       onClick={onSelect}
     >

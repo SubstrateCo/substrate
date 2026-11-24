@@ -40,7 +40,7 @@ export function ChannelSearchResult({
           title={
             <Link
               ref={link}
-              className="block truncate outline-none focus-visible:underline"
+              className="block truncate outline-none focus-visible:underline max-sm:wrap-anywhere max-sm:whitespace-normal"
               {...item.link}
               aria-label={`Channel: ${item.title}`}
               onClick={(event) => event.stopPropagation()}
@@ -101,8 +101,10 @@ export function ChannelSearchResultContent({
   return (
     <>
       {icon}
-      <span className="min-w-0 flex-1">{title}</span>
-      <span className="shrink-0 text-xs text-muted-foreground">{members}</span>
+      <span className="flex min-w-0 flex-1 flex-col sm:flex-row sm:items-center sm:gap-2">
+        <span className="min-w-0 sm:flex-1">{title}</span>
+        <span className="shrink-0 text-xs text-muted-foreground">{members}</span>
+      </span>
       <span className="w-14 shrink-0">{action}</span>
     </>
   );

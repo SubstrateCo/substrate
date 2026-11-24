@@ -151,7 +151,9 @@ export function NotificationItem({
         />
         {canExpand && (
           <CollapsibleContent>
-            <div className="mt-1 mb-3 ml-12 border-l pl-3">{expanded && renderEvents()}</div>
+            <div className="mt-1 mb-3 ml-6 border-l pl-2 sm:ml-12 sm:pl-3">
+              {expanded && renderEvents()}
+            </div>
           </CollapsibleContent>
         )}
       </li>
@@ -186,7 +188,7 @@ function NotificationRowLayout({
         {avatar}
       </ItemMedia>
       <ItemContent className="min-w-0">{content}</ItemContent>
-      <ItemActions>
+      <ItemActions className="shrink-0">
         <span className="text-xs text-muted-foreground">{meta}</span>
         {action}
       </ItemActions>
@@ -242,7 +244,7 @@ function NotificationSummary({
           // One name for the row; a visually hidden span would add a stray space before ", unread".
           aria-label={`${actors} ${verb} ${object}${item.read ? "" : ", unread"}`}
           onClick={onOpen}
-          className="min-w-0 flex-1 rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          className="min-w-0 flex-1 rounded-sm wrap-anywhere outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <span className={nameWeight}>{actors}</span>{" "}
           <span className="text-muted-foreground">{verb}</span>{" "}

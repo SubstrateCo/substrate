@@ -201,7 +201,7 @@ function CalendarOptionList({
         const connected = !!option.connectedEntityId;
         return (
           <FieldLabel key={option.providerCalendarId} htmlFor={`${id}-${index}`}>
-            <Field orientation="horizontal">
+            <Field orientation="horizontal" className="min-w-0">
               <Checkbox
                 id={`${id}-${index}`}
                 checked={connected || selected.has(option.providerCalendarId)}
@@ -209,11 +209,17 @@ function CalendarOptionList({
                 onCheckedChange={(checked) => onToggle(option.providerCalendarId, checked === true)}
               />
               <CalendarColorDot color={option.color} />
-              <span className="min-w-0 flex-1 truncate" title={option.name}>
-                {option.name}
-              </span>
-              {option.isPrimary && <Tag>Primary</Tag>}
-              {connected && <Tag>Connected</Tag>}
+              <div className="min-w-0 flex-1 sm:flex sm:items-center sm:gap-2">
+                <span className="block min-w-0 truncate sm:flex-1" title={option.name}>
+                  {option.name}
+                </span>
+                {(option.isPrimary || connected) && (
+                  <div className="mt-1 flex flex-wrap gap-1 sm:mt-0">
+                    {option.isPrimary && <Tag>Primary</Tag>}
+                    {connected && <Tag>Connected</Tag>}
+                  </div>
+                )}
+              </div>
             </Field>
           </FieldLabel>
         );

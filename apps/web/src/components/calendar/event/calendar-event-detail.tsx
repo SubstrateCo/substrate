@@ -46,7 +46,7 @@ export function CalendarEventDetail({
             <span className="truncate">{event.calendarName}</span>
             {event.kind === "from_gmail" && <span className="shrink-0">· Added by Gmail</span>}
           </div>
-          <Heading level={2} variant="record">
+          <Heading level={2} variant="record" className="wrap-anywhere">
             {cancelled ? (
               <s className="text-muted-foreground">{eventTitle(event.title)}</s>
             ) : (
@@ -57,7 +57,7 @@ export function CalendarEventDetail({
             <Tag className="w-fit">{cancelled ? "Cancelled" : "Tentative"}</Tag>
           )}
           {description && (
-            <p className="text-sm/relaxed wrap-break-word whitespace-pre-wrap">{description}</p>
+            <p className="text-sm/relaxed wrap-anywhere whitespace-pre-wrap">{description}</p>
           )}
         </div>
         <div className="grid">
@@ -74,7 +74,7 @@ export function CalendarEventDetail({
           </Detail>
           {event.location && (
             <Detail icon={<MapPin aria-hidden />}>
-              <p className="wrap-break-word">{event.location}</p>
+              <p className="wrap-anywhere">{event.location}</p>
             </Detail>
           )}
           {event.conferenceUrl && (

@@ -47,7 +47,7 @@ export function Pager({
   const known = pageCount >= 0;
   const pages = known ? paginationPages(pageIndex, pageCount) : [];
   return (
-    <div className="flex flex-wrap items-center justify-end gap-3">
+    <div className="@container flex min-w-0 flex-wrap items-center justify-end gap-3">
       {summary && (
         <span className="mr-auto text-xs text-muted-foreground tabular-nums">{summary}</span>
       )}
@@ -79,7 +79,7 @@ export function Pager({
               <ChevronLeft aria-hidden="true" />
             </PagerStep>
           </PaginationItem>
-          <PaginationItem className={known ? "sm:hidden" : undefined}>
+          <PaginationItem className={known ? "@min-[28rem]:hidden" : undefined}>
             <span className="px-2 text-xs text-muted-foreground tabular-nums">
               Page {pageIndex + 1}
               {known && ` of ${pageCount}`}
@@ -88,11 +88,11 @@ export function Pager({
           {pages.map((page, index) => (
             <Fragment key={page}>
               {index > 0 && page - pages[index - 1] > 1 && (
-                <PaginationItem className="hidden sm:block">
+                <PaginationItem className="hidden @min-[28rem]:block">
                   <PaginationEllipsis />
                 </PaginationItem>
               )}
-              <PaginationItem className="hidden sm:block">
+              <PaginationItem className="hidden @min-[28rem]:block">
                 <Button
                   type="button"
                   variant={page === pageIndex ? "outline" : "ghost"}

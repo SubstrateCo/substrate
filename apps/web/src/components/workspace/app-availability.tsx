@@ -12,7 +12,15 @@ import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { workspaceApps } from "@/components/workspace/workspace-apps";
 import { Blocks } from "lucide-react";
 
-export function AppAvailability({ app, children }: { app: AppId; children: ReactNode }) {
+export function AppAvailability({
+  app,
+  children,
+  variant = "pane",
+}: {
+  app: AppId;
+  children: ReactNode;
+  variant?: "pane" | "compact";
+}) {
   const apps = useOrganizationApps();
   if (apps.error) return <ErrorState title="Couldn’t load available apps" onRetry={apps.retry} />;
   if (!apps.ready) return <LoadingState label="Loading available apps" />;
@@ -20,6 +28,7 @@ export function AppAvailability({ app, children }: { app: AppId; children: React
   const label = workspaceApps.find((item) => item.id === app)?.label ?? "This app";
   return (
     <ContentNotice
+      variant={variant}
       icon={Blocks}
       title={`${label} is disabled`}
       description="This app is not enabled for your organization. Existing data is preserved. An owner or admin can enable it in Apps settings."

@@ -67,7 +67,7 @@ export function InteractionDashboard({
     },
   ];
   return (
-    <div className="flex min-h-0 flex-1 flex-col gap-4">
+    <div className="flex flex-col gap-4 md:min-h-0 md:flex-1">
       <dl
         aria-label="Interaction summary"
         className="grid shrink-0 grid-cols-2 gap-2 @3xl:grid-cols-4"
@@ -97,8 +97,8 @@ export function InteractionDashboard({
             selectedDay={day}
             onSelectDay={setSelectedDay}
           />
-          <section className="flex min-h-0 flex-1 flex-col gap-3">
-            <div className="flex items-center justify-between gap-3">
+          <section className="flex flex-col gap-3 md:min-h-0 md:flex-1">
+            <div className="flex flex-wrap items-center justify-between gap-3">
               <Heading level={2}>Day’s interactions</Heading>
               <Button variant="link" size="sm" className="-mr-2.5" asChild>
                 <Link

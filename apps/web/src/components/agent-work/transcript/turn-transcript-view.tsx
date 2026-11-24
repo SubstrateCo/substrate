@@ -18,7 +18,7 @@ function Detail({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div className="flex min-w-0 gap-4">
       <dt className="w-16 shrink-0 text-muted-foreground">{label}</dt>
-      <dd className="flex min-w-0 flex-wrap gap-x-2">{children}</dd>
+      <dd className="flex min-w-0 flex-1 flex-wrap gap-x-2 wrap-anywhere">{children}</dd>
     </div>
   );
 }
@@ -157,7 +157,7 @@ export function TurnTranscriptView({
             {label && (
               <span
                 className={cn(
-                  "mr-1.5 truncate text-xs text-muted-foreground tabular-nums",
+                  "mr-1.5 max-w-20 truncate text-xs text-muted-foreground tabular-nums sm:max-w-32",
                   tone === "attention" && "text-warning-text",
                   tone === "failed" && "text-destructive",
                 )}

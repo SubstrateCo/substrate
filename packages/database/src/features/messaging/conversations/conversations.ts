@@ -21,12 +21,6 @@ import {
   type Conversation,
 } from "../access";
 import {
-  directMessageKey,
-  externalDirectMessageKey,
-  findExternalDirectMessage,
-} from "./direct-messages";
-import { activeMembers, endParticipation, hasOtherPerson, setOwner, writeMembers } from "./members";
-import {
   canManage,
   canShare,
   leaveBlocked,
@@ -34,10 +28,16 @@ import {
   validateCreate,
   type Viewer,
 } from "../policy";
-import { ownedAgents, recipients } from "./recipients";
 import { messagingConversations, messagingParticipants } from "../schema";
 import { messagingConnections } from "../sharing.schema";
 import { queueSharingInvitations } from "../sharing/invitations";
+import {
+  directMessageKey,
+  externalDirectMessageKey,
+  findExternalDirectMessage,
+} from "./direct-messages";
+import { activeMembers, endParticipation, hasOtherPerson, setOwner, writeMembers } from "./members";
+import { ownedAgents, recipients } from "./recipients";
 import { and, asc, countDistinct, eq, inArray, isNull, ne, or, sql } from "drizzle-orm";
 
 interface CreateConversationInput {

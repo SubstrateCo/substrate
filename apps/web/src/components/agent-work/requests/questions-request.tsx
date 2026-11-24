@@ -84,7 +84,7 @@ export function QuestionsRequest({
     choose(option.label);
   };
   const optionText = (option: Questions["questions"][number]["options"][number]) => (
-    <FieldContent className="min-w-0">
+    <FieldContent className="min-w-0 wrap-anywhere">
       <span>{option.label}</span>
       {option.description && (
         <span className="text-xs font-normal text-muted-foreground">{option.description}</span>
@@ -104,9 +104,11 @@ export function QuestionsRequest({
     // The card around this shows the title.
     <div className="group/question grid gap-3" onKeyDown={onKeyDown}>
       <div className="grid gap-1">
-        <div className="flex items-baseline justify-between gap-3">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           {question.header && (
-            <span className="text-xs font-medium text-muted-foreground">{question.header}</span>
+            <span className="min-w-0 text-xs font-medium wrap-anywhere text-muted-foreground">
+              {question.header}
+            </span>
           )}
           {payload.questions.length > 1 && (
             <span className="ml-auto text-xs text-muted-foreground tabular-nums">
@@ -118,7 +120,7 @@ export function QuestionsRequest({
           ref={promptRef}
           id={`${id}-question`}
           tabIndex={-1}
-          className="rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+          className="rounded-sm wrap-anywhere outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
         >
           {question.question}
         </p>

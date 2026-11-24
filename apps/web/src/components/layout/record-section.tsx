@@ -30,13 +30,21 @@ export function RecordSection({
 } & Omit<ComponentProps<"section">, "title">) {
   return (
     <section className={cn("grid min-w-0 content-start gap-2", className)} {...section}>
-      <div className="flex min-h-7 items-center justify-between gap-2">
-        <Heading level={3} variant="label" className="flex min-w-0 items-center gap-1.5">
+      <div className="flex min-h-7 flex-wrap items-center justify-between gap-2">
+        <Heading
+          level={3}
+          variant="label"
+          className="flex min-w-0 items-center gap-1.5 wrap-anywhere"
+        >
           {title}
           {count !== undefined && <span className="font-normal tabular-nums">{count}</span>}
           {cue}
         </Heading>
-        {actions && <div className="flex shrink-0 items-center gap-0.5">{actions}</div>}
+        {actions && (
+          <div className="ml-auto flex max-w-full min-w-0 flex-wrap items-center gap-0.5">
+            {actions}
+          </div>
+        )}
       </div>
       {description && <p className="text-xs text-muted-foreground">{description}</p>}
       {children}
@@ -71,7 +79,9 @@ export function Property({ label, children }: { label: string; children: ReactNo
   return (
     <div className="flex min-h-8 items-center gap-2">
       <dt className="w-24 shrink-0 text-xs text-muted-foreground">{label}</dt>
-      <dd className="flex min-w-0 flex-1 items-center text-sm wrap-break-word">{children}</dd>
+      <dd className="flex min-w-0 flex-1 items-center text-sm wrap-anywhere [&>*]:max-w-full [&>*]:min-w-0">
+        {children}
+      </dd>
     </div>
   );
 }

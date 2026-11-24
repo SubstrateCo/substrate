@@ -36,7 +36,7 @@ export function AttachmentList({
           asChild
           variant="outline"
           size={compact ? "xs" : "default"}
-          className="group/row"
+          className="group/row min-w-0 flex-nowrap"
         >
           <li>
             <a
@@ -49,7 +49,9 @@ export function AttachmentList({
                 <File aria-hidden="true" className="text-muted-foreground" />
               </ItemMedia>
               <ItemContent className="min-w-0">
-                <ItemTitle className="max-w-full">{attachment.filename}</ItemTitle>
+                <ItemTitle className="max-w-full">
+                  <span className="truncate">{attachment.filename}</span>
+                </ItemTitle>
                 <ItemDescription>
                   {attachment.size < 1024
                     ? `${attachment.size} B`

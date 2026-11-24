@@ -152,7 +152,7 @@ export function RecordCollection({
     // The pipeline's columns scroll on their own, so the page does not.
     <div
       className={cn(
-        "flex min-h-0 flex-1 flex-col gap-6 p-6",
+        "flex min-h-0 min-w-0 flex-1 flex-col gap-6 p-4 sm:p-6",
         showPipeline ? "overflow-hidden" : "overflow-y-auto",
       )}
     >
@@ -167,21 +167,21 @@ export function RecordCollection({
           setCreating(true);
         }}
       />
-      <div className={cn("flex flex-col gap-4", showPipeline && "min-h-0 flex-1")}>
+      <div className={cn("flex min-w-0 flex-col gap-4", showPipeline && "min-h-0 flex-1")}>
         <div className="flex flex-wrap items-center gap-2">
           <Input
             type="search"
             aria-label={`Search ${kind}`}
             placeholder={`Search ${kind}`}
-            className="w-72 max-w-full"
+            className="w-full min-w-0 sm:w-72"
             value={search}
             onChange={(event) => {
               setSearch(event.target.value);
               pages.reset();
             }}
           />
-          <div className="ml-auto flex items-center gap-4">
-            <div className="flex items-center gap-2">
+          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-x-4 gap-y-2">
+            <div className="flex shrink-0 items-center gap-2">
               <Checkbox
                 id="crm-archived"
                 checked={archived}

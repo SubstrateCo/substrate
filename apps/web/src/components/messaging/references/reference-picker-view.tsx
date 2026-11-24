@@ -129,7 +129,7 @@ export function ReferencePickerView({
           }
         }}
       >
-        <div className="flex shrink-0 items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1 overflow-x-auto">
           <TabsList aria-label="Reference type">
             {kinds.map((type) => (
               <TabsTrigger
@@ -142,7 +142,11 @@ export function ReferencePickerView({
             ))}
           </TabsList>
         </div>
-        {query && <p className="px-2 text-xs text-muted-foreground">Results for “{query}”</p>}
+        {query && (
+          <p className="shrink-0 truncate px-2 text-xs text-muted-foreground" title={query}>
+            Results for “{query}”
+          </p>
+        )}
         {kinds.map((type) => (
           <TabsContent key={type} value={type} forceMount hidden={type !== kind} asChild>
             <div ref={type === kind ? list : undefined} className="min-h-8 flex-1 overflow-y-auto">

@@ -37,14 +37,17 @@ export function MeetingCard({
         />
       </span>
       <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <p className="truncate text-sm font-medium" title={payload.title}>
+        <p
+          className="truncate text-sm font-medium max-sm:wrap-anywhere max-sm:whitespace-normal"
+          title={payload.title}
+        >
           {payload.title}
         </p>
-        <p className="truncate text-sm text-muted-foreground">
+        <p className="truncate text-sm text-muted-foreground max-sm:wrap-anywhere max-sm:whitespace-normal">
           <span className={cn(started && "font-medium text-primary")}>{timing.relative}</span>
           {meta && ` · ${meta}`}
         </p>
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex flex-wrap gap-2 max-sm:-mr-8">
           {payload.joinable && can("join") && (
             <Button type="button" size="sm" onClick={() => onAction("join")}>
               <Video aria-hidden="true" />

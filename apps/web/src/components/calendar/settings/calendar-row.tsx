@@ -69,10 +69,10 @@ export function CalendarRow({
           </div>
         </ItemContent>
         {!readOnly && actions && (
-          <ItemActions>
+          <ItemActions className="max-w-full min-w-0 flex-wrap">
             {!disconnected && (
-              <div className="flex items-center gap-2">
-                <Label variant="caption" htmlFor={`${id}-interactions`}>
+              <div className="flex min-w-0 flex-1 items-center gap-2">
+                <Label variant="caption" className="min-w-0" htmlFor={`${id}-interactions`}>
                   Create contacts and interactions
                 </Label>
                 <Switch

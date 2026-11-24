@@ -57,7 +57,7 @@ export function PageSheet({
             showCloseButton={false}
             aria-describedby={undefined}
             aria-modal={!wide || undefined}
-            className="@container w-full lg:w-xl lg:max-w-full"
+            className="@container w-full max-sm:overflow-hidden lg:w-xl lg:max-w-full"
             onFocusCapture={onFocusCapture}
             onOpenAutoFocus={(event) => {
               opener.current = document.activeElement;
@@ -108,7 +108,7 @@ export function PageSheetHeader({ title, actions }: { title: ReactNode; actions?
         <div
           role="group"
           aria-label={`${sheet?.label ?? "Record"} actions`}
-          className="flex items-center gap-0.5"
+          className="flex items-center gap-0.5 max-sm:[&_button]:size-11"
         >
           {actions}
           <Tooltip>
@@ -131,5 +131,13 @@ export function PageSheetHeader({ title, actions }: { title: ReactNode; actions?
 }
 
 export function PageSheetBody({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("min-h-0 flex-1 overflow-y-auto px-4 py-5", className)} {...props} />;
+  return (
+    <div
+      className={cn(
+        "min-h-0 min-w-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5",
+        className,
+      )}
+      {...props}
+    />
+  );
 }

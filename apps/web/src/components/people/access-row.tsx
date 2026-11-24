@@ -38,14 +38,16 @@ export function AccessRow({
   onRemove?: () => void;
 }) {
   return (
-    <Item asChild size="xs" className="group/row">
+    <Item asChild size="xs" className="group/row min-w-0 flex-nowrap">
       <li>
         <ItemMedia>
           <PersonAvatar name={name} image={image} agent={agent} />
         </ItemMedia>
         <ItemContent className="min-w-0">
-          <ItemTitle className="max-w-full">{name}</ItemTitle>
-          {meta && <ItemDescription>{meta}</ItemDescription>}
+          <ItemTitle className="max-w-full">
+            <span className="truncate">{name}</span>
+          </ItemTitle>
+          {meta && <ItemDescription className="wrap-anywhere">{meta}</ItemDescription>}
         </ItemContent>
         <ItemActions>
           {levelControl ?? <span className="shrink-0 text-sm text-muted-foreground">{level}</span>}

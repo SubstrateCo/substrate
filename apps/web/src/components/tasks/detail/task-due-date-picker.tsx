@@ -34,7 +34,12 @@ export function TaskDueDatePicker({
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>{children}</PopoverTrigger>
-      <PopoverContent variant="menu" align="start" className="w-auto">
+      <PopoverContent
+        variant="menu"
+        align="start"
+        collisionPadding={8}
+        className="max-h-(--radix-popover-content-available-height) w-auto overflow-y-auto overscroll-contain"
+      >
         <DueDateChoices value={value} onChoose={choose} />
       </PopoverContent>
     </Popover>

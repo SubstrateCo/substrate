@@ -105,7 +105,11 @@ function DialogContent({
         <div ref={setContainer} data-slot="dialog-popups" className="contents" />
         {showCloseButton && (
           <DialogPrimitive.Close data-slot="dialog-close" asChild>
-            <Button variant="ghost" className="absolute top-4 right-4" size="icon-sm">
+            <Button
+              variant="ghost"
+              className="absolute top-4 right-4 max-sm:top-2 max-sm:right-2 max-sm:size-11"
+              size="icon-sm"
+            >
               <XIcon />
               <span className="sr-only">Close</span>
             </Button>
@@ -120,7 +124,10 @@ function DialogHeader({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-header"
-      className={cn("flex shrink-0 flex-col gap-1.5 px-5 pt-5 pb-4", className)}
+      className={cn(
+        "flex shrink-0 flex-col gap-1.5 px-5 pt-5 pb-4 max-sm:px-4 max-sm:pt-4 max-sm:pb-3",
+        className,
+      )}
       {...props}
     />
   );
@@ -131,7 +138,10 @@ function DialogBody({ className, ...props }: React.ComponentProps<"div">) {
   return (
     <div
       data-slot="dialog-body"
-      className={cn("grid min-h-0 flex-1 content-start gap-4 overflow-y-auto px-5 pb-5", className)}
+      className={cn(
+        "grid min-h-0 min-w-0 flex-1 content-start gap-4 overflow-y-auto overscroll-contain px-5 pb-5 max-sm:px-4 max-sm:pb-4",
+        className,
+      )}
       {...props}
     />
   );
@@ -149,7 +159,7 @@ function DialogFooter({
     <div
       data-slot="dialog-footer"
       className={cn(
-        "flex shrink-0 flex-col-reverse gap-2 border-t bg-inset px-5 py-3 sm:flex-row sm:items-center sm:justify-end",
+        "flex shrink-0 flex-col-reverse gap-2 border-t bg-inset px-5 py-3 max-sm:px-4 sm:flex-row sm:items-center sm:justify-end max-sm:[&_button]:h-auto max-sm:[&_button]:min-h-11 max-sm:[&_button]:whitespace-normal max-sm:[@media(max-height:500px)]:[&>div]:grid max-sm:[@media(max-height:500px)]:[&>div]:grid-cols-2",
         className,
       )}
       {...props}
@@ -168,14 +178,17 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
   return (
     <DialogPrimitive.Title
       data-slot="dialog-title"
-      className={cn("pr-8 font-heading text-base leading-snug font-semibold", className)}
+      className={cn(
+        "pr-8 font-heading text-base leading-snug font-semibold wrap-anywhere max-sm:pr-11",
+        className,
+      )}
       {...props}
     />
   );
 }
 
 const dialogDescriptionVariants = cva(
-  "text-sm text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
+  "text-sm wrap-anywhere text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
   {
     variants: {
       variant: {

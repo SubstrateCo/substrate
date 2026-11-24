@@ -62,34 +62,37 @@ export function WorkspaceShell({
   return (
     <main
       data-workspace-shell
-      className="group/shell flex h-(--app-height) min-h-0 overflow-hidden bg-rail"
+      className="group/shell flex h-(--app-height) min-h-0 flex-col-reverse overflow-hidden bg-rail md:flex-row"
     >
       <nav
         aria-label="Apps"
-        className="z-20 flex w-14 shrink-0 flex-col items-center gap-3 bg-rail py-3 text-rail-foreground max-md:group-has-data-meeting-archive/shell:hidden"
+        // oxlint-disable-next-line shadcn/no-arbitrary-values -- The bottom rail must clear the device safe area, which has no spacing token.
+        className="z-20 flex min-h-0 w-full shrink-0 items-center gap-2 bg-rail px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-rail-foreground max-md:group-has-data-meeting-archive/shell:hidden md:w-14 md:flex-col md:gap-3 md:overflow-x-hidden md:overflow-y-auto md:px-0 md:py-3 [&>*]:shrink-0"
       >
         {switcher}
-        {topApps.map(({ id, ...app }) => (
-          <WorkspaceAppButton key={id} {...app} {...badges[id]} />
-        ))}
-        <div className="mt-auto flex flex-col items-center gap-3">
-          {updateIndicator}
-          {bottomApps.map(({ id, ...app }) => (
+        <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-contain md:contents">
+          {topApps.map(({ id, ...app }) => (
             <WorkspaceAppButton key={id} {...app} {...badges[id]} />
           ))}
-          <WorkspaceAppButton {...notificationsApp} unread={hasUnreadNotifications} />
-          <UserMenu
-            name={name}
-            image={image}
-            showOrganizationSettings={showOrganizationSettings}
-            organizationName={organizationName}
-            signOut={signOut}
-          />
+          <div className="ml-auto flex shrink-0 items-center gap-2 md:mt-auto md:ml-0 md:flex-col md:gap-3">
+            {updateIndicator}
+            {bottomApps.map(({ id, ...app }) => (
+              <WorkspaceAppButton key={id} {...app} {...badges[id]} />
+            ))}
+            <WorkspaceAppButton {...notificationsApp} unread={hasUnreadNotifications} />
+          </div>
         </div>
+        <UserMenu
+          name={name}
+          image={image}
+          showOrganizationSettings={showOrganizationSettings}
+          organizationName={organizationName}
+          signOut={signOut}
+        />
       </nav>
       <div
         ref={realtimeContainerRef}
-        className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl bg-surface max-md:group-has-data-meeting-archive/shell:rounded-none"
+        className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-surface md:rounded-tl-2xl"
       >
         {loading && (
           // Same height as the search bar that replaces it, so the page does not jump when it loads.

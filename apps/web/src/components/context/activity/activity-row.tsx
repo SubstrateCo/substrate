@@ -48,17 +48,19 @@ export function ActivityRow({ event }: { event: ActivityEvent }) {
             agent={event.actorType === "agent"}
             size="xs"
           />
-          <span className="truncate font-medium">{event.actorName ?? "Unknown"}</span>
+          <span className="max-w-full truncate font-medium">{event.actorName ?? "Unknown"}</span>
           {event.actorType === "agent" && (
             <Tag size="sm" className="shrink-0">
               Agent
             </Tag>
           )}
-          <span className="truncate text-muted-foreground">{known?.verb ?? event.action}</span>
+          <span className="max-w-full truncate text-muted-foreground">
+            {known?.verb ?? event.action}
+          </span>
           {event.source && (
             <Link
               {...event.source.link}
-              className="inline-flex min-w-0 items-center gap-0.5 rounded-sm bg-muted px-1 font-medium outline-none hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring"
+              className="inline-flex max-w-full min-w-0 items-center gap-0.5 rounded-sm bg-muted px-1 font-medium outline-none hover:bg-row-hover focus-visible:ring-2 focus-visible:ring-ring"
             >
               {event.source.conversationKind ? (
                 <ConversationKindIcon
@@ -99,9 +101,11 @@ function ActivityRowLayout({
       <li>
         <ItemMedia>{icon}</ItemMedia>
         <ItemContent className="min-w-0">
-          <span className="flex min-w-0 items-center gap-1.5">{content}</span>
+          <span className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1 sm:flex-nowrap">
+            {content}
+          </span>
         </ItemContent>
-        <ItemActions>
+        <ItemActions className="shrink-0">
           <span className="text-xs text-muted-foreground">{meta}</span>
         </ItemActions>
       </li>

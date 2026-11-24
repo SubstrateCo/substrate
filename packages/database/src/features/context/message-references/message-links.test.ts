@@ -1,7 +1,13 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { AccessDeniedError, ConflictError } from "../../../errors";
-import { entityGrants, idempotentRequests, tasks, taskActivity, notifications } from "../../../schema";
+import {
+  entityGrants,
+  idempotentRequests,
+  tasks,
+  taskActivity,
+  notifications,
+} from "../../../schema";
 import { contextConversation } from "../../../testing/context";
 import { setupDatabase } from "../../../testing/database";
 import { recordQueries } from "../../../testing/queries";

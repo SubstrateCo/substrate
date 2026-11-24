@@ -56,7 +56,7 @@ export function CalendarAccountCard({
             <p className="text-xs text-muted-foreground">{provider} Calendar</p>
           </div>
         </div>
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-2">
           <Button
             variant="outline"
             size="sm"

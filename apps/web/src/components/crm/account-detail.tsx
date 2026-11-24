@@ -87,8 +87,8 @@ export function AccountDetail({
                       <ItemContent className="min-w-0">
                         <ItemTitle className="max-w-full">{contact.displayName}</ItemTitle>
                       </ItemContent>
-                      <ItemActions>
-                        <span className="text-xs text-muted-foreground">
+                      <ItemActions className="max-w-full min-w-0">
+                        <span className="text-xs wrap-anywhere text-muted-foreground">
                           {affiliation.title}
                           {affiliation.isPrimary ? " · Primary account" : ""}
                         </span>

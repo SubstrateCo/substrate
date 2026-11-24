@@ -8,8 +8,8 @@ import {
 import type { RepositoryContext } from "../../repository-context";
 import { interactionReadable } from "../access";
 import { parseInput } from "../inputs";
-import { contactInteractions } from "./interactions.schema";
 import { contacts } from "../schema";
+import { contactInteractions } from "./interactions.schema";
 import { and, desc, eq, getTableColumns, gte, ilike, lt, or, sql, type SQL } from "drizzle-orm";
 
 export const readableInteractionPeriod = (

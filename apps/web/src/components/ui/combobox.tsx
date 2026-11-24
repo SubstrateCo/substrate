@@ -105,7 +105,7 @@ function ComboboxSearch({ className, ...props }: ComboboxPrimitive.Input.Props) 
   );
 }
 
-// One width rule for pickers: the trigger's width, at least 18rem.
+// Match the trigger, with an 18rem minimum only when the available width allows it.
 function ComboboxContent({
   className,
   side = "bottom",
@@ -134,7 +134,8 @@ function ComboboxContent({
           data-slot="combobox-content"
           data-chips={!!anchor}
           className={cn(
-            "group/combobox-content relative flex max-h-(--available-height) w-(--anchor-width) max-w-(--available-width) min-w-72 origin-(--transform-origin) flex-col overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-floating ring-1 ring-foreground/10 duration-150 ease-out data-[chips=true]:min-w-(--anchor-width) *:data-[slot=input-group]:m-1 *:data-[slot=input-group]:mb-0 *:data-[slot=input-group]:shrink-0 *:data-[slot=input-group]:bg-background *:data-[slot=input-group]:shadow-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-97 data-closed:animate-out data-closed:duration-100 data-closed:fade-out-0 data-closed:zoom-out-97",
+            // oxlint-disable-next-line shadcn/no-arbitrary-values -- Clamp the token minimum to Base UI's runtime collision width.
+            "group/combobox-content relative flex max-h-(--available-height) w-(--anchor-width) max-w-(--available-width) min-w-[min(--spacing(72),var(--available-width))] origin-(--transform-origin) flex-col overflow-hidden rounded-lg bg-popover text-popover-foreground shadow-floating ring-1 ring-foreground/10 duration-150 ease-out data-[chips=true]:min-w-(--anchor-width) *:data-[slot=input-group]:m-1 *:data-[slot=input-group]:mb-0 *:data-[slot=input-group]:shrink-0 *:data-[slot=input-group]:bg-background *:data-[slot=input-group]:shadow-none data-open:animate-in data-open:fade-in-0 data-open:zoom-in-97 data-closed:animate-out data-closed:duration-100 data-closed:fade-out-0 data-closed:zoom-out-97",
             className,
           )}
           {...props}
@@ -149,7 +150,7 @@ function ComboboxList({ className, ...props }: ComboboxPrimitive.List.Props) {
     <ComboboxPrimitive.List
       data-slot="combobox-list"
       className={cn(
-        "no-scrollbar max-h-72 min-h-0 scroll-py-1 overflow-y-auto overscroll-contain p-1 data-empty:p-0",
+        "no-scrollbar max-h-72 min-h-0 scroll-py-1 overflow-x-hidden overflow-y-auto overscroll-contain p-1 data-empty:p-0",
         className,
       )}
       {...props}
@@ -163,7 +164,7 @@ function ComboboxItem({ className, children, ...props }: ComboboxPrimitive.Item.
     <ComboboxPrimitive.Item
       data-slot="combobox-item"
       className={cn(
-        "relative flex w-full min-w-0 cursor-default items-center gap-2 rounded-lg py-1.5 pr-8 pl-2 text-sm outline-hidden select-none data-highlighted:bg-row-highlight data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
+        "relative flex w-full min-w-0 cursor-default items-center gap-2 rounded-lg py-1.5 pr-8 pl-2 text-sm wrap-anywhere outline-hidden select-none data-highlighted:bg-row-highlight data-disabled:pointer-events-none data-disabled:opacity-50 [&_svg]:pointer-events-none [&_svg]:shrink-0 [&_svg:not([class*='size-'])]:size-4",
         className,
       )}
       {...props}
@@ -205,7 +206,7 @@ function ComboboxEmpty({ className, ...props }: ComboboxPrimitive.Empty.Props) {
     <ComboboxPrimitive.Empty
       data-slot="combobox-empty"
       className={cn(
-        "hidden w-full justify-center py-6 text-center text-sm text-muted-foreground group-data-empty/combobox-content:flex",
+        "hidden min-h-0 w-full justify-center overflow-y-auto px-2 py-6 text-center text-sm wrap-anywhere text-muted-foreground group-data-empty/combobox-content:flex",
         className,
       )}
       {...props}
@@ -219,7 +220,7 @@ function ComboboxStatus({ className, ...props }: ComboboxPrimitive.Status.Props)
     <ComboboxPrimitive.Status
       data-slot="combobox-status"
       className={cn(
-        "flex shrink-0 items-center gap-2 px-3 py-1.5 text-xs text-muted-foreground empty:hidden",
+        "flex min-w-0 shrink-0 items-center gap-2 px-3 py-1.5 text-xs wrap-anywhere text-muted-foreground empty:hidden",
         className,
       )}
       {...props}

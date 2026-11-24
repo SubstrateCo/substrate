@@ -203,7 +203,7 @@ function DealProperties({
         <Property label="Contacts">
           <ul className="grid gap-1 py-1.5">
             {contacts.map(({ contact, isPrimary }) => (
-              <li key={contact.entityId} className="flex items-center gap-2">
+              <li key={contact.entityId} className="flex min-w-0 flex-wrap items-center gap-2">
                 <ContactLink
                   entityId={contact.entityId}
                   className="underline-offset-4 hover:underline"

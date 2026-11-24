@@ -28,7 +28,7 @@ export function PendingReply({
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 text-sm">
-          <span className="font-semibold">{name}</span>
+          <span className="min-w-0 font-semibold wrap-anywhere">{name}</span>
           <span className="text-xs text-muted-foreground">Only visible to you</span>
           {status}
         </div>
