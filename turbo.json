@@ -34,6 +34,20 @@
       ],
       "outputs": []
     },
+    "test:e2e": {
+      "dependsOn": ["transit"],
+      "inputs": ["$TURBO_DEFAULT$", "$TURBO_ROOT$/tsconfig.json"],
+      "env": [
+        "CI",
+        "E2E_WORKERS",
+        "E2E_RECORD_VIDEO",
+        "E2E_CAPTURE_SCREENSHOTS",
+        "E2E_SCREENSHOTS_DIR",
+        "VITE_*"
+      ],
+      "passThroughEnv": ["PLAYWRIGHT_*", "E2E_DATABASE_URL"],
+      "outputs": ["playwright-report/**", "test-results/**"]
+    },
     "test:integration": {
       "outputLogs": "errors-only",
       "env": ["PLAYWRIGHT_BASE_URL", "MAILPIT_BASE_URL"],

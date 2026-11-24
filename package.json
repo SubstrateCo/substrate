@@ -14,7 +14,7 @@
     "build": "bun run --filter @substrate/desktop build",
     "package:desktop": "bun run --filter @substrate/desktop package",
     "test:integration": "bun run --filter @substrate/server test:integration",
-    "test:e2e": "bun run --filter @substrate/web test:e2e",
+    "test:e2e": "turbo run test:e2e --filter=@substrate/web",
     "services:up": "docker compose up -d --wait postgres mailpit s3 s3-init valkey",
     "services:test": "docker compose --profile test up -d --wait postgres-test postgres-e2e mailpit valkey s3 s3-init",
     "lint": "oxlint --type-aware --fix",
