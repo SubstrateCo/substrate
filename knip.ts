@@ -18,7 +18,7 @@ export default {
     "apps/server": {
       // Runtime scripts and the public API export are discovered from package.json.
       entry: ["{src,scripts}/**/*.test.ts", "scripts/seed-calendar-e2e.ts"],
-      project: ["src/**/*.ts", "scripts/**/*.ts", "integration/**/*.ts", "*.config.ts"],
+      project: ["src/**/*.{ts,tsx}", "scripts/**/*.ts", "integration/**/*.ts", "*.config.ts"],
       // Tests run through a custom Bun launcher rather than a bun test script.
       bun: true,
     },
