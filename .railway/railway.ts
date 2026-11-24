@@ -54,6 +54,9 @@ export default defineRailway(() => {
       SMTP_USER: "resend",
       SMTP_PASSWORD: preserve(),
       EMAIL_FROM: "Substrate <noreply@substrateco.xyz>",
+      // "Substrate Web Production" OAuth client in GCP project substrate-515521.
+      GOOGLE_CLIENT_ID: "101818974635-3dgl6172j9499tn9v967m5sq78pimtem.apps.googleusercontent.com",
+      GOOGLE_CLIENT_SECRET: preserve(),
       SUBSTRATE_WINDOWS_DOWNLOAD_URL:
         "https://github.com/SubstrateCo/substrate/releases/latest/download/Substrate-Setup.exe",
     },
