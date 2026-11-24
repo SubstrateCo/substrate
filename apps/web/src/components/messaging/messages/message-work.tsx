@@ -1,4 +1,4 @@
-import type { ContextEntityType } from "@substrate/contracts/context/input";
+import type { MessageWorkType } from "@substrate/contracts/context/input";
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
 import { useState } from "react";
@@ -10,7 +10,7 @@ import type { RecordLink } from "@/lib/navigation/record-links";
 
 export type MessageWorkLink = {
   entityId: string;
-  entityType: ContextEntityType;
+  entityType: MessageWorkType;
   title: string;
   link: RecordLink;
   status?: TaskStatus | null;

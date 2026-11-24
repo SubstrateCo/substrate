@@ -256,7 +256,8 @@ export class RepositoryContext {
   // type. Children use createChildEntity.
   async createEntity(entityType: typeof entities.$inferInsert.entityType) {
     for (const app of requiredAppsForEntityType(entityType)) {
-      if (app === "tasks" || app === "crm") await requireAppEnabled(this, app);
+      if (app === "tasks" || app === "crm" || app === "meetings")
+        await requireAppEnabled(this, app);
     }
     await this.requireActiveActor();
     const [entity] = await this.db
@@ -280,7 +281,7 @@ export class RepositoryContext {
   ) {
     const parentApps = requiredAppsForEntityType(parent.entity.entityType);
     for (const app of requiredAppsForEntityType(entityType)) {
-      if (!parentApps.includes(app) && (app === "tasks" || app === "crm"))
+      if (!parentApps.includes(app) && (app === "tasks" || app === "crm" || app === "meetings"))
         await requireAppEnabled(this, app);
     }
     const [entity] = await this.db

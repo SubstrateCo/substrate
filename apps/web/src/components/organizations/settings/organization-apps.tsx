@@ -60,6 +60,13 @@ const catalog = [
     required: false,
     agentSupport: { mcp: "read-only", skill: "substrate-inbox" },
   },
+  {
+    id: "meetings",
+    description:
+      "Keep a private archive of calls, notes, and transcripts. Add meetings by hand or import a Markdown export.",
+    required: false,
+    agentSupport: { mcp: true, skill: "substrate-meetings" },
+  },
 ] as const satisfies ReadonlyArray<{
   id: AppId;
   description: string;
@@ -68,6 +75,11 @@ const catalog = [
 }>;
 
 const disableCopy = {
+  meetings: {
+    label: "Meetings",
+    description:
+      "The archive and its agent tools will be unavailable in this organization. Enable Meetings again to restore access to existing records.",
+  },
   tasks: {
     label: "Tasks",
     description:

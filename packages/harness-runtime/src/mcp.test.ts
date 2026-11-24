@@ -286,6 +286,61 @@ test("results above the offload limit are written inside the folder and returned
   }
 });
 
+test("the native Meetings lease exposes the tools and keeps a large private source page out of the shared agent folder", async () => {
+  const input = {
+    meetingId: crypto.randomUUID(),
+    sourceId: crypto.randomUUID(),
+    section: "transcript",
+  };
+  const page = {
+    text: "🎙".repeat(3000),
+    speaker: null,
+    offsetMs: null,
+    nextOffset: 3000,
+    nextTurn: null,
+  };
+  const calls: WorkspaceApiRequest[] = [];
+  const mcp = await connected(
+    {
+      workspace: async (call) => {
+        calls.push(call);
+        return { success: true, data: page };
+      },
+    },
+    leaseOptions({ tools: leaseTools("main", ["meetings"]) }),
+  );
+  try {
+    const offered = (await mcp.client.listTools()).tools.filter((t) => t.name.includes("meeting"));
+    expect(offered.map((t) => t.name).sort()).toEqual([
+      "create_meeting",
+      "get_meeting",
+      "list_meetings",
+      "read_meeting_source",
+    ]);
+    expect(offered.find((t) => t.name === "create_meeting")?.annotations).toMatchObject({
+      readOnlyHint: false,
+      idempotentHint: true,
+    });
+    mcp.lease.bind(turn);
+    expect(
+      (await mcp.client.callTool({ name: "read_meeting_source", arguments: input }))
+        .structuredContent,
+    ).toEqual(page);
+    expect(calls).toEqual([
+      {
+        tool: "read_meeting_source",
+        organizationId: "org-a",
+        agentId,
+        turn,
+        input: { ...input, turn: 0, offset: 0 },
+      },
+    ]);
+    expect(await readdir(folder)).toEqual([]);
+  } finally {
+    await mcp.close();
+  }
+});
+
 test("Inbox discovery advertises read-only tools; an oversized private result is never written to the agent folder", async () => {
   const messageId = crypto.randomUUID();
   const mcp = await connected(

@@ -4,6 +4,7 @@ import type { CrmExport } from "@substrate/contracts/crm/export";
 import { linkOptions } from "@tanstack/react-router";
 
 import type { AgentPageSection } from "@/lib/agent-work/agent-sections";
+import { closedReader, type MeetingSearch } from "@/lib/meetings/navigation";
 
 /** A task opens in its project. Pass the link to `Link`, `navigate`, or `useRecordUrl`. */
 export function workLink(organizationId: string, projectEntityId: string, taskEntityId?: string) {
@@ -13,20 +14,21 @@ export function workLink(organizationId: string, projectEntityId: string, taskEn
   });
 }
 /**
- * Open a readable record in its owning app; interactions open their contact's history. A meeting
- * opens on `date` (YYYY-MM-DD) when it is known, and otherwise on the calendar's default day.
+ * Open a readable record in its owning app; interactions open their contact's history. A calendar
+ * event opens on `date` (YYYY-MM-DD) when known, and otherwise on the calendar's default day.
  */
 export function linkedWorkLink(
   organizationId: string,
   link: {
     projectEntityId: string | null;
     contactEntityId?: string | null;
-    entityType: ContextTargetType;
+    entityType: ContextTargetType | "meeting";
     entityId: string;
     date?: string;
   },
   crmEnabled: boolean,
 ) {
+  if (link.entityType === "meeting") return meetingLink(organizationId, link.entityId);
   if (link.entityType === "account") return crmLink(organizationId, "accounts", link.entityId);
   if (link.entityType === "deal") return crmLink(organizationId, "deals", link.entityId);
   if (link.entityType === "contact") return personLink(organizationId, link.entityId, crmEnabled);
@@ -46,6 +48,12 @@ export function messageLink(organizationId: string, conversationId: string, mess
   return linkOptions({
     to: "/messages",
     search: { workspaceId: organizationId, conversationId, messageId },
+  });
+}
+export function meetingLink(organizationId: string, meetingId: string, view?: MeetingSearch) {
+  return linkOptions({
+    to: "/meetings",
+    search: { ...view, ...closedReader, workspaceId: organizationId, meetingId },
   });
 }
 
@@ -70,6 +78,7 @@ export type RecordLink =
   | ReturnType<typeof contactLink>
   | ReturnType<typeof workLink>
   | ReturnType<typeof messageLink>
+  | ReturnType<typeof meetingLink>
   | ReturnType<typeof agentLink>
   | ReturnType<typeof interactionLink>
   | ReturnType<typeof interactionPersonLink>;

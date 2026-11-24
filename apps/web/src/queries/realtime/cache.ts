@@ -45,6 +45,9 @@ export function realtimeQueryTargets(
   const organizationId = event.organizationId;
   const targets: RealtimeQueryTarget[] = [];
   switch (event.domain) {
+    case "meetings":
+      if (organizationId) targets.push({ queryKey: queryKeys.meetings(userId, organizationId) });
+      break;
     case "session":
       targets.push({ queryKey: queryKeys.session });
       break;

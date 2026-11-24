@@ -7,12 +7,36 @@ import { cn } from "cn";
 const tableColumnClasses =
   "data-[align=end]:text-right data-[align=end]:tabular-nums data-[hide-below=3xl]:hidden data-[hide-below=3xl]:@3xl:table-cell data-[hide-below=4xl]:hidden data-[hide-below=4xl]:@4xl:table-cell";
 
-function Table({ className, ...props }: React.ComponentProps<"table">) {
+function Table({
+  className,
+  layout = "default",
+  ...props
+}: React.ComponentProps<"table"> & {
+  layout?: "default" | "ledger";
+}) {
   return (
-    <div data-slot="table-container" className="relative w-full overflow-x-auto">
+    <div
+      data-slot="table-container"
+      className="relative w-full overflow-auto"
+      role={layout === "ledger" ? "region" : undefined}
+      tabIndex={layout === "ledger" ? 0 : undefined}
+      aria-label={layout === "ledger" ? `Scrollable ${props["aria-label"]} table` : undefined}
+    >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        className={cn(
+          "w-full caption-bottom",
+          layout !== "ledger" && "text-sm",
+          className,
+          layout === "ledger" && [
+            "min-w-207.5 border-separate border-spacing-0 text-compact",
+            "[&_:is(th,td)]:border-r [&_:is(th,td)]:border-b [&_:is(th,td)]:border-r-border/60 [&_:is(th,td)]:px-2.5 [&_:is(th,td):last-child]:border-r-0 [&_tbody_tr:last-child_td]:border-b-0",
+            "[&_th]:sticky [&_th]:top-0 [&_th]:z-2 [&_th]:bg-sidebar [&_th:first-child]:left-0 [&_th:first-child]:z-3 [&_th[aria-sort=ascending]]:text-foreground [&_th[aria-sort=descending]]:text-foreground",
+            "[&_tbody_tr]:bg-card [&_tbody_tr:focus-within]:bg-inset [&_tbody_tr:hover]:bg-inset [&_tbody_tr:nth-child(even)]:bg-surface [&_tbody_tr[data-state=selected]]:bg-row-selected [&_tbody_tr[data-state=selected]]:text-row-selected-foreground",
+            "[&_tbody_td]:h-9 [&_tbody_td]:bg-inherit [&_tbody_td]:py-0 [&_tbody_td:first-child]:sticky [&_tbody_td:first-child]:left-0 [&_tbody_td:first-child]:z-1 [&_tbody_tr[data-state=selected]_td:first-child]:before:absolute [&_tbody_tr[data-state=selected]_td:first-child]:before:inset-y-0 [&_tbody_tr[data-state=selected]_td:first-child]:before:left-0 [&_tbody_tr[data-state=selected]_td:first-child]:before:w-0.75 [&_tbody_tr[data-state=selected]_td:first-child]:before:bg-primary",
+            "@max-[520px]:[&_tbody_td]:h-10 @max-[650px]:[&_th:first-child]:w-48 @max-[375px]:[&_th:first-child]:w-36",
+          ],
+        )}
         {...props}
       />
     </div>
@@ -53,7 +77,6 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
       className={cn(
         "h-9 px-3 text-left align-middle text-xs font-medium whitespace-nowrap text-muted-foreground has-[[role=checkbox]]:pr-0",
         tableColumnClasses,
-        "data-[width=w-20]:w-20 data-[width=w-24]:w-24 data-[width=w-28]:w-28 data-[width=w-36]:w-36 data-[width=w-44]:w-44 data-[width=w-56]:w-56",
         className,
       )}
       {...props}

@@ -23,6 +23,7 @@ import { createPictureRoutes } from "./v1/files/picture-routes";
 import { createFilesRoutes } from "./v1/files/routes";
 import { createIntegrationRoutes } from "./v1/integrations/routes";
 import { createMcpRoutes } from "./v1/mcp/routes";
+import { createMeetingRoutes } from "./v1/meetings/routes";
 import { createReadRoutes } from "./v1/messaging/read-routes";
 import { createMessagingRoutes } from "./v1/messaging/routes";
 import { createSharingRoutes } from "./v1/messaging/sharing-routes";
@@ -68,9 +69,9 @@ export function createApp({ auth, services, scopes, trustedOrigins, realtime }: 
     )
     .use(
       "/api/*",
-      // Picture uploads set their own, larger limit on the route.
+      // These uploads set their own limits on the route.
       except(
-        "/api/v1/files/pictures/:purpose",
+        ["/api/v1/files/pictures/:purpose", "/api/v1/meetings/import"],
         bodyLimit({
           maxSize: 1024 * 1024,
           onError: (c) =>
@@ -101,6 +102,7 @@ export function createApp({ auth, services, scopes, trustedOrigins, realtime }: 
     )
     .route("/api/v1/crm", createCrmFromMessageRoutes(services.crmFromMessage, scopes))
     .route("/api/v1/calendar", createCalendarRoutes(services.calendar, scopes))
+    .route("/api/v1/meetings", createMeetingRoutes(services.meetings, scopes))
     .route("/api/v1/integrations", createIntegrationRoutes(services.integrations, scopes))
     .route("/api/v1/messaging", createMessagingRoutes(services.messaging, scopes))
     .route("/api/v1/messaging", createReadRoutes(services.messagingRead, scopes))

@@ -9,6 +9,7 @@ import { applyMessageEffects } from "../../context/message-references/message-ef
 import { messageEntityReferences } from "../../context/schema";
 import { messageAttachmentMetadata } from "../../files/metadata";
 import { messageAttachments } from "../../files/schema";
+import { meetingArchives } from "../../meetings/schema";
 import { notifications } from "../../notifications/schema";
 import { requireUnarchived } from "../../projects/archive";
 import { referenceChangeHints } from "../../realtime/routing";
@@ -61,10 +62,11 @@ export function messageMutationOperations(
       if (!updated) throw new AccessDeniedError();
       // Related lists of every referenced record show this message's body. Read the references
       // before the edit replaces its mentions.
-      const referenced = await tx
+      const references = await tx
         .select({
           entityId: messageEntityReferences.entityId,
-          projectEntityId: entities.accessEntityId,
+          containerId: entities.accessEntityId,
+          meetingOwner: meetingArchives.owner,
         })
         .from(messageEntityReferences)
         .innerJoin(
@@ -74,7 +76,21 @@ export function messageMutationOperations(
             eq(entities.entityId, messageEntityReferences.entityId),
           ),
         )
+        .leftJoin(
+          meetingArchives,
+          and(eq(entities.entityType, "meeting"), eq(meetingArchives.id, entities.accessEntityId)),
+        )
         .where(eq(messageEntityReferences.messageId, messageId));
+      const referenced = references.flatMap(({ entityId, containerId, meetingOwner }) => {
+        if (!meetingOwner) return [{ entityId, projectEntityId: containerId }];
+        // Editing the source doesn't change the archived original. Deletion hides the link.
+        if (deleting)
+          context.effects.hint({
+            audience: realtimeKeys.actor(conversation.organizationId, meetingOwner),
+            domain: "meetings",
+          });
+        return [];
+      });
       // Explicit associations and source relationships are provenance, not parsed body content.
       await tx
         .delete(messageEntityReferences)

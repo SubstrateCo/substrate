@@ -10,6 +10,7 @@ import {
   MessageSquareText,
   MessagesSquare,
   UserRound,
+  Video,
   type LucideIcon,
 } from "lucide-react";
 
@@ -20,6 +21,7 @@ import {
  */
 export const entityKinds = {
   task: { icon: ListTodo, label: "Task" },
+  meeting: { icon: Video, label: "Meeting" },
   project: { icon: FolderKanban, label: "Project" },
   contact: { icon: Contact, label: "Contact" },
   account: { icon: Building2, label: "Account" },

@@ -38,6 +38,11 @@ export function formatShortDate(value: DateInput, now: DateInput = Date.now()) {
   return (sameYear ? shortDate : shortDateWithYear).format(date);
 }
 
+/** An archive date always includes the year, even when the archive spans several years. */
+export function formatArchiveDate(date: Date) {
+  return shortDateWithYear.format(date);
+}
+
 /** Compact time since an event: "now", "5m", "3h", "6d", then a short date. */
 export function formatRelativeTime(value: DateInput, now: DateInput = Date.now()) {
   const date = toDate(value);
@@ -227,6 +232,32 @@ export function parseDateOnly(value: string): Date | undefined {
 /** A local calendar date for date-only query inputs. */
 export function formatDateOnly(date: Date): string {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+const calendarMonth = new Intl.DateTimeFormat(locale, { month: "long" });
+export function formatCalendarMonth(date: Date) {
+  return calendarMonth.format(date);
+}
+/** A provider wall clock with no offset must not move through a DST gap. */
+export function formatWallTime(local: string) {
+  const hour = Number(local.slice(11, 13));
+  return `${hour % 12 || 12}:${local.slice(14, 16)} ${hour < 12 ? "AM" : "PM"}`;
+}
+export function formatMeetingDuration(ms: number | null) {
+  if (ms === null) return "Unknown";
+  const minutes = Math.floor(ms / 60_000);
+  const seconds = (ms % 60_000) / 1000;
+  return seconds ? `${minutes} min ${seconds} sec` : `${minutes} min`;
+}
+/** Monthly total, rounded down to the minute; individual records keep their seconds. */
+export function formatMeetingHours(ms: number | null) {
+  if (ms === null) return "Unknown";
+  const minutes = Math.floor(ms / 60_000);
+  return minutes < 60 ? `${minutes}m` : `${Math.floor(minutes / 60)}h ${minutes % 60}m`;
+}
+export function formatTranscriptOffset(ms: number) {
+  const seconds = Math.floor(ms / 1000);
+  return `${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 }
 
 type DueDateState = "overdue" | "today" | "tomorrow" | "upcoming";

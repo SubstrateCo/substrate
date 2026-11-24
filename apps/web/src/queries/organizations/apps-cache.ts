@@ -12,6 +12,7 @@ export async function clearAppData(client: QueryClient, organizationId: string, 
     queryKeys.messaging(organizationId),
     queryKeys.calendar(organizationId),
     queryKeys.mail(userId, organizationId),
+    queryKeys.meetings(userId, organizationId),
   ];
   const filters = {
     predicate: (query: { queryKey: readonly unknown[] }) =>

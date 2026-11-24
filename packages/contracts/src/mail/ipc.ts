@@ -1,4 +1,5 @@
 import { bridgeOutput, type BridgeAPI } from "../desktop/ipc.ts";
+import { userWorkspace } from "../workspace.ts";
 import {
   mailColors,
   labelFilterModes,
@@ -16,10 +17,9 @@ import { z } from "zod";
 export const channel = "substrate:mail";
 // Main derives identity. The expected scope is only a precondition: a stale renderer cannot
 // receive the *new* account's messages during a workspace or sign-in transition.
-const context = z.object({ userId: z.string().min(1), organizationId: z.string().min(1) });
-const target = context.extend({ mailboxId: z.string().min(1) });
+const target = userWorkspace.extend({ mailboxId: z.string().min(1) });
 const nickname = z.string().trim().max(80);
-export type MailScope = z.output<typeof context>;
+export type MailScope = z.output<typeof userWorkspace>;
 const folder = z.object({
   mailboxId: z.string().nullable(),
   label: z.object({ mailboxId: z.string().min(1), id: z.string().min(1) }).optional(),
@@ -63,7 +63,7 @@ const labelDisplay = z.discriminatedUnion("area", [
 ]);
 export type LabelDisplayChange = z.output<typeof labelDisplay>;
 const messageAction = {
-  input: context.extend({ id: z.uuid() }).strict(),
+  input: userWorkspace.extend({ id: z.uuid() }).strict(),
   output: z.enum(["updated", "missing", "reconnect", "retry"]),
 };
 export type MailActionResult = z.output<typeof messageAction.output>;
@@ -72,7 +72,7 @@ export const methods = {
   markUnread: messageAction,
   trashMessage: messageAction,
   changeConversations: {
-    input: context
+    input: userWorkspace
       .extend({
         ids: z.array(z.uuid()).min(1).max(mailPageSize),
         action: z.enum(mailMessageActions),
@@ -81,27 +81,27 @@ export const methods = {
     output: z.array(z.strictObject({ id: z.uuid(), result: messageAction.output })),
   },
   accounts: {
-    input: context,
+    input: userWorkspace,
     output: bridgeOutput<Mailbox[]>(),
   },
-  list: { input: context.extend(folder.shape), output: bridgeOutput<MailPage>() },
-  nextPage: { input: context.extend(older.shape), output: bridgeOutput<OlderMailPage>() },
+  list: { input: userWorkspace.extend(folder.shape), output: bridgeOutput<MailPage>() },
+  nextPage: { input: userWorkspace.extend(older.shape), output: bridgeOutput<OlderMailPage>() },
   thread: {
-    input: context.extend({ id: z.string().min(1) }),
+    input: userWorkspace.extend({ id: z.string().min(1) }),
     output: bridgeOutput<MailHeader[]>(),
   },
   body: {
-    input: context.extend({ id: z.string().min(1) }),
+    input: userWorkspace.extend({ id: z.string().min(1) }),
     output: bridgeOutput<MailBody | null>(),
   },
   // Local, per-message artwork. Main only returns bounded raster image data for a reference
   // actually present in this user's cached HTML, never a general-purpose network response.
   picture: {
-    input: context.extend({ id: z.string().min(1), source: z.string().min(1).max(8192) }),
+    input: userWorkspace.extend({ id: z.string().min(1), source: z.string().min(1).max(8192) }),
     output: z.string().nullable(),
   },
   connectGmail: {
-    input: context.extend({ nickname, chooseClient: z.boolean().optional() }),
+    input: userWorkspace.extend({ nickname, chooseClient: z.boolean().optional() }),
     output: z.string().nullable(),
   },
   reconnectGmail: {
@@ -116,6 +116,6 @@ export const methods = {
     input: target.extend({ change: labelDisplay }),
   },
   disconnect: { input: target },
-  sync: { input: context.extend({ mailboxId: z.string().nullable() }) },
+  sync: { input: userWorkspace.extend({ mailboxId: z.string().nullable() }) },
 };
 export type MailAPI = BridgeAPI<typeof methods>;

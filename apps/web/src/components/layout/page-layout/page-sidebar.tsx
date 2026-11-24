@@ -11,9 +11,10 @@ const width = { default: 240, min: 180, max: 360 };
 
 export function PageSidebar({
   className,
+  defaultWidth = width.default,
   "aria-label": label,
   ...props
-}: ComponentProps<"aside"> & { "aria-label": string }) {
+}: ComponentProps<"aside"> & { "aria-label": string; defaultWidth?: number }) {
   const layout = usePageLayout("PageSidebar");
   const [saved] = useState(() => readPaneWidth(layout.id, "sidebar"));
   return (
@@ -21,7 +22,7 @@ export function PageSidebar({
       <ResizablePanel
         id={panelId(layout.id, "sidebar")}
         elementRef={(element) => layout.registerPane("sidebar", element)}
-        defaultSize={saved ?? width.default}
+        defaultSize={saved ?? defaultWidth}
         minSize={width.min}
         maxSize={width.max}
         groupResizeBehavior="preserve-pixel-size"

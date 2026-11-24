@@ -60,10 +60,13 @@ export function WorkspaceShell({
   const topApps = visibleApps.filter(({ id }) => id !== "agents");
   const bottomApps = visibleApps.filter(({ id }) => id === "agents");
   return (
-    <main data-workspace-shell className="flex h-(--app-height) min-h-0 overflow-hidden bg-rail">
+    <main
+      data-workspace-shell
+      className="group/shell flex h-(--app-height) min-h-0 overflow-hidden bg-rail"
+    >
       <nav
         aria-label="Apps"
-        className="z-20 flex w-14 shrink-0 flex-col items-center gap-3 bg-rail py-3 text-rail-foreground"
+        className="z-20 flex w-14 shrink-0 flex-col items-center gap-3 bg-rail py-3 text-rail-foreground max-md:group-has-data-meeting-archive/shell:hidden"
       >
         {switcher}
         {topApps.map(({ id, ...app }) => (
@@ -86,7 +89,7 @@ export function WorkspaceShell({
       </nav>
       <div
         ref={realtimeContainerRef}
-        className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl bg-surface"
+        className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-tl-2xl bg-surface max-md:group-has-data-meeting-archive/shell:rounded-none"
       >
         {loading && (
           // Same height as the search bar that replaces it, so the page does not jump when it loads.

@@ -1,7 +1,15 @@
 @layer components {
+  [data-desktop-frame] {
+    --desktop-title-bar-height: max(40px, env(titlebar-area-height, 40px));
+  }
+  [data-desktop-frame]:has([data-local-search]) {
+    --desktop-title-bar-height: max(44px, env(titlebar-area-height, 44px));
+  }
   .desktop-title-bar {
     -webkit-app-region: drag;
     --desktop-controls-padding: max(var(--desktop-controls-left), var(--desktop-controls-right));
+    --desktop-brand-left: max(1rem, var(--desktop-controls-left));
+    --desktop-tools-right: max(0.5rem, var(--desktop-controls-right));
   }
 
   .desktop-title-bar > * {
@@ -21,6 +29,14 @@
     .desktop-title-bar-search {
       left: calc(var(--desktop-controls-left) + 12px);
       right: calc(var(--desktop-controls-right) + 12px);
+      transform: none;
+      width: auto;
+    }
+  }
+  @media (max-width: 767px) {
+    .desktop-title-bar-search:has([data-local-search]) {
+      left: calc(var(--desktop-controls-left) + 8px);
+      right: calc(var(--desktop-controls-right) + 44px);
       transform: none;
       width: auto;
     }

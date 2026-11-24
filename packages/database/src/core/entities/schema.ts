@@ -22,6 +22,8 @@ export const entityType = pgEnum("entity_type", [
   "deal",
   "calendar",
   "calendar_event",
+  "meeting_archive",
+  "meeting",
 ]);
 
 export const entities = pgTable(

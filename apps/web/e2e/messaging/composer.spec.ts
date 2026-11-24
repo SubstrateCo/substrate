@@ -68,9 +68,10 @@ test("retry after a committed send loses its response keeps its request ID acros
     .getByRole("navigation", { name: "Apps", exact: true })
     .getByRole("link", { name: "Tasks", exact: true })
     .click();
+  // An unread badge adds ", N unread" to the app link's name.
   await page
     .getByRole("navigation", { name: "Apps", exact: true })
-    .getByRole("link", { name: "Messages", exact: true })
+    .getByRole("link", { name: /^Messages(?:,|$)/ })
     .click();
   await conversationButton(page, first.name).click();
   await expect(editor).toHaveText(body);

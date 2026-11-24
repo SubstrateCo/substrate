@@ -15,6 +15,7 @@ import { ChevronLeft, ChevronRight } from "lucide-react";
 export type PagerProps = {
   /** Names the navigation, such as "Deals". */
   name: string;
+  summary?: string;
   pageIndex: number;
   /** -1 when the total is unknown (cursor APIs): the pager shows "Page N". */
   pageCount: number;
@@ -32,6 +33,7 @@ export type PagerProps = {
 /** The one pager for tables, boards, and lists. Hide it while there is one page. */
 export function Pager({
   name,
+  summary,
   pageIndex,
   pageCount,
   canPrevious,
@@ -46,6 +48,9 @@ export function Pager({
   const pages = known ? paginationPages(pageIndex, pageCount) : [];
   return (
     <div className="flex flex-wrap items-center justify-end gap-3">
+      {summary && (
+        <span className="mr-auto text-xs text-muted-foreground tabular-nums">{summary}</span>
+      )}
       {pageSize !== undefined && pageSizeOptions && onPageSizeChange && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>Rows per page</span>

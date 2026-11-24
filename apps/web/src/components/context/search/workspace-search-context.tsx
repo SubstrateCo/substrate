@@ -12,12 +12,17 @@ export interface SearchRequest {
 const WorkspaceSearchContext = createContext<{
   request?: SearchRequest;
   openSearch: (kind: SearchKind) => void;
-}>({ openSearch: () => {} });
+  localSearchTarget: HTMLDivElement | null;
+  setLocalSearchTarget: (target: HTMLDivElement | null) => void;
+}>({ openSearch: () => {}, localSearchTarget: null, setLocalSearchTarget: () => {} });
 
 export function WorkspaceSearchProvider({ children }: { children: ReactNode }) {
   const [request, setRequest] = useState<SearchRequest>();
+  const [localSearchTarget, setLocalSearchTarget] = useState<HTMLDivElement | null>(null);
   const value = {
     request,
+    localSearchTarget,
+    setLocalSearchTarget,
     openSearch: (kind: SearchKind) =>
       setRequest((current) => ({ id: (current?.id ?? 0) + 1, kind })),
   };

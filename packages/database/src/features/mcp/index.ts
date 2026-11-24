@@ -10,6 +10,7 @@ export { taskRepository } from "../tasks/repository";
 export { auditCallerTool, auditFailedCallerTool, namedIds, requireCallerTurn } from "./caller-turn";
 export { mcpContextQueries } from "./context";
 export { mcpCrmTools } from "./crm";
+export { mcpMeetingTools, requireMeetingTurn } from "./meetings";
 export { listLinkedMessages } from "./links";
 export { mcpMessagingQueries } from "./messaging";
 export { mcpSearchQueries } from "./search";

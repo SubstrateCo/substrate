@@ -1,3 +1,4 @@
+import { knownTimeZone } from "../timestamps.ts";
 import { z } from "zod";
 
 const id = z.uuid();
@@ -11,16 +12,6 @@ const cron = z
   .trim()
   .max(routineLimits.cron)
   .regex(/^\S+(\s+\S+){4}$/, "Use five cron fields: minute hour day month weekday");
-
-/** Whether this runtime knows an IANA time zone, such as Europe/Berlin. */
-export function knownTimeZone(zone: string) {
-  try {
-    new Intl.DateTimeFormat("en-US", { timeZone: zone });
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 const timezone = z
   .string()

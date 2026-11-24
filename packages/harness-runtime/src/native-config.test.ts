@@ -115,7 +115,7 @@ test("recreates the host and synchronizes edited actors without replacing local 
   const first = await createHarnessHost({ accountDirectory: root });
   const configuration: HarnessConfiguration = {
     organizationId: "restart-org",
-    enabledApps: ["messages", "agents", "tasks", "crm", "inbox"],
+    enabledApps: ["messages", "agents", "tasks", "crm", "inbox", "meetings"],
     agents: [
       {
         id: "opencode-agent",

@@ -9,6 +9,8 @@
     "./calendar/qualification": "./src/calendar/qualification.ts",
     "./mail": "./src/mail/inbox.ts",
     "./mail/ipc": "./src/mail/ipc.ts",
+    "./meetings": "./src/meetings/model.ts",
+    "./meetings/input": "./src/meetings/input.ts",
     "./contacts/input": "./src/contacts/input.ts",
     "./context/interactions": "./src/context/interactions.ts",
     "./integrations/google": "./src/integrations/google.ts",

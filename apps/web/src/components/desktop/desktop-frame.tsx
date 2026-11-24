@@ -1,5 +1,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
+import { BrandMark } from "@/components/auth/brand-mark";
 import { DesktopTitleBarContext } from "@/components/desktop/desktop-title-bar-context";
 import { useTheme } from "@/components/theme/theme-provider";
 import { windowBridge } from "@/lib/desktop/bridges";
@@ -10,6 +11,7 @@ export function DesktopFrame({ children }: { children: ReactNode }) {
   const { resolvedTheme } = useTheme();
   const [fullscreen, setFullscreen] = useState(false);
   const [titleBarTarget, setTitleBarTarget] = useState<HTMLDivElement | null>(null);
+  const [titleBarEnd, setTitleBarEnd] = useState<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!bridge) return;
@@ -37,7 +39,6 @@ export function DesktopFrame({ children }: { children: ReactNode }) {
   if (!bridge) return children;
   const frameStyle: CSSProperties & Record<`--${string}`, string> = {
     "--app-height": "calc(100dvh - var(--desktop-title-bar-height))",
-    "--desktop-title-bar-height": "max(40px, env(titlebar-area-height, 40px))",
   };
   const titleBarStyle: CSSProperties & Record<`--${string}`, string> = {
     "--desktop-controls-left":
@@ -46,7 +47,7 @@ export function DesktopFrame({ children }: { children: ReactNode }) {
       "calc(100vw - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100vw))",
   };
   return (
-    <DesktopTitleBarContext value={titleBarTarget}>
+    <DesktopTitleBarContext value={{ center: titleBarTarget, end: titleBarEnd }}>
       <div
         data-desktop-frame
         data-platform={bridge.platform}
@@ -62,9 +63,14 @@ export function DesktopFrame({ children }: { children: ReactNode }) {
           <span className="truncate group-has-data-workspace-search/desktop-title-bar:hidden">
             {desktop.name}
           </span>
+          <BrandMark className="absolute left-(--desktop-brand-left) hidden md:group-has-data-local-search/desktop-title-bar:flex" />
           <div
             ref={setTitleBarTarget}
             className="desktop-title-bar-search absolute min-w-0 empty:hidden"
+          />
+          <div
+            ref={setTitleBarEnd}
+            className="absolute right-(--desktop-tools-right) empty:hidden"
           />
         </header>
         {/* Keep fixed auth screens and local overlays below the native controls. */}

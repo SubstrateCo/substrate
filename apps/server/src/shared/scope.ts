@@ -33,7 +33,7 @@ export interface ScopeDependencies {
   repositories: Repositories;
 }
 
-type ScopeInput = { organizationId?: string; installationId?: string };
+type ScopeInput = { organizationId?: string; installationId?: string; expectedUserId?: string };
 type ValidatedScopeInput = { out: Record<keyof ValidationTargets, ScopeInput> };
 
 export function createScopes(deps: ScopeDependencies) {
@@ -87,6 +87,8 @@ export function createScopes(deps: ScopeDependencies) {
             disableRefresh: true,
           },
         });
+        if (input.expectedUserId && session && input.expectedUserId !== session.user.id)
+          throw new ServiceError("FORBIDDEN", "The signed-in account changed.");
         return resolve(c.req.raw.headers, input, session);
       });
       if (!result.success) return respond(c, result);

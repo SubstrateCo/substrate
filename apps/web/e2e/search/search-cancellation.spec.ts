@@ -108,7 +108,7 @@ test("CRM search waits for typing to settle and aborts the old request immediate
   const { page } = user;
   await visit(user, undefined, "/crm", { section: "accounts" });
   const input = page.getByRole("searchbox", { name: "Search accounts", exact: true });
-  await expect(input).toBeVisible();
+  await expect(input).toBeEditable();
   await pauseClock(page);
   const requests: string[] = [];
   page.on("request", (request) => {

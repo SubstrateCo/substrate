@@ -569,7 +569,7 @@ test("wide Inbox rows fit labels beside the subject and disclose exactly how man
       const shown = await chips.evaluateAll((items) =>
         items.map((item) => {
           const { y, height } = item.getBoundingClientRect();
-          return { text: item.textContent ?? "", center: y + height / 2 };
+          return { text: item.textContent, center: y + height / 2 };
         }),
       );
       const hidden = shown.at(-1)?.text.match(/^\+(\d+)$/);

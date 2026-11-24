@@ -4,6 +4,8 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNod
 
 import { Command, CommandInput } from "../../ui/command";
 import { Kbd, KbdGroup } from "../../ui/kbd";
+import { useWorkspaceSearch } from "./workspace-search-context";
+import { cn } from "cn";
 
 export function WorkspaceTools({
   renderSearch,
@@ -16,6 +18,7 @@ export function WorkspaceTools({
   renderSearch: (query: string) => ReactNode;
 }) {
   const [panel, setPanel] = useState({ locationKey, open: false });
+  const { setLocalSearchTarget } = useWorkspaceSearch();
   const open = panel.locationKey === locationKey && panel.open;
   if (panel.locationKey !== locationKey) setPanel({ locationKey, open: false });
   const setOpen = useCallback(
@@ -42,7 +45,13 @@ export function WorkspaceTools({
     setFocusRequest((value) => value + 1);
   }, [setOpen]);
   useEffect(() => {
-    if (focusRequest) input.current?.focus();
+    if (focusRequest) {
+      const local = container.current?.querySelector<HTMLButtonElement>(
+        "[data-open-workspace-search]",
+      );
+      if (local?.offsetWidth) local.focus();
+      else input.current?.focus();
+    }
   }, [focusRequest]);
   const onPointerDown = useEffectEvent((event: PointerEvent) => {
     if (event.target instanceof Node && !container.current?.contains(event.target)) setOpen(false);
@@ -67,10 +76,14 @@ export function WorkspaceTools({
       window.clearTimeout(activationTimeout.current);
     };
   }, []);
-  useHotkey("Mod+K", () => {
-    input.current?.focus();
-    setOpen(true);
-  });
+  useHotkey(
+    "Mod+K",
+    () => {
+      setOpen(true);
+      setFocusRequest((value) => value + 1);
+    },
+    { ignoreInputs: false },
+  );
   useHotkey("Escape", close, {
     enabled: open,
     target: window,
@@ -83,13 +96,20 @@ export function WorkspaceTools({
     <div
       ref={container}
       data-workspace-search
-      className={
+      className={cn(
+        "group/search-host",
         desktop
           ? "relative z-10 min-w-0 text-sm font-normal text-foreground [&_[data-slot=command-input-wrapper]]:h-7 [&_[data-slot=command-input-wrapper]]:rounded-md [&_[data-slot=command-input-wrapper]]:border-rail-foreground/12 [&_[data-slot=command-input-wrapper]]:bg-surface/65 [&_[data-slot=command-input-wrapper]]:px-2 [&_[data-slot=command-input-wrapper]]:shadow-none dark:[&_[data-slot=command-input-wrapper]]:bg-popover [&_[data-slot=command-input]]:text-xs [&_[data-slot=command]]:bg-transparent"
-          : "relative z-30 shrink-0 border-b bg-sidebar px-4 py-2 text-sm font-normal text-foreground"
-      }
+          : "relative z-30 shrink-0 border-b bg-sidebar px-4 py-2 text-sm font-normal text-foreground",
+      )}
     >
-      <div className="relative mx-auto max-w-2xl">
+      <div ref={setLocalSearchTarget} hidden={open} className="empty:hidden" />
+      <div
+        className={cn(
+          "relative mx-auto max-w-2xl",
+          !open && "group-has-data-local-search/search-host:hidden",
+        )}
+      >
         <Command shouldFilter={false} label="Search workspace">
           <CommandInput
             ref={input}

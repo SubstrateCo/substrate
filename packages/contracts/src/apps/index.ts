@@ -1,7 +1,7 @@
 import { organizationId } from "../workspace.ts";
 import { z } from "zod";
 
-export const optionalAppIds = ["tasks", "crm", "calendar", "inbox"] as const;
+export const optionalAppIds = ["tasks", "crm", "calendar", "inbox", "meetings"] as const;
 export type OptionalAppId = (typeof optionalAppIds)[number];
 export const isOptionalApp = (id: string): id is OptionalAppId =>
   optionalAppIds.some((app) => app === id);
@@ -25,6 +25,8 @@ const entityApps = {
   deal: ["crm"],
   calendar: ["calendar"],
   calendar_event: ["calendar"],
+  meeting_archive: ["meetings"],
+  meeting: ["meetings"],
 } as const satisfies Record<string, readonly AppId[]>;
 
 export function requiredAppsForEntityType(type: string): readonly AppId[] {

@@ -1,5 +1,15 @@
 import { z } from "zod";
 
+/** Whether this runtime knows an IANA time zone, such as Europe/Berlin. */
+export function knownTimeZone(zone: string) {
+  try {
+    new Intl.DateTimeFormat("en-US", { timeZone: zone });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** An absolute instant. Explicit offsets are accepted, then normalized to UTC. */
 export const utcTimestamp = z.iso.datetime({ offset: true }).overwrite((value) => {
   const date = new Date(value);

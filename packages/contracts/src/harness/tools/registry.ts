@@ -5,6 +5,7 @@ import { crmTools } from "./crm.ts";
 import { inboxTools } from "./inbox.ts";
 import { linkTools } from "./links.ts";
 import { localTools as agentTools } from "./local.ts";
+import { meetingTools } from "./meetings.ts";
 import { messagingTools } from "./messaging.ts";
 import type { ToolDefinition } from "./shared.ts";
 import { taskTools } from "./tasks.ts";
@@ -17,6 +18,7 @@ const serverTools = {
   ...required(crmTools, ["crm"]),
   ...contextTools,
   ...required(taskTools, ["tasks"]),
+  ...required(meetingTools, ["meetings"]),
   ...messagingTools,
   ...linkTools,
 } as const satisfies Record<string, ToolDefinition>;
@@ -73,7 +75,11 @@ export const localToolCall = z
   .strict();
 
 /** Server tools only the main session may call: helpers report through finish_helper instead. */
-const mainOnlyServerTools: ReadonlySet<string> = new Set(["reply", "propose"]);
+const mainOnlyServerTools: ReadonlySet<string> = new Set([
+  "reply",
+  "propose",
+  ...Object.keys(meetingTools),
+]);
 
 /** Tools offered on a lease. Helper sessions cannot publish, manage helpers, or edit memory. */
 export function leaseTools(

@@ -23,6 +23,8 @@ export const buttonVariants = cva(
         "destructive-ghost":
           "text-destructive hover:bg-destructive/10 focus-visible:border-destructive/40 focus-visible:ring-destructive/20 aria-expanded:bg-destructive/10 data-[size^=icon]:text-muted-foreground data-[size^=icon]:hover:text-destructive data-[size^=icon]:focus-visible:text-destructive data-[size^=icon]:aria-expanded:text-destructive dark:hover:bg-destructive/20 dark:focus-visible:ring-destructive/40",
         link: "text-primary underline-offset-4 hover:underline",
+        accent:
+          "bg-accent text-accent-foreground hover:bg-row-selected hover:text-row-selected-foreground",
         rail: "text-rail-foreground/70 hover:bg-rail-foreground/10 hover:text-rail-foreground aria-[current=page]:border-accent-foreground/15 aria-[current=page]:bg-accent aria-[current=page]:text-accent-foreground",
         workspace:
           "border-rail-foreground/20 bg-rail-foreground/10 text-rail-foreground hover:bg-rail-foreground/20",
@@ -58,6 +60,10 @@ export const buttonVariants = cva(
         "icon-sm": "size-7 rounded-md in-data-[slot=button-group]:rounded-lg",
         "icon-lg": "size-9",
         selection: "h-auto min-h-12 px-3 py-2",
+        // Days and entries stay legible together in a dense calendar grid.
+        "calendar-day": "h-5.5 min-w-0 gap-0.5 px-0.5 text-xs font-normal @max-[470px]:h-7.5",
+        "calendar-entry":
+          "h-auto min-h-5.25 min-w-0 gap-1 px-1 py-0.5 text-left text-micro font-normal whitespace-normal",
         // xs spacing for a removable chip whose label wraps, so it grows with its text.
         chip: "h-auto min-h-6 gap-1 rounded-md px-2 py-1 text-left text-xs whitespace-normal [&_svg:not([class*='size-'])]:size-3",
       },

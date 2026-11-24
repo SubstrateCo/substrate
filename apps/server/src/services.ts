@@ -23,6 +23,7 @@ import { createPictureService } from "./v1/files/pictures";
 import { createFileService } from "./v1/files/service";
 import { createIntegrationService } from "./v1/integrations/service";
 import { createMcpService } from "./v1/mcp/service";
+import { createMeetingService } from "./v1/meetings/service";
 import { createReadService } from "./v1/messaging/read-service";
 import { createMessagingService } from "./v1/messaging/service";
 import { createSharingService } from "./v1/messaging/sharing-service";
@@ -42,6 +43,7 @@ export function createServices(deps: {
   const repository = createStorageRepository(deps.db);
   return {
     desktop: createDesktopService(deps.desktop),
+    meetings: createMeetingService(deps.publish),
     calendar: createCalendarService({ ...deps.calendar, publish: deps.publish }),
     integrations: createIntegrationService({
       googleLink: deps.googleLink,

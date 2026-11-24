@@ -58,6 +58,7 @@ export async function recordsOfMessages(
       and(
         eq(messageEntityReferences.organizationId, ctx.scope.organizationId),
         inArray(messageEntityReferences.messageId, messageIds),
+        inArray(messageEntityReferences.entityType, contextEntityTypes),
         isNull(messagingMessages.deletedAt),
         ctx.readable(messageEntityReferences.entityId),
       ),

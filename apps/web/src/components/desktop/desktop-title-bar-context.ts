@@ -1,3 +1,9 @@
 import { createContext } from "react";
 
-export const DesktopTitleBarContext = createContext<HTMLElement | null | undefined>(undefined);
+export const DesktopTitleBarContext = createContext<
+  | {
+      center: HTMLElement | null;
+      end: HTMLElement | null;
+    }
+  | undefined
+>(undefined);

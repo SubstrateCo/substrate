@@ -1,4 +1,4 @@
-import type { RowData } from "@tanstack/react-table";
+import { functionalUpdate, type RowData, type SortingState } from "@tanstack/react-table";
 
 import { useMemo, useState, type ReactNode } from "react";
 
@@ -28,7 +28,7 @@ function columnData(meta: AppColumnMeta | undefined, head = false) {
     "data-align": meta?.align,
     "data-hide-below": meta?.hideBelow?.slice(1),
     "data-controls": meta?.controls && !head ? "" : undefined,
-    "data-width": head ? meta?.width : undefined,
+    className: head ? meta?.width : undefined,
   };
 }
 
@@ -44,6 +44,8 @@ export type AppTablePagination =
       /** A known total shows numbered pages; without it the pager shows "Page N". */
       rowCount?: number;
       onPageChange: (pageIndex: number) => void;
+      /** If provided, the data source sorts the entire collection before returning this page. */
+      sorting?: { value: SortingState; onChange: (next: SortingState) => void };
       pageSizeOptions?: number[];
       onPageSizeChange?: (pageSize: number) => void;
     };
@@ -59,6 +61,9 @@ type AppTableEmpty = {
 type AppTableProps<TData extends RowData> = {
   /** The table's accessible name, also used for its pager. */
   name: string;
+  /** A dense, bounded grid with a pinned heading and first column for inspecting wide records. */
+  layout?: "default" | "ledger";
+  pageSummary?: string;
   /**
    * The table layout is fixed: columns take `meta.width`, the rest share the remaining space,
    * and long text truncates.
@@ -86,6 +91,7 @@ type AppTableProps<TData extends RowData> = {
     width?: AppColumnMeta["width"];
   };
   selectedRowId?: string | null;
+  onRowClick?: (row: TData) => void;
   /** A card per row below the container's `40rem` breakpoint. */
   renderMobileRow?: (row: TData) => ReactNode;
 };
@@ -95,6 +101,8 @@ const defaultErrorTitle = "Couldn’t load results";
 
 export function AppTable<TData extends RowData>({
   name,
+  layout = "default",
+  pageSummary,
   columns,
   data,
   getRowId,
@@ -108,9 +116,11 @@ export function AppTable<TData extends RowData>({
   empty,
   rowActions,
   selectedRowId,
+  onRowClick,
   renderMobileRow,
 }: AppTableProps<TData>) {
   const server = pagination.mode === "server";
+  const sorting = server ? pagination.sorting : undefined;
   const [clientPage, setClientPage] = useState({
     pageIndex: 0,
     pageSize: pagination.pageSize ?? 25,
@@ -122,8 +132,15 @@ export function AppTable<TData extends RowData>({
     getRowId,
     autoResetPageIndex: false,
     manualPagination: server,
-    enableSorting: !server,
+    enableSorting: !server || Boolean(sorting),
+    ...(sorting && {
+      manualSorting: true,
+      enableMultiSort: false,
+      enableSortingRemoval: false,
+      onSortingChange: (update) => sorting.onChange(functionalUpdate(update, sorting.value)),
+    }),
     state: {
+      ...(sorting && { sorting: sorting.value }),
       pagination: server
         ? { pageIndex: pagination.pageIndex, pageSize: pagination.pageSize }
         : clientPage,
@@ -149,7 +166,8 @@ export function AppTable<TData extends RowData>({
     <table.AppTable>
       <div
         className={cn(
-          "@container min-w-0 space-y-3",
+          "@container min-w-0",
+          layout === "ledger" ? "flex min-h-0 flex-col gap-2" : "space-y-3",
           initialLoading && !showLoading && "invisible",
         )}
       >
@@ -166,10 +184,16 @@ export function AppTable<TData extends RowData>({
           <div
             className={cn(
               "min-w-0 rounded-xl border",
+              layout === "ledger" && "flex min-h-0 overflow-hidden rounded-lg bg-card",
               renderMobileRow && hasRows && "hidden @min-[40rem]:block",
             )}
           >
-            <Table aria-label={name} aria-busy={loading} className="min-w-xl table-fixed">
+            <Table
+              aria-label={name}
+              aria-busy={loading}
+              layout={layout}
+              className="min-w-xl table-fixed"
+            >
               <AppTableHeader table={table} sortable={!initialLoading} />
               <TableBody>
                 {initialLoading ? (
@@ -178,8 +202,9 @@ export function AppTable<TData extends RowData>({
                   rows.map((row) => (
                     <TableRow
                       key={row.id}
-                      className="group/row"
+                      className={cn("group/row", onRowClick && "cursor-pointer")}
                       data-state={row.id === selectedRowId ? "selected" : undefined}
+                      onClick={onRowClick && (() => onRowClick(row.original))}
                     >
                       {row.getAllCells().map((cell) => {
                         const meta = cell.column.columnDef.meta;
@@ -200,7 +225,9 @@ export function AppTable<TData extends RowData>({
         ) : (
           notice
         )}
-        {pager && (hasRows || pager.pageIndex > 0) && !initialLoading && <Pager {...pager} />}
+        {pager && (hasRows || pager.pageIndex > 0) && !initialLoading && (
+          <Pager {...pager} summary={pageSummary} />
+        )}
       </div>
     </table.AppTable>
   );

@@ -22,6 +22,8 @@ export const contextEntityTypes = [
   "contact_interaction",
 ] as const;
 export type ContextEntityType = (typeof contextEntityTypes)[number];
+/** A private meeting can point back to the message it was created from. It is not a manual link target. */
+export type MessageWorkType = ContextEntityType | "meeting";
 /**
  * Records that context views show as related, such as an interaction's linked records. A calendar
  * event is only a readable target: people cannot link it by hand or reference it from a message.
