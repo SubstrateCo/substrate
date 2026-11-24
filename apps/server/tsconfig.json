@@ -1,5 +1,5 @@
 {
   "extends": "../../tsconfig.json",
-  "compilerOptions": { "lib": ["ESNext", "DOM", "DOM.Iterable"] },
+  "compilerOptions": { "lib": ["ESNext", "DOM", "DOM.Iterable"], "jsx": "react-jsx" },
   "include": ["src", "scripts", "integration", "playwright.config.ts"]
 }

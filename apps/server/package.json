@@ -10,7 +10,8 @@
     "start": "bun --env-file=../../.env src/main.ts",
     "typecheck": "bun check",
     "test": "bun --env-file=../../.env scripts/test.ts",
-    "test:integration": "playwright test"
+    "test:integration": "playwright test",
+    "email:preview": "bun scripts/preview-mail.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.922.0",
@@ -26,12 +27,17 @@
     "drizzle-orm": "catalog:database",
     "hono": "catalog:",
     "nodemailer": "^10.3.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-email": "^6.11.16",
     "sharp": "^0.34.5",
     "zod": "catalog:"
   },
   "devDependencies": {
     "@playwright/test": "catalog:tooling",
     "@types/bun": "catalog:tooling",
-    "@types/nodemailer": "^8.0.2"
+    "@types/nodemailer": "^8.0.2",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0"
   }
 }
