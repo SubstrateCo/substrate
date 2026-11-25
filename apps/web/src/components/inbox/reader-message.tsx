@@ -37,7 +37,7 @@ function MessageContent({
   reading,
   current,
 }: MessageProps) {
-  const body = useQuery(bodyOptions(message.id, mailbox.lastSync));
+  const body = useQuery(bodyOptions(message.id));
   const [element, setElement] = useState<HTMLDivElement | null>(null);
   function content() {
     if (body.isPending) return <LoadingState label="Reading local message…" variant="compact" />;

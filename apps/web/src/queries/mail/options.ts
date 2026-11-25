@@ -1,6 +1,6 @@
 import type { MailAPI, MailFolder, MailScope, OlderMailQuery } from "@substrate/contracts/mail/ipc";
 
-import { queryOptions, type QueryClient } from "@tanstack/react-query";
+import { hashKey, queryOptions, type QueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "@/queries/keys";
 
@@ -26,12 +26,22 @@ export function localMailQueries(api: MailAPI, scope: MailScope) {
       queryFn: () => api.accounts(scope),
       retry: false,
     }),
-    page: (query: MailFolder) =>
-      queryOptions({
-        queryKey: [...root, "list", scope, query],
+    page: (query: MailFolder) => {
+      // The search comes last, so one folder's searches share every other part of the key.
+      const queryKey = [...root, "list", scope, { ...query, search: "" }, query.search];
+      const folder = hashKey(queryKey.slice(0, -1));
+      return queryOptions({
+        queryKey,
         queryFn: () => api.list({ ...scope, ...query }),
+        // A new search in the same folder keeps the previous results on screen until its own
+        // arrive. Another folder, mailbox or label starts from its own loading state.
+        placeholderData: (previous, previousQuery) =>
+          previousQuery && hashKey(previousQuery.queryKey.slice(0, -1)) === folder
+            ? previous
+            : undefined,
         retry: false,
-      }),
+      });
+    },
     firstPage: (folder: MailFolder, revision: string | undefined) =>
       queryOptions({
         queryKey: [...root, "first-page", scope, folder, revision],
@@ -43,16 +53,18 @@ export function localMailQueries(api: MailAPI, scope: MailScope) {
         staleTime: Infinity,
         retry: false,
       }),
-    body: (id: string | undefined, lastSync: number | null) =>
+    // A sync invalidates bodies and threads instead of changing their keys, so the open reader
+    // keeps its content while it reads again.
+    body: (id: string | undefined) =>
       queryOptions({
-        queryKey: [...root, "body", scope, id, lastSync],
+        queryKey: [...root, "body", scope, id],
         enabled: !!id,
         queryFn: () => api.body({ ...scope, id: id! }),
         retry: false,
       }),
-    thread: (id: string | undefined, lastSync: number | null) =>
+    thread: (id: string | undefined) =>
       queryOptions({
-        queryKey: [...root, "thread", scope, id, lastSync],
+        queryKey: [...root, "thread", scope, id],
         enabled: !!id,
         queryFn: () => api.thread({ ...scope, id: id! }),
         retry: false,

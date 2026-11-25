@@ -67,9 +67,10 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
   useEffect(() => {
     if (revision === undefined) return;
     if (previousRevision.current !== undefined && previousRevision.current !== revision)
-      void client.invalidateQueries({
-        queryKey: [...queryKeys.mail(userId, organizationId), "list"],
-      });
+      for (const kind of ["list", "thread", "body"])
+        void client.invalidateQueries({
+          queryKey: [...queryKeys.mail(userId, organizationId), kind],
+        });
     previousRevision.current = revision;
   }, [client, organizationId, revision, userId]);
   const active = boxes.find((b) => b.id === account) ?? null;
@@ -88,18 +89,25 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
     enabled: (!label || accounts.isSuccess) && (!searchState.query || !searchState.pending),
     refetchInterval: busy ? 1500 : false,
   });
+  // Previous search results are only shown. Paging starts from the new search's own results.
   const paging = useMailPages(
     api,
     scope,
     folder,
     boxes.map((box) => box.id),
-    page.data?.items,
+    page.isPlaceholderData ? undefined : page.data?.items,
     busy,
     revision,
   );
+  // The folder whose results are on screen. The list keeps its state until new results replace
+  // them, instead of starting over on every keystroke.
+  const [shownFolder, setShownFolder] = useState(folder);
+  if (!page.isPlaceholderData && JSON.stringify(shownFolder) !== JSON.stringify(folder))
+    setShownFolder(folder);
+  const rows = page.isPlaceholderData ? page.data.items : paging.items;
   const selectedBox = boxes.find((b) => b.id === selected?.mailboxId);
   const thread = useQuery({
-    ...local.thread(selectedBox ? selected?.id : undefined, selectedBox?.lastSync ?? null),
+    ...local.thread(selectedBox ? selected?.id : undefined),
     refetchInterval: selectedBox?.status === "syncing" ? 2500 : false,
   });
   const sync = useMutation({
@@ -216,11 +224,17 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
           action={<Button onClick={nav.onConnect}>Connect Gmail</Button>}
         />
       );
-    if (paging.items?.length)
+    if (rows?.length)
       return (
         <SelectableMessageList
-          key={JSON.stringify([userId, organizationId, folder, boxes.map((b) => b.id), listVisit])}
-          messages={paging.items}
+          key={JSON.stringify([
+            userId,
+            organizationId,
+            shownFolder,
+            boxes.map((b) => b.id),
+            listVisit,
+          ])}
+          messages={rows}
           mailboxes={boxes}
           colors={nav.colors}
           selected={selected ? conversationKey(selected) : null}
