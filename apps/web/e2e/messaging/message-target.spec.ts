@@ -1,5 +1,38 @@
-import { conversation, expectChange, post, test } from "../test-support/fixtures";
+import { conversation, expectChange, post, test, visit } from "../test-support/fixtures";
 import { expect } from "@playwright/test";
+
+test("a reply permalink in a short thread shows every reply without a jump to latest", async ({
+  actors,
+  client,
+}) => {
+  const channel = await conversation(actors.sender);
+  const root = await post<{ id: string }>(actors.sender, "messaging/messages", {
+    conversationId: channel.id,
+    body: "Short thread root",
+  });
+  const first = await post<{ id: string }>(actors.sender, "messaging/messages", {
+    conversationId: channel.id,
+    threadId: root.id,
+    body: "Linked reply",
+  });
+  await post(actors.sender, "messaging/messages", {
+    conversationId: channel.id,
+    threadId: root.id,
+    body: "Newer reply",
+  });
+  const viewer = await client(actors.sender);
+  await visit(viewer, channel.id, "/messages", { messageId: first.id });
+  const thread = viewer.page.getByRole("complementary", { name: "Thread", exact: true });
+  await expect(thread.getByLabel("Linked message", { exact: true })).toContainText("Linked reply");
+  await expect(thread.getByText("Newer reply", { exact: true })).toBeVisible();
+  const editor = thread.getByRole("textbox", { name: "Reply in thread" });
+  await editor.fill("Sent reply");
+  await editor.press("Enter");
+  await expect(thread.getByText("Sent reply", { exact: true })).toBeVisible();
+  await expect(
+    viewer.page.getByRole("button", { name: /^(Latest replies|Back to latest)$/ }),
+  ).toHaveCount(0);
+});
 
 test("root and reply permalinks retain root reactions outside the timeline and refresh local and remote changes", async ({
   actors,

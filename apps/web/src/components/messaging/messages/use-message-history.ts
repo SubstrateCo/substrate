@@ -71,6 +71,14 @@ export function useMessageHistory({
     }
     setPosition(next);
   }
+  // The newest page already holds a linked message, so the window around it would only cut off
+  // newer messages and offer to jump back to them. Show the newest page instead.
+  if (
+    current.aroundMessageId &&
+    !current.beforeMessageId &&
+    latest.data?.some((row) => row.id === current.aroundMessageId)
+  )
+    setPosition({ ...current, aroundMessageId: undefined });
   // A full page can be the last one. When the next older page is empty, return to the window
   // the move left and remember its oldest message, instead of showing an empty conversation.
   const olderPageEmpty =
