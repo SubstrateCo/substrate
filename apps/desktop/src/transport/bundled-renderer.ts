@@ -89,6 +89,25 @@ function forwardingHeaders(source: Headers) {
   return headers;
 }
 
+/**
+ * Reads upstream only when Electron pulls. Electron listens for stream errors only while
+ * Chromium's request is live; a body it never attached must not fail, or main crashes.
+ */
+function readOnDemand(body: ReadableStream<Uint8Array>) {
+  const reader = body.getReader();
+  return new ReadableStream<Uint8Array>(
+    {
+      async pull(controller) {
+        const { done, value } = await reader.read();
+        if (done) controller.close();
+        else controller.enqueue(value);
+      },
+      cancel: (reason) => reader.cancel(reason),
+    },
+    { highWaterMark: 0 },
+  );
+}
+
 export function bundledRenderer({
   directory,
   backend,
@@ -96,6 +115,7 @@ export function bundledRenderer({
   fetchUpstream = fetch,
   origin = bundledApplicationURL,
   storageOrigins: configuredStorageOrigins = [],
+  headersTimeoutMs = 30_000,
 }: {
   directory: string;
   backend: string;
@@ -103,6 +123,7 @@ export function bundledRenderer({
   fetchUpstream?: (url: string, init: RequestInit) => Promise<Response>;
   origin?: string;
   storageOrigins?: string[];
+  headersTimeoutMs?: number;
 }) {
   const upstream = backendURL(backend, false);
   const storageSources = storageOrigins(configuredStorageOrigins, false)
@@ -125,13 +146,28 @@ export function bundledRenderer({
         headers.delete("host");
         headers.delete("content-length");
         headers.delete("accept-encoding");
-        const response = await fetchUpstream(proxyURL(request.url, upstream, origin), {
-          method: request.method,
-          headers,
-          body: ["GET", "HEAD"].includes(request.method) ? undefined : await request.arrayBuffer(),
-          redirect: "manual",
-          signal: AbortSignal.any([request.signal, AbortSignal.timeout(30_000)]),
-        });
+        const body = ["GET", "HEAD"].includes(request.method)
+          ? undefined
+          : await request.arrayBuffer();
+        // The deadline covers only the wait for headers. Aborting later would fail a body
+        // Electron may hold with no error listener.
+        const deadline = new AbortController();
+        const timer = setTimeout(
+          () => deadline.abort(new DOMException("Upstream headers timed out.", "TimeoutError")),
+          headersTimeoutMs,
+        );
+        let response: Response;
+        try {
+          response = await fetchUpstream(proxyURL(request.url, upstream, origin), {
+            method: request.method,
+            headers,
+            body,
+            redirect: "manual",
+            signal: AbortSignal.any([request.signal, deadline.signal]),
+          });
+        } finally {
+          clearTimeout(timer);
+        }
         const resultHeaders = forwardingHeaders(response.headers);
         const responseCookies = response.headers.getSetCookie();
         // Node fetch decompresses upstream bodies. Do not retain wire encoding/length.
@@ -139,11 +175,14 @@ export function bundledRenderer({
         resultHeaders.delete("content-length");
         resultHeaders.delete("set-cookie");
         for (const cookie of responseCookies) resultHeaders.append("set-cookie", cookie);
-        return new Response(request.method === "HEAD" ? null : response.body, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: resultHeaders,
-        });
+        return new Response(
+          request.method === "HEAD" || !response.body ? null : readOnDemand(response.body),
+          {
+            status: response.status,
+            statusText: response.statusText,
+            headers: resultHeaders,
+          },
+        );
       } catch {
         return new Response("API unavailable", { status: 502 });
       }

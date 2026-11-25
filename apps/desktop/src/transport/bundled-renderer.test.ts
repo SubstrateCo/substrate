@@ -232,6 +232,79 @@ describe("bundled assets and responses", () => {
     expect(forwarded.get("origin")).toBe(bundledApplicationURL);
   });
 
+  test("bounds the wait for upstream headers but not the body that follows", async () => {
+    let signal: AbortSignal | undefined;
+    const serve = bundledRenderer({
+      directory: join(directory, "dist"),
+      backend: "https://api.example.com",
+      fetchFile: async () => new Response(""),
+      headersTimeoutMs: 20,
+      fetchUpstream: async (_url, init) => {
+        signal = init.signal ?? undefined;
+        return new Response(new ReadableStream({ pull: () => new Promise(() => {}) }));
+      },
+    });
+    await serve(new Request(`${bundledApplicationURL}/api/v1/files/pictures/p1`));
+    await Bun.sleep(60);
+    expect(signal?.aborted).toBe(false);
+
+    const stalled = bundledRenderer({
+      directory: join(directory, "dist"),
+      backend: "https://api.example.com",
+      fetchFile: async () => new Response(""),
+      headersTimeoutMs: 20,
+      fetchUpstream: (_url, init) =>
+        new Promise((_resolve, reject) =>
+          init.signal?.addEventListener("abort", () => reject(init.signal?.reason)),
+        ),
+    });
+    expect((await stalled(new Request(`${bundledApplicationURL}/api/v1/files/x`))).status).toBe(
+      502,
+    );
+  });
+
+  test("an upstream body failure does not surface on a body Electron never reads", async () => {
+    let fail: (error: Error) => void = () => {};
+    const serve = handler(
+      async () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              fail = (error) => controller.error(error);
+            },
+          }),
+        ),
+    );
+    const response = await serve(new Request(`${bundledApplicationURL}/api/v1/files/pictures/p1`));
+    // Electron wraps the body in Node's Readable.fromWeb, which destroys the stream with an
+    // 'error' as soon as reader.closed rejects. A request Chromium dropped has no listener left.
+    const reader = response.body!.getReader();
+    let settled = false;
+    reader.closed.then(
+      () => (settled = true),
+      () => (settled = true),
+    );
+    fail(new Error("socket closed"));
+    await Bun.sleep(20);
+    expect(settled).toBe(false);
+  });
+
+  test("a body that is being read still reports an upstream failure instead of ending early", async () => {
+    const serve = handler(
+      async () =>
+        new Response(
+          new ReadableStream({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode("partial"));
+              setTimeout(() => controller.error(new Error("socket closed")), 5);
+            },
+          }),
+        ),
+    );
+    const response = await serve(new Request(`${bundledApplicationURL}/api/v1/files/pictures/p1`));
+    expect(await response.text().catch((error: Error) => error.message)).toBe("socket closed");
+  });
+
   test("does not forward mutations with an explicitly foreign or opaque origin", async () => {
     let forwarded = false;
     const serve = handler(async () => {
