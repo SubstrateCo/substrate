@@ -1,6 +1,6 @@
-import { Image } from "../ui/image";
-import { Skeleton } from "../ui/skeleton";
-import { Spinner } from "../ui/spinner";
+import { Image } from "@/components/ui/image";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
 import { initials } from "@/lib/people/initials";
 
 /**

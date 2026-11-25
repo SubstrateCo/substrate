@@ -5,7 +5,6 @@ import { useMemo, useState, type ReactNode } from "react";
 import { ContentNotice } from "../feedback/content-notice";
 import { ErrorState } from "../feedback/error-state";
 import { SkeletonText } from "../feedback/skeleton-text";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "../ui/table";
 import {
   createAppColumnHelper,
   useAppTable,
@@ -15,6 +14,14 @@ import {
 } from "./table";
 import { Pager, type PagerProps } from "./table-pagination";
 import { RowActions } from "@/components/layout/row-actions";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { useDelayedLoading } from "@/hooks/use-delayed-loading";
 import { cn } from "cn";
 import type { LucideIcon } from "lucide-react";

@@ -1,5 +1,5 @@
 import { ErrorState } from "./error-state";
-import { LoadingState } from "./loading-state";
+import { LoadingState } from "@/components/feedback/loading-state";
 
 export function PaneState({
   label,

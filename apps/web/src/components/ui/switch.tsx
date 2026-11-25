@@ -11,7 +11,6 @@ const switchVariants = cva(
       size: {
         default: "h-5 w-9",
         sm: "h-3.5 w-6",
-        appearance: "h-7 w-12",
       },
     },
     defaultVariants: { size: "default" },
@@ -25,7 +24,6 @@ const switchThumbVariants = cva(
       size: {
         default: "size-4 data-checked:translate-x-4.5",
         sm: "size-3 data-checked:translate-x-2.5",
-        appearance: "size-6 data-checked:translate-x-5.5",
       },
     },
     defaultVariants: { size: "default" },

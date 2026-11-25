@@ -47,7 +47,7 @@ function Header({
     <div className="flex min-w-0 items-start gap-3">
       <Avatar
         aria-hidden="true"
-        variant={type === "agent" ? "agent" : "message"}
+        variant={type === "agent" ? "agent" : "default"}
         className="size-10 shrink-0"
       >
         {image && <AvatarImage src={image} alt="" />}

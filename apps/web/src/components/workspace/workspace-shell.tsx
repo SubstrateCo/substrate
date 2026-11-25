@@ -3,9 +3,9 @@ import { isOptionalApp } from "@substrate/contracts/apps";
 import { useContext, type ReactNode } from "react";
 
 import { ErrorState } from "../feedback/error-state";
-import { LoadingState } from "../feedback/loading-state";
 import { UserMenu } from "./user-menu";
 import { notificationsApp, workspaceApps, type WorkspaceAppId } from "./workspace-apps";
+import { LoadingState } from "@/components/feedback/loading-state";
 import { RealtimeContainerContext } from "@/components/realtime/realtime-container-context";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { WorkspaceAppButton } from "@/components/workspace/workspace-app-button";

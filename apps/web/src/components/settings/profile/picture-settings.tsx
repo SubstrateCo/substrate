@@ -1,12 +1,12 @@
 import { ErrorState } from "../../feedback/error-state";
-import { SettingsCard } from "../../layout/settings-section";
-import { Button } from "../../ui/button";
 import {
   PictureUpload,
   PictureUploadLoading,
   type PictureUploadProps,
 } from "../../upload/picture-upload";
 import { FormMessage } from "@/components/feedback/form-message";
+import { SettingsCard } from "@/components/layout/settings-section";
+import { Button } from "@/components/ui/button";
 import type { ResourceStatus } from "@/lib/resource-state";
 
 /** A settings card for a profile picture or logo. Changes save as soon as the crop is saved. */

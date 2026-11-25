@@ -1,5 +1,5 @@
-import { Button } from "../ui/button";
 import { ContentNotice } from "./content-notice";
+import { Button } from "@/components/ui/button";
 import { CircleAlert, RefreshCw } from "lucide-react";
 
 /**

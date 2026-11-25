@@ -46,6 +46,7 @@ Substrate is an Electron workspace for email, messages, docs, tasks, agents, and
 ## Scripts
 
 - Do not build any part of the app, including `bun run build`, unless the user explicitly asks for a build.
+- Always run scripts from the root `package.json` so their results are cached. Do not run tools with `bunx` or from inside a package unless no root script covers the task.
 
 Run these commands from the repository root:
 

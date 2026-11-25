@@ -11,10 +11,12 @@ import { useEffect, useState } from "react";
 
 import { ink, labelName, visibleLabels } from "./mail-colors";
 import { MessageLabels } from "./message-labels";
+import { rowStateVariants, rowTitleVariants } from "@/components/layout/row-state";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatMailListDate, formatFullTimestamp } from "@/lib/format/date";
 import { snippetText } from "@/lib/mail/body-text";
+import { cn } from "cn";
 import { Mail, Star } from "lucide-react";
 
 function MessageRow({
@@ -52,14 +54,18 @@ function MessageRow({
   const subject = message.subject || "(No subject)",
     stamp = formatMailListDate(timestamp, today);
   const labels = visibleLabels(mailbox, message.labelIds, true).map(labelName);
-  // oxlint-disable-next-line design/no-decorative-class -- An unread mail thread.
-  const weight = message.hasUnread ? "font-semibold text-foreground" : "font-normal";
+  const weight = message.hasUnread ? rowTitleVariants({ state: "unread" }) : "font-normal";
   const background = message.hasUnread ? "bg-background" : "bg-surface";
+  const rowSelected = checked || selected;
   const label = `${message.hasUnread ? "Unread. " : ""}${sender}: ${subject}. ${message.messageCount} messages. ${mailbox.address}, ${stamp}${labels.length ? `. Labels: ${labels.join(", ")}` : ""}`;
   return (
     <li
       id={`message-${id}`}
-      className={`flex items-start gap-1 border-b pr-1 pl-3 @3xl:items-center ${checked || selected ? "bg-row-selected" : background}`}
+      className={cn(
+        "flex items-start gap-1 border-b pr-1 pl-3 @3xl:items-center",
+        !rowSelected && background,
+        rowStateVariants({ selected: rowSelected, hover: false }),
+      )}
     >
       <Checkbox
         aria-label={`Select conversation: ${subject}, ${mailbox.address}`}

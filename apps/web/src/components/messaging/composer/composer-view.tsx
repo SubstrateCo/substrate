@@ -2,10 +2,6 @@ import { useContext, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
 import { PendingButton } from "../../feedback/pending-button";
-import { Field } from "../../ui/field";
-import { InputGroup, InputGroupAddon } from "../../ui/input-group";
-import { Kbd, KbdGroup } from "../../ui/kbd";
-import { Popover, PopoverAnchor, PopoverContent } from "../../ui/popover";
 import type { WorkspaceReference } from "../references/entity-reference";
 import { ReferenceEditor } from "../references/reference-editor";
 import { ReferencePickerAccessibility } from "../references/reference-picker-context";
@@ -20,6 +16,10 @@ import {
   messageMaxLength,
   useComposerDraft,
 } from "@/components/messaging/composer/use-composer-draft";
+import { Field } from "@/components/ui/field";
+import { InputGroup, InputGroupAddon } from "@/components/ui/input-group";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { cn } from "cn";
 import { Send } from "lucide-react";
 

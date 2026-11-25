@@ -6,10 +6,10 @@ import {
   type ReactNode,
 } from "react";
 
-import { Field, FieldDescription, FieldError, FieldLabel } from "../ui/field";
-import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
 import { useNativeValidation } from "./use-native-validation";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 const NativeValidation = createContext<ReturnType<typeof useNativeValidation> | null>(null);
 

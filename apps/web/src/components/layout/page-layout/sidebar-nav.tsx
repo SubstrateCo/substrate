@@ -1,7 +1,7 @@
 import { Link, type LinkProps } from "@tanstack/react-router";
 
-import { Button } from "../../ui/button";
 import { PageSidebarGroupTitle } from "./page-sidebar";
+import { Button } from "@/components/ui/button";
 import type { LucideIcon } from "lucide-react";
 
 type SidebarNavItem = {

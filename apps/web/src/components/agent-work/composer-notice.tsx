@@ -2,6 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
+import { toneText } from "@/components/feedback/tag";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { WorkTone } from "@/lib/agent-work/status";
@@ -45,13 +46,7 @@ export function ComposerNotice({
           <span className="min-w-0 font-medium wrap-anywhere text-foreground">
             {line.agentName}
           </span>
-          <span
-            className={cn(
-              "min-w-0 truncate tabular-nums",
-              line.tone === "attention" && "text-warning-text",
-              line.tone === "working" && "text-primary",
-            )}
-          >
+          <span className={cn("min-w-0 truncate tabular-nums", toneText[line.tone])}>
             {line.label}
           </span>
           {line.link && (

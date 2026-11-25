@@ -1,5 +1,5 @@
-import { Checkbox } from "../../ui/checkbox";
-import { Field, FieldLabel } from "../../ui/field";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Field, FieldLabel } from "@/components/ui/field";
 import { Globe } from "lucide-react";
 
 /**

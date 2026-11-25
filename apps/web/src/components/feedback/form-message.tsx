@@ -1,5 +1,5 @@
-import { Alert, AlertDescription } from "../ui/alert";
 import { actionErrorMessage } from "./action-error-message";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { CircleAlert, CircleCheck } from "lucide-react";
 
 export function FormMessage({

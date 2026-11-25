@@ -1,9 +1,9 @@
 import { useState } from "react";
 
-import { Field, FieldError, FieldLabel } from "../../ui/field";
 import { ShareHistoryField } from "./share-history-field";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { PeoplePicker } from "@/components/people/people-picker";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import {
   invitedRecipients,
   unfinishedRecipientMessage,

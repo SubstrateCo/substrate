@@ -14,7 +14,6 @@ const codeBlockVariants = cva(
         default: "bg-inset text-foreground",
         // Diagnostics and generated text the reader rarely needs, such as runtime details.
         muted: "bg-inset text-muted-foreground",
-        destructive: "bg-inset text-destructive",
       },
     },
     defaultVariants: {
@@ -46,7 +45,7 @@ function CodeBlockHeader({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="code-block-header"
       className={cn(
-        "flex min-w-0 shrink-0 items-center gap-2 px-3 pt-3 text-muted-foreground group-data-[size=sm]/code-block:px-2.5 group-data-[size=sm]/code-block:pt-2.5 group-data-[variant=destructive]/code-block:text-destructive *:has-[>[data-slot=code-block-title]]:min-w-0",
+        "flex min-w-0 shrink-0 items-center gap-2 px-3 pt-3 text-muted-foreground group-data-[size=sm]/code-block:px-2.5 group-data-[size=sm]/code-block:pt-2.5 *:has-[>[data-slot=code-block-title]]:min-w-0",
         className,
       )}
       {...props}
@@ -59,7 +58,7 @@ function CodeBlockTitle({ className, ...props }: React.ComponentProps<"div">) {
     <div
       data-slot="code-block-title"
       className={cn(
-        "min-w-0 truncate font-sans text-sm font-medium text-foreground group-data-[size=sm]/code-block:text-xs group-data-[variant=destructive]/code-block:text-destructive [&_svg]:pointer-events-none [&_svg]:inline-block [&_svg]:align-middle [&_svg:not([class*='size-'])]:size-3.5 *:[svg]:me-1.5",
+        "min-w-0 truncate font-sans text-sm font-medium text-foreground group-data-[size=sm]/code-block:text-xs [&_svg]:pointer-events-none [&_svg]:inline-block [&_svg]:align-middle [&_svg:not([class*='size-'])]:size-3.5 *:[svg]:me-1.5",
         className,
       )}
       {...props}
@@ -169,29 +168,7 @@ function CodeBlockContent({
   );
 }
 
-const codeBlockLineVariants = cva(
-  "relative -mx-3 block min-h-lh px-3 group-data-[size=sm]/code-block:-mx-2.5 group-data-[size=sm]/code-block:px-2.5 before:min-w-6 before:text-end before:text-muted-foreground after:absolute after:inset-s-1 after:top-0 after:text-muted-foreground after:select-none in-data-numbered:col-span-2 in-data-numbered:grid in-data-numbered:grid-cols-subgrid in-data-numbered:gap-x-3 in-data-numbered:[counter-increment:line] in-data-numbered:before:content-[counter(line)] in-data-numbered:before:select-none in-data-numbered:supports-[content:counter(line)/'']:before:content-[counter(line)/'']",
-  {
-    variants: {
-      variant: {
-        default: "",
-        added: "bg-muted after:content-['+']",
-        removed: "bg-destructive/10 after:text-destructive after:content-['−']",
-        highlighted: "bg-muted",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-    },
-  },
-);
-
-function CodeBlockLine({
-  className,
-  variant = "default",
-  children,
-  ...props
-}: React.ComponentProps<"span"> & VariantProps<typeof codeBlockLineVariants>) {
+function CodeBlockLine({ className, children, ...props }: React.ComponentProps<"span">) {
   // An empty line holds a newline so copying a selection keeps blank lines.
   const empty =
     children === undefined ||
@@ -202,8 +179,10 @@ function CodeBlockLine({
   return (
     <span
       data-slot="code-block-line"
-      data-variant={variant}
-      className={cn(codeBlockLineVariants({ variant }), className)}
+      className={cn(
+        "relative -mx-3 block min-h-lh px-3 group-data-[size=sm]/code-block:-mx-2.5 group-data-[size=sm]/code-block:px-2.5 before:min-w-6 before:text-end before:text-muted-foreground after:absolute after:inset-s-1 after:top-0 after:text-muted-foreground after:select-none in-data-numbered:col-span-2 in-data-numbered:grid in-data-numbered:grid-cols-subgrid in-data-numbered:gap-x-3 in-data-numbered:[counter-increment:line] in-data-numbered:before:content-[counter(line)] in-data-numbered:before:select-none in-data-numbered:supports-[content:counter(line)/'']:before:content-[counter(line)/'']",
+        className,
+      )}
       {...props}
     >
       <span data-slot="code-block-line-content" className="min-w-0">

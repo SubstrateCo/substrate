@@ -1,6 +1,6 @@
 import { SkeletonText } from "../../feedback/skeleton-text";
-import { DropdownMenuItem } from "../../ui/dropdown-menu";
 import { WorkspaceTile } from "../workspace-tile";
+import { DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Check } from "lucide-react";
 
 export function OrganizationSwitcherItem({

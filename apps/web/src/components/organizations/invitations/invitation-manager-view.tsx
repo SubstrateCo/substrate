@@ -3,12 +3,12 @@ import type { OrganizationRole } from "@substrate/contracts/auth/permissions";
 import { useState } from "react";
 
 import { ConfirmDialog } from "../../feedback/confirm-dialog";
-import { GroupTitle, SettingsCard } from "../../layout/settings-section";
-import { Heading } from "../../ui/heading";
-import { Spinner } from "../../ui/spinner";
 import { InvitationForm, type InvitationRoleOption } from "./invitation-form";
 import { InvitationTable } from "./invitation-table";
 import { FormMessage } from "@/components/feedback/form-message";
+import { GroupTitle, SettingsCard } from "@/components/layout/settings-section";
+import { Heading } from "@/components/ui/heading";
+import { Spinner } from "@/components/ui/spinner";
 
 export type InvitationListItem = {
   id: string;

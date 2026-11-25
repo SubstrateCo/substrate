@@ -54,7 +54,7 @@ const Toaster = ({ ...props }: ToasterProps) => {
             "h-auto min-h-8 max-w-full min-w-0 py-1 wrap-anywhere whitespace-normal sm:min-h-7",
           ),
           cancelButton: cn(
-            buttonVariants({ variant: "secondary", size: "sm" }),
+            buttonVariants({ variant: "accent", size: "sm" }),
             "h-auto min-h-8 max-w-full min-w-0 py-1 wrap-anywhere whitespace-normal sm:min-h-7",
           ),
           closeButton: cn(

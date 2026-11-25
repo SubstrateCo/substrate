@@ -3,9 +3,9 @@ import type { PictureKind } from "@substrate/contracts/files/pictures";
 import type { ReactNode } from "react";
 
 import { SegmentedControl } from "../forms/segmented-control";
-import { Button } from "../ui/button";
-import { Slider } from "../ui/slider";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { RotateCcw, RotateCw, ZoomIn, ZoomOut } from "lucide-react";
 
 const sizingOptions = [

@@ -2,10 +2,10 @@ import { Link } from "@tanstack/react-router";
 
 import { PendingButton } from "../../feedback/pending-button";
 import { NativeField, NativeForm } from "../../forms/native-form";
-import { Button } from "../../ui/button";
 import { AuthFrame } from "../auth-frame";
 import { AuthLink } from "../auth-link";
 import { FormMessage } from "@/components/feedback/form-message";
+import { Button } from "@/components/ui/button";
 import type { authLink } from "@/lib/auth/navigation";
 
 /**

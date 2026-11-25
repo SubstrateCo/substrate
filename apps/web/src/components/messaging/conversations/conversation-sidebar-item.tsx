@@ -2,10 +2,10 @@ import { Link, type LinkProps } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
-import { Button } from "../../ui/button";
-import { buttonVariants } from "../../ui/button-variants";
 import { ConversationKindIcon } from "./conversation-kind-icon";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { conversationName, type Conversation } from "@/lib/messaging/conversations";

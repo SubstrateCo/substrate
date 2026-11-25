@@ -3,7 +3,6 @@ import type { LinkProps } from "@tanstack/react-router";
 import { Children, type ReactNode } from "react";
 
 import { PaneState } from "../../feedback/pane-state";
-import { Button } from "../../ui/button";
 import { ConversationSidebar } from "../conversations/conversation-sidebar";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { StaleNotice } from "@/components/feedback/stale-notice";
@@ -13,6 +12,7 @@ import type { DirectMessageAgent } from "@/components/messaging/conversations/co
 import { ConversationHeader } from "@/components/messaging/conversations/conversation-header";
 import { MessageLoading } from "@/components/messaging/messages/message-loading";
 import { WorkspaceEmpty } from "@/components/messaging/workspace/workspace-empty";
+import { Button } from "@/components/ui/button";
 import type { Conversation } from "@/lib/messaging/conversations";
 import type { PickerPerson } from "@/lib/people/people-picker";
 import type { ResourceStatus } from "@/lib/resource-state";

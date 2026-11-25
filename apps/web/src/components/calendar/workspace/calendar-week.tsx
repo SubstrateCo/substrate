@@ -20,14 +20,17 @@ import {
   formatWeekdayShort,
   isSameDay,
 } from "@/lib/format/date";
+import { cva } from "class-variance-authority";
 import { cn } from "cn";
 
 const hours = Array.from({ length: 24 }, (_, hour) => hour);
 const percent = (minutes: number) => `${(minutes / dayMinutes) * 100}%`;
 // Hour labels sit 8px above their line; keep the first one in view when the grid opens.
 const hourLabelOffset = 8;
-// Blocks shorter than this show the title and start time on one line.
+// Blocks shorter than this are one line with no vertical padding.
 const compactBlockMinutes = 30;
+// Blocks shorter than this show the title and start time on one line.
+const oneLineBlockMinutes = 45;
 
 /** Seven days on a time grid, with all-day events above it and a line at the current time. */
 export function CalendarWeek({
@@ -198,10 +201,37 @@ function DayColumn({
   );
 }
 
-const blockClass =
-  "block size-full overflow-hidden rounded-md border-l-3 border-(--calendar-color) bg-(--calendar-color)/15 text-left text-xs text-foreground transition-colors outline-none hover:bg-(--calendar-color)/25 focus-visible:ring-2 focus-visible:ring-ring";
-// Past events keep their color as a quieter fill, so what is still to come stands out.
-const endedClass = "bg-(--calendar-color)/8 text-muted-foreground hover:bg-(--calendar-color)/15";
+const eventVariants = cva(
+  "block size-full overflow-hidden rounded-md border-l-3 border-(--calendar-color) bg-(--calendar-color)/15 text-left text-xs text-foreground transition-colors outline-none hover:bg-(--calendar-color)/25 focus-visible:ring-2 focus-visible:ring-ring",
+  {
+    variants: {
+      density: {
+        // A timed block of oneLineBlockMinutes or more: title and time on two lines.
+        default: "px-1.5 py-0.5",
+        // A timed block under oneLineBlockMinutes: title and start time on one line.
+        "one-line": "flex gap-1 px-1.5 py-0.5",
+        // A timed block under compactBlockMinutes: one line, centered, no vertical padding.
+        compact: "flex items-center gap-1 px-1.5 py-0 leading-none",
+        // An all-day chip.
+        chip: "truncate px-1.5 py-0.5 font-medium",
+      },
+      // Past events keep their color as a quieter fill, so what is still to come stands out.
+      ended: {
+        true: "bg-(--calendar-color)/8 text-muted-foreground hover:bg-(--calendar-color)/15",
+        false: "",
+      },
+      selected: { true: "ring-2 ring-ring", false: "" },
+      cancelled: { true: "line-through opacity-60", false: "" },
+    },
+    defaultVariants: { density: "default", ended: false, selected: false, cancelled: false },
+  },
+);
+
+function blockDensity(minutes: number) {
+  if (minutes < compactBlockMinutes) return "compact";
+  if (minutes < oneLineBlockMinutes) return "one-line";
+  return "default";
+}
 
 function EventBlock({
   event,
@@ -218,7 +248,7 @@ function EventBlock({
 }) {
   const title = eventTitle(event.title);
   const time = formatTimeRange(event.startsAt, event.endsAt);
-  const oneLine = minutes < 45;
+  const oneLine = minutes < oneLineBlockMinutes;
   return (
     <Link
       {...link}
@@ -227,13 +257,12 @@ function EventBlock({
       title={`${title} · ${time}`}
       style={{ "--calendar-color": event.color ?? "var(--primary)" }}
       className={cn(
-        blockClass,
-        "px-1.5 py-0.5",
-        oneLine && "flex gap-1",
-        minutes < compactBlockMinutes && "items-center py-0 leading-none",
-        ended && endedClass,
-        selected && "ring-2 ring-ring",
-        event.status === "cancelled" && "line-through opacity-60",
+        eventVariants({
+          density: blockDensity(minutes),
+          ended,
+          selected,
+          cancelled: event.status === "cancelled",
+        }),
       )}
     >
       {oneLine ? (
@@ -271,11 +300,12 @@ function EventChip({
       title={eventTitle(event.title)}
       style={{ "--calendar-color": event.color ?? "var(--primary)" }}
       className={cn(
-        blockClass,
-        "truncate px-1.5 py-0.5 font-medium",
-        ended && endedClass,
-        selected && "ring-2 ring-ring",
-        event.status === "cancelled" && "line-through opacity-60",
+        eventVariants({
+          density: "chip",
+          ended,
+          selected,
+          cancelled: event.status === "cancelled",
+        }),
       )}
     >
       {eventTitle(event.title)}

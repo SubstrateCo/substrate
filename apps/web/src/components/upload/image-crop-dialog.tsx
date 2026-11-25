@@ -2,7 +2,13 @@ import type { PictureKind } from "@substrate/contracts/files/pictures";
 
 import { useState } from "react";
 
-import { Button } from "../ui/button";
+import type { CropArea } from "./crop-image";
+import { ImageCropControls } from "./image-crop-controls";
+import { ImageCropper } from "./image-cropper";
+import { FormMessage } from "@/components/feedback/form-message";
+import { modalDialogProps } from "@/components/feedback/modal-dialog";
+import { PendingButton } from "@/components/feedback/pending-button";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogBody,
@@ -11,14 +17,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../ui/dialog";
-import { Progress } from "../ui/progress";
-import type { CropArea } from "./crop-image";
-import { ImageCropControls } from "./image-crop-controls";
-import { ImageCropper } from "./image-cropper";
-import { FormMessage } from "@/components/feedback/form-message";
-import { modalDialogProps } from "@/components/feedback/modal-dialog";
-import { PendingButton } from "@/components/feedback/pending-button";
+} from "@/components/ui/dialog";
+import { Progress } from "@/components/ui/progress";
 import { usePictureUpload } from "@/components/upload/use-picture-upload";
 
 export interface ImageCropDialogProps {

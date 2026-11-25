@@ -1,8 +1,8 @@
 import type { ComponentProps, ReactNode } from "react";
 
-import { Field, FieldDescription, FieldError, FieldLabel } from "../ui/field";
-import { Input } from "../ui/input";
-import { Textarea } from "../ui/textarea";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 
 /** The parts of a TanStack Form string field that a text input needs. */
 type TextFieldApi = {

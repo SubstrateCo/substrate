@@ -4,12 +4,12 @@ import { useRef, useState, type ReactNode } from "react";
 
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
-import { Button } from "../../ui/button";
 import type { Project } from "../types";
 import { ProjectSidebar } from "./project-sidebar";
 import { FormDialog, type FormDialogEditor } from "@/components/feedback/form-dialog";
 import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
+import { Button } from "@/components/ui/button";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { FolderKanban, Plus, Unlink } from "lucide-react";
 

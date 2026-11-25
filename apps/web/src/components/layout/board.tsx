@@ -1,9 +1,10 @@
 import { useId, type ComponentProps, type ReactNode, type Ref } from "react";
 
 import { ContentNotice } from "../feedback/content-notice";
-import { Button } from "../ui/button";
-import { Heading } from "../ui/heading";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { rowStateVariants } from "./row-state";
+import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "cn";
 import { Plus } from "lucide-react";
 
@@ -110,8 +111,8 @@ export function BoardCard({
 }) {
   const classes = cn(
     "relative flex flex-col gap-2 rounded-lg border bg-surface p-3 text-sm shadow-surface transition-colors",
-    overlay ? "shadow-raised" : "hover:bg-row-hover",
-    selected && "bg-row-selected text-row-selected-foreground hover:bg-row-selected",
+    overlay && "shadow-raised",
+    rowStateVariants({ selected, hover: !overlay }),
     className,
   );
   if (overlay) return <div className={classes}>{children}</div>;

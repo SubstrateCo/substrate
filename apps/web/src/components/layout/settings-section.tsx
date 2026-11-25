@@ -1,11 +1,11 @@
 import { useId, type ReactNode } from "react";
 
 import { PendingButton } from "../feedback/pending-button";
-import { toneBorder } from "../feedback/tag";
-import { Button } from "../ui/button";
-import { FieldLabel } from "../ui/field";
-import { Heading } from "../ui/heading";
-import { Item, ItemActions, ItemContent } from "../ui/item";
+import { toneBorder } from "@/components/feedback/tag";
+import { Button } from "@/components/ui/button";
+import { FieldLabel } from "@/components/ui/field";
+import { Heading } from "@/components/ui/heading";
+import { Item, ItemActions, ItemContent } from "@/components/ui/item";
 import { cn } from "cn";
 
 /** One settings page or tab: a title, a short description, optional actions, then its groups. */

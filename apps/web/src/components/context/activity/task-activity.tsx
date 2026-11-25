@@ -1,11 +1,11 @@
 import { useState, type ReactNode } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
-import { Button } from "../../ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { ActivityRow, ActivityRowSkeleton, type ActivityEvent } from "./activity-row";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { RecordSection } from "@/components/layout/record-section";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ChevronDown } from "lucide-react";
 
 // Show the newest events first; older ones stay one click away.

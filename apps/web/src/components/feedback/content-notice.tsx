@@ -7,8 +7,8 @@ import {
   EmptyHeader,
   EmptyMedia,
   EmptyTitle,
-} from "../ui/empty";
-import { Heading } from "../ui/heading";
+} from "@/components/ui/empty";
+import { Heading } from "@/components/ui/heading";
 import { cn } from "cn";
 import { Inbox, type LucideIcon } from "lucide-react";
 

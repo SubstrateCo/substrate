@@ -4,8 +4,8 @@ import { useMemo } from "react";
 
 import { DateTimeDisplay } from "../../table/date-time-cell";
 import { AppTable, createAppColumnHelper, dateTimeColumn } from "../../table/index";
-import { Button } from "../../ui/button";
 import { InvitationStatus } from "@/components/organizations/invitations/invitation-status";
+import { Button } from "@/components/ui/button";
 import { roleLabel } from "@/lib/organizations/member-policy";
 import { Mail } from "lucide-react";
 

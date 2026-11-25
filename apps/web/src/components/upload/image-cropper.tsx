@@ -1,7 +1,7 @@
 import type { PictureKind } from "@substrate/contracts/files/pictures";
 
-import { Image } from "../ui/image";
 import type { CropArea } from "./crop-image";
+import { Image } from "@/components/ui/image";
 import "react-easy-crop/react-easy-crop.css";
 import Cropper from "react-easy-crop";
 

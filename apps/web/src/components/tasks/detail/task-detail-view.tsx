@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 
-import { Button } from "../../ui/button";
-import { Heading } from "../../ui/heading";
-import { Pressable } from "../../ui/pressable";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { ProjectIcon } from "../projects/project-icon";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { TaskProperties } from "./task-properties";
 import { TaskSubtasks } from "./task-subtasks";
 import { PageSheetHeader, PageSheetBody } from "@/components/layout/page-sheet";
+import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
+import { Pressable } from "@/components/ui/pressable";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
 import { ChevronRight, Pencil } from "lucide-react";
 

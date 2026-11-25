@@ -1,9 +1,9 @@
 import { useEffect, useRef, type ReactNode } from "react";
 
-import { Button } from "../../ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageAside, useAsideCovers } from "@/components/layout/page-layout";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { X } from "lucide-react";
 
 export function ThreadPaneFrame({

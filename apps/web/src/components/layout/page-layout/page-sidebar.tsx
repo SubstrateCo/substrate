@@ -1,9 +1,9 @@
 import { useState, type ComponentProps, type ReactNode } from "react";
 
-import { ResizableHandle, ResizablePanel } from "../../ui/resizable";
-import { PageHeader } from "../page-header";
 import { panelId, usePageLayout } from "./page-layout-context";
 import { readPaneWidth } from "./pane-width";
+import { PageHeader } from "@/components/layout/page-header";
+import { ResizableHandle, ResizablePanel } from "@/components/ui/resizable";
 import { cn } from "cn";
 
 // Leading pane. Every sidebar has the same default, minimum, and maximum width.
@@ -65,9 +65,10 @@ export function PageSidebarHeader({
   return (
     <PageHeader
       variant="pane"
+      bordered={false}
       title={title}
       actions={actions}
-      className={cn("border-b-0", className)}
+      className={className}
     />
   );
 }

@@ -2,9 +2,9 @@ import { providerNames, type OriginalView } from "@substrate/contracts/meetings"
 
 import { useState } from "react";
 
-import { ProviderMark } from "../sources/meeting-provider";
 import { OriginalText } from "../sources/original-text";
 import { Property, PropertyList } from "@/components/layout/record-section";
+import { ProviderMark } from "@/components/meetings/sources/meeting-provider";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Heading } from "@/components/ui/heading";

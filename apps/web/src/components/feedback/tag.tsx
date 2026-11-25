@@ -17,6 +17,21 @@ export const toneFill = {
   destructive: "bg-destructive/5",
 } as const;
 
+/** The text colour of a status label outside a `Tag`. Live work is the accent. */
+export const toneText = {
+  default: "",
+  idle: "",
+  muted: "",
+  // Finished work shows its colour on its icon only.
+  done: "",
+  working: "text-primary",
+  success: "text-success",
+  attention: "text-warning-text",
+  warning: "text-warning-text",
+  failed: "text-destructive",
+  destructive: "text-destructive",
+} as const;
+
 const tagVariants = cva(
   "inline-flex max-w-full items-center gap-1 rounded-md border px-1.5 text-xs",
   {

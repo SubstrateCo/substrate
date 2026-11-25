@@ -1,6 +1,5 @@
 import { useContext, useRef, useState, type ReactNode } from "react";
 
-import { ResizablePanelGroup } from "../../ui/resizable";
 import {
   PageLayoutContext,
   panelId,
@@ -8,6 +7,7 @@ import {
   type PagePane,
 } from "./page-layout-context";
 import { writePaneWidth } from "./pane-width";
+import { ResizablePanelGroup } from "@/components/ui/resizable";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "cn";
 import type { Layout, LayoutChangedMeta } from "react-resizable-panels";

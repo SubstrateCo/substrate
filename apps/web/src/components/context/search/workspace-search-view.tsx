@@ -2,11 +2,11 @@ import { useHotkeys } from "@tanstack/react-hotkeys";
 
 import { useLayoutEffect, useRef, useState } from "react";
 
-import { Button } from "../../ui/button";
-import { Kbd } from "../../ui/kbd";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import type { SearchResultItem } from "./search-result";
 import { SearchResults } from "@/components/context/search/search-results";
+import { Button } from "@/components/ui/button";
+import { Kbd } from "@/components/ui/kbd";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 // "channel" lists channels only, with membership. DMs and group messages appear under "all".
 export type SearchKind = "all" | "task" | "project" | "message" | "channel";

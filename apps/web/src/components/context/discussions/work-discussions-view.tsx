@@ -2,10 +2,10 @@ import { useState, type ReactNode } from "react";
 
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
-import { Button } from "../../ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { DiscussionItem, DiscussionItemSkeleton, type Discussion } from "./discussion-item";
 import { RecordSection } from "@/components/layout/record-section";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDelayedLoading } from "@/hooks/use-delayed-loading";
 import { cn } from "cn";
 import { ChevronDown, MessagesSquare } from "lucide-react";

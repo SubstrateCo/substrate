@@ -2,13 +2,13 @@ import type { TaskStatus } from "@substrate/contracts/tasks";
 
 import type { ReactNode } from "react";
 
-import { Button } from "../../ui/button";
-import { buttonVariants } from "../../ui/button-variants";
 import type { ReferenceKind } from "./reference-picker-view";
 import { entityKinds } from "@/components/context/entity-kinds";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { plainReferenceText } from "@/lib/messaging/reference-token";
 import { cn } from "cn";
 
@@ -40,7 +40,7 @@ export function ReferencePickerLoadingOption() {
   return (
     <div
       aria-hidden="true"
-      className={cn(buttonVariants({ variant: "option", size: "default" }), "w-full")}
+      className={cn(buttonVariants({ variant: "property", size: "default" }), "w-full")}
     >
       <OptionContent
         icon={<SkeletonText width="1rem" className="shrink-0" />}
@@ -84,7 +84,7 @@ export function ReferencePickerOption({
       type="button"
       role="option"
       aria-selected={selected}
-      variant="option"
+      variant="property"
       size="default"
       tabIndex={selected ? 0 : -1}
       className="w-full whitespace-normal"

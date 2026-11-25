@@ -3,11 +3,12 @@ import { Link } from "@tanstack/react-router";
 import { useState, type MouseEvent, type ReactNode } from "react";
 
 import { RowAction, RowActions } from "../../layout/row-actions";
-import { PersonAvatar } from "../../people/person-avatar";
+import { rowTitleVariants } from "../../layout/row-state";
 import { Timestamp } from "../../time/timestamp";
-import { Button } from "../../ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
+import { PersonAvatar } from "@/components/people/person-avatar";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Item, ItemActions, ItemContent, ItemMedia } from "@/components/ui/item";
 import { conversationLabel } from "@/lib/messaging/conversations";
 import type { RecordLink } from "@/lib/navigation/record-links";
@@ -235,8 +236,7 @@ function NotificationSummary({
   const actors = others ? `${actor} and ${others} ${others === 1 ? "other" : "others"}` : actor;
   const { verb, object } = sentence(item);
   const detail = item.source.kind === "project" ? item.source.name : item.excerpt;
-  // oxlint-disable-next-line design/no-decorative-class -- An unread notification's name.
-  const nameWeight = item.read ? "font-medium" : "font-semibold";
+  const nameWeight = item.read ? "font-medium" : rowTitleVariants({ state: "unread" });
   return (
     <>
       <p className="flex min-w-0 items-baseline gap-2 text-sm">

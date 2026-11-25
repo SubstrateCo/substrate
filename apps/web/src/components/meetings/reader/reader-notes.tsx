@@ -1,7 +1,7 @@
 import { providerNames, type OriginalView } from "@substrate/contracts/meetings";
 
-import { OriginalBadge } from "../sources/meeting-provider";
 import { remarkMeetingNotes } from "./remark-meeting-notes";
+import { OriginalBadge } from "@/components/meetings/sources/meeting-provider";
 import { MarkdownBody } from "@/components/messaging/markdown/markdown-body";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";

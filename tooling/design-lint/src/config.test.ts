@@ -191,6 +191,46 @@ export const title = "text-xl font-medium";
   }
 });
 
+void test("renderer design configuration requires alias imports so contracts apply", () => {
+  const directory = mkdtempSync(join(root, "apps/web/src/components/design-lint-test-"));
+  try {
+    const file = join(directory, "view.tsx");
+    writeFileSync(
+      file,
+      `
+import { Tag } from "../feedback/tag";
+import { Button } from "../ui/button";
+export const View = () => (
+  <Button>
+    <Tag>External</Tag>
+  </Button>
+);
+`,
+    );
+    assert.equal(
+      lint(file).filter((code) => code === "eslint(no-restricted-imports)").length,
+      2,
+      "Relative imports of primitives and shared blocks must use the alias.",
+    );
+
+    writeFileSync(
+      file,
+      `
+import { PageHeader } from "@/components/layout/page-header";
+export const Restyled = () => <PageHeader variant="pane" title="Notes" className="border-b-0" />;
+export const Placed = () => <PageHeader variant="pane" bordered={false} title="Notes" className="mt-2" />;
+`,
+    );
+    assert.deepEqual(
+      lint(file),
+      ["shadcn(no-restyle)"],
+      "A shared block's look comes from its variants; callers may only place it.",
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 function lint(file: string): string[] {
   const result = spawnSync(process.execPath, [cli, "--format", "json", file], {
     cwd: root,

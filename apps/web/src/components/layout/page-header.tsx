@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
-import { Button } from "../ui/button";
-import { Heading } from "../ui/heading";
+import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
 import { cva } from "class-variance-authority";
 import { cn } from "cn";
 import { ArrowLeft } from "lucide-react";
@@ -25,8 +25,71 @@ const pageHeaderVariants = cva("flex shrink-0 justify-between gap-x-4", {
     variant: {
       // Full pages: Notifications, Settings, a project. Sits inside the page's p-6 inset.
       page: "flex-wrap items-start gap-y-2",
-      // Panes and sidebars: one 48px line with a bottom border and icon-sm tools.
-      pane: "h-12 items-center gap-2 border-b px-4",
+      // Panes and sidebars: one 48px line with icon-sm tools.
+      pane: "h-12 items-center gap-2 px-4",
+    },
+    // A pane header's bottom border. A sidebar header drops it: the sidebar background separates it.
+    bordered: { true: "", false: "" },
+  },
+  compoundVariants: [{ variant: "pane", bordered: true, className: "border-b" }],
+  defaultVariants: { variant: "page", bordered: true },
+});
+
+const pageHeaderTitleBlockVariants = cva("min-w-0", {
+  variants: {
+    variant: {
+      page: "flex-1 basis-60 space-y-1",
+      pane: "flex items-center gap-2",
+    },
+    withChildren: { true: "", false: "" },
+  },
+  compoundVariants: [
+    { variant: "page", withChildren: true, className: "sm:max-w-1/3" },
+    { variant: "pane", withChildren: true, className: "max-w-1/3" },
+  ],
+  defaultVariants: { variant: "page", withChildren: false },
+});
+
+const pageHeaderTitleVariants = cva("min-w-0", {
+  variants: {
+    variant: {
+      page: "wrap-anywhere",
+      pane: "flex items-center gap-2 truncate [&_svg]:size-4 [&_svg]:shrink-0",
+    },
+    withIcon: { true: "", false: "" },
+  },
+  compoundVariants: [
+    // The caller sizes a page icon, such as a size-6 project image.
+    { variant: "page", withIcon: true, className: "flex items-center gap-2" },
+  ],
+  defaultVariants: { variant: "page", withIcon: false },
+});
+
+const pageHeaderTitleTextVariants = cva("", {
+  variants: {
+    variant: {
+      page: "min-w-0",
+      pane: "truncate",
+    },
+  },
+  defaultVariants: { variant: "page" },
+});
+
+const pageHeaderChildrenVariants = cva("min-w-0 flex-1", {
+  variants: {
+    variant: {
+      page: "basis-full sm:basis-0",
+      pane: "",
+    },
+  },
+  defaultVariants: { variant: "page" },
+});
+
+const pageHeaderActionsVariants = cva("flex items-center", {
+  variants: {
+    variant: {
+      page: "max-w-full min-w-0 flex-wrap gap-2",
+      pane: "shrink-0 gap-0.5",
     },
   },
   defaultVariants: { variant: "page" },
@@ -42,6 +105,7 @@ export function PageHeader({
   icon,
   actions,
   variant = "page",
+  bordered = true,
   className,
   leading,
   children,
@@ -52,55 +116,34 @@ export function PageHeader({
   icon?: ReactNode;
   actions?: ReactNode;
   variant?: "page" | "pane";
+  /** A pane header's bottom border; `PageSidebarHeader` turns it off. */
+  bordered?: boolean;
   className?: string;
   leading?: ReactNode;
   children?: ReactNode;
 }) {
   const page = variant === "page";
   return (
-    <header data-slot="page-header" className={cn(pageHeaderVariants({ variant }), className)}>
+    <header
+      data-slot="page-header"
+      className={cn(pageHeaderVariants({ variant, bordered }), className)}
+    >
       {leading}
-      <div
-        className={cn(
-          "min-w-0",
-          page ? "flex-1 basis-60 space-y-1" : "flex items-center gap-2",
-          children && (page ? "sm:max-w-1/3" : "max-w-1/3"),
-        )}
-      >
+      <div className={pageHeaderTitleBlockVariants({ variant, withChildren: Boolean(children) })}>
         <Heading
           level={1}
           variant={page ? "page" : "title"}
-          className={cn(
-            "min-w-0",
-            page
-              ? cn(
-                  "wrap-anywhere",
-                  // The caller sizes a page icon, such as a size-6 project image.
-                  icon && "flex items-center gap-2",
-                )
-              : "flex items-center gap-2 truncate [&_svg]:size-4 [&_svg]:shrink-0",
-          )}
+          className={pageHeaderTitleVariants({ variant, withIcon: Boolean(icon) })}
         >
           {icon}
-          <span className={page ? "min-w-0" : "truncate"}>{title}</span>
+          <span className={pageHeaderTitleTextVariants({ variant })}>{title}</span>
         </Heading>
         {page && description && (
           <p className="text-sm wrap-anywhere text-muted-foreground">{description}</p>
         )}
       </div>
-      {children && (
-        <div className={cn("min-w-0 flex-1", page && "basis-full sm:basis-0")}>{children}</div>
-      )}
-      {actions && (
-        <div
-          className={cn(
-            "flex items-center",
-            page ? "max-w-full min-w-0 flex-wrap gap-2" : "shrink-0 gap-0.5",
-          )}
-        >
-          {actions}
-        </div>
-      )}
+      {children && <div className={pageHeaderChildrenVariants({ variant })}>{children}</div>}
+      {actions && <div className={pageHeaderActionsVariants({ variant })}>{actions}</div>}
     </header>
   );
 }

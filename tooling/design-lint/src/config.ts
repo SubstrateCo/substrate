@@ -6,6 +6,27 @@ const DIALOG_INSETS =
   "Dialog parts own the insets: DialogHeader px-5 pt-5 pb-4, DialogBody px-5 pb-5 gap-4, DialogFooter px-5 py-3.";
 
 /**
+ * Shared blocks outside components/ui that own their look through variants, so callers may only
+ * place them. Paths are relative to components/.
+ */
+export const SHARED_BLOCKS = [
+  "people/person-avatar",
+  "layout/page-sheet",
+  "layout/page-header",
+  "layout/board",
+  "layout/record-section",
+  "layout/settings-section",
+  "feedback/tag",
+  "feedback/inline-notice",
+  "feedback/loading-state",
+  "meetings/sources/meeting-provider",
+];
+const escape = (path: string) => path.replaceAll("/", "\\/");
+// shadcn lint recognizes a component by its import text, so a relative import skips every contract.
+const ALIAS_MESSAGE =
+  "Import design components through the @/components alias, not a relative path: design lint recognizes components by the import, so a relative import skips their contracts.";
+
+/**
  * Design-contract lint for the renderer: `@shadcn/lint` contracts for the primitives in
  * `components/ui`, plus the `design/*` rules from this package. Paths are relative to the
  * repository root, where `oxlint.config.ts` lives.
@@ -15,11 +36,7 @@ export const designConfig = {
   settings: {
     shadcn: {
       ui: "@/components/ui",
-      componentImports: [
-        "^@/components/people/person-avatar$",
-        "^@/components/layout/(page-sheet|page-header|board|record-section|settings-section)$",
-        "^@/components/feedback/(tag|inline-notice)$",
-      ],
+      componentImports: SHARED_BLOCKS.map((path) => `^@/components/${escape(path)}$`),
       note: `Design contract: ${DESIGN_DOC}. Add a variant or size in ${WEB}/components/ui (shadcn CLI) only when the contract calls for one.`,
     },
   },
@@ -234,6 +251,12 @@ export const designConfig = {
               },
             ],
             patterns: [
+              { regex: "^\\.\\.?/(?:.*/)?ui/", message: ALIAS_MESSAGE },
+              {
+                // Each shared block's file name is unique under components/, so its last segment names it.
+                regex: `^\\.\\.?/(?:.*/)?(?:${SHARED_BLOCKS.map((path) => path.split("/").pop()).join("|")})$`,
+                message: ALIAS_MESSAGE,
+              },
               {
                 group: ["**/ui/table", "**/ui/table.*"],
                 message:

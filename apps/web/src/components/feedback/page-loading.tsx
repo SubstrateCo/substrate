@@ -1,5 +1,5 @@
-import { Skeleton } from "../ui/skeleton";
-import { LoadingState } from "./loading-state";
+import { LoadingState } from "@/components/feedback/loading-state";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function PageLoading() {
   return (

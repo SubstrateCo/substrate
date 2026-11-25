@@ -1,7 +1,7 @@
 import type { MouseEventHandler, ReactNode } from "react";
 
-import { Button } from "../ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "cn";
 
 /** The class of a row that holds `RowActions`, so they show while the row is hovered or focused. */

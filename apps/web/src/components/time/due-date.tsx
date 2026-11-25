@@ -1,4 +1,4 @@
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDueDate } from "@/lib/format/date";
 import { cn } from "cn";
 

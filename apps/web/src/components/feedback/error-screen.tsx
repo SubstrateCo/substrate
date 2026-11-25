@@ -1,6 +1,6 @@
 import { AuthFrame } from "../auth/auth-frame";
 import { NonWorkspaceLayout } from "../theme/non-workspace-layout";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import { RefreshCw } from "lucide-react";
 
 export function ErrorScreen({ onRetry }: { onRetry: () => void }) {

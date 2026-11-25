@@ -2,7 +2,7 @@ import { createLink } from "@tanstack/react-router";
 
 import type { ComponentProps } from "react";
 
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 import { cn } from "cn";
 
 /** Inline text link for guest and setup pages: quiet at rest, underlined on hover. */

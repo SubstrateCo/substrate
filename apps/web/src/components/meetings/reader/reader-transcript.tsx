@@ -2,9 +2,9 @@ import { providerNames, type OriginalView } from "@substrate/contracts/meetings"
 
 import { useEffect } from "react";
 
-import { OriginalBadge } from "../sources/meeting-provider";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { recordRows } from "@/components/layout/record-section";
+import { OriginalBadge } from "@/components/meetings/sources/meeting-provider";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { Item, ItemContent, ItemMedia } from "@/components/ui/item";

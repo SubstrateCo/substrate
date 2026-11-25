@@ -1,10 +1,10 @@
 import { Link } from "@tanstack/react-router";
 
-import { Button } from "../../ui/button";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { MessageWorkLink } from "./message-work";
 import { entityKinds } from "@/components/context/entity-kinds";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
+import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Unlink } from "lucide-react";
 
 /** One linked record: status or kind icon, title, status label, and unlink on hover. */

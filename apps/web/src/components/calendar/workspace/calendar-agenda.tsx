@@ -5,6 +5,7 @@ import { Link, type LinkProps } from "@tanstack/react-router";
 import { CalendarColorDot } from "../calendar-color";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { Tag } from "@/components/feedback/tag";
+import { rowTitleVariants } from "@/components/layout/row-state";
 import { SettingsList } from "@/components/layout/settings-section";
 import { Heading } from "@/components/ui/heading";
 import { Item, ItemContent, ItemMedia, ItemTitle } from "@/components/ui/item";
@@ -81,6 +82,9 @@ function AgendaRow({
   link: LinkProps;
 }) {
   const cancelled = event.status === "cancelled";
+  let titleState: "read" | "closed" | "canceled" = "read";
+  if (cancelled) titleState = "canceled";
+  else if (ended) titleState = "closed";
   return (
     <li>
       <Item asChild>
@@ -106,8 +110,7 @@ function AgendaRow({
               <span
                 className={cn(
                   "truncate text-sm font-medium",
-                  ended && !selected && "text-muted-foreground",
-                  cancelled && "text-muted-foreground line-through",
+                  rowTitleVariants({ state: titleState, selected }),
                 )}
               >
                 {eventTitle(event.title)}

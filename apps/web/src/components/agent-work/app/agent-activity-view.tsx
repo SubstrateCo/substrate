@@ -7,6 +7,7 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
+import { rowStateVariants, rowTitleVariants } from "@/components/layout/row-state";
 import { SettingsList, SettingsSection } from "@/components/layout/settings-section";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import { Timestamp } from "@/components/time/timestamp";
@@ -150,10 +151,7 @@ export function AgentActivityView({
                     type="button"
                     aria-current={row.selected ? "true" : undefined}
                     onClick={() => onTranscript(row.id)}
-                    className={cn(
-                      "text-left hover:bg-row-hover",
-                      row.selected && "bg-row-selected hover:bg-row-selected",
-                    )}
+                    className={cn("text-left", rowStateVariants({ selected: row.selected }))}
                   >
                     <ItemContent className="min-w-0">
                       <ActivityRowContent
@@ -161,7 +159,7 @@ export function AgentActivityView({
                           <span
                             className={cn(
                               "min-w-0 flex-1 truncate text-sm",
-                              row.selected && "font-medium text-row-selected-foreground",
+                              rowTitleVariants({ selected: row.selected }),
                             )}
                           >
                             {row.summary}

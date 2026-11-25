@@ -32,7 +32,6 @@ const selectTriggerVariants = cva(
       size: {
         default: "h-8",
         sm: "h-7 rounded-md",
-        compact: "h-7 rounded-md border-border bg-background px-2 text-xs",
       },
       variant: {
         default: "",

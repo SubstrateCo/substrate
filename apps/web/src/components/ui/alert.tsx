@@ -16,7 +16,6 @@ const alertVariants = cva(
       presentation: {
         default: "",
         inline: "p-3",
-        floating: "bg-popover p-4 pr-12 shadow-floating",
       },
     },
     compoundVariants: [

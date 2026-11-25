@@ -1,9 +1,9 @@
 import { useId, useRef, useState, type ReactNode, type Ref } from "react";
 
 import { PendingButton } from "../feedback/pending-button";
-import { Field, FieldDescription, FieldError } from "../ui/field";
-import { Input } from "../ui/input";
 import { validateFiles } from "./file-validation";
+import { Field, FieldDescription, FieldError } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
 import { cn } from "cn";
 
 interface FileUploadProps {

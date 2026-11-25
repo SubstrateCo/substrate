@@ -1,11 +1,11 @@
 import type { ContextEntityType } from "@substrate/contracts/context/input";
 
 import { SkeletonText } from "../../feedback/skeleton-text";
-import { Tag } from "../../feedback/tag";
-import { Checkbox } from "../../ui/checkbox";
-import { CommandItem } from "../../ui/command";
-import { Skeleton } from "../../ui/skeleton";
 import { entityKinds } from "../entity-kinds";
+import { Tag } from "@/components/feedback/tag";
+import { Checkbox } from "@/components/ui/checkbox";
+import { CommandItem } from "@/components/ui/command";
+import { Skeleton } from "@/components/ui/skeleton";
 import { cn } from "cn";
 
 // oxlint-disable-next-line shadcn/no-restyle -- These are the command item's existing geometry, shared with inert loading rows.

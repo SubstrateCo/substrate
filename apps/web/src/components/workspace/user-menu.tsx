@@ -2,11 +2,11 @@ import { Link } from "@tanstack/react-router";
 
 import { useState, type KeyboardEvent, type ReactNode } from "react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { Button } from "../ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "../ui/popover";
-import { Separator } from "../ui/separator";
 import { ThemeControl } from "@/components/theme/theme-control";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Separator } from "@/components/ui/separator";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { initials } from "@/lib/people/initials";
 import { Building2, Settings } from "lucide-react";

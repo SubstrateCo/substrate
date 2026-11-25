@@ -9,8 +9,6 @@ export const buttonVariants = cva(
         default: "bg-primary bg-clip-border text-primary-foreground hover:bg-primary/90",
         outline:
           "border-control-border bg-card hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground",
-        secondary:
-          "bg-secondary text-secondary-foreground hover:bg-secondary/80 aria-expanded:bg-secondary aria-expanded:text-secondary-foreground",
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground aria-pressed:bg-accent aria-pressed:text-accent-foreground dark:hover:bg-foreground/15 dark:aria-expanded:bg-foreground/15",
         avatar:
@@ -32,13 +30,11 @@ export const buttonVariants = cva(
         // List rows: they do not scale on press. Hover and selected use separate tokens.
         sidebar:
           "font-normal text-muted-foreground hover:bg-row-hover hover:text-foreground active:scale-100 aria-[current=page]:bg-row-selected aria-[current=page]:font-medium aria-[current=page]:text-row-selected-foreground",
-        // A property value that opens a picker, such as a task's assignee. Reads as text at rest.
+        // A property value that opens a picker, such as a task's assignee, or a listbox option
+        // row, such as a reference picker result. Reads as text at rest. An option's keyboard
+        // cursor is aria-selected; it is not a pressed or chosen state.
         property:
-          "justify-start font-normal hover:bg-row-hover focus-visible:bg-row-hover active:scale-100 aria-expanded:bg-row-hover",
-        // A listbox option row, such as a reference picker result. The keyboard cursor is
-        // aria-selected; it is not a pressed or chosen state.
-        option:
-          "justify-start font-normal hover:bg-row-hover active:scale-100 aria-selected:bg-row-highlight aria-selected:hover:bg-row-highlight",
+          "justify-start font-normal hover:bg-row-hover focus-visible:bg-row-hover active:scale-100 aria-expanded:bg-row-hover aria-selected:bg-row-highlight aria-selected:hover:bg-row-highlight",
         // A popover or combobox trigger that is a form field (task Assignee, Time zone). It has
         // the field boundary and height of Input and SelectTrigger. Inline values in a row or
         // inspector stay `property`.
@@ -74,7 +70,7 @@ export const buttonVariants = cva(
     compoundVariants: [
       { variant: "sidebar", size: "default", className: "gap-2 px-2" },
       // Option rows grow with a wrapped title and description.
-      { variant: "option", size: "default", className: "h-auto py-1.5" },
+      { variant: "property", size: "default", className: "h-auto py-1.5" },
     ],
     defaultVariants: {
       variant: "default",

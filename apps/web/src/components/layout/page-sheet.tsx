@@ -7,7 +7,7 @@ import {
   type ReactNode,
 } from "react";
 
-import { PageHeader } from "./page-header";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";

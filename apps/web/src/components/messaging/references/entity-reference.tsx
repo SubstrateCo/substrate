@@ -2,13 +2,13 @@ import type { TaskStatus } from "@substrate/contracts/tasks";
 
 import { Link } from "@tanstack/react-router";
 
-import { Spinner } from "../../ui/spinner";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import type { ReferenceKind } from "./reference-picker-view";
 import { entityKinds } from "@/components/context/entity-kinds";
 import { useHasPersonCard } from "@/components/messaging/people/person-card-context";
 import { PersonCardTarget } from "@/components/messaging/people/person-card-slot";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
+import { Spinner } from "@/components/ui/spinner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { plainReferenceText } from "@/lib/messaging/reference-token";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import { AtSign, LockKeyhole } from "lucide-react";

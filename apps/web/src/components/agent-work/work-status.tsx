@@ -1,4 +1,5 @@
 import { PendingButton } from "@/components/feedback/pending-button";
+import { toneText } from "@/components/feedback/tag";
 import { Pressable } from "@/components/ui/pressable";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { WorkTone } from "@/lib/agent-work/status";
@@ -52,16 +53,7 @@ export function WorkStatus({
             className="group/status flex max-w-full min-w-0 items-center gap-1.5 rounded-md px-1 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
           >
             <ToneIcon tone={tone} />
-            <span
-              className={cn(
-                "shrink-0 tabular-nums",
-                tone === "working" && "text-foreground",
-                tone === "attention" && "text-warning-text",
-                tone === "failed" && "text-destructive",
-              )}
-            >
-              {label}
-            </span>
+            <span className={cn("shrink-0 tabular-nums", toneText[tone])}>{label}</span>
             {tone === "working" && activity && (
               <span className="max-w-80 min-w-0 truncate">· {activity}</span>
             )}

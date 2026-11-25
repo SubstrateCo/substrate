@@ -1,7 +1,7 @@
 import type { ComponentProps } from "react";
 
-import { ResizablePanel } from "../../ui/resizable";
 import { panelId, usePageLayout } from "./page-layout-context";
+import { ResizablePanel } from "@/components/ui/resizable";
 import { cn } from "cn";
 
 // Main pane. It takes the space the sidebar and aside leave, down to a shared minimum.

@@ -5,7 +5,6 @@ import { Link } from "@tanstack/react-router";
 
 import { useEffect, useRef } from "react";
 
-import { OriginalBadge } from "../sources/meeting-provider";
 import { ReaderNotes } from "./reader-notes";
 import { ReaderOriginals } from "./reader-originals";
 import { ReaderTranscript } from "./reader-transcript";
@@ -15,6 +14,7 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageAside } from "@/components/layout/page-layout";
+import { OriginalBadge } from "@/components/meetings/sources/meeting-provider";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";

@@ -2,17 +2,17 @@ import { Link } from "@tanstack/react-router";
 
 import { ErrorState } from "../../feedback/error-state";
 import {
+  OrganizationSwitcherItem,
+  OrganizationSwitcherItemSkeleton,
+} from "./organization-switcher-item";
+import { SwitcherTrigger } from "@/components/organizations/switcher/switcher-trigger";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-} from "../../ui/dropdown-menu";
-import {
-  OrganizationSwitcherItem,
-  OrganizationSwitcherItemSkeleton,
-} from "./organization-switcher-item";
-import { SwitcherTrigger } from "@/components/organizations/switcher/switcher-trigger";
+} from "@/components/ui/dropdown-menu";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { Settings } from "lucide-react";
 

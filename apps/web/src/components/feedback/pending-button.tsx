@@ -1,7 +1,7 @@
 import { Children, cloneElement, isValidElement, type ComponentProps, type ReactNode } from "react";
 
-import { Button } from "../ui/button";
-import { Spinner } from "../ui/spinner";
+import { Button } from "@/components/ui/button";
+import { Spinner } from "@/components/ui/spinner";
 import { cn } from "cn";
 
 /**

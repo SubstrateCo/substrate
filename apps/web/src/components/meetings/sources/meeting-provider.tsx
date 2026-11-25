@@ -1,6 +1,7 @@
 import { providerNames, type MeetingProvider } from "@substrate/contracts/meetings";
 
 import { Button } from "@/components/ui/button";
+import { cva } from "class-variance-authority";
 import { cn } from "cn";
 import { AudioLines, Hexagon, NotebookPen, Pencil, Video } from "lucide-react";
 
@@ -12,6 +13,28 @@ const marks = {
   hex: { icon: Hexagon, color: "text-chart-3", fill: "bg-chart-3/15" },
 };
 
+const providerMarkVariants = cva("inline-grid shrink-0 place-items-center", {
+  variants: {
+    size: {
+      row: "size-4.5 rounded-md",
+      nav: "size-5.5 rounded-md",
+      record: "size-8 rounded-lg",
+    },
+  },
+  defaultVariants: { size: "nav" },
+});
+
+const providerMarkIconVariants = cva("", {
+  variants: {
+    size: {
+      row: "size-3",
+      nav: "size-3.5",
+      record: "size-4.75",
+    },
+  },
+  defaultVariants: { size: "nav" },
+});
+
 export function ProviderMark({
   provider,
   size = "nav",
@@ -21,24 +44,8 @@ export function ProviderMark({
 }) {
   const { icon: Icon, color, fill } = marks[provider];
   return (
-    <span
-      aria-hidden="true"
-      className={cn(
-        "inline-grid shrink-0 place-items-center",
-        color,
-        fill,
-        size === "record" ? "size-8 rounded-lg" : "rounded-md",
-        size === "row" && "size-4.5",
-        size === "nav" && "size-5.5",
-      )}
-    >
-      <Icon
-        className={cn(
-          size === "row" && "size-3",
-          size === "nav" && "size-3.5",
-          size === "record" && "size-4.75",
-        )}
-      />
+    <span aria-hidden="true" className={cn(providerMarkVariants({ size }), color, fill)}>
+      <Icon className={providerMarkIconVariants({ size })} />
     </span>
   );
 }

@@ -2,17 +2,17 @@ import type { PictureKind } from "@substrate/contracts/files/pictures";
 
 import { useCallback, useEffect, useRef, useState } from "react";
 
-import { Avatar, AvatarFallback, AvatarImage } from "../ui/avatar";
-import { Button } from "../ui/button";
-import { Field, FieldDescription } from "../ui/field";
-import { Image } from "../ui/image";
-import { Skeleton } from "../ui/skeleton";
-import { Spinner } from "../ui/spinner";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
 import { openPicture, pictureErrorMessage } from "./crop-image";
 import { FileUpload, FileUploadContent, FileUploadLayout } from "./file-upload";
 import { pictureAccept, pictureMaxSize } from "./file-validation";
 import { ImageCropDialog, type PictureUploadContext } from "./image-crop-dialog";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Button } from "@/components/ui/button";
+import { Field, FieldDescription } from "@/components/ui/field";
+import { Image } from "@/components/ui/image";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Spinner } from "@/components/ui/spinner";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { initials } from "@/lib/people/initials";
 import { ImageIcon, Trash2 } from "lucide-react";
 import { toast } from "sonner";

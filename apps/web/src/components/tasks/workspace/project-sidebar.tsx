@@ -3,12 +3,6 @@ import { Link, type LinkProps } from "@tanstack/react-router";
 import { useState, type Ref } from "react";
 
 import { SkeletonText } from "../../feedback/skeleton-text";
-import { Button } from "../../ui/button";
-import { buttonVariants } from "../../ui/button-variants";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
-import { Heading } from "../../ui/heading";
-import { Skeleton } from "../../ui/skeleton";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { ProjectIcon } from "../projects/project-icon";
 import type { Project } from "../types";
 import { ContentNotice } from "@/components/feedback/content-notice";
@@ -19,6 +13,12 @@ import {
   PageSidebarHeader,
 } from "@/components/layout/page-layout";
 import { actionRow, RowAction, RowActions } from "@/components/layout/row-actions";
+import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Heading } from "@/components/ui/heading";
+import { Skeleton } from "@/components/ui/skeleton";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { cn } from "cn";
 import { ChevronRight, Plus, RotateCcw } from "lucide-react";

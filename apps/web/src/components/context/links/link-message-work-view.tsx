@@ -5,8 +5,9 @@ import { useState } from "react";
 import { ErrorState } from "../../feedback/error-state";
 import { modalDialogProps } from "../../feedback/modal-dialog";
 import { PendingButton } from "../../feedback/pending-button";
-import { Button } from "../../ui/button";
-import { Command, CommandEmpty, CommandInput, CommandList } from "../../ui/command";
+import { LinkWorkItem, LinkWorkLoading } from "./link-work-item";
+import { Button } from "@/components/ui/button";
+import { Command, CommandEmpty, CommandInput, CommandList } from "@/components/ui/command";
 import {
   Dialog,
   DialogBody,
@@ -15,9 +16,8 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from "../../ui/dialog";
-import { Tabs, TabsList, TabsTrigger } from "../../ui/tabs";
-import { LinkWorkItem, LinkWorkLoading } from "./link-work-item";
+} from "@/components/ui/dialog";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { Link2, Plus } from "lucide-react";
@@ -160,7 +160,7 @@ export function LinkMessageWork({
                     <Button
                       key={item.id}
                       type="button"
-                      variant="secondary"
+                      variant="accent"
                       size="chip"
                       className="max-w-full"
                       disabled={pending}

@@ -5,13 +5,13 @@ import { Link } from "@tanstack/react-router";
 
 import { useRef, type ReactNode } from "react";
 
-import { CommandItem } from "../../ui/command";
 import { entityKinds } from "../entity-kinds";
 import { ChannelSearchResultContent } from "./channel-search-result";
 import { searchRowClass, SearchRowFrame } from "./search-row";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
+import { CommandItem } from "@/components/ui/command";
 import { formatFullTimestamp, formatRelativeTime } from "@/lib/format/date";
 import { conversationLabel } from "@/lib/messaging/conversations";
 import type { RecordLink } from "@/lib/navigation/record-links";

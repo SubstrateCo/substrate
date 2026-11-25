@@ -5,9 +5,15 @@ import { useId, useRef, useState } from "react";
 import { ConfirmDialog } from "../../feedback/confirm-dialog";
 import { PendingButton } from "../../feedback/pending-button";
 import { useNativeValidation } from "../../forms/use-native-validation";
-import { Field, FieldDescription, FieldError, FieldLabel } from "../../ui/field";
-import { Input } from "../../ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../../ui/select";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 export type InvitationRoleOption = {
   value: OrganizationRole;

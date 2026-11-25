@@ -1,7 +1,7 @@
-import { Button } from "../../ui/button";
-import { Kbd, KbdGroup } from "../../ui/kbd";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { composerFormats } from "./composer-formats";
+import { Button } from "@/components/ui/button";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 export function ComposerToolbar({
   pending,

@@ -3,7 +3,6 @@ import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 
 import { PendingButton } from "../../feedback/pending-button";
-import { Button } from "../../ui/button";
 import { assignableActors } from "../assignee/assignable";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { taskFormSchema } from "./task-form-validation";
@@ -11,6 +10,7 @@ import { TaskScheduleFields } from "./task-schedule-fields";
 import type { FormDialogEditor } from "@/components/feedback/form-dialog";
 import { FormMessage } from "@/components/feedback/form-message";
 import { FormTextField } from "@/components/forms/form-text-field";
+import { Button } from "@/components/ui/button";
 
 function useTaskForm({
   task,

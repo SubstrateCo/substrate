@@ -2,9 +2,9 @@ import { useState } from "react";
 
 import { PendingButton } from "../../feedback/pending-button";
 import { NativeField, NativeForm } from "../../forms/native-form";
-import { Button } from "../../ui/button";
 import { workspaceSlug } from "./workspace-slug";
 import { FormMessage } from "@/components/feedback/form-message";
+import { Button } from "@/components/ui/button";
 
 export function CreateOrganizationForm({
   pending = false,

@@ -49,7 +49,6 @@ const cardTitleVariants = cva("font-heading leading-snug font-medium", {
     size: {
       default: "text-base group-data-[size=sm]/card:text-sm",
       lg: "text-xl",
-      xl: "text-2xl",
     },
   },
   defaultVariants: {

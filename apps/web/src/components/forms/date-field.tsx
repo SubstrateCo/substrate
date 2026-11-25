@@ -1,8 +1,8 @@
 import { useId, type ReactNode } from "react";
 
-import { Button } from "../ui/button";
-import { Field, FieldDescription, FieldError, FieldLabel } from "../ui/field";
 import { TaskDueDatePicker } from "@/components/tasks/detail/task-due-date-picker";
+import { Button } from "@/components/ui/button";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { formatShortDate, parseDateOnly } from "@/lib/format/date";
 import { ChevronDown } from "lucide-react";
 

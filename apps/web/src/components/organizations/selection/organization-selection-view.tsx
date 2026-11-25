@@ -4,12 +4,12 @@ import { AuthFrame } from "../../auth/auth-frame";
 import { ErrorState } from "../../feedback/error-state";
 import { SkeletonText } from "../../feedback/skeleton-text";
 import { useFocusAfterRender } from "../../feedback/use-focus-after-render";
-import { Button } from "../../ui/button";
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible";
-import { Heading } from "../../ui/heading";
-import { Item } from "../../ui/item";
-import { Separator } from "../../ui/separator";
 import { WorkspaceTile } from "../workspace-tile";
+import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Heading } from "@/components/ui/heading";
+import { Item } from "@/components/ui/item";
+import { Separator } from "@/components/ui/separator";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { ChevronRight, Plus } from "lucide-react";
 

@@ -5,11 +5,11 @@ import type { ReactNode } from "react";
 import { AuthFrame } from "../../auth/auth-frame";
 import { AuthNavLink } from "../../auth/auth-link";
 import { ErrorState } from "../../feedback/error-state";
-import { LoadingState } from "../../feedback/loading-state";
 import { PendingButton } from "../../feedback/pending-button";
-import { Button } from "../../ui/button";
 import { WorkspaceTile } from "../workspace-tile";
 import { FormMessage } from "@/components/feedback/form-message";
+import { LoadingState } from "@/components/feedback/loading-state";
+import { Button } from "@/components/ui/button";
 import { roleLabel } from "@/lib/organizations/member-policy";
 
 export function AcceptInvitationScreen({

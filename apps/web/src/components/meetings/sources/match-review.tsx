@@ -5,7 +5,6 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useState } from "react";
 
-import { ProviderMark } from "./meeting-provider";
 import { OriginalText } from "./original-text";
 import { isAccessFailure } from "@/api/access-failure";
 import { decideMatch } from "@/api/meetings/requests";
@@ -15,6 +14,7 @@ import { FormMessage } from "@/components/feedback/form-message";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PageHeader } from "@/components/layout/page-header";
 import { Property, PropertyList } from "@/components/layout/record-section";
+import { ProviderMark } from "@/components/meetings/sources/meeting-provider";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { Item, ItemActions, ItemContent, ItemHeader, ItemMedia } from "@/components/ui/item";

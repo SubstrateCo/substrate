@@ -187,29 +187,17 @@ function DialogTitle({ className, ...props }: React.ComponentProps<typeof Dialog
   );
 }
 
-const dialogDescriptionVariants = cva(
-  "text-sm wrap-anywhere text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
-  {
-    variants: {
-      variant: {
-        default: "",
-        context: "line-clamp-2 wrap-anywhere",
-      },
-    },
-    defaultVariants: { variant: "default" },
-  },
-);
-
 function DialogDescription({
   className,
-  variant = "default",
   ...props
-}: React.ComponentProps<typeof DialogPrimitive.Description> &
-  VariantProps<typeof dialogDescriptionVariants>) {
+}: React.ComponentProps<typeof DialogPrimitive.Description>) {
   return (
     <DialogPrimitive.Description
       data-slot="dialog-description"
-      className={cn(dialogDescriptionVariants({ variant }), className)}
+      className={cn(
+        "text-sm wrap-anywhere text-muted-foreground *:[a]:underline *:[a]:underline-offset-3 *:[a]:hover:text-foreground",
+        className,
+      )}
       {...props}
     />
   );

@@ -11,10 +11,10 @@ import { Link } from "@tanstack/react-router";
 
 import { useMemo, type ReactNode } from "react";
 
-import { ProviderMark } from "../sources/meeting-provider";
 import { isAccessFailure } from "@/api/access-failure";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { PageHeader } from "@/components/layout/page-header";
+import { ProviderMark } from "@/components/meetings/sources/meeting-provider";
 import { AppTable, createAppColumnHelper, tableLink } from "@/components/table";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";

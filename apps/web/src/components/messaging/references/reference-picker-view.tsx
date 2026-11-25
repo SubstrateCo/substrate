@@ -4,10 +4,10 @@ import { taskStatusLabels, type TaskStatus } from "@substrate/contracts/tasks";
 import { useContext, useEffect, useId, useRef, useState } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "../../ui/tabs";
 import type { WorkspaceReference } from "./entity-reference";
 import { ReferencePickerAccessibility } from "./reference-picker-context";
 import { ReferencePickerLoadingOption, ReferencePickerOption } from "./reference-picker-option";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export type ReferenceKind = "task" | "project" | "person" | "agent" | "channel" | "thread";
 /** A picker tab: one kind, or "all" for a mixed list. */

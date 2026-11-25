@@ -139,7 +139,7 @@ export function TaskListToolbar({
       {compact ? (
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant={filtered || filters.sort !== "default" ? "secondary" : "outline"}>
+            <Button variant={filtered || filters.sort !== "default" ? "accent" : "outline"}>
               <SlidersHorizontal aria-hidden="true" />
               Filters
               {(filtered || filters.sort !== "default") && (

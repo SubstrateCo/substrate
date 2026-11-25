@@ -5,6 +5,7 @@ import { TurnTimelineLoading } from "./turn-timeline";
 import { PaneState } from "@/components/feedback/pane-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
+import { toneText } from "@/components/feedback/tag";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageAside, useAsideCovers } from "@/components/layout/page-layout";
 import { Timestamp } from "@/components/time/timestamp";
@@ -158,8 +159,7 @@ export function TurnTranscriptView({
               <span
                 className={cn(
                   "mr-1.5 max-w-20 truncate text-xs text-muted-foreground tabular-nums sm:max-w-32",
-                  tone === "attention" && "text-warning-text",
-                  tone === "failed" && "text-destructive",
+                  tone && toneText[tone],
                 )}
               >
                 {label}

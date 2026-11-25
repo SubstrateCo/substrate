@@ -1,11 +1,11 @@
 import { useRef, useState } from "react";
 
-import { Button } from "../../ui/button";
-import { Heading } from "../../ui/heading";
-import { Input } from "../../ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "../../ui/popover";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../../ui/tooltip";
 import { emojiCategories, recentEmojis, rememberEmoji, type Emoji } from "./emoji-data";
+import { Button } from "@/components/ui/button";
+import { Heading } from "@/components/ui/heading";
+import { Input } from "@/components/ui/input";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { SmilePlus } from "lucide-react";
 
 function EmojiGrid({

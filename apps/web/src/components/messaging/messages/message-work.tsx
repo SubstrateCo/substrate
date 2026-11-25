@@ -4,8 +4,8 @@ import type { TaskStatus } from "@substrate/contracts/tasks";
 import { useState } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
-import { Button } from "../../ui/button";
 import { MessageWorkTile } from "./message-work-tile";
+import { Button } from "@/components/ui/button";
 import type { RecordLink } from "@/lib/navigation/record-links";
 
 export type MessageWorkLink = {

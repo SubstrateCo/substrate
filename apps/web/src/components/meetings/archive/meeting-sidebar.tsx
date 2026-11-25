@@ -4,7 +4,6 @@ import { Link } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
-import { ProviderMark } from "../sources/meeting-provider";
 import { toneFill } from "@/components/feedback/tag";
 import {
   PageSidebar,
@@ -12,6 +11,7 @@ import {
   PageSidebarGroupTitle,
   PageSidebarHeader,
 } from "@/components/layout/page-layout";
+import { ProviderMark } from "@/components/meetings/sources/meeting-provider";
 import { Button } from "@/components/ui/button";
 import { SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { useMediaQuery } from "@/hooks/use-media-query";

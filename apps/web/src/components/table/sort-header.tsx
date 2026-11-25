@@ -1,5 +1,5 @@
-import { Button } from "../ui/button";
 import { useHeaderContext } from "./table";
+import { Button } from "@/components/ui/button";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 
 /** A sortable column label. The negative margin keeps the label at the cells' left edge. */

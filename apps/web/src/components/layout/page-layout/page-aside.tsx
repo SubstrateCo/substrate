@@ -1,8 +1,8 @@
 import { useLayoutEffect, useState, type ComponentProps } from "react";
 
-import { ResizableHandle, ResizablePanel } from "../../ui/resizable";
 import { panelId, usePageLayout } from "./page-layout-context";
 import { readPaneWidth } from "./pane-width";
+import { ResizableHandle, ResizablePanel } from "@/components/ui/resizable";
 import { cn } from "cn";
 
 // Trailing pane, such as a thread. Below `lg` it covers the content instead of sitting beside it.

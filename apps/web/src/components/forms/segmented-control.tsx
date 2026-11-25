@@ -1,4 +1,4 @@
-import { ToggleGroup, ToggleGroupItem } from "../ui/toggle-group";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import type { LucideIcon } from "lucide-react";
 
 export type SegmentedOption<T extends string> = {

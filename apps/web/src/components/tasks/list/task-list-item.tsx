@@ -11,6 +11,7 @@ import {
   taskRowDueDateClassName,
 } from "./task-list-layout";
 import { TaskStatusMenu } from "./task-status-menu";
+import { rowStateVariants, rowTitleVariants } from "@/components/layout/row-state";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { DueDate } from "@/components/time/due-date";
 import { Pressable } from "@/components/ui/pressable";
@@ -59,9 +60,8 @@ export function TaskListItem({
       data-selected={selected || undefined}
       className={cn(
         taskRowClassName,
-        selected
-          ? "bg-row-selected text-row-selected-foreground"
-          : "hover:bg-row-hover has-focus-visible:bg-row-hover",
+        rowStateVariants({ selected }),
+        !selected && "has-focus-visible:bg-row-hover",
       )}
     >
       <TaskStatusMenu
@@ -82,8 +82,7 @@ export function TaskListItem({
           <span
             className={cn(
               "line-clamp-2 wrap-anywhere @md:line-clamp-none @md:truncate",
-              selected && "font-medium",
-              closed && !selected && "text-muted-foreground",
+              rowTitleVariants({ state: closed ? "closed" : "read", selected }),
             )}
             title={task.title}
           >

@@ -1,15 +1,21 @@
 import { Fragment } from "react";
 
-import { Button } from "../ui/button";
+import { paginationPages } from "./pagination-pages";
+import { Button } from "@/components/ui/button";
 import {
   Pagination,
   PaginationContent,
   PaginationEllipsis,
   PaginationItem,
-} from "../ui/pagination";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { Tooltip, TooltipContent, TooltipTrigger } from "../ui/tooltip";
-import { paginationPages } from "./pagination-pages";
+} from "@/components/ui/pagination";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 export type PagerProps = {

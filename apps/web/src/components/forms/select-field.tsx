@@ -1,8 +1,14 @@
 import { useId, type ReactNode } from "react";
 
-import { Field, FieldDescription, FieldError, FieldLabel } from "../ui/field";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "../ui/select";
-import { Skeleton } from "../ui/skeleton";
+import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Radix items cannot use "" as a value, so an empty choice ("None", "Not set") uses this one.
 const empty = "__empty__";

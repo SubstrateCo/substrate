@@ -8,17 +8,13 @@ const avatarVariants = cva(
   "group/avatar relative flex size-8 shrink-0 rounded-full select-none after:absolute after:inset-0 after:rounded-full after:border after:border-border after:mix-blend-darken data-[size=lg]:size-10 data-[size=sm]:size-6 dark:after:mix-blend-lighten",
   {
     variants: {
-      // One rule for heads: a person is a circle with a neutral fill (`default`, `user`,
-      // `message` differ only in type size); an agent is a rounded square (`agent`); an
-      // organization is a rounded-square tile that is not an Avatar. No accent fills.
+      // One rule for heads: a person is a circle with a neutral fill (`default`; `user` only
+      // sets smaller initials); an agent is a rounded square (`agent`); an organization is a
+      // rounded-square tile that is not an Avatar. No accent fills. Initials follow `size`.
       variant: {
         default: "",
         user: "*:data-[slot=avatar-fallback]:text-xs",
-        message: "*:data-[slot=avatar-fallback]:text-sm",
         agent: "rounded-md *:rounded-md after:rounded-md",
-        catalog: "after:hidden *:data-[slot=avatar-fallback]:text-foreground",
-        editor:
-          "rounded-xl border border-primary/15 *:rounded-xl after:hidden *:data-[slot=avatar-fallback]:bg-accent *:data-[slot=avatar-fallback]:text-xl *:data-[slot=avatar-fallback]:font-medium *:data-[slot=avatar-fallback]:text-primary",
         picture: "overflow-hidden border border-border bg-muted after:hidden",
       },
     },

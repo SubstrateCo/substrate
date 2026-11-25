@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { AuthFrame } from "../auth/auth-frame";
 import { NonWorkspaceLayout } from "../theme/non-workspace-layout";
-import { Button } from "../ui/button";
+import { Button } from "@/components/ui/button";
 
 /** Full-page not-found screen in the guest frame. `homeLink` is the single primary action. */
 export function NotFound({ homeLink }: { homeLink: ReactNode }) {

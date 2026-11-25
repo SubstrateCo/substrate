@@ -2,13 +2,19 @@ import { revalidateLogic, useForm, useSelector } from "@tanstack/react-form";
 
 import { useState } from "react";
 
-import { Checkbox } from "../../ui/checkbox";
-import { Field, FieldContent, FieldDescription, FieldError, FieldLabel } from "../../ui/field";
 import { createConversationDraftSchema } from "./create-conversation-validation";
 import { ShareHistoryField } from "./share-history-field";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { FormTextField } from "@/components/forms/form-text-field";
 import { PeoplePicker } from "@/components/people/people-picker";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Field,
+  FieldContent,
+  FieldDescription,
+  FieldError,
+  FieldLabel,
+} from "@/components/ui/field";
 import type { Conversation } from "@/lib/messaging/conversations";
 import {
   invitedRecipients,

@@ -1,6 +1,6 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
-import { Button } from "../../ui/button";
+import { Button } from "@/components/ui/button";
 import { ArrowDown } from "lucide-react";
 
 export function MessageList({

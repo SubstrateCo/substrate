@@ -64,7 +64,7 @@ export function MessageItem({
           <span className="relative mt-0.5 h-fit shrink-0">
             <Avatar
               aria-hidden="true"
-              variant={message.authorType === "agent" ? "agent" : "message"}
+              variant={message.authorType === "agent" ? "agent" : "default"}
               className="size-9"
             >
               {message.authorImage && <AvatarImage src={message.authorImage} alt="" />}

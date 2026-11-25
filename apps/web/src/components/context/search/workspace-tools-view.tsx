@@ -2,9 +2,9 @@ import { useHotkey } from "@tanstack/react-hotkeys";
 
 import { useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 
-import { Command, CommandInput } from "../../ui/command";
-import { Kbd, KbdGroup } from "../../ui/kbd";
 import { useWorkspaceSearch } from "./workspace-search-context";
+import { Command, CommandInput } from "@/components/ui/command";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { cn } from "cn";
 
 export function WorkspaceTools({
