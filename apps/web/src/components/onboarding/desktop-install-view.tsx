@@ -4,17 +4,22 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { Skeleton } from "@/components/ui/skeleton";
+import { type InstallerPlatform, installerPlatformNames } from "@/lib/desktop/installer";
 import { ArrowUpRight, Download, Laptop } from "lucide-react";
 
+const downloadHref = (platform: InstallerPlatform) => `/desktop/download?platform=${platform}`;
+
 /**
- * The desktop app step. Installer availability decides the whole state: with an installer the
+ * The desktop app step. The installer for the viewer's OS decides the whole state: with one, the
  * download is primary; without one, continuing in the browser is primary. Opening an installed
- * app is always the secondary path.
+ * app is always the secondary path, and other installers and the browser are quiet links.
  */
 export function DesktopInstallView({
   openHref,
   browserLink,
-  windowsAvailable,
+  platform,
+  primary,
+  others,
   loading,
   error,
   onRetry,
@@ -22,31 +27,29 @@ export function DesktopInstallView({
 }: {
   openHref: string;
   browserLink: LinkProps;
-  windowsAvailable: boolean;
+  /** The viewer's OS, when the browser reports one we publish for. */
+  platform: InstallerPlatform | undefined;
+  /** The installer offered first. */
+  primary: InstallerPlatform | undefined;
+  /** Other published installers. */
+  others: InstallerPlatform[];
   loading: boolean;
   error: Error | null;
   onRetry: () => void;
   /** Whether the step shows its own title. Off when the page title already names the app. */
   heading?: boolean;
 }) {
-  const openInstalled = (
-    <Button asChild size="lg" variant="outline">
-      <a href={openHref} rel="noreferrer">
-        <ArrowUpRight aria-hidden="true" />
-        Open Substrate
-      </a>
-    </Button>
-  );
-  const continueInBrowser = (primary: boolean) => (
-    <Button asChild size="lg" variant={primary ? "default" : "outline"}>
-      <Link {...browserLink}>Continue in browser</Link>
-    </Button>
-  );
+  const browserPrimary = !loading && !error && !primary;
 
   let title = "Get the desktop app";
-  let description = "Install Substrate for Windows, then sign in with the same account.";
-  if (!loading && !error && !windowsAvailable) {
-    title = "The Windows app is coming soon";
+  let description = "Install Substrate, then sign in with the same account.";
+  if (primary === "mac")
+    description =
+      "Install Substrate for macOS on Apple silicon, then sign in with the same account.";
+  else if (primary)
+    description = `Install Substrate for ${installerPlatformNames[primary]}, then sign in with the same account.`;
+  else if (browserPrimary) {
+    title = `The ${platform ? installerPlatformNames[platform] : "desktop"} app is coming soon`;
     description = "Keep working in your browser for now. If you already have the app, open it.";
   }
 
@@ -91,20 +94,40 @@ export function DesktopInstallView({
         />
       )}
       <div className="flex flex-col gap-2">
-        {windowsAvailable ? (
+        {primary ? (
           <Button asChild size="lg">
-            <a href="/desktop/download" rel="noreferrer">
+            <a href={downloadHref(primary)} rel="noreferrer">
               <Download aria-hidden="true" />
-              Download for Windows
+              Download for {installerPlatformNames[primary]}
             </a>
           </Button>
         ) : (
-          !loading && !error && continueInBrowser(true)
+          browserPrimary && (
+            <Button asChild size="lg">
+              <Link {...browserLink}>Continue in browser</Link>
+            </Button>
+          )
         )}
-        {/* Keep the quieter paths below the primary action; share a row when space allows. */}
-        <div className="flex flex-col gap-2 *:flex-1 sm:flex-row">
-          {openInstalled}
-          {(windowsAvailable || error) && continueInBrowser(false)}
+        <Button asChild size="lg" variant="outline">
+          <a href={openHref} rel="noreferrer">
+            <ArrowUpRight aria-hidden="true" />
+            Open Substrate
+          </a>
+        </Button>
+        {/* Other installers and the browser stay available without competing with the download. */}
+        <div className="flex flex-wrap justify-center gap-x-4">
+          {others.map((other) => (
+            <Button key={other} asChild size="sm" variant="link">
+              <a href={downloadHref(other)} rel="noreferrer">
+                Download for {installerPlatformNames[other]}
+              </a>
+            </Button>
+          ))}
+          {!browserPrimary && !loading && (
+            <Button asChild size="sm" variant="link">
+              <Link {...browserLink}>Continue in browser</Link>
+            </Button>
+          )}
         </div>
       </div>
     </section>

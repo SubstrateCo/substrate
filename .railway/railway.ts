@@ -59,6 +59,8 @@ export default defineRailway(() => {
       GOOGLE_CLIENT_SECRET: preserve(),
       SUBSTRATE_WINDOWS_DOWNLOAD_URL:
         "https://github.com/SubstrateCo/substrate/releases/latest/download/Substrate-Setup.exe",
+      SUBSTRATE_MAC_DOWNLOAD_URL:
+        "https://github.com/SubstrateCo/substrate/releases/latest/download/Substrate-mac-arm64.dmg",
     },
   });
 

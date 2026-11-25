@@ -170,18 +170,20 @@ describe("server environment", () => {
     );
   });
 
-  test("the Windows installer link must be HTTPS without credentials", () => {
-    expect(parse({}).windowsDownloadURL).toBeUndefined();
-    expect(
-      parse({ SUBSTRATE_WINDOWS_DOWNLOAD_URL: "https://downloads.example.test/Substrate.exe" })
-        .windowsDownloadURL,
-    ).toBe("https://downloads.example.test/Substrate.exe");
+  test.each([
+    ["SUBSTRATE_WINDOWS_DOWNLOAD_URL", "windowsDownloadURL"],
+    ["SUBSTRATE_MAC_DOWNLOAD_URL", "macDownloadURL"],
+  ] as const)("the %s installer link must be HTTPS without credentials", (key, field) => {
+    expect(parse({})[field]).toBeUndefined();
+    expect(parse({ [key]: "https://downloads.example.test/Substrate" })[field]).toBe(
+      "https://downloads.example.test/Substrate",
+    );
     for (const value of [
       "http://downloads.example.test/setup.exe",
       "javascript:alert(1)",
       "https://user:password@downloads.example.test/setup.exe",
       "//downloads.example.test/setup.exe",
     ])
-      expect(() => parse({ SUBSTRATE_WINDOWS_DOWNLOAD_URL: value })).toThrow("HTTPS");
+      expect(() => parse({ [key]: value })).toThrow("HTTPS");
   });
 });

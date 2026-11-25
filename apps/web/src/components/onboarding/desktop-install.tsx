@@ -6,6 +6,7 @@ import type { LinkProps } from "@tanstack/react-router";
 import { DesktopInstallView } from "@/components/onboarding/desktop-install-view";
 import { safeRedirect } from "@/lib/auth/navigation";
 import { desktop } from "@/lib/desktop/identity";
+import { browserInstallerPlatform, chooseInstallers } from "@/lib/desktop/installer";
 import { desktopReleaseQueryOptions } from "@/queries/desktop/release";
 
 export function DesktopInstall({
@@ -20,11 +21,21 @@ export function DesktopInstall({
 }) {
   const release = useQuery(desktopReleaseQueryOptions());
   const path = desktopPath.safeParse(safeRedirect(destination));
+  const platform = browserInstallerPlatform(navigator);
+  const { primary, others } = chooseInstallers(
+    {
+      windows: release.data?.windowsAvailable ?? false,
+      mac: release.data?.macAvailable ?? false,
+    },
+    platform,
+  );
   return (
     <DesktopInstallView
       openHref={desktopLink(path.success ? path.data : "/dashboard", desktop.scheme)}
       browserLink={browserLink}
-      windowsAvailable={release.data?.windowsAvailable ?? false}
+      platform={platform}
+      primary={primary}
+      others={others}
       loading={release.isPending}
       error={release.error}
       onRetry={() => void release.refetch()}

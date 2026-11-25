@@ -53,15 +53,37 @@ describe("desktop releases", () => {
         desktopScheme: "substrate",
         webURL: "https://app.example.test",
         windowsDownloadURL: "https://downloads.example.test/Substrate.exe",
+        macDownloadURL: "https://downloads.example.test/Substrate-mac-arm64.dmg",
       }),
     );
     const release = await app.request("/release");
-    expect(await release.json()).toEqual({ success: true, data: { windowsAvailable: true } });
+    expect(await release.json()).toEqual({
+      success: true,
+      data: { windowsAvailable: true, macAvailable: true },
+    });
     const download = await app.request("/download?redirect=https://evil.example");
     expect(download.status).toBe(303);
     expect(download.headers.get("location")).toBe("https://downloads.example.test/Substrate.exe");
     expect(download.headers.get("Cache-Control")).toBe("no-store");
     expect(download.headers.get("Referrer-Policy")).toBe("no-referrer");
+    const mac = await app.request("/download?platform=mac");
+    expect(mac.status).toBe(303);
+    expect(mac.headers.get("location")).toBe(
+      "https://downloads.example.test/Substrate-mac-arm64.dmg",
+    );
+  });
+
+  test("rejects an unknown platform without redirecting", async () => {
+    const app = createDesktopRoutes(
+      createDesktopService({
+        desktopScheme: "substrate",
+        webURL: "https://app.example.test",
+        windowsDownloadURL: "https://downloads.example.test/Substrate.exe",
+      }),
+    );
+    const response = await app.request("/download?platform=linux");
+    expect(response.status).toBe(400);
+    expect(response.headers.get("location")).toBeNull();
   });
 
   test("does not advertise or redirect to an unpublished installer", async () => {
@@ -69,14 +91,14 @@ describe("desktop releases", () => {
       createDesktopService({
         desktopScheme: "substrate",
         webURL: "https://app.example.test",
-        windowsDownloadURL: undefined,
+        windowsDownloadURL: "https://downloads.example.test/Substrate.exe",
       }),
     );
     expect(await (await app.request("/release")).json()).toEqual({
       success: true,
-      data: { windowsAvailable: false },
+      data: { windowsAvailable: true, macAvailable: false },
     });
-    const response = await app.request("/download");
+    const response = await app.request("/download?platform=mac");
     expect(response.status).toBe(404);
     expect(response.headers.get("location")).toBeNull();
     expect(await response.json()).toMatchObject({ success: false, error: { code: "NOT_FOUND" } });

@@ -6,11 +6,16 @@ import type { z } from "zod";
 
 type DesktopPath = z.output<typeof desktopPath>;
 
+export type InstallerPlatform = "windows" | "mac";
+
 export interface DesktopConfig {
   desktopScheme: DesktopScheme;
   webURL: string;
   windowsDownloadURL?: string;
+  macDownloadURL?: string;
 }
+
+const platformNames: Record<InstallerPlatform, string> = { windows: "Windows", mac: "macOS" };
 
 export function openDesktop(path: DesktopPath, options: { scheme: DesktopScheme; webURL: string }) {
   const downloadURL = new URL("/download", options.webURL);
@@ -23,14 +28,25 @@ export function openDesktop(path: DesktopPath, options: { scheme: DesktopScheme;
 }
 
 export function createDesktopService(config: DesktopConfig) {
+  const installers: Record<InstallerPlatform, string | undefined> = {
+    windows: config.windowsDownloadURL,
+    mac: config.macDownloadURL,
+  };
   return {
     release() {
-      return success({ windowsAvailable: Boolean(config.windowsDownloadURL) });
+      return success({
+        windowsAvailable: Boolean(installers.windows),
+        macAvailable: Boolean(installers.mac),
+      });
     },
-    downloadURL() {
-      if (!config.windowsDownloadURL)
-        return publicFailure("NOT_FOUND", "The Windows installer is not available yet.");
-      return success(config.windowsDownloadURL);
+    downloadURL(platform: InstallerPlatform) {
+      const url = installers[platform];
+      if (!url)
+        return publicFailure(
+          "NOT_FOUND",
+          `The ${platformNames[platform]} installer is not available yet.`,
+        );
+      return success(url);
     },
     open(path: DesktopPath) {
       return openDesktop(path, {

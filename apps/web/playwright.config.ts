@@ -47,6 +47,7 @@ export default defineConfig({
         SUBSTRATE_API_URL: apiURL,
         SUBSTRATE_WEB_URL: baseURL,
         SUBSTRATE_WINDOWS_DOWNLOAD_URL: "https://downloads.example.test/Substrate.exe",
+        SUBSTRATE_MAC_DOWNLOAD_URL: "https://downloads.example.test/Substrate-mac-arm64.dmg",
         BETTER_AUTH_SECRET: "substrate-e2e-only-secret-not-for-production",
         GOOGLE_CLIENT_ID: "substrate-e2e-google-client",
         GOOGLE_CLIENT_SECRET: "substrate-e2e-google-secret",

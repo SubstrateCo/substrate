@@ -38,7 +38,7 @@ test("a visitor creates an organization before installing and can resume setup",
   );
   await expect(
     page.getByRole("link", { name: "Download for Windows", exact: true }),
-  ).toHaveAttribute("href", "/desktop/download");
+  ).toHaveAttribute("href", "/desktop/download?platform=windows");
   const teammate = `teammate-${id}@example.test`;
   await page.getByLabel("Email", { exact: true }).fill(teammate);
   await page.getByRole("button", { name: "Send invitation", exact: true }).click();
@@ -118,6 +118,21 @@ test("public setup remains usable on a narrow screen", async ({ page }) => {
   );
 });
 
+test.describe("on a Mac", () => {
+  test.use({
+    userAgent:
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+  });
+
+  test("downloads offer the macOS installer first and keep Windows available", async ({ page }) => {
+    await page.goto("/download");
+    const downloads = page.getByRole("link", { name: /^Download for / });
+    await expect(downloads).toHaveText(["Download for macOS", "Download for Windows"]);
+    await expect(downloads.first()).toHaveAttribute("href", "/desktop/download?platform=mac");
+    await expect(page.getByText(/for macOS on Apple silicon/)).toBeVisible();
+  });
+});
+
 test("public downloads preserve a safe destination and do not forward it to the installer host", async ({
   page,
 }) => {
@@ -129,7 +144,7 @@ test("public downloads preserve a safe destination and do not forward it to the 
   // The server's installer redirect is unit-tested; the page must not pass the destination on.
   await expect(
     page.getByRole("link", { name: "Download for Windows", exact: true }),
-  ).toHaveAttribute("href", "/desktop/download");
+  ).toHaveAttribute("href", "/desktop/download?platform=windows");
   await page.goto("/download?redirect=https%3A%2F%2Fevil.example");
   await expect(page.getByRole("link", { name: "Open Substrate", exact: true })).toHaveAttribute(
     "href",

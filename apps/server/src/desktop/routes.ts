@@ -14,11 +14,20 @@ export function createDesktopRoutes(service: DesktopService) {
       await next();
     })
     .get("/release", (c) => respond(c, service.release()))
-    .get("/download", (c) => {
-      const result = service.downloadURL();
-      if (!result.success) return respond(c, result);
-      return c.redirect(result.data, 303);
-    })
+    .get(
+      "/download",
+      // Without a platform, older links keep getting the Windows installer.
+      zValidator(
+        "query",
+        z.object({ platform: z.enum(["windows", "mac"]).default("windows") }),
+        validationHook,
+      ),
+      (c) => {
+        const result = service.downloadURL(c.req.valid("query").platform);
+        if (!result.success) return respond(c, result);
+        return c.redirect(result.data, 303);
+      },
+    )
     .get("/open", zValidator("query", z.object({ path: desktopPath }), validationHook), (c) => {
       const { link, browserURL, downloadURL } = service.open(c.req.valid("query").path);
       return c.html(

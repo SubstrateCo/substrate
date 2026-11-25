@@ -44,6 +44,7 @@ const services = createServices({
     desktopScheme: environment.desktopScheme,
     webURL: environment.webURL,
     windowsDownloadURL: environment.windowsDownloadURL,
+    macDownloadURL: environment.macDownloadURL,
   },
   calendar: {
     providers: calendarProviders,

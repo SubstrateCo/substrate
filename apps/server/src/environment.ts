@@ -104,6 +104,7 @@ const variables = z
     // Separates servers that share one Valkey, such as the e2e and development servers.
     REALTIME_CHANNEL: z.string().default("substrate:realtime:v1"),
     SUBSTRATE_WINDOWS_DOWNLOAD_URL: httpsURL.optional(),
+    SUBSTRATE_MAC_DOWNLOAD_URL: httpsURL.optional(),
     // Google OAuth client for calendar sync. Unset disables Google calendars.
     GOOGLE_CLIENT_ID: z.string().optional(),
     GOOGLE_CLIENT_SECRET: z.string().optional(),
@@ -183,6 +184,7 @@ const variables = z
       valkeyURL: env.VALKEY_URL,
       realtimeChannel: env.REALTIME_CHANNEL,
       windowsDownloadURL: env.SUBSTRATE_WINDOWS_DOWNLOAD_URL,
+      macDownloadURL: env.SUBSTRATE_MAC_DOWNLOAD_URL,
       calendarProviders: {
         google:
           env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET
