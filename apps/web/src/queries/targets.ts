@@ -2,6 +2,7 @@ import type { RealtimeEvent } from "@substrate/contracts/realtime";
 
 import type { Query, QueryClient, QueryKey } from "@tanstack/react-query";
 
+import type { SearchInput } from "./context/search";
 import { queryKeys } from "./keys";
 import type { MessagePageContext } from "@/api/context/links";
 
@@ -89,15 +90,17 @@ function discussesWork(
 }
 
 // A search without kinds searches "all", which includes messages.
-const messageSearchKinds = new Set(["all", "message", "thread", "conversation"]);
+const messageSearchKinds = new Set<SearchInput["kind"]>([
+  "all",
+  "message",
+  "thread",
+  "conversation",
+]);
 
 function searchesMessages(query: Query, prefixLength: number) {
   // SAFETY: searchesMessages targets only match search keys, which end with their input.
-  const input = query.queryKey[prefixLength] as
-    | { kind?: string; kinds?: readonly string[] }
-    | undefined;
-  if (typeof input !== "object" || input === null) return true;
-  return (input.kinds ?? [input.kind ?? "all"]).some((kind) => messageSearchKinds.has(kind));
+  const input = query.queryKey[prefixLength] as Pick<SearchInput, "kind" | "kinds"> | undefined;
+  return (input?.kinds ?? [input?.kind ?? "all"]).some((kind) => messageSearchKinds.has(kind));
 }
 
 export function queryTargetFilter(

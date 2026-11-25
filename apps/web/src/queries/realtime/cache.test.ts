@@ -3,6 +3,7 @@ import { advanceTimersAsync } from "@substrate/contracts/testing/timers";
 
 import { QueryClient, QueryObserver, type QueryKey } from "@tanstack/react-query";
 
+import type { SearchInput } from "../context/search";
 import { queryKeys } from "../keys";
 import { queryTargetFilter } from "../targets";
 import { createRealtimeCache, realtimeQueryTargets } from "./cache";
@@ -328,7 +329,10 @@ test("new messages refresh history, not conversation lists or loaded message con
 });
 
 test("new messages make only searches that can show messages stale", () => {
-  const search = (input: object) => [...queryKeys.search("org"), { query: "", ...input }];
+  const search = (input: Partial<SearchInput>) => [
+    ...queryKeys.search("org"),
+    { query: "", ...input },
+  ];
   const stale = [
     search({}),
     search({ kind: "all" }),
