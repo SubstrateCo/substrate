@@ -59,8 +59,8 @@ export function MessageItem({
   canPost?: boolean;
 }) {
   const linked = useSearch({ strict: false, select: (search) => search.messageId === message.id });
-  // A thread's root heads its own pane, so it is not marked as the link target there.
-  const highlighted = linked && !threadRoot;
+  // A top-level target opens as the root of the thread pane, which already marks it.
+  const highlighted = linked && !threadRoot && !!message.threadId;
   const [linking, setLinking] = useState(false);
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
