@@ -120,7 +120,8 @@ jobs:
         run: bun run --filter @substrate/desktop typecheck
       - name: Test the desktop app
         working-directory: apps/desktop
-        run: bun run test
+        # Tests use the local development origins, so drop the release origins from the env.
+        run: env -u SUBSTRATE_API_URL -u SUBSTRATE_WEB_URL -u S3_ENDPOINT bun run test
 
   prepare:
     name: Create draft release
