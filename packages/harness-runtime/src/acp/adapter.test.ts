@@ -288,6 +288,31 @@ test("form elicitation opens an input request and validates the response shape",
   await f.adapter.disconnect();
 });
 
+test("a request the agent withdraws closes on the host, and the turn goes on", async () => {
+  const f = await open({
+    defaultTurn: [
+      { elicitation: { message: "Name?", requestedSchema: schema, withdrawAfterMs: 50 } },
+      { text: "Continued without an answer" },
+    ],
+  });
+  const opened = f.next("request.opened");
+  const closed = f.next("request.closed");
+  const done = f.adapter.turn({ inputIds: ["a"], text: "go" }, { mode: "interactive" });
+  const request = await opened;
+  if (request.type !== "request.opened") throw new Error("unreachable");
+  expect(await closed).toEqual({ type: "request.closed", requestId: request.requestId });
+  expect(await done).toMatchObject({ status: "completed" });
+  expect(f.events.map((event) => event.body)).toContainEqual({
+    type: "text",
+    text: "Continued without an answer",
+  });
+  // The withdrawn request no longer takes an answer.
+  await rejects(f.adapter.respond(request.requestId, { action: "decline" }), {
+    code: "unknown-request",
+  });
+  await f.adapter.disconnect();
+});
+
 test("interrupt cancels pending requests and the turn ends interrupted", async () => {
   const f = await open({
     defaultTurn: [{ permission: { toolCallId: "t1" } }, { waitForCancel: true }],

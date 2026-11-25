@@ -1,6 +1,7 @@
 import {
   acpRequestData,
   acpRequestResponse,
+  asksForSecret,
   askRequestPayload,
   askQuestionId,
   agentAsk,
@@ -169,7 +170,7 @@ const form = acpRequestData.parse({
   },
 });
 
-test("form fields become questions, and unknown optional fields are skipped", () => {
+test("form fields become questions that the owner may skip unless required, and unknown optional fields are skipped", () => {
   const payload = normalizeAcpRequest("input", form);
   expect(payload).toEqual({
     type: "questions",
@@ -196,6 +197,7 @@ test("form fields become questions, and unknown optional fields are skipped", ()
         ],
         multiSelect: false,
         allowCustom: false,
+        optional: true,
       },
       {
         id: "note",
@@ -204,6 +206,7 @@ test("form fields become questions, and unknown optional fields are skipped", ()
         options: [],
         multiSelect: false,
         allowCustom: true,
+        optional: true,
       },
       {
         id: "notify",
@@ -215,6 +218,7 @@ test("form fields become questions, and unknown optional fields are skipped", ()
         ],
         multiSelect: false,
         allowCustom: false,
+        optional: true,
       },
       {
         id: "count",
@@ -231,6 +235,7 @@ test("form fields become questions, and unknown optional fields are skipped", ()
         options: [{ label: "Web", description: null }],
         multiSelect: true,
         allowCustom: false,
+        optional: true,
       },
     ],
   });
@@ -308,7 +313,158 @@ test("URL elicitations and forms with an unknown required field cannot be shown"
   ).toBeNull();
 });
 
-test("a response must pick an offered option and answer only asked questions", () => {
+// claude-agent-acp's AskUserQuestion form (dist/elicitation.js askUserQuestionsToCreateRequest).
+const askUserQuestion = acpRequestData.parse({
+  sessionId: "s1",
+  mode: "form",
+  message: "Please answer the following questions.",
+  requestedSchema: {
+    type: "object",
+    properties: {
+      question_0: {
+        type: "string",
+        title: "Database",
+        description: "Which database?",
+        oneOf: [
+          { const: "Postgres", title: "Postgres" },
+          { const: "SQLite", title: "SQLite", description: "Local only" },
+        ],
+      },
+      question_0_custom: { type: "string", title: "Other", description: "Type your own answer" },
+      question_1: {
+        type: "array",
+        title: "Targets",
+        description: "Where to ship?",
+        items: {
+          anyOf: [
+            { const: "Web", title: "Web" },
+            { const: "Desktop", title: "Desktop" },
+          ],
+        },
+      },
+      question_1_custom: { type: "string", title: "Other", description: "Add your own" },
+    },
+  },
+});
+
+test("an AskUserQuestion 'Other' field becomes the custom answer of its question", () => {
+  expect(normalizeAcpRequest("input", askUserQuestion)).toEqual({
+    type: "questions",
+    title: "Please answer the following questions.",
+    questions: [
+      {
+        id: "question_0",
+        header: "Database",
+        question: "Which database?",
+        options: [
+          { label: "Postgres", description: null },
+          { label: "SQLite", description: "Local only" },
+        ],
+        multiSelect: false,
+        allowCustom: true,
+        optional: true,
+      },
+      {
+        id: "question_1",
+        header: "Targets",
+        question: "Where to ship?",
+        options: [
+          { label: "Web", description: null },
+          { label: "Desktop", description: null },
+        ],
+        multiSelect: true,
+        allowCustom: true,
+        optional: true,
+      },
+    ],
+  });
+  expect(
+    acpRequestResponse("input", askUserQuestion, {
+      type: "questions",
+      answers: { question_0: ["MySQL"], question_1: ["Web", "Mobile"] },
+    }),
+  ).toEqual({
+    action: "accept",
+    content: { question_0_custom: "MySQL", question_1: ["Web"], question_1_custom: "Mobile" },
+  });
+  // Skipped questions are left out, as with the CLI's Skip.
+  expect(
+    acpRequestResponse("input", askUserQuestion, {
+      type: "questions",
+      answers: { question_0: ["Postgres"], question_1: [] },
+    }),
+  ).toEqual({ action: "accept", content: { question_0: "Postgres" } });
+});
+
+// codex-acp's request_user_input form (dist/index.js buildUserInputSchema).
+const userInput = acpRequestData.parse({
+  sessionId: "s1",
+  mode: "form",
+  message: "Codex needs your input to continue.",
+  requestedSchema: {
+    type: "object",
+    properties: {
+      plan: {
+        type: "string",
+        title: "Which plan?",
+        oneOf: [
+          { const: "Small", title: "Small" },
+          { const: "None of the above", title: "None of the above" },
+        ],
+        _meta: { codex: { isOther: true, isSecret: false } },
+      },
+      plan_note: {
+        type: "string",
+        title: "Additional answer or note",
+        _meta: { codex: { questionId: "plan", role: "user_note", isSecret: false } },
+      },
+    },
+    required: ["plan"],
+  },
+});
+
+test("a Codex note field joins its required question, and typed text answers it", () => {
+  const payload = normalizeAcpRequest("input", userInput)!;
+  expect(payload).toMatchObject({
+    type: "questions",
+    questions: [{ id: "plan", allowCustom: true }],
+  });
+  expect(payload.type === "questions" && payload.questions).toHaveLength(1);
+  expect(payload.type === "questions" && payload.questions[0]!.optional).toBeUndefined();
+  expect(
+    acpRequestResponse("input", userInput, {
+      type: "questions",
+      answers: { plan: ["Large, with backups"] },
+    }),
+  ).toEqual({ action: "accept", content: { plan_note: "Large, with backups" } });
+  expect(
+    acpRequestResponse("input", userInput, { type: "questions", answers: { plan: ["Small"] } }),
+  ).toEqual({ action: "accept", content: { plan: "Small" } });
+});
+
+test("forms that ask for a secret cannot be shown", () => {
+  const secret = acpRequestData.parse({
+    mode: "form",
+    message: "Sign in",
+    requestedSchema: {
+      properties: {
+        code: { type: "string", title: "Code", _meta: { codex: { isSecret: true } } },
+      },
+    },
+  });
+  const apiKey = acpRequestData.parse({
+    mode: "form",
+    message: "Connect",
+    requestedSchema: { properties: { key: { type: "string", title: "API key" } } },
+  });
+  for (const data of [secret, apiKey]) {
+    expect(asksForSecret(data)).toBe(true);
+    expect(normalizeAcpRequest("input", data)).toBeNull();
+  }
+  expect(asksForSecret(form)).toBe(false);
+});
+
+test("a response must pick an offered option, answer only asked questions, and answer required ones", () => {
   const approval: AgentRequestPayload = {
     type: "approval",
     title: "Allow?",
@@ -319,12 +475,25 @@ test("a response must pick an offered option and answer only asked questions", (
   expect(responseMatchesPayload(approval, { type: "approval", optionId: "other" })).toBe(false);
   expect(responseMatchesPayload(approval, { type: "questions", answers: {} })).toBe(false);
   const questions = normalizeAcpRequest("input", form)!;
+  expect(
+    responseMatchesPayload(questions, {
+      type: "questions",
+      answers: { env: ["A"], count: ["2"], note: [] },
+    }),
+  ).toBe(true);
+  expect(
+    responseMatchesPayload(questions, {
+      type: "questions",
+      answers: { env: ["A"], count: ["2"], q2: ["A"] },
+    }),
+  ).toBe(false);
+  // count is required: a missing or blank answer does not match.
   expect(responseMatchesPayload(questions, { type: "questions", answers: { env: ["A"] } })).toBe(
-    true,
-  );
-  expect(responseMatchesPayload(questions, { type: "questions", answers: { q2: ["A"] } })).toBe(
     false,
   );
+  expect(
+    responseMatchesPayload(questions, { type: "questions", answers: { env: ["A"], count: [" "] } }),
+  ).toBe(false);
 });
 
 test("proposals are never answered through respond", () => {

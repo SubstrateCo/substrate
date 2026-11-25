@@ -12,6 +12,7 @@ import { Kbd } from "@/components/ui/kbd";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   questionAnswer,
+  questionReady,
   questionsResponse,
   setQuestionCustom,
   toggleQuestionOption,
@@ -49,6 +50,7 @@ export function QuestionsRequest({
   const last = step === payload.questions.length - 1;
   const draft = drafts[question.id];
   const answered = questionAnswer(draft).length > 0;
+  const ready = questionReady(question, draft);
   const selected = draft?.selected;
   const firstSelection = selected?.[0];
   const secondSelection = selected?.[1];
@@ -56,6 +58,9 @@ export function QuestionsRequest({
     () => (question.multiSelect && selected && selected.length > 2 ? new Set(selected) : undefined),
     [question.multiSelect, selected],
   );
+  let nextLabel = last ? "Submit" : "Next";
+  const skipping = !answered && question.optional === true;
+  if (skipping) nextLabel = last ? "Skip and submit" : "Skip";
   const shortcuts = Math.min(question.options.length, 9);
   // Focus moves to the new question once it shows.
   const goTo = (next: number) => {
@@ -65,7 +70,7 @@ export function QuestionsRequest({
   const update = (draft: QuestionDraft) =>
     setDrafts((previous) => ({ ...previous, [question.id]: draft }));
   const next = () => {
-    if (!answered || pending) return;
+    if (!ready || pending) return;
     if (last) onSubmit(questionsResponse(payload.questions, drafts));
     else goTo(step + 1);
   };
@@ -105,9 +110,11 @@ export function QuestionsRequest({
     <div className="group/question grid gap-3" onKeyDown={onKeyDown}>
       <div className="grid gap-1">
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
-          {question.header && (
-            <span className="min-w-0 text-xs font-medium wrap-anywhere text-muted-foreground">
-              {question.header}
+          {(question.header || question.optional) && (
+            <span className="min-w-0 text-xs wrap-anywhere text-muted-foreground">
+              {question.header && <span className="font-medium">{question.header}</span>}
+              {question.header && question.optional && " · "}
+              {question.optional && "Optional"}
             </span>
           )}
           {payload.questions.length > 1 && (
@@ -195,11 +202,12 @@ export function QuestionsRequest({
         <PendingButton
           type="button"
           size="sm"
-          disabled={!answered}
+          variant={skipping ? "outline" : "default"}
+          disabled={!ready}
           pending={pending}
           onClick={next}
         >
-          {last ? "Submit" : "Next"}
+          {nextLabel}
         </PendingButton>
         {shortcuts > 1 && (
           <span

@@ -1,4 +1,9 @@
-import { questionsResponse, setQuestionCustom, toggleQuestionOption } from "./questions";
+import {
+  questionReady,
+  questionsResponse,
+  setQuestionCustom,
+  toggleQuestionOption,
+} from "./questions";
 import { requestDeadline, requestOutcome } from "./requests";
 import { request } from "./test-support";
 import { describe, expect, test } from "bun:test";
@@ -28,6 +33,15 @@ describe("question answers", () => {
     draft = toggleQuestionOption(draft, "B", true);
     draft = toggleQuestionOption(draft, "A", true);
     expect(draft).toEqual({ selected: ["B"], custom: "Extra" });
+  });
+
+  test("only optional questions let the owner go on without an answer", () => {
+    const required = questions[0]!;
+    const optional = { ...required, optional: true };
+    expect(questionReady(required, undefined)).toBe(false);
+    expect(questionReady(required, { selected: [], custom: "  " })).toBe(false);
+    expect(questionReady(required, { selected: ["A"], custom: "" })).toBe(true);
+    expect(questionReady(optional, undefined)).toBe(true);
   });
 
   test("submits every question, trimming typed answers and leaving unanswered ones empty", () => {

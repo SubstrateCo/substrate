@@ -167,6 +167,8 @@ const harnessEventBodySchema = z.discriminatedUnion("type", [
     kind: z.enum(["permission", "input"]),
     data: z.unknown(),
   }),
+  /** The native agent withdrew an open request, or it timed out, before the host answered. */
+  z.object({ type: z.literal("request.closed"), requestId: z.string() }),
   z.object({ type: z.literal("input.consumed"), inputId: z.string() }),
   z.object({ type: z.literal("usage.updated"), usage: usageSchema }),
   z.object({ type: z.literal("compaction") }),

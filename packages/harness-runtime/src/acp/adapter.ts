@@ -216,6 +216,10 @@ class AcpSession {
       // SAFETY: respond stores only the result of this request's own parse.
       return this.answers.get(requestId!) as R;
     } catch {
+      // The agent withdrew the request, or it timed out: the host's prompt is stale.
+      // oxlint-disable-next-line typescript/no-unnecessary-condition -- disconnect() sets closed while the request waits; the narrowing from the early return is stale.
+      if (requestId && !this.closed)
+        this.context.emit({ type: "request.closed", requestId }, this.scope());
       return request.cancelled();
     } finally {
       if (requestId) {

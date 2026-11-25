@@ -525,6 +525,74 @@ test("a blocking request opens on the server, gets the owner's answer, and expir
   ).toEqual(["delivered", "expired"]);
 });
 
+const nameForm = {
+  sessionId: "native",
+  mode: "form",
+  message: "Name?",
+  requestedSchema: { type: "object", properties: { name: { type: "string" } } },
+};
+
+test("an input request the owner cannot see is declined at once, and a secret says why", async () => {
+  const f = await started();
+  await f.message();
+  const turn = f.turns()[0]!;
+  await f.emit(turn.turnId, { type: "turn.started" });
+  await f.emit(turn.turnId, {
+    type: "request.opened",
+    requestId: "n1",
+    kind: "input",
+    data: { sessionId: "native", mode: "url", message: "Sign in", url: "https://example.com" },
+  });
+  expect(f.commands.at(-1)).toMatchObject({
+    type: "respond",
+    requestId: "n1",
+    response: { action: "decline" },
+  });
+  const secretForm = {
+    ...nameForm,
+    requestedSchema: { type: "object", properties: { token: { type: "string" } } },
+  };
+  await f.emit(turn.turnId, {
+    type: "request.opened",
+    requestId: "n2",
+    kind: "input",
+    data: secretForm,
+  });
+  expect(f.commands.at(-1)).toMatchObject({
+    type: "respond",
+    requestId: "n2",
+    response: { action: "decline" },
+  });
+  expect(f.posts.some((post) => post.method === "openRequest")).toBe(false);
+  expect((await f.store.turns.get(turn.turnId))!.status).not.toBe("waiting");
+  const errors = await f.store.events.ofKinds(turn.turnId, ["error"]);
+  expect(errors.map((event) => event.data.code)).toEqual(["unsupported_request", "secret_request"]);
+});
+
+test("a request the agent withdraws closes on the server and the turn runs again", async () => {
+  const f = await started();
+  await f.message();
+  const turn = f.turns()[0]!;
+  await f.emit(turn.turnId, { type: "turn.started" });
+  await f.emit(turn.turnId, {
+    type: "request.opened",
+    requestId: "n1",
+    kind: "input",
+    data: nameForm,
+  });
+  expect((await f.store.turns.get(turn.turnId))!.status).toBe("waiting");
+
+  await f.emit(turn.turnId, { type: "request.closed", requestId: "n1" });
+  expect(
+    f.posts.filter((post) => post.method === "closeRequest").map((post) => post.body.status),
+  ).toEqual(["cancelled"]);
+  expect((await f.store.turns.get(turn.turnId))!.status).toBe("running");
+  // The expiry no longer fires for it.
+  const commands = f.commands.length;
+  await f.advance(10 * 60_000);
+  expect(f.commands.slice(commands).some((command) => command.type === "respond")).toBe(false);
+});
+
 test("a burst of agent-work hints pulls once, and pulls answers only while a request is open", async () => {
   const f = await started();
   const calls = (method: string) => f.posts.filter((post) => post.method === method).length;

@@ -594,6 +594,9 @@ export function createTurnExecutor(
       case "request.opened":
         await deps.requests.opened(state, event);
         return;
+      case "request.closed":
+        await deps.requests.withdrawn(state, event.requestId);
+        return;
       case "input.consumed":
         await context.store.inbox.consumed(state.turnId, event.inputId, now, [
           { kind: "input_consumed", data: { inputId: event.inputId } },

@@ -9,6 +9,11 @@ export function questionAnswer(draft: QuestionDraft | undefined) {
   return [...(draft?.selected ?? []), ...(custom ? [custom] : [])];
 }
 
+/** The owner may go on once they answer, or at once when the question is optional. */
+export function questionReady(question: Questions[number], draft: QuestionDraft | undefined) {
+  return question.optional === true || questionAnswer(draft).length > 0;
+}
+
 export function questionsResponse(
   questions: Questions,
   drafts: Partial<Record<string, QuestionDraft>>,

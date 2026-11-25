@@ -58,7 +58,14 @@ export type FakeStep =
   | { usage: { used: number; size: number } }
   | { compaction: string }
   | { permission: { toolCallId: string; options?: PermissionOption[] } }
-  | { elicitation: { message: string; requestedSchema: ElicitationSchema } }
+  | {
+      elicitation: {
+        message: string;
+        requestedSchema: ElicitationSchema;
+        /** The agent withdraws the request with $/cancel_request after this delay. */
+        withdrawAfterMs?: number;
+      };
+    }
   /**
    * Sends one inner MCP request over `mcp/message` to the session's ACP-declared server with
    * this name, and records its outcome in record.mcp.
@@ -232,16 +239,31 @@ function fakeAgentApp(
               options: step.permission.options ?? permissionOptions,
             }),
           );
-        else if ("elicitation" in step)
-          record.elicitations.push(
-            await client.request("elicitation/create", {
-              sessionId,
-              mode: "form",
-              message: step.elicitation.message,
-              requestedSchema: step.elicitation.requestedSchema,
-            }),
-          );
-        else if ("mcp" in step) {
+        else if ("elicitation" in step) {
+          const withdraw = step.elicitation.withdrawAfterMs;
+          try {
+            record.elicitations.push(
+              await client.request(
+                "elicitation/create",
+                {
+                  sessionId,
+                  mode: "form",
+                  message: step.elicitation.message,
+                  requestedSchema: step.elicitation.requestedSchema,
+                },
+                withdraw === undefined
+                  ? undefined
+                  : {
+                      cancellationSignal: AbortSignal.timeout(withdraw),
+                      stopWaitingOnCancel: true,
+                    },
+              ),
+            );
+          } catch (error) {
+            if (withdraw === undefined) throw error;
+            record.elicitations.push({ action: "cancel" });
+          }
+        } else if ("mcp" in step) {
           const serverId = acpServers.get(sessionId)?.get(step.mcp.server) ?? step.mcp.server;
           try {
             record.mcp.push(

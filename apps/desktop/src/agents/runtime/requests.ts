@@ -1,6 +1,7 @@
 import {
   acpRequestData,
   acpRequestResponse,
+  asksForSecret,
   blockingRequestTimeoutMs,
   denyResponse,
   liveTurnStatuses,
@@ -92,15 +93,31 @@ export function createRequestBridge(context: RuntimeContext) {
       const payload = normalizeAcpRequest(event.kind, data);
       const now = context.now();
       if (!payload) {
+        // Nobody can answer it: decline now, so the agent goes on instead of waiting.
+        await context.harness
+          .execute({
+            type: "respond",
+            organizationId: context.organizationId,
+            sessionId: live.sessionId,
+            requestId: event.requestId,
+            response: event.kind === "permission" ? null : { action: "decline" },
+          })
+          .catch(() => context.log("Could not decline an agent request."));
+        const secret = event.kind === "input" && asksForSecret(data);
         await context.store.events.append(
           live.turnId,
           [
             {
               kind: "error",
-              data: {
-                code: "unsupported_request",
-                message: "The agent asked for input that Substrate cannot show.",
-              },
+              data: secret
+                ? {
+                    code: "secret_request",
+                    message: "The agent asked for a secret. Substrate does not collect secrets.",
+                  }
+                : {
+                    code: "unsupported_request",
+                    message: "The agent asked for input that Substrate cannot show.",
+                  },
             },
           ],
           now,
@@ -210,6 +227,32 @@ export function createRequestBridge(context: RuntimeContext) {
             .closeRequest(context.organizationId, answer.requestId, "orphaned")
             .catch(() => {});
       }
+    },
+    /**
+     * The agent withdrew a request, or it timed out natively: the owner can no longer answer it.
+     * A request the server is still opening is cancelled once it opens.
+     */
+    async withdrawn(live: LiveTurn, nativeRequestId: string) {
+      const entry = key(live.turnId, nativeRequestId);
+      const request = open.get(entry);
+      if (!request) return;
+      open.delete(entry);
+      request.timer();
+      if (!request.serverId) return;
+      await context.server
+        .closeRequest(context.organizationId, request.serverId, "cancelled")
+        .catch(() => context.log("Could not close an agent request."));
+      await context.store.events.append(
+        request.turnId,
+        [
+          { kind: "note", data: { text: "The agent withdrew its request." } },
+          { kind: "request_resolved", data: { requestId: request.serverId } },
+        ],
+        context.now(),
+      );
+      if (![...open.values()].some((other) => other.turnId === request.turnId))
+        await context.store.turns.running(request.turnId, context.now());
+      context.changed({ userAgentId: request.userAgentId, turnId: request.turnId });
     },
     /** The turn ended: its native callbacks are gone. Interrupted turns orphan their requests. */
     async closeTurn(turnId: string, status: "cancelled" | "orphaned" = "cancelled") {
