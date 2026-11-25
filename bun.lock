@@ -21,7 +21,7 @@
     },
     "apps/desktop": {
       "name": "@substrate/desktop",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "dependencies": {
         "@better-auth/core": "1.7.18",
         "@better-auth/electron": "catalog:auth",
