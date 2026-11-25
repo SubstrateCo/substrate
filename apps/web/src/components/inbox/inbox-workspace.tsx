@@ -125,17 +125,17 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
     setSelected(undefined);
     paging.reset();
   }
-  function closeReader() {
-    const key = selected && conversationKey(selected);
-    setSelected((current) => (current && conversationKey(current) === key ? undefined : current));
-    requestAnimationFrame(focusList);
-  }
   function focusList() {
     if (document.getElementById("inbox-reader-heading")) return;
     const opener = document
       .getElementById(`message-${selected?.id}`)
       ?.querySelector<HTMLButtonElement>("[data-mail-open]");
     (opener ?? field.current)?.focus();
+  }
+  function closeReader() {
+    const key = selected && conversationKey(selected);
+    setSelected((current) => (current && conversationKey(current) === key ? undefined : current));
+    requestAnimationFrame(focusList);
   }
   async function changeMessage(id: string, action: MailMessageAction) {
     const result = await api[action]({ ...scope, id });

@@ -51,9 +51,8 @@ function MailboxSettings({
       setNickname(nickname.trim());
     } catch {
       setError("Couldn’t save the nickname. Try again.");
-    } finally {
-      setPending(undefined);
     }
+    setPending(undefined);
   }
   async function reconnect(chooseClient: boolean) {
     setPending("reconnect");
@@ -64,9 +63,8 @@ function MailboxSettings({
         setError(`Choose the Google account for ${box.address}. This connection hasn’t changed.`);
     } catch {
       setError("Couldn’t reconnect Gmail. Try again.");
-    } finally {
-      setPending(undefined);
     }
+    setPending(undefined);
   }
   async function disconnect() {
     setPending("disconnect");
@@ -76,9 +74,8 @@ function MailboxSettings({
       setConfirm(false);
     } catch {
       setError("Couldn’t disconnect the mailbox. Try again.");
-    } finally {
-      setPending(undefined);
     }
+    setPending(undefined);
   }
   return (
     <section

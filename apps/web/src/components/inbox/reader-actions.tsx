@@ -38,9 +38,6 @@ export function ReaderActionBar({
   const writable = canChangeMail(mailbox);
   const unread = !!(message.flags & mailFlag.unread);
   const acted = useRef(false);
-  useReadDwell(readingElement, writable && unread && !pending && !confirm.value, () => {
-    if (!acted.current) void change("markRead");
-  });
   async function change(action: MailMessageAction) {
     acted.current = true;
     setError("");
@@ -54,10 +51,12 @@ export function ReaderActionBar({
       else confirm.close();
     } catch {
       setError("Couldn’t change the message. Try again.");
-    } finally {
-      setPending(false);
     }
+    setPending(false);
   }
+  useReadDwell(readingElement, writable && unread && !pending && !confirm.value, () => {
+    if (!acted.current) void change("markRead");
+  });
   return (
     <div className="grid min-w-0 gap-1">
       <div role="group" aria-label="Message actions" className="flex flex-wrap items-center gap-1">

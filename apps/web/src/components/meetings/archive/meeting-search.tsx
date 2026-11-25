@@ -35,9 +35,8 @@ export function MeetingSearchField({
     input.current?.focus();
   });
   const search = (
-    <div
+    <search
       data-local-search
-      role="search"
       aria-label="Meeting archive"
       className="relative mx-auto flex w-full items-center gap-1.5 text-foreground md:max-w-105"
     >
@@ -116,7 +115,7 @@ export function MeetingSearchField({
         <TooltipContent>Search workspace</TooltipContent>
       </Tooltip>
       <ArchiveTitleTools />
-    </div>
+    </search>
   );
   return localSearchTarget ? createPortal(search, localSearchTarget) : search;
 }

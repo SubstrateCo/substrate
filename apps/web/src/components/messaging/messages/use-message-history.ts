@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { useEffect, useState } from "react";
+import { useEffect, useEffectEvent, useState } from "react";
 
 import { queryKeys } from "@/queries/keys";
 import { useInvalidateLatestMessages, useSendingMessage } from "@/queries/messaging/messages";
@@ -106,9 +106,13 @@ export function useMessageHistory({
   // Sending shows the newest messages, also from an older page, as in other chat apps.
   const sending = useSendingMessage(organizationId, conversationId, threadId);
   const onOlderPage = !!current.beforeMessageId || !!current.aroundMessageId;
+  const followSend = useEffectEvent(() => {
+    if (onOlderPage) onLatest();
+  });
+  // Move only when a send starts.
   useEffect(() => {
-    if (sending && onOlderPage) onLatest();
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- Move only when a send starts.
+    // oxlint-disable-next-line react/set-state-in-effect -- A send starts in the mutation cache. The latest page must be invalidated before the move so it refetches on mount.
+    if (sending) followSend();
   }, [sending]);
 
   return {

@@ -39,9 +39,8 @@ export function ConnectMailbox({
           setError(
             "Couldn’t connect Gmail. Check that the selected file is a Google Desktop app client and try again.",
           );
-        } finally {
-          setPending(false);
         }
+        setPending(false);
       }}
     >
       <Field>

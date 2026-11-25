@@ -21,9 +21,8 @@ export function LabelSettings({ box, ...actions }: { box: Mailbox } & LabelActio
       await actions.onLabelVisibility(box.id, { area: "mailbox", visible });
     } catch {
       setFailed(true);
-    } finally {
-      setPending(false);
     }
+    setPending(false);
   }
   return (
     <Collapsible>

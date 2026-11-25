@@ -69,13 +69,12 @@ export function SelectableMessageList({
       remaining = batch.rows.filter((row) => !done.has(row.id));
     } catch {
       // A bridge interruption can leave provider outcomes unknown. Keep the exact targets for retry.
-    } finally {
-      setChecked(new Set(remaining.map(conversationKey)));
-      setFailed(remaining.length ? { ...batch, rows: remaining } : undefined);
-      setPending(false);
-      confirm.close();
-      if (!remaining.length) selectPage.current?.focus();
     }
+    setChecked(new Set(remaining.map(conversationKey)));
+    setFailed(remaining.length ? { ...batch, rows: remaining } : undefined);
+    setPending(false);
+    confirm.close();
+    if (!remaining.length) selectPage.current?.focus();
   }
   function start(batch: Batch) {
     if (pending || !batch.rows.length || blocked(batch.rows).length) return;

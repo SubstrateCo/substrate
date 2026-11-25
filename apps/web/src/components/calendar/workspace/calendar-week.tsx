@@ -2,7 +2,7 @@ import type { CalendarEventSummary } from "@substrate/contracts/calendar";
 
 import { Link, type LinkProps } from "@tanstack/react-router";
 
-import { useLayoutEffect, useRef } from "react";
+import { useEffectEvent, useLayoutEffect, useRef } from "react";
 
 import { compareEvents, eventEnded, eventOnDay, eventTitle } from "@/lib/calendar/days";
 import {
@@ -55,16 +55,16 @@ export function CalendarWeek({
   const scrollMinutes = initialScrollMinutes(columns.flatMap(({ placed }) => placed));
   const hasAllDay = columns.some(({ allDay }) => allDay.length > 0);
   const weekKey = days[0]?.getTime();
-  useLayoutEffect(() => {
+  const scrollToStart = useEffectEvent(() => {
     const element = scroller.current;
     if (element)
       element.scrollTop = Math.max(
         0,
         (element.scrollHeight * scrollMinutes) / dayMinutes - hourLabelOffset,
       );
-    // Scroll once per week shown, not on every refresh of its events.
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- scrollMinutes changes with events.
-  }, [weekKey]);
+  });
+  // Scroll once per week shown, not on every refresh of its events.
+  useLayoutEffect(() => scrollToStart(), [weekKey]);
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-x-auto">
       <div className="flex min-h-0 min-w-xl flex-1 flex-col">

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useEffectEvent, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -49,7 +49,7 @@ export function MessageList({
   const scrollToLatest = () => {
     if (container.current) container.current.scrollTop = container.current.scrollHeight;
   };
-  useLayoutEffect(() => {
+  const position = useEffectEvent(() => {
     const node = container.current;
     if (!node || !positionReady) return;
     if (!positioned.current) {
@@ -63,19 +63,22 @@ export function MessageList({
     else if (!olderPage && !showedOlderPage.current) setUnseen(true);
     // Setting the same scroll position fires no scroll event, so measure here too.
     measure();
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- Position again only when the newest message changes or the first position becomes known.
-  }, [lastId, positionReady]);
+  });
+  // Position again only when the newest message changes or the first position becomes known.
+  useLayoutEffect(() => position(), [lastId, positionReady]);
   // Runs after the effect above, so it still sees the page the previous render showed.
   useLayoutEffect(() => {
     showedOlderPage.current = olderPage;
   });
-  // Sending a message goes to the newest messages and follows them, as in other chat apps.
-  useLayoutEffect(() => {
-    if (!sending) return;
-    follow.current = true;
-    setUnseen(false);
+  const followLatest = useEffectEvent(() => {
     scrollToLatest();
-    // oxlint-disable-next-line react-hooks/exhaustive-deps -- Move only when a send starts.
+    // Measure now so following, and the cleared notice, do not wait for the scroll event.
+    measure();
+  });
+  // Sending a message goes to the newest messages and follows them, as in other chat apps.
+  // Move only when a send starts.
+  useLayoutEffect(() => {
+    if (sending) followLatest();
   }, [sending]);
   const showLatest = away && !olderPage;
   return (

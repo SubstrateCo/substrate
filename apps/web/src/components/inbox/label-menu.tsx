@@ -43,10 +43,9 @@ export function LabelMenu({
     try {
       await work;
     } catch {
-      toast.error("Couldn’t save the label settings. Try again.");
-    } finally {
-      setSaving(false);
+      toast.error("Couldn't save the label settings. Try again.");
     }
+    setSaving(false);
   }
   return (
     <DropdownMenu
