@@ -2,8 +2,7 @@
 # and update feeds (latest.yml, latest-mac.yml) to this repository. Installed apps
 # read updates anonymously from that repository with electron-updater.
 #
-# Repository variables:
-#   SUBSTRATE_API_URL, SUBSTRATE_WEB_URL, S3_ENDPOINT  Public HTTPS origins built into the app.
+# Public HTTPS origins built into the app are set in the workflow env below.
 # Repository secrets:
 #   DESKTOP_RELEASE_APP_ID, DESKTOP_RELEASE_APP_PRIVATE_KEY  GitHub App installed on the source
 #     repo with Contents and Pull requests: read and write, and Checks and Commit statuses: read.
@@ -27,6 +26,11 @@ on:
 
 permissions:
   contents: read
+
+env:
+  SUBSTRATE_API_URL: https://api.substrateco.xyz
+  SUBSTRATE_WEB_URL: https://app.substrateco.xyz
+  S3_ENDPOINT: https://t3.storageapi.dev
 
 # One release at a time, so two runs never race on the same draft.
 concurrency:
@@ -94,16 +98,12 @@ jobs:
     timeout-minutes: 20
     steps:
       - name: Check inputs and settings
-        env:
-          SUBSTRATE_API_URL: ${{ vars.SUBSTRATE_API_URL }}
-          SUBSTRATE_WEB_URL: ${{ vars.SUBSTRATE_WEB_URL }}
-          S3_ENDPOINT: ${{ vars.S3_ENDPOINT }}
         run: |
           failed=0
           for name in SUBSTRATE_API_URL SUBSTRATE_WEB_URL S3_ENDPOINT; do
             value="${!name}"
             if [ -z "$value" ]; then
-              echo "::error::Set the repository variable $name (Settings > Secrets and variables > Actions > Variables)."
+              echo "::error::Set $name in the workflow env."
               failed=1
             elif ! [[ "$value" =~ ^https://[^/[:space:]]+/?$ ]]; then
               echo "::error::$name must be an HTTPS origin without a path, for example https://api.example.com. Got: $value"
@@ -179,9 +179,6 @@ jobs:
     timeout-minutes: 45
     env:
       VERSION: ${{ needs.source.outputs.version }}
-      SUBSTRATE_API_URL: ${{ vars.SUBSTRATE_API_URL }}
-      SUBSTRATE_WEB_URL: ${{ vars.SUBSTRATE_WEB_URL }}
-      S3_ENDPOINT: ${{ vars.S3_ENDPOINT }}
     defaults:
       run:
         shell: bash
