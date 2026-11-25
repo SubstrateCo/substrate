@@ -22,6 +22,7 @@ export function MessageItem({
   onReact,
   pending = false,
   onThread,
+  unreadReplies,
   body,
   editor,
   actions,
@@ -44,6 +45,8 @@ export function MessageItem({
   onReact?: (emoji: string) => void;
   pending?: boolean;
   onThread?: (id: string) => void;
+  /** Replies in this message's thread that the viewer has not read. */
+  unreadReplies?: number;
   body?: ReactNode;
   actions?: ReactNode;
   renderReaction?: (reaction: Message["reactions"][number]) => ReactNode;
@@ -100,6 +103,7 @@ export function MessageItem({
         onReact={onReact}
         pending={pending}
         onThread={onThread}
+        unreadReplies={unreadReplies}
         renderReaction={renderReaction}
       />
       {children}

@@ -59,11 +59,14 @@ export function ConversationPane({
   const target = useMessageTarget(organizationId, conversation.id, messageId);
   const [addingMembers, setAddingMembers] = useState(false);
   const [removingMember, setRemovingMember] = useState<HeaderMember | null>(null);
-  const { messages, history, loadOlder, timeline, unread } = useConversationTimeline({
-    organizationId,
-    conversationId: conversation.id,
-    aroundMessageId: target.data?.root.id,
-  });
+  const { messages, history, loadOlder, timeline, unread } = useConversationTimeline(
+    {
+      organizationId,
+      conversationId: conversation.id,
+      aroundMessageId: target.data?.root.id,
+    },
+    messageId && !turnId ? target.data?.root.id : undefined,
+  );
   const resource = resourceState(messages);
   let messageContent;
   if (target.error)
@@ -256,11 +259,14 @@ function ConversationThreadAside({
   );
 }
 
-function useConversationTimeline(options: Parameters<typeof useMessageHistory>[0]) {
+function useConversationTimeline(
+  options: Parameters<typeof useMessageHistory>[0],
+  openThreadId?: string,
+) {
   const { messages, history, loadOlder } = useMessageHistory(options);
   const timeline = messages.data ?? [];
   // Read before the read position can move, so the divider marks what was new on opening.
-  const opening = useOpeningUnread(options.organizationId, options.conversationId);
+  const opening = useOpeningUnread(options.organizationId, options.conversationId, openThreadId);
   // The conversation whose newest message is in view; a pane reused for another one starts unseen.
   const [latestVisibleIn, setLatestVisibleIn] = useState<string>();
   // Only mark the conversation read when the current result reaches its newest message and the
@@ -283,6 +289,7 @@ function useConversationTimeline(options: Parameters<typeof useMessageHistory>[0
     timeline,
     unread: {
       firstUnreadMessageId: opening.messageId,
+      unreadReplies: opening.unreadReplies,
       positionReady: opening.ready,
       onLatestVisibleChange: (visible: boolean) =>
         setLatestVisibleIn(visible ? options.conversationId : undefined),

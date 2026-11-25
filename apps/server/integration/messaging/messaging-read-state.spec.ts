@@ -40,7 +40,13 @@ test("conversation read positions are persistent, monotonic, and scoped to the r
     return (await response.json()).data;
   };
   expect(await counts()).toEqual([
-    { conversationId, unreadCount: 2, mentionCount: 0, firstUnreadMessageId: first },
+    {
+      conversationId,
+      unreadCount: 2,
+      mentionCount: 0,
+      firstUnreadMessageId: first,
+      unreadReplyThreadIds: [],
+    },
   ]);
   for (const messageId of [last, first]) {
     const response = await member.request.post("/api/v1/messaging/read", {
@@ -52,7 +58,13 @@ test("conversation read positions are persistent, monotonic, and scoped to the r
   expect(await counts()).toEqual([]);
   const next = await send("new unread");
   expect(await counts()).toEqual([
-    { conversationId, unreadCount: 1, mentionCount: 0, firstUnreadMessageId: next },
+    {
+      conversationId,
+      unreadCount: 1,
+      mentionCount: 0,
+      firstUnreadMessageId: next,
+      unreadReplyThreadIds: [],
+    },
   ]);
   expect(
     (await request.get("/api/v1/messaging/unread", { params: { organizationId } })).status(),

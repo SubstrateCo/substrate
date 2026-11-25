@@ -16,6 +16,7 @@ const unread = (conversationId: string, firstUnreadMessageId: string, mentionCou
   unreadCount: 1,
   mentionCount,
   firstUnreadMessageId,
+  unreadReplyThreadIds: [],
 });
 
 test("external unread counts require individual consent and an active organization connection", async () => {

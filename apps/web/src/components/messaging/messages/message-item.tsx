@@ -45,6 +45,7 @@ export function MessageItem({
   threadRoot = false,
   organizationId,
   onThread,
+  unreadReplies,
   context,
   canPost = true,
 }: {
@@ -53,6 +54,7 @@ export function MessageItem({
   threadRoot?: boolean;
   organizationId: string;
   onThread?: (id: string) => void;
+  unreadReplies?: number;
   context: MessageContextState;
   canPost?: boolean;
 }) {
@@ -176,6 +178,7 @@ export function MessageItem({
             message.authorType === "agent" ? <AgentWorkStatus messageId={message.id} /> : undefined
           }
           onThread={onThread}
+          unreadReplies={unreadReplies}
           onReact={canPost ? react : undefined}
           pending={reaction.isPending}
         >

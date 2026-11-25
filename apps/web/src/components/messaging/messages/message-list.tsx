@@ -23,6 +23,7 @@ export function MessageList({
   olderPage,
   canPost = true,
   firstUnreadMessageId,
+  unreadReplies,
   positionReady,
   onLatestVisibleChange,
 }: {
@@ -39,6 +40,8 @@ export function MessageList({
   canPost?: boolean;
   /** The "New" divider goes above this message. */
   firstUnreadMessageId?: string | null;
+  /** Unread replies per thread root. */
+  unreadReplies?: ReadonlyMap<string, number>;
   positionReady?: boolean;
   onLatestVisibleChange?: (visible: boolean) => void;
 }) {
@@ -71,6 +74,7 @@ export function MessageList({
             grouped={grouped}
             organizationId={organizationId}
             onThread={onThread}
+            unreadReplies={unreadReplies?.get(message.id)}
             canPost={canPost}
             data={contextById.get(message.id)}
             loading={context.isPending}
@@ -89,6 +93,7 @@ function MessageRow({
   grouped,
   organizationId,
   onThread,
+  unreadReplies,
   data,
   loading,
   error,
@@ -99,6 +104,7 @@ function MessageRow({
   grouped: boolean;
   organizationId: string;
   onThread?: (id: string) => void;
+  unreadReplies?: number;
   data?: MessagePageContext;
   loading: boolean;
   error: Error | null;
@@ -111,6 +117,7 @@ function MessageRow({
       grouped={grouped}
       organizationId={organizationId}
       onThread={onThread}
+      unreadReplies={unreadReplies}
       canPost={canPost}
       context={{ data, loading, error, onRetry: () => refetch() }}
     />

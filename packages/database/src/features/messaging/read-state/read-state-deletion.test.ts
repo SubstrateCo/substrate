@@ -16,6 +16,7 @@ test("deleting an unread message removes its unread count", async () => {
       unreadCount: 1,
       mentionCount: 0,
       firstUnreadMessageId: sent.id,
+      unreadReplyThreadIds: [],
     },
   ]);
   await alice.deleteMessage(sent.id);

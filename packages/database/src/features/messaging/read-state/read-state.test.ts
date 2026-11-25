@@ -25,6 +25,7 @@ const unread = (conversationId: string, unreadCount: number, firstUnreadMessageI
   unreadCount,
   mentionCount: 0,
   firstUnreadMessageId,
+  unreadReplyThreadIds: [],
 });
 
 test("read positions persist, exclude own messages, and never move backwards", async () => {
@@ -72,10 +73,37 @@ test("unread thread replies count but are not the timeline's first unread messag
       unreadCount: 1,
       mentionCount: 0,
       firstUnreadMessageId: null,
+      unreadReplyThreadIds: [root.id],
     },
   ]);
   const next = await alice.sendMessage(conversation.id, "next");
-  expect(await reads().unreadCounts()).toEqual([unread(conversation.id, 2, next.id)]);
+  expect(await reads().unreadCounts()).toEqual([
+    { ...unread(conversation.id, 2, next.id), unreadReplyThreadIds: [root.id] },
+  ]);
+});
+
+test("unread replies name their thread once per reply and skip read, own, and deleted replies", async () => {
+  await f.verifyEmails();
+  const alice = f.messaging("alice");
+  const bob = f.messaging("bob");
+  const channel = await alice.createConversation({ kind: "channel", name: "Launch" });
+  await bob.joinConversation(channel.id);
+  const busy = await alice.sendMessage(channel.id, "busy root");
+  const quiet = await alice.sendMessage(channel.id, "quiet root");
+  const read = await alice.sendMessage(channel.id, "read reply", busy.id);
+  await mark(channel.id, read.id);
+  await bob.sendMessage(channel.id, "own reply", busy.id);
+  await alice.sendMessage(channel.id, "first unread", busy.id);
+  const removed = await alice.sendMessage(channel.id, "deleted reply", quiet.id);
+  await alice.deleteMessage(removed.id);
+  await alice.sendMessage(channel.id, "second unread", busy.id);
+  expect(await reads().unreadCounts()).toMatchObject([
+    { unreadCount: 2, unreadReplyThreadIds: [busy.id, busy.id] },
+  ]);
+  // Alice wrote every reply Bob has not read, and has read Bob's.
+  expect(await reads("alice").unreadCounts()).toMatchObject([
+    { unreadCount: 1, unreadReplyThreadIds: [busy.id] },
+  ]);
 });
 
 test("mention counts include only the reader's unread mentions and follow edits and deletions", async () => {
@@ -90,7 +118,13 @@ test("mention counts include only the reader's unread mentions and follow edits 
   await bob.sendMessage(channel.id, `@[person:${f.alice}] and @[person:${f.bob}] own`);
   const counts = await reads().unreadCounts();
   expect(counts).toEqual([
-    { conversationId: channel.id, unreadCount: 3, mentionCount: 2, firstUnreadMessageId: plain.id },
+    {
+      conversationId: channel.id,
+      unreadCount: 3,
+      mentionCount: 2,
+      firstUnreadMessageId: plain.id,
+      unreadReplyThreadIds: [],
+    },
   ]);
   // Alice has read her own messages; Bob's message is her one unread mention.
   expect(await reads("alice").unreadCounts()).toMatchObject([{ unreadCount: 1, mentionCount: 1 }]);

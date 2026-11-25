@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 
+import { badgeCount, CountBadge } from "@/components/feedback/count-badge";
 import { EmojiPicker } from "@/components/messaging/composer/emoji-picker";
 import type { Message } from "@/components/messaging/types";
 import { Button } from "@/components/ui/button";
@@ -64,15 +65,19 @@ export function MessageReactions({
   onReact,
   pending,
   onThread,
+  unreadReplies = 0,
   renderReaction,
 }: {
   message: Message;
   onReact?: (emoji: string) => void;
   pending: boolean;
   onThread?: (id: string) => void;
+  /** Replies the viewer has not read, marked so they can go straight to the thread. */
+  unreadReplies?: number;
   renderReaction?: (reaction: Message["reactions"][number]) => ReactNode;
 }) {
   const replies = onThread ? message.replyCount : 0;
+  const repliesLabel = `${replies} ${replies === 1 ? "reply" : "replies"}`;
   if (!message.reactions.length && !replies) return null;
   return (
     <div className="mt-1 flex flex-wrap items-center gap-1">
@@ -95,9 +100,18 @@ export function MessageReactions({
         );
       })}
       {!!replies && (
-        <Button type="button" size="xs" variant="link" onClick={() => onThread?.(message.id)}>
+        <Button
+          type="button"
+          size="xs"
+          variant="link"
+          aria-label={unreadReplies ? `${repliesLabel}, ${unreadReplies} new` : undefined}
+          onClick={() => onThread?.(message.id)}
+        >
           <MessageSquare aria-hidden="true" />
-          {`${replies} ${replies === 1 ? "reply" : "replies"}`}
+          {repliesLabel}
+          {!!unreadReplies && (
+            <CountBadge aria-hidden>{`${badgeCount(unreadReplies)} new`}</CountBadge>
+          )}
         </Button>
       )}
     </div>

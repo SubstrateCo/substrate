@@ -72,6 +72,62 @@ test("ordinary DMs alert outside messaging and opening them persists the read po
   await expect(row.getByLabel("1 unread message", { exact: true })).toHaveCount(0);
 });
 
+test("the timeline marks the thread with unread replies until it is opened", async ({
+  actors,
+  client,
+}) => {
+  const { sender, member } = actors;
+  const channel = await conversation(sender, [member.email]);
+  const say = (body: string, threadId?: string) =>
+    post<{ id: string }>(sender, "messaging/messages", {
+      conversationId: channel.id,
+      body,
+      threadId,
+    });
+  const quiet = await say("Quiet root");
+  const busy = await say("Busy root");
+  const read = await say("Already read reply", quiet.id);
+  const marked = await member.request.post("/api/v1/messaging/read", {
+    data: { organizationId: member.organizationId, conversationId: channel.id, messageId: read.id },
+  });
+  expect(marked.ok()).toBe(true);
+  await say("Unread reply", busy.id);
+  // Reading this newer timeline message moves the read position past the reply.
+  await say("Later update");
+
+  const reader = await client(member);
+  const { page } = reader;
+  await visit(reader, channel.id);
+  const log = page.getByRole("log", { name: "Messages", exact: true });
+  const root = (body: string) => log.getByRole("article").filter({ hasText: body });
+  const unreadThread = root("Busy root").getByRole("button", {
+    name: "1 reply, 1 new",
+    exact: true,
+  });
+  await expect(unreadThread).toBeVisible();
+  await expect(
+    root("Quiet root").getByRole("button", { name: "1 reply", exact: true }),
+  ).toBeVisible();
+  // The conversation is read, but the thread stays marked until the reader opens it.
+  await expect(conversationButton(page, channel.name).getByLabel(/unread/)).toHaveCount(0);
+  await expect(unreadThread).toBeVisible();
+
+  await unreadThread.click();
+  await expect(
+    page
+      .getByRole("complementary", { name: "Thread", exact: true })
+      .getByText("Unread reply", { exact: true }),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "Close thread", exact: true }).click();
+  await expect(
+    root("Busy root").getByRole("button", { name: "1 reply", exact: true }),
+  ).toBeVisible();
+  await page.reload();
+  await expect(
+    root("Busy root").getByRole("button", { name: "1 reply", exact: true }),
+  ).toBeVisible();
+});
+
 test("a conversation opens at a stable New divider and mentions show a badge until the newest message is seen", async ({
   actors,
   client,
@@ -104,7 +160,7 @@ test("a conversation opens at a stable New divider and mentions show a badge unt
   await visit(reader, quiet.id);
   const row = conversationButton(page, channel.name);
   await expect(row.getByLabel("1 mention, 32 unread messages", { exact: true })).toBeVisible();
-  await expect(row.getByText("1", { exact: true })).toBeVisible();
+  await expect(row.getByText("@1", { exact: true })).toBeVisible();
 
   await row.click();
   const log = page.getByRole("log", { name: "Messages", exact: true });

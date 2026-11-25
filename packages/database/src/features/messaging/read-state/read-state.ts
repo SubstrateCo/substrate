@@ -39,6 +39,11 @@ export function readOperations(
           firstUnreadMessageId: sql<string | null>`(array_agg(${messagingMessages.id}
             ORDER BY ${messagingMessages.createdAt}, ${messagingMessages.id})
             FILTER (WHERE ${messagingMessages.threadId} IS NULL))[1]`,
+          // The root of each unread thread reply, once per reply, so the timeline can mark the
+          // threads that hold them.
+          unreadReplyThreadIds: sql<string[]>`coalesce(array_agg(${messagingMessages.threadId}::text
+            ORDER BY ${messagingMessages.createdAt}, ${messagingMessages.id})
+            FILTER (WHERE ${messagingMessages.threadId} IS NOT NULL), '{}')`,
         })
         .from(messagingConversations)
         .innerJoin(

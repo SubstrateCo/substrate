@@ -3,6 +3,7 @@ import { Link, type LinkProps } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { ConversationKindIcon } from "./conversation-kind-icon";
+import { badgeCount, CountBadge } from "@/components/feedback/count-badge";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";
@@ -117,25 +118,23 @@ function ConversationSidebarIcon({ conversation }: { conversation: Conversation 
   );
 }
 
-/** A mention badge replaces the unread count; the row stays bold either way. */
+/** A mention badge, marked with @, replaces the unread count; the row stays bold either way. */
 function ConversationUnreadBadge({ conversation }: { conversation: Conversation }) {
   const { mentionCount, unreadCount } = conversation;
+  const unread = `${unreadCount} unread ${unreadCount === 1 ? "message" : "messages"}`;
   if (mentionCount)
     return (
-      <span
-        className="ml-auto min-w-5 shrink-0 rounded-full bg-primary px-1.5 text-center text-xs leading-5 font-medium text-primary-foreground tabular-nums"
-        aria-label={`${mentionCount} ${mentionCount === 1 ? "mention" : "mentions"}, ${unreadCount} unread ${unreadCount === 1 ? "message" : "messages"}`}
+      <CountBadge
+        className="ml-auto"
+        aria-label={`${mentionCount} ${mentionCount === 1 ? "mention" : "mentions"}, ${unread}`}
       >
-        {mentionCount > 99 ? "99+" : mentionCount}
-      </span>
+        @{badgeCount(mentionCount)}
+      </CountBadge>
     );
   if (!unreadCount) return null;
   return (
-    <span
-      className="ml-auto shrink-0 text-xs font-medium tabular-nums"
-      aria-label={`${unreadCount} unread ${unreadCount === 1 ? "message" : "messages"}`}
-    >
-      {unreadCount > 99 ? "99+" : unreadCount}
-    </span>
+    <CountBadge className="ml-auto" aria-label={unread}>
+      {badgeCount(unreadCount)}
+    </CountBadge>
   );
 }

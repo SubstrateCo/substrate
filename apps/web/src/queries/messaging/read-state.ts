@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 
 import { markConversationRead, unreadCounts } from "@/api/messaging/read-state";
 import { queryKeys } from "@/queries/keys";
+import { unreadRepliesByThread } from "@/queries/messaging/unread-replies";
 
 export const unreadCountsOptions = (organizationId: string) =>
   queryOptions({
@@ -16,18 +17,57 @@ export const unreadCountsOptions = (organizationId: string) =>
  * The conversation's first unread timeline message when it opened, or `null` when nothing was
  * unread. It stays the same while the conversation is open, so the "New" divider does not move as
  * the read position does. Mark the conversation read only once `ready` is true.
+ *
+ * `unreadReplies` counts the unread replies of each thread root, from `unreadRepliesByThread`.
  */
-export function useOpeningUnread(organizationId: string, conversationId: string) {
+export function useOpeningUnread(
+  organizationId: string,
+  conversationId: string,
+  openThreadId?: string,
+) {
   const unread = useQuery(unreadCountsOptions(organizationId));
-  const [opening, setOpening] = useState<{ conversationId: string; messageId: string | null }>();
-  if (opening?.conversationId === conversationId)
-    return { ready: true, messageId: opening.messageId };
+  const [opening, setOpening] = useState<{
+    conversationId: string;
+    messageId: string | null;
+    replyThreadIds: string[];
+    openedThreadIds: string[];
+  }>();
+  const row = unread.data?.find((item) => item.conversationId === conversationId);
+  if (opening?.conversationId === conversationId) {
+    if (openThreadId && !opening.openedThreadIds.includes(openThreadId))
+      setOpening({ ...opening, openedThreadIds: [...opening.openedThreadIds, openThreadId] });
+    return {
+      ready: true,
+      messageId: opening.messageId,
+      unreadReplies: unreadRepliesByThread({
+        opening: opening.replyThreadIds,
+        live: row?.unreadReplyThreadIds ?? [],
+        opened: opening.openedThreadIds,
+        openThreadId,
+      }),
+    };
+  }
   // A failed count shows no divider; it must not keep the conversation unread.
-  if (unread.isPending) return { ready: false, messageId: null };
-  const messageId =
-    unread.data?.find((row) => row.conversationId === conversationId)?.firstUnreadMessageId ?? null;
-  setOpening({ conversationId, messageId });
-  return { ready: true, messageId };
+  if (unread.isPending)
+    return { ready: false, messageId: null, unreadReplies: new Map<string, number>() };
+  const messageId = row?.firstUnreadMessageId ?? null;
+  const replyThreadIds = row?.unreadReplyThreadIds ?? [];
+  setOpening({
+    conversationId,
+    messageId,
+    replyThreadIds,
+    openedThreadIds: openThreadId ? [openThreadId] : [],
+  });
+  return {
+    ready: true,
+    messageId,
+    unreadReplies: unreadRepliesByThread({
+      opening: replyThreadIds,
+      live: replyThreadIds,
+      opened: [],
+      openThreadId,
+    }),
+  };
 }
 
 // Reading a historical page or a background window does not advance the read position.
