@@ -18,7 +18,6 @@ import {
 } from "@/components/messaging/composer/use-composer-draft";
 import { Field } from "@/components/ui/field";
 import { InputGroup, InputGroupAddon } from "@/components/ui/input-group";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import { cn } from "cn";
 import { Send } from "lucide-react";
@@ -130,7 +129,7 @@ export function Composer({
     >
       <Field>
         <Popover open={references && !!renderReferences} onOpenChange={setReferences}>
-          <InputGroup variant="composer" className="group/composer overflow-hidden">
+          <InputGroup variant="composer" className="overflow-hidden">
             <PopoverAnchor asChild>
               <div
                 ref={anchor}
@@ -296,7 +295,7 @@ function ComposerSendControls({
         nearLimit ? "contents @lg:flex" : "flex",
       )}
     >
-      {nearLimit ? (
+      {nearLimit && (
         <span
           id={limitId}
           aria-live="polite"
@@ -308,15 +307,6 @@ function ComposerSendControls({
           {overBy > 0
             ? `Remove ${overBy.toLocaleString("en-US")} ${overBy === 1 ? "character" : "characters"} to send`
             : `${(messageMaxLength - draft.length).toLocaleString("en-US")} characters left`}
-        </span>
-      ) : (
-        <span className="hidden truncate text-xs font-normal text-muted-foreground opacity-0 transition-opacity group-focus-within/composer:opacity-100 motion-reduce:transition-none @lg:inline">
-          <Kbd>Enter</Kbd> to {submitLabel.toLowerCase()} ·{" "}
-          <KbdGroup>
-            <Kbd>Shift</Kbd>
-            <Kbd>Enter</Kbd>
-          </KbdGroup>{" "}
-          for a new line · <Kbd>@</Kbd> to reference
         </span>
       )}
       {secondaryAction}
