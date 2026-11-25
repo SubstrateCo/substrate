@@ -1,6 +1,7 @@
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ArrowDown } from "lucide-react";
 
 export function MessageList({
@@ -8,6 +9,7 @@ export function MessageList({
   header,
   footer,
   olderPage = false,
+  sending = false,
   positionReady = true,
   onLatestVisibleChange,
   children,
@@ -18,6 +20,8 @@ export function MessageList({
   /** Floats over the bottom edge without taking space. */
   footer?: ReactNode;
   olderPage?: boolean;
+  /** The person is sending a message here. */
+  sending?: boolean;
   /**
    * The first scroll waits for this. It opens at the "New" divider when there is one, otherwise at
    * the newest message.
@@ -31,12 +35,19 @@ export function MessageList({
   const follow = useRef(true);
   const positioned = useRef(false);
   const [away, setAway] = useState(false);
+  // A newer message arrived while the person was scrolled up.
+  const [unseen, setUnseen] = useState(false);
+  const showedOlderPage = useRef(olderPage);
   const measure = () => {
     const node = container.current;
     if (!node) return;
     follow.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100;
     setAway(!follow.current);
+    if (follow.current) setUnseen(false);
     onLatestVisibleChange?.(follow.current);
+  };
+  const scrollToLatest = () => {
+    if (container.current) container.current.scrollTop = container.current.scrollHeight;
   };
   useLayoutEffect(() => {
     const node = container.current;
@@ -48,10 +59,25 @@ export function MessageList({
         ? node.scrollTop + divider.getBoundingClientRect().top - node.getBoundingClientRect().top
         : node.scrollHeight;
     } else if (follow.current) node.scrollTop = node.scrollHeight;
+    // Moving to or from an older page changes the newest message too, but nothing new arrived.
+    else if (!olderPage && !showedOlderPage.current) setUnseen(true);
     // Setting the same scroll position fires no scroll event, so measure here too.
     measure();
     // oxlint-disable-next-line react-hooks/exhaustive-deps -- Position again only when the newest message changes or the first position becomes known.
   }, [lastId, positionReady]);
+  // Runs after the effect above, so it still sees the page the previous render showed.
+  useLayoutEffect(() => {
+    showedOlderPage.current = olderPage;
+  });
+  // Sending a message goes to the newest messages and follows them, as in other chat apps.
+  useLayoutEffect(() => {
+    if (!sending) return;
+    follow.current = true;
+    setUnseen(false);
+    scrollToLatest();
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- Move only when a send starts.
+  }, [sending]);
+  const showLatest = away && !olderPage;
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
       <div
@@ -64,23 +90,35 @@ export function MessageList({
         {header}
         {children}
       </div>
-      {(footer || away) && (
+      {(footer || (showLatest && unseen)) && (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
           {footer}
-          {away && !olderPage && (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="pointer-events-auto"
-              onClick={() => {
-                if (container.current) container.current.scrollTop = container.current.scrollHeight;
-              }}
-            >
-              <ArrowDown aria-hidden="true" /> Back to latest
-            </Button>
+          {showLatest && unseen && (
+            <span className="pointer-events-auto rounded-md shadow-floating">
+              <Button type="button" variant="outline" size="sm" onClick={scrollToLatest}>
+                <ArrowDown aria-hidden="true" /> New messages
+              </Button>
+            </span>
           )}
         </div>
+      )}
+      {showLatest && !unseen && (
+        <span className="absolute right-4 bottom-3 rounded-md shadow-floating">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                type="button"
+                variant="outline"
+                size="icon-sm"
+                aria-label="Scroll to latest"
+                onClick={scrollToLatest}
+              >
+                <ArrowDown />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Scroll to latest</TooltipContent>
+          </Tooltip>
+        </span>
       )}
     </div>
   );

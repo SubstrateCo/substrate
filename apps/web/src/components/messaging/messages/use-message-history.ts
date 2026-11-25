@@ -1,9 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { queryKeys } from "@/queries/keys";
-import { useInvalidateLatestMessages } from "@/queries/messaging/messages";
+import { useInvalidateLatestMessages, useSendingMessage } from "@/queries/messaging/messages";
 import { historyPageSize } from "@/queries/messaging/new-messages";
 import { messagesQueryOptions } from "@/queries/messaging/options";
 
@@ -94,11 +94,28 @@ export function useMessageHistory({
     request && messages.isFetching && messages.dataUpdatedAt < request.at
       ? request.kind
       : undefined;
+  const onLatest = () => {
+    void invalidateLatest();
+    setPosition({
+      ...current,
+      beforeMessageId: undefined,
+      aroundMessageId: undefined,
+      request: { kind: "latest", at: Date.now() },
+    });
+  };
+  // Sending shows the newest messages, also from an older page, as in other chat apps.
+  const sending = useSendingMessage(organizationId, conversationId, threadId);
+  const onOlderPage = !!current.beforeMessageId || !!current.aroundMessageId;
+  useEffect(() => {
+    if (sending && onOlderPage) onLatest();
+    // oxlint-disable-next-line react-hooks/exhaustive-deps -- Move only when a send starts.
+  }, [sending]);
 
   return {
     messages,
     history: {
       pending,
+      sending,
       hasOlder:
         messages.data?.length === historyPageSize &&
         !messages.data.some((message) => message.id === current.oldestId),
@@ -107,15 +124,7 @@ export function useMessageHistory({
         (!!latest.data?.length &&
           !!messages.data &&
           latest.data.at(-1)?.id !== messages.data.at(-1)?.id),
-      onLatest: () => {
-        void invalidateLatest();
-        setPosition({
-          ...current,
-          beforeMessageId: undefined,
-          aroundMessageId: undefined,
-          request: { kind: "latest", at: Date.now() },
-        });
-      },
+      onLatest,
     },
     loadOlder: (messageId: string | undefined) =>
       setPosition({

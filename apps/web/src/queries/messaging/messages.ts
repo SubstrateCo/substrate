@@ -1,8 +1,28 @@
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useIsMutating, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { invalidateSentMessage, updateSentMessageHistory } from "./mutations";
 import { messagesQueryOptions } from "./options";
 import { sendMessage } from "@/api/messaging/requests";
+import { queryKeys } from "@/queries/keys";
+
+const sendMessageKey = (organizationId: string, conversationId: string, threadId?: string) => [
+  ...queryKeys.messages(organizationId, conversationId, threadId),
+  "send",
+];
+
+/** Whether this window is sending a message to the conversation or thread. */
+export function useSendingMessage(
+  organizationId: string,
+  conversationId: string,
+  threadId?: string,
+) {
+  return (
+    useIsMutating({
+      mutationKey: sendMessageKey(organizationId, conversationId, threadId),
+      exact: true,
+    }) > 0
+  );
+}
 
 export function useInvalidateLatestMessages(
   organizationId: string,
@@ -26,6 +46,7 @@ export function useSendMessage(
 ) {
   const client = useQueryClient();
   return useMutation({
+    mutationKey: sendMessageKey(organizationId, conversationId, threadId),
     mutationFn: async ({
       body,
       attachmentFileIds,

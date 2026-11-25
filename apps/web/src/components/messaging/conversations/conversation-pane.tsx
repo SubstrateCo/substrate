@@ -83,6 +83,7 @@ export function ConversationPane({
         organizationId={organizationId}
         conversationId={conversation.id}
         olderPage={history.hasPrevious}
+        sending={history.sending}
         canPost={conversation.canPost}
         header={<OlderMessages {...history} onOlder={() => loadOlder(timeline[0]?.id)} />}
         footer={<JumpToLatest {...history} />}

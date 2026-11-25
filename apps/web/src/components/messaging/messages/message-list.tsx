@@ -21,6 +21,7 @@ export function MessageList({
   footer,
   previousDate,
   olderPage,
+  sending,
   canPost = true,
   firstUnreadMessageId,
   unreadReplies,
@@ -37,6 +38,8 @@ export function MessageList({
   footer?: ReactNode;
   previousDate?: Message["createdAt"];
   olderPage?: boolean;
+  /** The person is sending a message here. */
+  sending?: boolean;
   canPost?: boolean;
   /** The "New" divider goes above this message. */
   firstUnreadMessageId?: string | null;
@@ -59,6 +62,7 @@ export function MessageList({
       header={header}
       footer={footer}
       olderPage={olderPage}
+      sending={sending}
       positionReady={positionReady}
       onLatestVisibleChange={onLatestVisibleChange}
     >

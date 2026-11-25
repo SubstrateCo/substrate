@@ -98,6 +98,7 @@ export function ThreadPane({
               organizationId={organizationId}
               conversationId={conversationId}
               olderPage={history.hasPrevious}
+              sending={history.sending}
               canPost={canPost}
               previousDate={root?.createdAt}
               header={
