@@ -102,6 +102,15 @@ export const emojiCategories: { name: string; emojis: Emoji[] }[] = [
   },
 ];
 
+const emojiByCharacter = new Map(
+  emojiCategories.flatMap((category) => category.emojis).map((item) => [item.emoji, item]),
+);
+
+/** The named catalog entry for an emoji, or undefined when it is not in the picker. */
+export function findEmoji(emoji: string): Emoji | undefined {
+  return emojiByCharacter.get(emoji);
+}
+
 const recentKey = "substrate:recent-emojis";
 const recentLimit = 8;
 

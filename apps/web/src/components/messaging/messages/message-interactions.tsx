@@ -2,14 +2,16 @@ import type { ReactNode } from "react";
 
 import { badgeCount, CountBadge } from "@/components/feedback/count-badge";
 import { EmojiPicker } from "@/components/messaging/composer/emoji-picker";
+import { useQuickReactions } from "@/components/messaging/composer/quick-reactions";
 import type { Message } from "@/components/messaging/types";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { MessageSquare } from "lucide-react";
 
 /**
- * Floats over the message's top-right corner on hover or focus, so it reserves no space in the
- * timeline. On devices without hover it stays visible.
+ * Floats across the message's top edge on hover or focus, half above the row, so it reserves no
+ * space in the timeline and covers little of the text. On devices without hover it stays visible
+ * below the message.
  */
 export function MessageToolbar({
   message,
@@ -24,26 +26,49 @@ export function MessageToolbar({
   onThread?: (id: string) => void;
   actions?: ReactNode;
 }) {
+  const quickReactions = useQuickReactions();
+  const canReact = onReact && !message.deletedAt;
   return (
     <div
       role="group"
       aria-label="Message actions"
-      className="absolute top-1 right-4 z-10 flex w-fit items-center gap-0.5 rounded-lg border bg-popover p-0.5 text-popover-foreground shadow-raised transition-opacity duration-100 group-hover/message:opacity-100 group-has-focus-visible/message:opacity-100 has-data-[state=open]:opacity-100 motion-reduce:transition-none max-sm:pointer-coarse:static max-sm:pointer-coarse:mt-1 [@media(hover:hover)]:opacity-0"
+      className="absolute -top-5 right-4 z-10 flex w-fit items-center gap-0.5 rounded-lg border bg-popover p-0.5 text-popover-foreground shadow-raised transition-opacity duration-100 group-hover/message:opacity-100 group-has-focus-visible/message:opacity-100 has-data-[state=open]:opacity-100 motion-reduce:transition-none max-sm:pointer-coarse:static max-sm:pointer-coarse:mt-1 [@media(hover:hover)]:opacity-0"
     >
-      {onReact && !message.deletedAt && (
-        <EmojiPicker
-          label="React to message"
-          size="icon-sm"
-          onSelect={onReact}
-          disabled={pending}
-        />
+      {canReact &&
+        quickReactions.map(({ emoji, name }) => {
+          const reacted = message.reactions.some(
+            (reaction) => reaction.emoji === emoji && reaction.reacted,
+          );
+          const label = reacted ? `Remove ${name} reaction` : `React with ${name}`;
+          return (
+            <Tooltip key={emoji}>
+              <TooltipTrigger asChild>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  aria-label={label}
+                  disabled={pending}
+                  onClick={() => onReact(emoji)}
+                >
+                  <span aria-hidden="true" className="text-lg leading-none">
+                    {emoji}
+                  </span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{label}</TooltipContent>
+            </Tooltip>
+          );
+        })}
+      {canReact && (
+        <EmojiPicker label="React to message" size="icon" onSelect={onReact} disabled={pending} />
       )}
       {onThread && (
         <Tooltip>
           <TooltipTrigger asChild>
             <Button
               type="button"
-              size="icon-sm"
+              size="icon"
               variant="ghost"
               aria-label="Reply in thread"
               onClick={() => onThread(message.id)}

@@ -55,6 +55,7 @@ function DestinationComposer({
           <AttachFilesButton iconOnly disabled={send.isPending} onFiles={uploads.add} />
         }
         attachmentDrafts={<AttachmentDraftList uploads={uploads} disabled={send.isPending} />}
+        onPasteFiles={uploads.add}
         renderReferences={(activeReference, onInsert, onClose) => (
           <ReferencePicker
             organizationId={organizationId}

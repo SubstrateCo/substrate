@@ -5,6 +5,7 @@ import {
   referenceDraftText,
   referenceEditorPosition,
 } from "./reference-editor-document";
+import { pastedFiles } from "@/components/attachments/pasted-files";
 import type { WorkspaceReference } from "@/components/messaging/references/entity-reference";
 import {
   ReferencesContext,
@@ -51,6 +52,7 @@ export function ReferenceEditor({
   onChange,
   onSelectionChange,
   onKeyDown,
+  onPasteFiles,
   disabled = false,
   listId,
   activeOptionId,
@@ -62,6 +64,8 @@ export function ReferenceEditor({
   onChange: (value: string, caret: number) => void;
   onSelectionChange: (caret: number) => void;
   onKeyDown: (event: KeyboardEvent) => void;
+  /** Receives pasted files, such as a screenshot. Without it, a file paste does nothing. */
+  onPasteFiles?: (files: File[]) => void;
   disabled?: boolean;
   listId?: string;
   activeOptionId?: string;
@@ -103,7 +107,15 @@ export function ReferenceEditor({
         return event.defaultPrevented;
       },
       handlePaste: (_view, event) => {
-        const text = event.clipboardData?.getData("text/plain");
+        const text = event.clipboardData?.getData("text/plain") ?? "";
+        const files = onPasteFiles
+          ? pastedFiles({ files: Array.from(event.clipboardData?.files ?? []), text })
+          : [];
+        if (files.length) {
+          event.preventDefault();
+          onPasteFiles?.(files);
+          return true;
+        }
         if (!text) return false;
         event.preventDefault();
         editor.commands.insertContent(referenceDocument(text).content ?? []);

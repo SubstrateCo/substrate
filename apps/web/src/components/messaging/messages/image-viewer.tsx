@@ -2,6 +2,8 @@ import type { Attachment } from "@substrate/contracts/files/attachments";
 
 import { useState } from "react";
 
+import { imageFileActions } from "@/components/attachments/image-file-actions";
+import { ActionContextMenu } from "@/components/layout/action-context-menu";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -79,7 +81,7 @@ export function ImageViewer({
           </DialogDescription>
         </DialogHeader>
         <DialogBody>
-          <ViewerImage key={src} src={src} filename={attachment.filename} />
+          <ViewerImage key={src} src={src} href={href} attachment={attachment} />
           {count > 1 && (
             <div className="mt-2 hidden justify-center gap-2 pointer-coarse:flex">
               <Tooltip>
@@ -111,8 +113,17 @@ export function ImageViewer({
   );
 }
 
-function ViewerImage({ src, filename }: { src: string; filename: string }) {
+function ViewerImage({
+  src,
+  href,
+  attachment,
+}: {
+  src: string;
+  href: string;
+  attachment: Attachment;
+}) {
   const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
+  const { filename, contentType } = attachment;
   return (
     <div className="grid min-h-24 place-items-center gap-2">
       {status === "loading" && <Spinner aria-label="Loading image" />}
@@ -122,14 +133,16 @@ function ViewerImage({ src, filename }: { src: string; filename: string }) {
         </p>
       )}
       {status !== "failed" && (
-        <Image
-          src={src}
-          alt={filename}
-          loading="eager"
-          className="max-h-96 w-full object-contain"
-          onLoad={() => setStatus("ready")}
-          onError={() => setStatus("failed")}
-        />
+        <ActionContextMenu actions={[imageFileActions({ href, filename, contentType })]}>
+          <Image
+            src={src}
+            alt={filename}
+            loading="eager"
+            className="max-h-96 w-full object-contain"
+            onLoad={() => setStatus("ready")}
+            onError={() => setStatus("failed")}
+          />
+        </ActionContextMenu>
       )}
     </div>
   );

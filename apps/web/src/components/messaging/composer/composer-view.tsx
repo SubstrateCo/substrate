@@ -32,6 +32,7 @@ export function Composer({
   renderReferences,
   attachmentControls,
   attachmentDrafts,
+  onPasteFiles,
   hasAttachments = false,
   attachmentsReady = true,
   submitLabel = "Send",
@@ -59,6 +60,8 @@ export function Composer({
   autoFocus?: boolean;
   attachmentControls?: ReactNode;
   attachmentDrafts?: ReactNode;
+  /** Attaches files pasted into the editor, such as a screenshot. */
+  onPasteFiles?: (files: File[]) => void;
   hasAttachments?: boolean;
   attachmentsReady?: boolean;
   renderReferences?: (
@@ -150,6 +153,7 @@ export function Composer({
                   value={draft}
                   references={resolvedReferences}
                   disabled={pending}
+                  onPasteFiles={onPasteFiles}
                   listId={references && activeReference ? pickerAccessibility?.listId : undefined}
                   activeOptionId={
                     references && activeReference ? pickerAccessibility?.selectedId : undefined

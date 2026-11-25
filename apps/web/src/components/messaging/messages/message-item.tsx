@@ -260,7 +260,7 @@ function MessageActionsMenu({
             <Button
               ref={trigger}
               type="button"
-              size="icon-sm"
+              size="icon"
               variant="ghost"
               aria-label="More message actions"
             >
