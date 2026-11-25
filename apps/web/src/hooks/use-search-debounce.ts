@@ -11,7 +11,8 @@ export function debouncedSearch(settled: Settled | null, query: string, scope: s
 }
 
 export function useSearchDebounce(query: string, scope: string) {
-  const [settled, setSettled] = useState<Settled | null>(null);
+  // The first query needs no wait, so a remount shows cached results at once.
+  const [settled, setSettled] = useState<Settled>(() => ({ query, scope }));
   useEffect(() => {
     const timeout = setTimeout(() => setSettled({ query, scope }), 200);
     return () => clearTimeout(timeout);
