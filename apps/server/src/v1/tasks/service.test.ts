@@ -39,7 +39,7 @@ test("discussion resolution publishes its hints and returns the conversation ID"
     }),
   ).toEqual({ success: true, data: { conversationId } });
   expect(ensureDiscussion).toHaveBeenCalledWith(taskEntityId, projectEntityId);
-  expect(publish).toHaveBeenCalledWith(hints);
+  expect(publish).toHaveBeenCalledWith(hints, undefined);
 });
 
 test("project detail provisions the session owner's agents and returns only the scoped detail", async () => {
@@ -101,6 +101,8 @@ test("sharing checks the project type without a project read, publishes hints, a
   expect(queries.filter((query) => query.includes('from "projects"'))).toEqual([]);
   expect(publish).toHaveBeenCalledWith(
     expect.arrayContaining([{ audience: realtimeKeys.actor(f.orgA, f.bob), domain: "access" }]),
+    // The hints were stored with the write, so the publisher can remove them once sent.
+    expect.objectContaining({ id: expect.any(String) }),
   );
   expect(await f.accessLevel(f.bob, project.entityId)).toBe("edit");
   expect(await share(task.entityId)).toMatchObject({

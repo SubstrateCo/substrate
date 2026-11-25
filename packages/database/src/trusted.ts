@@ -6,6 +6,14 @@ export { createDatabase } from "./client";
 export type { Database, DatabaseExecutor, Transaction } from "./core/executor";
 export * from "./core/actors/provisioning";
 export { registerDevice, touchDevice } from "./core/devices/repository";
+export {
+  claimOutbox,
+  finishOutbox,
+  outboxClaimLimit,
+  recordOutbox,
+  type OutboxBatch,
+} from "./core/outbox/outbox";
+export type { RealtimeChange } from "./core/outbox/schema";
 export { pruneRecords } from "./maintenance";
 export { migrateDatabase } from "./migrations";
 

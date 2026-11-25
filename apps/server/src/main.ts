@@ -1,5 +1,5 @@
 import { createRepositories } from "@substrate/database";
-import { pruneRecords } from "@substrate/database/trusted";
+import { claimOutbox, finishOutbox, pruneRecords, recordOutbox } from "@substrate/database/trusted";
 
 import { createApp } from "./app";
 import { createGoogleLinkTickets } from "./auth/google-link";
@@ -17,13 +17,25 @@ import { createS3Storage } from "./storage/s3";
 import { createCalendarProviders } from "./v1/calendar/providers";
 import { createCalendarSync } from "./v1/calendar/sync";
 import { createSharingMail } from "./v1/messaging/sharing-mail";
+import { createOutboxRelay } from "./v1/realtime/outbox-relay";
 import { createRedisPublisher } from "./v1/realtime/publisher";
 import { createRealtimeRoutes } from "./v1/realtime/routes";
 import { createRealtimeService } from "./v1/realtime/service";
 
 const { db, close: closeDatabase } = createServerDatabase();
 const { mail, close: closeMail } = createSmtpMail();
-const refresh = createRedisPublisher();
+const refresh = createRedisPublisher({
+  record: async (hints) => {
+    await recordOutbox(db, hints);
+  },
+  finish: (id) => finishOutbox(db, id),
+});
+const outboxRelay = createOutboxRelay({
+  claim: () => claimOutbox(db),
+  send: refresh.send,
+  finish: (id) => finishOutbox(db, id),
+  reportFailure: (message) => console.warn(message),
+});
 // The worker needs the committed publisher, while publication wakes that same worker.
 // No work starts until both have been constructed.
 const publish = createCommittedPublisher({
@@ -68,6 +80,7 @@ const app = createApp({
 await realtime.start();
 const stopSharingMail = sharingMail.start();
 const stopCalendarSync = calendarSync.start();
+const stopOutboxRelay = outboxRelay.start();
 const server = Bun.serve({
   port: environment.port,
   websocket: realtimeRoutes.websocket,
@@ -107,6 +120,7 @@ function shutdown() {
     .stop(true)
     .then(() => stopSharingMail())
     .then(() => stopCalendarSync())
+    .then(() => stopOutboxRelay())
     .then(() => refresh.close())
     .then(() => closeMail())
     .then(() => closeDatabase())

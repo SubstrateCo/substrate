@@ -1,6 +1,9 @@
 import { discardEffects, testDatabase } from "./connection";
 import { drizzle } from "drizzle-orm/postgres-js";
 
+// commit() stores every write's hints in the outbox. Statement counts measure the write itself.
+const outboxInsert = /^\s*insert into "realtime_outbox"/i;
+
 export function recordQueries(onQuery?: (query: string) => void) {
   const queries: string[] = [];
   const parameters: unknown[][] = [];
@@ -8,6 +11,7 @@ export function recordQueries(onQuery?: (query: string) => void) {
     drizzle(testDatabase.$client, {
       logger: {
         logQuery: (query, params) => {
+          if (outboxInsert.test(query)) return;
           queries.push(query);
           parameters.push(params);
           onQuery?.(query);

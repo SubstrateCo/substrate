@@ -1,11 +1,14 @@
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "./executor";
+import { recordOutbox, type OutboxBatch } from "./outbox/outbox";
 
 export interface Committed<T> {
   result: T;
   hints: RealtimeHint[];
   mail?: "sharing"[];
+  /** The hints as stored with the write. Publishing them deletes the row; a relay retries. */
+  outbox?: OutboxBatch;
 }
 
 export class RepositoryEffects {
@@ -92,8 +95,16 @@ export async function commit<T>(
   work: (tx: DatabaseExecutor) => Promise<T>,
 ): Promise<Committed<T>> {
   const effects = new RepositoryEffects();
-  const result = await db.transaction((tx) => work(effectExecutor(tx, effects)));
-  return effects.committed(result);
+  let outbox: OutboxBatch | undefined;
+  const result = await db.transaction(async (tx) => {
+    const value = await work(effectExecutor(tx, effects));
+    // Stored with the write, so a crash or broker outage after the commit cannot lose its hints.
+    outbox = await recordOutbox(tx, effects.committed(value).hints);
+    return value;
+  });
+  const committed = effects.committed(result);
+  if (outbox) committed.outbox = outbox;
+  return committed;
 }
 
 export function committedWrite<A extends unknown[], R>(

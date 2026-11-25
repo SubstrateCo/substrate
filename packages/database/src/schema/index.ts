@@ -12,6 +12,7 @@ export * from "../core/permissions/schema";
 export * from "../core/links/schema";
 export * from "../core/requests/schema";
 export * from "../core/storage/schema";
+export * from "../core/outbox/schema";
 export * from "../features/files/schema";
 export * from "../features/meetings/schema";
 export * from "../features/messaging/schema";

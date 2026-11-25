@@ -509,7 +509,7 @@ test("reactions aggregate per emoji, toggle per user and reject inaccessible mes
         "👍",
       ),
     );
-  expect(await toggle("alice")).toEqual({
+  expect(await toggle("alice")).toMatchObject({
     result: { active: true },
     hints: contentOnly,
   });
@@ -520,7 +520,7 @@ test("reactions aggregate per emoji, toggle per user and reject inaccessible mes
   expect((await service("alice").listMessages(channel.id))[0]?.reactions).toEqual([
     { emoji: "👍", count: 2, reacted: true },
   ]);
-  expect(await toggle("alice")).toEqual({
+  expect(await toggle("alice")).toMatchObject({
     result: { active: false },
     hints: contentOnly,
   });
