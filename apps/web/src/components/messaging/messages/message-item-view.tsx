@@ -122,6 +122,7 @@ function MessageByline({
       <PersonCardTarget actorId={message.authorActorEntityId} name={name}>
         <span
           className={cn(
+            // oxlint-disable-next-line design/no-decorative-class -- The message author.
             "text-sm font-semibold wrap-anywhere",
             hasPersonCard && "rounded-sm underline-offset-2 hover:underline",
           )}

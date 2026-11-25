@@ -98,12 +98,12 @@ export function CalendarMonth({
                   <span
                     className={cn(
                       "relative inline-grid size-5 place-items-center rounded-full",
-                      today === key && "bg-primary font-semibold text-primary-foreground",
+                      today === key && "bg-primary font-medium text-primary-foreground",
                     )}
                   >
                     {day}
                     {count > 0 && (
-                      <small className="absolute -top-px left-4 z-1 inline-grid h-3 min-w-3 place-items-center rounded-full bg-success px-0.5 leading-none font-semibold text-card">
+                      <small className="absolute -top-px left-4 z-1 inline-grid h-3 min-w-3 place-items-center rounded-full bg-success px-0.5 leading-none font-medium text-card">
                         {count}
                       </small>
                     )}
@@ -128,7 +128,7 @@ export function CalendarMonth({
               aria-label={label}
               onClick={go}
             >
-              <span className={cn(count > 0 && "font-semibold text-primary")}>{day}</span>
+              <span className={cn(count > 0 && "font-medium text-foreground")}>{day}</span>
               {count > 0 && (
                 <small className="text-muted-foreground @max-[82px]/day:sr-only">
                   {count} {count === 1 ? "meeting" : "meetings"}

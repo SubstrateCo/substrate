@@ -27,6 +27,7 @@ export function SwitcherTrigger({
           >
             <span
               aria-hidden="true"
+              // oxlint-disable-next-line design/no-decorative-class -- Initials.
               className="flex size-6 items-center justify-center overflow-hidden rounded-md text-xs font-semibold"
             >
               {pending ? (

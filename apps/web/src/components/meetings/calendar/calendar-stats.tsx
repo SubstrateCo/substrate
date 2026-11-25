@@ -110,7 +110,7 @@ export function CalendarStats({
           <div key={k}>
             <dt className="text-xs text-muted-foreground">{k}</dt>
             <dd
-              className="mt-0.5 text-xl font-semibold tracking-tight"
+              className="mt-0.5 text-xl font-medium"
               title={
                 k.endsWith("duration") && data.knownDurations
                   ? formatMeetingDuration(data.durationMs)

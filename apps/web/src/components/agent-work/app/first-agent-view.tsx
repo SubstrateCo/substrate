@@ -45,7 +45,7 @@ export function FirstAgentView({ onCreate }: { onCreate: () => void }) {
                 <step.icon aria-hidden="true" className="size-4" />
                 Step {index + 1}
               </span>
-              <p className="text-sm font-semibold">{step.title}</p>
+              <p className="text-sm font-medium">{step.title}</p>
               <p className="text-sm text-muted-foreground">{step.description}</p>
             </li>
           ))}

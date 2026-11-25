@@ -28,6 +28,7 @@ export function PendingReply({
       </span>
       <div className="min-w-0 flex-1">
         <div className="flex min-w-0 flex-wrap items-center gap-x-2 text-sm">
+          {/* oxlint-disable-next-line design/no-decorative-class -- The message author. */}
           <span className="min-w-0 font-semibold wrap-anywhere">{name}</span>
           <span className="text-xs text-muted-foreground">Only visible to you</span>
           {status}

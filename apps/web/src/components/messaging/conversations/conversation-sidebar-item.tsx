@@ -26,6 +26,7 @@ function SidebarItemContent({
   return (
     <>
       {icon}
+      {/* oxlint-disable-next-line design/no-decorative-class -- An unread conversation. */}
       <span className={unread ? "min-w-0 truncate font-semibold" : "min-w-0 truncate"}>
         {title}
       </span>

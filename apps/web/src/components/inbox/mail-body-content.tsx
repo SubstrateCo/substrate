@@ -69,7 +69,7 @@ export function MailBodyContent({
             <div className="flex items-start gap-2">
               <CalendarDays aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
               <div>
-                <p className="font-semibold">{detail.when}</p>
+                <p className="font-medium">{detail.when}</p>
                 {detail.zone && <p className="text-xs text-muted-foreground">{detail.zone}</p>}
                 {detail.changed && (
                   <p className="mt-1 text-xs text-muted-foreground">{detail.changed}</p>

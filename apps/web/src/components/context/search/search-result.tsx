@@ -67,7 +67,7 @@ function Highlight({ text, query }: { text: string; query: string }) {
   for (let index = lower.indexOf(needle); index >= 0; index = lower.indexOf(needle, start)) {
     if (index > start) parts.push(text.slice(start, index));
     parts.push(
-      <mark key={index} className="bg-transparent font-semibold text-foreground">
+      <mark key={index} className="bg-transparent font-medium text-foreground">
         {text.slice(index, index + needle.length)}
       </mark>,
     );

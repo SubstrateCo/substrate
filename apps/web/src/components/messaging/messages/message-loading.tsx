@@ -23,6 +23,7 @@ export function MessageLoading({ label }: { label: string }) {
             }
             byline={
               <>
+                {/* oxlint-disable-next-line design/no-decorative-class -- The message author. */}
                 <span className="text-sm font-semibold">
                   <SkeletonText width="7rem" />
                 </span>

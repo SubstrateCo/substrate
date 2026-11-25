@@ -3,7 +3,7 @@ import { cn } from "cn";
 /** The Substrate app mark and wordmark. */
 export function BrandMark({ className }: { className?: string }) {
   return (
-    <span className={cn("flex items-center gap-2 text-sm font-semibold tracking-tight", className)}>
+    <span className={cn("flex items-center gap-2 text-sm font-medium", className)}>
       <svg
         aria-hidden="true"
         viewBox="0 0 24 24"

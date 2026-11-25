@@ -86,7 +86,7 @@ export function NeedsYouView({
                       <Link {...entry.agentLink}>{entry.agentName}</Link>
                     </Button>
                   ) : (
-                    <span className="font-semibold text-foreground">{entry.agentName}</span>
+                    <span className="font-medium text-foreground">{entry.agentName}</span>
                   )}
                   <span aria-hidden="true">·</span>
                   {entry.place}

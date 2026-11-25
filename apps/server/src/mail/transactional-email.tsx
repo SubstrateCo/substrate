@@ -33,23 +33,23 @@ interface TransactionalEmailProps {
 // Email clients cannot reliably use the renderer's OKLCH colors or CSS variables.
 const colors = {
   background: "#f6f7f8",
-  ink: "#202126",
+  ink: "#202224",
   card: "#ffffff",
-  inset: "#f3f4f8",
-  muted: "#5d606b",
-  line: "#dcdee4",
-  accent: "#5248c7",
+  inset: "#f3f4f6",
+  muted: "#5d6165",
+  line: "#dcdee1",
+  accent: "#195daa",
   buttonText: "#fafafa",
 };
 const darkColors = {
-  background: "#101117",
-  ink: "#dfe1e7",
-  card: "#1c1e25",
-  inset: "#12131a",
-  muted: "#9b9eaa",
+  background: "#101213",
+  ink: "#e0e1e3",
+  card: "#1c1e20",
+  inset: "#131416",
+  muted: "#9b9fa3",
   line: "rgba(255, 255, 255, 0.09)",
-  accent: "#a2a8fc",
-  buttonText: "#131428",
+  accent: "#7aaeef",
+  buttonText: "#0c1723",
 };
 const darkStyles = `
   .email-page, .email-page > table > tbody > tr > td { background-color: ${darkColors.background} !important; color: ${darkColors.ink} !important; }
@@ -58,7 +58,6 @@ const darkStyles = `
   .email-card { background-color: ${darkColors.card} !important; border-color: ${darkColors.line} !important; }
   .email-inset { background-color: ${darkColors.inset} !important; border-color: ${darkColors.line} !important; }
   .email-rule { border-color: ${darkColors.line} !important; }
-  .email-accent { color: ${darkColors.accent} !important; }
   .email-action, .email-mark { background-color: ${darkColors.accent} !important; color: ${darkColors.buttonText} !important; }
   .email-mark-dot { background-color: ${darkColors.buttonText} !important; }
 `;
@@ -172,8 +171,7 @@ function TransactionalEmail({
                   style={{
                     color: colors.ink,
                     fontSize: "17px",
-                    fontWeight: 650,
-                    letterSpacing: "-0.5px",
+                    fontWeight: 500,
                   }}
                 >
                   Substrate
@@ -191,13 +189,13 @@ function TransactionalEmail({
               }}
             >
               <Text
-                className="email-accent"
+                className="email-muted"
                 style={{
                   margin: "0 0 16px",
                   fontSize: "12px",
                   lineHeight: "18px",
-                  fontWeight: 600,
-                  color: colors.accent,
+                  fontWeight: 500,
+                  color: colors.muted,
                 }}
               >
                 {category}
@@ -210,8 +208,7 @@ function TransactionalEmail({
                   margin: "0 0 16px",
                   fontSize: "32px",
                   lineHeight: "38px",
-                  fontWeight: 650,
-                  letterSpacing: "-1px",
+                  fontWeight: 500,
                   overflowWrap: "anywhere",
                 }}
               >
@@ -249,7 +246,7 @@ function TransactionalEmail({
                       margin: 0,
                       fontSize: "17px",
                       lineHeight: "25px",
-                      fontWeight: 600,
+                      fontWeight: 500,
                       overflowWrap: "anywhere",
                     }}
                   >
@@ -279,7 +276,7 @@ function TransactionalEmail({
                   borderRadius: "8px",
                   color: colors.buttonText,
                   fontSize: "14px",
-                  fontWeight: 600,
+                  fontWeight: 500,
                   lineHeight: "20px",
                   padding: "14px 24px",
                   textDecoration: "none",

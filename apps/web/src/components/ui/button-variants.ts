@@ -14,6 +14,7 @@ export const buttonVariants = cva(
         ghost:
           "hover:bg-muted hover:text-foreground aria-expanded:bg-muted aria-expanded:text-foreground aria-pressed:bg-accent aria-pressed:text-accent-foreground dark:hover:bg-foreground/15 dark:aria-expanded:bg-foreground/15",
         avatar:
+          // oxlint-disable-next-line design/no-decorative-class -- Initials.
           "rounded-full bg-accent text-xs font-semibold text-accent-foreground hover:bg-accent/80",
         // Solid red. Only for the confirm button of a destructive ConfirmDialog.
         destructive:

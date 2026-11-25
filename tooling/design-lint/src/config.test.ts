@@ -149,6 +149,48 @@ export const saved: Layout = {};
   }
 });
 
+void test("renderer design configuration keeps one icon per concept and quiet classes", () => {
+  const directory = mkdtempSync(join(root, "apps/web/src/design-lint-test-"));
+  try {
+    const file = join(directory, "view.tsx");
+    writeFileSync(
+      file,
+      `
+import { MoreHorizontal, Trash } from "lucide-react";
+export const View = () => (
+  <h2 className="text-xl font-bold tracking-tight">
+    <MoreHorizontal />
+    <Trash />
+  </h2>
+);
+`,
+    );
+    const invalid = lint(file);
+    assert.equal(
+      invalid.filter((code) => code === "eslint(no-restricted-imports)").length,
+      2,
+      "Icon synonyms must point to the contract's icon.",
+    );
+    assert.equal(
+      invalid.filter((code) => code === "design(no-decorative-class)").length,
+      2,
+      "Heavy weight and tracking must be reported in the renderer.",
+    );
+
+    writeFileSync(
+      file,
+      `
+import { Ellipsis, Trash2 } from "lucide-react";
+export const icons = [Ellipsis, Trash2];
+export const title = "text-xl font-medium";
+`,
+    );
+    assert.deepEqual(lint(file), [], "Contract icons and medium titles remain allowed.");
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 function lint(file: string): string[] {
   const result = spawnSync(process.execPath, [cli, "--format", "json", file], {
     cwd: root,

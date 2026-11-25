@@ -86,7 +86,7 @@ export function MeetingCalendar({
           <span className="flex items-center gap-1.5">
             <small
               aria-hidden="true"
-              className="grid size-3 place-items-center rounded-full bg-success leading-none font-semibold text-card"
+              className="grid size-3 place-items-center rounded-full bg-success leading-none font-medium text-card"
             >
               2
             </small>
@@ -109,7 +109,7 @@ export function MeetingCalendar({
                   className="mb-1 flex flex-wrap items-baseline gap-x-1.5"
                 >
                   <Pressable
-                    className="text-primary underline-offset-4 hover:underline"
+                    className="underline-offset-4 hover:underline"
                     onClick={() => change({ month: key, scale: "month" })}
                   >
                     {formatCalendarMonth(d)}
@@ -140,7 +140,7 @@ export function MeetingCalendar({
           description={
             data ? (
               <>
-                <strong className="font-semibold text-foreground">
+                <strong className="font-medium text-foreground">
                   {data.count} {data.count === 1 ? "meeting" : "meetings"}
                 </strong>{" "}
                 {scale === "year" ? "across the year" : "this month"} · {data.people} other{" "}

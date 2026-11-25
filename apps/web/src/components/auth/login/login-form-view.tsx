@@ -22,8 +22,8 @@ export function LoginForm({
 }) {
   return (
     <AuthFrame
-      title="Welcome back"
-      description="Sign in to your workspace."
+      title="Sign in"
+      description="Open your Substrate workspace."
       footer={
         <>
           New to Substrate? <AuthLink {...signupLink}>Create account</AuthLink>

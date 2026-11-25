@@ -27,7 +27,7 @@ export function AuthFrame({
   children?: ReactNode;
 }) {
   return (
-    <main className="fixed inset-0 overflow-y-auto bg-radial from-accent to-transparent [&_[data-slot=button][data-size=lg]]:min-h-11 sm:[&_[data-slot=button][data-size=lg]]:min-h-9 [&_[data-slot=input]]:h-11 sm:[&_[data-slot=input]]:h-8">
+    <main className="fixed inset-0 overflow-y-auto bg-background [&_[data-slot=button][data-size=lg]]:min-h-11 sm:[&_[data-slot=button][data-size=lg]]:min-h-9 [&_[data-slot=input]]:h-11 sm:[&_[data-slot=input]]:h-8">
       <div
         className={cn(
           "mx-auto w-full px-4 pt-16 pb-12 sm:px-6 sm:pt-24",

@@ -25,6 +25,7 @@ export function WorkspaceTile({
   return (
     <span
       aria-hidden="true"
+      // oxlint-disable-next-line design/no-decorative-class -- Initials.
       className="flex size-8 shrink-0 items-center justify-center rounded-lg border bg-surface text-xs font-semibold text-foreground shadow-surface"
     >
       {opening ? (

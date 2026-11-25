@@ -235,6 +235,7 @@ function NotificationSummary({
   const actors = others ? `${actor} and ${others} ${others === 1 ? "other" : "others"}` : actor;
   const { verb, object } = sentence(item);
   const detail = item.source.kind === "project" ? item.source.name : item.excerpt;
+  // oxlint-disable-next-line design/no-decorative-class -- An unread notification's name.
   const nameWeight = item.read ? "font-medium" : "font-semibold";
   return (
     <>

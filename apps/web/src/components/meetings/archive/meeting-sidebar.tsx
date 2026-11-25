@@ -52,7 +52,7 @@ export function MeetingSidebar({
       <PageSidebarHeader
         title={
           <span className="flex items-center gap-2">
-            <CalendarDays className="size-4 text-primary" />
+            <CalendarDays className="size-4 text-muted-foreground" />
             Meetings
           </span>
         }

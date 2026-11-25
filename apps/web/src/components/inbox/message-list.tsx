@@ -52,6 +52,7 @@ function MessageRow({
   const subject = message.subject || "(No subject)",
     stamp = formatMailListDate(timestamp, today);
   const labels = visibleLabels(mailbox, message.labelIds, true).map(labelName);
+  // oxlint-disable-next-line design/no-decorative-class -- An unread mail thread.
   const weight = message.hasUnread ? "font-semibold text-foreground" : "font-normal";
   const background = message.hasUnread ? "bg-background" : "bg-surface";
   const label = `${message.hasUnread ? "Unread. " : ""}${sender}: ${subject}. ${message.messageCount} messages. ${mailbox.address}, ${stamp}${labels.length ? `. Labels: ${labels.join(", ")}` : ""}`;

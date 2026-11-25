@@ -4,10 +4,10 @@ import { cn } from "cn";
 const headingVariants = cva("", {
   variants: {
     variant: {
-      page: "text-xl font-semibold tracking-tight",
-      record: "text-lg/snug font-semibold wrap-break-word",
-      section: "text-base font-semibold",
-      title: "text-sm font-semibold",
+      page: "text-xl font-medium",
+      record: "text-lg/snug font-medium wrap-break-word",
+      section: "text-base font-medium",
+      title: "text-sm font-medium",
       label: "text-xs font-medium text-muted-foreground",
       // Takes its type from the container, such as CardTitle, EmptyTitle, or a disclosure trigger.
       inherit: "",

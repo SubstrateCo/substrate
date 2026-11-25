@@ -94,39 +94,41 @@
 
 :root {
   --app-height: 100dvh;
-  --background: oklch(0.975 0.002 275);
-  --foreground: oklch(0.25 0.008 275);
+  --background: oklch(0.975 0.002 255);
+  --foreground: oklch(0.25 0.004 255);
   --card: oklch(1 0 0);
   --card-foreground: var(--foreground);
   --popover: oklch(1 0 0);
   --popover-foreground: var(--foreground);
-  --primary: oklch(0.49 0.19 280);
+  /* Ink cobalt: the one accent. Primary action, focus, selection, and the key figure. */
+  --primary: oklch(0.48 0.14 255);
   --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.945 0.008 275);
+  --secondary: oklch(0.945 0.003 255);
   --secondary-foreground: var(--foreground);
-  --muted: oklch(0.95 0.006 275);
-  --muted-foreground: oklch(0.49 0.018 275);
-  --accent: oklch(0.95 0.018 280);
-  --accent-foreground: oklch(0.42 0.15 280);
+  --muted: oklch(0.95 0.003 255);
+  --muted-foreground: oklch(0.49 0.008 255);
+  --accent: oklch(0.95 0.014 255);
+  --accent-foreground: oklch(0.42 0.12 255);
   --destructive: oklch(0.52 0.22 27.325);
-  --border: oklch(0.9 0.009 275);
+  --border: oklch(0.9 0.004 255);
   /* Field boundary: clear against the page. Outline buttons use the quieter control border. */
-  --input: oklch(0.64 0.012 275);
-  --control-border: oklch(0.82 0.01 275);
-  --ring: oklch(0.6 0.16 280);
-  --chart-1: oklch(0.62 0.16 285);
+  --input: oklch(0.64 0.006 255);
+  --control-border: oklch(0.82 0.005 255);
+  --ring: oklch(0.6 0.12 255);
+  /* chart-1 is the accent series; the others are distinct hues for series that must read apart. */
+  --chart-1: oklch(0.55 0.14 255);
   --chart-2: oklch(0.61 0.09 180);
-  --chart-3: oklch(0.66 0.11 245);
-  --chart-4: oklch(0.74 0.1 300);
+  --chart-3: oklch(0.62 0.1 145);
+  --chart-4: oklch(0.66 0.11 40);
   --chart-5: oklch(0.73 0.11 80);
-  --chart-6: oklch(0.66 0.02 270);
+  --chart-6: oklch(0.66 0.004 255);
   --ts-chart-tooltip-background: var(--popover);
   --ts-chart-tooltip-color: var(--popover-foreground);
   --ts-chart-tooltip-border: 1px solid var(--border);
   --ts-chart-tooltip-border-radius: var(--radius);
   --ts-chart-tooltip-shadow: var(--elevation-floating);
   --radius: 0.5rem;
-  --sidebar: oklch(0.963 0.006 275);
+  --sidebar: oklch(0.963 0.003 255);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: oklch(0.985 0 0);
@@ -134,48 +136,48 @@
   --sidebar-accent-foreground: var(--accent-foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
-  --surface: oklch(0.994 0.002 275);
+  --surface: oklch(0.994 0.001 255);
   /* Recessed fills: code, quotes, callouts, card footers, board columns. */
-  --inset: oklch(0.968 0.005 275);
+  --inset: oklch(0.968 0.003 255);
   --success: oklch(0.43 0.1 165);
   --warning: oklch(0.6 0.15 62);
   --warning-text: oklch(0.5 0.12 60);
-  --rail: oklch(0.94 0.012 275);
-  --rail-foreground: oklch(0.38 0.025 275);
+  --rail: oklch(0.94 0.004 255);
+  --rail-foreground: oklch(0.38 0.01 255);
   --destructive-solid: oklch(0.54 0.21 27);
-  --row-hover: oklch(0.25 0.03 275 / 5%);
+  --row-hover: oklch(0.25 0.01 255 / 5%);
   /* The keyboard cursor in a palette or picker: neutral, so it never reads as a chosen row. */
-  --row-highlight: oklch(0.25 0.03 275 / 8%);
-  --row-selected: oklch(0.92 0.035 280);
-  --row-selected-foreground: oklch(0.36 0.15 280);
+  --row-highlight: oklch(0.25 0.01 255 / 8%);
+  --row-selected: oklch(0.93 0.03 255);
+  --row-selected-foreground: oklch(0.38 0.12 255);
   --surface-highlight: oklch(1 0 0 / 25%);
-  --elevation-surface: 0 1px 2px oklch(0.2 0.03 275 / 5%);
-  --elevation-raised: 0 1px 3px oklch(0.2 0.03 275 / 6%), 0 4px 12px -4px oklch(0.2 0.03 275 / 8%);
+  --elevation-surface: 0 1px 2px oklch(0.2 0.01 255 / 5%);
+  --elevation-raised: 0 1px 3px oklch(0.2 0.01 255 / 6%), 0 4px 12px -4px oklch(0.2 0.01 255 / 8%);
   --elevation-floating:
-    0 4px 8px -2px oklch(0.2 0.03 275 / 8%), 0 16px 40px -8px oklch(0.2 0.03 275 / 18%);
+    0 4px 8px -2px oklch(0.2 0.01 255 / 8%), 0 16px 40px -8px oklch(0.2 0.01 255 / 18%);
 }
 
 .dark {
   color-scheme: dark;
-  --background: oklch(0.18 0.012 275);
-  --foreground: oklch(0.91 0.008 275);
-  --card: oklch(0.235 0.014 275);
+  --background: oklch(0.18 0.004 255);
+  --foreground: oklch(0.91 0.003 255);
+  --card: oklch(0.235 0.005 255);
   --card-foreground: var(--foreground);
-  --popover: oklch(0.265 0.016 275);
+  --popover: oklch(0.265 0.006 255);
   --popover-foreground: var(--foreground);
-  --primary: oklch(0.76 0.12 280);
-  --primary-foreground: oklch(0.2 0.04 280);
-  --secondary: oklch(0.285 0.016 275);
+  --primary: oklch(0.74 0.11 255);
+  --primary-foreground: oklch(0.2 0.03 255);
+  --secondary: oklch(0.285 0.005 255);
   --secondary-foreground: var(--foreground);
-  --muted: oklch(0.27 0.012 275);
-  --muted-foreground: oklch(0.7 0.018 275);
-  --accent: oklch(0.305 0.035 280);
-  --accent-foreground: oklch(0.96 0.015 280);
+  --muted: oklch(0.27 0.004 255);
+  --muted-foreground: oklch(0.7 0.007 255);
+  --accent: oklch(0.3 0.025 255);
+  --accent-foreground: oklch(0.96 0.01 255);
   --destructive: oklch(0.704 0.191 22.216);
   --border: oklch(1 0 0 / 9%);
-  --input: oklch(0.52 0.016 275);
-  --control-border: oklch(0.4 0.014 275);
-  --ring: oklch(0.7 0.12 280);
+  --input: oklch(0.52 0.006 255);
+  --control-border: oklch(0.4 0.005 255);
+  --ring: oklch(0.7 0.1 255);
   /*
    * Light text on a dark ground looks heavier, and Windows ignores font smoothing, so every
    * weight steps down by about 60 and the text colour sits a little below white.
@@ -184,32 +186,32 @@
   --font-weight-medium: 430;
   --font-weight-semibold: 520;
   --font-weight-bold: 620;
-  --chart-1: oklch(0.7 0.14 285);
+  --chart-1: oklch(0.72 0.11 255);
   --chart-2: oklch(0.72 0.1 180);
-  --chart-3: oklch(0.73 0.1 245);
-  --chart-4: oklch(0.79 0.09 300);
+  --chart-3: oklch(0.74 0.09 145);
+  --chart-4: oklch(0.76 0.1 40);
   --chart-5: oklch(0.8 0.11 80);
-  --chart-6: oklch(0.7 0.02 270);
-  --sidebar: oklch(0.195 0.013 275);
+  --chart-6: oklch(0.7 0.004 255);
+  --sidebar: oklch(0.195 0.004 255);
   --sidebar-foreground: var(--foreground);
   --sidebar-primary: var(--primary);
   --sidebar-primary-foreground: var(--primary-foreground);
-  --sidebar-accent: oklch(0.415 0.03 280);
+  --sidebar-accent: oklch(0.34 0.02 255);
   --sidebar-accent-foreground: var(--accent-foreground);
   --sidebar-border: var(--border);
   --sidebar-ring: var(--ring);
-  --surface: oklch(0.215 0.014 275);
-  --inset: oklch(0.19 0.013 275);
+  --surface: oklch(0.215 0.005 255);
+  --inset: oklch(0.19 0.004 255);
   --success: oklch(0.76 0.12 165);
   --warning: oklch(0.82 0.14 80);
   --warning-text: oklch(0.82 0.14 80);
-  --rail: oklch(0.155 0.017 275);
-  --rail-foreground: oklch(0.94 0.014 280);
+  --rail: oklch(0.155 0.005 255);
+  --rail-foreground: oklch(0.94 0.004 255);
   --destructive-solid: oklch(0.56 0.2 25);
   --row-hover: oklch(1 0 0 / 5%);
   --row-highlight: oklch(1 0 0 / 9%);
-  --row-selected: oklch(0.34 0.06 280);
-  --row-selected-foreground: oklch(0.97 0.01 280);
+  --row-selected: oklch(0.32 0.05 255);
+  --row-selected-foreground: oklch(0.97 0.01 255);
   --surface-highlight: oklch(1 0 0 / 2%);
   --elevation-surface: 0 1px 2px oklch(0 0 0 / 12%);
   --elevation-raised: 0 2px 6px oklch(0 0 0 / 16%), 0 8px 20px -8px oklch(0 0 0 / 25%);

@@ -7,36 +7,34 @@ import { createHash } from "node:crypto";
 const css = `
 :root {
   color-scheme: light dark;
-  --background: oklch(0.975 0.002 275);
-  --foreground: oklch(0.25 0.008 275);
+  --background: oklch(0.975 0.002 255);
+  --foreground: oklch(0.25 0.004 255);
   --card: oklch(1 0 0);
-  --primary: oklch(0.49 0.19 280);
+  --primary: oklch(0.48 0.14 255);
   --primary-foreground: oklch(0.985 0 0);
-  --muted-foreground: oklch(0.49 0.018 275);
-  --border: oklch(0.9 0.009 275);
-  --control-border: oklch(0.82 0.01 275);
-  --ring: oklch(0.6 0.16 280);
-  --row-hover: oklch(0.25 0.03 275 / 5%);
-  --elevation-raised: 0 1px 3px oklch(0.2 0.03 275 / 6%), 0 4px 12px -4px oklch(0.2 0.03 275 / 8%);
+  --muted-foreground: oklch(0.49 0.008 255);
+  --border: oklch(0.9 0.004 255);
+  --control-border: oklch(0.82 0.005 255);
+  --ring: oklch(0.6 0.12 255);
+  --row-hover: oklch(0.25 0.01 255 / 5%);
+  --elevation-raised: 0 1px 3px oklch(0.2 0.01 255 / 6%), 0 4px 12px -4px oklch(0.2 0.01 255 / 8%);
   --radius: 0.5rem;
   --weight-medium: 500;
-  --weight-semibold: 600;
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: oklch(0.18 0.012 275);
-    --foreground: oklch(0.91 0.008 275);
-    --card: oklch(0.235 0.014 275);
-    --primary: oklch(0.76 0.12 280);
-    --primary-foreground: oklch(0.2 0.04 280);
-    --muted-foreground: oklch(0.7 0.018 275);
+    --background: oklch(0.18 0.004 255);
+    --foreground: oklch(0.91 0.003 255);
+    --card: oklch(0.235 0.005 255);
+    --primary: oklch(0.74 0.11 255);
+    --primary-foreground: oklch(0.2 0.03 255);
+    --muted-foreground: oklch(0.7 0.007 255);
     --border: oklch(1 0 0 / 9%);
-    --control-border: oklch(0.4 0.014 275);
-    --ring: oklch(0.7 0.12 280);
+    --control-border: oklch(0.4 0.005 255);
+    --ring: oklch(0.7 0.1 255);
     --row-hover: oklch(1 0 0 / 5%);
     --elevation-raised: none;
     --weight-medium: 430;
-    --weight-semibold: 520;
   }
 }
 * { box-sizing: border-box; }
@@ -61,7 +59,7 @@ main {
   border-radius: calc(var(--radius) * 1.4);
   box-shadow: var(--elevation-raised);
 }
-h1 { margin: 0 0 0.5rem; font-size: 1.125rem; line-height: 1.4; font-weight: var(--weight-semibold); }
+h1 { margin: 0 0 0.5rem; font-size: 1.125rem; line-height: 1.4; font-weight: var(--weight-medium); }
 p { margin: 0; color: var(--muted-foreground); }
 p + p { margin-top: 0.5rem; }
 nav { display: flex; flex-direction: column; gap: 0.5rem; margin-top: 1.5rem; }

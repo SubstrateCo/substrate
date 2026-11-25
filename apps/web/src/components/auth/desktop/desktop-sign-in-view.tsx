@@ -17,7 +17,7 @@ export function DesktopSignIn({
 }) {
   return (
     <AuthFrame
-      title="Welcome back"
+      title="Sign in"
       description="Sign in securely in your browser, then return to Substrate."
     >
       {waiting && (

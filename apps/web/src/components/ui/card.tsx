@@ -44,12 +44,12 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
   );
 }
 
-const cardTitleVariants = cva("font-heading leading-snug font-semibold", {
+const cardTitleVariants = cva("font-heading leading-snug font-medium", {
   variants: {
     size: {
       default: "text-base group-data-[size=sm]/card:text-sm",
-      lg: "text-xl tracking-tight",
-      xl: "text-2xl tracking-tight",
+      lg: "text-xl",
+      xl: "text-2xl",
     },
   },
   defaultVariants: {
