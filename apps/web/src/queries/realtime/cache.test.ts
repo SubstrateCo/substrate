@@ -957,7 +957,7 @@ test("task edits refresh titles shown by message links and existing notification
   client.clear();
 });
 
-test("a task hint refreshes one mounted fifty-message context page, and access resets erase it", async () => {
+test("a task hint refreshes one mounted fifty-message context page, and a denied access recheck erases it", async () => {
   const client = new QueryClient();
   const key = [
     ...queryKeys.context("org"),
@@ -998,10 +998,11 @@ test("a task hint refreshes one mounted fifty-message context page, and access r
     const blocked = Promise.withResolvers<{ links: { entityId: string; title: string }[] }[]>();
     observer.setOptions({ ...observer.options, queryFn: () => blocked.promise });
     const reset = cache.receive(change("access"));
-    expect(observer.getCurrentResult().data).toBeUndefined();
-    blocked.resolve([]);
+    // The page stays on screen while access is checked again.
+    expect(observer.getCurrentResult().data).toHaveLength(50);
+    blocked.reject(Object.assign(new Error("Forbidden"), { status: 403 }));
     await reset;
-    expect(observer.getCurrentResult().data).toEqual([]);
+    expect(observer.getCurrentResult().data).toBeUndefined();
   } finally {
     cache.dispose();
     unsubscribe();

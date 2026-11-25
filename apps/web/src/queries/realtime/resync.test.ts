@@ -87,7 +87,7 @@ test("resync reads each active query once", async () => {
   }
 });
 
-test("resync removes private content when access was lost while hints were missed", async () => {
+test("resync keeps content visible while it rechecks access, then removes it when denied", async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const key = queryKeys.messages("org", "private");
   client.setQueryData(key, ["formerly visible"]);
@@ -107,8 +107,9 @@ test("resync removes private content when access was lost while hints were misse
   });
   try {
     const pending = cache.resync();
-    expect(observer.getCurrentResult().data).toBeUndefined();
-    denied.reject(new Error("Access denied"));
+    expect(observer.getCurrentResult().data).toEqual(["formerly visible"]);
+    expect(observer.getCurrentResult().fetchStatus).toBe("fetching");
+    denied.reject(Object.assign(new Error("Access denied"), { status: 403 }));
     await pending;
     expect(observer.getCurrentResult().data).toBeUndefined();
     expect(client.getQueryData(key)).toBeUndefined();
@@ -285,7 +286,7 @@ test("reconciliation clears revoked messages when a request already in flight fa
   }
 });
 
-test("reconciliation drops unmounted private history after a missed membership revocation", async () => {
+test("reconciliation keeps unmounted history cached but stale, so its next view reads it again", async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const messages = queryKeys.messages("org", "revoked");
   const other = queryKeys.messages("other", "private");
@@ -307,7 +308,9 @@ test("reconciliation drops unmounted private history after a missed membership r
   try {
     await cache.reconcile();
     expect(observer.getCurrentResult().data).toEqual([]);
-    expect(client.getQueryData(messages)).toBeUndefined();
+    // Switching back shows the cached page at once and reads it again; a denial clears it.
+    expect(client.getQueryData(messages)).toEqual(["formerly accessible"]);
+    expect(client.getQueryState(messages)?.isInvalidated).toBe(true);
     expect(client.getQueryData(other)).toEqual(["another workspace"]);
   } finally {
     cache.dispose();

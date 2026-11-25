@@ -2,7 +2,10 @@ import type { QueryClient } from "@tanstack/react-query";
 
 import { staleSearches } from "../context/mutations";
 import { queryKeys } from "../keys";
+import { appendNewMessages, type MessageLocation } from "./new-messages";
+import { messagesQueryOptions } from "./options";
 import type { getRelatedContext } from "@/api/context/links";
+import type { listMessages } from "@/api/messaging/requests";
 import type { getProject } from "@/api/tasks/requests";
 import { referenceTokenPattern } from "@/lib/messaging/reference-token";
 
@@ -31,10 +34,8 @@ export function invalidateSentMessage(
   }
   return Promise.all([
     // The conversation list changes only when the send rejoins a channel. That send publishes an
-    // unscoped messaging hint, which refreshes the list.
-    client.invalidateQueries({
-      queryKey: queryKeys.conversationMessages(organizationId, conversationId),
-    }),
+    // unscoped messaging hint, which refreshes the list. History pages get the new message from
+    // updateSentMessageHistory.
     client.invalidateQueries({
       queryKey: queryKeys.messageTargets(organizationId, conversationId),
     }),
@@ -53,6 +54,33 @@ export function invalidateSentMessage(
     }),
     staleSearches(client, organizationId),
   ]);
+}
+
+/**
+ * Adds a sent message to its loaded history without reading every page again: older windows end
+ * before it. When the new messages cannot be read alone, the latest page is read again in full.
+ * A reply's root count in the timeline comes from the send's realtime hint, which reads the
+ * timeline after the reply committed; counting here as well could count the reply twice.
+ */
+export async function updateSentMessageHistory(
+  client: QueryClient,
+  location: MessageLocation,
+  messageId: string,
+  load?: typeof listMessages,
+) {
+  const { organizationId, conversationId, threadId } = location;
+  if (
+    !client.getQueryCache().find({
+      queryKey: messagesQueryOptions(organizationId, conversationId, threadId).queryKey,
+      exact: true,
+    })
+  )
+    return;
+  if (await appendNewMessages(client, location, { messageId, load })) return;
+  await client.invalidateQueries({
+    queryKey: messagesQueryOptions(organizationId, conversationId, threadId).queryKey,
+    exact: true,
+  });
 }
 
 // Call after leaving the conversation's route. Its history may now be unreadable or gone, so it is

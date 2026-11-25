@@ -11,11 +11,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { realtimeBridge } from "@/lib/desktop/bridges";
 import { createBrowserRealtime } from "@/lib/realtime/browser";
 import { refreshSession } from "@/queries/auth/session";
-import {
-  createRealtimeCache,
-  realtimeReconcileMs,
-  type RealtimeHealth,
-} from "@/queries/realtime/cache";
+import { createRealtimeCache, type RealtimeHealth } from "@/queries/realtime/cache";
 
 type LiveState = { socket: RealtimeStatus; health: RealtimeHealth };
 
@@ -73,13 +69,14 @@ export function RealtimeConnection({
         if (event.status === "forbidden") void cache.forbidden().catch(() => {});
       }
     });
+    // Hints keep the cache current, and the server retries hints it failed to publish. Returning
+    // to the window still re-reads what is on screen, in case a hint was lost anyway.
     const reconcile = () => {
       if (active && connected) void cache.reconcile().catch(() => {});
     };
     const onVisibility = () => {
       if (document.visibilityState === "visible") reconcile();
     };
-    const reconcileTimer = setInterval(reconcile, realtimeReconcileMs);
     window.addEventListener("focus", reconcile);
     document.addEventListener("visibilitychange", onVisibility);
     void bridge.connect({ organizationId }).catch(() => {
@@ -88,7 +85,6 @@ export function RealtimeConnection({
     return () => {
       active = false;
       controller.abort();
-      clearInterval(reconcileTimer);
       window.removeEventListener("focus", reconcile);
       document.removeEventListener("visibilitychange", onVisibility);
       unsubscribe();

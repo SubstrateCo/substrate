@@ -10,27 +10,37 @@ import { afterEach, beforeEach, expect, vi, test } from "bun:test";
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
-test("access reset clears the previous history page used as message placeholder data", async () => {
+const access = () =>
+  ({
+    version: 1,
+    type: "change",
+    id: crypto.randomUUID(),
+    organizationId: "org",
+    domain: "access",
+  }) as const;
+
+const forbidden = () => Object.assign(new Error("Forbidden"), { status: 403 });
+
+test("an access recheck keeps the history page shown as placeholder until a denial clears it", async () => {
   const client = new QueryClient();
   const prefix = queryKeys.messages("org", "conversation");
   const olderKey: QueryKey = [...prefix, { beforeMessageId: "older" }];
   const latestKey: QueryKey = [...prefix, {}];
   client.setQueryData(olderKey, ["private history"]);
-  const previousQuery = client.getQueryCache().find({ queryKey: olderKey })!;
-  const older = Promise.withResolvers<string[]>();
-  const authorized = Promise.withResolvers<string[]>();
-  let reads = 0;
+  const reads: ReturnType<typeof Promise.withResolvers<string[]>>[] = [];
   const observer = new QueryObserver(client, {
     queryKey: olderKey,
     staleTime: Infinity,
     queryFn: async () => ["private history"],
   });
   const unsubscribe = observer.subscribe(() => {});
-  const read = () => (++reads === 1 ? older.promise : authorized.promise);
   observer.setOptions({
     queryKey: latestKey,
     retry: false,
-    queryFn: () => read(),
+    queryFn: () => {
+      reads.push(Promise.withResolvers<string[]>());
+      return reads.at(-1)!.promise;
+    },
     placeholderData: (previous, query) =>
       prefix.every((part, index) => query?.queryKey[index] === part) ? previous : undefined,
   });
@@ -42,30 +52,28 @@ test("access reset clears the previous history page used as message placeholder 
   });
   try {
     expect(observer.getCurrentResult().data).toEqual(["private history"]);
-    const reset = cache.receive({
-      version: 1,
-      type: "change",
-      id: crypto.randomUUID(),
-      organizationId: "org",
-      domain: "access",
-    });
+    const reset = cache.receive(access());
+    await advanceTimersAsync(0);
+    // The unmounted page left the cache, but the view keeps it until the recheck answers.
+    expect(client.getQueryData(olderKey)).toBeUndefined();
+    expect(observer.getCurrentResult().data).toEqual(["private history"]);
+    reads.at(-1)!.reject(forbidden());
+    await reset;
+    expect(observer.getCurrentResult().data).toBeUndefined();
+    expect(observer.getCurrentResult().status).toBe("error");
+    // The read that the recheck replaced cannot bring the old page back.
+    reads[0]!.resolve(["obsolete private history"]);
     await advanceTimersAsync(0);
     expect(observer.getCurrentResult().data).toBeUndefined();
-    expect(previousQuery.state.data).toBeUndefined();
-    authorized.resolve([]);
-    older.resolve(["obsolete private history"]);
-    await reset;
-    expect(observer.getCurrentResult().data).toEqual([]);
   } finally {
-    older.resolve([]);
-    authorized.resolve([]);
+    for (const read of reads) read.resolve([]);
     cache.dispose();
     unsubscribe();
     client.clear();
   }
 });
 
-test("access reset clears a previous message context page kept as placeholder data", async () => {
+test("an access recheck keeps a message context placeholder until a denial clears it", async () => {
   const client = new QueryClient();
   type Page = Awaited<ReturnType<NonNullable<ReturnType<typeof messagePageOptions>["queryFn"]>>>;
   const page = (messageId: string): Page[number] => ({
@@ -75,7 +83,7 @@ test("access reset clears a previous message context page kept as placeholder da
     people: [],
     agents: [],
   });
-  const loading = Promise.withResolvers<Page>();
+  const reads: ReturnType<typeof Promise.withResolvers<Page>>[] = [];
   const observer = new QueryObserver(client, {
     ...messagePageOptions("org", "conversation", ["one"]),
     queryFn: async () => [page("one")],
@@ -92,23 +100,20 @@ test("access reset clears a previous message context page kept as placeholder da
     // A new message changes the key; the visible page stays as placeholder data.
     observer.setOptions({
       ...messagePageOptions("org", "conversation", ["one", "two"]),
-      queryFn: () => loading.promise,
+      queryFn: () => {
+        reads.push(Promise.withResolvers<Page>());
+        return reads.at(-1)!.promise;
+      },
     });
-    expect(observer.getCurrentResult().data).toEqual([page("one")]);
     expect(observer.getCurrentResult().isPlaceholderData).toBe(true);
-    const reset = cache.receive({
-      version: 1,
-      type: "change",
-      id: crypto.randomUUID(),
-      organizationId: "org",
-      domain: "access",
-    });
+    const reset = cache.receive(access());
     await advanceTimersAsync(0);
-    expect(observer.getCurrentResult().data).toBeUndefined();
-    loading.resolve([]);
+    expect(observer.getCurrentResult().data).toEqual([page("one")]);
+    reads.at(-1)!.reject(forbidden());
     await reset;
+    expect(observer.getCurrentResult().data).toBeUndefined();
   } finally {
-    loading.resolve([]);
+    for (const read of reads) read.resolve([]);
     cache.dispose();
     unsubscribe();
     client.clear();

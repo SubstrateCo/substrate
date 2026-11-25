@@ -316,14 +316,14 @@ export function messageOperations(
     async listMessages(
       conversationId: string,
       threadId?: string,
-      options: { beforeMessageId?: string; aroundMessageId?: string } = {},
+      options: { beforeMessageId?: string; aroundMessageId?: string; afterMessageId?: string } = {},
     ) {
       const { actor } = await authenticate(db);
       const pageCondition = and(
         eq(messagingMessages.conversationId, conversationId),
         threadId ? eq(messagingMessages.threadId, threadId) : isNull(messagingMessages.threadId),
       );
-      const anchorId = options.beforeMessageId ?? options.aroundMessageId;
+      const anchorId = options.beforeMessageId ?? options.aroundMessageId ?? options.afterMessageId;
       const anchor = db.$with("page_anchor").as(
         db
           .select({ id: messagingMessages.id, at: messagingMessages.createdAt })
@@ -349,10 +349,13 @@ export function messageOperations(
           ),
       );
       let boundary;
-      if (anchorId)
-        boundary = options.beforeMessageId
-          ? sql`(${messagingMessages.createdAt}, ${messagingMessages.id}) < (select ${anchor.at}, ${anchor.id} from ${anchor})`
-          : sql`(${messagingMessages.createdAt}, ${messagingMessages.id}) <= (select ${anchor.at}, ${anchor.id} from ${anchor})`;
+      if (anchorId) {
+        const position = sql`(${messagingMessages.createdAt}, ${messagingMessages.id})`;
+        const at = sql`(select ${anchor.at}, ${anchor.id} from ${anchor})`;
+        if (options.beforeMessageId) boundary = sql`${position} < ${at}`;
+        else if (options.aroundMessageId) boundary = sql`${position} <= ${at}`;
+        else boundary = sql`${position} > ${at}`;
+      }
       const page = db.$with("message_page").as(
         db
           .select({ id: messagingMessages.id })

@@ -17,6 +17,8 @@ export const messageListInput = workspaceInput.extend({
   threadId: id.optional(),
   beforeMessageId: id.optional(),
   aroundMessageId: id.optional(),
+  /** Only messages newer than this one. A full page means more may be missing before it. */
+  afterMessageId: id.optional(),
 });
 export const conversationInput = workspaceInput.extend({
   kind: conversationKind,

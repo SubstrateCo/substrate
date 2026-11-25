@@ -83,4 +83,47 @@ test("message windows paginate equal timestamps without gaps and reject anchors 
   expect(
     await rejection(service.listMessages(other.id, undefined, { beforeMessageId: anchor.id })),
   ).toBeInstanceOf(AccessDeniedError);
+  expect(
+    await rejection(service.listMessages(other.id, undefined, { afterMessageId: anchor.id })),
+  ).toBeInstanceOf(AccessDeniedError);
+});
+
+test("an after cursor returns only newer messages of its thread, oldest first", async () => {
+  await f.verifyEmails();
+  const service = f.messaging("alice");
+  const conversation = await service.createConversation({ kind: "channel", name: "Delta" });
+  const first = await service.sendMessage(conversation.id, "first");
+  const second = await service.sendMessage(conversation.id, "second");
+  await service.sendMessage(conversation.id, "reply", first.id);
+  const third = await service.sendMessage(conversation.id, "third");
+  const after = (afterMessageId: string, threadId?: string) =>
+    service.listMessages(conversation.id, threadId, { afterMessageId });
+  expect((await after(first.id)).map((row) => row.id)).toEqual([second.id, third.id]);
+  expect(await after(third.id)).toEqual([]);
+  // A timeline message is not a cursor inside a thread.
+  expect(await rejection(after(second.id, first.id))).toBeInstanceOf(AccessDeniedError);
+});
+
+test("an after cursor beyond one page returns the newest page, which marks a gap", async () => {
+  await f.verifyEmails();
+  const service = f.messaging("alice");
+  const conversation = await service.createConversation({ kind: "channel", name: "Gap" });
+  const anchor = await service.sendMessage(conversation.id, "anchor");
+  const later = await f.db
+    .insert(messagingMessages)
+    .values(
+      Array.from({ length: 55 }, (_, index) => ({
+        conversationId: conversation.id,
+        authorActorEntityId: f.alice,
+        authorOrganizationId: f.orgA,
+        body: `Later ${index}`,
+        createdAt: new Date(Date.now() + 1_000 + index * 1_000),
+      })),
+    )
+    .returning();
+  const rows = await service.listMessages(conversation.id, undefined, {
+    afterMessageId: anchor.id,
+  });
+  expect(rows).toHaveLength(50);
+  expect(rows.map((row) => row.body)).toEqual(later.slice(5).map((row) => row.body));
 });

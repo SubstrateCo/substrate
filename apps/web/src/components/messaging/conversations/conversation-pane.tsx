@@ -104,16 +104,19 @@ export function ConversationPane({
         onClose={() => transcript()}
       />
     );
-  else if (messageId && !target.error)
+  else if (messageId && !target.error) {
+    // A root in the timeline opens its thread at once; the target read confirms it later.
+    const root = timeline.find((message) => message.id === messageId && !message.threadId);
     aside = (
       <ConversationThreadAside
         organizationId={organizationId}
         conversation={conversation}
-        target={target.data}
+        target={target.data ?? (root && { root, message: root })}
         contextMessageIds={timeline.map((message) => message.id)}
         onClose={() => navigateConversation({})}
       />
     );
+  }
   return (
     <ConversationAgentWork
       userId={userId}
@@ -228,7 +231,7 @@ function ConversationThreadAside({
 }: {
   organizationId: string;
   conversation: Conversation;
-  target: ReturnType<typeof useMessageTarget>["data"];
+  target?: Pick<NonNullable<ReturnType<typeof useMessageTarget>["data"]>, "root" | "message">;
   contextMessageIds: string[];
   onClose: () => void;
 }) {

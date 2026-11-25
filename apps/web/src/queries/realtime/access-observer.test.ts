@@ -95,6 +95,79 @@ test("access resets mounted queries without detaching the view, then clears revo
   }
 });
 
+test("access events keep mounted data on screen while it is read again", async () => {
+  const client = new QueryClient();
+  const key = queryKeys.projects("org");
+  client.setQueryData(key, ["visible project"]);
+  const reads: ReturnType<typeof Promise.withResolvers<string[]>>[] = [];
+  const observer = new QueryObserver(client, {
+    queryKey: key,
+    staleTime: Infinity,
+    retry: false,
+    queryFn: () => {
+      reads.push(Promise.withResolvers<string[]>());
+      return reads.at(-1)!.promise;
+    },
+  });
+  const unsubscribe = observer.subscribe(() => {});
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    const first = cache.receive(access());
+    await advanceTimersAsync(0);
+    expect(observer.getCurrentResult().data).toEqual(["visible project"]);
+    expect(observer.getCurrentResult().fetchStatus).toBe("fetching");
+    reads.at(-1)!.resolve(["visible project", "granted project"]);
+    await first;
+    expect(observer.getCurrentResult().data).toEqual(["visible project", "granted project"]);
+    // An outage is not a denial: the loaded content stays.
+    const second = cache.receive(access());
+    await advanceTimersAsync(0);
+    reads.at(-1)!.reject(Object.assign(new Error("Unavailable"), { status: 503 }));
+    await second;
+    expect(observer.getCurrentResult().status).toBe("error");
+    expect(observer.getCurrentResult().data).toEqual(["visible project", "granted project"]);
+  } finally {
+    for (const read of reads) read.resolve([]);
+    cache.dispose();
+    unsubscribe();
+    client.clear();
+  }
+});
+
+test("any denied read clears its data, within the connected workspace only", async () => {
+  const client = new QueryClient();
+  const own = queryKeys.projects("org");
+  const other = queryKeys.projects("other");
+  const denied = async () => {
+    throw Object.assign(new Error("Forbidden"), { status: 403 });
+  };
+  client.setQueryData(own, ["private project"]);
+  client.setQueryData(other, ["other workspace project"]);
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    const read = (queryKey: readonly unknown[]) =>
+      client.query({ queryKey, queryFn: denied, retry: false, staleTime: 0 }).catch(() => {});
+    await read(own);
+    await read(other);
+    expect(client.getQueryData(own)).toBeUndefined();
+    // Another workspace's data is cleared by that workspace's own connection.
+    expect(client.getQueryData(other)).toEqual(["other workspace project"]);
+  } finally {
+    cache.dispose();
+    client.clear();
+  }
+});
+
 test("revocation clears reactor pages without replacing their infinite-query shape with a message array", async () => {
   const client = new QueryClient();
   const key = queryKeys.messageReactions("org", "conversation", "message");
@@ -108,7 +181,7 @@ test("revocation clears reactor pages without replacing their infinite-query sha
     queryKey: key,
     staleTime: Infinity,
     retry: false,
-    queryFn: () => Promise.reject(new Error("Access denied")),
+    queryFn: () => Promise.reject(Object.assign(new Error("Access denied"), { status: 403 })),
   });
   const unsubscribe = observer.subscribe((result) => {
     seen.push(result.data);

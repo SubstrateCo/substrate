@@ -1,6 +1,6 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { invalidateSentMessage } from "./mutations";
+import { invalidateSentMessage, updateSentMessageHistory } from "./mutations";
 import { messagesQueryOptions } from "./options";
 import { sendMessage } from "@/api/messaging/requests";
 
@@ -46,9 +46,12 @@ export function useSendMessage(
         },
       });
     },
-    onSuccess: (_, { body }) => {
+    onSuccess: (sent, { body }) => {
       onSent?.();
-      return invalidateSentMessage(client, organizationId, conversationId, body, threadId);
+      return Promise.all([
+        updateSentMessageHistory(client, { organizationId, conversationId, threadId }, sent.id),
+        invalidateSentMessage(client, organizationId, conversationId, body, threadId),
+      ]);
     },
   });
 }

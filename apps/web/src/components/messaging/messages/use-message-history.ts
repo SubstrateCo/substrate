@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { queryKeys } from "@/queries/keys";
 import { useInvalidateLatestMessages } from "@/queries/messaging/messages";
+import { historyPageSize } from "@/queries/messaging/new-messages";
 import { messagesQueryOptions } from "@/queries/messaging/options";
 
 type HistoryPosition = {
@@ -18,9 +19,6 @@ type HistoryPosition = {
   /** The oldest message: an Older move from it found nothing. */
   oldestId?: string;
 };
-
-/** The server's page size. A full page is the only sign that older messages may exist. */
-const historyPageSize = 50;
 
 export function useMessageHistory({
   organizationId,

@@ -8,8 +8,11 @@ import {
   invalidateAddedMembers,
   invalidateRemovedConversation,
   invalidateSentMessage,
+  updateSentMessageHistory,
 } from "./messaging/mutations";
+import { messagesQueryOptions } from "./messaging/options";
 import { invalidateTasksWrite } from "./tasks/mutations";
+import type { listMessages, Message } from "@/api/messaging/requests";
 import { afterEach, beforeEach, expect, vi, test } from "bun:test";
 
 beforeEach(() => vi.useFakeTimers());
@@ -149,9 +152,10 @@ test("sending a work reference refreshes its project discussions, not other conv
     expect(fixture.reads).toEqual({
       // A send changes the list only by rejoining, and that sends its own messaging hint.
       conversations: 0,
-      channel: 1,
-      thread: 1,
-      history: 1,
+      // updateSentMessageHistory reads only the new messages into history pages.
+      channel: 0,
+      thread: 0,
+      history: 0,
       otherConversation: 0,
       // A new message cannot change the context of loaded messages; it gets its own page.
       page: 0,
@@ -171,6 +175,43 @@ test("sending a work reference refreshes its project discussions, not other conv
     });
   } finally {
     fixture.close();
+  }
+});
+
+test("a sent message joins its loaded page through one read of newer messages", async () => {
+  const client = new QueryClient();
+  const options = messagesQueryOptions("org", "conversation");
+  // SAFETY: history updates only read and append rows by ID.
+  const rows = (...ids: string[]) => ids.map((id) => ({ id }) as Message);
+  let fullReads = 0;
+  const observer = new QueryObserver(client, {
+    ...options,
+    initialData: rows("first"),
+    staleTime: Infinity,
+    queryFn: async () => {
+      fullReads++;
+      return rows("first", "sent");
+    },
+  });
+  const unsubscribe = observer.subscribe(() => {});
+  const after: (string | undefined)[] = [];
+  // SAFETY: history updates read only `data.afterMessageId` and the returned rows' IDs.
+  const load = (async ({ data }: Parameters<typeof listMessages>[0]) => {
+    after.push(data.afterMessageId);
+    return rows("sent");
+  }) as typeof listMessages;
+  try {
+    const location = { organizationId: "org", conversationId: "conversation" };
+    await updateSentMessageHistory(client, location, "sent", load);
+    expect(observer.getCurrentResult().data?.map((row) => row.id)).toEqual(["first", "sent"]);
+    expect(after).toEqual(["first"]);
+    // A thread that is not loaded has nothing to update and reads nothing.
+    await updateSentMessageHistory(client, { ...location, threadId: "root" }, "reply", load);
+    expect(after).toEqual(["first"]);
+    expect(fullReads).toBe(0);
+  } finally {
+    unsubscribe();
+    client.clear();
   }
 });
 

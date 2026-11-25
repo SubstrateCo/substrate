@@ -38,7 +38,15 @@ export function MessagingWorkspace({
   messageId?: string;
   turnId?: string;
 }) {
-  const conversations = useQuery(conversationsQueryOptions(organizationId, conversationId));
+  // One list serves every selection, so switching conversations reads nothing again. The list
+  // leaves out task discussions; a selected one is read with the list that includes it.
+  const conversations = useQuery(conversationsQueryOptions(organizationId));
+  const listed =
+    !conversationId || !!conversations.data?.some((item) => item.id === conversationId);
+  const selection = useQuery({
+    ...conversationsQueryOptions(organizationId, conversationId),
+    enabled: !!conversationId && conversations.isSuccess && !listed,
+  });
   const unread = useQuery(unreadCountsOptions(organizationId));
   const workspacePeople = useQuery(workspacePeopleQueryOptions(organizationId));
   const people = (workspacePeople.data ?? []).filter((person) => person.id !== userId);
@@ -83,8 +91,11 @@ export function MessagingWorkspace({
       };
     });
   const selected = conversationId
-    ? visibleConversations.find((conversation) => conversation.id === conversationId)
+    ? (listed ? visibleConversations : (selection.data ?? [])).find(
+        (conversation) => conversation.id === conversationId,
+      )
     : sidebarConversations[0];
+  const selecting = !listed && (conversations.isPending || selection.isPending);
   const pane = selected && (
     <ConversationPane
       key={selected.id}
@@ -104,7 +115,7 @@ export function MessagingWorkspace({
       onSidebarOpenChange={setSidebarOpen}
       conversationLink={(id) => messageLink(organizationId, id)}
       onSelect={() => setSidebarOpen(false)}
-      loading={conversations.isPending}
+      loading={conversations.isPending || selecting}
       error={conversations.error}
       onRetry={() => void conversations.refetch()}
       people={people}
@@ -126,7 +137,7 @@ export function MessagingWorkspace({
       )}
     >
       {selected?.task ? <AppAvailability app="tasks">{pane}</AppAvailability> : pane}
-      {conversationId && !selected && !conversations.isPending && (
+      {conversationId && !selected && !selecting && (
         <ContentNotice
           icon={Unlink}
           title="Conversation unavailable"
