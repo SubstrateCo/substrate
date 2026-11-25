@@ -420,6 +420,32 @@ test("person search filters conversation access before paging and keeps organiza
   ).toEqual([excluded!.id, caller!.id]);
 });
 
+test("person search in a task discussion lists people with task access who are not members", async () => {
+  await f.verifyEmails();
+  const alice = f.forActor(f.alice);
+  const project = await alice.projects.create({ name: "Discussion people" });
+  const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Discuss" });
+  const discussion = await alice.tasks.ensureDiscussion(task.entityId);
+  const people = async () =>
+    (await f.context().search({ query: "", kind: "person", conversationId: discussion })).map(
+      (row) => row.id,
+    );
+  expect(await people()).toEqual([f.alice]);
+  await alice.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.bob,
+    level: "view",
+  });
+  // Bob sees the discussion through the task, not through membership.
+  expect(
+    await f.db
+      .select()
+      .from(messagingParticipants)
+      .where(eq(messagingParticipants.actorEntityId, f.bob)),
+  ).toEqual([]);
+  expect(await people()).toEqual([f.alice, f.bob].sort());
+});
+
 test("editable project search applies access checks before limiting results", async () => {
   await f.db.update(user).set({ emailVerified: true });
   const alice = f.forActor(f.alice);

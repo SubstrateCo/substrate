@@ -2,6 +2,7 @@ import type { RealtimeEvent } from "@substrate/contracts/realtime";
 
 import type { Query, QueryClient, QueryKey } from "@tanstack/react-query";
 
+import type { SearchInput } from "./context/search";
 import { queryKeys } from "./keys";
 import type { MessagePageContext } from "@/api/context/links";
 
@@ -24,6 +25,8 @@ export interface QueryTarget {
   linksTo?: string[];
   // Matches conversation lists that include a discussion of this work, or have not loaded yet.
   discussesWork?: { projectId: string; taskIds?: string[] };
+  // Matches only searches whose results can include messages, threads, or conversations.
+  searchesMessages?: true;
 }
 
 type Change = Extract<RealtimeEvent, { type: "change" }>;
@@ -86,6 +89,20 @@ function discussesWork(
   );
 }
 
+// A search without kinds searches "all", which includes messages.
+const messageSearchKinds = new Set<SearchInput["kind"]>([
+  "all",
+  "message",
+  "thread",
+  "conversation",
+]);
+
+function searchesMessages(query: Query, prefixLength: number) {
+  // SAFETY: searchesMessages targets only match search keys, which end with their input.
+  const input = query.queryKey[prefixLength] as Pick<SearchInput, "kind" | "kinds"> | undefined;
+  return (input?.kinds ?? [input?.kind ?? "all"]).some((kind) => messageSearchKinds.has(kind));
+}
+
 export function queryTargetFilter(
   target: QueryTarget,
   predicate: (query: Query) => boolean = () => true,
@@ -97,6 +114,7 @@ export function queryTargetFilter(
     withId,
     linksTo,
     discussesWork: work,
+    searchesMessages: messagesOnly,
     ...filter
   } = target;
   const matchesLink = linksTo && entityIdMatcher(linksTo);
@@ -110,6 +128,7 @@ export function queryTargetFilter(
       (!withId || query.queryKey.slice(filter.queryKey.length).includes(withId)) &&
       (!matchesLink || linksWork(query, matchesLink)) &&
       (!work || discussesWork(query, work.projectId, matchesTask)) &&
+      (!messagesOnly || searchesMessages(query, filter.queryKey.length)) &&
       predicate(query),
   };
 }
@@ -290,10 +309,13 @@ export function domainTargets(
           ? [messagePagesTarget(organizationId, conversationId, detail.messageId)]
           : []),
         { queryKey: queryKeys.messageTargets(organizationId, conversationId) },
-        // New posts need not interrupt an open search. General changes include edits and
-        // deletions, so their old excerpts must be replaced in open results as well.
+        // New posts need not interrupt an open search, and cannot change people, agents, or
+        // records. General changes include edits and deletions, so their old excerpts must be
+        // replaced in open results as well.
         ...searchTargets(organizationId).map((target) =>
-          scope === "messages" ? target : { queryKey: target.queryKey },
+          scope === "messages"
+            ? { ...target, searchesMessages: true as const }
+            : { queryKey: target.queryKey },
         ),
       ];
     case "tasks":

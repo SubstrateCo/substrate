@@ -3,6 +3,7 @@ import { advanceTimersAsync } from "@substrate/contracts/testing/timers";
 
 import { QueryClient, QueryObserver, type QueryKey } from "@tanstack/react-query";
 
+import type { SearchInput } from "../context/search";
 import { queryKeys } from "../keys";
 import { queryTargetFilter } from "../targets";
 import { createRealtimeCache, realtimeQueryTargets } from "./cache";
@@ -324,7 +325,33 @@ test("new messages refresh history, not conversation lists or loaded message con
   expect(targets).not.toContainEqual({ queryKey: queryKeys.messagePages("org", "conversation") });
   // New posts only make open searches stale.
   for (const queryKey of queryKeys.searches("org"))
-    expect(targets).toContainEqual({ queryKey, refetchType: "none" });
+    expect(targets).toContainEqual({ queryKey, refetchType: "none", searchesMessages: true });
+});
+
+test("new messages make only searches that can show messages stale", () => {
+  const search = (input: Partial<SearchInput>) => [
+    ...queryKeys.search("org"),
+    { query: "", ...input },
+  ];
+  const stale = [
+    search({}),
+    search({ kind: "all" }),
+    search({ kind: "thread" }),
+    search({ kinds: ["person", "message"], limit: 5 }),
+    [...queryKeys.searchPages("org"), { query: "", kind: "conversation" }],
+  ];
+  const kept = [
+    search({ kinds: ["person", "agent", "task", "project"], limit: 5 }),
+    search({ kind: "person" }),
+    search({ kind: "channel" }),
+    [...queryKeys.searchPages("org"), { query: "", kind: "task" }],
+  ];
+  const event = {
+    ...change("messaging"),
+    conversationId: "conversation",
+    scope: "messages",
+  } as const;
+  expect(matchedKeys(event, [...stale, ...kept])).toEqual(stale);
 });
 
 test("a new reply refreshes its thread and the timeline's reply count, nothing else in history", () => {

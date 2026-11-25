@@ -20,6 +20,7 @@ import {
   approvedParticipant,
   liveAgentMember,
   mentionablePerson,
+  publicChannel,
   visibleConversations,
 } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
@@ -43,6 +44,7 @@ import {
   exists,
   gt,
   inArray,
+  isNotNull,
   isNull,
   or,
   sql,
@@ -543,10 +545,8 @@ export async function contextSearch(
       }),
     );
   }
-  for (const rows of await Promise.all(branchRows)) results.push(...rows);
-  signal?.throwIfAborted();
   if (searches("person") && input.conversationId) {
-    const rows = await db
+    const pending = db
       .select({
         id: actors.entityId,
         title: user.name,
@@ -565,13 +565,36 @@ export async function contextSearch(
         member,
         and(eq(member.userId, actors.userId), eq(member.organizationId, scope.organizationId)),
       )
-      .innerJoin(entities, eq(entities.entityId, actors.entityId))
+      // A foreign key gives every actor its entity row, so a left join returns the same rows.
+      // An inner join lets PostgreSQL serve the ID order by walking every entity of the
+      // organization, which is slow when a short name filter matches more people than it expects.
+      .leftJoin(entities, eq(entities.entityId, actors.entityId))
       .innerJoin(
         messagingConversations,
         and(eq(messagingConversations.id, input.conversationId), visibleConversations(db, scope)),
       )
       .where(
         and(
+          // This narrows the scan without changing the result. Outside task discussions and
+          // public channels, only live members can see a conversation, and a person has one
+          // actor per organization. So mentionablePerson checks only those members, not every
+          // person in the organization.
+          or(
+            isNotNull(messagingConversations.taskEntityId),
+            publicChannel(),
+            inArray(
+              actors.entityId,
+              db
+                .select({ id: messagingParticipants.actorEntityId })
+                .from(messagingParticipants)
+                .where(
+                  and(
+                    eq(messagingParticipants.conversationId, input.conversationId),
+                    isNull(messagingParticipants.leftAt),
+                  ),
+                ),
+            ),
+          ),
           mentionablePerson(db, scope.organizationId),
           anchorId ? inArray(actors.entityId, relatedEntities) : undefined,
           anchorId ? ctx.readable(actors.entityId) : undefined,
@@ -582,8 +605,9 @@ export async function contextSearch(
       )
       .orderBy(asc(actors.entityId))
       .limit(limit);
-    signal?.throwIfAborted();
-    results.push(...rows.map((row) => ({ ...row, kind: "person" as const })));
+    branchRows.push(
+      pending.then((rows) => rows.map((row) => ({ ...row, kind: "person" as const }))),
+    );
   }
   // Mention picker: the viewer's own agents that are members here, and, for a person of this
   // organization in a channel or group, other people's agents that accept callers and whose owner
@@ -612,7 +636,7 @@ export async function contextSearch(
             organizationId: scope.organizationId,
           }),
         );
-    const rows = await db
+    const pending = db
       .select({
         id: actors.entityId,
         title: userAgents.name,
@@ -643,21 +667,25 @@ export async function contextSearch(
       )
       .orderBy(asc(actors.entityId))
       .limit(limit);
-    signal?.throwIfAborted();
-    results.push(
-      ...rows.map(({ ownerUserId, agentId, callerPolicy, imageFileId, ...row }) =>
-        ownerUserId === scope.userId
-          ? { ...row, image: managedPicturePath(imageFileId), agentId, kind: "agent" as const }
-          : {
-              ...row,
-              image: null,
-              // The shared condition admits only agents whose policy is anyone or ask.
-              callMode: callerPolicy === "ask" ? ("ask" as const) : ("anyone" as const),
-              kind: "agent" as const,
-            },
+    branchRows.push(
+      pending.then((rows) =>
+        rows.map(({ ownerUserId, agentId, callerPolicy, imageFileId, ...row }) =>
+          ownerUserId === scope.userId
+            ? { ...row, image: managedPicturePath(imageFileId), agentId, kind: "agent" as const }
+            : {
+                ...row,
+                image: null,
+                // The shared condition admits only agents whose policy is anyone or ask.
+                callMode: callerPolicy === "ask" ? ("ask" as const) : ("anyone" as const),
+                kind: "agent" as const,
+              },
+        ),
       ),
     );
   }
+  // Every branch runs concurrently. Pages are sorted by ID below, so arrival order does not matter.
+  for (const rows of await Promise.all(branchRows)) results.push(...rows);
+  signal?.throwIfAborted();
   const byId = (a: SearchResult, b: SearchResult) => a.id.localeCompare(b.id);
   // A combined search keeps each kind's own page, grouped in the requested order.
   const page = input.kinds
