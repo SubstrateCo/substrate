@@ -7,7 +7,7 @@ import { z } from "zod";
 export const Route = createFileRoute("/_authenticated/_frame/_workspace/calendar/")({
   component: CalendarRoute,
   validateSearch: z.object({
-    view: z.enum(["agenda", "week"]).optional(),
+    view: z.enum(["agenda", "week", "month"]).optional(),
     date: z
       .string()
       .regex(/^\d{4}-\d{2}-\d{2}$/)
@@ -21,7 +21,7 @@ function CalendarRoute() {
   const { view, date, eventId } = Route.useSearch();
   return (
     <AppAvailability app="calendar">
-      <CalendarWorkspace view={view ?? "agenda"} date={date} eventId={eventId} />
+      <CalendarWorkspace view={view} date={date} eventId={eventId} />
     </AppAvailability>
   );
 }

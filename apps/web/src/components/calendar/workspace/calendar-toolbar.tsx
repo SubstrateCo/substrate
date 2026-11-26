@@ -1,13 +1,20 @@
-import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { CalendarViewMode } from "@/lib/calendar/days";
-import { CalendarRange, ChevronLeft, ChevronRight, List } from "lucide-react";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 const viewOptions = [
-  { value: "agenda", label: "Agenda", icon: List },
-  { value: "week", label: "Week", icon: CalendarRange },
+  { value: "agenda", label: "Agenda" },
+  { value: "week", label: "Week" },
+  { value: "month", label: "Month" },
 ] as const;
 
 function StepButton({
@@ -32,7 +39,7 @@ function StepButton({
   );
 }
 
-/** The period's name, paging, and the choice between the agenda and the week grid. */
+/** The period's name, paging, and calendar view. */
 export function CalendarToolbar({
   title,
   view,
@@ -49,7 +56,7 @@ export function CalendarToolbar({
   onStep: (direction: 1 | -1) => void;
   onViewChange: (view: CalendarViewMode) => void;
 }) {
-  const unit = view === "week" ? "week" : "two weeks";
+  const unit = view === "agenda" ? "two weeks" : view;
   return (
     <PageHeader
       variant="pane"
@@ -68,12 +75,23 @@ export function CalendarToolbar({
             />
             <StepButton label={`Next ${unit}`} direction="next" onClick={() => onStep(1)} />
           </div>
-          <SegmentedControl
-            aria-label="Calendar view"
+          <Select
             value={view}
-            options={viewOptions}
-            onValueChange={onViewChange}
-          />
+            onValueChange={(next) => {
+              if (next === "agenda" || next === "week" || next === "month") onViewChange(next);
+            }}
+          >
+            <SelectTrigger size="sm" aria-label="Calendar view">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {viewOptions.map((option) => (
+                <SelectItem key={option.value} value={option.value}>
+                  {option.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       }
     />

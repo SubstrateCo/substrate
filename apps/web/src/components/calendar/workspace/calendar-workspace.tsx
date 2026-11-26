@@ -6,6 +6,7 @@ import { linkOptions, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { CalendarEventPanel } from "../event/calendar-event-panel";
+import { CalendarMonth } from "./calendar-month";
 import { CalendarWeek } from "./calendar-week";
 import {
   CalendarAgendaBody,
@@ -25,21 +26,24 @@ import {
   type CalendarViewMode,
 } from "@/lib/calendar/days";
 import { groupCalendarsByAccount } from "@/lib/calendar/groups";
+import { readCalendarView, saveCalendarView } from "@/lib/calendar/view-preference";
 import { formatDateOnly, formatDateRange, formatMonthYear } from "@/lib/format/date";
 import { calendarEventsOptions, calendarSettingsOptions } from "@/queries/calendar/options";
 
 export function CalendarWorkspace({
-  view,
+  view: requestedView,
   date,
   eventId,
 }: {
-  view: CalendarViewMode;
+  view?: CalendarViewMode;
   /** YYYY-MM-DD of the day the view is anchored to. Today when absent. */
   date?: string;
   eventId?: string;
 }) {
   const { organizationId } = useWorkspaceScope();
   const navigate = useNavigate({ from: "/calendar/" });
+  const [preferredView, setPreferredView] = useState(readCalendarView);
+  const view = requestedView ?? preferredView;
   const now = useNow(true, 60_000);
   const anchor = viewAnchor(date, new Date(now));
   const days = visibleDays(view, anchor);
@@ -76,6 +80,20 @@ export function CalendarWorkspace({
       to: "/calendar",
       search: { workspaceId: organizationId, view, date, eventId: event.entityId },
     });
+  const gridProps = { days, events: visible, now, selectedEventId: eventId, eventLink };
+  let body;
+  if (view === "week") body = <CalendarWeek {...gridProps} />;
+  else if (view === "month") body = <CalendarMonth {...gridProps} />;
+  else
+    body = (
+      <CalendarAgendaBody
+        days={groupEventsByDay(visible, days, showsToday ? today : undefined)}
+        now={now}
+        selectedEventId={eventId}
+        eventLink={eventLink}
+      />
+    );
+  const titleDate = view === "week" ? days[3]! : anchor;
   return (
     <CalendarWorkspaceView
       state={state}
@@ -95,35 +113,21 @@ export function CalendarWorkspace({
       }
       toolbar={{
         title:
-          view === "week"
-            ? formatMonthYear(days[3]!)
+          view !== "agenda"
+            ? formatMonthYear(titleDate)
             : formatDateRange(days[0]!, days.at(-1)!, now),
         view,
         showsToday,
         onToday: () => search({ date: undefined }),
         onStep: (direction) => search({ date: shiftAnchor(view, anchor, direction) }),
-        onViewChange: (next) =>
-          search({ view: next, date: date ? formatDateOnly(anchor) : undefined }),
+        onViewChange: (next) => {
+          saveCalendarView(next);
+          setPreferredView(next);
+          search({ view: next, date: date ? formatDateOnly(anchor) : undefined });
+        },
       }}
       needsReconnect={needsReconnect}
-      body={
-        view === "week" ? (
-          <CalendarWeek
-            days={days}
-            events={visible}
-            now={now}
-            selectedEventId={eventId}
-            eventLink={eventLink}
-          />
-        ) : (
-          <CalendarAgendaBody
-            days={groupEventsByDay(visible, days, showsToday ? today : undefined)}
-            now={now}
-            selectedEventId={eventId}
-            eventLink={eventLink}
-          />
-        )
-      }
+      body={body}
       aside={
         eventId && (
           <CalendarEventPanel

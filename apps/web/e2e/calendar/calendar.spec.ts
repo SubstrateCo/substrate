@@ -1,5 +1,6 @@
 import { seedCalendar } from "../test-support/calendar";
 import { test, visit, type Actor } from "../test-support/fixtures";
+import { captureScreenshot } from "../test-support/screenshots";
 import { expect } from "@playwright/test";
 
 async function setApps(actor: Actor, calendar: boolean) {
@@ -87,13 +88,72 @@ test("the week view and agenda share the period controls", async ({ account, cli
   const { page } = user;
   // A past week, so "Today" is always available.
   await visit(user, undefined, "/calendar", { date: "2020-01-15" });
-  await page.getByRole("radio", { name: "Week", exact: true }).click();
+  await page.getByRole("combobox", { name: "Calendar view", exact: true }).click();
+  await page.getByRole("option", { name: "Week", exact: true }).click();
   await expect(page).toHaveURL(/view=week/);
   await expect(page.getByRole("heading", { name: "January 2020", exact: true })).toBeVisible();
   await page.getByRole("button", { name: "Next week", exact: true }).click();
   await expect(page).toHaveURL(/date=2020-01-22/);
   await page.getByRole("button", { name: "Today", exact: true }).click();
   await expect(page).not.toHaveURL(/date=/);
+});
+
+test("month view persists and shares event selection, filtering, navigation and Today", async ({
+  account,
+  client,
+}) => {
+  await setApps(account, true);
+  const saved = await seedCalendar(account);
+  const user = await client(account);
+  const { page } = user;
+  await visit(user, undefined, "/calendar", { date: "2020-01-15" });
+  const picker = page.getByRole("combobox", { name: "Calendar view", exact: true });
+  await picker.click();
+  await expect(page.getByRole("option", { name: "Agenda", exact: true })).toBeVisible();
+  await expect(page.getByRole("option", { name: "Week", exact: true })).toBeVisible();
+  await captureScreenshot(page, "calendar-view-dropdown");
+  await page.getByRole("option", { name: "Month", exact: true }).click();
+  const month = page.getByRole("region", { name: "Month", exact: true });
+  await expect(month).toBeVisible();
+  await expect(page.getByRole("heading", { name: "January 2020", exact: true })).toBeVisible();
+  const event = month.getByRole("link", { name: /Pricing review/ });
+  await event.click();
+  await expect(page).toHaveURL(new RegExp(`eventId=${saved.eventId}`));
+  await expect(event).toHaveAttribute("aria-current", "page");
+  const panel = page.getByRole("complementary", { name: "Event details", exact: true });
+  await expect(panel.getByRole("heading", { name: "Pricing review", exact: true })).toBeVisible();
+  await captureScreenshot(page, "calendar-month-selected-event");
+  await page.reload();
+  await expect(month).toBeVisible();
+  await expect(event).toHaveAttribute("aria-current", "page");
+  await panel.getByRole("button", { name: "Close event", exact: true }).click();
+  // Reopen without a view in the URL: localStorage, not search state, restores Month.
+  await visit(user, undefined, "/calendar", { date: "2020-01-15" });
+  await expect(picker).toHaveText("Month");
+  await expect(month).toBeVisible();
+  await expect(event).toBeVisible();
+  await page.reload();
+  await expect(picker).toHaveText("Month");
+  await expect(event).toBeVisible();
+  const calendar = page.getByRole("checkbox", { name: "Customer meetings", exact: true });
+  await calendar.uncheck();
+  await expect(event).toHaveCount(0);
+  await calendar.check();
+  await expect(event).toBeVisible();
+  await page.getByRole("button", { name: "Next month", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "February 2020", exact: true })).toBeVisible();
+  await expect(month.locator("time[datetime='2020-02-29']")).toBeVisible();
+  await expect(event).toHaveCount(0);
+  await page.getByRole("button", { name: "Previous month", exact: true }).click();
+  await expect(event).toBeVisible();
+  await page.getByRole("button", { name: "Today", exact: true }).click();
+  await expect(page).not.toHaveURL(/date=/);
+  await expect(month.locator("time[aria-current='date']")).toHaveCount(1);
+  await expect(page.getByRole("button", { name: "Today", exact: true })).toBeDisabled();
+  // A shared URL's explicit choice takes priority over the saved preference.
+  await visit(user, undefined, "/calendar", { view: "week", date: "2020-01-15" });
+  await expect(picker).toHaveText("Week");
+  await expect(month).toHaveCount(0);
 });
 
 test("an event opens beside the calendar from its link and shows what it recorded", async ({

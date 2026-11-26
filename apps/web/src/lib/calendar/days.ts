@@ -11,7 +11,7 @@ import {
   parseDateOnly,
 } from "@/lib/format/date";
 
-export type CalendarViewMode = "agenda" | "week";
+export type CalendarViewMode = "agenda" | "week" | "month";
 type CalendarEventTimes = Pick<CalendarEventSummary, "startsAt" | "endsAt" | "allDay">;
 
 /** The agenda shows two weeks from its first day. */
@@ -32,6 +32,11 @@ export function viewAnchor(date: string | undefined, now: Date = new Date()) {
 
 /** The local days a view shows, in order. */
 export function visibleDays(view: CalendarViewMode, anchor: Date): Date[] {
+  if (view === "month") {
+    const first = new Date(anchor.getFullYear(), anchor.getMonth(), 1);
+    const count = new Date(anchor.getFullYear(), anchor.getMonth() + 1, 0).getDate();
+    return Array.from({ length: count }, (_, index) => addDays(first, index));
+  }
   const first = view === "week" ? startOfWeek(anchor) : startOfDay(anchor);
   const count = view === "week" ? 7 : agendaDays;
   return Array.from({ length: count }, (_, index) => addDays(first, index));
@@ -39,6 +44,13 @@ export function visibleDays(view: CalendarViewMode, anchor: Date): Date[] {
 
 /** The anchor one page earlier or later. */
 export function shiftAnchor(view: CalendarViewMode, anchor: Date, direction: 1 | -1) {
+  if (view === "month") {
+    const first = new Date(anchor.getFullYear(), anchor.getMonth() + direction, 1);
+    const last = new Date(first.getFullYear(), first.getMonth() + 1, 0).getDate();
+    return formatDateOnly(
+      new Date(first.getFullYear(), first.getMonth(), Math.min(anchor.getDate(), last)),
+    );
+  }
   return formatDateOnly(addDays(anchor, direction * (view === "week" ? 7 : agendaDays)));
 }
 

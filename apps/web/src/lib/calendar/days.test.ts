@@ -35,6 +35,21 @@ test("paging moves a week view by a week and the agenda by its length", () => {
   expect(shiftAnchor("agenda", anchor, 1)).toBe("2026-12-09");
 });
 
+test("month days cover the full month, including leap day, without exceeding the query limit", () => {
+  const days = visibleDays("month", new Date(2024, 1, 15));
+  expect(days).toHaveLength(29);
+  expect(days[0]).toEqual(new Date(2024, 1, 1));
+  expect(days.at(-1)).toEqual(new Date(2024, 1, 29));
+  const range = eventRange(visibleDays("month", new Date(2026, 7, 31)));
+  expect((Date.parse(range.until) - Date.parse(range.from)) / 86_400_000).toBeLessThanOrEqual(42);
+});
+
+test("month paging clamps the anchor instead of skipping short months", () => {
+  expect(shiftAnchor("month", new Date(2024, 0, 31), 1)).toBe("2024-02-29");
+  expect(shiftAnchor("month", new Date(2026, 2, 31), -1)).toBe("2026-02-28");
+  expect(shiftAnchor("month", new Date(2026, 11, 15), 1)).toBe("2027-01-15");
+});
+
 test("an invalid date search value falls back to today", () => {
   const now = new Date(2026, 10, 22, 15, 30);
   expect(viewAnchor("2026-11-25", now)).toEqual(new Date(2026, 10, 25));
