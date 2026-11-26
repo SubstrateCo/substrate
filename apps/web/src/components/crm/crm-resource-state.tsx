@@ -30,40 +30,18 @@ export function CrmResourceState({
 }) {
   const showLoading = useDelayedLoading(pending);
   const sheet = usePageSheet();
-  let errorContent: ReactNode = null;
-  if (isAccessFailure(error))
-    errorContent = (
-      <ContentNotice
-        icon={Unlink}
-        variant={compact ? "compact" : "pane"}
-        title={
-          noun
-            ? `${noun.charAt(0).toUpperCase()}${noun.slice(1)} unavailable`
-            : "Record unavailable"
-        }
-        description={
-          noun
-            ? "You may not have access to these records in this workspace."
-            : "This record may be unavailable or you may not have access in this workspace."
-        }
-      />
+  if (error) {
+    const content = (
+      <CrmResourceError error={error} compact={compact} noun={noun} onRetry={onRetry} />
     );
-  else if (error)
-    errorContent = (
-      <ErrorState
-        compact={compact}
-        title={noun ? `Couldn’t load ${noun}` : "Couldn’t load CRM"}
-        onRetry={onRetry}
-      />
-    );
-  if (record && sheet && errorContent)
+    if (!record || !sheet) return content;
     return (
       <>
         <PageSheetHeader title={sheet.label} />
-        <PageSheetBody>{errorContent}</PageSheetBody>
+        <PageSheetBody>{content}</PageSheetBody>
       </>
     );
-  if (errorContent) return errorContent;
+  }
   if (pending)
     return (
       <div className={cn("contents", !showLoading && "invisible")}>
@@ -71,4 +49,39 @@ export function CrmResourceState({
       </div>
     );
   return null;
+}
+
+function CrmResourceError({
+  error,
+  compact,
+  noun,
+  onRetry,
+}: {
+  error: Error;
+  compact: boolean;
+  noun?: string;
+  onRetry: () => void;
+}) {
+  if (!isAccessFailure(error))
+    return (
+      <ErrorState
+        compact={compact}
+        title={noun ? `Couldn’t load ${noun}` : "Couldn’t load CRM"}
+        onRetry={onRetry}
+      />
+    );
+  return (
+    <ContentNotice
+      icon={Unlink}
+      variant={compact ? "compact" : "pane"}
+      title={
+        noun ? `${noun.charAt(0).toUpperCase()}${noun.slice(1)} unavailable` : "Record unavailable"
+      }
+      description={
+        noun
+          ? "You may not have access to these records in this workspace."
+          : "This record may be unavailable or you may not have access in this workspace."
+      }
+    />
+  );
 }

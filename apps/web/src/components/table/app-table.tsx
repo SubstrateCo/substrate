@@ -126,6 +126,101 @@ export function AppTable<TData extends RowData>({
   onRowClick,
   renderMobileRow,
 }: AppTableProps<TData>) {
+  const table = usePagedTable({ columns, data, getRowId, pagination, rowActions });
+  const rows = table.getRowModel().rows;
+  const pager = pagerProps(table, name, pagination, fetching);
+  const parts = tableParts({ hasRows: rows.length > 0, loading, error, pager });
+  const showLoading = useDelayedLoading(parts.initialLoading);
+  return (
+    <table.AppTable>
+      <div
+        className={cn(
+          "@container min-w-0",
+          layout === "ledger" ? "flex min-h-0 flex-col gap-2" : "space-y-3",
+          parts.initialLoading && !showLoading && "invisible",
+        )}
+      >
+        {parts.announceLoading && (
+          <span role="status" className="sr-only">
+            {loadingMessage}
+          </span>
+        )}
+        {parts.inlineError && <ErrorState compact title={errorTitle} onRetry={onRetry} />}
+        {parts.hasRows && renderMobileRow && (
+          <MobileTableRows name={name} rows={rows} renderRow={renderMobileRow} />
+        )}
+        {parts.framed ? (
+          <AppTableFrame
+            table={table}
+            name={name}
+            layout={layout}
+            loading={loading}
+            initialLoading={parts.initialLoading}
+            desktopOnly={parts.hasRows && !!renderMobileRow}
+            selectedRowId={selectedRowId}
+            onRowClick={onRowClick}
+          />
+        ) : (
+          <AppTableNotice error={error} errorTitle={errorTitle} onRetry={onRetry} empty={empty} />
+        )}
+        {parts.pager && <Pager {...parts.pager} summary={pageSummary} />}
+      </div>
+    </table.AppTable>
+  );
+}
+
+/** Which parts of the table show for its rows, load state, error, and pager. */
+function tableParts({
+  hasRows,
+  loading,
+  error,
+  pager,
+}: {
+  hasRows: boolean;
+  loading: boolean;
+  error?: Error | null;
+  pager?: PagerProps;
+}) {
+  // The first load shows the header and skeleton rows.
+  const initialLoading = loading && !hasRows && !error;
+  return {
+    hasRows,
+    initialLoading,
+    // With no rows, show only the notice, without the frame: sortable headers over nothing are noise.
+    framed: hasRows || initialLoading,
+    announceLoading: loading && (hasRows || initialLoading),
+    // An error over rows that are still shown is a compact notice above them.
+    inlineError: !!error && hasRows,
+    // An empty later page keeps its pager, so the person can go back.
+    pager: pager && (hasRows || pager.pageIndex > 0) && !initialLoading ? pager : undefined,
+  };
+}
+
+function AppTableNotice({
+  error,
+  errorTitle,
+  onRetry,
+  empty,
+}: {
+  error?: Error | null;
+  errorTitle: string;
+  onRetry?: () => void;
+  empty: AppTableEmpty;
+}) {
+  if (error) return <ErrorState title={errorTitle} onRetry={onRetry} />;
+  return <ContentNotice {...empty} />;
+}
+
+/** The table instance, with client paging state or the server page and sort it is given. */
+function usePagedTable<TData extends RowData>({
+  columns,
+  data,
+  getRowId,
+  pagination,
+  rowActions,
+}: Pick<AppTableProps<TData>, "columns" | "data" | "getRowId" | "rowActions"> & {
+  pagination: AppTablePagination;
+}) {
   const server = pagination.mode === "server";
   const sorting = server ? pagination.sorting : undefined;
   const [clientPage, setClientPage] = useState({
@@ -158,86 +253,75 @@ export function AppTable<TData extends RowData>({
   const lastPage = Math.max(0, table.getPageCount() - 1);
   if (!server && clientPage.pageIndex > lastPage)
     setClientPage({ ...clientPage, pageIndex: lastPage });
-  const rows = table.getRowModel().rows;
-  // With no rows, show only the notice, without the frame: sortable headers over nothing are noise.
-  const hasRows = rows.length > 0;
-  const initialLoading = loading && !hasRows && !error;
-  const showLoading = useDelayedLoading(initialLoading);
-  const pager = pagerProps(table, name, pagination, fetching);
-  const notice = error ? (
-    <ErrorState title={errorTitle} onRetry={onRetry} />
-  ) : (
-    <ContentNotice {...empty} />
-  );
+  return table;
+}
+
+function AppTableFrame<TData extends RowData>({
+  table,
+  name,
+  layout,
+  loading,
+  initialLoading,
+  desktopOnly,
+  selectedRowId,
+  onRowClick,
+}: {
+  table: AppTableInstance<TData>;
+  name: string;
+  layout: NonNullable<AppTableProps<TData>["layout"]>;
+  loading: boolean;
+  /** Skeleton rows under headers that cannot sort yet. */
+  initialLoading: boolean;
+  /** Mobile cards replace the table below the container's `40rem` breakpoint. */
+  desktopOnly: boolean;
+  selectedRowId?: string | null;
+  onRowClick?: (row: TData) => void;
+}) {
   return (
-    <table.AppTable>
-      <div
-        className={cn(
-          "@container min-w-0",
-          layout === "ledger" ? "flex min-h-0 flex-col gap-2" : "space-y-3",
-          initialLoading && !showLoading && "invisible",
-        )}
-      >
-        {loading && (hasRows || initialLoading) && (
-          <span role="status" className="sr-only">
-            {loadingMessage}
-          </span>
-        )}
-        {error && hasRows && <ErrorState compact title={errorTitle} onRetry={onRetry} />}
-        {renderMobileRow && hasRows && (
-          <MobileTableRows name={name} rows={rows} renderRow={renderMobileRow} />
-        )}
-        {hasRows || initialLoading ? (
-          <div
-            className={cn(
-              "min-w-0 rounded-xl border",
-              layout === "ledger" && "flex min-h-0 overflow-hidden rounded-lg bg-card",
-              renderMobileRow && hasRows && "hidden @min-[40rem]:block",
-            )}
-          >
-            <Table
-              aria-label={name}
-              aria-busy={loading}
-              layout={layout}
-              className="min-w-xl table-fixed"
-            >
-              <AppTableHeader table={table} sortable={!initialLoading} />
-              <TableBody>
-                {initialLoading ? (
-                  <SkeletonRows table={table} />
-                ) : (
-                  rows.map((row) => (
-                    <TableRow
-                      key={row.id}
-                      className={cn("group/row", onRowClick && "cursor-pointer")}
-                      data-state={row.id === selectedRowId ? "selected" : undefined}
-                      onClick={onRowClick && (() => onRowClick(row.original))}
-                    >
-                      {row.getAllCells().map((cell) => {
-                        const meta = cell.column.columnDef.meta;
-                        return (
-                          <TableCell key={cell.id} {...columnData(meta)}>
-                            <table.AppCell cell={cell}>
-                              {(boundCell) => <boundCell.FlexRender />}
-                            </table.AppCell>
-                          </TableCell>
-                        );
-                      })}
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        ) : (
-          notice
-        )}
-        {pager && (hasRows || pager.pageIndex > 0) && !initialLoading && (
-          <Pager {...pager} summary={pageSummary} />
-        )}
-      </div>
-    </table.AppTable>
+    <div
+      className={cn(
+        "min-w-0 rounded-xl border",
+        layout === "ledger" && "flex min-h-0 overflow-hidden rounded-lg bg-card",
+        desktopOnly && "hidden @min-[40rem]:block",
+      )}
+    >
+      <Table aria-label={name} aria-busy={loading} layout={layout} className="min-w-xl table-fixed">
+        <AppTableHeader table={table} sortable={!initialLoading} />
+        <TableBody>
+          {initialLoading ? (
+            <SkeletonRows table={table} />
+          ) : (
+            <AppTableRows table={table} selectedRowId={selectedRowId} onRowClick={onRowClick} />
+          )}
+        </TableBody>
+      </Table>
+    </div>
   );
+}
+
+function AppTableRows<TData extends RowData>({
+  table,
+  selectedRowId,
+  onRowClick,
+}: {
+  table: AppTableInstance<TData>;
+  selectedRowId?: string | null;
+  onRowClick?: (row: TData) => void;
+}) {
+  return table.getRowModel().rows.map((row) => (
+    <TableRow
+      key={row.id}
+      className={cn("group/row", onRowClick && "cursor-pointer")}
+      data-state={row.id === selectedRowId ? "selected" : undefined}
+      onClick={onRowClick && (() => onRowClick(row.original))}
+    >
+      {row.getAllCells().map((cell) => (
+        <TableCell key={cell.id} {...columnData(cell.column.columnDef.meta)}>
+          <table.AppCell cell={cell}>{(boundCell) => <boundCell.FlexRender />}</table.AppCell>
+        </TableCell>
+      ))}
+    </TableRow>
+  ));
 }
 
 const rowActionsColumn = "rowActions";

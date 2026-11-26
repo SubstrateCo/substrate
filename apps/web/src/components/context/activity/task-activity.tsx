@@ -31,10 +31,8 @@ export function TaskActivity({
   more?: ReactNode;
 }) {
   const [open, setOpen] = useState(true);
+  // Kept here: the collapsed content unmounts, and reopening keeps the expanded list.
   const [expanded, setExpanded] = useState(false);
-  const visible = items;
-  const hidden = visible.length - collapsedCount;
-  const shown = expanded || hidden <= 0 ? visible : visible.slice(0, collapsedCount);
   return (
     <Collapsible asChild open={open} onOpenChange={setOpen}>
       <RecordSection
@@ -44,9 +42,7 @@ export function TaskActivity({
           <CollapsibleTrigger asChild>
             <Button type="button" variant="disclosure" size="xs" className="-ml-2">
               Activity
-              {visible.length > 0 && (
-                <span className="font-normal tabular-nums">{visible.length}</span>
-              )}
+              {items.length > 0 && <span className="font-normal tabular-nums">{items.length}</span>}
               <ChevronDown
                 aria-hidden="true"
                 className="transition-transform duration-150 ease-out group-data-[state=closed]/activity:-rotate-90"
@@ -56,45 +52,78 @@ export function TaskActivity({
         }
       >
         <CollapsibleContent>
-          {notice}
-          {!notice && loading && !visible.length && (
-            <div role="status">
-              <span className="sr-only">Loading activity</span>
-              <ul aria-hidden="true">
-                {[0, 1, 2].map((i) => (
-                  <ActivityRowSkeleton key={i} />
-                ))}
-              </ul>
-            </div>
+          {notice || (
+            <ActivityList
+              items={items}
+              loading={loading}
+              error={error}
+              onRetry={onRetry}
+              more={more}
+              expanded={expanded}
+              onExpandedChange={setExpanded}
+            />
           )}
-          {!notice && error && (
-            <ErrorState compact title="Couldn’t load activity" onRetry={onRetry} />
-          )}
-          {!notice && !loading && !error && !visible.length && (
-            <ContentNotice variant="inline" title="No activity yet" />
-          )}
-          {!notice && shown.length > 0 && (
-            <ul>
-              {shown.map((event) => (
-                <ActivityRow key={event.id} event={event} />
-              ))}
-            </ul>
-          )}
-          {!notice && hidden > 0 && (
-            <Button
-              type="button"
-              size="xs"
-              variant="disclosure"
-              className="mt-1 -ml-2"
-              aria-expanded={expanded}
-              onClick={() => setExpanded(!expanded)}
-            >
-              {expanded ? "Show less" : `Show ${hidden} more`}
-            </Button>
-          )}
-          {!notice && (expanded || hidden <= 0) && more}
         </CollapsibleContent>
       </RecordSection>
     </Collapsible>
+  );
+}
+
+function ActivityList({
+  items,
+  loading,
+  error,
+  onRetry,
+  more,
+  expanded,
+  onExpandedChange,
+}: {
+  items: ActivityEvent[];
+  loading: boolean;
+  error?: Error | null;
+  onRetry: () => void;
+  more?: ReactNode;
+  expanded: boolean;
+  onExpandedChange: (expanded: boolean) => void;
+}) {
+  const hidden = items.length - collapsedCount;
+  const shown = expanded || hidden <= 0 ? items : items.slice(0, collapsedCount);
+  return (
+    <>
+      {loading && !items.length && (
+        <div role="status">
+          <span className="sr-only">Loading activity</span>
+          <ul aria-hidden="true">
+            {[0, 1, 2].map((i) => (
+              <ActivityRowSkeleton key={i} />
+            ))}
+          </ul>
+        </div>
+      )}
+      {error && <ErrorState compact title="Couldn’t load activity" onRetry={onRetry} />}
+      {!loading && !error && !items.length && (
+        <ContentNotice variant="inline" title="No activity yet" />
+      )}
+      {shown.length > 0 && (
+        <ul>
+          {shown.map((event) => (
+            <ActivityRow key={event.id} event={event} />
+          ))}
+        </ul>
+      )}
+      {hidden > 0 && (
+        <Button
+          type="button"
+          size="xs"
+          variant="disclosure"
+          className="mt-1 -ml-2"
+          aria-expanded={expanded}
+          onClick={() => onExpandedChange(!expanded)}
+        >
+          {expanded ? "Show less" : `Show ${hidden} more`}
+        </Button>
+      )}
+      {(expanded || hidden <= 0) && more}
+    </>
   );
 }
