@@ -78,21 +78,22 @@ test("the timeline marks the thread with unread replies until it is opened", asy
 }) => {
   const { sender, member } = actors;
   const channel = await conversation(sender, [member.email]);
-  const say = (body: string, threadId?: string) =>
-    post<{ id: string }>(sender, "messaging/messages", {
+  const say = (body: string, threadId?: string, author = sender) =>
+    post<{ id: string }>(author, "messaging/messages", {
       conversationId: channel.id,
       body,
       threadId,
     });
-  const quiet = await say("Quiet root");
-  const busy = await say("Busy root");
+  // Outside DMs, replies count as unread only in threads the reader follows, such as their own.
+  const quiet = await say("Quiet root", undefined, member);
+  const busy = await say("Busy root", undefined, member);
   const read = await say("Already read reply", quiet.id);
   const marked = await member.request.post("/api/v1/messaging/read", {
     data: { organizationId: member.organizationId, conversationId: channel.id, messageId: read.id },
   });
   expect(marked.ok()).toBe(true);
   await say("Unread reply", busy.id);
-  // Reading this newer timeline message moves the read position past the reply.
+  // Reading this newer timeline message does not read the thread, which has its own position.
   await say("Later update");
 
   const reader = await client(member);
@@ -108,8 +109,9 @@ test("the timeline marks the thread with unread replies until it is opened", asy
   await expect(
     root("Quiet root").getByRole("button", { name: "1 reply", exact: true }),
   ).toBeVisible();
-  // The conversation is read, but the thread stays marked until the reader opens it.
-  await expect(conversationButton(page, channel.name).getByLabel(/unread/)).toHaveCount(0);
+  // The timeline is read, but the reply stays unread until the reader opens its thread.
+  const row = conversationButton(page, channel.name);
+  await expect(row.getByLabel("1 unread message", { exact: true })).toBeVisible();
   await expect(unreadThread).toBeVisible();
 
   await unreadThread.click();
@@ -118,6 +120,7 @@ test("the timeline marks the thread with unread replies until it is opened", asy
       .getByRole("complementary", { name: "Thread", exact: true })
       .getByText("Unread reply", { exact: true }),
   ).toBeVisible();
+  await expect(row.getByLabel(/unread/)).toHaveCount(0);
   await page.getByRole("button", { name: "Close thread", exact: true }).click();
   await expect(
     root("Busy root").getByRole("button", { name: "1 reply", exact: true }),
