@@ -61,7 +61,7 @@
         "apps/server/src/storage/**",
         "apps/server/src/infrastructure/database.ts",
         "apps/server/src/v1/realtime/{publisher,subscription,hub}.ts",
-        "apps/server/src/v1/files/{image,attachment-image}.ts"
+        "apps/server/src/v1/files/{image,image-codec}.ts"
       ]
     },
     {

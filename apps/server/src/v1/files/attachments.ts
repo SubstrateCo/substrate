@@ -8,16 +8,19 @@ import { MAX_FILE_BYTES } from "@substrate/contracts/files/input";
 
 import type { CommittedPublisher } from "../../shared/committed";
 import type { WorkspaceScope } from "../../shared/scope-types";
-import { serviceResult } from "../../shared/service-result";
+import { ServiceError, serviceResult } from "../../shared/service-result";
 import type { ObjectStorage } from "../../storage/types";
-import { previewAttachmentImage } from "./attachment-image";
+import type { ImageCodec } from "./image-codec";
+import { previewAttachmentImage } from "./image-policy";
 import type { z } from "zod";
 
 export function createAttachmentService({
   storage,
+  images,
   publish,
 }: {
   storage: ObjectStorage;
+  images: ImageCodec;
   publish: CommittedPublisher;
 }) {
   return {
@@ -56,9 +59,12 @@ export function createAttachmentService({
     ) {
       return serviceResult(async () => {
         const file = await scope.repositories.files.messageContent(input);
-        return {
-          bytes: await previewAttachmentImage(await storage.read(file.objectKey, MAX_FILE_BYTES)),
-        };
+        const bytes = await previewAttachmentImage(
+          images,
+          await storage.read(file.objectKey, MAX_FILE_BYTES),
+        );
+        if (!bytes) throw new ServiceError("INVALID_INPUT", "This file cannot be previewed.");
+        return { bytes };
       });
     },
     messageAttachmentContent(

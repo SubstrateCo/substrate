@@ -20,6 +20,7 @@ import { createContextService } from "./v1/context/service";
 import { createCrmFromMessageService } from "./v1/crm/from-message-service";
 import { createCrmService } from "./v1/crm/service";
 import { createAttachmentService } from "./v1/files/attachments";
+import type { ImageCodec } from "./v1/files/image-codec";
 import { createPictureService } from "./v1/files/pictures";
 import { createFileService } from "./v1/files/service";
 import { createIntegrationService } from "./v1/integrations/service";
@@ -34,6 +35,7 @@ import { createTasksService } from "./v1/tasks/service";
 export function createServices(deps: {
   db: Database;
   storage: ObjectStorage;
+  images: ImageCodec;
   publish: CommittedPublisher;
   apiURL: string;
   desktop: DesktopConfig;
@@ -53,9 +55,10 @@ export function createServices(deps: {
     contacts: createContactsService(deps),
     contactInteractions: createContactInteractionsService(deps),
     crmFromMessage: createCrmFromMessageService(deps),
-    files: createFileService({ repository, storage: deps.storage }),
+    files: createFileService({ repository, storage: deps.storage, images: deps.images }),
     pictures: createPictureService({
       storage: deps.storage,
+      images: deps.images,
       repository,
       projects: projectIconAccess(deps.db),
     }),

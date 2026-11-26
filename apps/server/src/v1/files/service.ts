@@ -8,7 +8,8 @@ import {
 
 import { ServiceError, serviceResult } from "../../shared/service-result";
 import { ObjectNotFoundError, type ObjectStorage } from "../../storage/types";
-import { normalizePicture } from "./image";
+import type { ImageCodec } from "./image-codec";
+import { normalizePicture } from "./image-policy";
 import { createHash } from "node:crypto";
 
 /** How long an upload can be completed after it was created. */
@@ -17,10 +18,11 @@ const uploadTtlMs = 15 * 60_000;
 export interface FileServiceDependencies {
   repository: StorageRepository;
   storage: ObjectStorage;
+  images: ImageCodec;
 }
 
 export function createFileService(deps: FileServiceDependencies) {
-  const { repository, storage } = deps;
+  const { repository, storage, images } = deps;
   return {
     createUpload(scope: StorageScope, input: CreateUploadInput) {
       return serviceResult(async () => {
@@ -57,7 +59,7 @@ export function createFileService(deps: FileServiceDependencies) {
             "Uploaded size does not match the declared size.",
           );
         const isPicture = upload.purpose !== "file";
-        if (isPicture) bytes = await normalizePicture(bytes, upload.contentType);
+        if (isPicture) bytes = await normalizePicture(images, bytes, upload.contentType);
         if (bytes.length > MAX_FILE_BYTES)
           throw new ServiceError("PAYLOAD_TOO_LARGE", "File exceeds 5 MB.");
         const sha256 = createHash("sha256").update(bytes).digest("hex");

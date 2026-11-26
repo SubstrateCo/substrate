@@ -5,7 +5,8 @@ import type { StorageScope } from "@substrate/database/storage";
 import { ServiceError, serviceResult } from "../../shared/service-result";
 import { requireWorkspace } from "../../shared/workspace";
 import { ObjectNotFoundError, type ObjectStorage } from "../../storage/types";
-import { normalizePicture } from "./image";
+import type { ImageCodec } from "./image-codec";
+import { normalizePicture } from "./image-policy";
 
 interface PictureDependencies {
   repository: {
@@ -24,6 +25,7 @@ interface PictureDependencies {
     canRead(scope: StorageScope, id: string): Promise<boolean>;
   };
   storage: Pick<ObjectStorage, "put" | "signDownload" | "read">;
+  images: ImageCodec;
 }
 
 const objectKey = (purpose: PictureKind, owner: string) =>
@@ -56,7 +58,7 @@ export function createPictureService(deps: PictureDependencies) {
         await requireAccess(scope, purpose, projectEntityId);
         if (!file.bytes.byteLength || file.bytes.byteLength > MAX_FILE_BYTES)
           throw new ServiceError("INVALID_INPUT", "Use a picture up to 5 MB.");
-        const bytes = await normalizePicture(file.bytes, file.contentType);
+        const bytes = await normalizePicture(deps.images, file.bytes, file.contentType);
         let owner = scope.userId;
         if (purpose === "project-icon") owner = projectEntityId!;
         if (purpose === "organization-logo") owner = scope.organizationId!;

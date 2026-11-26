@@ -2,6 +2,7 @@ import type { setupDatabase } from "../../../../../packages/database/src/testing
 import { mcpFixture } from "../../../../../packages/database/src/testing/mcp";
 import { ObjectNotFoundError, type ObjectStorage } from "../../storage/types";
 import { storageFileReader } from "../files/agent-file-reader";
+import { createSharpImageCodec } from "../files/image";
 
 type Fixture = ReturnType<typeof setupDatabase>;
 
@@ -32,5 +33,8 @@ export function memoryStorage(objects = new Map<string, Uint8Array>()): ObjectSt
 /** The agent's MCP tools, reading file bytes from in-memory object storage. */
 export async function agentWorkFixture(f: Fixture) {
   const storage = memoryStorage();
-  return { ...(await mcpFixture(f, storageFileReader(storage))), storage };
+  return {
+    ...(await mcpFixture(f, storageFileReader(storage, createSharpImageCodec()))),
+    storage,
+  };
 }

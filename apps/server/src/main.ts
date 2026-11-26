@@ -16,6 +16,7 @@ import { createScopes } from "./shared/scope";
 import { createS3Storage } from "./storage/s3";
 import { createCalendarProviders } from "./v1/calendar/providers";
 import { createCalendarSync } from "./v1/calendar/sync";
+import { createSharpImageCodec } from "./v1/files/image";
 import { createSharingMail } from "./v1/messaging/sharing-mail";
 import { createOutboxRelay } from "./v1/realtime/outbox-relay";
 import { createRedisPublisher } from "./v1/realtime/publisher";
@@ -50,6 +51,7 @@ const calendarSync = createCalendarSync({ db, publish, providers: calendarProvid
 const services = createServices({
   db,
   storage,
+  images: createSharpImageCodec(),
   publish,
   apiURL: environment.apiURL,
   desktop: {

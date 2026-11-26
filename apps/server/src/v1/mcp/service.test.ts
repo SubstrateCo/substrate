@@ -11,6 +11,7 @@ import { setupDatabase } from "../../../../../packages/database/src/testing/data
 import { mcpCallerFixture, mcpFixture } from "../../../../../packages/database/src/testing/mcp";
 import { createCommittedPublisher } from "../../shared/committed";
 import { scopeFixture } from "../../test-support";
+import { createSharpImageCodec } from "../files/image";
 import { createMcpService } from "./service";
 import { memoryStorage } from "./test-support";
 import { expect, spyOn, test } from "bun:test";
@@ -29,6 +30,7 @@ test("invalid fresh tool output rolls back its write and never reaches the publi
       return committed.result;
     },
     storage: memoryStorage(),
+    images: createSharpImageCodec(),
   });
   const parse = mcpTools.create_task.output.parse.bind(mcpTools.create_task.output);
   // Inject a malformed handler result at the output boundary, after the real task write.
@@ -84,6 +86,7 @@ test("publisher failure happens after commit and does not audit a failed tool ex
       sharingMail: { trigger: () => {} },
     }),
     storage: memoryStorage(),
+    images: createSharpImageCodec(),
   });
   expect(
     await service.callAgentTool(

@@ -9,6 +9,7 @@ import type { WorkspaceScope } from "../../shared/scope-types";
 import { serviceResult } from "../../shared/service-result";
 import type { ObjectStorage } from "../../storage/types";
 import { storageFileReader } from "../files/agent-file-reader";
+import type { ImageCodec } from "../files/image-codec";
 import type { z } from "zod";
 
 /** A call stored as a proposal. The agent learns the result in a later turn. */
@@ -21,12 +22,14 @@ export function createMcpService({
   db,
   publish,
   storage,
+  images,
 }: {
   db: Database;
   publish: CommittedPublisher;
   storage: ObjectStorage;
+  images: ImageCodec;
 }) {
-  const reader = storageFileReader(storage);
+  const reader = storageFileReader(storage, images);
   return {
     async callAgentTool(
       scope: WorkspaceScope,

@@ -1,37 +1,40 @@
-import { ServiceError } from "../../shared/service-result";
+import { ImageDecodeError, type ImageCodec } from "./image-codec";
 import sharp from "sharp";
 
-const MAX_PIXELS = 16_000_000;
-const formats = new Map([
-  ["jpeg", "image/jpeg"],
-  ["png", "image/png"],
-  ["webp", "image/webp"],
-]);
-
-export async function normalizePicture(
-  bytes: Uint8Array,
-  contentType: string,
-): Promise<Uint8Array> {
+async function decoding<T>(work: () => Promise<T>): Promise<T> {
   try {
-    const image = sharp(bytes, { limitInputPixels: MAX_PIXELS, failOn: "warning", animated: true });
-    const metadata = await image.metadata();
-    const detectedType = formats.get(metadata.format);
-    const matchesDeclaredType = !!detectedType && detectedType === contentType;
-    const isSingleFrame = (metadata.pages ?? 1) === 1;
-    const hasAllowedDimensions =
-      !!metadata.width && !!metadata.height && metadata.width * metadata.height <= MAX_PIXELS;
-    if (!matchesDeclaredType || !isSingleFrame || !hasAllowedDimensions)
-      throw new Error("Unsupported image.");
-    // New pixels, no source metadata, no active content, and one predictable output format.
-    return await image
-      .rotate()
-      .resize({ width: 1024, height: 1024, fit: "inside", withoutEnlargement: true })
-      .webp({ quality: 85 })
-      .toBuffer();
-  } catch {
-    throw new ServiceError(
-      "INVALID_INPUT",
-      "Use a valid, static JPEG, PNG, or WebP image up to 16 megapixels.",
-    );
+    return await work();
+  } catch (error) {
+    throw new ImageDecodeError("Image could not be decoded.", { cause: error });
   }
+}
+
+export function createSharpImageCodec(): ImageCodec {
+  return {
+    async decode(bytes, { maxPixels }) {
+      const image = sharp(bytes, {
+        limitInputPixels: maxPixels,
+        failOn: "warning",
+        animated: true,
+      });
+      const metadata = await decoding(() => image.metadata());
+      if (!metadata.width || !metadata.height)
+        throw new ImageDecodeError("Image has no dimensions.");
+      return {
+        format: metadata.format,
+        width: metadata.width,
+        height: metadata.height,
+        pages: metadata.pages ?? 1,
+        // New pixels, no source metadata, no active content, and one predictable output format.
+        toWebp: ({ maxEdge, quality }) =>
+          decoding(() =>
+            image
+              .rotate()
+              .resize({ width: maxEdge, height: maxEdge, fit: "inside", withoutEnlargement: true })
+              .webp({ quality })
+              .toBuffer(),
+          ),
+      };
+    },
+  };
 }

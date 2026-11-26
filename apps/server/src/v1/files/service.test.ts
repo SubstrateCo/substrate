@@ -1,6 +1,7 @@
 import type { StorageRepository } from "@substrate/database/storage";
 
 import { ObjectNotFoundError, type ObjectStorage } from "../../storage/types";
+import { createSharpImageCodec } from "./image";
 import { createFileService } from "./service";
 import { describe, expect, mock, test } from "bun:test";
 import { rejects } from "node:assert/strict";
@@ -84,6 +85,7 @@ function fixture() {
   const service = createFileService({
     repository,
     storage,
+    images: createSharpImageCodec(),
   });
   return {
     id,

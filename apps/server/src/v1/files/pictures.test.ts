@@ -1,5 +1,6 @@
 import { ServiceError } from "../../shared/service-result";
 import { ObjectNotFoundError } from "../../storage/types";
+import { createSharpImageCodec } from "./image";
 import { createPictureService } from "./pictures";
 import { expect, test } from "bun:test";
 import sharp from "sharp";
@@ -33,6 +34,7 @@ async function fixture() {
       },
       signDownload: async (key) => `https://s3.test/${key}`,
     },
+    images: createSharpImageCodec(),
   });
   const image = async (color: string) => ({
     bytes: new Uint8Array(
@@ -140,6 +142,7 @@ test("denied native picture reads never reach object storage", async () => {
         return new Uint8Array([1]);
       },
     },
+    images: createSharpImageCodec(),
   });
   const denied = await service.bytes(scope, "project-icon", "foreign-project");
   expect(!denied.success && denied.error.code).toBe("NOT_FOUND");
@@ -175,6 +178,7 @@ test("project icons check project access and other pictures check workspace acce
       signDownload: async (key) => `https://s3.test/${key}`,
       read: async () => new Uint8Array(),
     },
+    images: createSharpImageCodec(),
   });
   expect((await service.content(scope, "project-icon", "project")).success).toBe(true);
   expect((await service.content(scope, "organization-logo", "project")).success).toBe(false);
