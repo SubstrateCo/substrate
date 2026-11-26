@@ -7,13 +7,12 @@ import { expect } from "@playwright/test";
 import { z } from "zod";
 
 /** Creates an agent homed on a registered test desktop. Only the home desktop can write as it. */
-export async function createAgent(owner: Actor) {
+export async function createAgent(owner: Actor, name = `Research ${crypto.randomUUID()}`) {
   const installationId = crypto.randomUUID();
   const registered = await owner.request.post("/api/v1/agent-work/device/register", {
     data: { installationId, name: "Laptop", platform: "win32" },
   });
   expect(registered.ok(), await registered.text()).toBe(true);
-  const name = `Research ${crypto.randomUUID()}`;
   const saved = await owner.request.post("/api/v1/agents/actors/save", {
     headers: { "x-substrate-installation": installationId },
     data: { name, instructions: "Help with work", harness: "opencode", enabled: true },

@@ -17,6 +17,8 @@ export type ComposerNoticeLine = {
   agentName: string;
   tone: WorkTone;
   label: ReactNode;
+  /** Local turns keep their transcript and stop controls when the source is offscreen. */
+  status?: ReactNode;
   /** For example, a link to agent settings when no desktop runs the agent. */
   link?: { link: RecordLink; label: string };
 };
@@ -50,22 +52,23 @@ export function ComposerNotice({
             line.tone === "working" && "rounded-md bg-surface shadow-surface",
           )}
         >
-          {line.tone === "working" ? (
-            <Tag tone="working" icon={<WorkOrb />}>
-              <span className="truncate font-medium">{line.agentName}</span>
-              <span className="truncate text-muted-foreground tabular-nums">{line.label}</span>
-            </Tag>
-          ) : (
-            <>
-              <Bot aria-hidden="true" className="size-3.5 shrink-0" />
-              <span className="min-w-0 font-medium wrap-anywhere text-foreground">
-                {line.agentName}
-              </span>
-              <span className={cn("min-w-0 truncate tabular-nums", toneText[line.tone])}>
-                {line.label}
-              </span>
-            </>
-          )}
+          {line.status ??
+            (line.tone === "working" ? (
+              <Tag tone="working" icon={<WorkOrb />}>
+                <span className="truncate font-medium">{line.agentName}</span>
+                <span className="truncate text-muted-foreground tabular-nums">{line.label}</span>
+              </Tag>
+            ) : (
+              <>
+                <Bot aria-hidden="true" className="size-3.5 shrink-0" />
+                <span className="min-w-0 font-medium wrap-anywhere text-foreground">
+                  {line.agentName}
+                </span>
+                <span className={cn("min-w-0 truncate tabular-nums", toneText[line.tone])}>
+                  {line.label}
+                </span>
+              </>
+            ))}
           {line.link && (
             <Link {...line.link.link} className="shrink-0 font-medium text-primary hover:underline">
               {line.link.label}

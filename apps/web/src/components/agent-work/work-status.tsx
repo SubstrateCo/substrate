@@ -62,17 +62,24 @@ export function WorkStatus({
         </TooltipTrigger>
         <TooltipContent>Open transcript</TooltipContent>
       </Tooltip>
-      {onStop && (
-        <PendingButton
-          type="button"
-          size="xs"
-          variant="destructive-ghost"
-          pending={stopping}
-          onClick={onStop}
-        >
-          <Square aria-hidden="true" />
-          Stop
-        </PendingButton>
+      {(onStop || stopping) && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <PendingButton
+              type="button"
+              size="icon-xs"
+              variant="destructive-ghost"
+              // oxlint-disable-next-line shadcn/no-restyle -- Stop an active run stays red at rest; it is not a muted delete-row action.
+              className="data-[size^=icon]:text-destructive"
+              aria-label="Stop run"
+              pending={stopping}
+              onClick={onStop}
+            >
+              <Square aria-hidden="true" />
+            </PendingButton>
+          </TooltipTrigger>
+          <TooltipContent>Stop run</TooltipContent>
+        </Tooltip>
       )}
     </span>
   );

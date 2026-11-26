@@ -1,37 +1,35 @@
 import type { ReactNode } from "react";
 
-import { WorkIndicator } from "./work-indicator";
-import type { WorkTone } from "@/lib/agent-work/status";
-import { Bot } from "lucide-react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { LockKeyhole } from "lucide-react";
 
 /**
  * Stands in for the agent's reply until it posts one. Only the agent's owner sees agent work,
- * so this row says so; everyone else sees the reply when it arrives.
+ * everyone else sees only the reply when it arrives.
  */
 export function PendingReply({
   name,
-  tone,
   status,
   children,
 }: {
   name: string;
-  tone: WorkTone;
   /** The work's status, beside the name. */
   status: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <section aria-label={`${name} reply`} className="mt-2 flex max-w-180 min-w-0 gap-2.5">
-      <span className="relative mt-0.5 grid size-6 shrink-0 place-items-center rounded-md bg-accent text-accent-foreground">
-        <Bot aria-hidden="true" className="size-3.5" />
-        <WorkIndicator tone={tone} />
-      </span>
+    <section aria-label={`${name} reply`} className="mt-1 flex max-w-180 min-w-0 gap-2">
       <div className="min-w-0 flex-1">
-        <div className="flex min-w-0 flex-wrap items-center gap-x-2 text-sm">
-          {/* oxlint-disable-next-line design/no-decorative-class -- The message author. */}
-          <span className="min-w-0 font-semibold wrap-anywhere">{name}</span>
-          <span className="text-xs text-muted-foreground">Only visible to you</span>
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           {status}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span tabIndex={0} aria-label="Only visible to you" className="text-muted-foreground">
+                <LockKeyhole aria-hidden="true" className="size-3" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>Only visible to you</TooltipContent>
+          </Tooltip>
         </div>
         {children}
       </div>

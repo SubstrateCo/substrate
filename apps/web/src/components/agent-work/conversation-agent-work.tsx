@@ -16,6 +16,7 @@ import { InboxReceipt } from "./inbox-receipt";
 import { ProposalBacklink } from "./requests/proposal-backlink";
 import { RequestCard } from "./requests/request-card";
 import { TurnLabel, TurnStatus, TurnWork } from "./turn-work";
+import { useVisibleTurnStatuses } from "./use-visible-turn-statuses";
 import { WorkIndicator } from "./work-indicator";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
@@ -104,6 +105,7 @@ export function ConversationAgentWork({
   children: ReactNode;
 }) {
   const { userId, organizationId } = useWorkspaceScope();
+  const { offscreen, onVisibilityChange } = useVisibleTurnStatuses();
   // Members list agent IDs only for the viewer's own agents.
   const members = conversation.members.flatMap((member) =>
     member.type === "agent" && member.agentId
@@ -155,35 +157,45 @@ export function ConversationAgentWork({
       turns,
       threadOf: (turn) => sessions.get(turn.sessionId)?.origin?.threadId ?? null,
       statuses: statusByAgent,
-    }).map((line): ComposerNoticeLine => {
-      const { agentId, name: agentName } = line.agent;
-      if (line.kind === "turn") {
-        const request = openRequest(line.turn.id);
-        return {
-          key: agentId,
-          agentName,
-          tone: turnTone(line.turn, request),
-          label: <TurnLabel turn={line.turn} openRequest={request} />,
-        };
-      }
-      if (line.kind === "no_desktop")
-        return {
-          key: agentId,
-          agentName,
-          tone: "idle",
-          label: noDesktopLabel,
-          link: { link: agentLink(organizationId, agentId, "run"), label: "Choose a desktop" },
-        };
-      if (line.kind === "needs_you")
-        return {
-          key: agentId,
-          agentName,
-          tone: "attention",
-          label: "Needs you",
-          link: { link: agentLink(organizationId, agentId), label: "Open Agents" },
-        };
-      return { key: agentId, agentName, ...agentStatus(line.status) };
-    });
+    })
+      .filter((line) => line.kind !== "turn" || offscreen.has(line.turn.id))
+      .map((line): ComposerNoticeLine => {
+        const { agentId, name: agentName } = line.agent;
+        if (line.kind === "turn") {
+          const request = openRequest(line.turn.id);
+          return {
+            key: agentId,
+            agentName,
+            tone: turnTone(line.turn, request),
+            label: <TurnLabel turn={line.turn} openRequest={request} />,
+            status: (
+              <TurnStatus
+                turn={line.turn}
+                openRequest={request}
+                agentName={agentName}
+                onTranscript={onTranscript}
+              />
+            ),
+          };
+        }
+        if (line.kind === "no_desktop")
+          return {
+            key: agentId,
+            agentName,
+            tone: "idle",
+            label: noDesktopLabel,
+            link: { link: agentLink(organizationId, agentId, "run"), label: "Choose a desktop" },
+          };
+        if (line.kind === "needs_you")
+          return {
+            key: agentId,
+            agentName,
+            tone: "attention",
+            label: "Needs you",
+            link: { link: agentLink(organizationId, agentId), label: "Open Agents" },
+          };
+        return { key: agentId, agentName, ...agentStatus(line.status) };
+      });
     const dmAgent =
       conversation.kind === "dm" && threadId === null
         ? members.find((agent) => homed.has(agent.agentId))
@@ -254,6 +266,7 @@ export function ConversationAgentWork({
                   openRequest={openRequest(turn.id)}
                   uncertainItemIds={uncertainItemsForTurn(turn, uncertainIds)}
                   onTranscript={onTranscript}
+                  onVisibilityChange={onVisibilityChange}
                 />
               ))}
               {requestCards.map((request) => (
@@ -271,6 +284,7 @@ export function ConversationAgentWork({
                 turn={turn}
                 openRequest={openRequest(turn.id)}
                 onTranscript={onTranscript}
+                onVisibilityChange={onVisibilityChange}
               />
             )),
         badge: (messageId) => {

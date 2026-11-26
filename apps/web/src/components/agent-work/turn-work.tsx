@@ -1,10 +1,13 @@
 import type { AgentRequestView, AgentTurnView } from "@substrate/contracts/agent-work";
 import { liveTurnStatuses } from "@substrate/contracts/agent-work";
 
+import { useEffect, useRef } from "react";
+
 import { NeedsAttention } from "./needs-attention";
 import { PendingReply } from "./pending-reply";
 import { TechnicalDetails } from "./technical-details";
 import { useStopTurn } from "./use-stop-turn";
+import type { TurnVisibilityChange } from "./use-visible-turn-statuses";
 import { MutedWorkLine, WorkStatus } from "./work-status";
 import { WorkStatusTag } from "./work-status-tag";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
@@ -15,6 +18,8 @@ type TurnProps = {
   turn: AgentTurnView;
   openRequest?: AgentRequestView;
   onTranscript: (turnId: string) => void;
+  onVisibilityChange?: TurnVisibilityChange;
+  agentName?: string;
 };
 
 /** One turn's status line, with its own clock so only this text renders each second. */
@@ -36,19 +41,44 @@ export function TurnStatus(props: TurnProps) {
   return <LiveTurnStatus {...props} />;
 }
 
-function LiveTurnStatus({ turn, openRequest, onTranscript }: TurnProps) {
+function LiveTurnStatus({
+  turn,
+  openRequest,
+  onTranscript,
+  onVisibilityChange,
+  agentName,
+}: TurnProps) {
+  const ref = useRef<HTMLSpanElement>(null);
+  useEffect(() => {
+    const element = ref.current;
+    if (!element || !onVisibilityChange) return;
+    const observer = new IntersectionObserver(([entry]) => {
+      onVisibilityChange(turn.id, element, entry.isIntersecting);
+    });
+    observer.observe(element);
+    return () => {
+      observer.disconnect();
+      onVisibilityChange(turn.id, element, false);
+    };
+  }, [turn.id, onVisibilityChange]);
   const { userId, organizationId } = useWorkspaceScope();
   const now = useNow(liveTurnStatuses.includes(turn.status));
   const { onStop, stopping } = useStopTurn(userId, organizationId, turn);
+  const tone = turnTone(turn, openRequest);
+  const label = turnLabel(turn, now, openRequest);
   return (
-    <WorkStatus
-      tone={turnTone(turn, openRequest)}
-      label={turnLabel(turn, now, openRequest)}
-      activity={turn.activity}
-      onTranscript={() => onTranscript(turn.id)}
-      onStop={onStop}
-      stopping={stopping}
-    />
+    <span ref={ref} className="inline-flex min-w-0">
+      <WorkStatus
+        tone={tone}
+        label={
+          agentName ? `${agentName}${tone === "working" ? " is working" : ""} · ${label}` : label
+        }
+        activity={turn.activity}
+        onTranscript={() => onTranscript(turn.id)}
+        onStop={onStop}
+        stopping={stopping}
+      />
+    </span>
   );
 }
 
@@ -87,7 +117,7 @@ export function TurnWork({
   );
   if (underReply) return body;
   return (
-    <PendingReply name={agentName} tone={tone} status={<TurnStatus {...props} />}>
+    <PendingReply name={agentName} status={<TurnStatus {...props} agentName={agentName} />}>
       {body}
     </PendingReply>
   );
