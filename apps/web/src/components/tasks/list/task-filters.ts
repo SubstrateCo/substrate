@@ -1,5 +1,6 @@
 import { taskPriorityOrder } from "../task-cues/task-labels";
 import type { Task } from "../types";
+import { isClosedTask } from "@/lib/tasks/task-status";
 
 export type TaskSort = "default" | "priority" | "dueDate" | "title";
 
@@ -23,7 +24,10 @@ export function hasActiveFilters(filters: TaskFilters) {
   return !!filters.query.trim() || filters.assignee !== "any" || filters.scope !== "all";
 }
 
-const closed = new Set<Task["status"]>(["completed", "canceled"]);
+/** The filters with search, assignee, and scope cleared. The sort stays. */
+export function clearedFilters(filters: TaskFilters): TaskFilters {
+  return { ...filters, query: "", assignee: "any", scope: "all" };
+}
 
 const comparers: Record<Exclude<TaskSort, "default">, (a: Task, b: Task) => number> = {
   priority: (a, b) => taskPriorityOrder.indexOf(a.priority) - taskPriorityOrder.indexOf(b.priority),
@@ -47,7 +51,7 @@ export function filterTasks(
   const matches = tasks.filter(
     (task) =>
       (!query || task.title.toLocaleLowerCase().includes(query)) &&
-      (filters.scope === "all" || !closed.has(task.status)) &&
+      (filters.scope === "all" || !isClosedTask(task)) &&
       (filters.scope !== "blocked" || blocked.has(task.entityId)) &&
       (filters.assignee === "any" ||
         (filters.assignee === "unassigned"

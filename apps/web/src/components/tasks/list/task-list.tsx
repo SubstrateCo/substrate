@@ -6,8 +6,9 @@ import { ContentNotice } from "../../feedback/content-notice";
 import { TaskBoard } from "../board/task-board";
 import { blockedTaskIds } from "../links/task-relations";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
-import type { ProjectDetail } from "../types";
+import type { ProjectDetail, Task } from "../types";
 import {
+  clearedFilters,
   defaultTaskFilters,
   filterTasks,
   hasActiveFilters,
@@ -61,7 +62,14 @@ export function TaskList({
     if (rows) rows.push(task);
     else tasksByStatus.set(task.status, [task]);
   }
-  const clearFilters = () => setFilters({ ...filters, query: "", assignee: "any", scope: "all" });
+  const cues = (task: Task) => ({
+    assignee: task.assigneeActorEntityId ? actorsById.get(task.assigneeActorEntityId) : undefined,
+    parentTitle: task.parentTaskEntityId
+      ? tasksById.get(task.parentTaskEntityId)?.title
+      : undefined,
+    blocked: blocked.has(task.entityId),
+  });
+  const clearFilters = () => setFilters(clearedFilters(filters));
   return (
     <section aria-label="Project tasks" className="@container flex min-h-0 min-w-0 flex-1 flex-col">
       {/* An empty project has nothing to filter, but keeps the view toggle in its place. */}
@@ -97,8 +105,8 @@ export function TaskList({
       )}
       {!noMatches && view === "board" && (
         <TaskBoard
-          detail={detail}
           tasks={tasks}
+          cues={cues}
           selectedId={selectedId}
           onSelect={onSelect}
           onCreate={onCreate}
@@ -176,17 +184,7 @@ export function TaskList({
                     <TaskListItem
                       key={task.entityId}
                       task={task}
-                      assignee={
-                        task.assigneeActorEntityId
-                          ? actorsById.get(task.assigneeActorEntityId)
-                          : undefined
-                      }
-                      parentTitle={
-                        task.parentTaskEntityId
-                          ? tasksById.get(task.parentTaskEntityId)?.title
-                          : undefined
-                      }
-                      blocked={blocked.has(task.entityId)}
+                      {...cues(task)}
                       selected={task.entityId === selectedId}
                       statusPending={statusPending}
                       onSelect={() => onSelect(task.entityId)}

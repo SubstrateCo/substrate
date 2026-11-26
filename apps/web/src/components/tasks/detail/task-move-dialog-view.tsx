@@ -1,10 +1,47 @@
-import type { ReactNode } from "react";
-
 import type { Project, Task } from "../types";
 import { ErrorState } from "@/components/feedback/error-state";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { SelectField } from "@/components/forms/select-field";
+
+/** The parent choice in the destination project, once it loads and the viewer can edit it. */
+function ParentTaskField({
+  parentId,
+  parents,
+  loading,
+  loadError,
+  canEdit,
+  onParentChange,
+  onRetry,
+}: {
+  parentId: string;
+  parents: Task[];
+  loading: boolean;
+  loadError: Error | null;
+  canEdit: boolean;
+  onParentChange: (id: string) => void;
+  onRetry: () => void;
+}) {
+  if (loadError) return <ErrorState title="Couldn’t load destination" onRetry={onRetry} />;
+  if (loading) return <LoadingState label="Loading destination" variant="compact" rows={1} />;
+  if (!canEdit)
+    return (
+      <p role="status" className="text-sm text-muted-foreground">
+        You need edit access to the destination project.
+      </p>
+    );
+  return (
+    <SelectField
+      label="Parent task"
+      value={parentId}
+      onChange={onParentChange}
+      options={[
+        { value: "none", label: "No parent task" },
+        ...parents.map((task) => ({ value: task.entityId, label: task.title })),
+      ]}
+    />
+  );
+}
 
 export function TaskMoveDialog({
   title,
@@ -47,28 +84,6 @@ export function TaskMoveDialog({
 }) {
   const unavailable = loading || !!loadError || !canEdit;
   const canSubmit = !pending && !unchanged && !unavailable;
-  let destination: ReactNode;
-  if (loadError) destination = <ErrorState title="Couldn’t load destination" onRetry={onRetry} />;
-  else if (loading)
-    destination = <LoadingState label="Loading destination" variant="compact" rows={1} />;
-  else if (canEdit)
-    destination = (
-      <SelectField
-        label="Parent task"
-        value={parentId}
-        onChange={onParentChange}
-        options={[
-          { value: "none", label: "No parent task" },
-          ...parents.map((task) => ({ value: task.entityId, label: task.title })),
-        ]}
-      />
-    );
-  else
-    destination = (
-      <p role="status" className="text-sm text-muted-foreground">
-        You need edit access to the destination project.
-      </p>
-    );
   return (
     <FormDialog
       title="Move task"
@@ -93,7 +108,15 @@ export function TaskMoveDialog({
           label: project.name,
         }))}
       />
-      {destination}
+      <ParentTaskField
+        parentId={parentId}
+        parents={parents}
+        loading={loading}
+        loadError={loadError}
+        canEdit={canEdit}
+        onParentChange={onParentChange}
+        onRetry={onRetry}
+      />
       {changesAccess && (
         <p className="text-sm text-muted-foreground">
           The task, its subtasks, comments, and attachments will use the destination project’s

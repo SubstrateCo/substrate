@@ -1,5 +1,6 @@
 import { useRef, useState, type FocusEvent, type RefObject } from "react";
 
+import { isProjectTab, type ProjectTab } from "../project-tabs";
 import { useFocusReturn } from "@/components/feedback/use-focus-return";
 
 /**
@@ -7,8 +8,8 @@ import { useFocusReturn } from "@/components/feedback/use-focus-return";
  * that they discard them.
  */
 export function useGuardedTab(inspector: RefObject<HTMLElement | null>, dirty: boolean) {
-  const [tab, setTab] = useState("tasks");
-  const [pendingTab, setPendingTab] = useState<string | null>(null);
+  const [tab, setTab] = useState<ProjectTab>("tasks");
+  const [pendingTab, setPendingTab] = useState<ProjectTab | null>(null);
   const tabsRef = useRef<HTMLDivElement>(null);
   const lastInspectorFocus = useRef<HTMLElement | null>(null);
   const tabFocus = useFocusReturn(inspector);
@@ -18,7 +19,9 @@ export function useGuardedTab(inspector: RefObject<HTMLElement | null>, dirty: b
     tabsRef,
     pendingTab,
     restoreFocus: tabFocus.restore,
+    // Tabs reports a plain string.
     change: (next: string) => {
+      if (!isProjectTab(next)) return;
       if (tab === "tasks" && next !== "tasks" && dirty) {
         // Keep editing returns to where the person was working in the inspector.
         tabFocus.remember(lastInspectorFocus.current);

@@ -118,7 +118,13 @@ export function ProjectPane({
         ))
       }
       sharing={
-        resource.data && <ProjectSharing organizationId={organizationId} detail={resource.data} />
+        resource.data && (
+          <ProjectSharing
+            organizationId={organizationId}
+            detail={resource.data}
+            capabilities={capabilities}
+          />
+        )
       }
       renderTaskForm={({
         detail,
@@ -144,6 +150,7 @@ export function ProjectPane({
           key={task.entityId}
           organizationId={organizationId}
           detail={detail}
+          capabilities={capabilities}
           task={task}
           onSubtask={onSubtask}
           onSelectTask={onSelectTask}

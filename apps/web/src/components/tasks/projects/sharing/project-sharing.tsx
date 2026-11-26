@@ -7,7 +7,7 @@ import {
   type ErrorSurface,
 } from "@/components/tasks/projects/sharing/project-sharing-view";
 import type { ProjectDetail } from "@/components/tasks/types";
-import { projectCapabilities } from "@/lib/tasks/project-capabilities";
+import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
 import { useTasksMutation } from "@/queries/tasks/mutations";
 import { toast } from "sonner";
 
@@ -21,9 +21,11 @@ const outcomes: Record<PermissionLevel, string> = {
 export function ProjectSharing({
   organizationId,
   detail,
+  capabilities,
 }: {
   organizationId: string;
   detail: ProjectDetail;
+  capabilities: ProjectCapabilities;
 }) {
   const share = useTasksMutation(organizationId);
   const scope = { organizationId, projectEntityId: detail.project.entityId };
@@ -50,7 +52,7 @@ export function ProjectSharing({
     );
   return (
     <ProjectSharingView
-      capabilities={projectCapabilities(detail.level, !!detail.project.archivedAt)}
+      capabilities={capabilities}
       detail={detail}
       pending={share.isPending}
       error={share.error}

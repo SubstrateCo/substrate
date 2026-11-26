@@ -1,25 +1,27 @@
 import { taskStatusLabels, taskStatusValues, type TaskStatus } from "@substrate/contracts/tasks";
 
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 
-import { blockedTaskIds } from "../links/task-relations";
-import type { ProjectDetail, Task } from "../types";
+import type { Task } from "../types";
 import { TaskBoardCard } from "./task-board-card";
 import { TaskBoardColumn } from "./task-board-column";
 import { Board, BoardCard } from "@/components/layout/board";
 import { DndContext, DragOverlay, PointerSensor, useSensor, useSensors } from "@dnd-kit/core";
 
 export function TaskBoard({
-  detail,
   tasks,
+  cues,
   selectedId,
   onSelect,
   onCreate,
   onStatusChange,
   statusPending,
 }: {
-  detail: ProjectDetail;
   tasks: Task[];
+  /** A card's assignee, parent title, and blocked cue, which the list resolves once. */
+  cues: (
+    task: Task,
+  ) => Pick<ComponentProps<typeof TaskBoardCard>, "assignee" | "parentTitle" | "blocked">;
   selectedId: string | null;
   onSelect: (id: string) => void;
   onCreate?: (status?: TaskStatus) => void;
@@ -29,9 +31,6 @@ export function TaskBoard({
   const [activeId, setActiveId] = useState<string | null>(null);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
   const active = tasks.find((task) => task.entityId === activeId);
-  const actors = new Map(detail.actors.map((actor) => [actor.entityId, actor]));
-  const blocked = blockedTaskIds(detail.links, detail.tasks);
-  const parents = new Map(detail.tasks.map((task) => [task.entityId, task.title]));
   return (
     <DndContext
       sensors={sensors}
@@ -75,13 +74,7 @@ export function TaskBoard({
                 <TaskBoardCard
                   key={task.entityId}
                   task={task}
-                  assignee={
-                    task.assigneeActorEntityId ? actors.get(task.assigneeActorEntityId) : undefined
-                  }
-                  parentTitle={
-                    task.parentTaskEntityId ? parents.get(task.parentTaskEntityId) : undefined
-                  }
-                  blocked={blocked.has(task.entityId)}
+                  {...cues(task)}
                   selected={selectedId === task.entityId}
                   statusPending={statusPending}
                   onSelect={() => onSelect(task.entityId)}

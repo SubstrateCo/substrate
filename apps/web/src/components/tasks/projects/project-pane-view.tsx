@@ -26,6 +26,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ResourceStatus } from "@/lib/resource-state";
 import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
+import { hiddenTaskInline } from "@/lib/tasks/task-status";
 import { Columns3, ListTodo, Plus, Unlink } from "lucide-react";
 
 const viewOptions = [
@@ -243,7 +244,7 @@ function CreateTaskForm({
   const creatingParent = creating.parentTaskEntityId;
   const parentTitle = detail.tasks.find((task) => task.entityId === creatingParent)?.title;
   const creationPlace = creatingParent
-    ? `In ${detail.project.name}, under ${parentTitle ?? "a task you can’t open"}`
+    ? `In ${detail.project.name}, under ${parentTitle ?? hiddenTaskInline}`
     : `In ${detail.project.name}`;
   return renderTaskForm({
     detail,

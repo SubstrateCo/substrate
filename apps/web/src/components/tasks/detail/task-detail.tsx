@@ -14,13 +14,14 @@ import { useRegisterDraft } from "@/components/feedback/unsaved-drafts";
 import { TaskDetail as TaskDetailView } from "@/components/tasks/detail/task-detail-view";
 import type { ProjectDetail, Task } from "@/components/tasks/types";
 import { workLink } from "@/lib/navigation/record-links";
-import { projectCapabilities } from "@/lib/tasks/project-capabilities";
+import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
 import { useTaskUpdate } from "@/queries/tasks/mutations";
 import { toast } from "sonner";
 
 export function TaskDetail({
   organizationId,
   detail,
+  capabilities,
   task,
   onSelectTask,
   onSubtask,
@@ -28,13 +29,13 @@ export function TaskDetail({
 }: {
   organizationId: string;
   detail: ProjectDetail;
+  capabilities: ProjectCapabilities;
   task: Task;
   onSelectTask: (id: string) => void;
   onSubtask: () => void;
   visible: boolean;
 }) {
   const update = useTaskUpdate(organizationId, detail.project.entityId);
-  const capabilities = projectCapabilities(detail.level, !!detail.project.archivedAt);
   const [editDirty, setEditDirty] = useState(false);
   const active = useContext(TaskInspectorActive);
   const dirty = active && editDirty;
@@ -82,6 +83,7 @@ export function TaskDetail({
           <TaskLinks
             organizationId={organizationId}
             detail={detail}
+            canEdit={capabilities.canEdit}
             task={task}
             onSelectTask={onSelectTask}
           />

@@ -11,6 +11,7 @@ import { Heading } from "@/components/ui/heading";
 import { Pressable } from "@/components/ui/pressable";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
+import { hiddenTask } from "@/lib/tasks/task-status";
 import { ChevronRight, Pencil } from "lucide-react";
 
 /**
@@ -83,7 +84,7 @@ export function TaskDetail({
                     <TooltipContent>{parent.title}</TooltipContent>
                   </Tooltip>
                 ) : (
-                  <span className="truncate">A task you can’t open</span>
+                  <span className="truncate">{hiddenTask}</span>
                 )}
               </>
             )}

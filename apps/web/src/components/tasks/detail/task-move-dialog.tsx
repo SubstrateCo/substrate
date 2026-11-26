@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { useState } from "react";
 
+import { descendantIds } from "../links/task-relations";
 import { TaskMoveDialog as TaskMoveDialogView } from "./task-move-dialog-view";
 import type { ProjectDetail, Task } from "@/components/tasks/types";
 import { resourceState } from "@/lib/resource-state";
@@ -29,20 +30,8 @@ export function TaskMoveDialog({
   const destination = useQuery(projectQueryOptions(organizationId, projectId));
   const move = useTasksMutation(organizationId);
   const navigate = useNavigate();
-  const excluded = new Set([task.entityId]);
-  for (let changed = true; changed;) {
-    changed = false;
-    for (const candidate of detail.tasks) {
-      if (
-        candidate.parentTaskEntityId &&
-        excluded.has(candidate.parentTaskEntityId) &&
-        !excluded.has(candidate.entityId)
-      ) {
-        excluded.add(candidate.entityId);
-        changed = true;
-      }
-    }
-  }
+  // A task can't move under itself or its own subtasks.
+  const excluded = descendantIds(detail.tasks, task.entityId).add(task.entityId);
   const destinationResource = resourceState(destination);
   const { canEdit } = projectCapabilities(
     destinationResource.data?.level,

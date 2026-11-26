@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { ProjectDetail } from "../types";
-import type { TaskFilters, TaskSort } from "./task-filters";
+import { clearedFilters, type TaskFilters, type TaskSort } from "./task-filters";
 import { TaskFilterLayout } from "./task-list-layout";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { Button } from "@/components/ui/button";
@@ -54,11 +54,7 @@ export function TaskListToolbar({
   const compact = useMediaQuery("(max-width: 639px)");
   const set = (patch: Partial<TaskFilters>) => onChange({ ...filters, ...patch });
   const clearFilters = (
-    <Button
-      type="button"
-      variant="ghost"
-      onClick={() => set({ query: "", assignee: "any", scope: "all" })}
-    >
+    <Button type="button" variant="ghost" onClick={() => onChange(clearedFilters(filters))}>
       <X aria-hidden="true" />
       Clear filters
     </Button>

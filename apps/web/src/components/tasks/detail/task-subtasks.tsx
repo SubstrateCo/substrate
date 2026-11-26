@@ -5,6 +5,7 @@ import type { Task } from "../types";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { RecordSection, RecordSectionAction, recordRows } from "@/components/layout/record-section";
 import { Item, ItemContent, ItemMedia } from "@/components/ui/item";
+import { isClosedTask } from "@/lib/tasks/task-status";
 import { Plus } from "lucide-react";
 
 /** A task's subtasks as compact rows. Editors add one from the section header. */
@@ -48,7 +49,7 @@ export function TaskSubtasks({
                   </ItemMedia>
                   <ItemContent className="min-w-0">
                     <span
-                      className={`truncate ${task.status === "completed" || task.status === "canceled" ? "text-muted-foreground" : ""}`}
+                      className={`truncate ${isClosedTask(task) ? "text-muted-foreground" : ""}`}
                     >
                       {task.title}
                     </span>

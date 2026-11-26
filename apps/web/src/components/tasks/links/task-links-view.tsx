@@ -35,6 +35,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { RecordLink } from "@/lib/navigation/record-links";
+import { hiddenTask, isClosedTask } from "@/lib/tasks/task-status";
 import { cn } from "cn";
 import { LockKeyhole, Plus, X } from "lucide-react";
 
@@ -92,9 +93,8 @@ export function TaskLinks({
             </p>
             <ul className="-mx-2 grid gap-px">
               {rows.map(({ id, other }) => {
-                const name = other?.title ?? "A task you can’t open";
-                const dimmed =
-                  other && (other.status === "completed" || other.status === "canceled");
+                const name = other?.title ?? hiddenTask;
+                const dimmed = other && isClosedTask(other);
                 const content = other ? (
                   <>
                     <span className="sr-only">{taskStatusLabels[other.status]}: </span>

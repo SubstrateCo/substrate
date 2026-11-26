@@ -18,12 +18,15 @@ function useTaskForm({
   assignees,
   pending,
   onSubmit,
+  onDirtyChange,
 }: {
   task?: Task;
   initialStatus?: Task["status"];
   assignees: ProjectDetail["actors"];
   pending: boolean;
   onSubmit: (draft: TaskDraft) => void;
+  /** Whether the title or description differs from the task's, after each edit. */
+  onDirtyChange?: (dirty: boolean) => void;
 }) {
   return useForm({
     defaultValues: {
@@ -36,6 +39,13 @@ function useTaskForm({
     },
     validationLogic: revalidateLogic({ mode: "blur", modeAfterSubmission: "change" }),
     validators: { onDynamic: taskFormSchema(assignees.map((actor) => actor.entityId)) },
+    listeners: {
+      onChange: ({ formApi }) => {
+        if (!task || !onDirtyChange) return;
+        const { title, description } = formApi.state.values;
+        onDirtyChange(title !== task.title || description !== task.description);
+      },
+    },
     onSubmit: ({ value }) => {
       if (pending) return;
       onSubmit({
@@ -51,6 +61,12 @@ function useTaskForm({
 }
 
 export type TaskEditorForm = ReturnType<typeof useTaskForm>;
+
+function formLabels(editing: boolean, subtask: boolean) {
+  if (editing) return { formLabel: "Edit task", submitLabel: "Save" };
+  if (subtask) return { formLabel: "New subtask", submitLabel: "Create subtask" };
+  return { formLabel: "New task", submitLabel: "Create task" };
+}
 
 /**
  * Creates a task in a dialog, or edits a task's title and description inline. Status, priority,
@@ -112,13 +128,9 @@ export function TaskForm({
           : draft,
       );
     },
+    onDirtyChange,
   });
-  let formLabel = parentTaskEntityId ? "New subtask" : "New task";
-  let submitLabel = parentTaskEntityId ? "Create subtask" : "Create task";
-  if (task) {
-    formLabel = "Edit task";
-    submitLabel = "Save";
-  }
+  const { formLabel, submitLabel } = formLabels(!!task, !!parentTaskEntityId);
   const submit = () => {
     if (!pending && attachmentsReady) void form.handleSubmit();
   };
@@ -198,14 +210,6 @@ export function TaskForm({
       noValidate
       className="@container min-w-0 space-y-4"
       onKeyDown={onKeyDown}
-      onInputCapture={(event) => {
-        if (!task || !onDirtyChange) return;
-        const title = event.currentTarget.querySelector<HTMLInputElement>(`[id="${id}-title"]`);
-        const description = event.currentTarget.querySelector<HTMLTextAreaElement>(
-          `[id="${id}-description"]`,
-        );
-        onDirtyChange(title?.value !== task.title || description?.value !== task.description);
-      }}
       onSubmit={(event) => {
         event.preventDefault();
         submit();

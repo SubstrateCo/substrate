@@ -2,7 +2,7 @@ import type { TaskLinkEnd, TaskLinkView } from "@substrate/contracts/tasks/links
 
 import { defaultTaskFilters, filterTasks } from "../list/task-filters";
 import type { Task } from "../types";
-import { blockedTaskIds, taskRelations } from "./task-relations";
+import { blockedTaskIds, descendantIds, taskRelations } from "./task-relations";
 import { expect, test } from "bun:test";
 
 const task = (entityId: string, status: Task["status"] = "not_started"): Task => ({
@@ -59,6 +59,23 @@ test("a task reads each link from its own side, in the standard relation order",
     { id: "dup", relation: "duplicated_by", other: "c", blocking: false },
     { id: "related", relation: "related_to", other: "b", blocking: false },
   ]);
+});
+
+test("a task's descendants are its subtasks at every depth, not its siblings or itself", () => {
+  const child = (entityId: string, parent: string) => ({
+    ...task(entityId),
+    parentTaskEntityId: parent,
+  });
+  const tasks = [
+    // Listed before its parent, so one pass in list order would miss it.
+    child("grandchild", "child"),
+    task("root"),
+    child("child", "root"),
+    child("sibling-child", "sibling"),
+    task("sibling"),
+  ];
+  expect([...descendantIds(tasks, "root")].sort()).toEqual(["child", "grandchild"]);
+  expect([...descendantIds(tasks, "grandchild")]).toEqual([]);
 });
 
 test("only open tasks with an open blocker are blocked, and the filter keeps only them", () => {

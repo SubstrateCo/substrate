@@ -7,8 +7,7 @@ import {
 } from "@substrate/contracts/tasks/links";
 
 import type { Task } from "../types";
-
-const closed = new Set<Task["status"]>(["completed", "canceled"]);
+import { isClosedTask } from "@/lib/tasks/task-status";
 
 export interface TaskRelation {
   id: string;
@@ -44,9 +43,28 @@ export function taskRelations(
   );
 }
 
+/** The subtasks of a task at every depth, without the task itself. */
+export function descendantIds(tasks: readonly Task[], taskEntityId: string) {
+  const descendants = new Set<string>();
+  const pending = [taskEntityId];
+  for (let parent = pending.pop(); parent !== undefined; parent = pending.pop()) {
+    for (const task of tasks) {
+      if (
+        task.parentTaskEntityId !== parent ||
+        task.entityId === taskEntityId ||
+        descendants.has(task.entityId)
+      )
+        continue;
+      descendants.add(task.entityId);
+      pending.push(task.entityId);
+    }
+  }
+  return descendants;
+}
+
 /** Open tasks that an open task blocks. A closed task is never shown as blocked. */
 export function blockedTaskIds(links: readonly TaskLinkView[], tasks: readonly Task[]) {
-  const open = new Set(tasks.flatMap((task) => (closed.has(task.status) ? [] : [task.entityId])));
+  const open = new Set(tasks.flatMap((task) => (isClosedTask(task) ? [] : [task.entityId])));
   return new Set(
     links.flatMap((link) =>
       link.kind === "blocks" && link.blocking && link.target && open.has(link.target.entityId)

@@ -1,6 +1,6 @@
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
-import { TaskAssigneeHoverCard } from "../assignee/task-assignee-hover-card";
+import { TaskAssigneeAvatar } from "../assignee/task-assignee-avatar";
 import { TaskBlockedCue } from "../list/task-list-item";
 import { TaskStatusMenu } from "../list/task-status-menu";
 import { taskPriorityLabels } from "../task-cues/task-labels";
@@ -8,11 +8,11 @@ import { TaskPriorityIcon } from "../task-cues/task-priority-icon";
 import type { ProjectDetail, Task } from "../types";
 import { BoardCard } from "@/components/layout/board";
 import { actionRow, RowActions } from "@/components/layout/row-actions";
-import { PersonAvatar } from "@/components/people/person-avatar";
 import { DueDate } from "@/components/time/due-date";
 import { Button } from "@/components/ui/button";
 import { Pressable } from "@/components/ui/pressable";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { hiddenTaskInline } from "@/lib/tasks/task-status";
 import { useDraggable } from "@dnd-kit/core";
 import { cn } from "cn";
 import { CornerDownRight, GripVertical } from "lucide-react";
@@ -100,7 +100,7 @@ export function TaskBoardCard({
         <p className="flex items-center gap-1 text-xs text-muted-foreground">
           <CornerDownRight aria-hidden="true" className="size-3 shrink-0" />
           <span className="sr-only">Subtask of </span>
-          <span className="truncate">{parentTitle ?? "a task you can’t open"}</span>
+          <span className="truncate">{parentTitle ?? hiddenTaskInline}</span>
         </p>
       )}
       <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
@@ -117,23 +117,7 @@ export function TaskBoardCard({
         {blocked && <TaskBlockedCue />}
         <span className="flex-1" />
         <span className="relative z-10 flex">
-          {assignee ? (
-            <TaskAssigneeHoverCard assignee={assignee}>
-              <PersonAvatar
-                size="xs"
-                name={assignee.name}
-                image={assignee.image}
-                agent={assignee.type === "agent"}
-              />
-            </TaskAssigneeHoverCard>
-          ) : (
-            <span aria-label={task.assigneeActorEntityId ? "Former member" : "Unassigned"}>
-              <PersonAvatar
-                size="xs"
-                name={task.assigneeActorEntityId ? "Former member" : undefined}
-              />
-            </span>
-          )}
+          <TaskAssigneeAvatar assignee={assignee} assigned={Boolean(task.assigneeActorEntityId)} />
         </span>
       </div>
     </BoardCard>

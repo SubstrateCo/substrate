@@ -10,7 +10,6 @@ import { blockedTaskIds, taskRelations } from "./task-relations";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { workLink } from "@/lib/navigation/record-links";
-import { projectCapabilities } from "@/lib/tasks/project-capabilities";
 import { searchOptions } from "@/queries/context/search";
 import { useTasksMutation } from "@/queries/tasks/mutations";
 import { toast } from "sonner";
@@ -19,15 +18,16 @@ import { toast } from "sonner";
 export function TaskLinks({
   organizationId,
   detail,
+  canEdit,
   task,
   onSelectTask,
 }: {
   organizationId: string;
   detail: ProjectDetail;
+  canEdit: boolean;
   task: Task;
   onSelectTask: (id: string) => void;
 }) {
-  const { canEdit } = projectCapabilities(detail.level, !!detail.project.archivedAt);
   const write = useTasksMutation(organizationId);
   const [open, setOpen] = useState(false);
   const [relation, setRelation] = useState<TaskLinkRelation>("blocked_by");

@@ -1,6 +1,6 @@
 import { taskStatusLabels, type TaskStatus } from "@substrate/contracts/tasks";
 
-import { TaskAssigneeHoverCard } from "../assignee/task-assignee-hover-card";
+import { TaskAssigneeAvatar } from "../assignee/task-assignee-avatar";
 import { taskPriorityLabels } from "../task-cues/task-labels";
 import { TaskPriorityIcon } from "../task-cues/task-priority-icon";
 import type { ProjectDetail, Task } from "../types";
@@ -12,10 +12,10 @@ import {
 } from "./task-list-layout";
 import { TaskStatusMenu } from "./task-status-menu";
 import { rowStateVariants, rowTitleVariants } from "@/components/layout/row-state";
-import { PersonAvatar } from "@/components/people/person-avatar";
 import { DueDate } from "@/components/time/due-date";
 import { Pressable } from "@/components/ui/pressable";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { hiddenTaskInline, isClosedTask } from "@/lib/tasks/task-status";
 import { cn } from "cn";
 import { Ban, CornerDownRight } from "lucide-react";
 
@@ -54,7 +54,6 @@ export function TaskListItem({
   onStatusChange?: (status: TaskStatus) => void;
   statusPending?: boolean;
 }) {
-  const closed = task.status === "completed" || task.status === "canceled";
   return (
     <li
       data-selected={selected || undefined}
@@ -82,7 +81,7 @@ export function TaskListItem({
           <span
             className={cn(
               "line-clamp-2 wrap-anywhere @md:line-clamp-none @md:truncate",
-              rowTitleVariants({ state: closed ? "closed" : "read", selected }),
+              rowTitleVariants({ state: isClosedTask(task) ? "closed" : "read", selected }),
             )}
             title={task.title}
           >
@@ -93,7 +92,7 @@ export function TaskListItem({
             <span className="hidden min-w-0 shrink items-center gap-1 text-xs text-muted-foreground @md:flex">
               <CornerDownRight aria-hidden="true" className="size-3 shrink-0" />
               <span className="sr-only">, subtask of </span>
-              <span className="truncate">{parentTitle ?? "a task you can’t open"}</span>
+              <span className="truncate">{parentTitle ?? hiddenTaskInline}</span>
             </span>
           )}
         </span>
@@ -115,35 +114,9 @@ export function TaskListItem({
           )}
         </span>
       </Pressable>
-      <TaskListAssignee assignee={assignee} assigned={Boolean(task.assigneeActorEntityId)} />
+      <span className={taskRowAssigneeClassName}>
+        <TaskAssigneeAvatar assignee={assignee} assigned={Boolean(task.assigneeActorEntityId)} />
+      </span>
     </li>
-  );
-}
-
-function TaskListAssignee({
-  assignee,
-  assigned,
-}: {
-  assignee?: ProjectDetail["actors"][number];
-  assigned: boolean;
-}) {
-  const missingName = assigned ? "Former member" : undefined;
-  return (
-    <span className={taskRowAssigneeClassName}>
-      {assignee ? (
-        <TaskAssigneeHoverCard assignee={assignee}>
-          <PersonAvatar
-            size="xs"
-            name={assignee.name}
-            image={assignee.image}
-            agent={assignee.type === "agent"}
-          />
-        </TaskAssigneeHoverCard>
-      ) : (
-        <span aria-label={missingName ?? "Unassigned"}>
-          <PersonAvatar size="xs" name={missingName} />
-        </span>
-      )}
-    </span>
   );
 }
