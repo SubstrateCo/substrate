@@ -6,6 +6,8 @@ import {
 } from "@substrate/contracts/mail";
 import type { MailAPI } from "@substrate/contracts/mail/ipc";
 
+import { useMutation } from "@tanstack/react-query";
+
 import { useRef, useState, type ComponentProps } from "react";
 
 import { MailActionButton } from "./mail-action-button";
@@ -35,10 +37,30 @@ export function SelectableMessageList({
   ) => ReturnType<MailAPI["changeConversations"]>;
 }) {
   const [checked, setChecked] = useState(new Set<string>());
-  const [pending, setPending] = useState(false);
   const [failed, setFailed] = useState<Batch>();
   const selectPage = useRef<HTMLButtonElement>(null);
   const confirm = useStateDialog<Batch>(() => selectPage.current?.focus());
+  const change = useMutation({
+    mutationFn: (batch: Batch) =>
+      onChange(
+        batch.rows.map((row) => row.id),
+        batch.action,
+      ),
+    // A bridge interruption can leave provider outcomes unknown. Keep the exact targets for retry.
+    onSettled: (results, _error, batch) => {
+      const done = new Set(
+        (results ?? [])
+          .filter((r) => r.result === "updated" || r.result === "missing")
+          .map((r) => r.id),
+      );
+      const remaining = batch.rows.filter((row) => !done.has(row.id));
+      setChecked(new Set(remaining.map(conversationKey)));
+      setFailed(remaining.length ? { ...batch, rows: remaining } : undefined);
+      confirm.close();
+      if (!remaining.length) selectPage.current?.focus();
+    },
+  });
+  const pending = change.isPending;
   const chosen = list.messages.filter((row) => checked.has(conversationKey(row)));
   const count = chosen.length;
   const selectionLabel = count ? `${countLabel(count)} selected` : "Select conversations";
@@ -56,31 +78,10 @@ export function SelectableMessageList({
     if (!next.delete(key)) next.add(key);
     select(next);
   }
-  async function apply(batch: Batch) {
-    setPending(true);
-    let remaining = batch.rows;
-    try {
-      const results = await onChange(
-        batch.rows.map((row) => row.id),
-        batch.action,
-      );
-      const done = new Set(
-        results.filter((r) => r.result === "updated" || r.result === "missing").map((r) => r.id),
-      );
-      remaining = batch.rows.filter((row) => !done.has(row.id));
-    } catch {
-      // A bridge interruption can leave provider outcomes unknown. Keep the exact targets for retry.
-    }
-    setChecked(new Set(remaining.map(conversationKey)));
-    setFailed(remaining.length ? { ...batch, rows: remaining } : undefined);
-    setPending(false);
-    confirm.close();
-    if (!remaining.length) selectPage.current?.focus();
-  }
   function start(batch: Batch) {
     if (pending || !batch.rows.length || blocked(batch.rows).length) return;
     if (batch.action === "trashMessage") confirm.open(batch);
-    else void apply(batch);
+    else change.mutate(batch);
   }
   return (
     <>
@@ -170,7 +171,7 @@ export function SelectableMessageList({
           pending={pending}
           onClose={confirm.close}
           onRestoreFocus={confirm.restoreFocus}
-          onConfirm={() => confirm.value && void apply(confirm.value)}
+          onConfirm={() => confirm.value && change.mutate(confirm.value)}
         />
       )}
     </>

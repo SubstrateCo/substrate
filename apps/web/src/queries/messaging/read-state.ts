@@ -1,4 +1,10 @@
-import { queryOptions, skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
+import {
+  queryOptions,
+  skipToken,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from "@tanstack/react-query";
 
 import { useEffect, useState } from "react";
 
@@ -79,35 +85,35 @@ export function useConversationRead(
   messageId?: string,
 ) {
   const client = useQueryClient();
+  const { mutate } = useMutation({
+    mutationFn: (messageId: string) =>
+      markConversationRead({ data: { organizationId, conversationId, messageId } }),
+    onSuccess: () =>
+      client.invalidateQueries({ queryKey: queryKeys.messageUnread(organizationId) }),
+  });
   useEffect(() => {
     if (!messageId) return;
-    const controller = new AbortController();
-    const state = { saved: false, pending: false };
+    // A failed save goes back to idle, so the next focus or visibility change tries again.
+    let state: "idle" | "pending" | "saved" = "idle";
     const read = () => {
       const foreground = document.visibilityState === "visible" && document.hasFocus();
-      if (state.saved || state.pending || !foreground) return;
-      state.pending = true;
-      void markConversationRead({
-        data: { organizationId, conversationId, messageId },
-        signal: controller.signal,
-      })
-        .then(async () => {
-          state.saved = true;
-          if (!controller.signal.aborted)
-            await client.invalidateQueries({ queryKey: queryKeys.messageUnread(organizationId) });
-        })
-        .catch(() => {})
-        .finally(() => {
-          state.pending = false;
-        });
+      if (state !== "idle" || !foreground) return;
+      state = "pending";
+      mutate(messageId, {
+        onSuccess: () => {
+          state = "saved";
+        },
+        onError: () => {
+          state = "idle";
+        },
+      });
     };
     read();
     window.addEventListener("focus", read);
     document.addEventListener("visibilitychange", read);
     return () => {
-      controller.abort();
       window.removeEventListener("focus", read);
       document.removeEventListener("visibilitychange", read);
     };
-  }, [client, organizationId, conversationId, messageId]);
+  }, [mutate, messageId]);
 }
