@@ -8,6 +8,7 @@ import { InvitationAcceptedView } from "@/components/organizations/invitations/i
 import { useDeclineInvitationConfirm } from "@/components/organizations/invitations/use-decline-invitation";
 import { useExpiryTime } from "@/hooks/use-expiry-time";
 import { isDesktop } from "@/lib/desktop/auth";
+import { isInvitationExpired } from "@/lib/organizations/invitations";
 import { sessionQueryOptions } from "@/queries/auth/session";
 import { invitationQueryOptions } from "@/queries/organizations/invitations";
 import {
@@ -31,7 +32,7 @@ export function AcceptInvitationScreen({ invitationId }: { invitationId: string 
   });
   const available =
     !!invitation.data &&
-    new Date(invitation.data.expiresAt).getTime() >= now &&
+    !isInvitationExpired(invitation.data.expiresAt, now) &&
     invitation.data.status === "pending";
   const accepted = accept.data;
   const signOut = (

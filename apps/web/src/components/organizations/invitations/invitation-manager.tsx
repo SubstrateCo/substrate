@@ -6,6 +6,7 @@ import { isInvitationEmailFailure } from "@/api/auth/error";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { InvitationManager as InvitationManagerView } from "@/components/organizations/invitations/invitation-manager-view";
 import { useExpiryTime } from "@/hooks/use-expiry-time";
+import { isInvitationExpired } from "@/lib/organizations/invitations";
 import { invitationRoles } from "@/lib/organizations/member-policy";
 import { resourceState } from "@/lib/resource-state";
 import { useInvitationLink } from "@/queries/organizations/invitation-link";
@@ -78,7 +79,7 @@ export function InvitationManager({
       roles={invitationRoles(viewerRole)}
       invitations={resourceState(invitations).data?.map((invitation) => ({
         ...invitation,
-        expired: new Date(invitation.expiresAt).getTime() < now,
+        expired: isInvitationExpired(invitation.expiresAt, now),
       }))}
       loading={invitations.isPending}
       sending={invite.isPending}

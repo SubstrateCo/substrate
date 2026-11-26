@@ -7,6 +7,7 @@ import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useDeclineInvitationConfirm } from "@/components/organizations/invitations/use-decline-invitation";
 import { OrganizationSelection as OrganizationSelectionView } from "@/components/organizations/selection/organization-selection-view";
 import { useExpiryTime } from "@/hooks/use-expiry-time";
+import { isInvitationExpired } from "@/lib/organizations/invitations";
 import { resourceState } from "@/lib/resource-state";
 import { userInvitationsQueryOptions } from "@/queries/organizations/invitations";
 import { organizationsQueryOptions } from "@/queries/organizations/options";
@@ -22,7 +23,7 @@ export function OrganizationSelection({ destination = "/dashboard" }: { destinat
   // A failed invitation list shows its error in the Invitations group; workspaces still open.
   const pending = (resourceState(invitations).data ?? []).map((item) => ({
     ...item,
-    expired: new Date(item.expiresAt).getTime() <= now,
+    expired: isInvitationExpired(item.expiresAt, now),
   }));
   return (
     <OrganizationSelectionView
