@@ -3,7 +3,7 @@ import { Link, linkOptions, useRouter } from "@tanstack/react-router";
 
 import { useState, type ReactNode } from "react";
 
-import type { getSharingInvitation } from "@/api/messaging/sharing";
+import type { SharingAcceptance, SharingInvitation } from "@/api/messaging/sharing";
 import { ApiError } from "@/api/result";
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { AuthNavLink } from "@/components/auth/auth-link";
@@ -147,8 +147,8 @@ function invitationState({
   loading,
   error,
 }: {
-  invitation: Awaited<ReturnType<typeof getSharingInvitation>> | undefined;
-  result: ReturnType<typeof useAcceptSharingInvitation>["data"];
+  invitation: SharingInvitation | undefined;
+  result: SharingAcceptance | undefined;
   now: number;
   declined: boolean;
   loading: boolean;

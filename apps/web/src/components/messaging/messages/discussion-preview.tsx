@@ -6,6 +6,10 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { RecordSection } from "@/components/layout/record-section";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
+import {
+  DeletedMessageBody,
+  messageAuthorName,
+} from "@/components/messaging/messages/message-placeholders";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -58,7 +62,7 @@ export function DiscussionPreview({
               key={message.id}
               avatar={
                 <PersonAvatar
-                  name={message.authorName || "Unknown member"}
+                  name={messageAuthorName(message)}
                   image={message.authorImage}
                   agent={message.authorType === "agent"}
                   className="mt-0.5 shrink-0"
@@ -66,9 +70,7 @@ export function DiscussionPreview({
               }
               byline={
                 <>
-                  <span className="truncate text-xs font-medium">
-                    {message.authorName || "Unknown member"}
-                  </span>
+                  <span className="truncate text-xs font-medium">{messageAuthorName(message)}</span>
                   <Timestamp
                     value={message.createdAt}
                     className="shrink-0 text-xs text-muted-foreground"
@@ -77,7 +79,7 @@ export function DiscussionPreview({
               }
               body={
                 message.deletedAt ? (
-                  <p className="text-sm text-muted-foreground italic">Message deleted</p>
+                  <DeletedMessageBody />
                 ) : (
                   <div className="line-clamp-3 max-h-16 overflow-hidden wrap-anywhere">
                     <MessageMarkdown

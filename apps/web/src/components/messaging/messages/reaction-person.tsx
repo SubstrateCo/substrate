@@ -1,12 +1,10 @@
-import type { listReactions } from "@/api/messaging/requests";
+import type { Reactor } from "@/api/messaging/requests";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Tag } from "@/components/feedback/tag";
 import { PersonCardTarget } from "@/components/messaging/people/person-card-slot";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
 import { Item, ItemActions, ItemContent, ItemMedia } from "@/components/ui/item";
-
-type Reactor = Awaited<ReturnType<typeof listReactions>>["items"][number];
 
 export function ReactionPerson({
   person,

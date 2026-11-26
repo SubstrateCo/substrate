@@ -1,4 +1,4 @@
-import type { getSharingInvitation } from "@/api/messaging/sharing";
+import type { SharingInvitation } from "@/api/messaging/sharing";
 import { AuthLink } from "@/components/auth/auth-link";
 import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
@@ -26,7 +26,7 @@ export function SharingAcceptanceForm({
   onAccept,
   onDecline,
 }: {
-  invitation: Awaited<ReturnType<typeof getSharingInvitation>>;
+  invitation: SharingInvitation;
   organizations: { id: string; name: string }[];
   organizationId: string;
   confirmed: boolean;

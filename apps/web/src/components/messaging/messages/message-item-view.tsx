@@ -7,6 +7,10 @@ import {
   MessageReactions,
   MessageToolbar,
 } from "@/components/messaging/messages/message-interactions";
+import {
+  DeletedMessageBody,
+  messageAuthorName,
+} from "@/components/messaging/messages/message-placeholders";
 import { MessageRowLayout } from "@/components/messaging/messages/message-row-layout";
 import { useHasPersonCard } from "@/components/messaging/people/person-card-context";
 import { PersonCardTarget } from "@/components/messaging/people/person-card-slot";
@@ -52,7 +56,7 @@ export function MessageItem({
   renderReaction?: (reaction: Message["reactions"][number]) => ReactNode;
   children?: ReactNode;
 }) {
-  const name = message.authorName || "Unknown member";
+  const name = messageAuthorName(message);
   return (
     <MessageRowLayout
       label={grouped ? `${name}, continued` : undefined}
@@ -91,7 +95,7 @@ export function MessageItem({
       }
     >
       {message.deletedAt ? (
-        <p className="text-sm text-muted-foreground italic">Message deleted</p>
+        <DeletedMessageBody />
       ) : (
         (editor ?? body ?? <MessageMarkdown body={message.body} />)
       )}

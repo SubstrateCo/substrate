@@ -18,8 +18,10 @@ export const getSharingInvitation = ({
   signal,
 }: ApiInput<z.input<typeof sharingInvitationInput>>) =>
   readResult(sharing.invitation.$get({ query: data }, { init: { signal } }));
+export type SharingInvitation = Awaited<ReturnType<typeof getSharingInvitation>>;
 export const acceptSharingInvitation = ({ data }: ApiInput<z.input<typeof sharingAcceptInput>>) =>
   readResult(sharing.accept.$post({ json: data }));
+export type SharingAcceptance = Awaited<ReturnType<typeof acceptSharingInvitation>>;
 export const declineSharingInvitation = ({
   data,
 }: ApiInput<z.input<typeof sharingInvitationInput>>) =>
@@ -41,6 +43,8 @@ export const listSharingConversations = ({
   signal,
 }: ApiInput<z.input<typeof workspaceInput>>) =>
   readResult(sharing.conversations.$get({ query: data }, { init: { signal } }));
+export type SharedConversation = Awaited<ReturnType<typeof listSharingConversations>>[number];
 export const listSharingInbox = ({ data, signal }: ApiInput<z.input<typeof workspaceInput>>) =>
   readResult(sharing.inbox.$get({ query: data }, { init: { signal } }));
+export type SharingRequest = Awaited<ReturnType<typeof listSharingInbox>>[number];
 export type SharingDetails = Awaited<ReturnType<typeof listSharing>>;

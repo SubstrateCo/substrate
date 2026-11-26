@@ -81,6 +81,8 @@ export function SharingManager({
     restoreFocus: restoreConfirmFocus,
   } = useStateDialog<Confirmation>(confirmFallback);
   const action = useSharingAction(organizationId, conversationId);
+  // Lost access discards the confirmation for good, so it can't reopen if access returns. Closing
+  // during render resets it before the blocked render could show it.
   if (blocked && confirmation) closeConfirmation();
   const retry = () => void details.refetch();
   return (

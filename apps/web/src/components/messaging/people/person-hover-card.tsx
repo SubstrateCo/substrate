@@ -13,6 +13,8 @@ import { messagingProfileOptions } from "@/queries/messaging/profiles";
 import { MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
+const cardStates = { pending: "loading", error: "unavailable", success: "ready" } as const;
+
 export function PersonHoverCard({
   organizationId,
   conversationId,
@@ -144,9 +146,7 @@ function PersonHoverCardBody({
   };
   const data = profile.data;
   const canMessage = data?.type === "human" && !data.self && !data.external && !!data.email;
-  let state: "loading" | "unavailable" | "ready" = "ready";
-  if (profile.isPending) state = "loading";
-  else if (profile.isError) state = "unavailable";
+  const state = cardStates[profile.status];
   return (
     <div className="p-0.5">
       <PersonCard

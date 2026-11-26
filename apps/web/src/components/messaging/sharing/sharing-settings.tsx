@@ -6,7 +6,7 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { isAccessFailure } from "@/api/access-failure";
-import type { listSharingConversations, listSharingInbox } from "@/api/messaging/sharing";
+import type { SharedConversation, SharingRequest } from "@/api/messaging/sharing";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
@@ -26,6 +26,8 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
   const inbox = useQuery(sharingInboxOptions(organizationId));
   const { value: selected, open, close, restoreFocus } = useStateDialog<string>();
   const blocked = isAccessFailure(conversations.error) || isAccessFailure(inbox.error);
+  // Lost access discards the open dialog for good, so it can't reopen if access returns. Closing
+  // during render resets it before the blocked render could show it.
   if (blocked && selected !== undefined) close();
   const selectedConversation = conversations.data?.find((row) => row.id === selected);
   const retry = () => {
@@ -90,8 +92,6 @@ function CollaborationLoadNotice({
     />
   );
 }
-
-type SharingRequest = Awaited<ReturnType<typeof listSharingInbox>>[number];
 
 function SharingRequestsCard({
   pending,
@@ -211,8 +211,6 @@ function SharingRequestContent({ title, action }: { title: ReactNode; action?: R
     </>
   );
 }
-
-type SharedConversation = Awaited<ReturnType<typeof listSharingConversations>>[number];
 
 const sharedStatusLabels: Record<SharedConversationStatus, string> = {
   connected: "Connected",
