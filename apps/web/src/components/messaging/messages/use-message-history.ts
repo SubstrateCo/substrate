@@ -8,7 +8,6 @@ import { historyPageSize } from "@/queries/messaging/new-messages";
 import { messagesQueryOptions } from "@/queries/messaging/options";
 
 type HistoryPosition = {
-  scope: string;
   target?: string;
   aroundMessageId?: string;
   beforeMessageId?: string;
@@ -34,15 +33,11 @@ export function useMessageHistory({
   aroundMessageId?: string;
 }) {
   const invalidateLatest = useInvalidateLatestMessages(organizationId, conversationId, threadId);
-  const scope = JSON.stringify([organizationId, conversationId, threadId]);
-  const initialPosition: HistoryPosition = {
-    scope,
+  // Callers key the pane by conversation and thread, so a new destination starts a new history.
+  const [current, setPosition] = useState<HistoryPosition>({
     target: aroundMessageId,
     aroundMessageId,
-  };
-  const [position, setPosition] = useState(initialPosition);
-  const current = position.scope === scope ? position : initialPosition;
-  if (position.scope !== scope) setPosition(current);
+  });
   const onOlderPage = isOlderPage(current);
   const messages = useQuery({
     ...messagesQueryOptions(organizationId, conversationId, threadId, {
@@ -60,18 +55,15 @@ export function useMessageHistory({
     ...messagesQueryOptions(organizationId, conversationId, threadId),
     enabled: onOlderPage,
   });
-  const selected = selectionPosition(current, aroundMessageId, messages.data);
-  if (selected) setPosition(selected);
-  // The newest page already holds a linked message, so the window around it would only cut off
-  // newer messages and offer to jump back to them. Show the newest page instead.
-  if (latestHoldsTarget(current, latest.data))
-    setPosition({ ...current, aroundMessageId: undefined });
-  // A full page can be the last one. When the next older page is empty, return to the window
-  // the move left and remember its oldest message, instead of showing an empty conversation.
   const olderPageEmpty =
     messages.isSuccess && !messages.isPlaceholderData && messages.data.length === 0;
-  const returned = olderPageEmpty ? returnPosition(current) : undefined;
-  if (returned) setPosition(returned);
+  const settled = settledPosition(current, {
+    aroundMessageId,
+    rows: messages.data,
+    latestRows: latest.data,
+    olderPageEmpty,
+  });
+  if (settled !== current) setPosition(settled);
   const pending = pendingMove(current, messages);
   const onLatest = () => {
     void invalidateLatest();
@@ -118,6 +110,26 @@ export function useMessageHistory({
 
 function isOlderPage(position: HistoryPosition) {
   return !!position.beforeMessageId || !!position.aroundMessageId;
+}
+
+/** The position after the loaded pages and the selected message, or `current` when unchanged. */
+function settledPosition(
+  current: HistoryPosition,
+  {
+    aroundMessageId,
+    rows,
+    latestRows,
+    olderPageEmpty,
+  }: { aroundMessageId: string | undefined; rows: Rows; latestRows: Rows; olderPageEmpty: boolean },
+) {
+  let next = selectionPosition(current, aroundMessageId, rows) ?? current;
+  // The newest page already holds a linked message, so the window around it would only cut off
+  // newer messages and offer to jump back to them. Show the newest page instead.
+  if (latestHoldsTarget(next, latestRows)) next = { ...next, aroundMessageId: undefined };
+  // A full page can be the last one. When the next older page is empty, return to the window
+  // the move left and remember its oldest message, instead of showing an empty conversation.
+  if (olderPageEmpty) next = returnPosition(next) ?? next;
+  return next;
 }
 
 /** The position after the selected message changes, or nothing when it has not changed. */

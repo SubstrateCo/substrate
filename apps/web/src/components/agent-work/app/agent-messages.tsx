@@ -35,6 +35,7 @@ export function AgentMessages({
   if (conversation)
     return (
       <ConversationPane
+        key={conversation.id}
         organizationId={organizationId}
         conversation={conversation}
         userId={userId}
