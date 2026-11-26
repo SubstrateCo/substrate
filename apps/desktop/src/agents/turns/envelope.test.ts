@@ -102,7 +102,6 @@ const question: AgentWakeRequestDetail = {
     ],
   },
   response: { type: "questions", answers: { answer: ["Next <week>"] } },
-  outcome: null,
   anchorMessageId: "m9",
   conversationId: "c1",
   threadId: null,
@@ -110,17 +109,14 @@ const question: AgentWakeRequestDetail = {
 
 const noMessages = new Map<string, AgentSourceMessage>();
 
-const decided = (
-  source: "answer" | "approval_result",
-  request: AgentWakeRequestDetail | null,
-): InboxRow =>
+const decided = (request: AgentWakeRequestDetail | null): InboxRow =>
   row("a", 1, {
-    source,
-    sourceRef: { source, requestId: request?.id ?? "q1", anchorMessageId: null, request },
+    source: "answer",
+    sourceRef: { source: "answer", requestId: request?.id ?? "q1", anchorMessageId: null, request },
   });
 
 test("an answer item carries the owner's answer to the question, fenced", () => {
-  expect(render([decided("answer", question)])).toBe(
+  expect(render([decided(question)])).toBe(
     [
       '<turn time="2026-01-01T00:00:01.000Z" session="dm" kind="interactive" attempt="1">',
       '<item id="a" source="answer" author_kind="owner" conversation="c1">Your owner answered your question (request q1).',
@@ -132,45 +128,10 @@ test("an answer item carries the owner's answer to the question, fenced", () => 
   );
 });
 
-test("an approval result says what the owner decided and what happened, as the system", () => {
-  const proposal: AgentWakeRequestDetail = {
-    ...question,
-    id: "p1",
-    kind: "proposal",
-    status: "executed",
-    payload: { type: "proposal", summary: "Track the checklist" },
-    response: null,
-    outcome: { status: "executed", receipt: { kind: "task", id: "t9", projectId: "p9" } },
-    anchorMessageId: null,
-  };
-  const body = (request: AgentWakeRequestDetail) =>
-    envelopeItem(decided("approval_result", request), { sessionKind: "dm", messages: noMessages });
-  expect(body(proposal)).toEqual({
-    id: "a",
-    source: "approval_result",
-    author: null,
-    authorKind: "system",
-    conversationId: "c1",
-    threadId: null,
-    messageId: null,
-    body: [
-      "Your owner decided on your proposal (request p1).",
-      "Proposal: Track the checklist",
-      "Outcome: approved and done. Task t9 in project p9.",
-    ].join("\n"),
-  });
-  expect(
-    body({ ...proposal, status: "resolved", outcome: { status: "declined" } })?.body,
-  ).toEndWith("Outcome: declined. Nothing ran.");
-  expect(
-    body({ ...proposal, status: "failed", outcome: { status: "failed", error: "Gone." } })?.body,
-  ).toEndWith("Outcome: approved, but it failed: Gone.");
-});
-
 test("an answer without the request detail still says which request it answers", () => {
-  expect(
-    envelopeItem(decided("answer", null), { sessionKind: "dm", messages: noMessages })?.body,
-  ).toBe("Your owner answered request q1. The answer is not available.");
+  expect(envelopeItem(decided(null), { sessionKind: "dm", messages: noMessages })?.body).toBe(
+    "Your owner answered request q1. The answer is not available.",
+  );
 });
 
 test("a helper's task is input from its parent agent, not a helper report", () => {

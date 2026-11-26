@@ -13,23 +13,6 @@ type Input = Omit<
   Extract<CrmWrite, { action: "assignOwner" }>,
   "action" | "organizationId" | "entityId"
 >;
-/** The account's or deal's responsible person, and the deal's version, for an expected-state write. */
-export async function crmOwnership(context: RepositoryContext, id: string) {
-  const { entity } = await context.requireAccess(id, "view");
-  if (entity.entityType !== "account" && entity.entityType !== "deal")
-    throw new AccessDeniedError();
-  const table = entity.entityType === "account" ? crmAccounts : crmDeals;
-  const [row] = await context.db
-    .select()
-    .from(table)
-    .where(and(eq(table.organizationId, context.scope.organizationId), eq(table.entityId, id)));
-  if (!row) throw new AccessDeniedError();
-  return {
-    ownerActorEntityId: row.ownerActorEntityId,
-    version: "version" in row ? row.version : undefined,
-  };
-}
-
 export async function assignOwner(context: RepositoryContext, id: string, input: Input) {
   return context.transaction(async (ctx) => {
     // Responsibility is a structural change: concurrent reassignments of one record conflict.

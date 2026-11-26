@@ -136,7 +136,7 @@ export function createRequestBridge(context: RuntimeContext) {
         live,
         timer: () => {},
       };
-      if (live.kind === "unattended" || payload.type === "proposal") {
+      if (live.kind === "unattended") {
         // The no-ask profile should have denied it natively. Deny it here as well.
         await respond(request, fallbackResponse(payload)).catch(() => {});
         await context.store.events.append(
@@ -164,8 +164,7 @@ export function createRequestBridge(context: RuntimeContext) {
           kind: event.kind === "permission" ? "permission" : "question",
           mode: "blocking",
           nativeRequestId: event.requestId,
-          // SAFETY: proposals were handled above; blocking payloads are approvals or questions.
-          payload: payload as Exclude<AgentRequestPayload, { type: "proposal" }>,
+          payload,
         };
         const anchor = turn?.sourceMessages.at(-1);
         if (anchor) input.anchorMessageId = anchor.messageId;
@@ -287,7 +286,6 @@ export function createRequestBridge(context: RuntimeContext) {
         );
         for (const event of events) {
           if (event.kind !== "request" || resolved.has(event.data.requestId)) continue;
-          if (event.data.kind !== "permission" && event.data.kind !== "question") continue;
           const closed = await context.server
             .closeRequest(context.organizationId, event.data.requestId, "orphaned")
             .then(

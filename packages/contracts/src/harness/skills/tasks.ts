@@ -56,11 +56,11 @@ To find your own tasks, call \`list_tasks\` with \`assigneeActorId: "me"\`. To a
 
 ## Deleting, archiving and sharing
 
-You cannot do these directly. Use \`propose\`, and your owner approves each one:
+These cannot be undone from here. Do them only when your owner asks, and name the exact task or project first:
 
 - \`delete_task\` deletes a task and all its subtasks.
 - \`archive_project\` and \`restore_project\` need owner access.
-- \`delete_project\` needs owner access and an archived project. Propose \`archive_project\` first.
+- \`delete_project\` needs owner access and an archived project. Archive it first.
 - \`share_project\` gives a person \`view\`, \`comment\`, \`edit\` or \`owner\` access. \`revoke_project_access\` removes it. Share only with people, never with agents. Use actor IDs from \`get_project\` members or \`list_assignees\`.
 
 ## Shared discussions
@@ -68,7 +68,7 @@ You cannot do these directly. Use \`propose\`, and your owner approves each one:
 - \`get_task\` returns \`discussionConversationId\`, or null when nobody has opened the discussion.
 - In an interactive turn, call \`get_task_discussion\` with the task ID to open or create its discussion. This does not post a message.
 - Read it with \`read_conversation\`; use \`read_thread\` for replies. Task view access permits reading, but posting requires comment access.
-- Publish only with \`reply\` using \`to.conversationId\`, or \`propose\` with a \`reply_elsewhere\` action when approval is required. Do not write messages through another path.
+- Publish only with \`reply\` using \`to.conversationId\`. Background turns post only to their own place. Do not write messages through another path.
 - Discussion access comes from the task. There are no separate members or sharing controls. Task discussion messages and mentions do not wake agents.
 
 ## Links to messages
@@ -96,6 +96,6 @@ Generate a new \`requestId\` for each new task, change, discussion resolution or
 
 ## Background turns
 
-In background turns, such as routines, do not create or change tasks or projects directly. Use \`propose\` with a \`create_task\` or \`update_task\` action, and your owner approves it. Moving tasks and creating or changing projects are not possible in background turns.
+In background turns, such as routines, you may create and update tasks with \`create_task\` and \`update_task\`. Moving tasks and creating or changing projects are not possible in background turns.
 `,
 };

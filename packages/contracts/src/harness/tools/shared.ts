@@ -17,7 +17,7 @@ export interface ToolDefinition {
   publishes?: readonly (
     | { kind: "message"; id: string; conversationId: string; threadId: string }
     | { kind: "task"; id: string }
-    | { kind: "request"; id: string; requestKind: "question" | "proposal" }
+    | { kind: "request"; id: string; requestKind: "question" }
   )[];
 }
 

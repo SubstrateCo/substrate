@@ -233,13 +233,7 @@ test("helper leases offer no publishing, helper management or memory tools", asy
   );
   try {
     const names = new Set((await mcp.client.listTools()).tools.map((tool) => tool.name));
-    for (const name of [
-      "reply",
-      "propose",
-      "start_helper",
-      "remember",
-      "forget",
-    ] satisfies McpToolName[])
+    for (const name of ["reply", "start_helper", "remember", "forget"] satisfies McpToolName[])
       expect(names.has(name)).toBe(false);
     expect(names.has("finish_helper")).toBe(true);
   } finally {

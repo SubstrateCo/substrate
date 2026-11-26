@@ -1,20 +1,13 @@
-import type { ProposalAction } from "@substrate/contracts/agent-work";
-
 import { queryKeys } from "../keys";
-import { domainTargets, type QueryTarget } from "../targets";
+import type { QueryTarget } from "../targets";
 
 export type AgentWorkEffect =
-  /** An answer or decline: a server write, so server and local agent work change. */
+  /** An answer: a server write, so server and local agent work change. */
   | { kind: "agent-work" }
   /** A local action or routine edit changes only this desktop's local work. */
-  | { kind: "local" }
-  /** An approved proposal also writes the record it proposed. */
-  | { kind: "approved"; action: ProposalAction | null };
+  | { kind: "local" };
 
-/**
- * The queries an agent-work mutation can change. An approval also refreshes what a realtime hint
- * for the records it writes would refresh. Without the action, it may have written either.
- */
+/** The queries an agent-work mutation can change. */
 export function agentWorkInvalidations(
   userId: string,
   organizationId: string,
@@ -22,16 +15,5 @@ export function agentWorkInvalidations(
 ): QueryTarget[] {
   if (effect.kind === "local")
     return [{ queryKey: queryKeys.agentWorkLocal(userId, organizationId) }];
-  const targets: QueryTarget[] = [{ queryKey: queryKeys.agentWork(userId, organizationId) }];
-  if (effect.kind !== "approved") return targets;
-  const action = effect.action;
-  if (!action || action.type === "reply_elsewhere")
-    targets.push(...domainTargets("messaging", organizationId, action?.input.conversationId));
-  // Proposed work also links its source message.
-  if (!action || action.type !== "reply_elsewhere")
-    targets.push(
-      ...domainTargets("tasks", organizationId),
-      ...domainTargets("context", organizationId),
-    );
-  return targets;
+  return [{ queryKey: queryKeys.agentWork(userId, organizationId) }];
 }

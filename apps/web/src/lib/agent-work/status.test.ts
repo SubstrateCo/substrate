@@ -23,7 +23,7 @@ const turnStatus = (...[value, at, request]: Parameters<typeof turnLabel>) => ({
 
 describe("turn labels", () => {
   test("an open request comes before every other state", () => {
-    expect(turnStatus(turn(started), now, { kind: "proposal" })).toEqual({
+    expect(turnStatus(turn(started), now, { kind: "permission" })).toEqual({
       tone: "attention",
       label: "Needs your approval",
     });

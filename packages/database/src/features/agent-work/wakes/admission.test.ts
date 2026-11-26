@@ -317,19 +317,13 @@ const request = {
   sessionKey: thread,
 };
 
-const requestCases: [RequestTrigger["source"], string][] = [
-  ["answer", wakeDedupeKeys.answer("r1")],
-  ["approval_result", wakeDedupeKeys.approval("r1")],
-];
-
-for (const [source, dedupeKey] of requestCases)
-  test(`request: ${source} wakes the agent in the request's session, once per kind`, () => {
-    const trigger: RequestTrigger = { type: "request", source, request };
-    expect(decideAdmission({ type: "request", trigger, facts: { agent } })).toEqual({
-      type: "admit",
-      source,
-      sourceRef: { requestId: "r1" },
-      sessionKey: thread,
-      dedupeKey,
-    });
+test("request: an answer wakes the agent in the request's session, once per request", () => {
+  const trigger: RequestTrigger = { type: "request", request };
+  expect(decideAdmission({ type: "request", trigger, facts: { agent } })).toEqual({
+    type: "admit",
+    source: "answer",
+    sourceRef: { requestId: "r1" },
+    sessionKey: thread,
+    dedupeKey: wakeDedupeKeys.answer("r1"),
   });
+});

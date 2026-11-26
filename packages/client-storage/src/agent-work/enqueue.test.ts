@@ -14,12 +14,6 @@ test("claims follow each trigger's turn mode, except helper sessions and rotatio
   const refs: Record<InboxSource, InboxSourceRef> = {
     owner_message: { source: "owner_message", messageId: "m", conversationId: "c", threadId: null },
     answer: { source: "answer", requestId: "q", anchorMessageId: null, request: null },
-    approval_result: {
-      source: "approval_result",
-      requestId: "p",
-      anchorMessageId: null,
-      request: null,
-    },
     routine: {
       source: "routine",
       routineId: "r",

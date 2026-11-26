@@ -15,12 +15,7 @@ export { listLinkedMessages } from "./links";
 export { mcpMessagingQueries } from "./messaging";
 export { mcpSearchQueries } from "./search";
 export { publishingTools } from "./publishing";
-export {
-  claimToolReceipt,
-  saveToolReceipt,
-  requireHomeDevice,
-  requireOwnedProposal,
-} from "./repository";
+export { claimToolReceipt, saveToolReceipt, requireHomeDevice } from "./repository";
 export { mcpTaskQueries } from "./tasks";
-export { requireTurn, proposeInstead } from "./turn";
+export { requireTurn } from "./turn";
 export { agentWrites } from "./writes";

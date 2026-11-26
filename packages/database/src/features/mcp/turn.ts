@@ -12,8 +12,6 @@ import { and, eq, exists, ne, sql } from "drizzle-orm";
 
 type TurnPlace = NonNullable<TurnContext["origin"]>;
 
-export const proposeInstead = "Use propose for this action; it needs your owner's approval.";
-
 const samePlace = (a: TurnPlace | null, b: TurnPlace) =>
   a?.conversationId === b.conversationId && a.threadId === b.threadId;
 
@@ -86,20 +84,13 @@ export function replyTarget(
   to: { conversationId: string; threadId?: string } | undefined,
 ): TurnPlace {
   if (to) {
-    if (turn.kind !== "interactive") throw new ValidationError(proposeInstead);
+    if (turn.kind !== "interactive")
+      throw new ValidationError("Not possible in a background turn. Reply to your owner instead.");
     return { conversationId: to.conversationId, threadId: to.threadId ?? null };
   }
   if (turn.kind === "unattended" && turn.destination) return turn.destination;
   const place = turn.origin ?? turn.destination;
   if (!place)
-    throw new ValidationError(
-      "This turn has no place to reply. Use propose with a reply_elsewhere action.",
-    );
+    throw new ValidationError("Not possible in a background turn. Reply to your owner instead.");
   return place;
-}
-
-/** Where a request's card shows: the turn's own place, if it has one. */
-export function turnPlace(turn: TurnContext): TurnPlace | null {
-  if (turn.kind === "unattended" && turn.destination) return turn.destination;
-  return turn.origin ?? turn.destination ?? null;
 }

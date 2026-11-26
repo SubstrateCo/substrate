@@ -187,39 +187,3 @@ test("the owner answers an agent's question from another window; members see onl
   // The member's open window gets no agent-work hint and shows no answer.
   await expect(memberPane.getByText(/Answered:/)).toHaveCount(0);
 });
-
-test("the owner approves the exact proposed message; it posts as the agent and links back to its approval", async ({
-  actors,
-  client,
-}) => {
-  test.setTimeout(30_000);
-  const owner = actors.sender;
-  const agent = await createAgent(owner);
-  const [origin, target] = await Promise.all([conversation(owner), conversation(owner)]);
-  const root = await ownerMessage(owner, origin.id, "Share the update with the team");
-  const body = `Launch moves to **Friday** ${crypto.randomUUID()}`;
-  await callTool(owner, agent.id, threadTurn(origin.id, root.id, agent.installationId), "propose", {
-    summary: "Post the launch date in the team channel.",
-    action: { type: "reply_elsewhere", input: { conversationId: target.id, body } },
-  });
-
-  const watcher = await client(owner);
-  await visit(watcher, target.id);
-  const approver = await client(owner);
-  await visit(approver, undefined, "/agents");
-  const proposal = approver.page.getByRole("region", { name: `${agent.name} proposes` });
-  await expect(proposal.getByText("Post the launch date in the team channel.")).toBeVisible();
-  // The preview names the target and renders the exact body.
-  await expect(proposal.getByText(target.name, { exact: true })).toBeVisible();
-  await expect(proposal.getByText("Friday", { exact: true })).toBeVisible();
-  await proposal.getByRole("button", { name: "Approve" }).click();
-  await expect(approver.page.getByRole("heading", { name: "Nothing needs you" })).toBeVisible();
-
-  const posted = watcher.page
-    .getByRole("article")
-    .filter({ hasText: body.replace("**Friday**", "Friday") });
-  await expect(posted.getByText(agent.name, { exact: true })).toBeVisible();
-  await expect(posted.getByText("Agent", { exact: true })).toBeVisible();
-  await expect(posted.getByText("You approved this")).toBeVisible();
-  await expect(posted.getByRole("link", { name: `from ${origin.name}` })).toBeVisible();
-});

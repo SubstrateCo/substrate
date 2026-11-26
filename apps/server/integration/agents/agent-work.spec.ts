@@ -209,15 +209,6 @@ test("only the home desktop publishes, and a left conversation's requests are pl
   expect((await reply()).status()).toBe(404);
   expect((await call(other, "list_projects", {})).ok()).toBe(true);
   expect((await reply(home)).ok()).toBe(true);
-  expect(
-    (
-      await call(home, "propose", {
-        requestId: crypto.randomUUID(),
-        summary: `${secret} summary`,
-        action: { type: "reply_elsewhere", input: { conversationId, body: `${secret} action` } },
-      })
-    ).ok(),
-  ).toBe(true);
 
   expect(
     (
@@ -230,10 +221,10 @@ test("only the home desktop publishes, and a left conversation's requests are pl
   const needsYou = await (
     await owner.get(`/api/v1/agent-work/needs-you?organizationId=${workspace.id}`)
   ).json();
-  expect(needsYou.data.requests).toHaveLength(2);
+  expect(needsYou.data.requests).toHaveLength(1);
   for (const request of needsYou.data.requests) {
     expect(request.place).toEqual({ access: "hidden" });
-    for (const field of ["sessionKey", "payload", "response", "proposal"])
+    for (const field of ["sessionKey", "payload", "response"])
       expect(request).not.toHaveProperty(field);
   }
   const text = JSON.stringify(needsYou);

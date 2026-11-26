@@ -4,7 +4,6 @@ import {
   closeRequestInput,
   conversationRequestsInput,
   decideInvocationInput,
-  decideProposalInput,
   deviceHeartbeatInput,
   invocationParams,
   listInvocationsInput,
@@ -51,28 +50,6 @@ export function createAgentWorkRoutes(
         respond(
           c,
           await service.respondToRequest(c.var.scope, c.req.valid("param").id, c.req.valid("json")),
-        ),
-    )
-    .post(
-      "/requests/:id/approve",
-      v("param", requestParams),
-      v("json", decideProposalInput),
-      scopes.workspace("json"),
-      async (c) =>
-        respond(
-          c,
-          await service.approveProposal(c.var.scope, c.req.valid("param").id, c.req.valid("json")),
-        ),
-    )
-    .post(
-      "/requests/:id/decline",
-      v("param", requestParams),
-      v("json", decideProposalInput),
-      scopes.workspace("json"),
-      async (c) =>
-        respond(
-          c,
-          await service.declineProposal(c.var.scope, c.req.valid("param").id, c.req.valid("json")),
         ),
     )
     .get("/invocations", v("query", listInvocationsInput), scopes.workspace("query"), async (c) =>

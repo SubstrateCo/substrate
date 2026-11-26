@@ -78,7 +78,6 @@ Load the `database-table-design` skill before you add or change a table, relatio
 - Callers: `decideAdmission` admits, holds or rate-limits a caller's message, and `admit()` records each call in `agent_invocations`. Decide calls with compare-and-set, check the call again at decision time, and create the wake in the decision's transaction. The source check (`loadSources` with invocation IDs) checks queued calls again and drops revoked ones.
 - Write `agent_audit_events` rows for caller policy and allowlist changes, call decisions, and MCP calls in caller turns. Store IDs and result codes, never message bodies. Only the agent's owner reads them.
 - Answer requests with compare-and-set: the first answer wins.
-- Execute a proposal exactly once. Bind it to its action hash and the target state recorded when it was proposed, and check both in the transaction that runs the action.
 - Bind agent provenance with composite foreign keys: the actor must belong to the user agent and organization.
 - Redact request and status views once the owner loses access to their conversation. Return `origin_turn_id` only to the agent's owner.
 

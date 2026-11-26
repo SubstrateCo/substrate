@@ -1,6 +1,10 @@
+import type { McpInput } from "@substrate/contracts/harness/tools";
+
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { agentActions } from "../agent-work/actions";
+import { projectRepository } from "../projects/repository";
+import { taskRepository } from "../tasks/repository";
 import { mcpTaskQueries } from "./tasks";
 
 export function agentWrites(
@@ -10,6 +14,8 @@ export function agentWrites(
 ) {
   const actions = agentActions(ctx, identity, agent);
   const queries = mcpTaskQueries(ctx, identity);
+  const tasks = taskRepository(ctx);
+  const projects = projectRepository(ctx);
   return {
     async createTask(input: Parameters<typeof actions.createTask>[0]) {
       return queries.getTask((await actions.createTask(input)).entityId);
@@ -27,5 +33,30 @@ export function agentWrites(
       return queries.getProject({ projectId: (await actions.updateProject(input)).entityId });
     },
     postMessage: actions.postMessage,
+    async deleteTask({ taskId }: McpInput<"delete_task">) {
+      const task = await tasks.get(taskId);
+      await tasks.delete(taskId, task.projectEntityId);
+      return { deleted: true as const, taskId };
+    },
+    async archiveProject({ projectId }: McpInput<"archive_project">) {
+      await projects.archive(projectId);
+      return queries.getProject({ projectId });
+    },
+    async restoreProject({ projectId }: McpInput<"restore_project">) {
+      await projects.restore(projectId);
+      return queries.getProject({ projectId });
+    },
+    async deleteProject({ projectId }: McpInput<"delete_project">) {
+      await projects.delete(projectId);
+      return { deleted: true as const, projectId };
+    },
+    async shareProject({ projectId, actorId, level }: McpInput<"share_project">) {
+      await projects.share(projectId, actorId, level);
+      return queries.getProject({ projectId });
+    },
+    async revokeProjectAccess({ projectId, actorId }: McpInput<"revoke_project_access">) {
+      await projects.revoke(projectId, actorId);
+      return queries.getProject({ projectId });
+    },
   };
 }

@@ -124,7 +124,7 @@ export const taskTools = {
   create_project: {
     title: "Create project",
     description:
-      "Create a project as yourself. Your owner becomes its owner; share it with propose and a share_project action. Before you create one, look for an existing project with search_names. Returns the new project.",
+      "Create a project as yourself. Your owner becomes its owner and can share it. Before you create one, look for an existing project with search_names. Returns the new project.",
     readOnly: false,
     idempotent: true,
     input: z
@@ -154,6 +154,60 @@ export const taskTools = {
           .refine((value) => Object.keys(value).length > 0, "Supply at least one change"),
       })
       .strict(),
+    output: projectResult,
+  },
+  archive_project: {
+    title: "Archive project",
+    description:
+      "Archive a project. It and its tasks become read-only until restored. Needs owner access. Interactive turns only. Returns the project.",
+    readOnly: false,
+    idempotent: true,
+    destructive: true,
+    input: z.object({ requestId, projectId: id }).strict(),
+    output: projectResult,
+  },
+  restore_project: {
+    title: "Restore project",
+    description:
+      "Restore an archived project so it and its tasks can change again. Needs owner access. Interactive turns only. Returns the project.",
+    readOnly: false,
+    idempotent: true,
+    input: z.object({ requestId, projectId: id }).strict(),
+    output: projectResult,
+  },
+  delete_project: {
+    title: "Delete project",
+    description:
+      "Delete an archived project with all its tasks. Archive it first with archive_project. Needs owner access. This cannot be undone from here. Interactive turns only.",
+    readOnly: false,
+    destructive: true,
+    input: z.object({ requestId, projectId: id }).strict(),
+    output: z.object({ deleted: z.literal(true), projectId: id }),
+  },
+  share_project: {
+    title: "Share project",
+    description:
+      "Give a person view, comment, edit or owner access to a project, or change their level. Share only with people, never with agents; use actor IDs from get_project members or list_assignees. Needs owner access. Interactive turns only. Returns the project.",
+    readOnly: false,
+    idempotent: true,
+    input: z
+      .object({
+        requestId,
+        projectId: id,
+        actorId: id.describe("A person's actor ID."),
+        level,
+      })
+      .strict(),
+    output: projectResult,
+  },
+  revoke_project_access: {
+    title: "Remove project access",
+    description:
+      "Remove a person's direct access to a project. Someone assigned to one of its tasks keeps access until reassigned. The last owner cannot be removed. Needs owner access. Interactive turns only. Returns the project.",
+    readOnly: false,
+    idempotent: true,
+    destructive: true,
+    input: z.object({ requestId, projectId: id, actorId: id }).strict(),
     output: projectResult,
   },
   list_tasks: {
@@ -245,10 +299,19 @@ export const taskTools = {
       .strict(),
     output: taskResult,
   },
+  delete_task: {
+    title: "Delete task",
+    description:
+      "Delete a task with all its subtasks. Needs edit access on a project that is not archived. This cannot be undone from here. Interactive turns only.",
+    readOnly: false,
+    destructive: true,
+    input: z.object({ requestId, taskId: id }).strict(),
+    output: z.object({ deleted: z.literal(true), taskId: id }),
+  },
   get_task_discussion: {
     title: "Get task discussion",
     description:
-      "Open a task's shared messaging discussion, creating it if needed. Task view access permits reading; comment access is required to post. Use read_conversation to read it and reply or propose to publish. This tool does not post a message or wake an agent.",
+      "Open a task's shared messaging discussion, creating it if needed. Task view access permits reading; comment access is required to post. Use read_conversation to read it and reply to publish. This tool does not post a message or wake an agent.",
     readOnly: false,
     idempotent: true,
     input: z

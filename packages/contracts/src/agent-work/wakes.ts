@@ -1,7 +1,6 @@
 import { agentTriggerKinds } from "../agents/triggers.ts";
 import { conversationKind } from "../messaging/input.ts";
 import { agentInvocationKinds } from "./invocations.ts";
-import { proposalOutcome } from "./proposals.ts";
 import {
   agentRequestKinds,
   agentRequestPayload,
@@ -16,12 +15,7 @@ const id = z.uuid();
  * Owner-authorized server events that wake an agent. Nothing else wakes it from the server.
  * caller_message is a call that the owner's caller policy admitted.
  */
-export const agentWakeSources = [
-  "owner_message",
-  "answer",
-  "approval_result",
-  "caller_message",
-] as const;
+export const agentWakeSources = ["owner_message", "answer", "caller_message"] as const;
 export type AgentWakeSource = (typeof agentWakeSources)[number];
 
 /**
@@ -78,7 +72,6 @@ export const sessionKey = z
 export const wakeDedupePrefixes = {
   message: "msg:",
   answer: "answer:",
-  approval: "approval:",
   call: "call:",
 };
 
@@ -86,24 +79,21 @@ export const wakeDedupePrefixes = {
 export const wakeDedupeKeys = {
   message: (messageId: string) => `${wakeDedupePrefixes.message}${messageId}`,
   answer: (requestId: string) => `${wakeDedupePrefixes.answer}${requestId}`,
-  approval: (requestId: string) => `${wakeDedupePrefixes.approval}${requestId}`,
   call: (invocationId: string) => `${wakeDedupePrefixes.call}${invocationId}`,
 } satisfies Record<keyof typeof wakeDedupePrefixes, (id: string) => string>;
 
 /**
- * The decided request behind an answer or approval_result wake, for the agent's own home device:
- * what was asked or proposed, the owner's answer, and what happened.
+ * The answered request behind an answer wake, for the agent's own home device: what was asked
+ * and the owner's answer.
  */
 export const agentWakeRequestDetail = z.strictObject({
   id,
   kind: z.enum(agentRequestKinds),
   status: z.enum(agentRequestStatuses),
-  /** Questions with their options, or the proposal summary. */
+  /** The questions with their options. */
   payload: agentRequestPayload,
-  /** The owner's answer to a question. Null for proposals. */
+  /** The owner's answer. */
   response: agentRequestResponse.nullable(),
-  /** Proposals only: declined, the executed receipt, or why it failed. */
-  outcome: proposalOutcome.nullable(),
   anchorMessageId: id.nullable(),
   conversationId: id.nullable(),
   threadId: id.nullable(),
@@ -137,7 +127,7 @@ export const agentWakeView = z.object({
   sessionKey: z.string(),
   dedupeKey: z.string(),
   createdAt: z.string(),
-  /** Set for answer and approval_result wakes of the owner's own agent. */
+  /** Set for answer wakes of the owner's own agent. */
   request: agentWakeRequestDetail.nullable(),
   /** Set for caller_message wakes. Servers before caller calls leave it out. */
   invocation: agentWakeInvocation.nullable().optional(),

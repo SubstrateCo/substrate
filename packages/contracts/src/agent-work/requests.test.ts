@@ -496,12 +496,6 @@ test("a response must pick an offered option, answer only asked questions, and a
   ).toBe(false);
 });
 
-test("proposals are never answered through respond", () => {
-  const proposal: AgentRequestPayload = { type: "proposal", summary: "Post the summary" };
-  expect(responseMatchesPayload(proposal, { type: "approval", optionId: "allow" })).toBe(false);
-  expect(responseMatchesPayload(proposal, { type: "questions", answers: {} })).toBe(false);
-});
-
 test("reply.ask becomes one question that accepts only its own answer", () => {
   const payload = askRequestPayload(agentAsk.parse({ question: "Ship today?" }));
   expect(payload).toEqual({

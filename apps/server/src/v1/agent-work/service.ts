@@ -2,7 +2,6 @@ import type {
   callsLogInput,
   conversationRequestsInput,
   decideInvocationInput,
-  decideProposalInput,
   listInvocationsInput,
   myCallsInput,
   ownerScopeInput,
@@ -39,26 +38,6 @@ export function createAgentWorkService({ publish }: { publish: CommittedPublishe
     ) {
       return serviceResult(async () =>
         publish(await scope.repositories.agentWork.respondToRequest(requestId, input.response)),
-      );
-    },
-    approveProposal(
-      this: void,
-      scope: WorkspaceScope,
-      requestId: string,
-      _input: z.output<typeof decideProposalInput>,
-    ) {
-      return serviceResult(async () =>
-        publish(await scope.repositories.agentWork.approveProposal(requestId)),
-      );
-    },
-    declineProposal(
-      this: void,
-      scope: WorkspaceScope,
-      requestId: string,
-      _input: z.output<typeof decideProposalInput>,
-    ) {
-      return serviceResult(async () =>
-        publish(await scope.repositories.agentWork.declineProposal(requestId)),
       );
     },
     /** The owner's calls of their agents. */

@@ -1,8 +1,4 @@
-import type {
-  AgentRequestPayload,
-  ProposalAction,
-  ProposalTargetBasis,
-} from "@substrate/contracts/agent-work";
+import type { AgentRequestPayload } from "@substrate/contracts/agent-work";
 
 import type { DatabaseExecutor } from "../../../core/executor";
 import type { Place } from "../place";
@@ -17,20 +13,12 @@ export interface AsyncRequestInput {
   turnId: string;
   /** A place the caller already checked with requirePlace. */
   place: Place;
-  request:
-    | { kind: "question"; payload: AgentRequestPayload }
-    | {
-        kind: "proposal";
-        summary: string;
-        action: ProposalAction;
-        actionHash: string;
-        targetBasis: ProposalTargetBasis;
-      };
+  request: { kind: "question"; payload: AgentRequestPayload };
 }
 
 /**
- * Opens a request that does not hold the turn: reply.ask or propose. The turn ends, and the
- * owner's answer or decision wakes the agent in the same session.
+ * Opens a request that does not hold the turn: reply.ask. The turn ends, and the owner's answer
+ * wakes the agent in the same session.
  */
 export async function createAsyncRequest(db: DatabaseExecutor, input: AsyncRequestInput) {
   const { request, place, ...scope } = input;
@@ -40,15 +28,8 @@ export async function createAsyncRequest(db: DatabaseExecutor, input: AsyncReque
       ...scope,
       ...place,
       mode: "async",
-      ...(request.kind === "question"
-        ? { kind: "question", payload: request.payload }
-        : {
-            kind: "proposal",
-            payload: { type: "proposal", summary: request.summary },
-            proposedAction: request.action,
-            actionHash: request.actionHash,
-            targetBasis: request.targetBasis,
-          }),
+      kind: request.kind,
+      payload: request.payload,
     })
     .returning({ id: agentRequests.id });
   return created!.id;

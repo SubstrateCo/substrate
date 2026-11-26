@@ -176,3 +176,92 @@ test("move_task needs edit access on the destination and an active destination",
   expect(await move(archived.entityId)).toBeInstanceOf(ValidationError);
   expect((await call("get_task", { taskId: task.entityId })).project.id).toBe(own.entityId);
 });
+
+const requestId = () => crypto.randomUUID();
+
+test("delete_task deletes a task with its subtasks", async () => {
+  const { call } = await tools();
+  const repos = f.forActor(f.alice);
+  const project = await repos.projects.create({ name: "Work" });
+  const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Parent" });
+  const subtask = await repos.tasks.create({
+    projectEntityId: project.entityId,
+    parentTaskEntityId: task.entityId,
+    title: "Child",
+  });
+  expect(await call("delete_task", { requestId: requestId(), taskId: task.entityId })).toEqual({
+    deleted: true,
+    taskId: task.entityId,
+  });
+  for (const id of [task.entityId, subtask.entityId])
+    expect(await rejection(call("get_task", { taskId: id }))).toBeInstanceOf(AccessDeniedError);
+});
+
+test("a project is archived, restored, archived again and deleted", async () => {
+  const { call } = await tools();
+  const project = await f.forActor(f.alice).projects.create({ name: "Work" });
+  const input = () => ({ requestId: requestId(), projectId: project.entityId });
+  // Deleting an active project is refused: archive it first.
+  expect(await rejection(call("delete_project", input()))).toBeInstanceOf(ValidationError);
+  expect(await call("archive_project", input())).toMatchObject({ archived: true });
+  expect(await call("restore_project", input())).toMatchObject({ archived: false });
+  await call("archive_project", input());
+  expect(await call("delete_project", input())).toEqual({
+    deleted: true,
+    projectId: project.entityId,
+  });
+  expect(await rejection(call("get_project", { projectId: project.entityId }))).toBeInstanceOf(
+    AccessDeniedError,
+  );
+});
+
+test("sharing grants and revokes a person's access, never an agent's", async () => {
+  const { agent, call } = await tools();
+  const project = await f.forActor(f.alice).projects.create({ name: "Work" });
+  const shared = await call("share_project", {
+    requestId: requestId(),
+    projectId: project.entityId,
+    actorId: f.bob,
+    level: "edit",
+  });
+  expect(shared.members).toContainEqual(
+    expect.objectContaining({ actor: expect.objectContaining({ id: f.bob }), level: "edit" }),
+  );
+  const revoked = await call("revoke_project_access", {
+    requestId: requestId(),
+    projectId: project.entityId,
+    actorId: f.bob,
+  });
+  expect(revoked.members.map((row) => row.actor.id)).not.toContain(f.bob);
+  expect(
+    await rejection(
+      call("share_project", {
+        requestId: requestId(),
+        projectId: project.entityId,
+        actorId: agent.actorId,
+        level: "view",
+      }),
+    ),
+  ).toBeInstanceOf(ValidationError);
+});
+
+test("owner actions need owner access, not edit access", async () => {
+  const { call } = await tools();
+  await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
+  const bob = f.forActor(f.bob);
+  const project = await bob.projects.create({ name: "Bob's" });
+  await bob.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.alice,
+    level: "edit",
+  });
+  const projectId = project.entityId;
+  for (const [tool, extra] of [
+    ["archive_project", {}],
+    ["share_project", { actorId: f.bob, level: "view" }],
+    ["revoke_project_access", { actorId: f.bob }],
+  ] as const)
+    expect(
+      await rejection(call(tool, { requestId: requestId(), projectId, ...extra })),
+    ).toBeInstanceOf(AccessDeniedError);
+});

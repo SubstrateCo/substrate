@@ -79,9 +79,8 @@ export function request(fields: Partial<AgentVisibleRequestView> = {}): AgentVis
       conversationName: "Researcher",
       anchorMessageId: "reply",
     },
-    payload: { type: "proposal", summary: "Post the update" },
+    payload: { type: "questions", title: "Post the update?", questions: [] },
     response: null,
-    proposal: null,
     createdAt: "2026-11-08T10:00:00Z",
     resolvedAt: null,
     expiresAt: null,
@@ -93,13 +92,7 @@ export function request(fields: Partial<AgentVisibleRequestView> = {}): AgentVis
 export function hiddenRequest(
   fields: Partial<AgentHiddenRequestView> = {},
 ): AgentHiddenRequestView {
-  const {
-    sessionKey: _sessionKey,
-    payload: _payload,
-    response: _response,
-    proposal: _proposal,
-    ...common
-  } = request();
+  const { sessionKey: _sessionKey, payload: _payload, response: _response, ...common } = request();
   return { ...common, place: { access: "hidden" }, ...fields };
 }
 

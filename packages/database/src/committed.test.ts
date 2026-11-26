@@ -1,12 +1,9 @@
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
-import { commit } from "./core/effects";
-import { workspaceContext } from "./core/session/workspace";
-import { AccessDeniedError, ConflictError } from "./errors";
-import { publishingTools } from "./features/mcp/publishing";
+import { AccessDeniedError } from "./errors";
 import { createRepositories } from "./repositories";
 import { notifications, messagingInvitations, member } from "./schema";
-import { agentWorkFixture, deviceAgentWork, dmTurn, ownerAgentWork } from "./testing/agent-work";
+import { agentWorkFixture, deviceAgentWork } from "./testing/agent-work";
 import { setupDatabase } from "./testing/database";
 import { recordQueries } from "./testing/queries";
 import { rejection } from "./testing/rejection";
@@ -230,54 +227,6 @@ test("owner agent writes return committed effects without a workspace", async ()
   const deleted = await owner.agents.deleteAgent(saved.result.id);
   expect(deleted.hints).toEqual(saved.hints);
   expect((await owner.agents.list()).agents).toEqual([]);
-});
-
-test("MCP proposals and approved actions expose owner and confirmed notification effects", async () => {
-  const { owner, agent, agentIdentity, dm } = await agentWorkFixture(f);
-  const repositories = await f.forSession("alice");
-  const { result: project } = await repositories.projects.create({ name: "Approval" });
-  await repositories.permissions.grant({
-    entityId: project.entityId,
-    actorEntityId: f.bob,
-    level: "view",
-  });
-  const proposed = await commit(f.db, async (tx) => {
-    const { context, actor } = await workspaceContext(tx, agentIdentity);
-    return publishingTools(
-      context,
-      agentIdentity,
-      { ...actor, userAgentId: agent.agentId },
-      { ...dmTurn(dm.id), installationId: agent.identity.installationId },
-    ).propose({
-      requestId: crypto.randomUUID(),
-      summary: "Assign follow-up",
-      action: {
-        type: "create_task",
-        input: { projectId: project.entityId, title: "Follow up", assigneeActorId: f.bob },
-      },
-    });
-  });
-  const ownerHint = { audience: realtimeKeys.user("alice"), domain: "agent-work" as const };
-  expect(proposed.hints).toEqual([ownerHint]);
-  const ownerWork = await ownerAgentWork(f.db, owner);
-  const approved = await ownerWork.approveProposal(proposed.result.proposalId);
-  expect(approved.result.outcome.status).toBe("executed");
-  expect(approved.hints).toContainEqual(ownerHint);
-  expect(approved.hints).toContainEqual(
-    expect.objectContaining({
-      audience: realtimeKeys.entity(f.orgA, project.entityId),
-      domain: "tasks",
-      projectId: project.entityId,
-    }),
-  );
-  expect(approved.hints).toContainEqual({
-    audience: realtimeKeys.actor(f.orgA, f.bob),
-    domain: "notifications",
-  });
-  expect(await rejection(ownerWork.approveProposal(proposed.result.proposalId))).toBeInstanceOf(
-    ConflictError,
-  );
-  expect(await f.db.select().from(notifications)).toHaveLength(1);
 });
 
 test("device status publication exposes effects only when the owner's view changes", async () => {

@@ -180,6 +180,26 @@ export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentit
       return { record: await contacts.getContact(input.contactEntityId) };
     },
     followUps: (entityId: string) => crm.followUps(entityId),
+    async archiveRecord(input: McpInput<"archive_crm_record">) {
+      if (input.kind === "contact") await contacts.archive(input.entityId, input.archived);
+      else {
+        // The archive write checks access but not the kind, so check the kind first.
+        await read({ kind: input.kind, entityId: input.entityId });
+        await crm.archive(input.entityId, input.archived);
+      }
+      return { record: await read(input) };
+    },
+    async deleteInteraction(input: McpInput<"delete_crm_interaction">) {
+      await interactions.deleteInteraction(input.entityId);
+      return { deleted: true as const, entityId: input.entityId };
+    },
+    assignOwner: (input: McpInput<"assign_crm_owner">) => crm.assignOwner(input.entityId, input),
+    async share(input: McpInput<"share_crm_record">) {
+      return crm.share(input.entityId, input.actorEntityId, input.level);
+    },
+    async revoke(input: McpInput<"revoke_crm_access">) {
+      return crm.revoke(input.entityId, input.actorEntityId);
+    },
     async requireContact(entityId: string) {
       await contacts.getContact(entityId);
     },

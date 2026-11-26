@@ -27,7 +27,7 @@ export const turnContextSchema = z.strictObject({
    * is the agent's home device; a call without it can only read.
    */
   installationId: z.uuid().optional(),
-  /** A quiet handoff turn saves its notes locally and must not publish or propose. */
+  /** A quiet handoff turn saves its notes locally and must not publish. */
   purpose: z.enum(["handoff"]).optional(),
   /**
    * The calls (caller_message items) this turn answers. The server checks that each is an

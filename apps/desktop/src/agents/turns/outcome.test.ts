@@ -10,19 +10,13 @@ test("a turn without outputs is silent", () => {
   expect(turnOutcome([])).toBe("silent");
 });
 
-test("a question wins over the reply that carried it, and a proposal over a plain reply", () => {
+test("a question wins over the reply that carried it", () => {
   expect(
     turnOutcome([
       { targetKind: "message", requestKind: null },
       { targetKind: "request", requestKind: "question" },
     ]),
   ).toBe("asked");
-  expect(
-    turnOutcome([
-      { targetKind: "message", requestKind: null },
-      { targetKind: "request", requestKind: "proposal" },
-    ]),
-  ).toBe("proposed");
   expect(turnOutcome([{ targetKind: "message", requestKind: null }])).toBe("replied");
 });
 
@@ -32,7 +26,6 @@ const ids = {
   conversation: "00000000-0000-4000-8000-000000000003",
   thread: "00000000-0000-4000-8000-000000000004",
   question: "00000000-0000-4000-8000-000000000005",
-  proposal: "00000000-0000-4000-8000-000000000006",
   task: "00000000-0000-4000-8000-000000000007",
   project: "00000000-0000-4000-8000-000000000008",
 };
@@ -77,18 +70,6 @@ test("a server reply with ask records the message in its place and the question"
     ],
   });
   expect(outcomeOf(found!.outputs)).toBe("asked");
-});
-
-test("a server propose result records the proposal request", () => {
-  const found = toolOutputs(call("propose"), {
-    success: true,
-    data: { proposalId: ids.proposal, status: "pending" },
-  });
-  expect(found).toEqual({
-    turnId: ids.turn,
-    outputs: [{ kind: "request", id: ids.proposal, requestKind: "proposal" }],
-  });
-  expect(outcomeOf(found!.outputs)).toBe("proposed");
 });
 
 test("created and updated tasks are task outputs", () => {

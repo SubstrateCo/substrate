@@ -34,16 +34,6 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     recheck: "none",
     envelope: "decision",
   },
-  approval_result: {
-    origin: "server",
-    principal: "owner",
-    lane: "owner",
-    turnMode: "interactive",
-    steerable: true,
-    canStartTurn: true,
-    recheck: "none",
-    envelope: "decision",
-  },
   routine: {
     origin: "local",
     principal: "system",

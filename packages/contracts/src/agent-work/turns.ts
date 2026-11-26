@@ -27,7 +27,6 @@ export interface AgentSessionView {
 export const inboxSources = [
   "owner_message",
   "answer",
-  "approval_result",
   "routine",
   /** In a helper's own session: its task, or more instructions from its parent agent. */
   "helper_task",
@@ -77,7 +76,7 @@ export type InboxSourceRef =
       threadId: string | null;
     }
   | {
-      source: "answer" | "approval_result";
+      source: "answer";
       requestId: string;
       anchorMessageId: string | null;
       /** The decided request as the server reported it. Null when it was not available. */
@@ -123,7 +122,7 @@ export const liveTurnStatuses: readonly TurnStatus[] = [
   "stopping",
 ];
 
-export const turnOutcomes = ["replied", "silent", "asked", "proposed"] as const;
+export const turnOutcomes = ["replied", "silent", "asked"] as const;
 export type TurnOutcome = (typeof turnOutcomes)[number];
 
 export const turnAttentionReasons = [

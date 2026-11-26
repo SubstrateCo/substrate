@@ -1,5 +1,4 @@
 import type { AgentInvocationView } from "./invocations.ts";
-import type { ProposalAction, ProposalOutcome } from "./proposals.ts";
 import {
   agentRequestResponse,
   type AgentRequestKind,
@@ -46,23 +45,17 @@ export interface AgentVisibleRequestView extends AgentRequestViewBase {
   sessionKey: string;
   payload: AgentRequestPayload;
   response: AgentRequestResponse | null;
-  /**
-   * Proposals only. Approval executes exactly this action. Null when the action's target
-   * conversation is hidden.
-   */
-  proposal: { action: ProposalAction; actionHash: string; outcome: ProposalOutcome | null } | null;
 }
 
 /**
  * A placeholder for a request in a conversation the owner cannot open. It has no session key,
- * payload, response or proposal, because each can name or quote the conversation.
+ * payload or response, because each can name or quote the conversation.
  */
 export interface AgentHiddenRequestView extends AgentRequestViewBase {
   place: { access: "hidden" };
   sessionKey?: never;
   payload?: never;
   response?: never;
-  proposal?: never;
 }
 
 /** A request as its owner may see it now. */

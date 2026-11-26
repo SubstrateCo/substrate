@@ -3,14 +3,14 @@ import { wakeDedupePrefixes } from "@substrate/contracts/agent-work";
 import type { RunTransaction } from "../database.ts";
 import { inbox, outputs, turns } from "../schema/index.ts";
 import { appendEvents, type NewTurnEvent } from "./events.ts";
-import { and, eq, inArray, notExists, or, sql } from "drizzle-orm";
+import { and, eq, inArray, notExists, sql } from "drizzle-orm";
 
 export type OutputRow = typeof outputs.$inferSelect;
 
 export type NewOutput =
   | { kind: "message"; id: string; conversationId: string; threadId: string | null }
   | { kind: "task"; id: string }
-  | { kind: "request"; id: string; requestKind: "question" | "proposal" };
+  | { kind: "request"; id: string; requestKind: "question" };
 
 export function outputRepository(run: RunTransaction) {
   return {
@@ -35,7 +35,7 @@ export function outputRepository(run: RunTransaction) {
       run((tx) => tx.select().from(outputs).where(eq(outputs.turnId, turnId)).all()),
     /**
      * Requests the agents' turns opened that no inbox item answers yet, with the agent. An
-     * answer or approval wake has the dedupe key answer:<id> or approval:<id>.
+     * answer wake has the dedupe key answer:<id>.
      */
     unansweredRequests: (organizationId: string, userAgentIds: string[]) =>
       run(async (tx) =>
@@ -56,15 +56,9 @@ export function outputRepository(run: RunTransaction) {
                       .where(
                         and(
                           eq(inbox.userAgentId, turns.userAgentId),
-                          or(
-                            eq(
-                              inbox.dedupeKey,
-                              sql`${wakeDedupePrefixes.answer} || ${outputs.targetId}`,
-                            ),
-                            eq(
-                              inbox.dedupeKey,
-                              sql`${wakeDedupePrefixes.approval} || ${outputs.targetId}`,
-                            ),
+                          eq(
+                            inbox.dedupeKey,
+                            sql`${wakeDedupePrefixes.answer} || ${outputs.targetId}`,
                           ),
                         ),
                       ),

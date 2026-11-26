@@ -378,6 +378,70 @@ export const crmTools = {
       .strict(),
     output: contactResult,
   },
+  archive_crm_record: {
+    title: "Archive or restore CRM record",
+    description:
+      "Archive an account, contact or deal, or restore it with archived false. An archived record keeps its history but takes no new links or interactions. Needs edit access. Interactive turns only. Returns the record.",
+    readOnly: false,
+    idempotent: true,
+    destructive: true,
+    input: z
+      .object({
+        requestId,
+        kind,
+        entityId: id,
+        archived: z.boolean().describe("true archives the record; false restores it."),
+      })
+      .strict(),
+    output: z.object({ record }),
+  },
+  delete_crm_interaction: {
+    title: "Delete CRM interaction",
+    description:
+      "Delete an interaction. You can delete interactions your owner wrote, or any interaction if your owner is an organization admin. Interactive turns only.",
+    readOnly: false,
+    destructive: true,
+    input: z.object({ requestId, entityId: id }).strict(),
+    output: z.object({ deleted: z.literal(true), entityId: id }),
+  },
+  assign_crm_owner: {
+    title: "Change CRM record owner",
+    description:
+      "Make a person responsible for an account or deal. Read the record first and pass its current ownerActorEntityId as expectedOwnerActorEntityId, and a deal's version as expectedVersion. accessDecision require_existing_access fails unless the person can already read the record; keep_restricted assigns without sharing. Only people, never agents. Interactive turns only.",
+    readOnly: false,
+    idempotent: true,
+    destructive: true,
+    input: mutations.assignOwner
+      .omit({ organizationId: true, action: true })
+      .extend({ requestId })
+      .strict(),
+    output: z.object({ entityId: id, ownerActorEntityId: id }),
+  },
+  share_crm_record: {
+    title: "Share CRM record",
+    description:
+      "Give a person view, comment, edit or owner access to an account or deal, or change their level. Only people, never agents. Needs owner access. Interactive turns only.",
+    readOnly: false,
+    idempotent: true,
+    input: mutations.share
+      .omit({ organizationId: true, action: true })
+      .extend({ requestId })
+      .strict(),
+    output: z.object({ entityId: id }),
+  },
+  revoke_crm_access: {
+    title: "Remove CRM record access",
+    description:
+      "Remove a person's direct access to an account or deal. The last owner cannot be removed. Needs owner access. Interactive turns only.",
+    readOnly: false,
+    idempotent: true,
+    destructive: true,
+    input: mutations.revoke
+      .omit({ organizationId: true, action: true })
+      .extend({ requestId })
+      .strict(),
+    output: z.object({ entityId: id }),
+  },
   list_crm_follow_ups: {
     title: "List a CRM record's open follow-ups",
     description:

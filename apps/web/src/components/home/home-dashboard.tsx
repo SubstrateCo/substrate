@@ -34,9 +34,7 @@ import { AtSign, Bell, Hand, Handshake } from "lucide-react";
 const conversationKinds = { dm: "Direct message", group: "Group conversation", channel: "Channel" };
 
 function requestTitle(request: AgentRequestView) {
-  if (!request.payload) return hiddenConversation;
-  if (request.payload.type === "proposal") return request.payload.summary;
-  return request.payload.title;
+  return request.payload?.title ?? hiddenConversation;
 }
 
 export function HomeDashboard() {

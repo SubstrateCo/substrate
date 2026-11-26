@@ -40,7 +40,7 @@ test("helpers can only report, and only helpers can report", () => {
   expect(main).not.toContain("finish_helper");
   expect(main).toContain("start_helper");
   expect(helper).toContain("finish_helper");
-  for (const name of ["start_helper", "remember", "save_handoff", "reply", "propose"])
+  for (const name of ["start_helper", "remember", "save_handoff", "reply"])
     expect(helper).not.toContain(name);
   expect(helper).toContain("read_thread");
 });

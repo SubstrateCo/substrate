@@ -1,7 +1,7 @@
 import { sessionKeys } from "@substrate/contracts/agent-work";
 import type { AgentCallerPolicy } from "@substrate/contracts/agents";
 import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
-import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
+import { mcpTools, type ServerToolName } from "@substrate/contracts/harness/tools";
 
 import { actors } from "../core/actors/schema";
 import type { DatabaseExecutor } from "../core/executor";
@@ -59,8 +59,8 @@ export async function agentWorkFixture(f: Fixture) {
   const dm = await alice.createConversation({ kind: "dm", agentIds: [agent.agentId] });
   const owner = { userId: "alice", organizationId: f.orgA };
   const agentIdentity = { ...owner, actorEntityId: agent.actorId };
-  const call = async <K extends Extract<ServerToolName, "reply" | "propose">>(
-    tool: K,
+  const call = async (
+    tool: Extract<ServerToolName, "reply">,
     input: WorkspaceApiRequest["input"],
     turn: TurnContext,
   ) => {
@@ -81,14 +81,9 @@ export async function agentWorkFixture(f: Fixture) {
         attachedTurn,
       );
       // Fixture writes exercise domain persistence, not server tool dispatch or receipts.
-      return tool === "reply"
-        ? tools.reply(mcpTools.reply.input.parse(input))
-        : tools.propose(mcpTools.propose.input.parse(input));
+      return tools.reply(mcpTools[tool].input.parse(input));
     });
-    return (
-      // SAFETY: the result was parsed with the output schema registered for tool K.
-      mcpTools[tool].output.parse(output) as McpOutput<K>
-    );
+    return mcpTools[tool].output.parse(output);
   };
   return { agent, alice, bob, dm, owner, agentIdentity, call };
 }

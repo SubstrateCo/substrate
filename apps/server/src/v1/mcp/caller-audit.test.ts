@@ -143,12 +143,8 @@ test("admitted participation permits follow-ups even before a public answer", as
   const turn = { ...threadTurn(x.channel.id, root.id), invocationIds: [first!.id] };
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
   await x.call(
-    "propose",
-    {
-      requestId: crypto.randomUUID(),
-      summary: "Track it",
-      action: { type: "create_task", input: { projectId: project.entityId, title: "Track" } },
-    },
+    "create_task",
+    { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Track" },
     turn,
   );
   await x.alice.sendMessage(x.channel.id, `${x.mention} note this`, root.id);

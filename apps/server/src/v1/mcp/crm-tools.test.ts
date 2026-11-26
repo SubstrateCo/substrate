@@ -1,6 +1,10 @@
 import type { WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 
-import { AccessDeniedError, ValidationError } from "../../../../../packages/database/src/errors";
+import {
+  AccessDeniedError,
+  ConflictError,
+  ValidationError,
+} from "../../../../../packages/database/src/errors";
 import { member } from "../../../../../packages/database/src/schema";
 import { dmTurn } from "../../../../../packages/database/src/testing/agent-work";
 import { setupDatabase } from "../../../../../packages/database/src/testing/database";
@@ -231,4 +235,85 @@ test("archived records refuse new affiliations", async () => {
       }),
     ),
   ).toBeInstanceOf(ValidationError);
+});
+
+test("records are archived and restored, and the archive names the record's kind", async () => {
+  const { call, contact, account } = await tools();
+  const northwind = await account("Northwind");
+  const ada = await contact("Ada Park");
+  const archive = (kind: string, entityId: string, archived: boolean) =>
+    call("archive_crm_record", { requestId: crypto.randomUUID(), kind, entityId, archived });
+  expect((await archive("account", northwind, true)).record).toMatchObject({
+    account: { archivedAt: expect.any(String) },
+  });
+  expect((await archive("account", northwind, false)).record).toMatchObject({
+    account: { archivedAt: null },
+  });
+  expect((await archive("contact", ada, true)).record).toMatchObject({
+    archivedAt: expect.any(String),
+  });
+  // An account is not a deal; the archive refuses another kind's record.
+  expect(await rejection(archive("deal", northwind, true))).toBeInstanceOf(AccessDeniedError);
+});
+
+test("an interaction is deleted only when the owner could delete it", async () => {
+  const { call, contact, interaction } = await tools();
+  const ada = await contact("Ada Park");
+  const own = await interaction(ada, "Mine", "2026-11-12T10:00:00Z");
+  const bobs = await f.forActor(f.bob).contactInteractions.createManual({
+    contactEntityId: ada,
+    kind: "call",
+    occurredAt: new Date("2026-11-12T11:00:00Z"),
+    summary: "Bob's",
+  });
+  const remove = (entityId: string) =>
+    call("delete_crm_interaction", { requestId: crypto.randomUUID(), entityId });
+  expect(await remove(own)).toEqual({ deleted: true, entityId: own });
+  expect(await rejection(call("get_crm_interaction", { entityId: own }))).toBeInstanceOf(
+    AccessDeniedError,
+  );
+  // Without the admin role, Alice deletes only her own interactions.
+  await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
+  expect(await rejection(remove(bobs.entityId))).toBeInstanceOf(AccessDeniedError);
+});
+
+test("responsibility moves to a person from the owner the agent read, and sharing needs owner access", async () => {
+  const { agent, call, account } = await tools();
+  const northwind = await account("Northwind");
+  const read = await call("get_crm_record", { kind: "account", entityId: northwind });
+  const owner = z
+    .object({ account: z.object({ ownerActorEntityId: z.string() }) })
+    .parse(read.record).account.ownerActorEntityId;
+  const assign = (ownerActorEntityId: string, expectedOwnerActorEntityId: string) =>
+    call("assign_crm_owner", {
+      requestId: crypto.randomUUID(),
+      entityId: northwind,
+      ownerActorEntityId,
+      expectedOwnerActorEntityId,
+      accessDecision: "keep_restricted",
+    });
+  expect(await assign(f.bob, owner)).toEqual({ entityId: northwind, ownerActorEntityId: f.bob });
+  // The owner the agent read is stale now.
+  expect(await rejection(assign(f.alice, owner))).toBeInstanceOf(ConflictError);
+  expect(await rejection(assign(agent.actorId, f.bob))).toBeInstanceOf(ValidationError);
+
+  const share = (entityId: string) =>
+    call("share_crm_record", {
+      requestId: crypto.randomUUID(),
+      entityId,
+      actorEntityId: f.bob,
+      level: "view",
+    });
+  expect(await share(northwind)).toEqual({ entityId: northwind });
+  expect(
+    await call("revoke_crm_access", {
+      requestId: crypto.randomUUID(),
+      entityId: northwind,
+      actorEntityId: f.bob,
+    }),
+  ).toEqual({ entityId: northwind });
+  await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
+  const contoso = await f.forActor(f.bob).crm.createAccount({ name: "Contoso" });
+  await f.forActor(f.bob).crm.share(contoso.entityId, f.alice, "edit");
+  expect(await rejection(share(contoso.entityId))).toBeInstanceOf(AccessDeniedError);
 });
