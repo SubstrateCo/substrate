@@ -1,8 +1,8 @@
+import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { requireAppEnabled } from "../../core/apps/access";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
-import { member } from "../../core/organizations/schema";
 import { entityGrants } from "../../core/permissions/schema";
 import type { RepositoryContext } from "../../core/repository-context";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
@@ -12,16 +12,12 @@ export function crmManagementRepository(context: RepositoryContext) {
   const activeHuman = and(
     eq(actors.organizationId, scope.organizationId),
     eq(actors.type, "human"),
-    isNull(actors.disabledAt),
+    activeActorCondition(),
     isNull(entities.deletedAt),
   );
   const actorEntity = and(
     eq(entities.organizationId, actors.organizationId),
     eq(entities.entityId, actors.entityId),
-  );
-  const humanMember = and(
-    eq(member.organizationId, actors.organizationId),
-    eq(member.userId, actors.userId),
   );
   return {
     async people() {
@@ -30,7 +26,6 @@ export function crmManagementRepository(context: RepositoryContext) {
         .select({ entityId: actors.entityId, userId: user.id, type: sql<"human">`'human'` })
         .from(actors)
         .innerJoin(entities, actorEntity)
-        .innerJoin(member, humanMember)
         .innerJoin(user, eq(user.id, actors.userId))
         .where(activeHuman)
         .orderBy(asc(actors.entityId));
@@ -51,7 +46,6 @@ export function crmManagementRepository(context: RepositoryContext) {
           ),
         )
         .innerJoin(entities, actorEntity)
-        .innerJoin(member, humanMember)
         .innerJoin(user, eq(user.id, actors.userId))
         .where(
           and(

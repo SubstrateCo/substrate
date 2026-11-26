@@ -58,7 +58,6 @@ export async function respondToRequestInTransaction(
   requestId: string,
   response: AgentRequestResponse,
 ) {
-  await workspaceContext(tx, identity);
   const request = await requireOwnedRequest(tx, identity, requestId, ["permission", "question"]);
   if (!responseMatchesPayload(request.payload, response))
     throw new ValidationError("Choose one of the offered answers.");
@@ -84,7 +83,6 @@ export async function declineProposalInTransaction(
   identity: SessionIdentity,
   requestId: string,
 ) {
-  await workspaceContext(tx, identity);
   await requireOwnedRequest(tx, identity, requestId, ["proposal"]);
   const outcome: ProposalOutcome = { status: "declined" };
   const [resolved] = await tx
@@ -128,7 +126,6 @@ export async function approveProposalInTransaction(
   identity: SessionIdentity,
   requestId: string,
 ) {
-  await workspaceContext(tx, identity);
   await requireOwnedRequest(tx, identity, requestId, ["proposal"]);
   const [claimed] = await tx
     .update(agentRequests)

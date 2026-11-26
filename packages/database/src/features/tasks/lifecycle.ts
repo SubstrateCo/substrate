@@ -80,8 +80,7 @@ export function taskLifecycle(context: RepositoryContext) {
         const tx = ctx.db;
         const projectIds = [...new Set([projectId, destinationProjectId])];
         // The claim comes first: the subtree, parent and assignee reads below are then current.
-        for (const { entity } of await ctx.requireStructuralAccessAll(projectIds, "edit"))
-          if (entity.entityType !== "project") throw new AccessDeniedError();
+        await ctx.requireStructuralAccessAll(projectIds, "edit", { type: "project" });
         const task = await requireTask(ctx, taskId, projectId);
         await requireUnarchived(ctx, projectIds);
         const subtree = await taskSubtree(ctx, projectId, taskId);

@@ -56,8 +56,7 @@ export async function queryTasks(
     afterEntityId?: string;
   },
 ) {
-  const { entity } = await ctx.requireAccess(input.projectEntityId, "view");
-  if (entity.entityType !== "project") throw new AccessDeniedError();
+  await ctx.requireAccess(input.projectEntityId, "view", { type: "project" });
   const afterEntityId = entityCursor(input.afterEntityId);
   // Each cursor matches one order: an ID cursor the ID order, a time cursor the newest order.
   if (afterEntityId && !input.ascending) throw new ValidationError("Invalid cursor.");
@@ -194,8 +193,7 @@ export async function queryTaskActivity(
   taskEntityId: string,
   page: QueryPage = {},
 ) {
-  const { entity } = await ctx.requireAccess(taskEntityId, "view");
-  if (entity.entityType !== "task") throw new AccessDeniedError();
+  await ctx.requireAccess(taskEntityId, "view", { type: "task" });
   const query = joinActorAccount(
     ctx.db
       .select({

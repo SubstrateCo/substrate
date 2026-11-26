@@ -160,12 +160,10 @@ async function precheck(
     await requirePlace(ctx.db, identity, reply.to);
   } else if (tool === "delete_task") {
     const { taskId } = mcpTools.delete_task.input.parse({ ...input, requestId });
-    const { entity } = await ctx.requireAccess(taskId, "edit");
-    if (entity.entityType !== "task") throw new AccessDeniedError();
+    await ctx.requireAccess(taskId, "edit", { type: "task" });
   } else if (tool === "delete_project") {
     const { projectId } = mcpTools.delete_project.input.parse({ ...input, requestId });
-    const { entity } = await ctx.requireAccess(projectId, "owner");
-    if (entity.entityType !== "project") throw new AccessDeniedError();
+    await ctx.requireAccess(projectId, "owner", { type: "project" });
     if (!(await projectRepository(ctx).get(projectId)).archivedAt)
       throw new ValidationError("Archive the project first.");
   } else if (tool === "delete_crm_interaction") {

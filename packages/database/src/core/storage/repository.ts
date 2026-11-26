@@ -1,4 +1,3 @@
-import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
 import type { CreateUploadInput } from "@substrate/contracts/files/input";
 import type { PictureKind } from "@substrate/contracts/files/pictures";
 import type { StorageScope } from "@substrate/contracts/files/scope";
@@ -6,6 +5,7 @@ import type { StorageScope } from "@substrate/contracts/files/scope";
 import { AccessDeniedError, ConflictError, violatedConstraint } from "../../errors";
 import { userAgents } from "../actors/user-agents.schema";
 import type { Database, DatabaseExecutor } from "../executor";
+import { adminRoleCondition } from "../organizations/roles";
 import { member } from "../organizations/schema";
 import { createStorageCleanup } from "./cleanup";
 import { temporaryObjectKey } from "./object-keys";
@@ -33,25 +33,22 @@ async function requireScope(
   if (purpose === "avatar") return;
   if (!scope.organizationId) throw new AccessDeniedError();
   const [membership] = await db
-    .select({ role: member.role })
+    .select({ admin: sql<boolean>`${adminRoleCondition(member.role)}` })
     .from(member)
     .where(and(eq(member.userId, scope.userId), eq(member.organizationId, scope.organizationId)));
-  requireMemberRole(purpose, membership?.role ?? null, manage);
+  requireMemberRole(purpose, membership?.admin ?? null, manage);
 }
 
-// The scope's role in its organization, or NULL for a non-member.
-function memberRole(scope: StorageScope) {
-  if (!scope.organizationId) return sql<string | null>`null`;
-  return sql<string | null>`(select ${member.role} from ${member}
+// Whether the scope is an owner or admin of its organization, or NULL for a non-member.
+function memberAdmin(scope: StorageScope) {
+  if (!scope.organizationId) return sql<boolean | null>`null`;
+  return sql<boolean | null>`(select ${adminRoleCondition(member.role)} from ${member}
     where ${member.userId} = ${scope.userId} and ${member.organizationId} = ${scope.organizationId})`;
 }
 
 // oxlint-disable-next-line deslop/prefer-literal-union -- Persisted upload purposes are strings; all non-avatar uploads need organization access.
-function requireMemberRole(purpose: string, role: string | null, manage: boolean) {
-  if (
-    role === null ||
-    (manage && purpose === "organization-logo" && !organizationSettingsAccess(role).allowed)
-  )
+function requireMemberRole(purpose: string, admin: boolean | null, manage: boolean) {
+  if (admin === null || (manage && purpose === "organization-logo" && !admin))
     throw new AccessDeniedError();
 }
 
@@ -135,7 +132,7 @@ export function createStorageRepository(
     },
     async getUpload(scope: StorageScope, id: string) {
       const [row] = await db
-        .select({ upload: fileUploads, completed: storedFiles, role: memberRole(scope) })
+        .select({ upload: fileUploads, completed: storedFiles, admin: memberAdmin(scope) })
         .from(fileUploads)
         .leftJoin(storedFiles, eq(storedFiles.id, fileUploads.id))
         .where(and(eq(fileUploads.id, id), eq(fileUploads.uploadedBy, scope.userId)));
@@ -144,10 +141,10 @@ export function createStorageRepository(
         (row.upload.organizationId !== null && row.upload.organizationId !== scope.organizationId)
       )
         throw new AccessDeniedError();
-      const { upload, completed, role } = row;
+      const { upload, completed, admin } = row;
       if (upload.purpose !== "avatar") {
         if (!scope.organizationId) throw new AccessDeniedError();
-        requireMemberRole(upload.purpose, role, true);
+        requireMemberRole(upload.purpose, admin, true);
       }
       if (upload.deletedAt) throw new ConflictError("File was deleted. Start a new upload.");
       return { upload, completed };
@@ -208,7 +205,7 @@ export function createStorageRepository(
     },
     async getReadable(scope: StorageScope, id: string) {
       const [row] = await db
-        .select({ file: storedFiles, role: memberRole(scope) })
+        .select({ file: storedFiles, admin: memberAdmin(scope) })
         .from(storedFiles)
         .where(eq(storedFiles.id, id));
       if (!row) return null;
@@ -217,7 +214,7 @@ export function createStorageRepository(
       if (file.publishedAt) return null;
       if (file.organizationId !== scope.organizationId) return null;
       if (file.uploadedBy !== scope.userId || !scope.organizationId) return null;
-      return row.role !== null ? file : null;
+      return row.admin !== null ? file : null;
     },
     async deleteFile(scope: StorageScope, id: string) {
       await db

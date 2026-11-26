@@ -402,6 +402,27 @@ describe("stored file relationships", () => {
     await repo.requirePictureAccess({ userId: "bob", organizationId: f.orgA }, "organization-logo");
   });
 
+  test("logo writes read a stored role list with the same admin rule as other access checks", async () => {
+    const repo = createStorageRepository(f.db);
+    const scope = { userId: "bob", organizationId: f.orgA };
+    await f.db.update(member).set({ role: "member,admin" }).where(eq(member.id, "bob-a"));
+    await repo.requirePictureAccess(scope, "organization-logo");
+    const id = crypto.randomUUID();
+    await repo.createUpload(
+      scope,
+      { purpose: "organization-logo", filename: "a.webp", contentType: "image/webp", size: 5 },
+      id,
+      new Date(Date.now() + 60_000),
+    );
+    expect((await repo.getUpload(scope, id)).upload.id).toBe(id);
+    // adminRoleCondition does not trim, and Better Auth never stores padded role names.
+    await f.db.update(member).set({ role: "member, admin" }).where(eq(member.id, "bob-a"));
+    expect(await rejection(repo.requirePictureAccess(scope, "organization-logo"))).toBeInstanceOf(
+      AccessDeniedError,
+    );
+    expect(await rejection(repo.getUpload(scope, id))).toBeInstanceOf(AccessDeniedError);
+  });
+
   test("cleanup prunes old unpublished files, including abandoned attachment uploads", async () => {
     const repo = createStorageRepository(f.db);
     const old = new Date(0);

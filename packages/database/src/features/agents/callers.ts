@@ -8,7 +8,6 @@ import { user } from "../../core/authentication/schema";
 import { effectsFor } from "../../core/effects";
 import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
-import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { audit } from "../agent-work/calls/audit";
 import { cancelPendingInvocations } from "../agent-work/calls/invocations";
@@ -16,11 +15,11 @@ import { agentRefreshHints } from "../realtime/routing";
 import { userAgentCallers } from "./callers.schema";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 
-// Caller settings belong to the agent's owner. Every function checks the session's membership,
-// that the agent is the owner's own, and that the agent has an actor in this organization.
+// Caller settings belong to the agent's owner. The workspace transaction checks the session's
+// membership; every function checks that the agent is the owner's own, and that the agent has an
+// actor in this organization.
 
 async function requireOwnedAgent(db: DatabaseExecutor, identity: SessionIdentity, agentId: string) {
-  await workspaceContext(db, identity);
   const [agent] = await db
     .select({ id: userAgents.id, policy: userAgents.callerPolicy })
     .from(userAgents)

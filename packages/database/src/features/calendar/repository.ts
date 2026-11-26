@@ -611,8 +611,7 @@ export function calendarRepository(context: RepositoryContext) {
       const limit = input.limit ?? 20;
       if (!Number.isInteger(limit) || limit < 1 || limit > 50)
         throw new ValidationError("Limit must be an integer from 1 to 50.");
-      const access = await context.requireAccess(input.contactEntityId, "view");
-      if (access.entity.entityType !== "contact") throw new AccessDeniedError();
+      await context.requireAccess(input.contactEntityId, "view", { type: "contact" });
       const identifiers = await db
         .select({
           value: contactIdentifiers.value,

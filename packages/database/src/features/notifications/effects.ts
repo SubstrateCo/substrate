@@ -1,7 +1,7 @@
+import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
-import { member } from "../../core/organizations/schema";
 import { readableCondition } from "../../core/permissions/visibility";
 import type { RepositoryContext } from "../../core/repository-context";
 import { visibleConversations } from "../messaging/access";
@@ -83,14 +83,10 @@ export async function notify(
         eq(entities.organizationId, actors.organizationId),
       ),
     )
-    .innerJoin(
-      member,
-      and(eq(member.userId, user.id), eq(member.organizationId, actors.organizationId)),
-    )
     .where(
       and(
         eq(actors.type, "human"),
-        isNull(actors.disabledAt),
+        activeActorCondition(),
         isNull(entities.deletedAt),
         or(
           actorIds.length ? inArray(actors.entityId, actorIds) : undefined,

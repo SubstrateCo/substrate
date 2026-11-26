@@ -1,6 +1,5 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import { requireAppEnabled } from "../../core/apps/access";
 import { linkRepository } from "../../core/links/repository";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
@@ -11,12 +10,11 @@ import { crmAccounts, crmContactProfiles, crmDeals } from "./schema";
 import { and, eq } from "drizzle-orm";
 
 async function sourceAccess(ctx: RepositoryContext, entityId: string, edit: boolean) {
-  const access = await ctx.requireAccess(entityId, edit ? "edit" : "view");
+  const crmSources = ["account", "deal", "contact", "contact_interaction"] as const;
+  const access = await ctx.requireAccess(entityId, edit ? "edit" : "view", {
+    type: edit ? crmSources : [...crmSources, "project", "task"],
+  });
   const type = access.entity.entityType;
-  const crmSource = ["account", "deal", "contact", "contact_interaction"].includes(type);
-  const workBacklink = !edit && (type === "project" || type === "task");
-  if (!crmSource && !workBacklink) throw new AccessDeniedError();
-  if (type === "account" || type === "deal") await requireAppEnabled(ctx, "crm");
   if (!(await contextTargetsOf(ctx, [entityId])).has(entityId)) throw new AccessDeniedError();
   if (edit) {
     let table: typeof crmAccounts | typeof crmDeals | typeof crmContactProfiles =
