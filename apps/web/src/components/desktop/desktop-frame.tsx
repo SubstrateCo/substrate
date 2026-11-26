@@ -1,6 +1,5 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
-import { BrandMark } from "@/components/auth/brand-mark";
 import { DesktopTitleBarContext } from "@/components/desktop/desktop-title-bar-context";
 import { useTheme } from "@/components/theme/theme-context";
 import { windowBridge } from "@/lib/desktop/bridges";
@@ -63,7 +62,6 @@ export function DesktopFrame({ children }: { children: ReactNode }) {
           <span className="truncate group-has-data-workspace-search/desktop-title-bar:hidden">
             {desktop.name}
           </span>
-          <BrandMark className="absolute left-(--desktop-brand-left) hidden md:group-has-data-local-search/desktop-title-bar:flex" />
           <div
             ref={setTitleBarTarget}
             className="desktop-title-bar-search absolute min-w-0 empty:hidden"

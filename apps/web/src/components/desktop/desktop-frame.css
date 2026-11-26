@@ -8,7 +8,6 @@
   .desktop-title-bar {
     -webkit-app-region: drag;
     --desktop-controls-padding: max(var(--desktop-controls-left), var(--desktop-controls-right));
-    --desktop-brand-left: max(1rem, var(--desktop-controls-left));
     --desktop-tools-right: max(0.5rem, var(--desktop-controls-right));
   }
 
