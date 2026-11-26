@@ -3,7 +3,7 @@ import type {
   DesktopUpdateStatus,
 } from "@substrate/contracts/desktop/updates-ipc";
 
-import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 
 import { PendingButton } from "@/components/feedback/pending-button";
 import { SettingsCard, SettingsRow } from "@/components/layout/settings-section";
@@ -24,31 +24,21 @@ export function DesktopUpdateSettings() {
 
 function ConnectedUpdateSettings({ bridge }: { bridge: DesktopUpdatesAPI }) {
   const status = useDesktopUpdates(bridge);
-  const [pending, setPending] = useState(false);
+  const command = useMutation({
+    mutationFn: (action: UpdateCommand) => action(),
+    onError: () => toast.error("We couldn’t finish the update. Try again."),
+  });
   if (!status || status.install === "unavailable") return null;
 
-  const run = (action: UpdateCommand) => runUpdateCommand(action, setPending);
   return (
     <DesktopUpdateSettingsView
       status={status}
-      pending={pending}
-      onCheck={() => void run(() => bridge.checkForUpdates())}
-      onInstall={() => void run(() => bridge.installNow())}
-      onDownload={() => void run(() => bridge.openDownloadPage())}
+      pending={command.isPending}
+      onCheck={() => command.mutate(() => bridge.checkForUpdates())}
+      onInstall={() => command.mutate(() => bridge.installNow())}
+      onDownload={() => command.mutate(() => bridge.openDownloadPage())}
     />
   );
-}
-
-// Outside the component: React Compiler cannot compile try/finally.
-async function runUpdateCommand(action: UpdateCommand, setPending: (pending: boolean) => void) {
-  setPending(true);
-  try {
-    await action();
-  } catch {
-    toast.error("We couldn’t finish the update. Try again.");
-  } finally {
-    setPending(false);
-  }
 }
 
 function updateDescription({ install, state }: DesktopUpdateStatus) {

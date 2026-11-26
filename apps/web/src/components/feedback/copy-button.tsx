@@ -1,12 +1,12 @@
-import { useEffect, useId, useRef, useState, type ComponentProps } from "react";
+import { useMutation } from "@tanstack/react-query";
+
+import { useEffect, useId, useState, type ComponentProps } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "cn";
 import { Check, Copy } from "lucide-react";
 import { toast } from "sonner";
-
-type CopyConfirmation = { timeout?: number };
 
 export function CopyButton({
   onCopy,
@@ -26,41 +26,21 @@ export function CopyButton({
   grouped?: boolean;
 }) {
   const toastId = useId();
-  const [status, setStatus] = useState<"idle" | "copying" | "copied">("idle");
-  const confirmation = useRef<CopyConfirmation | null>(null);
-  useEffect(
-    () => () => {
-      window.clearTimeout(confirmation.current?.timeout);
-      confirmation.current = null;
+  const [copied, setCopied] = useState(false);
+  const copy = useMutation({
+    mutationFn: async () => onCopy(),
+    onSuccess: () => {
+      toast.dismiss(toastId);
+      setCopied(true);
     },
-    [],
-  );
-  const copied = status === "copied";
-
-  async function copy() {
-    if (confirmation.current) return;
-    const current: CopyConfirmation = {};
-    confirmation.current = current;
-    setStatus("copying");
-    try {
-      await onCopy();
-    } catch {
-      toast.error(errorMessage, { id: toastId });
-      if (confirmation.current === current) {
-        confirmation.current = null;
-        setStatus("idle");
-      }
-      return;
-    }
-    toast.dismiss(toastId);
-    if (confirmation.current !== current) return;
-    setStatus("copied");
-    // The check mark shows briefly, then the button can copy again.
-    current.timeout = window.setTimeout(() => {
-      confirmation.current = null;
-      setStatus("idle");
-    }, 1500);
-  }
+    onError: () => toast.error(errorMessage, { id: toastId }),
+  });
+  // The check mark shows briefly, then the button can copy again.
+  useEffect(() => {
+    if (!copied) return;
+    const timeout = window.setTimeout(() => setCopied(false), 1500);
+    return () => window.clearTimeout(timeout);
+  }, [copied]);
 
   const button = (
     <Button
@@ -69,8 +49,10 @@ export function CopyButton({
       variant="ghost"
       className={className}
       aria-label={label}
-      aria-busy={status === "copying"}
-      onClick={() => void copy()}
+      aria-busy={copy.isPending}
+      onClick={() => {
+        if (!copy.isPending && !copied) copy.mutate();
+      }}
     >
       <span aria-hidden="true" className="relative inline-grid shrink-0 place-items-center">
         <Copy

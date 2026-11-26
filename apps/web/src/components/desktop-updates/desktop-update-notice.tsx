@@ -3,7 +3,7 @@ import type {
   DesktopUpdateStatus,
 } from "@substrate/contracts/desktop/updates-ipc";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useState } from "react";
 
 import { updateNoticeContent, type UpdateNoticeAction } from "./update-notice-content";
 import { UpdateToast } from "./update-toast";
@@ -24,16 +24,11 @@ export function DesktopUpdateNotice() {
 function UpdateNoticeToast({ bridge }: { bridge: DesktopUpdatesAPI }) {
   const status = useDesktopUpdates(bridge);
   // The notice the person closed stays hidden until the update means something new.
-  const dismissed = useRef<string>(undefined);
-  // Sonner reports programmatic dismissals too. Only the person's own close counts.
-  const hiding = useRef<string>(undefined);
-  const shown = useRef<string>(undefined);
+  const [dismissedKey, setDismissedKey] = useState<string>();
 
   useEffect(() => {
     const content = status && updateNoticeContent(status);
-    if (!content || content.key === dismissed.current) {
-      hiding.current = shown.current;
-      shown.current = undefined;
+    if (!content || content.key === dismissedKey) {
       toast.dismiss(toastId);
       return;
     }
@@ -43,8 +38,9 @@ function UpdateNoticeToast({ bridge }: { bridge: DesktopUpdatesAPI }) {
       retry: () => bridge.checkForUpdates(),
     };
     const { key, action } = content;
-    shown.current = key;
-    hiding.current = undefined;
+    // Sonner reports programmatic dismissals too. Only the person's own close counts, so a
+    // dismissal after this notice was replaced or hidden is ignored.
+    let replaced = false;
     toast.custom(
       () => (
         <UpdateToast
@@ -62,13 +58,14 @@ function UpdateNoticeToast({ bridge }: { bridge: DesktopUpdatesAPI }) {
         id: toastId,
         duration: Number.POSITIVE_INFINITY,
         onDismiss: () => {
-          if (hiding.current === key) return;
-          dismissed.current = key;
-          shown.current = undefined;
+          if (!replaced) setDismissedKey(key);
         },
       },
     );
-  }, [bridge, status]);
+    return () => {
+      replaced = true;
+    };
+  }, [bridge, status, dismissedKey]);
 
   useEffect(() => () => void toast.dismiss(toastId), []);
   return null;
