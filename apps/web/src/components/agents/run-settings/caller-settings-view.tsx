@@ -68,7 +68,8 @@ export function CallerSettingsView({
   organizationName,
   saving,
   removing,
-  error,
+  saveError,
+  removeError,
   onSave,
   onRemove,
 }: {
@@ -76,7 +77,10 @@ export function CallerSettingsView({
   organizationName: string;
   saving: boolean;
   removing: boolean;
-  error: Error | null;
+  /** Saving the caller policy failed. */
+  saveError: Error | null;
+  /** Removing a caller failed. */
+  removeError: Error | null;
   onSave: (policy: AgentCallerPolicy, onSuccess: () => void) => void;
   onRemove: (actorId: string, onSuccess: () => void) => void;
 }) {
@@ -105,7 +109,8 @@ export function CallerSettingsView({
             dirty={dirty}
             pending={saving}
             error={
-              error && actionErrorMessage(error, "We couldn’t save caller settings. Try again.")
+              saveError &&
+              actionErrorMessage(saveError, "We couldn't save caller settings. Try again.")
             }
             onDiscard={() => setDraft(null)}
             onSave={() => (policy === "owner" ? save() : setDialog({ kind: "allow" }))}
@@ -170,7 +175,7 @@ export function CallerSettingsView({
           description="This agent works with your full access, not the caller’s access. It can read and change anything you can. Your instructions still apply."
           confirmLabel="Allow calls"
           pending={saving}
-          error={error}
+          error={saveError}
           errorDescription="We couldn’t save caller settings. Try again."
           onConfirm={save}
           onClose={() => setDialog(null)}
@@ -183,7 +188,7 @@ export function CallerSettingsView({
           description="Future calls from this person will need approval under Ask me first. Queued calls will be checked again before they run."
           confirmLabel={`Remove ${dialog.caller.name}`}
           pending={removing}
-          error={error}
+          error={removeError}
           errorDescription="We couldn’t remove this caller. Try again."
           onConfirm={() => onRemove(dialog.caller.actorId, () => setDialog(null))}
           onClose={() => setDialog(null)}

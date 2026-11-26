@@ -28,7 +28,8 @@ export function CallerSettings({
       organizationName={organization.data?.name ?? "this workspace"}
       saving={policy.isPending}
       removing={remove.isPending}
-      error={policy.error ?? remove.error}
+      saveError={policy.error}
+      removeError={remove.error}
       onSave={(next, onSuccess) => policy.mutate(next, { onSuccess })}
       onRemove={(actorId, onSuccess) => remove.mutate(actorId, { onSuccess })}
     />

@@ -35,7 +35,8 @@ export function AgentRunSettings({
       canRunHere={isDesktop()}
       moving={home.isPending}
       saving={triggers.isPending}
-      error={home.error ?? triggers.error}
+      moveError={home.error}
+      saveError={triggers.error}
       onRunHere={() =>
         home.mutate(undefined, {
           onSuccess: () => toast.success(`${name} now runs on this device.`),

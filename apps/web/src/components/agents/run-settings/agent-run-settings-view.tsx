@@ -7,6 +7,7 @@ import {
 import { useState, type ComponentProps, type ReactNode } from "react";
 
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { useRegisterDraft } from "@/components/feedback/unsaved-drafts";
 import {
@@ -56,7 +57,8 @@ export function AgentRunSettingsView({
   canRunHere,
   moving,
   saving,
-  error,
+  moveError,
+  saveError,
   onRunHere,
   onSave,
 }: {
@@ -67,7 +69,10 @@ export function AgentRunSettingsView({
   canRunHere: boolean;
   moving: boolean;
   saving: boolean;
-  error?: Error | null;
+  /** Moving the agent to this device failed. */
+  moveError?: Error | null;
+  /** Saving the triggers failed. */
+  saveError?: Error | null;
   onRunHere: () => void;
   onSave: (triggers: AgentTriggerSetting[], onSuccess: () => void) => void;
 }) {
@@ -107,6 +112,10 @@ export function AgentRunSettingsView({
             Open Substrate on a desktop to run this agent there.
           </p>
         )}
+        <FormMessage
+          error={moveError}
+          errorDescription="We couldn’t move this agent to this device. Try again."
+        />
       </RunsOnCard>
       {callers}
       <TriggerCard
@@ -114,7 +123,9 @@ export function AgentRunSettingsView({
           <SettingsFooter
             dirty={dirty}
             pending={saving}
-            error={error && actionErrorMessage(error, "We couldn’t save run settings. Try again.")}
+            error={
+              saveError && actionErrorMessage(saveError, "We couldn’t save run settings. Try again.")
+            }
             onDiscard={() => setDraft(null)}
             onSave={() => onSave(triggers, () => setDraft(null))}
           />
