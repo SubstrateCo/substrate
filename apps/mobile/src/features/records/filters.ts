@@ -77,7 +77,7 @@ export type FilterEntry =
   | { kind: "number"; field: NumberFilterField; value: number };
 
 /** Whether a field's value counts as a filter. An empty option list does not. */
-export function isSet(value: FilterFieldValue | undefined): value is FilterFieldValue {
+function isSet(value: FilterFieldValue | undefined): value is FilterFieldValue {
   if (value === undefined) return false;
   return !Array.isArray(value) || value.length > 0;
 }
@@ -144,12 +144,12 @@ export function chooseOption(field: FilterField, values: readonly string[], opti
 }
 
 /** How the operator reads for a number of values: "is" for one, "is any of" for several. */
-export function operatorLabel(count: number) {
+function operatorLabel(count: number) {
   return count > 1 ? "is any of" : "is";
 }
 
 /** A pill's value text: one label, or "3 types". A value missing from the options reads "Unknown". */
-export function summarizeValues(field: FilterField, values: readonly string[]) {
+function summarizeValues(field: FilterField, values: readonly string[]) {
   const labels = values.map(
     (value) => field.options.find((option) => option.value === value)?.label ?? "Unknown",
   );
@@ -197,7 +197,7 @@ export function numberError(field: NumberFilterField, text: string) {
     : null;
 }
 
-export function summarizeNumber(field: NumberFilterField, value: number) {
+function summarizeNumber(field: NumberFilterField, value: number) {
   return `${value} ${value === 1 ? field.unit.one : field.unit.other}`;
 }
 

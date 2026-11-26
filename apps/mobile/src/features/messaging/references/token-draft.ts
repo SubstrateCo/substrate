@@ -76,7 +76,7 @@ function normalize(parts: DraftPart[]): DraftPart[] {
  * Replaces the display range `[start, end)` with `insert`. A reference that the range overlaps,
  * or that an insertion lands inside, is removed whole.
  */
-export function spliceDisplay(
+function spliceDisplay(
   parts: readonly DraftPart[],
   start: number,
   end: number,

@@ -2,7 +2,7 @@ import type { LinkedWork, MessageContext, MessagingConversationTarget } from "..
 import { referenceKey, type ReferenceKind } from "./reference-tokens";
 import type { RecordTarget } from "@/lib/navigation";
 
-export type ReferenceDestination =
+type ReferenceDestination =
   | { type: "record"; target: RecordTarget }
   | { type: "conversation"; target: MessagingConversationTarget }
   | { type: "profile"; actorId: string };

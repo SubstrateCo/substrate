@@ -6,7 +6,7 @@ import { messagingKeys } from "../keys";
 import { useMessagingScope } from "../scope";
 import type { QueryScope } from "@/queries/keys";
 
-export const conversationsOptions = (scope: QueryScope, selectedId?: string) =>
+const conversationsOptions = (scope: QueryScope, selectedId?: string) =>
   queryOptions({
     queryKey: messagingKeys.conversations(scope, selectedId),
     queryFn: ({ signal }) =>

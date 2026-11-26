@@ -30,7 +30,6 @@ export const authenticatedFetch = createAuthenticatedFetch({
   },
 });
 
-export const createApi = (fetch: typeof globalThis.fetch = authenticatedFetch) =>
+const createApi = (fetch: typeof globalThis.fetch = authenticatedFetch) =>
   hc<AppType>(apiURL, { fetch });
 export const api = createApi().api.mobile;
-export type Api = typeof api;

@@ -46,5 +46,3 @@ export function createDraftStore() {
     },
   };
 }
-
-export type DraftStore = ReturnType<typeof createDraftStore>;

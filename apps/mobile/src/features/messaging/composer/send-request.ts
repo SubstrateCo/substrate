@@ -1,6 +1,6 @@
 export type SendRequest = { id: string; fingerprint: string };
 
-export function sendFingerprint(body: string, attachmentFileIds: readonly string[]): string {
+function sendFingerprint(body: string, attachmentFileIds: readonly string[]): string {
   return JSON.stringify([body, attachmentFileIds]);
 }
 

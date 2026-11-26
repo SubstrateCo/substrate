@@ -7,7 +7,7 @@ export type InteractionDays = "all" | "7" | "30";
 export type InteractionOrigin = "manual" | "message_publication" | "calendar_event";
 type TimelinePeriod = Pick<InteractionTimeline, "from" | "until" | "allTime">;
 
-export const interactionOrigins = [
+const interactionOrigins = [
   "manual",
   "message_publication",
   "calendar_event",

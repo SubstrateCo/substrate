@@ -2,7 +2,7 @@
 export const referenceKinds = ["task", "project", "person", "agent", "channel", "thread"] as const;
 export type ReferenceKind = (typeof referenceKinds)[number];
 
-export const referenceTokenPattern =
+const referenceTokenPattern =
   /@\[(task|project|person|agent|channel|thread):([0-9a-f-]{36})\]/gi;
 
 export function referenceToken(kind: ReferenceKind, id: string): string {
@@ -34,9 +34,4 @@ export function bodySegments(body: string): BodySegment[] {
   }
   if (offset < body.length) segments.push({ type: "text", text: body.slice(offset) });
   return segments;
-}
-
-/** Text for previews where a reference cannot be resolved. */
-export function plainReferenceText(text: string): string {
-  return text.replace(/@\[[^\]]+\]/g, "[Reference]");
 }

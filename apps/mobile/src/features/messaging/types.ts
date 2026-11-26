@@ -4,11 +4,7 @@ import type {
   listAgents,
   searchContext,
 } from "./api/context";
-import type {
-  getMessagingProfile,
-  listConversations,
-  listManagedConversations,
-} from "./api/conversations";
+import type { listConversations, listManagedConversations } from "./api/conversations";
 import type { listMessages } from "./api/messages";
 import type { getSharingDetails, getSharingInvitation, listSharingInbox } from "./api/sharing";
 
@@ -30,8 +26,6 @@ export type SharingInvitation = Awaited<ReturnType<typeof getSharingInvitation>>
 
 /** Another conversation, or a thread in it, that a `#` reference leads to. */
 export type MessagingConversationTarget = { conversationId: string; threadId?: string };
-
-export type MessagingProfile = Awaited<ReturnType<typeof getMessagingProfile>>;
 
 export type MessagingProfileTarget = {
   organizationId: string;

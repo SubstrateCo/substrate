@@ -15,7 +15,7 @@ import { appendNewMessages, latestHistoryKey } from "./new-messages";
 import { queryKeys } from "@/queries/keys";
 
 /** Message writes change timelines, threads, reference context, unread counts and search. */
-export function useInvalidateMessaging(organizationId: string) {
+function useInvalidateMessaging(organizationId: string) {
   const scope = useMessagingScope(organizationId);
   const client = useQueryClient();
   return () =>

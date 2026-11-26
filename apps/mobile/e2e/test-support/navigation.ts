@@ -26,7 +26,7 @@ export async function signIn(page: Page, info: TestInfo, workspace: ReviewWorksp
   await expectThemeBackground(page, info.project.use.colorScheme === "dark" ? "dark" : "light");
 }
 
-export async function expectThemeBackground(page: Page, scheme: "light" | "dark") {
+async function expectThemeBackground(page: Page, scheme: "light" | "dark") {
   const expected = themes[scheme].surface;
   await expect
     .poll(() =>

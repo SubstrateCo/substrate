@@ -211,25 +211,7 @@ export type HomeTask = Awaited<ReturnType<typeof recordRequests.homeTasks>>[numb
 export type ProjectDetail = Awaited<ReturnType<typeof recordRequests.project>>;
 export type ProjectTask = ProjectDetail["tasks"][number];
 export type ProjectActor = ProjectDetail["actors"][number];
-export type TaskLink = ProjectDetail["links"][number];
-export type ContactListItem = Awaited<ReturnType<typeof recordRequests.contacts>>[number];
 export type ContactDetail = Awaited<ReturnType<typeof recordRequests.contact>>;
-export type AccountListItem = Awaited<ReturnType<typeof recordRequests.accounts>>[number];
-export type AccountDetail = Awaited<ReturnType<typeof recordRequests.account>>;
 export type DealListItem = Awaited<ReturnType<typeof recordRequests.deals>>[number];
 export type DealDetail = Awaited<ReturnType<typeof recordRequests.deal>>;
 export type Stage = Awaited<ReturnType<typeof recordRequests.pipeline>>[number];
-export type FollowUps = Awaited<ReturnType<typeof recordRequests.followUps>>;
-export type ContactInteraction = Awaited<
-  ReturnType<typeof recordRequests.contactInteractions>
->[number];
-export type TimelineInteraction = Awaited<
-  ReturnType<typeof recordRequests.interactionTimeline>
->["items"][number];
-export type InteractionDetail = Awaited<ReturnType<typeof recordRequests.interaction>>;
-export type OrganizationPerson = Awaited<
-  ReturnType<typeof recordRequests.organizationPeople>
->[number];
-export type CrmActor = Awaited<ReturnType<typeof recordRequests.crmPeople>>[number];
-export type CrmGrant = Awaited<ReturnType<typeof recordRequests.crmGrants>>[number];
-export type RelatedMessage = Awaited<ReturnType<typeof recordRequests.relatedMessages>>[number];

@@ -13,7 +13,7 @@ import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 import type { LucideIcon } from "lucide-react-native";
 
-export const quickReactions = ["👍", "❤️", "😂", "🎉", "👀", "✅"] as const;
+const quickReactions = ["👍", "❤️", "😂", "🎉", "👀", "✅"] as const;
 
 export type MessageAction = {
   label: string;

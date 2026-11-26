@@ -56,7 +56,7 @@ export async function uploadFile(
   return completed.fileId;
 }
 
-export function storageHeaders(values: Record<string, string>) {
+function storageHeaders(values: Record<string, string>) {
   const headers = new Headers(values);
   for (const name of ["cookie", "authorization", "origin"]) headers.delete(name);
   return headers;

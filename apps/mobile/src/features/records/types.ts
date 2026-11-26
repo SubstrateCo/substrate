@@ -1,6 +1,6 @@
 import type { ContextTargetType } from "@substrate/contracts/context/input";
 
-export type RecordKind = "task" | "project" | "contact" | "interaction" | "account" | "deal";
+type RecordKind = "task" | "project" | "contact" | "interaction" | "account" | "deal";
 
 /** A workspace record the shell can show in its detail panel. `projectId` applies to tasks. */
 export type RecordTarget = { kind: RecordKind; id: string; projectId?: string };

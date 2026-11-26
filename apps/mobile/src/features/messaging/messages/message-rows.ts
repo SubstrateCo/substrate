@@ -12,7 +12,7 @@ type GroupedMessage = {
 
 const time = (value: string | Date) => new Date(value).getTime();
 
-export function sameDay(a: string | Date, b: string | Date) {
+function sameDay(a: string | Date, b: string | Date) {
   return new Date(a).toDateString() === new Date(b).toDateString();
 }
 

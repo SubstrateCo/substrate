@@ -22,7 +22,7 @@ export type TaskTreeRow = { task: ProjectTask; depth: number; subtasks: number }
 const statusRank = (task: ProjectTask) => taskStatusValues.indexOf(task.status);
 const priorityRank = (task: ProjectTask) => -taskPriorityValues.indexOf(task.priority);
 
-export function compareTasks(a: ProjectTask, b: ProjectTask) {
+function compareTasks(a: ProjectTask, b: ProjectTask) {
   return (
     statusRank(a) - statusRank(b) ||
     priorityRank(a) - priorityRank(b) ||

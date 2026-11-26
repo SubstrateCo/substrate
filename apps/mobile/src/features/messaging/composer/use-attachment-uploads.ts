@@ -83,5 +83,3 @@ export function useAttachmentUploads() {
     },
   };
 }
-
-export type AttachmentUploads = ReturnType<typeof useAttachmentUploads>;

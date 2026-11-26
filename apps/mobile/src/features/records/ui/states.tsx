@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { ActivityIndicator, View } from "react-native";
+import { View } from "react-native";
 
 import { errorText, isAccessError } from "../format";
 import { Button } from "@/components/ui/button";
@@ -21,14 +21,6 @@ export function LoadingRows({ rows = 6, label }: { rows?: number; label: string 
           />
         </View>
       ))}
-    </View>
-  );
-}
-
-export function Spinner({ label }: { label: string }) {
-  return (
-    <View accessibilityLabel={label} className="flex-1 items-center justify-center p-8">
-      <ActivityIndicator />
     </View>
   );
 }

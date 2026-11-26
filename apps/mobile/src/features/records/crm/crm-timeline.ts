@@ -1,4 +1,4 @@
-export const timelinePageSize = 50;
+const timelinePageSize = 50;
 
 export function timelineCursor(rows: readonly { entityId: string; occurredAt: string }[]) {
   const last = rows.at(-1);

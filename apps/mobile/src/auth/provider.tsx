@@ -21,9 +21,6 @@ import { resetToasts } from "@/lib/toast";
 import { PortalHost } from "@rn-primitives/portal";
 import { LayoutAnimationConfig } from "react-native-reanimated";
 
-// oxlint-disable-next-line deslop/no-reexports-outside-entrypoints -- The auth provider is the shared lifecycle boundary used by local draft stores.
-export { onPrivateStateReset } from "./private-state";
-
 interface AuthContextValue {
   session: Session | null;
   isPending: boolean;
