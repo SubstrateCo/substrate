@@ -164,6 +164,7 @@ export function TaskForm({
             field={field}
             id={`${id}-description`}
             label="Task description"
+            description="Supports Markdown."
             multiline
             maxLength={20000}
           />

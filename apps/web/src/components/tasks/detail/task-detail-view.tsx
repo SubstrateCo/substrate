@@ -4,14 +4,18 @@ import { ProjectIcon } from "../projects/project-icon";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { TaskProperties } from "./task-properties";
 import { TaskSubtasks } from "./task-subtasks";
+import { CopyButton } from "@/components/feedback/copy-button";
 import { useFocusAfterRender } from "@/components/feedback/use-focus-after-render";
 import { PageSheetHeader, PageSheetBody } from "@/components/layout/page-sheet";
+import { actionRow, RowActions } from "@/components/layout/row-actions";
+import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { Pressable } from "@/components/ui/pressable";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
 import { hiddenTask } from "@/lib/tasks/task-status";
+import { cn } from "cn";
 import { ChevronRight, Pencil } from "lucide-react";
 
 /**
@@ -122,9 +126,23 @@ export function TaskDetail({
                 {task.title}
               </Heading>
               {task.description && (
-                <p className="text-sm/relaxed wrap-break-word whitespace-pre-wrap">
-                  {task.description}
-                </p>
+                <div className={cn(actionRow, "relative")}>
+                  <MessageMarkdown body={task.description} />
+                  <RowActions
+                    label="Description actions"
+                    className="absolute top-0 right-0 rounded-md bg-background"
+                  >
+                    {/* oxlint-disable-next-line design/icon-button-name -- CopyButton uses `label` as its aria-label. */}
+                    <CopyButton
+                      size="icon-sm"
+                      grouped
+                      label="Copy description"
+                      onCopy={() => navigator.clipboard.writeText(task.description)}
+                      successMessage="Description copied"
+                      errorMessage="Couldn’t copy description"
+                    />
+                  </RowActions>
+                </div>
               )}
               {!task.description && canEdit && (
                 <Pressable
