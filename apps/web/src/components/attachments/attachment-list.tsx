@@ -16,12 +16,12 @@ import { File, Download } from "lucide-react";
 export function AttachmentList({
   attachments,
   href,
-  actions,
+  renderActions,
   compact = false,
 }: {
   attachments: Attachment[];
   href: (attachment: Attachment) => string;
-  actions?: (attachment: Attachment) => ReactNode;
+  renderActions?: (attachment: Attachment) => ReactNode;
   compact?: boolean;
 }) {
   if (!attachments.length) return null;
@@ -63,7 +63,7 @@ export function AttachmentList({
                 <Download aria-hidden="true" className="size-4 text-muted-foreground" />
               </ItemActions>
             </a>
-            {actions && <ItemActions>{actions(attachment)}</ItemActions>}
+            {renderActions && <ItemActions>{renderActions(attachment)}</ItemActions>}
           </li>
         </Item>
       ))}

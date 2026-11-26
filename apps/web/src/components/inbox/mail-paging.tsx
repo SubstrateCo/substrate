@@ -213,6 +213,7 @@ export function useMailPages(
     return () => {
       request.current = undefined;
     };
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- A new navigation key drops the request started for the old one.
   }, [key]);
 
   async function next() {

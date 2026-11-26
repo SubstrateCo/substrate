@@ -73,6 +73,7 @@ function OutputLog({ output, label }: { output: string; label: string }) {
   useLayoutEffect(() => {
     const element = log.current;
     if (element && following.current) element.scrollTop = element.scrollHeight;
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Follow the end of the log after new output renders.
   }, [output]);
   return (
     <CodeBlock size="sm">

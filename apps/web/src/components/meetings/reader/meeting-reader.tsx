@@ -41,10 +41,11 @@ function ReaderContent({
   const tab = search.readerTab ?? "notes";
   const title = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
-    // A deep-linked transcript turn takes focus in its own panel.
+    // MeetingReader is keyed by meeting, so this runs once per meeting opened. A deep-linked
+    // transcript turn takes focus in its own panel.
     if (!document.activeElement?.id.startsWith("turn-"))
       title.current?.focus({ preventScroll: true });
-  }, [meeting.id]);
+  }, []);
   const people = peopleLabels(meeting.people);
   return (
     <div className="mx-auto w-full max-w-200">

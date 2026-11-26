@@ -42,6 +42,7 @@ export function useComposerDraft({
     if (!selection.current) return;
     editor.current?.focusRange(selection.current.start, selection.current.end);
     selection.current = null;
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Restore the selection after the editor applies the new draft.
   }, [draft]);
   useEffect(() => {
     currentDestination.current = draftKey;

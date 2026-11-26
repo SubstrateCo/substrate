@@ -122,7 +122,7 @@ export function TaskAttachments({
           <AttachmentList
             attachments={query.data}
             href={(attachment) => taskAttachmentUrl({ ...target, attachmentId: attachment.id })}
-            actions={
+            renderActions={
               canEdit
                 ? (attachment) => (
                     <RowActions label={`Actions for ${attachment.filename}`}>

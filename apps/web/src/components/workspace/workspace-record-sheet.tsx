@@ -50,7 +50,7 @@ export function WorkspaceRecordSheet({
             key={interactionId}
             organizationId={organizationId}
             entityId={interactionId}
-            contact={(contact) =>
+            renderContact={(contact) =>
               crmEnabled ? (
                 <Link
                   to="."

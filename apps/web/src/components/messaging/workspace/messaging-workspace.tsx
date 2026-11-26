@@ -115,7 +115,7 @@ export function MessagingWorkspace({
       loading={conversations.isPending || selecting}
       error={conversations.error}
       onRetry={() => void conversations.refetch()}
-      sectionActions={(section, onCreate) =>
+      renderSectionActions={(section, onCreate) =>
         section === "channel" ? (
           <ChannelCreateActions onCreate={onCreate} />
         ) : (

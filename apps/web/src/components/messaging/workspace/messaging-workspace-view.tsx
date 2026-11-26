@@ -32,7 +32,7 @@ export function MessagingWorkspace({
   onSidebarOpenChange,
   onSelect,
   conversationLink,
-  sectionActions,
+  renderSectionActions,
   renderCreate,
   loading = false,
   state,
@@ -50,7 +50,7 @@ export function MessagingWorkspace({
    * The actions in a sidebar section header. `onCreate` opens the create dialog; call it with
    * focus on the button that opened it, so closing the dialog can return there.
    */
-  sectionActions: (
+  renderSectionActions: (
     section: "channel" | "dm",
     onCreate: (kind: Conversation["kind"]) => void,
   ) => ReactNode;
@@ -103,7 +103,7 @@ export function MessagingWorkspace({
           selectedId={selectedId}
           onSelect={onSelect}
           conversationLink={conversationLink}
-          sectionActions={(section) => sectionActions(section, create)}
+          renderSectionActions={(section) => renderSectionActions(section, create)}
         />
         <PageContent>
           <WorkspaceContent

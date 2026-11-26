@@ -53,6 +53,7 @@ export function OrganizationSelection({
       (firstChoice.current ?? creationHeading.current)?.focus();
     }
     retryOrigin.current = null;
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Move focus once a retried load has rendered its result.
   }, [loading, loadError, organizations]);
 
   const listed = organizations ?? [];

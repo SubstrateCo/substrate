@@ -10,6 +10,7 @@ export function BrowserElectronReturn({ redirect, email }: { redirect: string; e
   const query = useElectronAuthorization();
   // Each successful transfer starts a new wait for the desktop app to take the session.
   const transferred = transfer.isSuccess ? transfer.submittedAt : 0;
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Each successful transfer restarts the wait for the desktop app.
   useEffect(() => ensureElectronRedirect(), [transferred]);
   return (
     <BrowserElectronReturnView

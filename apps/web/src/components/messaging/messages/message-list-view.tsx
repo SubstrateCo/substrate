@@ -65,6 +65,7 @@ export function MessageList({
     measure();
   });
   // Position again only when the newest message changes or the first position becomes known.
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Position only when the newest message changes or the first position becomes known.
   useLayoutEffect(() => position(), [lastId, positionReady]);
   // Runs after the effect above, so it still sees the page the previous render showed.
   useLayoutEffect(() => {

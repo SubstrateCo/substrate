@@ -1,5 +1,7 @@
 import { providerNames, type OriginalView } from "@substrate/contracts/meetings";
 
+import { createContext, useContext, type ReactNode } from "react";
+
 import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { remarkMeetingNotes } from "./remark-meeting-notes";
 import { OriginalBadge } from "@/components/meetings/sources/meeting-provider";
@@ -8,6 +10,56 @@ import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { Item, ItemContent, ItemMedia } from "@/components/ui/item";
 import { Layers3, ListTodo, Quote } from "lucide-react";
+import type { ExtraProps, Options } from "react-markdown";
+
+/** The note's source record, for the turn links inside its Markdown. */
+const NoteSource = createContext<OriginalView | null>(null);
+
+/** A cited transcript turn opens at that turn; any other span stays plain text. */
+function NoteSpan({ node, children }: ExtraProps & { children?: ReactNode }) {
+  const src = useContext(NoteSource);
+  const { change } = useMeetingsWorkspace();
+  const turn = Number(node?.properties["data-turn-index"]);
+  const citesTurn = Number.isInteger(turn) && turn >= 0 && turn < (src?.turns.length ?? 0);
+  if (!src || !citesTurn) return <span>{children}</span>;
+  return (
+    <Button
+      size="xs"
+      variant="accent"
+      onClick={() => change({ readerTab: "transcript", originalId: src.id, turn })}
+    >
+      <Quote />
+      {children}
+    </Button>
+  );
+}
+
+const noteRenderers = {
+  span: NoteSpan,
+  ul: ({ node, children, ...props }) =>
+    node?.properties["data-note-list"] ? (
+      <ul data-not-typeset className="divide-y rounded-lg border">
+        {children}
+      </ul>
+    ) : (
+      <ul {...props}>{children}</ul>
+    ),
+  li: ({ node, children, ...props }) =>
+    node?.properties["data-note-item"] ? (
+      <Item asChild size="xs" className="items-start">
+        <li>
+          <ItemMedia variant="icon">
+            <ListTodo aria-hidden className="mt-0.5 text-muted-foreground" />
+          </ItemMedia>
+          <ItemContent className="min-w-0">
+            <div>{children}</div>
+          </ItemContent>
+        </li>
+      </Item>
+    ) : (
+      <li {...props}>{children}</li>
+    ),
+} satisfies Options["components"];
 
 export function ReaderNotes({ originals }: { originals: OriginalView[] }) {
   const notes = originals.filter((r) => r.notes);
@@ -36,50 +88,13 @@ function SourceNote({ src, single }: { src: OriginalView; single: boolean }) {
           onClick={() => change({ readerTab: "sources", originalId: src.id, turn: undefined })}
         />
       </div>
-      <MarkdownBody
-        body={src.notes ?? ""}
-        remarkPlugins={[[remarkMeetingNotes, src.turns]]}
-        components={{
-          span: ({ node, children }) => {
-            const turn = Number(node?.properties["data-turn-index"]);
-            if (!Number.isInteger(turn) || turn < 0 || turn >= src.turns.length)
-              return <span>{children}</span>;
-            return (
-              <Button
-                size="xs"
-                variant="accent"
-                onClick={() => change({ readerTab: "transcript", originalId: src.id, turn })}
-              >
-                <Quote />
-                {children}
-              </Button>
-            );
-          },
-          ul: ({ node, children, ...props }) =>
-            node?.properties["data-note-list"] ? (
-              <ul data-not-typeset className="divide-y rounded-lg border">
-                {children}
-              </ul>
-            ) : (
-              <ul {...props}>{children}</ul>
-            ),
-          li: ({ node, children, ...props }) =>
-            node?.properties["data-note-item"] ? (
-              <Item asChild size="xs" className="items-start">
-                <li>
-                  <ItemMedia variant="icon">
-                    <ListTodo aria-hidden className="mt-0.5 text-muted-foreground" />
-                  </ItemMedia>
-                  <ItemContent className="min-w-0">
-                    <div>{children}</div>
-                  </ItemContent>
-                </li>
-              </Item>
-            ) : (
-              <li {...props}>{children}</li>
-            ),
-        }}
-      />
+      <NoteSource value={src}>
+        <MarkdownBody
+          body={src.notes ?? ""}
+          remarkPlugins={[[remarkMeetingNotes, src.turns]]}
+          components={noteRenderers}
+        />
+      </NoteSource>
       {src.credit && <p className="text-xs text-muted-foreground">Written by {src.credit}</p>}
     </article>
   );

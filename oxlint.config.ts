@@ -95,6 +95,10 @@ export default defineConfig({
         "react/jsx-curly-brace-presence": "error",
         "react/jsx-boolean-value": "error",
         "react/jsx-fragments": "error",
+        // Render callbacks are allowed when their prop name starts with "render".
+        "react/no-unstable-nested-components": "error",
+        // An effect that re-runs on a value it never reads needs a stated reason.
+        "react/exhaustive-effect-dependencies": "error",
         "no-restricted-properties": [
           "error",
           ...[
@@ -132,6 +136,8 @@ export default defineConfig({
       files: ["apps/web/src/components/ui/**"],
       rules: {
         "shadcn/no-restyle": "off",
+        // Generated shadcn code, such as the react-day-picker component map in calendar.tsx.
+        "react/no-unstable-nested-components": "off",
       },
     },
     {

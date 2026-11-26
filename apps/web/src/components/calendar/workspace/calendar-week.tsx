@@ -64,6 +64,7 @@ export function CalendarWeek({
       );
   });
   // Scroll once per week shown, not on every refresh of its events.
+  // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Scroll once per week shown, not on every refresh of its events.
   useLayoutEffect(() => scrollToStart(), [weekKey]);
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-x-auto">

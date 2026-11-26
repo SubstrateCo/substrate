@@ -7,6 +7,7 @@ import {
   type ReactNode,
   type RefObject,
 } from "react";
+import { flushSync } from "react-dom";
 
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { FieldDescription, FieldError } from "@/components/ui/field";
@@ -142,7 +143,6 @@ export function PeoplePicker({
   const list = useRef<HTMLDivElement>(null);
   // Where focus goes once the chips have changed: the input may not exist until then.
   const focusAfterChange = useRef<"input" | "chip">(undefined);
-  const scrollToActive = useRef(false);
   const noticeId = `${listId}-limit`;
   const options = suggestionsFor(query, people, value, allowEmail);
   const { full, notice, expanded, showInput, showOptions, description } = pickerInputState({
@@ -196,14 +196,15 @@ export function PeoplePicker({
     const move = { ArrowDown: 1, ArrowUp: -1 }[event.key];
     if (move && options.length && !full) {
       event.preventDefault();
-      scrollToActive.current = true;
-      if (showOptions) {
-        setActive((activeIndex + move + options.length) % options.length);
-      } else {
-        // A closed list opens on the end the arrow points away from.
+      let next = (activeIndex + move + options.length) % options.length;
+      // A closed list opens on the end the arrow points away from.
+      if (!showOptions) next = move > 0 ? 0 : options.length - 1;
+      // Render the move first, so the option to keep in view exists.
+      flushSync(() => {
         setOpen(true);
-        setActive(move > 0 ? 0 : options.length - 1);
-      }
+        setActive(next);
+      });
+      list.current?.children[next]?.scrollIntoView({ block: "nearest" });
     } else if (event.key === "Enter" && showOptions && options[activeIndex]) {
       event.preventDefault();
       choose(options[activeIndex], event.shiftKey);
@@ -226,14 +227,8 @@ export function PeoplePicker({
     if (target === "input") input.current?.focus();
     else if (target === "chip")
       anchor.current?.querySelector<HTMLElement>("button:last-of-type")?.focus();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Move focus after the chips change, once the input has mounted or unmounted.
   }, [value.length]);
-
-  // Keep the option chosen with the arrow keys in view, without moving focus from the input.
-  useEffect(() => {
-    if (!scrollToActive.current) return;
-    scrollToActive.current = false;
-    list.current?.children[activeIndex]?.scrollIntoView({ block: "nearest" });
-  }, [activeIndex, showOptions]);
 
   // Escape closes the suggestions first. The dialog around the field listens at the document, so
   // this must run earlier, on the window.

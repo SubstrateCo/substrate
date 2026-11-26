@@ -37,11 +37,11 @@ import { Ellipsis, Pencil, Trash2 } from "lucide-react";
 export function InteractionDetail({
   organizationId,
   entityId,
-  contact,
+  renderContact,
 }: {
   organizationId: string;
   entityId: string;
-  contact: (contact: { entityId: string; name: string }) => ReactNode;
+  renderContact: (contact: { entityId: string; name: string }) => ReactNode;
 }) {
   const sheet = usePageSheet();
   const query = useQuery(interactionRecordOptions(organizationId, entityId));
@@ -141,7 +141,10 @@ export function InteractionDetail({
           <aside aria-label="Interaction properties">
             <PropertyList>
               <Property label="Contact">
-                {contact({ entityId: interaction.contactEntityId, name: interaction.contactName })}
+                {renderContact({
+                  entityId: interaction.contactEntityId,
+                  name: interaction.contactName,
+                })}
               </Property>
               <Property label="Type">{kind}</Property>
               <Property label="When">

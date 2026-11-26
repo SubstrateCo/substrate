@@ -177,7 +177,8 @@ export function MessageList({
   const accounts = new Map(mailboxes.map((box) => [box.id, box]));
   const [today, setToday] = useState(() => new Date());
   useEffect(() => {
-    const midnight = new Date();
+    // Day labels change at the midnight after the day they were drawn for.
+    const midnight = new Date(today);
     midnight.setHours(24, 0, 0, 0);
     const timer = window.setTimeout(
       () => setToday(new Date()),

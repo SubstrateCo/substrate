@@ -94,6 +94,7 @@ export function ReferencePickerView({
     });
   useEffect(() => {
     list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Keep the selected option in view after the selection renders.
   }, [selectedId, selectedIndex]);
   return (
     <Tabs

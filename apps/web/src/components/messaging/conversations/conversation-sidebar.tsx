@@ -35,7 +35,7 @@ export function ConversationSidebar({
   selectedId,
   onSelect,
   conversationLink,
-  sectionActions,
+  renderSectionActions,
   loading = false,
   error,
   onRetry,
@@ -45,7 +45,7 @@ export function ConversationSidebar({
   selectedId?: string;
   onSelect: (id: string) => void;
   conversationLink: (id: string) => LinkProps;
-  sectionActions: ConversationSectionActions;
+  renderSectionActions: ConversationSectionActions;
   loading?: boolean;
   error?: Error | null;
   onRetry?: () => void;
@@ -71,7 +71,7 @@ export function ConversationSidebar({
               loading={loading}
               onSelect={onSelect}
               conversationLink={conversationLink}
-              sectionActions={sectionActions}
+              renderSectionActions={renderSectionActions}
             />
           ))}
         </PageSidebarContent>

@@ -261,7 +261,7 @@ function InteractionRecordSheet({
           key={recordId}
           organizationId={organizationId}
           entityId={recordId}
-          contact={(contact) => (
+          renderContact={(contact) => (
             <Link
               from="/interactions/"
               to="/interactions"

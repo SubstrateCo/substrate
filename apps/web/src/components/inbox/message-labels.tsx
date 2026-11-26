@@ -70,6 +70,7 @@ function RowLabels({ labels, all }: { labels: MailLabel[]; all: boolean }) {
     observer.observe(strip);
     for (const chip of strip.children) observer.observe(chip);
     return () => observer.disconnect();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- New chips must be measured and observed after they render.
   }, [labels, all]);
   const count = all ? fit : 1;
   const extra = labels.length - count;

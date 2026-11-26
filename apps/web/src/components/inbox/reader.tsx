@@ -44,6 +44,7 @@ export function Reader({
   const [opened, setOpened] = useState<string | null>(message.id);
   useLayoutEffect(() => {
     subject.current?.focus();
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies -- A thread's shown message can change without a remount; the subject takes focus again.
   }, [message.id]);
   return (
     <PageAside

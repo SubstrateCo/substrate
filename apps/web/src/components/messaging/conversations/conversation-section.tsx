@@ -26,7 +26,7 @@ export function ConversationSection({
   loading,
   onSelect,
   conversationLink,
-  sectionActions,
+  renderSectionActions,
 }: {
   section: keyof typeof sectionLabels;
   conversations: Conversation[];
@@ -34,7 +34,7 @@ export function ConversationSection({
   loading: boolean;
   onSelect: (id: string) => void;
   conversationLink: (id: string) => LinkProps;
-  sectionActions: ConversationSectionActions;
+  renderSectionActions: ConversationSectionActions;
 }) {
   // Partner channels include people from another organization, wherever they are hosted.
   const items = conversations.filter((conversation) =>
@@ -57,7 +57,7 @@ export function ConversationSection({
           section={section}
           collapsed={collapsed}
           count={items.length}
-          sectionActions={sectionActions}
+          renderSectionActions={renderSectionActions}
         />
         {pinned && (
           <div className="mt-0.5">
@@ -109,12 +109,12 @@ function ConversationSectionHeader({
   section,
   collapsed,
   count,
-  sectionActions,
+  renderSectionActions,
 }: {
   section: keyof typeof sectionLabels;
   collapsed: boolean;
   count: number;
-  sectionActions: ConversationSectionActions;
+  renderSectionActions: ConversationSectionActions;
 }) {
   return (
     <div className="flex h-7 items-center justify-between gap-1 pr-1 pl-2">
@@ -139,7 +139,7 @@ function ConversationSectionHeader({
           </Button>
         </CollapsibleTrigger>
       </Heading>
-      {section !== "partner" && sectionActions(section)}
+      {section !== "partner" && renderSectionActions(section)}
     </div>
   );
 }
