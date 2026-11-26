@@ -1,4 +1,5 @@
 import { folderKeys, HelperLimitError } from "@substrate/client-storage/agent-work";
+import type { AgentRoutineView } from "@substrate/contracts/agent-work";
 import {
   localToolRequest,
   type LocalToolRequest,
@@ -7,10 +8,25 @@ import {
 import { mcpTools, type LocalToolName, type McpOutput } from "@substrate/contracts/harness/tools";
 
 import { InboxToolError } from "../../mail/agent-error.ts";
+import { createRoutines } from "../routines/routines.ts";
 import type { RuntimeContext } from "../runtime/context.ts";
 import { runPrivateInbox } from "../runtime/private-inbox.ts";
 import type { Steering } from "../runtime/steering.ts";
 import type { TurnExecutor } from "../runtime/turn-executor.ts";
+
+function routineResult(view: AgentRoutineView): McpOutput<"create_routine"> {
+  return {
+    routineId: view.id,
+    name: view.name,
+    prompt: view.prompt,
+    cron: view.cron,
+    timezone: view.timezone,
+    enabled: view.enabled,
+    approved: view.approvedRevision === view.revision,
+    nextFireAt: view.nextFireAt,
+    lastFiredAt: view.lastFiredAt,
+  };
+}
 
 class ToolError extends Error {
   readonly code: string;
@@ -46,6 +62,37 @@ export function createLocalTools(
     if (!helper || helper.parentSessionId !== parentSessionId)
       throw new ToolError("NOT_FOUND", "No such helper in this session.");
     return helper;
+  }
+
+  const routines = createRoutines(context);
+  // The routine service reports a bad schedule or a missing routine as a plain error. Its
+  // messages name no private data, so the agent sees them.
+  async function routineChange<T>(work: () => Promise<T>) {
+    try {
+      return await work();
+    } catch (error) {
+      if (error instanceof Error) throw new ToolError("INVALID_INPUT", error.message);
+      throw error;
+    }
+  }
+
+  // Background turns, including a routine's own runs, cannot change routines.
+  function interactiveOnly(request: ReturnType<typeof localToolRequest.parse>) {
+    if (request.turn.kind !== "interactive")
+      throw new ToolError(
+        "FORBIDDEN",
+        "Routines can be changed only in an interactive turn. Ask your owner in a reply.",
+      );
+  }
+
+  async function ownRoutine(userAgentId: string, routineId: string) {
+    const routine = await context.store.routines.get(routineId);
+    if (
+      !routine ||
+      routine.organizationId !== context.organizationId ||
+      routine.userAgentId !== userAgentId
+    )
+      throw new ToolError("NOT_FOUND", "No such routine of yours.");
   }
 
   function liveHelperTurn(helperId: string) {
@@ -118,6 +165,32 @@ export function createLocalTools(
         await context.store.helpers.finish(current.id, input.report, now);
         context.changed({ userAgentId: current.userAgentId });
         return { saved: true };
+      }
+      case "list_routines": {
+        mcpTools.list_routines.input.parse(request.input);
+        return { items: (await routines.list(current.userAgentId)).map(routineResult) };
+      }
+      case "create_routine": {
+        const input = mcpTools.create_routine.input.parse(request.input);
+        interactiveOnly(request);
+        // Agent routines post to the owner's direct message, which the approval list implies.
+        const created = await routineChange(() =>
+          routines.create({ agentId: current.userAgentId, destination: null, ...input }),
+        );
+        return routineResult(created);
+      }
+      case "update_routine": {
+        const input = mcpTools.update_routine.input.parse(request.input);
+        interactiveOnly(request);
+        await ownRoutine(current.userAgentId, input.routineId);
+        return routineResult(await routineChange(() => routines.update(input)));
+      }
+      case "delete_routine": {
+        const input = mcpTools.delete_routine.input.parse(request.input);
+        interactiveOnly(request);
+        await ownRoutine(current.userAgentId, input.routineId);
+        await routineChange(() => routines.delete(input.routineId));
+        return { deleted: true };
       }
       case "remember":
       case "forget":

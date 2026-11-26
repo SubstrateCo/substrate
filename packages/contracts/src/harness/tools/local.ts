@@ -1,5 +1,32 @@
+import { routineFields } from "../../agent-work/routines.ts";
 import { id, requestId, timestamp } from "./shared.ts";
 import { z } from "zod";
+
+/** The routine fields an agent may set. Agent routines always post to the owner's DM. */
+const routineInput = {
+  name: routineFields.name,
+  prompt: routineFields.prompt.describe(
+    "What to do on each run. It reaches you as a routine item in a background turn.",
+  ),
+  cron: routineFields.cron.describe(
+    'Five fields: minute hour day-of-month month day-of-week, such as "0 9 * * 1-5".',
+  ),
+  timezone: routineFields.timezone.describe("An IANA time zone, such as Europe/Berlin."),
+  enabled: routineFields.enabled.describe("False pauses the routine without deleting it."),
+};
+const routine = z.object({
+  routineId: id,
+  name: z.string(),
+  prompt: z.string(),
+  cron: z.string(),
+  timezone: z.string(),
+  enabled: z.boolean(),
+  approved: z
+    .boolean()
+    .describe("False until your owner approves this version. Only approved routines run."),
+  nextFireAt: timestamp.nullable(),
+  lastFiredAt: timestamp.nullable(),
+});
 
 const layer = z
   .enum(["profile", "log", "notes"])
@@ -99,6 +126,49 @@ export const localTools = {
     readOnly: false,
     input: z.object({ helperId: id }).strict(),
     output: z.object({ helperId: id, status: helperStatus }),
+  },
+  list_routines: {
+    title: "List routines",
+    description:
+      "List your routines: scheduled work that starts a background turn and posts in your owner's direct message with you.",
+    readOnly: true,
+    input: z.object({}).strict(),
+    output: z.object({ items: z.array(routine) }),
+  },
+  create_routine: {
+    title: "Create routine",
+    description:
+      "Create a routine for scheduled work. It runs only after your owner approves it in your Routines settings, so tell them it is waiting. Check list_routines first so you do not create a duplicate. Interactive turns only.",
+    readOnly: false,
+    input: z.object({ ...routineInput, enabled: routineInput.enabled.default(true) }).strict(),
+    output: routine,
+  },
+  update_routine: {
+    title: "Update routine",
+    description:
+      "Change only the fields you supply. A new name, prompt, schedule or time zone stops the routine until your owner approves the change; tell them. Pausing or resuming with enabled needs no approval. Interactive turns only.",
+    readOnly: false,
+    destructive: true,
+    input: z
+      .object({
+        routineId: id,
+        changes: z
+          .object(routineInput)
+          .partial()
+          .strict()
+          .refine((value) => Object.keys(value).length > 0, "Supply at least one change"),
+      })
+      .strict(),
+    output: routine,
+  },
+  delete_routine: {
+    title: "Delete routine",
+    description:
+      "Delete one of your routines. Its future runs stop and a queued run is dropped. Work it already did stays. Interactive turns only.",
+    readOnly: false,
+    destructive: true,
+    input: z.object({ routineId: id }).strict(),
+    output: z.object({ deleted: z.literal(true) }),
   },
   finish_helper: {
     title: "Finish helper",
