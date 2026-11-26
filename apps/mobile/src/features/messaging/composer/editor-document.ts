@@ -1,4 +1,5 @@
-import { referenceKinds } from "@/features/messaging/references/reference-tokens";
+import { referenceKinds } from "@substrate/contracts/messaging/references";
+
 import { referenceDisplay, type DraftPart } from "@/features/messaging/references/token-draft";
 import { z } from "zod";
 

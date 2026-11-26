@@ -1,9 +1,6 @@
-/** Kinds a message token can name. The server resolves each one with the reader's access. */
-export const referenceKinds = ["task", "project", "person", "agent", "channel", "thread"] as const;
-export type ReferenceKind = (typeof referenceKinds)[number];
+import type { ReferenceKind } from "@substrate/contracts/messaging/references";
 
-const referenceTokenPattern =
-  /@\[(task|project|person|agent|channel|thread):([0-9a-f-]{36})\]/gi;
+const referenceTokenPattern = /@\[(task|project|person|agent|channel|thread):([0-9a-f-]{36})\]/gi;
 
 export function referenceToken(kind: ReferenceKind, id: string): string {
   return `@[${kind}:${id}]`;

@@ -11,22 +11,6 @@ export function isEmailAddress(value: string) {
   return email.length <= 320 && emailPattern.test(email);
 }
 
-export function matchPeople(
-  people: readonly PickerPerson[],
-  query: string,
-  chosen: readonly PickedRecipient[],
-) {
-  const search = normalize(query);
-  const taken = new Set(chosen.map((recipient) => recipient.email));
-  return people.filter(
-    (person) =>
-      !taken.has(normalize(person.email)) &&
-      (!search ||
-        person.name.toLowerCase().includes(search) ||
-        person.email.toLowerCase().includes(search)),
-  );
-}
-
 /** The recipient for a typed address. An address of a workspace member picks that person. */
 export function recipientFor(text: string, people: readonly PickerPerson[]) {
   const email = normalize(text);

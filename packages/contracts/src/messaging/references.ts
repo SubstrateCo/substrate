@@ -1,14 +1,21 @@
-import type { ReferenceKind } from "./reference-picker-view";
+/** Kinds a message reference can name. The server resolves each one with the reader's access. */
+export const referenceKinds = ["task", "project", "person", "agent", "channel", "thread"] as const;
+export type ReferenceKind = (typeof referenceKinds)[number];
+
+/** A picker tab: one kind, or "all" for a mixed list. */
+export type ReferenceTab = ReferenceKind | "all";
 
 export type ReferenceQuery = {
   start: number;
   end: number;
   trigger: "@" | "#";
-  kind: ReferenceKind | "all";
+  kind: ReferenceTab;
   query: string;
 };
 
+/** The `@` or `#` query that ends at the caret, or null when the caret is not in one. */
 export function referenceQuery(draft: string, caret: number): ReferenceQuery | null {
+  if (caret < 0) return null;
   const before = draft.slice(0, caret);
   // Markdown code is literal, not a place to insert references.
   if (
@@ -28,7 +35,7 @@ export function referenceQuery(draft: string, caret: number): ReferenceQuery | n
   const prefix = (
     trigger === "#" ? /^(channel|thread)s?:/i : /^(user|agent|task|project)s?:/i
   ).exec(text);
-  let kind: ReferenceQuery["kind"] = trigger === "#" ? "channel" : "all";
+  let kind: ReferenceTab = trigger === "#" ? "channel" : "all";
   if (prefix) {
     // SAFETY: The patterns allow only these names. Only "user" differs from its kind.
     const name = prefix[1]!.toLowerCase() as Exclude<ReferenceKind, "person"> | "user";
@@ -41,4 +48,30 @@ export function referenceQuery(draft: string, caret: number): ReferenceQuery | n
     kind,
     query: (prefix ? text.slice(prefix[0].length) : text).trim(),
   };
+}
+
+type WorkLink = { entityId: string; purpose: string; canRemove: boolean };
+
+/**
+ * The work to list under a message. Mentions already show as chips in the body, so they are not
+ * repeated. A record linked for several reasons shows once: it says "Created here" when the
+ * message created it, and it can be unlinked when any of its links can.
+ */
+export function attachedWork<T extends WorkLink>(links: readonly T[]) {
+  const byEntity = new Map<string, T>();
+  for (const link of links) {
+    if (link.purpose === "mention") continue;
+    const seen = byEntity.get(link.entityId);
+    byEntity.set(
+      link.entityId,
+      seen
+        ? {
+            ...seen,
+            purpose: seen.purpose === "source" ? seen.purpose : link.purpose,
+            canRemove: seen.canRemove || link.canRemove,
+          }
+        : link,
+    );
+  }
+  return [...byEntity.values()];
 }

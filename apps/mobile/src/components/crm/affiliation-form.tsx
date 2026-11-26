@@ -6,6 +6,14 @@ import { SwitchField, TextField } from "@/features/records/ui/fields";
 import { FormSheet } from "@/features/records/ui/sheet";
 import type { QueryScope } from "@/queries/keys";
 
+/** A saved affiliation, seen from one side. `otherEntityId` is the record on the other side. */
+export type Affiliation = {
+  otherEntityId: string;
+  name: string;
+  title: string;
+  isPrimary: boolean;
+};
+
 /** Links a contact to an account. Linking does not share either record. */
 export function AffiliationForm({
   scope,
@@ -17,7 +25,7 @@ export function AffiliationForm({
   mode:
     | { fixed: "contact"; contactEntityId: string }
     | { fixed: "account"; accountEntityId: string };
-  affiliation?: { otherEntityId: string; name: string; title: string; isPrimary: boolean };
+  affiliation?: Affiliation;
   onClose: () => void;
 }) {
   const write = useCrmWrite(scope);

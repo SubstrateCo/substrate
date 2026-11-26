@@ -1,4 +1,8 @@
-import type { PickedRecipient, PickerPerson } from "@substrate/contracts/people/picker";
+import {
+  matchPeople,
+  type PickedRecipient,
+  type PickerPerson,
+} from "@substrate/contracts/people/picker";
 
 import { useState } from "react";
 import { View } from "react-native";
@@ -9,11 +13,7 @@ import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Text } from "@/components/ui/text";
-import {
-  isEmailAddress,
-  matchPeople,
-  recipientFor,
-} from "@/features/messaging/conversations/recipients";
+import { isEmailAddress, recipientFor } from "@/features/messaging/conversations/recipients";
 import { X } from "lucide-react-native";
 
 const suggestionLimit = 6;

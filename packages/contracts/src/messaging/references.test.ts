@@ -1,4 +1,4 @@
-import { referenceQuery } from "./reference-query";
+import { attachedWork, referenceQuery } from "./references";
 import { describe, expect, test } from "bun:test";
 
 describe("reference query", () => {
@@ -77,4 +77,24 @@ describe("reference query", () => {
     "does not open a hashtag picker for %s",
     (draft) => expect(referenceQuery(draft, draft.length)).toBeNull(),
   );
+});
+
+describe("attached work", () => {
+  const link = (entityId: string, purpose: string, canRemove = false) => ({
+    entityId,
+    purpose,
+    canRemove,
+  });
+
+  test("mentions are not repeated under the message", () => {
+    expect(attachedWork([link("a", "mention"), link("b", "association", true)])).toEqual([
+      link("b", "association", true),
+    ]);
+  });
+
+  test("a record linked for several reasons shows once, keeps its source, and stays removable", () => {
+    expect(
+      attachedWork([link("a", "source"), link("a", "mention"), link("a", "association", true)]),
+    ).toEqual([link("a", "source", true)]);
+  });
 });

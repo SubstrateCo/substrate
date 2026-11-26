@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Linking, RefreshControl, ScrollView, View } from "react-native";
 
 import { AccountForm } from "./account-form";
-import { AffiliationForm } from "./affiliation-form";
+import { AffiliationForm, type Affiliation } from "./affiliation-form";
 import { CrmActivityLog } from "./crm-activity";
 import { DealForm } from "./deal-form";
 import { FollowUps } from "./follow-ups";
@@ -55,18 +55,10 @@ export function AccountDetailView({
   const [creatingDeal, setCreatingDeal] = useState(false);
   const [affiliating, setAffiliating] = useState(false);
   const [archiving, setArchiving] = useState(false);
-  const [personMenu, setPersonMenu] = useState<{
-    contactEntityId: string;
-    name: string;
-    title: string;
-    isPrimary: boolean;
-  } | null>(null);
-  const [editingAffiliation, setEditingAffiliation] = useState<{
-    otherEntityId: string;
-    name: string;
-    title: string;
-    isPrimary: boolean;
-  } | null>(null);
+  const [personMenu, setPersonMenu] = useState<
+    (Omit<Affiliation, "otherEntityId"> & { contactEntityId: string }) | null
+  >(null);
+  const [editingAffiliation, setEditingAffiliation] = useState<Affiliation | null>(null);
 
   if (query.isPending)
     return (

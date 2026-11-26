@@ -1,3 +1,5 @@
+import { inFlightReads } from "@substrate/contracts/in-flight";
+
 import type { QueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
@@ -18,7 +20,7 @@ export interface MessageLocation {
   threadId?: string;
 }
 
-const reads = new WeakMap<QueryClient, Map<string, Promise<boolean>>>();
+const reads = inFlightReads<QueryClient, boolean>();
 
 function latestPage(client: QueryClient, location: MessageLocation) {
   const { queryKey } = messagesQueryOptions(
@@ -130,7 +132,7 @@ export async function appendNewMessages(
   const query = latestPage(client, location);
   if (!query) return false;
   const has = () => !!messageId && !!query.state.data?.some((row) => row.id === messageId);
-  const running = reads.get(client)?.get(query.queryHash);
+  const running = reads.running(client, query.queryHash);
   if (running) await running;
   if (has()) return true;
   if (
@@ -157,12 +159,5 @@ export async function appendNewMessages(
       client.setQueryData(query.queryKey, [...current, ...added].slice(-historyPageSize));
     return true;
   })();
-  const pending = reads.get(client) ?? new Map<string, Promise<boolean>>();
-  reads.set(client, pending);
-  pending.set(query.queryHash, read);
-  try {
-    return await read;
-  } finally {
-    if (pending.get(query.queryHash) === read) pending.delete(query.queryHash);
-  }
+  return reads.track(client, query.queryHash, read);
 }

@@ -265,6 +265,14 @@ type ListProps = {
   filters: ReactNode;
 };
 
+type CreatableListProps = ListProps & { creating: boolean; onCreateClose: () => void };
+
+/** The list's search text, and the debounced term its query reads. */
+function useListSearch() {
+  const [search, setSearch] = useState("");
+  return { search, setSearch, term: useDebounced(search.trim()) };
+}
+
 function ContactList({
   scope,
   archived,
@@ -272,9 +280,8 @@ function ContactList({
   filters,
   creating,
   onCreateClose,
-}: ListProps & { creating: boolean; onCreateClose: () => void }) {
-  const [search, setSearch] = useState("");
-  const term = useDebounced(search.trim());
+}: CreatableListProps) {
+  const { search, setSearch, term } = useListSearch();
   const query = useInfiniteQuery(
     recordQueries.contacts(scope, term, archived ? "archived" : "active"),
   );
@@ -337,9 +344,8 @@ function AccountList({
   filters,
   creating,
   onCreateClose,
-}: ListProps & { creating: boolean; onCreateClose: () => void }) {
-  const [search, setSearch] = useState("");
-  const term = useDebounced(search.trim());
+}: CreatableListProps) {
+  const { search, setSearch, term } = useListSearch();
   const query = useInfiniteQuery(
     recordQueries.accounts(scope, term, archived ? "archived" : "active"),
   );
@@ -412,8 +418,7 @@ function NewAccount({
 }
 
 function DealList({ scope, archived, onOpenRecord, filters }: ListProps) {
-  const [search, setSearch] = useState("");
-  const term = useDebounced(search.trim());
+  const { search, setSearch, term } = useListSearch();
   const query = useInfiniteQuery(
     recordQueries.deals(scope, term, archived ? "archived" : "active"),
   );

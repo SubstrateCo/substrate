@@ -1,13 +1,24 @@
 import { ValidationError, mapPostgresError } from "../../errors";
 import { RepositoryContext, pageSize, type EntityAccess } from "../repository-context";
 import { entityLinks } from "./schema";
-import { and, asc, eq, or, sql } from "drizzle-orm";
+import { and, asc, eq, or, sql, type SQLWrapper } from "drizzle-orm";
 
 /** A `related_to` link connects two entities in no direction. It is stored in ID order. */
 export function relatedPair(entityId: string, otherEntityId: string) {
   return entityId < otherEntityId
     ? { sourceEntityId: entityId, targetEntityId: otherEntityId }
     : { sourceEntityId: otherEntityId, targetEntityId: entityId };
+}
+
+/** Matches a `related_to` link between two entities, with either one stored as the source. */
+export function relatedLink(entityId: string | SQLWrapper, otherEntityId: string | SQLWrapper) {
+  return and(
+    eq(entityLinks.relationType, "related_to"),
+    or(
+      and(eq(entityLinks.sourceEntityId, entityId), eq(entityLinks.targetEntityId, otherEntityId)),
+      and(eq(entityLinks.targetEntityId, entityId), eq(entityLinks.sourceEntityId, otherEntityId)),
+    ),
+  );
 }
 
 // `entityId` is the record being edited; `otherEntityId` only needs to be readable.

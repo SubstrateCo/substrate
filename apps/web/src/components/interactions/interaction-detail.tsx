@@ -15,17 +15,13 @@ import {
   InteractionChangeDialog,
   type InteractionChange,
 } from "@/components/interactions/interaction-change-dialog";
+import { MoreActionsTrigger } from "@/components/layout/more-actions-trigger";
 import { PageSheetBody, PageSheetHeader } from "@/components/layout/page-sheet";
 import { usePageSheet } from "@/components/layout/page-sheet-context";
 import { Property, PropertyList, RecordSection } from "@/components/layout/record-section";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem } from "@/components/ui/dropdown-menu";
 import { Heading } from "@/components/ui/heading";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
@@ -33,7 +29,7 @@ import { useWorkspaceScope } from "@/components/workspace/workspace-scope-contex
 import { interactionLink } from "@/lib/navigation/record-links";
 import { useInteractionSources } from "@/queries/calendar/interaction-sources";
 import { interactionRecordOptions } from "@/queries/context/interactions";
-import { Ellipsis, Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2 } from "lucide-react";
 
 /** Interaction details in a `PageSheet`. The host renders the contact link, which depends on the page. */
 export function InteractionDetail({
@@ -104,16 +100,7 @@ export function InteractionDetail({
             <CopyLink link={interactionLink(organizationId, entityId)} grouped />
             {canDelete && (
               <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon-sm" aria-label="More actions">
-                        <Ellipsis aria-hidden="true" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>More actions</TooltipContent>
-                </Tooltip>
+                <MoreActionsTrigger />
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem variant="destructive" onSelect={() => open("delete")}>
                     <Trash2 aria-hidden="true" />

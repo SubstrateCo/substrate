@@ -1,7 +1,8 @@
-import type {
-  PickedRecipient,
-  PickerAgent,
-  PickerPerson,
+import {
+  matchPeople,
+  type PickedRecipient,
+  type PickerAgent,
+  type PickerPerson,
 } from "@substrate/contracts/people/picker";
 
 import {
@@ -22,7 +23,6 @@ import {
   addTypedRecipients,
   isEmailAddress,
   limitMessage,
-  matchPeople,
   recipientFor,
   recipientKey,
 } from "@/lib/people/people-picker";

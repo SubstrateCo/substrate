@@ -1,7 +1,6 @@
 import {
   createConversationProblem,
   invitedRecipients,
-  matchPeople,
   recipientEmails,
   recipientFor,
 } from "./recipients";
@@ -20,8 +19,6 @@ describe("recipients", () => {
     expect(invitedRecipients(recipients)).toEqual([invitation]);
     expect(recipientEmails([agent])).toEqual([]);
     expect(invitedRecipients([agent])).toEqual([]);
-    expect(matchPeople([ada], "", [agent])).toEqual([ada]);
-    expect(matchPeople([ada], "", recipients)).toEqual([]);
   });
 
   test("a typed member address picks the member; another address is an invitation", () => {

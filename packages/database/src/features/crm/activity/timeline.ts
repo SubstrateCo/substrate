@@ -4,12 +4,13 @@ import { requireAppEnabled } from "../../../core/apps/access";
 import { interactionReadable } from "../../../core/contacts/access";
 import { contactInteractionRepository } from "../../../core/contacts/interactions/interactions.repository";
 import { contactInteractions } from "../../../core/contacts/interactions/interactions.schema";
+import { relatedLink } from "../../../core/links/repository";
 import { entityLinks } from "../../../core/links/schema";
 import type { RepositoryContext } from "../../../core/repository-context";
 import { pageSize } from "../../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../../errors";
-import { presentInteractions } from "./actor-views";
 import { crmAffiliations, crmDealContacts } from "../schema";
+import { presentInteractions } from "./actor-views";
 import { and, eq, exists, inArray, or, sql, type SQLWrapper } from "drizzle-orm";
 
 type Options = {
@@ -33,17 +34,7 @@ export function interactionScope(
       .where(
         and(
           eq(entityLinks.organizationId, scope.organizationId),
-          eq(entityLinks.relationType, "related_to"),
-          or(
-            and(
-              eq(entityLinks.sourceEntityId, entityId),
-              eq(entityLinks.targetEntityId, contactInteractions.entityId),
-            ),
-            and(
-              eq(entityLinks.targetEntityId, entityId),
-              eq(entityLinks.sourceEntityId, contactInteractions.entityId),
-            ),
-          ),
+          relatedLink(entityId, contactInteractions.entityId),
         ),
       ),
   );

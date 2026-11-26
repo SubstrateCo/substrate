@@ -9,6 +9,7 @@ import {
   skipToken,
   useMutation,
   useQueryClient,
+  type QueryKey,
 } from "@tanstack/react-query";
 
 import {
@@ -25,6 +26,32 @@ const pageLimit = 100;
 /** The first page of a cursor list, typed as the cursor later pages use. */
 const noCursor = <T>(): T | undefined => undefined;
 type Archive = "active" | "archived";
+type ListRead<Row> = (
+  input: { organizationId: string; search: string; archived: Archive; afterEntityId?: string },
+  options: { signal: AbortSignal },
+) => Promise<Row[]>;
+
+/** A searchable record list, read in pages after the last entity of the page before. */
+function searchPages<Row, Key extends QueryKey>(
+  scope: QueryScope,
+  queryKey: Key,
+  { search, archived }: { search: string; archived: Archive },
+  read: ListRead<Row>,
+  entityIdOf: (row: Row) => string,
+) {
+  // oxlint-disable-next-line @tanstack/query/exhaustive-deps -- each caller builds the key from this scope, search and archive.
+  return infiniteQueryOptions({
+    queryKey,
+    queryFn: ({ signal, pageParam }) =>
+      read(
+        { organizationId: scope.organizationId, search, archived, afterEntityId: pageParam },
+        { signal },
+      ),
+    initialPageParam: noCursor<string>(),
+    getNextPageParam: (page) => (page.length === pageLimit ? entityIdOf(page.at(-1)!) : undefined),
+    retry: false,
+  });
+}
 
 /** The account and workspace every record query is keyed by. */
 export function useRecordScope(organizationId: string): QueryScope {
@@ -83,18 +110,13 @@ export const recordQueries = {
       retry: false,
     }),
   contacts: (scope: QueryScope, search: string, archived: Archive = "active") =>
-    infiniteQueryOptions({
-      queryKey: queryKeys.list(scope, "contacts", { search, archived }),
-      queryFn: ({ signal, pageParam }) =>
-        recordRequests.contacts(
-          { organizationId: scope.organizationId, search, archived, afterEntityId: pageParam },
-          { signal },
-        ),
-      initialPageParam: noCursor<string>(),
-      getNextPageParam: (page) =>
-        page.length === pageLimit ? page.at(-1)?.contact.entityId : undefined,
-      retry: false,
-    }),
+    searchPages(
+      scope,
+      queryKeys.list(scope, "contacts", { search, archived }),
+      { search, archived },
+      recordRequests.contacts,
+      (row) => row.contact.entityId,
+    ),
   contact: (scope: QueryScope, entityId: string) =>
     queryOptions({
       queryKey: queryKeys.detail(scope, "contacts", entityId),
@@ -103,17 +125,13 @@ export const recordQueries = {
       retry: false,
     }),
   accounts: (scope: QueryScope, search: string, archived: Archive = "active") =>
-    infiniteQueryOptions({
-      queryKey: queryKeys.list(scope, "crm", { accounts: archived, search }),
-      queryFn: ({ signal, pageParam }) =>
-        recordRequests.accounts(
-          { organizationId: scope.organizationId, search, archived, afterEntityId: pageParam },
-          { signal },
-        ),
-      initialPageParam: noCursor<string>(),
-      getNextPageParam: (page) => (page.length === pageLimit ? page.at(-1)?.entityId : undefined),
-      retry: false,
-    }),
+    searchPages(
+      scope,
+      queryKeys.list(scope, "crm", { accounts: archived, search }),
+      { search, archived },
+      recordRequests.accounts,
+      (row) => row.entityId,
+    ),
   account: (scope: QueryScope, entityId: string) =>
     queryOptions({
       queryKey: queryKeys.detail(scope, "crm", entityId),
@@ -123,17 +141,13 @@ export const recordQueries = {
     }),
   /** Deals by search. Closed deals are included, so the list can show won and lost ones. */
   deals: (scope: QueryScope, search: string, archived: Archive = "active") =>
-    infiniteQueryOptions({
-      queryKey: queryKeys.list(scope, "crm", { deals: archived, search }),
-      queryFn: ({ signal, pageParam }) =>
-        recordRequests.deals(
-          { organizationId: scope.organizationId, search, archived, afterEntityId: pageParam },
-          { signal },
-        ),
-      initialPageParam: noCursor<string>(),
-      getNextPageParam: (page) => (page.length === pageLimit ? page.at(-1)?.entityId : undefined),
-      retry: false,
-    }),
+    searchPages(
+      scope,
+      queryKeys.list(scope, "crm", { deals: archived, search }),
+      { search, archived },
+      recordRequests.deals,
+      (row) => row.entityId,
+    ),
   deal: (scope: QueryScope, entityId: string) =>
     queryOptions({
       queryKey: queryKeys.detail(scope, "crm", entityId),

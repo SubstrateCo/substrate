@@ -1,7 +1,8 @@
+import { attachedWork } from "@substrate/contracts/messaging/references";
+
 import { isAccessFailure } from "@/api/access-failure";
 import type { MessagePageContext } from "@/api/context/links";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
-import { attachedWork } from "@/components/messaging/messages/attached-work";
 import { MessageWork } from "@/components/messaging/messages/message-work";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";

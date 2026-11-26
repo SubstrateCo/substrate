@@ -1,4 +1,5 @@
 import type { AgentCallMode } from "@substrate/contracts/agents";
+import type { ReferenceKind, ReferenceTab } from "@substrate/contracts/messaging/references";
 import { taskStatusLabels, type TaskStatus } from "@substrate/contracts/tasks";
 
 import { useContext, useEffect, useId, useImperativeHandle, useRef, useState } from "react";
@@ -11,9 +12,6 @@ import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export type ReferenceKind = "task" | "project" | "person" | "agent" | "channel" | "thread";
-/** A picker tab: one kind, or "all" for a mixed list. */
-export type ReferenceTab = ReferenceKind | "all";
 const kindLabels: Record<ReferenceTab, string> = {
   all: "All",
   person: "People",

@@ -5,6 +5,46 @@ type CreateRule = Exclude<Rule, { createOnce: object }>;
 export type Context = Parameters<CreateRule["create"]>[0];
 export type AstNode = Parameters<Context["sourceCode"]["isGlobalReference"]>[0];
 export type NodeOf<T extends AstNode["type"]> = Extract<AstNode, { type: T }>;
+type OpeningElement = NodeOf<"JSXOpeningElement">;
+
+/** The written name of a JSX element: `Button`, `h1`, or `Tooltip.Trigger`. */
+export function elementName(name: OpeningElement["name"]): string {
+  if (name.type === "JSXIdentifier") return name.name;
+  if (name.type === "JSXNamespacedName") return `${name.namespace.name}:${name.name.name}`;
+  return `${elementName(name.object)}.${name.property.name}`;
+}
+
+/** The import behind a JSX name, without mistaking a shadowing local for that import. */
+export function elementImport(context: Context, node: OpeningElement) {
+  const parts = elementName(node.name).split(".");
+  const local = parts[0]!;
+  for (
+    let scope: ReturnType<Context["sourceCode"]["getScope"]> | null =
+      context.sourceCode.getScope(node);
+    scope;
+    scope = scope.upper
+  ) {
+    const variable = scope.set.get(local);
+    if (!variable) continue;
+    for (const definition of variable.defs) {
+      if (definition.type !== "ImportBinding") continue;
+      const specifier = definition.node;
+      const declaration = specifier.parent;
+      if (declaration?.type !== "ImportDeclaration" || declaration.importKind === "type") continue;
+      if (specifier.type === "ImportSpecifier" && specifier.importKind !== "type") {
+        if (parts.length !== 1) return;
+        const imported = specifier.imported;
+        return {
+          source: declaration.source.value,
+          name: imported.type === "Identifier" ? imported.name : imported.value,
+        };
+      }
+      if (specifier.type === "ImportNamespaceSpecifier" && parts.length === 2)
+        return { source: declaration.source.value, name: parts[1]! };
+    }
+    return;
+  }
+}
 
 /**
  * The dotted path of an identifier or a member chain: `c.req.json`. A base that is not a

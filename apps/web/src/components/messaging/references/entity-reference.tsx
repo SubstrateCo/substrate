@@ -1,8 +1,8 @@
+import type { ReferenceKind } from "@substrate/contracts/messaging/references";
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
 import { Link } from "@tanstack/react-router";
 
-import type { ReferenceKind } from "./reference-picker-view";
 import { entityKinds } from "@/components/context/entity-kinds";
 import { useHasPersonCard } from "@/components/messaging/people/person-card-context";
 import { PersonCardTarget } from "@/components/messaging/people/person-card-slot";

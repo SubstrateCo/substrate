@@ -1,11 +1,9 @@
+import type { ReferenceKind, ReferenceTab } from "@substrate/contracts/messaging/references";
+
 import { useQueryClient } from "@tanstack/react-query";
 
 import { useEffect } from "react";
 
-import type {
-  ReferenceKind,
-  ReferenceTab,
-} from "@/components/messaging/references/reference-picker-view";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { searchOptions, type SearchInput } from "@/queries/context/search";

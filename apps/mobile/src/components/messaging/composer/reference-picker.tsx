@@ -1,3 +1,5 @@
+import type { ReferenceQuery, ReferenceTab } from "@substrate/contracts/messaging/references";
+
 import { useState } from "react";
 
 import { ReferencePickerView, type ReferenceOption } from "./reference-picker-view";
@@ -6,7 +8,6 @@ import {
   useReferenceSearch,
   useMessagingApps,
 } from "@/features/messaging/queries/use-reference-search";
-import type { ReferenceQuery, ReferenceTab } from "@/features/messaging/references/reference-query";
 
 export function ReferencePicker({
   organizationId,

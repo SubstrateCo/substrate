@@ -1,8 +1,8 @@
+import type { ReferenceKind } from "@substrate/contracts/messaging/references";
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
 import type { ReactNode } from "react";
 
-import type { ReferenceKind } from "./reference-picker-view";
 import { entityKinds } from "@/components/context/entity-kinds";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { PersonAvatar } from "@/components/people/person-avatar";

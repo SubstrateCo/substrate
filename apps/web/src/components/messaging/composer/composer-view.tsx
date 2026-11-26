@@ -1,3 +1,5 @@
+import { referenceQuery, type ReferenceQuery } from "@substrate/contracts/messaging/references";
+
 import { useContext, useId, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
@@ -8,8 +10,6 @@ import {
   ReferencePickerLink,
   type ReferencePickerHandle,
 } from "../references/reference-picker-context";
-import { referenceQuery } from "../references/reference-query";
-import type { ReferenceQuery } from "../references/reference-query";
 import { ComposerDraftReferences } from "./composer-draft-context";
 import { composerFormats } from "./composer-formats";
 import { ComposerToolbar } from "./composer-toolbar";

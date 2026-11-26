@@ -5,11 +5,10 @@ import { View } from "react-native";
 
 import { ReferencePicker } from "../composer/reference-picker";
 import { ReferenceTextInput } from "../composer/reference-text-input";
+import { useReferenceEditing } from "../composer/use-reference-editing";
 import { Text } from "@/components/ui/text";
 import {
-  activeReferenceQuery,
   bodyFromParts,
-  insertReference,
   partsFromBody,
   type ReferenceLabels,
 } from "@/features/messaging/references/token-draft";
@@ -37,10 +36,8 @@ export function MessageEditSheet({
   onClose: () => void;
 }) {
   const [parts, setParts] = useState(() => partsFromBody(body, labels));
-  const [caret, setCaret] = useState(0);
-  const [caretRequest, setCaretRequest] = useState<{ id: number; caret: number }>();
+  const { query, caretRequest, setCaret, pick } = useReferenceEditing(parts, setParts);
   const next = bodyFromParts(parts).trim();
-  const query = activeReferenceQuery(parts, caret);
   const valid = (!!next || hasAttachments) && next.length <= messagingLimits.body;
   return (
     <FormSheet
@@ -68,19 +65,7 @@ export function MessageEditSheet({
             organizationId={organizationId}
             conversationId={conversationId}
             query={query}
-            onPick={(option) => {
-              const inserted = insertReference(parts, query, {
-                kind: option.kind,
-                id: option.id,
-                label: option.title,
-              });
-              setParts(inserted.parts);
-              setCaret(inserted.caret);
-              setCaretRequest((previous) => ({
-                id: (previous?.id ?? 0) + 1,
-                caret: inserted.caret,
-              }));
-            }}
+            onPick={pick}
           />
         ) : null}
       </View>

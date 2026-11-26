@@ -1,7 +1,6 @@
 import {
   addTypedRecipients,
   limitMessage,
-  matchPeople,
   recipientFor,
   recipientAgentIds,
   recipientEmails,
@@ -23,16 +22,7 @@ test("agents stay distinct from people and email invitations", () => {
   expect(recipientAgentIds(selected)).toEqual(["u1"]);
   expect(invitedRecipients(selected)).toEqual([invitation]);
   expect(recipientKey(agent)).not.toBe(recipientKey(person));
-  expect(matchPeople([ada, bob], "", [agent])).toEqual([ada, bob]);
   expect(addTypedRecipients([agent], ada.email, [ada], { max: 1 }).overflow).toBe(true);
-});
-
-test("people match by name or email and chosen people drop out", () => {
-  expect(matchPeople([ada, bob], "chen", [])).toEqual([bob]);
-  expect(matchPeople([ada, bob], "NORTHSTAR", [])).toEqual([ada, bob]);
-  expect(matchPeople([ada, bob], "", [{ email: "bob@northstar.test", person: bob }])).toEqual([
-    ada,
-  ]);
 });
 
 test("a typed address of an offered person picks that person instead of inviting them", () => {

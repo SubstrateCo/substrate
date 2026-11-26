@@ -10,23 +10,6 @@ export function isEmailAddress(value: string) {
 
 const normalize = (value: string) => value.trim().toLowerCase();
 
-/** People who match the query by name or email and are not chosen yet, in their given order. */
-export function matchPeople(
-  people: readonly PickerPerson[],
-  query: string,
-  chosen: readonly PickedRecipient[],
-) {
-  const search = normalize(query);
-  const taken = new Set(chosen.map((recipient) => recipient.email));
-  return people.filter(
-    (person) =>
-      !taken.has(normalize(person.email)) &&
-      (!search ||
-        person.name.toLowerCase().includes(search) ||
-        person.email.toLowerCase().includes(search)),
-  );
-}
-
 /** The recipient for one typed address. An address of an offered person picks that person. */
 export function recipientFor(
   text: string,

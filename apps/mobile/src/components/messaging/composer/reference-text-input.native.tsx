@@ -9,7 +9,7 @@ import {
   partsFromEditor,
   scalarToDisplay,
 } from "@/features/messaging/composer/editor-document";
-import { bodyFromParts, partLabels } from "@/features/messaging/references/token-draft";
+import { draftIdentity } from "@/features/messaging/references/token-draft";
 import { cn } from "@/lib/utils";
 import { useTheme } from "@/theme";
 import {
@@ -20,10 +20,6 @@ import {
   type RichTextEditorRef,
   withMentionsSchema,
 } from "@apollohg/react-native-rich-text-editor";
-
-function draftIdentity(parts: ReferenceEditorProps["parts"]) {
-  return JSON.stringify([bodyFromParts(parts), partLabels(parts)]);
-}
 
 /** Native void inline nodes. Never round-trip a keystroke through setContent. */
 export function ReferenceTextInput({

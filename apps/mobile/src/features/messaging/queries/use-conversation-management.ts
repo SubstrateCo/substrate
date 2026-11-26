@@ -18,17 +18,8 @@ import { agentDirectMessage } from "../conversations/conversation-rules";
 import { messagingKeys } from "../keys";
 import { useMessagingScope } from "../scope";
 import type { Conversation } from "../types";
+import { useRefreshMessaging } from "./use-refresh-messaging";
 import type { z } from "zod";
-
-function useRefreshMessaging(organizationId: string) {
-  const scope = useMessagingScope(organizationId);
-  const client = useQueryClient();
-  return () =>
-    Promise.all([
-      client.invalidateQueries({ queryKey: messagingKeys.all(scope) }),
-      client.invalidateQueries({ queryKey: messagingKeys.searchAll(scope) }),
-    ]);
-}
 
 export type CreateConversationInput = Omit<z.input<typeof conversationInput>, "organizationId">;
 

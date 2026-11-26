@@ -1,3 +1,5 @@
+import type { ReferenceQuery, ReferenceTab } from "@substrate/contracts/messaging/references";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
@@ -5,11 +7,7 @@ import { useState } from "react";
 import { mixedKinds, mixedLimit, referenceSearchInput } from "./reference-search";
 import { narrowedSuggestions } from "./reference-suggestions";
 import type { WorkspaceReference } from "@/components/messaging/references/entity-reference";
-import {
-  ReferencePickerView,
-  type ReferenceTab,
-} from "@/components/messaging/references/reference-picker-view";
-import type { ReferenceQuery } from "@/components/messaging/references/reference-query";
+import { ReferencePickerView } from "@/components/messaging/references/reference-picker-view";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";

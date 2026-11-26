@@ -3,6 +3,7 @@ import { createUploadInput, uploadIdParam } from "@substrate/contracts/files/inp
 import { respond, v } from "../../shared/http";
 import type { ScopeEnv, Scopes } from "../../shared/scope";
 import type { UserScope } from "../../shared/scope-types";
+import { privateFileResponse, privateRedirect } from "./private-response";
 import type { FileService } from "./service";
 import { Hono } from "hono";
 
@@ -21,18 +22,14 @@ export function createFilesRoutes(service: FileService, scopes: Scopes) {
     .get("/:id/bytes", v("param", uploadIdParam), scopes.user(), async (c) => {
       const result = await service.bytes(c.var.scope, c.req.valid("param").id);
       if (!result.success) return respond(c, result);
-      c.header("Cache-Control", "private, no-store");
-      c.header("Vary", "Cookie");
-      c.header("Content-Type", "image/webp");
-      c.header("Content-Disposition", "inline");
-      c.header("X-Content-Type-Options", "nosniff");
-      return c.body(new Uint8Array(result.data.bytes));
+      return privateFileResponse(c, result.data.bytes, {
+        disposition: "inline",
+        type: "image/webp",
+      });
     })
     .get("/:id/content", v("param", uploadIdParam), scopes.user(), async (c) => {
       const result = await service.content(c.var.scope, c.req.valid("param").id);
       if (!result.success) return respond(c, result);
-      c.header("Cache-Control", "private, no-store");
-      c.header("Vary", "Cookie");
-      return c.redirect(result.data.url, 302);
+      return privateRedirect(c, result.data.url);
     });
 }

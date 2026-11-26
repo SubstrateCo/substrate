@@ -1,5 +1,5 @@
 import type { MessageContext } from "../types";
-import { attachedWork, resolveReferences } from "./resolve-references";
+import { resolveReferences } from "./resolve-references";
 import { describe, expect, test } from "bun:test";
 
 function context(overrides: Partial<MessageContext>): MessageContext {
@@ -48,17 +48,5 @@ describe("resolve references", () => {
   test("references the server did not resolve stay unresolved", () => {
     expect(resolveReferences(context({})).size).toBe(0);
     expect(resolveReferences(undefined).size).toBe(0);
-  });
-
-  test("linked work skips mentions and lists each record once", () => {
-    // SAFETY: attachedWork reads only these link fields.
-    const links = [
-      { entityId: "t", purpose: "mention", canRemove: false },
-      { entityId: "p", purpose: "source", canRemove: false },
-      { entityId: "p", purpose: "association", canRemove: true },
-    ] as MessageContext["links"];
-    expect(attachedWork(links)).toEqual([
-      expect.objectContaining({ entityId: "p", purpose: "source", canRemove: true }),
-    ]);
   });
 });

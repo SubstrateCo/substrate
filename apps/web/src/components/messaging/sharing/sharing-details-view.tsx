@@ -1,3 +1,8 @@
+import {
+  pendingInvitationStatus,
+  sharingEventLabels,
+} from "@substrate/contracts/messaging/sharing";
+
 import type { ReactNode } from "react";
 
 import type { SharingDetails } from "@/api/messaging/sharing";
@@ -17,29 +22,6 @@ import {
 } from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Building2, Mail, RotateCcw, TriangleAlert, UserMinus, X } from "lucide-react";
-
-type Invitation = SharingDetails["invitations"][number];
-
-const eventLabels: Record<SharingDetails["events"][number]["action"], string> = {
-  invited: "sent an invitation",
-  "approval-requested": "requested organization approval",
-  accepted: "accepted an invitation",
-  revoked: "revoked an invitation",
-  declined: "declined an invitation",
-  disconnected: "disconnected an organization",
-  removed: "removed a participant",
-};
-
-// Answered invitations show up as people and activity instead.
-function pendingStatus(invite: Invitation, now: number) {
-  if (new Date(invite.expiresAt).getTime() <= now) return { text: "Expired", warning: true };
-  if (invite.deliveryAttempts >= 5 && !invite.deliveredAt)
-    return { text: "Email couldn’t be delivered", warning: true };
-  return {
-    text: invite.deliveredAt ? "Waiting for a reply · email sent" : "Waiting · email queued",
-    warning: false,
-  };
-}
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
@@ -202,7 +184,7 @@ export function SharingDetailsView({
       {invitations.length > 0 && (
         <Section title="Invitations">
           {invitations.map((invite) => {
-            const status = pendingStatus(invite, now);
+            const status = pendingInvitationStatus(invite, now);
             return (
               <Row
                 key={invite.id}
@@ -250,7 +232,7 @@ export function SharingDetailsView({
               <li key={event.id} className="flex items-baseline gap-2 text-sm">
                 <span className="min-w-0 flex-1 truncate">
                   <span className="font-medium">{event.userName}</span>{" "}
-                  <span className="text-muted-foreground">{eventLabels[event.action]}</span>
+                  <span className="text-muted-foreground">{sharingEventLabels[event.action]}</span>
                 </span>
                 <Timestamp
                   value={event.createdAt}

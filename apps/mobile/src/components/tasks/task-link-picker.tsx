@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useRef, useState } from "react";
 
+import { ProjectPickerSheet } from "./project-picker-sheet";
 import { taskLinkCandidates } from "./task-link-options";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
@@ -29,19 +30,12 @@ export function TaskLinkPicker({
 }) {
   const [projectId, setProjectId] = useState<string | null>(currentProjectId);
   const choosingProject = useRef(false);
-  const projects = useQuery(recordQueries.projects(scope));
   const project = useQuery(recordQueries.project(scope, projectId ?? undefined));
   if (!projectId)
     return (
-      <PickerSheet
+      <ProjectPickerSheet
+        scope={scope}
         title="Choose a project"
-        searchable
-        value={null}
-        loading={projects.isPending}
-        choices={(projects.error ? [] : (projects.data ?? [])).map((row) => ({
-          value: row.entityId,
-          label: row.name,
-        }))}
         onSelect={(id) => {
           choosingProject.current = true;
           setProjectId(id);
@@ -50,16 +44,6 @@ export function TaskLinkPicker({
           if (choosingProject.current) choosingProject.current = false;
           else onClose();
         }}
-        footer={
-          projects.error ? (
-            <ErrorState
-              compact
-              error={projects.error}
-              noun="projects"
-              onRetry={() => void projects.refetch()}
-            />
-          ) : undefined
-        }
       />
     );
   return (

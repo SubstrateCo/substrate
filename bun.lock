@@ -282,6 +282,7 @@
     "tooling/mobile-lint": {
       "name": "@substrate/mobile-lint",
       "devDependencies": {
+        "@substrate/architecture-lint": "workspace:*",
         "@types/node": "catalog:tooling",
         "oxlint": "catalog:tooling",
       },

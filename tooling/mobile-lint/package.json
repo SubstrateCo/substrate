@@ -10,6 +10,7 @@
     "test": "node --test \"src/**/*.test.ts\""
   },
   "devDependencies": {
+    "@substrate/architecture-lint": "workspace:*",
     "@types/node": "catalog:tooling",
     "oxlint": "catalog:tooling"
   }

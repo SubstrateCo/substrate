@@ -1,3 +1,5 @@
+import { attachedWork } from "@substrate/contracts/messaging/references";
+
 import { useState } from "react";
 import { Platform, Share } from "react-native";
 
@@ -14,7 +16,6 @@ import { ReactionPicker } from "./reaction-picker";
 import { useMessageMutations } from "@/features/messaging/queries/use-message-mutations";
 import { useMessagingApps } from "@/features/messaging/queries/use-reference-search";
 import {
-  attachedWork,
   linkedWorkTarget,
   referenceLabels,
   resolveReferences,

@@ -9,7 +9,7 @@ import { contactIdentifiers, contacts } from "../../core/contacts/schema";
 import { commit, type Committed } from "../../core/effects";
 import { entities } from "../../core/entities/schema";
 import type { DatabaseExecutor } from "../../core/executor";
-import { relatedPair } from "../../core/links/repository";
+import { relatedLink, relatedPair } from "../../core/links/repository";
 import { entityLinks } from "../../core/links/schema";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
@@ -21,7 +21,7 @@ import { crmContactProfiles } from "../crm/schema";
 import { completionGates, endedMeetingsQuery } from "./completion-queries";
 import { contactNameFromAttendee, isGeneratedContactName } from "./contact-name";
 import { calendarEventAttendees, calendarEvents, calendars } from "./schema";
-import { and, asc, eq, inArray, isNull, or, sql } from "drizzle-orm";
+import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 type Meeting = { organizationId: string; eventEntityId: string };
 type Recorded = { interactionEntityIds: string[]; createdContactEntityIds: string[] };
@@ -282,17 +282,7 @@ async function createInteractions(
       entityLinks,
       and(
         eq(entityLinks.organizationId, contactInteractions.organizationId),
-        eq(entityLinks.relationType, "related_to"),
-        or(
-          and(
-            eq(entityLinks.sourceEntityId, contactInteractions.entityId),
-            eq(entityLinks.targetEntityId, event.entityId),
-          ),
-          and(
-            eq(entityLinks.sourceEntityId, event.entityId),
-            eq(entityLinks.targetEntityId, contactInteractions.entityId),
-          ),
-        ),
+        relatedLink(event.entityId, contactInteractions.entityId),
       ),
     )
     .where(

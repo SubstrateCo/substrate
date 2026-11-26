@@ -1,3 +1,8 @@
+import {
+  pendingInvitationStatus,
+  sharingEventLabels,
+} from "@substrate/contracts/messaging/sharing";
+
 import type { ReactNode } from "react";
 import { View } from "react-native";
 
@@ -9,28 +14,6 @@ import { Text } from "@/components/ui/text";
 import type { SharingDetails } from "@/features/messaging/types";
 import { cn } from "@/lib/utils";
 import { Building2, Mail, RotateCcw, UserMinus, X } from "lucide-react-native";
-
-type Invitation = SharingDetails["invitations"][number];
-
-const eventLabels: Record<SharingDetails["events"][number]["action"], string> = {
-  invited: "sent an invitation",
-  "approval-requested": "requested organization approval",
-  accepted: "accepted an invitation",
-  revoked: "revoked an invitation",
-  declined: "declined an invitation",
-  disconnected: "disconnected an organization",
-  removed: "removed a participant",
-};
-
-function pendingStatus(invite: Invitation, now: number) {
-  if (new Date(invite.expiresAt).getTime() <= now) return { text: "Expired", warning: true };
-  if (invite.deliveryAttempts >= 5 && !invite.deliveredAt)
-    return { text: "Email couldn't be delivered", warning: true };
-  return {
-    text: invite.deliveredAt ? "Waiting for a reply · email sent" : "Waiting · email queued",
-    warning: false,
-  };
-}
 
 function Row({
   leading,
@@ -155,7 +138,7 @@ export function SharingDetailsView({
       {invitations.length ? (
         <SheetSection title="Invitations">
           {invitations.map((invite) => {
-            const status = pendingStatus(invite, now);
+            const status = pendingInvitationStatus(invite, now);
             return (
               <Row
                 key={invite.id}
@@ -197,7 +180,7 @@ export function SharingDetailsView({
           {details.events.map((event) => (
             <Text key={event.id} className="py-1 text-sm" numberOfLines={2}>
               <Text className="text-sm font-medium">{event.userName}</Text>
-              <Text className="text-sm text-muted-foreground">{` ${eventLabels[event.action]} · ${new Date(event.createdAt).toLocaleDateString()}`}</Text>
+              <Text className="text-sm text-muted-foreground">{` ${sharingEventLabels[event.action]} · ${new Date(event.createdAt).toLocaleDateString()}`}</Text>
             </Text>
           ))}
         </SheetSection>

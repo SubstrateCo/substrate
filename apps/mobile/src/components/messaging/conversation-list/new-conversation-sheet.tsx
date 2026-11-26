@@ -1,4 +1,5 @@
 import type { PickerPerson } from "@substrate/contracts/people/picker";
+import { matchPeople } from "@substrate/contracts/people/picker";
 
 import { useState } from "react";
 import { FlatList, View } from "react-native";
@@ -9,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Input } from "@/components/ui/input";
 import { Text } from "@/components/ui/text";
-import { matchPeople } from "@/features/messaging/conversations/recipients";
 import { MutationError } from "@/features/records/ui/states";
 import { Compass, Hash, Mail, Users } from "lucide-react-native";
 

@@ -1,3 +1,4 @@
+import type { ReferenceKind, ReferenceTab } from "@substrate/contracts/messaging/references";
 import { taskStatusLabels, type TaskStatus } from "@substrate/contracts/tasks";
 
 import { ActivityIndicator, ScrollView, View } from "react-native";
@@ -5,8 +6,6 @@ import { ActivityIndicator, ScrollView, View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import type { ReferenceTab } from "@/features/messaging/references/reference-query";
-import type { ReferenceKind } from "@/features/messaging/references/reference-tokens";
 import { ErrorState } from "@/features/records/ui/states";
 import { cn } from "@/lib/utils";
 import {

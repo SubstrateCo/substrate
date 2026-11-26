@@ -31,6 +31,7 @@ import { contactReadable, interactionReadable } from "../../core/contacts/access
 import { contactInteractions } from "../../core/contacts/interactions/interactions.schema";
 import { contactIdentifiers, contacts } from "../../core/contacts/schema";
 import { entities } from "../../core/entities/schema";
+import { relatedLink } from "../../core/links/repository";
 import { entityLinks } from "../../core/links/schema";
 import { member } from "../../core/organizations/schema";
 import type { RepositoryContext } from "../../core/repository-context";
@@ -570,17 +571,7 @@ export function calendarRepository(context: RepositoryContext) {
           entityLinks,
           and(
             eq(entityLinks.organizationId, contactInteractions.organizationId),
-            eq(entityLinks.relationType, "related_to"),
-            or(
-              and(
-                eq(entityLinks.sourceEntityId, entityId),
-                eq(entityLinks.targetEntityId, contactInteractions.entityId),
-              ),
-              and(
-                eq(entityLinks.targetEntityId, entityId),
-                eq(entityLinks.sourceEntityId, contactInteractions.entityId),
-              ),
-            ),
+            relatedLink(entityId, contactInteractions.entityId),
           ),
         )
         .innerJoin(

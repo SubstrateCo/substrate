@@ -12,18 +12,8 @@ import {
 import { messagingKeys } from "../keys";
 import { useMessagingScope } from "../scope";
 import { appendNewMessages, latestHistoryKey } from "./new-messages";
+import { useRefreshMessaging } from "./use-refresh-messaging";
 import { queryKeys } from "@/queries/keys";
-
-/** Message writes change timelines, threads, reference context, unread counts and search. */
-function useInvalidateMessaging(organizationId: string) {
-  const scope = useMessagingScope(organizationId);
-  const client = useQueryClient();
-  return () =>
-    Promise.all([
-      client.invalidateQueries({ queryKey: messagingKeys.all(scope) }),
-      client.invalidateQueries({ queryKey: messagingKeys.searchAll(scope) }),
-    ]);
-}
 
 export function useSendMessage(organizationId: string, conversationId: string, threadId?: string) {
   const scope = useMessagingScope(organizationId);
@@ -61,7 +51,7 @@ export function useSendMessage(organizationId: string, conversationId: string, t
 }
 
 export function useMessageMutations(organizationId: string, messageId: string) {
-  const invalidate = useInvalidateMessaging(organizationId);
+  const invalidate = useRefreshMessaging(organizationId);
   const scope = useMessagingScope(organizationId);
   const client = useQueryClient();
   return {

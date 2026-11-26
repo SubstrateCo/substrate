@@ -6,6 +6,7 @@ import { AttachmentDrafts } from "./attachment-drafts";
 import { ComposerNotice, ComposerView } from "./composer-view";
 import { ReferencePicker } from "./reference-picker";
 import { ReferenceTextInput } from "./reference-text-input";
+import { useReferenceEditing } from "./use-reference-editing";
 import { draftKey } from "@/features/messaging/composer/draft-store";
 import { pickDocuments, pickPhotos } from "@/features/messaging/composer/pick-files";
 import { sendRequestFor } from "@/features/messaging/composer/send-request";
@@ -13,9 +14,7 @@ import { useAttachmentUploads } from "@/features/messaging/composer/use-attachme
 import { useStoredDraft } from "@/features/messaging/composer/use-stored-draft";
 import { useSendMessage } from "@/features/messaging/queries/use-message-mutations";
 import {
-  activeReferenceQuery,
   bodyFromParts,
-  insertReference,
   partLabels,
   partsFromBody,
   type DraftPart,
@@ -69,14 +68,11 @@ function DestinationComposer({
   const { draft, update, read } = useStoredDraft(draftId);
   const uploads = useAttachmentUploads();
   const send = useSendMessage(organizationId, conversationId, threadId);
-  const [caret, setCaret] = useState(0);
-  const [caretRequest, setCaretRequest] = useState<{ id: number; caret: number }>();
   const [attaching, setAttaching] = useState(false);
   const [pickError, setPickError] = useState<string>();
   const parts = partsFromBody(draft.body, draft.labels);
   const body = bodyFromParts(parts).trim();
   const tooLong = body.length > messagingLimits.body;
-  const query = caret < 0 ? null : activeReferenceQuery(parts, caret);
   const canSend = (!!body || uploads.items.length > 0) && uploads.ready && !tooLong;
 
   const setParts = (next: DraftPart[]) =>
@@ -85,6 +81,12 @@ function DestinationComposer({
       body: bodyFromParts(next),
       labels: { ...current.labels, ...partLabels(next) },
     }));
+  const {
+    query,
+    caretRequest,
+    setCaret,
+    pick: pickReference,
+  } = useReferenceEditing(parts, setParts);
 
   const submit = () => {
     if (!canSend || send.isPending) return;
@@ -138,19 +140,7 @@ function DestinationComposer({
               organizationId={organizationId}
               conversationId={conversationId}
               query={query}
-              onPick={(option) => {
-                const inserted = insertReference(parts, query, {
-                  kind: option.kind,
-                  id: option.id,
-                  label: option.title,
-                });
-                setParts(inserted.parts);
-                setCaret(inserted.caret);
-                setCaretRequest((previous) => ({
-                  id: (previous?.id ?? 0) + 1,
-                  caret: inserted.caret,
-                }));
-              }}
+              onPick={pickReference}
             />
           ) : undefined
         }

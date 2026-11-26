@@ -1,5 +1,7 @@
+import type { ReferenceKind } from "@substrate/contracts/messaging/references";
+
 import type { LinkedWork, MessageContext, MessagingConversationTarget } from "../types";
-import { referenceKey, type ReferenceKind } from "./reference-tokens";
+import { referenceKey } from "./reference-tokens";
 import type { RecordTarget } from "@/lib/navigation";
 
 type ReferenceDestination =
@@ -81,28 +83,4 @@ export function resolveReferences(context: MessageContext | undefined) {
 /** Labels of resolved references, so an edit shows names instead of tokens. */
 export function referenceLabels(resolved: Map<string, ResolvedReference>) {
   return Object.fromEntries([...resolved].map(([key, reference]) => [key, reference.label]));
-}
-
-/**
- * The work to list under a message. Mentions already show as chips in the body. A record linked
- * for several reasons shows once, as "Created here" when the message created it, and can be
- * unlinked when any of its links can.
- */
-export function attachedWork(links: readonly LinkedWork[]) {
-  const byEntity = new Map<string, LinkedWork>();
-  for (const link of links) {
-    if (link.purpose === "mention") continue;
-    const seen = byEntity.get(link.entityId);
-    byEntity.set(
-      link.entityId,
-      seen
-        ? {
-            ...seen,
-            purpose: seen.purpose === "source" ? seen.purpose : link.purpose,
-            canRemove: seen.canRemove || link.canRemove,
-          }
-        : link,
-    );
-  }
-  return [...byEntity.values()];
 }

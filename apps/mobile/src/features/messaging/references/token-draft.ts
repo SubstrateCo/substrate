@@ -1,5 +1,10 @@
-import { referenceQuery, type ReferenceQuery } from "./reference-query";
-import { bodySegments, referenceKey, referenceToken, type ReferenceKind } from "./reference-tokens";
+import {
+  referenceQuery,
+  type ReferenceKind,
+  type ReferenceQuery,
+} from "@substrate/contracts/messaging/references";
+
+import { bodySegments, referenceKey, referenceToken } from "./reference-tokens";
 
 /**
  * The composer's model. React Native's TextInput holds only plain text, so a reference shows as
@@ -47,6 +52,11 @@ export function partLabels(parts: readonly DraftPart[]) {
       part.type === "reference" ? [[referenceKey(part.kind, part.id), part.label] as const] : [],
     ),
   );
+}
+
+/** A key that changes only when the draft's body or reference labels change. */
+export function draftIdentity(parts: readonly DraftPart[]) {
+  return JSON.stringify([bodyFromParts(parts), partLabels(parts)]);
 }
 
 type Span = { part: DraftPart; start: number; end: number };

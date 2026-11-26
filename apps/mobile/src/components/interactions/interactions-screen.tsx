@@ -44,12 +44,7 @@ export function InteractionsScreen({
         ]}
       />
       {current === "timeline" ? (
-        <InteractionFeed
-          scope={scope}
-          onOpenRecord={onOpenRecord}
-          logging={logging}
-          onLogClose={onLogClose}
-        />
+        <InteractionFeed scope={scope} onOpenRecord={onOpenRecord} />
       ) : null}
       {current === "activity" ? (
         <InteractionActivity scope={scope} onOpenRecord={onOpenRecord} />
@@ -62,7 +57,7 @@ export function InteractionsScreen({
           onOpenRecord={onOpenRecord}
         />
       ) : null}
-      {logging && current !== "timeline" ? (
+      {logging ? (
         <InteractionForm
           scope={scope}
           pending={write.isPending}

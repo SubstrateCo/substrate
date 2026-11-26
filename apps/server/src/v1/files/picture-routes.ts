@@ -9,6 +9,7 @@ import { respond, v } from "../../shared/http";
 import type { ScopeEnv, Scopes } from "../../shared/scope";
 import type { UserScope } from "../../shared/scope-types";
 import type { PictureService } from "./pictures";
+import { privateFileResponse, privateRedirect } from "./private-response";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 
@@ -42,19 +43,15 @@ export function createPictureRoutes(service: PictureService, scopes: Scopes) {
       const { purpose, owner } = c.req.valid("param");
       const result = await service.bytes(c.var.scope, purpose, owner);
       if (!result.success) return respond(c, result);
-      c.header("Cache-Control", "private, no-store");
-      c.header("Vary", "Cookie");
-      c.header("Content-Type", "image/webp");
-      c.header("Content-Disposition", "inline");
-      c.header("X-Content-Type-Options", "nosniff");
-      return c.body(new Uint8Array(result.data.bytes));
+      return privateFileResponse(c, result.data.bytes, {
+        disposition: "inline",
+        type: "image/webp",
+      });
     })
     .get("/:purpose/:owner", v("param", pictureOwnerParam), scopes.user(), async (c) => {
       const { purpose, owner } = c.req.valid("param");
       const result = await service.content(c.var.scope, purpose, owner);
       if (!result.success) return respond(c, result);
-      c.header("Cache-Control", "private, no-store");
-      c.header("Vary", "Cookie");
-      return c.redirect(result.data.url, 302);
+      return privateRedirect(c, result.data.url);
     });
 }

@@ -13,6 +13,7 @@ import type { RecordSharingProps } from "./management/record-sharing";
 import { CopyLink } from "@/components/context/links/copy-link";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
+import { MoreActionsTrigger } from "@/components/layout/more-actions-trigger";
 import { BackLink, PageHeader } from "@/components/layout/page-header";
 import { PageSheetHeader, PageSheetBody } from "@/components/layout/page-sheet";
 import { usePageSheet } from "@/components/layout/page-sheet-context";
@@ -23,13 +24,12 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Heading } from "@/components/ui/heading";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { recordLink } from "@/lib/navigation/record-links";
-import { Archive, Ellipsis, Pencil, RotateCcw } from "lucide-react";
+import { Archive, Pencil, RotateCcw } from "lucide-react";
 
 export function RecordDetailView({
   entityId,
@@ -188,16 +188,7 @@ function RecordActionsMenu({
   }
   return (
     <DropdownMenu>
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <DropdownMenuTrigger asChild>
-            <Button ref={triggerRef} variant="ghost" size="icon-sm" aria-label="More actions">
-              <Ellipsis aria-hidden="true" />
-            </Button>
-          </DropdownMenuTrigger>
-        </TooltipTrigger>
-        <TooltipContent>More actions</TooltipContent>
-      </Tooltip>
+      <MoreActionsTrigger triggerRef={triggerRef} />
       <DropdownMenuContent
         align="end"
         onCloseAutoFocus={(event) => {

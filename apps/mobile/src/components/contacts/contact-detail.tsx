@@ -5,7 +5,7 @@ import { RefreshControl, ScrollView, View } from "react-native";
 
 import { ContactForm } from "./contact-form";
 import { ContactMethods } from "./contact-methods";
-import { AffiliationForm } from "@/components/crm/affiliation-form";
+import { AffiliationForm, type Affiliation } from "@/components/crm/affiliation-form";
 import { CrmActivityLog } from "@/components/crm/crm-activity";
 import { FollowUps } from "@/components/crm/follow-ups";
 import { RecordConnections } from "@/components/crm/record-connections";
@@ -67,18 +67,10 @@ export function ContactDetailView({
   const [publishing, setPublishing] = useState(false);
   const [affiliating, setAffiliating] = useState(false);
   const [archiving, setArchiving] = useState(false);
-  const [affiliationMenu, setAffiliationMenu] = useState<{
-    accountEntityId: string;
-    name: string;
-    title: string;
-    isPrimary: boolean;
-  } | null>(null);
-  const [editingAffiliation, setEditingAffiliation] = useState<{
-    otherEntityId: string;
-    name: string;
-    title: string;
-    isPrimary: boolean;
-  } | null>(null);
+  const [affiliationMenu, setAffiliationMenu] = useState<
+    (Omit<Affiliation, "otherEntityId"> & { accountEntityId: string }) | null
+  >(null);
+  const [editingAffiliation, setEditingAffiliation] = useState<Affiliation | null>(null);
 
   if (query.isPending)
     return (

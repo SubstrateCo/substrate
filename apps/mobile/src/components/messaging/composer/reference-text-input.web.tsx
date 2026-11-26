@@ -8,7 +8,7 @@ import {
   editorDocumentSchema,
   partsFromEditor,
 } from "@/features/messaging/composer/editor-document";
-import { bodyFromParts, partLabels } from "@/features/messaging/references/token-draft";
+import { draftIdentity } from "@/features/messaging/references/token-draft";
 import { useTheme } from "@/theme";
 import { Node, mergeAttributes, type Editor } from "@tiptap/core";
 import { EditorContent, useEditor } from "@tiptap/react";
@@ -58,10 +58,6 @@ const Mention = Node.create({
     };
   },
 });
-
-function draftIdentity(parts: ReferenceEditorProps["parts"]) {
-  return JSON.stringify([bodyFromParts(parts), partLabels(parts)]);
-}
 
 /** Web preview uses browser atoms. It is not evidence of native editor behavior. */
 export function ReferenceTextInput({

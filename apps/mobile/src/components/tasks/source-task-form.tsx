@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useRef, useState } from "react";
 
+import { ProjectPickerSheet } from "./project-picker-sheet";
 import { taskAssignees } from "./task-access";
 import { TaskForm, type TaskDraft } from "./task-form";
 import { canEdit, newRequestId } from "@/features/records/format";
@@ -30,7 +31,6 @@ export function SourceTaskForm({
   const [draft, setDraft] = useState<TaskDraft | null>(null);
   const request = useRef<{ fingerprint: string; id: string } | null>(null);
   const selecting = useRef(false);
-  const projects = useQuery(recordQueries.projects(scope));
   const project = useQuery(recordQueries.project(scope, projectId ?? undefined));
   const projectEditable =
     !!project.data && !project.data.project.archivedAt && canEdit(project.data.level);
@@ -58,15 +58,9 @@ export function SourceTaskForm({
   });
   if (!projectId)
     return (
-      <PickerSheet
+      <ProjectPickerSheet
+        scope={scope}
         title="Create task in project"
-        searchable
-        value={null}
-        loading={projects.isPending}
-        choices={(projects.error ? [] : (projects.data ?? [])).map((row) => ({
-          value: row.entityId,
-          label: row.name,
-        }))}
         onSelect={(id) => {
           selecting.current = true;
           setProjectId(id);
@@ -75,16 +69,6 @@ export function SourceTaskForm({
           if (selecting.current) selecting.current = false;
           else onClose();
         }}
-        footer={
-          projects.error ? (
-            <ErrorState
-              compact
-              error={projects.error}
-              noun="projects"
-              onRetry={() => void projects.refetch()}
-            />
-          ) : undefined
-        }
       />
     );
   if (!project.data || project.error)

@@ -1,4 +1,5 @@
 import { appEnabled, type AppId } from "@substrate/contracts/apps";
+import type { ReferenceKind, ReferenceTab } from "@substrate/contracts/messaging/references";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -6,8 +7,6 @@ import { useEffect, useState } from "react";
 
 import { searchContext, type SearchInput } from "../api/context";
 import { messagingKeys } from "../keys";
-import type { ReferenceTab } from "../references/reference-query";
-import type { ReferenceKind } from "../references/reference-tokens";
 import { useMessagingScope } from "../scope";
 import { api } from "@/api/client";
 import { readResult } from "@/api/result";
