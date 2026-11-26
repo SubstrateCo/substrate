@@ -6,6 +6,7 @@ import { useQuery, type QueryObserverResult } from "@tanstack/react-query";
 import { HomeDashboardView } from "./home-dashboard-view";
 import type { HomeItem, HomeSectionData } from "./home-section";
 import { WorkIndicator } from "@/components/agent-work/work-indicator";
+import { showsNotification } from "@/components/context/notifications/notification-presentation";
 import { notificationPresentation } from "@/components/context/notifications/notification-presentation";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
 import { PersonAvatar } from "@/components/people/person-avatar";
@@ -57,8 +58,8 @@ export function HomeDashboard({
   const conversations = useQuery(conversationsQueryOptions(organizationId));
   const unread = useQuery(unreadCountsOptions(organizationId));
   const notifications = useQuery(notificationPreviewOptions(organizationId));
-  const groups = (notifications.data?.items ?? []).filter(
-    (item) => apps.enabled("tasks") || (!item.projectEntityId && item.kind !== "assignment"),
+  const groups = (notifications.data?.items ?? []).filter((item) =>
+    showsNotification(item, apps.enabled("tasks")),
   );
   const mentions = groups.filter((item) => item.kind === "mention" && item.unreadCount > 0);
   const { requests, agents, calls, desktopUpdateRequired } = needsYouItems(needsYou.data);
