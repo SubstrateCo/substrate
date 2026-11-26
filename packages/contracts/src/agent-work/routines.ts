@@ -37,13 +37,10 @@ export const updateRoutineInput = z.strictObject({
     .partial()
     .refine((value) => Object.keys(value).length > 0, "Supply at least one change"),
 });
-/** Approves the routine's current revision. Edits create a new revision that needs approval. */
-export const approveRoutineInput = z.strictObject({ routineId: id, revision: z.number().int() });
 export const deleteRoutineInput = z.strictObject({ routineId: id });
 
 export type CreateRoutineInput = z.input<typeof createRoutineInput>;
 export type UpdateRoutineInput = z.input<typeof updateRoutineInput>;
-export type ApproveRoutineInput = z.input<typeof approveRoutineInput>;
 
 export interface AgentRoutineView {
   id: string;
@@ -52,9 +49,8 @@ export interface AgentRoutineView {
   prompt: string;
   cron: string;
   timezone: string;
+  /** Grows with each change to what the routine does or where it posts. */
   revision: number;
-  /** A routine runs only while approvedRevision equals revision. */
-  approvedRevision: number | null;
   /** Resolved at save time; a null input becomes the owner's direct conversation. */
   destination: { conversationId: string; threadId: string | null };
   /** Missed ticks collapse to the latest one. */

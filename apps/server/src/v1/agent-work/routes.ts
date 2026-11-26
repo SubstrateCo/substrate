@@ -11,6 +11,7 @@ import {
   myCallsInput,
   openRequestInput,
   ownerScopeInput,
+  placeAccessInput,
   publishStatusInput,
   pullWakesInput,
   registerDeviceInput,
@@ -134,6 +135,9 @@ export function createAgentWorkRoutes(
       v("json", requestAnswersInput),
       scopes.device("json"),
       async (c) => respond(c, await device.requestAnswers(c.var.scope, c.req.valid("json"))),
+    )
+    .post("/device/place", v("json", placeAccessInput), scopes.device("json"), async (c) =>
+      respond(c, await device.placeAccess(c.var.scope, c.req.valid("json"))),
     )
     // A request's status and outcome, such as a proposal the desktop waits on.
     .get(

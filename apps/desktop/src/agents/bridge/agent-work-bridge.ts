@@ -41,7 +41,6 @@ export async function dispatchAgentWork(
     "routines.list": (input) => runtime.routines.list(input),
     "routines.create": (input) => runtime.routines.create(input),
     "routines.update": (input) => runtime.routines.update(input),
-    "routines.approve": (input) => runtime.routines.approve(input),
     "routines.delete": (input) => runtime.routines.delete(input),
   })(method, value);
 }

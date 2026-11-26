@@ -657,7 +657,7 @@ test("an agent moved to another desktop stops its routines and its live work", a
   const f = await started();
   await f.message();
   const turn = lastTurn(f);
-  const routine = await f.runtime.routines.create({
+  await f.runtime.routines.create({
     agentId,
     name: "Daily",
     prompt: "Summarize.",
@@ -666,7 +666,6 @@ test("an agent moved to another desktop stops its routines and its live work", a
     enabled: true,
     destination: null,
   });
-  await f.runtime.routines.approve({ routineId: routine.id, revision: routine.revision });
 
   f.catalog[0]!.home = false;
   await f.runtime.reconcileHome();

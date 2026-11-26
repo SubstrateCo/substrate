@@ -3,6 +3,8 @@ import type { DeviceCapability } from "@substrate/contracts/agent-work";
 import { committedWrite } from "../../core/effects";
 import type { DatabaseExecutor } from "../../core/executor";
 import type { ResolvedDeviceIdentity } from "../../core/session/device";
+import { AccessDeniedError, ValidationError } from "../../errors";
+import { requirePlace } from "./place";
 import {
   openRequestForDevice,
   closeRequestForDevice,
@@ -29,5 +31,15 @@ export function createDeviceWorkRepository(db: DatabaseExecutor, identity: Resol
       committedWrite(closeRequestForDevice)(db, identity, requestId, status),
     requestAnswers: () => requestAnswersForDevice(db, identity),
     requestStatus: (requestId: string) => requestStatusForDevice(db, identity, requestId),
+    /** Whether the owner can see the place. Turns that post there check it again. */
+    canUsePlace: async (place: { conversationId: string; threadId: string | null }) => {
+      try {
+        await requirePlace(db, identity, place);
+        return true;
+      } catch (error) {
+        if (error instanceof AccessDeniedError || error instanceof ValidationError) return false;
+        throw error;
+      }
+    },
   };
 }

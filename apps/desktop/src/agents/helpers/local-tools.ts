@@ -22,7 +22,7 @@ function routineResult(view: AgentRoutineView): McpOutput<"create_routine"> {
     cron: view.cron,
     timezone: view.timezone,
     enabled: view.enabled,
-    approved: view.approvedRevision === view.revision,
+    destination: view.destination,
     nextFireAt: view.nextFireAt,
     lastFiredAt: view.lastFiredAt,
   };
@@ -74,15 +74,6 @@ export function createLocalTools(
       if (error instanceof Error) throw new ToolError("INVALID_INPUT", error.message);
       throw error;
     }
-  }
-
-  // Background turns, including a routine's own runs, cannot change routines.
-  function interactiveOnly(request: ReturnType<typeof localToolRequest.parse>) {
-    if (request.turn.kind !== "interactive")
-      throw new ToolError(
-        "FORBIDDEN",
-        "Routines can be changed only in an interactive turn. Ask your owner in a reply.",
-      );
   }
 
   async function ownRoutine(userAgentId: string, routineId: string) {
@@ -172,22 +163,18 @@ export function createLocalTools(
       }
       case "create_routine": {
         const input = mcpTools.create_routine.input.parse(request.input);
-        interactiveOnly(request);
-        // Agent routines post to the owner's direct message, which the approval list implies.
         const created = await routineChange(() =>
-          routines.create({ agentId: current.userAgentId, destination: null, ...input }),
+          routines.create({ agentId: current.userAgentId, ...input }),
         );
         return routineResult(created);
       }
       case "update_routine": {
         const input = mcpTools.update_routine.input.parse(request.input);
-        interactiveOnly(request);
         await ownRoutine(current.userAgentId, input.routineId);
         return routineResult(await routineChange(() => routines.update(input)));
       }
       case "delete_routine": {
         const input = mcpTools.delete_routine.input.parse(request.input);
-        interactiveOnly(request);
         await ownRoutine(current.userAgentId, input.routineId);
         await routineChange(() => routines.delete(input.routineId));
         return { deleted: true };

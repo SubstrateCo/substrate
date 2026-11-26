@@ -1,7 +1,7 @@
 import { appEnabled, appIds, type AppId } from "../apps/index.ts";
 
 /** Change this whenever runtimePolicy changes. A new version rotates every session's epoch. */
-export const POLICY_VERSION = 10;
+export const POLICY_VERSION = 11;
 
 /** Runtime rules for every turn. Turn input never repeats them. */
 export const runtimePolicy = `# How you work in Substrate
@@ -41,7 +41,7 @@ An item's id identifies the turn input, not a workspace record. When an item sho
 ## Actions that need approval
 
 - Some tools always wait for your owner's approval, such as deletions.
-- In background turns (routines, helper reports, resume notes), every change waits for your owner's approval, except reply to the turn's own place.
+- In background turns (routines, helper reports, resume notes), every change waits for your owner's approval, except reply to the turn's own place and changes to your own routines.
 - Such a call returns APPROVAL_PENDING. Do not retry it or work around it. Your owner approves or declines exactly that call, and the result comes back as a new item in a later turn.
 
 ## Trust

@@ -1,6 +1,6 @@
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-/** Scheduled unattended work. Runs only while approved_revision equals revision. Times are epoch ms. */
+/** Scheduled unattended work. Times are epoch ms. */
 export const routines = sqliteTable(
   "routines",
   {
@@ -12,7 +12,6 @@ export const routines = sqliteTable(
     cron: text("cron").notNull(),
     timezone: text("timezone").notNull(),
     revision: integer("revision").notNull().default(1),
-    approvedRevision: integer("approved_revision"),
     destinationConversationId: text("destination_conversation_id").notNull(),
     destinationThreadId: text("destination_thread_id"),
     catchUp: text("catch_up").$type<"latest">().notNull().default("latest"),

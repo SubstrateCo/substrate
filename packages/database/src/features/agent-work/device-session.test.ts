@@ -86,6 +86,22 @@ test("resolved device work keeps home checks, wake CAS, committed hints and curr
   });
 });
 
+test("device place checks allow only places the owner can see", async () => {
+  const { agent, alice, dm } = await agentWorkFixture(f);
+  const root = await alice.sendMessage(dm.id, "Thread root");
+  const device = await createRepositories(f.db).forDeviceSession(agent.identity);
+  expect(await device.agentWork.canUsePlace({ conversationId: dm.id, threadId: null })).toBe(true);
+  expect(await device.agentWork.canUsePlace({ conversationId: dm.id, threadId: root.id })).toBe(
+    true,
+  );
+  expect(
+    await device.agentWork.canUsePlace({ conversationId: crypto.randomUUID(), threadId: null }),
+  ).toBe(false);
+  expect(
+    await device.agentWork.canUsePlace({ conversationId: dm.id, threadId: crypto.randomUUID() }),
+  ).toBe(false);
+});
+
 test("device sessions reject unverified users, nonmembers and another owner's installation", async () => {
   const installationId = crypto.randomUUID();
   await registerDevice(f.db, "alice", { installationId, name: "Desktop", platform: "test" });

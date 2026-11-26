@@ -29,7 +29,6 @@ test("the bridge rejects unknown methods and malformed IDs before the runtime se
       list: unexpected,
       create: unexpected,
       update: unexpected,
-      approve: unexpected,
       delete: unexpected,
       tick: unexpected,
     },

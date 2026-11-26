@@ -1,6 +1,5 @@
 import type {
   AgentRequestResponse,
-  ApproveRoutineInput,
   CreateRoutineInput,
   ProposalAction,
   UpdateRoutineInput,
@@ -148,9 +147,6 @@ export function useRoutineActions(userId: string, organizationId: string) {
       options((input: UpdateRoutineInput) =>
         agentWorkBridge().routines.update(updateRoutineInput.parse(input)),
       ),
-    ),
-    approve: useMutation(
-      options((input: ApproveRoutineInput) => agentWorkBridge().routines.approve(input)),
     ),
     remove: useMutation(
       options((routineId: string) => agentWorkBridge().routines.delete(routineId)),

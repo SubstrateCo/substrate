@@ -2,7 +2,6 @@ import { sessionKeys } from "@substrate/contracts/agent-work";
 
 import { openTestStore } from "./test-support.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
-import { rejects } from "node:assert/strict";
 
 let fixture: Awaited<ReturnType<typeof openTestStore>>;
 beforeEach(async () => {
@@ -23,15 +22,11 @@ const fields = {
 };
 const target = { agentId: "agent-1", harness: "claude" as const };
 
-async function approvedRoutine() {
-  const { store } = fixture;
-  const routine = await store.routines.create(fields, 0);
-  return store.routines.approve(routine.id, routine.revision, 1000);
-}
+const scheduledRoutine = () => fixture.store.routines.create(fields, 1000, 0);
 
 test("a routine fires each occurrence once", async () => {
   const { store } = fixture;
-  const routine = await approvedRoutine();
+  const routine = await scheduledRoutine();
   const fire = {
     routineId: routine.id,
     revision: 1,
@@ -47,7 +42,7 @@ test("a routine fires each occurrence once", async () => {
 
 test("a newer tick supersedes the routine's older pending tick", async () => {
   const { store } = fixture;
-  const routine = await approvedRoutine();
+  const routine = await scheduledRoutine();
   const first = await store.routines.fire(
     { routineId: routine.id, revision: 1, occurrence: 1000, nextFireAt: 2000, ...target },
     1000,
@@ -61,25 +56,29 @@ test("a newer tick supersedes the routine's older pending tick", async () => {
   expect((await store.routines.get(routine.id))!.nextFireAt).toBe(3000);
 });
 
-test("an edit creates a revision that does not run until it is approved", async () => {
+test("an edited routine is due at once, and a tick computed from the old revision does not fire", async () => {
   const { store } = fixture;
-  const routine = await approvedRoutine();
+  const routine = await scheduledRoutine();
   const edited = await store.routines.update(routine.id, { prompt: "Changed." }, 1000);
-  expect(edited).toMatchObject({ revision: 2, approvedRevision: 1 });
+  expect(edited.revision).toBe(2);
+  expect((await store.routines.due("org-1", 1000)).map((row) => row.id)).toEqual([routine.id]);
+  expect(
+    await store.routines.fire(
+      { routineId: routine.id, revision: 1, occurrence: 1000, nextFireAt: 2000, ...target },
+      1000,
+    ),
+  ).toBeUndefined();
   expect(
     await store.routines.fire(
       { routineId: routine.id, revision: 2, occurrence: 1000, nextFireAt: 2000, ...target },
       1000,
     ),
-  ).toBeUndefined();
-  await rejects(store.routines.approve(routine.id, 1, 1000));
-  expect((await store.routines.update(routine.id, { enabled: false }, null)).revision).toBe(2);
+  ).toBeDefined();
 });
 
-test("only the approved revision of a routine is due", async () => {
+test("a paused routine is not due", async () => {
   const { store } = fixture;
-  const routine = await approvedRoutine();
-  expect((await store.routines.due("org-1", 1000)).map((row) => row.id)).toEqual([routine.id]);
-  await store.routines.update(routine.id, { prompt: "Changed." }, 1000);
+  const routine = await scheduledRoutine();
+  await store.routines.update(routine.id, { enabled: false }, 1000);
   expect(await store.routines.due("org-1", 1000)).toEqual([]);
 });

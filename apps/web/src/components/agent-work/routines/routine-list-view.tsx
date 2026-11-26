@@ -5,7 +5,6 @@ import type { ReactNode } from "react";
 import { describeSchedule } from "./schedule";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
-import { PendingButton } from "@/components/feedback/pending-button";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
@@ -13,7 +12,7 @@ import { SettingsList, SettingsSection } from "@/components/layout/settings-sect
 import { Button } from "@/components/ui/button";
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { formatDateTime, formatTimeZone, formatZonedDateTime } from "@/lib/format/date";
-import { CalendarClock, Hand, Pencil, Plus, Trash2 } from "lucide-react";
+import { CalendarClock, Pencil, Plus, Trash2 } from "lucide-react";
 
 function RoutineRow({ children }: { children: ReactNode }) {
   return (
@@ -49,8 +48,7 @@ function RoutineRowsLoading() {
 
 /** Next run in the viewer's zone, with the schedule's own clock in the tooltip. */
 function nextRun(routine: AgentRoutineView) {
-  if (routine.approvedRevision !== routine.revision || !routine.enabled || !routine.nextFireAt)
-    return undefined;
+  if (!routine.enabled || !routine.nextFireAt) return undefined;
   return {
     text: `Next run ${formatDateTime(routine.nextFireAt)} in your time zone`,
     title: `${formatZonedDateTime(routine.nextFireAt, routine.timezone)} in the schedule’s time zone`,
@@ -63,10 +61,8 @@ export function RoutineListView({
   loading,
   error,
   onRetry,
-  approvingId,
   onAdd,
   onEdit,
-  onApprove,
   onDelete,
 }: {
   name: string;
@@ -74,11 +70,8 @@ export function RoutineListView({
   loading: boolean;
   error: Error | null;
   onRetry: () => void;
-  /** The routine whose approval is being sent. */
-  approvingId?: string;
   onAdd: () => void;
   onEdit: (routineId: string) => void;
-  onApprove: (routine: AgentRoutineView) => void;
   onDelete: (routine: AgentRoutineView) => void;
 }) {
   const add = (
@@ -90,7 +83,7 @@ export function RoutineListView({
   return (
     <SettingsSection
       title="Routines"
-      description={`Work ${name} starts on a schedule. Each new or changed routine waits for your approval.`}
+      description={`Work ${name} starts on a schedule. ${name} can also add and change routines.`}
       actions={routines.length > 0 && add}
     >
       {error && !routines.length && (
@@ -108,14 +101,13 @@ export function RoutineListView({
       {routines.length > 0 && (
         <SettingsList label="Routines">
           {routines.map((routine) => {
-            const needsApproval = routine.approvedRevision !== routine.revision;
             const next = nextRun(routine);
             return (
               <RoutineRow key={routine.id}>
                 <ItemContent className="min-w-0">
                   <ItemTitle className="max-w-full">
                     <span className="truncate">{routine.name}</span>
-                    {!needsApproval && !routine.enabled && <Tag>Paused</Tag>}
+                    {!routine.enabled && <Tag>Paused</Tag>}
                   </ItemTitle>
                   <ItemDescription>
                     {describeSchedule(routine.cron)} ·{" "}
@@ -123,25 +115,6 @@ export function RoutineListView({
                   </ItemDescription>
                   {next && <ItemDescription title={next.title}>{next.text}</ItemDescription>}
                   <ItemDescription>{routine.prompt}</ItemDescription>
-                  {needsApproval && (
-                    <div className="mt-2 flex flex-wrap items-center gap-2">
-                      <span className="flex items-center gap-1.5 text-xs font-medium text-warning-text">
-                        <Hand aria-hidden="true" className="size-3.5" />
-                        {routine.approvedRevision === null
-                          ? "Waiting for your approval to run"
-                          : "Changed — waiting for your approval"}
-                      </span>
-                      <PendingButton
-                        type="button"
-                        size="xs"
-                        disabled={!!approvingId}
-                        pending={approvingId === routine.id}
-                        onClick={() => onApprove(routine)}
-                      >
-                        Approve
-                      </PendingButton>
-                    </div>
-                  )}
                 </ItemContent>
                 <ItemActions>
                   <RowActions label={`Actions for ${routine.name}`}>

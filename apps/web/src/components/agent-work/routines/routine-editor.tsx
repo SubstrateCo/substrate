@@ -45,10 +45,7 @@ const frequencies = [
   { value: "custom", label: "Custom" },
 ] as const satisfies readonly { value: Frequency; label: string }[];
 
-/**
- * Creates or edits a routine in a dialog. Saving creates a revision that runs only after the
- * owner approves it.
- */
+/** Creates or edits a routine in a dialog. A save applies from the next run. */
 export function RoutineEditor({
   agentName,
   editing,
@@ -113,7 +110,11 @@ export function RoutineEditor({
   return (
     <FormDialog
       title={editing ? `Edit ${editing}` : "New routine"}
-      description={`${agentName} runs it on its desktop and posts in your direct message with it. Each saved change needs your approval before it runs.`}
+      description={
+        editing
+          ? `${agentName} runs it on its desktop. Changes apply from the next run.`
+          : `${agentName} runs it on its desktop and posts in your direct message with it.`
+      }
       saveLabel={editing ? "Save" : "Create routine"}
       size="lg"
       pending={pending}

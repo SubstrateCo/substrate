@@ -3,6 +3,7 @@ import type {
   closeRequestInput,
   deviceHeartbeatInput,
   openRequestInput,
+  placeAccessInput,
   publishStatusInput,
   pullWakesInput,
   registerDeviceInput,
@@ -65,6 +66,14 @@ export function createDeviceService({ publish }: { publish: CommittedPublisher }
     },
     requestStatus(this: void, scope: DeviceScope, requestId: string) {
       return serviceResult(() => scope.device.agentWork.requestStatus(requestId));
+    },
+    placeAccess(this: void, scope: DeviceScope, input: z.output<typeof placeAccessInput>) {
+      return serviceResult(async () => ({
+        allowed: await scope.device.agentWork.canUsePlace({
+          conversationId: input.conversationId,
+          threadId: input.threadId,
+        }),
+      }));
     },
   };
 }

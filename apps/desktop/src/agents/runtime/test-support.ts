@@ -158,6 +158,8 @@ export async function runtimeFixture(
     threadId: string;
   }[] = [];
   const revokedInvocations = new Set<string>();
+  /** Conversations the owner can see, for routine destinations. */
+  const visibleConversations = new Set<string>();
   const posts: ServerPost[] = [];
   let answers: AgentRequestDelivery[] = [];
   /** Requests the server lists as open in needs-you. */
@@ -238,6 +240,7 @@ export async function runtimeFixture(
     },
     requestStatus: async () => ({ status: "pending", outcome: null }),
     directConversation: async () => crypto.randomUUID(),
+    canUsePlace: async (_organization, place) => visibleConversations.has(place.conversationId),
     async openRequestIds() {
       record({ method: "openRequestIds", body: null });
       return [...serverOpenRequests];
@@ -554,6 +557,7 @@ export async function runtimeFixture(
       return id;
     },
     revokedInvocations,
+    visibleConversations,
     callerMessage(input: OwnerMessageInput = {}) {
       const message = ownerMessage({ ...input, threadId: input.threadId ?? crypto.randomUUID() });
       const wake = wakes.at(-1)!;

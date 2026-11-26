@@ -84,3 +84,10 @@ export const closeRequestInput = z.strictObject({
 export type CloseRequestStatus = z.output<typeof closeRequestInput>["status"];
 
 export const requestAnswersInput = z.strictObject(device);
+
+/** Asks whether the owner can see a place, such as a routine's destination, before saving it. */
+export const placeAccessInput = z.strictObject({
+  ...device,
+  conversationId: id,
+  threadId: id.nullable(),
+});

@@ -87,6 +87,11 @@ export interface AgentWorkServer {
   requestStatus(organizationId: string, requestId: string): Promise<AgentRequestState>;
   /** The owner's direct conversation with the agent, created when missing. */
   directConversation(organizationId: string, agentId: string): Promise<string>;
+  /** Whether the owner can see the place, so that an agent can post there. */
+  canUsePlace(
+    organizationId: string,
+    place: { conversationId: string; threadId: string | null },
+  ): Promise<boolean>;
   /** IDs of the owner's requests that are still open, from the server's needs-you list. */
   openRequestIds(organizationId: string): Promise<string[]>;
 }
@@ -240,6 +245,14 @@ export function createAgentWorkServer(options: {
         z.object({ id }),
       );
       return conversation.id;
+    },
+    async canUsePlace(organizationId, place) {
+      const result = await call(
+        "/agent-work/device/place",
+        { ...device(organizationId), ...place },
+        z.object({ allowed: z.boolean() }),
+      );
+      return result.allowed;
     },
     async openRequestIds(organizationId) {
       const query = new URLSearchParams({ organizationId });

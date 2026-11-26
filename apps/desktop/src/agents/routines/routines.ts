@@ -1,11 +1,9 @@
 import { routineView, type RoutineFields } from "@substrate/client-storage/agent-work";
 import {
-  approveRoutineInput,
   createRoutineInput,
   deleteRoutineInput,
   updateRoutineInput,
   type AgentRoutineView,
-  type ApproveRoutineInput,
   type CreateRoutineInput,
   type UpdateRoutineInput,
 } from "@substrate/contracts/agent-work";
@@ -14,8 +12,8 @@ import type { RuntimeContext } from "../runtime/context.ts";
 import { dueOccurrence, nextOccurrence, validCron } from "./schedule.ts";
 
 /**
- * Owner-approved routines. Edits create a new revision; only the approved revision runs. Ticks
- * go to the routine's own unattended session and publish to its destination.
+ * Routines run from their next occurrence after each save. Ticks go to the routine's own
+ * unattended session and publish to its destination.
  */
 export function createRoutines(context: RuntimeContext) {
   async function owned(routineId: string) {
@@ -31,7 +29,12 @@ export function createRoutines(context: RuntimeContext) {
     agentId: string,
     value: { conversationId: string; threadId: string | null } | null,
   ) {
-    if (value) return value;
+    if (value) {
+      // The server checks the destination again on each run.
+      if (!(await context.server.canUsePlace(context.organizationId, value)))
+        throw new Error("You can't post routine runs there.");
+      return value;
+    }
     return {
       conversationId: await context.server.directConversation(context.organizationId, agentId),
       threadId: null,
@@ -59,6 +62,7 @@ export function createRoutines(context: RuntimeContext) {
           destinationConversationId: target.conversationId,
           destinationThreadId: target.threadId,
         },
+        nextOccurrence(input.cron, input.timezone, context.now()),
         context.now(),
       );
       context.changed({ userAgentId: row.userAgentId });
@@ -85,24 +89,13 @@ export function createRoutines(context: RuntimeContext) {
       context.changed({ userAgentId: row.userAgentId });
       return routineView(row);
     },
-    async approve(value: ApproveRoutineInput) {
-      const input = approveRoutineInput.parse(value);
-      const routine = await owned(input.routineId);
-      const row = await context.store.routines.approve(
-        routine.id,
-        input.revision,
-        nextOccurrence(routine.cron, routine.timezone, context.now()),
-      );
-      context.changed({ userAgentId: row.userAgentId });
-      return routineView(row);
-    },
     async delete(routineId: string) {
       const routine = await owned(deleteRoutineInput.parse({ routineId }).routineId);
       await context.store.routines.delete(routine.id);
       context.changed({ userAgentId: routine.userAgentId });
     },
     /**
-     * Queues due ticks of approved routines of agents homed here. Missed ticks collapse to the
+     * Queues due ticks of routines of agents homed here. Missed ticks collapse to the
      * latest one.
      */
     async tick() {

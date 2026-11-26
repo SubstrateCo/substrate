@@ -1,11 +1,6 @@
 import { bridgeOutput, type BridgeAPI } from "../desktop/ipc.ts";
 import type { AgentActivityPage, AgentConversationWork, AgentLocalSummary } from "./desktop.ts";
-import {
-  approveRoutineInput,
-  createRoutineInput,
-  updateRoutineInput,
-  type AgentRoutineView,
-} from "./routines.ts";
+import { createRoutineInput, updateRoutineInput, type AgentRoutineView } from "./routines.ts";
 import type { AgentTurnView, TurnEventView } from "./turns.ts";
 import { z } from "zod";
 
@@ -35,7 +30,6 @@ export const methods = {
   "routines.list": { input: id, output: bridgeOutput<AgentRoutineView[]>() },
   "routines.create": { input: createRoutineInput, output: bridgeOutput<AgentRoutineView>() },
   "routines.update": { input: updateRoutineInput, output: bridgeOutput<AgentRoutineView>() },
-  "routines.approve": { input: approveRoutineInput, output: bridgeOutput<AgentRoutineView>() },
   "routines.delete": command,
 };
 export type AgentWorkMethods = BridgeAPI<typeof methods>;

@@ -21,7 +21,7 @@ export interface RoutineFields {
   enabled: boolean;
 }
 
-/** Changes to these fields create a new revision that needs the owner's approval. */
+/** Changes to these fields create a new revision. Ticks of an older revision do not fire. */
 const revisedFields = [
   "name",
   "prompt",
@@ -36,11 +36,15 @@ export function routineRepository(run: RunTransaction) {
     run((tx) => tx.select().from(routines).where(eq(routines.id, id)).get());
   return {
     get,
-    create: (input: RoutineFields & { organizationId: string; userAgentId: string }, now: number) =>
+    create: (
+      input: RoutineFields & { organizationId: string; userAgentId: string },
+      nextFireAt: number | null,
+      now: number,
+    ) =>
       run(async (tx) => {
         const [row] = await tx
           .insert(routines)
-          .values({ id: newId(), ...input, createdAt: now })
+          .values({ id: newId(), ...input, nextFireAt, createdAt: now })
           .returning();
         return row!;
       }),
@@ -58,20 +62,6 @@ export function routineRepository(run: RunTransaction) {
             revision: revised ? routine.revision + 1 : routine.revision,
             nextFireAt,
           })
-          .where(eq(routines.id, id))
-          .returning();
-        return row!;
-      }),
-    /** Approves exactly this revision. A stale approval changes nothing. */
-    approve: (id: string, revision: number, nextFireAt: number | null) =>
-      run(async (tx) => {
-        const routine = await tx.select().from(routines).where(eq(routines.id, id)).get();
-        if (!routine) throw new Error("Routine not found.");
-        if (routine.revision !== revision)
-          throw new Error("The routine changed. Review the new version before you approve it.");
-        const [row] = await tx
-          .update(routines)
-          .set({ approvedRevision: revision, nextFireAt })
           .where(eq(routines.id, id))
           .returning();
         return row!;
@@ -109,7 +99,7 @@ export function routineRepository(run: RunTransaction) {
           .orderBy(desc(routines.createdAt))
           .all(),
       ),
-    /** Enabled routines whose next fire time passed and whose latest revision is approved. */
+    /** Enabled routines whose next fire time passed. */
     due: (organizationId: string, now: number) =>
       run((tx) =>
         tx
@@ -119,7 +109,6 @@ export function routineRepository(run: RunTransaction) {
             and(
               eq(routines.organizationId, organizationId),
               eq(routines.enabled, true),
-              eq(routines.approvedRevision, routines.revision),
               isNotNull(routines.nextFireAt),
               lte(routines.nextFireAt, now),
             ),
@@ -129,7 +118,7 @@ export function routineRepository(run: RunTransaction) {
     /**
      * Queues the routine's latest due occurrence. Older pending ticks of the routine are
      * superseded, so missed ticks collapse to one. The dedupe key makes a repeated fire for the
-     * same occurrence a no-op. Fires only the approved revision that the caller computed from.
+     * same occurrence a no-op. Fires only the revision that the caller computed from.
      */
     fire: (
       input: {
@@ -148,9 +137,7 @@ export function routineRepository(run: RunTransaction) {
           .from(routines)
           .where(eq(routines.id, input.routineId))
           .get();
-        const approved =
-          routine?.revision === input.revision && routine.approvedRevision === routine.revision;
-        if (!routine?.enabled || !approved) return undefined;
+        if (!routine?.enabled || routine.revision !== input.revision) return undefined;
         const destination = {
           conversationId: routine.destinationConversationId,
           threadId: routine.destinationThreadId,

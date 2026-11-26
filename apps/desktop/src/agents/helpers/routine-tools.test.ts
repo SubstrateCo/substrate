@@ -42,27 +42,21 @@ async function liveTurn() {
 
 const daily = { name: "Daily summary", prompt: "Summarize.", cron: "0 9 * * *", timezone: "UTC" };
 
-test("an agent creates, changes and deletes its routines, and changes wait for approval", async () => {
+test("an agent creates, changes and deletes its routines, and they run without approval", async () => {
   const { f, call } = await liveTurn();
   const created = await call("create_routine", daily);
-  expect(created).toMatchObject({
-    success: true,
-    data: { name: "Daily summary", enabled: true, approved: false, nextFireAt: null },
-  });
+  expect(created).toMatchObject({ success: true, data: { name: "Daily summary", enabled: true } });
   if (!created.success) throw new Error("create_routine failed.");
   // SAFETY: create_routine succeeded, so data is its output.
   const { routineId } = created.data as { routineId: string };
 
-  // The owner approves; a new schedule needs approval again, and pausing does not.
-  const [row] = await f.runtime.routines.list(agentId);
-  await f.runtime.routines.approve({ routineId, revision: row!.revision });
-  expect(await call("update_routine", { routineId, changes: { enabled: false } })).toMatchObject({
-    success: true,
-    data: { enabled: false, approved: true },
-  });
+  await f.advance(24 * 60 * 60_000);
+  expect(await f.runtime.routines.tick()).toBe(1);
   expect(
     await call("update_routine", { routineId, changes: { cron: "0 10 * * *" } }),
-  ).toMatchObject({ success: true, data: { cron: "0 10 * * *", approved: false } });
+  ).toMatchObject({ success: true, data: { cron: "0 10 * * *" } });
+  await f.advance(24 * 60 * 60_000);
+  expect(await f.runtime.routines.tick()).toBe(1);
 
   expect(await call("list_routines", {})).toMatchObject({
     success: true,
@@ -79,15 +73,26 @@ test("an agent creates, changes and deletes its routines, and changes wait for a
   });
 });
 
-test("agents cannot choose where a routine posts, and need a valid schedule", async () => {
+test("agents post routines only where their owner can see, and need a valid schedule", async () => {
   const { f, call } = await liveTurn();
-  // The owner's approval list does not show a destination, so the agent cannot set one.
+  const hidden = { conversationId: crypto.randomUUID(), threadId: null };
+  expect(await call("create_routine", { ...daily, destination: hidden })).toMatchObject({
+    success: false,
+    error: { code: "INVALID_INPUT" },
+  });
+  const channel = { conversationId: crypto.randomUUID(), threadId: null };
+  f.visibleConversations.add(channel.conversationId);
+  const created = await call("create_routine", { ...daily, destination: channel });
+  expect(created).toMatchObject({ success: true, data: { destination: channel } });
+  if (!created.success) throw new Error("create_routine failed.");
+  // SAFETY: create_routine succeeded, so data is its output.
+  const { routineId } = created.data as { routineId: string };
   expect(
-    await call("create_routine", {
-      ...daily,
-      destination: { conversationId: crypto.randomUUID(), threadId: null },
-    }),
+    await call("update_routine", { routineId, changes: { destination: hidden } }),
   ).toMatchObject({ success: false, error: { code: "INVALID_INPUT" } });
+  expect((await f.runtime.routines.list(agentId))[0]!.destination).toEqual(channel);
+  await f.runtime.routines.delete(routineId);
+
   expect(await call("create_routine", { ...daily, cron: "61 * * * *" })).toMatchObject({
     success: false,
     error: { code: "INVALID_INPUT", message: "Invalid cron expression." },
@@ -95,14 +100,11 @@ test("agents cannot choose where a routine posts, and need a valid schedule", as
   expect(await f.runtime.routines.list(agentId)).toEqual([]);
 });
 
-test("background turns cannot change routines, and an agent changes only its own", async () => {
+test("background turns change routines, and an agent changes only its own", async () => {
   const { f, turn, call } = await liveTurn();
   const background = { ...turn.context, kind: "unattended" as const };
-  expect(await call("create_routine", daily, background)).toMatchObject({
-    success: false,
-    error: { code: "FORBIDDEN" },
-  });
-  expect(await f.runtime.routines.list(agentId)).toEqual([]);
+  expect(await call("create_routine", daily, background)).toMatchObject({ success: true });
+  expect(await f.runtime.routines.list(agentId)).toHaveLength(1);
 
   const other = await f.store.routines.create(
     {
@@ -113,6 +115,7 @@ test("background turns cannot change routines, and an agent changes only its own
       destinationConversationId: crypto.randomUUID(),
       destinationThreadId: null,
     },
+    null,
     0,
   );
   expect(await call("delete_routine", { routineId: other.id })).toMatchObject({

@@ -26,7 +26,7 @@ const blank = (): RoutineDraft => ({
 
 const saveFailed = "We couldn’t save this routine. Try again.";
 
-/** An agent's routines on its home desktop. Each revision runs only after the owner approves it. */
+/** An agent's routines on its home desktop. */
 export function Routines({ agentId, name }: { agentId: string; name: string }) {
   const { userId, organizationId } = useWorkspaceScope();
   const routines = useQuery(routinesOptions(userId, organizationId, agentId));
@@ -45,7 +45,7 @@ export function Routines({ agentId, name }: { agentId: string; name: string }) {
     actions.update.reset();
   };
   const onSaved = (verb: string) => () => {
-    toast.success(`Routine ${verb}. Approve it to start running it.`);
+    toast.success(`Routine ${verb}.`);
     close();
   };
   const save = (draft: RoutineDraft) => {
@@ -68,19 +68,8 @@ export function Routines({ agentId, name }: { agentId: string; name: string }) {
         loading={routines.isPending}
         error={routines.error}
         onRetry={() => void routines.refetch()}
-        approvingId={actions.approve.isPending ? actions.approve.variables.routineId : undefined}
         onAdd={() => editor.open("new")}
         onEdit={(routineId) => editor.open(routineId)}
-        onApprove={(routine) =>
-          actions.approve.mutate(
-            { routineId: routine.id, revision: routine.revision },
-            {
-              onSuccess: () => toast.success(`${routine.name} approved.`),
-              onError: (failure) =>
-                toast.error(actionErrorMessage(failure, "We couldn’t approve this routine.")),
-            },
-          )
-        }
         onDelete={(routine) => deletion.open(routine)}
       />
       {editingId && (

@@ -120,7 +120,6 @@ export function routineView(row: RoutineRow): AgentRoutineView {
     cron: row.cron,
     timezone: row.timezone,
     revision: row.revision,
-    approvedRevision: row.approvedRevision,
     destination: {
       conversationId: row.destinationConversationId,
       threadId: row.destinationThreadId,
