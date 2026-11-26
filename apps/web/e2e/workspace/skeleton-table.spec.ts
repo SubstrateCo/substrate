@@ -1,5 +1,5 @@
 import { createCrm } from "../../../server/integration/test-support/crm";
-import { inviteMember, visit } from "../test-support/fixtures";
+import { inviteMember } from "../test-support/fixtures";
 import { test } from "../test-support/workspace-fixtures";
 import { expect, type Locator, type Page, type Route } from "@playwright/test";
 import { randomUUID } from "node:crypto";
@@ -52,7 +52,7 @@ test("accounts keep their table layout while the initial list loads", async ({
   const user = await client(account);
   const held = await holdResponse(user.page, "**/api/v1/crm/accounts?**");
   try {
-    await visit(user, undefined, "/crm", { section: "accounts" });
+    await user.page.goto(`/crm?workspaceId=${account.organizationId}&section=accounts`);
     await held.ready;
     const table = user.page.getByRole("table", { name: "accounts" });
     await expect(table).toBeVisible();

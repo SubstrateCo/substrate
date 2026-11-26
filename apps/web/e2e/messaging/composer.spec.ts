@@ -17,7 +17,7 @@ test("text drafts survive app and settings navigation", async ({ actors, client 
     await expect(editor).toHaveCount(0);
     await page
       .getByRole("navigation", { name: "Apps", exact: true })
-      .getByRole("link", { name: "Messages", exact: true })
+      .getByRole("link", { name: /^Messages(?:,|$)/ })
       .click();
     await conversationButton(page, channel.name).click();
     await expect(editor).toHaveText("Keep this draft across apps");
@@ -30,7 +30,7 @@ test("text drafts survive app and settings navigation", async ({ actors, client 
     await expect(editor).toHaveCount(0);
     await page
       .getByRole("navigation", { name: "Apps", exact: true })
-      .getByRole("link", { name: "Messages", exact: true })
+      .getByRole("link", { name: /^Messages(?:,|$)/ })
       .click();
     await conversationButton(page, channel.name).click();
     await expect(editor).toHaveText("Keep this draft across apps");

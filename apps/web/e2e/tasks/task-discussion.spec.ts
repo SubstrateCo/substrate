@@ -122,7 +122,7 @@ test("a view-only task discussion cannot send, and revocation clears its open me
   await sender.page.getByRole("button", { name: "Remove access", exact: true }).click();
   await expectChange(member, since, "access");
   await expect(
-    member.page.getByRole("heading", { name: "Conversation unavailable", exact: true }),
+    member.page.getByRole("heading", { name: "Conversation unavailable", exact: true, level: 2 }),
   ).toBeVisible();
   await expect(member.page.getByText(body, { exact: true })).toHaveCount(0);
   await expect(member.page.getByRole("link", { name: title, exact: true })).toHaveCount(0);

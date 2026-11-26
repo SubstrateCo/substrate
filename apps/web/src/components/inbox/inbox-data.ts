@@ -81,7 +81,12 @@ export function useFolderPage(
   if (!page.isPlaceholderData && JSON.stringify(shownFolder) !== JSON.stringify(folder))
     setShownFolder(folder);
   const rows = page.isPlaceholderData ? page.data.items : paging.items;
-  return { page, paging, shownFolder, rows };
+  return {
+    page,
+    paging: { ...paging, pending: paging.pending || search.pending || page.isPlaceholderData },
+    shownFolder,
+    rows,
+  };
 }
 
 /** The counts that mail navigation shows for the open folder. */

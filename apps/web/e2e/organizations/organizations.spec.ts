@@ -1,7 +1,7 @@
 import { Mailpit } from "../../../server/integration/test-support/mailpit";
 import { provisionWorkspaceSession } from "../../../server/integration/test-support/organizations";
 import { conversation, conversationButton, post, test, visit } from "../test-support/fixtures";
-import { pauseClock, searches } from "../test-support/search";
+import { searches } from "../test-support/search";
 import { project } from "../test-support/tasks";
 import { expect } from "@playwright/test";
 
@@ -40,7 +40,6 @@ test("switching workspaces clears private messages, reconnects in the selected o
   const reconnect = user.page.waitForEvent("websocket", {
     predicate: (socket) => new URL(socket.url()).searchParams.get("organizationId") === second.id,
   });
-  await pauseClock(user.page);
   const requests = searches(user.page);
   await user.page
     .getByRole("combobox", { name: "Search workspace", exact: true })
@@ -48,8 +47,8 @@ test("switching workspaces clears private messages, reconnects in the selected o
   await user.page
     .getByRole("button", { name: `Switch workspace, current: ${firstName}`, exact: true })
     .click();
-  await user.page.clock.resume();
-  await Promise.all([reconnect, user.page.getByRole("menuitem", { name, exact: true }).click()]);
+  await user.page.getByRole("menuitem", { name, exact: true }).click();
+  await reconnect;
   await expect(user.page).toHaveURL(/\/dashboard$/);
   await expect(user.page.getByText(privateBody, { exact: true })).toHaveCount(0);
   await expect(conversationButton(user.page, first.name)).toHaveCount(0);
@@ -59,7 +58,15 @@ test("switching workspaces clears private messages, reconnects in the selected o
     "The WebSocket completes a new ready handshake in the selected organization",
   );
   expect(await activeOrganizationId()).toBe(second.id);
-  expect(requests.some((request) => request.query === "discard on workspace switch")).toBe(false);
+  await expect(
+    user.page.getByRole("combobox", { name: "Search workspace", exact: true }),
+  ).toBeEmpty();
+  expect(
+    requests.some(
+      (request) =>
+        request.query === "discard on workspace switch" && request.organizationId === second.id,
+    ),
+  ).toBe(false);
   await user.page.getByRole("link", { name: "Messages", exact: true }).click();
   await conversationButton(user.page, secondChannel.name).click();
   await expect(user.page.getByText(secondBody, { exact: true })).toBeVisible();

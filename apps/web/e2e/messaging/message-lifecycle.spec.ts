@@ -35,7 +35,7 @@ test("editing and deleting a thread root retains its replies and permalink", asy
     .click();
   const deleted = page.getByRole("article").filter({ hasText: "Message deleted" });
   await expect(deleted).toBeVisible();
-  await deleted.getByRole("button", { name: "1 reply", exact: true }).click();
+  await deleted.getByRole("button", { name: /^1 reply(?:, \d+ new)?$/ }).click();
   const thread = page.getByRole("complementary", { name: "Thread", exact: true });
   await expect(
     thread.getByText("Keep this reply after the root is deleted", { exact: true }),
@@ -131,7 +131,7 @@ test("removing an internal member through the member list clears their open priv
     .getByRole("button", { name: "Remove member", exact: true })
     .click();
   await expect(
-    member.page.getByRole("heading", { name: "Conversation unavailable", exact: true }),
+    member.page.getByRole("heading", { name: "Conversation unavailable", exact: true, level: 2 }),
   ).toBeVisible();
   await expect(member.page.getByText(body, { exact: true })).toHaveCount(0);
   await expect(conversationButton(member.page, channel.name)).toHaveCount(0);

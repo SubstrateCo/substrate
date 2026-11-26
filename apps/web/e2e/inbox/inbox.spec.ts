@@ -312,7 +312,7 @@ test("unified unread expands by address; labels filter whole conversations, and 
   const group = sidebar.getByRole("group", { name: "Unread by mailbox" });
   const work = group.getByRole("button", { name: /alex@fieldwork.example/ });
   await expect(work).toContainText("2");
-  await expect(group.getByRole("button", { name: /alex\.rivera\.demo@gmail\.com/ })).toContainText(
+  await expect(group.getByRole("button", { name: /alex\.home@personal\.example/ })).toContainText(
     "1",
   );
   await expect(sidebar.getByRole("button", { name: "Unread 3", exact: true })).toBeVisible();
@@ -347,6 +347,7 @@ test("unified unread expands by address; labels filter whole conversations, and 
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("ÉCOLE");
   await search.fill("Dates for the gallery visit");
+  await expect(rows.first()).toContainText("Dates for the gallery visit");
   await rows.first().click();
   await expect(reader.getByRole("link", { name: "Join Google Meet" })).toHaveAttribute(
     "href",

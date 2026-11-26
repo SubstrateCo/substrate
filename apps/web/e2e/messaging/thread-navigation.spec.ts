@@ -1,7 +1,7 @@
 import { conversation, post, test, visit } from "../test-support/fixtures";
 import { expect } from "@playwright/test";
 
-test("cold thread navigation keeps the pane stable and cached navigation restores the right draft", async ({
+test("timeline thread navigation opens before target confirmation and cached navigation restores the right draft", async ({
   actors,
   client,
 }) => {
@@ -43,12 +43,12 @@ test("cold thread navigation keeps the pane stable and cached navigation restore
     const root = user.page.getByRole("article").filter({
       has: user.page.getByText(body, { exact: true }),
     });
-    await root.getByRole("button", { name: "1 reply", exact: true }).click();
+    await root.getByRole("button", { name: /^1 reply(?:, \d+ new)?$/ }).click();
     await ready.promise;
     try {
       await expect(thread).toBeVisible();
-      await expect(thread.getByRole("status", { name: "Loading replies" })).toBeVisible();
-      await expect(composer).toHaveCount(0);
+      await expect(thread.getByText(`${body} reply`, { exact: true })).toBeVisible();
+      await expect(composer).toBeVisible();
       if (pane) {
         expect(await pane.evaluate((element) => element.isConnected)).toBe(true);
         expect(await thread.boundingBox()).toEqual(bounds);
