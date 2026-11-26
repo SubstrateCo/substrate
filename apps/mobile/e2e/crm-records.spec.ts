@@ -280,6 +280,21 @@ test("Expo web preview: existing CRM reports, interaction directories, activity 
     .getByRole("button", { name: "Mobile design partnership · synthetic", exact: true })
     .scrollIntoViewIfNeeded();
   await captureScreenshot(page, info, "crm-reports-open-cohort");
+  const reportFilters = page.getByLabel("Report filters", { exact: true });
+  await expect(
+    reportFilters.getByRole("button", { name: /^Close date is between / }),
+  ).toBeVisible();
+  await reportFilters.getByRole("button", { name: "Stale after is 30 days", exact: true }).click();
+  const staleDays = page.getByLabel("Stale after (days)", { exact: true });
+  await staleDays.fill("0");
+  await expect(page.getByText("Use a whole number from 1 to 3650.", { exact: true })).toBeVisible();
+  await expect(page.getByRole("button", { name: "Apply", exact: true })).toBeDisabled();
+  await captureScreenshot(page, info, "crm-reports-stale-editor-invalid");
+  await staleDays.fill("14");
+  await page.getByRole("button", { name: "Apply", exact: true }).click();
+  await expect(
+    reportFilters.getByRole("button", { name: "Stale after is 14 days", exact: true }),
+  ).toBeVisible();
   await page.getByRole("tab", { name: "Interactions", exact: true }).click();
   await page.getByRole("tab", { name: "Activity", exact: true }).click();
   await expect(page.getByText("Contacts reached", { exact: true })).toBeVisible();

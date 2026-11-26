@@ -5,8 +5,6 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { useRef, useState } from "react";
 
-import { ActiveFilterChips } from "./active-filter-chips";
-import { activeFilters } from "./active-filters";
 import { AllMeetings } from "./archive/all-meetings";
 import { MeetingSearchField } from "./archive/meeting-search";
 import { MeetingSidebar } from "./archive/meeting-sidebar";
@@ -123,14 +121,6 @@ export function MeetingsWorkspace({
       inContent={inContent}
     />
   );
-  const filters = activeFilters({
-    search,
-    section,
-    query: filter.query,
-    change,
-    clearPhrase: () => updatePhrase(""),
-  });
-  const chips = filters.length ? <ActiveFilterChips filters={filters} /> : null;
   return (
     <MeetingsWorkspaceContext value={{ scope, queries, search, change }}>
       <Sheet open={menu} onOpenChange={setMenu}>
@@ -205,7 +195,6 @@ export function MeetingsWorkspace({
               {section === "all" && (
                 <AllMeetings
                   input={archiveInput(search, filter.query)}
-                  filters={chips}
                   searchPending={searchPending}
                   open={open}
                   clearFilters={() => {
@@ -216,11 +205,7 @@ export function MeetingsWorkspace({
                 />
               )}
               {section === "calendar" && (
-                <MeetingCalendar
-                  phrase={filter.query}
-                  searchPending={searchPending}
-                  filters={chips}
-                />
+                <MeetingCalendar phrase={filter.query} searchPending={searchPending} />
               )}
               {section === "review" && <MatchReview />}
             </div>

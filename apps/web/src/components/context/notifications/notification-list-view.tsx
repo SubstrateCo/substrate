@@ -5,21 +5,39 @@ import { Fragment, type KeyboardEvent, type MouseEvent, type ReactNode } from "r
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
 import { PendingButton } from "../../feedback/pending-button";
-import { SegmentedControl } from "../../forms/segmented-control";
 import { NotificationItem, NotificationRowsLoading, type Notification } from "./notification-item";
 import { StaleNotice } from "@/components/feedback/stale-notice";
+import { FilterBar, type FilterField, type FilterValue } from "@/components/filters";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDayLabel } from "@/lib/format/date";
 import type { ResourceStatus } from "@/lib/resource-state";
-import { Bell, CheckCheck, X } from "lucide-react";
+import { Bell, CheckCheck, Eye, X } from "lucide-react";
 
-const filterOptions = [
-  { value: "all", label: "All" },
-  { value: "unread", label: "Unread" },
-] as const;
+type NotificationFilterFieldId = "read";
+
+/** One "Read" field with one option. No clause means the whole feed. */
+const filterFields: FilterField<NotificationFilterFieldId>[] = [
+  {
+    id: "read",
+    label: "Read",
+    icon: Eye,
+    kind: "option",
+    options: [{ value: "unread", label: "Unread" }],
+  },
+];
+
+function notificationFilterValue(
+  filter: NotificationFilter,
+): FilterValue<NotificationFilterFieldId> {
+  return filter === "unread" ? { read: { operator: "is", values: ["unread"] } } : {};
+}
+
+function notificationFilterFrom(value: FilterValue<NotificationFilterFieldId>): NotificationFilter {
+  return value.read?.values.includes("unread") ? "unread" : "all";
+}
 
 /** Newest first, so each run of rows from one day gets one label. */
 function dayLabeled(items: Notification[]) {
@@ -123,11 +141,13 @@ export function NotificationList({
                 </>
               }
             />
-            <SegmentedControl
-              aria-label="Notification filter"
-              value={filter}
-              options={filterOptions}
-              onValueChange={onFilter}
+            <FilterBar
+              aria-label="Notification filters"
+              fields={filterFields}
+              value={notificationFilterValue(filter)}
+              onValueChange={(value) => onFilter(notificationFilterFrom(value))}
+              // With nothing unread, the empty state offers its own "Show all".
+              clearable={!empty}
             />
             <div className="flex flex-1 flex-col gap-4">
               <NotificationFeedNotice state={state} onRetry={onRetry} />

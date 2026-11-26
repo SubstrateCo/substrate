@@ -1,6 +1,6 @@
 import { expectChange, post, send, test, visit } from "../test-support/fixtures";
 import { detail, project, select, share } from "../test-support/tasks";
-import { expect } from "@playwright/test";
+import { expect, type Locator } from "@playwright/test";
 
 test("task drafts ask before navigation and project drafts stay with their project", async ({
   actors,
@@ -273,6 +273,53 @@ test("project sharing needs confirmation and revocation removes cached private c
   );
 });
 
+test("at 1440px, two filter pills, Clear filters, the search and sort share one toolbar row", async ({
+  actors,
+  client,
+}) => {
+  const created = await project(actors.sender);
+  const self = (await detail(actors.sender, created.entityId)).actors.find(
+    (actor) => actor.name === actors.sender.name,
+  );
+  expect(self).toBeDefined();
+  await post(actors.sender, "tasks/mutations", {
+    action: "createTask",
+    organizationId: actors.sender.organizationId,
+    projectEntityId: created.entityId,
+    title: "Assigned task",
+    assigneeActorEntityId: self!.entityId,
+  });
+  const sender = await client(actors.sender);
+  await sender.page.setViewportSize({ width: 1440, height: 900 });
+  await visit(sender, undefined, "/tasks", { projectId: created.entityId });
+  const toolbar = sender.page.getByRole("toolbar", { name: "Task filters", exact: true });
+  const choose = async (field: string, option: string) => {
+    await toolbar.getByRole("button", { name: "Filter", exact: true }).click();
+    await sender.page.getByRole("option", { name: field, exact: true }).click();
+    await sender.page.getByRole("option", { name: option, exact: true }).click();
+    await sender.page.keyboard.press("Escape");
+  };
+  await choose("Scope", "Active");
+  await choose("Assignee", actors.sender.name);
+  const scope = toolbar.getByRole("group", { name: "Scope is Active", exact: true });
+  await expect(
+    toolbar.getByRole("group", { name: `Assignee is ${actors.sender.name}`, exact: true }),
+  ).toBeVisible();
+  const middle = async (control: Locator) => {
+    const box = await control.boundingBox();
+    expect(box).not.toBeNull();
+    return box!.y + box!.height / 2;
+  };
+  const row = await middle(scope);
+  for (const control of [
+    toolbar.getByRole("button", { name: "Clear filters", exact: true }),
+    toolbar.getByRole("searchbox", { name: "Search tasks", exact: true }),
+    toolbar.getByRole("radio", { name: "Board", exact: true }),
+  ]) {
+    expect(Math.abs((await middle(control)) - row)).toBeLessThanOrEqual(2);
+  }
+});
+
 test("a blocking link marks a task blocked", async ({ actors, client }) => {
   const created = await project(actors.sender);
   const task = (title: string) =>
@@ -297,7 +344,12 @@ test("a blocking link marks a task blocked", async ({ actors, client }) => {
       .getByRole("button", { name: `Not started: ${blocker}`, exact: true }),
   ).toBeVisible();
   // The filter keeps only the open task that waits on an open task.
-  await sender.page.getByRole("radio", { name: "Blocked", exact: true }).click();
+  await sender.page.getByRole("button", { name: "Filter", exact: true }).click();
+  await sender.page.getByRole("option", { name: "Scope", exact: true }).click();
+  await sender.page.getByRole("option", { name: "Blocked", exact: true }).click();
+  await expect(
+    sender.page.getByRole("group", { name: "Scope is Blocked", exact: true }),
+  ).toBeVisible();
   await expect(
     sender.page.getByRole("button", { name: new RegExp(`^Not started: ${waiting}.*Blocked`) }),
   ).toBeVisible();

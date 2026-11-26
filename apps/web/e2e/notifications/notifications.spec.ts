@@ -117,7 +117,10 @@ test("notifications page complete groups, filter unread, and mark groups and all
   await feed.getByRole("button", { name: "Show older", exact: true }).click();
   await expect(rows).toHaveCount(21);
   await expect(feed.getByRole("button", { name: "Show older", exact: true })).toHaveCount(0);
-  await feed.getByRole("radio", { name: "Unread", exact: true }).click();
+  await feed.getByRole("button", { name: "Filter", exact: true }).click();
+  await recipient.page.getByRole("option", { name: "Read", exact: true }).click();
+  await recipient.page.getByRole("option", { name: "Unread", exact: true }).click();
+  await expect(feed.getByRole("group", { name: "Read is Unread", exact: true })).toBeVisible();
   await expect(rows).toHaveCount(20);
   const readHref = await rows.first().getByRole("link").getAttribute("href");
   await rows.first().getByRole("button", { name: "Mark as read", exact: true }).click();
@@ -125,6 +128,7 @@ test("notifications page complete groups, filter unread, and mark groups and all
   await feed.getByRole("button", { name: "Mark all as read", exact: true }).click();
   await expect(feed.getByRole("heading", { name: "You’re all caught up" })).toBeVisible();
   await feed.getByRole("button", { name: "Show all", exact: true }).click();
+  await expect(feed.getByRole("group", { name: "Read is Unread", exact: true })).toHaveCount(0);
   // The full feed keeps the older page it loaded, and every row in it is now read.
   await expect(rows).toHaveCount(21);
   await expect(rows.getByRole("button", { name: "Mark as read", exact: true })).toHaveCount(0);

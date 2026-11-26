@@ -8,25 +8,32 @@ import { ScrollView, View } from "react-native";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useRecordPeople } from "@/features/records/crm-queries";
-import { formatDate, formatMoney, todayDate } from "@/features/records/format";
+import {
+  currencyOptions,
+  initialReportFilters,
+  reportRequest,
+  staleDayBounds,
+  type ReportFilters,
+  type ReportFilterValue,
+} from "@/features/records/crm-report-filters";
+import { withValues, type FilterFieldOf } from "@/features/records/filters";
+import { formatDate, formatMoney, outcomeLabels, todayDate } from "@/features/records/format";
 import { recordQueries } from "@/features/records/queries";
-import { reportPeriod } from "@/features/records/report-period";
 import { recordRequests } from "@/features/records/requests";
 import type { OnOpenRecord } from "@/features/records/types";
-import { DateField, SelectField, TextField } from "@/features/records/ui/fields";
+import { SelectField } from "@/features/records/ui/fields";
+import { FilterBar } from "@/features/records/ui/filter-bar";
 import { DetailSection, Property, Row } from "@/features/records/ui/rows";
 import { SectionQuery } from "@/features/records/ui/states";
 import { queryKeys, type QueryScope } from "@/queries/keys";
+import { CalendarRange, CircleCheck, Clock, Coins, Layers, UserRound } from "lucide-react-native";
 import type { z } from "zod";
 
 type Cohort = z.output<typeof crmReportDeals>["cohort"];
-type ReportFilters = {
-  stageId?: string;
-  ownerActorEntityId?: string;
-  currency?: string;
-  outcome?: "open" | "won" | "lost";
-  staleDays: number;
-};
+const outcomeOptions = (["open", "won", "lost"] as const).map((value) => ({
+  value,
+  label: outcomeLabels[value],
+}));
 const cohorts: { value: Cohort; label: string }[] = [
   { value: "open", label: "Open deals" },
   { value: "closed", label: "Closed deals" },
@@ -43,30 +50,14 @@ export function CrmReports({
   scope: QueryScope;
   onOpenRecord: OnOpenRecord;
 }) {
-  const [through, setThrough] = useState(todayDate);
-  const [from, setFrom] = useState(() => `${todayDate().slice(0, 7)}-01`);
-  const [stage, setStage] = useState("all");
-  const [owner, setOwner] = useState("all");
-  const [currency, setCurrency] = useState("");
-  const [outcome, setOutcome] = useState("all");
-  const [staleDays, setStaleDays] = useState("30");
+  const [value, setValue] = useState<ReportFilterValue>(() => initialReportFilters(todayDate()));
   const [cohort, setCohort] = useState<Cohort>("open");
   const stages = useQuery(recordQueries.pipeline(scope));
   const people = useRecordPeople(scope);
-  const period = reportPeriod(from, through);
+  const settings = useQuery(recordQueries.crmSettings(scope));
+  const { period, filters, valid } = reportRequest(value);
   const periodFrom = period?.from;
   const periodTo = period?.to;
-  const valid =
-    !!period &&
-    /^(unknown|[A-Z]{3})?$/.test(currency) &&
-    /^\d{1,4}$/.test(staleDays) &&
-    Number(staleDays) >= 1 &&
-    Number(staleDays) <= 3650;
-  const filters: ReportFilters = { staleDays: Number(staleDays) };
-  if (stage !== "all") filters.stageId = stage;
-  if (owner !== "all") filters.ownerActorEntityId = owner;
-  if (currency) filters.currency = currency;
-  if (outcome === "open" || outcome === "won" || outcome === "lost") filters.outcome = outcome;
   const query = useQuery({
     queryKey: queryKeys.list(scope, "crm", {
       view: "report",
@@ -85,165 +76,164 @@ export function CrmReports({
     retry: false,
   });
   const data = valid ? query.data : undefined;
+  const fields: FilterFieldOf<ReportFilterValue>[] = [
+    {
+      id: "close",
+      kind: "date-range",
+      label: "Close date",
+      icon: CalendarRange,
+      required: true,
+      description: "Actual close dates in UTC. Both days are included.",
+    },
+    {
+      id: "stage",
+      label: "Stage",
+      icon: Layers,
+      loading: stages.isPending,
+      options: (stages.data ?? []).map((row) => ({ value: row.id, label: row.name })),
+    },
+    {
+      id: "owner",
+      label: "Owner",
+      icon: UserRound,
+      loading: people.pending,
+      options: people.people.map((row) => ({ value: row.id, label: row.name })),
+    },
+    { id: "outcome", label: "Outcome", icon: CircleCheck, options: outcomeOptions },
+    {
+      id: "currency",
+      label: "Currency",
+      icon: Coins,
+      loading: settings.isPending,
+      options: currencyOptions([
+        settings.data?.defaultCurrency,
+        ...(data?.closed ?? []).map((row) => row.currency),
+        ...(data?.open ?? []).map((row) => row.currency),
+        ...(value.currency ?? []),
+      ]),
+    },
+    {
+      id: "stale",
+      kind: "number",
+      label: "Stale after",
+      icon: Clock,
+      required: true,
+      ...staleDayBounds,
+      unit: { one: "day", other: "days" },
+    },
+  ];
+  const set = <K extends keyof ReportFilterValue>(id: K, next: ReportFilterValue[K]) =>
+    setValue((current) => withValues(current, id, next));
   return (
-    <ScrollView>
-      <View className="gap-3 px-4 py-3">
-        <DateField label="Actual close from (UTC)" value={from} onChange={setFrom} />
-        <DateField label="Actual close through (UTC)" value={through} onChange={setThrough} />
-        <SelectField
-          label="Stage filter"
-          value={stage}
-          onChange={setStage}
-          loading={stages.isPending}
-          choices={[
-            { value: "all", label: "All stages" },
-            ...(stages.data ?? []).map((row) => ({ value: row.id, label: row.name })),
-          ]}
-        />
-        <SelectField
-          label="Responsible owner filter"
-          value={owner}
-          onChange={setOwner}
-          loading={people.pending}
-          choices={[
-            { value: "all", label: "All owners" },
-            ...people.people.map((row) => ({ value: row.id, label: row.name })),
-          ]}
-        />
-        <SelectField
-          label="Outcome filter"
-          value={outcome}
-          onChange={setOutcome}
-          choices={[
-            { value: "all", label: "All outcomes" },
-            { value: "open", label: "Open" },
-            { value: "won", label: "Won" },
-            { value: "lost", label: "Lost" },
-          ]}
-        />
-        <TextField
-          label="Currency filter"
-          value={currency}
-          onChange={setCurrency}
-          placeholder="USD, unknown, or empty for all"
-          maxLength={7}
-        />
-        <TextField
-          label="Stale after days"
-          value={staleDays}
-          onChange={setStaleDays}
-          keyboardType="number-pad"
-          maxLength={4}
-        />
-        {!valid ? (
-          <Text className="text-sm text-destructive">
-            Choose ordered dates, a currency code or “unknown”, and 1–3650 stale days.
-          </Text>
+    <View className="flex-1">
+      <FilterBar label="Report filters" fields={fields} value={value} onChange={setValue} />
+      <ScrollView>
+        {valid && period ? (
+          <SectionQuery
+            pending={query.isPending}
+            error={query.error}
+            noun="CRM report"
+            onRetry={() => void query.refetch()}
+            emptyText={null}
+          >
+            {data ? (
+              <>
+                <DetailSection title="Close results">
+                  <Property label="Won" value={String(data.won)} />
+                  <Property label="Lost" value={String(data.lost)} />
+                  <Property
+                    label="Win rate"
+                    value={
+                      data.winRate === null
+                        ? "No closed deals"
+                        : `${Math.round(data.winRate * 100)}%`
+                    }
+                  />
+                  <Text className="px-4 py-2 text-xs text-muted-foreground">
+                    Current outcomes and latest actual close. Readable, unarchived deals only.
+                    Currency totals are never combined.
+                  </Text>
+                  {data.closed.map((row) => (
+                    <Row
+                      key={`${row.outcome}:${row.currency}`}
+                      title={`${row.outcome} · ${row.currency ?? "Unknown currency"}`}
+                      subtitle={`${row.count} deals · ${formatMoney(row.knownAmount, row.currency) || "No amount"} · ${row.missingAmountCount} missing amounts`}
+                      onPress={() => {
+                        setCohort("closed");
+                        set("outcome", [row.outcome]);
+                        set("currency", [row.currency ?? "unknown"]);
+                      }}
+                      chevron
+                    />
+                  ))}
+                </DetailSection>
+                <DetailSection title="Open pipeline">
+                  {data.open.map((row) => (
+                    <Row
+                      key={`${row.stageId}:${row.ownerActorEntityId}:${row.currency}`}
+                      title={`${stages.data?.find((value) => value.id === row.stageId)?.name ?? "Stage"} · ${row.currency ?? "Unknown currency"}`}
+                      subtitle={`${people.people.find((person) => person.id === row.ownerActorEntityId)?.name ?? "Former member"} · ${row.count} deals · ${formatMoney(row.knownAmount, row.currency) || "No amount"} · ${row.missingAmountCount} missing amounts`}
+                      onPress={() => {
+                        setCohort("open");
+                        set("stage", [row.stageId]);
+                        set("owner", [row.ownerActorEntityId]);
+                        set("currency", [row.currency ?? "unknown"]);
+                      }}
+                      chevron
+                    />
+                  ))}
+                </DetailSection>
+                <DetailSection title="Follow-up exceptions">
+                  <Row
+                    title="Overdue follow-ups"
+                    subtitle={String(data.exceptions.overdue)}
+                    onPress={() => setCohort("overdue")}
+                    chevron
+                  />
+                  <Row
+                    title="Due today"
+                    subtitle={String(data.exceptions.dueToday)}
+                    onPress={() => setCohort("due_today")}
+                    chevron
+                  />
+                  <Row
+                    title="No next action"
+                    subtitle={String(data.exceptions.noNextAction)}
+                    onPress={() => setCohort("no_next_action")}
+                    chevron
+                  />
+                  <Row
+                    title="Stale deals"
+                    subtitle={String(data.exceptions.stale)}
+                    onPress={() => setCohort("stale")}
+                    chevron
+                  />
+                  <Text className="px-4 py-2 text-xs text-muted-foreground">
+                    {data.exceptionScope}
+                  </Text>
+                </DetailSection>
+                <View className="px-4 py-2">
+                  <SelectField
+                    label="Report drilldown"
+                    value={cohort}
+                    onChange={setCohort}
+                    choices={cohorts}
+                  />
+                </View>
+                <ReportDeals
+                  scope={scope}
+                  cohort={cohort}
+                  period={period}
+                  filters={filters}
+                  asOf={data.asOf}
+                  onOpenRecord={onOpenRecord}
+                />
+              </>
+            ) : null}
+          </SectionQuery>
         ) : null}
-      </View>
-      {valid ? (
-        <SectionQuery
-          pending={query.isPending}
-          error={query.error}
-          noun="CRM report"
-          onRetry={() => void query.refetch()}
-          emptyText={null}
-        >
-          {data ? (
-            <>
-              <DetailSection title="Close results">
-                <Property label="Won" value={String(data.won)} />
-                <Property label="Lost" value={String(data.lost)} />
-                <Property
-                  label="Win rate"
-                  value={
-                    data.winRate === null ? "No closed deals" : `${Math.round(data.winRate * 100)}%`
-                  }
-                />
-                <Text className="px-4 py-2 text-xs text-muted-foreground">
-                  Current outcomes and latest actual close. Readable, unarchived deals only.
-                  Currency totals are never combined.
-                </Text>
-                {data.closed.map((row) => (
-                  <Row
-                    key={`${row.outcome}:${row.currency}`}
-                    title={`${row.outcome} · ${row.currency ?? "Unknown currency"}`}
-                    subtitle={`${row.count} deals · ${formatMoney(row.knownAmount, row.currency) || "No amount"} · ${row.missingAmountCount} missing amounts`}
-                    onPress={() => {
-                      setCohort("closed");
-                      setOutcome(row.outcome);
-                      setCurrency(row.currency ?? "unknown");
-                    }}
-                    chevron
-                  />
-                ))}
-              </DetailSection>
-              <DetailSection title="Open pipeline">
-                {data.open.map((row) => (
-                  <Row
-                    key={`${row.stageId}:${row.ownerActorEntityId}:${row.currency}`}
-                    title={`${stages.data?.find((value) => value.id === row.stageId)?.name ?? "Stage"} · ${row.currency ?? "Unknown currency"}`}
-                    subtitle={`${people.people.find((person) => person.id === row.ownerActorEntityId)?.name ?? "Former member"} · ${row.count} deals · ${formatMoney(row.knownAmount, row.currency) || "No amount"} · ${row.missingAmountCount} missing amounts`}
-                    onPress={() => {
-                      setCohort("open");
-                      setStage(row.stageId);
-                      setOwner(row.ownerActorEntityId);
-                      setCurrency(row.currency ?? "unknown");
-                    }}
-                    chevron
-                  />
-                ))}
-              </DetailSection>
-              <DetailSection title="Follow-up exceptions">
-                <Row
-                  title="Overdue follow-ups"
-                  subtitle={String(data.exceptions.overdue)}
-                  onPress={() => setCohort("overdue")}
-                  chevron
-                />
-                <Row
-                  title="Due today"
-                  subtitle={String(data.exceptions.dueToday)}
-                  onPress={() => setCohort("due_today")}
-                  chevron
-                />
-                <Row
-                  title="No next action"
-                  subtitle={String(data.exceptions.noNextAction)}
-                  onPress={() => setCohort("no_next_action")}
-                  chevron
-                />
-                <Row
-                  title="Stale deals"
-                  subtitle={String(data.exceptions.stale)}
-                  onPress={() => setCohort("stale")}
-                  chevron
-                />
-                <Text className="px-4 py-2 text-xs text-muted-foreground">
-                  {data.exceptionScope}
-                </Text>
-              </DetailSection>
-              <View className="px-4 py-2">
-                <SelectField
-                  label="Report drilldown"
-                  value={cohort}
-                  onChange={setCohort}
-                  choices={cohorts}
-                />
-              </View>
-              <ReportDeals
-                scope={scope}
-                cohort={cohort}
-                period={period}
-                filters={filters}
-                asOf={data.asOf}
-                onOpenRecord={onOpenRecord}
-              />
-            </>
-          ) : null}
-        </SectionQuery>
-      ) : null}
-    </ScrollView>
+      </ScrollView>
+    </View>
   );
 }
 

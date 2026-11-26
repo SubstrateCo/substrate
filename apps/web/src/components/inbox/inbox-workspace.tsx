@@ -14,7 +14,7 @@ import {
   useMailAccounts,
   useSelectedThread,
 } from "./inbox-data";
-import { InboxHeader, SyncNotice } from "./inbox-header";
+import { InboxHeader, LabelFilterBar, SyncNotice } from "./inbox-header";
 import { InboxList } from "./inbox-list";
 import { InboxWorkspaceContext, type InboxWorkspaceValue } from "./inbox-workspace-context";
 import { mailboxColors } from "./mail-colors";
@@ -166,6 +166,13 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
               setSelected(undefined);
               paging.reset();
             }}
+          />
+          <LabelFilterBar
+            boxes={boxes}
+            scope={active}
+            filter={filter}
+            onLabel={viewNav.onLabel}
+            onClear={() => navigate("inbox")}
           />
           <SyncNotice
             problem={problem}

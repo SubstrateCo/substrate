@@ -2,11 +2,65 @@ import { useId } from "react";
 
 import { CalendarColorDot } from "../calendar-color";
 import { ProviderIcon } from "../provider-icon";
+import {
+  hiddenCalendarsFrom,
+  hiddenCalendarsValue,
+  type CalendarFilterFieldId,
+} from "./calendar-filter-value";
+import { FilterBar, type FilterField } from "@/components/filters";
 import { PageSidebarGroupTitle } from "@/components/layout/page-layout";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import type { CalendarGroup } from "@/lib/calendar/groups";
-import { Unlink } from "lucide-react";
+import { CalendarDays, Unlink } from "lucide-react";
+
+/** "Calendar is not …": the hidden calendars, grouped by account. The menu ticks the shown calendars, as the sidebar does. */
+function calendarFilterFields(
+  groups: readonly CalendarGroup[],
+): FilterField<CalendarFilterFieldId>[] {
+  return [
+    {
+      id: "calendar",
+      label: "Calendar",
+      icon: CalendarDays,
+      kind: "option",
+      multiple: true,
+      checks: "unchosen",
+      operators: ["is not"],
+      pluralLabel: "calendars",
+      options: groups.flatMap((group) =>
+        group.calendars.map((calendar) => ({
+          value: calendar.entityId,
+          label: calendar.name,
+          icon: <CalendarColorDot color={calendar.color} />,
+          group: group.label,
+        })),
+      ),
+    },
+  ];
+}
+
+/** The hidden calendars as a filter bar. The sidebar checkboxes change the same choice. */
+export function CalendarFilterBar({
+  groups,
+  hidden,
+  onHiddenChange,
+}: {
+  groups: readonly CalendarGroup[];
+  hidden: ReadonlySet<string>;
+  onHiddenChange: (hidden: ReadonlySet<string>) => void;
+}) {
+  return (
+    <div className="shrink-0 border-b px-4 py-2">
+      <FilterBar
+        aria-label="Calendar filters"
+        fields={calendarFilterFields(groups)}
+        value={hiddenCalendarsValue(hidden, groups)}
+        onValueChange={(value) => onHiddenChange(hiddenCalendarsFrom(value))}
+      />
+    </div>
+  );
+}
 
 /** Shows or hides each calendar's events, grouped by account. The choice stays on this screen only. */
 export function CalendarFilter({

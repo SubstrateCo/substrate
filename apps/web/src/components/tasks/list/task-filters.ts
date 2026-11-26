@@ -1,5 +1,6 @@
 import { taskPriorityOrder } from "../task-cues/task-labels";
 import type { Task } from "../types";
+import type { FilterValue } from "@/components/filters";
 import { isClosedTask } from "@/lib/tasks/task-status";
 
 export type TaskSort = "default" | "priority" | "dueDate" | "title";
@@ -27,6 +28,27 @@ export function hasActiveFilters(filters: TaskFilters) {
 /** The filters with search, assignee, and scope cleared. The sort stays. */
 export function clearedFilters(filters: TaskFilters): TaskFilters {
   return { ...filters, query: "", assignee: "any", scope: "all" };
+}
+
+export type TaskFilterFieldId = "scope" | "assignee";
+
+const scopes = ["active", "blocked"] as const;
+
+/** The scope and assignee filters as filter-bar clauses. "All" and "Any assignee" have none. */
+export function taskFilterValue(filters: TaskFilters): FilterValue<TaskFilterFieldId> {
+  const value: FilterValue<TaskFilterFieldId> = {};
+  if (filters.scope !== "all") value.scope = { operator: "is", values: [filters.scope] };
+  if (filters.assignee !== "any") value.assignee = { operator: "is", values: [filters.assignee] };
+  return value;
+}
+
+/** The filters with scope and assignee taken from filter-bar clauses. Search and sort stay. */
+export function withTaskFilterValue(
+  filters: TaskFilters,
+  value: FilterValue<TaskFilterFieldId>,
+): TaskFilters {
+  const scope = scopes.find((candidate) => candidate === value.scope?.values[0]) ?? "all";
+  return { ...filters, scope, assignee: value.assignee?.values[0] ?? "any" };
 }
 
 const comparers: Record<Exclude<TaskSort, "default">, (a: Task, b: Task) => number> = {

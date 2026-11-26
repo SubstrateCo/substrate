@@ -332,6 +332,8 @@ test("unified unread expands by address; labels filter whole conversations, and 
     .getByRole("button", { name: "Review", exact: true })
     .click();
   await expect(page.getByRole("heading", { name: "Review", exact: true })).toBeVisible();
+  const pill = page.getByRole("group", { name: "Label is Review", exact: true });
+  await expect(pill).toBeVisible();
   const search = page.getByRole("searchbox", { name: "Search messages" });
   await search.fill("first round");
   const rows = page.getByRole("region", { name: "Messages", exact: true }).getByRole("button");
@@ -342,7 +344,11 @@ test("unified unread expands by address; labels filter whole conversations, and 
     reader.getByText("The first round is ready for review.", { exact: true }).last(),
   ).toBeVisible();
   await reader.getByRole("button", { name: "Close message" }).click();
-  await sidebar.getByRole("button", { name: "Inbox", exact: true }).click();
+  // Removing the label pill returns to the inbox, as the sidebar's Inbox does.
+  await pill.getByRole("button", { name: "Remove Label filter", exact: true }).click();
+  await expect(pill).toHaveCount(0);
+  await expect(page.getByRole("heading", { name: "Inbox", exact: true })).toBeVisible();
+  await expect(search).toHaveValue("");
   await search.fill("e\u0301cole");
   await expect(rows).toHaveCount(1);
   await expect(rows.first()).toContainText("ÉCOLE");

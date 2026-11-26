@@ -6,24 +6,31 @@ import type {
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useState } from "react";
 
+import { frequencyField, periodField } from "./interaction-filter-fields";
+import {
+  interactionFiltersFrom,
+  interactionFilterValue,
+  type InteractionDays,
+  type InteractionFilters,
+} from "./interaction-filters";
 import type { getInteractionDirectory } from "@/api/context/interactions";
-import { SegmentedControl } from "@/components/forms/segmented-control";
+import { FilterBar, SortControl, type SortOption } from "@/components/filters";
 import { AppTable, createAppColumnHelper, dateTimeColumn, tableLink } from "@/components/table";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { interactionDirectoryOptions } from "@/queries/context/interactions";
 import { Building2, Users } from "lucide-react";
 
 type DirectoryRow = Awaited<ReturnType<typeof getInteractionDirectory>>["items"][number];
+type DirectorySort = NonNullable<DirectoryInput["sort"]>;
+
+const sortOptions: SortOption<DirectorySort>[] = [
+  { value: "latest", label: "Latest activity" },
+  { value: "name", label: "Name" },
+  { value: "count", label: "Most interactions" },
+];
 
 const column = createAppColumnHelper<DirectoryRow>();
 const pageSizeOptions = [25, 50, 100];
@@ -68,19 +75,22 @@ function directoryColumns(type: DirectoryInput["type"]) {
 
 export function InteractionDirectory({
   period,
+  days,
+  onDaysChange,
   type,
-  filters,
 }: {
   period: InteractionTimeline;
+  /** The activity period that `period` covers. */
+  days: InteractionDays;
+  onDaysChange: (days: InteractionDays) => void;
   type: "people" | "accounts";
-  /** Filters right after the search, such as the activity period. */
-  filters?: ReactNode;
 }) {
   const [search, setSearch] = useState("");
-  const [frequency, setFrequency] = useState("all");
-  const [sort, setSort] = useState("latest");
+  const [repeat, setRepeat] = useState(false);
+  const [sort, setSort] = useState<DirectorySort>("latest");
   const [pageSize, setPageSize] = useState("25");
-  const debounced = useSearchDebounce(search, `${frequency}:${sort}`);
+  const debounced = useSearchDebounce(search, `${repeat}:${sort}`);
+  const filters: InteractionFilters = { days, repeat };
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -93,36 +103,32 @@ export function InteractionDirectory({
           maxLength={200}
           onChange={(e) => setSearch(e.target.value)}
         />
-        {filters}
-        <SegmentedControl
-          aria-label="Interaction frequency"
-          value={frequency}
-          onValueChange={setFrequency}
-          options={[
-            { value: "all", label: "All" },
-            { value: "repeat", label: "2+ interactions" },
-          ]}
-        />
-        <Select value={sort} onValueChange={setSort}>
-          <SelectTrigger aria-label="Sort by">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="latest">Latest activity</SelectItem>
-            <SelectItem value="name">Name</SelectItem>
-            <SelectItem value="count">Most interactions</SelectItem>
-          </SelectContent>
-        </Select>
+        {/* Pills take the free space and wrap inside it, so the sort stays on the row. */}
+        <div className="flex-1">
+          <FilterBar
+            aria-label="Directory filters"
+            fields={[periodField({ allTime: true }), frequencyField]}
+            value={interactionFilterValue(filters)}
+            onValueChange={(value) => {
+              const next = interactionFiltersFrom(value, filters);
+              setRepeat(!!next.repeat);
+              if (next.days !== days) onDaysChange(next.days);
+            }}
+          />
+        </div>
+        <div className="ml-auto">
+          <SortControl options={sortOptions} value={sort} onValueChange={setSort} />
+        </div>
       </div>
       <DirectoryPage
-        key={`${debounced.query}:${frequency}:${sort}:${pageSize}`}
+        key={`${debounced.query}:${repeat}:${sort}:${pageSize}`}
         input={{
           ...period,
           type,
           pageSize: Number(pageSize),
           search: debounced.query,
-          repeat: frequency === "repeat" ? "true" : undefined,
-          sort: (["latest", "name", "count"] as const).find((value) => value === sort),
+          repeat: repeat ? "true" : undefined,
+          sort,
         }}
         pending={debounced.pending}
         onPageSizeChange={setPageSize}

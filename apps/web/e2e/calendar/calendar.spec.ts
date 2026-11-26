@@ -135,10 +135,30 @@ test("month view persists and shares event selection, filtering, navigation and 
   await page.reload();
   await expect(picker).toHaveText("Month");
   await expect(event).toBeVisible();
+  // The sidebar checkbox and the filter bar's "Calendar is not" pill change the same choice.
   const calendar = page.getByRole("checkbox", { name: "Customer meetings", exact: true });
+  const pill = page.getByRole("group", { name: "Calendar is not Customer meetings", exact: true });
   await calendar.uncheck();
   await expect(event).toHaveCount(0);
+  await expect(pill).toBeVisible();
+  await pill.getByRole("button", { name: "Remove Calendar filter", exact: true }).click();
+  await expect(pill).toHaveCount(0);
+  await expect(calendar).toBeChecked();
+  await expect(event).toBeVisible();
+  await page.getByRole("button", { name: "Filter", exact: true }).click();
+  await page.getByRole("option", { name: "Calendar", exact: true }).click();
+  // Like the sidebar, the menu ticks the shown calendars; unticking one hides it.
+  const option = page.getByRole("option", { name: "Customer meetings", exact: true });
+  await expect(option).toHaveAttribute("aria-checked", "true");
+  await option.click();
+  await expect(pill).toBeVisible();
+  await expect(calendar).not.toBeChecked();
+  await expect(event).toHaveCount(0);
+  await pill.getByRole("button", { name: "Calendar: Customer meetings", exact: true }).click();
+  await expect(option).toHaveAttribute("aria-checked", "false");
+  await page.keyboard.press("Escape");
   await calendar.check();
+  await expect(pill).toHaveCount(0);
   await expect(event).toBeVisible();
   await page.getByRole("button", { name: "Next month", exact: true }).click();
   await expect(page.getByRole("heading", { name: "February 2020", exact: true })).toBeVisible();

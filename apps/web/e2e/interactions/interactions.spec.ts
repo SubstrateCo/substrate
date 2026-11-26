@@ -64,6 +64,25 @@ function total(page: Page) {
   return page.getByRole("definition").first();
 }
 
+/** Adds a filter through the "Filter" button. */
+async function addFilter(page: Page, field: string, option: string) {
+  await page.getByRole("button", { name: "Filter", exact: true }).click();
+  await page.getByRole("option", { name: field, exact: true }).click();
+  await page.getByRole("option", { name: option, exact: true }).click();
+  await expect(
+    page.getByRole("group", { name: `${field} is ${option}`, exact: true }),
+  ).toBeVisible();
+}
+
+/** Changes an active filter's value in place. */
+async function changeFilter(page: Page, field: string, current: string, option: string) {
+  await page.getByRole("button", { name: `${field}: ${current}`, exact: true }).click();
+  await page.getByRole("option", { name: option, exact: true }).click();
+  await expect(
+    page.getByRole("group", { name: `${field} is ${option}`, exact: true }),
+  ).toBeVisible();
+}
+
 test("dashboard and timeline use real sample records in dark mode", async ({ account, client }) => {
   test.setTimeout(30_000);
   await sampleInteractions(account);
@@ -85,11 +104,20 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
       .getByRole("link", { name: "Timeline", exact: true }),
   ).toHaveCount(0);
   await expect(total(page)).toHaveText("51");
-  await expect(page.getByRole("radio", { name: "Last 30 days", exact: true })).toBeChecked();
+  await expect(
+    page.getByRole("group", { name: "Period is Last 30 days", exact: true }),
+  ).toBeVisible();
+  // The period is required, so it has no remove button.
+  await expect(page.getByRole("button", { name: "Remove Period filter", exact: true })).toHaveCount(
+    0,
+  );
   // The dashboard opens on the latest day with interactions, so the day's table has rows.
   await expect(page.getByLabel(/^Selected day: /)).toBeVisible();
   await expect(page.getByRole("link", { name: /^Open interaction:/ }).first()).toBeVisible();
-  await page.getByRole("radio", { name: "Last 7 days", exact: true }).click();
+  await page.getByRole("button", { name: "Period: Last 30 days", exact: true }).click();
+  // The dashboard has no all-time view.
+  await expect(page.getByRole("option", { name: "All time", exact: true })).toHaveCount(0);
+  await page.getByRole("option", { name: "Last 7 days", exact: true }).click();
   await expect(total(page)).toHaveText("6");
   await expect(page.locator("html")).toHaveClass(/dark/);
   const chart = page.getByRole("img", {
@@ -109,7 +137,7 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(
     true,
   );
-  await page.getByRole("radio", { name: "Last 30 days", exact: true }).click();
+  await changeFilter(page, "Period", "Last 7 days", "Last 30 days");
   await expect(total(page)).toHaveText("51");
   await expect(
     page
@@ -166,19 +194,16 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(
     true,
   );
-  await page.getByRole("combobox", { name: "Record origin", exact: true }).click();
-  await page.getByRole("option", { name: "Published from message", exact: true }).click();
+  await addFilter(page, "Origin", "Published from message");
   await expect(list.getByRole("listitem")).toHaveCount(1);
-  await page.getByRole("combobox", { name: "Record origin", exact: true }).click();
-  await page.getByRole("option", { name: "All origins", exact: true }).click();
+  await page.getByRole("button", { name: "Remove Origin filter", exact: true }).click();
   await expect(list.getByRole("listitem")).toHaveCount(50);
   await page.getByRole("button", { name: "Next page", exact: true }).click();
   await expect(page.getByRole("button", { name: "Previous page", exact: true })).toBeEnabled();
   await page.getByRole("searchbox", { name: "Search interactions", exact: true }).fill("Maya");
   await expect(list.getByRole("listitem")).toHaveCount(26);
   await expect(page.getByRole("button", { name: "Previous page", exact: true })).toHaveCount(0);
-  await page.getByRole("combobox", { name: "Interaction type", exact: true }).click();
-  await page.getByRole("option", { name: "Email", exact: true }).click();
+  await addFilter(page, "Type", "Email");
   await expect(list.getByRole("listitem")).toHaveCount(9);
   await list.getByRole("link", { name: "Maya Chen", exact: true }).first().click();
   await expect(page.getByRole("heading", { name: "Maya Chen", exact: true })).toBeVisible();
@@ -287,7 +312,7 @@ test("dashboard selects today, browses day-specific pages, and handles empty day
   await expect(page.getByLabel("Selected day: Today", { exact: true })).toBeVisible();
   await expect(rows).toHaveCount(50);
   await expect(page.getByRole("button", { name: "Previous page", exact: true })).toBeDisabled();
-  await page.getByRole("radio", { name: "Last 7 days", exact: true }).click();
+  await changeFilter(page, "Period", "Last 30 days", "Last 7 days");
   await expect(total(page)).toHaveText("53");
   await expect(page.getByLabel("Selected day: Today", { exact: true })).toBeVisible();
   for (const width of [1440, 600]) {
@@ -329,6 +354,73 @@ test("dashboard selects today, browses day-specific pages, and handles empty day
     expect(await dailyChart.evaluate((chart) => getComputedStyle(chart).outlineStyle)).not.toBe(
       "none",
     );
+  }
+});
+
+test("day table cells keep their content inside their columns", async ({ account, client }) => {
+  const contact = await createCrm(account, {
+    action: "createContact",
+    displayName: "Alexandra Montgomery-Fairweather",
+  });
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  // "10:48 PM" is one of the widest times the Time column shows.
+  yesterday.setHours(22, 48, 0, 0);
+  await seedInteractions(
+    account,
+    kinds.map((kind, i) => ({
+      action: "createInteraction" as const,
+      contactEntityId: contact.entityId,
+      kind,
+      occurredAt: new Date(+yesterday + i * 1000).toISOString(),
+      summary: summaries[kind],
+    })),
+  );
+  const user = await client(account);
+  const { page } = user;
+  await visit(user, undefined, "/interactions");
+  const table = page.getByRole("table", { name: "Day’s interactions", exact: true });
+  for (const [width, colorScheme] of [
+    [1440, "light"],
+    [1440, "dark"],
+    [1100, "light"],
+    [900, "light"],
+    [700, "light"],
+  ] as const) {
+    await page.setViewportSize({ width, height: 900 });
+    await page.emulateMedia({ colorScheme });
+    await expect(table.getByRole("cell", { name: "Internal note", exact: true })).toBeVisible();
+    // Origin hides in a container narrower than 48rem.
+    if (width === 1440)
+      await expect(table.getByRole("cell", { name: "Manual", exact: true }).first()).toBeVisible();
+    // Each text box, clipped by any ancestor that hides overflow, stays in its cell's content box.
+    const overflows = await table.locator("tbody td").evaluateAll((cells) =>
+      cells.flatMap((cell) => {
+        const style = getComputedStyle(cell);
+        const bounds = cell.getBoundingClientRect();
+        const left = bounds.left + parseFloat(style.paddingLeft) - 0.5;
+        const right = bounds.right - parseFloat(style.paddingRight) + 0.5;
+        const texts = document.createTreeWalker(cell, NodeFilter.SHOW_TEXT);
+        const found: string[] = [];
+        for (let text = texts.nextNode(); text; text = texts.nextNode()) {
+          const range = document.createRange();
+          range.selectNodeContents(text);
+          const box = range.getBoundingClientRect();
+          if (!text.textContent?.trim() || box.width === 0) continue;
+          let visibleLeft = box.left;
+          let visibleRight = box.right;
+          for (let node = text.parentElement; node && node !== cell; node = node.parentElement) {
+            if (getComputedStyle(node).overflowX === "visible") continue;
+            const clip = node.getBoundingClientRect();
+            visibleLeft = Math.max(visibleLeft, clip.left);
+            visibleRight = Math.min(visibleRight, clip.right);
+          }
+          if (visibleLeft < left || visibleRight > right) found.push(text.textContent);
+        }
+        return found;
+      }),
+    );
+    expect(overflows, `${width}px ${colorScheme}`).toEqual([]);
   }
 });
 
@@ -418,11 +510,11 @@ test("create interactions, browse directories and profiles, and inspect source c
       exact: true,
     }),
   ).toBeVisible();
-  await page.getByRole("radio", { name: "Explicit links", exact: true }).click();
+  await changeFilter(page, "Scope", "Related contacts", "Explicit links");
   await expect(
     page.getByRole("heading", { name: "No interactions in this period", exact: true }),
   ).toBeVisible();
-  await page.getByRole("radio", { name: "Related contacts", exact: true }).click();
+  await changeFilter(page, "Scope", "Explicit links", "Related contacts");
   await page
     .getByRole("link", {
       name: "Open interaction: Agreed on a pilot with the operations team.",
@@ -514,8 +606,8 @@ test("people and organization tables paginate and reset after filtering", async 
   for (const type of ["people", "accounts"] as const) {
     if (type === "accounts")
       await page.getByRole("link", { name: "Organizations", exact: true }).click();
-    await page.getByRole("combobox", { name: "Sort by", exact: true }).click();
-    await page.getByRole("option", { name: "Name", exact: true }).click();
+    await page.getByRole("button", { name: /^Sort: / }).click();
+    await page.getByRole("menuitemradio", { name: "Name", exact: true }).click();
     const table = page.getByRole("table", {
       name: type === "people" ? "People directory" : "Organization directory",
       exact: true,

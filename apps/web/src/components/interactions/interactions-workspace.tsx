@@ -5,6 +5,12 @@ import { useState, type ReactNode } from "react";
 import { InteractionDashboard } from "./interaction-dashboard";
 import { InteractionDetail } from "./interaction-detail";
 import { InteractionDirectory } from "./interaction-directory";
+import { periodField } from "./interaction-filter-fields";
+import {
+  interactionFiltersFrom,
+  interactionFilterValue,
+  type InteractionDays,
+} from "./interaction-filters";
 import { ContactProfileLink } from "./interaction-link";
 import { interactionWindow } from "./interaction-period";
 import { InteractionProfile } from "./interaction-profile";
@@ -12,7 +18,7 @@ import { InteractionTimeline } from "./interaction-timeline";
 import type { InteractionSection } from "./interaction-types";
 import { NewInteraction } from "./new-interaction";
 import { ContentNotice } from "@/components/feedback/content-notice";
-import { SegmentedControl } from "@/components/forms/segmented-control";
+import { FilterBar } from "@/components/filters";
 import { PageHeader } from "@/components/layout/page-header";
 import {
   PageContent,
@@ -27,8 +33,6 @@ import { Button } from "@/components/ui/button";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { Building2, LayoutDashboard, Plus, Users } from "lucide-react";
-
-type Days = "7" | "30" | "all";
 
 const sections = [
   { value: "dashboard", label: "Dashboard", icon: LayoutDashboard },
@@ -45,7 +49,7 @@ const titles: Record<InteractionSection, string> = {
 };
 
 /** The dashboard has no all-time view, so it shows the last 30 days instead. */
-function sectionDays(section: InteractionSection, days: Days) {
+function sectionDays(section: InteractionSection, days: InteractionDays) {
   return section === "dashboard" && days === "all" ? "30" : days;
 }
 
@@ -64,7 +68,7 @@ export function InteractionsWorkspace({
   tab,
 }: {
   section: InteractionSection;
-  days: Days;
+  days: InteractionDays;
   profileId?: string;
   recordId?: string;
   tab?: "activity" | "map";
@@ -84,30 +88,11 @@ export function InteractionsWorkspace({
       New interaction
     </Button>
   );
-  const periodControl = (
-    <SegmentedControl
-      aria-label="Activity period"
-      value={activeDays}
-      options={
-        section === "dashboard"
-          ? [
-              { value: "7", label: "Last 7 days" },
-              { value: "30", label: "Last 30 days" },
-            ]
-          : [
-              { value: "7", label: "Last 7 days" },
-              { value: "30", label: "Last 30 days" },
-              { value: "all", label: "All time" },
-            ]
-      }
-      onValueChange={(value) =>
-        void navigate({
-          to: "/interactions",
-          search: (previous) => ({ ...previous, days: value }),
-        })
-      }
-    />
-  );
+  const setDays = (value: InteractionDays) =>
+    void navigate({
+      to: "/interactions",
+      search: (previous) => ({ ...previous, days: value }),
+    });
   return (
     <PageLayout id="interactions" aria-label="Interactions workspace">
       <PageSidebar aria-label="Interactions">
@@ -151,7 +136,7 @@ export function InteractionsWorkspace({
               activeDays={activeDays}
               profileId={profileId}
               tab={tab}
-              periodControl={periodControl}
+              onDaysChange={setDays}
               createButton={createButton}
             />
           )}
@@ -174,14 +159,14 @@ function InteractionsContent({
   activeDays,
   profileId,
   tab,
-  periodControl,
+  onDaysChange,
   createButton,
 }: {
   section: InteractionSection;
-  activeDays: Days;
+  activeDays: InteractionDays;
   profileId?: string;
   tab?: "activity" | "map";
-  periodControl: ReactNode;
+  onDaysChange: (days: InteractionDays) => void;
   createButton: ReactNode;
 }) {
   const { organizationId } = useWorkspaceScope();
@@ -193,7 +178,17 @@ function InteractionsContent({
   if (section === "dashboard")
     return (
       <div className="flex flex-col gap-4 md:min-h-0 md:flex-1">
-        <div className="flex shrink-0 flex-wrap items-center gap-2">{periodControl}</div>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <FilterBar
+            aria-label="Dashboard filters"
+            fields={[periodField({ allTime: false })]}
+            value={interactionFilterValue({ days: activeDays })}
+            onValueChange={(value) => {
+              const next = interactionFiltersFrom(value, { days: activeDays }).days;
+              if (next !== activeDays) onDaysChange(next);
+            }}
+          />
+        </div>
         <InteractionDashboard
           key={activeDays}
           period={period}
@@ -203,14 +198,22 @@ function InteractionsContent({
       </div>
     );
   if (section === "timeline")
-    return <InteractionTimeline key={activeDays} period={filter} filters={periodControl} />;
+    return (
+      <InteractionTimeline
+        key={activeDays}
+        period={filter}
+        days={activeDays}
+        onDaysChange={onDaysChange}
+      />
+    );
   if (section === "people" || section === "accounts")
     return (
       <InteractionDirectory
         key={`${section}:${activeDays}`}
         period={filter}
+        days={activeDays}
+        onDaysChange={onDaysChange}
         type={section}
-        filters={periodControl}
       />
     );
   if (!profileId)
@@ -227,7 +230,8 @@ function InteractionsContent({
       type={section === "person" ? "person" : "account"}
       period={filter}
       tab={tab ?? "activity"}
-      periodControl={periodControl}
+      days={activeDays}
+      onDaysChange={onDaysChange}
       createAction={createButton}
     />
   );

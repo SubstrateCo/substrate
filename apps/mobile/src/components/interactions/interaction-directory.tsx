@@ -5,15 +5,40 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { View } from "react-native";
 
+import type { FilterField, FilterValue } from "@/features/records/filters";
 import { formatDateTime } from "@/features/records/format";
-import { interactionPeriod, type InteractionDays } from "@/features/records/interaction-filters";
+import {
+  directoryFilters,
+  interactionPeriod,
+  type DirectoryFilterId,
+} from "@/features/records/interaction-filters";
 import { recordRequests } from "@/features/records/requests";
 import type { OnOpenRecord } from "@/features/records/types";
 import { SelectField } from "@/features/records/ui/fields";
+import { FilterBar } from "@/features/records/ui/filter-bar";
 import { SearchBar, useDebounced } from "@/features/records/ui/layout";
 import { PagedList } from "@/features/records/ui/record-list";
-import { Row, Segments } from "@/features/records/ui/rows";
+import { Row } from "@/features/records/ui/rows";
 import { queryKeys, type QueryScope } from "@/queries/keys";
+import { CalendarRange, Repeat } from "lucide-react-native";
+
+const directoryFields: FilterField<DirectoryFilterId>[] = [
+  {
+    id: "period",
+    label: "Period",
+    icon: CalendarRange,
+    options: [
+      { value: "7", label: "Last 7 days" },
+      { value: "30", label: "Last 30 days" },
+    ],
+  },
+  {
+    id: "frequency",
+    label: "Frequency",
+    icon: Repeat,
+    options: [{ value: "repeat", label: "2+ interactions" }],
+  },
+];
 
 export function InteractionDirectory({
   scope,
@@ -25,8 +50,8 @@ export function InteractionDirectory({
   onOpenRecord: OnOpenRecord;
 }) {
   const [search, setSearch] = useState("");
-  const [days, setDays] = useState<InteractionDays>("all");
-  const [frequency, setFrequency] = useState("all");
+  const [filters, setFilters] = useState<FilterValue<DirectoryFilterId>>({});
+  const { days, frequency } = directoryFilters(filters);
   const [sort, setSort] = useState<NonNullable<DirectoryInput["sort"]>>("latest");
   const [pageSize, setPageSize] = useState("25");
   const term = useDebounced(search.trim());
@@ -67,24 +92,11 @@ export function InteractionDirectory({
         onChange={setSearch}
         placeholder={type === "people" ? "Search people" : "Search organizations"}
       />
-      <Segments
-        label="Directory period"
-        value={days}
-        onChange={setDays}
-        options={[
-          { value: "all", label: "All time" },
-          { value: "7", label: "Last 7 days" },
-          { value: "30", label: "Last 30 days" },
-        ]}
-      />
-      <Segments
-        label="Interaction frequency"
-        value={frequency}
-        onChange={setFrequency}
-        options={[
-          { value: "all", label: "All" },
-          { value: "repeat", label: "2+ interactions" },
-        ]}
+      <FilterBar
+        label="Directory filters"
+        fields={directoryFields}
+        value={filters}
+        onChange={setFilters}
       />
       <View className="gap-2 px-4 py-2">
         <SelectField

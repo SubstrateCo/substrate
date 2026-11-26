@@ -2,8 +2,7 @@ import type { CalendarData, MeetingDay } from "@substrate/contracts/meetings";
 
 import { useQuery } from "@tanstack/react-query";
 
-import type { ReactNode } from "react";
-
+import { MeetingFilterBar } from "../meeting-filter-bar";
 import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { CalendarMonth } from "./calendar-month";
 import { CalendarStats } from "./calendar-stats";
@@ -68,11 +67,9 @@ function CalendarBody({
 export function MeetingCalendar({
   phrase,
   searchPending,
-  filters,
 }: {
   phrase: string;
   searchPending: boolean;
-  filters: ReactNode;
 }) {
   const { queries, search, change } = useMeetingsWorkspace();
   const today = formatDateOnly(new Date(useNow(true, 60_000)));
@@ -165,7 +162,9 @@ export function MeetingCalendar({
           }
         />
       </div>
-      {filters && <div className="mt-3">{filters}</div>}
+      <div className="mt-3">
+        <MeetingFilterBar clearable />
+      </div>
       <CalendarBody
         error={query.error}
         onRetry={() => void query.refetch()}

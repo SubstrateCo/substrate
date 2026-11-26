@@ -6,11 +6,11 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 
 import { RelationshipMap } from "./interaction-connections";
+import type { InteractionDays, InteractionScope } from "./interaction-filters";
 import { InteractionTimeline } from "./interaction-timeline";
 import { ContactLink } from "@/components/contacts/contact-link";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
-import { SegmentedControl } from "@/components/forms/segmented-control";
 import { BackLink, PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -24,22 +24,24 @@ export function InteractionProfile({
   type,
   period,
   tab,
-  periodControl,
+  days,
+  onDaysChange,
   createAction,
 }: {
   entityId: string;
   type: "person" | "account";
   period: TimelineInput;
   tab: "activity" | "map";
-  /** The activity period, in the activity toolbar. */
-  periodControl?: ReactNode;
+  /** The activity period that `period` covers. */
+  days: InteractionDays;
+  onDaysChange: (days: InteractionDays) => void;
   /** The primary create button, last in the header. */
   createAction?: ReactNode;
 }) {
   const { organizationId } = useWorkspaceScope();
   const profile = useQuery(interactionProfileOptions(organizationId, entityId, type));
   const navigate = useNavigate({ from: "/interactions/" });
-  const [scope, setScope] = useState<"related" | "linked">("related");
+  const [scope, setScope] = useState<InteractionScope>("related");
   if (profile.error)
     return (
       <ErrorState
@@ -119,22 +121,10 @@ export function InteractionProfile({
               accountEntityId: type === "account" ? entityId : undefined,
               scope,
             }}
-            filters={
-              <>
-                {periodControl}
-                {type === "account" && (
-                  <SegmentedControl
-                    aria-label="Interaction scope"
-                    value={scope}
-                    onValueChange={setScope}
-                    options={[
-                      { value: "related", label: "Related contacts" },
-                      { value: "linked", label: "Explicit links" },
-                    ]}
-                  />
-                )}
-              </>
-            }
+            days={days}
+            onDaysChange={onDaysChange}
+            scope={type === "account" ? scope : undefined}
+            onScopeChange={setScope}
           />
         </TabsContent>
         <TabsContent value="map" className="flex min-h-0 flex-col">

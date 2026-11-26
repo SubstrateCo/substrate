@@ -24,9 +24,9 @@ function interactionColumns(sources: InteractionSources) {
   return column.columns([
     column.accessor("occurredAt", {
       header: "Time",
-      meta: { width: "w-20" },
+      meta: { width: "w-24" },
       cell: ({ row }) => (
-        <span className="text-muted-foreground">
+        <span className="block truncate text-muted-foreground">
           <Timestamp value={row.original.occurredAt} format="time" />
         </span>
       ),
@@ -63,13 +63,13 @@ function interactionColumns(sources: InteractionSources) {
     column.accessor((row) => interactionTypes[row.kind].label, {
       id: "kind",
       header: "Type",
-      meta: { width: "w-24" },
+      meta: { width: "w-36" },
       cell: ({ row }) => {
         const { icon: Icon, label, textClass } = interactionTypes[row.original.kind];
         return (
-          <span className="flex items-center gap-1.5">
+          <span className="flex min-w-0 items-center gap-1.5" title={label}>
             <Icon aria-hidden className={`size-4 shrink-0 ${textClass}`} />
-            {label}
+            <span className="truncate">{label}</span>
           </span>
         );
       },
@@ -92,7 +92,9 @@ function interactionColumns(sources: InteractionSources) {
       header: "Logged by",
       meta: { width: "w-20", hideBelow: "@4xl" },
       cell: ({ getValue }) => (
-        <span className="block truncate text-muted-foreground">{getValue()}</span>
+        <span className="block truncate text-muted-foreground" title={getValue()}>
+          {getValue()}
+        </span>
       ),
     }),
   ]);

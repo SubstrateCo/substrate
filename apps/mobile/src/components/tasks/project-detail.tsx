@@ -14,12 +14,14 @@ import { RecordConnections } from "@/components/crm/record-connections";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
+import { oneOf, type FilterField, type FilterValue } from "@/features/records/filters";
 import { canEdit, openTask, permissionLabels } from "@/features/records/format";
 import { recordQueries, useRecordScope, useTasksWrite } from "@/features/records/queries";
 import type { ProjectTask } from "@/features/records/requests";
 import type { OnOpenRecord } from "@/features/records/types";
+import { FilterBar } from "@/features/records/ui/filter-bar";
 import { DetailHeader } from "@/features/records/ui/layout";
-import { Chip, Segments } from "@/features/records/ui/rows";
+import { Chip } from "@/features/records/ui/rows";
 import { ConfirmSheet } from "@/features/records/ui/sheet";
 import {
   EmptyState,
@@ -28,9 +30,10 @@ import {
   MutationError,
   Notice,
 } from "@/features/records/ui/states";
-import { Archive, FolderKanban, ListTodo, Plus } from "lucide-react-native";
+import { Archive, CircleCheck, FolderKanban, ListTodo, Plus } from "lucide-react-native";
 
 type Filter = "open" | "done" | "all";
+const statusFilters = ["open", "done"] as const;
 const emptyTitles: Record<Filter, string> = {
   open: "No open tasks",
   done: "No finished tasks",
@@ -53,7 +56,9 @@ export function ProjectDetailView({
   const scope = useRecordScope(organizationId);
   const query = useQuery(recordQueries.project(scope, projectId));
   const write = useTasksWrite(scope);
-  const [filter, setFilter] = useState<Filter>("open");
+  const [filters, setFilters] = useState<FilterValue<"status">>({ status: ["open"] });
+  // No status filter shows every task.
+  const filter: Filter = oneOf(filters.status, statusFilters) ?? "all";
   const [editing, setEditing] = useState(false);
   const [creating, setCreating] = useState(false);
   const [members, setMembers] = useState(false);
@@ -90,6 +95,15 @@ export function ProjectDetailView({
   const editable = canEdit(level) && !archived;
   const owner = level === "owner";
   const openCount = detail.tasks.filter((task) => openTask(task.status)).length;
+  const statusField: FilterField<"status"> = {
+    id: "status",
+    label: "Status",
+    icon: CircleCheck,
+    options: [
+      { value: "open", label: "Open", count: openCount },
+      { value: "done", label: "Done", count: detail.tasks.length - openCount },
+    ],
+  };
 
   return (
     <View className="flex-1 bg-surface" testID="project-detail">
@@ -166,33 +180,27 @@ export function ProjectDetailView({
               editable={false}
               onOpenRecord={onOpenRecord}
             />
-            <View className="flex-row items-center">
-              <View className="flex-1">
-                <Segments
-                  label="Task filter"
-                  value={filter}
-                  onChange={setFilter}
-                  options={[
-                    { value: "open", label: "Open", count: openCount },
-                    { value: "done", label: "Done", count: detail.tasks.length - openCount },
-                    { value: "all", label: "All", count: detail.tasks.length },
-                  ]}
-                />
-              </View>
-              {editable ? (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="mr-1"
-                  onPress={() => setCreating(true)}
-                  accessibilityLabel="New task"
-                  testID="new-task"
-                >
-                  <Icon as={Plus} className="size-4 text-foreground" />
-                  <Text>Task</Text>
-                </Button>
-              ) : null}
-            </View>
+            <FilterBar
+              label="Task filters"
+              fields={[statusField]}
+              value={filters}
+              onChange={setFilters}
+              trailing={
+                editable ? (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="mr-1"
+                    onPress={() => setCreating(true)}
+                    accessibilityLabel="New task"
+                    testID="new-task"
+                  >
+                    <Icon as={Plus} className="size-4 text-foreground" />
+                    <Text>Task</Text>
+                  </Button>
+                ) : undefined
+              }
+            />
           </View>
         }
         ListEmptyComponent={

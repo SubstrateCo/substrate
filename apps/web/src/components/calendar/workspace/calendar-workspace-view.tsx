@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 import type { ComponentProps, ReactNode } from "react";
 
 import { CalendarAgenda } from "./calendar-agenda";
-import { CalendarFilter } from "./calendar-filter";
+import { CalendarFilter, CalendarFilterBar } from "./calendar-filter";
 import { CalendarToolbar } from "./calendar-toolbar";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -38,6 +38,7 @@ export function CalendarWorkspaceView({
   calendarGroups,
   hidden,
   onToggleCalendar,
+  onHiddenChange,
   toolbar,
   needsReconnect,
   body,
@@ -48,6 +49,8 @@ export function CalendarWorkspaceView({
   calendarGroups: readonly CalendarGroup[];
   hidden: ReadonlySet<string>;
   onToggleCalendar: (calendarEntityId: string, visible: boolean) => void;
+  /** The filter bar replaces the hidden calendars at once. */
+  onHiddenChange: (hidden: ReadonlySet<string>) => void;
   toolbar: ComponentProps<typeof CalendarToolbar>;
   /** A connected calendar needs the user to grant access again. */
   needsReconnect: boolean;
@@ -80,6 +83,13 @@ export function CalendarWorkspaceView({
       </PageSidebar>
       <PageContent>
         <CalendarToolbar {...toolbar} />
+        {calendarGroups.length > 0 && (
+          <CalendarFilterBar
+            groups={calendarGroups}
+            hidden={hidden}
+            onHiddenChange={onHiddenChange}
+          />
+        )}
         {needsReconnect && (
           <div className="shrink-0 px-4 pt-3">
             <InlineNotice

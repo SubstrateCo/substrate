@@ -111,6 +111,7 @@ export function CalendarWorkspace({
           return next;
         })
       }
+      onHiddenChange={setHidden}
       toolbar={{
         title:
           view !== "agenda"

@@ -9,8 +9,10 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
-import { useMemo, type ReactNode } from "react";
+import { useMemo } from "react";
 
+import { MeetingFilterBar } from "../meeting-filter-bar";
+import { clearFiltersLabel } from "../meeting-filters";
 import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { isAccessFailure } from "@/api/access-failure";
 import { ContentNotice } from "@/components/feedback/content-notice";
@@ -152,9 +154,9 @@ function archiveTitle(input: MeetingListInput) {
   return "All meetings";
 }
 
-function archiveDescription(total: number, filters: ReactNode, originals?: number) {
+function archiveDescription(total: number, filtered: boolean, originals?: number) {
   const description = `${total} ${total === 1 ? "meeting" : "meetings"}`;
-  if (filters) return `${description} in this view`;
+  if (filtered) return `${description} in this view`;
   if (originals === undefined) return description;
   return `${description} · ${originals} linked source ${originals === 1 ? "record" : "records"}`;
 }
@@ -163,14 +165,13 @@ export function AllMeetings({
   input,
   searchPending,
   open,
-  filters,
   clearFilters,
   addMeeting,
 }: {
   input: MeetingListInput;
   searchPending: boolean;
   open: (id: string) => void;
-  filters: ReactNode;
+  /** Clears the search, source, and day. */
   clearFilters: () => void;
   addMeeting: () => void;
 }) {
@@ -187,12 +188,13 @@ export function AllMeetings({
   // Do not show cached private records after an access failure.
   const page = query.isSuccess ? query.data : undefined;
   const { rows, total } = page ?? { rows: [], total: 0 };
+  const filtered = !!(input.source || input.day || input.q);
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-400 flex-col">
       <PageHeader
         className="mb-4 md:mb-5"
         title={archiveTitle(input)}
-        description={page ? archiveDescription(total, filters, originals) : undefined}
+        description={page ? archiveDescription(total, filtered, originals) : undefined}
         actions={
           <>
             <Button onClick={addMeeting}>
@@ -209,7 +211,10 @@ export function AllMeetings({
           </>
         }
       />
-      {filters && <div className="mb-3">{filters}</div>}
+      <div className="mb-3">
+        {/* With no matches, the empty state offers its own clear button. */}
+        <MeetingFilterBar clearable={rows.length > 0} />
+      </div>
       <AppTable
         name="All meetings"
         layout="ledger"
@@ -232,13 +237,12 @@ export function AllMeetings({
         empty={{
           icon: CalendarDays,
           title: "No meetings found",
-          description:
-            input.source || input.q || input.day
-              ? "Try a different date, source, or search."
-              : "Add a meeting or import a Hex Markdown file to start your archive.",
+          description: filtered
+            ? "Try a different date, source, or search."
+            : "Add a meeting or import a Hex Markdown file to start your archive.",
           action: (
-            <Button size="sm" variant="outline" onClick={filters ? clearFilters : addMeeting}>
-              {filters ? "Clear filters" : "Add your first meeting"}
+            <Button size="sm" variant="outline" onClick={filtered ? clearFilters : addMeeting}>
+              {filtered ? clearFiltersLabel(input) : "Add your first meeting"}
             </Button>
           ),
         }}

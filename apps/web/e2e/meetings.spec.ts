@@ -166,6 +166,17 @@ test("import, search a transcript, inspect its original, and replay after reopen
     .press("Enter");
   await expect(page.getByRole("heading", { name: "Hex meetings" })).toBeVisible();
   await expect(table.getByRole("link", { name: "Shift handoff" })).toBeVisible();
+  // The sidebar shortcut and the filter bar share one source filter.
+  const filters = page.getByRole("group", { name: "Meeting filters" });
+  await expect(filters.getByRole("group", { name: "Source is Hex", exact: true })).toBeVisible();
+  await filters.getByRole("button", { name: "Remove Source filter", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "All meetings" })).toBeVisible();
+  expect(new URL(page.url()).searchParams.has("source")).toBe(false);
+  await filters.getByRole("button", { name: "Filter", exact: true }).click();
+  await page.getByRole("option", { name: "Source", exact: true }).click();
+  await page.getByRole("option", { name: "Hex", exact: true }).click();
+  await expect(page.getByRole("heading", { name: "Hex meetings" })).toBeVisible();
+  await expect(page).toHaveURL(/[?&]source=hex(?:&|$)/);
 });
 test("a separate session sees its owner's import via realtime and loses access on sign-out", async ({
   account,

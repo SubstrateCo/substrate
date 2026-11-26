@@ -5,11 +5,16 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 import { CrmResourceState } from "./crm-resource-state";
+import {
+  interactionScopeMode,
+  interactionScopeValue,
+  type InteractionScopeFieldId,
+} from "./interaction-scope";
 import { MeetingSourceLink } from "@/components/calendar/meeting-source-link";
 import { ContactLink } from "@/components/contacts/contact-link";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
-import { SegmentedControl } from "@/components/forms/segmented-control";
+import { FilterBar, type FilterField } from "@/components/filters";
 import { InteractionLink } from "@/components/interactions/interaction-link";
 import { InteractionRow } from "@/components/interactions/interaction-row";
 import { RecordSection, recordRows } from "@/components/layout/record-section";
@@ -20,6 +25,22 @@ import { resourceState } from "@/lib/resource-state";
 import { useInteractionSources } from "@/queries/calendar/interaction-sources";
 import { crmTimelineOptions } from "@/queries/crm/options";
 import { keepPageWhileTurning } from "@/queries/page-turn";
+import { Users } from "lucide-react";
+
+/** One required field: the timeline always reads one scope. */
+const interactionScopeFields: FilterField<InteractionScopeFieldId>[] = [
+  {
+    id: "scope",
+    label: "Scope",
+    icon: Users,
+    kind: "option",
+    required: true,
+    options: [
+      { value: "linked", label: "Explicitly linked" },
+      { value: "participants", label: "Related contacts" },
+    ],
+  },
+];
 
 export function InteractionRollup({
   entityId,
@@ -41,17 +62,16 @@ export function InteractionRollup({
       aria-label="Customer interaction timeline"
       title="Customer interactions"
       actions={
-        <SegmentedControl
-          aria-label="Interaction scope"
-          value={mode}
-          onValueChange={(next) => {
+        <FilterBar
+          aria-label="Interaction filters"
+          fields={interactionScopeFields}
+          value={interactionScopeValue(mode)}
+          onValueChange={(value) => {
+            const next = interactionScopeMode(value, mode);
+            if (next === mode) return;
             setMode(next);
             pages.reset();
           }}
-          options={[
-            { value: "linked", label: "Explicitly linked" },
-            { value: "participants", label: "Related contacts" },
-          ]}
         />
       }
       description={

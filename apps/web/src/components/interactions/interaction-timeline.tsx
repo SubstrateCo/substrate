@@ -1,24 +1,29 @@
-import type { InteractionTimeline as TimelineInput } from "@substrate/contracts/context/interactions";
+import type {
+  InteractionKind,
+  InteractionTimeline as TimelineInput,
+} from "@substrate/contracts/context/interactions";
 
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 
+import { originField, periodField, scopeField, typeField } from "./interaction-filter-fields";
+import {
+  interactionFiltersFrom,
+  interactionFilterValue,
+  type InteractionDays,
+  type InteractionFilters,
+  type InteractionOrigin,
+  type InteractionScope,
+} from "./interaction-filters";
 import { InteractionList } from "./interaction-list";
-import { interactionKinds, interactionOrigins, interactionTypes } from "./interaction-types";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { FilterBar } from "@/components/filters";
 import { Pager, useCursorPages } from "@/components/table";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { useInteractionSources } from "@/queries/calendar/interaction-sources";
@@ -29,17 +34,25 @@ type Cursor = Pick<TimelineInput, "beforeOccurredAt" | "beforeEntityId">;
 
 export function InteractionTimeline({
   period,
-  filters,
+  days,
+  onDaysChange,
+  scope,
+  onScopeChange,
 }: {
   period: TimelineInput;
-  /** Filters right after the search, such as the activity period. */
-  filters?: ReactNode;
+  /** The activity period that `period` covers. */
+  days: InteractionDays;
+  onDaysChange: (days: InteractionDays) => void;
+  /** An organization profile's scope. Without it, the bar has no Scope filter. */
+  scope?: InteractionScope;
+  onScopeChange?: (scope: InteractionScope) => void;
 }) {
   const apps = useOrganizationApps();
   const [search, setSearch] = useState("");
-  const [kind, setKind] = useState("all");
-  const [origin, setOrigin] = useState("all");
+  const [kind, setKind] = useState<InteractionKind>();
+  const [origin, setOrigin] = useState<InteractionOrigin>();
   const debounced = useSearchDebounce(search, `${kind}:${origin}`);
+  const filters: InteractionFilters = { days, kind, origin, scope };
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -52,35 +65,23 @@ export function InteractionTimeline({
           maxLength={200}
           onChange={(e) => setSearch(e.target.value)}
         />
-        {filters}
-        <Select value={kind} onValueChange={setKind}>
-          <SelectTrigger aria-label="Interaction type">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All types</SelectItem>
-            {interactionKinds.map((k) => (
-              <SelectItem key={k} value={k}>
-                {interactionTypes[k].label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select value={origin} onValueChange={setOrigin}>
-          <SelectTrigger aria-label="Record origin">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All origins</SelectItem>
-            <SelectItem value="manual">Logged manually</SelectItem>
-            <SelectItem value="message_publication">Published from message</SelectItem>
-            {apps.enabled("calendar") && (
-              <SelectItem value="calendar_event">
-                {interactionOrigins.calendar_event.long}
-              </SelectItem>
-            )}
-          </SelectContent>
-        </Select>
+        <FilterBar
+          aria-label="Interaction filters"
+          fields={[
+            periodField({ allTime: true }),
+            typeField,
+            originField({ calendar: apps.enabled("calendar") }),
+            ...(scope ? [scopeField] : []),
+          ]}
+          value={interactionFilterValue(filters)}
+          onValueChange={(value) => {
+            const next = interactionFiltersFrom(value, filters);
+            setKind(next.kind);
+            setOrigin(next.origin);
+            if (next.days !== days) onDaysChange(next.days);
+            if (next.scope && next.scope !== scope) onScopeChange?.(next.scope);
+          }}
+        />
       </div>
       <TimelinePage
         // Each period and filter pages from its own start: a cursor from another one would
@@ -105,20 +106,12 @@ function TimelinePage({
 }: {
   period: TimelineInput;
   search: string;
-  kind: string;
-  origin: string;
+  kind?: InteractionKind;
+  origin?: InteractionOrigin;
   pending: boolean;
 }) {
   const pages = useCursorPages<Cursor>();
-  const input: TimelineInput = {
-    ...period,
-    search,
-    kind: interactionKinds.find((k) => k === kind),
-    origin: (["manual", "message_publication", "calendar_event"] as const).find(
-      (value) => value === origin,
-    ),
-    ...pages.cursor,
-  };
+  const input: TimelineInput = { ...period, search, kind, origin, ...pages.cursor };
   const apps = useOrganizationApps();
   // The view remounts for each filter, so a placeholder here is always the previous page.
   const query = useQuery({
@@ -135,7 +128,7 @@ function TimelinePage({
     return <ErrorState title="Couldn’t load interactions" onRetry={() => void query.refetch()} />;
   if (!query.data) return <LoadingState label="Loading interactions" rows={5} />;
   const { items, nextCursor } = query.data;
-  const filtered = search || kind !== "all" || origin !== "all";
+  const filtered = search || kind || origin;
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <Card size="sm" className="min-h-0 flex-1">

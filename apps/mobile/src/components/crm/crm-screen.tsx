@@ -1,6 +1,6 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { View } from "react-native";
 
 import { NewDeal } from "./account-detail";
@@ -15,6 +15,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { useWorkspaceApps } from "@/features/records/apps";
 import { crmSection, type CrmSection } from "@/features/records/crm-navigation";
+import type { FilterField } from "@/features/records/filters";
 import {
   formatDate,
   formatMoney,
@@ -29,6 +30,7 @@ import {
   useRecordScope,
 } from "@/features/records/queries";
 import type { OnOpenRecord, WorkspaceScreenProps } from "@/features/records/types";
+import { FilterBar } from "@/features/records/ui/filter-bar";
 import { ListToolbar, SearchBar, useDebounced } from "@/features/records/ui/layout";
 import { PagedList } from "@/features/records/ui/record-list";
 import { Chip, Row, Segments } from "@/features/records/ui/rows";
@@ -56,6 +58,16 @@ const byName =
   (a: T, b: T) =>
     name(a).localeCompare(name(b));
 const crmSections = new Set<CrmSection>(["accounts", "deals", "pipeline", "reports"]);
+const recordsField: FilterField<"records"> = {
+  id: "records",
+  label: "Records",
+  icon: Archive,
+  required: true,
+  options: [
+    { value: "active", label: "Active" },
+    { value: "archived", label: "Archived" },
+  ],
+};
 const createLabels: Record<CrmSection, string> = {
   contacts: "New contact",
   accounts: "New account",
@@ -95,17 +107,7 @@ export function CrmScreen({ organizationId, onOpenRecord, crmEnabled }: CrmScree
             <Icon as={Download} className="size-5 text-foreground" />
           </Button>
         ) : null}
-        {archivable ? (
-          <Button
-            variant={archived ? "secondary" : "ghost"}
-            size="icon"
-            onPress={() => setArchived(!archived)}
-            accessibilityLabel={archived ? "Show active records" : "Show archived records"}
-            accessibilityState={{ selected: archived }}
-          >
-            <Icon as={Archive} className="size-5 text-foreground" />
-          </Button>
-        ) : null}
+
         {current === "pipeline" ? (
           <Button
             variant="ghost"
@@ -164,11 +166,23 @@ export function CrmScreen({ organizationId, onOpenRecord, crmEnabled }: CrmScree
           onRetry={() => void apps.query.refetch()}
         />
       ) : null}
-      {archived && archivable ? <Notice icon={Archive}>Showing archived records.</Notice> : null}
       <SectionBody
         section={current}
         scope={scope}
         archived={archived && archivable}
+        filters={
+          archivable ? (
+            <>
+              <FilterBar
+                label="Record filters"
+                fields={[recordsField]}
+                value={{ records: [archived ? "archived" : "active"] }}
+                onChange={(next) => setArchived(next.records[0] === "archived")}
+              />
+              {archived ? <Notice icon={Archive}>Showing archived records.</Notice> : null}
+            </>
+          ) : null
+        }
         onOpenRecord={onOpenRecord}
         creating={creating}
         onCreateClose={() => setCreating(false)}
@@ -247,12 +261,15 @@ type ListProps = {
   scope: QueryScope;
   archived: boolean;
   onOpenRecord: OnOpenRecord;
+  /** The filter bar, shown below the list's search bar. */
+  filters: ReactNode;
 };
 
 function ContactList({
   scope,
   archived,
   onOpenRecord,
+  filters,
   creating,
   onCreateClose,
 }: ListProps & { creating: boolean; onCreateClose: () => void }) {
@@ -265,6 +282,7 @@ function ContactList({
   return (
     <View className="flex-1">
       <SearchBar value={search} onChange={setSearch} placeholder="Search contacts" />
+      {filters}
       <PagedList
         query={query}
         noun="contacts"
@@ -316,6 +334,7 @@ function AccountList({
   scope,
   archived,
   onOpenRecord,
+  filters,
   creating,
   onCreateClose,
 }: ListProps & { creating: boolean; onCreateClose: () => void }) {
@@ -327,6 +346,7 @@ function AccountList({
   return (
     <View className="flex-1">
       <SearchBar value={search} onChange={setSearch} placeholder="Search accounts" />
+      {filters}
       <PagedList
         query={query}
         noun="accounts"
@@ -391,7 +411,7 @@ function NewAccount({
   );
 }
 
-function DealList({ scope, archived, onOpenRecord }: ListProps) {
+function DealList({ scope, archived, onOpenRecord, filters }: ListProps) {
   const [search, setSearch] = useState("");
   const term = useDebounced(search.trim());
   const query = useInfiniteQuery(
@@ -400,6 +420,7 @@ function DealList({ scope, archived, onOpenRecord }: ListProps) {
   return (
     <View className="flex-1">
       <SearchBar value={search} onChange={setSearch} placeholder="Search deals" />
+      {filters}
       <PagedList
         query={query}
         noun="deals"

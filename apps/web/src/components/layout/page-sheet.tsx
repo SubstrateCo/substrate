@@ -1,4 +1,11 @@
-import { useContext, useRef, useState, type ComponentProps, type ReactNode } from "react";
+import {
+  useContext,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type ReactNode,
+} from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
 import {
@@ -12,6 +19,21 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "cn";
 import { X } from "lucide-react";
+
+/**
+ * Presses that keep the sheet open: controls, and portaled popovers, menus and listboxes. Using a
+ * picker is not an outside click on the page.
+ */
+const keepsSheetOpen = [
+  "button, a, input, textarea, select, label, [role=tab]",
+  "[data-radix-popper-content-wrapper]",
+  ...["popover", "dropdown-menu", "context-menu", "select", "combobox", "hover-card"].map(
+    (slot) => `[data-slot="${slot}-content"]`,
+  ),
+].join(", ");
+
+const pressKeepsSheetOpen = (target: EventTarget | null) =>
+  target instanceof Element && target.closest(keepsSheetOpen) !== null;
 
 /** Temporary record details. Keep this mounted beside PageContent so exit motion can finish. */
 export function PageSheet({
@@ -37,6 +59,16 @@ export function PageSheet({
   if (open && previous !== children) setPrevious(children);
   const opener = useRef<Element | null>(null);
   const outside = useRef(false);
+  // Radix reports an outside press after its click, when the click may have removed the target,
+  // such as a picker option that swaps its list. Judge the target while it is still attached.
+  const press = useRef<{ event: Event; keepsOpen: boolean } | null>(null);
+  useEffect(() => {
+    const record = (event: PointerEvent) => {
+      press.current = { event, keepsOpen: pressKeepsSheetOpen(event.target) };
+    };
+    document.addEventListener("pointerdown", record, true);
+    return () => document.removeEventListener("pointerdown", record, true);
+  }, []);
   return (
     <PageSheetContext.Provider value={{ onClose: () => onOpenChange(false), label }}>
       <div ref={setContainer} className="pointer-events-none absolute inset-0 z-20" />
@@ -69,10 +101,11 @@ export function PageSheet({
                 event.preventDefault();
                 return;
               }
-              const target = event.target;
+              const original = event.detail.originalEvent;
               if (
-                target instanceof Element &&
-                target.closest("button, a, input, textarea, select, label, [role=tab]")
+                press.current?.event === original
+                  ? press.current.keepsOpen
+                  : pressKeepsSheetOpen(event.target)
               ) {
                 event.preventDefault();
                 return;

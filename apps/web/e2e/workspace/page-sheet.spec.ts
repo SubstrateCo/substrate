@@ -185,7 +185,8 @@ test("interaction sheets open over contacts and deals and return to them", async
 
   await visit(user, undefined, "/crm", { section: "deals", recordId: deal.entityId });
   const dealSheet = page.getByRole("dialog", { name: "Deal", exact: true });
-  await dealSheet.getByRole("radio", { name: "Related contacts", exact: true }).click();
+  await dealSheet.getByRole("button", { name: "Scope: Explicitly linked", exact: true }).click();
+  await page.getByRole("option", { name: "Related contacts", exact: true }).click();
   await dealSheet
     .getByRole("link", { name: "Open interaction: Agreed on the winter launch budget." })
     .click();

@@ -17,7 +17,12 @@ test("Expo web preview: CRM lists, pipeline settings, and interaction details", 
   await expect(page.getByRole("heading", { name: "New contact", exact: true })).toBeVisible();
   await captureScreenshot(page, info, "crm-new-contact");
   await page.getByRole("button", { name: "Cancel", exact: true }).click();
-  await page.getByRole("button", { name: "Show archived records", exact: true }).click();
+  await expect(page.getByRole("button", { name: "Remove Records filter" })).toHaveCount(0);
+  await page.getByRole("button", { name: "Records is Active", exact: true }).click();
+  await page.getByRole("button", { name: "Archived", exact: true }).click();
+  await expect(
+    page.getByRole("button", { name: "Records is Archived", exact: true }),
+  ).toBeVisible();
   await expect(page.getByText("No archived contacts", { exact: true })).toBeVisible();
   await captureScreenshot(page, info, "crm-archived-contacts");
   await page.getByRole("tab", { name: "Accounts", exact: true }).click();

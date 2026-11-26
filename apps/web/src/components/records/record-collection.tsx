@@ -14,13 +14,17 @@ import {
 import { RecordEditor } from "@/components/crm/record-editor";
 import { RecordList, type CrmListRow } from "@/components/crm/record-list";
 import { StaleNotice } from "@/components/feedback/stale-notice";
+import { FilterBar, type FilterField } from "@/components/filters";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
+import {
+  archivedFromFilterValue,
+  recordFilterValue,
+  type RecordFilterFieldId,
+} from "@/components/records/record-filters";
 import { useCursorPages, type AppTablePagination } from "@/components/table";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
@@ -38,9 +42,23 @@ import { useActiveStages } from "@/queries/crm/stages";
 import { keepPageWhileTurning } from "@/queries/page-turn";
 import { useRecordMutation } from "@/queries/records/mutations";
 import { cn } from "cn";
-import { Plus } from "lucide-react";
+import { Archive, Plus } from "lucide-react";
 
 const pageSize = 100;
+
+/** Active records are the unfiltered default; Archived shows archived records only. */
+const recordFilterFields: FilterField<RecordFilterFieldId>[] = [
+  {
+    id: "records",
+    label: "Records",
+    icon: Archive,
+    kind: "option",
+    options: [
+      { value: "active", label: "Active" },
+      { value: "archived", label: "Archived" },
+    ],
+  },
+];
 
 type PipelineStage = ComponentProps<typeof DealPipeline>["stages"][number];
 type PipelineBoard = { deals: PipelineDeal[]; truncated: boolean };
@@ -200,19 +218,18 @@ export function RecordCollection({ kind }: { kind: CrmKind }) {
               pages.reset();
             }}
           />
-          <div className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-x-4 gap-y-2">
-            <div className="flex shrink-0 items-center gap-2">
-              <Checkbox
-                id="crm-archived"
-                checked={archived}
-                onCheckedChange={(checked) => {
-                  setArchived(checked === true);
-                  pages.reset();
-                }}
-              />
-              <Label htmlFor="crm-archived">Archived</Label>
-            </div>
-            {kind === "deals" && (
+          <FilterBar
+            fields={recordFilterFields}
+            value={recordFilterValue(archived)}
+            onValueChange={(value) => {
+              const next = archivedFromFilterValue(value);
+              if (next === archived) return;
+              setArchived(next);
+              pages.reset();
+            }}
+          />
+          {kind === "deals" && (
+            <div className="ml-auto">
               <SegmentedControl
                 aria-label="Deal view"
                 value={view}
@@ -222,8 +239,8 @@ export function RecordCollection({ kind }: { kind: CrmKind }) {
                   { value: "list", label: "List" },
                 ]}
               />
-            )}
-          </div>
+            </div>
+          )}
         </div>
         <RecordCollectionResults
           kind={kind}

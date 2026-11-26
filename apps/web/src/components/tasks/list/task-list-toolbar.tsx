@@ -1,37 +1,81 @@
 import type { ReactNode } from "react";
 
 import type { ProjectDetail } from "../types";
-import { clearedFilters, type TaskFilters, type TaskSort } from "./task-filters";
-import { TaskFilterLayout } from "./task-list-layout";
-import { SegmentedControl } from "@/components/forms/segmented-control";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectSeparator,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import { useMediaQuery } from "@/hooks/use-media-query";
-import { ArrowUpDown, SlidersHorizontal, UserRound, X } from "lucide-react";
+  taskFilterValue,
+  withTaskFilterValue,
+  type TaskFilterFieldId,
+  type TaskFilters,
+  type TaskSort,
+} from "./task-filters";
+import { TaskFilterLayout } from "./task-list-layout";
+import {
+  FilterBar,
+  SortControl,
+  type FilterField,
+  type FilterOption,
+  type SortOption,
+} from "@/components/filters";
+import { PersonAvatar } from "@/components/people/person-avatar";
+import { Input } from "@/components/ui/input";
+import { ListTodo, UserRound } from "lucide-react";
 
-const sortOptions: { value: TaskSort; label: string }[] = [
+const sortOptions: SortOption<TaskSort>[] = [
   { value: "default", label: "Task ID" },
   { value: "priority", label: "Priority" },
   { value: "dueDate", label: "Due date" },
   { value: "title", label: "Title" },
 ];
 
-const scopeOptions = [
-  { value: "all", label: "All" },
-  { value: "active", label: "Active" },
-  { value: "blocked", label: "Blocked" },
-] as const;
+/** The scope and assignee filter fields. A chosen actor who left the project reads "Former member". */
+function taskFilterFields(
+  assignees: ProjectDetail["actors"],
+  assignee: TaskFilters["assignee"],
+): FilterField<TaskFilterFieldId>[] {
+  const actorOption = (actor: ProjectDetail["actors"][number]): FilterOption => ({
+    value: actor.entityId,
+    label: actor.name,
+    icon: (
+      <PersonAvatar
+        size="xs"
+        name={actor.name}
+        image={actor.image}
+        agent={actor.type === "agent"}
+      />
+    ),
+    group: actor.type === "agent" ? "Agents" : "People",
+  });
+  const former =
+    assignee !== "any" &&
+    assignee !== "unassigned" &&
+    !assignees.some((actor) => actor.entityId === assignee);
+  return [
+    {
+      id: "scope",
+      label: "Scope",
+      icon: ListTodo,
+      kind: "option",
+      options: [
+        { value: "active", label: "Active" },
+        { value: "blocked", label: "Blocked" },
+      ],
+    },
+    {
+      id: "assignee",
+      label: "Assignee",
+      icon: UserRound,
+      kind: "option",
+      options: [
+        { value: "unassigned", label: "Unassigned", icon: <PersonAvatar size="xs" /> },
+        ...(former ? [{ value: assignee, label: "Former member" }] : []),
+        ...assignees.filter((actor) => actor.type === "human").map(actorOption),
+        ...assignees.filter((actor) => actor.type === "agent").map(actorOption),
+      ],
+    },
+  ];
+}
 
-/** Text filter, scope, assignee filter, and sort for one project's tasks. */
+/** Text filter, scope and assignee filters, and sort for one project's tasks. */
 export function TaskListToolbar({
   filters,
   onChange,
@@ -51,21 +95,12 @@ export function TaskListToolbar({
   /** The view toggle, last at the right end. */
   viewControl?: ReactNode;
 }) {
-  const compact = useMediaQuery("(max-width: 639px)");
   const set = (patch: Partial<TaskFilters>) => onChange({ ...filters, ...patch });
-  const clearFilters = (
-    <Button type="button" variant="ghost" onClick={() => onChange(clearedFilters(filters))}>
-      <X aria-hidden="true" />
-      Clear filters
-    </Button>
-  );
-  const controls = (
-    <TaskListControls filters={filters} assignees={assignees} compact={compact} onChange={set} />
-  );
   return (
     <TaskFilterLayout toolbar>
       <Input
-        className="w-full max-w-full @lg:w-72"
+        // On one row, the search shares the spare width with the pills, between 10rem and 18rem.
+        className="w-full max-w-full @lg:w-72 @3xl:max-w-72 @3xl:min-w-40 @3xl:flex-1"
         type="search"
         aria-label="Search tasks"
         placeholder="Search tasks"
@@ -78,107 +113,33 @@ export function TaskListToolbar({
           }
         }}
       />
-      {compact ? (
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant={filtered || filters.sort !== "default" ? "accent" : "outline"}>
-              <SlidersHorizontal aria-hidden="true" />
-              Filters
-              {(filtered || filters.sort !== "default") && (
-                <span className="sr-only">, active</span>
-              )}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent align="start" aria-label="Task filters and sort">
-            {controls}
-            {filtered && clearFilters}
-          </PopoverContent>
-        </Popover>
-      ) : (
-        controls
-      )}
-      {filtered && (
-        <>
-          {!compact && shown > 0 && clearFilters}
+      {/*
+        Pills start at their full width, so the search shrinks first; past its minimum they wrap
+        inside this box, and the right group stays on the row. The padding centres the first
+        line of pills on the search.
+      */}
+      <div className="flex-1 py-0.5 @3xl:min-w-0 @3xl:flex-auto">
+        <FilterBar
+          fields={taskFilterFields(assignees, filters.assignee)}
+          value={taskFilterValue(filters)}
+          onValueChange={(value) => onChange(withTaskFilterValue(filters, value))}
+          // With no matches, the empty state offers its own "Clear filters".
+          clearable={shown > 0}
+        />
+      </div>
+      <div className="ml-auto flex h-8 shrink-0 items-center gap-2">
+        {filtered && (
           <p role="status" className="text-xs text-muted-foreground tabular-nums">
             {shown} of {total}
           </p>
-        </>
-      )}
-      {viewControl && <div className="ml-auto">{viewControl}</div>}
+        )}
+        <SortControl
+          options={sortOptions}
+          value={filters.sort}
+          onValueChange={(sort) => set({ sort })}
+        />
+        {viewControl}
+      </div>
     </TaskFilterLayout>
-  );
-}
-
-function assigneeLabel(assignees: ProjectDetail["actors"], assignee: TaskFilters["assignee"]) {
-  if (assignee === "any") return "Any assignee";
-  if (assignee === "unassigned") return "Unassigned";
-  return assignees.find((actor) => actor.entityId === assignee)?.name ?? "Former member";
-}
-
-/** Scope, assignee, and sort controls. */
-function TaskListControls({
-  filters,
-  assignees,
-  compact,
-  onChange,
-}: {
-  filters: TaskFilters;
-  assignees: ProjectDetail["actors"];
-  compact: boolean;
-  onChange: (patch: Partial<TaskFilters>) => void;
-}) {
-  return (
-    <>
-      <SegmentedControl
-        aria-label="Show tasks"
-        value={filters.scope}
-        options={scopeOptions}
-        onValueChange={(scope) => onChange({ scope })}
-      />
-      <Select value={filters.assignee} onValueChange={(assignee) => onChange({ assignee })}>
-        <SelectTrigger
-          aria-label="Filter by assignee"
-          title={assigneeLabel(assignees, filters.assignee)}
-          className={compact ? "w-full" : "max-w-48"}
-        >
-          <UserRound aria-hidden="true" className="text-muted-foreground" />
-          <span className="min-w-0 truncate">
-            <SelectValue />
-          </span>
-        </SelectTrigger>
-        <SelectContent position="popper" align="start">
-          <SelectItem value="any">Any assignee</SelectItem>
-          <SelectItem value="unassigned">Unassigned</SelectItem>
-          {!!assignees.length && <SelectSeparator />}
-          {assignees.map((actor) => (
-            <SelectItem key={actor.entityId} value={actor.entityId}>
-              {actor.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Select
-        value={filters.sort}
-        onValueChange={(next) => {
-          const option = sortOptions.find((candidate) => candidate.value === next);
-          if (option) onChange({ sort: option.value });
-        }}
-      >
-        <SelectTrigger aria-label="Sort tasks" className={compact ? "w-full" : undefined}>
-          <ArrowUpDown aria-hidden="true" className="text-muted-foreground" />
-          <span>
-            <SelectValue />
-          </span>
-        </SelectTrigger>
-        <SelectContent position="popper" align="start">
-          {sortOptions.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </>
   );
 }

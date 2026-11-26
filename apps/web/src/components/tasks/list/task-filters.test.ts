@@ -1,5 +1,11 @@
 import type { Task } from "../types";
-import { defaultTaskFilters, filterTasks, hasActiveFilters } from "./task-filters";
+import {
+  defaultTaskFilters,
+  filterTasks,
+  hasActiveFilters,
+  taskFilterValue,
+  withTaskFilterValue,
+} from "./task-filters";
 import { expect, test } from "bun:test";
 
 const task = (title: string, fields: Partial<Task> = {}): Task => ({
@@ -64,6 +70,25 @@ test("due date sort puts the soonest first and undated tasks last", () => {
     "Write launch notes",
     "Fix login bug",
   ]);
+});
+
+test("filter-bar changes set scope and assignee and keep search and sort", () => {
+  const filters = { ...defaultTaskFilters, query: "launch", sort: "title" as const };
+  const blocked = withTaskFilterValue(filters, {
+    scope: { operator: "is", values: ["blocked"] },
+    assignee: { operator: "is", values: ["unassigned"] },
+  });
+  expect(blocked).toEqual({
+    query: "launch",
+    sort: "title",
+    scope: "blocked",
+    assignee: "unassigned",
+  });
+  expect(taskFilterValue(blocked)).toEqual({
+    scope: { operator: "is", values: ["blocked"] },
+    assignee: { operator: "is", values: ["unassigned"] },
+  });
+  expect(withTaskFilterValue(blocked, {})).toEqual(filters);
 });
 
 test("sorting does not count as filtering", () => {
