@@ -13,7 +13,7 @@ export function Board({ className, ...props }: ComponentProps<"section">) {
   return (
     <section
       className={cn(
-        "flex min-h-0 max-w-full min-w-0 flex-1 gap-4 overflow-x-auto overscroll-x-contain",
+        "flex min-h-0 w-full max-w-full min-w-0 flex-1 gap-4 overflow-x-auto overscroll-x-contain",
         className,
       )}
       {...props}
@@ -55,7 +55,7 @@ export function BoardColumn({
       ref={ref}
       aria-labelledby={labelId}
       className={cn(
-        "flex min-h-0 max-w-72 min-w-60 flex-1 flex-col gap-3 rounded-lg bg-inset p-3 sm:min-w-48",
+        "flex min-h-0 min-w-64 flex-1 flex-col gap-3 rounded-lg bg-inset p-3",
         isOver && "bg-row-highlight ring-2 ring-ring/50",
       )}
     >
@@ -110,7 +110,7 @@ export function BoardCard({
   children: ReactNode;
 }) {
   const classes = cn(
-    "relative flex flex-col gap-2 rounded-lg border bg-surface p-3 text-sm shadow-surface transition-colors",
+    "relative flex min-w-0 shrink-0 flex-col gap-2 rounded-lg border bg-surface p-3 text-sm shadow-surface transition-colors",
     overlay && "shadow-raised",
     rowStateVariants({ selected, hover: !overlay }),
     className,

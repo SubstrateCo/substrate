@@ -1,4 +1,5 @@
 import { post, test, visit } from "../test-support/fixtures";
+import { captureScreenshot } from "../test-support/screenshots";
 import { detail, project } from "../test-support/tasks";
 import { expect, type Page } from "@playwright/test";
 
@@ -15,6 +16,88 @@ async function dragCard(page: Page, title: string, status: string, cancel = fals
   if (cancel) await page.keyboard.press("Escape");
   await page.mouse.up();
 }
+
+test("board fills wide windows and keeps long-title cards compact when columns need scrolling", async ({
+  actors,
+  client,
+}) => {
+  const created = await project(actors.sender);
+  const title =
+    "Review the complete workspace onboarding and release readiness checklist before the next product launch";
+  await post(actors.sender, "tasks/mutations", {
+    action: "createTask",
+    organizationId: actors.sender.organizationId,
+    projectEntityId: created.entityId,
+    title,
+  });
+  await Promise.all(
+    (
+      [
+        ["Connect workspace data", "in_progress"],
+        ["Review launch checklist", "in_review"],
+        ["Set up the project", "completed"],
+      ] as const
+    ).map(([taskTitle, status]) =>
+      post(actors.sender, "tasks/mutations", {
+        action: "createTask",
+        organizationId: actors.sender.organizationId,
+        projectEntityId: created.entityId,
+        title: taskTitle,
+        status,
+      }),
+    ),
+  );
+  const user = await client(actors.sender);
+  const { page } = user;
+  await page.setViewportSize({ width: 2560, height: 1000 });
+  await visit(user, undefined, "/tasks", { projectId: created.entityId });
+  await page.getByRole("radio", { name: "Board", exact: true }).click();
+  const board = page.getByRole("region", { name: "Task board", exact: true });
+  const columns = board.getByRole("region");
+  await expect(columns.last()).toBeVisible();
+  expect(
+    await board.evaluate((element) => {
+      const last = element.lastElementChild!;
+      const padding = parseFloat(getComputedStyle(element).paddingRight);
+      return Math.abs(
+        element.getBoundingClientRect().right - last.getBoundingClientRect().right - padding,
+      );
+    }),
+  ).toBeLessThanOrEqual(2);
+  expect(await board.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true);
+
+  await page.setViewportSize({ width: 1920, height: 1000 });
+  await captureScreenshot(page, "task-board-desktop");
+  await page.setViewportSize({ width: 1000, height: 800 });
+  for (const column of await columns.all()) {
+    expect((await column.boundingBox())!.width).toBeGreaterThanOrEqual(256);
+  }
+  expect(await board.evaluate((element) => element.scrollWidth > element.clientWidth)).toBe(true);
+  expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(
+    true,
+  );
+  const open = board.getByRole("button", { name: `Open ${title}`, exact: true });
+  await expect(open).toBeVisible();
+  expect(
+    await open.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        truncated: element.scrollWidth > element.clientWidth,
+        ellipsis: style.textOverflow,
+        lines: style.whiteSpace,
+      };
+    }),
+  ).toEqual({ truncated: true, ellipsis: "ellipsis", lines: "nowrap" });
+  expect((await open.locator("xpath=ancestor::li").boundingBox())!.height).toBeLessThanOrEqual(100);
+  await open.focus();
+  await expect(page.getByRole("tooltip", { name: title, exact: true })).toBeVisible();
+  await open.press("Enter");
+  await expect(
+    page
+      .getByRole("region", { name: "Task details", exact: true })
+      .getByRole("heading", { name: title, exact: true }),
+  ).toBeVisible();
+});
 
 test("board moves persist, filters survive view switches, and cards open the task inspector", async ({
   actors,

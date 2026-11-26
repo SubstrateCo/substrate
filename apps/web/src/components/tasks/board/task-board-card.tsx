@@ -47,12 +47,7 @@ export function TaskBoardCard({
       // oxlint-disable-next-line shadcn/require-static-classes -- actionRow is the shared group/row hook that RowActions reads.
       className={cn(actionRow, isDragging && "opacity-40")}
     >
-      <div
-        className={cn(
-          "flex flex-col items-start gap-1 sm:flex-row sm:gap-2",
-          onStatusChange && "sm:pr-6",
-        )}
-      >
+      <div className={cn("flex min-w-0 items-start gap-2", onStatusChange && "pr-6")}>
         {/* Controls sit above the card's stretched title button. */}
         <span className="relative z-10 shrink-0">
           <TaskStatusMenu
@@ -62,21 +57,23 @@ export function TaskBoardCard({
             disabled={statusPending}
           />
         </span>
-        <Pressable
-          aria-label={`Open ${task.title}`}
-          aria-current={selected || undefined}
-          onClick={onSelect}
-          focus="stretched"
-          className="w-full min-w-0 py-0.5 text-left font-medium wrap-break-word sm:w-auto sm:flex-1"
-        >
-          {task.title}
-        </Pressable>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Pressable
+              aria-label={`Open ${task.title}`}
+              aria-current={selected || undefined}
+              onClick={onSelect}
+              focus="stretched"
+              className="min-w-0 flex-1 truncate py-0.5 text-left font-medium"
+            >
+              {task.title}
+            </Pressable>
+          </TooltipTrigger>
+          <TooltipContent>{task.title}</TooltipContent>
+        </Tooltip>
       </div>
       {onStatusChange && (
-        <RowActions
-          label={`Actions for ${task.title}`}
-          className="absolute top-3 right-3 z-10 sm:top-2 sm:right-2"
-        >
+        <RowActions label={`Actions for ${task.title}`} className="absolute top-2 right-2 z-10">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button

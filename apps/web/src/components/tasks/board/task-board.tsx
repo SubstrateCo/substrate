@@ -90,7 +90,7 @@ export function TaskBoard({
       <DragOverlay dropAnimation={null}>
         {active && (
           <BoardCard overlay>
-            <span className="font-medium wrap-break-word">{active.title}</span>
+            <span className="truncate font-medium">{active.title}</span>
           </BoardCard>
         )}
       </DragOverlay>
