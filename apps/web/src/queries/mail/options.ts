@@ -1,8 +1,14 @@
+import type { Mailbox } from "@substrate/contracts/mail";
 import type { MailAPI, MailFolder, MailScope, OlderMailQuery } from "@substrate/contracts/mail/ipc";
 
 import { hashKey, queryOptions, skipToken, type QueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "@/queries/keys";
+
+/** The mailboxes' sync state. It changes when a sync finishes or a mailbox changes status. */
+export function mailRevision(boxes: Mailbox[]) {
+  return boxes.map((b) => `${b.id}:${b.lastSync}:${b.status}`).join(",");
+}
 
 export function localMailQueries(api: MailAPI, scope: MailScope) {
   const root = queryKeys.mail(scope.userId, scope.organizationId);
@@ -23,7 +29,15 @@ export function localMailQueries(api: MailAPI, scope: MailScope) {
     readPage,
     accounts: queryOptions({
       queryKey: [...root, "accounts", scope],
-      queryFn: () => api.accounts(scope),
+      // A new sync revision reads lists, threads and bodies again.
+      queryFn: async ({ client, queryKey }) => {
+        const previous = client.getQueryData<Mailbox[]>(queryKey);
+        const boxes = await api.accounts(scope);
+        if (previous && mailRevision(previous) !== mailRevision(boxes))
+          for (const kind of ["list", "thread", "body"])
+            void client.invalidateQueries({ queryKey: [...root, kind] });
+        return boxes;
+      },
       retry: false,
     }),
     page: (query: MailFolder) => {

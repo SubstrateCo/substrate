@@ -7,6 +7,7 @@ import {
   type MailView,
 } from "@substrate/contracts/mail";
 
+import { labelFilter } from "./inbox-data";
 import type { LabelActions } from "./label-menu";
 import { ink, labelName, defaultLabelColor } from "./mail-colors";
 import { views } from "./mail-views";
@@ -206,9 +207,7 @@ export function MobileViewPicker({
   onSync,
   syncing,
 }: ViewNav & MailboxNav & { onSync: () => void; syncing: boolean }) {
-  const labelItem = connected
-    .find((b) => b.id === filter?.mailboxId)
-    ?.labels.find((l) => l.id === filter?.id);
+  const labelItem = labelFilter(connected, filter).selectedLabel;
   const { icon: Icon, label } = labelItem
     ? { icon: Tag, label: labelName(labelItem) }
     : views[view];

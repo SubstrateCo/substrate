@@ -2,7 +2,7 @@ import { mailFlag, type Mailbox, type MailHeader } from "@substrate/contracts/ma
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 
 import { MailBodyContent } from "./mail-body-content";
 import { MessageLabels } from "./message-labels";
@@ -39,12 +39,6 @@ function MessageContent({
 }: MessageProps) {
   const body = useQuery(bodyOptions(message.id));
   const [element, setElement] = useState<HTMLDivElement | null>(null);
-  function content() {
-    if (body.isPending) return <LoadingState label="Reading local message…" variant="compact" />;
-    if (body.data && !body.isError)
-      return <MailBodyContent body={body.data} id={message.id} readPicture={readPicture} />;
-    return <ContentNotice variant="inline" title="Message unavailable." />;
-  }
   return (
     <div ref={setElement} className="grid min-w-0 gap-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -62,9 +56,27 @@ function MessageContent({
           {...actions}
         />
       </div>
-      {content()}
+      <MessageBody
+        pending={body.isPending}
+        body={body.isError ? undefined : body.data}
+        id={message.id}
+        readPicture={readPicture}
+      />
     </div>
   );
+}
+
+function MessageBody({
+  pending,
+  body,
+  ...props
+}: Omit<ComponentProps<typeof MailBodyContent>, "body"> & {
+  pending: boolean;
+  body: ComponentProps<typeof MailBodyContent>["body"] | null | undefined;
+}) {
+  if (pending) return <LoadingState label="Reading local message…" variant="compact" />;
+  if (body) return <MailBodyContent body={body} {...props} />;
+  return <ContentNotice variant="inline" title="Message unavailable." />;
 }
 
 function MessageHeading({ message }: { message: MailHeader }) {

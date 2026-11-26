@@ -3,7 +3,7 @@ import type { MailAPI, MailScope, MailLabelFilter } from "@substrate/contracts/m
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { useCallback, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { useMailChanges, useReaderSelection } from "./inbox-actions";
 import {
@@ -22,6 +22,7 @@ import { folderView } from "./mail-views";
 import { MailboxDialogs } from "./mailbox-dialogs";
 import { MailboxSidebar } from "./mailboxes";
 import { Reader } from "./reader";
+import { SelectableMessageList } from "./selectable-message-list";
 import { ErrorState } from "@/components/feedback/error-state";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
@@ -46,11 +47,10 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
   const client = useQueryClient();
   const local = localMailQueries(api, scope);
   const { userId, organizationId } = scope;
-  const readPicture = useCallback(
-    (id: string, source: string) => api.picture({ userId, organizationId, id, source }),
-    [api, userId, organizationId],
-  );
-  const { accounts, boxes, revision } = useMailAccounts(local, client, scope);
+  function readPicture(id: string, source: string) {
+    return api.picture({ userId, organizationId, id, source });
+  }
+  const { accounts, boxes, revision } = useMailAccounts(local);
   const { active, busy, problem } = mailboxStatus(boxes, account);
   const { selectedLabel, filter } = labelFilter(boxes, label);
   const searchState = useSearchDebounce(search.trim(), organizationId);
@@ -160,31 +160,37 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
             accountsPending={accounts.isPending}
             pagePending={page.isPending}
             loadingMore={busy || paging.pending}
-            boxes={boxes}
+            connected={boxes.length > 0}
             rows={rows}
-            listKey={JSON.stringify([
-              userId,
-              organizationId,
-              shownFolder,
-              boxes.map((b) => b.id),
-              listVisit,
-            ])}
-            colors={nav.colors}
-            selected={selected}
-            unified={!account}
-            allTags={allTags}
             search={search}
             current={current}
-            onOpen={setSelected}
-            onBeginSelection={() => setSelected(undefined)}
             onConnect={nav.onConnect}
-            onManage={nav.onManage}
-            onChange={changeConversations}
             onClearSearch={() => {
               setSearch("");
               paging.reset();
               field.current?.focus();
             }}
+            renderList={(messages) => (
+              <SelectableMessageList
+                key={JSON.stringify([
+                  userId,
+                  organizationId,
+                  shownFolder,
+                  boxes.map((b) => b.id),
+                  listVisit,
+                ])}
+                messages={messages}
+                mailboxes={boxes}
+                colors={nav.colors}
+                selected={selected ? conversationKey(selected) : null}
+                unified={!account}
+                onOpen={setSelected}
+                onBeginSelection={() => setSelected(undefined)}
+                onManage={nav.onManage}
+                onChange={changeConversations}
+                allTags={allTags}
+              />
+            )}
           />
           {!!boxes.length && !!data && (
             <MailPagination

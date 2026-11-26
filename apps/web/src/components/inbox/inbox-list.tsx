@@ -1,14 +1,8 @@
-import {
-  conversationKey,
-  type Mailbox,
-  type MailColor,
-  type MailConversation,
-} from "@substrate/contracts/mail";
+import type { MailConversation } from "@substrate/contracts/mail";
 
-import type { ComponentProps } from "react";
+import type { ReactNode } from "react";
 
 import type { FolderView } from "./mail-views";
-import { SelectableMessageList } from "./selectable-message-list";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Button } from "@/components/ui/button";
@@ -19,44 +13,30 @@ export function InboxList({
   accountsPending,
   pagePending,
   loadingMore,
-  boxes,
+  connected,
   rows,
-  listKey,
-  colors,
-  selected,
-  unified,
-  allTags,
   search,
   current,
-  onOpen,
-  onBeginSelection,
   onConnect,
-  onManage,
-  onChange,
   onClearSearch,
+  renderList,
 }: {
   accountsPending: boolean;
   pagePending: boolean;
   loadingMore: boolean;
-  boxes: Mailbox[];
+  /** Whether any mailbox is connected. */
+  connected: boolean;
   rows: MailConversation[] | undefined;
-  listKey: string;
-  colors: ReadonlyMap<string, MailColor>;
-  selected: MailConversation | undefined;
-  unified: boolean;
-  allTags: boolean;
   search: string;
   current: FolderView;
-  onOpen: (message: MailConversation) => void;
-  onBeginSelection: () => void;
   onConnect: () => void;
-  onManage: () => void;
-  onChange: ComponentProps<typeof SelectableMessageList>["onChange"];
   onClearSearch: () => void;
+  /** The message list for rows that are on screen. */
+  renderList: (rows: MailConversation[]) => ReactNode;
 }) {
-  if (accountsPending || (boxes.length && pagePending))
+  if (accountsPending || (connected && pagePending))
     return <LoadingState label="Reading local mail…" />;
-  if (!boxes.length)
+  if (!connected)
     return (
       <ContentNotice
         icon={Mail}
@@ -65,22 +45,7 @@ export function InboxList({
         action={<Button onClick={onConnect}>Connect Gmail</Button>}
       />
     );
-  if (rows?.length)
-    return (
-      <SelectableMessageList
-        key={listKey}
-        messages={rows}
-        mailboxes={boxes}
-        colors={colors}
-        selected={selected ? conversationKey(selected) : null}
-        unified={unified}
-        onOpen={onOpen}
-        onBeginSelection={onBeginSelection}
-        onManage={onManage}
-        onChange={onChange}
-        allTags={allTags}
-      />
-    );
+  if (rows?.length) return renderList(rows);
   if (search)
     return (
       <ContentNotice

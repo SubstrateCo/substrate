@@ -6,35 +6,23 @@ import type {
   MailScope,
 } from "@substrate/contracts/mail/ipc";
 
-import { useQuery, type QueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 
-import { useEffect, useRef, useState } from "react";
+import { useState } from "react";
 
 import { useMailPages } from "./mail-paging";
-import { queryKeys } from "@/queries/keys";
-import { localMailQueries } from "@/queries/mail/options";
+import { localMailQueries, mailRevision } from "@/queries/mail/options";
 
 type LocalMail = ReturnType<typeof localMailQueries>;
 
-/** Connected mailboxes. A new sync revision reads lists, threads and bodies again. */
-export function useMailAccounts(local: LocalMail, client: QueryClient, scope: MailScope) {
-  const { userId, organizationId } = scope;
+/** Connected mailboxes and their sync revision. */
+export function useMailAccounts(local: LocalMail) {
   const accounts = useQuery({
     ...local.accounts,
     refetchInterval: (q) => (q.state.data?.some((b) => b.status === "syncing") ? 1500 : false),
   });
   const boxes = accounts.data ?? [];
-  const revision = accounts.data?.map((b) => `${b.id}:${b.lastSync}:${b.status}`).join(",");
-  const previousRevision = useRef<string>(undefined);
-  useEffect(() => {
-    if (revision === undefined) return;
-    if (previousRevision.current !== undefined && previousRevision.current !== revision)
-      for (const kind of ["list", "thread", "body"])
-        void client.invalidateQueries({
-          queryKey: [...queryKeys.mail(userId, organizationId), kind],
-        });
-    previousRevision.current = revision;
-  }, [client, organizationId, revision, userId]);
+  const revision = accounts.data && mailRevision(accounts.data);
   return { accounts, boxes, revision };
 }
 
@@ -49,7 +37,7 @@ export function mailboxStatus(boxes: Mailbox[], account: string | null) {
 }
 
 /** The label filter, kept only while its mailbox still has the label. */
-export function labelFilter(boxes: Mailbox[], label: MailLabelFilter | undefined) {
+export function labelFilter(boxes: readonly Mailbox[], label: MailLabelFilter | undefined) {
   const selectedLabel = boxes
     .find((b) => b.id === label?.mailboxId)
     ?.labels.find((l) => l.id === label?.id);
