@@ -12,11 +12,20 @@ import {
 
 import {
   createGoogleClient,
+  GoogleError,
+  GoogleGone,
   googlePages,
-  GoogleUnavailable,
+  GoogleReauthRequired,
+  GoogleScopeMissing,
   type GoogleClient,
   type GoogleFetch,
 } from "../../integrations/google";
+import {
+  CalendarAccessRequired,
+  CalendarCursorExpired,
+  CalendarProviderFailure,
+  ProviderNotConfigured,
+} from "./errors";
 import type { CalendarAccountRef, CalendarProviderAdapter } from "./providers";
 import { z } from "zod";
 
@@ -190,8 +199,32 @@ export function normalizeGoogleEvent(event: GoogleEvent): ProviderCalendarEvent 
 }
 
 /**
- * The Google Calendar adapter. Calls throw the errors in `integrations/google`: an expired sync
- * token is GoogleGone, and a grant without calendar access is GoogleScopeMissing.
+ * Maps a Google failure to its calendar error, with the Google error as `cause`. Its `errorCode`
+ * stays Google's.
+ */
+export function calendarError(error: GoogleError) {
+  const { errorCode, message } = error;
+  if (error instanceof GoogleReauthRequired || error instanceof GoogleScopeMissing)
+    return new CalendarAccessRequired(errorCode, message, { cause: error });
+  if (error instanceof GoogleGone)
+    return new CalendarCursorExpired(errorCode, message, { cause: error });
+  if (errorCode === "provider_not_configured") return new ProviderNotConfigured({ cause: error });
+  return new CalendarProviderFailure(errorCode, message, { cause: error });
+}
+
+async function mapped<T>(call: () => Promise<T>) {
+  try {
+    return await call();
+  } catch (error) {
+    // Errors that are not Google's pass through unchanged.
+    throw error instanceof GoogleError ? calendarError(error) : error;
+  }
+}
+
+/**
+ * The Google Calendar adapter. Calls, including the token load, throw calendar errors: an expired
+ * sync token is CalendarCursorExpired, and a grant without calendar access is
+ * CalendarAccessRequired.
  */
 export function createGoogleCalendar(deps: {
   /** Loads the account's token with the calendar product's scopes. */
@@ -205,7 +238,7 @@ export function createGoogleCalendar(deps: {
   }
   const url = (path: string, query: URLSearchParams) => `${api}${path}?${query}`;
 
-  return {
+  const adapter: CalendarProviderAdapter = {
     async listCalendars(account) {
       const google = await client(account);
       const calendars: ProviderCalendar[] = [];
@@ -264,9 +297,13 @@ export function createGoogleCalendar(deps: {
           if (event) result.events.push(event);
         }
       if (!pages.nextSyncToken)
-        throw new GoogleUnavailable("provider_no_cursor", "Google gave no sync cursor.");
+        throw new CalendarProviderFailure("provider_no_cursor", "Google gave no sync cursor.");
       result.nextCursor = pages.nextSyncToken;
       return result;
     },
+  };
+  return {
+    listCalendars: (account) => mapped(() => adapter.listCalendars(account)),
+    syncEvents: (account, input) => mapped(() => adapter.syncEvents(account, input)),
   };
 }

@@ -1,5 +1,19 @@
-import { GoogleError, GoogleGone, GoogleScopeMissing } from "../../integrations/google";
-import { createGoogleCalendar, googleEvent, normalizeGoogleEvent } from "./google";
+import {
+  GoogleGone,
+  GoogleNotFound,
+  GoogleRateLimited,
+  GoogleReauthRequired,
+  GoogleScopeMissing,
+  GoogleUnavailable,
+} from "../../integrations/google";
+import {
+  CalendarAccessRequired,
+  CalendarCursorExpired,
+  CalendarProviderError,
+  CalendarProviderFailure,
+  ProviderNotConfigured,
+} from "./errors";
+import { calendarError, createGoogleCalendar, googleEvent, normalizeGoogleEvent } from "./google";
 import { describe, expect, test } from "bun:test";
 
 /** Google response JSON. Fixtures go through the same parser as provider responses. */
@@ -208,13 +222,14 @@ describe("Google event normalization", () => {
 
 type Page = { status?: number; body: Json };
 const account = { userId: "user-1", accountId: "account-row-1" };
-function provider(pages: Page[]) {
+function provider(pages: Page[], tokenFailure?: Error) {
   const urls: URL[] = [];
   const tokens: unknown[] = [];
   const authorization: (string | null)[] = [];
   const adapter = createGoogleCalendar({
     accessToken: async (input) => {
       tokens.push(input);
+      if (tokenFailure) throw tokenFailure;
       return "token";
     },
     fetch: async (url, init) => {
@@ -239,21 +254,23 @@ const event = (id: string, status = "confirmed") => ({
   start: { dateTime: "2026-11-23T15:00:00Z" },
   end: { dateTime: "2026-11-23T16:00:00Z" },
 });
-async function syncError(pages: Page[], syncCursor: string | null = "cursor") {
+async function providerError(call: Promise<unknown>) {
   try {
-    await provider(pages).adapter.syncEvents(account, { ...window, syncCursor });
+    await call;
   } catch (error) {
-    if (error instanceof GoogleError)
+    if (error instanceof CalendarProviderError)
       return { type: error.constructor, errorCode: error.errorCode };
     throw error;
   }
-  throw new Error("Expected the sync to fail.");
+  throw new Error("Expected the call to fail.");
 }
+const syncError = (pages: Page[], syncCursor: string | null = "cursor") =>
+  providerError(provider(pages).adapter.syncEvents(account, { ...window, syncCursor }));
 
 describe("Google Calendar failures", () => {
-  test("an expired sync token is Gone, and a grant without calendar access names the calendar", async () => {
+  test("an expired sync token resets, and a grant without calendar access names the calendar", async () => {
     expect(await syncError([{ status: 410, body: { error: { code: 410 } } }])).toEqual({
-      type: GoogleGone,
+      type: CalendarCursorExpired,
       errorCode: "provider_gone",
     });
     expect(
@@ -263,7 +280,47 @@ describe("Google Calendar failures", () => {
           body: { error: { details: [{ reason: "ACCESS_TOKEN_SCOPE_INSUFFICIENT" }] } },
         },
       ]),
-    ).toEqual({ type: GoogleScopeMissing, errorCode: "calendar_scope_missing" });
+    ).toEqual({ type: CalendarAccessRequired, errorCode: "calendar_scope_missing" });
+    expect(await syncError([{ status: 401, body: {} }])).toEqual({
+      type: CalendarAccessRequired,
+      errorCode: "reauth_required",
+    });
+  });
+
+  test("a failed token load leaves the adapter as a calendar error", async () => {
+    const revoked = provider([], new GoogleReauthRequired());
+    expect(await providerError(revoked.adapter.listCalendars(account))).toEqual({
+      type: CalendarAccessRequired,
+      errorCode: "reauth_required",
+    });
+    const unconfigured = provider(
+      [],
+      new GoogleUnavailable("provider_not_configured", "Google is not configured."),
+    );
+    expect(
+      await providerError(
+        unconfigured.adapter.syncEvents(account, { ...window, syncCursor: null }),
+      ),
+    ).toEqual({ type: ProviderNotConfigured, errorCode: "provider_not_configured" });
+  });
+
+  test("Google errors map to calendar errors with the same code and the Google error as cause", () => {
+    const cases = [
+      [new GoogleReauthRequired(), CalendarAccessRequired],
+      [new GoogleScopeMissing("calendar"), CalendarAccessRequired],
+      [new GoogleGone(), CalendarCursorExpired],
+      [new GoogleUnavailable("provider_not_configured", "Not configured."), ProviderNotConfigured],
+      [new GoogleRateLimited(1000), CalendarProviderFailure],
+      [new GoogleNotFound(), CalendarProviderFailure],
+      [new GoogleUnavailable("provider_http_503", "Down", 503), CalendarProviderFailure],
+      [new GoogleUnavailable("credential_unavailable", "No tokens."), CalendarProviderFailure],
+    ] as const;
+    for (const [google, type] of cases) {
+      const mapped = calendarError(google);
+      expect(mapped).toBeInstanceOf(type);
+      expect(mapped.errorCode).toBe(google.errorCode);
+      expect(mapped.cause).toBe(google);
+    }
   });
 
   test("a last page without a sync token fails instead of saving no cursor", async () => {

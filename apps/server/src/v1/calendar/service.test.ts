@@ -5,9 +5,13 @@ import type {
 } from "@substrate/contracts/calendar";
 import type { Committed } from "@substrate/database";
 
-import { GoogleReauthRequired, GoogleScopeMissing } from "../../integrations/google";
 import { scopeFixture } from "../../test-support";
-import { ProviderNotConfigured } from "./errors";
+import {
+  CalendarAccessRequired,
+  CalendarProviderFailure,
+  ProviderNotConfigured,
+  ProviderNotImplemented,
+} from "./errors";
 import type { CalendarProviderAdapter, CalendarProviders } from "./providers";
 import { createCalendarService } from "./service";
 import { expect, test } from "bun:test";
@@ -139,8 +143,11 @@ test("an account without calendar access asks the owner to reconnect", async () 
   });
   expect(withoutScope.providerRequests).toEqual([]);
 
-  // The stored grant can claim a scope that Google no longer honours, or be revoked.
-  for (const failure of [new GoogleScopeMissing("calendar"), new GoogleReauthRequired()]) {
+  // The stored grant can claim a scope that the provider no longer honours, or be revoked.
+  for (const failure of [
+    new CalendarAccessRequired("calendar_scope_missing", "No calendar scope."),
+    new CalendarAccessRequired("reauth_required", "Revoked."),
+  ]) {
     const rejected = fixture({
       listCalendars: async () => {
         throw failure;
@@ -154,14 +161,28 @@ test("an account without calendar access asks the owner to reconnect", async () 
 });
 
 test("a provider this server cannot use is unavailable input", async () => {
-  const unconfigured = fixture({
+  for (const failure of [new ProviderNotConfigured(), new ProviderNotImplemented()]) {
+    const unavailable = fixture({
+      listCalendars: async () => {
+        throw failure;
+      },
+    });
+    expect(
+      await unavailable.service.providerCalendars(unavailable.scope, "account-1"),
+    ).toMatchObject({ success: false, error: { code: "INVALID_INPUT" } });
+  }
+});
+
+test("any other provider failure stays unexpected", async () => {
+  const failing = fixture({
     listCalendars: async () => {
-      throw new ProviderNotConfigured();
+      throw new CalendarProviderFailure("provider_http_503", "The Google request failed.");
     },
   });
-  expect(
-    await unconfigured.service.providerCalendars(unconfigured.scope, "account-1"),
-  ).toMatchObject({ success: false, error: { code: "INVALID_INPUT" } });
+  expect(await failing.service.providerCalendars(failing.scope, "account-1")).toMatchObject({
+    success: false,
+    error: { code: "INTERNAL_ERROR" },
+  });
 });
 
 test("connect uses the provider's calendars, ignores unknown IDs, and starts a sync", async () => {

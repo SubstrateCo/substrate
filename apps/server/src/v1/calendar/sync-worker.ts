@@ -1,12 +1,6 @@
 import type { ProviderSyncResult } from "@substrate/contracts/calendar";
 
-import {
-  GoogleError,
-  GoogleGone,
-  GoogleReauthRequired,
-  GoogleScopeMissing,
-} from "../../integrations/google";
-import { CalendarProviderError, type ProviderFailure } from "./errors";
+import { CalendarAccessRequired, CalendarCursorExpired, CalendarProviderError } from "./errors";
 
 export interface SyncFailure {
   outcome: "retry" | "reauth_required" | "reset";
@@ -19,9 +13,10 @@ export interface SyncFailure {
  * the owner must renew stops it, and everything else is retried. Unknown errors keep their
  * details out of the stored code.
  */
-export function syncFailure(error: ProviderFailure | undefined): SyncFailure {
-  if (error instanceof GoogleGone) return { outcome: "reset", errorCode: error.errorCode };
-  if (error instanceof GoogleReauthRequired || error instanceof GoogleScopeMissing)
+export function syncFailure(error: CalendarProviderError | undefined): SyncFailure {
+  if (error instanceof CalendarCursorExpired)
+    return { outcome: "reset", errorCode: error.errorCode };
+  if (error instanceof CalendarAccessRequired)
     return { outcome: "reauth_required", errorCode: error.errorCode };
   return { outcome: "retry", errorCode: error?.errorCode ?? "sync_failed" };
 }
@@ -88,8 +83,7 @@ export class CalendarSyncWorker<Claim, Meeting> {
       try {
         result = await this.dependencies.fetch(claim);
       } catch (error) {
-        const known = error instanceof GoogleError || error instanceof CalendarProviderError;
-        const failure = syncFailure(known ? error : undefined);
+        const failure = syncFailure(error instanceof CalendarProviderError ? error : undefined);
         this.dependencies.reportFailure(`Calendar sync failed: ${failure.errorCode}.`);
         await this.dependencies.fail(claim, failure);
         continue;

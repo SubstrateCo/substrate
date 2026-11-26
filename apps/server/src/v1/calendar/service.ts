@@ -5,11 +5,15 @@ import type {
   ContactMeetingsInput,
 } from "@substrate/contracts/calendar/input";
 
-import { GoogleError, GoogleReauthRequired, GoogleScopeMissing } from "../../integrations/google";
 import type { CommittedPublisher } from "../../shared/committed";
 import type { WorkspaceScope } from "../../shared/scope-types";
 import { ServiceError, serviceResult } from "../../shared/service-result";
-import { CalendarProviderError, type ProviderFailure } from "./errors";
+import {
+  CalendarAccessRequired,
+  CalendarProviderError,
+  ProviderNotConfigured,
+  ProviderNotImplemented,
+} from "./errors";
 import type { CalendarProviders } from "./providers";
 
 export interface CalendarServiceDependencies {
@@ -25,11 +29,10 @@ const calendarAccessRequired = () =>
  * Maps provider failures to public errors. A missing scope or a revoked grant both ask the owner
  * to reconnect. Others stay unexpected and are logged by name.
  */
-function providerError(error: ProviderFailure) {
-  if (error instanceof GoogleScopeMissing || error instanceof GoogleReauthRequired)
-    return calendarAccessRequired();
+function providerError(error: CalendarProviderError) {
+  if (error instanceof CalendarAccessRequired) return calendarAccessRequired();
   const unavailable =
-    error instanceof CalendarProviderError || error.errorCode === "provider_not_configured";
+    error instanceof ProviderNotConfigured || error instanceof ProviderNotImplemented;
   if (unavailable)
     return new ServiceError("INVALID_INPUT", "This calendar provider is not available.");
   return error;
@@ -55,8 +58,7 @@ export function createCalendarService(
         .listCalendars({ userId: scope.userId, accountId: credentialAccountId });
       return { account, calendars };
     } catch (error) {
-      const known = error instanceof GoogleError || error instanceof CalendarProviderError;
-      throw known ? providerError(error) : error;
+      throw error instanceof CalendarProviderError ? providerError(error) : error;
     }
   }
 

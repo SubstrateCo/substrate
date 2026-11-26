@@ -1,14 +1,12 @@
 import type { ProviderSyncResult } from "@substrate/contracts/calendar";
 
 import {
-  GoogleGone,
-  GoogleNotFound,
-  GoogleRateLimited,
-  GoogleReauthRequired,
-  GoogleScopeMissing,
-  GoogleUnavailable,
-} from "../../integrations/google";
-import { ProviderNotImplemented } from "./errors";
+  CalendarAccessRequired,
+  CalendarCursorExpired,
+  CalendarProviderFailure,
+  ProviderNotConfigured,
+  ProviderNotImplemented,
+} from "./errors";
 import {
   CalendarSyncWorker,
   syncFailure,
@@ -58,20 +56,23 @@ function fixture(
 }
 
 test("provider errors map to the calendar's failure outcome", () => {
-  expect(syncFailure(new GoogleGone())).toEqual({ outcome: "reset", errorCode: "provider_gone" });
-  expect(syncFailure(new GoogleReauthRequired())).toEqual({
+  expect(syncFailure(new CalendarCursorExpired("provider_gone", "Expired."))).toEqual({
+    outcome: "reset",
+    errorCode: "provider_gone",
+  });
+  expect(syncFailure(new CalendarAccessRequired("reauth_required", "Revoked."))).toEqual({
     outcome: "reauth_required",
     errorCode: "reauth_required",
   });
-  expect(syncFailure(new GoogleScopeMissing("calendar"))).toEqual({
+  expect(syncFailure(new CalendarAccessRequired("calendar_scope_missing", "No scope."))).toEqual({
     outcome: "reauth_required",
     errorCode: "calendar_scope_missing",
   });
   for (const error of [
     new ProviderNotImplemented(),
-    new GoogleRateLimited(1000),
-    new GoogleNotFound(),
-    new GoogleUnavailable("provider_http_503", "Down", 503),
+    new ProviderNotConfigured(),
+    new CalendarProviderFailure("provider_rate_limited", "Rate-limited."),
+    new CalendarProviderFailure("provider_http_503", "Down"),
   ])
     expect(syncFailure(error)).toEqual({ outcome: "retry", errorCode: error.errorCode });
   // Unknown errors keep their details out of the stored code.
@@ -85,8 +86,8 @@ test("a failing calendar is recorded and the rest of the batch still syncs", asy
   const { worker, log } = fixture({
     queue: ["expired", "revoked", "crashed", "healthy"],
     fetch: async (claim) => {
-      if (claim === "expired") throw new GoogleGone();
-      if (claim === "revoked") throw new GoogleReauthRequired();
+      if (claim === "expired") throw new CalendarCursorExpired("provider_gone", "Expired.");
+      if (claim === "revoked") throw new CalendarAccessRequired("reauth_required", "Revoked.");
       if (claim === "crashed") throw new Error("token=secret");
       return synced;
     },

@@ -18,8 +18,8 @@ export interface CalendarAccountRef {
 }
 
 /**
- * A read-only calendar API. It loads the account's token itself and throws its integration's
- * errors, such as those in `integrations/google`.
+ * A read-only calendar API. It loads the account's token itself and throws the calendar errors in
+ * `./errors`, mapped from its integration's errors.
  */
 export interface CalendarProviderAdapter {
   listCalendars(account: CalendarAccountRef): Promise<ProviderCalendar[]>;
