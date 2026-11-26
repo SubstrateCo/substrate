@@ -81,10 +81,9 @@ export function NotificationList({
   onClose?: () => void;
   renderEvents: (item: Notification) => ReactNode;
 }) {
-  const visible = items;
   const failed = state === "error" || state === "unavailable";
-  const empty = !failed && !loading && !visible.length;
-  const unread = visible.some((item) => !item.read);
+  const empty = !failed && !loading && !items.length;
+  const unread = items.some((item) => !item.read);
   return (
     <PageLayout id="notifications" aria-label="Notifications">
       <PageContent>
@@ -135,7 +134,7 @@ export function NotificationList({
             />
             <div className="flex flex-1 flex-col gap-4">
               <NotificationFeedNotice state={state} onRetry={onRetry} />
-              {loading && !visible.length && !failed && (
+              {loading && !items.length && !failed && (
                 <div className="-mx-3">
                   <NotificationRowsLoading label="Loading notifications" />
                 </div>
@@ -146,14 +145,14 @@ export function NotificationList({
                   onShowAll={() => onFilter("all")}
                 />
               )}
-              {!failed && visible.length > 0 && (
+              {!failed && items.length > 0 && (
                 <>
                   <ul
                     aria-label="Notification activity"
                     className="-mx-3 flex flex-col gap-px"
                     onKeyDown={moveBetweenRows}
                   >
-                    {dayLabeled(visible).map(({ item, label }) => (
+                    {dayLabeled(items).map(({ item, label }) => (
                       <Fragment key={item.id}>
                         {label && (
                           <li

@@ -1,7 +1,7 @@
 import { useState } from "react";
 
 import type { MessageRecordDraft } from "@/api/context/crm-from-message-input";
-import type { CrmKind } from "@/components/crm/crm-types";
+import { singularLabels, type CrmKind } from "@/components/crm/crm-types";
 import { RecordEditor } from "@/components/crm/record-editor";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 
@@ -27,7 +27,7 @@ export function MessageRecordEditor({
   onRestoreFocus?: () => void;
 }) {
   const [draft, setDraft] = useState<MessageRecordDraft | null>(null);
-  const singular = { accounts: "account", contacts: "contact", deals: "deal" }[kind];
+  const singular = singularLabels[kind];
   if (draft)
     return (
       <ConfirmDialog

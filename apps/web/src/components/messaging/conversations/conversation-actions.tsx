@@ -8,8 +8,7 @@ import { ConversationAgents } from "./conversation-agents";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { SharingManager } from "@/components/messaging/sharing/sharing-manager";
 import {
-  conversationLabel,
-  conversationName,
+  conversationTextLabel,
   humanMembers,
   type Conversation,
 } from "@/lib/messaging/conversations";
@@ -43,7 +42,7 @@ export function ConversationActions({
     enabled: dialog === "delete",
   });
   // Running text: a public channel reads "#name", as in the composer and search.
-  const name = conversationLabel({ ...conversation, name: conversationName(conversation) });
+  const name = conversationTextLabel(conversation);
   const people = humanMembers(conversation.members);
   const canLeave = conversation.kind !== "dm" && !!conversation.joined;
   const { leaveLabel, deleteLabel } =

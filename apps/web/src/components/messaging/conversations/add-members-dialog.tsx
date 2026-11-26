@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { AddMembersDialog as AddMembersDialogView } from "@/components/messaging/conversations/add-members-dialog-view";
-import { conversationLabel, conversationName, humanMembers } from "@/lib/messaging/conversations";
+import { conversationTextLabel, humanMembers } from "@/lib/messaging/conversations";
 import { useAddMembers } from "@/queries/messaging/conversations";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 import { workspacePeopleQueryOptions } from "@/queries/organizations/people";
@@ -42,11 +42,7 @@ export function AddMembersDialog({
   const add = useAddMembers(organizationId, conversationId);
   return (
     <AddMembersDialogView
-      name={
-        name ??
-        (conversation &&
-          conversationLabel({ ...conversation, name: conversationName(conversation) }))
-      }
+      name={name ?? (conversation && conversationTextLabel(conversation))}
       channel={conversation?.kind === "channel"}
       people={people}
       pending={add.isPending}

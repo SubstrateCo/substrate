@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-
 import { timeZones } from "./schedule";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,14 +28,10 @@ export function TimeZonePicker({
   disabled?: boolean;
   onChange: (zone: string) => void;
 }) {
-  const zones = useMemo(
-    () =>
-      timeZones(value).map((zone): ComboboxOption => ({
-        value: zone,
-        label: formatTimeZone(zone),
-      })),
-    [value],
-  );
+  const zones = timeZones(value).map((zone): ComboboxOption => ({
+    value: zone,
+    label: formatTimeZone(zone),
+  }));
   const current = zones.find((zone) => zone.value === value) ?? null;
   return (
     <Combobox

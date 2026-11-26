@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import type { CrmKind } from "./crm-types";
+import { singularLabels, type CrmKind } from "./crm-types";
 import { CustomerPicker } from "./customer-picker";
 import { formText } from "./form-text";
 import { FormDialog } from "@/components/feedback/form-dialog";
@@ -53,7 +53,7 @@ export function RecordEditor({
   onClose: () => void;
   onSubmit: (write: RecordWrite) => void;
 }) {
-  const singular = { accounts: "account", contacts: "contact", deals: "deal" }[kind];
+  const singular = singularLabels[kind];
   const [accountId, setAccountId] = useState(record?.accountEntityId ?? "");
   const [contactId, setContactId] = useState(record?.primaryContactEntityId ?? "");
   const [stageId, setStageId] = useState(record?.stageId ?? stages.at(0)?.value ?? "");

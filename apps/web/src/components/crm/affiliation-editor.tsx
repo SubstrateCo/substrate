@@ -1,5 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
-
 import { useState } from "react";
 
 import { CustomerPicker } from "./customer-picker";
@@ -7,7 +5,6 @@ import { formText } from "./form-text";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { NativeField } from "@/components/forms/native-form";
 import { useCrmMutation } from "@/queries/crm/mutations";
-import { accountsOptions } from "@/queries/crm/options";
 
 export function AffiliationEditor({
   organizationId,
@@ -18,7 +15,6 @@ export function AffiliationEditor({
   contactEntityId: string;
   onClose: () => void;
 }) {
-  const accounts = useQuery(accountsOptions(organizationId));
   const mutation = useCrmMutation(organizationId);
   const [accountId, setAccountId] = useState("");
   return (
@@ -29,7 +25,7 @@ export function AffiliationEditor({
       nativeValidation
       disabled={!accountId}
       pending={mutation.isPending}
-      error={accounts.error ?? mutation.error}
+      error={mutation.error}
       errorDescription="Couldn’t link this account. Check that you can edit both records."
       onClose={onClose}
       onSubmit={(form) => {

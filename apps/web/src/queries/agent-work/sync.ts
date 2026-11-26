@@ -5,6 +5,7 @@ import { partialMatchKey, useQueryClient, type QueryKey } from "@tanstack/react-
 import { useEffect } from "react";
 
 import { queryKeys } from "../keys";
+import { agentWorkBridge } from "@/lib/desktop/bridges";
 
 /**
  * The local reads a bridge change hint names. A hint without IDs refreshes all local work.
@@ -90,4 +91,3 @@ export function useAgentWorkBridgeSync(userId: string | undefined, organizationI
     };
   }, [client, userId, organizationId]);
 }
-import { agentWorkBridge } from "@/lib/desktop/bridges";

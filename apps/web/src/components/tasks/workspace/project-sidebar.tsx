@@ -53,7 +53,6 @@ export function ProjectSidebar({
   projectLink: (id: string) => LinkProps;
   createButtonRef?: Ref<HTMLButtonElement>;
 }) {
-  const visible = projects;
   return (
     <PageSidebar aria-label="Projects">
       <PageSidebarHeader
@@ -76,9 +75,9 @@ export function ProjectSidebar({
         }
       />
       {/* With no projects to show, the main pane shows the load error. */}
-      {error && !visible.length ? null : (
+      {error && !projects.length ? null : (
         <PageSidebarContent>
-          {loading && !visible.length && (
+          {loading && !projects.length && (
             <div
               role="status"
               aria-label="Loading projects"
@@ -98,7 +97,7 @@ export function ProjectSidebar({
               />
             </div>
           )}
-          {!loading && !error && !visible.length && (
+          {!loading && !error && !projects.length && (
             <div className="px-2">
               {/* The header's New project button and the main pane offer the create action. */}
               <ContentNotice
@@ -108,7 +107,7 @@ export function ProjectSidebar({
             </div>
           )}
           <div className="flex gap-0.5 overflow-x-auto md:flex-col">
-            {visible.map((project) => (
+            {projects.map((project) => (
               <ProjectSidebarItem
                 key={project.entityId}
                 project={project}

@@ -1,4 +1,4 @@
-import { useCallback, useRef, type RefObject } from "react";
+import { useRef, type RefObject } from "react";
 
 /** Where focus goes when the launcher is gone: an element, or a function that moves it. */
 export type FocusFallback = RefObject<HTMLElement | null> | (() => void);
@@ -16,15 +16,15 @@ function launcherOf(element: Element | null) {
 export function useFocusReturn(fallback?: FocusFallback) {
   const launcher = useRef<Element | null>(document.activeElement);
   /** Keeps `element`, by default the focused element, as the place to return to. */
-  const remember = useCallback((element: Element | null = document.activeElement) => {
+  const remember = (element: Element | null = document.activeElement) => {
     launcher.current = launcherOf(element);
-  }, []);
-  const restore = useCallback(() => {
+  };
+  const restore = () => {
     const element = launcher.current;
     if (element instanceof HTMLElement && element.isConnected && !element.matches(":disabled"))
       element.focus();
     else if (fallback instanceof Function) fallback();
     else fallback?.current?.focus();
-  }, [fallback]);
+  };
   return { remember, restore };
 }

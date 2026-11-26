@@ -21,6 +21,7 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
 import { harnessLabel, harnessOptions, visibleHarnessOptions } from "@/lib/agents/harness-meta";
+import { harnessBridge } from "@/lib/desktop/bridges";
 import { harnessStatusQueryOptions } from "@/queries/agents/harness-status";
 import { harnessModelsQueryOptions } from "@/queries/agents/models";
 import { Check, ChevronDown, CircleAlert, Laptop, RefreshCw } from "lucide-react";
@@ -452,4 +453,3 @@ export function ModelPicker({
     </Popover>
   );
 }
-import { harnessBridge } from "@/lib/desktop/bridges";

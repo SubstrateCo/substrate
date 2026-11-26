@@ -1,6 +1,6 @@
 import type { MailAPI, MailFolder, MailScope, OlderMailQuery } from "@substrate/contracts/mail/ipc";
 
-import { hashKey, queryOptions, type QueryClient } from "@tanstack/react-query";
+import { hashKey, queryOptions, skipToken, type QueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "@/queries/keys";
 
@@ -58,15 +58,13 @@ export function localMailQueries(api: MailAPI, scope: MailScope) {
     body: (id: string | undefined) =>
       queryOptions({
         queryKey: [...root, "body", scope, id],
-        enabled: !!id,
-        queryFn: () => api.body({ ...scope, id: id! }),
+        queryFn: id ? () => api.body({ ...scope, id }) : skipToken,
         retry: false,
       }),
     thread: (id: string | undefined) =>
       queryOptions({
         queryKey: [...root, "thread", scope, id],
-        enabled: !!id,
-        queryFn: () => api.thread({ ...scope, id: id! }),
+        queryFn: id ? () => api.thread({ ...scope, id }) : skipToken,
         retry: false,
       }),
   };

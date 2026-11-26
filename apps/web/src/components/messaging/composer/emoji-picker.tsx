@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, type ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { emojiCategories, recentEmojis, rememberEmoji, type Emoji } from "./emoji-data";
 import { Button } from "@/components/ui/button";
@@ -147,10 +147,7 @@ function EmojiPanel({ onPick: pick }: { onPick: (emoji: string) => void }) {
   const [preview, setPreview] = useState<Emoji | null>(null);
   const list = useRef<HTMLDivElement>(null);
   const search = query.trim().toLowerCase();
-  const matches = useMemo(
-    () => (search ? allEmojis.filter((item) => item.name.includes(search)) : []),
-    [search],
-  );
+  const matches = search ? allEmojis.filter((item) => item.name.includes(search)) : [];
   let groups = [...(recent.length ? [{ name: "Recent", emojis: recent }] : []), ...emojiCategories];
   if (search) groups = matches.length ? [{ name: "Results", emojis: matches }] : [];
   const shown = preview ?? (search ? matches[0] : undefined);

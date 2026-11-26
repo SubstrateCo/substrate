@@ -52,6 +52,14 @@ export function conversationLabel({
   return kind === "channel" && !locked ? `#${name}` : name;
 }
 
+/** `conversationLabel` for a conversation record, named as `conversationName` names it. */
+export function conversationTextLabel(
+  conversation: Pick<Conversation, "name" | "kind" | "private"> &
+    Partial<Pick<Conversation, "task">>,
+): string {
+  return conversationLabel({ ...conversation, name: conversationName(conversation) });
+}
+
 /**
  * Joins the viewer's enabled agents with their agent members here, by agent definition ID.
  * Members that match no enabled agent stay removable.

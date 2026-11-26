@@ -45,7 +45,7 @@ export function ProjectPane(props: ComponentProps<typeof ProjectPaneContent>) {
 }
 
 function ProjectPaneContent({
-  data,
+  data: detail,
   state,
   capabilities,
   onRetry,
@@ -65,7 +65,6 @@ function ProjectPaneContent({
   data?: ProjectDetail;
   state: ResourceStatus;
   capabilities: ProjectCapabilities;
-  error?: Error | null;
   onRetry: () => void;
   /** Project name and description editor, shown to editors in Settings. */
   editor: ReactNode;
@@ -98,7 +97,6 @@ function ProjectPaneContent({
 }) {
   const [view, setView] = useState<"list" | "board">("list");
   const taskDirty = useDraftKeys().length > 0;
-  const detail = data;
   const { panel, inspector, newTaskButton, restoreFocus } = useTaskPanel({
     selectedTaskId,
     onSelectTask,

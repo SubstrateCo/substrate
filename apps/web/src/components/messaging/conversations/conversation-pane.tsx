@@ -11,6 +11,7 @@ import { AddMembersDialog } from "./add-members-dialog";
 import { ConversationActions } from "./conversation-actions";
 import { LeftChannelNotice } from "./left-channel-notice";
 import { useMemberRemoval } from "./remove-member-action";
+import type { MessageTarget } from "@/api/context/links";
 import { AgentWorkNotice } from "@/components/agent-work/agent-work-slot";
 import { ConversationAgentWork } from "@/components/agent-work/conversation-agent-work";
 import { ConversationTurnTranscript } from "@/components/agent-work/transcript/conversation-turn-transcript";
@@ -19,11 +20,7 @@ import { ConversationPane as ConversationPaneView } from "@/components/messaging
 import { JumpToLatest, OlderMessages } from "@/components/messaging/messages/message-history";
 import { MessageLoading } from "@/components/messaging/messages/message-loading";
 import { ThreadPaneFrame } from "@/components/messaging/threads/thread-pane-frame";
-import {
-  conversationLabel,
-  conversationName,
-  type Conversation,
-} from "@/lib/messaging/conversations";
+import { conversationTextLabel, type Conversation } from "@/lib/messaging/conversations";
 import { workLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { messageTargetOptions } from "@/queries/context/links";
@@ -219,19 +216,13 @@ function ConversationThreadAside({
 }: {
   organizationId: string;
   conversation: Conversation;
-  target?: Pick<NonNullable<ReturnType<typeof useMessageTarget>["data"]>, "root" | "message">;
+  target?: Pick<MessageTarget, "root" | "message">;
   contextMessageIds: string[];
   onClose: () => void;
 }) {
   const activeThreadId = target?.root.id;
   return (
-    <ThreadPaneFrame
-      conversationLabel={conversationLabel({
-        ...conversation,
-        name: conversationName(conversation),
-      })}
-      onClose={onClose}
-    >
+    <ThreadPaneFrame conversationLabel={conversationTextLabel(conversation)} onClose={onClose}>
       {activeThreadId ? (
         <ThreadPane
           key={activeThreadId}
@@ -302,7 +293,7 @@ function ConversationComposer({
         <Composer
           organizationId={organizationId}
           conversationId={conversation.id}
-          label={`Message ${conversationLabel({ ...conversation, name: conversationName(conversation) })}`}
+          label={`Message ${conversationTextLabel(conversation)}`}
         />
       ) : (
         <p className="px-4 py-3 text-sm text-muted-foreground">

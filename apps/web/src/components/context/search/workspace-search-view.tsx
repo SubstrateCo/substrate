@@ -7,6 +7,7 @@ import { SearchResults } from "@/components/context/search/search-results";
 import { Button } from "@/components/ui/button";
 import { Kbd } from "@/components/ui/kbd";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { desktopPlatform } from "@/lib/desktop/bridges";
 
 // "channel" lists channels only, with membership. DMs and group messages appear under "all".
 export type SearchKind = "all" | "task" | "project" | "message" | "channel";
@@ -163,4 +164,3 @@ export function WorkspaceSearch({
     </section>
   );
 }
-import { desktopPlatform } from "@/lib/desktop/bridges";

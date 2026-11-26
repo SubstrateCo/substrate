@@ -1,6 +1,6 @@
 import type { Mailbox, MailLabel } from "@substrate/contracts/mail";
 
-import { useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 
 import { defaultLabelColor, ink, labelName, visibleLabels } from "./mail-colors";
 import { Tag } from "@/components/feedback/tag";
@@ -111,7 +111,7 @@ export function MessageLabels({
   compact?: boolean;
   all?: boolean;
 }) {
-  const labels = useMemo(() => visibleLabels(mailbox, ids, compact), [mailbox, ids, compact]);
+  const labels = visibleLabels(mailbox, ids, compact);
   if (!labels.length) return null;
   if (compact) return <RowLabels labels={labels} all={all} />;
   return (

@@ -86,7 +86,6 @@ export function LinkMessageWork({
   // Selection survives tab and search changes, so tasks and projects can be linked together.
   const [chosen, setChosen] = useState(() => new Map<string, LinkableWork>());
   const compact = useMediaQuery("(max-width: 639px)");
-  const visible = results;
   const kindLabel = kindLabels[kind];
   const kindSet = new Set(kinds);
   // Items that became linked, for example after a partial failure, leave the selection.
@@ -183,12 +182,12 @@ export function LinkMessageWork({
                   <LinkSearchStatus
                     error={error}
                     loading={loading}
-                    hasResults={visible.length > 0}
+                    hasResults={results.length > 0}
                     query={query.trim()}
                     kindLabel={kindLabel.toLowerCase()}
                     onRetry={onRetry}
                   />
-                  {visible.map((item) => (
+                  {results.map((item) => (
                     <LinkWorkItem
                       key={item.id}
                       id={item.id}

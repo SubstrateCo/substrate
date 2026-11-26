@@ -75,23 +75,20 @@ function CollaborationLoadNotice({
   hasLists: boolean;
   onRetry: () => void;
 }) {
-  let notice;
-  if (failed)
-    notice =
-      !blocked && hasLists ? (
-        <StaleNotice onRetry={onRetry}>This information may be out of date.</StaleNotice>
-      ) : (
-        <ErrorState
-          title="Couldn’t load collaboration"
-          description={
-            blocked
-              ? "You no longer have access to collaboration settings."
-              : "This information may be out of date."
-          }
-          onRetry={blocked ? undefined : onRetry}
-        />
-      );
-  return notice;
+  if (!failed) return null;
+  if (!blocked && hasLists)
+    return <StaleNotice onRetry={onRetry}>This information may be out of date.</StaleNotice>;
+  return (
+    <ErrorState
+      title="Couldn’t load collaboration"
+      description={
+        blocked
+          ? "You no longer have access to collaboration settings."
+          : "This information may be out of date."
+      }
+      onRetry={blocked ? undefined : onRetry}
+    />
+  );
 }
 
 type SharingRequest = Awaited<ReturnType<typeof listSharingInbox>>[number];

@@ -29,20 +29,21 @@ export function ReferencePicker({
   onInsert: (token: string, reference: WorkspaceReference) => void;
   onClose: () => void;
 }) {
-  const parsed = activeReference;
   const apps = useOrganizationApps();
   const mixedKinds: Extract<ReferenceKind, "person" | "agent" | "task" | "project">[] =
     apps.enabled("tasks") ? ["person", "agent", "task", "project"] : ["person", "agent"];
   const kinds: ReferenceTab[] =
-    parsed.trigger === "#" ? ["channel", "thread"] : ["all", ...mixedKinds];
-  const query = parsed.query;
+    activeReference.trigger === "#" ? ["channel", "thread"] : ["all", ...mixedKinds];
+  const query = activeReference.query;
   const [selection, setSelection] = useState<{ prefix: string; kind: ReferenceTab }>({
-    prefix: parsed.kind,
-    kind: parsed.kind,
+    prefix: activeReference.kind,
+    kind: activeReference.kind,
   });
-  const selectedKind = selection.prefix === parsed.kind ? selection.kind : parsed.kind;
+  const selectedKind =
+    selection.prefix === activeReference.kind ? selection.kind : activeReference.kind;
   const kind = kinds.includes(selectedKind) ? selectedKind : kinds[0]!;
-  if (selection.prefix !== parsed.kind) setSelection({ prefix: parsed.kind, kind });
+  if (selection.prefix !== activeReference.kind)
+    setSelection({ prefix: activeReference.kind, kind });
   const debounced = useSearchDebounce(
     query,
     JSON.stringify([organizationId, conversationId, kind]),
@@ -69,7 +70,7 @@ export function ReferencePicker({
       results={debounced.pending ? [] : rows}
       loading={debounced.pending || result.isPending}
       error={debounced.pending ? null : result.error}
-      onKindChange={(kind) => setSelection({ prefix: parsed.kind, kind })}
+      onKindChange={(kind) => setSelection({ prefix: activeReference.kind, kind })}
       onRetry={() => {
         if (!debounced.pending) void result.refetch();
       }}

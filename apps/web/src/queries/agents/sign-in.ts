@@ -2,8 +2,6 @@ import type { HarnessKind, HarnessSignInState } from "@substrate/contracts/harne
 
 import { queryOptions, skipToken, useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { useCallback } from "react";
-
 import { queryKeys } from "../keys";
 import { harnessBridge, withHarnessSession } from "@/lib/desktop/bridges";
 
@@ -51,10 +49,8 @@ export function harnessSignInQueryOptions(
 /** Start, answer, and cancel a sign-in, and sign out. Success refreshes every model catalog. */
 export function useHarnessSignInMutations(userId: string, organizationId: string) {
   const client = useQueryClient();
-  const refreshCatalogs = useCallback(
-    () => client.invalidateQueries({ queryKey: queryKeys.allHarnessModels(userId) }),
-    [client, userId],
-  );
+  const refreshCatalogs = () =>
+    client.invalidateQueries({ queryKey: queryKeys.allHarnessModels(userId) });
   const start = useMutation({
     mutationFn: (input: { harness: HarnessKind; methodId: string }) =>
       withHarnessSession(organizationId, (bridge) => bridge.signIn(input)),
@@ -76,7 +72,7 @@ export function useHarnessSignInMutations(userId: string, organizationId: string
   const signOut = useMutation({
     mutationFn: (harness: HarnessKind) =>
       withHarnessSession(organizationId, (bridge) => bridge.signOut({ harness })),
-    onSuccess: () => client.invalidateQueries({ queryKey: queryKeys.allHarnessModels(userId) }),
+    onSuccess: refreshCatalogs,
   });
   return { start, send, cancel, signOut, refreshCatalogs };
 }

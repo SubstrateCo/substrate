@@ -1,5 +1,3 @@
-import { useMemo } from "react";
-
 import { PageSidebarGroupTitle } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
 import type { LucideIcon } from "lucide-react";
@@ -32,7 +30,7 @@ export function PaneSectionNav<T extends string>({
   onChange: (value: T) => void;
   disabled?: boolean;
 }) {
-  const markedItems = useMemo(() => (marked?.length ? new Set(marked) : undefined), [marked]);
+  const markedItems = marked?.length ? new Set(marked) : undefined;
   return (
     <nav
       aria-label={label}

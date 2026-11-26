@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import { useRef, type ReactNode, type RefObject } from "react";
 
-import type { CrmKind } from "./crm-types";
+import { singularLabels, type CrmKind } from "./crm-types";
 import {
   useRecordManagement,
   type RecordTool,
@@ -69,7 +69,7 @@ export function RecordDetailView({
     organizationId,
     entityId,
     name,
-    noun: { accounts: "account", contacts: "contact", deals: "deal" }[kind],
+    noun: singularLabels[kind],
     level,
     record: ownerRecord,
     // Every member edits contacts, so they have no sharing or owner.

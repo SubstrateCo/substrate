@@ -5,6 +5,7 @@ import { useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNod
 import { useWorkspaceSearch } from "./workspace-search-context";
 import { Command, CommandInput } from "@/components/ui/command";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { desktopPlatform } from "@/lib/desktop/bridges";
 import { cn } from "cn";
 
 export function WorkspaceTools({
@@ -154,4 +155,3 @@ export function WorkspaceTools({
     </div>
   );
 }
-import { desktopPlatform } from "@/lib/desktop/bridges";

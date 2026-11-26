@@ -3,7 +3,7 @@ import type { MeetingListInput, MeetingScope } from "@substrate/contracts/meetin
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { useMemo, useRef, useState } from "react";
+import { useRef, useState } from "react";
 
 import { ActiveFilterChips } from "./active-filter-chips";
 import { activeFilters } from "./active-filters";
@@ -64,10 +64,7 @@ export function MeetingsWorkspace({
   const navigate = useNavigate({ from: "/meetings/" }),
     client = useQueryClient();
   const { userId, organizationId } = scope;
-  const queries = useMemo(
-    () => meetingQueries({ userId, organizationId }),
-    [userId, organizationId],
-  );
+  const queries = meetingQueries({ userId, organizationId });
   const section = search.section ?? "all",
     opener = useRef<HTMLElement | null>(null);
   // Transcript searches go to the private archive, never into URLs or workspace search.

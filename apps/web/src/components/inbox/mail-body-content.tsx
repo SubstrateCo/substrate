@@ -1,7 +1,5 @@
 import type { MailBody } from "@substrate/contracts/mail";
 
-import { useMemo } from "react";
-
 import { Newsletter, type ReadPicture } from "./newsletter";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -45,19 +43,13 @@ export function MailBodyContent({
   id: string;
   readPicture: ReadPicture;
 }) {
-  const detail = useMemo(
-    () => meetingDetails(body.format === "plain" ? body.text : (body.plainText ?? "")),
-    [body],
-  );
-  const content = useMemo(
-    () =>
-      body.format === "html" ? (
-        <Newsletter html={body.text} id={id} readPicture={readPicture} />
-      ) : (
-        <div className="max-w-prose space-y-3">{plainContent(body.text)}</div>
-      ),
-    [body, id, readPicture],
-  );
+  const detail = meetingDetails(body.format === "plain" ? body.text : (body.plainText ?? ""));
+  const content =
+    body.format === "html" ? (
+      <Newsletter html={body.text} id={id} readPicture={readPicture} />
+    ) : (
+      <div className="max-w-prose space-y-3">{plainContent(body.text)}</div>
+    );
   return (
     <div className="min-w-0 space-y-3 text-sm/6 wrap-anywhere">
       {detail ? (

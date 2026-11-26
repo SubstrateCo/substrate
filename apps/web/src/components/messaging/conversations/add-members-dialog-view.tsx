@@ -38,9 +38,7 @@ export function AddMembersDialog({
   const [refused, setRefused] = useState(false);
   const invited = invitedRecipients(recipients).length;
   const unfinished = refused ? unfinishedRecipientMessage(pendingText) : undefined;
-  const errorMessage = unfinished;
-  let title = "Add people";
-  if (name) title = `Add people to ${name}`;
+  const title = name ? `Add people to ${name}` : "Add people";
   return (
     <FormDialog
       title={title}
@@ -67,7 +65,7 @@ export function AddMembersDialog({
         onSubmit(recipients, invited > 0 && shareHistory);
       }}
     >
-      <Field data-invalid={!!errorMessage}>
+      <Field data-invalid={!!unfinished}>
         <FieldLabel htmlFor="add-member-people">People</FieldLabel>
         <PeoplePicker
           id="add-member-people"
@@ -75,15 +73,15 @@ export function AddMembersDialog({
           value={recipients}
           placeholder="Search people, or type an email to invite"
           disabled={pending}
-          invalid={!!errorMessage}
-          describedBy={errorMessage ? "add-member-people-error" : undefined}
+          invalid={!!unfinished}
+          describedBy={unfinished ? "add-member-people-error" : undefined}
           onValueChange={setRecipients}
           onPendingTextChange={(text) => {
             setPendingText(text);
             setRefused(false);
           }}
         />
-        {errorMessage && <FieldError id="add-member-people-error">{errorMessage}</FieldError>}
+        {unfinished && <FieldError id="add-member-people-error">{unfinished}</FieldError>}
       </Field>
       {invited > 0 && (
         <ShareHistoryField

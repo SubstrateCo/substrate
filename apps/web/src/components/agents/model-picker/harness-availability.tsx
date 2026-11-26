@@ -7,6 +7,7 @@ import {
   type HarnessAvailabilityState,
 } from "./harness-availability-view";
 import { harnessLabel } from "@/lib/agents/harness-meta";
+import { harnessBridge } from "@/lib/desktop/bridges";
 import { harnessStatusQueryOptions } from "@/queries/agents/harness-status";
 
 export function HarnessAvailability({
@@ -38,4 +39,3 @@ export function HarnessAvailability({
     />
   );
 }
-import { harnessBridge } from "@/lib/desktop/bridges";

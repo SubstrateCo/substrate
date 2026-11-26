@@ -8,7 +8,7 @@ import { liveTurnStatuses } from "@substrate/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useMemo, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { AgentWorkProvider } from "./agent-work-slot";
 import { CallStatus } from "./calls/call-status";
@@ -86,6 +86,15 @@ function uncertainItemsForTurn(turn: AgentTurnView, uncertainIds: readonly strin
  * open requests and turns here. Local turns come from the bridge when an agent is homed on this
  * desktop. Other devices show the server's requests and the status the home desktop published.
  */
+/** The first status listed for each agent. */
+function statusIndex(statuses: readonly AgentStatusView[] | undefined) {
+  if (!statuses?.length) return undefined;
+  const index = new Map<string, AgentStatusView>();
+  for (const status of statuses)
+    if (!index.has(status.userAgentId)) index.set(status.userAgentId, status);
+  return index;
+}
+
 export function ConversationAgentWork({
   userId,
   organizationId,
@@ -114,13 +123,7 @@ export function ConversationAgentWork({
   });
   const requests = useQuery(conversationRequestsOptions(userId, organizationId, conversation.id));
   const { data: statuses } = useQuery(agentStatusOptions(userId, organizationId));
-  const statusByAgent = useMemo(() => {
-    if (!statuses?.length) return undefined;
-    const index = new Map<string, AgentStatusView>();
-    for (const status of statuses)
-      if (!index.has(status.userAgentId)) index.set(status.userAgentId, status);
-    return index;
-  }, [statuses]);
+  const statusByAgent = statusIndex(statuses);
   const calls = useQuery(myCallsOptions(userId, organizationId, conversation.id));
   const newTopic = useNewTopic(userId, organizationId);
   const turns = local.data?.turns ?? [];

@@ -89,7 +89,6 @@ export function ProjectPane({
           />
         )
       }
-      error={project.error}
       onRetry={() => void project.refetch()}
       notice={
         archivedAt && (

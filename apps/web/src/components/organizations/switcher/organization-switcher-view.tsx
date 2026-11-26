@@ -38,7 +38,6 @@ export function OrganizationSwitcher({
   organizations: { id: string; name: string; logo?: string | null }[];
   state: ResourceStatus;
   pending?: boolean;
-  loading?: boolean;
   loadError?: Error | null;
   onRetry?: () => void;
   onSelect: (id: string) => void;

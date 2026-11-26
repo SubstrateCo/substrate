@@ -53,7 +53,6 @@ export function TasksWorkspace({
     focusReturn.remember();
     setCreating(true);
   };
-  const visible = projects;
   const selectProject = (id: string) => {
     onSelectProject(id);
     setCreating(false);
@@ -62,7 +61,7 @@ export function TasksWorkspace({
     <PageLayout id="tasks" aria-label="Tasks application">
       <ProjectSidebar
         state={state}
-        projects={visible}
+        projects={projects}
         archivedProjects={archivedProjects}
         onRestore={onRestoreProject}
         restoringId={restoringProjectId}
@@ -78,7 +77,7 @@ export function TasksWorkspace({
       {selectedProjectId && project}
       {!selectedProjectId && (
         <PageContent>
-          {error && !visible.length && (
+          {error && !projects.length && (
             <ErrorState
               title={state === "unavailable" ? "Projects unavailable" : "Couldn’t load projects"}
               description={
@@ -91,15 +90,15 @@ export function TasksWorkspace({
           )}
           {!loading && !error && (
             <ContentNotice
-              icon={visible.length ? Unlink : FolderKanban}
-              title={visible.length ? "Project unavailable" : "No projects yet"}
+              icon={projects.length ? Unlink : FolderKanban}
+              title={projects.length ? "Project unavailable" : "No projects yet"}
               description={
-                visible.length
+                projects.length
                   ? "This project was removed or you no longer have access. Choose another project."
                   : "Create a project to plan work with tasks, subtasks, and comments."
               }
               action={
-                !visible.length && (
+                !projects.length && (
                   <Button onClick={openCreate}>
                     <Plus aria-hidden />
                     New project

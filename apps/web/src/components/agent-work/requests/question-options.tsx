@@ -1,7 +1,5 @@
 import type { AgentRequestPayload } from "@substrate/contracts/agent-work";
 
-import { useMemo } from "react";
-
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
 import { Kbd } from "@/components/ui/kbd";
@@ -53,10 +51,8 @@ export function QuestionOptions({
 }) {
   const firstSelection = selected?.[0];
   const secondSelection = selected?.[1];
-  const selectedLabels = useMemo(
-    () => (question.multiSelect && selected && selected.length > 2 ? new Set(selected) : undefined),
-    [question.multiSelect, selected],
-  );
+  const selectedLabels =
+    question.multiSelect && selected && selected.length > 2 ? new Set(selected) : undefined;
   if (question.multiSelect)
     return (
       <div role="group" aria-labelledby={labelledBy} className="grid gap-2">

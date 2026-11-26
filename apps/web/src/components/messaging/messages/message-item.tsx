@@ -205,10 +205,10 @@ export function MessageItem({
             />
           )}
           {canPost && linking && (
-            <LinkMessageWorkDialog
+            <LinkMessageWork
               organizationId={organizationId}
               messageId={message.id}
-              context={context}
+              linkedIds={context.data?.links.map((link) => link.entityId) ?? []}
               onClose={() => setLinking(false)}
               onRestoreFocus={() => actionsTrigger.current?.focus()}
             />
@@ -225,31 +225,6 @@ export function MessageItem({
         </MessageItemView>
       </PersonCardProvider>
     </LinkedMessage>
-  );
-}
-
-/** Links work or CRM records to the message, given the records it already links. */
-function LinkMessageWorkDialog({
-  organizationId,
-  messageId,
-  context,
-  onClose,
-  onRestoreFocus,
-}: {
-  organizationId: string;
-  messageId: string;
-  context: MessageContextState;
-  onClose: () => void;
-  onRestoreFocus: () => void;
-}) {
-  return (
-    <LinkMessageWork
-      organizationId={organizationId}
-      messageId={messageId}
-      linkedIds={context.data?.links.map((link) => link.entityId) ?? []}
-      onClose={onClose}
-      onRestoreFocus={onRestoreFocus}
-    />
   );
 }
 

@@ -1,6 +1,5 @@
 import {
   createContext,
-  useCallback,
   useContext,
   useLayoutEffect,
   useRef,
@@ -78,5 +77,5 @@ export function useDraftKeys() {
 /** Drops every registered draft that registered a discard. */
 export function useDiscardDrafts() {
   const drafts = useContext(Drafts);
-  return useCallback(() => drafts?.discard(), [drafts]);
+  return () => drafts?.discard();
 }

@@ -32,7 +32,6 @@ export function OrganizationSwitcher({
       organizations={resourceState(organizations).data ?? []}
       state={resourceState(organizations).status}
       pending={switchOrganization.isPending}
-      loading={organizations.isPending}
       loadError={organizations.error}
       onRetry={() => void organizations.refetch()}
       onSelect={(id) =>
