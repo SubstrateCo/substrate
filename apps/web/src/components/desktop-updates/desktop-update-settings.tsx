@@ -51,9 +51,7 @@ function updateDescription({ install, state }: DesktopUpdateStatus) {
     case "error":
       return "Couldn’t check for updates. Check your connection and try again.";
     case "idle":
-      return install === "automatic"
-        ? "Substrate checks for updates every few hours and installs them when you restart."
-        : "Substrate checks for updates every few hours.";
+      return;
   }
 }
 

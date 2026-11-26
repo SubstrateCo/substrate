@@ -20,7 +20,7 @@ export interface UpdateEngine {
 
 export type UpdateInstall = DesktopUpdateStatus["install"];
 
-export const updateCheckIntervalMs = 4 * 60 * 60 * 1000;
+export const updateCheckIntervalMs = 10 * 60 * 1000;
 
 /**
  * Windows NSIS builds download and install updates. Unsigned macOS builds cannot install through
@@ -134,7 +134,7 @@ export function createDesktopUpdater(options: {
   return {
     status,
     checkForUpdates: () => check(true),
-    /** Check now and then every few hours, without blocking startup. */
+    /** Check now and then every ten minutes, without blocking startup. */
     start() {
       if (!engine || timer) return;
       void check(false);
