@@ -53,10 +53,6 @@ export function TaskListToolbar({
 }) {
   const compact = useMediaQuery("(max-width: 639px)");
   const set = (patch: Partial<TaskFilters>) => onChange({ ...filters, ...patch });
-  let assigneeName =
-    assignees.find((actor) => actor.entityId === filters.assignee)?.name ?? "Former member";
-  if (filters.assignee === "any") assigneeName = "Any assignee";
-  if (filters.assignee === "unassigned") assigneeName = "Unassigned";
   const clearFilters = (
     <Button
       type="button"
@@ -68,57 +64,7 @@ export function TaskListToolbar({
     </Button>
   );
   const controls = (
-    <>
-      <SegmentedControl
-        aria-label="Show tasks"
-        value={filters.scope}
-        options={scopeOptions}
-        onValueChange={(scope) => set({ scope })}
-      />
-      <Select value={filters.assignee} onValueChange={(assignee) => set({ assignee })}>
-        <SelectTrigger
-          aria-label="Filter by assignee"
-          title={assigneeName}
-          className={compact ? "w-full" : "max-w-48"}
-        >
-          <UserRound aria-hidden="true" className="text-muted-foreground" />
-          <span className="min-w-0 truncate">
-            <SelectValue />
-          </span>
-        </SelectTrigger>
-        <SelectContent position="popper" align="start">
-          <SelectItem value="any">Any assignee</SelectItem>
-          <SelectItem value="unassigned">Unassigned</SelectItem>
-          {!!assignees.length && <SelectSeparator />}
-          {assignees.map((actor) => (
-            <SelectItem key={actor.entityId} value={actor.entityId}>
-              {actor.name}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <Select
-        value={filters.sort}
-        onValueChange={(next) => {
-          const option = sortOptions.find((candidate) => candidate.value === next);
-          if (option) set({ sort: option.value });
-        }}
-      >
-        <SelectTrigger aria-label="Sort tasks" className={compact ? "w-full" : undefined}>
-          <ArrowUpDown aria-hidden="true" className="text-muted-foreground" />
-          <span>
-            <SelectValue />
-          </span>
-        </SelectTrigger>
-        <SelectContent position="popper" align="start">
-          {sortOptions.map((option) => (
-            <SelectItem key={option.value} value={option.value}>
-              {option.label}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-    </>
+    <TaskListControls filters={filters} assignees={assignees} compact={compact} onChange={set} />
   );
   return (
     <TaskFilterLayout toolbar>
@@ -165,5 +111,78 @@ export function TaskListToolbar({
       )}
       {viewControl && <div className="ml-auto">{viewControl}</div>}
     </TaskFilterLayout>
+  );
+}
+
+function assigneeLabel(assignees: ProjectDetail["actors"], assignee: TaskFilters["assignee"]) {
+  if (assignee === "any") return "Any assignee";
+  if (assignee === "unassigned") return "Unassigned";
+  return assignees.find((actor) => actor.entityId === assignee)?.name ?? "Former member";
+}
+
+/** Scope, assignee, and sort controls. */
+function TaskListControls({
+  filters,
+  assignees,
+  compact,
+  onChange,
+}: {
+  filters: TaskFilters;
+  assignees: ProjectDetail["actors"];
+  compact: boolean;
+  onChange: (patch: Partial<TaskFilters>) => void;
+}) {
+  return (
+    <>
+      <SegmentedControl
+        aria-label="Show tasks"
+        value={filters.scope}
+        options={scopeOptions}
+        onValueChange={(scope) => onChange({ scope })}
+      />
+      <Select value={filters.assignee} onValueChange={(assignee) => onChange({ assignee })}>
+        <SelectTrigger
+          aria-label="Filter by assignee"
+          title={assigneeLabel(assignees, filters.assignee)}
+          className={compact ? "w-full" : "max-w-48"}
+        >
+          <UserRound aria-hidden="true" className="text-muted-foreground" />
+          <span className="min-w-0 truncate">
+            <SelectValue />
+          </span>
+        </SelectTrigger>
+        <SelectContent position="popper" align="start">
+          <SelectItem value="any">Any assignee</SelectItem>
+          <SelectItem value="unassigned">Unassigned</SelectItem>
+          {!!assignees.length && <SelectSeparator />}
+          {assignees.map((actor) => (
+            <SelectItem key={actor.entityId} value={actor.entityId}>
+              {actor.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <Select
+        value={filters.sort}
+        onValueChange={(next) => {
+          const option = sortOptions.find((candidate) => candidate.value === next);
+          if (option) onChange({ sort: option.value });
+        }}
+      >
+        <SelectTrigger aria-label="Sort tasks" className={compact ? "w-full" : undefined}>
+          <ArrowUpDown aria-hidden="true" className="text-muted-foreground" />
+          <span>
+            <SelectValue />
+          </span>
+        </SelectTrigger>
+        <SelectContent position="popper" align="start">
+          {sortOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </>
   );
 }

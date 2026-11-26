@@ -40,18 +40,7 @@ export function DesktopInstallView({
   heading?: boolean;
 }) {
   const browserPrimary = !loading && !error && !primary;
-
-  let title = "Get the desktop app";
-  let description = "Install Substrate, then sign in with the same account.";
-  if (primary === "mac")
-    description =
-      "Install Substrate for macOS on Apple silicon, then sign in with the same account.";
-  else if (primary)
-    description = `Install Substrate for ${installerPlatformNames[primary]}, then sign in with the same account.`;
-  else if (browserPrimary) {
-    title = `The ${platform ? installerPlatformNames[platform] : "desktop"} app is coming soon`;
-    description = "Keep working in your browser for now. If you already have the app, open it.";
-  }
+  const { title, description } = installCopy(platform, primary, browserPrimary);
 
   const summary = loading ? (
     <Skeleton className="h-4 w-56 max-w-full" />
@@ -93,43 +82,96 @@ export function DesktopInstallView({
           onRetry={onRetry}
         />
       )}
-      <div className="flex flex-col gap-2">
-        {primary ? (
-          <Button asChild size="lg">
-            <a href={downloadHref(primary)} rel="noreferrer">
-              <Download aria-hidden="true" />
-              Download for {installerPlatformNames[primary]}
-            </a>
-          </Button>
-        ) : (
-          browserPrimary && (
-            <Button asChild size="lg">
-              <Link {...browserLink}>Continue in browser</Link>
-            </Button>
-          )
-        )}
-        <Button asChild size="lg" variant="outline">
-          <a href={openHref} rel="noreferrer">
-            <ArrowUpRight aria-hidden="true" />
-            Open Substrate
+      <DesktopInstallActions
+        openHref={openHref}
+        browserLink={browserLink}
+        primary={primary}
+        others={others}
+        browserPrimary={browserPrimary}
+        loading={loading}
+      />
+    </section>
+  );
+}
+
+/** The title and description for the viewer's installer, or for continuing in the browser. */
+function installCopy(
+  platform: InstallerPlatform | undefined,
+  primary: InstallerPlatform | undefined,
+  browserPrimary: boolean,
+) {
+  const title = "Get the desktop app";
+  if (primary === "mac")
+    return {
+      title,
+      description:
+        "Install Substrate for macOS on Apple silicon, then sign in with the same account.",
+    };
+  if (primary)
+    return {
+      title,
+      description: `Install Substrate for ${installerPlatformNames[primary]}, then sign in with the same account.`,
+    };
+  if (browserPrimary)
+    return {
+      title: `The ${platform ? installerPlatformNames[platform] : "desktop"} app is coming soon`,
+      description: "Keep working in your browser for now. If you already have the app, open it.",
+    };
+  return { title, description: "Install Substrate, then sign in with the same account." };
+}
+
+function DesktopInstallActions({
+  openHref,
+  browserLink,
+  primary,
+  others,
+  browserPrimary,
+  loading,
+}: {
+  openHref: string;
+  browserLink: LinkProps;
+  primary: InstallerPlatform | undefined;
+  others: InstallerPlatform[];
+  browserPrimary: boolean;
+  loading: boolean;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      {primary ? (
+        <Button asChild size="lg">
+          <a href={downloadHref(primary)} rel="noreferrer">
+            <Download aria-hidden="true" />
+            Download for {installerPlatformNames[primary]}
           </a>
         </Button>
-        {/* Other installers and the browser stay available without competing with the download. */}
-        <div className="flex flex-wrap justify-center gap-x-4">
-          {others.map((other) => (
-            <Button key={other} asChild size="sm" variant="link">
-              <a href={downloadHref(other)} rel="noreferrer">
-                Download for {installerPlatformNames[other]}
-              </a>
-            </Button>
-          ))}
-          {!browserPrimary && !loading && (
-            <Button asChild size="sm" variant="link">
-              <Link {...browserLink}>Continue in browser</Link>
-            </Button>
-          )}
-        </div>
+      ) : (
+        browserPrimary && (
+          <Button asChild size="lg">
+            <Link {...browserLink}>Continue in browser</Link>
+          </Button>
+        )
+      )}
+      <Button asChild size="lg" variant="outline">
+        <a href={openHref} rel="noreferrer">
+          <ArrowUpRight aria-hidden="true" />
+          Open Substrate
+        </a>
+      </Button>
+      {/* Other installers and the browser stay available without competing with the download. */}
+      <div className="flex flex-wrap justify-center gap-x-4">
+        {others.map((other) => (
+          <Button key={other} asChild size="sm" variant="link">
+            <a href={downloadHref(other)} rel="noreferrer">
+              Download for {installerPlatformNames[other]}
+            </a>
+          </Button>
+        ))}
+        {!browserPrimary && !loading && (
+          <Button asChild size="sm" variant="link">
+            <Link {...browserLink}>Continue in browser</Link>
+          </Button>
+        )}
       </div>
-    </section>
+    </div>
   );
 }

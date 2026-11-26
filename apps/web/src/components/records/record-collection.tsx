@@ -331,18 +331,6 @@ function RecordCollectionResults({
   const boardState = resourceState(boardDeals);
   const query = showPipeline ? boardDeals : listQuery;
   const state = showPipeline ? boardState : listState;
-  // The API returns up to `pageSize` records after a cursor and no total.
-  const pagination = {
-    mode: "server",
-    pageIndex: pages.pageIndex,
-    pageSize,
-    hasNextPage: rows.length === pageSize,
-    onPageChange: (pageIndex: number) => {
-      const last = rows.at(-1);
-      if (pageIndex < pages.pageIndex) pages.previous();
-      else if (last) pages.next(last.entityId);
-    },
-  } satisfies AppTablePagination;
   return (
     <>
       <CrmResourceState
@@ -370,31 +358,70 @@ function RecordCollectionResults({
       )}
       {state.data &&
         (showPipeline ? (
-          <>
-            <DealPipeline
-              organizationId={organizationId}
-              stages={stages}
-              deals={boardState.data?.deals ?? []}
-              onCreate={filtered ? undefined : onCreate}
-            />
-            {boardState.data?.truncated && (
-              <p className="text-sm text-muted-foreground">
-                The board shows the first {pipelineDealLimit.toLocaleString()} open deals. Search or
-                use the list to find others.
-              </p>
-            )}
-          </>
+          <RecordPipeline
+            organizationId={organizationId}
+            stages={stages}
+            board={boardState.data}
+            onCreate={filtered ? undefined : onCreate}
+          />
         ) : (
           <RecordList
             organizationId={organizationId}
             kind={kind}
             rows={rows}
             fetching={query.isFetching}
-            pagination={pagination}
+            pagination={collectionPagination(rows, pages)}
             filtered={filtered}
             onCreate={onCreate}
           />
         ))}
+    </>
+  );
+}
+
+/** The API returns up to `pageSize` records after a cursor and no total. */
+function collectionPagination(
+  rows: ReturnType<typeof collectionRecords>["rows"],
+  pages: ReturnType<typeof useCursorPages<string>>,
+) {
+  return {
+    mode: "server",
+    pageIndex: pages.pageIndex,
+    pageSize,
+    hasNextPage: rows.length === pageSize,
+    onPageChange: (pageIndex: number) => {
+      const last = rows.at(-1);
+      if (pageIndex < pages.pageIndex) pages.previous();
+      else if (last) pages.next(last.entityId);
+    },
+  } satisfies AppTablePagination;
+}
+
+function RecordPipeline({
+  organizationId,
+  stages,
+  board,
+  onCreate,
+}: {
+  organizationId: string;
+  stages: ReturnType<typeof collectionRecords>["stages"];
+  board: ReturnType<typeof useCollectionQueries>["boardDeals"]["data"];
+  onCreate?: () => void;
+}) {
+  return (
+    <>
+      <DealPipeline
+        organizationId={organizationId}
+        stages={stages}
+        deals={board?.deals ?? []}
+        onCreate={onCreate}
+      />
+      {board?.truncated && (
+        <p className="text-sm text-muted-foreground">
+          The board shows the first {pipelineDealLimit.toLocaleString()} open deals. Search or use
+          the list to find others.
+        </p>
+      )}
     </>
   );
 }
