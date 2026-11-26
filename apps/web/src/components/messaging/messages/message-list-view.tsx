@@ -32,7 +32,9 @@ export function MessageList({
   children: ReactNode;
 }) {
   const container = useRef<HTMLDivElement>(null);
+  const content = useRef<HTMLDivElement>(null);
   const follow = useRef(true);
+  const measuredSize = useRef({ scrollHeight: 0, clientHeight: 0 });
   const positioned = useRef(false);
   const [away, setAway] = useState(false);
   // A newer message arrived while the person was scrolled up.
@@ -41,6 +43,7 @@ export function MessageList({
   const measure = () => {
     const node = container.current;
     if (!node) return;
+    measuredSize.current = { scrollHeight: node.scrollHeight, clientHeight: node.clientHeight };
     follow.current = node.scrollHeight - node.scrollTop - node.clientHeight < 100;
     setAway(!follow.current);
     if (follow.current) setUnseen(false);
@@ -48,6 +51,19 @@ export function MessageList({
   };
   const scrollToLatest = () => {
     if (container.current) container.current.scrollTop = container.current.scrollHeight;
+  };
+  const onScroll = () => {
+    const node = container.current;
+    if (!node) return;
+    const previous = measuredSize.current;
+    // Browser scroll anchoring can emit a scroll before ResizeObserver sees the new layout.
+    // Do not mistake that layout change for the reader leaving the bottom.
+    if (
+      follow.current &&
+      (previous.scrollHeight !== node.scrollHeight || previous.clientHeight !== node.clientHeight)
+    )
+      scrollToLatest();
+    measure();
   };
   const position = useEffectEvent(() => {
     const node = container.current;
@@ -81,6 +97,22 @@ export function MessageList({
   useLayoutEffect(() => {
     if (sending) followLatest();
   }, [sending]);
+  const resize = useEffectEvent(() => {
+    if (!positioned.current) return;
+    // Keep the pre-resize follow state: measuring the larger content first can lose the bottom.
+    if (follow.current) scrollToLatest();
+    measure();
+  });
+  useLayoutEffect(() => {
+    const node = container.current;
+    const body = content.current;
+    if (!node || !body) return;
+    const observer = new ResizeObserver(() => resize());
+    // The scroll viewport stays the same size when a reaction row or other message content grows.
+    observer.observe(body);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
   const showLatest = away && !olderPage;
   return (
     <div className="relative flex min-h-0 flex-1 flex-col">
@@ -88,11 +120,13 @@ export function MessageList({
         ref={container}
         role="log"
         aria-label="Messages"
-        className="min-h-0 flex-1 overflow-y-auto pt-4 pb-3"
-        onScroll={measure}
+        className="isolate min-h-0 flex-1 overflow-y-auto pt-4 pb-3"
+        onScroll={onScroll}
       >
-        {header}
-        {children}
+        <div ref={content}>
+          {header}
+          {children}
+        </div>
       </div>
       {(footer || (showLatest && unseen)) && (
         <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center">
