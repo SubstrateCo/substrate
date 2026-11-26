@@ -57,9 +57,6 @@ export function realtimeQueryTargets(
       if (organizationId)
         targets.push({ queryKey: queryKeys.organizationApps(organizationId, userId) });
       break;
-    case "meetings":
-      if (organizationId) targets.push({ queryKey: queryKeys.meetings(userId, organizationId) });
-      break;
     case "session":
       targets.push({ queryKey: queryKeys.session });
       break;

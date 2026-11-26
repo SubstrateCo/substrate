@@ -17,7 +17,6 @@ import { createPictureRoutes } from "./v1/files/picture-routes";
 import { createFilesRoutes } from "./v1/files/routes";
 import { createIntegrationRoutes } from "./v1/integrations/routes";
 import { createMcpRoutes } from "./v1/mcp/routes";
-import { createMeetingRoutes } from "./v1/meetings/routes";
 import { createReadRoutes } from "./v1/messaging/read-routes";
 import { createMessagingRoutes } from "./v1/messaging/routes";
 import { createSharingRoutes } from "./v1/messaging/sharing-routes";
@@ -43,7 +42,6 @@ export function createProductRoutes(services: Services, scopes: Scopes) {
     )
     .route("/crm", createCrmFromMessageRoutes(services.crmFromMessage, scopes))
     .route("/calendar", createCalendarRoutes(services.calendar, scopes))
-    .route("/meetings", createMeetingRoutes(services.meetings, scopes))
     .route("/integrations", createIntegrationRoutes(services.integrations, scopes))
     .route("/messaging", createMessagingRoutes(services.messaging, scopes))
     .route("/messaging", createReadRoutes(services.messagingRead, scopes))

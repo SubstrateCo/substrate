@@ -19,7 +19,6 @@ const SHARED_BLOCKS = [
   "feedback/tag",
   "feedback/inline-notice",
   "feedback/loading-state",
-  "meetings/sources/meeting-provider",
 ];
 const escape = (path: string) => path.replaceAll("/", "\\/");
 // shadcn lint recognizes a component by its import text, so a relative import skips every contract.

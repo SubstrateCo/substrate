@@ -17,7 +17,7 @@ export const appHotkeys = defineAppHotkeys({
   "app.tasks": shortcut("app.tasks", "Go to Tasks"),
   "app.inbox": shortcut("app.inbox", "Go to Inbox"),
   "app.crm": shortcut("app.crm", "Go to CRM"),
-  "app.meetings": shortcut("app.meetings", "Go to Meetings"),
+
   "app.interactions": shortcut("app.interactions", "Go to Interactions"),
   "app.calendar": shortcut("app.calendar", "Go to Calendar"),
   "app.agents": shortcut("app.agents", "Go to Agents"),

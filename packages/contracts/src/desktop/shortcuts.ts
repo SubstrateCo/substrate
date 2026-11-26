@@ -10,7 +10,7 @@ export const defaultShortcuts = {
   "app.tasks": ["G", "T"],
   "app.inbox": ["G", "E"],
   "app.crm": ["G", "C"],
-  "app.meetings": ["G", "V"],
+
   "app.interactions": ["G", "I"],
   "app.calendar": ["G", "L"],
   "app.agents": ["G", "A"],

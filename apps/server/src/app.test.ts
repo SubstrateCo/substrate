@@ -91,23 +91,6 @@ describe.each(["/api/v1", "/api/mobile"])("%s product API", (prefix) => {
     });
   });
 
-  test("meeting imports use their domain size limit", async () => {
-    const response = await createApp().request(`${prefix}/meetings/import?organizationId=org`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Content-Length": String(1024 * 1024 + 1),
-        Origin: "http://localhost:3000",
-      },
-      body: JSON.stringify({ invalid: "x".repeat(1024 * 1024) }),
-    });
-    expect(response.status).toBe(400);
-    expect(await response.json()).toMatchObject({
-      success: false,
-      error: { code: "INVALID_INPUT" },
-    });
-  });
-
   test.each([undefined, "https://evil.example"])("rejects mutation origin %s", async (origin) => {
     const headers = new Headers({ "Content-Type": "application/json" });
     if (origin) headers.set("Origin", origin);

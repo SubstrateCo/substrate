@@ -12,7 +12,6 @@ import { mcpContextQueries } from "./context";
 import { mcpCrmTools } from "./crm";
 import { mcpFileQueries, type FileContentReader } from "./files";
 import { listLinkedMessages } from "./links";
-import { mcpMeetingTools } from "./meetings";
 import { mcpMessagingQueries } from "./messaging";
 import { publishingTools } from "./publishing";
 import { mcpSearchQueries } from "./search";
@@ -59,10 +58,6 @@ export function serverToolHandlers(
   const messaging = mcpMessagingQueries(ctx, identity);
   const search = mcpSearchQueries(ctx, identity);
   const crm = () => mcpCrmTools(ctx, identity);
-  const archive = () => {
-    if (run.kind !== "turn") throw new ValidationError(needsLiveTurn);
-    return mcpMeetingTools(ctx, { ...identity, actorEntityId: agent.entityId }, run.turn);
-  };
   async function reply(input: McpInput<"reply">) {
     if (run.kind === "turn") {
       if (!run.userAgentId) throw new AccessDeniedError();
@@ -91,10 +86,6 @@ export function serverToolHandlers(
     };
   }
   return {
-    list_meetings: (value) => archive().list(value),
-    get_meeting: (value) => archive().get(value),
-    read_meeting_source: (value) => archive().read(value),
-    create_meeting: (value) => archive().create(value),
     create_crm_from_message: async (value) => crm().createFromMessage(value),
     list_crm_activity: async (value) => crm().activity(value),
     get_crm_settings: async () => crm().settings(),

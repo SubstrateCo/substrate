@@ -58,7 +58,7 @@ export function WorkspaceShell({
       <nav
         aria-label="Apps"
         // oxlint-disable-next-line shadcn/no-arbitrary-values -- The bottom rail must clear the device safe area, which has no spacing token.
-        className="z-20 flex min-h-0 w-full shrink-0 items-center gap-2 bg-rail px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-rail-foreground max-md:group-has-data-meeting-archive/shell:hidden md:w-14 md:flex-col md:gap-3 md:overflow-x-hidden md:overflow-y-auto md:px-0 md:py-3 [&>*]:shrink-0"
+        className="z-20 flex min-h-0 w-full shrink-0 items-center gap-2 bg-rail px-2 pt-2 pb-[max(0.5rem,env(safe-area-inset-bottom))] text-rail-foreground md:w-14 md:flex-col md:gap-3 md:overflow-x-hidden md:overflow-y-auto md:px-0 md:py-3 [&>*]:shrink-0"
       >
         {switcher}
         <div className="flex min-w-0 flex-1 items-center gap-2 overflow-x-auto overscroll-contain md:contents">

@@ -2,10 +2,10 @@ import { entityAccessRules, type EntityType } from "../access/entity-rules.ts";
 import { organizationId } from "../workspace.ts";
 import { z } from "zod";
 
-export const optionalAppIds = ["tasks", "crm", "calendar", "inbox", "meetings"] as const;
+export const optionalAppIds = ["tasks", "crm", "calendar", "inbox"] as const;
 export const userAppIds = ["inbox"] as const;
 export type UserAppId = (typeof userAppIds)[number];
-export const organizationOptionalAppIds = ["tasks", "crm", "calendar", "meetings"] as const;
+export const organizationOptionalAppIds = ["tasks", "crm", "calendar"] as const;
 export type OrganizationOptionalAppId = (typeof organizationOptionalAppIds)[number];
 export type OptionalAppId = (typeof optionalAppIds)[number];
 export const isOptionalApp = (id: string): id is OptionalAppId =>

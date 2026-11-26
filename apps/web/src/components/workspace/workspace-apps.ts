@@ -12,7 +12,6 @@ import {
   ListTodo,
   Mail,
   MessageSquare,
-  Video,
   type LucideIcon,
 } from "lucide-react";
 
@@ -52,7 +51,7 @@ export const workspaceApps = [
   },
   { id: "inbox", label: "Inbox", icon: Mail, to: "/inbox", shortcut: "app.inbox" },
   { id: "crm", label: "CRM", icon: Handshake, to: "/crm", shortcut: "app.crm" },
-  { id: "meetings", label: "Meetings", icon: Video, to: "/meetings", shortcut: "app.meetings" },
+
   {
     id: "interactions",
     label: "Interactions",

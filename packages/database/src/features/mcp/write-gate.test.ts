@@ -11,7 +11,7 @@ test("a background turn runs writes, but not live-turn tools", () => {
   const unattended = { kind: "unattended" } as const;
   for (const tool of ["reply", "create_task", "update_crm_account", "delete_task"] as const)
     expect(writeGate(unattended, tool)).toBeNull();
-  for (const tool of ["create_meeting", "attach_task_file"] as const) {
+  for (const tool of ["attach_task_file"] as const) {
     expect(writeGate(unattended, tool)).toBe(needsLiveTurn);
     expect(writeGate({ kind: "interactive" }, tool)).toBeNull();
   }

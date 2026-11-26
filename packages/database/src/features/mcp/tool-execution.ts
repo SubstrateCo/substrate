@@ -22,13 +22,11 @@ import { auditCallerTool, namedIds, requireCallerTurn } from "./caller-turn";
 import { mcpCrmTools } from "./crm";
 import type { FileContentReader } from "./files";
 import { serverToolHandlers } from "./handlers";
-import { mcpMeetingTools, requireMeetingTurn } from "./meetings";
 import { proposeToolCall } from "./proposals";
 import { claimToolReceipt, requireHomeDevice, saveToolReceipt } from "./repository";
 import { mcpTaskQueries } from "./tasks";
 import { requireTurn } from "./turn";
 import { approvalNeeded, writeGate } from "./write-gate";
-import { createHash } from "node:crypto";
 import { z } from "zod";
 
 type AgentToolExecution = {
@@ -87,13 +85,10 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     if (blocked) throw new ValidationError(blocked);
     userAgentId = await requireHomeDevice(tx, identity, agent.entityId, turn.installationId);
   }
-  if (toolApps(tool).includes("meetings"))
-    userAgentId = await requireMeetingTurn(ctx, identity, turn);
   if (userAgentId) await requireTurn(tx, identity, { actorId: agent.entityId, userAgentId }, turn);
   const tasks = taskRepository(ctx);
   const queries = mcpTaskQueries(ctx, identity);
   const crm = () => mcpCrmTools(ctx, identity);
-  const archive = () => mcpMeetingTools(ctx, identity, turn);
   const handlers = serverToolHandlers(
     ctx,
     identity,
@@ -102,10 +97,6 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     reader,
   ); // Recheck access before returning a previously created record's identifiers.
   const replayChecks: ReplayChecks = {
-    async create_meeting(value, previous) {
-      await ctx.requireAccess(previous.id, "view");
-      if (value.sourceMessageId) await archive().sourceMessage(value.sourceMessageId);
-    },
     async create_crm_from_message(value, previous) {
       const { conversation, message } = await requireMessage(tx, identity, value.messageId);
       if (message.deletedAt || conversation.organizationId !== identity.organizationId)
@@ -231,17 +222,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     ? { organizationId: identity.organizationId, actorEntityId: actor.id, tool, requestId }
     : undefined;
   const fingerprint = JSON.stringify(input);
-  // The Meetings receipt needs an equality check, not a second copy of the private transcript.
-  const existing = key
-    ? await claimToolReceipt(
-        tx,
-        key,
-        tool === "create_meeting"
-          ? createHash("sha256").update(fingerprint).digest("hex")
-          : fingerprint,
-        turn,
-      )
-    : undefined;
+  const existing = key ? await claimToolReceipt(tx, key, fingerprint, turn) : undefined;
   const audited = async (resultIds: string[]) => {
     if (calls.length)
       await auditCallerTool(tx, calls, {

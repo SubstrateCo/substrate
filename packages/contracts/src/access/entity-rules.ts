@@ -2,7 +2,6 @@ import type { OptionalAppId } from "../apps/index.ts";
 import { calendarEntityRules } from "../calendar/access.ts";
 import { contactEntityRules } from "../contacts/access.ts";
 import { crmEntityRules } from "../crm/access.ts";
-import { meetingEntityRules } from "../meetings/access.ts";
 import { taskEntityRules } from "../tasks/access.ts";
 
 /** Entity types. The database `entity_type` enum uses this list. */
@@ -16,8 +15,6 @@ export const entityTypes = [
   "deal",
   "calendar",
   "calendar_event",
-  "meeting_archive",
-  "meeting",
 ] as const;
 export type EntityType = (typeof entityTypes)[number];
 
@@ -55,7 +52,6 @@ export const entityAccessRules: EntityRules = {
   ...taskEntityRules,
   ...crmEntityRules,
   ...calendarEntityRules,
-  ...meetingEntityRules,
 };
 
 /** The sharing of the entity's container: its own for a root, its parent's for a child. */

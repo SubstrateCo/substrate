@@ -176,9 +176,8 @@ export function realtimeTargets(
       return scope ? taskTargets(scope, event) : [];
     case "context":
       return scope ? contextTargets(scope, event) : [];
-    // Mobile does not show meetings or notifications. Session and access changes recheck
+    // Mobile does not show notifications. Session and access changes recheck
     // everything.
-    case "meetings":
     case "notifications":
     case "session":
     case "access":

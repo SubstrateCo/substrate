@@ -23,7 +23,6 @@ import { createContextRepository } from "./features/context/service";
 import { createCrmFromMessageInContext } from "./features/crm/from-message";
 import { crmRepository } from "./features/crm/repository";
 import { createAttachmentRepository } from "./features/files/repository";
-import { meetingsRepository } from "./features/meetings/repository";
 import { createMessagingRepository } from "./features/messaging/service";
 import {
   readSharingInvitation,
@@ -79,7 +78,6 @@ export class ActorRepositories {
 }
 
 class WorkspaceRepositories extends ActorRepositories {
-  readonly meetings;
   readonly messaging;
   readonly context;
   readonly sharing;
@@ -100,7 +98,6 @@ class WorkspaceRepositories extends ActorRepositories {
     this.sharing = createSharingRepository(context.db, identity, resolved);
     this.feed = createFeedRepository(context, identity);
     this.files = createAttachmentRepository(context);
-    this.meetings = meetingsRepository(context);
     this.agentWork = createAgentWorkReadRepository(context, identity);
     this.organizations = organizationRepository(context, identity);
     this.crmFromMessage = {
@@ -144,7 +141,6 @@ function standalone(
       | "contacts"
       | "crm"
       | "calendar"
-      | "meetings"
       | "contactInteractions"
       | "entities"
       | "links"
@@ -196,7 +192,6 @@ function standalone(
       "contactMeetings",
       "interactionSourceEvents",
     ]),
-    meetings: domain("meetings", ["list", "calendar", "detail", "original", "reviews", "sources"]),
     contactInteractions: domain("contactInteractions", [
       "get",
       "listForContact",

@@ -6,7 +6,6 @@ import { Text } from "@/components/ui/text";
 import type { LinkedWork } from "@/features/messaging/types";
 import type { RecordTarget } from "@/lib/navigation";
 import {
-  Briefcase,
   Building2,
   CheckSquare,
   FolderKanban,
@@ -23,7 +22,6 @@ const icons = {
   account: Building2,
   deal: Handshake,
   contact_interaction: MessagesSquare,
-  meeting: Briefcase,
 } as const;
 
 /** Records linked to a message, with what the link means and an unlink action when allowed. */

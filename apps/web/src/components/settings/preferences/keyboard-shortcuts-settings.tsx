@@ -17,8 +17,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { desktopSettingsBridge } from "@/lib/desktop/bridges";
 import { RotateCcw } from "lucide-react";
 
-// Keys that other parts of the app keep: switching the search type and searching meetings.
-const reserved = ["Control+Tab", "Control+Shift+Tab", "/"] as const;
+// Keys that other parts of the app keep: switching the search type.
+const reserved = ["Control+Tab", "Control+Shift+Tab"] as const;
 const usesReservedKey = (hotkey: Hotkey) =>
   hotkeySteps(hotkey).some((step) => reserved.some((key) => areHotkeysEqual(step, key)));
 

@@ -14,8 +14,6 @@ const inputGroupVariants = cva(
       variant: {
         default: "",
         composer: "bg-card dark:bg-card",
-        titlebar:
-          "h-7 rounded-md border-control-border bg-surface dark:bg-popover [&_[data-slot=input-group-control]]:h-6 [&_[data-slot=input-group-control]]:font-normal md:[&_[data-slot=input-group-control]]:text-xs",
       },
     },
     defaultVariants: { variant: "default" },

@@ -10,7 +10,6 @@ export const requestOperations = [
   "crm_from_message",
   "crm_follow_up",
   "task_from_message",
-  "meeting",
 ] as const;
 export type RequestOperation = (typeof requestOperations)[number];
 

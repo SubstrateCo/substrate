@@ -59,10 +59,6 @@ export const buttonVariants = cva(
         "icon-sm": "size-7 rounded-md in-data-[slot=button-group]:rounded-lg",
         "icon-lg": "size-9",
         selection: "h-auto min-h-12 px-3 py-2",
-        // Days and entries stay legible together in a dense calendar grid.
-        "calendar-day": "h-5.5 min-w-0 gap-0.5 px-0.5 text-xs font-normal @max-[470px]:h-7.5",
-        "calendar-entry":
-          "h-auto min-h-5.25 min-w-0 gap-1 px-1 py-0.5 text-left text-micro font-normal whitespace-normal",
         // xs spacing for a removable chip whose label wraps, so it grows with its text.
         chip: "h-auto min-h-6 gap-1 rounded-md px-2 py-1 text-left text-xs whitespace-normal [&_svg:not([class*='size-'])]:size-3",
       },

@@ -53,12 +53,7 @@ export function createApp({ auth, services, scopes, trustedOrigins, realtime }: 
       "/api/*",
       // These uploads set their own limits on the route.
       except(
-        [
-          "/api/v1/files/pictures/:purpose",
-          "/api/v1/meetings/import",
-          "/api/mobile/files/pictures/:purpose",
-          "/api/mobile/meetings/import",
-        ],
+        ["/api/v1/files/pictures/:purpose", "/api/mobile/files/pictures/:purpose"],
         bodyLimit({
           maxSize: 1024 * 1024,
           onError: (c) =>

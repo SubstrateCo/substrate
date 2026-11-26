@@ -16,8 +16,6 @@ export const queryKeys = {
   user: (userId: string) => ["users", userId] as const,
   mail: (userId: string, organizationId: string) =>
     [...queryKeys.user(userId), "mail", organizationId] as const,
-  meetings: (userId: string, organizationId: string) =>
-    [...queryKeys.user(userId), "meetings", organizationId] as const,
   agents: (userId: string) => [...queryKeys.user(userId), "agents"] as const,
   // Harness reads go through the desktop bridge. Each kind is a prefix, so isHarnessKey can match.
   allHarnessModels: (userId: string) => [...queryKeys.user(userId), "harness-models"] as const,

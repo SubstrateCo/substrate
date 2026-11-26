@@ -12,7 +12,6 @@ import type { RepositoryContext } from "../../../core/repository-context";
 import type { SessionIdentity } from "../../../core/session/identity";
 import { messageReferences } from "../../../core/text/references";
 import { crmAccounts, crmDeals } from "../../crm/schema";
-import { meetings, meetingArchives } from "../../meetings/schema";
 import { mentionablePerson, visibleConversations } from "../../messaging/access";
 import {
   messagingConversations,
@@ -29,7 +28,7 @@ import { and, asc, eq, exists, inArray, isNull, isNotNull, ne, or, sql } from "d
 export async function messageWorkLinks(ctx: RepositoryContext, messageIds: string[]) {
   // A task inherits its project's level, which decides removal rights.
   const projectEntityId = sql`coalesce(${tasks.projectEntityId}, ${projects.entityId})`;
-  const title = sql<string>`coalesce(${tasks.title}, ${projects.name}, ${contacts.displayName}, ${crmAccounts.name}, ${crmDeals.title}, ${contactInteractions.summary}, ${meetings.title})`;
+  const title = sql<string>`coalesce(${tasks.title}, ${projects.name}, ${contacts.displayName}, ${crmAccounts.name}, ${crmDeals.title}, ${contactInteractions.summary})`;
   const work = await ctx.db
     .select({
       messageId: messageEntityReferences.messageId,
@@ -100,27 +99,6 @@ export async function messageWorkLinks(ctx: RepositoryContext, messageIds: strin
       and(
         eq(contactInteractions.entityId, messageEntityReferences.entityId),
         eq(messageEntityReferences.entityType, "contact_interaction"),
-      ),
-    )
-    // Only the human owner sees the private archive backlink in general Messaging. Agents
-    // resolve meeting metadata through the owner-DM-scoped Meetings tools instead.
-    .leftJoin(
-      meetings,
-      and(
-        eq(meetings.id, messageEntityReferences.entityId),
-        eq(messageEntityReferences.entityType, "meeting"),
-        inArray(
-          meetings.archiveId,
-          ctx.db
-            .select({ id: meetingArchives.id })
-            .from(meetingArchives)
-            .where(
-              and(
-                eq(meetingArchives.org, ctx.scope.organizationId),
-                eq(meetingArchives.owner, ctx.scope.actorEntityId),
-              ),
-            ),
-        ),
       ),
     )
     // A page has few references, so each walks up from its entity instead of reading the

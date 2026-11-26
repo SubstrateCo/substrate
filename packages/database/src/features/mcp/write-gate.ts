@@ -1,7 +1,6 @@
 import type { TurnContext } from "@substrate/contracts/harness/mcp";
 import {
   mcpTools,
-  toolApps,
   type ServerToolName,
   type ToolDefinition,
 } from "@substrate/contracts/harness/tools";
@@ -15,12 +14,8 @@ const handoffIsQuiet =
 export function writeGate(turn: Pick<TurnContext, "purpose" | "kind">, tool: ServerToolName) {
   if (turn.purpose === "handoff") return handoffIsQuiet;
   const definition: ToolDefinition = mcpTools[tool];
-  // Meetings tools read the live turn's transcript; live-turn-only tools act on the owner's request.
-  if (
-    turn.kind === "unattended" &&
-    (definition.liveTurnOnly || toolApps(tool).includes("meetings"))
-  )
-    return needsLiveTurn;
+  // Live-turn-only tools act on the owner's request.
+  if (turn.kind === "unattended" && definition.liveTurnOnly) return needsLiveTurn;
   return null;
 }
 
