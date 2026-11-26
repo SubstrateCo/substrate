@@ -59,7 +59,7 @@ export function OrganizationSwitcher({
           )}
           {loadError && (
             <ErrorState
-              compact
+              variant="compact"
               title="Couldn’t load workspaces"
               description="Try again to update your workspace list."
               onRetry={onRetry}

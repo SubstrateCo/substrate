@@ -55,7 +55,7 @@ function DesktopPreferencesCard({ bridge }: { bridge: DesktopSettingsAPI }) {
     >
       {settings.isError ? (
         <ErrorState
-          compact
+          variant="compact"
           title="Couldn’t load desktop settings"
           onRetry={() => void settings.refetch()}
         />

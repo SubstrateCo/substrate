@@ -100,7 +100,7 @@ function ActivityList({
           </ul>
         </div>
       )}
-      {error && <ErrorState compact title="Couldn’t load activity" onRetry={onRetry} />}
+      {error && <ErrorState variant="compact" title="Couldn’t load activity" onRetry={onRetry} />}
       {!loading && !error && !items.length && (
         <ContentNotice variant="inline" title="No activity yet" />
       )}

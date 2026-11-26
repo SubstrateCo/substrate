@@ -145,7 +145,7 @@ export function AppTable<TData extends RowData>({
             {loadingMessage}
           </span>
         )}
-        {parts.inlineError && <ErrorState compact title={errorTitle} onRetry={onRetry} />}
+        {parts.inlineError && <ErrorState variant="compact" title={errorTitle} onRetry={onRetry} />}
         {parts.hasRows && renderMobileRow && (
           <MobileTableRows name={name} rows={rows} renderRow={renderMobileRow} />
         )}

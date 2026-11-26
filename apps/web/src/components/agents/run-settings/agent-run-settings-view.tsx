@@ -124,7 +124,8 @@ export function AgentRunSettingsView({
             dirty={dirty}
             pending={saving}
             error={
-              saveError && actionErrorMessage(saveError, "We couldn’t save run settings. Try again.")
+              saveError &&
+              actionErrorMessage(saveError, "We couldn’t save run settings. Try again.")
             }
             onDiscard={() => setDraft(null)}
             onSave={() => onSave(triggers, () => setDraft(null))}

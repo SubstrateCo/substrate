@@ -59,7 +59,7 @@ export function AgentSettings({
     <section aria-label="Agent settings" className="grid gap-8">
       {catalog.error && (
         <ErrorState
-          compact
+          variant="compact"
           title="Couldn’t load agent settings"
           onRetry={() => void catalog.refetch()}
         />

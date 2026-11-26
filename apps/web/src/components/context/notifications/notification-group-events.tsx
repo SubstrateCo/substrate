@@ -40,7 +40,7 @@ export function NotificationGroupEvents({
     <div className="flex flex-col gap-2">
       {events.error && (
         <ErrorState
-          compact
+          variant="compact"
           title="Couldn’t load events"
           onRetry={() =>
             void (events.isFetchNextPageError ? events.fetchNextPage() : events.refetch())

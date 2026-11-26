@@ -133,7 +133,7 @@ export function AgentActivityView({
         title="Activity"
         description="Everything this agent worked on, newest first. Open a row to see its transcript."
       >
-        {error && <ErrorState compact title="Couldn’t load activity" onRetry={onRetry} />}
+        {error && <ErrorState variant="compact" title="Couldn’t load activity" onRetry={onRetry} />}
         {loading && !rows.length && <ActivityRowsLoading />}
         {!loading && !error && !rows.length && (
           <ContentNotice

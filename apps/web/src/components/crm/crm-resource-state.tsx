@@ -65,7 +65,7 @@ function CrmResourceError({
   if (!isAccessFailure(error))
     return (
       <ErrorState
-        compact={compact}
+        variant={compact ? "compact" : undefined}
         title={noun ? `Couldn’t load ${noun}` : "Couldn’t load CRM"}
         onRetry={onRetry}
       />

@@ -35,7 +35,9 @@ export function ConfigurationStatus({
           </div>
         </div>
       )}
-      {error && <ErrorState compact title="Couldn’t read this agent’s files" onRetry={onRetry} />}
+      {error && (
+        <ErrorState variant="compact" title="Couldn’t read this agent’s files" onRetry={onRetry} />
+      )}
     </>
   );
 }

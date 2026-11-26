@@ -44,7 +44,7 @@ export function WorkDiscussions({
   });
   const list = <DiscussionList items={uniqueRows} />;
   const failure = error && (
-    <ErrorState compact title="Couldn’t load discussions" onRetry={onRetry} />
+    <ErrorState variant="compact" title="Couldn’t load discussions" onRetry={onRetry} />
   );
   const empty = !loading && !error && !uniqueRows.length;
   const showLoading = loading && !uniqueRows.length;

@@ -98,7 +98,7 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
       <InvitationLoadNotice loading={invite.isPending} error={invite.error} onRetry={retry} />
       {organizations.error && (
         <ErrorState
-          compact
+          variant="compact"
           title="Couldn’t load workspaces"
           onRetry={() => void organizations.refetch()}
         />
@@ -247,7 +247,7 @@ function InvitationLoadNotice({
           <WorkspacesLink />
         ) : (
           <ErrorState
-            compact
+            variant="compact"
             title="Couldn’t load invitation"
             description="We couldn’t check this invitation. Please try again."
             onRetry={onRetry}

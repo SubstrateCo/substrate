@@ -34,7 +34,7 @@ export function MeetingList({
 }) {
   return (
     <RecordSection aria-label="Meetings" title="Meetings" count={meetings?.length || undefined}>
-      {error && <ErrorState compact title="Couldn’t load meetings" onRetry={onRetry} />}
+      {error && <ErrorState variant="compact" title="Couldn’t load meetings" onRetry={onRetry} />}
       {!error && !meetings && <LoadingState label="Loading meetings" variant="compact" rows={2} />}
       {!error && meetings?.length === 0 && (
         <ContentNotice

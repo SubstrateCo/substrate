@@ -1,8 +1,7 @@
 import type { DesktopUpdateStatus } from "@substrate/contracts/desktop/updates-ipc";
 
-import { expect, test } from "bun:test";
-
 import { desktopUpdatesStore } from "./desktop-updates-store";
+import { expect, test } from "bun:test";
 
 const status = (state: DesktopUpdateStatus["state"]): DesktopUpdateStatus => ({
   appVersion: "1.0.0",

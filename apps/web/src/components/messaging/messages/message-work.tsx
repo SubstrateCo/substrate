@@ -41,7 +41,7 @@ export function MessageWork({
   if (error)
     return (
       <div className="mt-1.5 max-w-120">
-        <ErrorState compact title="Couldn’t load linked work" onRetry={onRetry} />
+        <ErrorState variant="compact" title="Couldn’t load linked work" onRetry={onRetry} />
       </div>
     );
   if (!links.length) return null;

@@ -246,7 +246,7 @@ function LinkSearchStatus({
   return (
     <>
       {loading && !hasResults && !error && <LinkWorkLoading />}
-      {error && <ErrorState compact title="Couldn’t search work" onRetry={onRetry} />}
+      {error && <ErrorState variant="compact" title="Couldn’t search work" onRetry={onRetry} />}
       {!loading && !error && (
         <CommandEmpty>
           {query ? `No editable ${kindLabel} match “${query}”.` : `No editable ${kindLabel} found.`}

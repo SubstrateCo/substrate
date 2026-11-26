@@ -123,7 +123,7 @@ export function AgentsWorkspaceView({
               {catalogError && (
                 <div className="px-2">
                   <ErrorState
-                    inline
+                    variant="inline"
                     title={
                       catalogState === "unavailable" ? "Agents unavailable" : "Couldn’t load agents"
                     }

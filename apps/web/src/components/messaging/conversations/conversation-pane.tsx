@@ -68,7 +68,11 @@ export function ConversationPane({
   let messageContent;
   if (target.error)
     messageContent = (
-      <ErrorState compact title="Message unavailable" onRetry={() => void target.refetch()} />
+      <ErrorState
+        variant="compact"
+        title="Message unavailable"
+        onRetry={() => void target.refetch()}
+      />
     );
   else if (timeline.length > 0)
     messageContent = (

@@ -124,7 +124,9 @@ export function HomeSection({
   if (data.loading)
     content = <LoadingState label={`Loading ${title.toLowerCase()}`} variant="compact" rows={3} />;
   if (data.error)
-    content = <ErrorState compact title="Couldn’t load this section" onRetry={data.onRetry} />;
+    content = (
+      <ErrorState variant="compact" title="Couldn’t load this section" onRetry={data.onRetry} />
+    );
   return (
     <Card size="sm" className="min-h-0 min-w-0 flex-1" role="region" aria-label={title}>
       {!(noItems && hideHeaderWhenEmpty) && (

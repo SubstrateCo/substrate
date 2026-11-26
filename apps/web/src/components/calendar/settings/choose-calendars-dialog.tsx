@@ -161,7 +161,7 @@ function CalendarOptions({
 }) {
   if (loadError)
     return accessRequired ? null : (
-      <ErrorState compact title="Couldn’t load your calendars" onRetry={onRetry} />
+      <ErrorState variant="compact" title="Couldn’t load your calendars" onRetry={onRetry} />
     );
   if (!options) return <LoadingState label="Loading calendars" variant="compact" />;
   if (options.length === 0)

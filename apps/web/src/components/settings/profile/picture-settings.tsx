@@ -39,7 +39,7 @@ export function PictureSettings({
         <PictureUploadLoading kind={upload.kind} label={`Loading ${subject}`} />
       )}
       {mode === "failed" && (
-        <ErrorState compact title={`Couldn’t load the ${subject}`} onRetry={onRetry} />
+        <ErrorState variant="compact" title={`Couldn’t load the ${subject}`} onRetry={onRetry} />
       )}
       {mode === "stale" && (
         <div className="flex flex-wrap items-center gap-2">

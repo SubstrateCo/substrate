@@ -40,7 +40,7 @@ export function PendingInvitations({
       </Heading>
       {error && (
         <ErrorState
-          compact
+          variant="compact"
           title="Couldn’t load invitations"
           description="Your invitations are unavailable. You can still open or create a workspace."
           onRetry={onRetry}

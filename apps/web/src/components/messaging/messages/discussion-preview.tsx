@@ -51,7 +51,7 @@ export function DiscussionPreview({
           </ol>
         </div>
       )}
-      {error && <ErrorState compact title="Couldn’t load discussion" onRetry={onRetry} />}
+      {error && <ErrorState variant="compact" title="Couldn’t load discussion" onRetry={onRetry} />}
       {!loading && !error && !latest.length && (
         <ContentNotice variant="inline" title="No messages yet" />
       )}

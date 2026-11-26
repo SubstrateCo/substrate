@@ -94,7 +94,7 @@ export function RoutineListView({
       actions={routines.length > 0 && add}
     >
       {error && !routines.length && (
-        <ErrorState compact title="Couldn’t load routines" onRetry={onRetry} />
+        <ErrorState variant="compact" title="Couldn’t load routines" onRetry={onRetry} />
       )}
       {loading && !routines.length && <RoutineRowsLoading />}
       {!loading && !error && !routines.length && (
@@ -163,7 +163,7 @@ export function RoutineListView({
         </SettingsList>
       )}
       {error && routines.length > 0 && (
-        <ErrorState compact title="Couldn’t refresh routines" onRetry={onRetry} />
+        <ErrorState variant="compact" title="Couldn’t refresh routines" onRetry={onRetry} />
       )}
     </SettingsSection>
   );

@@ -70,7 +70,7 @@ export function OrganizationSelection({
       {state === "loading" && !organizations?.length && <WorkspaceListLoading />}
       {loadError && (
         <ErrorState
-          compact
+          variant="compact"
           title="Couldn’t load workspaces"
           description="Your workspace list is unavailable. Try again, or create a workspace below."
           onRetry={() => {

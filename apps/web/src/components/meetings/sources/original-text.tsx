@@ -14,7 +14,11 @@ export function OriginalText({ id }: { id: string }) {
     return <ContentNotice variant="inline" title="Original unavailable" />;
   if (r.error)
     return (
-      <ErrorState inline title="Couldn’t read the original" onRetry={() => void r.refetch()} />
+      <ErrorState
+        variant="inline"
+        title="Couldn’t read the original"
+        onRetry={() => void r.refetch()}
+      />
     );
   if (r.isPending) return <LoadingState label="Reading original" variant="compact" />;
   return (

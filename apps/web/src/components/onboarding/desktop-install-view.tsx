@@ -76,7 +76,7 @@ export function DesktopInstallView({
       )}
       {error && (
         <ErrorState
-          compact
+          variant="compact"
           title="Couldn’t check for the installer"
           description="You can still open an installed app or continue in your browser."
           onRetry={onRetry}

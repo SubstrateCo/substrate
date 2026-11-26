@@ -59,7 +59,7 @@ export function AcceptInvitationScreen({
       {loading && <LoadingState label="Loading invitation" rows={2} />}
       {!loading && failed && !unavailable && (
         <ErrorState
-          compact
+          variant="compact"
           title="Couldn’t load invitation"
           description="We couldn’t check this invitation. Please try again."
           onRetry={onRetry}

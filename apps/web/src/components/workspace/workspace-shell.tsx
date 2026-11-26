@@ -88,7 +88,7 @@ export function WorkspaceShell({
         {error && (
           <div className="shrink-0 p-3">
             <ErrorState
-              compact
+              variant="compact"
               title="Couldn’t load workspace details"
               description="Some workspace controls may be unavailable. Try again to update your workspace details."
               onRetry={onRetry}
