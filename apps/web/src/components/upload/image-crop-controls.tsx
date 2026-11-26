@@ -17,26 +17,6 @@ const minZoom = 1;
 const maxZoom = 3;
 const zoomStep = 0.25;
 
-/** Logos choose between keeping the whole image and filling the square. */
-function ImageSizingControl({
-  mode,
-  onModeChange,
-}: {
-  mode: "fit" | "fill";
-  onModeChange: (mode: "fit" | "fill") => void;
-}) {
-  return (
-    <div>
-      <SegmentedControl
-        aria-label="Logo sizing"
-        value={mode}
-        options={sizingOptions}
-        onValueChange={onModeChange}
-      />
-    </div>
-  );
-}
-
 function ToolButton({
   label,
   disabled,
@@ -116,7 +96,15 @@ export function ImageCropControls({
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-x-0.5 gap-y-2 sm:flex-nowrap">
         {kind === "organization-logo" ? (
-          <ImageSizingControl mode={mode} onModeChange={onModeChange} />
+          // Logos choose between keeping the whole image and filling the square.
+          <div>
+            <SegmentedControl
+              aria-label="Logo sizing"
+              value={mode}
+              options={sizingOptions}
+              onValueChange={onModeChange}
+            />
+          </div>
         ) : (
           zoomControl
         )}

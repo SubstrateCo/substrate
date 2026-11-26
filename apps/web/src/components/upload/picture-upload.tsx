@@ -1,6 +1,6 @@
 import type { PictureKind } from "@substrate/contracts/files/pictures";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { openPicture, pictureErrorMessage } from "./crop-image";
 import { FileUpload, FileUploadContent, FileUploadLayout } from "./file-upload";
@@ -79,7 +79,6 @@ export function PictureUpload({
   name: owner,
 }: PictureUploadProps) {
   const [source, setSource] = useState<{ file: File; src: string } | null>(null);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selection, setSelection] = useState<
     { status: "idle" | "opening" } | { status: "failed"; error: string }
   >({ status: "idle" });
@@ -92,15 +91,11 @@ export function PictureUpload({
     },
     [],
   );
-  const attachPreview = useCallback(
-    (section: HTMLElement | null) => {
-      if (!section || !selectedFile) return;
-      const src = URL.createObjectURL(selectedFile);
-      setSource({ file: selectedFile, src });
-      return () => URL.revokeObjectURL(src);
-    },
-    [selectedFile],
-  );
+  // The preview URL lives as long as its crop dialog.
+  useEffect(() => {
+    if (!source) return;
+    return () => URL.revokeObjectURL(source.src);
+  }, [source]);
   // Opening checks the image before the crop dialog shows it.
   async function open(file: File) {
     if (opening.current) return;
@@ -110,7 +105,7 @@ export function PictureUpload({
     try {
       (await openPicture(file, controller.signal)).close();
       if (!controller.signal.aborted) {
-        setSelectedFile(file);
+        setSource({ file, src: URL.createObjectURL(file) });
         setSelection({ status: "idle" });
       }
     } catch (error) {
@@ -124,7 +119,6 @@ export function PictureUpload({
     if (opening.current === controller) opening.current = null;
   }
   function closeSource() {
-    setSelectedFile((current) => (current === source?.file ? null : current));
     setSource((current) => (current === source ? null : current));
   }
   const name = {
@@ -132,9 +126,9 @@ export function PictureUpload({
     "organization-logo": "Organization logo",
     "project-icon": "Project icon",
   }[kind];
-  const busy = disabled || removing || uploading || !!selectedFile;
+  const busy = disabled || removing || uploading || !!source;
   return (
-    <section ref={attachPreview} aria-label={name} className="min-w-0">
+    <section aria-label={name} className="min-w-0">
       <FileUpload
         chooseButtonRef={chooseButton}
         accept={pictureAccept}
@@ -179,7 +173,7 @@ export function PictureUpload({
         }
         onFiles={([file]) => void open(file)}
       />
-      {source && source.file === selectedFile && (
+      {source && (
         <ImageCropDialog
           file={source.file}
           src={source.src}

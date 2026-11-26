@@ -14,13 +14,8 @@ export type AttachmentDraft = Omit<AttachmentUploadDraft, "attempt">;
 
 export function useAttachmentUploads(existingCount = 0) {
   const [items, setItems] = useState<AttachmentUploadDraft[]>([]);
-  const current = useRef(items);
   const controllers = useRef(new Map<string, AbortController>());
   const [error, setError] = useState<string | null>(null);
-  const change = (next: AttachmentUploadDraft[]) => {
-    current.current = next;
-    setItems(next);
-  };
   useEffect(() => {
     const active = controllers.current;
     return () => {
@@ -33,8 +28,8 @@ export function useAttachmentUploads(existingCount = 0) {
     controllers.current.set(item.id, controller);
     const update = (event: AttachmentUploadEvent) => {
       if (!controller.signal.aborted && controllers.current.get(item.id) === controller)
-        change(
-          current.current.map((entry) =>
+        setItems((current) =>
+          current.map((entry) =>
             entry.id === item.id ? transitionAttachmentUpload(entry, event) : entry,
           ),
         );
@@ -50,7 +45,7 @@ export function useAttachmentUploads(existingCount = 0) {
   };
   const add = (files: File[]) => {
     setError(null);
-    if (current.current.length + existingCount + files.length > MAX_ATTACHMENTS) {
+    if (items.length + existingCount + files.length > MAX_ATTACHMENTS) {
       setError("You can attach up to 10 files.");
       return;
     }
@@ -65,7 +60,7 @@ export function useAttachmentUploads(existingCount = 0) {
       progress: 0,
       attempt: 0,
     }));
-    change([...current.current, ...added]);
+    setItems((current) => [...current, ...added]);
     added.forEach(start);
   };
   return {
@@ -77,20 +72,20 @@ export function useAttachmentUploads(existingCount = 0) {
     remove(id: string) {
       controllers.current.get(id)?.abort();
       controllers.current.delete(id);
-      change(current.current.filter((item) => item.id !== id));
+      setItems((current) => current.filter((item) => item.id !== id));
     },
     retry(id: string) {
-      const item = current.current.find((entry) => entry.id === id);
+      const item = items.find((entry) => entry.id === id);
       if (!item) return;
       const next = transitionAttachmentUpload(item, { type: "retry" });
       if (next === item) return;
-      change(current.current.map((entry) => (entry.id === id ? next : entry)));
+      setItems((current) => current.map((entry) => (entry.id === id ? next : entry)));
       start(next);
     },
     clear() {
       for (const controller of controllers.current.values()) controller.abort();
       controllers.current.clear();
-      change([]);
+      setItems([]);
       setError(null);
     },
   };

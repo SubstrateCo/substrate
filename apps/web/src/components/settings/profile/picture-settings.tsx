@@ -26,14 +26,22 @@ export function PictureSettings({
   error?: Error | null;
   onRetry: () => void;
 }) {
-  const blocked = state === "unavailable";
   const subject = title.toLowerCase();
+  const loaded = upload.value !== undefined;
+  let mode: "failed" | "loading" | "blocked" | "stale" | "ready" = "ready";
+  if (error && (state === "unavailable" || !loaded)) mode = "failed";
+  else if (loading && !loaded) mode = "loading";
+  else if (state === "unavailable") mode = "blocked";
+  else if (error) mode = "stale";
   return (
     <SettingsCard title={title} description={description}>
-      {loading && upload.value === undefined && (
+      {mode === "loading" && (
         <PictureUploadLoading kind={upload.kind} label={`Loading ${subject}`} />
       )}
-      {error && !blocked && upload.value !== undefined && (
+      {mode === "failed" && (
+        <ErrorState compact title={`Couldn’t load the ${subject}`} onRetry={onRetry} />
+      )}
+      {mode === "stale" && (
         <div className="flex flex-wrap items-center gap-2">
           <div className="min-w-0 flex-1">
             <FormMessage
@@ -46,12 +54,7 @@ export function PictureSettings({
           </Button>
         </div>
       )}
-      {error && (blocked || upload.value === undefined) && (
-        <ErrorState compact title={`Couldn’t load the ${subject}`} onRetry={onRetry} />
-      )}
-      {!blocked &&
-        (!loading || upload.value !== undefined) &&
-        (!error || upload.value !== undefined) && <PictureUpload {...upload} />}
+      {(mode === "stale" || mode === "ready") && <PictureUpload {...upload} />}
     </SettingsCard>
   );
 }
