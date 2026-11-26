@@ -1,18 +1,13 @@
 import { useRef } from "react";
 
+import { AttachmentDraftMedia } from "@/components/attachments/attachment-draft-media";
 import { FormMessage } from "@/components/feedback/form-message";
 import { Button } from "@/components/ui/button";
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemMedia,
-  ItemTitle,
-} from "@/components/ui/item";
+import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { AttachmentDraft, AttachmentUploads } from "@/queries/files/use-attachment-uploads";
-import { FileText, Paperclip, RefreshCw, X } from "lucide-react";
+import { cn } from "cn";
+import { Paperclip, RefreshCw, X } from "lucide-react";
 
 export function AttachFilesButton({
   onFiles,
@@ -66,25 +61,43 @@ function uploadStatus(item: AttachmentDraft) {
 export function AttachmentDraftList({
   uploads,
   disabled,
+  compact = false,
 }: {
   uploads: AttachmentUploads;
   disabled?: boolean;
+  compact?: boolean;
 }) {
   return (
     <>
       {!!uploads.items.length && (
-        <ul aria-label="Selected attachments" className="grid gap-2">
+        <ul
+          aria-label="Selected attachments"
+          tabIndex={compact ? 0 : undefined}
+          className={cn(
+            compact
+              ? "flex h-20 w-full min-w-0 items-start gap-2 overflow-x-auto overscroll-x-contain px-3 py-0.5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              : "grid gap-2",
+          )}
+        >
           {uploads.items.map((item) => (
-            <Item key={item.id} asChild variant="outline" size="xs" className="min-w-0 flex-nowrap">
+            <Item
+              key={item.id}
+              asChild
+              variant="outline"
+              size="xs"
+              className={cn("min-w-0 flex-nowrap", compact && "w-64 max-w-full shrink-0")}
+            >
               <li>
-                <ItemMedia variant="icon">
-                  <FileText aria-hidden="true" className="text-muted-foreground" />
-                </ItemMedia>
+                <AttachmentDraftMedia file={item.file} compact={compact} />
                 <ItemContent className="min-w-0">
                   <ItemTitle className="max-w-full">
                     <span className="truncate">{item.file.name}</span>
                   </ItemTitle>
-                  <ItemDescription role="status">{uploadStatus(item)}</ItemDescription>
+                  <ItemDescription role="status">
+                    <span className={compact ? "block truncate" : undefined}>
+                      {uploadStatus(item)}
+                    </span>
+                  </ItemDescription>
                 </ItemContent>
                 <ItemActions>
                   {item.status === "failed" && (

@@ -83,7 +83,7 @@ export function ReferenceEditor({
         "aria-multiline": "true",
         "aria-autocomplete": "list",
         class:
-          "min-h-10 max-h-[25dvh] overflow-y-auto px-3 py-2 text-sm whitespace-pre-wrap wrap-anywhere outline-none [&_p]:m-0",
+          "min-h-8 max-h-[25dvh] overflow-y-auto px-3 py-1 text-sm whitespace-pre-wrap wrap-anywhere outline-none [&_p]:m-0",
       },
       handleKeyDown: (view, event) => {
         onKeyDown(event);

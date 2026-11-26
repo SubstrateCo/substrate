@@ -38,50 +38,59 @@ function DestinationComposer({
   const draftKey = `${organizationId}:${conversationId}:${threadId ?? "channel"}`;
   const send = useSendMessage(organizationId, conversationId, threadId, () => uploads.clear());
   return (
-    <FileDropZone label="Message attachments" disabled={send.isPending} onFiles={uploads.add}>
-      <UnsavedChangesGuard
-        dirty={uploads.items.length > 0}
-        name="Message attachments"
-        description="Your selected files haven’t been sent."
-      />
-      <ComposerView
-        draftKey={draftKey}
-        label={label}
-        hasAttachments={uploads.items.length > 0}
-        attachmentsReady={!uploads.items.length || uploads.ready}
-        attachmentControls={
-          <AttachFilesButton iconOnly disabled={send.isPending} onFiles={uploads.add} />
-        }
-        attachmentDrafts={<AttachmentDraftList uploads={uploads} disabled={send.isPending} />}
-        onPasteFiles={uploads.add}
-        renderReferences={(activeReference, onInsert) => (
-          <ReferencePicker
-            conversationId={conversationId}
-            activeReference={activeReference}
-            onInsert={onInsert}
-          />
-        )}
-        pending={send.isPending}
-        error={send.error}
-        onSend={(body, onSuccess) => {
-          const fingerprint = JSON.stringify([body, uploads.fileIds]);
-          let request = requests.get(draftKey);
-          if (!request || request.body !== fingerprint) {
-            request = { id: crypto.randomUUID(), body: fingerprint };
-            requests.set(draftKey, request);
+    <div className="relative h-28 shrink-0">
+      <FileDropZone
+        label="Message attachments"
+        disabled={send.isPending}
+        onFiles={uploads.add}
+        className="absolute inset-x-0 bottom-0 z-10"
+      >
+        <UnsavedChangesGuard
+          dirty={uploads.items.length > 0}
+          name="Message attachments"
+          description="Your selected files haven’t been sent."
+        />
+        <ComposerView
+          draftKey={draftKey}
+          label={label}
+          hasAttachments={uploads.items.length > 0}
+          attachmentsReady={!uploads.items.length || uploads.ready}
+          attachmentControls={
+            <AttachFilesButton iconOnly disabled={send.isPending} onFiles={uploads.add} />
           }
-          const requestId = request.id;
-          // Not `mutate` callbacks: they skip an unmounted composer, and switching conversations
-          // while this sends must still clear the sent draft, which outlives this component.
-          void send
-            .mutateAsync({ body, attachmentFileIds: uploads.fileIds, requestId })
-            .then(() => {
-              if (requests.get(draftKey)?.id === requestId) requests.delete(draftKey);
-              onSuccess();
-            })
-            .catch(() => {});
-        }}
-      />
-    </FileDropZone>
+          attachmentDrafts={
+            <AttachmentDraftList uploads={uploads} disabled={send.isPending} compact />
+          }
+          onPasteFiles={uploads.add}
+          renderReferences={(activeReference, onInsert) => (
+            <ReferencePicker
+              conversationId={conversationId}
+              activeReference={activeReference}
+              onInsert={onInsert}
+            />
+          )}
+          pending={send.isPending}
+          error={send.error}
+          onSend={(body, onSuccess) => {
+            const fingerprint = JSON.stringify([body, uploads.fileIds]);
+            let request = requests.get(draftKey);
+            if (!request || request.body !== fingerprint) {
+              request = { id: crypto.randomUUID(), body: fingerprint };
+              requests.set(draftKey, request);
+            }
+            const requestId = request.id;
+            // Not `mutate` callbacks: they skip an unmounted composer, and switching conversations
+            // while this sends must still clear the sent draft, which outlives this component.
+            void send
+              .mutateAsync({ body, attachmentFileIds: uploads.fileIds, requestId })
+              .then(() => {
+                if (requests.get(draftKey)?.id === requestId) requests.delete(draftKey);
+                onSuccess();
+              })
+              .catch(() => {});
+          }}
+        />
+      </FileDropZone>
+    </div>
   );
 }
