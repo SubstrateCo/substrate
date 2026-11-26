@@ -4,6 +4,7 @@ import {
   commit,
   auditFailedCallerTool,
   namedIds,
+  type FileContentReader,
   type SessionIdentity,
 } from "@substrate/database/mcp";
 import type { DatabaseExecutor } from "@substrate/database/trusted";
@@ -16,10 +17,13 @@ export async function executeAgentTool<K extends ServerToolName>(
   tool: K,
   raw: WorkspaceApiRequest["input"],
   turn: TurnContext,
+  reader?: FileContentReader,
 ) {
   try {
     const input = parseAgentToolInput(tool, raw);
-    return await commit(db, (tx) => executeAgentToolInTransaction(tx, identity, tool, input, turn));
+    return await commit(db, (tx) =>
+      executeAgentToolInTransaction(tx, identity, tool, input, turn, reader),
+    );
   } catch (error) {
     // The call's transaction rolled back. A turn that answers callers still logs the failure;
     // a failed log does not hide the call's own error.

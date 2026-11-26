@@ -6,9 +6,11 @@ import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { agentActions } from "../agent-work/actions";
 import { attachReference, detachReference } from "../context/service";
+import { createAttachmentRepository } from "../files/repository";
 import { taskRepository } from "../tasks/repository";
 import { mcpContextQueries } from "./context";
 import { mcpCrmTools } from "./crm";
+import { mcpFileQueries, type FileContentReader } from "./files";
 import { listLinkedMessages } from "./links";
 import { mcpMeetingTools } from "./meetings";
 import { mcpMessagingQueries } from "./messaging";
@@ -45,9 +47,12 @@ export function serverToolHandlers(
   identity: SessionIdentity,
   agent: Agent & { userName: string },
   run: ToolRun,
+  /** Reads stored bytes for read_file and download_file. Approved proposals never read files. */
+  reader?: FileContentReader,
 ): ToolHandlers {
   const actor = { id: agent.entityId, name: agent.name, type: agent.type };
   const tasks = taskRepository(ctx);
+  const files = mcpFileQueries(ctx, identity, reader);
   const writes = agentWrites(ctx, identity, agent);
   const context = mcpContextQueries(ctx, identity);
   const queries = mcpTaskQueries(ctx, identity);
@@ -129,6 +134,19 @@ export function serverToolHandlers(
     read_conversation: (value) => messaging.readConversation(value),
     read_thread: (value) => messaging.readThread(value),
     list_linked_messages: (value) => listLinkedMessages(ctx, identity, value),
+    list_files: (value) => files.list(value),
+    read_file: (value) => files.read(value),
+    download_file: (value) => files.download(value),
+    async attach_task_file(value) {
+      const task = await tasks.get(value.taskId, "edit");
+      await createAttachmentRepository(ctx).addTaskFromMessage({
+        taskEntityId: task.entityId,
+        projectEntityId: task.projectEntityId,
+        messageId: value.file.messageId,
+        attachmentId: value.file.attachmentId,
+      });
+      return queries.getTask(task.entityId);
+    },
     create_task: (value) => writes.createTask(value),
     update_task: (value) => writes.updateTask(value),
     move_task: (value) => writes.moveTask(value),

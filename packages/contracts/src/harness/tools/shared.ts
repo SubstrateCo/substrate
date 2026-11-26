@@ -16,6 +16,11 @@ export interface ToolDefinition {
    * and the call returns APPROVAL_PENDING; approval runs exactly that call.
    */
   approval?: "owner";
+  /**
+   * The write runs only in a live interactive turn. It never waits for approval, so background
+   * turns cannot make it.
+   */
+  liveTurnOnly?: true;
   input: z.ZodType;
   output: z.ZodType;
   /** Records created or published by a successful call, named by fields in its output. */

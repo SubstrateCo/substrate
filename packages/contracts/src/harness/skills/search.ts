@@ -18,6 +18,9 @@ export const searchSkill: HarnessSkill = {
 | Find a person to assign | \`list_assignees\` |
 | Find what a record is connected to | \`linked\` in \`get_task\`, \`get_project\` or \`get_crm_record\` |
 | Find what a message is about | \`records\` on each message in \`read_thread\` or \`read_conversation\` |
+| Find a file, image or screenshot | \`attachments\` on messages and tasks, or \`list_files\` |
+| Look at an image or read a text file | \`read_file\` with the file's \`file\` locator |
+| Open another file type with your own tools | \`download_file\`, then the saved \`path\` |
 
 ## How search matches
 
@@ -49,6 +52,13 @@ export const searchSkill: HarnessSkill = {
 2. For each conversation, call \`read_conversation\` with \`since\`.
 3. Items with \`includedBecause: "thread_activity"\` are older messages with new replies. Call \`read_thread\` to read the replies.
 4. Text is cut when \`truncated\` is true. Call \`read_thread\` for the full text.
+
+## Files
+
+- Messages and tasks list their files in \`attachments\`. A task created from a message also lists that message's files in \`sourceAttachments\`.
+- Each file has a \`file\` locator. Pass it unchanged to \`read_file\` or \`download_file\`. A file ID alone opens nothing: each read checks access to the message or task.
+- \`read_file\` shows images and returns text in parts. For other types it returns \`unavailable\` with the reason. Report an unavailable file to your owner; do not say you saw it.
+- \`download_file\` saves the original under \`.substrate/files/\` in your working folder.
 
 ## Access
 

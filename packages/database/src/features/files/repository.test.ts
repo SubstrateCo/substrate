@@ -8,6 +8,7 @@ import { setupDatabase } from "../../testing/database";
 import { createAcceptedMessagingService } from "../../testing/messaging";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
+import { createContextService } from "../context/service";
 import { messagingMessages } from "../messaging/schema";
 import { createMessagingService } from "../messaging/service";
 import { attachmentReferences } from "./repository";
@@ -20,6 +21,7 @@ const scope = () => ({ userId: "alice", organizationId: f.orgA });
 beforeEach(async () => {
   await f.verifyEmails();
 });
+const repositories = (identity: SessionIdentity) => createRepositories(f.db).forSession(identity);
 const files = () => ({
   async addTask(
     identity: SessionIdentity,
@@ -511,4 +513,91 @@ test("message tombstones detach file metadata, block old attachment URLs, and re
     await rejection(chat.sendMessage(conversation.id, "", undefined, requestId, [file.id])),
   ).toBeInstanceOf(ConflictError);
   expect((await chat.listMessages(conversation.id))[0]!.attachments).toEqual([]);
+});
+
+test("source message files follow message access, not task access", async () => {
+  const chat = createAcceptedMessagingService(f.db, scope());
+  const channel = await chat.createConversation({ kind: "channel", name: "bugs", private: true });
+  const file = await staged();
+  const report = await chat.sendMessage(channel.id, "Broken icon", undefined, undefined, [file.id]);
+  const project = await f.forActor(f.alice).projects.create({ name: "Bugs" });
+  const task = await createContextService(f.db, scope()).createTaskFromMessage({
+    requestId: crypto.randomUUID(),
+    messageId: report.id,
+    projectEntityId: project.entityId,
+    title: "Fix icon",
+  });
+  const target = { projectEntityId: project.entityId, taskEntityId: task.entityId };
+  const source = () => repositories(scope()).then((repos) => repos.files.listTaskSource(target));
+  expect(await source()).toEqual({
+    source: { conversationId: channel.id, messageId: report.id },
+    attachments: [
+      {
+        id: report.attachments[0]!.id,
+        position: 0,
+        fileId: file.id,
+        filename: "launch.txt",
+        size: 6,
+        contentType: "text/plain",
+      },
+    ],
+  });
+
+  // Bob can open the task but not the private channel, so he sees no source and no file.
+  await f
+    .forActor(f.alice)
+    .permissions.grant({ entityId: project.entityId, actorEntityId: f.bob, level: "view" });
+  const bob = { userId: "bob", organizationId: f.orgA };
+  expect(await (await repositories(bob)).files.listTaskSource(target)).toEqual({
+    source: null,
+    attachments: [],
+  });
+  // Sharing the file with the task is explicit, and only for readers of the message.
+  const share = { ...target, messageId: report.id, attachmentId: report.attachments[0]!.id };
+  await f
+    .forActor(f.alice)
+    .permissions.grant({ entityId: project.entityId, actorEntityId: f.bob, level: "edit" });
+  expect(await rejection((await repositories(bob)).files.addTaskFromMessage(share))).toBeInstanceOf(
+    AccessDeniedError,
+  );
+  const attach = async () =>
+    (await (await repositories(scope())).files.addTaskFromMessage(share)).result.changed;
+  // A repeat finds the same file already attached.
+  expect([await attach(), await attach()]).toEqual([true, false]);
+  expect((await files().listTask(bob, target)).map((item) => item.fileId)).toEqual([file.id]);
+
+  // A deleted source message takes its files with it.
+  await chat.deleteMessage(report.id);
+  expect((await source()).attachments).toEqual([]);
+});
+
+test("a partner organization's message file cannot be shared to a task", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const partner = { userId: "outsider", organizationId: f.orgB };
+  const chat = createAcceptedMessagingService(f.db, scope());
+  const conversation = await chat.createConversation({
+    kind: "channel",
+    name: "partners",
+    private: true,
+    emails: ["outside@example.com"],
+  });
+  const foreign = await staged(partner.userId, partner.organizationId);
+  const sent = await createAcceptedMessagingService(f.db, partner).sendMessage(
+    conversation.id,
+    "Ours",
+    undefined,
+    undefined,
+    [foreign.id],
+  );
+  const target = await task();
+  expect(
+    await rejection(
+      (await repositories(scope())).files.addTaskFromMessage({
+        ...target,
+        messageId: sent.id,
+        attachmentId: sent.attachments[0]!.id,
+      }),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(await files().listTask(scope(), target)).toEqual([]);
 });

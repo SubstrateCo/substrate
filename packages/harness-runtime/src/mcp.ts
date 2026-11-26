@@ -17,6 +17,7 @@ import {
   type ToolDefinition,
 } from "@substrate/contracts/harness/tools";
 
+import { saveDownload } from "./files.ts";
 import { forget, MemoryError, remember } from "./memory.ts";
 import { offloadOutput } from "./offload.ts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -43,9 +44,44 @@ export interface McpLeaseOptions {
 /** A tools/call result. Both MCP SDK generations accept this shape. */
 export type McpToolResult = {
   isError?: boolean;
-  content: { type: "text"; text: string }[];
-  structuredContent?: McpOutput<McpToolName> | OffloadedOutput;
+  /** Text first, then any images the model should see. */
+  content: [{ type: "text"; text: string }, ...{ type: "image"; data: string; mimeType: string }[]];
+  structuredContent?: McpOutput<McpToolName> | OffloadedOutput | SavedDownload | ImageRead;
 };
+
+type SavedDownload = Awaited<ReturnType<typeof saveDownload>>;
+/** read_file's result for an image, without the bytes, which travel in the image block. */
+type ImageRead = Omit<McpOutput<"read_file">, "content"> & {
+  content: { kind: "image"; mimeType: string };
+};
+
+/**
+ * File results that must not go through the generic JSON path: an image becomes an image block
+ * the model can see, and downloaded bytes go to the session folder instead of its context.
+ */
+async function fileResult(
+  name: McpToolName,
+  data: McpOutput<McpToolName>,
+  folder: string,
+  turnId: string,
+): Promise<McpToolResult | undefined> {
+  if (name === "download_file") {
+    const saved = await saveDownload(folder, turnId, mcpTools.download_file.output.parse(data));
+    return { structuredContent: saved, content: [{ type: "text", text: JSON.stringify(saved) }] };
+  }
+  if (name !== "read_file") return undefined;
+  const read = mcpTools.read_file.output.parse(data);
+  if (read.content.kind !== "image") return undefined;
+  const { data: image, mimeType } = read.content;
+  const described: ImageRead = { ...read, content: { kind: "image", mimeType } };
+  return {
+    structuredContent: described,
+    content: [
+      { type: "text", text: JSON.stringify(described) },
+      { type: "image", data: image, mimeType },
+    ],
+  };
+}
 
 /**
  * The transport-agnostic side of one lease: its tool set, routing, output offload and turn
@@ -246,6 +282,8 @@ async function callTool(
         ],
       };
     const data = mcpTools[name].output.parse(result.data);
+    const file = await fileResult(name, data, lease.options.folder, turn.turnId);
+    if (file) return file;
     const sequence = (lease.outputs.get(name) ?? 0) + 1;
     // Inbox excerpts are private to the bound owner turn; never persist them to the agent folder.
     const inbox = name === "search_inbox" || name === "read_inbox_message";

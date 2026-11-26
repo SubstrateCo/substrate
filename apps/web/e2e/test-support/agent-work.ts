@@ -71,6 +71,22 @@ export async function callTool<K extends ServerToolName>(
   return mcpTools[tool].output.parse((await response.json()).data) as McpOutput<K>;
 }
 
+/** Calls a read-only server tool as the agent. Read tools take no requestId. */
+export async function readTool<K extends ServerToolName>(
+  owner: Actor,
+  agentId: string,
+  turn: TurnContext,
+  tool: K,
+  input: z.input<(typeof mcpTools)[K]["input"]>,
+): Promise<McpOutput<K>> {
+  const response = await owner.request.post("/api/v1/mcp/call", {
+    data: { organizationId: owner.organizationId, agentId, tool, turn, input },
+  });
+  expect(response.ok(), await response.text()).toBe(true);
+  // SAFETY: the schema parsed is the named tool's own output schema.
+  return mcpTools[tool].output.parse((await response.json()).data) as McpOutput<K>;
+}
+
 /**
  * Calls a server tool that waits for the owner's approval, such as a deletion. The server stores
  * the call as a proposal and fails it with APPROVAL_PENDING. Returns the proposal's request ID.

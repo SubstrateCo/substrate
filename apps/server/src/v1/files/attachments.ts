@@ -24,6 +24,9 @@ export function createAttachmentService({
     listTaskAttachments(scope: WorkspaceScope, input: z.output<typeof taskAttachmentTarget>) {
       return serviceResult(() => scope.repositories.files.listTask(input));
     },
+    listTaskSourceAttachments(scope: WorkspaceScope, input: z.output<typeof taskAttachmentTarget>) {
+      return serviceResult(() => scope.repositories.files.listTaskSource(input));
+    },
     attachTaskFiles(scope: WorkspaceScope, input: z.output<typeof addTaskAttachments>) {
       return serviceResult(async () => {
         await publish(await scope.repositories.transaction((repos) => repos.files.addTask(input)));

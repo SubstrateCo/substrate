@@ -2,6 +2,7 @@ import { appEnabled, type AppId } from "../../apps/index.ts";
 import { turnContextSchema } from "../turn-context.ts";
 import { contextTools } from "./context.ts";
 import { crmTools } from "./crm.ts";
+import { fileTools } from "./files.ts";
 import { inboxTools } from "./inbox.ts";
 import { linkTools } from "./links.ts";
 import { localTools as agentTools } from "./local.ts";
@@ -23,6 +24,7 @@ const serverTools = {
   ...required(taskTools, ["tasks"]),
   ...required(meetingTools, ["meetings"]),
   ...messagingTools,
+  ...fileTools,
   ...linkTools,
 } as const satisfies Record<string, ToolDefinition>;
 

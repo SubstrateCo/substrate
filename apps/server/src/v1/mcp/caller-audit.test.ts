@@ -17,7 +17,7 @@ import { createCommittedPublisher } from "../../shared/committed";
 import { scopeFixture } from "../../test-support";
 import { executeAgentTool } from "./execution";
 import { createMcpService } from "./service";
-import { callerFixture } from "./test-support";
+import { callerFixture, memoryStorage } from "./test-support";
 import { expect, test } from "bun:test";
 import { asc, eq } from "drizzle-orm";
 import { ZodError } from "zod";
@@ -90,6 +90,7 @@ test("publisher failure happens after commit and does not audit a failed tool ex
       },
       sharingMail: { trigger: () => {} },
     }),
+    storage: memoryStorage(),
   });
   expect(
     await service.callAgentTool(

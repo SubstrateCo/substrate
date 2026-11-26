@@ -12,6 +12,8 @@ import type { z } from "zod";
 export type TaskAttachmentTarget = z.input<typeof taskAttachmentTarget>;
 export const listTaskAttachments = (data: TaskAttachmentTarget, signal?: AbortSignal) =>
   readResult(api.files.attachments.tasks.$get({ query: data }, { init: { signal } }));
+export const listTaskSourceAttachments = (data: TaskAttachmentTarget, signal?: AbortSignal) =>
+  readResult(api.files.attachments.tasks.source.$get({ query: data }, { init: { signal } }));
 export const attachTaskFiles = (data: z.input<typeof addTaskAttachments>) =>
   readResult(api.files.attachments.tasks.$post({ json: data }));
 export const removeTaskAttachment = (data: z.input<typeof taskAttachmentRequest>) =>

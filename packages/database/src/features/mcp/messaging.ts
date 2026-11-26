@@ -11,6 +11,7 @@ import { requireMessage, visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
 import { authorSelection } from "./authors";
+import { messageFiles } from "./files";
 import { excerpt, iso } from "./formatting";
 import { recordsOfMessages } from "./links";
 import { newest, newestFirstPagination, olderThan, pagination, position } from "./pagination";
@@ -123,10 +124,11 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
         .orderBy(desc(activity), desc(messagingMessages.id))
         .limit(p.take);
       const page = p.page(rows, position);
-      const records = await recordsOfMessages(
-        ctx,
-        page.items.map((row) => row.id),
-      );
+      const ids = page.items.map((row) => row.id);
+      const [records, files] = await Promise.all([
+        recordsOfMessages(ctx, ids),
+        messageFiles(db, ids),
+      ]);
       return {
         items: page.items.map(
           ({ body, posted, at: _at, ...row }): McpOutput<"read_conversation">["items"][number] => ({
@@ -136,6 +138,7 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
             lastReplyAt: row.lastReplyAt ? iso(row.lastReplyAt) : null,
             includedBecause: posted ? "posted" : "thread_activity",
             records: records.get(row.id) ?? [],
+            attachments: files.get(row.id) ?? [],
           }),
         ),
         nextCursor: page.nextCursor,
@@ -169,14 +172,16 @@ export function mcpMessagingQueries(ctx: RepositoryContext, identity: SessionIde
         .orderBy(asc(messagingMessages.createdAt), asc(messagingMessages.id))
         .offset(p.offset)
         .limit(p.take);
-      const records = await recordsOfMessages(ctx, [
-        root.id,
-        ...rows.slice(0, input.limit).map((row) => row.id),
+      const ids = [root.id, ...rows.slice(0, input.limit).map((row) => row.id)];
+      const [records, files] = await Promise.all([
+        recordsOfMessages(ctx, ids),
+        messageFiles(db, ids),
       ]);
       const format = (row: typeof root) => ({
         ...row,
         createdAt: iso(row.createdAt),
         records: records.get(row.id) ?? [],
+        attachments: files.get(row.id) ?? [],
       });
       return {
         conversationId: message.conversationId,

@@ -9,6 +9,7 @@ export { messageChangeHints } from "../realtime/routing";
 export { taskRepository } from "../tasks/repository";
 export { auditCallerTool, auditFailedCallerTool, namedIds, requireCallerTurn } from "./caller-turn";
 export { mcpCrmTools } from "./crm";
+export type { FileContentReader } from "./files";
 export { needsLiveTurn, serverToolHandlers, type ToolRun } from "./handlers";
 export { mcpMeetingTools, requireMeetingTurn } from "./meetings";
 export { approvalPendingMessage, proposeToolCall } from "./proposals";

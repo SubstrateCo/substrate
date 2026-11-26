@@ -57,3 +57,34 @@ test("tools reject reversed windows and empty changes", () => {
     mcpTools.update_task.input.safeParse({ taskId: crypto.randomUUID(), changes: {} }).success,
   ).toBe(false);
 });
+
+test("message and task results from a server without file tools still parse, with no files", () => {
+  const id = crypto.randomUUID();
+  const author = { id, name: "Ada", type: "human", kind: "owner" };
+  const message = { id, author, body: "Hi", createdAt: "2026-11-09T10:00:00.000Z", records: [] };
+  const thread = mcpTools.read_thread.output.parse({
+    conversationId: id,
+    root: message,
+    replies: { items: [message], nextCursor: null },
+  });
+  expect([thread.root.attachments, thread.replies.items[0]!.attachments]).toEqual([[], []]);
+  const task = mcpTools.get_task.output.parse({
+    id,
+    title: "Ship it",
+    description: "",
+    status: "not_started",
+    priority: "none",
+    assignee: null,
+    dueDate: null,
+    project: { id, name: "Launch" },
+    parent: null,
+    subtaskCount: 0,
+    source: null,
+    discussionConversationId: null,
+    links: [],
+    linked: { messages: [], messageCount: 0, records: [], recordCount: 0 },
+    createdAt: "2026-11-09T10:00:00.000Z",
+    updatedAt: "2026-11-09T10:00:00.000Z",
+  });
+  expect([task.attachments, task.sourceAttachments]).toEqual([[], []]);
+});

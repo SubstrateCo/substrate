@@ -9,6 +9,7 @@ import { projectRepository } from "../projects/repository";
 import { linksOfTask } from "../tasks/links";
 import { queryTasks, queryTaskActivity, queryTaskDetail } from "../tasks/queries";
 import { taskRepository } from "../tasks/repository";
+import { messageFiles, taskFiles } from "./files";
 import { iso, messageRef } from "./formatting";
 import { linkSummary } from "./links";
 import { newestFirstPagination, pagination } from "./pagination";
@@ -83,6 +84,11 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
     async getTask(taskId: string): Promise<McpOutput<"get_task">> {
       const task = await taskRepository(ctx).get(taskId);
       const { detail, source } = await queryTaskDetail(ctx, identity, task);
+      // The source is a message the reader can open, so its files keep the message's access.
+      const [attachments, sourceFiles] = await Promise.all([
+        taskFiles(ctx.db, taskId),
+        source ? messageFiles(ctx.db, [source.id]) : undefined,
+      ]);
       return {
         id: task.entityId,
         title: task.title,
@@ -95,6 +101,8 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
         parent: detail!.parent,
         subtaskCount: detail!.subtaskCount,
         source: source ? messageRef(source) : null,
+        attachments,
+        sourceAttachments: (source && sourceFiles?.get(source.id)) || [],
         discussionConversationId: detail!.discussionConversationId,
         links: (await linksOfTask(ctx, taskId)).map((link) => {
           const side = link.source?.entityId === taskId ? "source" : "target";

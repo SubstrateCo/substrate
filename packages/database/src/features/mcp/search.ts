@@ -34,7 +34,7 @@ function window(p: Page, time: SQL, id: SQLWrapper) {
  * Merges newest-first rows of several types into one page. Each type's query already returned its
  * newest rows past the cursor, so the newest rows of the merge are the page.
  */
-async function newestPage<T extends { id: string; at: Timestamp }>(
+export async function newestPage<T extends { id: string; at: Timestamp }>(
   p: Page,
   branches: Promise<T[]>[],
 ) {

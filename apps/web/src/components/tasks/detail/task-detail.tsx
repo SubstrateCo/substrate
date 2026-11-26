@@ -8,6 +8,7 @@ import { TaskActions } from "./task-actions";
 import { TaskDiscussion } from "./task-discussion";
 import { TaskInspectorActive } from "./task-inspector-context";
 import { TaskAttachments } from "@/components/attachments/task-attachments";
+import { TaskSourceAttachments } from "@/components/attachments/task-source-attachments";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { useRegisterDraft } from "@/components/feedback/unsaved-drafts-context";
@@ -111,6 +112,15 @@ export function TaskDetail({
             taskEntityId: task.entityId,
           }}
           canEdit={capabilities.canEdit}
+          visible={visible}
+        />
+        <TaskSourceAttachments
+          key={`${organizationId}:${task.entityId}:source`}
+          target={{
+            organizationId,
+            projectEntityId: detail.project.entityId,
+            taskEntityId: task.entityId,
+          }}
           visible={visible}
         />
         <TaskContext visible={visible} taskEntityId={task.entityId} />

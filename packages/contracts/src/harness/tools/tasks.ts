@@ -1,5 +1,6 @@
 import { taskLinkRelations } from "../../tasks/links.ts";
 import { permissionLevels, taskPriorityValues, taskStatusValues } from "../../tasks/status.ts";
+import { fileLocator, fileRefs } from "./files.ts";
 import { recordLinks } from "./links.ts";
 import { actor, id, messageRef, page, pageInput, requestId, timed, timestamp } from "./shared.ts";
 import { z } from "zod";
@@ -60,6 +61,15 @@ export const taskResult = z.object({
   parent: z.object({ id, title: z.string() }).nullable(),
   subtaskCount: z.number().int(),
   source: messageRef.nullable().describe("The message this task was created from."),
+  // Defaults keep results from servers without file tools parseable on newer desktops.
+  attachments: fileRefs
+    .default([])
+    .describe("Files attached to the task. Task readers can open them."),
+  sourceAttachments: fileRefs
+    .default([])
+    .describe(
+      "Files of the source message. Only readers who can open that message see and open them.",
+    ),
   discussionConversationId: id
     .nullable()
     .describe("The shared task discussion, if it has been opened."),
@@ -341,6 +351,23 @@ export const taskTools = {
     idempotent: true,
     destructive: true,
     input: z.object({ requestId, taskId: id, linkId: id }).strict(),
+    output: taskResult,
+  },
+  attach_task_file: {
+    publishes: [{ kind: "task", id: "id" }],
+    title: "Attach file to task",
+    description:
+      "Attach a file from a message to a task. Everyone who can open the task can then open the file, also people who cannot open the message. Use it only when your owner asks you to share the file with the task: a task created from a message already shows that message's files in sourceAttachments to readers who can open the message. Needs edit access to the task and access to the message. Interactive turns only. Returns the task.",
+    readOnly: false,
+    idempotent: true,
+    liveTurnOnly: true,
+    input: z
+      .object({
+        requestId,
+        taskId: id,
+        file: fileLocator.options[0].describe("A message attachment."),
+      })
+      .strict(),
     output: taskResult,
   },
   list_task_activity: {

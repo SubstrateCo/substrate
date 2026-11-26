@@ -48,12 +48,16 @@ const quotedUuid = /"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 /**
  * The server tool, if a call of it can wait for the owner and run later without the turn.
  * Reads never need approval. Meetings tools read the live turn's transcript, so they cannot wait.
+ * A live-turn-only tool shares data at its owner's request, so it cannot wait either.
  */
 export function proposableTool(tool: string): ServerToolName | null {
   const parsed = serverToolName.safeParse(tool);
   if (!parsed.success) return null;
   const name = parsed.data;
-  return !mcpTools[name].readOnly && !toolApps(name).includes("meetings") ? name : null;
+  const definition: ToolDefinition = mcpTools[name];
+  return !definition.readOnly && !definition.liveTurnOnly && !toolApps(name).includes("meetings")
+    ? name
+    : null;
 }
 
 /** The stored call input: the parsed input as JSON, without the call's own requestId. */

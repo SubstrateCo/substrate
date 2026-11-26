@@ -6,12 +6,40 @@ import {
   callerFixture as persistenceCallerFixture,
 } from "../../../../../packages/database/src/testing/agent-work";
 import type { setupDatabase } from "../../../../../packages/database/src/testing/database";
+import { ObjectNotFoundError, type ObjectStorage } from "../../storage/types";
+import { storageFileReader } from "../files/agent-file-reader";
 import { executeAgentTool } from "./execution";
 
 type Fixture = ReturnType<typeof setupDatabase>;
 type AgentFixture = Awaited<ReturnType<typeof persistenceFixture>>;
 
+/** Object storage in memory. Only reads and writes are supported. */
+export function memoryStorage(objects = new Map<string, Uint8Array>()): ObjectStorage & {
+  objects: Map<string, Uint8Array>;
+} {
+  const unsupported = () => Promise.reject(new Error("Not supported in tests."));
+  return {
+    objects,
+    async read(key) {
+      const bytes = objects.get(key);
+      if (!bytes) throw new ObjectNotFoundError("Object not found.");
+      return bytes;
+    },
+    async put(key, bytes) {
+      objects.set(key, bytes.slice());
+    },
+    async putImmutable(key, bytes) {
+      if (!objects.has(key)) objects.set(key, bytes.slice());
+    },
+    signUpload: unsupported,
+    signDownload: unsupported,
+    removeMany: unsupported,
+  };
+}
+
 function withTools(f: Fixture, base: AgentFixture) {
+  const storage = memoryStorage();
+  const reader = storageFileReader(storage);
   const execute = async (
     tool: ServerToolName,
     input: WorkspaceApiRequest["input"],
@@ -26,6 +54,7 @@ function withTools(f: Fixture, base: AgentFixture) {
         "installationId" in turn
           ? turn
           : { ...turn, installationId: base.agent.identity.installationId },
+        reader,
       )
     ).result;
   /** Runs a call that does not wait for approval and returns its output. */
@@ -49,7 +78,7 @@ function withTools(f: Fixture, base: AgentFixture) {
     if (!("pending" in execution)) throw new Error(`${tool} ran without approval`);
     return execution.pending.requestId;
   };
-  return { ...base, call, pending };
+  return { ...base, call, pending, storage };
 }
 
 export async function agentWorkFixture(f: Fixture) {

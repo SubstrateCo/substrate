@@ -35,6 +35,9 @@ export function createAttachmentRoutes(services: AttachmentService, scopes: Scop
     .delete("/tasks", v("json", taskAttachmentRequest), scopes.workspace("json"), async (c) =>
       respond(c, await services.removeTaskAttachment(c.var.scope, c.req.valid("json"))),
     )
+    .get("/tasks/source", v("query", taskAttachmentTarget), scopes.workspace("query"), async (c) =>
+      respond(c, await services.listTaskSourceAttachments(c.var.scope, c.req.valid("query"))),
+    )
     .get(
       "/tasks/content",
       v("query", taskAttachmentRequest),

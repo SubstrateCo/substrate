@@ -37,6 +37,8 @@ To find your own tasks, call \`list_tasks\` with \`assigneeActorId: "me"\`. To a
 - Write a short title that starts with a verb, for example "Write launch checklist".
 - Put context, links and acceptance criteria in the description. It accepts Markdown.
 - If the task comes from a message, set \`sourceMessageId\`. The task then links back to the message. Pasting the message text into the description is not enough.
+- The source message's files, such as a screenshot in a bug report, then show on the task in \`sourceAttachments\` for readers who can open the message. Check them with \`read_file\` to describe the problem; do not ask for the file again.
+- \`attach_task_file\` shares a message's file with everyone who can open the task. Use it only when your owner asks to attach the file to the task. It runs only in interactive turns.
 - For a subtask, set \`parentTaskId\`. A subtask must be in the same project as its parent.
 - Before you create a task, look for an existing one with the same work: \`search_names\` with \`type: "task"\` for its title, and \`search_content\` for words in its description. If you find one, use its shared discussion instead.
 

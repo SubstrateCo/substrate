@@ -39,6 +39,7 @@ import { rejection } from "../../../../../packages/database/src/testing/rejectio
 import { scopeFixture } from "../../test-support";
 import { executeAgentTool as executeRawTool } from "./execution";
 import { createMcpService } from "./service";
+import { memoryStorage } from "./test-support";
 import { expect, spyOn, test } from "bun:test";
 import { and, eq, sql } from "drizzle-orm";
 
@@ -1003,6 +1004,7 @@ test("invalid fresh tool output rolls back its write and never reaches the publi
       published = true;
       return committed.result;
     },
+    storage: memoryStorage(),
   });
   const parse = mcpTools.create_task.output.parse.bind(mcpTools.create_task.output);
   // Inject a malformed handler result at the output boundary, after the real task write.

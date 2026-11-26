@@ -190,6 +190,12 @@ export const queryKeys = {
     [...queryKeys.tasks(organizationId), "location", taskEntityId] as const,
   taskAttachments: (organizationId: string, projectEntityId: string, taskEntityId: string) =>
     [...queryKeys.tasks(organizationId), "attachments", projectEntityId, taskEntityId] as const,
+  // Nested under taskAttachments, so task refreshes also refresh the source message's files.
+  taskSourceAttachments: (organizationId: string, projectEntityId: string, taskEntityId: string) =>
+    [
+      ...queryKeys.taskAttachments(organizationId, projectEntityId, taskEntityId),
+      "source",
+    ] as const,
   messaging: (organizationId: string) =>
     [...queryKeys.organization(organizationId), "messaging"] as const,
   conversations: (organizationId: string) =>

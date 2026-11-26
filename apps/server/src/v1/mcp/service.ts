@@ -7,6 +7,8 @@ import { ensureUserAgentActor, type Database } from "@substrate/database/trusted
 import type { CommittedPublisher } from "../../shared/committed";
 import type { WorkspaceScope } from "../../shared/scope-types";
 import { serviceResult } from "../../shared/service-result";
+import type { ObjectStorage } from "../../storage/types";
+import { storageFileReader } from "../files/agent-file-reader";
 import { executeAgentTool } from "./execution";
 import type { z } from "zod";
 
@@ -16,7 +18,16 @@ export type ApprovalPending = {
   error: { code: typeof approvalPendingCode; message: string; requestId: string };
 };
 
-export function createMcpService({ db, publish }: { db: Database; publish: CommittedPublisher }) {
+export function createMcpService({
+  db,
+  publish,
+  storage,
+}: {
+  db: Database;
+  publish: CommittedPublisher;
+  storage: ObjectStorage;
+}) {
+  const reader = storageFileReader(storage);
   return {
     async callAgentTool(
       scope: WorkspaceScope,
@@ -37,6 +48,7 @@ export function createMcpService({ db, publish }: { db: Database; publish: Commi
             call.tool,
             call.input,
             call.turn,
+            reader,
           ),
         );
       });

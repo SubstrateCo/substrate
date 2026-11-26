@@ -107,13 +107,13 @@ test("a bound home-agent DM finds older unread mail and reads its HTML privately
     labels = ["UNREAD"];
     expect((await read()).isError).toBe(true);
     mail.backend.inbox = false;
-    expect((await search()).content[0]?.text).toContain("APP_DISABLED");
+    expect((await search()).content[0].text).toContain("APP_DISABLED");
     mail.backend.inbox = true;
     mail.backend.scope = { ...scope, userId: "someone-else" };
     mail.authority.invalidate();
     expect((await search()).isError).toBe(true);
     await f.emit(followup.turnId, { type: "turn.completed", result: { status: "completed" } });
-    expect((await search()).content[0]?.text).toContain("NO_TURN");
+    expect((await search()).content[0].text).toContain("NO_TURN");
   } finally {
     await f.close();
     await mail.close();
@@ -153,7 +153,7 @@ test("a shared thread, forged origin, or caller context cannot obtain the owner'
       invocationIds: [caller.invocationId],
     });
     expect(
-      (await f.toolEndpoint(shared.sessionId)!.call("search_inbox", q)).content[0]?.text,
+      (await f.toolEndpoint(shared.sessionId)!.call("search_inbox", q)).content[0].text,
     ).toContain("FORBIDDEN");
     await f.emit(shared.turnId, { type: "turn.completed", result: { status: "completed" } });
     await f.message();
@@ -179,7 +179,7 @@ test("a shared thread, forged origin, or caller context cannot obtain the owner'
     }
     const endpoint = f.toolEndpoint(dm.sessionId)!;
     f.catalog[0]!.home = false;
-    expect((await endpoint.call("search_inbox", q)).content[0]?.text).toContain("FORBIDDEN");
+    expect((await endpoint.call("search_inbox", q)).content[0].text).toContain("FORBIDDEN");
     expect(searches).toBe(0);
     f.catalog[0]!.home = true;
     const call = endpoint.call("search_inbox", q);

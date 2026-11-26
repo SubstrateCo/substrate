@@ -287,6 +287,68 @@ test("results above the offload limit are written inside the folder and returned
   }
 });
 
+const fileInput = {
+  type: "message_attachment",
+  messageId: "5a9f2d61-0b4e-4c1a-9d3f-7e8a6b5c4d21",
+  attachmentId: "7c1e3b52-9a4d-4f60-8e2b-1d0c9f8a7b63",
+} as const;
+const fileMetadata = { file: fileInput, filename: "bug.png", contentType: "image/png", size: 9 };
+
+test("an image from read_file reaches the model as an image block, not as offloaded JSON", async () => {
+  // Large enough that the generic path would offload it to a file.
+  const data = Buffer.alloc(32 * 1024, 7).toString("base64");
+  const mcp = await connected({
+    workspace: async () => ({
+      success: true,
+      data: { ...fileMetadata, content: { kind: "image", mimeType: "image/webp", data } },
+    }),
+  });
+  try {
+    mcp.lease.bind(turn);
+    const result = await mcp.client.callTool({ name: "read_file", arguments: { file: fileInput } });
+    expect(result.content).toEqual([
+      {
+        type: "text",
+        text: JSON.stringify({
+          ...fileMetadata,
+          content: { kind: "image", mimeType: "image/webp" },
+        }),
+      },
+      { type: "image", data, mimeType: "image/webp" },
+    ]);
+    expect(await readdir(folder)).toEqual([]);
+  } finally {
+    await mcp.close();
+  }
+});
+
+test("download_file writes the bytes inside the folder and returns only the path", async () => {
+  const bytes = Buffer.from("%PDF-1.7 report");
+  const mcp = await connected({
+    workspace: async () => ({
+      success: true,
+      data: { ...fileMetadata, filename: "../Q3 report?.pdf", data: bytes.toString("base64") },
+    }),
+  });
+  try {
+    mcp.lease.bind(turn);
+    const result = await mcp.client.callTool({
+      name: "download_file",
+      arguments: { file: fileInput },
+    });
+    const path = `.substrate/files/${turn.turnId}/${fileInput.attachmentId}-_Q3 report_.pdf`;
+    expect(result.structuredContent).toEqual({
+      ...fileMetadata,
+      filename: "../Q3 report?.pdf",
+      path,
+    });
+    expect(text(result)).not.toContain(bytes.toString("base64"));
+    expect(await readFile(join(folder, path))).toEqual(bytes);
+  } finally {
+    await mcp.close();
+  }
+});
+
 test("the native Meetings lease exposes the tools and keeps a large private source page out of the shared agent folder", async () => {
   const input = {
     meetingId: crypto.randomUUID(),

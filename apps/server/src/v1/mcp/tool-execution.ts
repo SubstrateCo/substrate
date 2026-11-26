@@ -10,6 +10,7 @@ import {
 import {
   requireAppsEnabled,
   effectsFor,
+  type FileContentReader,
   type SessionIdentity,
   workspaceContext,
   AccessDeniedError,
@@ -77,6 +78,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
   tool: K,
   input: McpInput<K>,
   turn: TurnContext,
+  reader?: FileContentReader,
 ): Promise<Extract<AgentToolExecution, { tool: K }> | PendingToolCall> {
   const definition = mcpTools[tool];
   // Hints go to the caller's commit() collector and are published after commit.
@@ -105,6 +107,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     identity,
     { ...agent, userName },
     { kind: "turn", turn, userAgentId },
+    reader,
   ); // Recheck access before returning a previously created record's identifiers.
   const replayChecks: ReplayChecks = {
     async create_meeting(value, previous) {
@@ -222,6 +225,10 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     },
     async remove_task_link(value) {
       await tasks.get(value.taskId);
+    },
+    async attach_task_file(value) {
+      await tasks.get(value.taskId);
+      await requireMessage(tx, identity, value.file.messageId);
     },
     async reply(_, previous) {
       await requireMessage(tx, identity, previous.messageId);

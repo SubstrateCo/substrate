@@ -135,6 +135,69 @@ test("an agent that advertises MCP-over-ACP gets the lease's tools over mcp/mess
   await f.adapter.disconnect();
 });
 
+test("an image from read_file reaches an MCP-over-ACP agent as an image block", async () => {
+  const file = {
+    type: "message_attachment",
+    messageId: "5a9f2d61-0b4e-4c1a-9d3f-7e8a6b5c4d21",
+    attachmentId: "7c1e3b52-9a4d-4f60-8e2b-1d0c9f8a7b63",
+  };
+  const data = Buffer.from("webp bytes").toString("base64");
+  const images = await createStartupMcp({
+    workspace: async () => ({
+      success: true,
+      data: {
+        file,
+        filename: "bug.png",
+        contentType: "image/png",
+        size: 10,
+        content: { kind: "image", mimeType: "image/webp", data },
+      },
+    }),
+  });
+  try {
+    const lease = images.issue({
+      organizationId: "org-a",
+      agentId: "agent-a",
+      sessionId: "session-a",
+      tools: ["read_file"],
+      folder,
+      agentFolder: folder,
+    });
+    const f = await open(
+      {
+        agentCapabilities: { mcpCapabilities: { acp: true } },
+        defaultTurn: [
+          {
+            mcp: {
+              server: "substrate",
+              method: "tools/call",
+              params: { name: "read_file", arguments: { file } },
+            },
+          },
+        ],
+      },
+      lease,
+    );
+    lease.bind(turn);
+    await f.run();
+    lease.unbind();
+    const result = z
+      .object({
+        result: z.object({
+          content: z.tuple([
+            z.object({ type: z.literal("text") }),
+            z.object({ type: z.literal("image"), data: z.string(), mimeType: z.string() }),
+          ]),
+        }),
+      })
+      .parse(f.record.mcp[0]);
+    expect(result.result.content[1]).toEqual({ type: "image", data, mimeType: "image/webp" });
+    await f.adapter.disconnect();
+  } finally {
+    await images.close();
+  }
+});
+
 test("MCP-over-ACP calls outside a bound turn return NO_TURN and never reach the workspace", async () => {
   const lease = issue();
   const f = await open(
