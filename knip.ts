@@ -29,6 +29,23 @@ export default {
       // Vendored shadcn components retain their upstream exports.
       ignore: ["src/components/ui/**"],
     },
+    "apps/mobile": {
+      // Metro picks `.web` files over their native siblings when it bundles for web.
+      // NativeWind's Metro wrapper reads tailwind.config from the working directory, so knip
+      // cannot load metro.config.js as a plugin; it reads its imports as an entry instead.
+      entry: ["src/**/*.web.{ts,tsx}", "metro.config.js"],
+      project: ["src/**/*.{ts,tsx}", "e2e/**/*.ts", "scripts/**/*.ts", "*.config.{js,ts}", "*.css"],
+      metro: false,
+      // Vendored React Native Reusables components retain their upstream exports.
+      ignore: ["src/components/ui/**"],
+      ignoreDependencies: [
+        // babel.config.js resolves NativeWind's Babel plugins from this app at runtime.
+        "react-native-css-interop",
+        "@babel/plugin-transform-react-jsx",
+        // Knip's Expo plugin assumes OTA updates; this app does not use them.
+        "expo-updates",
+      ],
+    },
     // Package entry points come from each package.json exports map.
     "packages/client-storage": {
       entry: ["src/mail/list-worker-entry.ts"],
