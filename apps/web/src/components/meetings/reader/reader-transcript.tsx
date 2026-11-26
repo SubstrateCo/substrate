@@ -1,7 +1,5 @@
 import { providerNames, type OriginalView } from "@substrate/contracts/meetings";
 
-import { useEffect } from "react";
-
 import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { recordRows } from "@/components/layout/record-section";
@@ -10,7 +8,13 @@ import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { Item, ItemContent, ItemMedia } from "@/components/ui/item";
 import { formatTranscriptOffset } from "@/lib/format/date";
+import { sourceView } from "@/lib/meetings/navigation";
 import { AudioLines } from "lucide-react";
+
+/** The element id of one transcript turn row. */
+export function turnRowId(originalId: string, turn: number) {
+  return `turn-${originalId}-${turn}`;
+}
 
 export function ReaderTranscript({
   originals,
@@ -22,10 +26,6 @@ export function ReaderTranscript({
   turn?: number;
 }) {
   const { change } = useMeetingsWorkspace();
-  useEffect(() => {
-    if (originalId && turn !== undefined)
-      document.getElementById(`turn-${originalId}-${turn}`)?.focus();
-  }, [originalId, turn]);
   const transcripts = originals.filter((r) => r.turns.length);
   const pending = originals.filter((r) => r.transcriptState === "pending");
   return (
@@ -34,10 +34,7 @@ export function ReaderTranscript({
         <section key={r.id} className="not-first:mt-5 not-first:border-t not-first:pt-4">
           <div className="mb-1 flex items-baseline justify-between gap-2">
             <Heading level={3}>Transcript</Heading>
-            <OriginalBadge
-              provider={r.provider}
-              onClick={() => change({ readerTab: "sources", originalId: r.id, turn: undefined })}
-            />
+            <OriginalBadge provider={r.provider} onClick={() => change(sourceView(r.id))} />
           </div>
           <p className="mb-2 text-xs text-muted-foreground">
             {r.provider === "manual"
@@ -48,7 +45,7 @@ export function ReaderTranscript({
             {r.turns.map((t, i) => (
               <Item key={i} asChild size="xs" className="items-baseline">
                 <li
-                  id={`turn-${r.id}-${i}`}
+                  id={turnRowId(r.id, i)}
                   tabIndex={-1}
                   aria-current={originalId === r.id && turn === i ? "true" : undefined}
                   className="aria-current:bg-row-selected aria-current:text-row-selected-foreground"

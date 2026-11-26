@@ -26,3 +26,7 @@ export const closedReader = {
   originalId: undefined,
   turn: undefined,
 };
+/** The reader view that shows one attached source on the Sources tab. */
+export function sourceView(originalId: string): Partial<MeetingSearch> {
+  return { readerTab: "sources", originalId, turn: undefined };
+}

@@ -1,13 +1,10 @@
-import type { CalendarEventSummary } from "@substrate/contracts/calendar";
-
-import { Link, type LinkProps } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 
 import type { ComponentProps, ReactNode } from "react";
 
 import { CalendarAgenda } from "./calendar-agenda";
 import { CalendarFilter } from "./calendar-filter";
 import { CalendarToolbar } from "./calendar-toolbar";
-import { CalendarWeek } from "./calendar-week";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { InlineNotice } from "@/components/feedback/inline-notice";
@@ -21,7 +18,6 @@ import {
 } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { AgendaDay, CalendarViewMode } from "@/lib/calendar/days";
 import type { CalendarGroup } from "@/lib/calendar/groups";
 import { CalendarDays, Plus, Settings, TriangleAlert } from "lucide-react";
 
@@ -44,13 +40,7 @@ export function CalendarWorkspaceView({
   onToggleCalendar,
   toolbar,
   needsReconnect,
-  view,
-  weekDays,
-  agenda,
-  events,
-  now,
-  selectedEventId,
-  eventLink,
+  body,
   aside,
 }: {
   state: CalendarBodyState;
@@ -61,13 +51,8 @@ export function CalendarWorkspaceView({
   toolbar: ComponentProps<typeof CalendarToolbar>;
   /** A connected calendar needs the user to grant access again. */
   needsReconnect: boolean;
-  view: CalendarViewMode;
-  weekDays: readonly Date[];
-  agenda: readonly AgendaDay[];
-  events: readonly CalendarEventSummary[];
-  now: number;
-  selectedEventId?: string;
-  eventLink: (event: CalendarEventSummary) => LinkProps;
+  /** The week or agenda, shown once the calendar is ready. */
+  body: ReactNode;
   /** The open event's pane. */
   aside?: ReactNode;
 }) {
@@ -129,35 +114,26 @@ export function CalendarWorkspaceView({
             }
           />
         )}
-        {state === "ready" && view === "week" && (
-          <CalendarWeek
-            days={weekDays}
-            events={events}
-            now={now}
-            selectedEventId={selectedEventId}
-            eventLink={eventLink}
-          />
-        )}
-        {state === "ready" && view === "agenda" && (
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            {agenda.length > 0 ? (
-              <CalendarAgenda
-                days={agenda}
-                now={now}
-                selectedEventId={selectedEventId}
-                eventLink={eventLink}
-              />
-            ) : (
-              <ContentNotice
-                icon={CalendarDays}
-                title="Nothing scheduled"
-                description="No events in these two weeks. Hidden calendars are not shown."
-              />
-            )}
-          </div>
-        )}
+        {state === "ready" && body}
       </PageContent>
       {aside}
     </PageLayout>
+  );
+}
+
+/** The agenda view's days, or a notice when nothing is scheduled. */
+export function CalendarAgendaBody(props: ComponentProps<typeof CalendarAgenda>) {
+  return (
+    <div className="min-h-0 flex-1 overflow-y-auto">
+      {props.days.length > 0 ? (
+        <CalendarAgenda {...props} />
+      ) : (
+        <ContentNotice
+          icon={CalendarDays}
+          title="Nothing scheduled"
+          description="No events in these two weeks. Hidden calendars are not shown."
+        />
+      )}
+    </div>
   );
 }

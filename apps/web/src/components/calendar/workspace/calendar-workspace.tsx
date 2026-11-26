@@ -6,7 +6,12 @@ import { linkOptions, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { CalendarEventPanel } from "../event/calendar-event-panel";
-import { CalendarWorkspaceView, type CalendarBodyState } from "./calendar-workspace-view";
+import { CalendarWeek } from "./calendar-week";
+import {
+  CalendarAgendaBody,
+  CalendarWorkspaceView,
+  type CalendarBodyState,
+} from "./calendar-workspace-view";
 import { isCalendarAccessRequired } from "@/api/calendar/access";
 import { useNow } from "@/hooks/use-now";
 import {
@@ -101,13 +106,24 @@ export function CalendarWorkspace({
           search({ view: next, date: date ? formatDateOnly(anchor) : undefined }),
       }}
       needsReconnect={needsReconnect}
-      view={view}
-      weekDays={days}
-      agenda={groupEventsByDay(visible, days, showsToday ? today : undefined)}
-      events={visible}
-      now={now}
-      selectedEventId={eventId}
-      eventLink={eventLink}
+      body={
+        view === "week" ? (
+          <CalendarWeek
+            days={days}
+            events={visible}
+            now={now}
+            selectedEventId={eventId}
+            eventLink={eventLink}
+          />
+        ) : (
+          <CalendarAgendaBody
+            days={groupEventsByDay(visible, days, showsToday ? today : undefined)}
+            now={now}
+            selectedEventId={eventId}
+            eventLink={eventLink}
+          />
+        )
+      }
       aside={
         eventId && (
           <CalendarEventPanel

@@ -8,7 +8,7 @@ import { useEffect, useRef } from "react";
 import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { ReaderNotes } from "./reader-notes";
 import { ReaderOriginals } from "./reader-originals";
-import { ReaderTranscript } from "./reader-transcript";
+import { ReaderTranscript, turnRowId } from "./reader-transcript";
 import { isAccessFailure } from "@/api/access-failure";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -28,6 +28,7 @@ import {
   parseDateOnly,
 } from "@/lib/format/date";
 import { peopleLabels } from "@/lib/meetings/display";
+import { sourceView } from "@/lib/meetings/navigation";
 import { messageLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
 import { CalendarDays, Clock3, NotebookPen, PanelRight, Unlink, Video, X } from "lucide-react";
@@ -40,12 +41,19 @@ function ReaderContent({
   const { queries, search, change } = useMeetingsWorkspace();
   const tab = search.readerTab ?? "notes";
   const title = useRef<HTMLHeadingElement>(null);
+  const opened = useRef(false);
+  const turnId =
+    tab === "transcript" && search.originalId && search.turn !== undefined
+      ? turnRowId(search.originalId, search.turn)
+      : undefined;
   useEffect(() => {
-    // MeetingReader is keyed by meeting, so this runs once per meeting opened. A deep-linked
-    // transcript turn takes focus in its own panel.
-    if (!document.activeElement?.id.startsWith("turn-"))
-      title.current?.focus({ preventScroll: true });
-  }, []);
+    // MeetingReader is keyed by meeting, so the title takes focus once per meeting opened,
+    // unless a deep-linked transcript turn takes it. A later turn link focuses its turn.
+    const turnRow = turnId ? document.getElementById(turnId) : null;
+    if (turnRow) turnRow.focus();
+    else if (!opened.current) title.current?.focus({ preventScroll: true });
+    opened.current = true;
+  }, [turnId]);
   const people = peopleLabels(meeting.people);
   return (
     <div className="mx-auto w-full max-w-200">
@@ -95,7 +103,7 @@ function ReaderContent({
             <OriginalBadge
               key={r.id}
               provider={r.provider}
-              onClick={() => change({ readerTab: "sources", originalId: r.id, turn: undefined })}
+              onClick={() => change(sourceView(r.id))}
             />
           ))}
         </div>

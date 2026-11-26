@@ -9,6 +9,7 @@ import { MarkdownBody } from "@/components/messaging/markdown/markdown-body";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { Item, ItemContent, ItemMedia } from "@/components/ui/item";
+import { sourceView } from "@/lib/meetings/navigation";
 import { Layers3, ListTodo, Quote } from "lucide-react";
 import type { ExtraProps, Options } from "react-markdown";
 
@@ -83,10 +84,7 @@ function SourceNote({ src, single }: { src: OriginalView; single: boolean }) {
     <article className="space-y-2 not-first:mt-5 not-first:border-t not-first:pt-4">
       <div className="flex items-baseline justify-between gap-2">
         <Heading level={3}>{single ? "Summary" : `${providerNames[src.provider]} notes`}</Heading>
-        <OriginalBadge
-          provider={src.provider}
-          onClick={() => change({ readerTab: "sources", originalId: src.id, turn: undefined })}
-        />
+        <OriginalBadge provider={src.provider} onClick={() => change(sourceView(src.id))} />
       </div>
       <NoteSource value={src}>
         <MarkdownBody
