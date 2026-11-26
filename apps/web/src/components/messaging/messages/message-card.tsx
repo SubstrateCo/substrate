@@ -1,6 +1,6 @@
 import { createContext, useContext, useId, type ComponentType, type ReactNode } from "react";
 
-import { toneBorder, toneFill } from "@/components/feedback/tag";
+import { toneBorder, toneFill } from "@/components/feedback/tag-styles";
 import { Heading } from "@/components/ui/heading";
 import { cn } from "cn";
 

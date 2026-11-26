@@ -24,7 +24,7 @@ import {
 } from "@/components/layout/page-layout";
 import { PageSheet } from "@/components/layout/page-sheet";
 import { Button } from "@/components/ui/button";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { Building2, LayoutDashboard, Plus, Users } from "lucide-react";
 
 type Days = "7" | "30" | "all";

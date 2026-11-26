@@ -8,7 +8,8 @@ import type { MailAPI } from "@substrate/contracts/mail/ipc";
 
 import { useRef, useState, type ComponentProps } from "react";
 
-import { canChangeMail, MailActionButton } from "./mail-action-button";
+import { MailActionButton } from "./mail-action-button";
+import { canChangeMail } from "./mailbox-access";
 import { MessageList } from "./message-list";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FormMessage } from "@/components/feedback/form-message";

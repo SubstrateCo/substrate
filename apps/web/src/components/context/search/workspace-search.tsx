@@ -8,7 +8,7 @@ import {
   type SearchKind,
 } from "@/components/context/search/workspace-search-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { resourceState } from "@/lib/resource-state";
 import { searchPagesOptions, useJoinSearchConversation } from "@/queries/context/search";

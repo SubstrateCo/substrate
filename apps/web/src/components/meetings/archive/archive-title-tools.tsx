@@ -1,5 +1,5 @@
 import { DesktopTitleBarContent } from "@/components/desktop/desktop-title-bar-content";
-import { useTheme } from "@/components/theme/theme-provider";
+import { useTheme } from "@/components/theme/theme-context";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";

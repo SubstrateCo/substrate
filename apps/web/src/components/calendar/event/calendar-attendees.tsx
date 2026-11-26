@@ -15,7 +15,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { attendeeRoleLabel, sortAttendees } from "@/lib/calendar/labels";
 import { personLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";

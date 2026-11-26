@@ -5,7 +5,7 @@ import { TurnTimelineLoading } from "./turn-timeline";
 import { PaneState } from "@/components/feedback/pane-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
-import { toneText } from "@/components/feedback/tag";
+import { toneText } from "@/components/feedback/tag-styles";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageAside, useAsideCovers } from "@/components/layout/page-layout";
 import { Timestamp } from "@/components/time/timestamp";

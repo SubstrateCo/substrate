@@ -19,7 +19,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { useInteractionSources } from "@/queries/calendar/interaction-sources";
 import { interactionTimelineOptions } from "@/queries/context/interactions";

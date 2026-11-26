@@ -1,5 +1,5 @@
 import { SegmentedControl } from "../forms/segmented-control";
-import { useTheme } from "./theme-provider";
+import { useTheme } from "./theme-context";
 import { Monitor, Moon, Sun } from "lucide-react";
 
 const options = [

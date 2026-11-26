@@ -8,7 +8,7 @@ import { NotificationGroupEvents } from "./notification-group-events";
 import { notificationPresentation, showsNotification } from "./notification-presentation";
 import { NotificationList as NotificationListView } from "@/components/context/notifications/notification-list-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { resourceState } from "@/lib/resource-state";
 import {
   notificationGroupsOptions,

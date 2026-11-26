@@ -21,7 +21,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { contactLink, crmLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";

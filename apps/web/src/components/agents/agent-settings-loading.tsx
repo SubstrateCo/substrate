@@ -1,9 +1,7 @@
 import { agentTriggers } from "@substrate/contracts/agents";
 
-import {
-  ConfigurationListLoading,
-  configurationSections,
-} from "@/components/agents/device/configuration-sections";
+import { configurationSections } from "@/components/agents/device/configuration-section-copy";
+import { ConfigurationListLoading } from "@/components/agents/device/configuration-sections";
 import {
   GeneralSettingsLayout,
   InstructionsSettingsLayout,

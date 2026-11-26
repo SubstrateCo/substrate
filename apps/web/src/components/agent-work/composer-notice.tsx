@@ -2,7 +2,7 @@ import { Link } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
-import { toneText } from "@/components/feedback/tag";
+import { toneText } from "@/components/feedback/tag-styles";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { WorkTone } from "@/lib/agent-work/status";

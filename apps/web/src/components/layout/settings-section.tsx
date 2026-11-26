@@ -1,7 +1,7 @@
 import { useId, type ReactNode } from "react";
 
 import { PendingButton } from "../feedback/pending-button";
-import { toneBorder } from "@/components/feedback/tag";
+import { toneBorder } from "@/components/feedback/tag-styles";
 import { Button } from "@/components/ui/button";
 import { FieldLabel } from "@/components/ui/field";
 import { Heading } from "@/components/ui/heading";

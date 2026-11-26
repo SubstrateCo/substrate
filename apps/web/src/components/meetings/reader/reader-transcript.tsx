@@ -1,6 +1,7 @@
 import { providerNames, type OriginalView } from "@substrate/contracts/meetings";
 
 import { useMeetingsWorkspace } from "../meetings-workspace-context";
+import { turnRowId } from "./transcript-turn-id";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { recordRows } from "@/components/layout/record-section";
 import { OriginalBadge } from "@/components/meetings/sources/meeting-provider";
@@ -10,11 +11,6 @@ import { Item, ItemContent, ItemMedia } from "@/components/ui/item";
 import { formatTranscriptOffset } from "@/lib/format/date";
 import { sourceView } from "@/lib/meetings/navigation";
 import { AudioLines } from "lucide-react";
-
-/** The element id of one transcript turn row. */
-export function turnRowId(originalId: string, turn: number) {
-  return `turn-${originalId}-${turn}`;
-}
 
 export function ReaderTranscript({
   originals,

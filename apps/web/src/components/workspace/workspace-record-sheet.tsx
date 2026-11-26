@@ -2,10 +2,11 @@ import { Link, useNavigate } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
-import { useOrganizationApps } from "./organization-apps";
+import { useOrganizationApps } from "./organization-apps-context";
 import { ContactDetail } from "@/components/contacts/contact-detail";
 import { InteractionDetail } from "@/components/interactions/interaction-detail";
-import { PageSheet, PageSheetSuspendedContext } from "@/components/layout/page-sheet";
+import { PageSheet } from "@/components/layout/page-sheet";
+import { PageSheetSuspendedContext } from "@/components/layout/page-sheet-context";
 import { interactionPersonLink } from "@/lib/navigation/record-links";
 
 /**

@@ -1,21 +1,10 @@
+import { ownOrganizationFirst, type ChannelOrganization } from "./channel-organizations";
 import { Tag } from "@/components/feedback/tag";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { ChevronDown, Globe } from "lucide-react";
-
-export type ChannelOrganization = {
-  id: string;
-  name: string;
-  host: boolean;
-  own: boolean;
-};
-
-/** The viewer's own organization first, then the others in their given order. */
-export function ownOrganizationFirst(organizations: readonly ChannelOrganization[]) {
-  return [...organizations].sort((a, b) => Number(b.own) - Number(a.own));
-}
 
 export function ConversationOrganizations({
   organizations,

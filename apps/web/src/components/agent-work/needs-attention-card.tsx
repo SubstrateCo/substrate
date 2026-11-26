@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 import { TechnicalDetails } from "./technical-details";
 import { PendingButton } from "@/components/feedback/pending-button";
-import { toneBorder, toneFill } from "@/components/feedback/tag";
+import { toneBorder, toneFill } from "@/components/feedback/tag-styles";
 import { MessageCard, MessageCardBody } from "@/components/messaging/messages/message-card";
 import { stoppedNeedsYouLabel } from "@/lib/agent-work/status";
 import { cn } from "cn";

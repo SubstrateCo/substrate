@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { MeetingList } from "./meeting-list";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useNow } from "@/hooks/use-now";
 import { eventDate } from "@/lib/calendar/days";
 import { calendarLink } from "@/lib/navigation/record-links";

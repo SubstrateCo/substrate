@@ -2,24 +2,11 @@ import { appEnabled, requiredAppsForEntityType, type AppId } from "@substrate/co
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 
+import { AppsContext } from "./organization-apps-context";
 import { organizationAppsOptions } from "@/queries/organizations/apps";
 import { clearAppData } from "@/queries/organizations/apps-cache";
-
-const AppsContext = createContext<{
-  enabled: (app: AppId) => boolean;
-  entityEnabled: (type: string) => boolean;
-  ready: boolean;
-  error: Error | null;
-  retry: () => void;
-}>({
-  enabled: () => false,
-  entityEnabled: () => false,
-  ready: false,
-  error: null,
-  retry: () => {},
-});
 
 export function OrganizationAppsProvider({
   userId,
@@ -65,5 +52,3 @@ export function OrganizationAppsProvider({
     </AppsContext.Provider>
   );
 }
-
-export const useOrganizationApps = () => useContext(AppsContext);

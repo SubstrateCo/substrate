@@ -6,10 +6,8 @@ import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { RecordSection } from "@/components/layout/record-section";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
-import {
-  DeletedMessageBody,
-  messageAuthorName,
-} from "@/components/messaging/messages/message-placeholders";
+import { messageAuthorName } from "@/components/messaging/messages/message-author";
+import { DeletedMessageBody } from "@/components/messaging/messages/message-placeholders";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
 import { Skeleton } from "@/components/ui/skeleton";

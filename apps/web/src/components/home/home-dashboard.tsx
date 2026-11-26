@@ -14,7 +14,7 @@ import { TaskPriorityIcon } from "@/components/tasks/task-cues/task-priority-ico
 import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { DueDate } from "@/components/time/due-date";
 import { Timestamp } from "@/components/time/timestamp";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useNow } from "@/hooks/use-now";
 import { hiddenConversation } from "@/lib/agent-work/hidden-records";
 import { needsYouItems } from "@/lib/agent-work/needs-you";

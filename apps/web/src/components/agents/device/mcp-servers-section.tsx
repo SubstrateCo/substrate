@@ -3,7 +3,7 @@ import { maxHarnessMcpServers, type HarnessMcpServer } from "@substrate/contract
 import { type ReactNode } from "react";
 
 import { CatalogRow } from "../catalog/catalog-row";
-import { configurationSections } from "./configuration-sections";
+import { configurationSections } from "./configuration-section-copy";
 import { McpServerRow } from "./startup-configuration";
 import { SettingsList, SettingsNote, SettingsSection } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";

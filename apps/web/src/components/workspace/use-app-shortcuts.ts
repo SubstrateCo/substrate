@@ -3,7 +3,7 @@ import { isOptionalApp } from "@substrate/contracts/apps";
 import { useHotkeys } from "@tanstack/react-hotkeys";
 import { useNavigate } from "@tanstack/react-router";
 
-import { useOrganizationApps } from "./organization-apps";
+import { useOrganizationApps } from "./organization-apps-context";
 import { notificationsApp, workspaceApps } from "./workspace-apps";
 
 // Text fields, menus, and listboxes keep their keys through `ignoreInputs`. Open dialogs own the

@@ -4,7 +4,7 @@ import { Link } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
-import { toneFill } from "@/components/feedback/tag";
+import { toneFill } from "@/components/feedback/tag-styles";
 import {
   PageSidebar,
   PageSidebarContent,

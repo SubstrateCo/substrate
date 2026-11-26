@@ -9,7 +9,7 @@ import {
   type ReferenceTab,
 } from "@/components/messaging/references/reference-picker-view";
 import type { ReferenceQuery } from "@/components/messaging/references/reference-query";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { searchOptions } from "@/queries/context/search";
 

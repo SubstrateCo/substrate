@@ -5,7 +5,7 @@ import { DeleteConversationDialog } from "./actions/delete-conversation-dialog";
 import { LeaveConversationDialog } from "./actions/leave-conversation-dialog";
 import { OwnerDialog } from "./actions/owner-dialog";
 import { ConversationAgents } from "./conversation-agents";
-import { focusConversationSidebar } from "./conversation-sidebar";
+import { focusConversationSidebar } from "./conversation-sidebar-focus";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { SharingManager } from "@/components/messaging/sharing/sharing-manager";
 import {

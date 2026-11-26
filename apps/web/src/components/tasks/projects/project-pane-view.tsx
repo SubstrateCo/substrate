@@ -15,7 +15,8 @@ import { DiscardChangesDialog } from "@/components/feedback/discard-changes-dial
 import { ErrorState } from "@/components/feedback/error-state";
 import { FormDialog, type FormDialogEditor } from "@/components/feedback/form-dialog";
 import { StaleNotice } from "@/components/feedback/stale-notice";
-import { UnsavedDraftsProvider, useDraftKeys } from "@/components/feedback/unsaved-drafts";
+import { UnsavedDraftsProvider } from "@/components/feedback/unsaved-drafts";
+import { useDraftKeys } from "@/components/feedback/unsaved-drafts-context";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageContent } from "@/components/layout/page-layout";

@@ -3,14 +3,12 @@ import type { ReactNode } from "react";
 import { MessageMarkdown } from "../markdown/message-markdown";
 import type { Message } from "../types";
 import { Tag } from "@/components/feedback/tag";
+import { messageAuthorName } from "@/components/messaging/messages/message-author";
 import {
   MessageReactions,
   MessageToolbar,
 } from "@/components/messaging/messages/message-interactions";
-import {
-  DeletedMessageBody,
-  messageAuthorName,
-} from "@/components/messaging/messages/message-placeholders";
+import { DeletedMessageBody } from "@/components/messaging/messages/message-placeholders";
 import { MessageRowLayout } from "@/components/messaging/messages/message-row-layout";
 import { useHasPersonCard } from "@/components/messaging/people/person-card-context";
 import { PersonCardTarget } from "@/components/messaging/people/person-card-slot";

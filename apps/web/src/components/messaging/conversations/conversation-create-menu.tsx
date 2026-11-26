@@ -1,6 +1,6 @@
 import { useRef, useState, type ReactNode } from "react";
 
-import { useWorkspaceSearch } from "@/components/context/search/workspace-search-context";
+import { useWorkspaceSearch } from "@/components/context/search/workspace-search-request";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
 import {

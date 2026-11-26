@@ -3,7 +3,8 @@ import { Link, type LinkProps } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { ConversationKindIcon } from "./conversation-kind-icon";
-import { badgeCount, CountBadge } from "@/components/feedback/count-badge";
+import { badgeCount } from "@/components/feedback/badge-count";
+import { CountBadge } from "@/components/feedback/count-badge";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Button } from "@/components/ui/button";
 import { buttonVariants } from "@/components/ui/button-variants";

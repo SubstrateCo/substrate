@@ -1,6 +1,6 @@
 import type { MessageContextState } from "./message-context";
 import type { WorkspaceReference } from "@/components/messaging/references/entity-reference";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { linkedWorkLink, messageLink } from "@/lib/navigation/record-links";
 
 /** The workspace references a message's tokens resolve to, as far as the viewer can open them. */

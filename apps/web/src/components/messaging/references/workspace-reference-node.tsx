@@ -1,41 +1,7 @@
-import { createContext, useContext, type MouseEvent } from "react";
-
-import {
-  EntityReference,
-  type WorkspaceReference,
-} from "@/components/messaging/references/entity-reference";
 import { referenceToken } from "@/components/messaging/references/reference-editor-document";
-import { referenceKey } from "@/lib/messaging/reference-token";
+import { ReferenceNodeView } from "@/components/messaging/references/reference-node-view";
 import { Node } from "@tiptap/core";
-import { NodeViewWrapper, ReactNodeViewRenderer, type NodeViewProps } from "@tiptap/react";
-
-export const ReferencesContext = createContext(new Map<string, WorkspaceReference>());
-
-function ReferenceNodeView({ node, editor, getPos }: NodeViewProps) {
-  const references = useContext(ReferencesContext);
-  const reference = references.get(referenceKey(node.attrs.kind, node.attrs.id));
-  return (
-    <NodeViewWrapper
-      as="span"
-      contentEditable={false}
-      className="inline-block max-w-full align-baseline [&>span]:max-w-64"
-      data-reference-chip
-      onMouseDown={(event: MouseEvent<HTMLSpanElement>) => {
-        event.preventDefault();
-        const position = getPos();
-        if (position === undefined) return;
-        editor.commands.setTextSelection(position + node.nodeSize);
-        editor.view.focus();
-      }}
-    >
-      <EntityReference
-        reference={
-          reference ? { id: reference.id, kind: reference.kind, label: reference.label } : undefined
-        }
-      />
-    </NodeViewWrapper>
-  );
-}
+import { ReactNodeViewRenderer } from "@tiptap/react";
 
 export const WorkspaceReferenceNode = Node.create({
   name: "workspaceReference",

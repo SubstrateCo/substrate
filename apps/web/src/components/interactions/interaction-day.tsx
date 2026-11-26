@@ -9,7 +9,7 @@ import { InteractionTable } from "./interaction-table";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { useCursorPages } from "@/components/table";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useInteractionSources } from "@/queries/calendar/interaction-sources";
 import { interactionTimelineOptions } from "@/queries/context/interactions";
 

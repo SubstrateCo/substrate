@@ -7,7 +7,7 @@ import { MessageRecordEditor } from "./message-record-editor";
 import { CrmResourceState } from "@/components/crm/crm-resource-state";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { personLink, recordLink } from "@/lib/navigation/record-links";
 import { useCreateCrmFromMessage } from "@/queries/context/crm-from-message";
 import { crmSettingsOptions, pipelineOptions } from "@/queries/crm/options";

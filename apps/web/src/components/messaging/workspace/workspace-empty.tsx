@@ -1,4 +1,4 @@
-import { useWorkspaceSearch } from "@/components/context/search/workspace-search-context";
+import { useWorkspaceSearch } from "@/components/context/search/workspace-search-request";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { Button } from "@/components/ui/button";
 import type { Conversation } from "@/lib/messaging/conversations";

@@ -2,7 +2,7 @@ import { useHotkey } from "@tanstack/react-hotkeys";
 
 import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 
-import { useWorkspaceSearch } from "./workspace-search-context";
+import { useWorkspaceSearch } from "./workspace-search-request";
 import { Command, CommandInput } from "@/components/ui/command";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { desktopPlatform } from "@/lib/desktop/bridges";

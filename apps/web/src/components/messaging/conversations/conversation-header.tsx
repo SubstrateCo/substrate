@@ -1,11 +1,8 @@
 import { useRef, type ReactNode } from "react";
 
+import { ownOrganizationFirst, type ChannelOrganization } from "./channel-organizations";
 import { ConversationKindIcon } from "./conversation-kind-icon";
-import {
-  ConversationOrganizations,
-  ownOrganizationFirst,
-  type ChannelOrganization,
-} from "./conversation-organizations";
+import { ConversationOrganizations } from "./conversation-organizations";
 import { Tag } from "@/components/feedback/tag";
 import { PageHeader } from "@/components/layout/page-header";
 import { PersonAvatar } from "@/components/people/person-avatar";

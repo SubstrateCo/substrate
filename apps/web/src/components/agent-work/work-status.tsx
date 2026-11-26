@@ -1,5 +1,5 @@
 import { PendingButton } from "@/components/feedback/pending-button";
-import { toneText } from "@/components/feedback/tag";
+import { toneText } from "@/components/feedback/tag-styles";
 import { Pressable } from "@/components/ui/pressable";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { WorkTone } from "@/lib/agent-work/status";

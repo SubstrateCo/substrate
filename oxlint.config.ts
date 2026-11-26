@@ -99,6 +99,8 @@ export default defineConfig({
         "react/no-unstable-nested-components": "error",
         // An effect that re-runs on a value it never reads needs a stated reason.
         "react/exhaustive-effect-dependencies": "error",
+        // Files that export components export only components, so Fast Refresh keeps their state.
+        "react/only-export-components": ["error", { allowConstantExport: true }],
         "no-restricted-properties": [
           "error",
           ...[
@@ -120,6 +122,11 @@ export default defineConfig({
       rules: { "no-restricted-properties": "off" },
     },
     {
+      // TanStack Router's autoCodeSplitting moves route components into their own modules.
+      files: ["apps/web/src/routes/**"],
+      rules: { "react/only-export-components": "off" },
+    },
+    {
       files: [
         "apps/web/src/components/ui/input.tsx",
         "apps/web/src/components/ui/textarea.tsx",
@@ -138,6 +145,8 @@ export default defineConfig({
         "shadcn/no-restyle": "off",
         // Generated shadcn code, such as the react-day-picker component map in calendar.tsx.
         "react/no-unstable-nested-components": "off",
+        // Generated shadcn code exports helpers such as buttonVariants beside components.
+        "react/only-export-components": "off",
       },
     },
     {

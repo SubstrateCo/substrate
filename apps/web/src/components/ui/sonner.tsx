@@ -1,4 +1,4 @@
-import { useTheme } from "@/components/theme/theme-provider";
+import { useTheme } from "@/components/theme/theme-context";
 import { buttonVariants } from "@/components/ui/button-variants";
 import { cn } from "cn";
 import {

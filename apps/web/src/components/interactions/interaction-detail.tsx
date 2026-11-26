@@ -15,7 +15,8 @@ import {
   InteractionChangeDialog,
   type InteractionChange,
 } from "@/components/interactions/interaction-change-dialog";
-import { PageSheetBody, PageSheetHeader, usePageSheet } from "@/components/layout/page-sheet";
+import { PageSheetBody, PageSheetHeader } from "@/components/layout/page-sheet";
+import { usePageSheet } from "@/components/layout/page-sheet-context";
 import { Property, PropertyList, RecordSection } from "@/components/layout/record-section";
 import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
@@ -27,7 +28,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Heading } from "@/components/ui/heading";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { interactionLink } from "@/lib/navigation/record-links";
 import { useInteractionSources } from "@/queries/calendar/interaction-sources";
 import { interactionRecordOptions, useInteractionMutation } from "@/queries/context/interactions";

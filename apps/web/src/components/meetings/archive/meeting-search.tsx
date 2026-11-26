@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { createPortal } from "react-dom";
 
 import { ArchiveTitleTools } from "./archive-title-tools";
-import { useWorkspaceSearch } from "@/components/context/search/workspace-search-context";
+import { useWorkspaceSearch } from "@/components/context/search/workspace-search-request";
 import { Button } from "@/components/ui/button";
 import {
   InputGroup,

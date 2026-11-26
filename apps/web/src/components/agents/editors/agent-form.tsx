@@ -14,11 +14,8 @@ import { UnsavedSectionsBar } from "./unsaved-sections-bar";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import type { FormDialogEditor } from "@/components/feedback/form-dialog";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
-import {
-  RegisterDraft,
-  useDiscardDrafts,
-  useDraftKeys,
-} from "@/components/feedback/unsaved-drafts";
+import { RegisterDraft } from "@/components/feedback/unsaved-drafts";
+import { useDiscardDrafts, useDraftKeys } from "@/components/feedback/unsaved-drafts-context";
 import { FormTextField } from "@/components/forms/form-text-field";
 import { SettingsFooter, SettingsRow } from "@/components/layout/settings-section";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";

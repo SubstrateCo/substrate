@@ -1,21 +1,8 @@
 import { membersButtonSelector, type HeaderMember } from "./conversation-header";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
-import type { Conversation } from "@/lib/messaging/conversations";
 import { useRemoveMember } from "@/queries/messaging/message-mutations";
 import { UserMinus } from "lucide-react";
-
-export function canRemoveMember(conversation: Conversation, userId: string, member: HeaderMember) {
-  return (
-    !conversation.task &&
-    conversation.canManage &&
-    conversation.kind !== "dm" &&
-    member.type === "human" &&
-    member.organizationId === conversation.organizationId &&
-    member.userId !== userId &&
-    member.userId !== conversation.createdBy
-  );
-}
 
 export function RemoveMemberAction({
   member,

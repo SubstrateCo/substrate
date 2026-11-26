@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
-import { badgeCount, CountBadge } from "@/components/feedback/count-badge";
+import { badgeCount } from "@/components/feedback/badge-count";
+import { CountBadge } from "@/components/feedback/count-badge";
 import { EmojiPicker } from "@/components/messaging/composer/emoji-picker";
 import { useQuickReactions } from "@/components/messaging/composer/quick-reactions";
 import type { Message } from "@/components/messaging/types";

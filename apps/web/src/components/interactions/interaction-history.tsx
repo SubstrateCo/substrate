@@ -10,7 +10,7 @@ import { InteractionLink } from "@/components/interactions/interaction-link";
 import { InteractionRow } from "@/components/interactions/interaction-row";
 import { RecordSection, RecordSectionAction, recordRows } from "@/components/layout/record-section";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { resourceState } from "@/lib/resource-state";
 import { useInteractionSources } from "@/queries/calendar/interaction-sources";
 import { useInteractionMutation, interactionsOptions } from "@/queries/context/interactions";

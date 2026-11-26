@@ -10,7 +10,7 @@ import {
   type LinkableWork,
 } from "@/components/context/links/link-message-work-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { resourceState } from "@/lib/resource-state";
 import { useAttachMessageWork } from "@/queries/context/link-mutations";

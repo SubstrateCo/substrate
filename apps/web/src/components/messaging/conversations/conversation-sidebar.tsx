@@ -2,6 +2,7 @@ import type { LinkProps } from "@tanstack/react-router";
 
 import type { KeyboardEvent } from "react";
 
+import { sidebarId } from "./conversation-sidebar-focus";
 import { ErrorState } from "@/components/feedback/error-state";
 import {
   PageSidebar,
@@ -27,18 +28,6 @@ function moveBetweenConversations(event: KeyboardEvent<HTMLDivElement>) {
   if (index < 0 || index >= items.length) return;
   event.preventDefault();
   items[index].focus();
-}
-
-const sidebarId = "conversation-sidebar";
-
-/**
- * Focus fallback for a control that is gone, such as a deleted conversation's menu: the first
- * current conversation or button in the sidebar. Does nothing where the sidebar is not shown.
- */
-export function focusConversationSidebar() {
-  document
-    .querySelector<HTMLElement>(`#${sidebarId} [aria-current="page"], #${sidebarId} button`)
-    ?.focus();
 }
 
 export function ConversationSidebar({

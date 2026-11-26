@@ -1,4 +1,4 @@
-import type { Mailbox, MailMessageAction } from "@substrate/contracts/mail";
+import type { MailMessageAction } from "@substrate/contracts/mail";
 
 import { RowAction } from "@/components/layout/row-actions";
 import { Button } from "@/components/ui/button";
@@ -9,8 +9,6 @@ const actions = {
   markUnread: { label: "Mark as unread", icon: Mail },
   trashMessage: { label: "Move to Trash", icon: Trash2 },
 };
-
-export const canChangeMail = (box: Mailbox) => box.canModify && box.status !== "reconnect";
 
 export function MailActionButton({
   action,

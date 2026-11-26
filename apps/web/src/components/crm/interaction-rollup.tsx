@@ -14,7 +14,7 @@ import { InteractionLink } from "@/components/interactions/interaction-link";
 import { InteractionRow } from "@/components/interactions/interaction-row";
 import { RecordSection, recordRows } from "@/components/layout/record-section";
 import { Pager, useCursorPages } from "@/components/table";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { resourceState } from "@/lib/resource-state";
 import { useInteractionSources } from "@/queries/calendar/interaction-sources";
 import { crmTimelineOptions } from "@/queries/crm/options";

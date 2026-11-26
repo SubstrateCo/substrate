@@ -6,7 +6,7 @@ import { ErrorState } from "../feedback/error-state";
 import { notificationsApp, workspaceApps, type WorkspaceAppId } from "./workspace-apps";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { RealtimeContainerContext } from "@/components/realtime/realtime-container-context";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { WorkspaceAppButton } from "@/components/workspace/workspace-app-button";
 
 export function WorkspaceShell({

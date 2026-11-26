@@ -10,7 +10,8 @@ import { useMutation } from "@tanstack/react-query";
 
 import { useRef } from "react";
 
-import { canChangeMail, MailActionButton } from "./mail-action-button";
+import { MailActionButton } from "./mail-action-button";
+import { canChangeMail } from "./mailbox-access";
 import { useReadDwell } from "./use-read-dwell";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FormMessage } from "@/components/feedback/form-message";

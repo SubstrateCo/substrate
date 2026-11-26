@@ -2,7 +2,7 @@ import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 
 import { BrandMark } from "@/components/auth/brand-mark";
 import { DesktopTitleBarContext } from "@/components/desktop/desktop-title-bar-context";
-import { useTheme } from "@/components/theme/theme-provider";
+import { useTheme } from "@/components/theme/theme-context";
 import { windowBridge } from "@/lib/desktop/bridges";
 import { desktop } from "@/lib/desktop/identity";
 

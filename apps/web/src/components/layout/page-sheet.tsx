@@ -1,26 +1,17 @@
-import {
-  createContext,
-  useContext,
-  useRef,
-  useState,
-  type ComponentProps,
-  type ReactNode,
-} from "react";
+import { useContext, useRef, useState, type ComponentProps, type ReactNode } from "react";
 
 import { PageHeader } from "@/components/layout/page-header";
+import {
+  PageSheetContext,
+  PageSheetSuspendedContext,
+  usePageSheet,
+} from "@/components/layout/page-sheet-context";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { cn } from "cn";
 import { X } from "lucide-react";
-
-const PageSheetContext = createContext<{ onClose: () => void; label: string } | null>(null);
-export const PageSheetSuspendedContext = createContext(false);
-
-export function usePageSheet() {
-  return useContext(PageSheetContext);
-}
 
 /** Temporary record details. Keep this mounted beside PageContent so exit motion can finish. */
 export function PageSheet({

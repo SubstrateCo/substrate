@@ -7,7 +7,7 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { recordRows } from "@/components/layout/record-section";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Heading } from "@/components/ui/heading";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { eventDate } from "@/lib/calendar/days";
 import { calendarLink, linkedWorkLink } from "@/lib/navigation/record-links";
 import { calendarEventOptions } from "@/queries/calendar/options";

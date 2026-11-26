@@ -6,7 +6,7 @@ import { useId } from "react";
 
 import { InteractionLink } from "@/components/interactions/interaction-link";
 import { RecordSection } from "@/components/layout/record-section";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { meetingOutcomeSummary } from "@/lib/calendar/labels";
 import { personLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";

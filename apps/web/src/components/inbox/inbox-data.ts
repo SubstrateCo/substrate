@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
-import { useMailPages } from "./mail-paging";
+import { useMailPages } from "./mail-pages";
 import { localMailQueries, mailRevision } from "@/queries/mail/options";
 
 type LocalMail = ReturnType<typeof localMailQueries>;

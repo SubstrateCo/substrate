@@ -26,7 +26,7 @@ import {
 import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
 import { TextLink } from "@/components/ui/text-link";
 import { AppAvailability } from "@/components/workspace/app-availability";
-import { useOrganizationApps } from "@/components/workspace/organization-apps";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { crmLink } from "@/lib/navigation/record-links";
 import { contactOptions } from "@/queries/contacts/options";
 import { useRecordMutation } from "@/queries/records/mutations";

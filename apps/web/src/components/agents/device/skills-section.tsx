@@ -4,7 +4,7 @@ import { type ReactNode } from "react";
 
 import { CatalogRow } from "../catalog/catalog-row";
 import { openingName } from "../editors/skill-name";
-import { configurationSections } from "./configuration-sections";
+import { configurationSections } from "./configuration-section-copy";
 import { StartupSkills } from "./startup-configuration";
 import { SettingsList, SettingsSection } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";

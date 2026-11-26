@@ -3,10 +3,8 @@ import type { LinkProps } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { PaneState } from "../../feedback/pane-state";
-import {
-  ConversationSidebar,
-  focusConversationSidebar,
-} from "../conversations/conversation-sidebar";
+import { ConversationSidebar } from "../conversations/conversation-sidebar";
+import { focusConversationSidebar } from "../conversations/conversation-sidebar-focus";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";

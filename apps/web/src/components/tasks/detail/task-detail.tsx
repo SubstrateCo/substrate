@@ -10,7 +10,7 @@ import { TaskInspectorActive } from "./task-inspector-context";
 import { TaskAttachments } from "@/components/attachments/task-attachments";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
-import { useRegisterDraft } from "@/components/feedback/unsaved-drafts";
+import { useRegisterDraft } from "@/components/feedback/unsaved-drafts-context";
 import { TaskDetail as TaskDetailView } from "@/components/tasks/detail/task-detail-view";
 import type { ProjectDetail, Task } from "@/components/tasks/types";
 import { workLink } from "@/lib/navigation/record-links";

@@ -6,7 +6,7 @@ import { WorkIndicator } from "../work-indicator";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
-import { toneFill } from "@/components/feedback/tag";
+import { toneFill } from "@/components/feedback/tag-styles";
 import {
   PageContent,
   PageLayout,

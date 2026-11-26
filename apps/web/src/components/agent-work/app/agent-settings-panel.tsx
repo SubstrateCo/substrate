@@ -3,7 +3,7 @@ import {
   PaneSectionNav,
   type PaneSectionNavGroup,
 } from "@/components/agents/layout/pane-section-nav";
-import { useDraftKeys } from "@/components/feedback/unsaved-drafts";
+import { useDraftKeys } from "@/components/feedback/unsaved-drafts-context";
 import { SettingsContent } from "@/components/layout/settings-page";
 import { isAgentSettingsSection, type AgentSettingsSection } from "@/lib/agent-work/agent-sections";
 import { Blocks, ScrollText, SlidersHorizontal, Sparkles, Zap } from "lucide-react";

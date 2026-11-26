@@ -14,7 +14,8 @@ import { CopyLink } from "@/components/context/links/copy-link";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
 import { BackLink, PageHeader } from "@/components/layout/page-header";
-import { PageSheetHeader, PageSheetBody, usePageSheet } from "@/components/layout/page-sheet";
+import { PageSheetHeader, PageSheetBody } from "@/components/layout/page-sheet";
+import { usePageSheet } from "@/components/layout/page-sheet-context";
 import { Property, PropertyList } from "@/components/layout/record-section";
 import { Button } from "@/components/ui/button";
 import {
