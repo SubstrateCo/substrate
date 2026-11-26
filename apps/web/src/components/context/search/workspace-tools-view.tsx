@@ -1,6 +1,6 @@
 import { useHotkey } from "@tanstack/react-hotkeys";
 
-import { useCallback, useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
+import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 
 import { useWorkspaceSearch } from "./workspace-search-context";
 import { Command, CommandInput } from "@/components/ui/command";
@@ -22,10 +22,9 @@ export function WorkspaceTools({
   const { setLocalSearchTarget } = useWorkspaceSearch();
   const open = panel.locationKey === locationKey && panel.open;
   if (panel.locationKey !== locationKey) setPanel({ locationKey, open: false });
-  const setOpen = useCallback(
-    (value: boolean) => setPanel({ locationKey, open: value }),
-    [locationKey],
-  );
+  function setOpen(value: boolean) {
+    setPanel({ locationKey, open: value });
+  }
   const [query, setQuery] = useState("");
   const [focusRequest, setFocusRequest] = useState(0);
   const [handledRequest, setHandledRequest] = useState(openRequest);
@@ -41,10 +40,10 @@ export function WorkspaceTools({
   const activationTimeout = useRef<number | undefined>(undefined);
   const desktop = !!desktopPlatform();
   const isMac = desktopPlatform() === "darwin";
-  const close = useCallback(() => {
+  function close() {
     setOpen(false);
     setFocusRequest((value) => value + 1);
-  }, [setOpen]);
+  }
   useEffect(() => {
     if (focusRequest) {
       const local = container.current?.querySelector<HTMLButtonElement>(

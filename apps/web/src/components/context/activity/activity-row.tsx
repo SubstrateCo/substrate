@@ -2,6 +2,7 @@ import type { ConversationKind } from "@substrate/contracts/messaging/input";
 
 import { Link } from "@tanstack/react-router";
 
+import { discussionConversationName } from "@/components/context/discussions/conversation-name";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
@@ -74,10 +75,7 @@ export function ActivityRow({ event }: { event: ActivityEvent }) {
                   className="size-3 shrink-0 text-muted-foreground"
                 />
               )}
-              <span className="truncate">
-                {event.source.conversationName ??
-                  (event.source.conversationKind === "group" ? "Group message" : "Direct message")}
-              </span>
+              <span className="truncate">{discussionConversationName(event.source)}</span>
             </Link>
           )}
         </>

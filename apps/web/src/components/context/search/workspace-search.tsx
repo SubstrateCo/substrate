@@ -2,6 +2,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
+import { searchResultItems } from "./search-result-items";
 import {
   WorkspaceSearch as WorkspaceSearchView,
   type SearchKind,
@@ -9,13 +10,6 @@ import {
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
-import {
-  interactionLink,
-  messageLink,
-  personLink,
-  recordLink,
-  workLink,
-} from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { searchPagesOptions, useJoinSearchConversation } from "@/queries/context/search";
 import { toast } from "sonner";
@@ -47,41 +41,11 @@ export function WorkspaceSearch({
       onClose={onClose}
       kind={kind}
       kinds={kinds}
-      results={(search.pending ? [] : (resourceState(results).data?.pages.flat() ?? []))
-        .filter(
-          (item) =>
-            ((item.kind !== "task" && item.kind !== "project") || apps.enabled("tasks")) &&
-            ((item.kind !== "account" && item.kind !== "deal") || apps.enabled("crm")),
-        )
-        .map((item) => {
-          if (item.kind === "contact")
-            return { ...item, link: personLink(organizationId, item.id, apps.enabled("crm")) };
-          if (item.kind === "account" || item.kind === "deal") {
-            const section = { account: "accounts", deal: "deals" } as const;
-            return { ...item, link: recordLink(organizationId, section[item.kind], item.id) };
-          }
-          if (item.kind === "contact_interaction")
-            return {
-              ...item,
-              link: item.contactEntityId
-                ? personLink(organizationId, item.contactEntityId, apps.enabled("crm"))
-                : interactionLink(organizationId, item.id),
-            };
-          return {
-            ...item,
-            link: item.conversationId
-              ? messageLink(
-                  organizationId,
-                  item.conversationId,
-                  item.kind === "message" ? item.id : undefined,
-                )
-              : workLink(
-                  organizationId,
-                  item.projectEntityId!,
-                  item.kind === "task" ? item.id : undefined,
-                ),
-          };
-        })}
+      results={searchResultItems(
+        search.pending ? [] : (resourceState(results).data?.pages.flat() ?? []),
+        organizationId,
+        { tasks: apps.enabled("tasks"), crm: apps.enabled("crm") },
+      )}
       loading={search.pending || results.isPending}
       error={search.pending ? null : results.error}
       hasMore={!search.pending && results.hasNextPage}

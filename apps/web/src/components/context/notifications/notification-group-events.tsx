@@ -3,7 +3,7 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import type { MouseEvent } from "react";
 
 import { NotificationItem, NotificationRowsLoading, type Notification } from "./notification-item";
-import { notificationPresentation } from "./notification-presentation";
+import { notificationPresentation, showsNotification } from "./notification-presentation";
 import { isAccessFailure } from "@/api/access-failure";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
@@ -34,9 +34,7 @@ export function NotificationGroupEvents({
       />
     );
   const items = (events.data?.pages ?? []).flatMap((page) =>
-    page.items.filter(
-      (item) => apps.enabled("tasks") || (!item.projectEntityId && item.kind !== "assignment"),
-    ),
+    page.items.filter((item) => showsNotification(item, apps.enabled("tasks"))),
   );
   return (
     <div className="flex flex-col gap-2">
@@ -60,13 +58,7 @@ export function NotificationGroupEvents({
           {items.map((item) => {
             const view = notificationPresentation(organizationId, item);
             return (
-              <NotificationItem
-                key={item.id}
-                item={view}
-                showReadAction={false}
-                onRead={() => {}}
-                onOpen={(event) => onOpen(view, event)}
-              />
+              <NotificationItem key={item.id} item={view} onOpen={(event) => onOpen(view, event)} />
             );
           })}
         </ul>

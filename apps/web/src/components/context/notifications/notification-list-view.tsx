@@ -53,9 +53,7 @@ export function NotificationList({
   error,
   filter,
   onFilter,
-  hasMore,
-  loadingMore,
-  onMore,
+  paging,
   readingAll,
   onRetry,
   onRead,
@@ -70,9 +68,8 @@ export function NotificationList({
   error?: Error | null;
   filter: NotificationFilter;
   onFilter: (filter: NotificationFilter) => void;
-  hasMore: boolean;
-  loadingMore: boolean;
-  onMore: () => void;
+  /** Older pages of the feed. */
+  paging: { hasMore: boolean; loading: boolean; onMore: () => void };
   readingAll: boolean;
   onRetry: () => void;
   onRead: (id: string) => void;
@@ -171,13 +168,13 @@ export function NotificationList({
                       </Fragment>
                     ))}
                   </ul>
-                  {hasMore && (
+                  {paging.hasMore && (
                     <PendingButton
                       variant="ghost"
                       size="sm"
                       className="self-center"
-                      pending={loadingMore}
-                      onClick={onMore}
+                      pending={paging.loading}
+                      onClick={paging.onMore}
                     >
                       Show older
                     </PendingButton>

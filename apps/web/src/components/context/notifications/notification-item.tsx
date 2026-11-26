@@ -83,13 +83,12 @@ export function NotificationItem({
   onRead,
   onOpen,
   renderEvents,
-  showReadAction = true,
 }: {
   item: Notification;
-  onRead: () => void;
+  /** Marks the row read. Without it, the row has no read action. */
+  onRead?: () => void;
   onOpen: (event: MouseEvent<HTMLAnchorElement>) => void;
   renderEvents?: () => ReactNode;
-  showReadAction?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const Icon = kindIcons[item.kind];
@@ -141,7 +140,7 @@ export function NotificationItem({
           meta={<Timestamp value={item.createdAt} format="relative" />}
           action={
             !item.read &&
-            showReadAction && (
+            onRead && (
               <RowActions label="Notification actions" className="-mt-1">
                 <RowAction label="Mark as read" onClick={onRead}>
                   <Check aria-hidden="true" />

@@ -2,8 +2,9 @@ import type { ConversationKind } from "@substrate/contracts/messaging/input";
 
 import { Link } from "@tanstack/react-router";
 
-import { useCallback, useId, useState } from "react";
+import { useId, useState } from "react";
 
+import { discussionConversationName } from "./conversation-name";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
@@ -35,9 +36,7 @@ export type Discussion = {
 
 export function DiscussionItem({ item }: { item: Discussion }) {
   const descriptionId = useId();
-  const conversation =
-    item.conversationName ??
-    (item.conversationKind === "group" ? "Group message" : "Direct message");
+  const conversation = discussionConversationName(item);
   const title = `${
     {
       source: "Created from a discussion",
@@ -167,7 +166,7 @@ export function DiscussionItemSkeleton() {
 // Render the message like chat, but cap its height and fade it out when it overflows.
 function DiscussionBody({ body }: { body: string }) {
   const [overflows, setOverflows] = useState(false);
-  const ref = useCallback((element: HTMLDivElement) => {
+  function ref(element: HTMLDivElement) {
     const observer = new ResizeObserver(() =>
       setOverflows(element.scrollHeight > element.clientHeight),
     );
@@ -175,7 +174,7 @@ function DiscussionBody({ body }: { body: string }) {
     observer.observe(element);
     if (element.firstElementChild) observer.observe(element.firstElementChild);
     return () => observer.disconnect();
-  }, []);
+  }
   return (
     <div
       ref={ref}
