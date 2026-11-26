@@ -1,11 +1,12 @@
 import { Link } from "@tanstack/react-router";
 
-import { useMemo } from "react";
+import { createContext, useContext } from "react";
 
 import { DateTimeDisplay } from "../../table/date-time-cell";
 import { AppTable, createAppColumnHelper, dateTimeColumn } from "../../table/index";
 import { InvitationStatus } from "@/components/organizations/invitations/invitation-status";
 import { Button } from "@/components/ui/button";
+import { isInvitationExpired } from "@/lib/organizations/invitations";
 import { roleLabel } from "@/lib/organizations/member-policy";
 import { Mail } from "lucide-react";
 
@@ -55,7 +56,27 @@ function InvitationActions({
   );
 }
 
-const baseColumns = column.columns([
+/** The decline state, for the actions cell. Columns stay at module scope, so cells never remount. */
+const DeclineContext = createContext<{
+  decliningId?: string;
+  onDecline: (invitation: UserInvitation) => void;
+}>({ onDecline: () => {} });
+
+function ActionsCell({ invitation }: { invitation: InvitationRow }) {
+  const { decliningId, onDecline } = useContext(DeclineContext);
+  if (invitation.expired) return null;
+  return (
+    <div className="flex justify-end">
+      <InvitationActions
+        invitation={invitation}
+        declining={decliningId === invitation.id}
+        onDecline={onDecline}
+      />
+    </div>
+  );
+}
+
+const columns = column.columns([
   column.accessor((invitation) => invitation.organizationName || "Organization", {
     id: "organization",
     header: "Organization",
@@ -80,6 +101,12 @@ const baseColumns = column.columns([
     id: "expiresAt",
     header: "Expires",
   }),
+  column.display({
+    id: "actions",
+    header: () => <span className="sr-only">Actions</span>,
+    meta: { align: "end", controls: true, width: "w-44" },
+    cell: ({ row }) => <ActionsCell invitation={row.original} />,
+  }),
 ]);
 
 export function UserInvitationsTable({
@@ -100,74 +127,54 @@ export function UserInvitationsTable({
   decliningId?: string;
   onDecline: (invitation: UserInvitation) => void;
 }) {
-  const columns = useMemo(
-    () =>
-      column.columns([
-        ...baseColumns,
-        column.display({
-          id: "actions",
-          header: () => <span className="sr-only">Actions</span>,
-          meta: { align: "end", controls: true, width: "w-44" },
-          cell: ({ row }) =>
-            !row.original.expired && (
-              <div className="flex justify-end">
-                <InvitationActions
-                  invitation={row.original}
-                  declining={decliningId === row.original.id}
-                  onDecline={onDecline}
-                />
-              </div>
-            ),
-        }),
-      ]),
-    [decliningId, onDecline],
-  );
   const data = invitations.map((invitation) => ({
     ...invitation,
-    expired: new Date(invitation.expiresAt).getTime() <= now,
+    expired: isInvitationExpired(invitation.expiresAt, now),
   }));
   return (
-    <AppTable
-      name="Your invitations"
-      columns={columns}
-      data={data}
-      getRowId={(row) => row.id}
-      loading={loading}
-      loadingMessage="Loading your invitations"
-      error={error}
-      errorTitle="Couldn’t load your invitations"
-      onRetry={onRetry}
-      empty={{
-        title: "No pending invitations",
-        description: "When someone invites you to their workspace, you can review it here.",
-        icon: Mail,
-      }}
-      renderMobileRow={(invitation) => (
-        <>
-          <p className="font-medium wrap-anywhere">
-            {invitation.organizationName || "Organization"}
-          </p>
-          <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
-            <dt className="text-muted-foreground">Role</dt>
-            <dd className="col-span-2">{roleLabel(invitation.role)}</dd>
-            <dt className="text-muted-foreground">Status</dt>
-            <dd className="col-span-2">
-              <InvitationStatus status="pending" expired={invitation.expired} />
-            </dd>
-            <dt className="text-muted-foreground">Expires</dt>
-            <dd className="col-span-2">
-              <DateTimeDisplay value={invitation.expiresAt} />
-            </dd>
-          </dl>
-          {!invitation.expired && (
-            <InvitationActions
-              invitation={invitation}
-              declining={decliningId === invitation.id}
-              onDecline={onDecline}
-            />
-          )}
-        </>
-      )}
-    />
+    <DeclineContext value={{ decliningId, onDecline }}>
+      <AppTable
+        name="Your invitations"
+        columns={columns}
+        data={data}
+        getRowId={(row) => row.id}
+        loading={loading}
+        loadingMessage="Loading your invitations"
+        error={error}
+        errorTitle="Couldn’t load your invitations"
+        onRetry={onRetry}
+        empty={{
+          title: "No pending invitations",
+          description: "When someone invites you to their workspace, you can review it here.",
+          icon: Mail,
+        }}
+        renderMobileRow={(invitation) => (
+          <>
+            <p className="font-medium wrap-anywhere">
+              {invitation.organizationName || "Organization"}
+            </p>
+            <dl className="grid grid-cols-3 gap-x-3 gap-y-2 text-sm">
+              <dt className="text-muted-foreground">Role</dt>
+              <dd className="col-span-2">{roleLabel(invitation.role)}</dd>
+              <dt className="text-muted-foreground">Status</dt>
+              <dd className="col-span-2">
+                <InvitationStatus status="pending" expired={invitation.expired} />
+              </dd>
+              <dt className="text-muted-foreground">Expires</dt>
+              <dd className="col-span-2">
+                <DateTimeDisplay value={invitation.expiresAt} />
+              </dd>
+            </dl>
+            {!invitation.expired && (
+              <InvitationActions
+                invitation={invitation}
+                declining={decliningId === invitation.id}
+                onDecline={onDecline}
+              />
+            )}
+          </>
+        )}
+      />
+    </DeclineContext>
   );
 }
