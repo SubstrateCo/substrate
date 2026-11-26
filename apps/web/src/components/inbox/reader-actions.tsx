@@ -6,7 +6,9 @@ import {
 } from "@substrate/contracts/mail";
 import type { MailActionResult } from "@substrate/contracts/mail/ipc";
 
-import { useRef, useState } from "react";
+import { useMutation } from "@tanstack/react-query";
+
+import { useRef } from "react";
 
 import { canChangeMail, MailActionButton } from "./mail-action-button";
 import { useReadDwell } from "./use-read-dwell";
@@ -33,29 +35,27 @@ export function ReaderActionBar({
   readingElement: HTMLElement | null;
 }) {
   const confirm = useStateDialog<"trash">(focusList);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
+  const mutation = useMutation({
+    mutationFn: (action: MailMessageAction) => onAction(message.id, action),
+    onSuccess: (result) => {
+      if (result !== "retry") confirm.close();
+    },
+  });
+  const pending = mutation.isPending;
+  let error = "";
+  if (mutation.isError) error = "Couldn’t change the message. Try again.";
+  else if (mutation.data === "reconnect")
+    error = "Reconnect this mailbox to change messages in Gmail.";
+  else if (mutation.data === "retry") error = "Gmail hasn’t confirmed the change. Try again.";
   const writable = canChangeMail(mailbox);
   const unread = !!(message.flags & mailFlag.unread);
   const acted = useRef(false);
-  async function change(action: MailMessageAction) {
+  function change(action: MailMessageAction) {
     acted.current = true;
-    setError("");
-    setPending(true);
-    try {
-      const result = await onAction(message.id, action);
-      if (result === "reconnect") {
-        confirm.close();
-        setError("Reconnect this mailbox to change messages in Gmail.");
-      } else if (result === "retry") setError("Gmail hasn’t confirmed the change. Try again.");
-      else confirm.close();
-    } catch {
-      setError("Couldn’t change the message. Try again.");
-    }
-    setPending(false);
+    mutation.mutate(action);
   }
   useReadDwell(readingElement, writable && unread && !pending && !confirm.value, () => {
-    if (!acted.current) void change("markRead");
+    if (!acted.current) change("markRead");
   });
   return (
     <div className="grid min-w-0 gap-1">
@@ -63,14 +63,14 @@ export function ReaderActionBar({
         <MailActionButton
           action={unread ? "markRead" : "markUnread"}
           disabled={!writable || pending}
-          onClick={() => void change(unread ? "markRead" : "markUnread")}
+          onClick={() => change(unread ? "markRead" : "markUnread")}
         />
         {!(message.flags & mailFlag.trash) && (
           <MailActionButton
             action="trashMessage"
             disabled={!writable || pending}
             onClick={() => {
-              setError("");
+              mutation.reset();
               confirm.open("trash");
             }}
           />
@@ -92,11 +92,11 @@ export function ReaderActionBar({
           pending={pending}
           error={error}
           onClose={() => {
-            setError("");
+            mutation.reset();
             confirm.close();
           }}
           onRestoreFocus={confirm.restoreFocus}
-          onConfirm={() => void change("trashMessage")}
+          onConfirm={() => change("trashMessage")}
         />
       )}
     </div>

@@ -1,12 +1,8 @@
 import type { LinkProps } from "@tanstack/react-router";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { ContentNotice } from "@/components/feedback/content-notice";
-import {
-  ConversationCreateMenu,
-  type DirectMessageAgent,
-} from "@/components/messaging/conversations/conversation-create-menu";
 import {
   ConversationSidebarItem,
   ConversationSidebarLoadingRow,
@@ -15,36 +11,30 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Heading } from "@/components/ui/heading";
 import type { Conversation } from "@/lib/messaging/conversations";
-import type { PickerPerson } from "@/lib/people/people-picker";
 import { ChevronRight } from "lucide-react";
 
 const sectionLabels = { channel: "Channels", partner: "Partner channels", dm: "Direct messages" };
 const emptyLabels = { channel: "No channels yet", dm: "No conversations yet" };
+
+/** The actions in a section header. Partner channels are created from Channels, so they have none. */
+export type ConversationSectionActions = (section: "channel" | "dm") => ReactNode;
 
 export function ConversationSection({
   section,
   conversations,
   selectedId,
   loading,
-  people,
-  agents,
   onSelect,
   conversationLink,
-  onCreate,
-  onMessagePerson,
-  onMessageAgent,
+  sectionActions,
 }: {
   section: keyof typeof sectionLabels;
   conversations: Conversation[];
   selectedId?: string;
   loading: boolean;
-  people?: PickerPerson[];
-  agents?: DirectMessageAgent[];
   onSelect: (id: string) => void;
   conversationLink: (id: string) => LinkProps;
-  onCreate: (kind: Conversation["kind"]) => void;
-  onMessagePerson?: (person: PickerPerson) => void;
-  onMessageAgent?: (agent: DirectMessageAgent) => void;
+  sectionActions: ConversationSectionActions;
 }) {
   // Partner channels include people from another organization, wherever they are hosted.
   const items = conversations.filter((conversation) =>
@@ -67,11 +57,7 @@ export function ConversationSection({
           section={section}
           collapsed={collapsed}
           count={items.length}
-          people={people}
-          agents={agents}
-          onCreate={onCreate}
-          onMessagePerson={onMessagePerson}
-          onMessageAgent={onMessageAgent}
+          sectionActions={sectionActions}
         />
         {pinned && (
           <div className="mt-0.5">
@@ -123,20 +109,12 @@ function ConversationSectionHeader({
   section,
   collapsed,
   count,
-  people,
-  agents,
-  onCreate,
-  onMessagePerson,
-  onMessageAgent,
+  sectionActions,
 }: {
   section: keyof typeof sectionLabels;
   collapsed: boolean;
   count: number;
-  people?: PickerPerson[];
-  agents?: DirectMessageAgent[];
-  onCreate: (kind: Conversation["kind"]) => void;
-  onMessagePerson?: (person: PickerPerson) => void;
-  onMessageAgent?: (agent: DirectMessageAgent) => void;
+  sectionActions: ConversationSectionActions;
 }) {
   return (
     <div className="flex h-7 items-center justify-between gap-1 pr-1 pl-2">
@@ -161,16 +139,7 @@ function ConversationSectionHeader({
           </Button>
         </CollapsibleTrigger>
       </Heading>
-      {section !== "partner" && (
-        <ConversationCreateMenu
-          section={section}
-          people={people}
-          agents={agents}
-          onCreate={onCreate}
-          onMessagePerson={onMessagePerson}
-          onMessageAgent={onMessageAgent}
-        />
-      )}
+      {section !== "partner" && sectionActions(section)}
     </div>
   );
 }

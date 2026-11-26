@@ -10,6 +10,7 @@ import { WorkspaceTools } from "@/components/context/search/workspace-tools";
 import { DesktopUpdateRail } from "@/components/desktop-updates/desktop-update-rail";
 import { OrganizationSwitcher } from "@/components/organizations/switcher/organization-switcher";
 import { useAppShortcuts } from "@/components/workspace/use-app-shortcuts";
+import { UserMenu } from "@/components/workspace/user-menu";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
 import { needsYouCount } from "@/lib/agent-work/needs-you";
 import { needsYouOptions } from "@/queries/agent-work/server";
@@ -31,40 +32,24 @@ export function WorkspaceFrame({
   image?: string | null;
   children: ReactNode;
 }) {
-  const organization = useQuery({
-    ...currentOrganizationQueryOptions(organizationId ?? ""),
-    enabled: !!organizationId,
-  });
+  const organization = useQuery(currentOrganizationQueryOptions(organizationId));
   // The dot needs only to know whether one unread notification exists.
-  const notifications = useQuery({
-    ...notificationUnreadOptions(organizationId ?? ""),
-    enabled: !!organizationId,
-  });
-  const unreadMessages = useQuery({
-    ...unreadCountsOptions(organizationId ?? ""),
-    enabled: !!organizationId,
-  });
+  const notifications = useQuery(notificationUnreadOptions(organizationId));
+  const unreadMessages = useQuery(unreadCountsOptions(organizationId));
   // Agent notifications are only for work that needs the owner. The server returns nothing for
   // people without agents, so the dot never shows for them.
-  const needsYou = useQuery({
-    ...needsYouOptions(userId, organizationId ?? ""),
-    enabled: !!organizationId,
-  });
+  const needsYou = useQuery(needsYouOptions(userId, organizationId));
   useAgentWorkBridgeSync(userId, organizationId);
   useAppShortcuts();
   return (
     <WorkspaceSearchProvider>
       <WorkspaceShell
         unavailable={isAccessFailure(organization.error)}
-        name={name}
-        image={image}
         hasUnreadNotifications={!notifications.error && notifications.data?.unread}
         hasUnreadMessages={
           !unreadMessages.error && unreadMessages.data?.some((row) => row.unreadCount > 0)
         }
         agentsNeedYou={!needsYou.error && needsYouCount(needsYou.data) > 0}
-        showOrganizationSettings={!!organization.data}
-        organizationName={organization.data?.name}
         switcher={
           organizationId ? (
             <OrganizationSwitcher
@@ -78,7 +63,15 @@ export function WorkspaceFrame({
             </Link>
           )
         }
-        signOut={<SignOutButton />}
+        userMenu={
+          <UserMenu
+            name={name}
+            image={image}
+            showOrganizationSettings={!!organization.data}
+            organizationName={organization.data?.name}
+            signOut={<SignOutButton />}
+          />
+        }
         updateIndicator={<DesktopUpdateRail />}
         error={organization.error}
         loading={!!organizationId && organization.isPending}

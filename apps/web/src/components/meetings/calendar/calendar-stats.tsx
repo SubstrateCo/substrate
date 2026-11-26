@@ -10,6 +10,7 @@ import { portal } from "@tanstack/charts/tooltip/portal";
 
 import { useMemo } from "react";
 
+import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Heading } from "@/components/ui/heading";
@@ -22,18 +23,11 @@ import {
   formatMeetingHours,
   parseDateOnly,
 } from "@/lib/format/date";
-import { closedReader, type ChangeMeetingView } from "@/lib/meetings/navigation";
+import { closedReader } from "@/lib/meetings/navigation";
 import { CalendarDays, ChevronRight } from "lucide-react";
 
-export function CalendarStats({
-  data,
-  date,
-  change,
-}: {
-  data: CalendarData;
-  date: Date;
-  change: ChangeMeetingView;
-}) {
+export function CalendarStats({ data, date }: { data: CalendarData; date: Date }) {
+  const { change } = useMeetingsWorkspace();
   const y = date.getFullYear(),
     m = date.getMonth();
   const definition = useMemo(() => {

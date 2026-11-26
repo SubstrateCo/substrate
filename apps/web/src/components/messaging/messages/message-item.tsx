@@ -1,6 +1,7 @@
 import { useSearch } from "@tanstack/react-router";
 
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useRef, useState, type RefObject } from "react";
+import { flushSync } from "react-dom";
 
 import { LinkMessageWork } from "../../context/links/link-message-work";
 import { MessageContext, type MessageContextState } from "../../context/references/message-context";
@@ -15,6 +16,7 @@ import {
 } from "@/components/agent-work/agent-work-slot";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { LinkedMessage } from "@/components/messaging/messages/linked-message";
 import { MessageAttachments } from "@/components/messaging/messages/message-attachments";
 import { MessageItem as MessageItemView } from "@/components/messaging/messages/message-item-view";
@@ -39,6 +41,8 @@ import { useToggleReaction } from "@/queries/messaging/reactions";
 import { Copy, Ellipsis, Link2, Pencil, Smile, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
+type MessageDialog = { kind: "link" } | { kind: "delete" } | { kind: "reactions"; emoji: string };
+
 export function MessageItem({
   message,
   grouped = false,
@@ -61,20 +65,15 @@ export function MessageItem({
   const linked = useSearch({ strict: false, select: (search) => search.messageId === message.id });
   // A top-level target opens as the root of the thread pane, which already marks it.
   const highlighted = linked && !threadRoot && !!message.threadId;
-  const [linking, setLinking] = useState(false);
   const [editing, setEditing] = useState(false);
-  const [deleting, setDeleting] = useState(false);
   const { remove } = useMessageMutations(organizationId, message.conversationId, message.id);
   const actionsTrigger = useRef<HTMLButtonElement>(null);
-  // The toolbar is hidden while editing, so focus returns to its trigger once it renders again.
-  const restoreActionsFocus = useRef(false);
-  useEffect(() => {
-    if (editing || !restoreActionsFocus.current) return;
-    restoreActionsFocus.current = false;
-    actionsTrigger.current?.focus();
-  }, [editing]);
-  const [reactionsEmoji, setReactionsEmoji] = useState<string | null>(null);
-  const reactionsTrigger = useRef<HTMLElement | null>(null);
+  const {
+    value: dialog,
+    open,
+    close,
+    restoreFocus,
+  } = useStateDialog<MessageDialog>(actionsTrigger);
   const reaction = useToggleReaction(organizationId, message.conversationId, message.id);
   const react = (emoji: string) =>
     reaction.mutate(emoji, {
@@ -106,10 +105,7 @@ export function MessageItem({
               reaction={item}
               onReact={canPost ? react : undefined}
               pending={reaction.isPending}
-              onViewAll={(emoji, trigger) => {
-                reactionsTrigger.current = trigger;
-                setReactionsEmoji(emoji);
-              }}
+              onViewAll={(emoji, trigger) => open({ kind: "reactions", emoji }, trigger)}
             />
           )}
           grouped={grouped && !highlighted}
@@ -121,8 +117,9 @@ export function MessageItem({
                 message={message}
                 context={context}
                 onClose={() => {
-                  restoreActionsFocus.current = true;
-                  setEditing(false);
+                  // The toolbar is hidden while editing, so it renders before focus returns to it.
+                  flushSync(() => setEditing(false));
+                  actionsTrigger.current?.focus();
                 }}
               />
             ) : undefined
@@ -161,15 +158,12 @@ export function MessageItem({
               message={message}
               canPost={canPost}
               trigger={actionsTrigger}
-              onReactions={() => {
-                reactionsTrigger.current = actionsTrigger.current;
-                setReactionsEmoji("");
-              }}
-              onLink={() => setLinking(true)}
+              onReactions={() => open({ kind: "reactions", emoji: "" }, actionsTrigger.current)}
+              onLink={() => open({ kind: "link" }, actionsTrigger.current)}
               onEdit={() => setEditing(true)}
               onDelete={() => {
                 remove.reset();
-                setDeleting(true);
+                open({ kind: "delete" }, actionsTrigger.current);
               }}
             />
           }
@@ -190,7 +184,7 @@ export function MessageItem({
             />
           )}
           <AgentWorkSlot messageId={message.id} fromAgent={message.authorType === "agent"} />
-          {canPost && deleting && (
+          {canPost && dialog?.kind === "delete" && (
             <ConfirmDialog
               destructive
               title="Delete message?"
@@ -199,27 +193,27 @@ export function MessageItem({
               pending={remove.isPending}
               error={remove.error}
               errorDescription="Your message couldn’t be deleted. Try again."
-              onConfirm={() => remove.mutate(undefined, { onSuccess: () => setDeleting(false) })}
-              onClose={() => setDeleting(false)}
-              onRestoreFocus={() => actionsTrigger.current?.focus()}
+              onConfirm={() => remove.mutate(undefined, { onSuccess: close })}
+              onClose={close}
+              onRestoreFocus={restoreFocus}
             />
           )}
-          {canPost && linking && (
+          {canPost && dialog?.kind === "link" && (
             <LinkMessageWork
               organizationId={organizationId}
               messageId={message.id}
               linkedIds={context.data?.links.map((link) => link.entityId) ?? []}
-              onClose={() => setLinking(false)}
-              onRestoreFocus={() => actionsTrigger.current?.focus()}
+              onClose={close}
+              onRestoreFocus={restoreFocus}
             />
           )}
-          {reactionsEmoji !== null && (
+          {dialog?.kind === "reactions" && (
             <ReactionPeopleDialog
               organizationId={organizationId}
               message={message}
-              initialEmoji={reactionsEmoji}
-              onClose={() => setReactionsEmoji(null)}
-              restoreFocus={() => reactionsTrigger.current?.focus()}
+              initialEmoji={dialog.emoji}
+              onClose={close}
+              restoreFocus={restoreFocus}
             />
           )}
         </MessageItemView>

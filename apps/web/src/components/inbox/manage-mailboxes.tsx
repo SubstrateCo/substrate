@@ -1,5 +1,7 @@
 import type { Mailbox } from "@substrate/contracts/mail";
 
+import { useMutation } from "@tanstack/react-query";
+
 import { useState } from "react";
 
 import type { LabelActions } from "./label-menu";
@@ -40,42 +42,33 @@ function MailboxSettings({
   onLabelVisibility,
 }: { box: Mailbox } & Actions) {
   const [nickname, setNickname] = useState(box.nickname ?? "");
-  const [pending, setPending] = useState<"rename" | "reconnect" | "disconnect">();
   const [confirm, setConfirm] = useState(false);
-  const [error, setError] = useState("");
-  async function save() {
-    setPending("rename");
-    setError("");
-    try {
-      await onRename(box.id, nickname.trim());
-      setNickname(nickname.trim());
-    } catch {
-      setError("Couldn’t save the nickname. Try again.");
-    }
-    setPending(undefined);
-  }
-  async function reconnect(chooseClient: boolean) {
-    setPending("reconnect");
-    setError("");
-    try {
-      const outcome = await onReconnect(box.id, chooseClient);
-      if (outcome === "different-account")
-        setError(`Choose the Google account for ${box.address}. This connection hasn’t changed.`);
-    } catch {
-      setError("Couldn’t reconnect Gmail. Try again.");
-    }
-    setPending(undefined);
-  }
-  async function disconnect() {
-    setPending("disconnect");
-    setError("");
-    try {
-      await onDisconnect(box.id);
-      setConfirm(false);
-    } catch {
-      setError("Couldn’t disconnect the mailbox. Try again.");
-    }
-    setPending(undefined);
+  const rename = useMutation({
+    mutationFn: (value: string) => onRename(box.id, value),
+    onSuccess: (_, value) => setNickname(value),
+  });
+  const reconnect = useMutation({
+    mutationFn: (chooseClient: boolean) => onReconnect(box.id, chooseClient),
+  });
+  const disconnect = useMutation({
+    mutationFn: () => onDisconnect(box.id),
+    onSuccess: () => setConfirm(false),
+  });
+  let pending: "rename" | "reconnect" | "disconnect" | undefined;
+  if (rename.isPending) pending = "rename";
+  else if (reconnect.isPending) pending = "reconnect";
+  else if (disconnect.isPending) pending = "disconnect";
+  let error = "";
+  if (rename.isError) error = "Couldn’t save the nickname. Try again.";
+  else if (reconnect.isError) error = "Couldn’t reconnect Gmail. Try again.";
+  else if (reconnect.data === "different-account")
+    error = `Choose the Google account for ${box.address}. This connection hasn’t changed.`;
+  else if (disconnect.isError) error = "Couldn’t disconnect the mailbox. Try again.";
+  // The three actions share one error line, so each start clears the others' outcome.
+  function clearError() {
+    rename.reset();
+    reconnect.reset();
+    disconnect.reset();
   }
   return (
     <section
@@ -103,7 +96,8 @@ function MailboxSettings({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          void save();
+          clearError();
+          rename.mutate(nickname.trim());
         }}
       >
         <Field>
@@ -136,11 +130,22 @@ function MailboxSettings({
           size="xs"
           disabled={!!pending}
           pending={pending === "reconnect"}
-          onClick={() => void reconnect(false)}
+          onClick={() => {
+            clearError();
+            reconnect.mutate(false);
+          }}
         >
           {box.canModify ? "Reconnect Gmail" : "Reconnect to enable Gmail actions"}
         </PendingButton>
-        <Button variant="ghost" size="xs" disabled={!!pending} onClick={() => void reconnect(true)}>
+        <Button
+          variant="ghost"
+          size="xs"
+          disabled={!!pending}
+          onClick={() => {
+            clearError();
+            reconnect.mutate(true);
+          }}
+        >
           Choose a different client file
         </Button>
         <Button
@@ -148,7 +153,7 @@ function MailboxSettings({
           size="xs"
           disabled={!!pending}
           onClick={() => {
-            setError("");
+            clearError();
             setConfirm(true);
           }}
         >
@@ -169,10 +174,13 @@ function MailboxSettings({
           pending={pending === "disconnect"}
           error={error}
           onClose={() => {
-            setError("");
+            clearError();
             setConfirm(false);
           }}
-          onConfirm={() => void disconnect()}
+          onConfirm={() => {
+            clearError();
+            disconnect.mutate();
+          }}
         />
       )}
     </section>

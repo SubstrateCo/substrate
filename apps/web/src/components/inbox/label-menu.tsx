@@ -6,6 +6,8 @@ import {
 } from "@substrate/contracts/mail";
 import type { LabelDisplayChange } from "@substrate/contracts/mail/ipc";
 
+import { useMutation } from "@tanstack/react-query";
+
 import { useState } from "react";
 
 import { defaultLabelColor, ink, labelName } from "./mail-colors";
@@ -36,17 +38,11 @@ export function LabelMenu({
   onLabelVisibility,
 }: LabelActions & { mailboxId: string; label: MailLabel }) {
   const [colors, setColors] = useState(false);
-  const [saving, setSaving] = useState(false);
+  const save = useMutation({
+    mutationFn: (work: () => Promise<void>) => work(),
+    onError: () => toast.error("Couldn't save the label settings. Try again."),
+  });
   const name = `Options for ${labelName(label)}`;
-  async function save(work: Promise<void>) {
-    setSaving(true);
-    try {
-      await work;
-    } catch {
-      toast.error("Couldn't save the label settings. Try again.");
-    }
-    setSaving(false);
-  }
   return (
     <DropdownMenu
       onOpenChange={(open) => {
@@ -56,7 +52,7 @@ export function LabelMenu({
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-xs" aria-label={name} disabled={saving}>
+            <Button variant="ghost" size="icon-xs" aria-label={name} disabled={save.isPending}>
               <Ellipsis aria-hidden />
             </Button>
           </DropdownMenuTrigger>
@@ -81,7 +77,7 @@ export function LabelMenu({
               className="grid grid-cols-2"
               value={label.color ?? "auto"}
               onValueChange={(v) =>
-                void save(
+                save.mutate(() =>
                   onLabelColor(mailboxId, label.id, mailColors.find((c) => c === v) ?? null),
                 )
               }
@@ -120,7 +116,7 @@ export function LabelMenu({
               onValueChange={(v) => {
                 const mode = labelFilterModes.find((m) => m === v);
                 if (mode)
-                  void save(
+                  save.mutate(() =>
                     onLabelVisibility(mailboxId, { area: "sidebar", labelId: label.id, mode }),
                   );
               }}
@@ -137,7 +133,7 @@ export function LabelMenu({
               aria-label="In message list"
               value={label.hideInRows ? "hide" : "show"}
               onValueChange={(v) =>
-                void save(
+                save.mutate(() =>
                   onLabelVisibility(mailboxId, {
                     area: "rows",
                     labelId: label.id,

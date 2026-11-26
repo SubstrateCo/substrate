@@ -50,15 +50,32 @@ function SectionAction({
   );
 }
 
-export function ConversationCreateMenu({
-  section,
+export function ChannelCreateActions({
+  onCreate,
+}: {
+  /** Called with focus on the button that opened the dialog, so closing it can return there. */
+  onCreate: (kind: Conversation["kind"]) => void;
+}) {
+  const { openSearch } = useWorkspaceSearch();
+  return (
+    <span className="flex items-center gap-0.5">
+      <SectionAction label="Browse channels" onClick={() => openSearch("channel")}>
+        <Compass />
+      </SectionAction>
+      <SectionAction label="New channel" onClick={() => onCreate("channel")}>
+        <Plus />
+      </SectionAction>
+    </span>
+  );
+}
+
+export function DirectMessageCreateMenu({
   people = [],
   agents = [],
   onCreate,
   onMessagePerson,
   onMessageAgent,
 }: {
-  section: "channel" | "dm";
   people?: PickerPerson[];
   agents?: DirectMessageAgent[];
   /** Called with focus on the button that opened the dialog, so closing it can return there. */
@@ -68,22 +85,9 @@ export function ConversationCreateMenu({
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
-  const { openSearch } = useWorkspaceSearch();
   // Acts after the menu has returned focus to its trigger, so a dialog restores focus there.
   const chosen = useRef<Choice | null>(null);
   const trigger = useRef<HTMLButtonElement>(null);
-  if (section === "channel") {
-    return (
-      <span className="flex items-center gap-0.5">
-        <SectionAction label="Browse channels" onClick={() => openSearch("channel")}>
-          <Compass />
-        </SectionAction>
-        <SectionAction label="New channel" onClick={() => onCreate("channel")}>
-          <Plus />
-        </SectionAction>
-      </span>
-    );
-  }
   const search = query.trim().toLowerCase();
   const matches = onMessagePerson
     ? people.filter(

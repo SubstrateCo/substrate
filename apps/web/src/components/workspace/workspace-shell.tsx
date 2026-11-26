@@ -3,7 +3,6 @@ import { isOptionalApp } from "@substrate/contracts/apps";
 import { useContext, type ReactNode } from "react";
 
 import { ErrorState } from "../feedback/error-state";
-import { UserMenu } from "./user-menu";
 import { notificationsApp, workspaceApps, type WorkspaceAppId } from "./workspace-apps";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { RealtimeContainerContext } from "@/components/realtime/realtime-container-context";
@@ -11,13 +10,9 @@ import { useOrganizationApps } from "@/components/workspace/organization-apps";
 import { WorkspaceAppButton } from "@/components/workspace/workspace-app-button";
 
 export function WorkspaceShell({
-  name,
   unavailable,
-  image,
-  showOrganizationSettings,
-  organizationName,
   switcher,
-  signOut,
+  userMenu,
   updateIndicator,
   error,
   loading = false,
@@ -27,17 +22,13 @@ export function WorkspaceShell({
   hasUnreadMessages = false,
   agentsNeedYou = false,
 }: {
-  name: string;
   unavailable: boolean;
-  image?: string | null;
   hasUnreadNotifications?: boolean;
   hasUnreadMessages?: boolean;
   /** One of the viewer's agents waits for an answer, an approval, or a decision. */
   agentsNeedYou?: boolean;
-  showOrganizationSettings: boolean;
-  organizationName?: string;
   switcher: ReactNode;
-  signOut: ReactNode;
+  userMenu: ReactNode;
   updateIndicator?: ReactNode;
   error?: Error | null;
   loading?: boolean;
@@ -82,13 +73,7 @@ export function WorkspaceShell({
             <WorkspaceAppButton {...notificationsApp} unread={hasUnreadNotifications} />
           </div>
         </div>
-        <UserMenu
-          name={name}
-          image={image}
-          showOrganizationSettings={showOrganizationSettings}
-          organizationName={organizationName}
-          signOut={signOut}
-        />
+        {userMenu}
       </nav>
       <div
         ref={realtimeContainerRef}

@@ -2,10 +2,11 @@ import type { MeetingDay } from "@substrate/contracts/meetings";
 
 import { useState } from "react";
 
+import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDateOnly, formatDayLabel, formatWallTime } from "@/lib/format/date";
-import { closedReader, type ChangeMeetingView } from "@/lib/meetings/navigation";
+import { closedReader } from "@/lib/meetings/navigation";
 import { cn } from "cn";
 
 const weekdays = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
@@ -20,14 +21,13 @@ export function CalendarMonth({
   days,
   annual,
   today,
-  change,
 }: {
   date: Date;
   days: Map<string, MeetingDay>;
   annual: boolean;
   today: string;
-  change: ChangeMeetingView;
 }) {
+  const { change } = useMeetingsWorkspace();
   const y = date.getFullYear(),
     m = date.getMonth(),
     start = new Date(y, m, 1),

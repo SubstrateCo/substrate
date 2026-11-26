@@ -8,13 +8,11 @@ import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
-import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-create-menu";
 import { ConversationHeader } from "@/components/messaging/conversations/conversation-header";
 import { MessageLoading } from "@/components/messaging/messages/message-loading";
 import { WorkspaceEmpty } from "@/components/messaging/workspace/workspace-empty";
 import { Button } from "@/components/ui/button";
 import type { Conversation } from "@/lib/messaging/conversations";
-import type { PickerPerson } from "@/lib/people/people-picker";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { ArrowLeft, PanelLeft } from "lucide-react";
 
@@ -34,10 +32,7 @@ export function MessagingWorkspace({
   onSidebarOpenChange,
   onSelect,
   conversationLink,
-  people,
-  agents,
-  onMessagePerson,
-  onMessageAgent,
+  sectionActions,
   renderCreate,
   loading = false,
   state,
@@ -51,10 +46,14 @@ export function MessagingWorkspace({
   onSidebarOpenChange: (open: boolean) => void;
   onSelect: (id: string) => void;
   conversationLink: (id: string) => LinkProps;
-  people?: PickerPerson[];
-  agents?: DirectMessageAgent[];
-  onMessagePerson?: (person: PickerPerson) => void;
-  onMessageAgent?: (agent: DirectMessageAgent) => void;
+  /**
+   * The actions in a sidebar section header. `onCreate` opens the create dialog; call it with
+   * focus on the button that opened it, so closing the dialog can return there.
+   */
+  sectionActions: (
+    section: "channel" | "dm",
+    onCreate: (kind: Conversation["kind"]) => void,
+  ) => ReactNode;
   /**
    * The create dialog. It opens over the current conversation. Call `onRestoreFocus` when it
    * closes, so focus goes back to the button that opened it, or to the sidebar when that is gone.
@@ -102,13 +101,9 @@ export function MessagingWorkspace({
           onRetry={onRetry}
           conversations={conversations}
           selectedId={selectedId}
-          people={people}
-          agents={agents}
-          onMessagePerson={onMessagePerson}
-          onMessageAgent={onMessageAgent}
           onSelect={onSelect}
           conversationLink={conversationLink}
-          onCreate={create}
+          sectionActions={(section) => sectionActions(section, create)}
         />
         <PageContent>
           <WorkspaceContent

@@ -1,3 +1,5 @@
+import { useMutation } from "@tanstack/react-query";
+
 import { useState } from "react";
 
 import { FormDialog } from "@/components/feedback/form-dialog";
@@ -18,8 +20,10 @@ export function ConnectMailbox({
 }) {
   const [nickname, setNickname] = useState("");
   const [chooseClient, setChooseClient] = useState(false);
-  const [pending, setPending] = useState(false);
-  const [error, setError] = useState("");
+  const connect = useMutation({
+    mutationFn: (input: { nickname: string; chooseClient: boolean }) =>
+      onConnect(input.nickname, input.chooseClient),
+  });
   return (
     <FormDialog
       size="default"
@@ -28,20 +32,22 @@ export function ConnectMailbox({
       description="Sign in with Google to read mail, mark messages as read, and move them to Trash. If prompted, choose your Google Desktop app client file."
       onClose={onClose}
       onRestoreFocus={onRestoreFocus}
-      error={error}
-      pending={pending}
-      onSubmit={async () => {
-        setPending(true);
-        setError("");
-        try {
-          if (await onConnect(nickname.trim(), chooseClient)) onClose();
-        } catch {
-          setError(
-            "Couldn’t connect Gmail. Check that the selected file is a Google Desktop app client and try again.",
-          );
-        }
-        setPending(false);
-      }}
+      error={
+        connect.isError
+          ? "Couldn’t connect Gmail. Check that the selected file is a Google Desktop app client and try again."
+          : ""
+      }
+      pending={connect.isPending}
+      onSubmit={() =>
+        connect.mutate(
+          { nickname: nickname.trim(), chooseClient },
+          {
+            onSuccess: (connected) => {
+              if (connected) onClose();
+            },
+          },
+        )
+      }
     >
       <Field>
         <FieldLabel htmlFor="mailbox-nickname">Nickname (optional)</FieldLabel>

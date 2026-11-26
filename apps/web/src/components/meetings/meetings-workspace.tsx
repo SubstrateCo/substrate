@@ -13,6 +13,7 @@ import { MeetingSidebar } from "./archive/meeting-sidebar";
 import { NewMeetingDialog } from "./archive/new-meeting-dialog";
 import { MeetingCalendar } from "./calendar/meeting-calendar";
 import { HexImportResult } from "./hex-import-result";
+import { MeetingsWorkspaceContext } from "./meetings-workspace-context";
 import { MeetingReader } from "./reader/meeting-reader";
 import { MatchReview } from "./sources/match-review";
 import { importHex } from "@/api/meetings/requests";
@@ -119,7 +120,8 @@ export function MeetingsWorkspace({
     <MeetingReader
       key={search.meetingId}
       id={search.meetingId}
-      {...{ queries, search, change, close, inContent }}
+      close={close}
+      inContent={inContent}
     />
   );
   const filters = activeFilters({
@@ -131,107 +133,108 @@ export function MeetingsWorkspace({
   });
   const chips = filters.length ? <ActiveFilterChips filters={filters} /> : null;
   return (
-    <Sheet open={menu} onOpenChange={setMenu}>
-      <input
-        ref={picker}
-        type="file"
-        accept=".md,.markdown"
-        className="hidden"
-        aria-label="Choose Hex Markdown file"
-        onChange={(event) => {
-          const file = event.target.files?.[0];
-          event.target.value = "";
-          if (file) importing.mutate(file);
-        }}
-      />
-      <MeetingSearchField phrase={phrase} onChange={updatePhrase} />
-      {adding && (
-        <NewMeetingDialog
-          scope={scope}
-          onClose={() => setAdding(false)}
-          onCreated={(id) => {
-            setAdding(false);
-            setPhrase("");
-            change({
-              ...closedReader,
-              section: "all",
-              source: undefined,
-              day: undefined,
-              offset: 0,
-              meetingId: id,
-            });
+    <MeetingsWorkspaceContext value={{ queries, search, change }}>
+      <Sheet open={menu} onOpenChange={setMenu}>
+        <input
+          ref={picker}
+          type="file"
+          accept=".md,.markdown"
+          className="hidden"
+          aria-label="Choose Hex Markdown file"
+          onChange={(event) => {
+            const file = event.target.files?.[0];
+            event.target.value = "";
+            if (file) importing.mutate(file);
           }}
         />
-      )}
-      <PageLayout id="meetings" aria-label="Meetings workspace">
-        <MeetingSidebar
-          search={search}
-          change={change}
-          total={totals.total}
-          providers={totals.providers}
-          pending={totals.pending}
-          importButton={
-            <PendingButton
-              variant="sidebar"
-              className="justify-start"
-              pending={importing.isPending}
-              onClick={importFile}
+        <MeetingSearchField phrase={phrase} onChange={updatePhrase} />
+        {adding && (
+          <NewMeetingDialog
+            scope={scope}
+            onClose={() => setAdding(false)}
+            onCreated={(id) => {
+              setAdding(false);
+              setPhrase("");
+              change({
+                ...closedReader,
+                section: "all",
+                source: undefined,
+                day: undefined,
+                offset: 0,
+                meetingId: id,
+              });
+            }}
+          />
+        )}
+        <PageLayout id="meetings" aria-label="Meetings workspace">
+          <MeetingSidebar
+            search={search}
+            change={change}
+            total={totals.total}
+            providers={totals.providers}
+            pending={totals.pending}
+            importButton={
+              <PendingButton
+                variant="sidebar"
+                className="justify-start"
+                pending={importing.isPending}
+                onClick={importFile}
+              >
+                <FileDown />
+                Import Hex file
+              </PendingButton>
+            }
+            onSelectSection={(next) => {
+              if (next !== "calendar") setPhrase("");
+              change({
+                ...closedReader,
+                section: next,
+                day: undefined,
+                offset: undefined,
+                source: next === "calendar" ? search.source : undefined,
+              });
+            }}
+          />
+          <PageContent data-meeting-archive>
+            <div
+              className={cn(
+                "flex min-h-0 flex-1 flex-col p-4 md:p-5 xl:p-6",
+                section === "all" ? "gap-3" : "overflow-y-auto",
+                inContent && reader && "hidden",
+              )}
             >
-              <FileDown />
-              Import Hex file
-            </PendingButton>
-          }
-          onSelectSection={(next) => {
-            if (next !== "calendar") setPhrase("");
-            change({
-              ...closedReader,
-              section: next,
-              day: undefined,
-              offset: undefined,
-              source: next === "calendar" ? search.source : undefined,
-            });
-          }}
-        />
-        <PageContent data-meeting-archive>
-          <div
-            className={cn(
-              "flex min-h-0 flex-1 flex-col p-4 md:p-5 xl:p-6",
-              section === "all" ? "gap-3" : "overflow-y-auto",
-              inContent && reader && "hidden",
-            )}
-          >
-            <HexImportResult error={importing.error} report={importing.data} />
-            {section === "all" && (
-              <AllMeetings
-                queries={queries}
-                input={archiveInput(search, filter.query)}
-                originals={totals.linked}
-                filters={chips}
-                view={search}
-                {...{ searchPending, change, open }}
-                clearFilters={() => {
-                  setPhrase("");
-                  change({ ...closedReader, source: undefined, day: undefined, offset: 0 });
-                }}
-                addMeeting={() => setAdding(true)}
-              />
-            )}
-            {section === "calendar" && (
-              <MeetingCalendar
-                queries={queries}
-                search={search}
-                change={change}
-                phrase={filter.query}
-                searchPending={searchPending}
-                filters={chips}
-              />
-            )}
-            {section === "review" && <MatchReview {...{ scope, queries }} />}
-          </div>
-          {inContent && reader}
-        </PageContent>
-        {!inContent && reader}
-      </PageLayout>
-    </Sheet>
+              <HexImportResult error={importing.error} report={importing.data} />
+              {section === "all" && (
+                <AllMeetings
+                  queries={queries}
+                  input={archiveInput(search, filter.query)}
+                  originals={totals.linked}
+                  filters={chips}
+                  view={search}
+                  searchPending={searchPending}
+                  change={change}
+                  open={open}
+                  clearFilters={() => {
+                    setPhrase("");
+                    change({ ...closedReader, source: undefined, day: undefined, offset: 0 });
+                  }}
+                  addMeeting={() => setAdding(true)}
+                />
+              )}
+              {section === "calendar" && (
+                <MeetingCalendar
+                  phrase={filter.query}
+                  searchPending={searchPending}
+                  filters={chips}
+                />
+              )}
+              {section === "review" && <MatchReview scope={scope} />}
+            </div>
+            {inContent && reader}
+          </PageContent>
+          {!inContent && reader}
+        </PageLayout>
+      </Sheet>
+    </MeetingsWorkspaceContext>
   );
 }

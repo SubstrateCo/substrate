@@ -1,13 +1,13 @@
 import type { PermissionLevel } from "@substrate/contracts/tasks";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 import type { ProjectDetail } from "../../types";
 import { ProjectAccessForm } from "./project-access-form";
 import { ProjectMemberRow } from "./project-member-row";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FormDialog } from "@/components/feedback/form-dialog";
-import { useFocusReturn } from "@/components/feedback/use-focus-return";
+import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { GroupTitle, SettingsCard } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
@@ -56,15 +56,17 @@ export function ProjectSharing({
   onRevoke: (actorEntityId: string, name: string, onSuccess: () => void) => void;
   onClearError: () => void;
 }) {
-  const [adding, setAdding] = useState(false);
-  const [review, setReview] = useState<{
-    actorEntityId: string;
-    name: string;
-    level: PermissionLevel | null;
-  } | null>(null);
   const addButton = useRef<HTMLButtonElement>(null);
-  const reviewFocus = useFocusReturn(addButton);
-  const addFocus = useFocusReturn(addButton);
+  const {
+    value: dialog,
+    open,
+    close,
+    restoreFocus,
+  } = useStateDialog<
+    | { kind: "add" }
+    | { kind: "review"; actorEntityId: string; name: string; level: PermissionLevel | null }
+  >(addButton);
+  const review = dialog?.kind === "review" ? dialog : undefined;
   const { canManage } = capabilities;
   const ownerCount = detail.members.filter((member) => member.level === "owner").length;
   const canAdd = detail.actors.some(
@@ -73,9 +75,8 @@ export function ProjectSharing({
       !detail.members.some((member) => member.actorEntityId === actor.entityId),
   );
   const openReview = (actorEntityId: string, name: string, level: PermissionLevel | null) => {
-    reviewFocus.remember();
     onClearError();
-    setReview({ actorEntityId, name, level });
+    open({ kind: "review", actorEntityId, name, level });
   };
   const project = detail.project.name;
   return (
@@ -93,9 +94,8 @@ export function ProjectSharing({
               size="sm"
               disabled={pending}
               onClick={() => {
-                addFocus.remember();
                 onClearError();
-                setAdding(true);
+                open({ kind: "add" });
               }}
             >
               <UserPlus aria-hidden="true" />
@@ -104,16 +104,13 @@ export function ProjectSharing({
           )
         }
       />
-      {adding && canManage && canAdd && (
+      {dialog?.kind === "add" && canManage && canAdd && (
         <ProjectAccessForm
           detail={detail}
           pending={pending}
           error={error}
           onShare={(actorEntityId, name, level) =>
-            onShare(
-              { actorEntityId, name, level },
-              { kind: "dialog", onSuccess: () => setAdding(false) },
-            )
+            onShare({ actorEntityId, name, level }, { kind: "dialog", onSuccess: close })
           }
           renderDialog={({ fields, ...editor }) => (
             <FormDialog
@@ -123,9 +120,9 @@ export function ProjectSharing({
               saveLabel="Share project"
               onClose={() => {
                 onClearError();
-                setAdding(false);
+                close();
               }}
-              onRestoreFocus={addFocus.restore}
+              onRestoreFocus={restoreFocus}
             >
               {fields}
             </FormDialog>
@@ -175,16 +172,16 @@ export function ProjectSharing({
           pending={pending}
           error={error}
           errorDescription="Couldn’t change access. Try again."
-          onClose={() => setReview(null)}
-          onRestoreFocus={reviewFocus.restore}
+          onClose={close}
+          onRestoreFocus={restoreFocus}
           onConfirm={() => {
             if (pending) return;
             if (review.level)
               onShare(
                 { actorEntityId: review.actorEntityId, name: review.name, level: review.level },
-                { kind: "dialog", onSuccess: () => setReview(null) },
+                { kind: "dialog", onSuccess: close },
               );
-            else onRevoke(review.actorEntityId, review.name, () => setReview(null));
+            else onRevoke(review.actorEntityId, review.name, close);
           }}
         >
           <p className="text-sm">

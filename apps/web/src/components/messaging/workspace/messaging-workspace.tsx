@@ -6,7 +6,11 @@ import { useState } from "react";
 import { ConversationPane } from "../conversations/conversation-pane";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ContentNotice } from "@/components/feedback/content-notice";
-import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-create-menu";
+import {
+  ChannelCreateActions,
+  DirectMessageCreateMenu,
+  type DirectMessageAgent,
+} from "@/components/messaging/conversations/conversation-create-menu";
 import { CreateConversationDialog } from "@/components/messaging/conversations/create-conversation-dialog";
 import { MessagingWorkspace as MessagingWorkspaceView } from "@/components/messaging/workspace/messaging-workspace-view";
 import { AppAvailability } from "@/components/workspace/app-availability";
@@ -111,10 +115,19 @@ export function MessagingWorkspace({
       loading={conversations.isPending || selecting}
       error={conversations.error}
       onRetry={() => void conversations.refetch()}
-      people={people}
-      agents={agents}
-      onMessagePerson={(person) => messageTarget({ kind: "person", person })}
-      onMessageAgent={(agent) => messageTarget({ kind: "agent", agent })}
+      sectionActions={(section, onCreate) =>
+        section === "channel" ? (
+          <ChannelCreateActions onCreate={onCreate} />
+        ) : (
+          <DirectMessageCreateMenu
+            people={people}
+            agents={agents}
+            onCreate={onCreate}
+            onMessagePerson={(person) => messageTarget({ kind: "person", person })}
+            onMessageAgent={(agent) => messageTarget({ kind: "agent", agent })}
+          />
+        )
+      }
       renderCreate={(kind, { onClose, onRestoreFocus }) => (
         <CreateConversationDialog
           organizationId={organizationId}

@@ -1,13 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { isAccessFailure } from "@/api/access-failure";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { CodeBlock, CodeBlockContent } from "@/components/ui/code-block";
-import type { MeetingQueries } from "@/queries/meetings/options";
 
-export function OriginalText({ id, queries }: { id: string; queries: MeetingQueries }) {
+export function OriginalText({ id }: { id: string }) {
+  const { queries } = useMeetingsWorkspace();
   const r = useQuery(queries.original(id));
   if (isAccessFailure(r.error) || (r.isSuccess && r.data === null))
     return <ContentNotice variant="inline" title="Original unavailable" />;

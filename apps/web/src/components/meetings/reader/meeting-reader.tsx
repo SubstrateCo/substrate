@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 
 import { useEffect, useRef } from "react";
 
+import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { ReaderNotes } from "./reader-notes";
 import { ReaderOriginals } from "./reader-originals";
 import { ReaderTranscript } from "./reader-transcript";
@@ -27,20 +28,16 @@ import {
   parseDateOnly,
 } from "@/lib/format/date";
 import { peopleLabels } from "@/lib/meetings/display";
-import type { ChangeMeetingView, MeetingSearch } from "@/lib/meetings/navigation";
 import { messageLink } from "@/lib/navigation/record-links";
-import type { MeetingQueries } from "@/queries/meetings/options";
 import { cn } from "cn";
 import { CalendarDays, Clock3, NotebookPen, PanelRight, Unlink, Video, X } from "lucide-react";
 
-type ReaderProps = { queries: MeetingQueries; search: MeetingSearch; change: ChangeMeetingView };
-
 function ReaderContent({
   record: { meeting, originals, sourceMessage },
-  queries,
-  search,
-  change,
-}: { record: MeetingDetail } & ReaderProps) {
+}: {
+  record: MeetingDetail;
+}) {
+  const { queries, search, change } = useMeetingsWorkspace();
   const tab = search.readerTab ?? "notes";
   const title = useRef<HTMLHeadingElement>(null);
   useEffect(() => {
@@ -121,7 +118,7 @@ function ReaderContent({
         <div className="px-4 pt-3 pb-5 md:px-5 xl:px-6">
           <TabsContent value="notes">
             {meeting.notes ? (
-              <ReaderNotes originals={originals} change={change} />
+              <ReaderNotes originals={originals} />
             ) : (
               <ContentNotice
                 icon={NotebookPen}
@@ -146,7 +143,6 @@ function ReaderContent({
               originals={originals}
               originalId={search.originalId}
               turn={search.turn}
-              change={change}
             />
           </TabsContent>
           <TabsContent value="sources">
@@ -163,12 +159,7 @@ function ReaderContent({
                 </Link>
               </Button>
             )}
-            <ReaderOriginals
-              originals={originals}
-              originalId={search.originalId}
-              queries={queries}
-              change={change}
-            />
+            <ReaderOriginals originals={originals} originalId={search.originalId} />
           </TabsContent>
         </div>
       </Tabs>
@@ -178,19 +169,20 @@ function ReaderContent({
 
 export function MeetingReader({
   id,
-  queries,
-  search,
-  change,
   close,
   inContent,
-}: { id: string; close: () => void; inContent: boolean } & ReaderProps) {
+}: {
+  id: string;
+  close: () => void;
+  inContent: boolean;
+}) {
+  const { queries } = useMeetingsWorkspace();
   const q = useQuery(queries.detail(id));
   let body;
   if (q.error && !isAccessFailure(q.error))
     body = <ErrorState title="Couldn’t read this meeting" onRetry={() => void q.refetch()} />;
   else if (q.isPending) body = <LoadingState label="Reading meeting" />;
-  else if (q.isSuccess && q.data)
-    body = <ReaderContent record={q.data} {...{ queries, search, change }} />;
+  else if (q.isSuccess && q.data) body = <ReaderContent record={q.data} />;
   else
     body = (
       <ContentNotice

@@ -81,14 +81,16 @@ export function CallerSettingsView({
   onRemove: (actorId: string, onSuccess: () => void) => void;
 }) {
   const [draft, setDraft] = useState<AgentCallerPolicy | null>(null);
-  const [confirm, setConfirm] = useState(false);
-  const [removed, setRemoved] = useState<AgentCallerView | null>(null);
+  const [dialog, setDialog] = useState<
+    { kind: "allow" } | { kind: "remove"; caller: AgentCallerView } | null
+  >(null);
   const policy = draft ?? settings.policy;
   const dirty = policy !== settings.policy;
   const save = () =>
     onSave(policy, () => {
       setDraft(null);
-      setConfirm(false);
+      // Saving Only me opens no dialog, so a Remove prompt opened meanwhile stays open.
+      setDialog((open) => (open?.kind === "allow" ? null : open));
     });
   return (
     <>
@@ -106,7 +108,7 @@ export function CallerSettingsView({
               error && actionErrorMessage(error, "We couldn’t save caller settings. Try again.")
             }
             onDiscard={() => setDraft(null)}
-            onSave={() => (policy === "owner" ? save() : setConfirm(true))}
+            onSave={() => (policy === "owner" ? save() : setDialog({ kind: "allow" }))}
           />
         }
       >
@@ -151,7 +153,7 @@ export function CallerSettingsView({
                       destructive
                       label={`Remove ${caller.name}`}
                       disabled={removing}
-                      onClick={() => setRemoved(caller)}
+                      onClick={() => setDialog({ kind: "remove", caller })}
                     >
                       <UserMinus />
                     </RowAction>
@@ -162,7 +164,7 @@ export function CallerSettingsView({
           ))}
         </ul>
       </AllowedCallersCard>
-      {confirm && (
+      {dialog?.kind === "allow" && (
         <ConfirmDialog
           title="Allow workspace calls?"
           description="This agent works with your full access, not the caller’s access. It can read and change anything you can. Your instructions still apply."
@@ -171,20 +173,20 @@ export function CallerSettingsView({
           error={error}
           errorDescription="We couldn’t save caller settings. Try again."
           onConfirm={save}
-          onClose={() => setConfirm(false)}
+          onClose={() => setDialog(null)}
         />
       )}
-      {removed && (
+      {dialog?.kind === "remove" && (
         <ConfirmDialog
           destructive
-          title={`Remove ${removed.name}?`}
+          title={`Remove ${dialog.caller.name}?`}
           description="Future calls from this person will need approval under Ask me first. Queued calls will be checked again before they run."
-          confirmLabel={`Remove ${removed.name}`}
+          confirmLabel={`Remove ${dialog.caller.name}`}
           pending={removing}
           error={error}
           errorDescription="We couldn’t remove this caller. Try again."
-          onConfirm={() => onRemove(removed.actorId, () => setRemoved(null))}
-          onClose={() => setRemoved(null)}
+          onConfirm={() => onRemove(dialog.caller.actorId, () => setDialog(null))}
+          onClose={() => setDialog(null)}
         />
       )}
     </>

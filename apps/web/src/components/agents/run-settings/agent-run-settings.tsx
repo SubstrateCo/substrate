@@ -41,7 +41,9 @@ export function AgentRunSettings({
           onSuccess: () => toast.success(`${name} now runs on this device.`),
         })
       }
-      onSave={(next) => triggers.mutate(triggersInput(settings.agentId, next))}
+      onSave={(next, onSuccess) =>
+        triggers.mutate(triggersInput(settings.agentId, next), { onSuccess })
+      }
     />
   );
 }

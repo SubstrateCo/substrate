@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import type { ReactNode } from "react";
 
+import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { CalendarMonth } from "./calendar-month";
 import { CalendarStats } from "./calendar-stats";
 import { CalendarYear } from "./calendar-year";
@@ -17,8 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useNow } from "@/hooks/use-now";
 import { formatMonthYear, formatDateOnly, parseDateOnly } from "@/lib/format/date";
-import type { ChangeMeetingView, MeetingSearch } from "@/lib/meetings/navigation";
-import type { MeetingQueries } from "@/queries/meetings/options";
+import type { MeetingSearch } from "@/lib/meetings/navigation";
 import { ChartNoAxesColumnIncreasing, ChevronLeft, ChevronRight } from "lucide-react";
 
 type CalendarScale = NonNullable<MeetingSearch["scale"]>;
@@ -43,7 +43,6 @@ function CalendarBody({
   date,
   days,
   today,
-  change,
 }: {
   error: Error | null;
   onRetry: () => void;
@@ -52,38 +51,30 @@ function CalendarBody({
   date: Date;
   days: Map<string, MeetingDay>;
   today: string;
-  change: ChangeMeetingView;
 }) {
   if (isAccessFailure(error)) return <ContentNotice title="Meeting calendar unavailable" />;
   if (error) return <ErrorState title="Couldn’t load meeting calendar" onRetry={onRetry} />;
   if (!data) return <LoadingState label="Loading meeting calendar" />;
-  if (scale === "stats") return <CalendarStats date={date} data={data} change={change} />;
+  if (scale === "stats") return <CalendarStats date={date} data={data} />;
   if (scale === "month")
     return (
       <div className="mt-4">
-        <CalendarMonth date={date} days={days} annual={false} today={today} change={change} />
+        <CalendarMonth date={date} days={days} annual={false} today={today} />
       </div>
     );
-  return (
-    <CalendarYear year={date.getFullYear()} data={data} days={days} today={today} change={change} />
-  );
+  return <CalendarYear year={date.getFullYear()} data={data} days={days} today={today} />;
 }
 
 export function MeetingCalendar({
-  queries,
-  search,
-  change,
   phrase,
   searchPending,
   filters,
 }: {
-  queries: MeetingQueries;
-  search: MeetingSearch;
-  change: ChangeMeetingView;
   phrase: string;
   searchPending: boolean;
   filters: ReactNode;
 }) {
+  const { queries, search, change } = useMeetingsWorkspace();
   const today = formatDateOnly(new Date(useNow(true, 60_000)));
   const month = search.month ?? today.slice(0, 7),
     scale = search.scale ?? "year",
@@ -178,7 +169,11 @@ export function MeetingCalendar({
       <CalendarBody
         error={query.error}
         onRetry={() => void query.refetch()}
-        {...{ data, scale, date, days, today, change }}
+        data={data}
+        scale={scale}
+        date={date}
+        days={days}
+        today={today}
       />
     </div>
   );

@@ -8,10 +8,11 @@ import {
   PageSidebarContent,
   PageSidebarHeader,
 } from "@/components/layout/page-layout";
-import type { DirectMessageAgent } from "@/components/messaging/conversations/conversation-create-menu";
-import { ConversationSection } from "@/components/messaging/conversations/conversation-section";
+import {
+  ConversationSection,
+  type ConversationSectionActions,
+} from "@/components/messaging/conversations/conversation-section";
 import type { Conversation } from "@/lib/messaging/conversations";
-import type { PickerPerson } from "@/lib/people/people-picker";
 import type { ResourceStatus } from "@/lib/resource-state";
 
 /** ArrowUp and ArrowDown move focus between conversations, across sections. */
@@ -32,13 +33,9 @@ export function ConversationSidebar({
   conversations,
   state,
   selectedId,
-  people,
-  agents,
   onSelect,
   conversationLink,
-  onCreate,
-  onMessagePerson,
-  onMessageAgent,
+  sectionActions,
   loading = false,
   error,
   onRetry,
@@ -46,13 +43,9 @@ export function ConversationSidebar({
   conversations: Conversation[];
   state: ResourceStatus;
   selectedId?: string;
-  people?: PickerPerson[];
-  agents?: DirectMessageAgent[];
   onSelect: (id: string) => void;
   conversationLink: (id: string) => LinkProps;
-  onCreate: (kind: Conversation["kind"]) => void;
-  onMessagePerson?: (person: PickerPerson) => void;
-  onMessageAgent?: (agent: DirectMessageAgent) => void;
+  sectionActions: ConversationSectionActions;
   loading?: boolean;
   error?: Error | null;
   onRetry?: () => void;
@@ -76,13 +69,9 @@ export function ConversationSidebar({
               conversations={conversations}
               selectedId={selectedId}
               loading={loading}
-              people={people}
-              agents={agents}
               onSelect={onSelect}
               conversationLink={conversationLink}
-              onCreate={onCreate}
-              onMessagePerson={onMessagePerson}
-              onMessageAgent={onMessageAgent}
+              sectionActions={sectionActions}
             />
           ))}
         </PageSidebarContent>

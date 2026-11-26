@@ -69,19 +69,22 @@ export function AgentRunSettingsView({
   saving: boolean;
   error?: Error | null;
   onRunHere: () => void;
-  onSave: (triggers: AgentTriggerSetting[]) => void;
+  onSave: (triggers: AgentTriggerSetting[], onSuccess: () => void) => void;
 }) {
-  const [triggers, setTriggers] = useState(settings.triggers);
+  const [draft, setDraft] = useState<AgentTriggerSetting[] | null>(null);
+  const triggers = draft ?? settings.triggers;
   const update = (kind: AgentTriggerSetting["kind"], change: Partial<AgentTriggerSetting>) =>
-    setTriggers((current) =>
-      current.map((trigger) => (trigger.kind === kind ? { ...trigger, ...change } : trigger)),
+    setDraft((current) =>
+      (current ?? settings.triggers).map((trigger) =>
+        trigger.kind === kind ? { ...trigger, ...change } : trigger,
+      ),
     );
   const device = settings.homeDevice;
   const dirty = triggers.some(
     (trigger) =>
       settings.triggers.find((saved) => saved.kind === trigger.kind)?.enabled !== trigger.enabled,
   );
-  useRegisterDraft("run", dirty, () => setTriggers(settings.triggers));
+  useRegisterDraft("run", dirty, () => setDraft(null));
   return (
     <SettingsSection
       title="Run settings"
@@ -112,8 +115,8 @@ export function AgentRunSettingsView({
             dirty={dirty}
             pending={saving}
             error={error && actionErrorMessage(error, "We couldn’t save run settings. Try again.")}
-            onDiscard={() => setTriggers(settings.triggers)}
-            onSave={() => onSave(triggers)}
+            onDiscard={() => setDraft(null)}
+            onSave={() => onSave(triggers, () => setDraft(null))}
           />
         }
       >

@@ -28,8 +28,9 @@ export function ContactMethods({
   identifiers: Identifier[];
   canEdit: boolean;
 }) {
-  const [editor, setEditor] = useState<{ record?: Identifier } | null>(null);
-  const [removing, setRemoving] = useState<Identifier | null>(null);
+  const [dialog, setDialog] = useState<
+    { kind: "edit"; record?: Identifier } | { kind: "remove"; record: Identifier } | null
+  >(null);
   const mutation = useRecordMutation(organizationId, "contacts");
   return (
     <RecordSection
@@ -37,7 +38,10 @@ export function ContactMethods({
       title="Contact methods"
       actions={
         canEdit && (
-          <RecordSectionAction label="Add contact method" onClick={() => setEditor({})}>
+          <RecordSectionAction
+            label="Add contact method"
+            onClick={() => setDialog({ kind: "edit" })}
+          >
             <Plus aria-hidden="true" />
           </RecordSectionAction>
         )
@@ -65,7 +69,7 @@ export function ContactMethods({
                   <RowActions label="Contact method actions">
                     <RowAction
                       label="Edit contact method"
-                      onClick={() => setEditor({ record: identifier })}
+                      onClick={() => setDialog({ kind: "edit", record: identifier })}
                     >
                       <Pencil aria-hidden />
                     </RowAction>
@@ -74,7 +78,7 @@ export function ContactMethods({
                       destructive
                       onClick={() => {
                         mutation.reset();
-                        setRemoving(identifier);
+                        setDialog({ kind: "remove", record: identifier });
                       }}
                     >
                       <Trash2 aria-hidden />
@@ -86,15 +90,15 @@ export function ContactMethods({
           </Item>
         ))}
       </ul>
-      {editor && (
+      {dialog?.kind === "edit" && (
         <ContactMethodEditor
           organizationId={organizationId}
           contactEntityId={contactEntityId}
-          record={editor.record}
-          onClose={() => setEditor(null)}
+          record={dialog.record}
+          onClose={() => setDialog(null)}
         />
       )}
-      {removing && (
+      {dialog?.kind === "remove" && (
         <ConfirmDialog
           title="Remove contact method?"
           description="Remove this email address or phone number from the contact. This does not merge contacts or change any user’s identity."
@@ -103,11 +107,11 @@ export function ContactMethods({
           pending={mutation.isPending}
           error={mutation.error}
           errorDescription="Couldn’t remove this contact method. Try again."
-          onClose={() => setRemoving(null)}
+          onClose={() => setDialog(null)}
           onConfirm={() =>
             mutation.mutate(
-              { action: "removeIdentifier", organizationId, contactEntityId, id: removing.id },
-              { onSuccess: () => setRemoving(null) },
+              { action: "removeIdentifier", organizationId, contactEntityId, id: dialog.record.id },
+              { onSuccess: () => setDialog(null) },
             )
           }
         />

@@ -5,6 +5,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useState } from "react";
 
+import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { OriginalText } from "./original-text";
 import { isAccessFailure } from "@/api/access-failure";
 import { decideMatch } from "@/api/meetings/requests";
@@ -20,10 +21,10 @@ import { Heading } from "@/components/ui/heading";
 import { Item, ItemActions, ItemContent, ItemHeader, ItemMedia } from "@/components/ui/item";
 import { formatArchiveDate, formatWallTime, parseDateOnly } from "@/lib/format/date";
 import { peopleLabels } from "@/lib/meetings/display";
-import type { MeetingQueries } from "@/queries/meetings/options";
 import { GitMerge } from "lucide-react";
 
-export function MatchReview({ scope, queries }: { scope: MeetingScope; queries: MeetingQueries }) {
+export function MatchReview({ scope }: { scope: MeetingScope }) {
+  const { queries } = useMeetingsWorkspace();
   const query = useQuery(queries.reviews),
     client = useQueryClient();
   const [inspect, setInspect] = useState<string | null>(null);
@@ -118,7 +119,7 @@ export function MatchReview({ scope, queries }: { scope: MeetingScope; queries: 
               </Button>
             </ItemActions>
           </Item>
-          {inspect === r.originalId && <OriginalText id={r.originalId} queries={queries} />}
+          {inspect === r.originalId && <OriginalText id={r.originalId} />}
           <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
             <Button
               variant="outline"

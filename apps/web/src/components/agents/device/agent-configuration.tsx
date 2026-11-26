@@ -8,16 +8,16 @@ import {
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useRef, useState } from "react";
+import { useRef } from "react";
 
 import type { AgentSection } from "../editors/agent-form";
+import { McpServerEditor } from "../editors/mcp-server-editor";
 import { SkillEditor } from "../editors/skill-editor";
 import { ConfigurationStatus } from "./configuration-status";
-import { McpServerDialogs } from "./mcp-server-dialogs";
 import { McpServersSection } from "./mcp-servers-section";
 import { SkillsSection } from "./skills-section";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
-import { useFocusReturn } from "@/components/feedback/use-focus-return";
+import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAgentConfigurationMutations } from "@/queries/agents/configuration-mutations";
@@ -66,6 +66,14 @@ function RefreshConfiguration({
   );
 }
 
+type ConfigurationDialog =
+  | { kind: "editSkill"; id?: string }
+  | { kind: "deleteSkill"; skill: { id: string; name: string } }
+  /** The server being edited, or none for a new one. */
+  | { kind: "editServer"; server?: HarnessMcpServer }
+  | { kind: "deleteServer"; server: HarnessMcpServer }
+  | { kind: "reset" };
+
 export function AgentConfiguration({
   userId,
   organizationId,
@@ -83,18 +91,19 @@ export function AgentConfiguration({
 }) {
   const local = localAgentConfiguration(userId, organizationId, agentId, harness);
   const available = !!local;
-  const [editing, setEditing] = useState<{ id?: string }>();
-  const [deleting, setDeleting] = useState<{ id: string; name: string }>();
   const container = useRef<HTMLDivElement>(null);
-  const { remember: rememberLauncher, restore: restoreFocus } = useFocusReturn(container);
+  const {
+    value: dialog,
+    open,
+    close,
+    restoreFocus,
+  } = useStateDialog<ConfigurationDialog>(container);
   const configuration = useQuery(localConfigurationOptions(userId, local));
   const { save, remove, reset, saveServer, removeServer } = useAgentConfigurationMutations(local);
-  const [editingServer, setEditingServer] = useState<{ server?: HarnessMcpServer }>();
-  const [deletingServer, setDeletingServer] = useState<HarnessMcpServer>();
-  const [resetting, setResetting] = useState(false);
   const { skills, managedSkills } = skillLists(configuration.data?.skills, !available && defaults);
   const servers = configuration.data?.mcpServers ?? [];
-  const skill = skills.find((item) => item.id === editing?.id);
+  const skill =
+    dialog?.kind === "editSkill" ? skills.find((item) => item.id === dialog.id) : undefined;
   const refresh = (
     <RefreshConfiguration
       disabled={!available || configuration.isFetching}
@@ -124,22 +133,10 @@ export function AgentConfiguration({
         status={status}
         resetting={reset.isPending}
         removing={remove.isPending}
-        onReset={() => {
-          rememberLauncher();
-          setResetting(true);
-        }}
-        onCreate={() => {
-          rememberLauncher();
-          setEditing({});
-        }}
-        onEdit={(id) => {
-          rememberLauncher();
-          setEditing({ id });
-        }}
-        onDelete={(skill) => {
-          rememberLauncher();
-          setDeleting(skill);
-        }}
+        onReset={() => open({ kind: "reset" })}
+        onCreate={() => open({ kind: "editSkill" })}
+        onEdit={(id) => open({ kind: "editSkill", id })}
+        onDelete={(skill) => open({ kind: "deleteSkill", skill })}
       />
     ) : (
       <McpServersSection
@@ -150,54 +147,80 @@ export function AgentConfiguration({
         refresh={refresh}
         status={status}
         busy={saveServer.isPending || removeServer.isPending}
-        onCreate={() => {
-          rememberLauncher();
-          setEditingServer({});
-        }}
-        onEdit={(server) => {
-          rememberLauncher();
-          setEditingServer({ server });
-        }}
-        onDelete={(server) => {
-          rememberLauncher();
-          setDeletingServer(server);
-        }}
+        onCreate={() => open({ kind: "editServer" })}
+        onEdit={(server) => open({ kind: "editServer", server })}
+        onDelete={(server) => open({ kind: "deleteServer", server })}
       />
     );
   return (
     <div ref={container} tabIndex={-1}>
       {content}
-      {editing && (
+      {dialog?.kind === "editSkill" && (
         <SkillEditor
           skill={skill}
           pending={save.isPending}
           error={save.error}
           onRestoreFocus={restoreFocus}
           onClose={() => {
-            setEditing(undefined);
+            close();
             save.reset();
           }}
           onSave={(input) =>
             save.mutate(input, {
               onSuccess: () => {
                 toast.success("Skill saved.");
-                setEditing(undefined);
+                close();
               },
             })
           }
         />
       )}
-      <McpServerDialogs
-        editing={editingServer}
-        deleting={deletingServer}
-        servers={servers}
-        saveServer={saveServer}
-        removeServer={removeServer}
-        onRestoreFocus={restoreFocus}
-        onEditDone={() => setEditingServer(undefined)}
-        onDeleteDone={() => setDeletingServer(undefined)}
-      />
-      {resetting && (
+      {dialog?.kind === "editServer" && (
+        <McpServerEditor
+          server={dialog.server}
+          servers={servers}
+          pending={saveServer.isPending}
+          error={saveServer.error}
+          onRestoreFocus={restoreFocus}
+          onClose={() => {
+            close();
+            saveServer.reset();
+          }}
+          onSave={(server) =>
+            saveServer.mutate(server, {
+              onSuccess: () => {
+                toast.success(dialog.server ? "Server saved." : "Server added.");
+                close();
+              },
+            })
+          }
+        />
+      )}
+      {dialog?.kind === "deleteServer" && (
+        <ConfirmDialog
+          title={`Delete ${dialog.server.name}?`}
+          description="This removes the server from this agent on this desktop. New sessions won’t use it. You can’t undo this."
+          confirmLabel="Delete server"
+          errorDescription="We couldn’t delete this server. Try again."
+          destructive
+          pending={removeServer.isPending}
+          error={removeServer.error}
+          onRestoreFocus={restoreFocus}
+          onConfirm={() =>
+            removeServer.mutate(dialog.server.id, {
+              onSuccess: () => {
+                toast.success("Server deleted.");
+                close();
+              },
+            })
+          }
+          onClose={() => {
+            close();
+            removeServer.reset();
+          }}
+        />
+      )}
+      {dialog?.kind === "reset" && (
         <ConfirmDialog
           title="Reset Substrate defaults?"
           description="This replaces the agent’s instructions file and Substrate skills on this device with the saved agent settings. Local edits to those files are lost. Your other skills and MCP servers are not changed."
@@ -211,19 +234,19 @@ export function AgentConfiguration({
             reset.mutate(undefined, {
               onSuccess: () => {
                 toast.success("Substrate defaults reset.");
-                setResetting(false);
+                close();
               },
             })
           }
           onClose={() => {
-            setResetting(false);
+            close();
             reset.reset();
           }}
         />
       )}
-      {deleting && (
+      {dialog?.kind === "deleteSkill" && (
         <ConfirmDialog
-          title={`Delete ${deleting.name}?`}
+          title={`Delete ${dialog.skill.name}?`}
           description="This deletes the skill’s file from this agent’s folder on this desktop. New sessions won’t use it. You can’t undo this."
           confirmLabel="Delete skill"
           errorDescription="We couldn’t delete this skill. Try again."
@@ -232,15 +255,15 @@ export function AgentConfiguration({
           error={remove.error}
           onRestoreFocus={restoreFocus}
           onConfirm={() =>
-            remove.mutate(deleting.id, {
+            remove.mutate(dialog.skill.id, {
               onSuccess: () => {
                 toast.success("Skill deleted.");
-                setDeleting(undefined);
+                close();
               },
             })
           }
           onClose={() => {
-            setDeleting(undefined);
+            close();
             remove.reset();
           }}
         />

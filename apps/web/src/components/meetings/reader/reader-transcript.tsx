@@ -2,6 +2,7 @@ import { providerNames, type OriginalView } from "@substrate/contracts/meetings"
 
 import { useEffect } from "react";
 
+import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { recordRows } from "@/components/layout/record-section";
 import { OriginalBadge } from "@/components/meetings/sources/meeting-provider";
@@ -9,20 +10,18 @@ import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { Item, ItemContent, ItemMedia } from "@/components/ui/item";
 import { formatTranscriptOffset } from "@/lib/format/date";
-import type { ChangeMeetingView } from "@/lib/meetings/navigation";
 import { AudioLines } from "lucide-react";
 
 export function ReaderTranscript({
   originals,
   originalId,
   turn,
-  change,
 }: {
   originals: OriginalView[];
   originalId?: string;
   turn?: number;
-  change: ChangeMeetingView;
 }) {
+  const { change } = useMeetingsWorkspace();
   useEffect(() => {
     if (originalId && turn !== undefined)
       document.getElementById(`turn-${originalId}-${turn}`)?.focus();

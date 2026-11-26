@@ -1,8 +1,28 @@
+import { createContext, useContext, type ReactNode } from "react";
+
 import type { WorkspaceReference } from "../references/entity-reference";
 import { MarkdownBody } from "./markdown-body";
 import { remarkWorkspaceReferences } from "./remark-workspace-references";
 import { MarkdownReference } from "@/components/messaging/markdown/markdown-reference";
 import { referenceKey } from "@/lib/messaging/reference-token";
+import type { ExtraProps, Options } from "react-markdown";
+
+const MessageReferences = createContext<{
+  references?: Map<string, WorkspaceReference>;
+  loading: boolean;
+}>({ loading: false });
+
+/** Reads the references from context, so the component stays the same when they change. */
+function ReferenceSpan({ node, children }: ExtraProps & { children?: ReactNode }) {
+  const { references, loading } = useContext(MessageReferences);
+  return (
+    <MarkdownReference node={node} references={references} loading={loading}>
+      {children}
+    </MarkdownReference>
+  );
+}
+
+const components = { span: ReferenceSpan } satisfies Options["components"];
 
 export function MessageMarkdown({
   body,
@@ -17,16 +37,12 @@ export function MessageMarkdown({
     references &&
     new Map(references.map((item) => [referenceKey(item.kind, item.id), item] as const));
   return (
-    <MarkdownBody
-      body={body}
-      remarkPlugins={references ? [remarkWorkspaceReferences] : []}
-      components={{
-        span: ({ node, children }) => (
-          <MarkdownReference node={node} references={referencesByKey} loading={referencesLoading}>
-            {children}
-          </MarkdownReference>
-        ),
-      }}
-    />
+    <MessageReferences value={{ references: referencesByKey, loading: referencesLoading }}>
+      <MarkdownBody
+        body={body}
+        remarkPlugins={references ? [remarkWorkspaceReferences] : []}
+        components={components}
+      />
+    </MessageReferences>
   );
 }

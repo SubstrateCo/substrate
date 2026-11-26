@@ -1,24 +1,23 @@
 import type { CalendarData, MeetingDay } from "@substrate/contracts/meetings";
 
+import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { CalendarMonth } from "./calendar-month";
 import { Heading } from "@/components/ui/heading";
 import { Pressable } from "@/components/ui/pressable";
 import { formatCalendarMonth, formatMonthYear, formatDateOnly } from "@/lib/format/date";
-import type { ChangeMeetingView } from "@/lib/meetings/navigation";
 
 export function CalendarYear({
   year,
   data,
   days,
   today,
-  change,
 }: {
   year: number;
   data: CalendarData;
   days: Map<string, MeetingDay>;
   today: string;
-  change: ChangeMeetingView;
 }) {
+  const { change } = useMeetingsWorkspace();
   return (
     <>
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 pt-3 pb-4 text-xs text-muted-foreground">
@@ -59,7 +58,7 @@ export function CalendarYear({
                   {stats?.people ?? 0} {stats?.people === 1 ? "person" : "people"}
                 </span>
               </Heading>
-              <CalendarMonth date={d} days={days} annual today={today} change={change} />
+              <CalendarMonth date={d} days={days} annual today={today} />
             </section>
           );
         })}

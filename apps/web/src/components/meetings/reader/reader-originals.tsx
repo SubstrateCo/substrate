@@ -2,6 +2,7 @@ import { providerNames, type OriginalView } from "@substrate/contracts/meetings"
 
 import { useState } from "react";
 
+import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { OriginalText } from "../sources/original-text";
 import { Property, PropertyList } from "@/components/layout/record-section";
 import { ProviderMark } from "@/components/meetings/sources/meeting-provider";
@@ -25,8 +26,6 @@ import {
   localTimeZone,
   parseDateOnly,
 } from "@/lib/format/date";
-import type { ChangeMeetingView } from "@/lib/meetings/navigation";
-import type { MeetingQueries } from "@/queries/meetings/options";
 import { ChevronRight } from "lucide-react";
 
 function sourceKind(r: OriginalView) {
@@ -39,14 +38,11 @@ function sourceKind(r: OriginalView) {
 export function ReaderOriginals({
   originals,
   originalId,
-  queries,
-  change,
 }: {
   originals: OriginalView[];
   originalId?: string;
-  queries: MeetingQueries;
-  change: ChangeMeetingView;
 }) {
+  const { change } = useMeetingsWorkspace();
   return (
     <>
       <Heading level={3}>Original records</Heading>
@@ -83,7 +79,7 @@ export function ReaderOriginals({
                   />
                 </ItemHeader>
                 <CollapsibleContent className="min-w-0 basis-full">
-                  <OriginalFacts original={r} queries={queries} />
+                  <OriginalFacts original={r} />
                 </CollapsibleContent>
               </Item>
             </Collapsible>
@@ -94,13 +90,7 @@ export function ReaderOriginals({
   );
 }
 
-function OriginalFacts({
-  original: r,
-  queries,
-}: {
-  original: OriginalView;
-  queries: MeetingQueries;
-}) {
+function OriginalFacts({ original: r }: { original: OriginalView }) {
   const [raw, setRaw] = useState(false);
   return (
     <>
@@ -132,7 +122,7 @@ function OriginalFacts({
         >
           {raw ? "Hide original" : "Inspect original"}
         </Button>
-        {raw && <OriginalText id={r.id} queries={queries} />}
+        {raw && <OriginalText id={r.id} />}
       </div>
     </>
   );

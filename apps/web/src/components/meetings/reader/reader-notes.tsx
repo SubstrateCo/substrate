@@ -1,26 +1,20 @@
 import { providerNames, type OriginalView } from "@substrate/contracts/meetings";
 
+import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { remarkMeetingNotes } from "./remark-meeting-notes";
 import { OriginalBadge } from "@/components/meetings/sources/meeting-provider";
 import { MarkdownBody } from "@/components/messaging/markdown/markdown-body";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { Item, ItemContent, ItemMedia } from "@/components/ui/item";
-import type { ChangeMeetingView } from "@/lib/meetings/navigation";
 import { Layers3, ListTodo, Quote } from "lucide-react";
 
-export function ReaderNotes({
-  originals,
-  change,
-}: {
-  originals: OriginalView[];
-  change: ChangeMeetingView;
-}) {
+export function ReaderNotes({ originals }: { originals: OriginalView[] }) {
   const notes = originals.filter((r) => r.notes);
   return (
     <>
       {notes.map((r) => (
-        <SourceNote key={r.id} src={r} single={notes.length === 1} change={change} />
+        <SourceNote key={r.id} src={r} single={notes.length === 1} />
       ))}
       <p className="mt-5 flex items-center gap-2 border-t pt-3 text-xs text-muted-foreground">
         <Layers3 className="size-3.5" />
@@ -31,15 +25,8 @@ export function ReaderNotes({
   );
 }
 
-function SourceNote({
-  src,
-  single,
-  change,
-}: {
-  src: OriginalView;
-  single: boolean;
-  change: ChangeMeetingView;
-}) {
+function SourceNote({ src, single }: { src: OriginalView; single: boolean }) {
+  const { change } = useMeetingsWorkspace();
   return (
     <article className="space-y-2 not-first:mt-5 not-first:border-t not-first:pt-4">
       <div className="flex items-baseline justify-between gap-2">

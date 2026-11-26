@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useId, useState, type ReactNode } from "react";
 
 import { ProjectIcon } from "../projects/project-icon";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { TaskProperties } from "./task-properties";
 import { TaskSubtasks } from "./task-subtasks";
+import { useFocusAfterRender } from "@/components/feedback/use-focus-after-render";
 import { PageSheetHeader, PageSheetBody } from "@/components/layout/page-sheet";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
@@ -41,12 +42,12 @@ export function TaskDetail({
   children: ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
-  const editButton = useRef<HTMLButtonElement>(null);
-  const wasEditing = useRef(false);
-  useEffect(() => {
-    if (!editing && wasEditing.current) editButton.current?.focus();
-    wasEditing.current = editing;
-  }, [editing]);
+  const editButtonId = useId();
+  const focusAfterRender = useFocusAfterRender();
+  const stopEditing = () => {
+    setEditing(false);
+    focusAfterRender(() => document.getElementById(editButtonId));
+  };
   const { canEdit } = capabilities;
   const parent = task.parentTaskEntityId
     ? detail.tasks.find((candidate) => candidate.entityId === task.parentTaskEntityId)
@@ -94,7 +95,7 @@ export function TaskDetail({
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
-                    ref={editButton}
+                    id={editButtonId}
                     variant="ghost"
                     size="icon-sm"
                     aria-label="Edit task"
@@ -113,7 +114,7 @@ export function TaskDetail({
       <PageSheetBody>
         <div className="grid min-w-0 gap-6 wrap-anywhere">
           {editing && canEdit ? (
-            renderEditor(() => setEditing(false))
+            renderEditor(stopEditing)
           ) : (
             <div className="grid gap-2">
               <Heading level={2} variant="record">
