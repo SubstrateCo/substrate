@@ -4,7 +4,7 @@
 #
 # Public HTTPS origins built into the app are set in the workflow env below.
 # Repository secrets:
-#   DESKTOP_RELEASE_APP_ID, DESKTOP_RELEASE_APP_PRIVATE_KEY  GitHub App installed on the source
+#   DESKTOP_RELEASE_APP_PRIVATE_KEY  Key of the GitHub App (client ID in env below) installed on the source
 #     repo with Contents and Pull requests: read and write, and Checks and Commit statuses: read.
 #     The App must be allowed to merge under the repo's branch rules; no admin bypass is used.
 #   Signing (optional, see the package steps): WINDOWS_CSC_LINK, WINDOWS_CSC_KEY_PASSWORD,
@@ -41,6 +41,8 @@ env:
   ELECTRON_BUILDER_CACHE: ${{ github.workspace }}/.ci-cache/electron-builder
   SUBSTRATE_RELEASES_OWNER: ${{ github.repository_owner }}
   SUBSTRATE_RELEASES_REPO: ${{ github.event.repository.name }}
+  # Client ID of the substrate-desktop-releases GitHub App. It is public, so it is not a secret.
+  DESKTOP_RELEASE_CLIENT_ID: Iv23liygAZsVtP14ndKV
 
 jobs:
   source:
@@ -55,22 +57,21 @@ jobs:
     steps:
       - name: Require main and release credentials
         env:
-          APP_ID: ${{ secrets.DESKTOP_RELEASE_APP_ID }}
           APP_KEY: ${{ secrets.DESKTOP_RELEASE_APP_PRIVATE_KEY }}
         run: |
           if [ "$GITHUB_REF" != "refs/heads/main" ]; then
             echo "::error::Start desktop releases from main."
             exit 1
           fi
-          if [ -z "$APP_ID" ] || [ -z "$APP_KEY" ]; then
-            echo "::error::Set DESKTOP_RELEASE_APP_ID and DESKTOP_RELEASE_APP_PRIVATE_KEY."
+          if [ -z "$APP_KEY" ]; then
+            echo "::error::Set DESKTOP_RELEASE_APP_PRIVATE_KEY."
             exit 1
           fi
       - name: Create source repository token
         id: token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.DESKTOP_RELEASE_APP_ID }}
+          client-id: ${{ env.DESKTOP_RELEASE_CLIENT_ID }}
           private-key: ${{ secrets.DESKTOP_RELEASE_APP_PRIVATE_KEY }}
       - uses: actions/checkout@v5
         with:
@@ -134,9 +135,9 @@ jobs:
     steps:
       - name: Create release upload token
         id: token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.DESKTOP_RELEASE_APP_ID }}
+          client-id: ${{ env.DESKTOP_RELEASE_CLIENT_ID }}
           private-key: ${{ secrets.DESKTOP_RELEASE_APP_PRIVATE_KEY }}
       # Both package jobs upload to this one draft. electron-builder reuses a draft with the
       # same tag, but two jobs that start together could each create their own.
@@ -212,9 +213,9 @@ jobs:
 
       - name: Create release upload token
         id: token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.DESKTOP_RELEASE_APP_ID }}
+          client-id: ${{ env.DESKTOP_RELEASE_CLIENT_ID }}
           private-key: ${{ secrets.DESKTOP_RELEASE_APP_PRIVATE_KEY }}
 
       - name: Package and upload (Windows)
@@ -272,9 +273,9 @@ jobs:
     steps:
       - name: Create source and release repository token
         id: token
-        uses: actions/create-github-app-token@v2
+        uses: actions/create-github-app-token@v3
         with:
-          app-id: ${{ secrets.DESKTOP_RELEASE_APP_ID }}
+          client-id: ${{ env.DESKTOP_RELEASE_CLIENT_ID }}
           private-key: ${{ secrets.DESKTOP_RELEASE_APP_PRIVATE_KEY }}
       # Installed apps see a release only after it is published, so publish only when both
       # platforms uploaded their installers and update feeds.
