@@ -4,6 +4,7 @@ import { useState } from "react";
 
 import { createConversationDraftSchema } from "./create-conversation-validation";
 import { ShareHistoryField } from "./share-history-field";
+import { useUnfinishedRecipient } from "./use-unfinished-recipient";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { FormTextField } from "@/components/forms/form-text-field";
 import { PeoplePicker } from "@/components/people/people-picker";
@@ -18,7 +19,6 @@ import {
 import type { Conversation } from "@/lib/messaging/conversations";
 import {
   invitedRecipients,
-  unfinishedRecipientMessage,
   type PickedRecipient,
   type PickerPerson,
 } from "@/lib/people/people-picker";
@@ -75,9 +75,8 @@ export function CreateConversationDialog({
   error?: Error | null;
 }) {
   const [shareHistory, setShareHistory] = useState(false);
-  // Text left in the people field. A submit with text left is refused, so nothing typed is dropped.
-  const [pendingText, setPendingText] = useState("");
-  const [refused, setRefused] = useState(false);
+  const limit = kind === "dm" ? "Choose one person for a direct message." : undefined;
+  const unfinishedRecipient = useUnfinishedRecipient("conversation-recipients", limit);
   const recipients: PickedRecipient[] = [];
   const form = useForm({
     defaultValues: { name: "", recipients, isPrivate: false },
@@ -93,7 +92,6 @@ export function CreateConversationDialog({
   const text = copy[kind];
   const chosen = useSelector(form.store, (state) => state.values.recipients.length);
   const missing = Math.max(0, minimumRecipients[kind] - chosen);
-  const limit = kind === "dm" ? "Choose one person for a direct message." : undefined;
   const nameField = kind !== "dm" && (
     <form.Field name="name">
       {(field) => (
@@ -117,25 +115,21 @@ export function CreateConversationDialog({
       description={text.description}
       saveLabel={text.submit}
       pending={pending}
-      disabled={missing > 0 && !pendingText.trim()}
+      disabled={missing > 0 && !unfinishedRecipient.pendingText.trim()}
       status={missing > 0 ? recipientStatus(kind, chosen) : null}
       error={error}
       errorDescription="We couldn’t create this conversation. Check the people and try again."
       onClose={onClose}
       onRestoreFocus={onRestoreFocus}
       onSubmit={() => {
-        if (unfinishedRecipientMessage(pendingText, limit)) {
-          setRefused(true);
-          document.getElementById("conversation-recipients")?.focus();
-          return;
-        }
+        if (unfinishedRecipient.refuse()) return;
         return form.handleSubmit();
       }}
     >
       {kind === "channel" && nameField}
       <form.Field name="recipients">
         {(field) => {
-          const unfinished = refused ? unfinishedRecipientMessage(pendingText, limit) : undefined;
+          const unfinished = unfinishedRecipient.message;
           const invalid = !field.state.meta.isValid || !!unfinished;
           const invited = invitedRecipients(field.state.value).length;
           return (
@@ -159,10 +153,7 @@ export function CreateConversationDialog({
                   invalid={invalid}
                   describedBy={invalid ? "conversation-recipients-error" : undefined}
                   onValueChange={field.handleChange}
-                  onPendingTextChange={(text) => {
-                    setPendingText(text);
-                    setRefused(false);
-                  }}
+                  onPendingTextChange={unfinishedRecipient.onPendingTextChange}
                   onBlur={field.handleBlur}
                 />
                 {unfinished ? (

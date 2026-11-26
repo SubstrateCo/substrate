@@ -29,6 +29,18 @@ function moveBetweenConversations(event: KeyboardEvent<HTMLDivElement>) {
   items[index].focus();
 }
 
+const sidebarId = "conversation-sidebar";
+
+/**
+ * Focus fallback for a control that is gone, such as a deleted conversation's menu: the first
+ * current conversation or button in the sidebar. Does nothing where the sidebar is not shown.
+ */
+export function focusConversationSidebar() {
+  document
+    .querySelector<HTMLElement>(`#${sidebarId} [aria-current="page"], #${sidebarId} button`)
+    ?.focus();
+}
+
 export function ConversationSidebar({
   conversations,
   state,
@@ -53,7 +65,7 @@ export function ConversationSidebar({
   // With no conversations to show, the main pane shows the load error.
   const showList = state !== "unavailable" && (!error || conversations.length > 0);
   return (
-    <PageSidebar id="conversation-sidebar" aria-label="Conversations" aria-busy={loading}>
+    <PageSidebar id={sidebarId} aria-label="Conversations" aria-busy={loading}>
       <PageSidebarHeader title="Messages" />
       {showList && (
         <PageSidebarContent onKeyDown={moveBetweenConversations}>

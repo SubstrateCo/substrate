@@ -5,6 +5,7 @@ import { DeleteConversationDialog } from "./actions/delete-conversation-dialog";
 import { LeaveConversationDialog } from "./actions/leave-conversation-dialog";
 import { OwnerDialog } from "./actions/owner-dialog";
 import { ConversationAgents } from "./conversation-agents";
+import { focusConversationSidebar } from "./conversation-sidebar";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { SharingManager } from "@/components/messaging/sharing/sharing-manager";
 import {
@@ -17,10 +18,6 @@ import { deleteImpactQueryOptions } from "@/queries/messaging/options";
 import { toast } from "sonner";
 
 type Dialog = "agents" | "leave" | "transfer" | "delete" | "sharing";
-
-function focusSidebar() {
-  document.querySelector<HTMLElement>("#conversation-sidebar button")?.focus();
-}
 
 export function ConversationActions({
   organizationId,
@@ -35,7 +32,12 @@ export function ConversationActions({
 }) {
   // A dialog opened from the menu returns focus to its trigger. When the conversation is gone
   // too, the sidebar is the nearest place left.
-  const { value: dialog, open, close, restoreFocus } = useStateDialog<Dialog>(focusSidebar);
+  const {
+    value: dialog,
+    open,
+    close,
+    restoreFocus,
+  } = useStateDialog<Dialog>(focusConversationSidebar);
   const { remove, leave, transfer } = useConversationManagement(organizationId, onRemoved);
   const impact = useQuery({
     ...deleteImpactQueryOptions(organizationId, conversation.id),

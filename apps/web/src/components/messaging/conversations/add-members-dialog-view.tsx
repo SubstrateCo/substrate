@@ -1,12 +1,12 @@
 import { useState } from "react";
 
 import { ShareHistoryField } from "./share-history-field";
+import { useUnfinishedRecipient } from "./use-unfinished-recipient";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { PeoplePicker } from "@/components/people/people-picker";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import {
   invitedRecipients,
-  unfinishedRecipientMessage,
   type PickedRecipient,
   type PickerPerson,
 } from "@/lib/people/people-picker";
@@ -34,10 +34,9 @@ export function AddMembersDialog({
 }) {
   const [recipients, setRecipients] = useState<PickedRecipient[]>([]);
   const [shareHistory, setShareHistory] = useState(false);
-  const [pendingText, setPendingText] = useState("");
-  const [refused, setRefused] = useState(false);
+  const unfinishedRecipient = useUnfinishedRecipient("add-member-people");
+  const unfinished = unfinishedRecipient.message;
   const invited = invitedRecipients(recipients).length;
-  const unfinished = refused ? unfinishedRecipientMessage(pendingText) : undefined;
   const title = name ? `Add people to ${name}` : "Add people";
   return (
     <FormDialog
@@ -45,21 +44,16 @@ export function AddMembersDialog({
       description="Members of this workspace join right away. Anyone else gets an invitation."
       saveLabel={recipients.length > 1 ? `Add ${recipients.length} people` : "Add people"}
       pending={pending}
-      disabled={!recipients.length && !pendingText.trim()}
+      disabled={!recipients.length && !unfinishedRecipient.pendingText.trim()}
       status={recipients.length ? `${recipients.length} chosen` : "Choose people to add"}
       error={error}
       errorDescription="We couldn’t add these people. Check their email addresses and try again."
       onClose={onClose}
       onRestoreFocus={onRestoreFocus}
       onSubmit={() => {
-        const field = document.getElementById("add-member-people");
-        if (unfinishedRecipientMessage(pendingText)) {
-          setRefused(true);
-          field?.focus();
-          return;
-        }
+        if (unfinishedRecipient.refuse()) return;
         if (!recipients.length) {
-          field?.focus();
+          document.getElementById("add-member-people")?.focus();
           return;
         }
         onSubmit(recipients, invited > 0 && shareHistory);
@@ -76,10 +70,7 @@ export function AddMembersDialog({
           invalid={!!unfinished}
           describedBy={unfinished ? "add-member-people-error" : undefined}
           onValueChange={setRecipients}
-          onPendingTextChange={(text) => {
-            setPendingText(text);
-            setRefused(false);
-          }}
+          onPendingTextChange={unfinishedRecipient.onPendingTextChange}
         />
         {unfinished && <FieldError id="add-member-people-error">{unfinished}</FieldError>}
       </Field>

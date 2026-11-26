@@ -34,10 +34,10 @@ export function ConversationAgents({
   );
   const { add, remove } = useConversationAgents(organizationId, conversationId);
   const agents = conversationAgentOptions(catalog.data?.agents ?? [], ownAgents);
-  let busyId: string | undefined;
-  if (add.isPending) busyId = add.variables;
-  else if (remove.isPending)
-    busyId = agents.find((agent) => agent.actorId === remove.variables)?.agentId;
+  const removingId = remove.isPending
+    ? agents.find((agent) => agent.actorId === remove.variables)?.agentId
+    : undefined;
+  const busyId = add.isPending ? add.variables : removingId;
   return (
     <AgentMembersDialog
       name={name}

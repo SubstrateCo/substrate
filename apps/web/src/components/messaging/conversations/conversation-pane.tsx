@@ -9,8 +9,9 @@ import { useMessageHistory } from "../messages/use-message-history";
 import { ThreadPane } from "../threads/thread-pane";
 import { AddMembersDialog } from "./add-members-dialog";
 import { ConversationActions } from "./conversation-actions";
+import { AddPeopleButton, type HeaderMember } from "./conversation-header";
 import { LeftChannelNotice } from "./left-channel-notice";
-import { useMemberRemoval } from "./remove-member-action";
+import { RemoveMemberAction, RemoveMemberDialog, canRemoveMember } from "./remove-member-action";
 import type { MessageTarget } from "@/api/context/links";
 import { AgentWorkNotice } from "@/components/agent-work/agent-work-slot";
 import { ConversationAgentWork } from "@/components/agent-work/conversation-agent-work";
@@ -54,7 +55,7 @@ export function ConversationPane({
   const task = conversation.task;
   const target = useMessageTarget(organizationId, conversation.id, messageId);
   const [addingMembers, setAddingMembers] = useState(false);
-  const removal = useMemberRemoval(organizationId, conversation, userId);
+  const [removingMember, setRemovingMember] = useState<HeaderMember | null>(null);
   const { messages, history, loadOlder, timeline, unread } = useConversationTimeline(
     {
       organizationId,
@@ -135,18 +136,28 @@ export function ConversationPane({
             </Link>
           )
         }
-        memberAction={removal.memberAction}
+        renderMemberAction={(member) =>
+          canRemoveMember(conversation, userId, member) ? (
+            <RemoveMemberAction member={member} onRemove={() => setRemovingMember(member)} />
+          ) : null
+        }
         state={resource.status}
         error={messages.error}
         onRetry={() => void messages.refetch()}
-        addingMembers={addingMembers}
-        onToggleMembers={() => setAddingMembers(!addingMembers)}
-        membersForm={
-          <AddMembersDialog
-            organizationId={organizationId}
-            conversationId={conversation.id}
-            onClose={() => setAddingMembers(false)}
-          />
+        addMembers={
+          <>
+            <AddPeopleButton
+              expanded={addingMembers}
+              onClick={() => setAddingMembers(!addingMembers)}
+            />
+            {addingMembers && (
+              <AddMembersDialog
+                organizationId={organizationId}
+                conversationId={conversation.id}
+                onClose={() => setAddingMembers(false)}
+              />
+            )}
+          </>
         }
         messages={messageContent}
         actions={
@@ -175,7 +186,15 @@ export function ConversationPane({
         }
         thread={aside}
       />
-      {removal.dialog}
+      {removingMember && (
+        <RemoveMemberDialog
+          organizationId={organizationId}
+          conversationId={conversation.id}
+          member={removingMember}
+          publicChannel={conversation.kind === "channel" && !conversation.private}
+          onClose={() => setRemovingMember(null)}
+        />
+      )}
     </ConversationAgentWork>
   );
 }

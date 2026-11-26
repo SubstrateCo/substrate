@@ -1,9 +1,12 @@
 import type { LinkProps } from "@tanstack/react-router";
 
-import { Children, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
 import { PaneState } from "../../feedback/pane-state";
-import { ConversationSidebar } from "../conversations/conversation-sidebar";
+import {
+  ConversationSidebar,
+  focusConversationSidebar,
+} from "../conversations/conversation-sidebar";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
@@ -15,15 +18,6 @@ import { Button } from "@/components/ui/button";
 import type { Conversation } from "@/lib/messaging/conversations";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { ArrowLeft, PanelLeft } from "lucide-react";
-
-/** The empty state's buttons are gone once a conversation exists. */
-function focusSidebar() {
-  document
-    .querySelector<HTMLElement>(
-      '#conversation-sidebar [aria-current="page"], #conversation-sidebar button',
-    )
-    ?.focus();
-}
 
 export function MessagingWorkspace({
   conversations,
@@ -38,7 +32,7 @@ export function MessagingWorkspace({
   state,
   error,
   onRetry,
-  children,
+  content,
 }: {
   conversations: Conversation[];
   selectedId?: string;
@@ -66,14 +60,16 @@ export function MessagingWorkspace({
   state: ResourceStatus;
   error?: Error | null;
   onRetry: () => void;
-  children?: ReactNode;
+  /** The selected conversation, or why it can't open. Without it, the pane loads or is empty. */
+  content?: ReactNode;
 }) {
+  // The empty state's buttons are gone once a conversation exists.
   const {
     value: creating,
     open: create,
     close,
     restoreFocus,
-  } = useStateDialog<Conversation["kind"]>(focusSidebar);
+  } = useStateDialog<Conversation["kind"]>(focusConversationSidebar);
   const blocked = state === "error" || state === "unavailable";
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
@@ -112,9 +108,8 @@ export function MessagingWorkspace({
             onRetry={onRetry}
             loading={loading}
             onCreate={create}
-          >
-            {children}
-          </WorkspaceContent>
+            content={content}
+          />
         </PageContent>
       </PageLayout>
       {creating && renderCreate(creating, { onClose: close, onRestoreFocus: restoreFocus })}
@@ -128,14 +123,14 @@ function WorkspaceContent({
   onRetry,
   loading,
   onCreate,
-  children,
+  content,
 }: {
   state: ResourceStatus;
   error?: Error | null;
   onRetry: () => void;
   loading: boolean;
   onCreate: (kind: Conversation["kind"]) => void;
-  children?: ReactNode;
+  content?: ReactNode;
 }) {
   if (state === "error" || state === "unavailable")
     return (
@@ -152,18 +147,17 @@ function WorkspaceContent({
         onRetry={state === "unavailable" ? undefined : onRetry}
       />
     );
-  const hasContent = Children.toArray(children).length > 0;
   return (
     <>
       {state === "stale" && <StaleNotice>Conversations may be out of date.</StaleNotice>}
-      {hasContent && children}
-      {!hasContent &&
+      {content}
+      {!content &&
         (loading ? (
           <section
             aria-label="Conversation"
             className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface"
           >
-            <ConversationHeader title={<SkeletonText width="10rem" />} addingMembers={false} />
+            <ConversationHeader title={<SkeletonText width="10rem" />} />
             <MessageLoading label="Loading your conversations" />
           </section>
         ) : (

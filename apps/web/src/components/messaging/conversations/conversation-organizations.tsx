@@ -12,6 +12,11 @@ export type ChannelOrganization = {
   own: boolean;
 };
 
+/** The viewer's own organization first, then the others in their given order. */
+export function ownOrganizationFirst(organizations: readonly ChannelOrganization[]) {
+  return [...organizations].sort((a, b) => Number(b.own) - Number(a.own));
+}
+
 export function ConversationOrganizations({
   organizations,
   members,
@@ -20,7 +25,7 @@ export function ConversationOrganizations({
   members: { organizationId: string }[];
 }) {
   const wide = useMediaQuery("(min-width: 768px)");
-  const ordered = [...organizations].sort((a, b) => Number(b.own) - Number(a.own));
+  const ordered = ownOrganizationFirst(organizations);
   return (
     <Popover>
       <Tooltip>

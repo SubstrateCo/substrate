@@ -18,7 +18,7 @@ type ConversationPaneProps = {
   header?: ReactNode;
   actions?: ReactNode;
   leftNotice?: ReactNode;
-  memberAction?: (member: HeaderMember) => ReactNode;
+  renderMemberAction?: (member: HeaderMember) => ReactNode;
   taskLink?: ReactNode;
   conversation: Conversation | null;
   /** The signed-in user, so a DM header shows the other person. */
@@ -26,9 +26,8 @@ type ConversationPaneProps = {
   state: ResourceStatus;
   error?: Error | null;
   onRetry: () => void;
-  addingMembers?: boolean;
-  onToggleMembers: () => void;
-  membersForm?: ReactNode;
+  /** The Add people control and its dialog. Shown only where the viewer can add people. */
+  addMembers?: ReactNode;
   messages?: ReactNode;
   composer: ReactNode;
   thread?: ReactNode;
@@ -40,15 +39,13 @@ export function ConversationPane({
   state,
   error,
   onRetry,
-  addingMembers = false,
-  onToggleMembers,
-  membersForm,
+  addMembers,
   messages,
   composer,
   thread,
   actions,
   leftNotice,
-  memberAction,
+  renderMemberAction,
   taskLink,
   header,
 }: ConversationPaneProps) {
@@ -66,15 +63,13 @@ export function ConversationPane({
               taskLink={taskLink}
               conversation={conversation}
               viewerId={viewerId}
-              memberAction={memberAction}
-              addingMembers={addingMembers}
-              onToggleMembers={onToggleMembers}
+              renderMemberAction={renderMemberAction}
+              addMembers={addMembers}
               actions={actions}
             />
           ) : (
             header
           )}
-          {!blocked && !taskLink && addingMembers && membersForm}
           <PaneMessages
             title={title}
             conversation={conversation}
@@ -103,34 +98,28 @@ function PaneHeader({
   taskLink,
   conversation,
   viewerId,
-  memberAction,
-  addingMembers,
-  onToggleMembers,
+  renderMemberAction,
+  addMembers,
   actions,
 }: Pick<
   ConversationPaneProps,
-  "taskLink" | "conversation" | "viewerId" | "memberAction" | "onToggleMembers" | "actions"
+  "taskLink" | "conversation" | "viewerId" | "renderMemberAction" | "addMembers" | "actions"
 > & {
   title: string;
   blocked: boolean;
-  addingMembers: boolean;
 }) {
-  let kind: "private" | "public" | "group" | "dm" | undefined;
-  if (conversation?.kind === "channel") kind = conversation.private ? "private" : "public";
-  else kind = conversation?.kind;
   const canAddMembers =
     !blocked && !taskLink && conversation?.kind !== "dm" && conversation?.canManage;
   return (
     <ConversationHeader
       title={title}
       taskLink={!blocked ? taskLink : undefined}
-      kind={kind}
+      visibility={conversation ?? undefined}
       viewerId={viewerId}
       members={taskLink ? [] : (conversation?.members ?? [])}
-      memberAction={!blocked ? memberAction : undefined}
+      renderMemberAction={!blocked ? renderMemberAction : undefined}
       organizations={taskLink ? [] : (conversation?.organizations ?? [])}
-      addingMembers={addingMembers}
-      onToggleMembers={canAddMembers ? onToggleMembers : undefined}
+      addMembers={canAddMembers && addMembers}
       actions={!blocked && actions}
     />
   );

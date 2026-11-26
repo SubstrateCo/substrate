@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { ConversationPane } from "../conversations/conversation-pane";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
@@ -103,6 +103,17 @@ export function MessagingWorkspace({
       turnId={turnId}
     />
   );
+  let content: ReactNode;
+  if (selected?.task) content = <AppAvailability app="tasks">{pane}</AppAvailability>;
+  else if (selected) content = pane;
+  else if (conversationId && !selecting)
+    content = (
+      <ContentNotice
+        icon={Unlink}
+        title="Conversation unavailable"
+        description="It may have been deleted, or you may no longer have access. Check that you’re in the right workspace."
+      />
+    );
   return (
     <MessagingWorkspaceView
       state={resource.status}
@@ -141,16 +152,8 @@ export function MessagingWorkspace({
           }}
         />
       )}
-    >
-      {selected?.task ? <AppAvailability app="tasks">{pane}</AppAvailability> : pane}
-      {conversationId && !selected && !selecting && (
-        <ContentNotice
-          icon={Unlink}
-          title="Conversation unavailable"
-          description="It may have been deleted, or you may no longer have access. Check that you’re in the right workspace."
-        />
-      )}
-    </MessagingWorkspaceView>
+      content={content}
+    />
   );
 }
 

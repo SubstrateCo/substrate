@@ -1,37 +1,11 @@
-import { useState } from "react";
-
-import type { HeaderMember } from "./conversation-header";
+import { membersButtonSelector, type HeaderMember } from "./conversation-header";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import type { Conversation } from "@/lib/messaging/conversations";
 import { useRemoveMember } from "@/queries/messaging/message-mutations";
 import { UserMinus } from "lucide-react";
 
-/** The remove action for each member, and the confirmation for the member being removed. */
-export function useMemberRemoval(
-  organizationId: string,
-  conversation: Conversation,
-  userId: string,
-) {
-  const [removingMember, setRemovingMember] = useState<HeaderMember | null>(null);
-  return {
-    memberAction: (member: HeaderMember) =>
-      canRemoveMember(conversation, userId, member) ? (
-        <RemoveMemberAction member={member} onRemove={() => setRemovingMember(member)} />
-      ) : null,
-    dialog: removingMember && (
-      <RemoveMemberDialog
-        organizationId={organizationId}
-        conversationId={conversation.id}
-        member={removingMember}
-        publicChannel={conversation.kind === "channel" && !conversation.private}
-        onClose={() => setRemovingMember(null)}
-      />
-    ),
-  };
-}
-
-function canRemoveMember(conversation: Conversation, userId: string, member: HeaderMember) {
+export function canRemoveMember(conversation: Conversation, userId: string, member: HeaderMember) {
   return (
     !conversation.task &&
     conversation.canManage &&
@@ -91,7 +65,7 @@ export function RemoveMemberDialog({
       onConfirm={() => remove.mutate(undefined, { onSuccess: onClose })}
       onClose={onClose}
       onRestoreFocus={() => {
-        document.querySelector<HTMLElement>('[aria-label^="Members,"]')?.focus();
+        document.querySelector<HTMLElement>(membersButtonSelector)?.focus();
       }}
     />
   );
