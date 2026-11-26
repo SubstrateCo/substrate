@@ -57,9 +57,10 @@ test("five person mentions and five task references resolve in set-based stateme
     ...taskIds.map((id) => `@[task:${id}]`),
   ].join(" ");
   const sent = await sender.sendMessage(channel.id, body);
-  // Five of each cost what one of each costs. Includes the lookup for the author's own agents.
+  // Five of each cost what one of each costs. Includes the lookup for the author's own agents and
+  // the read for people viewing the channel.
   expect(queries).toHaveLength(single);
-  expect(queries).toHaveLength(9);
+  expect(queries).toHaveLength(10);
   expect(
     (
       await f.db
@@ -308,18 +309,13 @@ test("mention, reply and message alerts share one insert-select, and mentions wi
   expect(
     queries.filter((query) => /^\s*insert into "notifications".*\bselect\b/is.test(query)),
   ).toHaveLength(1);
-  // One authored a thread reply and was mentioned; the mention takes precedence.
+  // One authored a thread reply and was mentioned; the mention takes precedence. A group thread
+  // reply reaches only the thread's people, so the outsider, who is not in it, gets nothing.
   expect(
     (await f.db.select().from(notifications).where(eq(notifications.messageId, sent.id)))
       .map((row) => `${row.recipientActorEntityId}:${row.organizationId}:${row.kind}`)
       .sort(),
-  ).toEqual(
-    [
-      `${one.entityId}:${f.orgA}:mention`,
-      `${f.bob}:${f.orgA}:reply`,
-      `${f.outsider}:${f.orgB}:message`,
-    ].sort(),
-  );
+  ).toEqual([`${one.entityId}:${f.orgA}:mention`, `${f.bob}:${f.orgA}:reply`].sort());
 });
 
 test("thread recipients use one distinct conversation-scoped query and mentions take precedence", async () => {

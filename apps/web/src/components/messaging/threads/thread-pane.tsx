@@ -1,5 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { useState } from "react";
+
 import { Composer } from "../composer/composer";
 import { MessageItem } from "../messages/message-item";
 import { MessageList } from "../messages/message-list";
@@ -43,16 +45,20 @@ export function ThreadPane({
     aroundMessageId: targetMessage?.threadId ? targetMessage.id : undefined,
   });
   const rows = replies.data ?? [];
-  useConversationRead(
-    organizationId,
-    conversationId,
-    !replies.error && !replies.isPlaceholderData && !history.hasPrevious
-      ? rows.at(-1)?.id
-      : undefined,
-  );
   const resource = resourceState(replies);
   const replyRows = rows.filter((message) => message.id !== threadId);
   const empty = !!resource.data && !replyRows.length && !history.hasPrevious;
+  // As in the conversation pane, a reply counts as read only once the newest one is in view. A
+  // thread with no replies has nothing below the root to miss.
+  const [latestVisible, setLatestVisible] = useState(false);
+  useConversationRead(
+    organizationId,
+    conversationId,
+    !replies.error && !replies.isPlaceholderData && !history.hasPrevious && (empty || latestVisible)
+      ? rows.at(-1)?.id
+      : undefined,
+    threadId,
+  );
   const rootContext = useRootContext(organizationId, conversationId, contextMessageIds, root);
   return (
     <ThreadPaneView
@@ -79,6 +85,7 @@ export function ThreadPane({
               sending={history.sending}
               canPost={canPost}
               previousDate={root?.createdAt}
+              onLatestVisibleChange={setLatestVisible}
               header={
                 <>
                   {root && <ReplyCount count={root.replyCount} />}

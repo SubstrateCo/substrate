@@ -1,12 +1,6 @@
-import {
-  queryOptions,
-  skipToken,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from "@tanstack/react-query";
+import { queryOptions, skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 import { markConversationRead, unreadCounts } from "@/api/messaging/read-state";
 import { queryKeys } from "@/queries/keys";
@@ -78,42 +72,93 @@ export function useOpeningUnread(
   };
 }
 
-// Reading a historical page or a background window does not advance the read position.
+// The server ends a viewing lease 45 seconds after its last renewal.
+const leaseRenewal = 30_000;
+const foreground = () => document.visibilityState === "visible" && document.hasFocus();
+
+/**
+ * Reads the main timeline, or the thread named by `threadId`, through `messageId`: the newest
+ * message, once it is in view. Pass no `messageId` while it is not in view.
+ *
+ * While the window is in the foreground this also holds a viewing lease, so the server reads new
+ * messages for the person as they arrive and they never show as unread or alert. Reading a
+ * historical page or a background window does not advance the read position.
+ */
 export function useConversationRead(
   organizationId: string,
   conversationId: string,
   messageId?: string,
+  threadId?: string,
 ) {
   const client = useQueryClient();
-  const { mutate } = useMutation({
-    mutationFn: (messageId: string) =>
-      markConversationRead({ data: { organizationId, conversationId, messageId } }),
-    onSuccess: () =>
-      client.invalidateQueries({ queryKey: queryKeys.messageUnread(organizationId) }),
-  });
+  // Requests go one at a time, so a lease that ends cannot land after a later renewal.
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  // The lease a pane hands over when only its newest message changed.
+  const handover = useRef<{ key: string; keep: () => void }>(undefined);
   useEffect(() => {
     if (!messageId) return;
-    // A failed save goes back to idle, so the next focus or visibility change tries again.
-    let state: "idle" | "pending" | "saved" = "idle";
-    const read = () => {
-      const foreground = document.visibilityState === "visible" && document.hasFocus();
-      if (state !== "idle" || !foreground) return;
-      state = "pending";
-      mutate(messageId, {
-        onSuccess: () => {
-          state = "saved";
-        },
-        onError: () => {
-          state = "idle";
-        },
+    const key = `${organizationId}:${conversationId}:${threadId ?? ""}`;
+    const send = (viewing: boolean) => {
+      const sent = queue.current.then(() =>
+        markConversationRead({
+          data: { organizationId, conversationId, threadId, messageId, viewing },
+        }),
+      );
+      queue.current = sent.catch(() => {});
+      return sent;
+    };
+    let holding = false;
+    if (handover.current?.key === key) {
+      handover.current.keep();
+      holding = true;
+    }
+    // A failed read is tried again on the next focus, visibility change, or renewal.
+    let read = false;
+    const sync = () => {
+      if (!foreground()) {
+        if (holding) void send(false).catch(() => {});
+        holding = false;
+        return;
+      }
+      if (!read) {
+        read = true;
+        // A read also clears the notifications of the messages it covers. Do not wait for the
+        // best-effort realtime hint to clear the Notifications dot.
+        send(true).then(
+          () =>
+            Promise.all([
+              client.invalidateQueries({ queryKey: queryKeys.messageUnread(organizationId) }),
+              client.invalidateQueries({ queryKey: queryKeys.notifications(organizationId) }),
+            ]),
+          () => {
+            read = false;
+          },
+        );
+      } else if (!holding) void send(true).catch(() => {});
+      holding = true;
+    };
+    sync();
+    const renew = setInterval(() => {
+      if (holding && foreground()) void send(true).catch(() => {});
+      else sync();
+    }, leaseRenewal);
+    window.addEventListener("focus", sync);
+    window.addEventListener("blur", sync);
+    document.addEventListener("visibilitychange", sync);
+    return () => {
+      clearInterval(renew);
+      window.removeEventListener("focus", sync);
+      window.removeEventListener("blur", sync);
+      document.removeEventListener("visibilitychange", sync);
+      if (!holding) return;
+      // The next newest message of the same timeline or thread keeps the lease. Effects for it
+      // run before this microtask; otherwise the pane closed or moved, so the lease ends.
+      let kept = false;
+      handover.current = { key, keep: () => (kept = true) };
+      queueMicrotask(() => {
+        if (handover.current?.key === key) handover.current = undefined;
+        if (!kept) void send(false).catch(() => {});
       });
     };
-    read();
-    window.addEventListener("focus", read);
-    document.addEventListener("visibilitychange", read);
-    return () => {
-      window.removeEventListener("focus", read);
-      document.removeEventListener("visibilitychange", read);
-    };
-  }, [mutate, messageId]);
+  }, [client, organizationId, conversationId, threadId, messageId]);
 }

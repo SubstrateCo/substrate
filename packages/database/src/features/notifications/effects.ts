@@ -22,10 +22,13 @@ type Target =
 
 // All notification kinds require a verified, active human workspace member with target access.
 // A recipient gets one alert per event: the first group that names them sets its kind.
+// `seenBy` names actors who have the target in view. Their notice is stored read, for the history,
+// and does not alert them.
 export async function notify(
   ctx: RepositoryContext,
   groups: { kind: Kind; recipients: Recipient[] }[],
   target: Target,
+  { seenBy = [] }: { seenBy?: string[] } = {},
 ) {
   const recipients = groups.flatMap((group) => group.recipients);
   if (!recipients.length) return [];
@@ -65,7 +68,10 @@ export async function notify(
       messageId: sql<string | null>`${"messageId" in target ? target.messageId : null}::uuid`.as(
         "message_id",
       ),
-      readAt: sql<Date | null>`NULL::timestamptz`.as("read_at"),
+      readAt: (seenBy.length
+        ? sql<Date | null>`CASE WHEN ${inArray(actors.entityId, seenBy)} THEN now() END`
+        : sql<Date | null>`NULL::timestamptz`
+      ).as("read_at"),
       createdAt: sql<Date>`now()`.as("created_at"),
     })
     .from(actors)
@@ -112,10 +118,13 @@ export async function notify(
                 OR ${messagingParticipants.actorEntityId} IS NOT NULL))`,
       ),
     );
-  return ctx.effects.notify(() =>
-    ctx.db.insert(notifications).select(candidates).onConflictDoNothing().returning({
-      organizationId: notifications.organizationId,
-      actorId: notifications.recipientActorEntityId,
-    }),
+  return ctx.effects.notify(async () =>
+    (
+      await ctx.db.insert(notifications).select(candidates).onConflictDoNothing().returning({
+        organizationId: notifications.organizationId,
+        actorId: notifications.recipientActorEntityId,
+        readAt: notifications.readAt,
+      })
+    ).flatMap(({ readAt, ...row }) => (readAt ? [] : [row])),
   );
 }

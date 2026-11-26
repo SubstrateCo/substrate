@@ -23,7 +23,8 @@ export function createMessageNotifications(options: {
   let seen = new Set<string>();
   let newest = "";
   let initialized = false;
-  const close = new Set<() => void>();
+  // Open alerts by notification ID, oldest first.
+  const close = new Map<string, () => void>();
   let work = Promise.resolve();
   const current = (epoch: number) => generation === epoch && options.sessionKey() === sessionKey;
   function disconnect() {
@@ -32,7 +33,7 @@ export function createMessageNotifications(options: {
     seen.clear();
     newest = "";
     initialized = false;
-    for (const dismiss of close) dismiss();
+    for (const dismiss of close.values()) dismiss();
     close.clear();
   }
   function baseline(rows: MessageNotice[]) {
@@ -109,14 +110,20 @@ export function createMessageNotifications(options: {
             )
               options.open(target);
           });
-          close.add(dismiss);
+          close.set(row.id, dismiss);
           if (close.size > 20) {
-            const oldest = close.values().next().value;
-            if (oldest) {
-              oldest();
-              close.delete(oldest);
-            }
+            const [[oldestId, oldest]] = close;
+            oldest();
+            close.delete(oldestId);
           }
+        }
+        // An alert is stale once its notification is read here or on another device, or is gone
+        // from the feed because its message was deleted or became inaccessible.
+        const unread = new Set(rows.flatMap((row) => (row.readAt ? [] : [row.id])));
+        for (const [id, dismiss] of close) {
+          if (unread.has(id)) continue;
+          dismiss();
+          close.delete(id);
         }
         newest = rows.reduce((at, row) => (row.createdAt > at ? row.createdAt : at), newest);
         seen = new Set(rows.map((row) => row.id));

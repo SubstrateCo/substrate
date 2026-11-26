@@ -5,9 +5,8 @@ function countByThread(threadIds: readonly string[]) {
 }
 
 /**
- * Unread replies per thread root. Reading the timeline can move the read position past a reply, so
- * the replies unread on opening stay marked until their thread is opened. The open thread has no
- * mark.
+ * Unread replies per thread root. The replies unread on opening stay marked until their thread is
+ * opened here, even if another device reads them first. The open thread has no mark.
  */
 export function unreadRepliesByThread({
   opening,

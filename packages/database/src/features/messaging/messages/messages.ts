@@ -24,6 +24,7 @@ import { loadConversation, requireThreadRoot, threadRoot, visibleConversations }
 import { writeMembers } from "../conversations/members";
 import { validateBody, validateEmoji } from "../policy";
 import { messagingProfile } from "../profiles";
+import { readForViewers } from "../read-state/read-state";
 import { messagingConversations, messagingMessages, messagingReactions } from "../schema";
 import { and, desc, eq, exists, inArray, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
@@ -277,7 +278,9 @@ export async function sendMessageAs(
     },
     fileIds,
   );
-  const effects = await applyMessageEffects(ctx, scope, created, conversation);
+  // Before notifying, so people already looking at this timeline or thread get no alert.
+  const seenBy = await readForViewers(tx, created);
+  const effects = await applyMessageEffects(ctx, scope, created, conversation, { seenBy });
   const wakeHints = conversation.taskEntityId
     ? []
     : await routeWake(tx, scope, created, conversation.kind);

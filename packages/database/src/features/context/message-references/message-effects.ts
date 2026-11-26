@@ -29,7 +29,8 @@ export async function applyMessageEffects(
   conversation: Pick<typeof messagingConversations.$inferSelect, "organizationId" | "kind"> & {
     taskEntityId?: string | null;
   },
-  options: { delivery?: boolean } = {},
+  // `seenBy` names actors who already have the message in view; their notice is stored read.
+  options: { delivery?: boolean; seenBy?: string[] } = {},
 ): Promise<{
   referenced: boolean;
   work: { entityId: string; projectEntityId: string }[];
@@ -151,8 +152,12 @@ export async function applyMessageEffects(
     for (const author of authors)
       if (author.userId && !recipients.has(author.userId)) recipients.set(author.userId, "reply");
   }
+  // Group thread replies reach only the thread's people, above; every reply in a direct message
+  // reaches the other person.
   const ordinaryRecipients =
-    conversation.kind === "channel" || conversation.taskEntityId
+    conversation.kind === "channel" ||
+    conversation.taskEntityId ||
+    (message.threadId && conversation.kind === "group")
       ? []
       : await db
           .selectDistinct({ userId: actors.userId })
@@ -188,6 +193,7 @@ export async function applyMessageEffects(
       conversationOrganizationId,
       eventKey: message.id,
     },
+    { seenBy: options.seenBy },
   );
   return { referenced, work, notified };
 }

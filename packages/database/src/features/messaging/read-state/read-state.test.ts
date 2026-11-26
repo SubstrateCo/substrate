@@ -5,6 +5,7 @@ import { AccessDeniedError } from "../../../errors";
 import { ActorRepositories } from "../../../repositories";
 import { setupDatabase } from "../../../testing/database";
 import { rejection } from "../../../testing/rejection";
+import { notifications } from "../../notifications/schema";
 import { messagingMessages, messagingParticipants } from "../schema";
 import { createMessagingService } from "../service";
 import { expect, test } from "bun:test";
@@ -91,7 +92,10 @@ test("unread replies name their thread once per reply and skip read, own, and de
   const busy = await alice.sendMessage(channel.id, "busy root");
   const quiet = await alice.sendMessage(channel.id, "quiet root");
   const read = await alice.sendMessage(channel.id, "read reply", busy.id);
+  // The timeline and the thread each have their own position.
+  await mark(channel.id, quiet.id);
   await mark(channel.id, read.id);
+  // Bob's reply makes him follow the busy thread.
   await bob.sendMessage(channel.id, "own reply", busy.id);
   await alice.sendMessage(channel.id, "first unread", busy.id);
   const removed = await alice.sendMessage(channel.id, "deleted reply", quiet.id);
@@ -170,10 +174,45 @@ test("unchanged and older read positions publish no refresh hints", async () => 
   // Only the reader's own devices refresh, and only their unread state.
   expect((await mark(conversation.id, last.id)).hints).toEqual([
     { audience: realtimeKeys.actor(f.orgA, f.bob), domain: "messaging", scope: "read" },
+    { audience: realtimeKeys.user("bob"), domain: "notifications" },
   ]);
   expect((await mark(conversation.id, last.id)).hints).toEqual([]);
   expect((await mark(conversation.id, first.id)).hints).toEqual([]);
   expect(await reads().unreadCounts()).toEqual([]);
+});
+
+test("reading a conversation clears its message notifications through the read message only", async () => {
+  await f.verifyEmails();
+  const alice = f.messaging("alice");
+  const conversation = await alice.createConversation({ kind: "dm", emails: ["bob@example.com"] });
+  const other = await alice.createConversation({
+    kind: "group",
+    emails: ["bob@example.com", "outside@example.com"],
+  });
+  const seen = await alice.sendMessage(conversation.id, "seen");
+  const mention = await alice.sendMessage(conversation.id, `@[person:${f.bob}] seen too`);
+  const later = await alice.sendMessage(conversation.id, "arrives after the read");
+  const elsewhere = await alice.sendMessage(other.id, "another conversation");
+  const unreadNotices = async () =>
+    new Set(
+      (
+        await f.db
+          .select({ messageId: notifications.messageId, readAt: notifications.readAt })
+          .from(notifications)
+          .where(eq(notifications.recipientActorEntityId, f.bob))
+      )
+        .filter((row) => row.readAt === null)
+        .map((row) => row.messageId),
+    );
+  await mark(conversation.id, mention.id);
+  expect(await unreadNotices()).toEqual(new Set([later.id, elsewhere.id]));
+  // Reading again at the same position still clears a notice the earlier read left unread.
+  await f.db
+    .update(notifications)
+    .set({ readAt: null })
+    .where(eq(notifications.messageId, seen.id));
+  await mark(conversation.id, mention.id);
+  expect(await unreadNotices()).toEqual(new Set([later.id, elsewhere.id]));
 });
 
 test("a message at the read position's time counts when it sorts after the read message", async () => {

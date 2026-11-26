@@ -126,6 +126,30 @@ test("native alerts ignore notifications already read on another device", async 
   expect(shown).toEqual([]);
 });
 
+test("an open alert closes once its notification is read or leaves the feed, and others stay", async () => {
+  const open = new Set<string>();
+  let rows: MessageNotice[] = [notice("old")];
+  let next = 0;
+  const ids = ["read", "deleted", "unread"];
+  const notifications = createMessageNotifications({
+    read: async () => rows,
+    sessionKey: () => "account",
+    show: () => {
+      const id = ids[next++]!;
+      open.add(id);
+      return () => open.delete(id);
+    },
+    open: () => {},
+  });
+  await notifications.connect("org");
+  rows = [notice("unread"), notice("deleted"), notice("read")];
+  await notifications.reconcile();
+  expect([...open].sort()).toEqual(["deleted", "read", "unread"]);
+  rows = [notice("unread"), { ...notice("read"), readAt: "2026-01-01T00:00:02.000Z" }];
+  await notifications.reconcile();
+  expect([...open]).toEqual(["unread"]);
+});
+
 test("a failed initial feed read recovers quietly, then alerts for new arrivals", async () => {
   let available = false;
   let rows = [notice("old")];

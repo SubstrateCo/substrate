@@ -12,7 +12,12 @@ export function createReadService(publish: ReturnType<typeof createCommittedPubl
     },
     markRead(scope: WorkspaceScope, input: z.output<typeof conversationReadInput>) {
       return serviceResult(async () =>
-        publish(await scope.repositories.messaging.markRead(input.conversationId, input.messageId)),
+        publish(
+          await scope.repositories.messaging.markRead(input.conversationId, input.messageId, {
+            threadId: input.threadId,
+            viewing: input.viewing,
+          }),
+        ),
       );
     },
   };
