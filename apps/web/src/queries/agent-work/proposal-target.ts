@@ -29,17 +29,13 @@ function messageLabel(body: string) {
 
 function useProposalProject(organizationId: string, action: ProposalAction | undefined) {
   const updateTask = action?.type === "update_task";
-  const location = useQuery({
-    ...taskLocationQueryOptions(organizationId, updateTask ? action.input.taskId : ""),
-    enabled: updateTask,
-  });
+  const location = useQuery(
+    taskLocationQueryOptions(organizationId, updateTask ? action.input.taskId : undefined),
+  );
   // A create names its project. An update names only a task, so find its project first.
   const projectId =
     action?.type === "create_task" ? action.input.projectId : location.data?.projectEntityId;
-  const details = useQuery({
-    ...projectQueryOptions(organizationId, projectId ?? ""),
-    enabled: !!projectId,
-  });
+  const details = useQuery(projectQueryOptions(organizationId, projectId));
   const project = (id: string): ProposalProject | null | undefined =>
     id === projectId ? state(details) : null;
   // A task the viewer can't open has no location, so no project holds it.
@@ -75,14 +71,9 @@ export function useProposalTarget(
     enabled: action?.type === "reply_elsewhere",
   });
   const work = useProposalProject(organizationId, action);
-  const target = useQuery({
-    ...messageTargetOptions(
-      organizationId,
-      message?.conversationId ?? "",
-      message?.messageId ?? "",
-    ),
-    enabled: !!message,
-  });
+  const target = useQuery(
+    messageTargetOptions(organizationId, message?.conversationId, message?.messageId),
+  );
   if (!action) return null;
 
   const lookups: ProposalLookups = {

@@ -1,4 +1,4 @@
-import { keepPreviousData, queryOptions, replaceEqualDeep } from "@tanstack/react-query";
+import { keepPreviousData, queryOptions, replaceEqualDeep, skipToken } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 import { getMessagePage, getRelatedContext, type MessagePageContext } from "@/api/context/links";
@@ -64,13 +64,16 @@ export const relatedContextOptions = (organizationId: string, entityId: string) 
   });
 export const messageTargetOptions = (
   organizationId: string,
-  conversationId: string,
-  messageId: string,
+  conversationId: string | undefined,
+  messageId: string | undefined,
   load = loadMessageTarget,
 ) =>
   queryOptions({
-    queryKey: [...queryKeys.messageTargets(organizationId, conversationId), messageId],
+    queryKey: [...queryKeys.messageTargets(organizationId, conversationId ?? ""), messageId ?? ""],
     // Shares one request with the other targets read at the same time.
-    queryFn: () => load(organizationId, conversationId, messageId),
+    queryFn:
+      conversationId && messageId
+        ? () => load(organizationId, conversationId, messageId)
+        : skipToken,
     retry: false,
   });

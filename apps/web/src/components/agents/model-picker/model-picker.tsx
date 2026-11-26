@@ -125,7 +125,7 @@ function useModelCatalogs({
 }) {
   const available = !!harnessBridge() && !!organizationId;
   const status = useQuery({
-    ...harnessStatusQueryOptions(userId, organizationId ?? ""),
+    ...harnessStatusQueryOptions(userId, organizationId),
     enabled: available,
   });
   const options = visibleHarnessOptions(status.data, harness);
@@ -133,7 +133,7 @@ function useModelCatalogs({
     options.some((option) => option.value === value) && (searching || value === browseHarness);
   const catalogs = useQueries({
     queries: harnessOptions.map((option) => ({
-      ...harnessModelsQueryOptions(userId, organizationId ?? "", option.value, agentId),
+      ...harnessModelsQueryOptions(userId, organizationId, option.value, agentId),
       enabled: open && available && includesHarness(option.value),
     })),
   });

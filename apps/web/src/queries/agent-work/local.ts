@@ -1,7 +1,7 @@
 import type { TurnEventView } from "@substrate/contracts/agent-work";
 import { turnEventsPageSize } from "@substrate/contracts/agent-work/desktop";
 
-import { infiniteQueryOptions, queryOptions } from "@tanstack/react-query";
+import { infiniteQueryOptions, queryOptions, skipToken } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 import { agentWorkBridge, hasAgentWorkBridge } from "./bridge";
@@ -62,15 +62,17 @@ export async function loadTurnEvents(
   }
 }
 
-export const turnEventsOptions = (userId: string, organizationId: string, turnId: string) =>
+export const turnEventsOptions = (userId: string, organizationId: string, turnId?: string) =>
   queryOptions({
-    queryKey: queryKeys.agentWorkTurnEvents(userId, organizationId, turnId),
-    queryFn: ({ client, queryKey, signal }) =>
-      loadTurnEvents(
-        (after) => agentWorkBridge().turnEvents(turnId, after),
-        client.getQueryData<TurnEventView[]>(queryKey),
-        signal,
-      ),
+    queryKey: queryKeys.agentWorkTurnEvents(userId, organizationId, turnId ?? ""),
+    queryFn: turnId
+      ? ({ client, queryKey, signal }) =>
+          loadTurnEvents(
+            (after) => agentWorkBridge().turnEvents(turnId, after),
+            client.getQueryData<TurnEventView[]>(queryKey),
+            signal,
+          )
+      : skipToken,
     ...localRead(userId),
   });
 

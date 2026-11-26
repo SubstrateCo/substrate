@@ -98,8 +98,8 @@ export function TurnTranscript({
 }) {
   const live = !!turn && liveTurnStatuses.includes(turn.status);
   const events = useQuery({
-    ...turnEventsOptions(userId, organizationId, turn?.id ?? ""),
-    enabled: !!turn && !unavailable,
+    ...turnEventsOptions(userId, organizationId, turn?.id),
+    enabled: !unavailable,
   });
   const conversations = useQuery(conversationsQueryOptions(organizationId));
   const { onStop, stopping } = useStopTurn(userId, organizationId, turn);
@@ -116,7 +116,8 @@ export function TurnTranscript({
       error={turnError ?? events.error}
       onRetry={() => {
         onRetryTurn();
-        void events.refetch();
+        // Without a turn the events read is skipped; the turn's own retry loads it first.
+        if (turn) void events.refetch();
       }}
       onClose={onClose}
       timeline={

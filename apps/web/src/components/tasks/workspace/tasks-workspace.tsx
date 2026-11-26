@@ -28,10 +28,7 @@ export function TasksWorkspace({
   const archived = useQuery(archivedProjectsQueryOptions(organizationId));
   const restore = useProjectRestore(organizationId);
   const navigate = useNavigate();
-  const taskLocation = useQuery({
-    ...taskLocationQueryOptions(organizationId, taskId ?? ""),
-    enabled: !!taskId,
-  });
+  const taskLocation = useQuery(taskLocationQueryOptions(organizationId, taskId));
   // A task link can name an old project or none. Open the task in the project that holds it now.
   const relocatedProjectId =
     taskId && !taskLocation.error && taskLocation.data?.projectEntityId !== projectId

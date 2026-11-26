@@ -48,7 +48,7 @@ export function HarnessAccount({
   const desktop = !!harnessBridge() && !!organizationId;
   const org = organizationId ?? "";
   const catalog = useQuery({
-    ...harnessModelsQueryOptions(userId, org, harness, agentId),
+    ...harnessModelsQueryOptions(userId, organizationId, harness, agentId),
     enabled: desktop,
   });
   const signIn = useHarnessSignIn(userId, org, desktop);

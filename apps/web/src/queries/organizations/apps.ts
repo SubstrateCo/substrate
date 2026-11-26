@@ -1,12 +1,14 @@
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, skipToken, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { getOrganizationApps, updateOrganizationApps } from "@/api/organizations/apps";
 import { queryKeys } from "@/queries/keys";
 
-export const organizationAppsOptions = (organizationId: string) =>
+export const organizationAppsOptions = (organizationId: string | null | undefined) =>
   queryOptions({
-    queryKey: queryKeys.organizationApps(organizationId),
-    queryFn: ({ signal }) => getOrganizationApps({ data: { organizationId }, signal }),
+    queryKey: queryKeys.organizationApps(organizationId ?? ""),
+    queryFn: organizationId
+      ? ({ signal }) => getOrganizationApps({ data: { organizationId }, signal })
+      : skipToken,
     staleTime: 0,
     refetchOnWindowFocus: "always",
     refetchOnReconnect: "always",

@@ -6,6 +6,7 @@ import {
 import {
   infiniteQueryOptions,
   queryOptions,
+  skipToken,
   type InfiniteData,
   type QueryClient,
 } from "@tanstack/react-query";
@@ -17,10 +18,12 @@ import {
   getNotificationUnread,
 } from "@/api/context/notifications";
 
-export const notificationUnreadOptions = (organizationId: string) =>
+export const notificationUnreadOptions = (organizationId: string | null | undefined) =>
   queryOptions({
-    queryKey: queryKeys.notificationUnread(organizationId),
-    queryFn: ({ signal }) => getNotificationUnread({ data: { organizationId }, signal }),
+    queryKey: queryKeys.notificationUnread(organizationId ?? ""),
+    queryFn: organizationId
+      ? ({ signal }) => getNotificationUnread({ data: { organizationId }, signal })
+      : skipToken,
     retry: false,
   });
 

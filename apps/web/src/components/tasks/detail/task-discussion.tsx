@@ -30,8 +30,8 @@ export function TaskDiscussion({
   const discussion = useTaskDiscussion();
   const navigate = useNavigate();
   const messages = useQuery({
-    ...messagesQueryOptions(organizationId, conversationId ?? ""),
-    enabled: visible && !!conversationId,
+    ...messagesQueryOptions(organizationId, conversationId),
+    enabled: visible,
   });
   const openLink = (
     <Button
@@ -59,9 +59,9 @@ export function TaskDiscussion({
   );
   return (
     <DiscussionPreview
-      messages={conversationId ? (resourceState(messages).data ?? []) : []}
+      messages={resourceState(messages).data ?? []}
       loading={!!conversationId && messages.isPending}
-      error={conversationId ? messages.error : null}
+      error={messages.error}
       onRetry={() => void messages.refetch()}
       conversationLink={
         conversationId ? (

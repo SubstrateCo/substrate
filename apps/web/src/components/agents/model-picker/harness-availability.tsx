@@ -21,7 +21,7 @@ export function HarnessAvailability({
 }) {
   const desktop = !!harnessBridge() && !!organizationId;
   const status = useQuery({
-    ...harnessStatusQueryOptions(userId, organizationId ?? ""),
+    ...harnessStatusQueryOptions(userId, organizationId),
     enabled: desktop,
   });
   const entry = status.data?.find((item) => item.harness === harness);

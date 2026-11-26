@@ -1,7 +1,7 @@
 import type { DecideInvocationInput } from "@substrate/contracts/agent-work";
 import type { AgentCallerPolicy } from "@substrate/contracts/agents";
 
-import { queryOptions, useMutation, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, skipToken, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import {
   decideCall,
@@ -16,8 +16,10 @@ import { queryKeys } from "@/queries/keys";
 export const callersOptions = (userId: string, organizationId: string, agentId: string) =>
   queryOptions({
     queryKey: queryKeys.agentCallers(userId, organizationId, agentId),
-    queryFn: ({ signal }) => getCallers({ data: { organizationId, agentId }, signal }),
-    enabled: !!organizationId && !!userId,
+    queryFn:
+      organizationId && userId
+        ? ({ signal }) => getCallers({ data: { organizationId, agentId }, signal })
+        : skipToken,
   });
 export const callsLogOptions = (userId: string, organizationId: string, agentId: string) =>
   queryOptions({

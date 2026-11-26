@@ -196,14 +196,7 @@ function useConversationNavigation(
 }
 
 function useMessageTarget(organizationId: string, conversationId: string, messageId?: string) {
-  return useQuery({
-    ...messageTargetOptions(
-      organizationId,
-      conversationId,
-      messageId ?? "00000000-0000-0000-0000-000000000000",
-    ),
-    enabled: !!messageId,
-  });
+  return useQuery(messageTargetOptions(organizationId, conversationId, messageId));
 }
 
 /** The open thread. Render it only for a message whose target loaded without error. */

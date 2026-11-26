@@ -1,4 +1,4 @@
-import { queryOptions, useQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, skipToken, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useEffect, useState } from "react";
 
@@ -6,10 +6,12 @@ import { markConversationRead, unreadCounts } from "@/api/messaging/read-state";
 import { queryKeys } from "@/queries/keys";
 import { unreadRepliesByThread } from "@/queries/messaging/unread-replies";
 
-export const unreadCountsOptions = (organizationId: string) =>
+export const unreadCountsOptions = (organizationId: string | null | undefined) =>
   queryOptions({
-    queryKey: queryKeys.messageUnread(organizationId),
-    queryFn: ({ signal }) => unreadCounts({ data: { organizationId }, signal }),
+    queryKey: queryKeys.messageUnread(organizationId ?? ""),
+    queryFn: organizationId
+      ? ({ signal }) => unreadCounts({ data: { organizationId }, signal })
+      : skipToken,
     retry: false,
   });
 

@@ -40,10 +40,7 @@ export function SettingsShell({
   organizationId: string | null;
   children: ReactNode;
 }) {
-  const organization = useQuery({
-    ...currentOrganizationQueryOptions(organizationId ?? ""),
-    enabled: !!organizationId,
-  });
+  const organization = useQuery(currentOrganizationQueryOptions(organizationId));
   const access = organizationSettingsAccess(
     organization.data?.id === organizationId ? organization.data.role : undefined,
   );

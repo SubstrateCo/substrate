@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, skipToken } from "@tanstack/react-query";
 
 import { authClient } from "@/api/auth/client";
 import { unwrap } from "@/api/auth/result";
@@ -28,9 +28,12 @@ export const organizationQueryOptions = (organizationId: string) =>
   });
 
 /** The organization's name and logo, and the viewer's role. The workspace frame holds it. */
-export const currentOrganizationQueryOptions = (organizationId: string) =>
+export const currentOrganizationQueryOptions = (organizationId: string | null | undefined) =>
   queryOptions({
-    queryKey: queryKeys.organizationSummary(organizationId),
-    queryFn: ({ signal }) => getCurrentOrganization({ data: { organizationId }, signal }),
+    // Without an organization the read is skipped; its key only needs to be well formed.
+    queryKey: queryKeys.organizationSummary(organizationId ?? ""),
+    queryFn: organizationId
+      ? ({ signal }) => getCurrentOrganization({ data: { organizationId }, signal })
+      : skipToken,
     retry: false,
   });

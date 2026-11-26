@@ -27,10 +27,9 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
     restoreFocus,
   } = useStateDialog<{ kind: "transfer" | "delete" | "members"; id: string }>(fallback);
   const { remove, transfer } = useConversationManagement(organizationId);
-  const impact = useQuery({
-    ...deleteImpactQueryOptions(organizationId, dialog?.id ?? ""),
-    enabled: dialog?.kind === "delete",
-  });
+  const impact = useQuery(
+    deleteImpactQueryOptions(organizationId, dialog?.kind === "delete" ? dialog.id : undefined),
+  );
   const resource = resourceState(list);
   const target = resource.data?.find((row) => row.id === dialog?.id);
   const name = target

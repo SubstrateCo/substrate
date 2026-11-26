@@ -1,4 +1,4 @@
-import { queryOptions } from "@tanstack/react-query";
+import { queryOptions, skipToken } from "@tanstack/react-query";
 
 import {
   getDeleteImpact,
@@ -16,10 +16,12 @@ export const managedConversationsQueryOptions = (organizationId: string) =>
     retry: false,
   });
 
-export const deleteImpactQueryOptions = (organizationId: string, conversationId: string) =>
+export const deleteImpactQueryOptions = (organizationId: string, conversationId?: string) =>
   queryOptions({
-    queryKey: queryKeys.deleteImpact(organizationId, conversationId),
-    queryFn: ({ signal }) => getDeleteImpact({ data: { organizationId, conversationId }, signal }),
+    queryKey: queryKeys.deleteImpact(organizationId, conversationId ?? ""),
+    queryFn: conversationId
+      ? ({ signal }) => getDeleteImpact({ data: { organizationId, conversationId }, signal })
+      : skipToken,
     retry: false,
   });
 
@@ -34,17 +36,19 @@ export const conversationsQueryOptions = (organizationId: string, conversationId
 
 export const messagesQueryOptions = (
   organizationId: string,
-  conversationId: string,
+  conversationId: string | null | undefined,
   threadId?: string,
   options: { beforeMessageId?: string; aroundMessageId?: string } = {},
 ) =>
   queryOptions({
-    queryKey: [...queryKeys.messages(organizationId, conversationId, threadId), options],
-    meta: { refreshError: threadId ? "Couldn’t refresh replies" : "Couldn’t refresh messages" },
-    queryFn: ({ signal }) =>
-      listMessages({
-        data: { organizationId, conversationId, threadId, ...options },
-        signal,
-      }),
+    queryKey: [...queryKeys.messages(organizationId, conversationId ?? "", threadId), options],
+    meta: { refreshError: threadId ? "Couldn't refresh replies" : "Couldn't refresh messages" },
+    queryFn: conversationId
+      ? ({ signal }) =>
+          listMessages({
+            data: { organizationId, conversationId, threadId, ...options },
+            signal,
+          })
+      : skipToken,
     retry: false,
   });
