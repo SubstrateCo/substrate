@@ -91,6 +91,9 @@ export function Composer({
     autoFocus,
   });
   const [references, setReferences] = useState(false);
+  // Where the reference query that the person dismissed starts. It stays closed while they keep
+  // typing that query, and opens again for a new one.
+  const [dismissedAt, setDismissedAt] = useState<number>();
   const pickerListId = useId();
   const picker = useRef<ReferencePickerHandle>(null);
   const [activeOptionId, setActiveOptionId] = useState<string>();
@@ -106,6 +109,10 @@ export function Composer({
   const pickerOpen = references && !!activeReference && !!renderReferences;
   const closeReferences = () => {
     setReferences(false);
+  };
+  const dismissReferences = () => {
+    if (activeReference) setDismissedAt(activeReference.start);
+    closeReferences();
   };
   const insertReference = (token: string, reference: WorkspaceReference) => {
     if (!activeReference) return;
@@ -165,7 +172,10 @@ export function Composer({
                     onChange={(value, position) => {
                       setDraft(value);
                       setCaret(position);
-                      if (!isComposing()) setReferences(!!referenceQuery(value, position));
+                      const next = referenceQuery(value, position);
+                      const dismissed = next?.start === dismissedAt;
+                      if (!dismissed) setDismissedAt(undefined);
+                      if (!isComposing()) setReferences(!!next && !dismissed);
                     }}
                     onSelectionChange={(position) => {
                       setCaret(position);
@@ -173,17 +183,32 @@ export function Composer({
                     }}
                     onKeyDown={(event) => {
                       if (event.isComposing || isComposing()) return;
-                      if (references && renderReferences && !event.shiftKey) {
-                        if (event.key === "Escape") {
+                      const modified = event.altKey || event.ctrlKey || event.metaKey;
+                      if (pickerOpen && !modified) {
+                        // Left and Right stay text editing. Tab switches the picker's tab, as its
+                        // footer shows; after Escape, Tab moves focus as usual.
+                        if (event.key === "Tab") {
                           event.preventDefault();
-                          closeReferences();
+                          picker.current?.cycle(event.shiftKey ? -1 : 1);
                           return;
                         }
-                        if (["ArrowDown", "ArrowUp", "Enter"].includes(event.key)) {
+                        if (!event.shiftKey && event.key === "Escape") {
                           event.preventDefault();
-                          if (event.key === "Enter") picker.current?.choose();
-                          else picker.current?.move(event.key === "ArrowDown" ? 1 : -1);
+                          dismissReferences();
                           return;
+                        }
+                        if (!event.shiftKey && ["ArrowDown", "ArrowUp"].includes(event.key)) {
+                          event.preventDefault();
+                          picker.current?.move(event.key === "ArrowDown" ? 1 : -1);
+                          return;
+                        }
+                        if (!event.shiftKey && event.key === "Enter") {
+                          if (picker.current?.choose() !== false) {
+                            event.preventDefault();
+                            return;
+                          }
+                          // Nothing to insert: close the picker and let Enter send.
+                          dismissReferences();
                         }
                       }
                       if (event.key === "Escape" && onCancel) {
@@ -224,7 +249,7 @@ export function Composer({
                   }}
                   onEscapeKeyDown={(event) => {
                     event.preventDefault();
-                    closeReferences();
+                    dismissReferences();
                   }}
                   onInteractOutside={(event) => {
                     if (event.target instanceof Node && anchor.current?.contains(event.target))
@@ -236,6 +261,7 @@ export function Composer({
                       listId: pickerListId,
                       handle: picker,
                       onActiveOptionChange: setActiveOptionId,
+                      onDismiss: dismissReferences,
                     }}
                   >
                     {renderReferences(activeReference, insertReference)}

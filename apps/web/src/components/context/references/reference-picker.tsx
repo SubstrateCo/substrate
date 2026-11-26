@@ -2,10 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
+import { mixedKinds, mixedLimit, referenceSearchInput } from "./reference-search";
+import { narrowedSuggestions } from "./reference-suggestions";
 import type { WorkspaceReference } from "@/components/messaging/references/entity-reference";
 import {
   ReferencePickerView,
-  type ReferenceKind,
   type ReferenceTab,
 } from "@/components/messaging/references/reference-picker-view";
 import type { ReferenceQuery } from "@/components/messaging/references/reference-query";
@@ -13,9 +14,6 @@ import { useOrganizationApps } from "@/components/workspace/organization-apps-co
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { searchOptions } from "@/queries/context/search";
-
-// "All" lists the best few of each kind, people first.
-const mixedLimit = 5;
 
 export function ReferencePicker({
   conversationId,
@@ -28,10 +26,10 @@ export function ReferencePicker({
 }) {
   const { organizationId } = useWorkspaceScope();
   const apps = useOrganizationApps();
-  const mixedKinds: Extract<ReferenceKind, "person" | "agent" | "task" | "project">[] =
-    apps.enabled("tasks") ? ["person", "agent", "task", "project"] : ["person", "agent"];
+  const tasks = apps.enabled("tasks");
+  const mixed = mixedKinds(tasks);
   const kinds: ReferenceTab[] =
-    activeReference.trigger === "#" ? ["channel", "thread"] : ["all", ...mixedKinds];
+    activeReference.trigger === "#" ? ["channel", "thread"] : ["all", ...mixed];
   const query = activeReference.query;
   const [selection, setSelection] = useState<{ prefix: string; kind: ReferenceTab }>({
     prefix: activeReference.kind,
@@ -41,41 +39,44 @@ export function ReferencePicker({
   if (selection.prefix !== activeReference.kind)
     setSelection({ prefix: activeReference.kind, kind: activeReference.kind });
   const kind = kinds.includes(selection.kind) ? selection.kind : kinds[0]!;
-  const debounced = useSearchDebounce(
-    query,
-    JSON.stringify([organizationId, conversationId, kind]),
-  );
-  // "All" asks for each kind's first page in one request; the server groups them in this order.
+  const rowKinds = kind === "all" ? mixed : [kind];
+  // Only typing waits. A tab switch searches the settled text at once.
+  const debounced = useSearchDebounce(query, JSON.stringify([organizationId, conversationId]));
   const result = useQuery({
-    ...searchOptions({
-      organizationId,
-      conversationId,
-      query: debounced.query,
-      ...(kind === "all" ? { kinds: mixedKinds, limit: mixedLimit } : { kind }),
-    }),
+    ...searchOptions(
+      referenceSearchInput({ organizationId, conversationId, query: debounced.query }, kind, tasks),
+    ),
     enabled: apps.ready && !debounced.pending,
+    // A cached answer for this text shows at once. Otherwise the last answer, narrowed to rows
+    // that still match, stays up until this one arrives.
+    placeholderData: (previous) => narrowedSuggestions(previous, rowKinds, query),
   });
   const rows = (result.data ?? []).flatMap((row) => {
-    const rowKind = kind === "all" ? mixedKinds.find((mixed) => mixed === row.kind) : kind;
+    const rowKind = rowKinds.find((item) => item === row.kind);
     return rowKind ? [{ ...row, kind: rowKind }] : [];
   });
+  const settled = !debounced.pending && !!result.data && !result.isPlaceholderData;
+  const error = debounced.pending ? null : result.error;
   return (
     <ReferencePickerView
-      // A new query starts at the first option.
+      // A new query starts at the best option.
       key={query}
       query={query}
       kind={kind}
       kinds={kinds}
-      results={debounced.pending ? [] : rows}
-      loading={debounced.pending || result.isPending}
-      error={debounced.pending ? null : result.error}
+      results={rows}
+      loading={!settled && !error && rows.length === 0}
+      error={error}
+      truncatedKinds={
+        settled && kind === "all"
+          ? mixed.filter((type) => rows.filter((row) => row.kind === type).length >= mixedLimit)
+          : []
+      }
       onKindChange={(kind) => setSelection({ prefix: activeReference.kind, kind })}
       onRetry={() => {
         if (!debounced.pending) void result.refetch();
       }}
-      onInsert={(token, reference) => {
-        if (!debounced.pending) onInsert(token, reference);
-      }}
+      onInsert={onInsert}
     />
   );
 }

@@ -58,7 +58,8 @@ export const contextSearch = contextWorkspace
     conversationId: z.uuid().optional(),
     editable: z.boolean().optional(),
     relatedToEntityId: z.uuid().optional(),
-    // The first page of each kind, grouped in this order. `limit` applies to each kind.
+    // The first page of each kind, grouped in this order. `limit` applies to each kind. With a
+    // query, each kind holds its best matches, and a kind with a stronger best match comes first.
     kinds: z
       .array(contextSearchBatchKind)
       .min(1)

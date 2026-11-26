@@ -16,10 +16,15 @@ export function referenceQuery(draft: string, caret: number): ReferenceQuery | n
     (before.split("\n").at(-1)!.match(/`/g)?.length ?? 0) % 2
   )
     return null;
-  const match = /(?:^|\s)([@#])([^\s@#[\]]*)$/.exec(before);
+  // Up to four words joined by single spaces, such as a full name or a task title. A space at the
+  // start, two spaces in a row, or a line break ends the query. Words need a space between them,
+  // so the pattern cannot backtrack through ways of splitting one long word.
+  const match = /(?:^|\s)([@#])((?:[^\s@#[\]]+(?: [^\s@#[\]]+){0,3} ?)?)$/.exec(before);
   if (!match) return null;
   const trigger = match[1] === "#" ? "#" : "@";
   const text = match[2]!;
+  // Channel names have no spaces, so a space ends a "#" query.
+  if (trigger === "#" && text.includes(" ")) return null;
   const prefix = (
     trigger === "#" ? /^(channel|thread)s?:/i : /^(user|agent|task|project)s?:/i
   ).exec(text);
@@ -34,6 +39,6 @@ export function referenceQuery(draft: string, caret: number): ReferenceQuery | n
     end: caret,
     trigger,
     kind,
-    query: prefix ? text.slice(prefix[0].length) : text,
+    query: (prefix ? text.slice(prefix[0].length) : text).trim(),
   };
 }

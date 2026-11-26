@@ -1,6 +1,7 @@
 import { useContext } from "react";
 
 import { ReferencePicker } from "../../context/references/reference-picker";
+import { usePrefetchReferences } from "../../context/references/reference-search";
 import { AttachFilesButton, AttachmentDraftList } from "@/components/attachments/attachment-picker";
 import { FileDropZone } from "@/components/attachments/file-drop-zone";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
@@ -33,6 +34,7 @@ function DestinationComposer({
   label: string;
 }) {
   const uploads = useAttachmentUploads();
+  usePrefetchReferences(conversationId);
   const requests = useContext(ComposerSendRequests);
   if (!requests) throw new Error("Composer requires ComposerDraftProvider");
   const draftKey = `${organizationId}:${conversationId}:${threadId ?? "channel"}`;

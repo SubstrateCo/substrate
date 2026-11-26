@@ -117,6 +117,16 @@ export function containsText(column: SQLWrapper, query: string) {
   return sql`${trigramKey(column)} LIKE lower(${pattern})`;
 }
 
+// How well a short field matches the query, best first: 0 is the whole text, 1 a prefix, 2 the
+// start of a later word, and 3 anything else, such as a substring or a description word.
+export function matchRank(column: SQLWrapper, query: string) {
+  const key = trigramKey(column);
+  return sql<number>`(CASE WHEN ${key} = lower(${query}) THEN 0
+    WHEN starts_with(${key}, lower(${query})) THEN 1
+    WHEN strpos(' ' || ${key}, ' ' || lower(${query})) > 0 THEN 2
+    ELSE 3 END)`;
+}
+
 // Every word of the query as a word prefix, for the word indexes. PostgreSQL splits the query with
 // the expression that built the index, so both sides get the same words and punctuation separates
 // them. A query with no words gives NULL, which matches nothing.
@@ -154,6 +164,12 @@ export async function contextSearch(
   const limit = pageSize(input.limit ?? 30);
   const query = input.query.trim();
   const kind = input.kind ?? "all";
+  // A several-kind search with text is a picker, which has no cursor: each kind's page holds its
+  // best matches. Every other search pages by ID.
+  const ranked = !!input.kinds && !!query;
+  const rankBy = (column: SQLWrapper) => (ranked ? matchRank(column, query) : sql<number>`0`);
+  const rankOrder = (column: SQLWrapper) =>
+    ranked ? [matchRank(column, query), sql`lower(${column})`] : [];
   // A combined search names its kinds. Otherwise "all" covers every kind except people and agents.
   const searches = (type: ContextSearchBatchKind) =>
     input.kinds
@@ -292,11 +308,12 @@ export async function contextSearch(
     }
   }
   const words = wordPrefixQuery(query);
-  const results: SearchResult[] = [];
+  // `rank` is internal: it orders a picker's rows and is removed before they are returned.
+  const results: (SearchResult & { rank?: number })[] = [];
   // Full message bodies by result ID, for excerpts.
   const bodies = new Map<string, string>();
   // Branches of kind "all" start here and run concurrently; their rows join `results` in order.
-  const branchRows: Promise<SearchResult[]>[] = [];
+  const branchRows: Promise<(SearchResult & { rank?: number })[]>[] = [];
   const entityTypes = (["task", "project", ...crmContextTypes] as const).filter(searches);
   if (entityTypes.length) {
     // Work and CRM records in one statement with one visibility CTE.
@@ -340,10 +357,11 @@ export async function contextSearch(
         type === "task"
           ? sql`LEFT JOIN ${projects} "task_project" ON ${taskProject.entityId} = ${tasks.projectEntityId}`
           : sql``;
+      const order = sql.join([...rankOrder(column), sql`${table.entityId}`], sql`, `);
       return sql`(SELECT ${table.entityId} AS id, ${column} AS title,
           ${projectEntityId} AS "projectEntityId", ${type} AS kind, ${context},
-          ${contactEntityId} AS "contactEntityId"
-          FROM ${table} ${parent} WHERE ${where} ORDER BY ${table.entityId} LIMIT ${limit})`;
+          ${contactEntityId} AS "contactEntityId", ${rankBy(column)} AS rank
+          FROM ${table} ${parent} WHERE ${where} ORDER BY ${order} LIMIT ${limit})`;
     });
     const union = sql.join(branches, sql` UNION ALL `);
     branchRows.push(
@@ -356,6 +374,7 @@ export async function contextSearch(
           projectName: string | null;
           status: TaskStatus | null;
           contactEntityId: string | null;
+          rank: number;
         }>(
           withVisibility(
             ctx.scope,
@@ -558,6 +577,7 @@ export async function contextSearch(
             return parsed.success ? parsed.data : null;
           },
         ),
+        rank: rankBy(user.name),
       })
       .from(actors)
       .innerJoin(user, eq(user.id, actors.userId))
@@ -603,7 +623,7 @@ export async function contextSearch(
           input.after ? gt(actors.entityId, input.after) : undefined,
         ),
       )
-      .orderBy(asc(actors.entityId))
+      .orderBy(...rankOrder(user.name), asc(actors.entityId))
       .limit(limit);
     branchRows.push(
       pending.then((rows) => rows.map((row) => ({ ...row, kind: "person" as const }))),
@@ -644,6 +664,7 @@ export async function contextSearch(
         agentId: userAgents.id,
         callerPolicy: userAgents.callerPolicy,
         imageFileId: userAgents.imageFileId,
+        rank: rankBy(userAgents.name),
       })
       .from(messagingParticipants)
       .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
@@ -665,7 +686,7 @@ export async function contextSearch(
           input.after ? gt(actors.entityId, input.after) : undefined,
         ),
       )
-      .orderBy(asc(actors.entityId))
+      .orderBy(...rankOrder(userAgents.name), asc(actors.entityId))
       .limit(limit);
     branchRows.push(
       pending.then((rows) =>
@@ -686,11 +707,23 @@ export async function contextSearch(
   // Every branch runs concurrently. Pages are sorted by ID below, so arrival order does not matter.
   for (const rows of await Promise.all(branchRows)) results.push(...rows);
   signal?.throwIfAborted();
-  const byId = (a: SearchResult, b: SearchResult) => a.id.localeCompare(b.id);
-  // A combined search keeps each kind's own page, grouped in the requested order.
-  const page = input.kinds
-    ? input.kinds.flatMap((type) => results.filter((row) => row.kind === type).sort(byId))
-    : results.sort(byId).slice(0, limit);
+  type Row = (typeof results)[number];
+  const byId = (a: Row, b: Row) => a.id.localeCompare(b.id);
+  // Rows without a rank, such as messages, count as the weakest match.
+  const rankOf = (row: Row | undefined) => row?.rank ?? 3;
+  const byRank = (a: Row, b: Row) =>
+    rankOf(a) - rankOf(b) ||
+    a.title.toLowerCase().localeCompare(b.title.toLowerCase()) ||
+    byId(a, b);
+  // A combined search keeps each kind's own page, grouped in the requested order. A ranked search
+  // moves a kind with a stronger best match ahead; the sort is stable, so ties keep that order.
+  const groups = input.kinds?.map((type) =>
+    results.filter((row) => row.kind === type).sort(ranked ? byRank : byId),
+  );
+  if (ranked) groups?.sort((a, b) => rankOf(a[0]) - rankOf(b[0]));
+  const page = (groups?.flat() ?? results.sort(byId).slice(0, limit)).map(
+    ({ rank: _rank, ...row }): SearchResult => row,
+  );
   // Message rows passed the conversation check above, so their bodies may be quoted.
   const excerpts = await messageExcerpts(
     ctx,

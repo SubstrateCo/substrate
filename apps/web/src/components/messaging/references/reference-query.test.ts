@@ -33,10 +33,30 @@ describe("reference query", () => {
     });
   });
 
-  test.each(["alex@example.com", "@[task:123]", "hello @alex ", "@@"])(
-    "does not open for %s",
-    (draft) => expect(referenceQuery(draft, draft.length)).toBeNull(),
-  );
+  test.each([
+    ["@Alex Smith", "all", "Alex Smith"],
+    ["@task:Launch plan", "task", "Launch plan"],
+    // A trailing space stays in the replaced range but not in the search.
+    ["hello @alex ", "all", "alex"],
+  ] as const)("keeps %s open across single spaces", (draft, kind, query) => {
+    expect(referenceQuery(draft, draft.length)).toMatchObject({
+      start: draft.indexOf("@"),
+      end: draft.length,
+      kind,
+      query,
+    });
+  });
+
+  test.each([
+    "alex@example.com",
+    "@[task:123]",
+    "@@",
+    "@ alex",
+    "@alex  smith",
+    "@one two three four five",
+    "@alex\nsmith",
+    "#prod is down",
+  ])("does not open for %s", (draft) => expect(referenceQuery(draft, draft.length)).toBeNull());
 
   test.each([
     ["#", "channel", ""],

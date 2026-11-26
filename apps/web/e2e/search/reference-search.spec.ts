@@ -1,6 +1,38 @@
 import { conversation, conversationButton, test, visit } from "../test-support/fixtures";
 import { expect } from "@playwright/test";
 
+test("the reference picker filters with Tab, searches full names, and steps aside for prose", async ({
+  actors,
+  client,
+}) => {
+  const channel = await conversation(actors.sender, [actors.member.email]);
+  const sender = await client(actors.sender);
+  const { page } = sender;
+  await visit(sender, channel.id);
+  const editor = page.getByRole("textbox", { name: /^Message / });
+  const tab = (name: string) => page.getByRole("tab", { name, exact: true });
+  await editor.pressSequentially("Ping @");
+  await expect(tab("All")).toHaveAttribute("aria-selected", "true");
+  // Tab switches the filter while typing continues in the editor.
+  await editor.press("Tab");
+  await expect(tab("People")).toHaveAttribute("aria-selected", "true");
+  await editor.press("Shift+Tab");
+  await expect(tab("All")).toHaveAttribute("aria-selected", "true");
+  await expect(editor).toBeFocused();
+  // A full name with a space keeps the picker open and inserts on Enter.
+  await editor.pressSequentially(actors.member.name);
+  const member = page.getByRole("option", { name: actors.member.name, exact: true });
+  await expect(member).toHaveAttribute("aria-selected", "true");
+  await editor.press("Enter");
+  await expect(member).toHaveCount(0);
+  // Text after "@" that matches nothing is prose, so Enter sends it.
+  await editor.pressSequentially("about @no such person");
+  await expect(page.getByRole("listbox", { name: "References" })).toHaveCount(0);
+  await editor.press("Enter");
+  const sent = page.getByRole("article").filter({ hasText: "about @no such person" });
+  await expect(sent).toContainText(actors.member.name);
+});
+
 test("switching conversations does not reuse the previous reference audience", async ({
   actors,
   client,

@@ -329,6 +329,37 @@ test("searching several kinds returns each kind's first page in the requested or
   expect(queries.filter((query) => /FROM "(tasks|projects)"/.test(query))).toHaveLength(1);
 });
 
+test("a several-kind search with text ranks matches before limiting and puts the strongest kind first", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const alice = f.forActor(f.alice);
+  const project = await alice.projects.create({ name: "Bobsled board" });
+  // Weakest first, so creation order cannot explain the result.
+  for (const title of ["Kebobs", "Book a bob review", "Bobcat release", "Bob"])
+    await alice.tasks.create({ projectEntityId: project.entityId, title });
+  const chat = createAcceptedMessagingService(f.db, { userId: "alice", organizationId: f.orgA });
+  const channel = await chat.createConversation({
+    kind: "channel",
+    name: "Ranking",
+    emails: ["bob@example.com"],
+  });
+  const context = createContextService(f.db, { userId: "alice", organizationId: f.orgA });
+  const rows = await context.search({
+    query: "bob",
+    kinds: ["project", "task", "person"],
+    conversationId: channel.id,
+    limit: 3,
+  });
+  // Exact, then prefix, then word-start matches. Ties between kinds keep the requested order.
+  expect(rows.map((row) => [row.kind, row.title])).toEqual([
+    ["task", "Bob"],
+    ["task", "Bobcat release"],
+    ["task", "Book a bob review"],
+    ["person", "Bob"],
+    ["project", "Bobsled board"],
+  ]);
+  expect(rows.some((row) => "rank" in row)).toBe(false);
+});
+
 test("short fields match substrings, and words match by prefix", async () => {
   await f.db.update(user).set({ emailVerified: true });
   const alice = f.forActor(f.alice);

@@ -7,6 +7,8 @@ import { ErrorState } from "../../feedback/error-state";
 import type { WorkspaceReference } from "./entity-reference";
 import { ReferencePickerLink } from "./reference-picker-context";
 import { ReferencePickerLoadingOption, ReferencePickerOption } from "./reference-picker-option";
+import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export type ReferenceKind = "task" | "project" | "person" | "agent" | "channel" | "thread";
@@ -35,6 +37,17 @@ function optionDescription(item: {
   return parts.filter(Boolean).join(" · ") || undefined;
 }
 
+/** Splits rows into runs of one kind, in the order the kinds first appear. */
+function groupByKind<T extends { kind: ReferenceKind }>(rows: readonly T[]) {
+  const groups: { kind: ReferenceKind; rows: T[] }[] = [];
+  for (const row of rows) {
+    const group = groups.find((item) => item.kind === row.kind);
+    if (group) group.rows.push(row);
+    else groups.push({ kind: row.kind, rows: [row] });
+  }
+  return groups;
+}
+
 export function ReferencePickerView({
   query,
   kind,
@@ -42,6 +55,7 @@ export function ReferencePickerView({
   results,
   loading = false,
   error,
+  truncatedKinds = [],
   onKindChange,
   onRetry,
   onInsert,
@@ -60,22 +74,30 @@ export function ReferencePickerView({
     status?: TaskStatus;
     callMode?: AgentCallMode;
   }[];
+  /** Nothing to show yet. Rows that still match stay visible while a search refreshes. */
   loading?: boolean;
   error?: Error | null;
+  /** Kinds in "All" that may have more matches than shown. */
+  truncatedKinds?: readonly ReferenceKind[];
   onKindChange: (kind: ReferenceTab) => void;
   onRetry?: () => void;
   onInsert: (token: string, reference: WorkspaceReference) => void;
 }) {
-  // The owner keys this view by query, so a new query starts at the first option.
-  const [index, setIndex] = useState(0);
+  // The option the person moved to. Until they move, the best option is selected, so it follows
+  // better results as they arrive. The owner keys this view by query, so a new query resets it.
+  const [activeId, setActiveId] = useState<string>();
   const link = useContext(ReferencePickerLink);
   const ownListId = useId();
   const listId = link?.listId ?? ownListId;
   const list = useRef<HTMLDivElement>(null);
-  const available = loading || error ? [] : results;
-  const selectedIndex = Math.min(index, Math.max(0, available.length - 1));
+  const groups = groupByKind(error ? [] : results);
+  const available = groups.flatMap((group) => group.rows);
   const optionId = (item: { id: string; kind: ReferenceKind }) =>
     `${listId}-${item.kind}-${item.id}`;
+  const selectedIndex = Math.max(
+    0,
+    available.findIndex((item) => optionId(item) === activeId),
+  );
   const selected = available.at(selectedIndex);
   const selectedId = selected ? optionId(selected) : undefined;
   const onActiveOptionChange = link?.onActiveOptionChange;
@@ -84,6 +106,12 @@ export function ReferencePickerView({
     onActiveOptionChange?.(selectedId);
     return () => onActiveOptionChange?.(undefined);
   }, [selectedId, onActiveOptionChange]);
+  // A query with spaces that matches nothing is probably prose, so the picker steps aside.
+  const noMatches = !loading && !error && available.length === 0;
+  const onDismiss = link?.onDismiss;
+  useEffect(() => {
+    if (noMatches && query.includes(" ")) onDismiss?.();
+  }, [noMatches, query, onDismiss]);
   const insert = (item: (typeof results)[number]) =>
     onInsert(`@[${item.kind}:${item.id}]`, {
       id: item.id,
@@ -92,9 +120,14 @@ export function ReferencePickerView({
       status: item.status && { value: item.status, label: taskStatusLabels[item.status] },
     });
   const move = (delta: number) => {
-    const next = Math.max(0, Math.min(available.length - 1, selectedIndex + delta));
-    setIndex(next);
-    return available.at(next);
+    if (!available.length) return undefined;
+    const next = available.at((selectedIndex + delta + available.length) % available.length)!;
+    setActiveId(optionId(next));
+    return next;
+  };
+  const changeKind = (next: ReferenceTab) => {
+    setActiveId(undefined);
+    onKindChange(next);
   };
   useImperativeHandle(link?.handle, () => ({
     move: (delta) => {
@@ -102,20 +135,38 @@ export function ReferencePickerView({
     },
     choose: () => {
       if (selected) insert(selected);
+      // While results load, Enter waits for them rather than sending the message.
+      return !!selected || loading;
+    },
+    cycle: (delta) => {
+      const index = kinds.indexOf(kind);
+      changeKind(kinds[(index + delta + kinds.length) % kinds.length]!);
     },
   }));
   useEffect(() => {
     list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Keep the selected option in view after the selection renders.
   }, [selectedId, selectedIndex]);
+  const renderOption = (item: (typeof results)[number]) => (
+    <ReferencePickerOption
+      id={optionId(item)}
+      key={optionId(item)}
+      kind={item.kind}
+      title={item.title}
+      image={item.image}
+      status={item.status}
+      description={optionDescription(item)}
+      selected={item === selected}
+      onFocus={() => setActiveId(optionId(item))}
+      onSelect={() => insert(item)}
+    />
+  );
   return (
     <Tabs
       value={kind}
       onValueChange={(value) => {
         const next = kinds.find((kind) => kind === value);
-        if (!next) return;
-        setIndex(0);
-        onKindChange(next);
+        if (next) changeKind(next);
       }}
       asChild
     >
@@ -150,6 +201,7 @@ export function ReferencePickerView({
                     <div role="status" aria-label="Searching references">
                       <ReferencePickerLoadingOption />
                       <ReferencePickerLoadingOption />
+                      <ReferencePickerLoadingOption />
                     </div>
                   )}
                   {error && (
@@ -159,7 +211,7 @@ export function ReferencePickerView({
                       onRetry={onRetry}
                     />
                   )}
-                  {!loading && !error && results.length === 0 && (
+                  {noMatches && (
                     <p className="px-2 py-1.5 text-sm text-muted-foreground">
                       No accessible references found.
                     </p>
@@ -179,26 +231,55 @@ export function ReferencePickerView({
                       if (next) document.getElementById(optionId(next))?.focus();
                     }}
                   >
-                    {available.map((item, itemIndex) => (
-                      <ReferencePickerOption
-                        id={optionId(item)}
-                        key={optionId(item)}
-                        kind={item.kind}
-                        title={item.title}
-                        image={item.image}
-                        status={item.status}
-                        description={optionDescription(item)}
-                        selected={selectedIndex === itemIndex}
-                        onFocus={() => setIndex(itemIndex)}
-                        onSelect={() => insert(item)}
-                      />
-                    ))}
+                    {kind === "all"
+                      ? groups.map((group) => (
+                          <div
+                            key={group.kind}
+                            role="group"
+                            aria-labelledby={`${listId}-${group.kind}-heading`}
+                          >
+                            <div
+                              id={`${listId}-${group.kind}-heading`}
+                              aria-hidden="true"
+                              className="flex items-baseline justify-between gap-2 px-2 pt-2 pb-1 text-xs text-muted-foreground"
+                            >
+                              <span className="font-medium">{kindLabels[group.kind]}</span>
+                              {truncatedKinds.includes(group.kind) && <span>Top matches</span>}
+                            </div>
+                            {group.rows.map(renderOption)}
+                          </div>
+                        ))
+                      : available.map(renderOption)}
                   </div>
                 </>
               )}
             </div>
           </TabsContent>
         ))}
+        <Separator />
+        <div className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-1 px-2 text-xs text-muted-foreground">
+          <span className="flex items-center gap-1">
+            <KbdGroup>
+              <Kbd>↑</Kbd>
+              <Kbd>↓</Kbd>
+            </KbdGroup>
+            Navigate
+          </span>
+          <span className="flex items-center gap-1">
+            <Kbd>Enter</Kbd>
+            Insert
+          </span>
+          {kinds.length > 1 && (
+            <span className="flex items-center gap-1">
+              <Kbd>Tab</Kbd>
+              Filter
+            </span>
+          )}
+          <span className="flex items-center gap-1">
+            <Kbd>Esc</Kbd>
+            Close
+          </span>
+        </div>
       </section>
     </Tabs>
   );
