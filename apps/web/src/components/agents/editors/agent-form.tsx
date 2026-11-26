@@ -1,13 +1,11 @@
 import type { AgentConfiguration, SaveAgentInput } from "@substrate/contracts/agents";
 import { saveAgentInput } from "@substrate/contracts/agents";
+import type { HarnessKind } from "@substrate/contracts/harness";
 
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
 import { useId, type ReactNode } from "react";
 
-import { HarnessAvailability } from "../model-picker/harness-availability";
-import { ModelPicker } from "../model-picker/model-picker";
-import { HarnessAccount } from "../sign-in/harness-account";
 import { AgentInstructions } from "./agent-instructions";
 import { GeneralSettingsLayout, InstructionsSettingsLayout } from "./agent-settings-layout";
 import { UnsavedSectionsBar } from "./unsaved-sections-bar";
@@ -49,9 +47,20 @@ function definitionChanges(values: SaveAgentInput, saved: SaveAgentInput) {
   ] as const;
 }
 
+/** The draft's runtime and model, for the model field the settings compose. */
+export type AgentModelField = {
+  id: string;
+  harness: HarnessKind;
+  model: string | undefined;
+  disabled: boolean;
+  onChange: (harness: HarnessKind, model: string | undefined) => void;
+};
+
 type AgentFormProps = {
-  userId: string;
-  organizationId?: string | null;
+  /** Renders the model field for the draft's runtime and model. */
+  renderModel: (field: AgentModelField) => ReactNode;
+  /** Renders the built-in rules preview for the draft's runtime and name. */
+  renderStartupInstructions: (draft: { harness: HarnessKind; name: string }) => ReactNode;
   agent?: AgentConfiguration;
   /** The settings section to show for an existing agent. */
   section?: AgentSettingsSection;
@@ -77,8 +86,8 @@ type AgentFormProps = {
  * instructions share one draft across sections, and leaving the settings with a draft asks first.
  */
 export function AgentForm({
-  userId,
-  organizationId,
+  renderModel,
+  renderStartupInstructions,
   agent,
   section = "general",
   onSectionChange,
@@ -175,37 +184,16 @@ export function AgentForm({
           <form.Subscribe selector={(state) => [state.values.harness, state.values.model] as const}>
             {([harness, model]) => (
               <div className="grid min-w-0 gap-2">
-                <HarnessAccount
-                  userId={userId}
-                  organizationId={organizationId}
-                  agentId={agent?.id}
-                  harness={harness}
-                >
-                  {(signIn) => (
-                    <>
-                      <ModelPicker
-                        key={`${userId}/${organizationId}`}
-                        id={`${formId}-model`}
-                        userId={userId}
-                        organizationId={organizationId}
-                        agentId={agent?.id}
-                        harness={harness}
-                        model={model}
-                        disabled={busy}
-                        onSignIn={signIn}
-                        onChange={(nextHarness, nextModel) => {
-                          form.setFieldValue("harness", nextHarness);
-                          form.setFieldValue("model", nextModel);
-                        }}
-                      />
-                      <HarnessAvailability
-                        userId={userId}
-                        organizationId={organizationId}
-                        harness={harness}
-                      />
-                    </>
-                  )}
-                </HarnessAccount>
+                {renderModel({
+                  id: `${formId}-model`,
+                  harness,
+                  model,
+                  disabled: busy,
+                  onChange: (nextHarness, nextModel) => {
+                    form.setFieldValue("harness", nextHarness);
+                    form.setFieldValue("model", nextModel);
+                  },
+                })}
               </div>
             )}
           </form.Subscribe>
@@ -221,9 +209,7 @@ export function AgentForm({
                 {(field) => (
                   <AgentInstructions
                     harness={harness}
-                    name={name}
-                    agentId={agent?.id}
-                    organizationId={organizationId}
+                    startupInstructions={renderStartupInstructions({ harness, name })}
                     defaults={defaults ?? true}
                     creating={!agent}
                     value={field.state.value}

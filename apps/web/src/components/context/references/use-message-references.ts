@@ -1,13 +1,12 @@
 import type { MessageContextState } from "./message-context";
 import type { WorkspaceReference } from "@/components/messaging/references/entity-reference";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { linkedWorkLink, messageLink } from "@/lib/navigation/record-links";
 
 /** The workspace references a message's tokens resolve to, as far as the viewer can open them. */
-export function useMessageReferences(
-  organizationId: string,
-  context: MessageContextState,
-): WorkspaceReference[] {
+export function useMessageReferences(context: MessageContextState): WorkspaceReference[] {
+  const { organizationId } = useWorkspaceScope();
   const apps = useOrganizationApps();
   if (context.error) return [];
   return [

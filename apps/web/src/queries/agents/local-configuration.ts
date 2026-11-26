@@ -11,12 +11,12 @@ import { desktopLocalConfiguration } from "@/lib/desktop/agents/local-configurat
  */
 export function localAgentConfiguration(
   userId: string,
-  organizationId: string | null | undefined,
+  organizationId: string,
   agentId: string | undefined,
   harness: HarnessKind,
 ) {
   const controller = desktopLocalConfiguration(harness, agentId);
-  if (!controller || !organizationId || !agentId) return undefined;
+  if (!controller || !agentId) return undefined;
   return {
     controller,
     queryKey: queryKeys.localAgentConfiguration(userId, organizationId, agentId, harness),

@@ -51,7 +51,6 @@ function useArchiveTotals(queries: MeetingQueries) {
     total: archive.isSuccess ? archive.data.total : undefined,
     providers: originals?.map((s) => s.provider) ?? [],
     pending: originals?.reduce((n, c) => n + c.pendingReview, 0),
-    linked: originals?.reduce((n, c) => n + c.linked, 0),
   };
 }
 
@@ -133,7 +132,7 @@ export function MeetingsWorkspace({
   });
   const chips = filters.length ? <ActiveFilterChips filters={filters} /> : null;
   return (
-    <MeetingsWorkspaceContext value={{ queries, search, change }}>
+    <MeetingsWorkspaceContext value={{ scope, queries, search, change }}>
       <Sheet open={menu} onOpenChange={setMenu}>
         <input
           ref={picker}
@@ -150,7 +149,6 @@ export function MeetingsWorkspace({
         <MeetingSearchField phrase={phrase} onChange={updatePhrase} />
         {adding && (
           <NewMeetingDialog
-            scope={scope}
             onClose={() => setAdding(false)}
             onCreated={(id) => {
               setAdding(false);
@@ -206,13 +204,9 @@ export function MeetingsWorkspace({
               <HexImportResult error={importing.error} report={importing.data} />
               {section === "all" && (
                 <AllMeetings
-                  queries={queries}
                   input={archiveInput(search, filter.query)}
-                  originals={totals.linked}
                   filters={chips}
-                  view={search}
                   searchPending={searchPending}
-                  change={change}
                   open={open}
                   clearFilters={() => {
                     setPhrase("");
@@ -228,7 +222,7 @@ export function MeetingsWorkspace({
                   filters={chips}
                 />
               )}
-              {section === "review" && <MatchReview scope={scope} />}
+              {section === "review" && <MatchReview />}
             </div>
             {inContent && reader}
           </PageContent>

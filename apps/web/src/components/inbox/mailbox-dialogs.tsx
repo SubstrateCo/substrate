@@ -4,7 +4,6 @@ import type { MailAPI, MailScope } from "@substrate/contracts/mail/ipc";
 import { useQueryClient } from "@tanstack/react-query";
 
 import { ConnectMailbox } from "./connect-mailbox";
-import type { LabelActions } from "./label-menu";
 import { ManageMailboxes } from "./manage-mailboxes";
 import type { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { localMailQueries } from "@/queries/mail/options";
@@ -17,7 +16,6 @@ export function MailboxDialogs({
   scope,
   dialog,
   boxes,
-  labelActions,
   onConnected,
   onDisconnected,
 }: {
@@ -25,7 +23,6 @@ export function MailboxDialogs({
   scope: MailScope;
   dialog: MailboxDialog;
   boxes: Mailbox[];
-  labelActions: LabelActions;
   onConnected: (mailboxId: string) => void;
   onDisconnected: (mailboxId: string) => void;
 }) {
@@ -56,7 +53,6 @@ export function MailboxDialogs({
           await api.rename({ ...scope, mailboxId, nickname });
           await client.invalidateQueries({ queryKey: local.accounts.queryKey });
         }}
-        {...labelActions}
         onReconnect={async (mailboxId, chooseClient) => {
           const result = await api.reconnectGmail({ ...scope, mailboxId, chooseClient });
           if (result === "connected") await client.invalidateQueries({ queryKey: local.root });

@@ -2,6 +2,7 @@ import type { InteractionSourceEvent } from "@substrate/contracts/calendar";
 
 import { Link } from "@tanstack/react-router";
 
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { eventTitle } from "@/lib/calendar/days";
 import { formatDateOnly } from "@/lib/format/date";
 import { calendarLink } from "@/lib/navigation/record-links";
@@ -10,14 +11,13 @@ import { CalendarDays } from "lucide-react";
 
 /** "From meeting: Pricing review", linking to the meeting an interaction came from. */
 export function MeetingSourceLink({
-  organizationId,
   source,
   className,
 }: {
-  organizationId: string;
   source: InteractionSourceEvent | undefined;
   className?: string;
 }) {
+  const { organizationId } = useWorkspaceScope();
   if (!source) return null;
   const title = eventTitle(source.title);
   return (

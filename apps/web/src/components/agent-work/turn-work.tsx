@@ -7,12 +7,11 @@ import { TechnicalDetails } from "./technical-details";
 import { useStopTurn } from "./use-stop-turn";
 import { MutedWorkLine, WorkStatus } from "./work-status";
 import { WorkStatusTag } from "./work-status-tag";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useNow } from "@/hooks/use-now";
 import { failedWorkNote, silentLabel, turnLabel, turnTone } from "@/lib/agent-work/status";
 
 type TurnProps = {
-  userId: string;
-  organizationId: string;
   turn: AgentTurnView;
   openRequest?: AgentRequestView;
   onTranscript: (turnId: string) => void;
@@ -37,7 +36,8 @@ export function TurnStatus(props: TurnProps) {
   return <LiveTurnStatus {...props} />;
 }
 
-function LiveTurnStatus({ userId, organizationId, turn, openRequest, onTranscript }: TurnProps) {
+function LiveTurnStatus({ turn, openRequest, onTranscript }: TurnProps) {
+  const { userId, organizationId } = useWorkspaceScope();
   const now = useNow(liveTurnStatuses.includes(turn.status));
   const { onStop, stopping } = useStopTurn(userId, organizationId, turn);
   return (
@@ -69,7 +69,7 @@ export function TurnWork({
   /** The turn's items that the desktop couldn't confirm the agent received. */
   uncertainItemIds?: readonly string[];
 }) {
-  const { userId, organizationId, turn, openRequest } = props;
+  const { turn, openRequest } = props;
   const tone = turnTone(turn, openRequest);
   if (tone === "muted") return <MutedWorkLine label={silentLabel} />;
   const body = (
@@ -81,13 +81,7 @@ export function TurnWork({
         </div>
       )}
       {turn.status === "needs_attention" && (
-        <NeedsAttention
-          userId={userId}
-          organizationId={organizationId}
-          turn={turn}
-          agentName={agentName}
-          uncertainItemIds={uncertainItemIds}
-        />
+        <NeedsAttention turn={turn} agentName={agentName} uncertainItemIds={uncertainItemIds} />
       )}
     </>
   );

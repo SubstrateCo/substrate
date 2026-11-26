@@ -18,6 +18,7 @@ import { RequestCard } from "./requests/request-card";
 import { TurnLabel, TurnStatus, TurnWork } from "./turn-work";
 import { WorkIndicator } from "./work-indicator";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { noticeLines } from "@/lib/agent-work/composer-notice";
 import { conversationAgents } from "@/lib/agent-work/conversation-agents";
 import { proposalSourceLink } from "@/lib/agent-work/links";
@@ -94,18 +95,15 @@ function statusIndex(statuses: readonly AgentStatusView[] | undefined) {
 }
 
 export function ConversationAgentWork({
-  userId,
-  organizationId,
   conversation,
   onTranscript,
   children,
 }: {
-  userId: string;
-  organizationId: string;
   conversation: Conversation;
   onTranscript: (turnId: string) => void;
   children: ReactNode;
 }) {
+  const { userId, organizationId } = useWorkspaceScope();
   // Members list agent IDs only for the viewer's own agents.
   const members = conversation.members.flatMap((member) =>
     member.type === "agent" && member.agentId
@@ -238,8 +236,6 @@ export function ConversationAgentWork({
                 return (
                   <InboxReceipt
                     key={item.id}
-                    userId={userId}
-                    organizationId={organizationId}
                     item={item}
                     context={{
                       agentName: name(agentId),
@@ -252,8 +248,6 @@ export function ConversationAgentWork({
               {placed.map((turn) => (
                 <TurnWork
                   key={turn.id}
-                  userId={userId}
-                  organizationId={organizationId}
                   turn={turn}
                   agentName={name(turn.userAgentId)}
                   underReply={message.fromAgent}
@@ -263,12 +257,7 @@ export function ConversationAgentWork({
                 />
               ))}
               {requestCards.map((request) => (
-                <RequestCard
-                  key={request.id}
-                  userId={userId}
-                  organizationId={organizationId}
-                  request={request}
-                />
+                <RequestCard key={request.id} request={request} />
               ))}
             </>
           );
@@ -279,8 +268,6 @@ export function ConversationAgentWork({
             ?.map((turn) => (
               <TurnStatus
                 key={turn.id}
-                userId={userId}
-                organizationId={organizationId}
                 turn={turn}
                 openRequest={openRequest(turn.id)}
                 onTranscript={onTranscript}

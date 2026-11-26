@@ -1,16 +1,12 @@
 import { DangerZoneCard } from "@/components/feedback/danger-zone-card";
 import type { Project } from "@/components/tasks/types";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useTasksMutation } from "@/queries/tasks/mutations";
 import { Archive } from "lucide-react";
 
 /** The danger zone of an active project: archive it to make it read-only. */
-export function ProjectArchive({
-  organizationId,
-  project,
-}: {
-  organizationId: string;
-  project: Project;
-}) {
+export function ProjectArchive({ project }: { project: Project }) {
+  const { organizationId } = useWorkspaceScope();
   const archive = useTasksMutation(organizationId);
   return (
     <DangerZoneCard

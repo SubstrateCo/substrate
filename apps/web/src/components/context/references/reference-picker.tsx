@@ -10,6 +10,7 @@ import {
 } from "@/components/messaging/references/reference-picker-view";
 import type { ReferenceQuery } from "@/components/messaging/references/reference-query";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { searchOptions } from "@/queries/context/search";
 
@@ -17,16 +18,15 @@ import { searchOptions } from "@/queries/context/search";
 const mixedLimit = 5;
 
 export function ReferencePicker({
-  organizationId,
   conversationId,
   activeReference,
   onInsert,
 }: {
-  organizationId: string;
   conversationId: string;
   activeReference: ReferenceQuery;
   onInsert: (token: string, reference: WorkspaceReference) => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const apps = useOrganizationApps();
   const mixedKinds: Extract<ReferenceKind, "person" | "agent" | "task" | "project">[] =
     apps.enabled("tasks") ? ["person", "agent", "task", "project"] : ["person", "agent"];

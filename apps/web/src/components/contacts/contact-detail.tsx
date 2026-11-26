@@ -27,18 +27,14 @@ import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/co
 import { TextLink } from "@/components/ui/text-link";
 import { AppAvailability } from "@/components/workspace/app-availability";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { crmLink } from "@/lib/navigation/record-links";
 import { contactOptions } from "@/queries/contacts/options";
 import { useRecordMutation } from "@/queries/records/mutations";
 import { Plus } from "lucide-react";
 
-export function ContactDetail({
-  organizationId,
-  entityId,
-}: {
-  organizationId: string;
-  entityId: string;
-}) {
+export function ContactDetail({ entityId }: { entityId: string }) {
+  const { organizationId } = useWorkspaceScope();
   const query = useQuery(contactOptions(organizationId, entityId));
   const apps = useOrganizationApps();
   const mutation = useRecordMutation(organizationId, "contacts");
@@ -62,7 +58,6 @@ export function ContactDetail({
   return (
     <>
       <RecordDetailView
-        organizationId={organizationId}
         entityId={entityId}
         kind="contacts"
         notice={staleNotice}
@@ -127,37 +122,31 @@ export function ContactDetail({
           </RecordSection>
         </AppAvailability>
         <ContactMethods
-          organizationId={organizationId}
           contactEntityId={entityId}
           identifiers={data.identifiers}
           canEdit={canChange}
         />
         <InteractionHistory
-          organizationId={organizationId}
           contactEntityId={entityId}
           canEdit={canChange}
           canDelete={!archived}
           onCreate={canChange ? () => open("interaction") : undefined}
         />
-        <ContactMeetings organizationId={organizationId} contactEntityId={entityId} />
-        <FollowUps organizationId={organizationId} entityId={entityId} canCreate={canChange} />
-        <WorkDiscussions organizationId={organizationId} entityId={entityId}>
-          {canChange && (
-            <PublishInteraction organizationId={organizationId} contactEntityId={entityId} />
-          )}
+        <ContactMeetings contactEntityId={entityId} />
+        <FollowUps entityId={entityId} canCreate={canChange} />
+        <WorkDiscussions entityId={entityId}>
+          {canChange && <PublishInteraction contactEntityId={entityId} />}
         </WorkDiscussions>
-        <CrmActivity organizationId={organizationId} entityId={entityId} />
+        <CrmActivity entityId={entityId} />
       </RecordDetailView>
       {change && (
         <RecordChangeDialogs
           dialog={change}
           kind="contacts"
-          organizationId={organizationId}
           entityId={entityId}
           name={profile.displayName}
           archived={archived}
           record={profile}
-          mutation={mutation}
           onClose={() => setDialog(null)}
         />
       )}
@@ -175,11 +164,7 @@ export function ContactDetail({
         />
       )}
       {dialog === "affiliation" && apps.enabled("crm") && (
-        <AffiliationEditor
-          organizationId={organizationId}
-          contactEntityId={entityId}
-          onClose={() => setDialog(null)}
-        />
+        <AffiliationEditor contactEntityId={entityId} onClose={() => setDialog(null)} />
       )}
     </>
   );

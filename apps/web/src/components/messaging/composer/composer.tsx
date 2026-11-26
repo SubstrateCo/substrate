@@ -6,18 +6,16 @@ import { FileDropZone } from "@/components/attachments/file-drop-zone";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { ComposerSendRequests } from "@/components/messaging/composer/composer-draft-context";
 import { Composer as ComposerView } from "@/components/messaging/composer/composer-view";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useAttachmentUploads } from "@/queries/files/use-attachment-uploads";
 import { useSendMessage } from "@/queries/messaging/messages";
 
-export function Composer(props: {
-  organizationId: string;
-  conversationId: string;
-  threadId?: string;
-  label: string;
-}) {
+export function Composer(props: { conversationId: string; threadId?: string; label: string }) {
+  const { organizationId } = useWorkspaceScope();
   return (
     <DestinationComposer
-      key={`${props.organizationId}:${props.conversationId}:${props.threadId ?? ""}`}
+      key={`${organizationId}:${props.conversationId}:${props.threadId ?? ""}`}
+      organizationId={organizationId}
       {...props}
     />
   );
@@ -58,7 +56,6 @@ function DestinationComposer({
         onPasteFiles={uploads.add}
         renderReferences={(activeReference, onInsert) => (
           <ReferencePicker
-            organizationId={organizationId}
             conversationId={conversationId}
             activeReference={activeReference}
             onInsert={onInsert}

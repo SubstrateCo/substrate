@@ -141,11 +141,7 @@ function ReaderContent({
             )}
           </TabsContent>
           <TabsContent value="transcript">
-            <ReaderTranscript
-              originals={originals}
-              originalId={search.originalId}
-              turn={search.turn}
-            />
+            <ReaderTranscript originals={originals} />
           </TabsContent>
           <TabsContent value="sources">
             {sourceMessage && (
@@ -161,7 +157,7 @@ function ReaderContent({
                 </Link>
               </Button>
             )}
-            <ReaderOriginals originals={originals} originalId={search.originalId} />
+            <ReaderOriginals originals={originals} />
           </TabsContent>
         </div>
       </Tabs>

@@ -17,18 +17,12 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { NotSet, Property, RecordSection, recordRows } from "@/components/layout/record-section";
 import { Item, ItemActions, ItemContent, ItemTitle } from "@/components/ui/item";
 import { TextLink } from "@/components/ui/text-link";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { accountOptions } from "@/queries/crm/options";
-import { useRecordMutation } from "@/queries/records/mutations";
 
-export function AccountDetail({
-  organizationId,
-  entityId,
-}: {
-  organizationId: string;
-  entityId: string;
-}) {
+export function AccountDetail({ entityId }: { entityId: string }) {
+  const { organizationId } = useWorkspaceScope();
   const query = useQuery(accountOptions(organizationId, entityId));
-  const mutation = useRecordMutation(organizationId, "accounts");
   const [dialog, setDialog] = useState<RecordChangeDialog | null>(null);
   const { data, fallback, staleNotice } = crmResource(
     query,
@@ -38,14 +32,9 @@ export function AccountDetail({
   const { account, contacts, deals, level } = data;
   const canEdit = level === "edit" || level === "owner";
   const archived = !!account.archivedAt;
-  const open = (next: RecordChangeDialog) => {
-    mutation.reset();
-    setDialog(next);
-  };
   return (
     <>
       <RecordDetailView
-        organizationId={organizationId}
         entityId={entityId}
         kind="accounts"
         notice={staleNotice}
@@ -55,8 +44,8 @@ export function AccountDetail({
         canEdit={canEdit}
         level={level}
         ownerRecord={{ kind: "account", ownerActorEntityId: account.ownerActorEntityId }}
-        onEdit={() => open("edit")}
-        onArchive={() => open("archive")}
+        onEdit={() => setDialog("edit")}
+        onArchive={() => setDialog("archive")}
         properties={
           <>
             <Property label="Domain">{account.domain || <NotSet />}</Property>
@@ -104,34 +93,24 @@ export function AccountDetail({
         </RecordSection>
         <RecordSection aria-label="Account deals" title="Deals" count={deals.length || undefined}>
           {deals.length ? (
-            <RecordList
-              organizationId={organizationId}
-              kind="deals"
-              rows={deals.map((deal) => ({ ...deal, name: deal.title }))}
-            />
+            <RecordList kind="deals" rows={deals.map((deal) => ({ ...deal, name: deal.title }))} />
           ) : (
             <ContentNotice variant="inline" title="No deals you can read" />
           )}
         </RecordSection>
-        <FollowUps
-          organizationId={organizationId}
-          entityId={entityId}
-          canCreate={canEdit && !archived}
-        />
-        <InteractionRollup organizationId={organizationId} entityId={entityId} kind="account" />
-        <WorkDiscussions organizationId={organizationId} entityId={entityId} />
-        <CrmActivity organizationId={organizationId} entityId={entityId} />
+        <FollowUps entityId={entityId} canCreate={canEdit && !archived} />
+        <InteractionRollup entityId={entityId} kind="account" />
+        <WorkDiscussions entityId={entityId} />
+        <CrmActivity entityId={entityId} />
       </RecordDetailView>
       {dialog && (
         <RecordChangeDialogs
           dialog={dialog}
           kind="accounts"
-          organizationId={organizationId}
           entityId={entityId}
           name={account.name}
           archived={archived}
           record={account}
-          mutation={mutation}
           onClose={() => setDialog(null)}
         />
       )}

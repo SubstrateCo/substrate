@@ -13,21 +13,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useCrmMutation } from "@/queries/crm/mutations";
 import { ArrowDown, ArrowUp, Plus } from "lucide-react";
 
 type Stage = { id: string; name: string; retired: boolean };
 type DraftStage = { id?: string; name: string; key: string };
 
-export function PipelineSettings({
-  organizationId,
-  stages,
-  canEdit,
-}: {
-  organizationId: string;
-  stages: Stage[];
-  canEdit: boolean;
-}) {
+export function PipelineSettings({ stages, canEdit }: { stages: Stage[]; canEdit: boolean }) {
+  const { organizationId } = useWorkspaceScope();
   const active = stages.filter((stage) => !stage.retired);
   const [draft, setDraft] = useState<DraftStage[] | null>(null);
   const mutation = useCrmMutation(organizationId);

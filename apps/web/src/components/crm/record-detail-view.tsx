@@ -27,11 +27,11 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Heading } from "@/components/ui/heading";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { recordLink } from "@/lib/navigation/record-links";
 import { Archive, Ellipsis, Pencil, RotateCcw } from "lucide-react";
 
 export function RecordDetailView({
-  organizationId,
   entityId,
   kind,
   name,
@@ -47,7 +47,6 @@ export function RecordDetailView({
   properties,
   notice,
 }: {
-  organizationId: string;
   entityId: string;
   kind: CrmKind;
   name: string;
@@ -64,10 +63,10 @@ export function RecordDetailView({
   properties?: ReactNode;
   notice?: ReactNode;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const sheet = usePageSheet();
   const menuTrigger = useRef<HTMLButtonElement>(null);
   const management = useRecordManagement({
-    organizationId,
     entityId,
     name,
     noun: singularLabels[kind],
@@ -91,10 +90,7 @@ export function RecordDetailView({
     <RecordProperties>
       {ownerRecord && (
         <Property label="Owner">
-          <RecordResponsible
-            organizationId={organizationId}
-            actorEntityId={ownerRecord.ownerActorEntityId}
-          />
+          <RecordResponsible actorEntityId={ownerRecord.ownerActorEntityId} />
         </Property>
       )}
       {properties}

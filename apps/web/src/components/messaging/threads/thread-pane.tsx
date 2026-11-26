@@ -10,13 +10,13 @@ import type { MessageContextState } from "@/components/context/references/messag
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { JumpToLatest, OlderMessages } from "@/components/messaging/messages/message-history";
 import { ThreadPane as ThreadPaneView } from "@/components/messaging/threads/thread-pane-view";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { resourceState } from "@/lib/resource-state";
 import { messagePageOptions } from "@/queries/context/links";
 import { useConversationRead } from "@/queries/messaging/read-state";
 import { MessagesSquare } from "lucide-react";
 
 export function ThreadPane({
-  organizationId,
   conversationId,
   threadId,
   root,
@@ -24,7 +24,6 @@ export function ThreadPane({
   targetMessage,
   canPost = true,
 }: {
-  organizationId: string;
   conversationId: string;
   threadId: string;
   root?: Message;
@@ -32,6 +31,7 @@ export function ThreadPane({
   targetMessage?: Message;
   canPost?: boolean;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const {
     messages: replies,
     history,
@@ -61,15 +61,7 @@ export function ThreadPane({
       error={replies.error}
       onRetry={() => void replies.refetch()}
       root={
-        root && (
-          <MessageItem
-            threadRoot
-            message={root}
-            organizationId={organizationId}
-            canPost={canPost}
-            context={rootContext}
-          />
-        )
+        root && <MessageItem threadRoot message={root} canPost={canPost} context={rootContext} />
       }
       replies={
         empty ? (
@@ -82,7 +74,6 @@ export function ThreadPane({
           resource.data && (
             <MessageList
               messages={replyRows}
-              organizationId={organizationId}
               conversationId={conversationId}
               olderPage={history.hasPrevious}
               sending={history.sending}
@@ -103,12 +94,7 @@ export function ThreadPane({
         <>
           <AgentWorkNotice threadId={threadId} />
           {canPost && (
-            <Composer
-              organizationId={organizationId}
-              conversationId={conversationId}
-              threadId={threadId}
-              label="Reply in thread"
-            />
+            <Composer conversationId={conversationId} threadId={threadId} label="Reply in thread" />
           )}
         </>
       }

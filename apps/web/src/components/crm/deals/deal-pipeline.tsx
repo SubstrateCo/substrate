@@ -5,6 +5,7 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Board, BoardCard, BoardColumn, boardCardTarget } from "@/components/layout/board";
 import { Button } from "@/components/ui/button";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { crmLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
 import { Handshake, Plus } from "lucide-react";
@@ -19,17 +20,16 @@ export type PipelineDeal = {
 };
 
 export function DealPipeline({
-  organizationId,
   stages,
   deals,
   onCreate,
 }: {
-  organizationId: string;
   stages: { id: string; name: string }[];
   deals: PipelineDeal[];
   /** Offers the empty board's primary action when the viewer can create a deal. */
   onCreate?: () => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   if (deals.length === 0)
     return (
       <ContentNotice

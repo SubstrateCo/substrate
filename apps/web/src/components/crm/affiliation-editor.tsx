@@ -4,17 +4,17 @@ import { CustomerPicker } from "./customer-picker";
 import { formText } from "./form-text";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { NativeField } from "@/components/forms/native-form";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useCrmMutation } from "@/queries/crm/mutations";
 
 export function AffiliationEditor({
-  organizationId,
   contactEntityId,
   onClose,
 }: {
-  organizationId: string;
   contactEntityId: string;
   onClose: () => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const mutation = useCrmMutation(organizationId);
   const [accountId, setAccountId] = useState("");
   return (
@@ -43,13 +43,7 @@ export function AffiliationEditor({
           );
       }}
     >
-      <CustomerPicker
-        organizationId={organizationId}
-        kind="accounts"
-        label="Account"
-        value={accountId}
-        onChange={setAccountId}
-      />
+      <CustomerPicker kind="accounts" label="Account" value={accountId} onChange={setAccountId} />
       <NativeField id="affiliation-title" name="title" label="Role or title" maxLength={300} />
     </FormDialog>
   );

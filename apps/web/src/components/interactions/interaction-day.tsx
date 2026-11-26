@@ -40,7 +40,6 @@ export function InteractionDay({ period }: { period: InteractionPeriod }) {
     <div className="overflow-y-auto md:min-h-0 md:flex-1">
       <InteractionTable
         rows={items}
-        organizationId={period.organizationId}
         sources={sources}
         fetching={query.isPlaceholderData}
         pagination={{

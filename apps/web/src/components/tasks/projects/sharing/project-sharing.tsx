@@ -6,9 +6,9 @@ import {
   type AccessChange,
   type ErrorSurface,
 } from "@/components/tasks/projects/sharing/project-sharing-view";
-import type { ProjectDetail } from "@/components/tasks/types";
-import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useTasksMutation } from "@/queries/tasks/mutations";
+import { useLoadedProject } from "@/queries/tasks/use-project";
 import { toast } from "sonner";
 
 const outcomes: Record<PermissionLevel, string> = {
@@ -18,17 +18,11 @@ const outcomes: Record<PermissionLevel, string> = {
   owner: "is now an owner",
 };
 
-export function ProjectSharing({
-  organizationId,
-  detail,
-  capabilities,
-}: {
-  organizationId: string;
-  detail: ProjectDetail;
-  capabilities: ProjectCapabilities;
-}) {
+export function ProjectSharing({ projectEntityId }: { projectEntityId: string }) {
+  const { organizationId } = useWorkspaceScope();
+  const { resource, capabilities } = useLoadedProject(organizationId, projectEntityId);
   const share = useTasksMutation(organizationId);
-  const scope = { organizationId, projectEntityId: detail.project.entityId };
+  const scope = { organizationId, projectEntityId };
   const apply = (change: AccessChange, surface: ErrorSurface) =>
     share.mutate(
       { action: "share", ...scope, actorEntityId: change.actorEntityId, level: change.level },
@@ -50,6 +44,9 @@ export function ProjectSharing({
         },
       },
     );
+  const detail = resource.data;
+  // The project pane shows sharing only once its project has loaded.
+  if (!detail) return null;
   return (
     <ProjectSharingView
       capabilities={capabilities}

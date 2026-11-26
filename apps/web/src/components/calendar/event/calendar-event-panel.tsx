@@ -12,6 +12,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { PageAside, useAsideCovers } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { eventDate } from "@/lib/calendar/days";
 import { providerLabels } from "@/lib/calendar/labels";
 import { calendarLink } from "@/lib/navigation/record-links";
@@ -20,16 +21,15 @@ import { ArrowUpRight, Unlink, X } from "lucide-react";
 
 /** The side pane for one event, opened from the calendar and named in its URL. */
 export function CalendarEventPanel({
-  organizationId,
   eventId,
   now,
   onClose,
 }: {
-  organizationId: string;
   eventId: string;
   now: number;
   onClose: () => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const query = useQuery(calendarEventOptions(organizationId, eventId));
   const close = useRef<HTMLButtonElement>(null);
   const covers = useAsideCovers();
@@ -99,9 +99,7 @@ export function CalendarEventPanel({
           <LoadingState label="Loading event" variant="compact" />
         </div>
       )}
-      {!query.error && event && (
-        <CalendarEventDetail organizationId={organizationId} event={event} now={now} />
-      )}
+      {!query.error && event && <CalendarEventDetail event={event} now={now} />}
     </PageAside>
   );
 }

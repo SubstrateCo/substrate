@@ -4,13 +4,12 @@ import { AgentMessagesEmpty } from "./agent-messages-empty";
 import { PaneState } from "@/components/feedback/pane-state";
 import { ConversationPane } from "@/components/messaging/conversations/conversation-pane";
 import { MessageLoading } from "@/components/messaging/messages/message-loading";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { agentDirectMessage } from "@/lib/messaging/conversations";
 import { useDirectMessage } from "@/queries/messaging/conversations";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 
 export function AgentMessages({
-  userId,
-  organizationId,
   agentId,
   name,
   enabled,
@@ -19,8 +18,6 @@ export function AgentMessages({
   onNavigate,
   onSettings,
 }: {
-  userId: string;
-  organizationId: string;
   agentId: string;
   name: string;
   enabled: boolean;
@@ -29,6 +26,7 @@ export function AgentMessages({
   onNavigate: (target: { messageId?: string; turnId?: string }) => void;
   onSettings: () => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const conversations = useQuery(conversationsQueryOptions(organizationId));
   const conversation = agentDirectMessage(conversations.data ?? [], agentId);
   const { mutate, isPending, error } = useDirectMessage(organizationId);
@@ -36,9 +34,7 @@ export function AgentMessages({
     return (
       <ConversationPane
         key={conversation.id}
-        organizationId={organizationId}
         conversation={conversation}
-        userId={userId}
         messageId={messageId}
         turnId={turnId}
         header={null}

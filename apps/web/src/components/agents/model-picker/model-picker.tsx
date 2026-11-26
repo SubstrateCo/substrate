@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Spinner } from "@/components/ui/spinner";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { harnessLabel, harnessOptions, visibleHarnessOptions } from "@/lib/agents/harness-meta";
 import { harnessBridge } from "@/lib/desktop/bridges";
 import { harnessStatusQueryOptions } from "@/queries/agents/harness-status";
@@ -116,14 +117,14 @@ function useModelCatalogs({
   searching,
 }: {
   userId: string;
-  organizationId?: string | null;
+  organizationId: string;
   agentId?: string;
   open: boolean;
   harness: HarnessKind;
   browseHarness: HarnessKind;
   searching: boolean;
 }) {
-  const available = !!harnessBridge() && !!organizationId;
+  const available = !!harnessBridge();
   const status = useQuery({
     ...harnessStatusQueryOptions(userId, organizationId),
     enabled: available,
@@ -299,8 +300,6 @@ function ModelList({
 // Source: pingdotgg/t3code/apps/web/src/components/chat (MIT, icons/LICENSE).
 export function ModelPicker({
   id,
-  userId,
-  organizationId,
   agentId,
   harness,
   model,
@@ -309,8 +308,6 @@ export function ModelPicker({
   onSignIn,
 }: {
   id?: string;
-  userId: string;
-  organizationId?: string | null;
   agentId?: string;
   harness: HarnessKind;
   model?: string;
@@ -319,6 +316,7 @@ export function ModelPicker({
   /** Starts a sign-in for a harness that needs one. Absent outside the desktop app. */
   onSignIn?: StartSignIn;
 }) {
+  const { userId, organizationId } = useWorkspaceScope();
   const [open, setOpen] = useState(false);
   const [browseOverride, setBrowseOverride] = useState<HarnessKind>();
   const [search, setSearch] = useState("");

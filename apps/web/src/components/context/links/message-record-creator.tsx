@@ -8,34 +8,32 @@ import { CrmResourceState } from "@/components/crm/crm-resource-state";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { personLink, recordLink } from "@/lib/navigation/record-links";
 import { useCreateCrmFromMessage } from "@/queries/context/crm-from-message";
-import { crmSettingsOptions, pipelineOptions } from "@/queries/crm/options";
+import { crmSettingsOptions } from "@/queries/crm/options";
+import { useActiveStages } from "@/queries/crm/stages";
 import { Handshake } from "lucide-react";
 import { toast } from "sonner";
 
 export function MessageRecordCreator({
-  organizationId,
   messageId,
   kind,
   onClose,
   onCreated,
 }: {
-  organizationId: string;
   messageId: string;
   kind: "account" | "contact" | "deal";
   onClose: () => void;
   onCreated: () => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const [requestId] = useState(() => crypto.randomUUID());
   const navigate = useNavigate();
   const apps = useOrganizationApps();
   const create = useCreateCrmFromMessage(organizationId);
-  const pipeline = useQuery({ ...pipelineOptions(organizationId), enabled: kind === "deal" });
+  const { pipeline, stages } = useActiveStages(organizationId, kind === "deal");
   const settings = useQuery({ ...crmSettingsOptions(organizationId), enabled: kind === "deal" });
-  const stages = (pipeline.data ?? [])
-    .filter((stage) => !stage.retired)
-    .map((stage) => ({ value: stage.id, label: stage.name }));
   const loading = pipeline.isPending || settings.isPending;
   const error = pipeline.error ?? settings.error;
   if (kind === "deal" && (loading || error || !stages.length))
@@ -66,9 +64,7 @@ export function MessageRecordCreator({
   const section = { account: "accounts", contact: "contacts", deal: "deals" } as const;
   return (
     <MessageRecordEditor
-      organizationId={organizationId}
       kind={section[kind]}
-      stages={stages}
       defaultCurrency={settings.data?.defaultCurrency}
       pending={create.isPending}
       error={create.error}

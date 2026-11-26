@@ -12,11 +12,9 @@ import { Tag } from "@/components/feedback/tag";
 
 export function InteractionList({
   rows,
-  organizationId,
   sources = emptySources,
 }: {
   rows: Row[];
-  organizationId: string;
   /** The meetings that calendar interactions came from, by interaction. */
   sources?: InteractionSources;
 }) {
@@ -34,7 +32,6 @@ export function InteractionList({
             occurredAt={row.occurredAt}
             contact={
               <ContactProfileLink
-                organizationId={organizationId}
                 contactEntityId={row.contactEntityId}
                 className="underline-offset-4 hover:underline"
               >
@@ -43,7 +40,6 @@ export function InteractionList({
             }
             summary={
               <InteractionRecordLink
-                organizationId={organizationId}
                 entityId={row.entityId}
                 className="underline-offset-4 hover:underline"
                 aria-label={`Open interaction: ${row.summary}`}
@@ -57,13 +53,7 @@ export function InteractionList({
               ...(minutes === null ? [] : [<span key="minutes">{minutes} min recorded</span>]),
               <Tag key="origin">{interactionOrigins[row.origin].tag}</Tag>,
             ]}
-            source={
-              <MeetingSourceLink
-                organizationId={organizationId}
-                source={sources[row.entityId]}
-                className="max-w-full"
-              />
-            }
+            source={<MeetingSourceLink source={sources[row.entityId]} className="max-w-full" />}
           />
         );
       })}

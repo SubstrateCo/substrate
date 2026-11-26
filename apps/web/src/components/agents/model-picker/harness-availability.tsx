@@ -6,20 +6,14 @@ import {
   HarnessAvailabilityView,
   type HarnessAvailabilityState,
 } from "./harness-availability-view";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { harnessLabel } from "@/lib/agents/harness-meta";
 import { harnessBridge } from "@/lib/desktop/bridges";
 import { harnessStatusQueryOptions } from "@/queries/agents/harness-status";
 
-export function HarnessAvailability({
-  userId,
-  organizationId,
-  harness,
-}: {
-  userId: string;
-  organizationId?: string | null;
-  harness: HarnessKind;
-}) {
-  const desktop = !!harnessBridge() && !!organizationId;
+export function HarnessAvailability({ harness }: { harness: HarnessKind }) {
+  const { userId, organizationId } = useWorkspaceScope();
+  const desktop = !!harnessBridge();
   const status = useQuery({
     ...harnessStatusQueryOptions(userId, organizationId),
     enabled: desktop,

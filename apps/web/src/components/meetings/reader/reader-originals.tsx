@@ -35,14 +35,11 @@ function sourceKind(r: OriginalView) {
   return r.turns.length ? "Transcript" : "Meeting record";
 }
 
-export function ReaderOriginals({
-  originals,
-  originalId,
-}: {
-  originals: OriginalView[];
-  originalId?: string;
-}) {
-  const { change } = useMeetingsWorkspace();
+export function ReaderOriginals({ originals }: { originals: OriginalView[] }) {
+  const {
+    change,
+    search: { originalId },
+  } = useMeetingsWorkspace();
   return (
     <>
       <Heading level={3}>Original records</Heading>

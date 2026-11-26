@@ -2,15 +2,11 @@ import { useNavigate } from "@tanstack/react-router";
 
 import { DangerZoneCard } from "@/components/feedback/danger-zone-card";
 import type { Project } from "@/components/tasks/types";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useTasksMutation } from "@/queries/tasks/mutations";
 
-export function ProjectDelete({
-  organizationId,
-  project,
-}: {
-  organizationId: string;
-  project: Project;
-}) {
+export function ProjectDelete({ project }: { project: Project }) {
+  const { organizationId } = useWorkspaceScope();
   const remove = useTasksMutation(organizationId);
   const navigate = useNavigate();
   return (

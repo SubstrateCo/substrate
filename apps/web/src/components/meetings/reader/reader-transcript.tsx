@@ -14,16 +14,11 @@ import { formatTranscriptOffset } from "@/lib/format/date";
 import { sourceView } from "@/lib/meetings/navigation";
 import { AudioLines } from "lucide-react";
 
-export function ReaderTranscript({
-  originals,
-  originalId,
-  turn,
-}: {
-  originals: OriginalView[];
-  originalId?: string;
-  turn?: number;
-}) {
-  const { change } = useMeetingsWorkspace();
+export function ReaderTranscript({ originals }: { originals: OriginalView[] }) {
+  const {
+    change,
+    search: { originalId, turn },
+  } = useMeetingsWorkspace();
   // Runs before the reader's own focus effect, so a deep-linked turn keeps focus.
   useEffect(() => {
     if (originalId && turn !== undefined)

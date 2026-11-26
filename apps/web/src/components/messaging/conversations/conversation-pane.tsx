@@ -22,6 +22,7 @@ import { ConversationPane as ConversationPaneView } from "@/components/messaging
 import { JumpToLatest, OlderMessages } from "@/components/messaging/messages/message-history";
 import { MessageLoading } from "@/components/messaging/messages/message-loading";
 import { ThreadPaneFrame } from "@/components/messaging/threads/thread-pane-frame";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { conversationTextLabel, type Conversation } from "@/lib/messaging/conversations";
 import { workLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
@@ -30,22 +31,19 @@ import { useConversationManagement } from "@/queries/messaging/management";
 import { useConversationRead, useOpeningUnread } from "@/queries/messaging/read-state";
 
 export function ConversationPane({
-  organizationId,
   conversation,
-  userId,
   messageId,
   turnId,
   header,
   onNavigate,
 }: {
-  organizationId: string;
   conversation: Conversation;
-  userId: string;
   messageId?: string;
   turnId?: string;
   header?: ReactNode;
   onNavigate?: (target: { messageId?: string; turnId?: string }) => void;
 }) {
+  const { organizationId, userId } = useWorkspaceScope();
   const navigate = useNavigate();
   const navigateConversation = useConversationNavigation(
     organizationId,
@@ -82,7 +80,6 @@ export function ConversationPane({
         key={conversation.id}
         {...unread}
         messages={timeline}
-        organizationId={organizationId}
         conversationId={conversation.id}
         olderPage={history.hasPrevious}
         sending={history.sending}
@@ -100,8 +97,6 @@ export function ConversationPane({
     aside = (
       <ConversationTurnTranscript
         key={turnId}
-        userId={userId}
-        organizationId={organizationId}
         conversation={conversation}
         turnId={turnId}
         onClose={() => transcript()}
@@ -112,7 +107,6 @@ export function ConversationPane({
     const root = timeline.find((message) => message.id === messageId && !message.threadId);
     aside = (
       <ConversationThreadAside
-        organizationId={organizationId}
         conversation={conversation}
         target={target.data ?? (root && { root, message: root })}
         contextMessageIds={timeline.map((message) => message.id)}
@@ -121,12 +115,7 @@ export function ConversationPane({
     );
   }
   return (
-    <ConversationAgentWork
-      userId={userId}
-      organizationId={organizationId}
-      conversation={conversation}
-      onTranscript={transcript}
-    >
+    <ConversationAgentWork conversation={conversation} onTranscript={transcript}>
       <ConversationPaneView
         header={header}
         conversation={resource.status === "unavailable" ? null : conversation}
@@ -168,9 +157,7 @@ export function ConversationPane({
         actions={
           !task && (
             <ConversationActions
-              organizationId={organizationId}
               conversation={conversation}
-              userId={userId}
               onRemoved={() =>
                 navigate({ to: "/messages", search: { workspaceId: organizationId } })
               }
@@ -186,14 +173,11 @@ export function ConversationPane({
             />
           )
         }
-        composer={
-          <ConversationComposer organizationId={organizationId} conversation={conversation} />
-        }
+        composer={<ConversationComposer conversation={conversation} />}
         thread={aside}
       />
       {removingMember && (
         <RemoveMemberDialog
-          organizationId={organizationId}
           conversationId={conversation.id}
           member={removingMember}
           publicChannel={conversation.kind === "channel" && !conversation.private}
@@ -225,13 +209,11 @@ function useMessageTarget(organizationId: string, conversationId: string, messag
 
 /** The open thread. Render it only for a message whose target loaded without error. */
 function ConversationThreadAside({
-  organizationId,
   conversation,
   target,
   contextMessageIds,
   onClose,
 }: {
-  organizationId: string;
   conversation: Conversation;
   target?: Pick<MessageTarget, "root" | "message">;
   contextMessageIds: string[];
@@ -243,7 +225,6 @@ function ConversationThreadAside({
       {activeThreadId ? (
         <ThreadPane
           key={activeThreadId}
-          organizationId={organizationId}
           conversationId={conversation.id}
           threadId={activeThreadId}
           contextMessageIds={contextMessageIds}
@@ -296,19 +277,12 @@ function useConversationTimeline(
   };
 }
 
-function ConversationComposer({
-  organizationId,
-  conversation,
-}: {
-  organizationId: string;
-  conversation: Conversation;
-}) {
+function ConversationComposer({ conversation }: { conversation: Conversation }) {
   return (
     <>
       <AgentWorkNotice threadId={null} />
       {conversation.canPost ? (
         <Composer
-          organizationId={organizationId}
           conversationId={conversation.id}
           label={`Message ${conversationTextLabel(conversation)}`}
         />

@@ -3,22 +3,22 @@ import { useInfiniteQuery } from "@tanstack/react-query";
 import type { Message } from "@/api/messaging/requests";
 import { ReactionNotice, ReactionPerson } from "@/components/messaging/messages/reaction-person";
 import { Button } from "@/components/ui/button";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { messageReactionsOptions } from "@/queries/messaging/reactions";
 import { ArrowRight } from "lucide-react";
 
 export function ReactionPreview({
-  organizationId,
   message,
   emoji,
   count,
   onViewAll,
 }: {
-  organizationId: string;
   message: Message;
   emoji: string;
   count: number;
   onViewAll: () => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const people = useInfiniteQuery(
     messageReactionsOptions(organizationId, message.conversationId, message.id, emoji),
   );

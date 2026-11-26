@@ -3,13 +3,13 @@ import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
 import { WorkDiscussions as WorkDiscussionsView } from "@/components/context/discussions/work-discussions-view";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { messageLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { relatedContextOptions } from "@/queries/context/links";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 
 export function WorkDiscussions({
-  organizationId,
   entityId,
   label,
   emptyTitle,
@@ -17,7 +17,6 @@ export function WorkDiscussions({
   children,
   visible = true,
 }: {
-  organizationId: string;
   entityId: string;
   label?: string;
   emptyTitle?: string;
@@ -25,6 +24,7 @@ export function WorkDiscussions({
   children?: ReactNode;
   visible?: boolean;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const related = useQuery({
     ...relatedContextOptions(organizationId, entityId),
     enabled: visible,

@@ -9,7 +9,7 @@ import {
 
 import { useEffect, useState } from "react";
 
-import { ink, labelName, visibleLabels } from "./mail-colors";
+import { ink, labelName, mailboxColors, visibleLabels } from "./mail-colors";
 import { MessageLabels } from "./message-labels";
 import { rowStateVariants, rowTitleVariants } from "@/components/layout/row-state";
 import { Button } from "@/components/ui/button";
@@ -154,7 +154,6 @@ function MessageRow({
 export function MessageList({
   messages,
   mailboxes,
-  colors,
   selected,
   checked,
   disabled,
@@ -165,7 +164,6 @@ export function MessageList({
 }: {
   messages: MailConversation[];
   mailboxes: Mailbox[];
-  colors: ReadonlyMap<string, MailColor>;
   selected: string | null;
   checked: ReadonlySet<string>;
   disabled: boolean;
@@ -175,6 +173,7 @@ export function MessageList({
   onOpen: (message: MailConversation) => void;
 }) {
   const accounts = new Map(mailboxes.map((box) => [box.id, box]));
+  const colors = mailboxColors(mailboxes);
   const [today, setToday] = useState(() => new Date());
   useEffect(() => {
     // Day labels change at the midnight after the day they were drawn for.

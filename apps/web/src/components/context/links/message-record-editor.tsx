@@ -6,9 +6,7 @@ import { RecordEditor } from "@/components/crm/record-editor";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 
 export function MessageRecordEditor({
-  organizationId,
   kind,
-  stages,
   defaultCurrency,
   pending,
   error,
@@ -16,9 +14,7 @@ export function MessageRecordEditor({
   onClose,
   onRestoreFocus,
 }: {
-  organizationId: string;
   kind: CrmKind;
-  stages: { value: string; label: string }[];
   defaultCurrency?: string | null;
   pending: boolean;
   error: Error | null;
@@ -45,10 +41,6 @@ export function MessageRecordEditor({
   return (
     <RecordEditor
       kind={kind}
-      organizationId={organizationId}
-      accounts={[]}
-      contacts={[]}
-      stages={stages}
       defaultCurrency={defaultCurrency}
       pending={pending}
       error={error}

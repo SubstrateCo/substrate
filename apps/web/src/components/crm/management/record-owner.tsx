@@ -8,12 +8,12 @@ import { useRecordPeople } from "./record-people-directory";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useCrmMutation } from "@/queries/crm/mutations";
 
 type Assignment = Extract<CrmWrite, { action: "assignOwner" }>;
 
 export type RecordOwnerProps = {
-  organizationId: string;
   entityId: string;
   name: string;
   level: PermissionLevel;
@@ -25,7 +25,6 @@ export type RecordOwnerProps = {
 };
 
 export function RecordOwner({
-  organizationId,
   entityId,
   name,
   level,
@@ -33,9 +32,10 @@ export function RecordOwner({
   onClose,
   onRestoreFocus,
 }: RecordOwnerProps) {
+  const { organizationId } = useWorkspaceScope();
   const id = useId();
   const mutation = useCrmMutation(organizationId);
-  const directory = useRecordPeople(organizationId);
+  const directory = useRecordPeople();
   const [expectedRecord] = useState(record);
   const [personId, setPersonId] = useState("");
   const [decision, setDecision] = useState<Assignment["accessDecision"]>("require_existing_access");

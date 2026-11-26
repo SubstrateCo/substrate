@@ -17,6 +17,7 @@ import {
 } from "@/components/ui/combobox";
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Spinner } from "@/components/ui/spinner";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { resourceState } from "@/lib/resource-state";
 import { contactsOptions } from "@/queries/contacts/options";
 import { accountsOptions } from "@/queries/crm/options";
@@ -24,20 +25,19 @@ import { accountsOptions } from "@/queries/crm/options";
 const none: ComboboxOption = { value: "", label: "None" };
 
 export function CustomerPicker({
-  organizationId,
   kind,
   label,
   value,
   initialLabel,
   onChange,
 }: {
-  organizationId: string;
   kind: "accounts" | "contacts";
   label: string;
   value: string;
   initialLabel?: string;
   onChange: (value: string) => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const id = useId();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");

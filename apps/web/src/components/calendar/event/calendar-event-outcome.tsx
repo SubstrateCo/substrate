@@ -7,6 +7,7 @@ import { useId } from "react";
 import { InteractionLink } from "@/components/interactions/interaction-link";
 import { RecordSection } from "@/components/layout/record-section";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { meetingOutcomeSummary } from "@/lib/calendar/labels";
 import { personLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
@@ -21,16 +22,15 @@ const icons = {
 
 /** What this meeting does to contacts and interactions, and the interactions it created. */
 export function CalendarEventOutcome({
-  organizationId,
   outcome,
   kind,
   interactions,
 }: {
-  organizationId: string;
   outcome: CalendarEventDetail["outcome"];
   kind: CalendarEventDetail["kind"];
   interactions: CalendarEventDetail["interactions"];
 }) {
+  const { organizationId } = useWorkspaceScope();
   const id = useId();
   const crmEnabled = useOrganizationApps().enabled("crm");
   const { title, description } = meetingOutcomeSummary(outcome, kind);

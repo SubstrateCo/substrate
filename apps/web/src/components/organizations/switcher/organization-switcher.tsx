@@ -5,21 +5,21 @@ import { useState } from "react";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { OrganizationSwitcher as OrganizationSwitcherView } from "@/components/organizations/switcher/organization-switcher-view";
 import { resourceState } from "@/lib/resource-state";
-import { organizationsQueryOptions } from "@/queries/organizations/options";
+import {
+  currentOrganizationQueryOptions,
+  organizationsQueryOptions,
+} from "@/queries/organizations/options";
 import { useActivateOrganization } from "@/queries/organizations/selection-mutations";
 import { toast } from "sonner";
 
-export function OrganizationSwitcher({
-  organizationId,
-  name,
-  logo,
-}: {
-  organizationId: string;
-  name: string;
-  logo?: string | null;
-}) {
+export function OrganizationSwitcher({ organizationId }: { organizationId: string }) {
   const [open, setOpen] = useState(false);
-  // The trigger shows the active workspace from props; load the list only for the open menu.
+  // The workspace frame holds this read and shows its loading and error states. Until it loads,
+  // the trigger shows a generic label.
+  const current = useQuery(currentOrganizationQueryOptions(organizationId));
+  const name = (current.isSuccess && current.data.name) || "Workspace";
+  const logo = current.isSuccess ? current.data.logo : null;
+  // Load the list only for the open menu.
   const organizations = useQuery({ ...organizationsQueryOptions(), enabled: open });
   const switchOrganization = useActivateOrganization();
   return (

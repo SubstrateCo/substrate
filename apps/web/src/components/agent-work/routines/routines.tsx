@@ -11,6 +11,7 @@ import { describeSchedule } from "./schedule";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { routinesOptions } from "@/queries/agent-work/local";
 import { useRoutineActions } from "@/queries/agent-work/mutations";
 import { toast } from "sonner";
@@ -26,17 +27,8 @@ const blank = (): RoutineDraft => ({
 const saveFailed = "We couldn’t save this routine. Try again.";
 
 /** An agent's routines on its home desktop. Each revision runs only after the owner approves it. */
-export function Routines({
-  userId,
-  organizationId,
-  agentId,
-  name,
-}: {
-  userId: string;
-  organizationId: string;
-  agentId: string;
-  name: string;
-}) {
+export function Routines({ agentId, name }: { agentId: string; name: string }) {
+  const { userId, organizationId } = useWorkspaceScope();
   const routines = useQuery(routinesOptions(userId, organizationId, agentId));
   const actions = useRoutineActions(userId, organizationId);
   // Focus falls back to the section when the launcher is gone, such as after a delete.

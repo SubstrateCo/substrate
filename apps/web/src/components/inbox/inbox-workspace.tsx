@@ -3,7 +3,7 @@ import type { MailAPI, MailScope, MailLabelFilter } from "@substrate/contracts/m
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
 import { useMailChanges, useReaderSelection } from "./inbox-actions";
 import {
@@ -16,6 +16,7 @@ import {
 } from "./inbox-data";
 import { InboxHeader, SyncNotice } from "./inbox-header";
 import { InboxList } from "./inbox-list";
+import { InboxWorkspaceContext, type InboxWorkspaceValue } from "./inbox-workspace-context";
 import { mailboxColors } from "./mail-colors";
 import { MailPagination } from "./mail-paging";
 import { folderView } from "./mail-views";
@@ -47,9 +48,6 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
   const client = useQueryClient();
   const local = localMailQueries(api, scope);
   const { userId, organizationId } = scope;
-  function readPicture(id: string, source: string) {
-    return api.picture({ userId, organizationId, id, source });
-  }
   const { accounts, boxes, revision } = useMailAccounts(local);
   const { active, busy, problem } = mailboxStatus(boxes, account);
   const { selectedLabel, filter } = labelFilter(boxes, label);
@@ -112,6 +110,28 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
       navigate("unread");
     },
   };
+  // The actions close over the selection and label filter. Consumers call the latest ones
+  // through a stable context value, so a new selection doesn't change the context.
+  const latest = useRef({ changeMessage, labelActions, focusList, onManage: nav.onManage });
+  useLayoutEffect(() => {
+    latest.current = { changeMessage, labelActions, focusList, onManage: nav.onManage };
+  });
+  const workspace = useMemo<InboxWorkspaceValue>(
+    () => ({
+      api,
+      scope,
+      labelActions: {
+        onLabelColor: (...args) => latest.current.labelActions.onLabelColor(...args),
+        onLabelVisibility: (...args) => latest.current.labelActions.onLabelVisibility(...args),
+      },
+      readerActions: {
+        onAction: (...args) => latest.current.changeMessage(...args),
+        onManage: () => latest.current.onManage(),
+        focusList: () => latest.current.focusList(),
+      },
+    }),
+    [api, scope],
+  );
   const current = folderView(selectedLabel, view);
   // Failed authority checks must also hide cached account names, counts and the open reader.
   const unreadable = accounts.isError || page.isError || thread.isError;
@@ -126,11 +146,9 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
       />
     );
   return (
-    <>
+    <InboxWorkspaceContext value={workspace}>
       <PageLayout id="mail" aria-label="Inbox workspace" mobileView="content">
-        {sidebar && !(selected && !split) && (
-          <MailboxSidebar {...nav} {...viewNav} labelActions={labelActions} />
-        )}
+        {sidebar && !(selected && !split) && <MailboxSidebar {...nav} {...viewNav} />}
         <PageContent>
           <InboxHeader
             sidebar={sidebar}
@@ -181,7 +199,6 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
                 ])}
                 messages={messages}
                 mailboxes={boxes}
-                colors={nav.colors}
                 selected={selected ? conversationKey(selected) : null}
                 unified={!account}
                 onOpen={setSelected}
@@ -208,10 +225,7 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
             message={selected}
             mailbox={selectedBox}
             messages={thread.data}
-            bodyOptions={local.body}
-            readPicture={readPicture}
             active={!dialog.value}
-            actions={{ onAction: changeMessage, onManage: nav.onManage, focusList }}
             onClose={closeReader}
           />
         )}
@@ -221,7 +235,6 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
         scope={scope}
         dialog={dialog}
         boxes={boxes}
-        labelActions={labelActions}
         onConnected={(id) => {
           setAccount(id);
           navigate("inbox");
@@ -232,6 +245,6 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
           paging.reset();
         }}
       />
-    </>
+    </InboxWorkspaceContext>
   );
 }

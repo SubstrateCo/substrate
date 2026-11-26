@@ -2,7 +2,8 @@ import { formText } from "@/components/crm/form-text";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { NativeField } from "@/components/forms/native-form";
-import type { useInteractionMutation } from "@/queries/context/interactions";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
+import { useInteractionMutation } from "@/queries/context/interactions";
 
 export type InteractionChange = {
   entityId: string;
@@ -12,19 +13,17 @@ export type InteractionChange = {
 
 /** Edit an interaction's summary, or confirm its deletion. */
 export function InteractionChangeDialog({
-  organizationId,
   change,
-  mutation,
   onClose,
   onDone = onClose,
 }: {
-  organizationId: string;
   change: InteractionChange;
-  mutation: ReturnType<typeof useInteractionMutation>;
   onClose: () => void;
   /** Runs after a successful save or delete. Defaults to `onClose`. */
   onDone?: () => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
+  const mutation = useInteractionMutation(organizationId);
   if (change.action === "edit")
     return (
       <FormDialog

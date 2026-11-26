@@ -10,11 +10,10 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/tasks/")
 });
 
 function TasksRoute() {
-  const { organizationId } = Route.useRouteContext();
   const { projectId, taskId } = Route.useSearch();
   return (
     <AppAvailability app="tasks">
-      <TasksWorkspace organizationId={organizationId} projectId={projectId} taskId={taskId} />
+      <TasksWorkspace projectId={projectId} taskId={taskId} />
     </AppAvailability>
   );
 }

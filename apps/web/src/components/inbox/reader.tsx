@@ -8,8 +8,6 @@ import {
 import { useLayoutEffect, useRef, useState } from "react";
 
 import { MessageLabels } from "./message-labels";
-import type { ReadPicture } from "./newsletter";
-import type { ReaderActions } from "./reader-actions";
 import { ReaderMessage } from "./reader-message";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { LoadingState } from "@/components/feedback/loading-state";
@@ -18,25 +16,18 @@ import { PageAside } from "@/components/layout/page-layout";
 import { PageSheetBody } from "@/components/layout/page-sheet";
 import { RowAction } from "@/components/layout/row-actions";
 import { Heading } from "@/components/ui/heading";
-import type { localMailQueries } from "@/queries/mail/options";
 import { MailOpen, X } from "lucide-react";
 
 export function Reader({
   message,
   mailbox,
   messages,
-  bodyOptions,
-  readPicture,
-  actions,
   active,
   onClose,
 }: {
   message: MailConversation;
   mailbox: Mailbox;
   messages?: MailHeader[];
-  bodyOptions: ReturnType<typeof localMailQueries>["body"];
-  readPicture: ReadPicture;
-  actions: ReaderActions;
   active: boolean;
   onClose: () => void;
 }) {
@@ -104,9 +95,6 @@ export function Reader({
                   <ReaderMessage
                     message={m}
                     mailbox={mailbox}
-                    bodyOptions={bodyOptions}
-                    readPicture={readPicture}
-                    actions={actions}
                     current={m.id === message.id}
                     multiple={messages.length > 1}
                     reading={active && (messages.length === 1 || opened === m.id)}

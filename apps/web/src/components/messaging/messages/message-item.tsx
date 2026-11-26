@@ -33,6 +33,7 @@ import {
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useCopyText } from "@/hooks/use-copy-text";
 import { useRecordUrl } from "@/hooks/use-record-url";
 import { messageLink } from "@/lib/navigation/record-links";
@@ -47,7 +48,6 @@ export function MessageItem({
   message,
   grouped = false,
   threadRoot = false,
-  organizationId,
   onThread,
   unreadReplies,
   context,
@@ -56,12 +56,12 @@ export function MessageItem({
   message: Message;
   grouped?: boolean;
   threadRoot?: boolean;
-  organizationId: string;
   onThread?: (id: string) => void;
   unreadReplies?: number;
   context: MessageContextState;
   canPost?: boolean;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const linked = useSearch({ strict: false, select: (search) => search.messageId === message.id });
   // A top-level target opens as the root of the thread pane, which already marks it.
   const highlighted = linked && !threadRoot && !!message.threadId;
@@ -86,12 +86,7 @@ export function MessageItem({
     <LinkedMessage highlighted={highlighted}>
       <PersonCardProvider
         render={(actorId, name, trigger) => (
-          <PersonHoverCard
-            organizationId={organizationId}
-            conversationId={message.conversationId}
-            actorId={actorId}
-            name={name}
-          >
+          <PersonHoverCard conversationId={message.conversationId} actorId={actorId} name={name}>
             {trigger}
           </PersonHoverCard>
         )}
@@ -100,7 +95,6 @@ export function MessageItem({
           message={message}
           renderReaction={(item) => (
             <MessageReaction
-              organizationId={organizationId}
               message={message}
               reaction={item}
               onReact={canPost ? react : undefined}
@@ -113,7 +107,6 @@ export function MessageItem({
           editor={
             canPost && editing && !message.deletedAt ? (
               <EditMessageComposer
-                organizationId={organizationId}
                 message={message}
                 context={context}
                 onClose={() => {
@@ -126,11 +119,7 @@ export function MessageItem({
           }
           body={
             <>
-              <ReferencedMessageBody
-                organizationId={organizationId}
-                context={context}
-                body={message.body}
-              />
+              <ReferencedMessageBody context={context} body={message.body} />
               <MessageAttachments
                 attachments={message.attachments}
                 previewHref={(attachment) =>
@@ -154,7 +143,6 @@ export function MessageItem({
           }
           actions={
             <MessageActionsMenu
-              organizationId={organizationId}
               message={message}
               canPost={canPost}
               trigger={actionsTrigger}
@@ -176,13 +164,7 @@ export function MessageItem({
           onReact={canPost ? react : undefined}
           pending={reaction.isPending}
         >
-          {!message.deletedAt && (
-            <MessageContext
-              organizationId={organizationId}
-              messageId={message.id}
-              context={context}
-            />
-          )}
+          {!message.deletedAt && <MessageContext messageId={message.id} context={context} />}
           <AgentWorkSlot messageId={message.id} fromAgent={message.authorType === "agent"} />
           {canPost && dialog?.kind === "delete" && (
             <ConfirmDialog
@@ -200,7 +182,6 @@ export function MessageItem({
           )}
           {canPost && dialog?.kind === "link" && (
             <LinkMessageWork
-              organizationId={organizationId}
               messageId={message.id}
               linkedIds={context.data?.links.map((link) => link.entityId) ?? []}
               onClose={close}
@@ -209,7 +190,6 @@ export function MessageItem({
           )}
           {dialog?.kind === "reactions" && (
             <ReactionPeopleDialog
-              organizationId={organizationId}
               message={message}
               initialEmoji={dialog.emoji}
               onClose={close}
@@ -223,7 +203,6 @@ export function MessageItem({
 }
 
 function MessageActionsMenu({
-  organizationId,
   message,
   canPost,
   trigger,
@@ -232,7 +211,6 @@ function MessageActionsMenu({
   onEdit,
   onDelete,
 }: {
-  organizationId: string;
   message: Message;
   canPost: boolean;
   trigger: RefObject<HTMLButtonElement | null>;
@@ -241,6 +219,7 @@ function MessageActionsMenu({
   onEdit: () => void;
   onDelete: () => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const recordUrl = useRecordUrl();
   const copyText = useCopyText();
   // The inline editor opens once the menu has closed. While the menu is open, its focus trap

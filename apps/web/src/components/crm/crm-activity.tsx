@@ -5,19 +5,15 @@ import { isAccessFailure } from "@/api/access-failure";
 import { TaskActivity } from "@/components/context/activity/task-activity";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { resourceState } from "@/lib/resource-state";
 import { crmActivityOptions } from "@/queries/crm/activity";
 import { useFirstPageOnLeave } from "@/queries/first-page";
 import { Unlink } from "lucide-react";
 
 /** A CRM record's internal changes, in the same rows as task activity. */
-export function CrmActivity({
-  organizationId,
-  entityId,
-}: {
-  organizationId: string;
-  entityId: string;
-}) {
+export function CrmActivity({ entityId }: { entityId: string }) {
+  const { organizationId } = useWorkspaceScope();
   const options = crmActivityOptions(organizationId, entityId);
   const query = useInfiniteQuery(options);
   useFirstPageOnLeave(options.queryKey);

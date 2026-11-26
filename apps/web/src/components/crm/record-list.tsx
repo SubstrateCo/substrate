@@ -10,6 +10,7 @@ import {
   type AppTablePagination,
 } from "@/components/table";
 import { Button } from "@/components/ui/button";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { recordLink } from "@/lib/navigation/record-links";
 import { Building2, Handshake, Plus, Users } from "lucide-react";
 
@@ -63,7 +64,6 @@ function recordColumns(kind: CrmKind, organizationId: string) {
 
 export function RecordList({
   kind,
-  organizationId,
   rows,
   loading = false,
   fetching = false,
@@ -72,7 +72,6 @@ export function RecordList({
   onCreate,
 }: {
   kind: CrmKind;
-  organizationId: string;
   rows: CrmListRow[];
   loading?: boolean;
   /** A later page is loading. */
@@ -83,6 +82,7 @@ export function RecordList({
   /** Offers the empty list's primary action when the viewer can create a record. */
   onCreate?: () => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const columns = useMemo(() => recordColumns(kind, organizationId), [kind, organizationId]);
   return (
     <AppTable

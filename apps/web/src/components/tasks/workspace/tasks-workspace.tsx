@@ -7,6 +7,7 @@ import { ProjectForm } from "../projects/editor/project-form";
 import { ProjectPane } from "../projects/project-pane";
 import { useProjectRestore } from "../projects/use-project-restore";
 import { TasksWorkspace as TasksWorkspaceView } from "@/components/tasks/workspace/tasks-workspace-view";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { workLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import {
@@ -15,15 +16,8 @@ import {
   taskLocationQueryOptions,
 } from "@/queries/tasks/options";
 
-export function TasksWorkspace({
-  organizationId,
-  projectId,
-  taskId,
-}: {
-  organizationId: string;
-  projectId?: string;
-  taskId?: string;
-}) {
+export function TasksWorkspace({ projectId, taskId }: { projectId?: string; taskId?: string }) {
+  const { organizationId } = useWorkspaceScope();
   const projects = useQuery(projectsQueryOptions(organizationId));
   const archived = useQuery(archivedProjectsQueryOptions(organizationId));
   const restore = useProjectRestore(organizationId);
@@ -77,17 +71,12 @@ export function TasksWorkspace({
         error={projects.error}
         onRetry={() => void projects.refetch()}
         renderCreate={({ onSaved, renderCreate }) => (
-          <ProjectForm
-            organizationId={organizationId}
-            onSaved={onSaved}
-            renderCreate={renderCreate}
-          />
+          <ProjectForm onSaved={onSaved} renderCreate={renderCreate} />
         )}
         project={
           selectedProjectId && (
             <ProjectPane
               key={`${organizationId}:${selectedProjectId}`}
-              organizationId={organizationId}
               projectEntityId={selectedProjectId}
               taskId={taskId}
             />

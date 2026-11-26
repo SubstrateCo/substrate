@@ -2,21 +2,19 @@ import type { AgentInboxItemView } from "@substrate/contracts/agent-work";
 
 import { InboxReceiptView } from "./inbox-receipt-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { itemStatus, type ItemContext } from "@/lib/agent-work/status";
 import { useDiscardItem, useResendItem, useSendNow } from "@/queries/agent-work/mutations";
 import { toast } from "sonner";
 
 export function InboxReceipt({
-  userId,
-  organizationId,
   item,
   context,
 }: {
-  userId: string;
-  organizationId: string;
   item: AgentInboxItemView;
   context: ItemContext;
 }) {
+  const { userId, organizationId } = useWorkspaceScope();
   const sendNow = useSendNow(userId, organizationId);
   const resend = useResendItem(userId, organizationId);
   const discard = useDiscardItem(userId, organizationId);

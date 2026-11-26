@@ -6,14 +6,12 @@ import { Button } from "@/components/ui/button";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
 export function MessageReaction({
-  organizationId,
   message,
   reaction,
   onReact,
   pending,
   onViewAll,
 }: {
-  organizationId: string;
   message: Message;
   reaction: Message["reactions"][number];
   onReact?: (emoji: string) => void;
@@ -42,7 +40,6 @@ export function MessageReaction({
       <HoverCardContent side="top" align="start" collisionPadding={12}>
         {open && (
           <ReactionPreview
-            organizationId={organizationId}
             message={message}
             emoji={emoji}
             count={count}

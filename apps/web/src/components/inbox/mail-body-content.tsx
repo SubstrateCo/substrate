@@ -1,6 +1,6 @@
 import type { MailBody } from "@substrate/contracts/mail";
 
-import { Newsletter, type ReadPicture } from "./newsletter";
+import { Newsletter } from "./newsletter";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
 import { TextLink } from "@/components/ui/text-link";
@@ -34,19 +34,11 @@ function plainContent(text: string) {
     ));
 }
 
-export function MailBodyContent({
-  body,
-  id,
-  readPicture,
-}: {
-  body: MailBody;
-  id: string;
-  readPicture: ReadPicture;
-}) {
+export function MailBodyContent({ body, id }: { body: MailBody; id: string }) {
   const detail = meetingDetails(body.format === "plain" ? body.text : (body.plainText ?? ""));
   const content =
     body.format === "html" ? (
-      <Newsletter html={body.text} id={id} readPicture={readPicture} />
+      <Newsletter html={body.text} id={id} />
     ) : (
       <div className="max-w-prose space-y-3">{plainContent(body.text)}</div>
     );

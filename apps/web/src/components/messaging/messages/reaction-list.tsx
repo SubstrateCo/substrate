@@ -6,17 +6,11 @@ import type { Message } from "@/api/messaging/requests";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { ReactionNotice, ReactionPerson } from "@/components/messaging/messages/reaction-person";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { messageReactionsOptions } from "@/queries/messaging/reactions";
 
-export function ReactionList({
-  organizationId,
-  message,
-  emoji,
-}: {
-  organizationId: string;
-  message: Message;
-  emoji?: string;
-}) {
+export function ReactionList({ message, emoji }: { message: Message; emoji?: string }) {
+  const { organizationId } = useWorkspaceScope();
   const people = useInfiniteQuery(
     messageReactionsOptions(organizationId, message.conversationId, message.id, emoji),
   );

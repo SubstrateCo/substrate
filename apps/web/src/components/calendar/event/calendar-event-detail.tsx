@@ -24,15 +24,7 @@ function Detail({ icon, children }: { icon: ReactNode; children: ReactNode }) {
 }
 
 /** One event's details. The description is shown as plain text, never as markup. */
-export function CalendarEventDetail({
-  organizationId,
-  event,
-  now,
-}: {
-  organizationId: string;
-  event: EventDetail;
-  now: number;
-}) {
+export function CalendarEventDetail({ event, now }: { event: EventDetail; now: number }) {
   const zone = localTimeZone();
   const start = eventSpan(event).start;
   const description = plainTextDescription(event.description);
@@ -89,16 +81,11 @@ export function CalendarEventDetail({
           )}
         </div>
         <CalendarEventOutcome
-          organizationId={organizationId}
           outcome={event.outcome}
           kind={event.kind}
           interactions={event.interactions}
         />
-        <CalendarAttendees
-          organizationId={organizationId}
-          attendees={event.attendees}
-          outcome={event.outcome.state}
-        />
+        <CalendarAttendees attendees={event.attendees} outcome={event.outcome.state} />
       </div>
     </PageSheetBody>
   );

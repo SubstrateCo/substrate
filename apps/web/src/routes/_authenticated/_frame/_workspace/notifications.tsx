@@ -7,6 +7,5 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/notifica
 });
 
 function NotificationsRoute() {
-  const { organizationId } = Route.useRouteContext();
-  return <NotificationList organizationId={organizationId} />;
+  return <NotificationList />;
 }

@@ -2,19 +2,19 @@ import type { ComponentProps } from "react";
 
 import { ProjectForm as ProjectFormView } from "@/components/tasks/projects/editor/project-form-view";
 import type { Project } from "@/components/tasks/types";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useTasksMutation } from "@/queries/tasks/mutations";
 
 export function ProjectForm({
-  organizationId,
   project,
   onSaved,
   renderCreate,
 }: {
-  organizationId: string;
   project?: Project;
   onSaved?: (id: string) => void;
   renderCreate?: ComponentProps<typeof ProjectFormView>["renderCreate"];
 }) {
+  const { organizationId } = useWorkspaceScope();
   const save = useTasksMutation(organizationId);
   return (
     <ProjectFormView

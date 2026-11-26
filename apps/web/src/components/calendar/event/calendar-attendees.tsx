@@ -16,6 +16,7 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { attendeeRoleLabel, sortAttendees } from "@/lib/calendar/labels";
 import { personLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
@@ -23,15 +24,14 @@ import { MapPin } from "lucide-react";
 
 /** The event's guests, each with what Substrate knows about them. */
 export function CalendarAttendees({
-  organizationId,
   attendees,
   outcome,
 }: {
-  organizationId: string;
   attendees: readonly CalendarAttendeeView[];
   /** What the meeting does to interactions, which decides whether outside guests become contacts. */
   outcome: MeetingOutcome["state"];
 }) {
+  const { organizationId } = useWorkspaceScope();
   const id = useId();
   const crmEnabled = useOrganizationApps().enabled("crm");
   if (!attendees.length) return null;

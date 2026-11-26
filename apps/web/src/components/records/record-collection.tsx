@@ -1,7 +1,7 @@
 import { useQuery, type QueryKey } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { useState, type ComponentProps } from "react";
+import { useState, type ComponentProps, type ReactNode } from "react";
 
 import { CrmExport } from "@/components/crm/crm-export";
 import { CrmResourceState } from "@/components/crm/crm-resource-state";
@@ -22,6 +22,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { contactLink, crmLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
@@ -31,9 +32,9 @@ import {
   dealsOptions,
   pipelineDealLimit,
   pipelineDealsOptions,
-  pipelineOptions,
   crmSettingsOptions,
 } from "@/queries/crm/options";
+import { useActiveStages } from "@/queries/crm/stages";
 import { keepPageWhileTurning } from "@/queries/page-turn";
 import { useRecordMutation } from "@/queries/records/mutations";
 import { cn } from "cn";
@@ -50,7 +51,6 @@ function useCollectionQueries({
   search: { query: search, pending },
   archived,
   afterEntityId,
-  creating,
   board,
 }: {
   organizationId: string;
@@ -58,7 +58,6 @@ function useCollectionQueries({
   search: ReturnType<typeof useSearchDebounce>;
   archived: boolean;
   afterEntityId: string | undefined;
-  creating: boolean;
   /** The pipeline board reads all open deals instead of one page of deals. */
   board: boolean;
 }) {
@@ -74,11 +73,11 @@ function useCollectionQueries({
   });
   const accounts = useQuery({
     ...paged(accountsOptions(organizationId, ...scopedFilters("accounts"))),
-    enabled: apps.enabled("crm") && !pending && (kind === "accounts" || creating),
+    enabled: apps.enabled("crm") && !pending && kind === "accounts",
   });
   const contacts = useQuery({
     ...paged(contactsOptions(organizationId, ...scopedFilters("contacts"))),
-    enabled: !pending && (kind === "contacts" || creating),
+    enabled: !pending && kind === "contacts",
   });
   // The list also loads under the board, so switching views shows rows at once.
   const deals = useQuery({
@@ -89,16 +88,22 @@ function useCollectionQueries({
     ...pipelineDealsOptions(organizationId, search),
     enabled: kind === "deals" && !pending && board,
   });
-  const pipeline = useQuery({ ...pipelineOptions(organizationId), enabled: kind === "deals" });
+  const { pipeline, stages } = useActiveStages(organizationId, kind === "deals");
   const settings = useQuery({ ...crmSettingsOptions(organizationId), enabled: kind === "deals" });
-  return { accounts, contacts, deals, boardDeals, pipeline, settings };
+  return { accounts, contacts, deals, boardDeals, pipeline, stages, settings };
 }
 
 function collectionRecords(
   kind: CrmKind,
-  { accounts, contacts, deals, pipeline, settings }: ReturnType<typeof useCollectionQueries>,
+  {
+    accounts,
+    contacts,
+    deals,
+    pipeline,
+    stages,
+    settings,
+  }: ReturnType<typeof useCollectionQueries>,
 ) {
-  const stages = (resourceState(pipeline).data ?? []).filter((stage) => !stage.retired);
   const accountState = resourceState(accounts);
   const contactState = resourceState(contacts);
   const dealState = resourceState(deals);
@@ -121,8 +126,6 @@ function collectionRecords(
     query: { accounts, contacts, deals }[kind],
     state: { accounts: accountState, contacts: contactState, deals: dealState }[kind],
     rows: { accounts: accountRows, contacts: contactRows, deals: dealRows }[kind],
-    accountRows,
-    contactRows,
     stages,
     canCreate:
       kind !== "deals" ||
@@ -130,13 +133,8 @@ function collectionRecords(
   };
 }
 
-export function RecordCollection({
-  organizationId,
-  kind,
-}: {
-  organizationId: string;
-  kind: CrmKind;
-}) {
+export function RecordCollection({ kind }: { kind: CrmKind }) {
+  const { organizationId } = useWorkspaceScope();
   const [search, setSearch] = useState("");
   const [archived, setArchived] = useState(false);
   const searchDebounce = useSearchDebounce(
@@ -159,7 +157,6 @@ export function RecordCollection({
     search: debounced,
     archived,
     afterEntityId: pages.cursor,
-    creating,
     board: showPipeline,
   });
   const records = collectionRecords(kind, queries);
@@ -173,6 +170,8 @@ export function RecordCollection({
     mutation.reset();
     setCreating(true);
   };
+  const filtered = debounced.query !== "" || archived;
+  const onCreate = records.canCreate ? startCreating : undefined;
   return (
     // The pipeline's columns scroll on their own, so the page does not.
     <div
@@ -182,7 +181,6 @@ export function RecordCollection({
       )}
     >
       <RecordCollectionHeader
-        organizationId={organizationId}
         kind={kind}
         archived={archived}
         search={debounced.query}
@@ -228,16 +226,10 @@ export function RecordCollection({
           </div>
         </div>
         <RecordCollectionResults
-          organizationId={organizationId}
           kind={kind}
-          rows={records.rows}
-          stages={records.stages}
-          board={boardState.data}
           pending={(debounced.pending || shown.query.isPending) && !shown.state.data}
           error={(shown.state.data ? null : shown.state.error) ?? dealsError}
           stale={shown.state.status === "stale"}
-          loaded={!!shown.state.data}
-          fetching={shown.query.isFetching}
           onRetry={() => {
             void shown.query.refetch();
             if (kind !== "deals") return;
@@ -246,25 +238,30 @@ export function RecordCollection({
           }}
           onRefresh={() => void shown.query.refetch()}
           showPipeline={showPipeline}
-          pages={pages}
-          filtered={debounced.query !== "" || archived}
-          onCreate={records.canCreate ? startCreating : undefined}
-        />
+        >
+          {!!shown.state.data &&
+            (showPipeline ? (
+              <RecordPipeline
+                stages={records.stages}
+                board={boardState.data}
+                onCreate={filtered ? undefined : onCreate}
+              />
+            ) : (
+              <RecordList
+                kind={kind}
+                rows={records.rows}
+                fetching={shown.query.isFetching}
+                pagination={collectionPagination(records.rows, pages)}
+                filtered={filtered}
+                onCreate={onCreate}
+              />
+            ))}
+        </RecordCollectionResults>
       </div>
       {creating && (
         <RecordEditor
           kind={kind}
-          organizationId={organizationId}
           defaultCurrency={resourceState(queries.settings).data?.defaultCurrency}
-          accounts={records.accountRows.map((row) => ({
-            value: row.entityId,
-            label: row.name,
-          }))}
-          contacts={records.contactRows.map((row) => ({
-            value: row.entityId,
-            label: row.name,
-          }))}
-          stages={records.stages.map((stage) => ({ value: stage.id, label: stage.name }))}
           pending={mutation.isPending}
           error={mutation.error}
           onClose={() => setCreating(false)}
@@ -288,14 +285,12 @@ export function RecordCollection({
 }
 
 function RecordCollectionHeader({
-  organizationId,
   kind,
   archived,
   search,
   canCreate,
   onCreate,
 }: {
-  organizationId: string;
   kind: CrmKind;
   archived: boolean;
   search: string;
@@ -315,12 +310,7 @@ function RecordCollectionHeader({
       }
       actions={
         <>
-          <CrmExport
-            organizationId={organizationId}
-            kind={kind}
-            archived={archived ? "archived" : "active"}
-            search={search}
-          />
+          <CrmExport kind={kind} archived={archived ? "archived" : "active"} search={search} />
           <Button size="sm" disabled={!canCreate} onClick={onCreate}>
             <Plus aria-hidden />
             New {singular}
@@ -332,44 +322,28 @@ function RecordCollectionHeader({
 }
 
 function RecordCollectionResults({
-  organizationId,
   kind,
-  rows,
-  stages,
-  board,
   pending,
   error,
   stale,
-  loaded,
-  fetching,
   onRetry,
   onRefresh,
   showPipeline,
-  pages,
-  filtered,
-  onCreate,
+  children,
 }: {
-  organizationId: string;
   kind: CrmKind;
-  filtered: boolean;
-  onCreate?: () => void;
-  rows: CrmListRow[];
-  stages: PipelineStage[];
-  board: PipelineBoard | undefined;
   pending: boolean;
   error: Error | null;
   /** The shown records failed to refresh. */
   stale: boolean;
-  /** The shown records have data. */
-  loaded: boolean;
-  fetching: boolean;
   /** Retries every failed load. */
   onRetry: () => void;
   /** Refreshes the shown records. */
   onRefresh: () => void;
   /** Open deals as a pipeline board instead of a list. */
   showPipeline: boolean;
-  pages: ReturnType<typeof useCursorPages<string>>;
+  /** The loaded list or pipeline board. */
+  children: ReactNode;
 }) {
   return (
     <>
@@ -379,33 +353,11 @@ function RecordCollectionResults({
         error={error}
         onRetry={onRetry}
         loading={
-          showPipeline ? (
-            <DealPipelineLoading />
-          ) : (
-            <RecordList organizationId={organizationId} kind={kind} rows={[]} loading />
-          )
+          showPipeline ? <DealPipelineLoading /> : <RecordList kind={kind} rows={[]} loading />
         }
       />
       {stale && <StaleNotice onRetry={onRefresh}>These records may be out of date.</StaleNotice>}
-      {loaded &&
-        (showPipeline ? (
-          <RecordPipeline
-            organizationId={organizationId}
-            stages={stages}
-            board={board}
-            onCreate={filtered ? undefined : onCreate}
-          />
-        ) : (
-          <RecordList
-            organizationId={organizationId}
-            kind={kind}
-            rows={rows}
-            fetching={fetching}
-            pagination={collectionPagination(rows, pages)}
-            filtered={filtered}
-            onCreate={onCreate}
-          />
-        ))}
+      {children}
     </>
   );
 }
@@ -429,24 +381,17 @@ function collectionPagination(
 }
 
 function RecordPipeline({
-  organizationId,
   stages,
   board,
   onCreate,
 }: {
-  organizationId: string;
   stages: PipelineStage[];
   board: PipelineBoard | undefined;
   onCreate?: () => void;
 }) {
   return (
     <>
-      <DealPipeline
-        organizationId={organizationId}
-        stages={stages}
-        deals={board?.deals ?? []}
-        onCreate={onCreate}
-      />
+      <DealPipeline stages={stages} deals={board?.deals ?? []} onCreate={onCreate} />
       {board?.truncated && (
         <p className="text-sm text-muted-foreground">
           The board shows the first {pipelineDealLimit.toLocaleString()} open deals. Search or use

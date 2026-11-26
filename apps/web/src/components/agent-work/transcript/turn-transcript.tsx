@@ -8,6 +8,7 @@ import { RequestCard } from "../requests/request-card";
 import { TurnTimeline } from "./turn-timeline";
 import { TurnTranscriptView } from "./turn-transcript-view";
 import { useStopTurn } from "@/components/agent-work/use-stop-turn";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useNow } from "@/hooks/use-now";
 import { outputLink } from "@/lib/agent-work/links";
 import { isOpenRequest } from "@/lib/agent-work/requests";
@@ -73,8 +74,6 @@ function transcriptDetails(
  * viewer's conversations now; a conversation the viewer can no longer open shows a placeholder.
  */
 export function TurnTranscript({
-  userId,
-  organizationId,
   turn,
   turnLoading,
   turnError,
@@ -84,8 +83,6 @@ export function TurnTranscript({
   unavailable,
   onClose,
 }: {
-  userId: string;
-  organizationId: string;
   turn?: AgentTurnView;
   turnLoading: boolean;
   turnError: Error | null;
@@ -95,6 +92,7 @@ export function TurnTranscript({
   unavailable?: string;
   onClose: () => void;
 }) {
+  const { userId, organizationId } = useWorkspaceScope();
   const live = !!turn && liveTurnStatuses.includes(turn.status);
   const events = useQuery({
     ...turnEventsOptions(userId, organizationId, turn?.id),
@@ -131,11 +129,7 @@ export function TurnTranscript({
             }
             renderRequest={(requestId) => {
               const found = request(requestId);
-              return (
-                found && (
-                  <RequestCard userId={userId} organizationId={organizationId} request={found} />
-                )
-              );
+              return found && <RequestCard request={found} />;
             }}
           />
         )

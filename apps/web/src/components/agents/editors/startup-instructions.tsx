@@ -8,24 +8,24 @@ import { useId } from "react";
 
 import { CodeBlock, CodeBlockContent } from "@/components/ui/code-block";
 import { Heading } from "@/components/ui/heading";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 
 export function StartupInstructions({
   harness,
   name,
   agentId,
-  organizationId,
 }: {
   harness: HarnessKind;
   name: string;
   agentId?: string;
-  organizationId?: string | null;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const text = startupInstructions({
     harness,
     // The preview reads before the agent is named, so an empty name shows a stand-in.
     name: name.trim() || "Your agent’s name",
     id: agentId ?? "Assigned when saved",
-    organizationId: organizationId ?? "Active workspace",
+    organizationId,
   }).trimEnd();
   // The create dialog and the instructions settings can both show this at once.
   const titleId = useId();

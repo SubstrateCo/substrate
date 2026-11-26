@@ -25,6 +25,7 @@ import {
 import { PageSheet } from "@/components/layout/page-sheet";
 import { Button } from "@/components/ui/button";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { Building2, LayoutDashboard, Plus, Users } from "lucide-react";
 
 type Days = "7" | "30" | "all";
@@ -56,20 +57,19 @@ function directorySectionOf(section: InteractionSection): InteractionSection {
 }
 
 export function InteractionsWorkspace({
-  organizationId,
   section,
   days,
   profileId,
   recordId,
   tab,
 }: {
-  organizationId: string;
   section: InteractionSection;
   days: Days;
   profileId?: string;
   recordId?: string;
   tab?: "activity" | "map";
 }) {
+  const { organizationId } = useWorkspaceScope();
   const navigate = useNavigate({ from: "/interactions/" });
   const apps = useOrganizationApps();
   const [creating, setCreating] = useState(false);
@@ -147,7 +147,6 @@ export function InteractionsWorkspace({
             />
           ) : (
             <InteractionsContent
-              organizationId={organizationId}
               section={section}
               activeDays={activeDays}
               profileId={profileId}
@@ -160,19 +159,17 @@ export function InteractionsWorkspace({
       </PageContent>
       {creating && (
         <NewInteraction
-          organizationId={organizationId}
           contactId={section === "person" ? profileId : undefined}
           onClose={() => setCreating(false)}
         />
       )}
-      <InteractionRecordSheet organizationId={organizationId} recordId={recordId} />
+      <InteractionRecordSheet recordId={recordId} />
     </PageLayout>
   );
 }
 
 /** The view for the current section, once CRM access is settled. */
 function InteractionsContent({
-  organizationId,
   section,
   activeDays,
   profileId,
@@ -180,7 +177,6 @@ function InteractionsContent({
   periodControl,
   createButton,
 }: {
-  organizationId: string;
   section: InteractionSection;
   activeDays: Days;
   profileId?: string;
@@ -188,6 +184,7 @@ function InteractionsContent({
   periodControl: ReactNode;
   createButton: ReactNode;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const { period, dates } = interactionWindow(
     organizationId,
     activeDays === "all" ? 30 : Number(activeDays),
@@ -226,7 +223,6 @@ function InteractionsContent({
   return (
     <InteractionProfile
       key={`${profileId}:${activeDays}`}
-      organizationId={organizationId}
       entityId={profileId}
       type={section === "person" ? "person" : "account"}
       period={filter}
@@ -237,13 +233,7 @@ function InteractionsContent({
   );
 }
 
-function InteractionRecordSheet({
-  organizationId,
-  recordId,
-}: {
-  organizationId: string;
-  recordId?: string;
-}) {
+function InteractionRecordSheet({ recordId }: { recordId?: string }) {
   const navigate = useNavigate({ from: "/interactions/" });
   return (
     <PageSheet
@@ -260,11 +250,9 @@ function InteractionRecordSheet({
       {recordId && (
         <InteractionDetail
           key={recordId}
-          organizationId={organizationId}
           entityId={recordId}
           renderContact={(contact) => (
             <ContactProfileLink
-              organizationId={organizationId}
               contactEntityId={contact.entityId}
               // The record can be older than the current period.
               allTime

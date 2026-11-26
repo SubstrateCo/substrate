@@ -6,13 +6,14 @@ import { changedTaskFields } from "./task-patch";
 import { AttachFilesButton, AttachmentDraftList } from "@/components/attachments/attachment-picker";
 import { FileDropZone } from "@/components/attachments/file-drop-zone";
 import { TaskForm as TaskFormView } from "@/components/tasks/editor/task-form-view";
-import type { ProjectDetail, Task } from "@/components/tasks/types";
+import type { Task } from "@/components/tasks/types";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useAttachmentUploads } from "@/queries/files/use-attachment-uploads";
 import { useTasksMutation } from "@/queries/tasks/mutations";
+import { useLoadedProject } from "@/queries/tasks/use-project";
 
 export function TaskForm({
-  organizationId,
-  detail,
+  projectEntityId,
   task,
   parentTaskEntityId,
   onSaved,
@@ -21,8 +22,7 @@ export function TaskForm({
   renderCreate,
   onDirtyChange,
 }: {
-  organizationId: string;
-  detail: ProjectDetail;
+  projectEntityId: string;
   task?: Task;
   parentTaskEntityId?: string;
   onSaved: (id: string) => void;
@@ -31,9 +31,13 @@ export function TaskForm({
   renderCreate?: ComponentProps<typeof TaskFormView>["renderCreate"];
   onDirtyChange?: (dirty: boolean) => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const save = useTasksMutation(organizationId);
   const uploads = useAttachmentUploads();
   const router = useRouter();
+  const detail = useLoadedProject(organizationId, projectEntityId).resource.data;
+  // The project pane opens this form only once its project has loaded.
+  if (!detail) return null;
   return (
     <TaskFormView
       detail={detail}
@@ -64,7 +68,7 @@ export function TaskForm({
       }
       onCancel={onCancel}
       onSubmit={(draft) => {
-        const fields = { organizationId, projectEntityId: detail.project.entityId, ...draft };
+        const fields = { organizationId, projectEntityId, ...draft };
         const destination = router.latestLocation.href;
         const changes = task ? changedTaskFields(task, draft) : undefined;
         if (task && changes && !Object.keys(changes).length) {
@@ -76,7 +80,7 @@ export function TaskForm({
             ? {
                 action: "updateTask",
                 organizationId,
-                projectEntityId: detail.project.entityId,
+                projectEntityId,
                 ...changes,
                 taskEntityId: task.entityId,
               }

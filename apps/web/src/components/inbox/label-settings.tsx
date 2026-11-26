@@ -2,7 +2,8 @@ import type { Mailbox } from "@substrate/contracts/mail";
 
 import { useMutation } from "@tanstack/react-query";
 
-import { LabelMenu, type LabelActions } from "./label-menu";
+import { useInboxWorkspace } from "./inbox-workspace-context";
+import { LabelMenu } from "./label-menu";
 import { labelName } from "./mail-colors";
 import { LabelTag } from "./message-labels";
 import { Button } from "@/components/ui/button";
@@ -11,10 +12,10 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { ChevronRight } from "lucide-react";
 
-export function LabelSettings({ box, ...actions }: { box: Mailbox } & LabelActions) {
+export function LabelSettings({ box }: { box: Mailbox }) {
+  const { onLabelVisibility } = useInboxWorkspace().labelActions;
   const toggle = useMutation({
-    mutationFn: (visible: boolean) =>
-      actions.onLabelVisibility(box.id, { area: "mailbox", visible }),
+    mutationFn: (visible: boolean) => onLabelVisibility(box.id, { area: "mailbox", visible }),
   });
   return (
     <Collapsible>
@@ -47,7 +48,7 @@ export function LabelSettings({ box, ...actions }: { box: Mailbox } & LabelActio
               {label.filterMode === "unread" && (
                 <span className="text-xs text-muted-foreground">If unread</span>
               )}
-              <LabelMenu mailboxId={box.id} label={label} {...actions} />
+              <LabelMenu mailboxId={box.id} label={label} />
             </div>
           ))}
           {toggle.isError && (

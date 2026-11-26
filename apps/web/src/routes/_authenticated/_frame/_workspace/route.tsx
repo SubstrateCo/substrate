@@ -17,7 +17,7 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace")({
       context.queryClient,
       context.session.session.activeOrganizationId,
     );
-    return { organizationId };
+    return { organizationId, userId: context.session.user.id };
   },
 });
 
@@ -26,11 +26,7 @@ function WorkspaceLayout() {
   const { workspaceId, contactId, interactionId } = Route.useSearch();
   return (
     <WorkspaceLinkBoundary organizationId={organizationId} workspaceId={workspaceId}>
-      <WorkspaceRecordSheet
-        organizationId={organizationId}
-        contactId={contactId}
-        interactionId={interactionId}
-      >
+      <WorkspaceRecordSheet contactId={contactId} interactionId={interactionId}>
         <Outlet />
       </WorkspaceRecordSheet>
     </WorkspaceLinkBoundary>

@@ -9,6 +9,7 @@ import { notificationPresentation, showsNotification } from "./notification-pres
 import { NotificationList as NotificationListView } from "@/components/context/notifications/notification-list-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { resourceState } from "@/lib/resource-state";
 import {
   notificationGroupsOptions,
@@ -19,13 +20,8 @@ import { useReadNotifications } from "@/queries/context/notification-mutations";
 import { useFirstPageOnLeave } from "@/queries/first-page";
 import { toast } from "sonner";
 
-export function NotificationList({
-  organizationId,
-  onClose,
-}: {
-  organizationId: string;
-  onClose?: () => void;
-}) {
+export function NotificationList({ onClose }: { onClose?: () => void }) {
+  const { organizationId } = useWorkspaceScope();
   const [filter, setFilter] = useState<NotificationFilter>("all");
   const apps = useOrganizationApps();
   const feed = useInfiniteQuery(notificationGroupsOptions(organizationId, filter));
@@ -81,7 +77,6 @@ export function NotificationList({
       onOpen={(item, event) => open(item.id, event)}
       renderEvents={(item) => (
         <NotificationGroupEvents
-          organizationId={organizationId}
           groupKey={item.id}
           onOpen={(_eventItem, event) => open(item.id, event)}
         />

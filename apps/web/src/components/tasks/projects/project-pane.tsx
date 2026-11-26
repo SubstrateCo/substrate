@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
 import { WorkDiscussions } from "../../context/discussions/work-discussions";
@@ -14,26 +13,22 @@ import { ProjectExport } from "./project-export";
 import { ProjectSharing } from "./sharing/project-sharing";
 import { useProjectRestore } from "./use-project-restore";
 import { ProjectPane as ProjectPaneView } from "@/components/tasks/projects/project-pane-view";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { workLink } from "@/lib/navigation/record-links";
-import { resourceState } from "@/lib/resource-state";
-import { projectCapabilities } from "@/lib/tasks/project-capabilities";
 import { useTaskUpdate } from "@/queries/tasks/mutations";
-import { projectQueryOptions } from "@/queries/tasks/options";
+import { useProject } from "@/queries/tasks/use-project";
 import { toast } from "sonner";
 
 export function ProjectPane({
-  organizationId,
   projectEntityId,
   taskId,
 }: {
-  organizationId: string;
   projectEntityId: string;
   taskId?: string;
 }) {
-  const project = useQuery(projectQueryOptions(organizationId, projectEntityId));
-  const resource = resourceState(project);
+  const { organizationId } = useWorkspaceScope();
+  const { query: project, resource, capabilities } = useProject(organizationId, projectEntityId);
   const archivedAt = resource.data?.project.archivedAt;
-  const capabilities = projectCapabilities(resource.data?.level, !!archivedAt);
   const update = useTaskUpdate(organizationId, projectEntityId);
   const restore = useProjectRestore(organizationId);
   const navigate = useNavigate();
@@ -75,18 +70,13 @@ export function ProjectPane({
             label="Copy project link"
             link={workLink(organizationId, projectEntityId)}
           />
-          <ProjectExport organizationId={organizationId} projectEntityId={projectEntityId} />
+          <ProjectExport projectEntityId={projectEntityId} />
         </>
       }
       context={
         project.data &&
         !project.error && (
-          <WorkDiscussions
-            organizationId={organizationId}
-            entityId={projectEntityId}
-            label="Project discussions"
-            variant="page"
-          />
+          <WorkDiscussions entityId={projectEntityId} label="Project discussions" variant="page" />
         )
       }
       onRetry={() => void project.refetch()}
@@ -103,8 +93,8 @@ export function ProjectPane({
       editor={
         resource.data && (
           <>
-            <ProjectPicture organizationId={organizationId} project={resource.data.project} />
-            <ProjectForm organizationId={organizationId} project={resource.data.project} />
+            <ProjectPicture project={resource.data.project} />
+            <ProjectForm project={resource.data.project} />
           </>
         )
       }
@@ -112,22 +102,13 @@ export function ProjectPane({
         resource.data &&
         capabilities.canArchive &&
         (archivedAt ? (
-          <ProjectDelete organizationId={organizationId} project={resource.data.project} />
+          <ProjectDelete project={resource.data.project} />
         ) : (
-          <ProjectArchive organizationId={organizationId} project={resource.data.project} />
+          <ProjectArchive project={resource.data.project} />
         ))
       }
-      sharing={
-        resource.data && (
-          <ProjectSharing
-            organizationId={organizationId}
-            detail={resource.data}
-            capabilities={capabilities}
-          />
-        )
-      }
+      sharing={resource.data && <ProjectSharing projectEntityId={projectEntityId} />}
       renderTaskForm={({
-        detail,
         parentTaskEntityId,
         onSaved,
         onCancel,
@@ -135,8 +116,7 @@ export function ProjectPane({
         renderCreate,
       }) => (
         <TaskForm
-          organizationId={organizationId}
-          detail={detail}
+          projectEntityId={projectEntityId}
           parentTaskEntityId={parentTaskEntityId}
           onSaved={onSaved}
           onCancel={onCancel}
@@ -144,14 +124,12 @@ export function ProjectPane({
           renderCreate={renderCreate}
         />
       )}
-      renderTaskDetail={({ detail, task, onSubtask, onSelectTask }) => (
+      renderTaskDetail={({ taskId: selected, onSubtask, onSelectTask }) => (
         <TaskDetail
           visible
-          key={task.entityId}
-          organizationId={organizationId}
-          detail={detail}
-          capabilities={capabilities}
-          task={task}
+          key={selected}
+          projectEntityId={projectEntityId}
+          taskId={selected}
           onSubtask={onSubtask}
           onSelectTask={onSelectTask}
         />

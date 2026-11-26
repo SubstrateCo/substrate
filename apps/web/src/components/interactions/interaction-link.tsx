@@ -2,6 +2,8 @@ import { Link } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
+
 /** Open interaction details without leaving the current workspace app. */
 export function InteractionLink({
   entityId,
@@ -27,7 +29,6 @@ export function InteractionLink({
 }
 
 type InteractionsLinkProps = {
-  organizationId: string;
   children: ReactNode;
   className?: string;
   title?: string;
@@ -36,10 +37,10 @@ type InteractionsLinkProps = {
 
 /** Inside Interactions: open one interaction's record sheet and keep the current view. */
 export function InteractionRecordLink({
-  organizationId,
   entityId,
   ...props
 }: InteractionsLinkProps & { entityId: string }) {
+  const { organizationId } = useWorkspaceScope();
   return (
     <Link
       from="/interactions/"
@@ -52,7 +53,6 @@ export function InteractionRecordLink({
 
 /** Inside Interactions: open a contact's profile, keep the current filters, and close any record. */
 export function ContactProfileLink({
-  organizationId,
   contactEntityId,
   allTime,
   ...props
@@ -61,6 +61,7 @@ export function ContactProfileLink({
   /** Show all time, for a record that can be older than the current period. */
   allTime?: boolean;
 }) {
+  const { organizationId } = useWorkspaceScope();
   return (
     <Link
       from="/interactions/"

@@ -15,20 +15,20 @@ import { InteractionRow } from "@/components/interactions/interaction-row";
 import { RecordSection, recordRows } from "@/components/layout/record-section";
 import { Pager, useCursorPages } from "@/components/table";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { resourceState } from "@/lib/resource-state";
 import { useInteractionSources } from "@/queries/calendar/interaction-sources";
 import { crmTimelineOptions } from "@/queries/crm/options";
 import { keepPageWhileTurning } from "@/queries/page-turn";
 
 export function InteractionRollup({
-  organizationId,
   entityId,
   kind,
 }: {
-  organizationId: string;
   entityId: string;
   kind: "account" | "deal";
 }) {
+  const { organizationId } = useWorkspaceScope();
   const [mode, setMode] = useState<CrmTimelineMode>(kind === "deal" ? "linked" : "participants");
   const pages = useCursorPages<{ beforeOccurredAt: string; beforeEntityId: string }>();
   const options = crmTimelineOptions(organizationId, entityId, mode, pages.cursor ?? null);
@@ -111,13 +111,7 @@ export function InteractionRollup({
                   Open contact
                 </ContactLink>,
               ]}
-              source={
-                <MeetingSourceLink
-                  organizationId={organizationId}
-                  source={sources[row.entityId]}
-                  className="max-w-full"
-                />
-              }
+              source={<MeetingSourceLink source={sources[row.entityId]} className="max-w-full" />}
             />
           ))}
         </ol>

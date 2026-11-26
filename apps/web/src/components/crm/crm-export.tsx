@@ -5,14 +5,13 @@ import { useQuery } from "@tanstack/react-query";
 
 import { contactsExportUrl, crmExportUrl } from "@/api/exports";
 import { DownloadMenu } from "@/components/exports/download-menu";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { currentOrganizationQueryOptions } from "@/queries/organizations/options";
 
-export type CrmExportProps = Pick<
-  CrmExportInput,
-  "organizationId" | "kind" | "archived" | "search"
->;
+export type CrmExportProps = Pick<CrmExportInput, "kind" | "archived" | "search">;
 
-export function CrmExport({ organizationId, kind, archived, search }: CrmExportProps) {
+export function CrmExport({ kind, archived, search }: CrmExportProps) {
+  const { organizationId } = useWorkspaceScope();
   const organization = useQuery(currentOrganizationQueryOptions(organizationId));
   const allowed =
     !organization.error && organizationSettingsAccess(organization.data?.role).allowed;

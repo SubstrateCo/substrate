@@ -7,6 +7,5 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/dashboar
 });
 
 function DashboardRoute() {
-  const { organizationId, session } = Route.useRouteContext();
-  return <HomeDashboard organizationId={organizationId} userId={session.user.id} />;
+  return <HomeDashboard />;
 }

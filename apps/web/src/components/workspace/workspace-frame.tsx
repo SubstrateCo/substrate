@@ -52,11 +52,7 @@ export function WorkspaceFrame({
         agentsNeedYou={!needsYou.error && needsYouCount(needsYou.data) > 0}
         switcher={
           organizationId ? (
-            <OrganizationSwitcher
-              organizationId={organizationId}
-              name={organization.data?.name || "Workspace"}
-              logo={organization.data?.logo}
-            />
+            <OrganizationSwitcher organizationId={organizationId} />
           ) : (
             <Link to="/organizations" aria-label="Workspaces">
               OS

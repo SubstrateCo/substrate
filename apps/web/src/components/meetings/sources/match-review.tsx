@@ -1,4 +1,3 @@
-import type { MeetingScope } from "@substrate/contracts/meetings";
 import { providerNames } from "@substrate/contracts/meetings";
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -23,8 +22,8 @@ import { formatArchiveDate, formatWallTime, parseDateOnly } from "@/lib/format/d
 import { peopleLabels } from "@/lib/meetings/display";
 import { GitMerge } from "lucide-react";
 
-export function MatchReview({ scope }: { scope: MeetingScope }) {
-  const { queries } = useMeetingsWorkspace();
+export function MatchReview() {
+  const { scope, queries } = useMeetingsWorkspace();
   const query = useQuery(queries.reviews),
     client = useQueryClient();
   const [inspect, setInspect] = useState<string | null>(null);

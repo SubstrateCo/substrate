@@ -8,6 +8,7 @@ import { recordRows } from "@/components/layout/record-section";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Heading } from "@/components/ui/heading";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { eventDate } from "@/lib/calendar/days";
 import { calendarLink, linkedWorkLink } from "@/lib/navigation/record-links";
 import { calendarEventOptions } from "@/queries/calendar/options";
@@ -17,13 +18,8 @@ export type InteractionConnection = Awaited<
   ReturnType<typeof getInteractionProfile>
 >["connections"][number];
 
-function ConnectionLink({
-  organizationId,
-  connection,
-}: {
-  organizationId: string;
-  connection: InteractionConnection;
-}) {
+function ConnectionLink({ connection }: { connection: InteractionConnection }) {
+  const { organizationId } = useWorkspaceScope();
   const apps = useOrganizationApps();
   if (connection.entityType === "contact" || connection.entityType === "account")
     return (
@@ -44,12 +40,10 @@ function ConnectionLink({
         {connection.title}
       </Link>
     );
-  if (connection.entityType === "calendar_event")
-    return <MeetingLink organizationId={organizationId} connection={connection} />;
+  if (connection.entityType === "calendar_event") return <MeetingLink connection={connection} />;
   if (connection.entityType === "contact_interaction")
     return (
       <InteractionRecordLink
-        organizationId={organizationId}
         entityId={connection.entityId}
         className="min-w-0 wrap-anywhere underline underline-offset-4"
       >
@@ -67,13 +61,8 @@ function ConnectionLink({
 }
 
 /** A linked meeting opens on its day. The event read is the one the calendar pane reuses. */
-function MeetingLink({
-  organizationId,
-  connection,
-}: {
-  organizationId: string;
-  connection: InteractionConnection;
-}) {
+function MeetingLink({ connection }: { connection: InteractionConnection }) {
+  const { organizationId } = useWorkspaceScope();
   const event = useQuery(calendarEventOptions(organizationId, connection.entityId)).data;
   const date = event ? eventDate(event) : undefined;
   return (
@@ -89,13 +78,7 @@ function MeetingLink({
   );
 }
 
-export function InteractionConnections({
-  organizationId,
-  connections,
-}: {
-  organizationId: string;
-  connections: InteractionConnection[];
-}) {
+export function InteractionConnections({ connections }: { connections: InteractionConnection[] }) {
   if (!connections.length)
     return <ContentNotice variant="inline" title="No linked records you can access" />;
   return (
@@ -105,7 +88,7 @@ export function InteractionConnections({
           key={`${connection.entityType}:${connection.entityId}`}
           className="flex min-w-0 flex-wrap items-center justify-between gap-x-3 gap-y-1 px-2 py-1.5 text-sm"
         >
-          <ConnectionLink organizationId={organizationId} connection={connection} />
+          <ConnectionLink connection={connection} />
           <span className="text-xs wrap-anywhere text-muted-foreground">{connection.relation}</span>
         </li>
       ))}
@@ -114,12 +97,10 @@ export function InteractionConnections({
 }
 
 export function RelationshipMap({
-  organizationId,
   title,
   type,
   connections,
 }: {
-  organizationId: string;
   title: string;
   type: "person" | "account";
   connections: InteractionConnection[];
@@ -155,7 +136,7 @@ export function RelationshipMap({
             >
               <div className="flex min-w-0 items-center gap-2">
                 <Link2 aria-hidden className="size-3.5 shrink-0 text-muted-foreground" />
-                <ConnectionLink organizationId={organizationId} connection={connection} />
+                <ConnectionLink connection={connection} />
               </div>
               <p className="text-xs wrap-anywhere text-muted-foreground">{connection.relation}</p>
             </li>

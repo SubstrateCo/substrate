@@ -1,10 +1,13 @@
+import type { MeetingScope } from "@substrate/contracts/meetings";
+
 import { createContext, useContext } from "react";
 
 import type { ChangeMeetingView, MeetingSearch } from "@/lib/meetings/navigation";
 import type { MeetingQueries } from "@/queries/meetings/options";
 
-/** The queries and view state that every part of the meetings workspace shares. */
+/** The scope, queries, and view state that every part of the meetings workspace shares. */
 export type MeetingsWorkspaceValue = {
+  scope: MeetingScope;
   queries: MeetingQueries;
   search: MeetingSearch;
   change: ChangeMeetingView;

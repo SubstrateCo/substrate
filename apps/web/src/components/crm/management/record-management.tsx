@@ -11,7 +11,6 @@ export type RecordTool = { label: string; icon: ReactNode; onSelect: () => void 
 
 /** The Share and Change owner tools of an account or deal, and the dialogs they open. */
 export function useRecordManagement({
-  organizationId,
   entityId,
   name,
   noun,
@@ -20,7 +19,6 @@ export function useRecordManagement({
   enabled,
   onRestoreFocus,
 }: {
-  organizationId: string;
   entityId: string;
   name: string;
   /** The record kind in copy, such as "deal". */
@@ -51,7 +49,6 @@ export function useRecordManagement({
     <>
       {dialog === "share" && canShare && (
         <RecordSharing
-          organizationId={organizationId}
           entityId={entityId}
           name={name}
           noun={noun}
@@ -62,7 +59,6 @@ export function useRecordManagement({
       )}
       {dialog === "owner" && canReassign && (
         <RecordOwner
-          organizationId={organizationId}
           entityId={entityId}
           name={name}
           level={level}

@@ -14,12 +14,12 @@ import { SegmentedControl } from "@/components/forms/segmented-control";
 import { BackLink, PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { crmLink } from "@/lib/navigation/record-links";
 import { interactionProfileOptions } from "@/queries/context/interactions";
 import { ArrowUpRight, List, Network } from "lucide-react";
 
 export function InteractionProfile({
-  organizationId,
   entityId,
   type,
   period,
@@ -27,7 +27,6 @@ export function InteractionProfile({
   periodControl,
   createAction,
 }: {
-  organizationId: string;
   entityId: string;
   type: "person" | "account";
   period: TimelineInput;
@@ -37,6 +36,7 @@ export function InteractionProfile({
   /** The primary create button, last in the header. */
   createAction?: ReactNode;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const profile = useQuery(interactionProfileOptions(organizationId, entityId, type));
   const navigate = useNavigate({ from: "/interactions/" });
   const [scope, setScope] = useState<"related" | "linked">("related");
@@ -138,12 +138,7 @@ export function InteractionProfile({
           />
         </TabsContent>
         <TabsContent value="map" className="flex min-h-0 flex-col">
-          <RelationshipMap
-            organizationId={organizationId}
-            title={data.title}
-            type={type}
-            connections={data.connections}
-          />
+          <RelationshipMap title={data.title} type={type} connections={data.connections} />
         </TabsContent>
       </Tabs>
     </div>

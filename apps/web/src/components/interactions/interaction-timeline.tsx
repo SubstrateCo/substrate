@@ -141,11 +141,7 @@ function TimelinePage({
       <Card size="sm" className="min-h-0 flex-1">
         <div className="min-h-0 flex-1 overflow-y-auto">
           {items.length ? (
-            <InteractionList
-              rows={items}
-              organizationId={period.organizationId}
-              sources={sources}
-            />
+            <InteractionList rows={items} sources={sources} />
           ) : (
             <ContentNotice
               title={filtered ? "No matching interactions" : "No interactions in this period"}

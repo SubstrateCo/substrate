@@ -1,21 +1,14 @@
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 
+import { useInboxWorkspace } from "./inbox-workspace-context";
 import { Button } from "@/components/ui/button";
 import { mailHref } from "@/lib/mail/body-text";
 import { newsletterLayout } from "@/lib/mail/newsletter-layout";
 import { inlineRaster, readerBase, readerFit } from "@/lib/mail/newsletter-style";
 
-export type ReadPicture = (id: string, source: string) => Promise<string | null>;
-
-export function Newsletter({
-  html,
-  id,
-  readPicture,
-}: {
-  html: string;
-  id: string;
-  readPicture: ReadPicture;
-}) {
+export function Newsletter({ html, id }: { html: string; id: string }) {
+  const { api, scope } = useInboxWorkspace();
+  const { userId, organizationId } = scope;
   const layout = useMemo(() => newsletterLayout(html), [html]);
   const frame = useRef<HTMLIFrameElement>(null);
   const [doc, setDoc] = useState<Document | null>(null);
@@ -76,7 +69,9 @@ export function Newsletter({
         for (const [i, source] of queue) {
           if (stopped()) return;
           const data =
-            progress.bytes < 32_000_000 ? await readPicture(id, source).catch(() => null) : null;
+            progress.bytes < 32_000_000
+              ? await api.picture({ userId, organizationId, id, source }).catch(() => null)
+              : null;
           if (stopped()) return;
           if (!data || !inlineRaster(data)) {
             progress.failed++;
@@ -110,7 +105,7 @@ export function Newsletter({
       style.remove();
       root.remove();
     };
-  }, [doc, layout, show, id, readPicture]);
+  }, [doc, layout, show, id, api, userId, organizationId]);
   return (
     <div className="w-full min-w-0">
       {layout.sources.length > 0 && (

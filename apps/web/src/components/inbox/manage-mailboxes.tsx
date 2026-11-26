@@ -4,7 +4,6 @@ import { useMutation } from "@tanstack/react-query";
 
 import { useState } from "react";
 
-import type { LabelActions } from "./label-menu";
 import { LabelSettings } from "./label-settings";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { modalDialogProps } from "@/components/feedback/modal-dialog";
@@ -24,7 +23,7 @@ import { Field, FieldLabel } from "@/components/ui/field";
 import { Heading } from "@/components/ui/heading";
 import { Input } from "@/components/ui/input";
 
-type Actions = LabelActions & {
+type Actions = {
   onRename: (id: string, nickname: string) => Promise<void>;
   onReconnect: (
     id: string,
@@ -33,14 +32,7 @@ type Actions = LabelActions & {
   onDisconnect: (id: string) => Promise<void>;
 };
 
-function MailboxSettings({
-  box,
-  onRename,
-  onReconnect,
-  onDisconnect,
-  onLabelColor,
-  onLabelVisibility,
-}: { box: Mailbox } & Actions) {
+function MailboxSettings({ box, onRename, onReconnect, onDisconnect }: { box: Mailbox } & Actions) {
   const [nickname, setNickname] = useState(box.nickname ?? "");
   const [confirm, setConfirm] = useState(false);
   const rename = useMutation({
@@ -123,7 +115,7 @@ function MailboxSettings({
           </div>
         </Field>
       </form>
-      <LabelSettings box={box} onLabelColor={onLabelColor} onLabelVisibility={onLabelVisibility} />
+      <LabelSettings box={box} />
       <div className="flex flex-wrap gap-2">
         <PendingButton
           variant="ghost"

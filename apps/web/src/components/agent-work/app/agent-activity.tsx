@@ -5,6 +5,7 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 import { NeedsAttention } from "../needs-attention";
 import { TurnStatusTag } from "../turn-work";
 import { AgentActivityView, type ActivityRow } from "./agent-activity-view";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { hiddenConversation } from "@/lib/agent-work/hidden-records";
 import { turnConversation } from "@/lib/agent-work/placement";
 import { failedWorkNote, sessionKindLabels, turnTone } from "@/lib/agent-work/status";
@@ -30,20 +31,17 @@ const subjectFallbacks: Record<AgentTurnView["sessionKind"], string> = {
 
 /** One agent's work on its home desktop, including silent, routine, and helper work. */
 export function AgentActivity({
-  userId,
-  organizationId,
   agentId,
   name,
   selectedTurnId,
   onTranscript,
 }: {
-  userId: string;
-  organizationId: string;
   agentId: string;
   name: string;
   selectedTurnId?: string;
   onTranscript: (turnId: string) => void;
 }) {
+  const { userId, organizationId } = useWorkspaceScope();
   const activity = useInfiniteQuery(agentActivityOptions(userId, organizationId, agentId));
   const conversations = useQuery(conversationsQueryOptions(organizationId));
   // The list shows each turn's start time, so it is ordered by that time, newest first.
@@ -74,13 +72,7 @@ export function AgentActivity({
       createdAt: turn.createdAt,
       selected: turn.id === selectedTurnId,
       attention: turn.status === "needs_attention" && (
-        <NeedsAttention
-          userId={userId}
-          organizationId={organizationId}
-          turn={turn}
-          agentName={name}
-          inline
-        />
+        <NeedsAttention turn={turn} agentName={name} inline />
       ),
     };
   });

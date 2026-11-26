@@ -11,11 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { cn } from "cn";
 import { Bell, Bot, CheckCheck, Hand, Handshake, MessageSquare } from "lucide-react";
 
 export type HomeDashboardViewProps = {
-  organizationId: string;
   tasksEnabled?: boolean;
   crmEnabled?: boolean;
   date: string;
@@ -61,7 +61,6 @@ function HomePanel({
 }
 
 export function HomeDashboardView({
-  organizationId,
   tasksEnabled = true,
   crmEnabled = true,
   date,
@@ -72,6 +71,7 @@ export function HomeDashboardView({
   deals,
   updates,
 }: HomeDashboardViewProps) {
+  const { organizationId } = useWorkspaceScope();
   const search = { workspaceId: organizationId };
   const [activeSection, setActiveSection] = useState("attention");
   const quietAttention = !attention.loading && !attention.error && !attention.items.length;
@@ -139,7 +139,7 @@ export function HomeDashboardView({
                   <HomeSection
                     title="My work"
                     description="Assigned to you · earliest due first"
-                    empty={{ content: <HomeEmptyWork organizationId={organizationId} /> }}
+                    empty={{ content: <HomeEmptyWork /> }}
                     link={{ to: "/tasks", search }}
                     data={tasks}
                   />

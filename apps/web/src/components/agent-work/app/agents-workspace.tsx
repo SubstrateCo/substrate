@@ -13,6 +13,7 @@ import { AgentSettings } from "@/components/agents/agent-settings";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { PaneState } from "@/components/feedback/pane-state";
 import { useFocusAfterRender } from "@/components/feedback/use-focus-after-render";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import type { AgentPageSection } from "@/lib/agent-work/agent-sections";
 import { needsYouCount } from "@/lib/agent-work/needs-you";
 import { agentLink } from "@/lib/navigation/record-links";
@@ -49,31 +50,25 @@ function MissingAgent({
 
 /** Needs you or the first-agent prompt without a selection; otherwise the selected agent. */
 function AgentsContent({
-  userId,
-  organizationId,
   agentId,
   firstAgent,
   catalogState,
   onRetryCatalog,
   onCreate,
+  needsYou,
   agent,
 }: {
-  userId: string;
-  organizationId: string;
   agentId?: string;
   firstAgent: boolean;
   catalogState: ResourceState<unknown>;
   onRetryCatalog: () => void;
   onCreate: () => void;
+  /** Shown without a selection once the owner has an agent. */
+  needsYou: ReactNode;
   /** The page of the agent `agentId` names, when the catalog lists it. */
   agent: ReactNode;
 }) {
-  if (!agentId)
-    return firstAgent ? (
-      <FirstAgentView onCreate={onCreate} />
-    ) : (
-      <NeedsYou userId={userId} organizationId={organizationId} />
-    );
+  if (!agentId) return firstAgent ? <FirstAgentView onCreate={onCreate} /> : needsYou;
   return agent || <MissingAgent catalogState={catalogState} onRetry={onRetryCatalog} />;
 }
 
@@ -82,20 +77,17 @@ function AgentsContent({
  * transcripts, and routines come from the agent's home desktop.
  */
 export function AgentsWorkspace({
-  userId,
-  organizationId,
   agentId,
   turnId,
   messageId,
   section,
 }: {
-  userId: string;
-  organizationId: string;
   agentId?: string;
   turnId?: string;
   messageId?: string;
   section: AgentPageSection;
 }) {
+  const { userId, organizationId } = useWorkspaceScope();
   const navigate = useNavigate();
   const [creating, setCreating] = useState(false);
   const newAgentButton = useRef<HTMLButtonElement>(null);
@@ -107,19 +99,16 @@ export function AgentsWorkspace({
     void navigate(agentLink(organizationId, id, next, target));
   const content = (
     <AgentsContent
-      userId={userId}
-      organizationId={organizationId}
       agentId={agentId}
       firstAgent={firstAgent}
       catalogState={catalogState}
       onRetryCatalog={retryCatalog}
       onCreate={() => setCreating(true)}
+      needsYou={<NeedsYou />}
       agent={
         selected && (
           <AgentPage
             key={selected.id}
-            userId={userId}
-            organizationId={organizationId}
             agentId={selected.id}
             name={selected.name}
             enabled={selected.enabled}
@@ -156,8 +145,6 @@ export function AgentsWorkspace({
       editor={
         creating && (
           <AgentSettings
-            userId={userId}
-            organizationId={organizationId}
             onClose={() => setCreating(false)}
             onCreated={(id) => {
               setCreating(false);
@@ -174,8 +161,6 @@ export function AgentsWorkspace({
         turnId && (
           <ActivityTurnTranscript
             key={turnId}
-            userId={userId}
-            organizationId={organizationId}
             agentId={selected.id}
             agentName={selected.name}
             homedHere={homedHere}

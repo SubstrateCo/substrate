@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import type { PickerPerson } from "@/lib/people/people-picker";
 import { crmPeopleOptions } from "@/queries/crm/management";
 import { workspacePeopleQueryOptions } from "@/queries/organizations/people";
@@ -19,7 +20,8 @@ export function recordPeople(actors: readonly RecordActor[], members: readonly P
   });
 }
 
-export function useRecordPeople(organizationId: string) {
+export function useRecordPeople() {
+  const { organizationId } = useWorkspaceScope();
   const actors = useQuery(crmPeopleOptions(organizationId));
   const members = useQuery(workspacePeopleQueryOptions(organizationId));
   const error = actors.error ?? members.error;

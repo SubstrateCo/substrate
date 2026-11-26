@@ -9,18 +9,18 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { notificationGroupEventsOptions } from "@/queries/context/notification-groups";
 import { useFirstPageOnLeave } from "@/queries/first-page";
 
 export function NotificationGroupEvents({
-  organizationId,
   groupKey,
   onOpen,
 }: {
-  organizationId: string;
   groupKey: string;
   onOpen: (item: Notification, event: MouseEvent<HTMLAnchorElement>) => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const options = notificationGroupEventsOptions(organizationId, groupKey);
   const events = useInfiniteQuery(options);
   useFirstPageOnLeave(options.queryKey);

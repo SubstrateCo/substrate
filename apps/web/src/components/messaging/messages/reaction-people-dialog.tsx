@@ -14,13 +14,11 @@ import {
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export function ReactionPeopleDialog({
-  organizationId,
   message,
   initialEmoji,
   onClose,
   restoreFocus,
 }: {
-  organizationId: string;
   message: Message;
   initialEmoji: string;
   onClose: () => void;
@@ -53,12 +51,7 @@ export function ReactionPeopleDialog({
           </Tabs>
         </DialogHeader>
         <DialogBody>
-          <ReactionList
-            key={emoji}
-            organizationId={organizationId}
-            message={message}
-            emoji={emoji || undefined}
-          />
+          <ReactionList key={emoji} message={message} emoji={emoji || undefined} />
         </DialogBody>
       </DialogContent>
     </Dialog>

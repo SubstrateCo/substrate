@@ -1,4 +1,5 @@
-import { AgentSettings } from "@/components/agents/agent-settings";
+import type { ReactNode } from "react";
+
 import {
   PaneSectionNav,
   type PaneSectionNavGroup,
@@ -22,19 +23,14 @@ const groups = [
 ] as const satisfies readonly PaneSectionNavGroup<AgentSettingsSection>[];
 
 export function AgentSettingsPanel({
-  userId,
-  organizationId,
-  agentId,
   section,
   onSectionChange,
-  onDeleted,
+  children,
 }: {
-  userId: string;
-  organizationId: string;
-  agentId: string;
   section: AgentSettingsSection;
   onSectionChange: (section: AgentSettingsSection) => void;
-  onDeleted: () => void;
+  /** The settings of the selected section. */
+  children: ReactNode;
 }) {
   const unsaved = useDraftKeys().filter(isAgentSettingsSection);
   return (
@@ -47,16 +43,7 @@ export function AgentSettingsPanel({
           marked={unsaved}
           onChange={onSectionChange}
         />
-        <SettingsContent>
-          <AgentSettings
-            userId={userId}
-            organizationId={organizationId}
-            agentId={agentId}
-            section={section}
-            onSectionChange={onSectionChange}
-            onClose={onDeleted}
-          />
-        </SettingsContent>
+        <SettingsContent>{children}</SettingsContent>
       </div>
     </div>
   );

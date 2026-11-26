@@ -13,6 +13,7 @@ import {
   type CalendarBodyState,
 } from "./calendar-workspace-view";
 import { isCalendarAccessRequired } from "@/api/calendar/access";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useNow } from "@/hooks/use-now";
 import {
   eventRange,
@@ -28,17 +29,16 @@ import { formatDateOnly, formatDateRange, formatMonthYear } from "@/lib/format/d
 import { calendarEventsOptions, calendarSettingsOptions } from "@/queries/calendar/options";
 
 export function CalendarWorkspace({
-  organizationId,
   view,
   date,
   eventId,
 }: {
-  organizationId: string;
   view: CalendarViewMode;
   /** YYYY-MM-DD of the day the view is anchored to. Today when absent. */
   date?: string;
   eventId?: string;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const navigate = useNavigate({ from: "/calendar/" });
   const now = useNow(true, 60_000);
   const anchor = viewAnchor(date, new Date(now));
@@ -128,7 +128,6 @@ export function CalendarWorkspace({
         eventId && (
           <CalendarEventPanel
             key={eventId}
-            organizationId={organizationId}
             eventId={eventId}
             now={now}
             onClose={() => search({ eventId: undefined })}

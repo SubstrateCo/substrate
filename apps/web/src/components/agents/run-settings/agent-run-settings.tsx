@@ -2,36 +2,26 @@ import type { AgentRunSettings as AgentRunSettingsData } from "@substrate/contra
 
 import { AgentRunSettingsView } from "./agent-run-settings-view";
 import { CallerSettings } from "./caller-settings";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { triggersInput } from "@/lib/agents/triggers";
 import { isDesktop } from "@/lib/desktop/auth";
 import { useAgentRunSettingsMutations } from "@/queries/agents/mutations";
 import { toast } from "sonner";
 
 export function AgentRunSettings({
-  userId,
-  organizationId,
   name,
   settings,
 }: {
-  userId: string;
-  organizationId?: string | null;
   name: string;
   settings: AgentRunSettingsData;
 }) {
+  const { userId } = useWorkspaceScope();
   const { home, triggers } = useAgentRunSettingsMutations(userId, settings.agentId);
   return (
     <AgentRunSettingsView
       name={name}
       settings={settings}
-      callers={
-        organizationId && (
-          <CallerSettings
-            userId={userId}
-            organizationId={organizationId}
-            agentId={settings.agentId}
-          />
-        )
-      }
+      callers={<CallerSettings agentId={settings.agentId} />}
       canRunHere={isDesktop()}
       moving={home.isPending}
       saving={triggers.isPending}

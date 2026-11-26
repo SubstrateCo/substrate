@@ -3,6 +3,7 @@ import type { AgentRequestView } from "@substrate/contracts/agent-work";
 import { RequestCardView, RequestResult, type RequestPending } from "./request-card-view";
 import { ApiError } from "@/api/result";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { proposalResultLink } from "@/lib/agent-work/links";
 import { isOpenRequest } from "@/lib/agent-work/requests";
 import { useRequestAction, type RequestAction } from "@/queries/agent-work/mutations";
@@ -28,15 +29,8 @@ function pendingOf(input: RequestAction): RequestPending {
     : { kind: "answer" };
 }
 
-export function RequestCard({
-  userId,
-  organizationId,
-  request,
-}: {
-  userId: string;
-  organizationId: string;
-  request: AgentRequestView;
-}) {
+export function RequestCard({ request }: { request: AgentRequestView }) {
+  const { userId, organizationId } = useWorkspaceScope();
   // One mutation, so the card shows only the latest attempt and its failure.
   const attempt = useRequestAction(userId, organizationId);
   const open = isOpenRequest(request);

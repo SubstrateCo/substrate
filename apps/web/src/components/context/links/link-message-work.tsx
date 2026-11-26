@@ -11,6 +11,7 @@ import {
 } from "@/components/context/links/link-message-work-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { resourceState } from "@/lib/resource-state";
 import { useAttachMessageWork } from "@/queries/context/link-mutations";
@@ -19,18 +20,17 @@ import { projectsQueryOptions } from "@/queries/tasks/options";
 import { toast } from "sonner";
 
 export function LinkMessageWork({
-  organizationId,
   messageId,
   linkedIds,
   onClose,
   onRestoreFocus,
 }: {
-  organizationId: string;
   messageId: string;
   linkedIds: string[];
   onClose: () => void;
   onRestoreFocus?: () => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const [query, setQuery] = useState("");
   const apps = useOrganizationApps();
   const kinds = (
@@ -67,7 +67,6 @@ export function LinkMessageWork({
     return (
       <MessageRecordCreator
         key={`${organizationId}:${messageId}:${creating}`}
-        organizationId={organizationId}
         messageId={messageId}
         kind={creating}
         onClose={() => setCreating(null)}

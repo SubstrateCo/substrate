@@ -20,7 +20,7 @@ import { Activity } from "lucide-react";
 
 const column = createAppColumnHelper<InteractionRow>();
 
-function interactionColumns(organizationId: string, sources: InteractionSources) {
+function interactionColumns(sources: InteractionSources) {
   return column.columns([
     column.accessor("occurredAt", {
       header: "Time",
@@ -36,7 +36,6 @@ function interactionColumns(organizationId: string, sources: InteractionSources)
       meta: { width: "w-36" },
       cell: ({ row }) => (
         <ContactProfileLink
-          organizationId={organizationId}
           contactEntityId={row.original.contactEntityId}
           className="block truncate text-muted-foreground underline-offset-4 hover:underline"
           title={row.original.contactName}
@@ -50,7 +49,6 @@ function interactionColumns(organizationId: string, sources: InteractionSources)
       cell: ({ row }) => (
         <>
           <InteractionRecordLink
-            organizationId={organizationId}
             entityId={row.original.entityId}
             className={tableLink}
             aria-label={`Open interaction: ${row.original.summary}`}
@@ -58,11 +56,7 @@ function interactionColumns(organizationId: string, sources: InteractionSources)
           >
             {row.original.summary}
           </InteractionRecordLink>
-          <MeetingSourceLink
-            organizationId={organizationId}
-            source={sources[row.original.entityId]}
-            className="flex"
-          />
+          <MeetingSourceLink source={sources[row.original.entityId]} className="flex" />
         </>
       ),
     }),
@@ -106,22 +100,17 @@ function interactionColumns(organizationId: string, sources: InteractionSources)
 
 export function InteractionTable({
   rows,
-  organizationId,
   sources = emptySources,
   pagination,
   fetching,
 }: {
   rows: InteractionRow[];
-  organizationId: string;
   /** The meetings that calendar interactions came from, by interaction. */
   sources?: InteractionSources;
   pagination: AppTablePagination;
   fetching: boolean;
 }) {
-  const columns = useMemo(
-    () => interactionColumns(organizationId, sources),
-    [organizationId, sources],
-  );
+  const columns = useMemo(() => interactionColumns(sources), [sources]);
   return (
     <AppTable
       name="Day’s interactions"

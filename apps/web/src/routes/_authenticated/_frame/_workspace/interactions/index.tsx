@@ -18,11 +18,9 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/interact
 });
 
 function InteractionsRoute() {
-  const { organizationId } = Route.useRouteContext();
   const { section, days, profileId, recordId, tab } = Route.useSearch();
   return (
     <InteractionsWorkspace
-      organizationId={organizationId}
       section={section}
       days={days}
       profileId={profileId}

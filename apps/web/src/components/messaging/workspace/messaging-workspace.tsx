@@ -14,6 +14,7 @@ import {
 import { CreateConversationDialog } from "@/components/messaging/conversations/create-conversation-dialog";
 import { MessagingWorkspace as MessagingWorkspaceView } from "@/components/messaging/workspace/messaging-workspace-view";
 import { AppAvailability } from "@/components/workspace/app-availability";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { messageLink } from "@/lib/navigation/record-links";
 import type { PickerPerson } from "@/lib/people/people-picker";
 import { resourceState } from "@/lib/resource-state";
@@ -30,18 +31,15 @@ type DirectMessageTarget =
   | { kind: "agent"; agent: DirectMessageAgent };
 
 export function MessagingWorkspace({
-  organizationId,
-  userId,
   conversationId,
   messageId,
   turnId,
 }: {
-  organizationId: string;
-  userId: string;
   conversationId?: string;
   messageId?: string;
   turnId?: string;
 }) {
+  const { organizationId, userId } = useWorkspaceScope();
   // One list serves every selection, so switching conversations reads nothing again. The list
   // leaves out task discussions; a selected one is read with the list that includes it.
   const conversations = useQuery(conversationsQueryOptions(organizationId));
@@ -96,9 +94,7 @@ export function MessagingWorkspace({
   const pane = selected && (
     <ConversationPane
       key={selected.id}
-      organizationId={organizationId}
       conversation={selected}
-      userId={userId}
       messageId={messageId}
       turnId={turnId}
     />
@@ -141,9 +137,7 @@ export function MessagingWorkspace({
       }
       renderCreate={(kind, { onClose, onRestoreFocus }) => (
         <CreateConversationDialog
-          organizationId={organizationId}
           kind={kind}
-          people={people}
           onClose={onClose}
           onRestoreFocus={onRestoreFocus}
           onCreated={(id) => {

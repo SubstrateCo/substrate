@@ -3,6 +3,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { useOrganizationApps } from "./organization-apps-context";
+import { useWorkspaceScope } from "./workspace-scope-context";
 import { ContactDetail } from "@/components/contacts/contact-detail";
 import { InteractionDetail } from "@/components/interactions/interaction-detail";
 import { PageSheet } from "@/components/layout/page-sheet";
@@ -14,16 +15,15 @@ import { interactionPersonLink } from "@/lib/navigation/record-links";
  * keeps `contactId`, so closing the interaction returns to the contact.
  */
 export function WorkspaceRecordSheet({
-  organizationId,
   contactId,
   interactionId,
   children,
 }: {
-  organizationId: string;
   contactId?: string;
   interactionId?: string;
   children: ReactNode;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const navigate = useNavigate();
   const crmEnabled = useOrganizationApps().enabled("crm");
   const open = !!(contactId || interactionId);
@@ -49,7 +49,6 @@ export function WorkspaceRecordSheet({
         {interactionId ? (
           <InteractionDetail
             key={interactionId}
-            organizationId={organizationId}
             entityId={interactionId}
             renderContact={(contact) =>
               crmEnabled ? (
@@ -75,9 +74,7 @@ export function WorkspaceRecordSheet({
             }
           />
         ) : (
-          contactId && (
-            <ContactDetail key={contactId} organizationId={organizationId} entityId={contactId} />
-          )
+          contactId && <ContactDetail key={contactId} entityId={contactId} />
         )}
       </PageSheet>
     </div>

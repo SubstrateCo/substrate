@@ -8,6 +8,7 @@ import { PendingButton } from "@/components/feedback/pending-button";
 import { PersonCard } from "@/components/messaging/people/person-card-view";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Pressable } from "@/components/ui/pressable";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useDirectMessage } from "@/queries/messaging/conversations";
 import { messagingProfileOptions } from "@/queries/messaging/profiles";
 import { MessageCircle } from "lucide-react";
@@ -16,13 +17,11 @@ import { toast } from "sonner";
 const cardStates = { pending: "loading", error: "unavailable", success: "ready" } as const;
 
 export function PersonHoverCard({
-  organizationId,
   conversationId,
   actorId,
   name,
   children,
 }: {
-  organizationId: string;
   conversationId: string;
   actorId: string;
   name: string;
@@ -67,7 +66,6 @@ export function PersonHoverCard({
         }}
       >
         <PersonHoverCardBody
-          organizationId={organizationId}
           conversationId={conversationId}
           actorId={actorId}
           name={name}
@@ -111,18 +109,17 @@ function usePersonCardDisclosure() {
 
 /** The card's content. It mounts only while the card is open, so closed cards hold no queries. */
 function PersonHoverCardBody({
-  organizationId,
   conversationId,
   actorId,
   name,
   onClose,
 }: {
-  organizationId: string;
   conversationId: string;
   actorId: string;
   name: string;
   onClose: () => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const navigate = useNavigate();
   // Details load when the card opens. The server checks conversation access each time.
   const profile = useQuery(messagingProfileOptions(organizationId, conversationId, actorId));

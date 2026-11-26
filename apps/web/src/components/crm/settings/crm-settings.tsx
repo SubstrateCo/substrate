@@ -15,6 +15,7 @@ import {
   SettingsFooter,
   SettingsSection,
 } from "@/components/layout/settings-section";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { resourceState } from "@/lib/resource-state";
 import { useCrmMutation } from "@/queries/crm/mutations";
 import { crmSettingsOptions, pipelineOptions } from "@/queries/crm/options";
@@ -25,7 +26,8 @@ const currencyChoices = Intl.supportedValuesOf("currency").map((currency) => ({
   label: currency,
 }));
 
-export function CrmSettings({ organizationId }: { organizationId: string }) {
+export function CrmSettings() {
+  const { organizationId } = useWorkspaceScope();
   const query = useQuery(crmSettingsOptions(organizationId));
   const pipeline = useQuery(pipelineOptions(organizationId));
   const organization = useQuery(currentOrganizationQueryOptions(organizationId));
@@ -122,11 +124,7 @@ export function CrmSettings({ organizationId }: { organizationId: string }) {
           loading={<PipelineSettingsLoading />}
         />
         {!pipeline.error && pipeline.data && (
-          <PipelineSettings
-            organizationId={organizationId}
-            stages={pipeline.data}
-            canEdit={canEdit}
-          />
+          <PipelineSettings stages={pipeline.data} canEdit={canEdit} />
         )}
       </SettingsPanel>
     </div>

@@ -8,7 +8,6 @@ import {
 } from "@substrate/contracts/mail";
 
 import { labelFilter } from "./inbox-data";
-import type { LabelActions } from "./label-menu";
 import { ink, labelName, defaultLabelColor } from "./mail-colors";
 import { views } from "./mail-views";
 import { SidebarLabels, type LabelNavigation } from "./sidebar-labels";
@@ -61,9 +60,8 @@ export function MailboxSidebar({
   onMailboxUnread,
   filter,
   onLabel,
-  labelActions,
   ...accounts
-}: MailboxNav & ViewNav & { labelActions: LabelActions }) {
+}: MailboxNav & ViewNav) {
   return (
     <PageSidebar aria-label="Mailbox navigation">
       <PageSidebarHeader title="Mail" />
@@ -103,7 +101,6 @@ export function MailboxSidebar({
           </nav>
         )}
         <SidebarLabels
-          actions={labelActions}
           boxes={accounts.scope ? [accounts.scope] : accounts.connected}
           grouped={!accounts.scope && accounts.connected.length > 1}
           colors={accounts.colors}

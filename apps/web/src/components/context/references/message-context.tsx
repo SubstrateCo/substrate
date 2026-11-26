@@ -4,6 +4,7 @@ import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { attachedWork } from "@/components/messaging/messages/attached-work";
 import { MessageWork } from "@/components/messaging/messages/message-work";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { linkedWorkLink } from "@/lib/navigation/record-links";
 import { useDetachMessageWork } from "@/queries/context/link-mutations";
 import { toast } from "sonner";
@@ -16,38 +17,28 @@ export type MessageContextState = {
 };
 
 export function MessageContext({
-  organizationId,
   messageId,
   context,
 }: {
-  organizationId: string;
   messageId: string;
   context: MessageContextState;
 }) {
   const links = attachedWork(isAccessFailure(context.error) ? [] : (context.data?.links ?? []));
   // Most messages have no linked work. They mount no card and no mutation.
   if (!links.length && (!context.error || isAccessFailure(context.error))) return null;
-  return (
-    <MessageContextCard
-      organizationId={organizationId}
-      messageId={messageId}
-      context={context}
-      links={links}
-    />
-  );
+  return <MessageContextCard messageId={messageId} context={context} links={links} />;
 }
 
 function MessageContextCard({
-  organizationId,
   messageId,
   context,
   links,
 }: {
-  organizationId: string;
   messageId: string;
   context: MessageContextState;
   links: MessagePageContext["links"];
 }) {
+  const { organizationId } = useWorkspaceScope();
   const remove = useDetachMessageWork(organizationId, messageId);
   const apps = useOrganizationApps();
   return (

@@ -9,19 +9,13 @@ import { NativeField } from "@/components/forms/native-form";
 import { SelectField } from "@/components/forms/select-field";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { resourceState } from "@/lib/resource-state";
 import { useCrmMutation } from "@/queries/crm/mutations";
 import { projectsQueryOptions } from "@/queries/tasks/options";
 
-export function FollowUpEditor({
-  organizationId,
-  entityId,
-  onClose,
-}: {
-  organizationId: string;
-  entityId: string;
-  onClose: () => void;
-}) {
+export function FollowUpEditor({ entityId, onClose }: { entityId: string; onClose: () => void }) {
+  const { organizationId } = useWorkspaceScope();
   const projects = useQuery(projectsQueryOptions(organizationId));
   const mutation = useCrmMutation(organizationId);
   const [projectId, setProjectId] = useState("");

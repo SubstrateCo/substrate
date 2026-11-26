@@ -15,6 +15,7 @@ import { TaskStatusIcon } from "@/components/tasks/task-cues/task-status-icon";
 import { DueDate } from "@/components/time/due-date";
 import { Timestamp } from "@/components/time/timestamp";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useNow } from "@/hooks/use-now";
 import { hiddenConversation } from "@/lib/agent-work/hidden-records";
 import { needsYouItems } from "@/lib/agent-work/needs-you";
@@ -38,13 +39,8 @@ function requestTitle(request: AgentRequestView) {
   return request.payload.title;
 }
 
-export function HomeDashboard({
-  organizationId,
-  userId,
-}: {
-  organizationId: string;
-  userId: string;
-}) {
+export function HomeDashboard() {
+  const { organizationId, userId } = useWorkspaceScope();
   const now = useNow(true, 60_000);
   const apps = useOrganizationApps();
   const today = formatDateOnly(new Date(now));
@@ -145,7 +141,6 @@ export function HomeDashboard({
   const shownTasks = new Set((tasks.data ?? []).map((item) => item.entityId));
   return (
     <HomeDashboardView
-      organizationId={organizationId}
       tasksEnabled={apps.enabled("tasks")}
       crmEnabled={apps.enabled("crm")}
       date={formatShortDate(now)}

@@ -14,6 +14,7 @@ import {
 } from "@/components/layout/page-layout";
 import { PageSheet } from "@/components/layout/page-sheet";
 import { RecordCollection } from "@/components/records/record-collection";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { crmLink } from "@/lib/navigation/record-links";
 import { Building2, Handshake, Settings } from "lucide-react";
 
@@ -23,15 +24,8 @@ const sections = [
   { value: "settings", label: "Settings", icon: Settings },
 ] as const;
 
-export function CrmWorkspace({
-  organizationId,
-  section,
-  recordId,
-}: {
-  organizationId: string;
-  section: CrmSection;
-  recordId?: string;
-}) {
+export function CrmWorkspace({ section, recordId }: { section: CrmSection; recordId?: string }) {
+  const { organizationId } = useWorkspaceScope();
   const navigate = useNavigate();
   return (
     <PageLayout id="crm" aria-label="CRM workspace">
@@ -51,7 +45,7 @@ export function CrmWorkspace({
         </PageSidebarContent>
       </PageSidebar>
       <PageContent className="@container">
-        <CrmContent organizationId={organizationId} section={section} recordId={recordId} />
+        <CrmContent section={section} recordId={recordId} />
       </PageContent>
       <PageSheet
         open={section === "deals" && !!recordId}
@@ -60,26 +54,15 @@ export function CrmWorkspace({
           if (!open) void navigate(crmLink(organizationId, "deals"));
         }}
       >
-        {section === "deals" && recordId && (
-          <DealDetail key={recordId} organizationId={organizationId} entityId={recordId} />
-        )}
+        {section === "deals" && recordId && <DealDetail key={recordId} entityId={recordId} />}
       </PageSheet>
     </PageLayout>
   );
 }
 
 /** The open section. A deal opens in a sheet over its list; an account replaces the list. */
-function CrmContent({
-  organizationId,
-  section,
-  recordId,
-}: {
-  organizationId: string;
-  section: CrmSection;
-  recordId?: string;
-}) {
-  if (section === "settings") return <CrmSettings organizationId={organizationId} />;
-  if (section === "deals" || !recordId)
-    return <RecordCollection key={section} organizationId={organizationId} kind={section} />;
-  return <AccountDetail key={recordId} organizationId={organizationId} entityId={recordId} />;
+function CrmContent({ section, recordId }: { section: CrmSection; recordId?: string }) {
+  if (section === "settings") return <CrmSettings />;
+  if (section === "deals" || !recordId) return <RecordCollection key={section} kind={section} />;
+  return <AccountDetail key={recordId} entityId={recordId} />;
 }

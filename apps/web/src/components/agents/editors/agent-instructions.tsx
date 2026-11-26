@@ -1,8 +1,7 @@
 import { harnessInstructionsFiles, type HarnessKind } from "@substrate/contracts/harness";
 
-import { useId, type ComponentProps } from "react";
+import { useId, type ComponentProps, type ReactNode } from "react";
 
-import { StartupInstructions } from "./startup-instructions";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Field, FieldDescription, FieldError, FieldLabel } from "@/components/ui/field";
 import { Pressable } from "@/components/ui/pressable";
@@ -25,9 +24,7 @@ function instructionsDescription(
 
 export function AgentInstructions({
   harness,
-  name,
-  agentId,
-  organizationId,
+  startupInstructions,
   defaults,
   creating = false,
   value,
@@ -37,9 +34,8 @@ export function AgentInstructions({
   onChange,
 }: {
   harness: HarnessKind;
-  name: string;
-  agentId?: string;
-  organizationId?: string | null;
+  /** The built-in rules preview, shown when the agent uses the startup defaults. */
+  startupInstructions: ReactNode;
   defaults: boolean;
   /** The create dialog asks in plain words and leaves file details to settings. */
   creating?: boolean;
@@ -90,14 +86,7 @@ export function AgentInstructions({
               </Pressable>
             </CollapsibleTrigger>
             <CollapsibleContent>
-              <div className="max-h-64 overflow-y-auto border-t p-3">
-                <StartupInstructions
-                  harness={harness}
-                  name={name}
-                  agentId={agentId}
-                  organizationId={organizationId}
-                />
-              </div>
+              <div className="max-h-64 overflow-y-auto border-t p-3">{startupInstructions}</div>
             </CollapsibleContent>
           </div>
         </Collapsible>

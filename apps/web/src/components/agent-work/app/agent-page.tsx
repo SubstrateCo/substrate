@@ -8,6 +8,7 @@ import { AgentActivity } from "./agent-activity";
 import { AgentMessages } from "./agent-messages";
 import { AgentPageView } from "./agent-page-view";
 import { AgentSettingsPanel } from "./agent-settings-panel";
+import { AgentSettings } from "@/components/agents/agent-settings";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { UnsavedDraftsProvider } from "@/components/feedback/unsaved-drafts";
 import { Button } from "@/components/ui/button";
@@ -28,8 +29,6 @@ export function AgentPage(props: ComponentProps<typeof AgentPageContent>) {
 }
 
 function AgentPageContent({
-  userId,
-  organizationId,
   agentId,
   name,
   enabled,
@@ -43,8 +42,6 @@ function AgentPageContent({
   onTranscript,
   onDeleted,
 }: {
-  userId: string;
-  organizationId: string;
   agentId: string;
   name: string;
   enabled: boolean;
@@ -85,8 +82,6 @@ function AgentPageContent({
       onSectionChange={onSectionChange}
       messages={
         <AgentMessages
-          userId={userId}
-          organizationId={organizationId}
           agentId={agentId}
           name={name}
           enabled={enabled}
@@ -99,8 +94,6 @@ function AgentPageContent({
       activity={
         unavailable || (
           <AgentActivity
-            userId={userId}
-            organizationId={organizationId}
             agentId={agentId}
             name={name}
             selectedTurnId={selectedTurnId}
@@ -108,22 +101,18 @@ function AgentPageContent({
           />
         )
       }
-      routines={
-        unavailable || (
-          <Routines userId={userId} organizationId={organizationId} agentId={agentId} name={name} />
-        )
-      }
-      calls={<CallsLog userId={userId} organizationId={organizationId} agentId={agentId} />}
+      routines={unavailable || <Routines agentId={agentId} name={name} />}
+      calls={<CallsLog agentId={agentId} />}
       settings={
         isAgentSettingsSection(section) && (
-          <AgentSettingsPanel
-            userId={userId}
-            organizationId={organizationId}
-            agentId={agentId}
-            section={section}
-            onSectionChange={onSectionChange}
-            onDeleted={onDeleted}
-          />
+          <AgentSettingsPanel section={section} onSectionChange={onSectionChange}>
+            <AgentSettings
+              agentId={agentId}
+              section={section}
+              onSectionChange={onSectionChange}
+              onClose={onDeleted}
+            />
+          </AgentSettingsPanel>
         )
       }
     />

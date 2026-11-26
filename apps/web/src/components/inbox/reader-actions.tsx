@@ -10,6 +10,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import { useRef } from "react";
 
+import { useInboxWorkspace } from "./inbox-workspace-context";
 import { MailActionButton } from "./mail-action-button";
 import { canChangeMail } from "./mailbox-access";
 import { useReadDwell } from "./use-read-dwell";
@@ -26,15 +27,13 @@ export type ReaderActions = {
 export function ReaderActionBar({
   message,
   mailbox,
-  onAction,
-  onManage,
-  focusList,
   readingElement,
-}: ReaderActions & {
+}: {
   message: MailHeader;
   mailbox: Mailbox;
   readingElement: HTMLElement | null;
 }) {
+  const { onAction, onManage, focusList } = useInboxWorkspace().readerActions;
   const confirm = useStateDialog<"trash">(focusList);
   const mutation = useMutation({
     mutationFn: (action: MailMessageAction) => onAction(message.id, action),

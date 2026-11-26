@@ -9,12 +9,12 @@ import { DayDivider } from "@/components/messaging/messages/day-divider";
 import { messageRows } from "@/components/messaging/messages/message-grouping";
 import { MessageList as MessageListView } from "@/components/messaging/messages/message-list-view";
 import { NewMessagesDivider } from "@/components/messaging/messages/new-messages-divider";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { isSameDay } from "@/lib/format/date";
 import { messagePageOptions } from "@/queries/context/links";
 
 export function MessageList({
   messages,
-  organizationId,
   conversationId,
   onThread,
   header,
@@ -29,7 +29,6 @@ export function MessageList({
   onLatestVisibleChange,
 }: {
   messages: Message[];
-  organizationId: string;
   conversationId: string;
   onThread?: (id: string) => void;
   /** The first row of the timeline, such as a way to load older messages. */
@@ -48,6 +47,7 @@ export function MessageList({
   positionReady?: boolean;
   onLatestVisibleChange?: (visible: boolean) => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const context = useQuery(
     messagePageOptions(
       organizationId,
@@ -76,7 +76,6 @@ export function MessageList({
           <MessageRow
             message={message}
             grouped={grouped}
-            organizationId={organizationId}
             onThread={onThread}
             unreadReplies={unreadReplies?.get(message.id)}
             canPost={canPost}
@@ -95,7 +94,6 @@ export function MessageList({
 function MessageRow({
   message,
   grouped,
-  organizationId,
   onThread,
   unreadReplies,
   data,
@@ -106,7 +104,6 @@ function MessageRow({
 }: {
   message: Message;
   grouped: boolean;
-  organizationId: string;
   onThread?: (id: string) => void;
   unreadReplies?: number;
   data?: MessagePageContext;
@@ -119,7 +116,6 @@ function MessageRow({
     <MessageItem
       message={message}
       grouped={grouped}
-      organizationId={organizationId}
       onThread={onThread}
       unreadReplies={unreadReplies}
       canPost={canPost}

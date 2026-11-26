@@ -1,15 +1,11 @@
 import { PictureSettings } from "@/components/settings/profile/picture-settings";
 import type { Project } from "@/components/tasks/types";
 import { pictureMutationProps } from "@/components/upload/picture-mutation-props";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { usePictureMutations } from "@/queries/files/mutations";
 
-export function ProjectPicture({
-  organizationId,
-  project,
-}: {
-  organizationId: string;
-  project: Project;
-}) {
+export function ProjectPicture({ project }: { project: Project }) {
+  const { organizationId } = useWorkspaceScope();
   const mutations = usePictureMutations({
     kind: "project",
     organizationId,

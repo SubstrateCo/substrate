@@ -12,15 +12,8 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/messages
   }),
 });
 function MessagesRoute() {
-  const { organizationId, session } = Route.useRouteContext();
   const { conversationId, messageId, turnId } = Route.useSearch();
   return (
-    <MessagingWorkspace
-      organizationId={organizationId}
-      userId={session.user.id}
-      conversationId={conversationId}
-      messageId={messageId}
-      turnId={turnId}
-    />
+    <MessagingWorkspace conversationId={conversationId} messageId={messageId} turnId={turnId} />
   );
 }

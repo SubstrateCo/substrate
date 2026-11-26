@@ -5,44 +5,46 @@ import { useState } from "react";
 
 import { descendantIds } from "../links/task-relations";
 import { TaskMoveDialog as TaskMoveDialogView } from "./task-move-dialog-view";
-import type { ProjectDetail, Task } from "@/components/tasks/types";
+import type { Task } from "@/components/tasks/types";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { resourceState } from "@/lib/resource-state";
 import { projectCapabilities } from "@/lib/tasks/project-capabilities";
 import { useTasksMutation } from "@/queries/tasks/mutations";
 import { projectQueryOptions, projectsQueryOptions } from "@/queries/tasks/options";
+import { useLoadedProject } from "@/queries/tasks/use-project";
 
 export function TaskMoveDialog({
-  organizationId,
-  detail,
   task,
   onClose,
   onRestoreFocus,
 }: {
-  organizationId: string;
-  detail: ProjectDetail;
   task: Task;
   onClose: () => void;
   onRestoreFocus: () => void;
 }) {
-  const [projectId, setProjectId] = useState(detail.project.entityId);
+  const { organizationId } = useWorkspaceScope();
+  const source = useLoadedProject(organizationId, task.projectEntityId).resource.data;
+  const [projectId, setProjectId] = useState(task.projectEntityId);
   const [parentId, setParentId] = useState(task.parentTaskEntityId ?? "none");
   const projects = useQuery(projectsQueryOptions(organizationId));
   const destination = useQuery(projectQueryOptions(organizationId, projectId));
   const move = useTasksMutation(organizationId);
   const navigate = useNavigate();
-  // A task can't move under itself or its own subtasks.
-  const excluded = descendantIds(detail.tasks, task.entityId).add(task.entityId);
   const destinationResource = resourceState(destination);
   const { canEdit } = projectCapabilities(
     destinationResource.data?.level,
     !!destinationResource.data?.project.archivedAt,
   );
+  // The task inspector opens this only for a task in its loaded project.
+  if (!source) return null;
+  // A task can't move under itself or its own subtasks.
+  const excluded = descendantIds(source.tasks, task.entityId).add(task.entityId);
   return (
     <TaskMoveDialogView
       title={task.title}
       projectId={projectId}
       parentId={parentId}
-      projects={resourceState(projects).data ?? [detail.project]}
+      projects={resourceState(projects).data ?? [source.project]}
       parents={
         destinationResource.data?.tasks.filter((candidate) => !excluded.has(candidate.entityId)) ??
         []
@@ -77,7 +79,7 @@ export function TaskMoveDialog({
           {
             action: "moveTask",
             organizationId,
-            projectEntityId: detail.project.entityId,
+            projectEntityId: task.projectEntityId,
             taskEntityId: task.entityId,
             destinationProjectEntityId: projectId,
             parentTaskEntityId: parentId === "none" ? null : parentId,

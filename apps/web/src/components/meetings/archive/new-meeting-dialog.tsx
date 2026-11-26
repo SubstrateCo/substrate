@@ -1,9 +1,10 @@
-import { manualMeeting, type MeetingScope } from "@substrate/contracts/meetings";
+import { manualMeeting } from "@substrate/contracts/meetings";
 
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { useState } from "react";
 
+import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { createMeeting } from "@/api/meetings/requests";
 import { formText } from "@/components/auth/form-values";
 import { FormDialog } from "@/components/feedback/form-dialog";
@@ -12,14 +13,13 @@ import { localTimeZone } from "@/lib/format/date";
 import { queryKeys } from "@/queries/keys";
 
 export function NewMeetingDialog({
-  scope,
   onClose,
   onCreated,
 }: {
-  scope: MeetingScope;
   onClose: () => void;
   onCreated: (id: string) => void;
 }) {
+  const { scope } = useMeetingsWorkspace();
   const client = useQueryClient();
   const [requestId] = useState(() => crypto.randomUUID());
   const save = useMutation({

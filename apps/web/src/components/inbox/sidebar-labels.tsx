@@ -1,7 +1,7 @@
 import { filterLabels, type Mailbox, type MailColor } from "@substrate/contracts/mail";
 import type { MailLabelFilter } from "@substrate/contracts/mail/ipc";
 
-import { LabelMenu, type LabelActions } from "./label-menu";
+import { LabelMenu } from "./label-menu";
 import { defaultLabelColor, ink, labelName } from "./mail-colors";
 import { actionRow, RowActions } from "@/components/layout/row-actions";
 import { Button } from "@/components/ui/button";
@@ -18,12 +18,10 @@ export function SidebarLabels({
   colors,
   filter,
   onLabel,
-  actions,
 }: LabelNavigation & {
   boxes: readonly Mailbox[];
   grouped: boolean;
   colors: ReadonlyMap<string, MailColor>;
-  actions: LabelActions;
 }) {
   const groups = boxes
     .map((box) => ({ box, labels: filterLabels(box) }))
@@ -69,7 +67,7 @@ export function SidebarLabels({
                       <span className="truncate text-xs">{labelName(label)}</span>
                     </Button>
                     <RowActions label={`Actions for ${labelName(label)}`}>
-                      <LabelMenu mailboxId={box.id} label={label} {...actions} />
+                      <LabelMenu mailboxId={box.id} label={label} />
                     </RowActions>
                   </div>
                 ))}

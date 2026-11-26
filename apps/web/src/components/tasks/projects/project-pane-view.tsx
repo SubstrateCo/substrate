@@ -77,7 +77,6 @@ function ProjectPaneContent({
   /** Above the tabs' content, such as the read-only notice of an archived project. */
   notice?: ReactNode;
   renderTaskForm: (props: {
-    detail: ProjectDetail;
     parentTaskEntityId: string | undefined;
     onSaved: (id: string) => void;
     onCancel: () => void;
@@ -85,8 +84,7 @@ function ProjectPaneContent({
     renderCreate: (editor: FormDialogEditor) => ReactNode;
   }) => ReactNode;
   renderTaskDetail: (props: {
-    detail: ProjectDetail;
-    task: Task;
+    taskId: string;
     onSubtask: () => void;
     onSelectTask: (id: string) => void;
   }) => ReactNode;
@@ -193,8 +191,7 @@ function ProjectPaneContent({
       >
         {selected ? (
           renderTaskDetail({
-            detail,
-            task: selected,
+            taskId: selected.entityId,
             onSubtask: () => panel.createSubtask(selected.entityId),
             onSelectTask: panel.select,
           })
@@ -248,7 +245,6 @@ function CreateTaskForm({
     ? `In ${detail.project.name}, under ${parentTitle ?? hiddenTaskInline}`
     : `In ${detail.project.name}`;
   return renderTaskForm({
-    detail,
     parentTaskEntityId: creatingParent,
     onSaved,
     onCancel,

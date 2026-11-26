@@ -13,37 +13,21 @@ import { DueDate } from "@/components/time/due-date";
 import { Item, ItemActions, ItemContent, ItemMedia } from "@/components/ui/item";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { workLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { followUpsOptions } from "@/queries/crm/options";
 import { Plus } from "lucide-react";
 
-export function FollowUps({
-  organizationId,
-  entityId,
-  canCreate,
-}: {
-  organizationId: string;
-  entityId: string;
-  canCreate: boolean;
-}) {
+export function FollowUps({ entityId, canCreate }: { entityId: string; canCreate: boolean }) {
   const apps = useOrganizationApps();
   // Follow-ups are CRM tasks: the server reads and creates them only with both apps on.
   if (!apps.enabled("crm") || !apps.enabled("tasks")) return null;
-  return (
-    <EnabledFollowUps organizationId={organizationId} entityId={entityId} canCreate={canCreate} />
-  );
+  return <EnabledFollowUps entityId={entityId} canCreate={canCreate} />;
 }
 
-function EnabledFollowUps({
-  organizationId,
-  entityId,
-  canCreate,
-}: {
-  organizationId: string;
-  entityId: string;
-  canCreate: boolean;
-}) {
+function EnabledFollowUps({ entityId, canCreate }: { entityId: string; canCreate: boolean }) {
+  const { organizationId } = useWorkspaceScope();
   const query = useQuery(followUpsOptions(organizationId, entityId));
   const [creating, setCreating] = useState(false);
   const data = resourceState(query).data;
@@ -124,13 +108,7 @@ function EnabledFollowUps({
           )}
         </>
       )}
-      {creating && (
-        <FollowUpEditor
-          organizationId={organizationId}
-          entityId={entityId}
-          onClose={() => setCreating(false)}
-        />
-      )}
+      {creating && <FollowUpEditor entityId={entityId} onClose={() => setCreating(false)} />}
     </RecordSection>
   );
 }

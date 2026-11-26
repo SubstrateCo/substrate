@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { TurnTranscript } from "./turn-transcript";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import type { Conversation } from "@/lib/messaging/conversations";
 import { hasAgentWorkBridge } from "@/queries/agent-work/bridge";
 import { localWorkEnabled, turnOptions } from "@/queries/agent-work/local";
@@ -8,18 +9,15 @@ import { conversationRequestsOptions } from "@/queries/agent-work/server";
 
 /** The transcript beside a conversation. The turn is read by ID from the home desktop. */
 export function ConversationTurnTranscript({
-  userId,
-  organizationId,
   conversation,
   turnId,
   onClose,
 }: {
-  userId: string;
-  organizationId: string;
   conversation: Conversation;
   turnId: string;
   onClose: () => void;
 }) {
+  const { userId, organizationId } = useWorkspaceScope();
   const bridge = hasAgentWorkBridge();
   const work = useQuery({
     ...turnOptions(userId, organizationId, turnId),
@@ -35,8 +33,6 @@ export function ConversationTurnTranscript({
   else if (work.isSuccess && !turn) unavailable = "This work is not on this desktop.";
   return (
     <TurnTranscript
-      userId={userId}
-      organizationId={organizationId}
       turn={turn}
       turnLoading={work.isPending}
       turnError={work.error}

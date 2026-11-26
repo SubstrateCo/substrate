@@ -14,19 +14,14 @@ import { SelectField } from "@/components/forms/select-field";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Field, FieldContent, FieldLabel } from "@/components/ui/field";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { formatDateTime } from "@/lib/format/date";
 import { messageLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { useInteractionMutation } from "@/queries/context/interactions";
 import { relatedContextOptions } from "@/queries/context/links";
 
-export function PublishInteraction({
-  organizationId,
-  contactEntityId,
-}: {
-  organizationId: string;
-  contactEntityId: string;
-}) {
+export function PublishInteraction({ contactEntityId }: { contactEntityId: string }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -34,25 +29,20 @@ export function PublishInteraction({
         Record from discussion
       </Button>
       {open && (
-        <PublicationEditor
-          organizationId={organizationId}
-          contactEntityId={contactEntityId}
-          onClose={() => setOpen(false)}
-        />
+        <PublicationEditor contactEntityId={contactEntityId} onClose={() => setOpen(false)} />
       )}
     </>
   );
 }
 
 function PublicationEditor({
-  organizationId,
   contactEntityId,
   onClose,
 }: {
-  organizationId: string;
   contactEntityId: string;
   onClose: () => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const related = useQuery(relatedContextOptions(organizationId, contactEntityId));
   const mutation = useInteractionMutation(organizationId);
   const [messageId, setMessageId] = useState("");

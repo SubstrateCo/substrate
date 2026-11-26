@@ -29,21 +29,21 @@ import {
 import { Heading } from "@/components/ui/heading";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { interactionLink } from "@/lib/navigation/record-links";
 import { useInteractionSources } from "@/queries/calendar/interaction-sources";
-import { interactionRecordOptions, useInteractionMutation } from "@/queries/context/interactions";
+import { interactionRecordOptions } from "@/queries/context/interactions";
 import { Ellipsis, Pencil, Trash2 } from "lucide-react";
 
 /** Interaction details in a `PageSheet`. The host renders the contact link, which depends on the page. */
 export function InteractionDetail({
-  organizationId,
   entityId,
   renderContact,
 }: {
-  organizationId: string;
   entityId: string;
   renderContact: (contact: { entityId: string; name: string }) => ReactNode;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const sheet = usePageSheet();
   const query = useQuery(interactionRecordOptions(organizationId, entityId));
   const data = query.data;
@@ -53,7 +53,6 @@ export function InteractionDetail({
     data ? [data.interaction] : [],
     apps.enabled("calendar"),
   );
-  const mutation = useInteractionMutation(organizationId);
   const [change, setChange] = useState<InteractionChange | null>(null);
   const title = sheet?.label ?? "Interaction";
   if (query.error)
@@ -78,10 +77,8 @@ export function InteractionDetail({
   const canEdit = !data.archived && (data.level === "owner" || data.level === "edit");
   // Authors delete their own interactions, and admins delete any.
   const canDelete = !data.archived && interaction.canDelete;
-  const open = (action: InteractionChange["action"]) => {
-    mutation.reset();
+  const open = (action: InteractionChange["action"]) =>
     setChange({ entityId, summary: interaction.summary, action });
-  };
   const kind = interactionTypes[interaction.kind].label;
   return (
     <InteractionFrame>
@@ -137,7 +134,7 @@ export function InteractionDetail({
             <p className="text-sm/relaxed wrap-break-word whitespace-pre-wrap">
               {interaction.summary}
             </p>
-            <MeetingSourceLink organizationId={organizationId} source={sources[entityId]} />
+            <MeetingSourceLink source={sources[entityId]} />
           </div>
           <aside aria-label="Interaction properties">
             <PropertyList>
@@ -165,23 +162,20 @@ export function InteractionDetail({
               <Property label="Logged by">{interaction.actor.displayName}</Property>
             </PropertyList>
           </aside>
-          <FollowUps organizationId={organizationId} entityId={entityId} canCreate={canEdit} />
+          <FollowUps entityId={entityId} canCreate={canEdit} />
           <WorkDiscussions
-            organizationId={organizationId}
             entityId={entityId}
             label="Source messages"
             emptyTitle="No source messages"
           />
           <RecordSection aria-label="Linked records" title="Linked records">
-            <InteractionConnections organizationId={organizationId} connections={data.links} />
+            <InteractionConnections connections={data.links} />
           </RecordSection>
         </div>
       </PageSheetBody>
       {change && (
         <InteractionChangeDialog
-          organizationId={organizationId}
           change={change}
-          mutation={mutation}
           onClose={() => setChange(null)}
           onDone={() => {
             setChange(null);

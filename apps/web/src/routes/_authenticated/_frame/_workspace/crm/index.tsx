@@ -13,15 +13,10 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/crm/")({
 });
 
 function CrmRoute() {
-  const { organizationId } = Route.useRouteContext();
   const { section, recordId } = Route.useSearch();
   return (
     <AppAvailability app="crm">
-      <CrmWorkspace
-        organizationId={organizationId}
-        section={section ?? "deals"}
-        recordId={recordId}
-      />
+      <CrmWorkspace section={section ?? "deals"} recordId={recordId} />
     </AppAvailability>
   );
 }

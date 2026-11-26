@@ -11,6 +11,7 @@ import { Link } from "@tanstack/react-router";
 
 import { useMemo, type ReactNode } from "react";
 
+import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { isAccessFailure } from "@/api/access-failure";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { PageHeader } from "@/components/layout/page-header";
@@ -25,13 +26,8 @@ import {
   parseDateOnly,
 } from "@/lib/format/date";
 import { peopleLabels } from "@/lib/meetings/display";
-import {
-  closedReader,
-  type ChangeMeetingView,
-  type MeetingSearch,
-} from "@/lib/meetings/navigation";
+import { closedReader, type MeetingSearch } from "@/lib/meetings/navigation";
 import { meetingLink } from "@/lib/navigation/record-links";
-import type { MeetingQueries } from "@/queries/meetings/options";
 import { cn } from "cn";
 import { AudioLines, CalendarDays, NotebookPen, Plus } from "lucide-react";
 
@@ -164,33 +160,29 @@ function archiveDescription(total: number, filters: ReactNode, originals?: numbe
 }
 
 export function AllMeetings({
-  queries,
   input,
-  view,
   searchPending,
-  change,
   open,
-  originals,
   filters,
   clearFilters,
   addMeeting,
 }: {
-  queries: MeetingQueries;
   input: MeetingListInput;
-  view: MeetingSearch;
   searchPending: boolean;
-  change: ChangeMeetingView;
   open: (id: string) => void;
-  originals?: number;
   filters: ReactNode;
   clearFilters: () => void;
   addMeeting: () => void;
 }) {
+  const { queries, search: view, change } = useMeetingsWorkspace();
   const columns = useMemo(
     () => meetingColumns(queries.organizationId, view),
     [queries.organizationId, view],
   );
   const query = useQuery({ ...queries.list(input), enabled: !searchPending });
+  const sources = useQuery(queries.sources);
+  // Linked totals stay hidden until the sources load.
+  const originals = sources.isSuccess ? sources.data.reduce((n, c) => n + c.linked, 0) : undefined;
   if (isAccessFailure(query.error)) return <ContentNotice title="Meeting archive unavailable" />;
   // Do not show cached private records after an access failure.
   const page = query.isSuccess ? query.data : undefined;

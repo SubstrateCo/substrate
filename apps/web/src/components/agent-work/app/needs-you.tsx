@@ -7,13 +7,15 @@ import { CallCard } from "../calls/call-card";
 import { RequestCard } from "../requests/request-card";
 import { NeedsYouView, type NeedsYouEntry } from "./needs-you-view";
 import { Timestamp } from "@/components/time/timestamp";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { hiddenConversation } from "@/lib/agent-work/hidden-records";
 import { needsYouItems } from "@/lib/agent-work/needs-you";
 import { agentStatus } from "@/lib/agent-work/status";
 import { agentLink, messageLink } from "@/lib/navigation/record-links";
 import { needsYouOptions } from "@/queries/agent-work/server";
 
-function Place({ organizationId, place }: { organizationId: string; place: AgentRequestPlace }) {
+function Place({ place }: { place: AgentRequestPlace }) {
+  const { organizationId } = useWorkspaceScope();
   if (place.access === "hidden") return <span>{hiddenConversation}</span>;
   if (place.access === "none") return <span>Not from a message</span>;
   return (
@@ -26,7 +28,8 @@ function Place({ organizationId, place }: { organizationId: string; place: Agent
   );
 }
 
-export function NeedsYou({ userId, organizationId }: { userId: string; organizationId: string }) {
+export function NeedsYou() {
+  const { userId, organizationId } = useWorkspaceScope();
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
   const { requests, agents, calls, desktopUpdateRequired } = needsYouItems(needsYou.data);
   const entries: NeedsYouEntry[] = [
@@ -49,15 +52,15 @@ export function NeedsYou({ userId, organizationId }: { userId: string; organizat
     ...calls.map((call) => ({
       key: `call:${call.id}`,
       agentName: call.agent.name,
-      place: <Place organizationId={organizationId} place={call.place} />,
-      body: <CallCard userId={userId} organizationId={organizationId} call={call} />,
+      place: <Place place={call.place} />,
+      body: <CallCard call={call} />,
       agentLink: agentLink(organizationId, call.userAgentId),
     })),
     ...requests.map((request) => ({
       key: request.id,
       agentName: request.agent.name,
-      place: <Place organizationId={organizationId} place={request.place} />,
-      body: <RequestCard userId={userId} organizationId={organizationId} request={request} />,
+      place: <Place place={request.place} />,
+      body: <RequestCard request={request} />,
       agentLink: agentLink(organizationId, request.userAgentId),
     })),
     // Agents that need a decision with no request, such as work that stopped.

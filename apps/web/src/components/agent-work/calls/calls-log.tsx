@@ -1,17 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { CallsLogView } from "./calls-log-view";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { callsLogOptions } from "@/queries/agent-work/calls";
 
-export function CallsLog({
-  userId,
-  organizationId,
-  agentId,
-}: {
-  userId: string;
-  organizationId: string;
-  agentId: string;
-}) {
+export function CallsLog({ agentId }: { agentId: string }) {
+  const { userId, organizationId } = useWorkspaceScope();
   const log = useQuery(callsLogOptions(userId, organizationId, agentId));
   return (
     <CallsLogView

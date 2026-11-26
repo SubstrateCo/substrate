@@ -18,16 +18,10 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/calendar
 });
 
 function CalendarRoute() {
-  const { organizationId } = Route.useRouteContext();
   const { view, date, eventId } = Route.useSearch();
   return (
     <AppAvailability app="calendar">
-      <CalendarWorkspace
-        organizationId={organizationId}
-        view={view ?? "agenda"}
-        date={date}
-        eventId={eventId}
-      />
+      <CalendarWorkspace view={view ?? "agenda"} date={date} eventId={eventId} />
     </AppAvailability>
   );
 }

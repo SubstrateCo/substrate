@@ -2,18 +2,12 @@ import { useQuery } from "@tanstack/react-query";
 
 import { CallerSettingsLoading, CallerSettingsView } from "./caller-settings-view";
 import { ErrorState } from "@/components/feedback/error-state";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { callersOptions, useCallMutations } from "@/queries/agent-work/calls";
 import { currentOrganizationQueryOptions } from "@/queries/organizations/options";
 
-export function CallerSettings({
-  userId,
-  organizationId,
-  agentId,
-}: {
-  userId: string;
-  organizationId: string;
-  agentId: string;
-}) {
+export function CallerSettings({ agentId }: { agentId: string }) {
+  const { userId, organizationId } = useWorkspaceScope();
   const callers = useQuery(callersOptions(userId, organizationId, agentId));
   const organization = useQuery(currentOrganizationQueryOptions(organizationId));
   const { policy, remove } = useCallMutations(userId, organizationId, agentId);

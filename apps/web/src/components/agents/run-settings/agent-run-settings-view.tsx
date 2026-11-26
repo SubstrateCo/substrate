@@ -64,7 +64,7 @@ export function AgentRunSettingsView({
 }: {
   name: string;
   settings: AgentRunSettings;
-  callers?: ReactNode;
+  callers: ReactNode;
   /** Only the desktop app can become an agent's home. */
   canRunHere: boolean;
   moving: boolean;

@@ -6,13 +6,11 @@ import { useState } from "react";
 import { CrmActivity } from "../crm-activity";
 import { crmResource } from "../crm-resource";
 import { accessLabel, dealAmount, outcomeLabel } from "../crm-types";
-import { accountOptions, contactOptions } from "../customer-options";
 import { FollowUps } from "../follow-ups";
 import { InteractionRollup } from "../interaction-rollup";
 import { recordChangeDialog, type RecordChangeDialog } from "../record-change-dialog";
 import { RecordChangeDialogs } from "../record-change-dialogs";
 import { RecordDetailView, RecordDetailLoading } from "../record-detail-view";
-import type { RecordDraft } from "../record-editor";
 import { DealTransition } from "./deal-transition";
 import type { getDeal } from "@/api/crm/requests";
 import { ContactLink } from "@/components/contacts/contact-link";
@@ -20,56 +18,38 @@ import { WorkDiscussions } from "@/components/context/discussions/work-discussio
 import { Tag } from "@/components/feedback/tag";
 import { NotSet, Property } from "@/components/layout/record-section";
 import { Timestamp } from "@/components/time/timestamp";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { formatDueDate } from "@/lib/format/date";
 import { crmLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
-import { contactsOptions } from "@/queries/contacts/options";
-import { accountsOptions, dealOptions, pipelineOptions } from "@/queries/crm/options";
+import { dealOptions } from "@/queries/crm/options";
+import { useActiveStages } from "@/queries/crm/stages";
 import { useRecordMutation } from "@/queries/records/mutations";
 import { ArrowRightLeft } from "lucide-react";
 
-export function DealDetail({
-  organizationId,
-  entityId,
-}: {
-  organizationId: string;
-  entityId: string;
-}) {
+export function DealDetail({ entityId }: { entityId: string }) {
+  const { organizationId } = useWorkspaceScope();
   const query = useQuery(dealOptions(organizationId, entityId));
-  const pipeline = useQuery(pipelineOptions(organizationId));
+  const { pipeline, options: stages } = useActiveStages(organizationId, true);
   const mutation = useRecordMutation(organizationId, "deals");
   const [dialog, setDialog] = useState<RecordChangeDialog | "transition" | null>(null);
-  const [editingRecord, setEditingRecord] = useState<RecordDraft | null>(null);
-  const accounts = useQuery({ ...accountsOptions(organizationId), enabled: dialog === "edit" });
-  const contacts = useQuery({ ...contactsOptions(organizationId), enabled: dialog === "edit" });
   const { data, fallback, staleNotice } = crmResource(query, <RecordDetailLoading kind="deals" />);
   if (!data) return fallback;
-  const { deal, contacts: participants, level } = data;
+  const { deal, account, contacts: participants, level } = data;
   const canEdit = level === "edit" || level === "owner";
   const archived = !!deal.archivedAt;
   const change = recordChangeDialog(dialog);
-  const pipelineData = resourceState(pipeline).data;
-  const stages = (pipelineData ?? [])
-    .filter((stage) => !stage.retired)
-    .map((stage) => ({ value: stage.id, label: stage.name }));
+  const primaryContact = participants.find((entry) => entry.isPrimary)?.contact;
   const stageName = (stageId: string) =>
-    pipelineData?.find((stage) => stage.id === stageId)?.name ?? "Stage unavailable";
+    resourceState(pipeline).data?.find((stage) => stage.id === stageId)?.name ??
+    "Stage unavailable";
   const open = (next: NonNullable<typeof dialog>) => {
     mutation.reset();
-    if (next === "edit") {
-      setEditingRecord({
-        ...deal,
-        contactEntityIds: participants.map(({ contact }) => contact.entityId),
-        primaryContactEntityId:
-          participants.find((entry) => entry.isPrimary)?.contact.entityId ?? null,
-      });
-    }
     setDialog(next);
   };
   return (
     <>
       <RecordDetailView
-        organizationId={organizationId}
         entityId={entityId}
         kind="deals"
         notice={staleNotice}
@@ -96,36 +76,28 @@ export function DealDetail({
               ]
             : []
         }
-        properties={
-          <DealProperties
-            organizationId={organizationId}
-            data={data}
-            stage={stageName(deal.stageId)}
-          />
-        }
+        properties={<DealProperties data={data} stage={stageName(deal.stageId)} />}
       >
-        <FollowUps
-          organizationId={organizationId}
-          entityId={entityId}
-          canCreate={canEdit && !archived}
-        />
-        <InteractionRollup organizationId={organizationId} entityId={entityId} kind="deal" />
-        <WorkDiscussions organizationId={organizationId} entityId={entityId} />
-        <CrmActivity organizationId={organizationId} entityId={entityId} />
+        <FollowUps entityId={entityId} canCreate={canEdit && !archived} />
+        <InteractionRollup entityId={entityId} kind="deal" />
+        <WorkDiscussions entityId={entityId} />
+        <CrmActivity entityId={entityId} />
       </RecordDetailView>
       {change && (
         <RecordChangeDialogs
           dialog={change}
           kind="deals"
-          organizationId={organizationId}
           entityId={entityId}
           name={deal.title}
           archived={archived}
-          record={editingRecord}
-          accounts={accountOptions(resourceState(accounts).data)}
-          contacts={contactOptions(resourceState(contacts).data)}
-          stages={stages}
-          mutation={mutation}
+          record={{
+            ...deal,
+            // The deal shows an account only when the viewer can read it.
+            accountName: deal.accountEntityId ? account.name : undefined,
+            contactEntityIds: participants.map(({ contact }) => contact.entityId),
+            primaryContactEntityId: primaryContact?.entityId ?? null,
+            primaryContactName: primaryContact?.displayName,
+          }}
           onClose={() => setDialog(null)}
         />
       )}
@@ -160,14 +132,13 @@ export function DealDetail({
 }
 
 function DealProperties({
-  organizationId,
   data: { deal, account, contacts, level },
   stage,
 }: {
-  organizationId: string;
   data: Awaited<ReturnType<typeof getDeal>>;
   stage: string;
 }) {
+  const { organizationId } = useWorkspaceScope();
   return (
     <>
       <Property label="Stage">{stage}</Property>

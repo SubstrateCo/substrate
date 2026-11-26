@@ -1,14 +1,13 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { TurnTranscript } from "./turn-transcript";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { homeDeviceNotice } from "@/lib/agent-work/status";
 import { localWorkEnabled, turnOptions } from "@/queries/agent-work/local";
 import { needsYouOptions } from "@/queries/agent-work/server";
 
 /** The transcript beside an agent's activity in the Agents app, also for /agents?turnId links. */
 export function ActivityTurnTranscript({
-  userId,
-  organizationId,
   agentId,
   agentName,
   homedHere,
@@ -16,8 +15,6 @@ export function ActivityTurnTranscript({
   turnId,
   onClose,
 }: {
-  userId: string;
-  organizationId: string;
   agentId: string;
   agentName: string;
   homedHere: boolean;
@@ -25,6 +22,7 @@ export function ActivityTurnTranscript({
   turnId: string;
   onClose: () => void;
 }) {
+  const { userId, organizationId } = useWorkspaceScope();
   const found = useQuery({
     ...turnOptions(userId, organizationId, turnId),
     enabled: localWorkEnabled(userId) && homedHere,
@@ -37,8 +35,6 @@ export function ActivityTurnTranscript({
   else if (found.isSuccess && !turn) unavailable = "This work is no longer on this desktop.";
   return (
     <TurnTranscript
-      userId={userId}
-      organizationId={organizationId}
       turn={turn}
       turnLoading={found.isPending}
       turnError={found.error}

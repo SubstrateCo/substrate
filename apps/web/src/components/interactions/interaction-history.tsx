@@ -11,26 +11,25 @@ import { InteractionRow } from "@/components/interactions/interaction-row";
 import { RecordSection, RecordSectionAction, recordRows } from "@/components/layout/record-section";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { resourceState } from "@/lib/resource-state";
 import { useInteractionSources } from "@/queries/calendar/interaction-sources";
-import { useInteractionMutation, interactionsOptions } from "@/queries/context/interactions";
+import { interactionsOptions } from "@/queries/context/interactions";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 export function InteractionHistory({
-  organizationId,
   contactEntityId,
   canEdit,
   canDelete,
   onCreate,
 }: {
-  organizationId: string;
   contactEntityId: string;
   canEdit: boolean;
   canDelete: boolean;
   onCreate?: () => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const query = useQuery(interactionsOptions(organizationId, contactEntityId));
-  const mutation = useInteractionMutation(organizationId);
   const apps = useOrganizationApps();
   const sources = useInteractionSources(
     organizationId,
@@ -79,11 +78,7 @@ export function InteractionHistory({
                 </InteractionLink>
               }
               source={
-                <MeetingSourceLink
-                  organizationId={organizationId}
-                  source={sources[interaction.entityId]}
-                  className="max-w-full"
-                />
+                <MeetingSourceLink source={sources[interaction.entityId]} className="max-w-full" />
               }
               actions={
                 (canEdit || deletable) && (
@@ -91,10 +86,7 @@ export function InteractionHistory({
                     {canEdit && (
                       <RowAction
                         label="Edit interaction"
-                        onClick={() => {
-                          mutation.reset();
-                          setSelected({ ...interaction, action: "edit" });
-                        }}
+                        onClick={() => setSelected({ ...interaction, action: "edit" })}
                       >
                         <Pencil aria-hidden />
                       </RowAction>
@@ -103,10 +95,7 @@ export function InteractionHistory({
                       <RowAction
                         label="Delete interaction"
                         destructive
-                        onClick={() => {
-                          mutation.reset();
-                          setSelected({ ...interaction, action: "delete" });
-                        }}
+                        onClick={() => setSelected({ ...interaction, action: "delete" })}
                       >
                         <Trash2 aria-hidden />
                       </RowAction>
@@ -119,12 +108,7 @@ export function InteractionHistory({
         })}
       </ol>
       {selected && (selected.action === "edit" ? canEdit : canDelete) && (
-        <InteractionChangeDialog
-          organizationId={organizationId}
-          change={selected}
-          mutation={mutation}
-          onClose={() => setSelected(null)}
-        />
+        <InteractionChangeDialog change={selected} onClose={() => setSelected(null)} />
       )}
     </RecordSection>
   );

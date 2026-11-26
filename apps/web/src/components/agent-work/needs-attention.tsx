@@ -2,6 +2,7 @@ import type { AgentTurnView } from "@substrate/contracts/agent-work";
 
 import { NeedsAttentionCard, type NeedsAttentionAction } from "./needs-attention-card";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { attentionReasonText } from "@/lib/agent-work/status";
 import { useAttentionAction } from "@/queries/agent-work/mutations";
 
@@ -19,8 +20,6 @@ const failures: Record<NeedsAttentionAction, string> = {
  * Discard for those items.
  */
 export function NeedsAttention({
-  userId,
-  organizationId,
   turn,
   agentName,
   uncertainItemIds = [],
@@ -28,12 +27,11 @@ export function NeedsAttention({
 }: {
   /** Render without a card header, inside a row that names the state. */
   inline?: boolean;
-  userId: string;
-  organizationId: string;
   turn: AgentTurnView;
   agentName: string;
   uncertainItemIds?: readonly string[];
 }) {
+  const { userId, organizationId } = useWorkspaceScope();
   // One mutation, so the card shows only the latest attempt and its failure.
   const attempt = useAttentionAction(userId, organizationId);
   const pending = attempt.isPending ? attempt.variables.kind : undefined;

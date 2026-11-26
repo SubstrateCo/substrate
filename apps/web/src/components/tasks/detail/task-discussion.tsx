@@ -4,6 +4,7 @@ import { Link, useNavigate } from "@tanstack/react-router";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { DiscussionPreview } from "@/components/messaging/messages/discussion-preview";
 import { Button } from "@/components/ui/button";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { messageLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { messagesQueryOptions } from "@/queries/messaging/options";
@@ -12,14 +13,12 @@ import { ArrowUpRight, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
 export function TaskDiscussion({
-  organizationId,
   projectEntityId,
   taskEntityId,
   visible,
   conversationId,
   archived = false,
 }: {
-  organizationId: string;
   projectEntityId: string;
   taskEntityId: string;
   visible: boolean;
@@ -27,6 +26,7 @@ export function TaskDiscussion({
   /** An archived task keeps its discussion but cannot start one. */
   archived?: boolean;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const discussion = useTaskDiscussion();
   const navigate = useNavigate();
   const messages = useQuery({

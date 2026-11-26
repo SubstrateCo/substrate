@@ -8,6 +8,7 @@ import { HarnessAccountView, type HarnessAccountState } from "./harness-account-
 import { SignInDialog } from "./sign-in-dialog";
 import { useHarnessSignIn } from "./use-harness-sign-in";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { harnessLabel } from "@/lib/agents/harness-meta";
 import { harnessBridge } from "@/lib/desktop/bridges";
 import { harnessModelsQueryOptions } from "@/queries/agents/models";
@@ -33,25 +34,21 @@ function accountState(
  * the picker's popover.
  */
 export function HarnessAccount({
-  userId,
-  organizationId,
   agentId,
   harness,
   children,
 }: {
-  userId: string;
-  organizationId?: string | null;
   agentId?: string;
   harness: HarnessKind;
   children: (signIn: StartSignIn | undefined) => ReactNode;
 }) {
-  const desktop = !!harnessBridge() && !!organizationId;
-  const org = organizationId ?? "";
+  const { userId, organizationId } = useWorkspaceScope();
+  const desktop = !!harnessBridge();
   const catalog = useQuery({
     ...harnessModelsQueryOptions(userId, organizationId, harness, agentId),
     enabled: desktop,
   });
-  const signIn = useHarnessSignIn(userId, org, desktop);
+  const signIn = useHarnessSignIn(userId, organizationId, desktop);
   const { signOut } = signIn;
   const [signingOut, setSigningOut] = useState(false);
   const label = harnessLabel(harness);

@@ -8,6 +8,7 @@ import { ConversationAgents } from "./conversation-agents";
 import { focusConversationSidebar } from "./conversation-sidebar-focus";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { SharingManager } from "@/components/messaging/sharing/sharing-manager";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import {
   conversationTextLabel,
   humanMembers,
@@ -20,16 +21,13 @@ import { toast } from "sonner";
 type Dialog = "agents" | "leave" | "transfer" | "delete" | "sharing";
 
 export function ConversationActions({
-  organizationId,
   conversation,
-  userId,
   onRemoved,
 }: {
-  organizationId: string;
   conversation: Conversation;
-  userId?: string;
   onRemoved: () => Promise<void> | void;
 }) {
+  const { organizationId, userId } = useWorkspaceScope();
   // A dialog opened from the menu returns focus to its trigger. When the conversation is gone
   // too, the sidebar is the nearest place left.
   const {
@@ -61,7 +59,7 @@ export function ConversationActions({
         leaveLabel={leaveLabel}
         deleteLabel={deleteLabel}
         onSharing={conversation.canShare ? () => open("sharing") : undefined}
-        onAgents={canLeave && userId ? () => open("agents") : undefined}
+        onAgents={canLeave ? () => open("agents") : undefined}
         onLeave={canLeave ? () => open("leave") : undefined}
         {...ownershipActions}
       />
@@ -74,10 +72,8 @@ export function ConversationActions({
           onRestoreFocus={restoreFocus}
         />
       )}
-      {dialog === "agents" && userId && (
+      {dialog === "agents" && (
         <ConversationAgents
-          userId={userId}
-          organizationId={organizationId}
           conversationId={conversation.id}
           members={conversation.members}
           name={name}
@@ -157,7 +153,7 @@ function LeaveConversation({
   onConfirm,
 }: {
   conversation: Conversation;
-  userId?: string;
+  userId: string;
   name: string;
   leaveLabel: string;
   people: ReturnType<typeof humanMembers>;
@@ -167,7 +163,7 @@ function LeaveConversation({
   onRestoreFocus: () => void;
   onConfirm: (newOwnerUserId?: string) => void;
 }) {
-  const owner = !!userId && conversation.createdBy === userId && !!conversation.canManage;
+  const owner = conversation.createdBy === userId && !!conversation.canManage;
   const candidates = people.filter((person) => person.userId !== userId);
   const publicChannel = conversation.kind === "channel" && !conversation.private;
   const dialogProps = { name, leaveLabel, publicChannel, pending, error, onClose, onRestoreFocus };

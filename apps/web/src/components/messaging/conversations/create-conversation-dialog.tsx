@@ -1,23 +1,30 @@
+import { useQuery } from "@tanstack/react-query";
+
 import { CreateConversationDialog as CreateConversationDialogView } from "@/components/messaging/conversations/create-conversation-dialog-view";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import type { Conversation } from "@/lib/messaging/conversations";
-import { recipientEmails, type PickerPerson } from "@/lib/people/people-picker";
+import { recipientEmails } from "@/lib/people/people-picker";
 import { useCreateConversation } from "@/queries/messaging/conversations";
+import { workspacePeopleQueryOptions } from "@/queries/organizations/people";
 
 export function CreateConversationDialog({
-  organizationId,
   kind,
-  people,
   onCreated,
   onClose,
   onRestoreFocus,
 }: {
-  organizationId: string;
   kind: Conversation["kind"];
-  people: readonly PickerPerson[];
   onCreated: (id: string) => void;
   onClose: () => void;
   onRestoreFocus?: () => void;
 }) {
+  const { organizationId, userId } = useWorkspaceScope();
+  const workspacePeople = useQuery(workspacePeopleQueryOptions(organizationId));
+  // Until people load, or if they fail to load, the picker suggests nobody and still accepts
+  // typed email addresses.
+  const people = workspacePeople.isSuccess
+    ? workspacePeople.data.filter((person) => person.id !== userId)
+    : [];
   const create = useCreateConversation(organizationId, kind);
   return (
     <CreateConversationDialogView

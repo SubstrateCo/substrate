@@ -15,12 +15,9 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/agents")
 });
 
 function AgentsRoute() {
-  const { organizationId, session } = Route.useRouteContext();
   const { agentId, turnId, messageId, section } = Route.useSearch();
   return (
     <AgentsWorkspace
-      userId={session.user.id}
-      organizationId={organizationId}
       agentId={agentId}
       turnId={turnId}
       messageId={messageId}

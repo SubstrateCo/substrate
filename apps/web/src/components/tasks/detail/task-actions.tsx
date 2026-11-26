@@ -6,18 +6,12 @@ import { TaskActionsMenu } from "./task-actions-menu";
 import { TaskMoveDialog } from "./task-move-dialog";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
-import type { ProjectDetail, Task } from "@/components/tasks/types";
+import type { Task } from "@/components/tasks/types";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useTasksMutation } from "@/queries/tasks/mutations";
 
-export function TaskActions({
-  organizationId,
-  detail,
-  task,
-}: {
-  organizationId: string;
-  detail: ProjectDetail;
-  task: Task;
-}) {
+export function TaskActions({ task }: { task: Task }) {
+  const { organizationId } = useWorkspaceScope();
   const trigger = useRef<HTMLButtonElement>(null);
   const { value: action, open, close, restoreFocus } = useStateDialog<"move" | "delete">(trigger);
   const remove = useTasksMutation(organizationId);
@@ -33,13 +27,7 @@ export function TaskActions({
         }}
       />
       {action === "move" && (
-        <TaskMoveDialog
-          organizationId={organizationId}
-          detail={detail}
-          task={task}
-          onClose={close}
-          onRestoreFocus={restoreFocus}
-        />
+        <TaskMoveDialog task={task} onClose={close} onRestoreFocus={restoreFocus} />
       )}
       {action === "delete" && (
         <ConfirmDialog
@@ -57,14 +45,14 @@ export function TaskActions({
               {
                 action: "deleteTask",
                 organizationId,
-                projectEntityId: detail.project.entityId,
+                projectEntityId: task.projectEntityId,
                 taskEntityId: task.entityId,
               },
               {
                 onSuccess: () =>
                   void navigate({
                     to: "/tasks",
-                    search: { workspaceId: organizationId, projectId: detail.project.entityId },
+                    search: { workspaceId: organizationId, projectId: task.projectEntityId },
                   }),
               },
             )

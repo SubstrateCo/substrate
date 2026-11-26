@@ -11,24 +11,24 @@ import {
 import { Composer } from "@/components/messaging/composer/composer-view";
 import type { WorkspaceReference } from "@/components/messaging/references/entity-reference";
 import { Button } from "@/components/ui/button";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useMessageMutations } from "@/queries/messaging/message-mutations";
 
 const draftKey = "edit";
 
 /** Edits a message in place with the message composer. */
 export function EditMessageComposer({
-  organizationId,
   message,
   context,
   onClose,
 }: {
-  organizationId: string;
   message: Message;
   context: MessageContextState;
   onClose: () => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const [body, setBody] = useState(message.body);
-  const existing = useMessageReferences(organizationId, context);
+  const existing = useMessageReferences(context);
   // The composer reads these once on mount, so the message's chips render before any edit.
   const [references] = useState(
     () => new Map<string, WorkspaceReference[]>([[draftKey, existing]]),
@@ -71,7 +71,6 @@ export function EditMessageComposer({
           }
           renderReferences={(activeReference, onInsert) => (
             <ReferencePicker
-              organizationId={organizationId}
               conversationId={message.conversationId}
               activeReference={activeReference}
               onInsert={onInsert}

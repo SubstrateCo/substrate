@@ -2,9 +2,11 @@ import { Link } from "@tanstack/react-router";
 
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { Button } from "@/components/ui/button";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { ArrowRight, Bot, ListTodo, MessageCircle } from "lucide-react";
 
-export function HomeEmptyWork({ organizationId }: { organizationId: string }) {
+export function HomeEmptyWork() {
+  const { organizationId } = useWorkspaceScope();
   const search = { workspaceId: organizationId };
   return (
     <div className="space-y-6 py-3">

@@ -12,22 +12,22 @@ import { SelectField } from "@/components/forms/select-field";
 import { RecordSection, RecordSectionAction, recordRows } from "@/components/layout/record-section";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { Item, ItemActions, ItemContent, ItemDescription } from "@/components/ui/item";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useRecordMutation } from "@/queries/records/mutations";
 import { Pencil, Plus, Trash2 } from "lucide-react";
 
 type Identifier = Awaited<ReturnType<typeof getContact>>["identifiers"][number];
 
 export function ContactMethods({
-  organizationId,
   contactEntityId,
   identifiers,
   canEdit,
 }: {
-  organizationId: string;
   contactEntityId: string;
   identifiers: Identifier[];
   canEdit: boolean;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const [dialog, setDialog] = useState<
     { kind: "edit"; record?: Identifier } | { kind: "remove"; record: Identifier } | null
   >(null);
@@ -92,7 +92,6 @@ export function ContactMethods({
       </ul>
       {dialog?.kind === "edit" && (
         <ContactMethodEditor
-          organizationId={organizationId}
           contactEntityId={contactEntityId}
           record={dialog.record}
           onClose={() => setDialog(null)}
@@ -121,16 +120,15 @@ export function ContactMethods({
 }
 
 function ContactMethodEditor({
-  organizationId,
   contactEntityId,
   record,
   onClose,
 }: {
-  organizationId: string;
   contactEntityId: string;
   record?: Identifier;
   onClose: () => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const mutation = useRecordMutation(organizationId, "contacts");
   const [type, setType] = useState<ContactIdentifierType>(record?.type ?? "email");
   return (

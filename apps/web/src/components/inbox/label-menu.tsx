@@ -10,6 +10,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import { useState } from "react";
 
+import { useInboxWorkspace } from "./inbox-workspace-context";
 import { defaultLabelColor, ink, labelName } from "./mail-colors";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,12 +32,8 @@ export type LabelActions = {
   onLabelVisibility: (mailbox: string, change: LabelDisplayChange) => Promise<void>;
 };
 const modeNames = { show: "Show", unread: "Show if unread", hide: "Hide" };
-export function LabelMenu({
-  mailboxId,
-  label,
-  onLabelColor,
-  onLabelVisibility,
-}: LabelActions & { mailboxId: string; label: MailLabel }) {
+export function LabelMenu({ mailboxId, label }: { mailboxId: string; label: MailLabel }) {
+  const { onLabelColor, onLabelVisibility } = useInboxWorkspace().labelActions;
   const [colors, setColors] = useState(false);
   const save = useMutation({
     mutationFn: (work: () => Promise<void>) => work(),

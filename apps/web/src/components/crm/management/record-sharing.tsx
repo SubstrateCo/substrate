@@ -12,6 +12,7 @@ import { FormMessage } from "@/components/feedback/form-message";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { SelectField } from "@/components/forms/select-field";
 import { FieldLegend, FieldSet } from "@/components/ui/field";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { crmGrantsOptions } from "@/queries/crm/management";
 import { useCrmMutation } from "@/queries/crm/mutations";
 
@@ -22,7 +23,6 @@ const permissions = Object.entries(accessLevelLabels).map(([value, label]) => ({
 }));
 
 export type RecordSharingProps = {
-  organizationId: string;
   entityId: string;
   name: string;
   /** The record kind in copy, such as "deal". */
@@ -33,7 +33,6 @@ export type RecordSharingProps = {
 };
 
 export function RecordSharing({
-  organizationId,
   entityId,
   name,
   noun,
@@ -41,8 +40,9 @@ export function RecordSharing({
   onClose,
   onRestoreFocus,
 }: RecordSharingProps) {
+  const { organizationId } = useWorkspaceScope();
   const mutation = useCrmMutation(organizationId);
-  const directory = useRecordPeople(organizationId);
+  const directory = useRecordPeople();
   const grants = useQuery({
     ...crmGrantsOptions(organizationId, entityId),
     enabled: level === "owner",

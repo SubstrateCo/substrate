@@ -20,6 +20,7 @@ import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useAgentConfigurationMutations } from "@/queries/agents/configuration-mutations";
 import {
   localAgentConfiguration,
@@ -75,20 +76,17 @@ type ConfigurationDialog =
   | { kind: "reset" };
 
 export function AgentConfiguration({
-  userId,
-  organizationId,
   agentId,
   harness,
   section,
   defaults,
 }: {
-  userId: string;
-  organizationId?: string | null;
   agentId?: string;
   harness: HarnessKind;
   section: AgentSection;
   defaults: boolean;
 }) {
+  const { userId, organizationId } = useWorkspaceScope();
   const local = localAgentConfiguration(userId, organizationId, agentId, harness);
   const available = !!local;
   const container = useRef<HTMLDivElement>(null);

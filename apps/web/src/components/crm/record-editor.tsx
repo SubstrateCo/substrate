@@ -7,6 +7,8 @@ import { FormDialog } from "@/components/feedback/form-dialog";
 import { DateField } from "@/components/forms/date-field";
 import { NativeField } from "@/components/forms/native-form";
 import { SelectField } from "@/components/forms/select-field";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
+import { useActiveStages } from "@/queries/crm/stages";
 import type { RecordWrite } from "@/queries/records/mutations";
 
 export type RecordDraft = {
@@ -19,6 +21,8 @@ export type RecordDraft = {
   summary?: string;
   notes?: string | null;
   accountEntityId?: string | null;
+  /** The account's name, shown in the picker before its options load. */
+  accountName?: string;
   stageId?: string;
   amount?: string | null;
   currency?: string | null;
@@ -26,15 +30,13 @@ export type RecordDraft = {
   version?: number;
   contactEntityIds?: string[];
   primaryContactEntityId?: string | null;
+  /** The primary contact's name, shown in the picker before its options load. */
+  primaryContactName?: string;
 };
 
 export function RecordEditor({
   kind,
-  organizationId,
-  record,
-  accounts,
-  contacts,
-  stages,
+  record: openedRecord,
   defaultCurrency,
   pending,
   error,
@@ -42,18 +44,19 @@ export function RecordEditor({
   onSubmit,
 }: {
   kind: CrmKind;
-  organizationId: string;
   record?: RecordDraft;
-  accounts: { value: string; label: string }[];
-  contacts: { value: string; label: string }[];
-  stages: { value: string; label: string }[];
   pending: boolean;
   error: Error | null;
   defaultCurrency?: string | null;
   onClose: () => void;
   onSubmit: (write: RecordWrite) => void;
 }) {
+  const { organizationId } = useWorkspaceScope();
   const singular = singularLabels[kind];
+  // Keep the record as opened, so a refetch does not change the version this edit expects.
+  const [record] = useState(openedRecord);
+  // Creators load the pipeline before they open the editor, so the first stage is ready here.
+  const { options: stages } = useActiveStages(organizationId, kind === "deals");
   const [accountId, setAccountId] = useState(record?.accountEntityId ?? "");
   const [contactId, setContactId] = useState(record?.primaryContactEntityId ?? "");
   const [stageId, setStageId] = useState(record?.stageId ?? stages.at(0)?.value ?? "");
@@ -141,20 +144,18 @@ export function RecordEditor({
         <>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <CustomerPicker
-              organizationId={organizationId}
               kind="accounts"
               label="Account"
               value={accountId}
               onChange={setAccountId}
-              initialLabel={accounts.find((account) => account.value === accountId)?.label}
+              initialLabel={record?.accountName}
             />
             <CustomerPicker
-              organizationId={organizationId}
               kind="contacts"
               label="Primary contact"
               value={contactId}
               onChange={setContactId}
-              initialLabel={contacts.find((contact) => contact.value === contactId)?.label}
+              initialLabel={record?.primaryContactName}
             />
           </div>
           <SelectField

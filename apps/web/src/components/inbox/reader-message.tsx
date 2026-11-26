@@ -4,10 +4,10 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useState, type ComponentProps } from "react";
 
+import { useInboxWorkspace } from "./inbox-workspace-context";
 import { MailBodyContent } from "./mail-body-content";
 import { MessageLabels } from "./message-labels";
-import type { ReadPicture } from "./newsletter";
-import { ReaderActionBar, type ReaderActions } from "./reader-actions";
+import { ReaderActionBar } from "./reader-actions";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Tag } from "@/components/feedback/tag";
@@ -15,29 +15,19 @@ import { Timestamp } from "@/components/time/timestamp";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { snippetText } from "@/lib/mail/body-text";
-import type { localMailQueries } from "@/queries/mail/options";
+import { localMailQueries } from "@/queries/mail/options";
 import { ChevronDown } from "lucide-react";
 
 type MessageProps = {
   message: MailHeader;
   mailbox: Mailbox;
-  bodyOptions: ReturnType<typeof localMailQueries>["body"];
-  readPicture: ReadPicture;
-  actions: ReaderActions;
   reading: boolean;
   current: boolean;
 };
 
-function MessageContent({
-  message,
-  mailbox,
-  bodyOptions,
-  readPicture,
-  actions,
-  reading,
-  current,
-}: MessageProps) {
-  const body = useQuery(bodyOptions(message.id));
+function MessageContent({ message, mailbox, reading, current }: MessageProps) {
+  const { api, scope } = useInboxWorkspace();
+  const body = useQuery(localMailQueries(api, scope).body(message.id));
   const [element, setElement] = useState<HTMLDivElement | null>(null);
   return (
     <div ref={setElement} className="grid min-w-0 gap-3">
@@ -53,14 +43,12 @@ function MessageContent({
           message={message}
           mailbox={mailbox}
           readingElement={reading && body.isSuccess && body.data ? element : null}
-          {...actions}
         />
       </div>
       <MessageBody
         pending={body.isPending}
         body={body.isError ? undefined : body.data}
         id={message.id}
-        readPicture={readPicture}
       />
     </div>
   );

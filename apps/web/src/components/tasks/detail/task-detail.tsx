@@ -12,34 +12,36 @@ import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { useRegisterDraft } from "@/components/feedback/unsaved-drafts-context";
 import { TaskDetail as TaskDetailView } from "@/components/tasks/detail/task-detail-view";
-import type { ProjectDetail, Task } from "@/components/tasks/types";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { workLink } from "@/lib/navigation/record-links";
-import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
 import { useTaskUpdate } from "@/queries/tasks/mutations";
+import { useLoadedProject } from "@/queries/tasks/use-project";
 import { toast } from "sonner";
 
 export function TaskDetail({
-  organizationId,
-  detail,
-  capabilities,
-  task,
+  projectEntityId,
+  taskId,
   onSelectTask,
   onSubtask,
   visible,
 }: {
-  organizationId: string;
-  detail: ProjectDetail;
-  capabilities: ProjectCapabilities;
-  task: Task;
+  projectEntityId: string;
+  taskId: string;
   onSelectTask: (id: string) => void;
   onSubtask: () => void;
   visible: boolean;
 }) {
-  const update = useTaskUpdate(organizationId, detail.project.entityId);
+  const { organizationId } = useWorkspaceScope();
+  const { resource, capabilities } = useLoadedProject(organizationId, projectEntityId);
+  const update = useTaskUpdate(organizationId, projectEntityId);
   const [editDirty, setEditDirty] = useState(false);
   const active = useContext(TaskInspectorActive);
   const dirty = active && editDirty;
-  useRegisterDraft(task.entityId, dirty);
+  useRegisterDraft(taskId, dirty);
+  const detail = resource.data;
+  const task = detail?.tasks.find((candidate) => candidate.entityId === taskId);
+  // The project pane renders this only for a task in its loaded project.
+  if (!detail || !task) return null;
   return (
     <>
       <UnsavedChangesGuard
@@ -74,24 +76,13 @@ export function TaskDetail({
               label="Copy task link"
               link={workLink(organizationId, detail.project.entityId, task.entityId)}
             />
-            {capabilities.canEdit && (
-              <TaskActions organizationId={organizationId} detail={detail} task={task} />
-            )}
+            {capabilities.canEdit && <TaskActions task={task} />}
           </>
         }
-        links={
-          <TaskLinks
-            organizationId={organizationId}
-            detail={detail}
-            canEdit={capabilities.canEdit}
-            task={task}
-            onSelectTask={onSelectTask}
-          />
-        }
+        links={<TaskLinks task={task} onSelectTask={onSelectTask} />}
         renderEditor={(onDone) => (
           <TaskForm
-            organizationId={organizationId}
-            detail={detail}
+            projectEntityId={projectEntityId}
             task={task}
             onDirtyChange={setEditDirty}
             onCancel={() => {
@@ -108,7 +99,6 @@ export function TaskDetail({
         <TaskDiscussion
           conversationId={task.discussionConversationId ?? null}
           visible={visible}
-          organizationId={organizationId}
           projectEntityId={detail.project.entityId}
           taskEntityId={task.entityId}
           archived={!!detail.project.archivedAt}
@@ -123,11 +113,7 @@ export function TaskDetail({
           canEdit={capabilities.canEdit}
           visible={visible}
         />
-        <TaskContext
-          visible={visible}
-          organizationId={organizationId}
-          taskEntityId={task.entityId}
-        />
+        <TaskContext visible={visible} taskEntityId={task.entityId} />
       </TaskDetailView>
     </>
   );

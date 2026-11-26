@@ -2,28 +2,26 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
 import { AgentMembersDialog } from "./actions/agent-members-dialog";
+import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { conversationAgentOptions, type ConversationMember } from "@/lib/messaging/conversations";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 import { useConversationAgents } from "@/queries/messaging/agents";
 import { toast } from "sonner";
 
 export function ConversationAgents({
-  userId,
-  organizationId,
   conversationId,
   members,
   name,
   onClose,
   onRestoreFocus,
 }: {
-  userId: string;
-  organizationId: string;
   conversationId: string;
   members: readonly ConversationMember[];
   name: string;
   onClose: () => void;
   onRestoreFocus?: () => void;
 }) {
+  const { organizationId, userId } = useWorkspaceScope();
   const catalog = useQuery(agentCatalogQueryOptions(userId));
   const navigate = useNavigate();
   // The server sets agentId only for the viewer's own agents, so other people's agents stay out.
