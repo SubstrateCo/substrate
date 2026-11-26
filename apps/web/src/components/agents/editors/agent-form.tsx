@@ -1,6 +1,5 @@
 import type { AgentConfiguration, SaveAgentInput } from "@substrate/contracts/agents";
 import { saveAgentInput } from "@substrate/contracts/agents";
-import type { HarnessKind } from "@substrate/contracts/harness";
 
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
@@ -72,12 +71,8 @@ type AgentFormProps = {
   error?: Error | null;
   /** Clears the save mutation's error. */
   onResetError?: () => void;
-  renderConfiguration: (props: {
-    harness: HarnessKind;
-    section: AgentSection;
-    defaults: boolean;
-    agentId?: string;
-  }) => ReactNode;
+  /** The skills or MCP servers of the saved runtime, shown in those sections. */
+  configuration?: ReactNode;
 };
 
 /**
@@ -98,7 +93,7 @@ export function AgentForm({
   onSave,
   error: saveError,
   onResetError,
-  renderConfiguration,
+  configuration,
 }: AgentFormProps) {
   const error = saveError
     ? actionErrorMessage(saveError, "We couldn’t save this agent. Try again.")
@@ -353,12 +348,7 @@ export function AgentForm({
                     )
                   }
                 </form.Subscribe>
-                {renderConfiguration({
-                  harness: agent.harness,
-                  section,
-                  defaults: agent.useStartupDefaults,
-                  agentId: agent.id,
-                })}
+                {configuration}
               </>
             )}
             <div hidden={section !== "run"}>{runSettings}</div>

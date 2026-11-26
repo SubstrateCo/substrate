@@ -4,6 +4,7 @@ import { type ReactNode } from "react";
 
 import { CatalogRow } from "../catalog/catalog-row";
 import { openingName } from "../editors/skill-name";
+import { configurationSections } from "./configuration-sections";
 import { StartupSkills } from "./startup-configuration";
 import { SettingsList, SettingsSection } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
@@ -21,7 +22,7 @@ function SkillList({
   onDelete: (skill: { id: string; name: string }) => void;
 }) {
   return (
-    <SettingsList title="Your skills">
+    <SettingsList title={configurationSections.skills.listTitle}>
       {skills.length ? (
         skills.map((item) => {
           // The list, the editor and the delete prompt all name the skill by its file name.
@@ -80,8 +81,8 @@ export function SkillsSection({
 }) {
   return (
     <SettingsSection
-      title="Skills"
-      description="How-to guides the agent opens when a task matches. Each skill is a file in its folder on its desktop."
+      title={configurationSections.skills.title}
+      description={configurationSections.skills.description}
       actions={
         <>
           {refresh}

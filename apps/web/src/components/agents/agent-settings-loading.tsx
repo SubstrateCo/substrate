@@ -1,6 +1,9 @@
 import { agentTriggers } from "@substrate/contracts/agents";
 
-import { CatalogRowLoading } from "@/components/agents/catalog/catalog-row";
+import {
+  ConfigurationListLoading,
+  configurationSections,
+} from "@/components/agents/device/configuration-sections";
 import {
   GeneralSettingsLayout,
   InstructionsSettingsLayout,
@@ -12,7 +15,7 @@ import {
 } from "@/components/agents/run-settings/agent-run-settings-view";
 import { CallerSettingsLoading } from "@/components/agents/run-settings/caller-settings-view";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
-import { SettingsList, SettingsSection } from "@/components/layout/settings-section";
+import { SettingsSection } from "@/components/layout/settings-section";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { AgentSettingsSection } from "@/lib/agent-work/agent-sections";
 
@@ -47,17 +50,10 @@ export function AgentSettingsLoading({ section }: { section: AgentSettingsSectio
   } else if (section === "skills" || section === "mcps") {
     content = (
       <SettingsSection
-        title={section === "skills" ? "Skills" : "MCP servers"}
-        description={
-          section === "skills"
-            ? "How-to guides the agent opens when a task matches. Each skill is a file in its folder on its desktop."
-            : "Tool servers this agent can use. Substrate keeps them on its desktop and gives them to the agent at the start of each session."
-        }
+        title={configurationSections[section].title}
+        description={configurationSections[section].description}
       >
-        <SettingsList title={section === "skills" ? "Your skills" : "Your servers"}>
-          <CatalogRowLoading picture={section === "mcps"} />
-          <CatalogRowLoading picture={section === "mcps"} />
-        </SettingsList>
+        <ConfigurationListLoading section={section} />
       </SettingsSection>
     );
   } else {

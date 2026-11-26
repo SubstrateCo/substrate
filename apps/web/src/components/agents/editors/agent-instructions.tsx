@@ -10,6 +10,19 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "cn";
 import { ChevronRight } from "lucide-react";
 
+function instructionsDescription(
+  file: string,
+  { creating, defaults }: { creating: boolean; defaults: boolean },
+) {
+  if (creating)
+    return defaults
+      ? "Its role, tone, and limits. Added after the built-in Substrate rules."
+      : "Its role, tone, and limits.";
+  return defaults
+    ? `Substrate writes these to ${file} after the built-in rules. New sessions use them.`
+    : `Substrate writes these to ${file}. New sessions use them.`;
+}
+
 export function AgentInstructions({
   harness,
   name,
@@ -37,16 +50,10 @@ export function AgentInstructions({
   onChange: (value: string) => void;
 }) {
   const id = useId();
-  const file = harnessInstructionsFiles[harness];
-  let description;
-  if (creating)
-    description = defaults
-      ? "Its role, tone, and limits. Added after the built-in Substrate rules."
-      : "Its role, tone, and limits.";
-  else
-    description = defaults
-      ? `Substrate writes these to ${file} after the built-in rules. New sessions use them.`
-      : `Substrate writes these to ${file}. New sessions use them.`;
+  const description = instructionsDescription(harnessInstructionsFiles[harness], {
+    creating,
+    defaults,
+  });
   return (
     <div className="grid gap-3">
       <Field data-invalid={invalid}>

@@ -1,7 +1,7 @@
-import { CatalogRowLoading } from "../catalog/catalog-row";
 import type { AgentSection } from "../editors/agent-form";
+import { ConfigurationListLoading } from "./configuration-sections";
 import { ErrorState } from "@/components/feedback/error-state";
-import { SettingsList, SettingsNote } from "@/components/layout/settings-section";
+import { SettingsNote } from "@/components/layout/settings-section";
 import { Laptop } from "lucide-react";
 
 export function ConfigurationStatus({
@@ -31,10 +31,7 @@ export function ConfigurationStatus({
       {available && pending && (
         <div role="status" aria-label="Reading the agent’s files">
           <div aria-hidden="true">
-            <SettingsList title={section === "skills" ? "Your skills" : "Your servers"}>
-              <CatalogRowLoading picture={section === "mcps"} />
-              <CatalogRowLoading picture={section === "mcps"} />
-            </SettingsList>
+            <ConfigurationListLoading section={section} />
           </div>
         </div>
       )}

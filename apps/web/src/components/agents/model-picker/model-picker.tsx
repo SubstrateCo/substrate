@@ -30,12 +30,12 @@ type Choice = HarnessModel & { harness: HarnessKind; saved?: boolean };
 
 const defaultModelLabel = "Default model";
 
-function includeSavedModel(choices: Choice[], harness: HarnessKind, model: string | undefined) {
+/** The choices with the saved model added when no catalog lists it, and that model. */
+function withSavedModel(choices: Choice[], harness: HarnessKind, model: string | undefined) {
   const saved = choices.find((choice) => choice.harness === harness && choice.id === model);
-  if (saved || !model) return saved;
+  if (saved || !model) return { choices, saved };
   const fallback = { id: model, name: model, harness, saved: true };
-  choices.push(fallback);
-  return fallback;
+  return { choices: [...choices, fallback], saved: fallback };
 }
 
 /** A short state in the picker footer, such as "Open the desktop app". */
@@ -324,7 +324,7 @@ export function ModelPicker({
   const [search, setSearch] = useState("");
   const browseHarness = browseOverride ?? harness;
   const query = search.trim();
-  const { available, options, choices, groups, selected, refreshing, refresh } = useModelCatalogs({
+  const catalogs = useModelCatalogs({
     userId,
     organizationId,
     agentId,
@@ -333,7 +333,9 @@ export function ModelPicker({
     browseHarness,
     searching: !!query,
   });
-  const modelName = includeSavedModel(choices, harness, model)?.name ?? defaultModelLabel;
+  const { available, options, groups, selected, refreshing, refresh } = catalogs;
+  const { choices, saved } = withSavedModel(catalogs.choices, harness, model);
+  const modelName = saved?.name ?? defaultModelLabel;
   const label = harnessLabel(harness);
   const selectedLabel = harnessLabel(browseHarness);
   function select(nextHarness: HarnessKind, id: string) {

@@ -1,8 +1,4 @@
-import type {
-  HarnessAuthMethod,
-  HarnessKind,
-  HarnessSignInState,
-} from "@substrate/contracts/harness";
+import type { HarnessAuthMethod, HarnessKind } from "@substrate/contracts/harness";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 
@@ -11,7 +7,6 @@ import { useEffect, useState } from "react";
 import type { SignInDialogState } from "./sign-in-dialog";
 import { harnessLabel } from "@/lib/agents/harness-meta";
 import { harnessSignInQueryOptions, useHarnessSignInMutations } from "@/queries/agents/sign-in";
-import { queryKeys } from "@/queries/keys";
 import { toast } from "sonner";
 
 type ActiveSignIn = { harness: HarnessKind; method: HarnessAuthMethod; loginId?: string };
@@ -21,13 +16,10 @@ export function useHarnessSignIn(userId: string, org: string, desktop: boolean) 
   const client = useQueryClient();
   const { start, send, cancel, signOut, refreshCatalogs } = useHarnessSignInMutations(userId, org);
   const [active, setActive] = useState<ActiveSignIn>();
-  const signInKey = queryKeys.harnessSignIn(userId, org, active?.loginId ?? "");
-  const progress = useQuery({
-    ...harnessSignInQueryOptions(userId, org, active?.loginId, () =>
-      client.getQueryData<HarnessSignInState>(signInKey),
-    ),
-    enabled: desktop && !!active?.loginId,
-  });
+  const progressOptions = harnessSignInQueryOptions(userId, org, active?.loginId, () =>
+    client.getQueryData(progressOptions.queryKey),
+  );
+  const progress = useQuery({ ...progressOptions, enabled: desktop && !!active?.loginId });
   const status = progress.data?.status;
   const activeLabel = active ? harnessLabel(active.harness) : "";
 
@@ -60,11 +52,15 @@ export function useHarnessSignIn(userId: string, org: string, desktop: boolean) 
     start.reset();
   }
 
-  const dialogState: SignInDialogState | undefined = active && {
-    type: active.method.type,
-    status: start.isError || progress.isError ? "failed" : (status ?? "starting"),
-    output: progress.data?.output ?? "",
-  };
+  // A finished sign-in keeps `active` until the next one starts, but has no dialog.
+  const dialogState: SignInDialogState | undefined =
+    active && open
+      ? {
+          type: active.method.type,
+          status: start.isError || progress.isError ? "failed" : (status ?? "starting"),
+          output: progress.data?.output ?? "",
+        }
+      : undefined;
   return {
     open,
     activeLabel,

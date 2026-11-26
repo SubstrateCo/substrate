@@ -1,11 +1,10 @@
 import type { SaveAgentInput } from "@substrate/contracts/agents";
-import type { HarnessKind } from "@substrate/contracts/harness";
 
 import { useQuery } from "@tanstack/react-query";
 
 import { AgentSettingsLoading } from "./agent-settings-loading";
 import { AgentConfiguration } from "./device/agent-configuration";
-import { AgentForm, type AgentSection } from "./editors/agent-form";
+import { AgentForm } from "./editors/agent-form";
 import { AgentPicture } from "./editors/agent-picture";
 import { AgentRunSettings } from "./run-settings/agent-run-settings";
 import { DangerZoneCard } from "@/components/feedback/danger-zone-card";
@@ -56,27 +55,6 @@ export function AgentSettings({
       },
     });
   }
-  const renderConfiguration = ({
-    harness,
-    section: configured,
-    defaults,
-    agentId: configuredAgentId,
-  }: {
-    harness: HarnessKind;
-    section: AgentSection;
-    defaults: boolean;
-    agentId?: string;
-  }) => (
-    <AgentConfiguration
-      key={`${harness}/${configured}`}
-      userId={userId}
-      organizationId={organizationId}
-      agentId={configuredAgentId}
-      harness={harness}
-      section={configured}
-      defaults={defaults}
-    />
-  );
   return (
     <section aria-label="Agent settings" className="grid gap-8">
       {catalog.error && (
@@ -103,7 +81,19 @@ export function AgentSettings({
               image={agent.image}
             />
           }
-          renderConfiguration={renderConfiguration}
+          configuration={
+            (section === "skills" || section === "mcps") && (
+              <AgentConfiguration
+                key={`${agent.harness}/${section}`}
+                userId={userId}
+                organizationId={organizationId}
+                agentId={agent.id}
+                harness={agent.harness}
+                section={section}
+                defaults={agent.useStartupDefaults}
+              />
+            )
+          }
           pending={pending}
           onSave={onSave}
           // The mutation outlives each agent's form; show only this agent's failure.
@@ -148,7 +138,6 @@ export function AgentSettings({
         <AgentForm
           userId={userId}
           organizationId={organizationId}
-          renderConfiguration={renderConfiguration}
           pending={pending}
           error={save.variables && !save.variables.id ? save.error : null}
           onResetError={() => save.reset()}

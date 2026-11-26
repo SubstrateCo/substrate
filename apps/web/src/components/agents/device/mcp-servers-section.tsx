@@ -3,6 +3,7 @@ import { maxHarnessMcpServers, type HarnessMcpServer } from "@substrate/contract
 import { type ReactNode } from "react";
 
 import { CatalogRow } from "../catalog/catalog-row";
+import { configurationSections } from "./configuration-sections";
 import { McpServerRow } from "./startup-configuration";
 import { SettingsList, SettingsNote, SettingsSection } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
@@ -42,8 +43,8 @@ export function McpServersSection({
   const full = mcpServerLimitReached(servers);
   return (
     <SettingsSection
-      title="MCP servers"
-      description="Tool servers this agent can use. Substrate keeps them on its desktop and gives them to the agent at the start of each session."
+      title={configurationSections.mcps.title}
+      description={configurationSections.mcps.description}
       actions={
         <>
           {refresh}
@@ -66,7 +67,7 @@ export function McpServersSection({
         </SettingsList>
       )}
       {scanned && (
-        <SettingsList title="Your servers">
+        <SettingsList title={configurationSections.mcps.listTitle}>
           {servers.length ? (
             servers.map((server) => (
               <CatalogRow

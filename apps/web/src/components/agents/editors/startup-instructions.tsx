@@ -4,6 +4,8 @@ import {
   type HarnessKind,
 } from "@substrate/contracts/harness";
 
+import { useId } from "react";
+
 import { CodeBlock, CodeBlockContent } from "@/components/ui/code-block";
 import { Heading } from "@/components/ui/heading";
 
@@ -25,10 +27,12 @@ export function StartupInstructions({
     id: agentId ?? "Assigned when saved",
     organizationId: organizationId ?? "Active workspace",
   }).trimEnd();
+  // The create dialog and the instructions settings can both show this at once.
+  const titleId = useId();
   return (
-    <section aria-labelledby="startup-instructions-title" className="grid gap-3">
+    <section aria-labelledby={titleId} className="grid gap-3">
       <div className="space-y-1">
-        <Heading level={4} variant="inherit" id="startup-instructions-title" className="sr-only">
+        <Heading level={4} variant="inherit" id={titleId} className="sr-only">
           Substrate instructions
         </Heading>
         <p className="text-xs text-muted-foreground">
