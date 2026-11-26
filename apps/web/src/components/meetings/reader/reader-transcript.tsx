@@ -1,5 +1,7 @@
 import { providerNames, type OriginalView } from "@substrate/contracts/meetings";
 
+import { useEffect } from "react";
+
 import { useMeetingsWorkspace } from "../meetings-workspace-context";
 import { turnRowId } from "./transcript-turn-id";
 import { ContentNotice } from "@/components/feedback/content-notice";
@@ -22,6 +24,11 @@ export function ReaderTranscript({
   turn?: number;
 }) {
   const { change } = useMeetingsWorkspace();
+  // Runs before the reader's own focus effect, so a deep-linked turn keeps focus.
+  useEffect(() => {
+    if (originalId && turn !== undefined)
+      document.getElementById(turnRowId(originalId, turn))?.focus();
+  }, [originalId, turn]);
   const transcripts = originals.filter((r) => r.turns.length);
   const pending = originals.filter((r) => r.transcriptState === "pending");
   return (
