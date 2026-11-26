@@ -22,7 +22,6 @@ function InteractionsRoute() {
   const { section, days, profileId, recordId, tab } = Route.useSearch();
   return (
     <InteractionsWorkspace
-      key={organizationId}
       organizationId={organizationId}
       section={section}
       days={days}

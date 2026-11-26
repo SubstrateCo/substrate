@@ -19,7 +19,6 @@ function AgentsRoute() {
   const { agentId, turnId, messageId, section } = Route.useSearch();
   return (
     <AgentsWorkspace
-      key={organizationId}
       userId={session.user.id}
       organizationId={organizationId}
       agentId={agentId}

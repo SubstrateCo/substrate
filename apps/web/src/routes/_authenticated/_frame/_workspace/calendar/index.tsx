@@ -23,7 +23,6 @@ function CalendarRoute() {
   return (
     <AppAvailability app="calendar">
       <CalendarWorkspace
-        key={organizationId}
         organizationId={organizationId}
         view={view ?? "agenda"}
         date={date}

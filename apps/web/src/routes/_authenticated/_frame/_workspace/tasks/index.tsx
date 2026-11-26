@@ -14,12 +14,7 @@ function TasksRoute() {
   const { projectId, taskId } = Route.useSearch();
   return (
     <AppAvailability app="tasks">
-      <TasksWorkspace
-        key={organizationId}
-        organizationId={organizationId}
-        projectId={projectId}
-        taskId={taskId}
-      />
+      <TasksWorkspace organizationId={organizationId} projectId={projectId} taskId={taskId} />
     </AppAvailability>
   );
 }

@@ -12,7 +12,7 @@ export const Route = createFileRoute("/_authenticated/_standalone/setup/complete
     const { organizationId, organization } = await requireActiveOrganization(
       context.queryClient,
       context.session.session.activeOrganizationId,
-      { redirectTo: "/onboarding", staleTime: undefined },
+      { redirectTo: "/onboarding", fresh: true },
     );
     return { organizationId, name: organization.name, role: organization.role };
   },

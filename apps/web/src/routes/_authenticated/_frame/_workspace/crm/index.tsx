@@ -18,7 +18,6 @@ function CrmRoute() {
   return (
     <AppAvailability app="crm">
       <CrmWorkspace
-        key={organizationId}
         organizationId={organizationId}
         section={section ?? "deals"}
         recordId={recordId}

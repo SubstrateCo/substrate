@@ -11,7 +11,5 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/contacts
 function ContactsRoute() {
   const { organizationId } = Route.useRouteContext();
   const { recordId } = Route.useSearch();
-  return (
-    <ContactsWorkspace key={organizationId} organizationId={organizationId} recordId={recordId} />
-  );
+  return <ContactsWorkspace organizationId={organizationId} recordId={recordId} />;
 }
