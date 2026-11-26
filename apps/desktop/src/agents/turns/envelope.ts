@@ -77,6 +77,9 @@ function outcomeLine(outcome: ProposalOutcome | null) {
       const { receipt } = outcome;
       if (receipt.kind === "task")
         return `Outcome: approved and done. Task ${receipt.id} in project ${receipt.projectId}.`;
+      if (receipt.kind === "project") return `Outcome: approved and done. Project ${receipt.id}.`;
+      if (receipt.kind === "deleted")
+        return `Outcome: approved and done. Deleted ${receipt.entityType} ${receipt.id}.`;
       const thread = receipt.threadId ? ` thread ${receipt.threadId}` : "";
       return `Outcome: approved and done. Posted message ${receipt.id} in conversation ${receipt.conversationId}${thread}.`;
     }

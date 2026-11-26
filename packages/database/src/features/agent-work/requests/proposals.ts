@@ -12,20 +12,34 @@ import { entities } from "../../../core/entities/schema";
 import type { RepositoryContext } from "../../../core/repository-context";
 import type { SessionIdentity } from "../../../core/session/identity";
 import { messageReferences } from "../../../core/text/references";
-import { AccessDeniedError, ConflictError } from "../../../errors";
+import { AccessDeniedError, ConflictError, ValidationError } from "../../../errors";
 import { requireWork } from "../../context/access";
 import { requireMessage } from "../../messaging/access";
 import { messagingConversations } from "../../messaging/schema";
+import { archivedProjectMessage } from "../../projects/archive";
+import { projectRepository } from "../../projects/repository";
 import { agentActions } from "../actions";
 import { requirePlace } from "../place";
 import { and, eq, sql } from "drizzle-orm";
 
 type Agent = Parameters<typeof agentActions>[2];
+type Receipt = Extract<ProposalOutcome, { status: "executed" }>["receipt"];
 
 // The editable task or project with its version: the time of its last change.
 async function editableWork(ctx: RepositoryContext, entityId: string) {
   const work = await requireWork(ctx, entityId, "edit");
   return { ...work, version: work.updatedAt.toISOString() };
+}
+
+// A project the agent owns, in the archive state the action needs, and its version.
+async function ownedProject(ctx: RepositoryContext, projectId: string, archived: boolean) {
+  await requireAppEnabled(ctx, "tasks");
+  const { entity } = await ctx.requireAccess(projectId, "owner");
+  if (entity.entityType !== "project") throw new AccessDeniedError();
+  const project = await projectRepository(ctx).get(projectId);
+  if (!project.archivedAt !== !archived)
+    throw new ValidationError(archived ? "Archive the project first." : archivedProjectMessage);
+  return entity.updatedAt.toISOString();
 }
 
 /**
@@ -66,6 +80,32 @@ export async function checkProposalAccess(
       if (task.entityType !== "task") throw new AccessDeniedError();
       return { type: action.type, taskUpdatedAt: task.version };
     }
+    case "delete_task": {
+      await requireAppEnabled(ctx, "tasks");
+      const task = await editableWork(ctx, action.input.taskId);
+      if (task.entityType !== "task") throw new AccessDeniedError();
+      return { type: action.type, taskUpdatedAt: task.version };
+    }
+    case "archive_project":
+    case "revoke_project_access":
+      return {
+        type: action.type,
+        projectUpdatedAt: await ownedProject(ctx, action.input.projectId, false),
+      };
+    case "share_project": {
+      const projectUpdatedAt = await ownedProject(ctx, action.input.projectId, false);
+      // Checked again when the grant is written; this fails a proposal that could never run.
+      const target = await ctx.requireActiveActor(action.input.actorId);
+      if (target.type !== "human")
+        throw new ValidationError("Agents use their owner's access. Share with the owner instead.");
+      return { type: action.type, projectUpdatedAt };
+    }
+    case "restore_project":
+    case "delete_project":
+      return {
+        type: action.type,
+        projectUpdatedAt: await ownedProject(ctx, action.input.projectId, true),
+      };
   }
 }
 
@@ -118,8 +158,13 @@ async function bindTargets(
       await bindWork(ctx, action.input.parentTaskId, basis.parentTaskUpdatedAt);
     return;
   }
-  if (action.type === "update_task" && basis.type === "update_task")
+  if (
+    (action.type === "update_task" && basis.type === "update_task") ||
+    (action.type === "delete_task" && basis.type === "delete_task")
+  )
     return bindWork(ctx, action.input.taskId, basis.taskUpdatedAt);
+  if ("projectUpdatedAt" in basis && action.type === basis.type && "projectId" in action.input)
+    return bindWork(ctx, action.input.projectId, basis.projectUpdatedAt);
   throw new ConflictError(staleProposalError);
 }
 
@@ -149,7 +194,7 @@ export async function runProposalAction(
         requestId: proposal.id,
         originTurnId: proposal.turnId,
       });
-      const receipt: Extract<ProposalOutcome, { status: "executed" }>["receipt"] = {
+      const receipt: Receipt = {
         kind: "message",
         id: message.id,
         conversationId: message.conversationId,
@@ -169,5 +214,32 @@ export async function runProposalAction(
         receipt: { kind: "task" as const, id: task.entityId, projectId: task.projectEntityId },
       };
     }
+    case "delete_task": {
+      await writes.deleteTask(action.input);
+      return { receipt: deleted("task", action.input.taskId) };
+    }
+    case "delete_project": {
+      await writes.deleteProject(action.input);
+      return { receipt: deleted("project", action.input.projectId) };
+    }
+    case "archive_project":
+      await writes.archiveProject(action.input);
+      return { receipt: project(action.input.projectId) };
+    case "restore_project":
+      await writes.restoreProject(action.input);
+      return { receipt: project(action.input.projectId) };
+    case "share_project":
+      await writes.shareProject(action.input);
+      return { receipt: project(action.input.projectId) };
+    case "revoke_project_access":
+      await writes.revokeProjectAccess(action.input);
+      return { receipt: project(action.input.projectId) };
   }
 }
+
+const project = (id: string): Receipt => ({ kind: "project", id });
+const deleted = (entityType: "task" | "project", id: string): Receipt => ({
+  kind: "deleted",
+  entityType,
+  id,
+});

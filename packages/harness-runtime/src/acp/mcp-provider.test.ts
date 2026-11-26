@@ -129,7 +129,7 @@ test("an agent that advertises MCP-over-ACP gets the lease's tools over mcp/mess
       organizationId: "org-a",
       agentId: "agent-a",
       turn,
-      input: { limit: 25 },
+      input: { archived: "active", limit: 25 },
     },
   ]);
   await f.adapter.disconnect();

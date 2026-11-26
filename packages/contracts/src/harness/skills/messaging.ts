@@ -62,7 +62,7 @@ When you read messages, the same tokens appear in the text. Use the ID in a toke
 
 ## Proposing actions
 
-- \`propose\` takes a short \`summary\` and one exact \`action\`: \`reply_elsewhere\`, \`create_task\` or \`update_task\`.
+- \`propose\` takes a short \`summary\` and one exact \`action\`: \`reply_elsewhere\`, \`create_task\`, \`update_task\`, \`delete_task\`, \`archive_project\`, \`restore_project\`, \`delete_project\`, \`share_project\` or \`revoke_project_access\`.
 - Your owner approves or declines exactly that action. Approval runs it as you. Then end your turn; the result comes back as a new item.
 
 ## Who wrote what

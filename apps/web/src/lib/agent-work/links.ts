@@ -2,16 +2,22 @@ import type { AgentRequestView, TurnOutputView } from "@substrate/contracts/agen
 
 import { messageLink, workLink } from "@/lib/navigation/record-links";
 
-/** The forward link from an executed proposal to the message or task it created or changed. */
+/**
+ * The forward link from an executed proposal to the message, task or project it created or
+ * changed. A deleted record has no link.
+ */
 export function proposalResultLink(organizationId: string, request: AgentRequestView) {
   const outcome = request.proposal?.outcome;
   if (outcome?.status !== "executed") return undefined;
   const { receipt } = outcome;
+  if (receipt.kind === "deleted") return undefined;
   if (receipt.kind === "message")
     return {
       link: messageLink(organizationId, receipt.conversationId, receipt.id),
       label: "Open the message",
     };
+  if (receipt.kind === "project")
+    return { link: workLink(organizationId, receipt.id), label: "Open the project" };
   return {
     link: workLink(organizationId, receipt.projectId, receipt.id),
     label: "Open the task",

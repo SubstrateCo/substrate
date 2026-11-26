@@ -44,8 +44,24 @@ To find your own tasks, call \`list_tasks\` with \`assigneeActorId: "me"\`. To a
 
 - \`update_task\` changes only the fields you supply and returns the updated task. Check the result.
 - Null removes the assignee or the due date.
-- A task cannot move to another project or parent.
+- \`update_task\` cannot change the project or parent. Use \`move_task\` for that. Its subtasks move with it.
 - To add information, use the task's shared discussion. Change the description only to correct it, because \`update_task\` replaces the whole description.
+
+## Projects
+
+- \`get_project\` returns \`yourLevel\`, \`members\` and \`archived\`. Check them before you change a project or its tasks.
+- An archived project and its tasks are read-only. \`list_projects\` leaves archived projects out unless you set \`archived\`.
+- \`create_project\` creates a project as yourself. Look for an existing one with \`search_names\` and \`type: "project"\` first.
+- \`update_project\` changes the name or description. A description replaces the whole text.
+
+## Deleting, archiving and sharing
+
+You cannot do these directly. Use \`propose\`, and your owner approves each one:
+
+- \`delete_task\` deletes a task and all its subtasks.
+- \`archive_project\` and \`restore_project\` need owner access.
+- \`delete_project\` needs owner access and an archived project. Propose \`archive_project\` first.
+- \`share_project\` gives a person \`view\`, \`comment\`, \`edit\` or \`owner\` access. \`revoke_project_access\` removes it. Share only with people, never with agents. Use actor IDs from \`get_project\` members or \`list_assignees\`.
 
 ## Shared discussions
 
@@ -80,6 +96,6 @@ Generate a new \`requestId\` for each new task, change, discussion resolution or
 
 ## Background turns
 
-In background turns, such as routines, do not create or change tasks directly. Use \`propose\` with a \`create_task\` or \`update_task\` action, and your owner approves it.
+In background turns, such as routines, do not create or change tasks or projects directly. Use \`propose\` with a \`create_task\` or \`update_task\` action, and your owner approves it. Moving tasks and creating or changing projects are not possible in background turns.
 `,
 };

@@ -19,13 +19,18 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
   return {
     async listProjects(input: McpInput<"list_projects">) {
       const p = pagination(scope, "list_projects", input);
-      const rows = await queryProjects(ctx, { offset: p.offset, limit: p.take });
-      return p.page(rows.map((row) => ({ id: row.entityId, name: row.name })));
+      const rows = await queryProjects(ctx, { offset: p.offset, limit: p.take }, input.archived);
+      return p.page(
+        rows.map((row) => ({ id: row.entityId, name: row.name, archived: !!row.archivedAt })),
+      );
     },
     async getProject(input: McpInput<"get_project">): Promise<McpOutput<"get_project">> {
-      const { project, taskCounts: rows } = await projectRepository(ctx).getWithTaskCounts(
-        input.projectId,
-      );
+      const {
+        project,
+        level,
+        members,
+        taskCounts: rows,
+      } = await projectRepository(ctx).getWithTaskCounts(input.projectId);
       const taskCounts: Record<TaskStatus, number> = {
         not_started: 0,
         in_progress: 0,
@@ -38,6 +43,12 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
         id: project.entityId,
         name: project.name,
         description: project.description,
+        archived: !!project.archivedAt,
+        yourLevel: level,
+        members: members.map((member) => ({
+          actor: { id: member.actorEntityId, name: member.name, type: member.type },
+          level: member.level,
+        })),
         taskCounts,
         linked: await linkSummary(ctx, identity, project.entityId),
       };

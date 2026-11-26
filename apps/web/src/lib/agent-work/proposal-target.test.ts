@@ -17,6 +17,7 @@ const project: ProposalProject = {
     { entityId: "t3", title: "Orphan", parentTaskEntityId: "unreadable" },
   ],
   actors: [{ entityId: "actor", name: "Dana" }],
+  members: [{ actorEntityId: "member", name: "Lee" }],
 };
 
 const lookups: ProposalLookups = {
@@ -209,5 +210,58 @@ describe("update-task proposals", () => {
     );
     expect(proposalTargetHidden(visible)).toBe(false);
     expect(proposalTargetHidden(secret)).toBe(true);
+  });
+});
+
+describe("delete-task proposals", () => {
+  test("find the task and its project across readable projects", () => {
+    const target = proposalTarget({ type: "delete_task", input: { taskId: "t2" } }, lookups);
+    expect(target).toMatchObject({
+      type: "delete_task",
+      task: { access: "visible", label: "Headline" },
+      project: { access: "visible", label: "Launch" },
+    });
+  });
+
+  test("a task the viewer can't open blocks approval", () => {
+    const target = proposalTarget({ type: "delete_task", input: { taskId: "secret" } }, lookups);
+    expect(target).toEqual({ type: "delete_task", task: hidden, project: hidden });
+    expect(proposalTargetHidden(target)).toBe(true);
+  });
+});
+
+describe("project proposals", () => {
+  test("name the project to archive", () => {
+    const target = proposalTarget({ type: "archive_project", input: { projectId: "p1" } }, lookups);
+    expect(target).toMatchObject({ project: { access: "visible", label: "Launch" } });
+    expect(proposalTargetHidden(target)).toBe(false);
+  });
+
+  test("a project the viewer can't open blocks deletion", () => {
+    const target = proposalTarget({ type: "delete_project", input: { projectId: "p2" } }, lookups);
+    expect(target).toEqual({ type: "delete_project", project: hidden });
+    expect(proposalTargetHidden(target)).toBe(true);
+  });
+
+  test("sharing names a person who can join, and revoking names a member", () => {
+    const share = proposalTarget(
+      { type: "share_project", input: { projectId: "p1", actorId: "actor", level: "edit" } },
+      lookups,
+    );
+    const revoke = proposalTarget(
+      { type: "revoke_project_access", input: { projectId: "p1", actorId: "member" } },
+      lookups,
+    );
+    expect(share).toMatchObject({ person: { access: "visible", label: "Dana" } });
+    expect(revoke).toMatchObject({ person: { access: "visible", label: "Lee" } });
+  });
+
+  test("a person the viewer can't see is hidden and blocks approval", () => {
+    const target = proposalTarget(
+      { type: "share_project", input: { projectId: "p1", actorId: "stranger", level: "view" } },
+      lookups,
+    );
+    expect(target).toMatchObject({ person: hidden });
+    expect(proposalTargetHidden(target)).toBe(true);
   });
 });

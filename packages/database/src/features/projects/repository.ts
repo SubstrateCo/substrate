@@ -234,7 +234,7 @@ export function projectRepository(context: RepositoryContext) {
   }
   return {
     get,
-    /** get, with the project's live task counts by status in the same statement. */
+    /** get, with the caller's level, members and live task counts by status in one statement. */
     async getWithTaskCounts(entityId: string) {
       const counts = db
         .select({ status: tasks.status, total: count().as("total") })
@@ -255,9 +255,15 @@ export function projectRepository(context: RepositoryContext) {
             })
             .from(counts),
         ),
+        members: scalar(members(entityId)),
       });
       if (!row) throw new AccessDeniedError();
-      return { project: row.project, taskCounts: row.taskCounts };
+      return {
+        project: row.project,
+        level: row.level!,
+        members: row.members,
+        taskCounts: row.taskCounts,
+      };
     },
     async exportStart(entityId: string) {
       const [row] = await selectWithLevel(entityId, {

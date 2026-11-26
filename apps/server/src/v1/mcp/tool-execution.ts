@@ -149,6 +149,9 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     list_linked_messages: (value) => listLinkedMessages(ctx, identity, value),
     create_task: (value) => writes.createTask(value),
     update_task: (value) => writes.updateTask(value),
+    move_task: (value) => writes.moveTask(value),
+    create_project: (value) => writes.createProject(value),
+    update_project: (value) => writes.updateProject(value),
     async get_task_discussion(value) {
       return { conversationId: await tasks.ensureDiscussion(value.taskId) };
     },
@@ -230,6 +233,15 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     },
     async update_task(value) {
       await tasks.get(value.taskId);
+    },
+    async move_task(value) {
+      await tasks.get(value.taskId);
+    },
+    async create_project(_, previous) {
+      await ctx.requireAccess(previous.id, "view");
+    },
+    async update_project(value) {
+      await ctx.requireAccess(value.projectId, "view");
     },
     async get_task_discussion(value) {
       await tasks.get(value.taskId);

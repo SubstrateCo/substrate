@@ -16,7 +16,14 @@ export interface ProposalProject {
   project: { entityId: string; name: string };
   tasks: readonly { entityId: string; title: string; parentTaskEntityId: string | null }[];
   actors: readonly { entityId: string; name: string }[];
+  members: readonly { actorEntityId: string; name: string }[];
 }
+
+type ProjectActionType = Extract<
+  ProposalAction["type"],
+  "archive_project" | "restore_project" | "delete_project"
+>;
+type AccessActionType = Extract<ProposalAction["type"], "share_project" | "revoke_project_access">;
 
 /**
  * What the viewer can read now. Each lookup returns undefined while it loads and null when the
@@ -49,7 +56,10 @@ export type ProposalTarget =
       project: ProposalRecord;
       parentTask: ProposalRecord | null;
       assignee: ProposalRecord | null;
-    };
+    }
+  | { type: "delete_task"; task: ProposalRecord; project: ProposalRecord }
+  | { type: ProjectActionType; project: ProposalRecord }
+  | { type: AccessActionType; project: ProposalRecord; person: ProposalRecord };
 
 const loading: ProposalRecord = { access: "loading" };
 const hidden: ProposalRecord = { access: "hidden" };
@@ -87,11 +97,43 @@ function assigneeRecord(detail: ProposalProject | null | undefined, actorId: str
   });
 }
 
+/** A member of the project, or someone who could be added to it. */
+function personRecord(detail: ProposalProject | null | undefined, actorId: string) {
+  return resolve(detail, (project) => {
+    const member = project.members.find((entry) => entry.actorEntityId === actorId);
+    const actor = project.actors.find((entry) => entry.entityId === actorId);
+    const name = member?.name ?? actor?.name;
+    return name ? { access: "visible", label: name } : hidden;
+  });
+}
+
+/** The project that holds the task, once every readable project has loaded. */
+function taskProject(lookups: ProposalLookups, taskId: string) {
+  const { projects } = lookups;
+  return (
+    projects &&
+    (projects.find((project) => project.tasks.some((task) => task.entityId === taskId)) ?? null)
+  );
+}
+
 function namedRecords(target: ProposalTarget): (ProposalRecord | null)[] {
-  if (target.type === "reply_elsewhere") return [target.conversation, target.thread];
-  if (target.type === "create_task")
-    return [target.project, target.parentTask, target.sourceMessage, target.assignee];
-  return [target.task, target.project, target.parentTask, target.assignee];
+  switch (target.type) {
+    case "reply_elsewhere":
+      return [target.conversation, target.thread];
+    case "create_task":
+      return [target.project, target.parentTask, target.sourceMessage, target.assignee];
+    case "update_task":
+      return [target.task, target.project, target.parentTask, target.assignee];
+    case "delete_task":
+      return [target.task, target.project];
+    case "share_project":
+    case "revoke_project_access":
+      return [target.project, target.person];
+    case "archive_project":
+    case "restore_project":
+    case "delete_project":
+      return [target.project];
+  }
 }
 
 /** Approval waits until every named record resolves, so the owner sees the exact target first. */
@@ -159,11 +201,7 @@ export function proposalTarget(action: ProposalAction, lookups: ProposalLookups)
     }
     case "update_task": {
       const { taskId, changes } = action.input;
-      const projects = lookups.projects;
-      const detail =
-        projects &&
-        (projects.find((project) => project.tasks.some((task) => task.entityId === taskId)) ??
-          null);
+      const detail = taskProject(lookups, taskId);
       const task = detail?.tasks.find((entry) => entry.entityId === taskId);
       return {
         type: "update_task",
@@ -174,6 +212,33 @@ export function proposalTarget(action: ProposalAction, lookups: ProposalLookups)
             ? taskRecord(organizationId, detail, task.parentTaskEntityId)
             : null,
         assignee: assigneeRecord(detail, changes.assigneeActorId ?? null),
+      };
+    }
+    case "delete_task": {
+      const { taskId } = action.input;
+      const detail = taskProject(lookups, taskId);
+      return {
+        type: "delete_task",
+        task: resolve(detail, (project) => taskRecord(organizationId, project, taskId)),
+        project: resolve(detail, (project) => projectRecord(organizationId, project)),
+      };
+    }
+    case "archive_project":
+    case "restore_project":
+    case "delete_project": {
+      const detail = lookups.project(action.input.projectId);
+      return {
+        type: action.type,
+        project: resolve(detail, (project) => projectRecord(organizationId, project)),
+      };
+    }
+    case "share_project":
+    case "revoke_project_access": {
+      const detail = lookups.project(action.input.projectId);
+      return {
+        type: action.type,
+        project: resolve(detail, (project) => projectRecord(organizationId, project)),
+        person: personRecord(detail, action.input.actorId),
       };
     }
   }

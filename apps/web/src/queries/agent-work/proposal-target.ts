@@ -28,13 +28,15 @@ function messageLabel(body: string) {
 }
 
 function useProposalProject(organizationId: string, action: ProposalAction | undefined) {
-  const updateTask = action?.type === "update_task";
-  const location = useQuery(
-    taskLocationQueryOptions(organizationId, updateTask ? action.input.taskId : undefined),
-  );
-  // A create names its project. An update names only a task, so find its project first.
+  const taskId =
+    action?.type === "update_task" || action?.type === "delete_task"
+      ? action.input.taskId
+      : undefined;
+  const location = useQuery(taskLocationQueryOptions(organizationId, taskId));
+  // Creates and project actions name their project. A task change names only a task, so find
+  // its project first.
   const projectId =
-    action?.type === "create_task" ? action.input.projectId : location.data?.projectEntityId;
+    action && "projectId" in action.input ? action.input.projectId : location.data?.projectEntityId;
   const details = useQuery(projectQueryOptions(organizationId, projectId));
   const project = (id: string): ProposalProject | null | undefined =>
     id === projectId ? state(details) : null;

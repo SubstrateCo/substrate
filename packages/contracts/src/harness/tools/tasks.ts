@@ -1,5 +1,5 @@
 import { taskLinkRelations } from "../../tasks/links.ts";
-import { taskPriorityValues, taskStatusValues } from "../../tasks/status.ts";
+import { permissionLevels, taskPriorityValues, taskStatusValues } from "../../tasks/status.ts";
 import { recordLinks } from "./links.ts";
 import { actor, id, messageRef, page, pageInput, requestId, timed, timestamp } from "./shared.ts";
 import { z } from "zod";
@@ -72,29 +72,89 @@ export const taskResult = z.object({
 });
 /** Every status is present, with 0 when no task has it. */
 const taskCounts = z.record(z.enum(taskStatusValues), z.number().int());
+const level = z.enum(permissionLevels);
+const archived = z
+  .boolean()
+  .describe("An archived project and its tasks are read-only until an owner restores it.");
+const projectName = z.string().trim().min(1).max(200);
+const projectDescription = z.string().max(20000).describe("Markdown.");
+/** What get_project and the project write tools return. */
+const projectResult = z.object({
+  id,
+  name: z.string(),
+  description: z.string(),
+  archived,
+  yourLevel: level.describe(
+    "Your access: view | comment | edit | owner. Changes need edit; archive, delete and sharing need owner.",
+  ),
+  members: z
+    .array(z.object({ actor, level }))
+    .describe(
+      "People with direct access. Organization owners and admins also have owner access without being listed.",
+    ),
+  taskCounts,
+  linked: recordLinks,
+});
 
 export const taskTools = {
   list_projects: {
     title: "List projects",
     description:
-      "List projects you can access, sorted by name. Use list_tasks to see a project's tasks.",
+      "List projects you can access, sorted by name. Archived projects are left out unless you set archived. Use list_tasks to see a project's tasks.",
     readOnly: true,
-    input: z.object(pageInput).strict(),
-    output: page(z.object({ id, name: z.string() })),
+    input: z
+      .object({
+        archived: z
+          .enum(["active", "archived", "all"])
+          .default("active")
+          .describe("active (default) | archived | all"),
+        ...pageInput,
+      })
+      .strict(),
+    output: page(z.object({ id, name: z.string(), archived })),
   },
   get_project: {
     title: "Get project",
     description:
-      "Read a project's name, description, task counts by status, and its linked messages and records. Use list_tasks for the tasks themselves.",
+      "Read a project's name, description, archived state, your access level, its members, task counts by status, and its linked messages and records. Use list_tasks for the tasks themselves.",
     readOnly: true,
     input: z.object({ projectId: id }).strict(),
-    output: z.object({
-      id,
-      name: z.string(),
-      description: z.string(),
-      taskCounts,
-      linked: recordLinks,
-    }),
+    output: projectResult,
+  },
+  create_project: {
+    title: "Create project",
+    description:
+      "Create a project as yourself. Your owner becomes its owner; share it with propose and a share_project action. Before you create one, look for an existing project with search_names. Returns the new project.",
+    readOnly: false,
+    idempotent: true,
+    input: z
+      .object({
+        requestId,
+        name: projectName,
+        description: projectDescription.optional(),
+      })
+      .strict(),
+    output: projectResult,
+  },
+  update_project: {
+    title: "Update project",
+    description:
+      "Change a project's name or description. Only the fields you supply change; a description replaces the whole text. Needs edit access on a project that is not archived. Returns the updated project.",
+    readOnly: false,
+    idempotent: true,
+    destructive: true,
+    input: z
+      .object({
+        requestId,
+        projectId: id,
+        changes: z
+          .object({ name: projectName, description: projectDescription })
+          .partial()
+          .strict()
+          .refine((value) => Object.keys(value).length > 0, "Supply at least one change"),
+      })
+      .strict(),
+    output: projectResult,
   },
   list_tasks: {
     title: "List tasks",
@@ -149,7 +209,7 @@ export const taskTools = {
     publishes: [{ kind: "task", id: "id" }],
     title: "Update task",
     description:
-      "Change only the fields you supply. Null clears the assignee or due date. Cannot move a task to another project or parent. Returns the updated task.",
+      "Change only the fields you supply. Null clears the assignee or due date. Use move_task to change the project or parent. Returns the updated task.",
     readOnly: false,
     idempotent: true,
     destructive: true,
@@ -162,6 +222,25 @@ export const taskTools = {
           .partial()
           .strict()
           .refine((value) => Object.keys(value).length > 0, "Supply at least one change"),
+      })
+      .strict(),
+    output: taskResult,
+  },
+  move_task: {
+    publishes: [{ kind: "task", id: "id" }],
+    title: "Move task",
+    description:
+      "Move a task, with all its subtasks, to another project or under another parent. Set projectId to the task's own project to change only the parent. parentTaskId null makes it a top-level task; a parent must be in the destination project and cannot be the task or one of its subtasks. Needs edit access on both projects, and every assignee must be able to access the destination. Returns the moved task.",
+    readOnly: false,
+    idempotent: true,
+    input: z
+      .object({
+        requestId,
+        taskId: id,
+        projectId: id.describe("The destination project."),
+        parentTaskId: id
+          .nullable()
+          .describe("The new parent task in the destination project, or null for top level."),
       })
       .strict(),
     output: taskResult,

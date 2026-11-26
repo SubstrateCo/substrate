@@ -12,6 +12,7 @@ const large = {
   items: Array.from({ length: 200 }, (_, index) => ({
     id: crypto.randomUUID(),
     name: `Project ${index} ${"x".repeat(40)}`,
+    archived: false,
   })),
   nextCursor: null,
 };

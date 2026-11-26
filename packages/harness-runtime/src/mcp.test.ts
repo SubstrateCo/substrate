@@ -107,7 +107,13 @@ test("server calls carry lease identity and the bound turn; calls outside a turn
       (await mcp.client.callTool({ name: "list_projects", arguments: {} })).structuredContent,
     ).toEqual({ items: [], nextCursor: null });
     expect(calls).toEqual([
-      { tool: "list_projects", organizationId: "org-a", agentId, turn, input: { limit: 25 } },
+      {
+        tool: "list_projects",
+        organizationId: "org-a",
+        agentId,
+        turn,
+        input: { archived: "active", limit: 25 },
+      },
     ]);
 
     mcp.lease.unbind();
@@ -265,6 +271,7 @@ test("results above the offload limit are written inside the folder and returned
   const items = Array.from({ length: 200 }, (_, index) => ({
     id: crypto.randomUUID(),
     name: `Project ${index} ${"x".repeat(40)}`,
+    archived: false,
   }));
   const mcp = await connected({
     workspace: async () => ({ success: true, data: { items, nextCursor: null } }),

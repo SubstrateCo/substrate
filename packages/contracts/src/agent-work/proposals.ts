@@ -1,12 +1,25 @@
 import { taskTools } from "../harness/tools/tasks.ts";
 import { conversationKind } from "../messaging/input.ts";
+import { permissionLevels } from "../tasks/status.ts";
 import { utcTimestamp } from "../timestamps.ts";
 import { z } from "zod";
 
 const id = z.uuid();
+const projectInput = z.strictObject({ projectId: id });
+const memberId = id.describe("A person's actor ID, from get_project members or list_assignees.");
 
 /** Actions an agent may propose. Approval executes exactly the proposed action, as the agent. */
-export const proposalActionTypes = ["reply_elsewhere", "create_task", "update_task"] as const;
+export const proposalActionTypes = [
+  "reply_elsewhere",
+  "create_task",
+  "update_task",
+  "delete_task",
+  "archive_project",
+  "restore_project",
+  "delete_project",
+  "share_project",
+  "revoke_project_access",
+] as const;
 export type ProposalActionType = (typeof proposalActionTypes)[number];
 
 export const proposalAction = z.discriminatedUnion("type", [
@@ -31,6 +44,28 @@ export const proposalAction = z.discriminatedUnion("type", [
   z.strictObject({
     type: z.literal("update_task"),
     input: taskTools.update_task.input.pick({ taskId: true, changes: true }),
+  }),
+  z.strictObject({
+    type: z.literal("delete_task"),
+    input: z.strictObject({ taskId: id.describe("Its subtasks are deleted too.") }),
+  }),
+  z.strictObject({ type: z.literal("archive_project"), input: projectInput }),
+  z.strictObject({ type: z.literal("restore_project"), input: projectInput }),
+  z.strictObject({
+    type: z.literal("delete_project"),
+    input: z.strictObject({ projectId: id.describe("An archived project. Archive it first.") }),
+  }),
+  z.strictObject({
+    type: z.literal("share_project"),
+    input: z.strictObject({
+      projectId: id,
+      actorId: memberId,
+      level: z.enum(permissionLevels).describe("view | comment | edit | owner"),
+    }),
+  }),
+  z.strictObject({
+    type: z.literal("revoke_project_access"),
+    input: z.strictObject({ projectId: id, actorId: memberId }),
   }),
 ]);
 export type ProposalAction = z.output<typeof proposalAction>;
@@ -57,13 +92,22 @@ export const proposalTargetBasis = z.discriminatedUnion("type", [
     parentTaskUpdatedAt: version.nullable(),
   }),
   z.strictObject({ type: z.literal("update_task"), taskUpdatedAt: version }),
+  z.strictObject({ type: z.literal("delete_task"), taskUpdatedAt: version }),
+  z.strictObject({ type: z.literal("archive_project"), projectUpdatedAt: version }),
+  z.strictObject({ type: z.literal("restore_project"), projectUpdatedAt: version }),
+  z.strictObject({ type: z.literal("delete_project"), projectUpdatedAt: version }),
+  z.strictObject({ type: z.literal("share_project"), projectUpdatedAt: version }),
+  z.strictObject({ type: z.literal("revoke_project_access"), projectUpdatedAt: version }),
 ]);
 export type ProposalTargetBasis = z.infer<typeof proposalTargetBasis>;
 
 export const staleProposalError =
   "The target changed after this was proposed. Ask the agent to propose again.";
 
-/** What happened after the owner decided. The receipt links forward to the created record. */
+/**
+ * What happened after the owner decided. The receipt links forward to the created or changed
+ * record. A deleted record has nothing to open, so its receipt only names it.
+ */
 export const proposalOutcome = z.discriminatedUnion("status", [
   z.strictObject({ status: z.literal("declined") }),
   z.strictObject({
@@ -76,6 +120,8 @@ export const proposalOutcome = z.discriminatedUnion("status", [
         threadId: id.nullable(),
       }),
       z.strictObject({ kind: z.literal("task"), id, projectId: id }),
+      z.strictObject({ kind: z.literal("project"), id }),
+      z.strictObject({ kind: z.literal("deleted"), entityType: z.enum(["task", "project"]), id }),
     ]),
   }),
   z.strictObject({ status: z.literal("failed"), error: z.string().max(2000) }),

@@ -7,6 +7,7 @@ import type { ReactNode } from "react";
 
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
+import { projectPermissionLabels } from "@/components/tasks/types";
 import { hiddenConversation } from "@/lib/agent-work/hidden-records";
 import type { ProposalRecord, ProposalTarget } from "@/lib/agent-work/proposal-target";
 
@@ -166,5 +167,53 @@ export function ProposalPreview({
         <TaskFields fields={action.input.changes} assignee={target.assignee} />
       </dl>
     );
+  if (target.type === "delete_task")
+    return (
+      <dl className="grid gap-1.5 text-sm">
+        <Field label="Action">Delete a task and its subtasks</Field>
+        <Field label="Task">
+          <RecordName record={target.task} kind="task" />
+        </Field>
+        <Field label="Project">
+          <RecordName record={target.project} kind="project" />
+        </Field>
+      </dl>
+    );
+  if (target.type === "share_project" || target.type === "revoke_project_access")
+    return (
+      <dl className="grid gap-1.5 text-sm">
+        <Field label="Action">
+          {target.type === "share_project" ? "Share a project" : "Remove access to a project"}
+        </Field>
+        <Field label="Project">
+          <RecordName record={target.project} kind="project" />
+        </Field>
+        <Field label="Person">
+          <RecordName record={target.person} kind="person" />
+        </Field>
+        {action.type === "share_project" && (
+          <Field label="Access">{projectPermissionLabels[action.input.level]}</Field>
+        )}
+      </dl>
+    );
+  if (
+    target.type === "archive_project" ||
+    target.type === "restore_project" ||
+    target.type === "delete_project"
+  )
+    return (
+      <dl className="grid gap-1.5 text-sm">
+        <Field label="Action">{projectActionLabels[target.type]}</Field>
+        <Field label="Project">
+          <RecordName record={target.project} kind="project" />
+        </Field>
+      </dl>
+    );
   return null;
 }
+
+const projectActionLabels = {
+  archive_project: "Archive a project and make its tasks read-only",
+  restore_project: "Restore an archived project",
+  delete_project: "Delete a project and all its tasks",
+};
