@@ -1,9 +1,10 @@
+import { projectCapabilities } from "@substrate/contracts/access/capabilities";
+
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 
 import { projectQueryOptions } from "./options";
 import type { getProject } from "@/api/tasks/requests";
 import { resourceState } from "@/lib/resource-state";
-import { projectCapabilities } from "@/lib/tasks/project-capabilities";
 
 /** A project page's project: its query, load state, and what the reader may do in it. */
 export function useProject(organizationId: string, projectEntityId: string) {
@@ -22,9 +23,9 @@ export function useLoadedProject(organizationId: string, projectEntityId: string
 
 function projectState(query: UseQueryResult<Awaited<ReturnType<typeof getProject>>>) {
   const resource = resourceState(query);
-  const capabilities = projectCapabilities(
-    resource.data?.level,
-    !!resource.data?.project.archivedAt,
-  );
+  const capabilities = projectCapabilities({
+    level: resource.data?.level,
+    archived: !!resource.data?.project.archivedAt,
+  });
   return { query, resource, capabilities };
 }

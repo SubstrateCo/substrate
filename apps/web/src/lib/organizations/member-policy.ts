@@ -1,4 +1,5 @@
 import { roles, type OrganizationRole } from "@substrate/contracts/auth/permissions";
+import { invitableRoles, primaryRole as storedPrimaryRole } from "@substrate/contracts/auth/roles";
 
 const roleOptions = {
   member: {
@@ -15,18 +16,15 @@ const roleOptions = {
   },
 } satisfies Record<OrganizationRole, { label: string; description: string }>;
 
-const roleOrder: readonly OrganizationRole[] = ["owner", "admin", "member"];
-
 export const organizationRoles: readonly {
   value: OrganizationRole;
   label: string;
   description: string;
-}[] = [...roleOrder].reverse().map((value) => ({ value, ...roleOptions[value] }));
+}[] = (["member", "admin", "owner"] as const).map((value) => ({ value, ...roleOptions[value] }));
 
-/** Better Auth stores roles as a comma-separated list. Returns the most powerful one. */
+/** The most powerful stored role, from the shared role parser. */
 export function primaryRole(role: string): OrganizationRole {
-  const roles = role.split(",").map((value) => value.trim());
-  return roleOrder.find((candidate) => roles.includes(candidate)) ?? "member";
+  return storedPrimaryRole(role);
 }
 
 /** A human label for a stored role, such as "Admin". */
@@ -34,14 +32,10 @@ export function roleLabel(role: string) {
   return roleOptions[primaryRole(role)].label;
 }
 
-/**
- * The roles the viewer may invite people with, from most to least common. Empty when the viewer
- * may not invite. Better Auth lets only owners invite owners, and enforces it.
- */
+/** The role options the viewer may invite people with, from most to least common. */
 export function invitationRoles(viewerRole: string) {
-  const viewer = primaryRole(viewerRole);
-  if (!roles[viewer].authorize({ invitation: ["create"] }).success) return [];
-  return organizationRoles.filter((option) => viewer === "owner" || option.value !== "owner");
+  const invitable = invitableRoles(viewerRole);
+  return organizationRoles.filter((option) => invitable.includes(option.value));
 }
 
 /**

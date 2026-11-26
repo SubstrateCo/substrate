@@ -1,15 +1,11 @@
 import { sessionKeys } from "@substrate/contracts/agent-work";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import {
-  agentInvocations,
-  agentToolRequests,
-  organizationApps,
-} from "../../../../../packages/database/src/schema";
-import { dmTurn, threadTurn } from "../../../../../packages/database/src/testing/agent-work";
-import { setupDatabase } from "../../../../../packages/database/src/testing/database";
+import { agentInvocations, agentToolRequests, organizationApps } from "../../schema";
+import { dmTurn, threadTurn } from "../../testing/agent-work";
+import { setupDatabase } from "../../testing/database";
+import { mcpCallerFixture } from "../../testing/mcp";
 import { executeAgentTool } from "./execution";
-import { callerFixture } from "./test-support";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { rejects } from "node:assert/strict";
@@ -21,7 +17,7 @@ const enable = () =>
     .values({ organizationId: f.orgA, appId: "meetings", enabled: true });
 test("the owner's agent writes the human's archive once, links its source, and reads attributed text in pages", async () => {
   await enable();
-  const x = await callerFixture(f),
+  const x = await mcpCallerFixture(f),
     turn = { ...dmTurn(x.dm.id), installationId: x.agent.identity.installationId };
   const message = await x.alice.sendMessage(x.dm.id, "Record our fictional relay inspection.");
   const transcript = "🎙".repeat(3000) + "Second page.";
@@ -114,7 +110,7 @@ test("the owner's agent writes the human's archive once, links its source, and r
   await rejects(x.call("create_meeting", input, turn));
 });
 test("private tools reject shared, caller and background turns; writes require the home device and replay rechecks app access", async () => {
-  const x = await callerFixture(f),
+  const x = await mcpCallerFixture(f),
     turn = dmTurn(x.dm.id);
   await rejects(x.call("list_meetings", {}, turn), { name: "AppDisabledError" });
   await enable();

@@ -1,11 +1,13 @@
+import { projectCapabilities } from "@substrate/contracts/access/capabilities";
+import { assignableActors } from "@substrate/contracts/tasks/project-access";
+
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { useRef, useState } from "react";
 
 import { ProjectPickerSheet } from "./project-picker-sheet";
-import { taskAssignees } from "./task-access";
 import { TaskForm, type TaskDraft } from "./task-form";
-import { canEdit, newRequestId } from "@/features/records/format";
+import { newRequestId } from "@/features/records/format";
 import { refreshRecords } from "@/features/records/invalidation";
 import { recordQueries, useRecordScope } from "@/features/records/queries";
 import { taskApi } from "@/features/records/tasks/task-api";
@@ -33,7 +35,11 @@ export function SourceTaskForm({
   const selecting = useRef(false);
   const project = useQuery(recordQueries.project(scope, projectId ?? undefined));
   const projectEditable =
-    !!project.data && !project.data.project.archivedAt && canEdit(project.data.level);
+    !!project.data &&
+    projectCapabilities({
+      level: project.data.level,
+      archived: !!project.data.project.archivedAt,
+    }).canEdit;
   const write = useMutation({
     retry: false,
     mutationFn: async () => {
@@ -93,7 +99,7 @@ export function SourceTaskForm({
         }
       />
     );
-  if (!canEdit(project.data.level) || project.data.project.archivedAt)
+  if (!projectEditable)
     return (
       <PickerSheet
         title="Project is read-only"
@@ -112,7 +118,7 @@ export function SourceTaskForm({
   return (
     <>
       <TaskForm
-        actors={taskAssignees(project.data)}
+        actors={assignableActors(project.data)}
         pending={write.isPending}
         error={write.error}
         onSubmit={setDraft}

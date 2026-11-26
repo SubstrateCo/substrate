@@ -5,14 +5,10 @@ import { actors } from "../../core/actors/schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import type { DatabaseExecutor } from "../../core/executor";
-import { adminRoleCondition } from "../../core/organizations/roles";
-import { member } from "../../core/organizations/schema";
-import { entityGrants } from "../../core/permissions/schema";
-import { adminSharedType } from "../../core/permissions/visibility";
+import { entityReaders } from "../../core/permissions/visibility";
 import { liveApprovedParticipant, publicChannel, visibleConversations } from "../messaging/access";
 import { messagingConversations, messagingParticipants } from "../messaging/schema";
 import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
 
 declare const resolved: unique symbol;
 
@@ -206,57 +202,14 @@ export async function audienceRecipients(
           members.has(JSON.stringify([receiver.userId, receiver.organizationId])));
     }
     case "entity": {
-      // Readers of the entity's container: actors with a grant on it, and the organization's
-      // admins when its type is shared. One statement, like entityAccessLevel's rules.
+      // The people who can read the entity, by the same rule as requireAccess, in one statement.
       const [, organizationId, entityId] = audience;
-      const container = alias(entities, "audience_container");
-      const target = and(
-        eq(entities.organizationId, organizationId),
-        eq(entities.entityId, entityId),
-      );
-      const rows = await db
-        .select({
-          actorId: sql<string | null>`${entityGrants.actorEntityId}`,
-          userId: sql<string | null>`null`,
-        })
-        .from(entities)
-        .innerJoin(
-          entityGrants,
-          and(
-            eq(entityGrants.organizationId, entities.organizationId),
-            eq(entityGrants.entityId, entities.accessEntityId),
-          ),
-        )
-        .where(target)
-        .union(
-          db
-            .select({
-              actorId: sql<string | null>`null`,
-              userId: sql<string | null>`${member.userId}`,
-            })
-            .from(entities)
-            .innerJoin(
-              container,
-              and(
-                eq(container.organizationId, entities.organizationId),
-                eq(container.entityId, entities.accessEntityId),
-              ),
-            )
-            .innerJoin(
-              member,
-              and(
-                eq(member.organizationId, entities.organizationId),
-                adminRoleCondition(member.role),
-              ),
-            )
-            .where(and(target, adminSharedType(container.entityType))),
-        );
-      const readers = new Set(rows.flatMap((row) => (row.actorId ? [row.actorId] : [])));
-      const admins = new Set(rows.flatMap((row) => (row.userId ? [row.userId] : [])));
+      const rows = await db.execute<{ entity_id: string }>(entityReaders(organizationId, entityId));
+      const readers = new Set(rows.map((row) => row.entity_id));
       return (receiver) =>
         workspace(receiver) &&
         receiver.organizationId === organizationId &&
-        (readers.has(receiver.actorId!) || admins.has(receiver.userId));
+        readers.has(receiver.actorId!);
     }
   }
 }

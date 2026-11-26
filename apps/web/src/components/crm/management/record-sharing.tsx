@@ -1,8 +1,10 @@
+import { crmAccessLabels } from "@substrate/contracts/access/levels";
+import { permissionLevels, type PermissionLevel } from "@substrate/contracts/tasks";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
-import { accessLevelLabels, type AccessLevel } from "./access-levels";
 import { RecordGrants } from "./record-grants";
 import { RecordPersonField } from "./record-people";
 import { useRecordPeople } from "./record-people-directory";
@@ -16,44 +18,33 @@ import { useWorkspaceScope } from "@/components/workspace/workspace-scope-contex
 import { crmGrantsOptions } from "@/queries/crm/management";
 import { useCrmMutation } from "@/queries/crm/mutations";
 
-const permissions = Object.entries(accessLevelLabels).map(([value, label]) => ({
-  // SAFETY: The keys of accessLevelLabels are exactly the access levels.
-  value: value as AccessLevel,
-  label,
-}));
+const permissions = permissionLevels.map((value) => ({ value, label: crmAccessLabels[value] }));
 
-export type RecordSharingProps = {
-  entityId: string;
-  name: string;
-  /** The record kind in copy, such as "deal". */
-  noun: string;
-  level: AccessLevel;
-  onClose: () => void;
-  onRestoreFocus?: () => void;
-};
-
+/** Direct access to a record. Show it only to readers whose capabilities allow `canManageAccess`. */
 export function RecordSharing({
   entityId,
   name,
   noun,
-  level,
   onClose,
   onRestoreFocus,
-}: RecordSharingProps) {
+}: {
+  entityId: string;
+  name: string;
+  /** The record kind in copy, such as "deal". */
+  noun: string;
+  onClose: () => void;
+  onRestoreFocus?: () => void;
+}) {
   const { organizationId } = useWorkspaceScope();
   const mutation = useCrmMutation(organizationId);
   const directory = useRecordPeople();
-  const grants = useQuery({
-    ...crmGrantsOptions(organizationId, entityId),
-    enabled: level === "owner",
-  });
+  const grants = useQuery(crmGrantsOptions(organizationId, entityId));
   const [personId, setPersonId] = useState("");
-  const [permission, setPermission] = useState<AccessLevel>("view");
+  const [permission, setPermission] = useState<PermissionLevel>("view");
   const [removing, setRemoving] = useState<{ actorEntityId: string; name: string } | null>(null);
   const actor = directory.people.find((candidate) => candidate.id === personId);
   const ready = !directory.pending && !directory.error && !grants.isPending && !grants.error;
   const canSubmit = ready && !!actor;
-  if (level !== "owner") return null;
   return (
     <>
       <FormDialog

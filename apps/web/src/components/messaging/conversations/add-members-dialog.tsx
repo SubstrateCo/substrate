@@ -1,3 +1,5 @@
+import { canManageOwnAgents } from "@substrate/contracts/messaging/permissions";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { AddMembersDialog as AddMembersDialogView } from "@/components/messaging/conversations/add-members-dialog-view";
@@ -36,7 +38,7 @@ export function AddMembersDialog({
   );
   const { userId } = useWorkspaceScope();
   const canAddPeople = !!conversation?.canManage || memberUserIds !== undefined;
-  const canAddAgents = !!conversation?.joined && conversation.kind !== "dm" && !conversation.task;
+  const canAddAgents = !!conversation && canManageOwnAgents(conversation);
   const catalog = useQuery({ ...agentCatalogQueryOptions(userId), enabled: canAddAgents });
   const memberAgents = new Set(
     conversation?.members.flatMap((member) =>

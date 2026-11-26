@@ -1,6 +1,6 @@
 import { taskStatusLabels } from "@substrate/contracts/tasks";
 
-import type { EntityAccess, RepositoryContext } from "../../core/repository-context";
+import type { AuthorizedAccess, RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
 import { requireUnarchived } from "../projects/archive";
 import { projects } from "../projects/schema";
@@ -8,14 +8,18 @@ import { tasks } from "../tasks/tasks.schema";
 import { crmContextTargets, isCrmContextType } from "./crm-targets";
 import { and, eq } from "drizzle-orm";
 
-export async function requireWork(
+type Minimum = "view" | "edit" | "owner";
+
+export async function requireWork<Level extends Minimum = "view">(
   context: RepositoryContext,
   entityId: string,
-  minimum: "view" | "edit" | "owner" = "view",
-  // Access already checked at `minimum` by the caller.
-  access?: EntityAccess,
+  // SAFETY: Level defaults to "view", so the omitted argument is "view".
+  minimum: Level = "view" as Level,
+  // The caller's requireAccess at `minimum`, in this transaction.
+  access?: AuthorizedAccess<Level>,
 ) {
-  const { entity, level } = access ?? (await context.requireAccess(entityId, minimum));
+  const { entity, level } =
+    access ?? (await context.requireAccess(entityId, minimum, { type: ["task", "project"] }));
   // Archived work stays readable, like archived CRM records, but takes no changes.
   if (minimum !== "view" && (entity.entityType === "task" || entity.entityType === "project"))
     await requireUnarchived(context, [entityId]);
@@ -66,10 +70,11 @@ export async function requireWork(
 }
 
 // Explicit context targets are separate from body mentions and task-owned discussions.
-export async function requireContextTarget(
+export async function requireContextTarget<Level extends Minimum = "view">(
   context: RepositoryContext,
   entityId: string,
-  minimum: "view" | "edit" | "owner" = "view",
+  // SAFETY: Level defaults to "view", so the omitted argument is "view".
+  minimum: Level = "view" as Level,
 ) {
   const access = await context.requireAccess(entityId, minimum);
   const { entity, level } = access;

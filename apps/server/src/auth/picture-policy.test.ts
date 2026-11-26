@@ -123,7 +123,10 @@ test("native mutations derive identity from verified session and only accept the
     ),
     {
       statusCode: 403,
-      body: { code: "WORKSPACE_CHANGED", message: "Your active workspace changed." },
+      body: {
+        code: "WORKSPACE_CHANGED",
+        message: "Your active workspace changed. Reload this page to continue.",
+      },
     },
   );
   await authorizePictureMutation(

@@ -1,5 +1,4 @@
-import { needsLiveTurn } from "@substrate/database/mcp";
-
+import { needsLiveTurn } from "./handlers";
 import { approvalNeeded, writeGate } from "./write-gate";
 import { expect, test } from "bun:test";
 

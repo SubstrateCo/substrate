@@ -1,14 +1,13 @@
 import { accountFields } from "@substrate/contracts/crm/input";
 
-import { requireAppEnabledForActiveActor } from "../../core/apps/access";
-import { contactReadable } from "../../core/contacts/access";
+import { requireAppEnabled } from "../../core/apps/access";
 import { parseInput } from "../../core/contacts/inputs";
 import { contacts } from "../../core/contacts/schema";
 import { RepositoryContext, pageSize } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
+import { crmRecordAccess, type ListOptions } from "./access/record-access";
 import { recordCrmActivity } from "./activity/activity";
 import { createOnce } from "./creation";
-import { crmRecordAccess, type ListOptions } from "./access/record-access";
 import { crmAccounts, crmAffiliations, crmDeals } from "./schema";
 import { and, asc, eq } from "drizzle-orm";
 import { z } from "zod";
@@ -19,7 +18,7 @@ export function crmAccountsRepository(context: RepositoryContext) {
   const { changed, target, requireType, owner, listWhere } = crmRecordAccess(context);
   return {
     async listAccounts(options: ListOptions = {}) {
-      await requireAppEnabledForActiveActor(context, "crm");
+      await requireAppEnabled(context, "crm");
       return db
         .select()
         .from(crmAccounts)
@@ -94,7 +93,7 @@ export function crmAccountsRepository(context: RepositoryContext) {
           and(
             eq(crmAffiliations.organizationId, org),
             eq(crmAffiliations.accountEntityId, id),
-            contactReadable(context, contacts.entityId),
+            context.readable(contacts.entityId, "view", "contact"),
           ),
         )
         .orderBy(asc(contacts.entityId));

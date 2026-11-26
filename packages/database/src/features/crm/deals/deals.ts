@@ -1,16 +1,15 @@
 import type { CrmActivityInput } from "@substrate/contracts/crm/activity";
 import { dealFields, crmWrite } from "@substrate/contracts/crm/input";
 
-import { requireAppEnabledForActiveActor } from "../../../core/apps/access";
-import { contactReadable } from "../../../core/contacts/access";
+import { requireAppEnabled } from "../../../core/apps/access";
 import { parseInput } from "../../../core/contacts/inputs";
 import { contacts } from "../../../core/contacts/schema";
 import { RepositoryContext, pageSize } from "../../../core/repository-context";
 import { previousRequest, recordRequest, requestFingerprint } from "../../../core/requests/once";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../../errors";
+import { crmRecordAccess, type ListOptions } from "../access/record-access";
 import { recordCrmActivity } from "../activity/activity";
 import { createOnce } from "../creation";
-import { crmRecordAccess, type ListOptions } from "../access/record-access";
 import { crmAccounts, crmStages, crmDeals, crmDealContacts } from "../schema";
 import { requireDealRelations } from "./deal-relations";
 import { and, asc, eq, inArray, sql } from "drizzle-orm";
@@ -45,7 +44,7 @@ export function crmDealsRepository(context: RepositoryContext) {
     if (new Set(value.contactEntityIds).size !== value.contactEntityIds.length)
       throw new ValidationError("Participant contacts must be unique.");
     // Both callers proved the actor active: owner() on create, requireType on update.
-    await requireDealRelations(ctx, value, { actorChecked: true });
+    await requireDealRelations(ctx, value);
     if (options.requireActiveStage !== false) await requireStage(ctx, value.stageId);
   }
   async function presentDeal(ctx: RepositoryContext, row: typeof crmDeals.$inferSelect) {
@@ -147,7 +146,7 @@ export function crmDealsRepository(context: RepositoryContext) {
           .select({
             contactEntityId: crmDealContacts.contactEntityId,
             isPrimary: crmDealContacts.isPrimary,
-            readable: sql<boolean>`${contactReadable(ctx, crmDealContacts.contactEntityId)}`,
+            readable: sql<boolean>`${ctx.readable(crmDealContacts.contactEntityId, "view", "contact")}`,
           })
           .from(crmDealContacts)
           .where(
@@ -270,7 +269,7 @@ export function crmDealsRepository(context: RepositoryContext) {
       });
     },
     async listDeals(options: ListOptions = {}) {
-      await requireAppEnabledForActiveActor(context, "crm");
+      await requireAppEnabled(context, "crm");
       const rows = await db
         .select()
         .from(crmDeals)
@@ -332,7 +331,7 @@ export function crmDealsRepository(context: RepositoryContext) {
           and(
             eq(crmDealContacts.organizationId, org),
             eq(crmDealContacts.dealEntityId, id),
-            contactReadable(context, contacts.entityId),
+            context.readable(contacts.entityId, "view", "contact"),
           ),
         );
       return {

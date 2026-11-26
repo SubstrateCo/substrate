@@ -1,6 +1,6 @@
 ---
 name: codebase-architecture
-description: Trace application entrypoints (REST endpoints first) into high-level pseudo call stacks, check them against layer rules (route → service → database), and plan architecture fixes. Use when the user asks to "analyze our architecture", "check layering", "are routes thin", "find business logic in routes", "database doing validation", "trace this endpoint", "plan an architecture cleanup", or to set up or adapt the architecture scanner or architecture lint rules for a codebase. Works for any language; ships a TS/JS and Python reference scanner.
+description: Trace application entrypoints (REST endpoints first) into high-level pseudo call stacks, check them against layer rules (route → service → database), and plan architecture fixes. Use when the user asks to "analyze our architecture", "check layering", "are routes thin", "find business logic in routes", "database doing validation", "trace this endpoint", "plan an architecture cleanup", "review the permission layer", "where are access checks", "duplicated authorization", or to set up or adapt the architecture scanner or architecture lint rules for a codebase. Works for any language; ships a TS/JS and Python reference scanner.
 ---
 
 # Codebase architecture
@@ -47,6 +47,43 @@ Supporting layers: **middleware** (cross-cutting request concerns), **adapter**
 
 Dependencies point down: `route → service → database`. `adapter` and
 `contracts` are leaves that the upper layers may use.
+
+### Permission boundary
+
+Authorization is a cross-cutting boundary, not a layer. Each part has one
+owner, and every other layer consumes its result:
+
+| Part | Owner | Others must not |
+| --- | --- | --- |
+| Identity and scope: session, organization membership, active actor, device | middleware | Re-check the session's actor, organization or installation. |
+| Record access: levels, inheritance, admin and member access, app gating | one central access layer, in the transaction that reads or writes | Build their own grant, role or level SQL, or rank levels. |
+| Per-type rules: who shares a type, whether admins own it, which app gates it | the domain that owns the type, registered in the central registry | Hardcode another domain's types in the central layer. |
+| Role policy: who may invite, who administers settings | contracts, shared by server and clients | Parse roles in routes, services or components. |
+| Capabilities shown in a UI | the server's resolved level or flags, plus one shared contracts helper | Re-derive "can edit" from a raw level or role in each client. |
+
+```mermaid
+flowchart LR
+  MW[middleware: identity + scope] --> SVC[service]
+  SVC --> DB[repository]
+  DB --> ACL[central access layer]
+  REG[domain rules in contracts] --> ACL
+  ACL -->|level, flags| API[response]
+  API --> CAP[contracts capability helper] --> UI[client views]
+```
+
+HTTP middleware cannot do record access: it does not know which record a
+request reaches, and the check must run in the write's transaction. Keep
+middleware to identity and scope.
+
+In this repository:
+- **Middleware:** `apps/server/src/shared/scope.ts`.
+- **Central access layer:** `RepositoryContext` in `packages/database/src/core/repository-context.ts`, which builds on `core/permissions/`.
+- **Domain rules:** `packages/contracts/src/<domain>/access.ts`, composed by `packages/contracts/src/access/entity-rules.ts`.
+- **Shared helpers:** `packages/contracts/src/access/` for capabilities and `packages/contracts/src/auth/roles.ts` for role policy.
+- **Separate models:** messaging visibility and agent caller policy are not entity grants. They keep their own pure policy modules, but they use the same active-actor and admin conditions.
+
+Judge permission frames against the P rules in
+[references/antipatterns.md](references/antipatterns.md).
 
 ## Workflow
 
@@ -116,6 +153,10 @@ database or vendor boundary. Write the stack in the notation from
   and findings in those formats.
 - Keep stacks high level: one frame per layer crossing. Do not trace into
   SQL, framework internals, or same-layer helpers.
+- Mark every authorization check with an `authz` frame, wherever it runs:
+  scope middleware, the central access call, a feature's own check, or a
+  client's capability decision. Two `authz` frames that check the same fact
+  are a P2 lead.
 
 ### 4. Judge
 
@@ -126,6 +167,9 @@ Check every frame against [references/antipatterns.md](references/antipatterns.m
   `Detect: read` or `lint+read` in the antipatterns file.
 - When a lint finding is a correct, deliberate pattern, do not report it.
   Propose a config `exceptions` entry with a one-line reason.
+- For permissions, also run the P-rule searches in the antipatterns file
+  across the scope, including web and mobile clients. Permission drift is
+  usually between files that no single stack visits.
 
 ### 5. Report and fix
 
@@ -159,9 +203,10 @@ project checks after each one.
 
 ## Boundaries
 
-- Scope: layer placement and dependency direction. Correctness, security,
-  and performance are out of scope. When a `sanitize` finding also leaks
-  data, say so in one extra line.
+- Scope: layer placement, dependency direction, and where permission rules
+  live. Correctness, security, and performance are out of scope. When a
+  `sanitize` or P finding also leaks data or lets a request through, say so
+  in one extra line.
 - Do not report style or naming issues unless they hide a layer, for
   example a repository named `*Service`.
 - Do not force the default model on a codebase that has a different one,

@@ -1,3 +1,5 @@
+import { entityTypes } from "@substrate/contracts/access/entity-rules";
+
 import { idColumn } from "../ids";
 import { organization } from "../organizations/schema";
 import {
@@ -12,19 +14,7 @@ import {
   index,
 } from "drizzle-orm/pg-core";
 
-export const entityType = pgEnum("entity_type", [
-  "actor",
-  "contact",
-  "contact_interaction",
-  "project",
-  "task",
-  "account",
-  "deal",
-  "calendar",
-  "calendar_event",
-  "meeting_archive",
-  "meeting",
-]);
+export const entityType = pgEnum("entity_type", entityTypes);
 
 export const entities = pgTable(
   "entities",

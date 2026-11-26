@@ -2,17 +2,15 @@ import type { RecordArchiveFilter } from "@substrate/contracts/crm/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { requireAppEnabled } from "../../core/apps/access";
-import { contactReadable, requireContact } from "../../core/contacts/access";
 import { contactProfileInput, parseInput, type ContactInput } from "../../core/contacts/inputs";
 import { contactDetailRows } from "../../core/contacts/profile";
 import { contactRepository } from "../../core/contacts/repository";
 import { contacts } from "../../core/contacts/schema";
 import { appEnabledCondition } from "../../core/permissions/app-visibility";
-import { organizationAdminCondition } from "../../core/permissions/visibility";
 import {
   entityCursor,
   pageSize,
-  type EntityAccess,
+  type PermissionLevel,
   type RepositoryContext,
 } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
@@ -48,7 +46,10 @@ export function contactApplicationRepository(context: RepositoryContext) {
     updateContact(id: string, input: Partial<ContactInput>) {
       const value = parseInput(contactProfileInput.partial(), input);
       return context.transaction(async (ctx) => {
-        const repo = contactRepository(ctx, await requireContact(ctx, id));
+        const repo = contactRepository(
+          ctx,
+          await ctx.requireAccess(id, "edit", { type: "contact" }),
+        );
         const previous = await repo.get(id);
         // SAFETY: parsing above strips unknown keys; every own key belongs to ContactInput.
         const changedFields = (Object.keys(value) as (keyof typeof value)[]).filter(
@@ -74,7 +75,6 @@ export function contactApplicationRepository(context: RepositoryContext) {
         archived?: RecordArchiveFilter;
       } = {},
     ) {
-      await context.requireActiveActor();
       const afterEntityId = entityCursor(options.afterEntityId);
       let archiveFilter;
       if (options.archived !== "all")
@@ -89,7 +89,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
         .where(
           and(
             eq(contacts.organizationId, org),
-            contactReadable(context, contacts.entityId),
+            context.readable(contacts.entityId, "view", "contact"),
             afterEntityId ? gt(contacts.entityId, afterEntityId) : undefined,
             options.search
               ? ilike(contacts.displayName, `%${options.search.replace(/[\\%_]/g, "\\$&")}%`)
@@ -101,11 +101,11 @@ export function contactApplicationRepository(context: RepositoryContext) {
         .limit(pageSize(options.limit));
     },
     async getContact(id: string) {
-      // readContactProfile with requireContact's level and the CRM archive state.
+      // readContactProfile with the actor's level and the CRM archive state.
       const [row] = await db
         .select({
           profile: contacts,
-          admin: sql<boolean>`${organizationAdminCondition(scope)}`,
+          level: sql<PermissionLevel>`${context.accessLevel(contacts.entityId)}`,
           archivedAt: crmContactProfiles.archivedAt,
         })
         .from(contacts)
@@ -114,7 +114,7 @@ export function contactApplicationRepository(context: RepositoryContext) {
           and(
             eq(contacts.organizationId, org),
             eq(contacts.entityId, id),
-            contactReadable(context, contacts.entityId),
+            context.readable(contacts.entityId, "view", "contact"),
           ),
         );
       if (!row) throw new AccessDeniedError();
@@ -142,18 +142,17 @@ export function contactApplicationRepository(context: RepositoryContext) {
             context.readable(crmAccounts.entityId),
           ),
         );
-      const access: Pick<EntityAccess, "level"> = { level: row.admin ? "owner" : "edit" };
       return {
         ...detail,
         affiliations,
         archivedAt: row.archivedAt ?? null,
-        level: access.level,
+        level: row.level,
       };
     },
     archive(id: string, archived: boolean) {
       return context.transaction(async (ctx) => {
         await requireAppEnabled(ctx, "crm");
-        await requireContact(ctx, id);
+        await ctx.requireAccess(id, "edit", { type: "contact" });
         const [previous] = await ctx.db
           .select()
           .from(crmContactProfiles)

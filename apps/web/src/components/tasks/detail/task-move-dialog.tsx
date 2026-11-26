@@ -1,3 +1,5 @@
+import { projectCapabilities } from "@substrate/contracts/access/capabilities";
+
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -8,7 +10,6 @@ import { TaskMoveDialog as TaskMoveDialogView } from "./task-move-dialog-view";
 import type { Task } from "@/components/tasks/types";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { resourceState } from "@/lib/resource-state";
-import { projectCapabilities } from "@/lib/tasks/project-capabilities";
 import { useTasksMutation } from "@/queries/tasks/mutations";
 import { projectQueryOptions, projectsQueryOptions } from "@/queries/tasks/options";
 import { useLoadedProject } from "@/queries/tasks/use-project";
@@ -31,10 +32,10 @@ export function TaskMoveDialog({
   const move = useTasksMutation(organizationId);
   const navigate = useNavigate();
   const destinationResource = resourceState(destination);
-  const { canEdit } = projectCapabilities(
-    destinationResource.data?.level,
-    !!destinationResource.data?.project.archivedAt,
-  );
+  const { canEdit } = projectCapabilities({
+    level: destinationResource.data?.level,
+    archived: !!destinationResource.data?.project.archivedAt,
+  });
   // The task inspector opens this only for a task in its loaded project.
   if (!source) return null;
   // A task can't move under itself or its own subtasks.

@@ -1,3 +1,5 @@
+import { projectCapabilities } from "@substrate/contracts/access/capabilities";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { useRef, useState } from "react";
@@ -5,7 +7,6 @@ import { useRef, useState } from "react";
 import { moveParentChoices } from "./task-access";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { canEdit } from "@/features/records/format";
 import { recordQueries } from "@/features/records/queries";
 import { ConfirmSheet, PickerSheet } from "@/features/records/ui/sheet";
 import { ErrorState } from "@/features/records/ui/states";
@@ -68,7 +69,9 @@ export function TaskMove({
       />
     );
   const project = detail.error ? undefined : detail.data;
-  const writable = !!project && canEdit(project.level) && !project.project.archivedAt;
+  const writable =
+    !!project &&
+    projectCapabilities({ level: project.level, archived: !!project.project.archivedAt }).canEdit;
   if (parent === undefined || !writable)
     return (
       <PickerSheet

@@ -3,20 +3,16 @@ import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harn
 import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
-import { ensureUserAgentActor } from "../../../../../packages/database/src/core/actors/provisioning";
-import { organizationApps } from "../../../../../packages/database/src/core/apps/schema";
-import { registerDevice } from "../../../../../packages/database/src/core/devices/repository";
-import type { DatabaseExecutor } from "../../../../../packages/database/src/core/executor";
-import {
-  AccessDeniedError,
-  AppDisabledError,
-  ConflictError,
-} from "../../../../../packages/database/src/errors";
-import { crmActivityEvents } from "../../../../../packages/database/src/features/crm/activity.schema";
-import { crmStages } from "../../../../../packages/database/src/features/crm/schema";
-import { crmSettings } from "../../../../../packages/database/src/features/crm/settings.schema";
-import { agentToolRequests } from "../../../../../packages/database/src/features/mcp/schema";
-import { createMessagingService } from "../../../../../packages/database/src/features/messaging/service";
+import { ensureUserAgentActor } from "../../core/actors/provisioning";
+import { organizationApps } from "../../core/apps/schema";
+import { registerDevice } from "../../core/devices/repository";
+import type { DatabaseExecutor } from "../../core/executor";
+import { AccessDeniedError, AppDisabledError, ConflictError } from "../../errors";
+import { crmActivityEvents } from "../../features/crm/activity.schema";
+import { crmStages } from "../../features/crm/schema";
+import { crmSettings } from "../../features/crm/settings.schema";
+import { agentToolRequests } from "../../features/mcp/schema";
+import { createMessagingService } from "../../features/messaging/service";
 import {
   entities,
   member,
@@ -30,17 +26,14 @@ import {
   messageEntityReferences,
   messagingMessages,
   messagingParticipants,
-} from "../../../../../packages/database/src/schema";
-import { discardEffects } from "../../../../../packages/database/src/testing/connection";
-import { contextConversation } from "../../../../../packages/database/src/testing/context";
-import { setupDatabase } from "../../../../../packages/database/src/testing/database";
-import { recordQueries } from "../../../../../packages/database/src/testing/queries";
-import { rejection } from "../../../../../packages/database/src/testing/rejection";
-import { scopeFixture } from "../../test-support";
+} from "../../schema";
+import { discardEffects } from "../../testing/connection";
+import { contextConversation } from "../../testing/context";
+import { setupDatabase } from "../../testing/database";
+import { recordQueries } from "../../testing/queries";
+import { rejection } from "../../testing/rejection";
 import { executeAgentTool as executeRawTool } from "./execution";
-import { createMcpService } from "./service";
-import { memoryStorage } from "./test-support";
-import { expect, spyOn, test } from "bun:test";
+import { expect, test } from "bun:test";
 import { and, eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
@@ -400,7 +393,7 @@ test("CRM MCP keeps the validated agent actor separate from human responsibility
     .select()
     .from(contactInteractions)
     .where(eq(contactInteractions.entityId, interaction.record.entityId));
-  expect(stored.createdByActorEntityId).toBe(actor.entityId);
+  expect(stored!.createdByActorEntityId).toBe(actor.entityId);
   expect(interaction.record.actor).toEqual({
     type: "agent",
     displayName: "Agent on behalf of Alice",
@@ -992,44 +985,6 @@ test("MCP writes roll back with their transaction", async () => {
     await rejection(executeCommittedTool(tracked.db, identity, "get_task_discussion", input, turn)),
   ).toBe(tracked.failure);
   expect(await f.db.select().from(messagingConversations)).toEqual([]);
-  expect(await f.db.select().from(agentToolRequests)).toEqual([]);
-});
-
-test("invalid fresh tool output rolls back its write and never reaches the publisher", async () => {
-  const { agentId, project } = await fixture();
-  let published = false;
-  const service = createMcpService({
-    db: f.db,
-    publish: async (committed) => {
-      published = true;
-      return committed.result;
-    },
-    storage: memoryStorage(),
-  });
-  const parse = mcpTools.create_task.output.parse.bind(mcpTools.create_task.output);
-  // Inject a malformed handler result at the output boundary, after the real task write.
-  const output = spyOn(mcpTools.create_task.output, "parse").mockImplementation(() =>
-    parse({ id: "invalid" }),
-  );
-  try {
-    expect(
-      await service.callAgentTool(
-        { ...scopeFixture(), userId: "alice", organizationId: f.orgA },
-        {
-          organizationId: f.orgA,
-          agentId,
-          tool: "create_task",
-          turn,
-          input: { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Rollback" },
-        },
-      ),
-    ).toMatchObject({ success: false });
-    expect(output).toHaveBeenCalledTimes(1);
-  } finally {
-    output.mockRestore();
-  }
-  expect(published).toBe(false);
-  expect(await f.db.select().from(tasks)).toEqual([]);
   expect(await f.db.select().from(agentToolRequests)).toEqual([]);
 });
 

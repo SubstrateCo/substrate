@@ -6,12 +6,7 @@ import {
   type AuthorizedAccess,
   type EntityAccess,
 } from "../../repository-context";
-import {
-  deletableAuthors,
-  interactionReadable,
-  requireContact,
-  requireInteraction,
-} from "../access";
+import { deletableAuthors, requireInteraction } from "../access";
 import { parseInput } from "../inputs";
 import { contacts } from "../schema";
 import { interactionWorkspaceRepository } from "./interaction-workspace.repository";
@@ -53,7 +48,7 @@ export function contactInteractionRepository(context: RepositoryContext) {
         const parent =
           checked?.entity.entityId === value.contactEntityId
             ? checked
-            : await requireContact(ctx, value.contactEntityId);
+            : await ctx.requireAccess(value.contactEntityId, "edit", { type: "contact" });
         const [contact] = await ctx.db
           .select()
           .from(contacts)
@@ -90,7 +85,7 @@ export function contactInteractionRepository(context: RepositoryContext) {
       checked?: EntityAccess,
     ) {
       if (checked?.entity.entityId !== contactEntityId || checked.entity.entityType !== "contact")
-        await requireContact(context, contactEntityId);
+        await context.requireAccess(contactEntityId, "edit", { type: "contact" });
       const cursor = options.before ? parseInput(timelineCursor, options.before) : undefined;
       const rows = await db
         .select()
@@ -99,7 +94,7 @@ export function contactInteractionRepository(context: RepositoryContext) {
           and(
             eq(contactInteractions.organizationId, scope.organizationId),
             eq(contactInteractions.contactEntityId, contactEntityId),
-            interactionReadable(context, contactInteractions.entityId),
+            context.readable(contactInteractions.entityId, "view", "contact_interaction"),
             cursor
               ? sql`(${contactInteractions.occurredAt}, ${contactInteractions.entityId}) < (${cursor.occurredAt.toISOString()}::timestamptz, ${cursor.entityId}::uuid)`
               : undefined,
@@ -121,7 +116,12 @@ export function contactInteractionRepository(context: RepositoryContext) {
         const [row] = await ctx.db
           .update(contactInteractions)
           .set(value)
-          .where(and(target(entityId), interactionReadable(ctx, contactInteractions.entityId)))
+          .where(
+            and(
+              target(entityId),
+              ctx.readable(contactInteractions.entityId, "view", "contact_interaction"),
+            ),
+          )
           .returning();
         if (!row) throw new AccessDeniedError();
         await ctx.touch(entityId);

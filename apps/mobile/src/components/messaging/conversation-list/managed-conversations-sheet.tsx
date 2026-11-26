@@ -6,10 +6,10 @@ import { PanelSheet, SheetSection } from "../shared/panel-sheet";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import {
-  conversationLabel,
   managedMemberChoices,
   managedOwnerCandidates,
-} from "@/features/messaging/conversations/conversation-rules";
+} from "@/features/messaging/conversations/conversation-access";
+import { conversationLabel } from "@/features/messaging/conversations/conversation-rules";
 import { recipientEmails } from "@/features/messaging/conversations/recipients";
 import {
   useConversationManagement,

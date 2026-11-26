@@ -1,5 +1,6 @@
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { taskActivity } from "../../features/activity/schema";
+import { createRepositories } from "../../repositories";
 import { actors, entities, entityGrants, member, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
@@ -190,7 +191,7 @@ test("the database rejects cross-organization grants to agents", async () => {
 });
 
 test("agents cannot cross workspaces or outlive the owner's active identity", async () => {
-  const { repositories: agent } = await assistant();
+  const { repositories: agent, actor } = await assistant();
   const foreign = await f.forActor(f.outsider, f.orgB).contacts.create({ displayName: "Foreign" });
   expect(await rejection(agent.contacts.get(foreign.entityId))).toBeInstanceOf(AccessDeniedError);
   await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.alice));
@@ -198,9 +199,16 @@ test("agents cannot cross workspaces or outlive the owner's active identity", as
     AccessDeniedError,
   );
   await f.db.update(actors).set({ disabledAt: null }).where(eq(actors.entityId, f.alice));
+  // The session refuses the agent once its owner's actor is deleted or their membership ends.
+  const session = () =>
+    createRepositories(f.db).forSession({
+      userId: "alice",
+      organizationId: f.orgA,
+      actorEntityId: actor.entityId,
+    });
   await f.db.update(entities).set({ deletedAt: new Date() }).where(eq(entities.entityId, f.alice));
-  expect(await rejection(agent.contacts.list())).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(session())).toBeInstanceOf(AccessDeniedError);
   await f.db.update(entities).set({ deletedAt: null }).where(eq(entities.entityId, f.alice));
   await f.db.delete(member).where(eq(member.id, "alice-a"));
-  expect(await rejection(agent.contacts.list())).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(session())).toBeInstanceOf(AccessDeniedError);
 });

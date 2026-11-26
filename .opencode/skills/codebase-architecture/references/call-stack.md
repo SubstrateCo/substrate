@@ -22,6 +22,7 @@ and vendor calls that matter.
 | Kind | Use for |
 | --- | --- |
 | `mw` | Middleware. List global middleware once in a `mw*` line, or in a shared header block. |
+| `authz` | An authorization check, in any layer: scope, central access call, a feature's own check, or a client capability. Name what it checks. |
 | `valid` | Schema validation, with the schema name and where it lives. |
 | `route` | The handler body. Show it only when it does more than one call. |
 | `svc` | A service method. |
@@ -72,6 +73,23 @@ POST /api/invoices/:id/send                                         src/invoices
       !! R5 vendor: SDK called from the route
   out     res.json(invoice)
     !! R4 sanitize: returns the raw row, with internalNotes
+```
+
+## Example: permission frames
+
+```text
+POST /api/v1/crm/sharing                                            v1/crm/routes.ts:L40
+  mw      scopes.workspace("json")                                  shared/scope.ts
+    authz   session, membership, active actor
+  svc     crm.share(scope, input)                                   v1/crm/service.ts
+    db      crm.share(entityId, actorId, level)                     features/crm/access/sharing.ts
+      authz   requireAppEnabled(crm)
+        !! P2 duplicate: requireAccess already raises AppDisabledError
+      authz   requireStructuralAccess(id, "owner")                  core/repository-context.ts
+      authz   if entityType not account|deal → deny
+        !! P2 duplicate: pass { type } to requireAccess
+      db      select previous grant
+        !! P2 duplicate: changePermission reads it; use its beforeChange hook
 ```
 
 ## Fix plan diff

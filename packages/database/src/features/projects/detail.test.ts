@@ -1,4 +1,3 @@
-import { actors } from "../../core/actors/schema";
 import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
 import { AccessDeniedError } from "../../errors";
@@ -95,6 +94,37 @@ test("project members and available actors join current names and private pictur
   expect(result.actors.find((row) => row.entityId === f.alice)?.image).toBeNull();
 });
 
+test("only actors who can read the project are assignable, like the assignee check", async () => {
+  const alice = f.forActor(f.alice);
+  const project = await alice.projects.create({ name: "Assignable" });
+  const assignable = async () =>
+    Object.fromEntries(
+      (await alice.projects.getDetail(project.entityId)).actors.map((row) => [
+        row.entityId,
+        row.assignable,
+      ]),
+    );
+  // Bob is a member without a grant, so the server refuses him as an assignee.
+  expect((await assignable())[f.bob]).toBe(false);
+  expect(
+    await rejection(
+      alice.tasks.create({
+        projectEntityId: project.entityId,
+        title: "Refused",
+        assigneeActorEntityId: f.bob,
+      }),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
+  // An organization admin reaches the project through the role, without a grant.
+  await f.db.update(member).set({ role: "admin" }).where(eq(member.id, "bob-a"));
+  expect((await assignable())[f.bob]).toBe(true);
+  await alice.tasks.create({
+    projectEntityId: project.entityId,
+    title: "Accepted",
+    assigneeActorEntityId: f.bob,
+  });
+});
+
 test("project detail preserves protected output in one SELECT statement", async () => {
   const alice = f.forActor(f.alice);
   const project = await alice.projects.create({ name: "Detail" });
@@ -162,7 +192,7 @@ test("project and task getters authorize and read in one statement", async () =>
   expect(queries).toHaveLength(1);
 });
 
-test("single-statement getters retain minimum levels and disabled-actor checks", async () => {
+test("single-statement getters retain minimum levels", async () => {
   const alice = f.forActor(f.alice);
   const bob = f.forActor(f.bob);
   const project = await alice.projects.create({ name: "Read access" });
@@ -178,12 +208,9 @@ test("single-statement getters retain minimum levels and disabled-actor checks",
   expect<typeof task>(await bob.tasks.get(task.entityId, "comment")).toEqual(task);
   expect(await rejection(bob.tasks.get(task.entityId, "edit"))).toBeInstanceOf(AccessDeniedError);
   expect(await bob.projects.get(project.entityId)).toEqual(project);
-  await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.bob));
-  expect(await rejection(bob.tasks.get(task.entityId))).toBeInstanceOf(AccessDeniedError);
-  expect(await rejection(bob.projects.get(project.entityId))).toBeInstanceOf(AccessDeniedError);
 });
 
-test("project detail denies revoked, deleted, foreign and inactive access", async () => {
+test("project detail denies revoked, deleted and foreign access", async () => {
   const alice = f.forActor(f.alice);
   const bob = f.forActor(f.bob);
   const project = await alice.projects.create({ name: "Private" });
@@ -219,16 +246,6 @@ test("project detail denies revoked, deleted, foreign and inactive access", asyn
     .set({ deletedAt: new Date() })
     .where(eq(entities.entityId, project.entityId));
   expect(await rejection(alice.projects.getDetail(project.entityId))).toBeInstanceOf(
-    AccessDeniedError,
-  );
-  const activeProject = await alice.projects.create({ name: "Active" });
-  await f.db.update(entities).set({ deletedAt: new Date() }).where(eq(entities.entityId, f.alice));
-  expect(await rejection(alice.projects.getDetail(activeProject.entityId))).toBeInstanceOf(
-    AccessDeniedError,
-  );
-  await f.db.update(entities).set({ deletedAt: null }).where(eq(entities.entityId, f.alice));
-  await f.db.delete(member).where(eq(member.id, "alice-a"));
-  expect(await rejection(alice.projects.getDetail(activeProject.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
 });

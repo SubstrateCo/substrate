@@ -1,6 +1,5 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import { requireContact } from "../../../core/contacts/access";
 import { interactionWorkspaceRepository } from "../../../core/contacts/interactions/interaction-workspace.repository";
 import { contactInteractionRepository } from "../../../core/contacts/interactions/interactions.repository";
 import { appEnabledCondition } from "../../../core/permissions/app-visibility";
@@ -9,8 +8,8 @@ import { AccessDeniedError } from "../../../errors";
 import { ValidationError } from "../../../errors";
 import { recordCrmActivity } from "../../crm/activity/activity";
 import { presentInteraction, presentInteractions } from "../../crm/activity/actor-views";
-import { crmContactProfiles } from "../../crm/schema";
 import { interactionScope } from "../../crm/activity/timeline";
+import { crmContactProfiles } from "../../crm/schema";
 import { contextInteractionActions } from "./interaction-actions";
 import { interactionDirectoryPage } from "./interaction-directory";
 import { publishInteraction } from "./interaction-publication";
@@ -30,7 +29,8 @@ export function contextContactInteractionRepository(context: RepositoryContext) 
       input: Parameters<ReturnType<typeof interactionWorkspaceRepository>["workspaceTimeline"]>[0],
     ) {
       let condition;
-      if (input.contactEntityId) await requireContact(context, input.contactEntityId);
+      if (input.contactEntityId)
+        await context.requireAccess(input.contactEntityId, "edit", { type: "contact" });
       if (input.accountEntityId) {
         const access = await context.requireAccess(input.accountEntityId, "view");
         if (access.entity.entityType !== "account") throw new AccessDeniedError();
@@ -61,7 +61,7 @@ export function contextContactInteractionRepository(context: RepositoryContext) 
       input: Parameters<ReturnType<typeof contactInteractionRepository>["createManual"]>[0],
     ) {
       return context.transaction(async (ctx) => {
-        const contact = await requireContact(ctx, input.contactEntityId);
+        const contact = await ctx.requireAccess(input.contactEntityId, "edit", { type: "contact" });
         const [profile] = await ctx.db
           .select()
           .from(crmContactProfiles)

@@ -1,6 +1,5 @@
 import { AccessDeniedError } from "../../errors";
 import type { RepositoryContext } from "../repository-context";
-import { contactReadable } from "./access";
 import { contactAddresses, contactUrls } from "./details.schema";
 import { contactIdentifiers, contacts } from "./schema";
 import { and, asc, eq } from "drizzle-orm";
@@ -14,7 +13,7 @@ export async function readContactProfile(ctx: RepositoryContext, contactId: stri
       and(
         eq(contacts.organizationId, ctx.scope.organizationId),
         eq(contacts.entityId, contactId),
-        contactReadable(ctx, contacts.entityId),
+        ctx.readable(contacts.entityId, "view", "contact"),
       ),
     );
   if (!profile) throw new AccessDeniedError();

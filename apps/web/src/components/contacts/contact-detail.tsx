@@ -1,3 +1,5 @@
+import { crmRecordCapabilities } from "@substrate/contracts/access/capabilities";
+
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
@@ -47,10 +49,10 @@ export function ContactDetail({ entityId }: { entityId: string }) {
   );
   if (!data) return fallback;
   const { profile, affiliations, level } = data;
-  const canEdit = level === "edit" || level === "owner";
   const archived = !!data.archivedAt;
+  const capabilities = crmRecordCapabilities({ level, archived });
   const change = recordChangeDialog(dialog);
-  const canChange = canEdit && !archived;
+  const canChange = capabilities.canEdit;
   const open = (next: NonNullable<typeof dialog>) => {
     mutation.reset();
     setDialog(next);
@@ -64,8 +66,7 @@ export function ContactDetail({ entityId }: { entityId: string }) {
         name={profile.displayName}
         summary={profile.notes}
         archived={archived}
-        canEdit={canEdit}
-        level={level}
+        capabilities={capabilities}
         onEdit={() => open("edit")}
         onArchive={() => open("archive")}
         properties={
@@ -129,7 +130,6 @@ export function ContactDetail({ entityId }: { entityId: string }) {
         <InteractionHistory
           contactEntityId={entityId}
           canEdit={canChange}
-          canDelete={!archived}
           onCreate={canChange ? () => open("interaction") : undefined}
         />
         <ContactMeetings contactEntityId={entityId} />

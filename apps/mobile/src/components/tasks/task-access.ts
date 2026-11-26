@@ -1,18 +1,3 @@
-import type { ProjectDetail } from "@/features/records/requests";
-
-export function taskAssignees(
-  detail: Pick<ProjectDetail, "actors" | "members">,
-  current?: string | null,
-) {
-  return detail.actors.filter(
-    (actor) =>
-      actor.entityId === current ||
-      (actor.assignable &&
-        (actor.type === "agent" ||
-          detail.members.some((member) => member.actorEntityId === actor.entityId))),
-  );
-}
-
 export function moveParentChoices(
   tasks: { entityId: string; parentTaskEntityId: string | null; title: string }[],
   taskId: string,

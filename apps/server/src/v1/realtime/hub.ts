@@ -181,7 +181,8 @@ export function createRealtimeHub(
         throw new Error("Realtime capacity reached");
       const verifiedAt = Date.now();
       const identity = await deps.authenticate(headers, organizationId);
-      if (!identity || identity.organizationId !== organizationId) return null;
+      // authenticate() admits only the session's active organization.
+      if (!identity) return null;
       if (isStopped() || !isAvailable() || connections.size >= maxConnections)
         throw new Error("Realtime capacity reached");
       let count = 0;

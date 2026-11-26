@@ -1,16 +1,11 @@
 import type { ServerToolName } from "@substrate/contracts/harness/tools";
 
-import { AccessDeniedError, ValidationError } from "../../../../../packages/database/src/errors";
-import {
-  agentRequests,
-  agentWakes,
-  member,
-  taskActivity,
-} from "../../../../../packages/database/src/schema";
-import { dmTurn, ownerAgentWork } from "../../../../../packages/database/src/testing/agent-work";
-import { setupDatabase } from "../../../../../packages/database/src/testing/database";
-import { rejection } from "../../../../../packages/database/src/testing/rejection";
-import { agentWorkFixture } from "./test-support";
+import { AccessDeniedError, ValidationError } from "../../errors";
+import { agentRequests, agentWakes, member, taskActivity } from "../../schema";
+import { dmTurn, ownerAgentWork } from "../../testing/agent-work";
+import { setupDatabase } from "../../testing/database";
+import { mcpFixture } from "../../testing/mcp";
+import { rejection } from "../../testing/rejection";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { ZodError } from "zod";
@@ -18,7 +13,7 @@ import { ZodError } from "zod";
 const f = setupDatabase();
 
 async function tools() {
-  const fixture = await agentWorkFixture(f);
+  const fixture = await mcpFixture(f);
   const turn = dmTurn(fixture.dm.id);
   const call = <K extends Parameters<typeof fixture.call>[0]>(
     tool: K,

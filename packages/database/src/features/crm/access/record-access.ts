@@ -7,7 +7,6 @@ import {
   viewerActorJoins,
 } from "../../../core/actors/access";
 import { actors } from "../../../core/actors/schema";
-import { requireAppEnabled } from "../../../core/apps/access";
 import { entities } from "../../../core/entities/schema";
 import { RepositoryContext, entityCursor } from "../../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../../errors";
@@ -24,6 +23,23 @@ export type ListOptions = {
   outcome?: DealOutcome;
 };
 
+export const archivedRecordMessage = "Restore the archived record first.";
+
+/** Rejects a structural change to an archived account or deal. Check access first. */
+export async function requireUnarchivedRecord(
+  ctx: RepositoryContext,
+  entity: { entityId: string; entityType: string },
+) {
+  const table = entity.entityType === "deal" ? crmDeals : crmAccounts;
+  const [row] = await ctx.db
+    .select({ archivedAt: table.archivedAt })
+    .from(table)
+    .where(
+      and(eq(table.organizationId, ctx.scope.organizationId), eq(table.entityId, entity.entityId)),
+    );
+  if (row?.archivedAt) throw new ValidationError(archivedRecordMessage);
+}
+
 export function crmRecordAccess(context: RepositoryContext) {
   const { scope } = context;
   const org = scope.organizationId;
@@ -32,16 +48,8 @@ export function crmRecordAccess(context: RepositoryContext) {
   }
   const target = (table: typeof crmAccounts | typeof crmDeals, id: string) =>
     and(eq(table.organizationId, org), eq(table.entityId, id));
-  async function requireType(
-    ctx: RepositoryContext,
-    id: string,
-    type: "account" | "deal" | "contact",
-    edit = false,
-  ) {
-    await requireAppEnabled(ctx, "crm");
-    const access = await ctx.requireAccess(id, edit ? "edit" : "view");
-    if (access.entity.entityType !== type) throw new AccessDeniedError();
-    return access;
+  function requireType(ctx: RepositoryContext, id: string, type: "account" | "deal", edit = false) {
+    return ctx.requireAccess(id, edit ? "edit" : "view", { type });
   }
   async function owner(ctx: RepositoryContext) {
     const viewer = viewerActorJoins(ctx.scope, "crm_creator_entity");

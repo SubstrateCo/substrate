@@ -11,7 +11,7 @@ import { isMemberEdited } from "./visibility";
 import { and, eq, sql } from "drizzle-orm";
 
 // Untyped callers reach grants too; an unknown level must not be stored or read as a revoke.
-export function requirePermissionLevel(level: PermissionLevel) {
+function requirePermissionLevel(level: PermissionLevel) {
   if (!permissionLevel.enumValues.includes(level))
     throw new ValidationError("Unknown permission level.");
 }
@@ -20,12 +20,16 @@ export function requirePermissionLevel(level: PermissionLevel) {
  * Sets or removes (no `level`) one actor's grant on the entity. `access` must come from
  * `ctx.requireStructuralAccess(entityId, "owner")` in the same transaction as `ctx`: that claim
  * makes grant changes on one entity run one at a time, so the owner count read here is current.
+ * A domain records the change in `beforeChange`, which runs only when the grant changes, before
+ * a self-revoke removes the caller's access.
  */
 export async function changePermission(
   ctx: RepositoryContext,
   access: AuthorizedAccess<"owner">,
   input: { actorEntityId: string; level?: PermissionLevel },
+  { beforeChange }: { beforeChange?: () => Promise<void> } = {},
 ) {
+  if (input.level !== undefined) requirePermissionLevel(input.level);
   const { db: tx, scope } = ctx;
   const { entity } = access;
   const entityId = entity.entityId;
@@ -60,6 +64,7 @@ export async function changePermission(
     `);
     if (!owners?.remaining) throw new ValidationError("Cannot remove or downgrade the last owner.");
   }
+  await beforeChange?.();
   if (input.level) {
     await tx
       .insert(entityGrants)
@@ -96,7 +101,6 @@ export function permissionRepository(context: RepositoryContext) {
 
   return {
     grant(input: { entityId: string; actorEntityId: string; level: PermissionLevel }) {
-      requirePermissionLevel(input.level);
       return change({
         entityId: input.entityId,
         actorEntityId: input.actorEntityId,

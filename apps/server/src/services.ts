@@ -1,6 +1,7 @@
 import {
   createStorageRepository,
   ensureOwnedAgentActors,
+  projectIconAccess,
   type Database,
 } from "@substrate/database/trusted";
 
@@ -28,7 +29,6 @@ import { createReadService } from "./v1/messaging/read-service";
 import { createMessagingService } from "./v1/messaging/service";
 import { createSharingService } from "./v1/messaging/sharing-service";
 import { createOrganizationService } from "./v1/organizations/service";
-import { projectPictureAccess } from "./v1/tasks/picture-access";
 import { createTasksService } from "./v1/tasks/service";
 
 export function createServices(deps: {
@@ -57,7 +57,7 @@ export function createServices(deps: {
     pictures: createPictureService({
       storage: deps.storage,
       repository,
-      projects: projectPictureAccess(deps.db),
+      projects: projectIconAccess(deps.db),
     }),
     attachments: createAttachmentService(deps),
     messaging: createMessagingService(deps),

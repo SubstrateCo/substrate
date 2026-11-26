@@ -1,3 +1,4 @@
+import { permissionLabels } from "@substrate/contracts/access/levels";
 import { taskStatusLabels } from "@substrate/contracts/tasks";
 
 import { useQuery } from "@tanstack/react-query";
@@ -11,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useWorkspaceApps } from "@/features/records/apps";
-import { permissionLabels } from "@/features/records/format";
 import { recordQueries, useRecordScope, useTasksWrite } from "@/features/records/queries";
 import type { HomeTask, ProjectSummary } from "@/features/records/requests";
 import type { OnOpenRecord, WorkspaceScreenProps } from "@/features/records/types";

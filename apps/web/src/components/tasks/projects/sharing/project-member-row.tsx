@@ -1,6 +1,7 @@
+import { permissionLabels } from "@substrate/contracts/access/levels";
 import type { PermissionLevel } from "@substrate/contracts/tasks";
 
-import { projectPermissionLabels, projectPermissionOptions, type ProjectDetail } from "../../types";
+import { projectPermissionOptions, type ProjectDetail } from "../../types";
 import { AccessRow } from "@/components/people/access-row";
 import {
   Select,
@@ -41,7 +42,7 @@ export function ProjectMemberRow({
           {lastOwner && canManage && " · Only owner. Add another owner to change this."}
         </>
       }
-      level={projectPermissionLabels[member.level]}
+      level={permissionLabels[member.level]}
       levelControl={
         editable ? (
           <Select

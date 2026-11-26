@@ -1,5 +1,4 @@
 import type { CrmWrite } from "@substrate/contracts/crm/input";
-import type { PermissionLevel } from "@substrate/contracts/tasks";
 
 import { useId, useState } from "react";
 
@@ -16,7 +15,6 @@ type Assignment = Extract<CrmWrite, { action: "assignOwner" }>;
 export type RecordOwnerProps = {
   entityId: string;
   name: string;
-  level: PermissionLevel;
   record:
     | { kind: "account"; ownerActorEntityId: string }
     | { kind: "deal"; ownerActorEntityId: string; version: number };
@@ -24,14 +22,8 @@ export type RecordOwnerProps = {
   onRestoreFocus?: () => void;
 };
 
-export function RecordOwner({
-  entityId,
-  name,
-  level,
-  record,
-  onClose,
-  onRestoreFocus,
-}: RecordOwnerProps) {
+/** Reassigns responsibility. Show it only to readers whose capabilities allow `canReassign`. */
+export function RecordOwner({ entityId, name, record, onClose, onRestoreFocus }: RecordOwnerProps) {
   const { organizationId } = useWorkspaceScope();
   const id = useId();
   const mutation = useCrmMutation(organizationId);
@@ -40,9 +32,7 @@ export function RecordOwner({
   const [personId, setPersonId] = useState("");
   const [decision, setDecision] = useState<Assignment["accessDecision"]>("require_existing_access");
   const actor = directory.people.find((candidate) => candidate.id === personId);
-  const canEdit = level === "edit" || level === "owner";
-  const canSubmit = canEdit && !!actor && actor.id !== expectedRecord.ownerActorEntityId;
-  if (!canEdit) return null;
+  const canSubmit = !!actor && actor.id !== expectedRecord.ownerActorEntityId;
   return (
     <FormDialog
       title={`Reassign ${name}`}

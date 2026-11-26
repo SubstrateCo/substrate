@@ -1,9 +1,4 @@
-import type {
-  Conversation,
-  ConversationMember,
-  ManagedConversation,
-  WorkspacePerson,
-} from "../types";
+import type { Conversation, ConversationMember } from "../types";
 
 type Named = Pick<Conversation, "name" | "kind"> & { task?: Conversation["task"] };
 
@@ -63,74 +58,6 @@ export function directPartner(conversation: Conversation, viewerId: string) {
   if (conversation.kind !== "dm") return undefined;
   const others = conversation.members.filter((member) => member.userId !== viewerId);
   return others.length === 1 ? others[0] : undefined;
-}
-
-export function canAddMembers(conversation: Conversation) {
-  return !conversation.task && conversation.kind !== "dm" && conversation.canManage;
-}
-
-export function canLeave(conversation: Conversation) {
-  return !conversation.task && conversation.kind !== "dm" && conversation.joined;
-}
-
-/** Managers remove people of the host organization, never themselves or the owner. */
-export function canRemoveMember(
-  conversation: Conversation,
-  viewerId: string,
-  member: ConversationMember,
-) {
-  return (
-    canAddMembers(conversation) &&
-    member.type === "human" &&
-    member.organizationId === conversation.organizationId &&
-    member.userId !== viewerId &&
-    member.userId !== conversation.createdBy
-  );
-}
-
-/** The owner leaving must hand ownership to another person first, when there is one. */
-export function leaveOwnerCandidates(conversation: Conversation, viewerId: string) {
-  const owner = conversation.createdBy === viewerId && conversation.canManage;
-  if (!owner) return [];
-  return ownerCandidates(conversation);
-}
-
-/** Ownership stays in the host organization, even when partners share the conversation. */
-export function ownerCandidates(
-  conversation: Pick<Conversation, "members" | "organizationId" | "createdBy">,
-) {
-  return humanMembers(
-    conversation.members.filter((member) => member.organizationId === conversation.organizationId),
-  ).filter((person) => person.userId !== conversation.createdBy);
-}
-
-/** Managed metadata omits organization IDs. Only current host-directory members can own it. */
-export function managedOwnerCandidates(
-  conversation: Pick<ManagedConversation, "members" | "ownerUserId">,
-  people: readonly Pick<WorkspacePerson, "userId" | "name">[],
-) {
-  const memberIds = new Set(
-    conversation.members.flatMap((member) =>
-      member.type === "human" && member.userId ? [member.userId] : [],
-    ),
-  );
-  return people.filter(
-    (person) => memberIds.has(person.userId) && person.userId !== conversation.ownerUserId,
-  );
-}
-
-/** Add-members never adds its acting user; do not offer a no-op self-add to metadata-only admins. */
-export function managedMemberChoices(
-  people: readonly Pick<WorkspacePerson, "userId" | "name" | "email" | "image">[],
-  members: readonly Pick<ConversationMember, "userId">[],
-  viewerId: string,
-) {
-  const memberIds = new Set(members.flatMap((member) => (member.userId ? [member.userId] : [])));
-  return people.flatMap((person) =>
-    person.userId !== viewerId && !memberIds.has(person.userId)
-      ? [{ id: person.userId, name: person.name, email: person.email, image: person.image }]
-      : [],
-  );
 }
 
 export function leaveConsequence(conversation: Conversation) {

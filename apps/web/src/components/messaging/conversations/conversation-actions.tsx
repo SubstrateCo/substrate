@@ -1,3 +1,5 @@
+import { canLeave } from "@substrate/contracts/messaging/permissions";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { ConversationActionsMenu } from "./actions/conversation-actions-menu";
@@ -43,7 +45,6 @@ export function ConversationActions({
   // Running text: a public channel reads "#name", as in the composer and search.
   const name = conversationTextLabel(conversation);
   const people = humanMembers(conversation.members);
-  const canLeave = conversation.kind !== "dm" && !!conversation.joined;
   const { leaveLabel, deleteLabel } =
     conversation.kind === "channel"
       ? { leaveLabel: "Leave channel", deleteLabel: "Delete channel" }
@@ -58,7 +59,7 @@ export function ConversationActions({
         leaveLabel={leaveLabel}
         deleteLabel={deleteLabel}
         onSharing={conversation.canShare ? () => open("sharing") : undefined}
-        onLeave={canLeave ? () => open("leave") : undefined}
+        onLeave={canLeave(conversation) ? () => open("leave") : undefined}
         {...ownershipActions}
       />
       {dialog === "sharing" && (

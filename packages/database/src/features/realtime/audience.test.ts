@@ -270,6 +270,33 @@ test("a project audience reaches its grantees and admins in one statement, never
   ).toBe(false);
 });
 
+test("a contact audience reaches every member, like contact access", async () => {
+  const contact = await fixture.forActor(fixture.alice).contacts.create({ displayName: "Shared" });
+  const receivers = await Promise.all(
+    [alice, bob, external].map((identity) => resolveReceiver(fixture.db, identity)),
+  );
+  const receives = await audienceRecipients(
+    fixture.db,
+    realtimeKeys.entity(fixture.orgA, contact.entityId),
+  );
+  // Bob is a member without a grant: contacts are member-edited, so he reads it.
+  expect(receivers.map((receiver) => receives(receiver!))).toEqual([true, true, false]);
+});
+
+test("an entity audience reaches no one once the entity is deleted", async () => {
+  const project = await fixture.forActor(fixture.alice).projects.create({ name: "Gone" });
+  await fixture.db
+    .update(entities)
+    .set({ deletedAt: new Date() })
+    .where(eq(entities.entityId, project.entityId));
+  const receiver = await resolveReceiver(fixture.db, alice);
+  const receives = await audienceRecipients(
+    fixture.db,
+    realtimeKeys.entity(fixture.orgA, project.entityId),
+  );
+  expect(receives(receiver!)).toBe(false);
+});
+
 test("batched receivers match single resolution for mixed identities in constant statements", async () => {
   await fixture.db.insert(member).values({
     id: "outsider-a",

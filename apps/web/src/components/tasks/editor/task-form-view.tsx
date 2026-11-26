@@ -1,9 +1,10 @@
+import { assignableActors } from "@substrate/contracts/tasks/project-access";
+
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 
 import { useId, useRef, type KeyboardEvent, type ReactNode } from "react";
 
 import { PendingButton } from "../../feedback/pending-button";
-import { assignableActors } from "../assignee/assignable";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { taskFormSchema } from "./task-form-validation";
 import { TaskScheduleFields } from "./task-schedule-fields";

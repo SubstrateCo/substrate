@@ -122,7 +122,6 @@ export async function recordLabels(
 
   // Stages are the organization's pipeline: any member reads them while CRM is enabled.
   if (missing().length && (await enabledApps(ctx)).includes("crm")) {
-    await ctx.requireActiveActor();
     const stages = await ctx.db
       .select({ id: crmStages.id, name: crmStages.name })
       .from(crmStages)

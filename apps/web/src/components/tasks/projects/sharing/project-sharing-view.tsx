@@ -1,4 +1,7 @@
+import type { ProjectCapabilities } from "@substrate/contracts/access/capabilities";
+import { atLeast } from "@substrate/contracts/access/levels";
 import type { PermissionLevel } from "@substrate/contracts/tasks";
+import { grantCandidates, isLastOwner } from "@substrate/contracts/tasks/project-access";
 
 import { useRef } from "react";
 
@@ -10,10 +13,8 @@ import { FormDialog } from "@/components/feedback/form-dialog";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { GroupTitle, SettingsCard } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
-import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
 import { UserPlus } from "lucide-react";
 
-const permissionRank = { view: 0, comment: 1, edit: 2, owner: 3 };
 const grantVerbs: Record<PermissionLevel, string> = {
   view: "view",
   comment: "comment on",
@@ -67,13 +68,8 @@ export function ProjectSharing({
     | { kind: "review"; actorEntityId: string; name: string; level: PermissionLevel | null }
   >(addButton);
   const review = dialog?.kind === "review" ? dialog : undefined;
-  const { canManage } = capabilities;
-  const ownerCount = detail.members.filter((member) => member.level === "owner").length;
-  const canAdd = detail.actors.some(
-    (actor) =>
-      actor.type === "human" &&
-      !detail.members.some((member) => member.actorEntityId === actor.entityId),
-  );
+  const { canManageAccess: canManage } = capabilities;
+  const canAdd = grantCandidates(detail).length > 0;
   const openReview = (actorEntityId: string, name: string, level: PermissionLevel | null) => {
     onClearError();
     open({ kind: "review", actorEntityId, name, level });
@@ -135,10 +131,10 @@ export function ProjectSharing({
             key={`${member.actorEntityId}:${member.level}`}
             member={member}
             canManage={canManage}
-            lastOwner={member.level === "owner" && ownerCount === 1}
+            lastOwner={isLastOwner(detail.members, member.actorEntityId)}
             pending={pending}
             onChange={(level) => {
-              if (permissionRank[level] > permissionRank[member.level])
+              if (!atLeast(member.level, level))
                 openReview(member.actorEntityId, member.name, level);
               else
                 onShare(

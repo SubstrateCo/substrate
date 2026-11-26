@@ -5,7 +5,9 @@ import {
   type ServerToolName,
   type ToolDefinition,
 } from "@substrate/contracts/harness/tools";
-import { needsLiveTurn, proposableTool } from "@substrate/database/mcp";
+
+import { proposableTool } from "../agent-work/requests/proposals";
+import { needsLiveTurn } from "./handlers";
 
 const handoffIsQuiet =
   "A handoff turn saves its notes with save_handoff. It does not publish or change records.";

@@ -1,6 +1,6 @@
 import { crmWrite } from "@substrate/contracts/crm/input";
 
-import { requireAppEnabled, requireAppEnabledForActiveActor } from "../../core/apps/access";
+import { requireAppEnabled } from "../../core/apps/access";
 import { parseInput } from "../../core/contacts/inputs";
 import { RepositoryContext } from "../../core/repository-context";
 import { ConflictError, ValidationError } from "../../errors";
@@ -106,7 +106,7 @@ export function crmPipelineRepository(context: RepositoryContext) {
       });
     },
     async pipeline() {
-      await requireAppEnabledForActiveActor(context, "crm");
+      await requireAppEnabled(context, "crm");
       return db
         .select()
         .from(crmStages)
@@ -116,7 +116,6 @@ export function crmPipelineRepository(context: RepositoryContext) {
     async ensurePipeline() {
       return context.transaction(async (ctx) => {
         await requireAppEnabled(ctx, "crm");
-        await ctx.requireActiveActor();
         const existing = await stages(ctx);
         if (existing.length) return existing;
         // A lost claim means another call changed the pipeline; return what it created.

@@ -7,34 +7,26 @@ import {
   type McpOutput,
   type ServerToolName,
 } from "@substrate/contracts/harness/tools";
-import {
-  requireAppsEnabled,
-  effectsFor,
-  type FileContentReader,
-  type SessionIdentity,
-  workspaceContext,
-  AccessDeniedError,
-  ValidationError,
-  requireMessage,
-  messageChangeHints,
-  taskRepository,
-  auditCallerTool,
-  namedIds,
-  requireCallerTurn,
-  mcpCrmTools,
-  mcpMeetingTools,
-  requireMeetingTurn,
-  mcpTaskQueries,
-  requireTurn,
-  requireHomeDevice,
-  claimToolReceipt,
-  saveToolReceipt,
-  serverToolHandlers,
-  proposeToolCall,
-  proposalInput,
-} from "@substrate/database/mcp";
-import type { DatabaseExecutor } from "@substrate/database/trusted";
 
+import { requireAppsEnabled } from "../../core/apps/access";
+import { effectsFor } from "../../core/effects";
+import type { DatabaseExecutor } from "../../core/executor";
+import type { SessionIdentity } from "../../core/session/identity";
+import { workspaceContext } from "../../core/session/workspace";
+import { AccessDeniedError, ValidationError } from "../../errors";
+import { proposalInput } from "../agent-work/requests/proposals";
+import { requireMessage } from "../messaging/access";
+import { messageChangeHints } from "../realtime/routing";
+import { taskRepository } from "../tasks/repository";
+import { auditCallerTool, namedIds, requireCallerTurn } from "./caller-turn";
+import { mcpCrmTools } from "./crm";
+import type { FileContentReader } from "./files";
+import { serverToolHandlers } from "./handlers";
+import { mcpMeetingTools, requireMeetingTurn } from "./meetings";
+import { proposeToolCall } from "./proposals";
+import { claimToolReceipt, requireHomeDevice, saveToolReceipt } from "./repository";
+import { mcpTaskQueries } from "./tasks";
+import { requireTurn } from "./turn";
 import { approvalNeeded, writeGate } from "./write-gate";
 import { createHash } from "node:crypto";
 import { z } from "zod";

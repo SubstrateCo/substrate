@@ -257,8 +257,8 @@ test("a move checks both projects' access in one statement and denies view-only 
   const { db, queries } = recordQueries();
   const bob = new ActorRepositories(db, { organizationId: f.orgA, actorEntityId: f.bob });
   await bob.tasks.move(task.entityId, project.entityId, destination.entityId, null);
-  // requireAccess-style checks join the scope actor's entity as "actor_entity".
-  expect(queries.filter((query) => query.includes('"actor_entity"'))).toHaveLength(1);
+  // Access checks read the scope actor's entity as scope_actor_entity.
+  expect(queries.filter((query) => query.includes("scope_actor_entity"))).toHaveLength(1);
   expect((await repos.tasks.get(task.entityId)).projectEntityId).toBe(destination.entityId);
   await repos.permissions.grant({
     entityId: project.entityId,

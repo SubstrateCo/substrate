@@ -1,9 +1,7 @@
-import { requireAppEnabled } from "../../core/apps/access";
-import { requireContact } from "../../core/contacts/access";
 import { RepositoryContext } from "../../core/repository-context";
-import { AccessDeniedError, ValidationError } from "../../errors";
-import { recordCrmActivities } from "./activity/activity";
+import { ValidationError } from "../../errors";
 import { crmRecordAccess } from "./access/record-access";
+import { recordCrmActivities } from "./activity/activity";
 import { crmAccounts, crmAffiliations, crmContactProfiles } from "./schema";
 import { and, eq, ne, sql } from "drizzle-orm";
 
@@ -16,11 +14,9 @@ export function crmAffiliationsRepository(context: RepositoryContext) {
     contactId: string,
     accountId: string,
   ) {
-    // Only the account has grants to check.
-    await requireAppEnabled(ctx, "crm");
-    await requireContact(ctx, contactId);
-    const account = await ctx.requireAccess(accountId, "edit");
-    if (account.entity.entityType !== "account") throw new AccessDeniedError();
+    // Only the account has grants to check; its access also requires the CRM app.
+    await ctx.requireAccess(contactId, "edit", { type: "contact" });
+    await ctx.requireAccess(accountId, "edit", { type: "account" });
   }
   return {
     async setAffiliation(input: {

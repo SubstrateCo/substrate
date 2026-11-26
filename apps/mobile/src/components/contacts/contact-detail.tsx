@@ -1,3 +1,5 @@
+import { crmRecordCapabilities } from "@substrate/contracts/access/capabilities";
+
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
@@ -17,7 +19,6 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useWorkspaceApps } from "@/features/records/apps";
-import { canEdit } from "@/features/records/format";
 import {
   recordQueries,
   useContactWrite,
@@ -90,7 +91,10 @@ export function ContactDetailView({
   const contact = query.data;
   const { profile } = contact;
   const archived = !!contact.archivedAt;
-  const editable = canEdit(contact.level) && !archived;
+  const { canEdit: editable, canArchive } = crmRecordCapabilities({
+    level: contact.level,
+    archived,
+  });
   const interactionRows = interactions.data?.pages.flatMap((page) => page.items) ?? [];
   const fullName = [
     profile.namePrefix,
@@ -118,7 +122,7 @@ export function ContactDetailView({
                 { label: "Record from discussion", onPress: () => setPublishing(true) },
               ]
             : []),
-          ...(crm && canEdit(contact.level)
+          ...(crm && canArchive
             ? [
                 archived
                   ? {

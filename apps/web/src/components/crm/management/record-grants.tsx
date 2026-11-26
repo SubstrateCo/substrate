@@ -1,6 +1,7 @@
+import { crmAccessLabels } from "@substrate/contracts/access/levels";
 import type { PickerPerson } from "@substrate/contracts/people/picker";
+import type { PermissionLevel } from "@substrate/contracts/tasks";
 
-import { accessLevelLabels, type AccessLevel } from "./access-levels";
 import { recordRows } from "@/components/layout/record-section";
 import { AccessRow } from "@/components/people/access-row";
 import { FieldDescription } from "@/components/ui/field";
@@ -11,7 +12,7 @@ export function RecordGrants({
   disabled,
   onRemove,
 }: {
-  grants: readonly { actorEntityId: string; level: AccessLevel }[];
+  grants: readonly { actorEntityId: string; level: PermissionLevel }[];
   people: readonly PickerPerson[];
   disabled: boolean;
   onRemove: (person: { actorEntityId: string; name: string }) => void;
@@ -33,7 +34,7 @@ export function RecordGrants({
             key={grant.actorEntityId}
             name={name}
             image={person?.image}
-            level={accessLevelLabels[grant.level]}
+            level={crmAccessLabels[grant.level]}
             disabled={disabled}
             onRemove={() => onRemove({ actorEntityId: grant.actorEntityId, name })}
           />

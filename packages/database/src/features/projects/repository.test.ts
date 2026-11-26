@@ -1,7 +1,6 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { ensureHumanActor, ensureUserAgentActor } from "../../core/actors/provisioning";
-import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
@@ -268,7 +267,7 @@ test("concurrent project owners cannot remove each other and leave no owner", as
   ).toEqual([expect.objectContaining({ level: "owner" })]);
 });
 
-test("project lists page readable projects by name and deny inactive actors", async () => {
+test("project lists page readable projects by name", async () => {
   const bob = f.forActor(f.bob);
   const beta = await bob.projects.create({ name: "Beta" });
   const alpha = await bob.projects.create({ name: "Alpha" });
@@ -277,7 +276,4 @@ test("project lists page readable projects by name and deny inactive actors", as
   expect(await bob.projects.list()).toEqual([alpha, beta]);
   expect(await queryProjects(context, { offset: 1, limit: 1 })).toEqual([beta]);
   expect(await queryProjects(context, { offset: 2, limit: 1 })).toEqual([]);
-  await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.bob));
-  for (const page of [{}, { offset: 2, limit: 1 }])
-    expect(await rejection(queryProjects(context, page))).toBeInstanceOf(AccessDeniedError);
 });

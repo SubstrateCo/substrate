@@ -1,3 +1,5 @@
+import { canRemoveMember } from "@substrate/contracts/messaging/permissions";
+
 import { useQuery } from "@tanstack/react-query";
 import { Link, useNavigate } from "@tanstack/react-router";
 
@@ -11,7 +13,6 @@ import { AddMembersDialog } from "./add-members-dialog";
 import { ConversationActions } from "./conversation-actions";
 import { AddPeopleButton, type HeaderMember } from "./conversation-header";
 import { LeftChannelNotice } from "./left-channel-notice";
-import { canRemoveMember } from "./member-removal";
 import { RemoveMemberAction, RemoveMemberDialog } from "./remove-member-action";
 import type { MessageTarget } from "@/api/context/links";
 import { AgentWorkNotice } from "@/components/agent-work/agent-work-slot";

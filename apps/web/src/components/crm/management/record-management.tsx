@@ -1,7 +1,9 @@
+import type { CrmRecordCapabilities } from "@substrate/contracts/access/capabilities";
+
 import { useState, type ReactNode } from "react";
 
 import { RecordOwner, type RecordOwnerProps } from "./record-owner";
-import { RecordSharing, type RecordSharingProps } from "./record-sharing";
+import { RecordSharing } from "./record-sharing";
 import { UserPlus, UserRound } from "lucide-react";
 
 export type ResponsibleRecord = RecordOwnerProps["record"];
@@ -14,7 +16,7 @@ export function useRecordManagement({
   entityId,
   name,
   noun,
-  level,
+  capabilities,
   record,
   enabled,
   onRestoreFocus,
@@ -23,15 +25,15 @@ export function useRecordManagement({
   name: string;
   /** The record kind in copy, such as "deal". */
   noun: string;
-  level: RecordSharingProps["level"];
+  capabilities: CrmRecordCapabilities;
   record?: ResponsibleRecord;
   enabled: boolean;
   /** Focuses the menu trigger after a tool's dialog closes. */
   onRestoreFocus: () => void;
 }) {
   const [dialog, setDialog] = useState<"share" | "owner" | null>(null);
-  const canShare = enabled && level === "owner";
-  const canReassign = enabled && (level === "edit" || level === "owner") && !!record;
+  const canShare = enabled && capabilities.canManageAccess;
+  const canReassign = enabled && capabilities.canReassign && !!record;
   const tools: RecordTool[] = [];
   if (canShare)
     tools.push({
@@ -52,7 +54,6 @@ export function useRecordManagement({
           entityId={entityId}
           name={name}
           noun={noun}
-          level={level}
           onClose={() => setDialog(null)}
           onRestoreFocus={onRestoreFocus}
         />
@@ -61,7 +62,6 @@ export function useRecordManagement({
         <RecordOwner
           entityId={entityId}
           name={name}
-          level={level}
           record={record}
           onClose={() => setDialog(null)}
           onRestoreFocus={onRestoreFocus}

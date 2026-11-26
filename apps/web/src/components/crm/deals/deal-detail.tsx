@@ -1,3 +1,6 @@
+import { crmRecordCapabilities } from "@substrate/contracts/access/capabilities";
+import { permissionLabels } from "@substrate/contracts/access/levels";
+
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
@@ -5,7 +8,7 @@ import { useState } from "react";
 
 import { CrmActivity } from "../crm-activity";
 import { crmResource } from "../crm-resource";
-import { accessLabel, dealAmount, outcomeLabel } from "../crm-types";
+import { dealAmount, outcomeLabel } from "../crm-types";
 import { FollowUps } from "../follow-ups";
 import { InteractionRollup } from "../interaction-rollup";
 import { recordChangeDialog, type RecordChangeDialog } from "../record-change-dialog";
@@ -36,8 +39,8 @@ export function DealDetail({ entityId }: { entityId: string }) {
   const { data, fallback, staleNotice } = crmResource(query, <RecordDetailLoading kind="deals" />);
   if (!data) return fallback;
   const { deal, account, contacts: participants, level } = data;
-  const canEdit = level === "edit" || level === "owner";
   const archived = !!deal.archivedAt;
+  const capabilities = crmRecordCapabilities({ level, archived });
   const change = recordChangeDialog(dialog);
   const primaryContact = participants.find((entry) => entry.isPrimary)?.contact;
   const stageName = (stageId: string) =>
@@ -56,8 +59,7 @@ export function DealDetail({ entityId }: { entityId: string }) {
         name={deal.title}
         summary={deal.summary}
         archived={archived}
-        canEdit={canEdit}
-        level={level}
+        capabilities={capabilities}
         ownerRecord={{
           kind: "deal",
           ownerActorEntityId: deal.ownerActorEntityId,
@@ -66,7 +68,7 @@ export function DealDetail({ entityId }: { entityId: string }) {
         onEdit={() => open("edit")}
         onArchive={() => open("archive")}
         tools={
-          canEdit && !archived
+          capabilities.canEdit
             ? [
                 {
                   label: "Move deal",
@@ -78,7 +80,7 @@ export function DealDetail({ entityId }: { entityId: string }) {
         }
         properties={<DealProperties data={data} stage={stageName(deal.stageId)} />}
       >
-        <FollowUps entityId={entityId} canCreate={canEdit && !archived} />
+        <FollowUps entityId={entityId} canCreate={capabilities.canEdit} />
         <InteractionRollup entityId={entityId} kind="deal" />
         <WorkDiscussions entityId={entityId} />
         <CrmActivity entityId={entityId} />
@@ -182,7 +184,7 @@ function DealProperties({
           </ul>
         </Property>
       )}
-      <Property label="Access">{accessLabel(level)}</Property>
+      <Property label="Access">{permissionLabels[level]}</Property>
     </>
   );
 }

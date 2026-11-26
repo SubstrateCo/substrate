@@ -10,6 +10,7 @@ import {
   AccessDeniedError,
   AppDisabledError,
   ConflictError,
+  PermissionRequiredError,
   ValidationError,
 } from "@substrate/database";
 
@@ -45,6 +46,8 @@ export const createServiceResult =
         return publicFailure("APP_DISABLED", "This app is disabled for this organization.");
       if (error instanceof AccessDeniedError)
         return publicFailure("NOT_FOUND", "Item not found or access denied.");
+      if (error instanceof PermissionRequiredError)
+        return publicFailure("FORBIDDEN", error.message);
       if (error instanceof ValidationError) return publicFailure("INVALID_INPUT", error.message);
       if (error instanceof ConflictError) return publicFailure("CONFLICT", error.message);
       log("Service operation failed", error instanceof Error ? error.name : "Unknown error");

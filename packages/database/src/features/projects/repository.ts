@@ -9,7 +9,7 @@ import type { TaskStatus } from "@substrate/contracts/tasks";
 
 import {
   activeActorCondition,
-  viewerActorJoins,
+  permissionActorEntityId,
   visibleActorCondition,
 } from "../../core/actors/access";
 import { joinedActorName } from "../../core/actors/joined-profile";
@@ -18,8 +18,9 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
-import { changePermission, requirePermissionLevel } from "../../core/permissions/repository";
-import { entityGrants, permissionLevel } from "../../core/permissions/schema";
+import { changePermission } from "../../core/permissions/repository";
+import { entityGrants } from "../../core/permissions/schema";
+import { entityReaders } from "../../core/permissions/visibility";
 import { RepositoryContext, type PermissionLevel } from "../../core/repository-context";
 import { requiredText } from "../../core/validation";
 import { AccessDeniedError, ValidationError } from "../../errors";
@@ -58,21 +59,18 @@ export function projectRepository(context: RepositoryContext) {
     else case when ${member.id} is not null then ${user.image} end end`;
   const projectWhere = (id: string) =>
     and(eq(projects.organizationId, scope.organizationId), eq(projects.entityId, id));
-  // The project row and the actor's level. A row exists only when the actor is active and can
-  // read the project, so the extra fields are never computed for a reader without access.
+  // The project row and the actor's level. A row exists only when the actor can read the
+  // project, so the extra fields are never computed for a reader without access.
   function selectWithLevel<T extends SelectedFields>(entityId: string, fields: T) {
-    const viewer = viewerActorJoins(scope, "project_viewer_entity");
     const level = sql<PermissionLevel | null>`${context.accessLevel(projects.entityId)}`;
     return db
       .select({ ...fields, project: projects, level })
       .from(projects)
-      .innerJoin(actors, viewer.actorOn)
-      .innerJoin(viewer.entity, viewer.entityOn)
-      .where(and(projectWhere(entityId), activeActorCondition(), sql`${level} IS NOT NULL`));
+      .where(and(projectWhere(entityId), sql`${level} IS NOT NULL`));
   }
   async function get(entityId: string) {
     const [row] = await selectWithLevel(entityId, {});
-    if (!row) throw new AccessDeniedError();
+    if (!row) return context.deny(entityId, "view", { type: "project" });
     return row.project;
   }
   // A JSON object with the given keys. Keys are fixed identifiers in this file.
@@ -122,7 +120,13 @@ export function projectRepository(context: RepositoryContext) {
   function availableActors(projectEntityId: string) {
     // Organization actors are discoverable only inside an accessible project, not across organizations.
     // Another user's agent appears only as the assignee of a readable task in this project.
-    const assignable = and(activeActorCondition(), visibleActorCondition(scope));
+    const listed = and(activeActorCondition(), visibleActorCondition(scope));
+    // Assignable matches requireAssignee: listed, and able to read the project. Agents read
+    // through their owner. The readers subquery runs once for all actors.
+    const assignable = and(
+      listed,
+      sql`${permissionActorEntityId({ organizationId: scope.organizationId, actorEntityId: actors.entityId })} IN (${entityReaders(scope.organizationId, projectEntityId)})`,
+    );
     const assignedAgents = db
       .select({ id: tasks.assigneeActorEntityId })
       .from(tasks)
@@ -154,7 +158,7 @@ export function projectRepository(context: RepositoryContext) {
         and(
           eq(actors.organizationId, scope.organizationId),
           isNull(entities.deletedAt),
-          or(assignable, and(eq(actors.type, "agent"), inArray(actors.entityId, assignedAgents))),
+          or(listed, and(eq(actors.type, "agent"), inArray(actors.entityId, assignedAgents))),
         ),
       );
   }
@@ -209,8 +213,7 @@ export function projectRepository(context: RepositoryContext) {
   // A structural change: it claims the project's version, like delete and sharing do.
   function setArchived(entityId: string, archived: boolean) {
     return context.transaction(async (ctx) => {
-      const { entity } = await ctx.requireStructuralAccess(entityId, "owner");
-      if (entity.entityType !== "project") throw new AccessDeniedError();
+      await ctx.requireStructuralAccess(entityId, "owner", { type: "project" });
       // The old state is in the WHERE, so a repeated call changes nothing.
       const [changed] = await ctx.db
         .update(projects)
@@ -257,7 +260,7 @@ export function projectRepository(context: RepositoryContext) {
         ),
         members: scalar(members(entityId)),
       });
-      if (!row) throw new AccessDeniedError();
+      if (!row) return context.deny(entityId, "view", { type: "project" });
       return {
         project: row.project,
         level: row.level!,
@@ -269,7 +272,7 @@ export function projectRepository(context: RepositoryContext) {
       const [row] = await selectWithLevel(entityId, {
         firstPage: firstTaskExportPage(context, entityId),
       });
-      if (!row) throw new AccessDeniedError();
+      if (!row) return context.deny(entityId, "view", { type: "project" });
       return { project: row.project, firstPage: row.firstPage };
     },
     /** Makes the project and its tasks read-only. Owners and organization admins only. */
@@ -280,8 +283,7 @@ export function projectRepository(context: RepositoryContext) {
       return context.transaction(async (ctx) => {
         const tx = ctx.db;
         // The claim comes first, so a restore in flight is either committed or fails after this.
-        const { entity } = await ctx.requireStructuralAccess(entityId, "owner");
-        if (entity.entityType !== "project") throw new AccessDeniedError();
+        await ctx.requireStructuralAccess(entityId, "owner", { type: "project" });
         const [project] = await tx
           .select({ archivedAt: projects.archivedAt })
           .from(projects)
@@ -304,18 +306,15 @@ export function projectRepository(context: RepositoryContext) {
       });
     },
     share(entityId: string, actorEntityId: string, level: PermissionLevel) {
-      requirePermissionLevel(level);
       return context.transaction(async (ctx) => {
-        const access = await ctx.requireStructuralAccess(entityId, "owner");
-        if (access.entity.entityType !== "project") throw new AccessDeniedError();
+        const access = await ctx.requireStructuralAccess(entityId, "owner", { type: "project" });
         await requireUnarchived(ctx, [entityId]);
         await changePermission(ctx, access, { actorEntityId, level });
       });
     },
     async revoke(entityId: string, actorEntityId: string) {
       return context.transaction(async (ctx) => {
-        const access = await ctx.requireStructuralAccess(entityId, "owner");
-        if (access.entity.entityType !== "project") throw new AccessDeniedError();
+        const access = await ctx.requireStructuralAccess(entityId, "owner", { type: "project" });
         await requireUnarchived(ctx, [entityId]);
         await requireUnassignedProjectActor(ctx, entityId, actorEntityId);
         // The caller's organization role can change during the checks above. Check ownership
@@ -325,12 +324,14 @@ export function projectRepository(context: RepositoryContext) {
       });
     },
     async getPicture(entityId: string, minimum: "view" | "edit" = "view") {
-      const required = permissionLevel.enumValues.indexOf(minimum);
-      if (required < 0) throw new AccessDeniedError();
-      const [row] = await selectWithLevel(entityId, {});
-      if (!row?.level || permissionLevel.enumValues.indexOf(row.level) < required)
-        throw new AccessDeniedError();
-      return row.project.image;
+      const [row] = await db
+        .select({ image: projects.image })
+        .from(projects)
+        .where(
+          and(projectWhere(entityId), context.readable(projects.entityId, minimum, "project")),
+        );
+      if (!row) return context.deny(entityId, minimum, { type: "project" });
+      return row.image;
     },
     async setPicture(entityId: string, image: string | null) {
       const parsed = projectIcon.safeParse(image);
@@ -359,7 +360,7 @@ export function projectRepository(context: RepositoryContext) {
       const [row] = await selectWithLevel(projectEntityId, {
         actors: scalar(availableActors(projectEntityId)),
       });
-      if (!row) throw new AccessDeniedError();
+      if (!row) return context.deny(projectEntityId, "view", { type: "project" });
       return withPictures(row.actors).filter((row) => row.assignable);
     },
     async getDetail(projectEntityId: string) {
@@ -369,7 +370,7 @@ export function projectRepository(context: RepositoryContext) {
         tasks: scalar(projectTasks(projectEntityId)),
         links: projectTaskLinkRows(context, projectEntityId),
       });
-      if (!row) throw new AccessDeniedError();
+      if (!row) return context.deny(projectEntityId, "view", { type: "project" });
       return {
         project: row.project,
         level: row.level!,

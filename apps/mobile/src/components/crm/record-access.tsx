@@ -1,3 +1,4 @@
+import { crmAccessLabels } from "@substrate/contracts/access/levels";
 import { permissionLevels, type PermissionLevel } from "@substrate/contracts/tasks";
 
 import { useQuery } from "@tanstack/react-query";
@@ -18,13 +19,6 @@ import { DetailSection, Property, Row } from "@/features/records/ui/rows";
 import { ActionSheet, ConfirmSheet, FormSheet } from "@/features/records/ui/sheet";
 import { ErrorState, SectionQuery } from "@/features/records/ui/states";
 import type { QueryScope } from "@/queries/keys";
-
-const accessLabels: Record<PermissionLevel, string> = {
-  view: "Can view",
-  comment: "Can comment",
-  edit: "Can edit",
-  owner: "Can manage access",
-};
 
 function PersonField({
   label,
@@ -194,7 +188,7 @@ export function RecordSharing({
             <Row
               key={grant.actorEntityId}
               title={name}
-              subtitle={accessLabels[grant.level]}
+              subtitle={crmAccessLabels[grant.level]}
               onPress={() =>
                 setSelected({ actorEntityId: grant.actorEntityId, name, level: grant.level })
               }
@@ -210,7 +204,7 @@ export function RecordSharing({
             ...permissionLevels
               .filter((level) => level !== selected.level)
               .map((level) => ({
-                label: `Change to ${accessLabels[level].toLowerCase()}`,
+                label: `Change to ${crmAccessLabels[level].toLowerCase()}`,
                 onPress: () =>
                   write.mutate({
                     action: "share",
@@ -334,7 +328,7 @@ function ShareForm({
         label="Access"
         value={level}
         onChange={setLevel}
-        choices={permissionLevels.map((value) => ({ value, label: accessLabels[value] }))}
+        choices={permissionLevels.map((value) => ({ value, label: crmAccessLabels[value] }))}
         description={
           level === "owner"
             ? "They can edit this record and manage access. This doesn't make them responsible for it."

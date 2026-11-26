@@ -1,29 +1,11 @@
 import type { AppId } from "@substrate/contracts/apps";
-import { roles, type OrganizationRole } from "@substrate/contracts/auth/permissions";
+import { canShareInvitation } from "@substrate/contracts/auth/roles";
 import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
 import { desktopHandoffURL } from "@substrate/contracts/desktop/links";
 
 import type { CommittedPublisher } from "../../shared/committed";
 import type { SettingsScope, WorkspaceScope } from "../../shared/scope-types";
 import { ServiceError, serviceResult } from "../../shared/service-result";
-
-function storedRoles(role: string | null) {
-  return (role ?? "").split(",").map((value) => value.trim());
-}
-
-function isRole(role: string): role is OrganizationRole {
-  return Object.hasOwn(roles, role);
-}
-
-/** Who may share an invitation's link: the people who could send it, as Better Auth decides. */
-function canShareInvitation(viewerRole: string, invitationRole: string | null) {
-  const viewer = storedRoles(viewerRole);
-  const canInvite = viewer.some(
-    (role) => isRole(role) && roles[role].authorize({ invitation: ["create"] }).success,
-  );
-  // Only owners see or hand out owner invitations.
-  return canInvite && (viewer.includes("owner") || !storedRoles(invitationRole).includes("owner"));
-}
 
 export function createOrganizationService(deps: { apiURL: string; publish: CommittedPublisher }) {
   return {

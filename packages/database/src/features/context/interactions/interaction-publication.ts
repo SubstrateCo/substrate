@@ -1,7 +1,6 @@
 import { interactionFields } from "@substrate/contracts/context/interactions";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import { requireContact } from "../../../core/contacts/access";
 import { parseInput } from "../../../core/contacts/inputs";
 import { contactInteractionRepository } from "../../../core/contacts/interactions/interactions.repository";
 import { contactInteractions } from "../../../core/contacts/interactions/interactions.schema";
@@ -31,7 +30,7 @@ export async function publishInteraction(
     const { message, conversation } = await requireMessage(ctx.db, identity, value.messageId);
     if (conversation.organizationId !== scope.organizationId || message.deletedAt)
       throw new AccessDeniedError();
-    const parent = await requireContact(ctx, value.contactEntityId);
+    const parent = await ctx.requireAccess(value.contactEntityId, "edit", { type: "contact" });
     const [profile] = await ctx.db
       .select()
       .from(crmContactProfiles)

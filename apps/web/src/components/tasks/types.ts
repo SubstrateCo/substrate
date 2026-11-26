@@ -1,19 +1,16 @@
-import type { PermissionLevel, TaskPriority, TaskStatus } from "@substrate/contracts/tasks";
+import { permissionLabels } from "@substrate/contracts/access/levels";
+import {
+  permissionLevels,
+  type PermissionLevel,
+  type TaskPriority,
+  type TaskStatus,
+} from "@substrate/contracts/tasks";
 import type { TaskLinkView } from "@substrate/contracts/tasks/links";
 
-export const projectPermissionOptions: { value: PermissionLevel; label: string }[] = [
-  { value: "view", label: "Can view" },
-  { value: "comment", label: "Can comment" },
-  { value: "edit", label: "Can edit" },
-  { value: "owner", label: "Owner" },
-];
-/** Display labels for permission levels, matching the options above. */
-export const projectPermissionLabels: Record<PermissionLevel, string> = {
-  view: "Can view",
-  comment: "Can comment",
-  edit: "Can edit",
-  owner: "Owner",
-};
+export const projectPermissionOptions = permissionLevels.map((value) => ({
+  value,
+  label: permissionLabels[value],
+}));
 export interface Project {
   entityId: string;
   name: string;
@@ -51,7 +48,7 @@ export interface ProjectDetail {
     type: "human" | "agent";
     level: PermissionLevel;
   }[];
-  /** `assignable` is false for another user's agent shown only as an existing assignee. */
+  /** `assignable`: the actor can read the project, so the server accepts them as an assignee. */
   actors: {
     entityId: string;
     name: string;

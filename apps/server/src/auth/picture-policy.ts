@@ -6,6 +6,8 @@ import {
 import { AccessDeniedError } from "@substrate/database";
 import type { StorageRepository } from "@substrate/database/storage";
 
+import { ServiceError } from "../shared/service-result";
+import { requireVerified, requireWorkspace } from "../shared/workspace";
 import { APIError } from "better-auth/api";
 import { z } from "zod";
 
@@ -82,42 +84,37 @@ interface PictureSession {
   session: { id?: string; activeOrganizationId?: string | null };
 }
 
+// The API's session and workspace checks, answered as Better Auth errors with the same status.
+function pictureSession(mutation: PictureMutation, session: PictureSession | null) {
+  try {
+    const verified = requireVerified(session);
+    const organizationId = verified.session.activeOrganizationId ?? null;
+    if (mutation.purpose === "organization-logo" && mutation.organizationId !== undefined)
+      requireWorkspace(mutation.organizationId, organizationId);
+    return { userId: verified.user.id, organizationId };
+  } catch (error) {
+    if (!(error instanceof ServiceError)) throw error;
+    throw new APIError(error.code === "UNAUTHENTICATED" ? "UNAUTHORIZED" : "FORBIDDEN", {
+      code: error.reason ?? error.code,
+      message: error.message,
+    });
+  }
+}
+
 export async function authorizePictureMutation(
   mutation: PictureMutation,
   session: PictureSession | null,
   repository: Pick<StorageRepository, "requirePictureAccess">,
 ) {
-  if (!session)
-    throw new APIError("UNAUTHORIZED", {
-      code: "UNAUTHENTICATED",
-      message: "Sign in to continue.",
-    });
-  if (!session.user.emailVerified)
-    throw new APIError("FORBIDDEN", {
-      code: "EMAIL_NOT_VERIFIED",
-      message: "Verify your email to continue.",
-    });
-  const organizationId = session.session.activeOrganizationId ?? null;
-  if (
-    mutation.purpose === "organization-logo" &&
-    mutation.organizationId !== undefined &&
-    mutation.organizationId !== organizationId
-  )
-    throw new APIError("FORBIDDEN", {
-      code: "WORKSPACE_CHANGED",
-      message: "Your active workspace changed.",
-    });
-  const owner = mutation.purpose === "avatar" ? session.user.id : organizationId;
+  const { userId, organizationId } = pictureSession(mutation, session);
+  const owner = mutation.purpose === "avatar" ? userId : organizationId;
   if (
     mutation.url !== null &&
     (!owner || !mutation.url.startsWith(`${profilePicturePath(mutation.purpose, owner)}?v=`))
   )
     throw new APIError("BAD_REQUEST", { message: "Use your own uploaded picture URL." });
   try {
-    await repository.requirePictureAccess(
-      { userId: session.user.id, organizationId },
-      mutation.purpose,
-    );
+    await repository.requirePictureAccess({ userId, organizationId }, mutation.purpose);
   } catch (error) {
     if (error instanceof AccessDeniedError)
       throw new APIError("BAD_REQUEST", {

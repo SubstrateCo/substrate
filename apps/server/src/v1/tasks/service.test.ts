@@ -139,29 +139,6 @@ test("project export fails inside serviceResult when export startup throws", asy
   ).toMatchObject({ success: false, error: { code: "APP_DISABLED" } });
 });
 
-test("project export rejects an organization mismatch without calling the repository", async () => {
-  const scope = scopeFixture();
-  const exportStart = mock(async () => {
-    throw new Error("Must not read another organization");
-  });
-  scope.repositories = {
-    ...scope.repositories,
-    projects: { ...scope.repositories.projects, exportStart },
-  };
-  const service = createTasksService({
-    ensureOwnedAgentActors: async () => {},
-    publish: async (committed) => committed.result,
-  });
-  expect(
-    await service.export(scope, {
-      organizationId: "another-organization",
-      projectEntityId: crypto.randomUUID(),
-      format: "csv",
-    }),
-  ).toMatchObject({ success: false, error: { code: "FORBIDDEN" } });
-  expect(exportStart).not.toHaveBeenCalled();
-});
-
 test("project export consumes startup records and pages from the last task cursor", async () => {
   const scope = scopeFixture();
   const project = {

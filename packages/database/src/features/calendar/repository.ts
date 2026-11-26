@@ -23,11 +23,8 @@ import { qualifyMeeting } from "@substrate/contracts/calendar/qualification";
 import { hasGoogleProduct } from "@substrate/contracts/integrations/google";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import { activeActorCondition } from "../../core/actors/access";
-import { actors } from "../../core/actors/schema";
 import { requireAppEnabled } from "../../core/apps/access";
 import { account, user } from "../../core/authentication/schema";
-import { contactReadable, interactionReadable } from "../../core/contacts/access";
 import { contactInteractions } from "../../core/contacts/interactions/interactions.schema";
 import { contactIdentifiers, contacts } from "../../core/contacts/schema";
 import { entities } from "../../core/entities/schema";
@@ -124,36 +121,16 @@ export function calendarRepository(context: RepositoryContext) {
 
   // Calendars and their credentials are managed by their owner in person, not by agents.
   async function requireOwner(ctx: RepositoryContext) {
-    const { userId, actorEntityId } = ctx.scope;
+    const { userId } = ctx.scope;
     if (!userId) throw new AccessDeniedError();
-    const [owner] = await ctx.db
-      .select({ actorEntityId: actors.entityId })
-      .from(actors)
-      .innerJoin(
-        entities,
-        and(
-          eq(entities.organizationId, actors.organizationId),
-          eq(entities.entityId, actors.entityId),
-          isNull(entities.deletedAt),
-        ),
-      )
-      .where(
-        and(
-          eq(actors.organizationId, org),
-          eq(actors.entityId, actorEntityId),
-          eq(actors.userId, userId),
-          eq(actors.type, "human"),
-          activeActorCondition(),
-        ),
-      );
-    if (!owner) throw new AccessDeniedError();
-    return { userId, actorEntityId: owner.actorEntityId };
+    const actor = await ctx.requireActiveActor();
+    if (actor.type !== "human" || actor.userId !== userId) throw new AccessDeniedError();
+    return { userId, actorEntityId: actor.entityId };
   }
 
   async function requireCalendar(ctx: RepositoryContext, calendarEntityId: string) {
-    await requireAppEnabled(ctx, "calendar");
     await requireOwner(ctx);
-    await ctx.requireAccess(calendarEntityId, "owner");
+    await ctx.requireAccess(calendarEntityId, "owner", { type: "calendar" });
     const [row] = await ctx.db
       .select()
       .from(calendars)
@@ -219,7 +196,6 @@ export function calendarRepository(context: RepositoryContext) {
   }
 
   async function summaries(where: SQL | undefined, order: SQL[], limit?: number) {
-    await context.requireActiveActor();
     const query = db
       .select({
         event: calendarEvents,
@@ -542,7 +518,7 @@ export function calendarRepository(context: RepositoryContext) {
               eq(contactIdentifiers.organizationId, org),
               eq(contactIdentifiers.type, "email"),
               inArray(contactEmail, emails),
-              contactReadable(context, contacts.entityId),
+              context.readable(contacts.entityId, "view", "contact"),
             ),
           )
           // The oldest contact wins when several share an email.
@@ -584,7 +560,7 @@ export function calendarRepository(context: RepositoryContext) {
         .where(
           and(
             eq(contactInteractions.organizationId, org),
-            interactionReadable(context, contactInteractions.entityId),
+            context.readable(contactInteractions.entityId, "view", "contact_interaction"),
           ),
         )
         .orderBy(asc(contacts.displayName), asc(contactInteractions.entityId));
@@ -685,7 +661,6 @@ export function calendarRepository(context: RepositoryContext) {
       if (!ids.length) return {};
       if (ids.some((id) => !uuidPattern.test(id)))
         throw new ValidationError("Invalid interaction ID.");
-      await context.requireActiveActor();
       const rows = await db
         .select({
           sourceEntityId: entityLinks.sourceEntityId,

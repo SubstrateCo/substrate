@@ -1,7 +1,7 @@
 import type { ContextTargetType } from "@substrate/contracts/context/input";
 
 import { requireAppEnabled } from "../../../core/apps/access";
-import { contactReadable, requireContact, requireInteraction } from "../../../core/contacts/access";
+import { requireInteraction } from "../../../core/contacts/access";
 import { contacts } from "../../../core/contacts/schema";
 import { linkRepository } from "../../../core/links/repository";
 import type { EntityAccess, RepositoryContext } from "../../../core/repository-context";
@@ -125,7 +125,7 @@ export async function interactionProfileDetail(
   if (type === "account") await requireAppEnabled(context, "crm");
   const access =
     type === "person"
-      ? await requireContact(context, entityId)
+      ? await context.requireAccess(entityId, "edit", { type: "contact" })
       : await context.requireAccess(entityId, "view");
   if (access.entity.entityType !== (type === "person" ? "contact" : "account"))
     throw new AccessDeniedError();
@@ -166,7 +166,7 @@ export async function interactionProfileDetail(
         ),
         type === "person"
           ? context.readable(crmAccounts.entityId)
-          : contactReadable(context, contacts.entityId),
+          : context.readable(contacts.entityId, "view", "contact"),
       ),
     )
     .orderBy(other.entityId)

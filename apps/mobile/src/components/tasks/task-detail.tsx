@@ -1,3 +1,4 @@
+import { projectCapabilities } from "@substrate/contracts/access/capabilities";
 import {
   taskPriorityValues,
   taskStatusValues,
@@ -11,13 +12,13 @@ import {
   taskLinkRelations,
   type TaskLinkRelation,
 } from "@substrate/contracts/tasks/links";
+import { assignableActors } from "@substrate/contracts/tasks/project-access";
 
 import { useMutation, useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 import { RefreshControl, ScrollView, View } from "react-native";
 
-import { taskAssignees } from "./task-access";
 import { TaskAttachments } from "./task-attachments";
 import { TaskForm } from "./task-form";
 import { TaskLinkPicker } from "./task-link-picker";
@@ -25,7 +26,7 @@ import { TaskMessageContext } from "./task-message-context";
 import { TaskMove } from "./task-move";
 import { RecordConnections } from "@/components/crm/record-connections";
 import { Text } from "@/components/ui/text";
-import { canEdit, formatDate, taskPriorityLabels } from "@/features/records/format";
+import { formatDate, taskPriorityLabels } from "@/features/records/format";
 import { recordQueries, useRecordScope, useTasksWrite } from "@/features/records/queries";
 import type { ProjectDetail, ProjectTask } from "@/features/records/requests";
 import { taskApi } from "@/features/records/tasks/task-api";
@@ -142,7 +143,7 @@ function TaskInProject({
     );
 
   const archived = !!detail.project.archivedAt;
-  const editable = canEdit(detail.level) && !archived;
+  const editable = projectCapabilities({ level: detail.level, archived }).canEdit;
   const update = (
     fields: Partial<Pick<ProjectTask, "status" | "priority" | "assigneeActorEntityId" | "dueDate">>,
   ) =>
@@ -354,7 +355,7 @@ function TaskInProject({
           value={task.assigneeActorEntityId ?? "unassigned"}
           choices={[
             { value: "unassigned", label: "Unassigned" },
-            ...taskAssignees(detail, task.assigneeActorEntityId).map((actor) => ({
+            ...assignableActors(detail, task.assigneeActorEntityId).map((actor) => ({
               value: actor.entityId,
               label: actor.name,
               description: actor.type === "agent" ? "Agent" : undefined,
@@ -443,7 +444,7 @@ function TaskInProject({
       {editing ? (
         <TaskForm
           task={task}
-          actors={taskAssignees(detail, task.assigneeActorEntityId)}
+          actors={assignableActors(detail, task.assigneeActorEntityId)}
           pending={write.isPending}
           error={write.error}
           onClose={() => {
@@ -461,7 +462,7 @@ function TaskInProject({
       {addingSubtask ? (
         <TaskForm
           parentTitle={task.title}
-          actors={taskAssignees(detail)}
+          actors={assignableActors(detail)}
           pending={write.isPending}
           error={write.error}
           onClose={() => {

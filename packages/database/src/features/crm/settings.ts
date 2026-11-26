@@ -1,67 +1,22 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import { activeActorCondition, permissionActorEntityId } from "../../core/actors/access";
-import { actors } from "../../core/actors/schema";
-import { requireAppEnabled, requireAppEnabledForActiveActor } from "../../core/apps/access";
-import { entities } from "../../core/entities/schema";
-import { adminRoleCondition } from "../../core/organizations/roles";
-import { member } from "../../core/organizations/schema";
+import { requireAppEnabled } from "../../core/apps/access";
 import type { RepositoryContext } from "../../core/repository-context";
-import { AccessDeniedError, ValidationError } from "../../errors";
+import { ValidationError } from "../../errors";
 import { crmSettings } from "./settings.schema";
-import { and, eq, exists, isNull, sql, type SQL } from "drizzle-orm";
-import { alias } from "drizzle-orm/pg-core";
+import { eq } from "drizzle-orm";
 
-export function requireCrmAdmin(context: RepositoryContext) {
-  return requireAdminActor(context, permissionActorEntityId(context.scope));
+export async function requireCrmAdmin(context: RepositoryContext) {
+  await requireAppEnabled(context, "crm");
+  await context.requireOrganizationAdmin();
 }
 
 /** Requires the scope's own actor to be a human admin; an owner's agent is refused. */
-export function requireHumanCrmAdmin(context: RepositoryContext) {
-  return requireAdminActor(context, context.scope.actorEntityId);
+export async function requireHumanCrmAdmin(context: RepositoryContext) {
+  await requireAppEnabled(context, "crm");
+  await context.requireOrganizationAdmin({ human: true });
 }
 
-async function requireAdminActor(context: RepositoryContext, actorEntityId: string | SQL) {
-  await requireAppEnabled(context, "crm");
-  // The same check as context.requireActiveActor(), in the admin query.
-  const scopeActor = alias(actors, "crm_scope_actor");
-  const scopeEntity = alias(entities, "crm_scope_entity");
-  const activeScopeActor = context.db
-    .select({ one: sql`1` })
-    .from(scopeActor)
-    .innerJoin(
-      scopeEntity,
-      and(
-        eq(scopeEntity.entityId, scopeActor.entityId),
-        eq(scopeEntity.organizationId, scopeActor.organizationId),
-      ),
-    )
-    .where(
-      and(
-        eq(scopeActor.organizationId, context.scope.organizationId),
-        eq(scopeActor.entityId, context.scope.actorEntityId),
-        activeActorCondition(scopeActor),
-        isNull(scopeEntity.deletedAt),
-      ),
-    );
-  const [admin] = await context.db
-    .select({ id: actors.entityId })
-    .from(actors)
-    .innerJoin(
-      member,
-      and(eq(member.organizationId, actors.organizationId), eq(member.userId, actors.userId)),
-    )
-    .where(
-      and(
-        eq(actors.organizationId, context.scope.organizationId),
-        eq(actors.entityId, actorEntityId),
-        eq(actors.type, "human"),
-        adminRoleCondition(member.role),
-        exists(activeScopeActor),
-      ),
-    );
-  if (!admin) throw new AccessDeniedError();
-}
 // pipelineVersion is internal to pipeline changes. This write must not reset it.
 const publicSettings = {
   organizationId: crmSettings.organizationId,
@@ -70,7 +25,7 @@ const publicSettings = {
 export function settingsRepository(context: RepositoryContext) {
   return {
     async settings() {
-      await requireAppEnabledForActiveActor(context, "crm");
+      await requireAppEnabled(context, "crm");
       const [row] = await context.db
         .select(publicSettings)
         .from(crmSettings)

@@ -12,7 +12,7 @@ import type {
 
 import type { CommittedPublisher } from "../../shared/committed";
 import type { DeviceScope, UserScope } from "../../shared/scope-types";
-import { ServiceError, serviceResult } from "../../shared/service-result";
+import { serviceResult } from "../../shared/service-result";
 import type { z } from "zod";
 
 export function createDeviceService({ publish }: { publish: CommittedPublisher }) {
@@ -25,8 +25,7 @@ export function createDeviceService({ publish }: { publish: CommittedPublisher }
     },
     deviceHeartbeat(this: void, scope: UserScope, input: z.output<typeof deviceHeartbeatInput>) {
       return serviceResult(async () => {
-        if (!scope.installationId || scope.installationId !== input.installationId)
-          throw new ServiceError("FORBIDDEN", "Invalid desktop installation.");
+        // The installation scope checked that input.installationId is this desktop's.
         await publish(await scope.owner.devices.touch(input.installationId));
         return {};
       });

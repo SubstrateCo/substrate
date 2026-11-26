@@ -1,3 +1,5 @@
+import { entityCapabilities } from "@substrate/contracts/access/capabilities";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
@@ -11,7 +13,7 @@ import { RecordConnections } from "@/components/crm/record-connections";
 import { RecordDiscussions } from "@/components/crm/record-discussions";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { canEdit, formatDateTime, interactionKindLabels } from "@/features/records/format";
+import { formatDateTime, interactionKindLabels } from "@/features/records/format";
 import { recordQueries, useInteractionWrite, useRecordScope } from "@/features/records/queries";
 import { recordLinkActions } from "@/features/records/record-tools";
 import { type OnOpenConversation, type OnOpenRecord } from "@/features/records/types";
@@ -66,7 +68,7 @@ export function InteractionDetailView({
 
   const { interaction, level, archived, links, source } = query.data;
   const calendarLinks = links.filter((link) => link.entityType === "calendar_event");
-  const editable = canEdit(level) && !archived;
+  const editable = entityCapabilities({ level, archived }).canEdit;
   const duration = durationLabel(interaction.occurredAt, interaction.endedAt);
   const kind = interactionKindLabels[interaction.kind];
 
@@ -80,7 +82,7 @@ export function InteractionDetailView({
         onEdit={editable ? () => setEditing(true) : undefined}
         actions={[
           ...recordLinkActions(organizationId, { kind: "interaction", id: interactionId }),
-          ...(editable && interaction.canDelete
+          ...(interaction.canDelete
             ? [{ label: "Delete interaction", destructive: true, onPress: () => setDeleting(true) }]
             : []),
         ]}

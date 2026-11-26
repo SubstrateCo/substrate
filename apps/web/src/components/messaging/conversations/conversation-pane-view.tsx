@@ -1,3 +1,5 @@
+import { canManageOwnAgents } from "@substrate/contracts/messaging/permissions";
+
 import type { ReactNode } from "react";
 
 import { ContentNotice } from "../../feedback/content-notice";
@@ -108,11 +110,12 @@ function PaneHeader({
   title: string;
   blocked: boolean;
 }) {
+  // Managers add people; members add their own agents.
   const canAddMembers =
     !blocked &&
     !taskLink &&
-    conversation?.kind !== "dm" &&
-    (conversation?.canManage || conversation?.joined);
+    !!conversation &&
+    (conversation.canManage || canManageOwnAgents(conversation));
   return (
     <ConversationHeader
       title={title}

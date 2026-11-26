@@ -71,19 +71,25 @@ test("disabling Tasks hides direct IDs, discussion messages, search, backlinks, 
   const referencesBefore = await f.db.select().from(messageEntityReferences);
 
   await setApp("tasks", false);
+  // A reader with access learns that the app is off; nobody else learns that the record exists.
   for (const operation of [
     () => a.entities.get(task.entityId),
     () => a.tasks.get(task.entityId),
     () => a.projects.get(project.entityId),
-    () => chat.listMessages(discussionId),
-    () => session.context.messagePage([discussionMessage.id]),
     () => session.files.listTask(target),
     () => session.files.taskContent({ ...target, attachmentId: attachment!.id }),
+    () => a.tasks.update(task.entityId, { title: "Changed" }),
   ])
-    expect(await rejection(operation())).toBeInstanceOf(AccessDeniedError);
-  expect(await rejection(a.tasks.update(task.entityId, { title: "Changed" }))).toBeInstanceOf(
+    expect(await rejection(operation())).toBeInstanceOf(AppDisabledError);
+  expect(await rejection(f.forActor(f.bob).tasks.get(task.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
+  // Discussions are conversations, not records, so they stay hidden.
+  for (const operation of [
+    () => chat.listMessages(discussionId),
+    () => session.context.messagePage([discussionMessage.id]),
+  ])
+    expect(await rejection(operation())).toBeInstanceOf(AccessDeniedError);
   expect(await rejection(a.projects.create({ name: "New" }))).toBeInstanceOf(AppDisabledError);
   expect(await session.context.search({ query: "Secret" })).toEqual([]);
   expect(await session.context.messageLinks(reference.id)).toEqual([]);
@@ -139,7 +145,7 @@ test("CRM is independent of Tasks, but follow-ups need both apps and retain reco
   await setApp("tasks", true);
   await setApp("crm", false);
   expect((await a.projects.get(project.entityId)).name).toBe("Follow-ups");
-  expect(await rejection(a.entities.get(deal.entityId))).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(a.entities.get(deal.entityId))).toBeInstanceOf(AppDisabledError);
   expect(await rejection(a.crm.pipeline())).toBeInstanceOf(AppDisabledError);
   expect(await rejection(a.crm.createAccount({ name: "Denied" }))).toBeInstanceOf(AppDisabledError);
 });
@@ -199,7 +205,7 @@ test("disabled CRM associations lose metadata in generic message context while o
   expect(await a.links.list(contact.entityId)).toEqual([]);
   expect((await chat.listMessages(channel.id))[0]?.body).toBe("Ordinary discussion");
   expect(await rejection(session.context.related(account.entityId))).toBeInstanceOf(
-    AccessDeniedError,
+    AppDisabledError,
   );
   expect(await f.db.select().from(messageEntityReferences)).toEqual(edges);
 });

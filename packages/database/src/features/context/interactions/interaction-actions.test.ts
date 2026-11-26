@@ -83,3 +83,22 @@ test("an agent's interaction belongs to its owner for deletion", async () => {
     await rejection(f.forActor(f.bob).contactInteractions.get(interaction.entityId)),
   ).toMatchObject({ name: "AccessDeniedError" });
 });
+
+test("an interaction on an archived contact cannot be edited until the contact is restored", async () => {
+  const alice = f.forActor(f.alice);
+  const contact = await alice.contacts.createContact({ displayName: "Former customer" });
+  const interaction = await alice.contactInteractions.createInteraction(
+    call(contact.entityId, "Original notes"),
+  );
+  await alice.contacts.archive(contact.entityId, true);
+  expect(
+    await rejection(
+      alice.contactInteractions.updateInteraction(interaction.entityId, { summary: "Changed" }),
+    ),
+  ).toMatchObject({ name: "ValidationError" });
+  expect((await alice.contactInteractions.get(interaction.entityId)).summary).toBe(
+    "Original notes",
+  );
+  await alice.contacts.archive(contact.entityId, false);
+  await alice.contactInteractions.updateInteraction(interaction.entityId, { summary: "Changed" });
+});

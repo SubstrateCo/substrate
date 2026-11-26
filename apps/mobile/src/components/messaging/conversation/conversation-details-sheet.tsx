@@ -1,3 +1,9 @@
+import {
+  canLeave,
+  canManageOwnAgents,
+  canRemovePerson,
+} from "@substrate/contracts/messaging/permissions";
+
 import { useState } from "react";
 import { View } from "react-native";
 
@@ -9,14 +15,13 @@ import { MembersSection } from "./members-section";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import {
-  canAddMembers,
-  canLeave,
-  canRemoveMember,
+  leaveOwnerCandidates,
+  ownerCandidates,
+} from "@/features/messaging/conversations/conversation-access";
+import {
   conversationLabel,
   humanMembers,
   leaveConsequence,
-  leaveOwnerCandidates,
-  ownerCandidates,
 } from "@/features/messaging/conversations/conversation-rules";
 import { recipientEmails } from "@/features/messaging/conversations/recipients";
 import {
@@ -74,16 +79,16 @@ export function ConversationDetailsSheet({
       <MembersSection
         conversation={conversation}
         viewerId={viewerId}
-        canRemove={(member) => canRemoveMember(conversation, viewerId, member)}
+        canRemove={(member) => canRemovePerson(conversation, viewerId, member)}
         onRemove={(member) => setPanel({ kind: "remove", member })}
         onProfile={(member) => onProfile(member.actorId)}
       />
-      {canAddMembers(conversation) ? (
+      {conversation.canManage ? (
         <Button variant="outline" onPress={() => setPanel({ kind: "add" })}>
           <Text>Add people</Text>
         </Button>
       ) : null}
-      {leaving ? (
+      {canManageOwnAgents(conversation) ? (
         <AgentsSection
           agents={agents.data}
           members={conversation.members}
@@ -103,7 +108,7 @@ export function ConversationDetailsSheet({
                 <Text>External collaboration</Text>
               </Button>
             ) : null}
-            {conversation.canManage && conversation.kind !== "dm" && transferCandidates.length ? (
+            {conversation.canManage && transferCandidates.length ? (
               <Button
                 variant="outline"
                 onPress={() => setPanel({ kind: "pick-owner", purpose: "transfer" })}
@@ -126,7 +131,7 @@ export function ConversationDetailsSheet({
                 <Text className="text-destructive">{`Leave ${kindNoun}`}</Text>
               </Button>
             ) : null}
-            {conversation.canManage && conversation.kind !== "dm" ? (
+            {conversation.canManage ? (
               <Button variant="outline" onPress={() => setPanel({ kind: "delete" })}>
                 <Text className="text-destructive">{`Delete ${kindNoun}`}</Text>
               </Button>

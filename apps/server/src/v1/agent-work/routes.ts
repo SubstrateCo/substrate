@@ -104,7 +104,7 @@ export function createAgentWorkRoutes(
   const heartbeat = new Hono<ScopeEnv<UserScope>>().post(
     "/device/heartbeat",
     v("json", deviceHeartbeatInput),
-    scopes.user(),
+    scopes.installation("json"),
     async (c) => respond(c, await device.deviceHeartbeat(c.var.scope, c.req.valid("json"))),
   );
   const desktop = new Hono<ScopeEnv<DeviceScope>>()

@@ -1,3 +1,4 @@
+import type { ProjectCapabilities } from "@substrate/contracts/access/capabilities";
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
 import { useState, type ComponentProps, type ReactNode, type RefObject } from "react";
@@ -26,7 +27,6 @@ import { ProjectLoading } from "@/components/tasks/projects/project-loading";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ResourceStatus } from "@/lib/resource-state";
-import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
 import { hiddenTaskInline } from "@/lib/tasks/task-status";
 import { Columns3, ListTodo, Plus, Unlink } from "lucide-react";
 

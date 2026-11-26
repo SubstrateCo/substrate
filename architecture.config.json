@@ -248,6 +248,16 @@
       "fix": "Call the SDK from a service or adapter"
     },
     {
+      "id": "P1",
+      "tag": "bypass",
+      "layer": "database",
+      "forbidCalls": [
+        "{adminRoleCondition,organizationAdminCondition,isOrganizationAdmin,entityAccessLevel,readableCondition}"
+      ],
+      "message": "feature builds its own permission check (`{match}()`)",
+      "fix": "Use RepositoryContext (requireAccess(id, minimum, { type }), readable(id, minimum, type), accessLevel, actorsWithAccess, requireOrganizationAdmin, deny) or entityReaders for fan-out; register type rules in packages/contracts/src/<domain>/access.ts"
+    },
+    {
       "id": "C1",
       "tag": "upward",
       "layer": "contracts",
@@ -329,6 +339,26 @@
       "rule": "R4",
       "files": ["apps/server/src/v1/realtime/routes.ts"],
       "reason": "Handshake rejections (400/403/426/503) have no body; WebSocket clients cannot read the result envelope."
+    },
+    {
+      "rule": "P1",
+      "files": ["packages/database/src/features/tasks/assignment.ts"],
+      "reason": "The assignee is another actor: their level on the project is checked with the visibility check in one statement."
+    },
+    {
+      "rule": "P1",
+      "files": ["packages/database/src/features/messaging/access.ts"],
+      "reason": "Task discussions join conversation rows to the task's level in the set-based visibleConversations query."
+    },
+    {
+      "rule": "P1",
+      "files": ["packages/database/src/features/notifications/effects.ts"],
+      "reason": "Notification fan-out filters recipient actor columns by readability, one row per recipient."
+    },
+    {
+      "rule": "P1",
+      "files": ["packages/database/src/features/messaging/sharing/access.ts"],
+      "reason": "Cross-organization approval reads the user's role in another organization, where the session has no actor."
     },
     {
       "rule": "C1",

@@ -4,8 +4,8 @@ import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { mcpCrmTools } from "../mcp/crm";
-import { recordCrmActivities } from "./activity/activity";
 import { crmActivityEvents } from "./activity.schema";
+import { recordCrmActivities } from "./activity/activity";
 import { requireDealRelations } from "./deals/deal-relations";
 import { expect, test } from "bun:test";
 import { inArray } from "drizzle-orm";
@@ -36,7 +36,7 @@ test("CRM creation and deal updates avoid duplicate authorization and participan
     title: "Edited",
   });
   const updateCount = tracked.queries.length;
-  expect([accountCount, dealCount, updateCount]).toEqual([8, 12, 13]);
+  expect([accountCount, dealCount, updateCount]).toEqual([8, 12, 12]);
   expect(account.ownerActorEntityId).toBe(f.alice);
   expect(deal.ownerActorEntityId).toBe(f.alice);
   expect(updated.title).toBe("Edited");

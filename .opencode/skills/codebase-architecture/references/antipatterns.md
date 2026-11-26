@@ -23,6 +23,8 @@ reuse an ID for a different meaning.
 | `vendor` | A vendor SDK is called outside an adapter or allowed layer. | The adapter to call or create. |
 | `upward` | A lower layer depends on a higher one. | How to invert the dependency. |
 | `cycle` | Two layers import each other. | Which direction to remove. |
+| `duplicate` | A check repeats one that an earlier frame or a lower layer already made. | The frame that already guarantees it. |
+| `drift` | Two places encode the same rule, and they disagree or can. | The single owner, and the case where they differ. |
 
 ## Route layer (R)
 
@@ -148,6 +150,84 @@ limits, headers, metrics, and request scope.
 **M1 `move`: domain logic in middleware.** Detect: read.
 - Signs: endpoint-specific business rules, or domain writes, in middleware.
 - Fix: move them into the service that the endpoint calls.
+
+## Permissions (P)
+
+Permissions follow the ownership table in "Permission boundary" in
+[../SKILL.md](../SKILL.md). Each rule below names a search that finds
+candidates. Run the searches across the scope, including web and mobile
+clients: drift usually sits in files that no single stack visits.
+
+**P1 `bypass`: a feature builds its own permission check.** Detect: lint+read.
+- Signs:
+  - Feature code writes grant, role, level or admin SQL itself.
+  - It calls the central layer's SQL builders directly instead of its API.
+  - It ranks levels by hand (`indexOf` on the level list, a local rank map).
+  - It computes "who can read X" for fan-out (realtime, notifications)
+    with a rule of its own.
+- Search: calls of `adminRoleCondition`, `organizationAdminCondition`,
+  `isOrganizationAdmin`, `entityAccessLevel`, `readableCondition`; imports
+  of the grants table; `enumValues.indexOf`; `role ===`.
+- Not a sign: a set-based query that must check other actors' access in
+  one statement, such as fan-out over recipients. Record it as a config
+  exception with a reason. It must still call the central builder, not a
+  copy of it.
+- Fix: call the central API. In this repository: `requireAccess(id, minimum,
+  { type })`, `readable(id, minimum, type)`, `accessLevel`,
+  `actorsWithAccess`, `requireOrganizationAdmin`, or `deny`, and
+  `entityReaders` for fan-out over many actors. Lint rule P1 covers the
+  builder calls.
+- Performance: a check evaluated once per actor (a correlated access
+  subquery over every person in the organization) grows with organization
+  size. Use the set form (`entityReaders`) so it runs once.
+
+**P2 `duplicate`: a check repeats a guarantee.** Detect: read.
+- Signs:
+  - The code re-checks the session's own actor, organization or
+    installation after the scope middleware resolved it.
+  - An entity-type check follows an access call that could take the type.
+  - An app-enabled check comes right before an access call that already
+    gates the app.
+  - The code reads a row a second time because the core write it calls
+    reads it too.
+  - Clients guard a server-resolved boolean again (`canManage && !task`).
+- Search: `requireActiveActor()` with no argument in feature code;
+  `entityType !==` after `requireAccess`; `requireAppEnabled` within a few
+  lines before `requireAccess`; the same `if (...) throw` at the top of many
+  methods.
+- Not a sign: an app check at a list entry point, where no record is read
+  that could report the app. Not a sign: a re-check that a comment ties to
+  a race the write must close, such as "check ownership again last".
+- Fix: delete the repeat and name the frame that guarantees it. Keep one
+  central check. Move tests that asserted the repeat to the frame that owns
+  it, such as the session boundary.
+
+**P3 `move`: a permission rule has the wrong owner.** Detect: read.
+- Signs:
+  - The central layer hardcodes lists of another domain's types: admin-owned
+    types, member-edited types, apps that gate creation.
+  - Routes or services parse roles or decide admin-only actions.
+  - Visual components decide capabilities.
+  - One module mixes permission rules with display rules.
+- Search: string lists of entity types in core; `role.split`, `roles[`,
+  `organizationSettingsAccess` outside contracts and its callers;
+  `level === "owner"` in component files.
+- Fix: the owning domain registers the rule (in this repository,
+  `packages/contracts/src/<domain>/access.ts`), and the central layer reads
+  the registry. Role policy goes to contracts. Client decisions go to the
+  query or lib layer as resolved flags.
+
+**P4 `drift`: clients re-derive capabilities.** Detect: read.
+- Signs:
+  - Web and mobile each turn a raw level, role or archived flag into "can
+    edit" or "can manage".
+  - Two clients disagree with each other or with the server, for example
+    on archived records, the last owner, or who is assignable.
+- Search: `level === "edit"`, `level === "owner"`, `canEdit(`,
+  `canManage`, label maps for levels, in `apps/web` and `apps/mobile`.
+- Fix: one shared capability helper in contracts. Add a server flag where
+  the client lacks a fact the rule needs, such as another actor's access.
+  For each disagreement, write which side is right before you change code.
 
 ## Cross-layer (X)
 

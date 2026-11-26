@@ -1,3 +1,4 @@
+import { entityAccessRules, type EntityType } from "../access/entity-rules.ts";
 import { organizationId } from "../workspace.ts";
 import { z } from "zod";
 
@@ -15,23 +16,12 @@ export interface AppSettings {
 }
 
 export function appEnabled(enabledApps: readonly AppId[], app: AppId): boolean {
-  return app === "messages" || app === "agents" || enabledApps.includes(app);
+  return coreAppIds.some((core) => core === app) || enabledApps.includes(app);
 }
 
-const entityApps = {
-  project: ["tasks"],
-  task: ["tasks"],
-  account: ["crm"],
-  deal: ["crm"],
-  calendar: ["calendar"],
-  calendar_event: ["calendar"],
-  meeting_archive: ["meetings"],
-  meeting: ["meetings"],
-} as const satisfies Record<string, readonly AppId[]>;
-
-export function requiredAppsForEntityType(type: string): readonly AppId[] {
+export function requiredAppsForEntityType(type: string): readonly OptionalAppId[] {
   // SAFETY: The own-property check proves that type is one of the map's keys.
-  return Object.hasOwn(entityApps, type) ? entityApps[type as keyof typeof entityApps] : [];
+  return Object.hasOwn(entityAccessRules, type) ? entityAccessRules[type as EntityType].apps : [];
 }
 
 export const appsWorkspace = z.object({ organizationId });

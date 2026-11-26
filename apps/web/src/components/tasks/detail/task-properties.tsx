@@ -1,8 +1,8 @@
 import { taskStatusLabels } from "@substrate/contracts/tasks";
+import { assignableActors } from "@substrate/contracts/tasks/project-access";
 
 import type { ReactNode } from "react";
 
-import { assignableActors } from "../assignee/assignable";
 import { assigneeLabel } from "../assignee/assignee-label";
 import { AssigneePicker } from "../assignee/assignee-picker";
 import { taskPriorityLabels } from "../task-cues/task-labels";

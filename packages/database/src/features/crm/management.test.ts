@@ -23,18 +23,16 @@ test("CRM people are canonical active same-organization humans, never inferred o
   expect(outside).toEqual([{ entityId: f.outsider, userId: "outsider", type: "human" }]);
   for (const hidden of [agent.actorId, agent.agentId, "Private sales assistant", f.outsider])
     expect(JSON.stringify(people)).not.toContain(hidden);
-  expect(await rejection(f.forActor(f.alice, f.orgB).crm.people())).toMatchObject({
+  // A session in an organization the person does not belong to is refused.
+  expect(await rejection(f.forSession("alice", f.orgB))).toMatchObject({
     name: "AccessDeniedError",
   });
 });
 
-test("the people directory omits disabled, deleted and removed humans and denies an inactive caller", async () => {
+test("the people directory omits disabled, deleted and removed humans", async () => {
   const a = f.forActor(f.alice);
   await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.bob));
   expect((await a.crm.people()).map((row) => row.entityId)).toEqual([f.alice]);
-  expect(await rejection(f.forActor(f.bob).crm.people())).toMatchObject({
-    name: "AccessDeniedError",
-  });
   await f.db.update(actors).set({ disabledAt: null }).where(eq(actors.entityId, f.bob));
   await f.db.update(entities).set({ deletedAt: new Date() }).where(eq(entities.entityId, f.bob));
   expect((await a.crm.people()).map((row) => row.entityId)).toEqual([f.alice]);
@@ -121,4 +119,22 @@ test("grant lists omit inactive members and do not fabricate implicit administra
   await f.db.update(entities).set({ deletedAt: null }).where(eq(entities.entityId, f.bob));
   await f.db.delete(member).where(eq(member.id, "bob-a"));
   expect(await a.crm.grants(account.entityId)).toEqual([]);
+});
+
+test("an archived account or deal cannot be shared or unshared until it is restored", async () => {
+  const a = f.forActor(f.alice);
+  const account = await a.crm.createAccount({ name: "Dormant" });
+  await a.crm.share(account.entityId, f.bob, "view");
+  await a.crm.archive(account.entityId, true);
+  for (const change of [
+    () => a.crm.share(account.entityId, f.bob, "edit"),
+    () => a.crm.revoke(account.entityId, f.bob),
+  ])
+    expect(await rejection(change())).toMatchObject({ name: "ValidationError" });
+  expect(await a.crm.grants(account.entityId)).toContainEqual({
+    actorEntityId: f.bob,
+    level: "view",
+  });
+  await a.crm.archive(account.entityId, false);
+  await a.crm.share(account.entityId, f.bob, "edit");
 });

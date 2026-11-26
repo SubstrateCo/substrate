@@ -1,23 +1,13 @@
-import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
 import type { CrmExport } from "@substrate/contracts/crm/export";
 
 import type { ExportRecord } from "../../shared/export-types";
 import type { WorkspaceScope } from "../../shared/scope-types";
-import { ServiceError, serviceResult } from "../../shared/service-result";
+import { serviceResult } from "../../shared/service-result";
 
 export function exportCrm(scope: WorkspaceScope, input: CrmExport) {
   return serviceResult(async () => {
-    if (input.organizationId !== scope.organizationId)
-      throw new ServiceError("FORBIDDEN", "Access denied.");
-    const organization = await scope.repositories.organizations.summary();
-    // There is no CRM export grant. Bulk downloads require existing organization administration.
-    if (!organizationSettingsAccess(organization.role).allowed)
-      throw new ServiceError(
-        "FORBIDDEN",
-        "Organization owner or admin access is required to export CRM records.",
-      );
-
     const crm = scope.repositories.crm;
+    await crm.requireExportAccess();
     const headers = {
       accounts: ["entityId", "name", "website", "domain", "archivedAt"],
       contacts: ["entityId", "displayName", "givenName", "familyName", "archivedAt"],

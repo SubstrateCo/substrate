@@ -55,7 +55,6 @@ async function targetRows<T extends ContextTargetType>(
 ): Promise<Map<string, ContextTarget<T>>> {
   const ids = [...new Set(entityIds)];
   if (!ids.length) return new Map<string, ContextTarget<T>>();
-  await ctx.requireActiveActor();
   const meetingTitle = sql`CASE WHEN ${calendarEvents.entityId} IS NOT NULL
     THEN coalesce(nullif(btrim(${calendarEvents.title}), ''), 'Untitled meeting') END`;
   const title = sql<string>`coalesce(${tasks.title}, ${projects.name}, ${contacts.displayName}, ${crmAccounts.name}, ${crmDeals.title}, ${contactInteractions.summary}, ${meetingTitle})`;

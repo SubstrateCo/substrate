@@ -20,12 +20,10 @@ import { Pencil, Plus, Trash2 } from "lucide-react";
 export function InteractionHistory({
   contactEntityId,
   canEdit,
-  canDelete,
   onCreate,
 }: {
   contactEntityId: string;
   canEdit: boolean;
-  canDelete: boolean;
   onCreate?: () => void;
 }) {
   const { organizationId } = useWorkspaceScope();
@@ -62,7 +60,7 @@ export function InteractionHistory({
       <ol className={recordRows}>
         {(resourceState(query).data ?? []).map((interaction) => {
           // Authors delete their own interactions, and admins delete any.
-          const deletable = canDelete && interaction.canDelete;
+          const deletable = interaction.canDelete;
           return (
             <InteractionRow
               key={interaction.entityId}
@@ -107,7 +105,7 @@ export function InteractionHistory({
           );
         })}
       </ol>
-      {selected && (selected.action === "edit" ? canEdit : canDelete) && (
+      {selected && (selected.action !== "edit" || canEdit) && (
         <InteractionChangeDialog change={selected} onClose={() => setSelected(null)} />
       )}
     </RecordSection>

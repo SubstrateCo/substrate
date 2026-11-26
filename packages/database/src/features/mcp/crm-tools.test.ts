@@ -1,16 +1,12 @@
 import type { WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 
-import {
-  AccessDeniedError,
-  ConflictError,
-  ValidationError,
-} from "../../../../../packages/database/src/errors";
-import { crmActivityEvents } from "../../../../../packages/database/src/features/crm/activity.schema";
-import { member } from "../../../../../packages/database/src/schema";
-import { dmTurn, ownerAgentWork } from "../../../../../packages/database/src/testing/agent-work";
-import { setupDatabase } from "../../../../../packages/database/src/testing/database";
-import { rejection } from "../../../../../packages/database/src/testing/rejection";
-import { agentWorkFixture } from "./test-support";
+import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
+import { crmActivityEvents } from "../../features/crm/activity.schema";
+import { member } from "../../schema";
+import { dmTurn, ownerAgentWork } from "../../testing/agent-work";
+import { setupDatabase } from "../../testing/database";
+import { mcpFixture } from "../../testing/mcp";
+import { rejection } from "../../testing/rejection";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { z, ZodError } from "zod";
@@ -18,7 +14,7 @@ import { z, ZodError } from "zod";
 const f = setupDatabase();
 
 async function tools() {
-  const fixture = await agentWorkFixture(f);
+  const fixture = await mcpFixture(f);
   const turn = dmTurn(fixture.dm.id);
   const call = <K extends Parameters<typeof fixture.call>[0]>(
     tool: K,

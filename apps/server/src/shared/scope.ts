@@ -48,8 +48,13 @@ export function createScopes(deps: ScopeDependencies) {
       installationId,
     };
   }
-  async function user(headers: Headers, result: AuthSession | null): Promise<UserScope> {
-    const scope = identity(headers, result);
+  // The request comes from the desktop that the input names.
+  function requireInstallation(scope: IdentityScope, expected: string | undefined) {
+    if (!scope.installationId || scope.installationId !== expected)
+      throw new ServiceError("FORBIDDEN", "Invalid desktop installation.");
+    return scope.installationId;
+  }
+  async function user(scope: IdentityScope): Promise<UserScope> {
     const owner = await deps.repositories.forOwnerSession({
       userId: scope.userId,
       installationId: scope.installationId,
@@ -108,7 +113,14 @@ export function createScopes(deps: ScopeDependencies) {
       }),
     /** A verified session, without repositories: for user-level actions such as account links. */
     identity: () => middleware(async (headers, _input, session) => identity(headers, session)),
-    user: () => middleware((headers, _input, session) => user(headers, session)),
+    user: () => middleware((headers, _input, session) => user(identity(headers, session))),
+    /** A user scope from the desktop installation that the input names. */
+    installation: (target: keyof ValidationTargets) =>
+      middleware(async (headers, input, session) => {
+        const scope = identity(headers, session);
+        requireInstallation(scope, input.installationId);
+        return user(scope);
+      }, target),
     workspace: (target?: keyof ValidationTargets) =>
       middleware(
         (headers, input, session) => workspace(headers, session, input.organizationId),
@@ -121,14 +133,13 @@ export function createScopes(deps: ScopeDependencies) {
           input.organizationId ?? scope.organizationId ?? "",
           scope.organizationId,
         );
-        if (!scope.installationId || scope.installationId !== input.installationId)
-          throw new ServiceError("FORBIDDEN", "Invalid desktop installation.");
+        const installationId = requireInstallation(scope, input.installationId);
         const device = await deps.repositories.forDeviceSession({
           userId: scope.userId,
           organizationId,
-          installationId: scope.installationId,
+          installationId,
         });
-        return { ...scope, organizationId, installationId: scope.installationId, device };
+        return { ...scope, organizationId, installationId, device };
       }, target),
   };
 }

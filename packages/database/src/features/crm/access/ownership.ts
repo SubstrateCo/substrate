@@ -6,6 +6,7 @@ import type { RepositoryContext } from "../../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../../errors";
 import { recordCrmActivity } from "../activity/activity";
 import { crmAccounts, crmDeals } from "../schema";
+import { archivedRecordMessage } from "./record-access";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
@@ -16,10 +17,8 @@ type Input = Omit<
 export async function assignOwner(context: RepositoryContext, id: string, input: Input) {
   return context.transaction(async (ctx) => {
     // Responsibility is a structural change: concurrent reassignments of one record conflict.
-    const access = await ctx.requireStructuralAccess(id, "edit");
+    const access = await ctx.requireStructuralAccess(id, "edit", { type: ["account", "deal"] });
     const { entity } = access;
-    if (entity.entityType !== "account" && entity.entityType !== "deal")
-      throw new AccessDeniedError();
     const responsible = await ctx.requireActiveActor(input.ownerActorEntityId);
     if (responsible.type !== "human")
       throw new ValidationError("Responsibility requires an active organization human.");
@@ -27,6 +26,7 @@ export async function assignOwner(context: RepositoryContext, id: string, input:
     const where = and(eq(table.organizationId, ctx.scope.organizationId), eq(table.entityId, id));
     const [previous] = await ctx.db.select().from(table).where(where);
     if (!previous) throw new AccessDeniedError();
+    if (previous.archivedAt) throw new ValidationError(archivedRecordMessage);
     if (previous.ownerActorEntityId !== input.expectedOwnerActorEntityId)
       throw new ConflictError("Responsibility changed. Reload and try again.");
     if ("version" in previous) {

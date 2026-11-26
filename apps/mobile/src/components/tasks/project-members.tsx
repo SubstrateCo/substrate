@@ -1,4 +1,7 @@
+import { projectCapabilities } from "@substrate/contracts/access/capabilities";
+import { permissionLabels } from "@substrate/contracts/access/levels";
 import { permissionLevels, type PermissionLevel } from "@substrate/contracts/tasks";
+import { grantCandidates, isLastOwner } from "@substrate/contracts/tasks/project-access";
 
 import { useState } from "react";
 import { ScrollView, View } from "react-native";
@@ -7,7 +10,6 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import { permissionLabels } from "@/features/records/format";
 import { useTasksWrite } from "@/features/records/queries";
 import type { ProjectDetail } from "@/features/records/requests";
 import { Chip, Row, SectionHeader } from "@/features/records/ui/rows";
@@ -18,7 +20,7 @@ import { Bot, User, UserPlus } from "lucide-react-native";
 
 type Member = ProjectDetail["members"][number];
 
-/** Who can read the project. Owners change levels, add people and agents, and remove them. */
+/** Who can read the project. Owners change levels, add people, and remove them. Agents use their owner's access. */
 export function ProjectMembers({
   scope,
   detail,
@@ -30,7 +32,10 @@ export function ProjectMembers({
 }) {
   const write = useTasksWrite(scope);
   const projectEntityId = detail.project.entityId;
-  const manage = detail.level === "owner" && !detail.project.archivedAt;
+  const manage = projectCapabilities({
+    level: detail.level,
+    archived: !!detail.project.archivedAt,
+  }).canManageAccess;
   const [selected, setSelected] = useState<Member | null>(null);
   const [adding, setAdding] = useState(false);
   const [addingActor, setAddingActor] = useState<string | null>(null);
@@ -38,10 +43,7 @@ export function ProjectMembers({
   const [grant, setGrant] = useState<{ actorEntityId: string; level: PermissionLevel } | null>(
     null,
   );
-  const memberIds = new Set(detail.members.map((member) => member.actorEntityId));
-  const candidates = detail.actors.filter(
-    (actor) => actor.assignable && !memberIds.has(actor.entityId),
-  );
+  const candidates = grantCandidates(detail);
   const share = (actorEntityId: string, level: PermissionLevel) =>
     setGrant({ actorEntityId, level });
   return (
@@ -71,21 +73,28 @@ export function ProjectMembers({
             <MutationError error={write.error} />
           </View>
           <SectionHeader title="People and agents" count={detail.members.length} />
-          {detail.members.map((member) => (
-            <Row
-              key={member.actorEntityId}
-              title={member.name}
-              leading={
-                <Icon
-                  as={member.type === "agent" ? Bot : User}
-                  className="size-4 text-muted-foreground"
-                />
-              }
-              trailing={<Chip label={permissionLabels[member.level]} tone="outline" />}
-              onPress={manage ? () => setSelected(member) : undefined}
-              accessibilityLabel={`${member.name}, ${permissionLabels[member.level]}`}
-            />
-          ))}
+          {detail.members.map((member) => {
+            // The last owner stays fixed so the project always has one.
+            const lastOwner = isLastOwner(detail.members, member.actorEntityId);
+            return (
+              <Row
+                key={member.actorEntityId}
+                title={member.name}
+                subtitle={
+                  manage && lastOwner ? "Only owner. Add another owner to change this." : undefined
+                }
+                leading={
+                  <Icon
+                    as={member.type === "agent" ? Bot : User}
+                    className="size-4 text-muted-foreground"
+                  />
+                }
+                trailing={<Chip label={permissionLabels[member.level]} tone="outline" />}
+                onPress={manage && !lastOwner ? () => setSelected(member) : undefined}
+                accessibilityLabel={`${member.name}, ${permissionLabels[member.level]}`}
+              />
+            );
+          })}
         </ScrollView>
         {selected ? (
           <ActionSheet
@@ -113,7 +122,6 @@ export function ProjectMembers({
             choices={candidates.map((actor) => ({
               value: actor.entityId,
               label: actor.name,
-              description: actor.type === "agent" ? "Agent" : undefined,
             }))}
             value={null}
             onSelect={setAddingActor}

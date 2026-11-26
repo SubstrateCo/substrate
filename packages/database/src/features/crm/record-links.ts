@@ -5,6 +5,7 @@ import { linkRepository } from "../../core/links/repository";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { contextTargetsOf } from "../context/target-page";
+import { archivedRecordMessage } from "./access/record-access";
 import { recordCrmActivity } from "./activity/activity";
 import { crmAccounts, crmContactProfiles, crmDeals } from "./schema";
 import { and, eq } from "drizzle-orm";
@@ -28,7 +29,7 @@ async function sourceAccess(ctx: RepositoryContext, entityId: string, edit: bool
       .select({ archivedAt: table.archivedAt })
       .from(table)
       .where(and(eq(table.organizationId, ctx.scope.organizationId), eq(column, contact)));
-    if (record?.archivedAt) throw new ValidationError("Restore the archived record first.");
+    if (record?.archivedAt) throw new ValidationError(archivedRecordMessage);
   }
   return access;
 }

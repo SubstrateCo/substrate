@@ -1,3 +1,5 @@
+import { entityCapabilities } from "@substrate/contracts/access/capabilities";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { useState, type ReactNode } from "react";
@@ -70,9 +72,9 @@ export function InteractionDetail({
       </InteractionFrame>
     );
   const { interaction } = data;
-  const canEdit = !data.archived && (data.level === "owner" || data.level === "edit");
+  const { canEdit } = entityCapabilities({ level: data.level, archived: data.archived });
   // Authors delete their own interactions, and admins delete any.
-  const canDelete = !data.archived && interaction.canDelete;
+  const canDelete = interaction.canDelete;
   const open = (action: InteractionChange["action"]) =>
     setChange({ entityId, summary: interaction.summary, action });
   const kind = interactionTypes[interaction.kind].label;

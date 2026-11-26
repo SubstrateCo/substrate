@@ -1,4 +1,5 @@
 import type { PermissionLevel } from "@substrate/contracts/tasks";
+import { grantCandidates, type ProjectGrant } from "@substrate/contracts/tasks/project-access";
 
 import { revalidateLogic, useForm, useSelector } from "@tanstack/react-form";
 
@@ -9,8 +10,6 @@ import type { FormDialogEditor } from "@/components/feedback/form-dialog";
 import { SelectField } from "@/components/forms/select-field";
 import { PersonField } from "@/components/people/person-field";
 import { z } from "zod";
-
-type ProjectAccessDraft = { actorEntityId: string; level: PermissionLevel };
 
 /** Choose a workspace person and a level. Sharing happens only when the person confirms. */
 export function ProjectAccessForm({
@@ -26,13 +25,8 @@ export function ProjectAccessForm({
   onShare: (actorEntityId: string, name: string, level: PermissionLevel) => void;
   renderDialog: (editor: FormDialogEditor) => ReactNode;
 }) {
-  // Agents use their owner's access, so only people can be shared with.
-  const available = detail.actors.filter(
-    (actor) =>
-      actor.type === "human" &&
-      !detail.members.some((member) => member.actorEntityId === actor.entityId),
-  );
-  const defaultValues: ProjectAccessDraft = {
+  const available = grantCandidates(detail);
+  const defaultValues: ProjectGrant = {
     actorEntityId: "",
     level: "edit",
   };

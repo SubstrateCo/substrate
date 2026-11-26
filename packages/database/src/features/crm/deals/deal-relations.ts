@@ -1,4 +1,3 @@
-import { contactReadable } from "../../../core/contacts/access";
 import { contacts } from "../../../core/contacts/schema";
 import type { RepositoryContext } from "../../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../../errors";
@@ -8,12 +7,10 @@ import { and, eq, inArray } from "drizzle-orm";
 export async function requireDealRelations(
   ctx: RepositoryContext,
   input: { accountEntityId?: string | null; contactEntityIds: string[] },
-  // actorChecked: the caller already proved the actor active in this transaction.
-  options: { active?: boolean; actorChecked?: boolean } = {},
+  options: { active?: boolean } = {},
 ) {
   const ids = [...new Set(input.contactEntityIds)];
   if (!input.accountEntityId && !ids.length) return;
-  if (!options.actorChecked) await ctx.requireActiveActor();
   if (input.accountEntityId) {
     const [account] = await ctx.db
       .select({ archivedAt: crmAccounts.archivedAt })
@@ -44,7 +41,7 @@ export async function requireDealRelations(
       and(
         eq(contacts.organizationId, ctx.scope.organizationId),
         inArray(contacts.entityId, ids),
-        contactReadable(ctx, contacts.entityId),
+        ctx.readable(contacts.entityId, "view", "contact"),
       ),
     );
   if (rows.length !== ids.length) throw new AccessDeniedError();

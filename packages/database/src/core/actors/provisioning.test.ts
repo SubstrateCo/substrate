@@ -1,4 +1,5 @@
 import { AccessDeniedError } from "../../errors";
+import { createRepositories } from "../../repositories";
 import { actors, entities, entityGrants, member, user, userAgents } from "../../schema";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
@@ -164,7 +165,16 @@ describe("actor provisioning", () => {
         }),
       ),
     ).toBeInstanceOf(AccessDeniedError);
-    expect(await rejection(assistant.crm.listAccounts())).toBeInstanceOf(AccessDeniedError);
+    // The session refuses a disabled agent before any repository runs.
+    expect(
+      await rejection(
+        createRepositories(f.db).forSession({
+          userId: "alice",
+          organizationId: f.orgA,
+          actorEntityId: actor!.entityId,
+        }),
+      ),
+    ).toBeInstanceOf(AccessDeniedError);
     expect(await rejection(ensureUserAgentActor(f.db, input))).toBeInstanceOf(AccessDeniedError);
     await f.db
       .update(userAgents)

@@ -1,3 +1,5 @@
+import { crmRecordCapabilities } from "@substrate/contracts/access/capabilities";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
@@ -14,13 +16,7 @@ import { RecordConnections } from "./record-connections";
 import { RecordDiscussions } from "./record-discussions";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import {
-  canEdit,
-  formatMoney,
-  newRequestId,
-  outcomeLabels,
-  outcomeTones,
-} from "@/features/records/format";
+import { formatMoney, newRequestId, outcomeLabels, outcomeTones } from "@/features/records/format";
 import {
   recordQueries,
   useCreateDeal,
@@ -78,7 +74,8 @@ export function AccountDetailView({
   const detail = query.data;
   const { account } = detail;
   const archived = !!account.archivedAt;
-  const editable = canEdit(detail.level) && !archived;
+  const access = crmRecordCapabilities({ level: detail.level, archived });
+  const editable = access.canEdit;
 
   return (
     <View className="flex-1 bg-surface" testID="account-detail">
@@ -91,7 +88,7 @@ export function AccountDetailView({
         actions={[
           ...recordLinkActions(organizationId, { kind: "account", id: accountId }),
           ...(editable ? [{ label: "New deal", onPress: () => setCreatingDeal(true) }] : []),
-          ...(canEdit(detail.level)
+          ...(access.canArchive
             ? [
                 archived
                   ? {
@@ -142,7 +139,7 @@ export function AccountDetailView({
               entityId: accountId,
               ownerActorEntityId: account.ownerActorEntityId,
             }}
-            canReassign={editable}
+            canReassign={access.canReassign}
           />
         </View>
         <DetailSection title="Summary">
@@ -229,7 +226,7 @@ export function AccountDetailView({
           entityId={accountId}
           onOpenConversation={onOpenConversation}
         />
-        {detail.level === "owner" && !archived ? (
+        {access.canManageAccess ? (
           <RecordSharing scope={scope} entityId={accountId} noun="account" />
         ) : null}
         <CrmActivityLog scope={scope} entityId={accountId} />

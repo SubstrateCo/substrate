@@ -1,3 +1,6 @@
+import { crmRecordCapabilities } from "@substrate/contracts/access/capabilities";
+import { permissionLabels } from "@substrate/contracts/access/levels";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
@@ -13,14 +16,7 @@ import { RecordConnections } from "./record-connections";
 import { RecordDiscussions } from "./record-discussions";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
-import {
-  canEdit,
-  formatDate,
-  formatMoney,
-  outcomeLabels,
-  outcomeTones,
-  permissionLabels,
-} from "@/features/records/format";
+import { formatDate, formatMoney, outcomeLabels, outcomeTones } from "@/features/records/format";
 import { recordQueries, useCrmWrite, useRecordScope } from "@/features/records/queries";
 import { recordLinkActions } from "@/features/records/record-tools";
 import type { OnOpenConversation, OnOpenRecord } from "@/features/records/types";
@@ -69,7 +65,8 @@ export function DealDetailView({
   const detail = query.data;
   const { deal } = detail;
   const archived = !!deal.archivedAt;
-  const editable = canEdit(detail.level) && !archived;
+  const access = crmRecordCapabilities({ level: detail.level, archived });
+  const editable = access.canEdit;
   const stage = stages.data?.find((row) => row.id === deal.stageId);
   // The server clears the account ID when the reader cannot open the account.
   const accountId = deal.accountEntityId;
@@ -88,7 +85,7 @@ export function DealDetailView({
           ...(editable && stages.data
             ? [{ label: "Move stage or close", onPress: () => setMoving(true) }]
             : []),
-          ...(canEdit(detail.level)
+          ...(access.canArchive
             ? [
                 archived
                   ? {
@@ -133,7 +130,7 @@ export function DealDetailView({
               ownerActorEntityId: deal.ownerActorEntityId,
               version: deal.version,
             }}
-            canReassign={editable}
+            canReassign={access.canReassign}
           />
           {deal.closedAt ? <Property label="Closed" value={formatDate(deal.closedAt)} /> : null}
           {deal.lostReason ? <Property label="Lost reason" value={deal.lostReason} /> : null}
@@ -190,7 +187,7 @@ export function DealDetailView({
           entityId={dealId}
           onOpenConversation={onOpenConversation}
         />
-        {detail.level === "owner" && !archived ? (
+        {access.canManageAccess ? (
           <RecordSharing scope={scope} entityId={dealId} noun="deal" />
         ) : null}
         <CrmActivityLog scope={scope} entityId={dealId} />

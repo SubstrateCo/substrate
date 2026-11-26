@@ -1,27 +1,14 @@
 import { sessionKeys } from "@substrate/contracts/agent-work";
 
-import { registerDevice } from "../../../../../packages/database/src/core/devices/repository";
-import {
-  AccessDeniedError,
-  ConflictError,
-  ValidationError,
-} from "../../../../../packages/database/src/errors";
-import {
-  agentRequests,
-  agentToolRequests,
-  messagingMessages,
-  userAgents,
-} from "../../../../../packages/database/src/schema";
-import {
-  dmTurn,
-  ownerAgentWork,
-  threadTurn,
-} from "../../../../../packages/database/src/testing/agent-work";
-import { ownedAgent } from "../../../../../packages/database/src/testing/agents";
-import { setupDatabase } from "../../../../../packages/database/src/testing/database";
-import { rejection } from "../../../../../packages/database/src/testing/rejection";
+import { registerDevice } from "../../core/devices/repository";
+import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
+import { agentRequests, agentToolRequests, messagingMessages, userAgents } from "../../schema";
+import { dmTurn, ownerAgentWork, threadTurn } from "../../testing/agent-work";
+import { ownedAgent } from "../../testing/agents";
+import { setupDatabase } from "../../testing/database";
+import { mcpFixture } from "../../testing/mcp";
+import { rejection } from "../../testing/rejection";
 import { executeAgentTool } from "./execution";
-import { agentWorkFixture } from "./test-support";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { ZodError } from "zod";
@@ -35,7 +22,7 @@ const message = async (id: string) =>
   (await f.db.select().from(messagingMessages).where(eq(messagingMessages.id, id)))[0]!;
 
 test("reply posts top level in a DM and in the thread of a thread turn, with its turn", async () => {
-  const { agent, alice, dm, call } = await agentWorkFixture(f);
+  const { agent, alice, dm, call } = await mcpFixture(f);
   const turn = dmTurn(dm.id);
   const sent = await call("reply", { requestId: crypto.randomUUID(), body: "Done" }, turn);
   expect(await message(sent.messageId)).toMatchObject({
@@ -65,7 +52,7 @@ test("reply posts top level in a DM and in the thread of a thread turn, with its
 });
 
 test("a background reply in place runs directly; a reply elsewhere waits for approval", async () => {
-  const { alice, dm, call, pending } = await agentWorkFixture(f);
+  const { alice, dm, call, pending } = await mcpFixture(f);
   const channel = await alice.createConversation({ kind: "channel", name: "general" });
   const background = dmTurn(dm.id, "unattended");
   const requestId = await pending(
@@ -102,7 +89,7 @@ test("a background reply in place runs directly; a reply elsewhere waits for app
 });
 
 test("the turn must match its session and cannot borrow another agent's turn", async () => {
-  const { alice, dm, call } = await agentWorkFixture(f);
+  const { alice, dm, call } = await mcpFixture(f);
   const channel = await alice.createConversation({ kind: "channel", name: "general" });
   expect(
     await rejection(
@@ -137,7 +124,7 @@ test("the turn must match its session and cannot borrow another agent's turn", a
 });
 
 test("an approved background post to a task discussion posts once, as the agent, with its turn", async () => {
-  const { agent, dm, owner, pending } = await agentWorkFixture(f);
+  const { agent, dm, owner, pending } = await mcpFixture(f);
   const repos = f.forActor(f.alice);
   const project = await repos.projects.create({ name: "Task discussion" });
   const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Follow up" });
@@ -162,7 +149,7 @@ test("an approved background post to a task discussion posts once, as the agent,
 });
 
 test("background turns cannot ask: reply.ask is rejected before anything posts", async () => {
-  const { dm, call } = await agentWorkFixture(f);
+  const { dm, call } = await mcpFixture(f);
   expect(
     await rejection(
       call(
@@ -177,7 +164,7 @@ test("background turns cannot ask: reply.ask is rejected before anything posts",
 });
 
 test("only the agent's home desktop can write; a moved agent's old desktop can only read", async () => {
-  const { agent, dm, call } = await agentWorkFixture(f);
+  const { agent, dm, call } = await mcpFixture(f);
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
   const desktop = await registerDevice(f.db, "alice", {
     installationId: crypto.randomUUID(),
@@ -227,7 +214,7 @@ test("only the agent's home desktop can write; a moved agent's old desktop can o
 
 // writeGate's unit test covers each tool and turn kind; this checks the gate runs before writes.
 test("a quiet handoff turn cannot publish but can read", async () => {
-  const { dm, call } = await agentWorkFixture(f);
+  const { dm, call } = await mcpFixture(f);
   await f.forActor(f.alice).projects.create({ name: "Work" });
   const handoff = { ...dmTurn(dm.id, "unattended"), purpose: "handoff" as const };
   expect(
@@ -242,7 +229,7 @@ test("a quiet handoff turn cannot publish but can read", async () => {
 });
 
 test("reply.ask anchors one async question to the reply", async () => {
-  const { dm, call } = await agentWorkFixture(f);
+  const { dm, call } = await mcpFixture(f);
   const turn = dmTurn(dm.id);
   const sent = await call(
     "reply",
@@ -273,7 +260,7 @@ test("reply.ask anchors one async question to the reply", async () => {
 });
 
 test("update_task requires a requestId and replays the same change", async () => {
-  const { call, dm } = await agentWorkFixture(f);
+  const { call, dm } = await mcpFixture(f);
   const turn = dmTurn(dm.id);
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
   const task = await call(
@@ -298,7 +285,7 @@ test("update_task requires a requestId and replays the same change", async () =>
 });
 
 test("a call that waits stores the exact call once, and refuses hidden records", async () => {
-  const { bob, dm, pending } = await agentWorkFixture(f);
+  const { bob, dm, pending } = await mcpFixture(f);
   const hidden = await bob.createConversation({ kind: "channel", name: "bob", private: true });
   const turn = dmTurn(dm.id, "unattended");
   expect(

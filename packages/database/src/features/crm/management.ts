@@ -1,11 +1,10 @@
 import { actors } from "../../core/actors/schema";
-import { requireAppEnabled, requireAppEnabledForActiveActor } from "../../core/apps/access";
+import { requireAppEnabled } from "../../core/apps/access";
 import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
 import { entityGrants } from "../../core/permissions/schema";
 import type { RepositoryContext } from "../../core/repository-context";
-import { AccessDeniedError } from "../../errors";
 import { and, asc, eq, isNull, sql } from "drizzle-orm";
 
 export function crmManagementRepository(context: RepositoryContext) {
@@ -26,7 +25,7 @@ export function crmManagementRepository(context: RepositoryContext) {
   );
   return {
     async people() {
-      await requireAppEnabledForActiveActor(context, "crm");
+      await requireAppEnabled(context, "crm");
       return db
         .select({ entityId: actors.entityId, userId: user.id, type: sql<"human">`'human'` })
         .from(actors)
@@ -37,13 +36,8 @@ export function crmManagementRepository(context: RepositoryContext) {
         .orderBy(asc(actors.entityId));
     },
     async grants(entityId: string) {
-      await requireAppEnabled(context, "crm");
-      const { entity } = await context.requireAccess(entityId, "owner");
-      if (
-        !["account", "deal"].includes(entity.entityType) ||
-        entity.accessEntityId !== entity.entityId
-      )
-        throw new AccessDeniedError();
+      // Accounts and deals are roots, so the grants listed are their own.
+      await context.requireAccess(entityId, "owner", { type: ["account", "deal"] });
       // Only current explicit human grants are listed. Admin access remains an effective role,
       // not a synthetic grant, and departed/disabled/deleted people have no directory entry.
       return db
@@ -64,7 +58,6 @@ export function crmManagementRepository(context: RepositoryContext) {
             eq(entityGrants.organizationId, scope.organizationId),
             eq(entityGrants.entityId, entityId),
             activeHuman,
-            context.readable(entityGrants.entityId, "owner"),
           ),
         )
         .orderBy(asc(entityGrants.actorEntityId));

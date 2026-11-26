@@ -1,4 +1,4 @@
-import { AccessDeniedError, AppDisabledError } from "@substrate/database";
+import { AccessDeniedError, AppDisabledError, PermissionRequiredError } from "@substrate/database";
 
 import { exportChunks } from "../../shared/export";
 import { createTestScopes, scopeFixture } from "../../test-support";
@@ -40,20 +40,20 @@ function account(entityId: string, name = "Customer") {
   };
 }
 
-function fixture(role = "owner") {
+function fixture(admin = true) {
   const scope = scopeFixture();
   const listAccounts = mock(
     async (_options: { limit?: number; afterEntityId?: string; search?: string }) => [
       account(crypto.randomUUID()),
     ],
   );
+  const requireExportAccess = async () => {
+    if (!admin)
+      throw new PermissionRequiredError("Organization owner or admin access is required.");
+  };
   scope.repositories = {
     ...scope.repositories,
-    organizations: {
-      ...scope.repositories.organizations,
-      summary: async () => ({ id: "org", name: "Workspace", logo: null, role }),
-    },
-    crm: { ...scope.repositories.crm, listAccounts },
+    crm: { ...scope.repositories.crm, listAccounts, requireExportAccess },
   };
   return { scope, listAccounts };
 }
@@ -107,14 +107,15 @@ test("CSV round-trips quotes and newlines and neutralizes formulas after control
   expect(text).not.toContain("PRIVATE SOURCE BODY");
 });
 
-test("read-only members cannot export even readable records", async () => {
-  const { scope, listAccounts } = fixture("member");
-  expect(
-    await exportCrm(scope, { organizationId: "org", kind: "accounts", archived: "active" }),
-  ).toMatchObject({
-    success: false,
-    error: { code: "FORBIDDEN" },
-  });
+test("a denied export fails with 403 before reading records", async () => {
+  const { scope, listAccounts } = fixture(false);
+  const app = createCrmExportRoutes(
+    service,
+    createTestScopes({ repositories: { forSession: async () => scope.repositories } }),
+  );
+  const response = await app.request("/export?organizationId=org&kind=accounts");
+  expect(response.status).toBe(403);
+  expect(await response.json()).toMatchObject({ success: false, error: { code: "FORBIDDEN" } });
   expect(listAccounts).not.toHaveBeenCalled();
 });
 
@@ -151,7 +152,7 @@ test("search exports matching rows across pages and rejects searches above 200 c
 });
 
 test("streams every page beyond the former 1,000-record limit", async () => {
-  const { scope, listAccounts } = fixture("admin");
+  const { scope, listAccounts } = fixture();
   const records = Array.from({ length: 1101 }, (_, i) => account(String(i).padStart(6, "0")));
   listAccounts.mockImplementation(async ({ limit = 100, afterEntityId }) =>
     records.filter((row) => !afterEntityId || row.entityId > afterEntityId).slice(0, limit),

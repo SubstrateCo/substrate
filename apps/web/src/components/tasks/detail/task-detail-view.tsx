@@ -1,3 +1,5 @@
+import type { ProjectCapabilities } from "@substrate/contracts/access/capabilities";
+
 import { useId, useState, type ReactNode } from "react";
 
 import { ProjectIcon } from "../projects/project-icon";
@@ -13,7 +15,6 @@ import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { Pressable } from "@/components/ui/pressable";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { ProjectCapabilities } from "@/lib/tasks/project-capabilities";
 import { hiddenTask } from "@/lib/tasks/task-status";
 import { cn } from "cn";
 import { ChevronRight, Pencil } from "lucide-react";

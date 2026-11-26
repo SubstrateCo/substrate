@@ -1,3 +1,4 @@
+import { permissionLabels } from "@substrate/contracts/access/levels";
 import { taskStatusLabels } from "@substrate/contracts/tasks";
 
 import { Link } from "@tanstack/react-router";
@@ -6,7 +7,6 @@ import type { ReactNode } from "react";
 
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
-import { projectPermissionLabels } from "@/components/tasks/types";
 import { hiddenConversation } from "@/lib/agent-work/hidden-records";
 import type {
   ProposalField,
@@ -190,7 +190,7 @@ export function ProposalPreview({ target }: { target: ProposalTarget }) {
             <RecordName record={target.person} kind="person" />
           </Field>
           {target.type === "share_project" && (
-            <Field label="Access">{projectPermissionLabels[target.input.level]}</Field>
+            <Field label="Access">{permissionLabels[target.input.level]}</Field>
           )}
         </dl>
       );
@@ -239,7 +239,7 @@ export function ProposalPreview({ target }: { target: ProposalTarget }) {
             <RecordName record={target.person} kind="person" />
           </Field>
           {action.tool === "share_crm_record" && (
-            <Field label="Access">{projectPermissionLabels[action.input.level]}</Field>
+            <Field label="Access">{permissionLabels[action.input.level]}</Field>
           )}
           {action.tool === "assign_crm_owner" && (
             <Field label="Access">

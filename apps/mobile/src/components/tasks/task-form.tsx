@@ -1,5 +1,6 @@
 import { taskPriorityValues, taskStatusValues, taskStatusLabels } from "@substrate/contracts/tasks";
 import type { taskFields } from "@substrate/contracts/tasks/input";
+import { assignableActors } from "@substrate/contracts/tasks/project-access";
 
 import { useState } from "react";
 
@@ -45,9 +46,7 @@ export function TaskForm({
   const dirty = JSON.stringify({ ...draft, dueDate: due || null }) !== JSON.stringify(initial);
   const title = draft.title.trim();
   // A current assignee stays selectable even when they can no longer be assigned.
-  const assignees = actors.filter(
-    (actor) => actor.assignable || actor.entityId === initial.assigneeActorEntityId,
-  );
+  const assignees = assignableActors({ actors }, initial.assigneeActorEntityId);
   let formTitle = "New task";
   if (task) formTitle = "Edit task";
   else if (parentTitle) formTitle = "New subtask";

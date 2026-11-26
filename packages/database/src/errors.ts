@@ -76,6 +76,14 @@ export class AccessDeniedError extends Error {
   }
 }
 
+/** The record is visible, but the action needs a role the scope does not have. */
+export class PermissionRequiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "PermissionRequiredError";
+  }
+}
+
 export class ValidationError extends Error {
   constructor(message: string) {
     super(message);

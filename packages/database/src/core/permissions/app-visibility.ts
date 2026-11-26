@@ -1,11 +1,11 @@
-import { requiredAppsForEntityType, type AppId } from "@substrate/contracts/apps";
+import { coreAppIds, requiredAppsForEntityType, type AppId } from "@substrate/contracts/apps";
 
 import { organizationApps } from "../apps/schema";
 import { entityType } from "../entities/schema";
 import { sql, type SQLWrapper } from "drizzle-orm";
 
 export function appEnabledCondition(organizationId: string | SQLWrapper, app: AppId) {
-  if (app === "messages" || app === "agents") return sql`true`;
+  if (coreAppIds.some((core) => core === app)) return sql`true`;
   return sql`EXISTS (
     SELECT 1 FROM ${organizationApps} app_access
     WHERE app_access.organization_id = ${organizationId}

@@ -1,3 +1,5 @@
+import { projectCapabilities } from "@substrate/contracts/access/capabilities";
+
 import { Link, type LinkProps } from "@tanstack/react-router";
 
 import { useState, type Ref } from "react";
@@ -183,17 +185,18 @@ function ArchivedProjects({
                   link={projectLink(project.entityId)}
                   fill
                 />
-                {onRestore && project.level === "owner" && (
-                  <RowActions label={`Actions for ${project.name}`} className="pr-1">
-                    <RowAction
-                      label={`Restore ${project.name}`}
-                      disabled={restoringId === project.entityId}
-                      onClick={() => onRestore(project.entityId)}
-                    >
-                      <RotateCcw aria-hidden="true" />
-                    </RowAction>
-                  </RowActions>
-                )}
+                {onRestore &&
+                  projectCapabilities({ level: project.level, archived: true }).canArchive && (
+                    <RowActions label={`Actions for ${project.name}`} className="pr-1">
+                      <RowAction
+                        label={`Restore ${project.name}`}
+                        disabled={restoringId === project.entityId}
+                        onClick={() => onRestore(project.entityId)}
+                      >
+                        <RotateCcw aria-hidden="true" />
+                      </RowAction>
+                    </RowActions>
+                  )}
               </div>
             ))}
           </div>

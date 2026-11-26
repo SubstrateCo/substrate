@@ -2,7 +2,6 @@ import { qualifyMeeting } from "@substrate/contracts/calendar/qualification";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { user } from "../../core/authentication/schema";
-import { contactReadable } from "../../core/contacts/access";
 import { normalizedIdentifier } from "../../core/contacts/inputs";
 import { contactInteractions } from "../../core/contacts/interactions/interactions.schema";
 import { contactIdentifiers, contacts } from "../../core/contacts/schema";
@@ -224,7 +223,7 @@ async function resolveContacts(ctx: RepositoryContext, people: Person[]) {
           contactIdentifiers.normalizedValue,
           people.map((person) => person.normalizedEmail),
         ),
-        contactReadable(ctx, contacts.entityId),
+        ctx.readable(contacts.entityId, "view", "contact"),
       ),
     )
     .orderBy(asc(entities.createdAt), asc(entities.entityId));

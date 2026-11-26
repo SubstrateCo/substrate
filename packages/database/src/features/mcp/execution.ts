@@ -1,14 +1,12 @@
 import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type ServerToolName } from "@substrate/contracts/harness/tools";
-import {
-  commit,
-  auditFailedCallerTool,
-  namedIds,
-  type FileContentReader,
-  type SessionIdentity,
-} from "@substrate/database/mcp";
-import type { DatabaseExecutor } from "@substrate/database/trusted";
 
+import { ensureUserAgentActor } from "../../core/actors/provisioning";
+import { commit } from "../../core/effects";
+import type { DatabaseExecutor } from "../../core/executor";
+import type { SessionIdentity } from "../../core/session/identity";
+import { auditFailedCallerTool, namedIds } from "./caller-turn";
+import type { FileContentReader } from "./files";
 import { executeAgentToolInTransaction, parseAgentToolInput } from "./tool-execution";
 
 export async function executeAgentTool<K extends ServerToolName>(
@@ -36,4 +34,25 @@ export async function executeAgentTool<K extends ServerToolName>(
       }).catch(() => undefined);
     throw error;
   }
+}
+
+/** Runs a call for the owner's agent, provisioning the agent's actor in this organization. */
+export async function executeUserAgentTool<K extends ServerToolName>(
+  db: DatabaseExecutor,
+  owner: SessionIdentity & { userAgentId: string },
+  tool: K,
+  raw: WorkspaceApiRequest["input"],
+  turn: TurnContext,
+  reader?: FileContentReader,
+) {
+  const { organizationId, userId } = owner;
+  const actor = await ensureUserAgentActor(db, owner);
+  return executeAgentTool(
+    db,
+    { organizationId, userId, actorEntityId: actor.entityId },
+    tool,
+    raw,
+    turn,
+    reader,
+  );
 }

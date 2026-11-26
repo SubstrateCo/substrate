@@ -1,7 +1,6 @@
 import type { ContactWrite } from "@substrate/contracts/contacts/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import { requireContact } from "../../core/contacts/access";
 import { contactDetailRows, readContactProfile } from "../../core/contacts/profile";
 import { contactRepository } from "../../core/contacts/repository";
 import type { RepositoryContext } from "../../core/repository-context";
@@ -33,7 +32,7 @@ async function contentKey(ctx: RepositoryContext, contactId: string, action: Act
 }
 export function mutateContactDetail(context: RepositoryContext, input: Input) {
   return context.transaction(async (ctx) => {
-    const checked = await requireContact(ctx, input.contactEntityId);
+    const checked = await ctx.requireAccess(input.contactEntityId, "edit", { type: "contact" });
     const repo = contactRepository(ctx, checked);
     await readContactProfile(ctx, input.contactEntityId);
     const before = await contentKey(ctx, input.contactEntityId, input.action);

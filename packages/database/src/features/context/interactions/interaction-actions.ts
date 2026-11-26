@@ -4,8 +4,12 @@ import { requireInteraction } from "../../../core/contacts/access";
 import { parseInput } from "../../../core/contacts/inputs";
 import { contactInteractionRepository } from "../../../core/contacts/interactions/interactions.repository";
 import type { RepositoryContext } from "../../../core/repository-context";
+import { ValidationError } from "../../../errors";
+import { archivedRecordMessage } from "../../crm/access/record-access";
 import { recordCrmActivity } from "../../crm/activity/activity";
 import { presentInteraction } from "../../crm/activity/actor-views";
+import { crmContactProfiles } from "../../crm/schema";
+import { and, eq } from "drizzle-orm";
 import { z } from "zod";
 
 export function contextInteractionActions(context: RepositoryContext) {
@@ -15,6 +19,17 @@ export function contextInteractionActions(context: RepositoryContext) {
       return context.transaction(async (ctx) => {
         const checked = await requireInteraction(ctx, entityId);
         const { interaction: previous } = checked;
+        // An archived contact is read-only, like its other CRM records, until it is restored.
+        const [profile] = await ctx.db
+          .select({ archivedAt: crmContactProfiles.archivedAt })
+          .from(crmContactProfiles)
+          .where(
+            and(
+              eq(crmContactProfiles.organizationId, ctx.scope.organizationId),
+              eq(crmContactProfiles.contactEntityId, previous.contactEntityId),
+            ),
+          );
+        if (profile?.archivedAt) throw new ValidationError(archivedRecordMessage);
         const repo = contactInteractionRepository(ctx);
         if (previous.summary === value.summary) return presentInteraction(ctx, previous);
         const interaction = await repo.update(entityId, value, checked);

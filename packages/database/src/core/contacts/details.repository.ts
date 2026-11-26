@@ -7,7 +7,6 @@ import {
   pageSize,
   type AuthorizedAccess,
 } from "../repository-context";
-import { contactReadable, requireContact } from "./access";
 import { contactAddresses, contactUrls } from "./details.schema";
 import {
   addressInput,
@@ -61,7 +60,8 @@ export function contactDetailsRepository(
 
   async function edit<T>(contactId: string, work: (ctx: RepositoryContext) => Promise<T>) {
     return context.transaction(async (ctx) => {
-      if (checked?.entity.entityId !== contactId) await requireContact(ctx, contactId);
+      if (checked?.entity.entityId !== contactId)
+        await ctx.requireAccess(contactId, "edit", { type: "contact" });
       const [contact] = await ctx.db
         .select()
         .from(contacts)
@@ -113,7 +113,6 @@ export function contactDetailsRepository(
       input: IdentifierInput,
       options: { limit?: number; afterEntityId?: string } = {},
     ) {
-      await context.requireActiveActor();
       const afterEntityId = entityCursor(options.afterEntityId);
       const value = normalizedIdentifier(input);
       return db
@@ -133,7 +132,7 @@ export function contactDetailsRepository(
         .where(
           and(
             eq(contacts.organizationId, scope.organizationId),
-            contactReadable(context, contacts.entityId),
+            context.readable(contacts.entityId, "view", "contact"),
             eq(contactIdentifiers.type, value.type),
             value.normalizedValue
               ? eq(contactIdentifiers.normalizedValue, value.normalizedValue)

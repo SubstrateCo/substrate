@@ -18,11 +18,7 @@ import {
 } from "@substrate/contracts/harness/tools";
 
 import { requireAppsEnabled } from "../../../core/apps/access";
-import {
-  deletableAuthors,
-  requireContact,
-  requireInteraction,
-} from "../../../core/contacts/access";
+import { deletableAuthors, requireInteraction } from "../../../core/contacts/access";
 import { entities } from "../../../core/entities/schema";
 import type { RepositoryContext } from "../../../core/repository-context";
 import type { SessionIdentity } from "../../../core/session/identity";
@@ -86,25 +82,8 @@ function namedUuids(input: ActionInput) {
 }
 
 // The entity's version: the time of its last change, to the millisecond.
-async function readableVersion(
-  ctx: RepositoryContext,
-  entity: { entityId: string; entityType: string },
-) {
-  if (entity.entityType === "contact") return (await requireContact(ctx, entity.entityId)).entity;
-  if (entity.entityType !== "contact_interaction")
-    return (await ctx.requireAccess(entity.entityId, "view")).entity;
-  await requireInteraction(ctx, entity.entityId);
-  const [row] = await ctx.db
-    .select({ updatedAt: entities.updatedAt })
-    .from(entities)
-    .where(
-      and(
-        eq(entities.organizationId, ctx.scope.organizationId),
-        eq(entities.entityId, entity.entityId),
-      ),
-    );
-  if (!row) throw new AccessDeniedError();
-  return row;
+async function readableVersion(ctx: RepositoryContext, entityId: string) {
+  return (await ctx.requireAccess(entityId, "view")).entity;
 }
 
 // Checks the agent can read each named record, and returns the version of each entity and the
@@ -133,7 +112,7 @@ async function namedTargets(
     if (entity.entityType === "actor") await ctx.requireActiveActor(entity.entityId);
     else
       basis.entities[entity.entityId] = (
-        await readableVersion(ctx, entity)
+        await readableVersion(ctx, entity.entityId)
       ).updatedAt.toISOString();
   }
   rest = rest.filter((id) => !named.some((entity) => entity.entityId === id));

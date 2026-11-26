@@ -68,7 +68,7 @@ test("affiliation writes batch guards and retain paired activities and hints", a
       domain: "context",
     });
   expect(result.result).toMatchObject(input);
-  expect(counts).toEqual([10, 8, 6, 4]);
+  expect(counts).toEqual([9, 7, 5, 3]);
 });
 
 test("primary selection resets the old primary without rewriting false rows", async () => {

@@ -1,9 +1,6 @@
 import { taskPriorityValues, taskStatusValues } from "@substrate/contracts/tasks";
 import type { TaskLinkRelation } from "@substrate/contracts/tasks/links";
 
-import { activeActorCondition, viewerActorJoins } from "../../core/actors/access";
-import { actors } from "../../core/actors/schema";
-import { permissionLevel } from "../../core/permissions/schema";
 import {
   RepositoryContext,
   type Authorized,
@@ -126,23 +123,16 @@ export function taskRepository(context: RepositoryContext) {
     // SAFETY: Level defaults to "view", so the omitted argument is "view".
     level: Level = "view" as Level,
   ): Promise<Authorized<Task, Level>> {
-    const minimum = permissionLevel.enumValues.indexOf(level);
-    if (minimum < 0) throw new AccessDeniedError();
-    const viewer = viewerActorJoins(scope, "task_viewer_entity");
     const [row] = await db
       .select({
         task: tasks,
-        level: sql<PermissionLevel | null>`${context.accessLevel(tasks.entityId)}`,
         archived: sql<boolean>`${inArchivedProject(scope.organizationId, tasks.entityId)}`,
       })
       .from(tasks)
-      .innerJoin(actors, viewer.actorOn)
-      .innerJoin(viewer.entity, viewer.entityOn)
-      .where(and(taskWhere(entityId), activeActorCondition()));
-    if (!row?.level || permissionLevel.enumValues.indexOf(row.level) < minimum)
-      throw new AccessDeniedError();
+      .where(and(taskWhere(entityId), context.readable(tasks.entityId, level, "task")));
+    if (!row) return context.deny(entityId, level, { type: "task" });
     if (level !== "view" && row.archived) throw new ValidationError(archivedProjectMessage);
-    // SAFETY: the row's level is at least `level`, which is what Authorized records.
+    // SAFETY: the task is readable at `level`, which is what Authorized records.
     return row.task as Authorized<Task, Level>;
   }
 

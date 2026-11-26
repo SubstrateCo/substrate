@@ -6,6 +6,7 @@ export { createDatabase } from "./client";
 export type { Database, DatabaseExecutor, Transaction } from "./core/executor";
 export * from "./core/actors/provisioning";
 export { registerDevice, touchDevice } from "./core/devices/repository";
+export { projectIconAccess } from "./features/files/project-icons";
 export {
   claimOutbox,
   finishOutbox,

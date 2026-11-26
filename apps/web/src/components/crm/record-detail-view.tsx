@@ -1,3 +1,5 @@
+import type { CrmRecordCapabilities } from "@substrate/contracts/access/capabilities";
+
 import { Link } from "@tanstack/react-router";
 
 import { useRef, type ReactNode, type RefObject } from "react";
@@ -9,7 +11,6 @@ import {
   type ResponsibleRecord,
 } from "./management/record-management";
 import { RecordResponsible } from "./management/record-responsible";
-import type { RecordSharingProps } from "./management/record-sharing";
 import { CopyLink } from "@/components/context/links/copy-link";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
@@ -37,8 +38,7 @@ export function RecordDetailView({
   name,
   summary,
   archived,
-  canEdit,
-  level,
+  capabilities,
   ownerRecord,
   onEdit,
   onArchive,
@@ -52,8 +52,7 @@ export function RecordDetailView({
   name: string;
   summary?: string | null;
   archived: boolean;
-  canEdit: boolean;
-  level: RecordSharingProps["level"];
+  capabilities: CrmRecordCapabilities;
   ownerRecord?: ResponsibleRecord;
   onEdit: () => void;
   onArchive: () => void;
@@ -70,14 +69,16 @@ export function RecordDetailView({
     entityId,
     name,
     noun: singularLabels[kind],
-    level,
+    capabilities,
     record: ownerRecord,
     // Every member edits contacts, so they have no sharing or owner.
     enabled: kind !== "contacts",
     onRestoreFocus: () => menuTrigger.current?.focus(),
   });
   const tools = [...management.tools, ...featureTools];
-  const archive: RecordTool | null = canEdit
+  // Editors keep Edit in view while the record is archived, disabled until they restore it.
+  const { canArchive: editor, canEdit } = capabilities;
+  const archive: RecordTool | null = editor
     ? {
         label: archived ? "Restore" : "Archive",
         icon: archived ? <RotateCcw aria-hidden="true" /> : <Archive aria-hidden="true" />,
@@ -103,7 +104,7 @@ export function RecordDetailView({
           title={sheet.label}
           actions={
             <>
-              {canEdit && (
+              {editor && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
@@ -111,7 +112,7 @@ export function RecordDetailView({
                       size="icon-sm"
                       aria-label="Edit"
                       onClick={onEdit}
-                      disabled={archived}
+                      disabled={!canEdit}
                     >
                       <Pencil aria-hidden="true" />
                     </Button>
@@ -150,8 +151,8 @@ export function RecordDetailView({
         actions={
           <>
             <CopyLink link={link} grouped />
-            {canEdit && (
-              <Button variant="outline" size="sm" onClick={onEdit} disabled={archived}>
+            {editor && (
+              <Button variant="outline" size="sm" onClick={onEdit} disabled={!canEdit}>
                 <Pencil aria-hidden="true" />
                 Edit
               </Button>

@@ -1,23 +1,13 @@
 import { sessionKeys } from "@substrate/contracts/agent-work";
-import { AccessDeniedError, ValidationError } from "@substrate/database/mcp";
-import type { DatabaseExecutor } from "@substrate/database/trusted";
 
-import {
-  agentAuditEvents,
-  agentInvocations,
-  agentWakes,
-} from "../../../../../packages/database/src/schema";
-import {
-  ownerAgentWork,
-  threadTurn,
-} from "../../../../../packages/database/src/testing/agent-work";
-import { setupDatabase } from "../../../../../packages/database/src/testing/database";
-import { rejection } from "../../../../../packages/database/src/testing/rejection";
-import { createCommittedPublisher } from "../../shared/committed";
-import { scopeFixture } from "../../test-support";
+import type { DatabaseExecutor } from "../../core/executor";
+import { AccessDeniedError, ValidationError } from "../../errors";
+import { agentAuditEvents, agentInvocations, agentWakes } from "../../schema";
+import { ownerAgentWork, threadTurn } from "../../testing/agent-work";
+import { setupDatabase } from "../../testing/database";
+import { mcpCallerFixture } from "../../testing/mcp";
+import { rejection } from "../../testing/rejection";
 import { executeAgentTool } from "./execution";
-import { createMcpService } from "./service";
-import { callerFixture, memoryStorage } from "./test-support";
 import { expect, test } from "bun:test";
 import { asc, eq } from "drizzle-orm";
 import { ZodError } from "zod";
@@ -32,7 +22,7 @@ const callerWakes = () =>
     .orderBy(asc(agentWakes.createdAt));
 
 test("a failed failure-audit write cannot hide the original input error", async () => {
-  const x = await callerFixture(f);
+  const x = await mcpCallerFixture(f);
   await x.policy("anyone");
   const root = await x.bob.sendMessage(x.channel.id, `${x.mention} help`);
   const [call] = await calls();
@@ -64,56 +54,8 @@ test("a failed failure-audit write cannot hide the original input error", async 
   expect(attemptedAudit).toBe(true);
 });
 
-test("publisher failure happens after commit and does not audit a failed tool execution", async () => {
-  const x = await callerFixture(f);
-  await x.policy("anyone");
-  const root = await x.bob.sendMessage(x.channel.id, `${x.mention} help`);
-  const [call] = await f.db.select().from(agentInvocations);
-  const turn = {
-    ...threadTurn(x.channel.id, root.id),
-    invocationIds: [call!.id],
-    installationId: x.agent.identity.installationId,
-  };
-  let published = false;
-  const service = createMcpService({
-    db: f.db,
-    publish: createCommittedPublisher({
-      publish: async () => {
-        // This uses a separate connection, so an uncommitted success audit is not visible.
-        const committed = await f.db
-          .select()
-          .from(agentAuditEvents)
-          .where(eq(agentAuditEvents.action, "mcp_call"));
-        expect(committed.map((row) => row.result)).toEqual(["ok"]);
-        published = true;
-        throw new Error("Publisher unavailable");
-      },
-      sharingMail: { trigger: () => {} },
-    }),
-    storage: memoryStorage(),
-  });
-  expect(
-    await service.callAgentTool(
-      { ...scopeFixture(), userId: "alice", organizationId: f.orgA },
-      {
-        organizationId: f.orgA,
-        agentId: x.agent.agentId,
-        tool: "reply",
-        input: { requestId: crypto.randomUUID(), body: "Done" },
-        turn,
-      },
-    ),
-  ).toMatchObject({ success: false });
-  expect(published).toBe(true);
-  const logged = await f.db
-    .select()
-    .from(agentAuditEvents)
-    .where(eq(agentAuditEvents.action, "mcp_call"));
-  expect(logged.map((row) => row.result)).toEqual(["ok"]);
-});
-
 test("human follow-ups call a participant under each caller's current policy", async () => {
-  const x = await callerFixture(f);
+  const x = await mcpCallerFixture(f);
   await x.policy("anyone");
   const root = await x.bob.sendMessage(x.channel.id, `${x.mention} start`);
   const [first] = await calls();
@@ -137,7 +79,7 @@ test("human follow-ups call a participant under each caller's current policy", a
 });
 
 test("admitted participation permits follow-ups even before a public answer", async () => {
-  const x = await callerFixture(f);
+  const x = await mcpCallerFixture(f);
   await x.policy("anyone");
   const root = await x.bob.sendMessage(x.channel.id, `${x.mention} start`);
   const [first] = await calls();
@@ -160,7 +102,7 @@ test("admitted participation permits follow-ups even before a public answer", as
 });
 
 test("a caller sees a call as queued until the agent's reply for it is published", async () => {
-  const x = await callerFixture(f);
+  const x = await mcpCallerFixture(f);
   await x.policy("anyone");
   const root = await x.bob.sendMessage(x.channel.id, `${x.mention} help`);
   const call = (await calls())[0]!;
@@ -182,7 +124,7 @@ test("a caller sees a call as queued until the agent's reply for it is published
 });
 
 test("caller tools audit success and failures after rollback without storing message text", async () => {
-  const x = await callerFixture(f);
+  const x = await mcpCallerFixture(f);
   await x.policy("anyone");
   const root = await x.bob.sendMessage(x.channel.id, `${x.mention} help`);
   const [call] = await f.db.select().from(agentInvocations);

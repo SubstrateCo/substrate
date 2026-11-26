@@ -2,12 +2,10 @@ import type { ProjectExport } from "@substrate/contracts/tasks/export";
 
 import type { ExportRecord } from "../../shared/export-types";
 import type { WorkspaceScope } from "../../shared/scope-types";
-import { ServiceError, serviceResult } from "../../shared/service-result";
+import { serviceResult } from "../../shared/service-result";
 
 export function exportProject(scope: WorkspaceScope, input: ProjectExport) {
   return serviceResult(async () => {
-    if (input.organizationId !== scope.organizationId)
-      throw new ServiceError("FORBIDDEN", "Access denied.");
     // Read access and the first page inside serviceResult, before streaming.
     const { project, firstPage } = await scope.repositories.projects.exportStart(
       input.projectEntityId,

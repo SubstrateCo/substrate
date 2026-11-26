@@ -5,7 +5,6 @@ import {
   pageSize,
   type AuthorizedAccess,
 } from "../repository-context";
-import { contactReadable, requireContact } from "./access";
 import { contactDetailsRepository } from "./details.repository";
 import { contactProfileInput, parseInput, type ContactInput } from "./inputs";
 import { readContactProfile } from "./profile";
@@ -20,7 +19,8 @@ export function contactRepository(context: RepositoryContext, checked?: Authoriz
     const value = parseInput(contactProfileInput.partial(), input);
     return db.transaction(async (tx) => {
       const ctx = new RepositoryContext(tx, scope);
-      if (checked?.entity.entityId !== entityId) await requireContact(ctx, entityId);
+      if (checked?.entity.entityId !== entityId)
+        await ctx.requireAccess(entityId, "edit", { type: "contact" });
       // SAFETY: parsing strips unknown keys; every own key is a column of contacts.
       const fields = (Object.keys(value) as (keyof typeof value)[]).filter(
         (key) => value[key] !== undefined,
@@ -33,7 +33,7 @@ export function contactRepository(context: RepositoryContext, checked?: Authoriz
           and(
             eq(contacts.organizationId, scope.organizationId),
             eq(contacts.entityId, entityId),
-            contactReadable(ctx, contacts.entityId),
+            ctx.readable(contacts.entityId, "view", "contact"),
             changedOnly
               ? or(...fields.map((key) => sql`${contacts[key]} IS DISTINCT FROM ${value[key]}`))
               : undefined,
@@ -67,7 +67,6 @@ export function contactRepository(context: RepositoryContext, checked?: Authoriz
     },
 
     async list(options: { limit?: number; afterEntityId?: string } = {}) {
-      await context.requireActiveActor();
       const afterEntityId = entityCursor(options.afterEntityId);
       return db
         .select()
@@ -75,7 +74,7 @@ export function contactRepository(context: RepositoryContext, checked?: Authoriz
         .where(
           and(
             eq(contacts.organizationId, scope.organizationId),
-            contactReadable(context, contacts.entityId),
+            context.readable(contacts.entityId, "view", "contact"),
             afterEntityId ? gt(contacts.entityId, afterEntityId) : undefined,
           ),
         )

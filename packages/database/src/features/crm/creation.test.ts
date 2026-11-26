@@ -21,7 +21,7 @@ test.each([
   "owner disabled",
   "owner deleted",
   "owner membership removed",
-])("CRM creation and mismatched replay deny an inactive %s", async (state) => {
+])("CRM creation denies an inactive %s", async (state) => {
   const agent = await ownedAgent(f);
   const actorId = state.startsWith("human") ? f.alice : agent.actorId;
   const a = f.forActor(actorId);
@@ -59,11 +59,10 @@ test.each([
         .set({ deletedAt: new Date() })
         .where(eq(entities.entityId, target));
   }
+  // Sessions refuse inactive actors first; creation also checks the actor in core.
   for (const attempt of [
     () => a.crm.createAccount({ name: "New" }),
     () => a.crm.createDeal({ title: "New", stageId: stage!.id, accountEntityId: account.entityId }),
-    () => a.crm.createAccount({ ...accountInput, name: "Changed" }),
-    () => a.crm.createDeal({ ...dealInput, title: "Changed" }),
   ])
     expect(await rejection(attempt())).toMatchObject({ name: "AccessDeniedError" });
 });

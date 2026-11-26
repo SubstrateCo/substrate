@@ -59,3 +59,18 @@ test("deal responsibility checks record version and accepts an already-readable 
   });
   expect((await f.forActor(f.bob).crm.getDeal(deal.entityId)).level).toBe("view");
 });
+
+test("responsibility for an archived record cannot change until it is restored", async () => {
+  const a = f.forActor(f.alice);
+  const account = await a.crm.createAccount({ name: "Dormant" });
+  await a.crm.archive(account.entityId, true);
+  const input = {
+    ownerActorEntityId: f.bob,
+    expectedOwnerActorEntityId: f.alice,
+    accessDecision: "keep_restricted" as const,
+  };
+  expect(await rejection(a.crm.assignOwner(account.entityId, input))).toMatchObject({
+    name: "ValidationError",
+  });
+  expect((await a.crm.getAccount(account.entityId)).account.ownerActorEntityId).toBe(f.alice);
+});

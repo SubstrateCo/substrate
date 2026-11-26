@@ -1,10 +1,12 @@
+import { crmRecordCapabilities } from "@substrate/contracts/access/capabilities";
+import { permissionLabels } from "@substrate/contracts/access/levels";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
 import { CrmActivity } from "./crm-activity";
 import { crmResource } from "./crm-resource";
-import { accessLabel } from "./crm-types";
 import { FollowUps } from "./follow-ups";
 import { InteractionRollup } from "./interaction-rollup";
 import type { RecordChangeDialog } from "./record-change-dialog";
@@ -30,8 +32,8 @@ export function AccountDetail({ entityId }: { entityId: string }) {
   );
   if (!data) return fallback;
   const { account, contacts, deals, level } = data;
-  const canEdit = level === "edit" || level === "owner";
   const archived = !!account.archivedAt;
+  const capabilities = crmRecordCapabilities({ level, archived });
   return (
     <>
       <RecordDetailView
@@ -41,8 +43,7 @@ export function AccountDetail({ entityId }: { entityId: string }) {
         name={account.name}
         summary={account.summary}
         archived={archived}
-        canEdit={canEdit}
-        level={level}
+        capabilities={capabilities}
         ownerRecord={{ kind: "account", ownerActorEntityId: account.ownerActorEntityId }}
         onEdit={() => setDialog("edit")}
         onArchive={() => setDialog("archive")}
@@ -58,7 +59,7 @@ export function AccountDetail({ entityId }: { entityId: string }) {
                 <NotSet />
               )}
             </Property>
-            <Property label="Access">{accessLabel(level)}</Property>
+            <Property label="Access">{permissionLabels[level]}</Property>
           </>
         }
       >
@@ -98,7 +99,7 @@ export function AccountDetail({ entityId }: { entityId: string }) {
             <ContentNotice variant="inline" title="No deals you can read" />
           )}
         </RecordSection>
-        <FollowUps entityId={entityId} canCreate={canEdit && !archived} />
+        <FollowUps entityId={entityId} canCreate={capabilities.canEdit} />
         <InteractionRollup entityId={entityId} kind="account" />
         <WorkDiscussions entityId={entityId} />
         <CrmActivity entityId={entityId} />

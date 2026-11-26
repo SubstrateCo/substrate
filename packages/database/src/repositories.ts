@@ -187,6 +187,7 @@ function standalone(
       "followUps",
       "settings",
       "timeline",
+      "requireExportAccess",
     ]),
     calendar: domain("calendar", [
       "settings",

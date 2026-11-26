@@ -2,6 +2,7 @@ import {
   AccessDeniedError,
   AppDisabledError,
   ConflictError,
+  PermissionRequiredError,
   ValidationError,
 } from "@substrate/database";
 
@@ -43,6 +44,11 @@ describe("service results", () => {
     [new ServiceError("FORBIDDEN", "Verify your email."), "FORBIDDEN", "Verify your email."],
     [new AccessDeniedError(), "NOT_FOUND", "Item not found or access denied."],
     [new AppDisabledError(), "APP_DISABLED", "This app is disabled for this organization."],
+    [
+      new PermissionRequiredError("Admin access is required."),
+      "FORBIDDEN",
+      "Admin access is required.",
+    ],
     [new ValidationError("Invalid task status."), "INVALID_INPUT", "Invalid task status."],
     [new ConflictError("Task already exists."), "CONFLICT", "Task already exists."],
   ] as const)("maps expected failure %s to %s", async (error, code, message) => {

@@ -1,7 +1,6 @@
 import type { CrmTimelineMode } from "@substrate/contracts/crm/input";
 
 import { requireAppEnabled } from "../../../core/apps/access";
-import { interactionReadable } from "../../../core/contacts/access";
 import { contactInteractionRepository } from "../../../core/contacts/interactions/interactions.repository";
 import { contactInteractions } from "../../../core/contacts/interactions/interactions.schema";
 import { relatedLink } from "../../../core/links/repository";
@@ -165,7 +164,7 @@ export async function timeline(
       .where(
         and(
           eq(contactInteractions.organizationId, scope.organizationId),
-          interactionReadable(context, contactInteractions.entityId),
+          context.readable(contactInteractions.entityId, "view", "contact_interaction"),
           or(
             contactIds.length
               ? inArray(contactInteractions.contactEntityId, contactIds)

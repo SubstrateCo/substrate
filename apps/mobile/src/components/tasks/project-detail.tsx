@@ -1,3 +1,7 @@
+import { projectCapabilities } from "@substrate/contracts/access/capabilities";
+import { permissionLabels } from "@substrate/contracts/access/levels";
+import { assignableActors } from "@substrate/contracts/tasks/project-access";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { useMemo, useState } from "react";
@@ -6,7 +10,6 @@ import { FlatList, RefreshControl, View } from "react-native";
 import { ProjectForm } from "./project-form";
 import { ProjectMembers } from "./project-members";
 import { ProjectPicture } from "./project-picture";
-import { taskAssignees } from "./task-access";
 import { TaskForm } from "./task-form";
 import { TaskMessageContext } from "./task-message-context";
 import { taskTree, TaskRow } from "./task-row";
@@ -15,7 +18,7 @@ import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { oneOf, type FilterField, type FilterValue } from "@/features/records/filters";
-import { canEdit, openTask, permissionLabels } from "@/features/records/format";
+import { openTask } from "@/features/records/format";
 import { recordQueries, useRecordScope, useTasksWrite } from "@/features/records/queries";
 import type { ProjectTask } from "@/features/records/requests";
 import type { OnOpenRecord } from "@/features/records/types";
@@ -92,8 +95,7 @@ export function ProjectDetailView({
 
   const { project, level } = detail;
   const archived = !!project.archivedAt;
-  const editable = canEdit(level) && !archived;
-  const owner = level === "owner";
+  const { canEdit: editable, canArchive } = projectCapabilities({ level, archived });
   const openCount = detail.tasks.filter((task) => openTask(task.status)).length;
   const statusField: FilterField<"status"> = {
     id: "status",
@@ -119,7 +121,7 @@ export function ProjectDetailView({
             onPress: () => setMembers(true),
             hint: `${detail.members.length} members`,
           },
-          ...(owner && !archived
+          ...(canArchive && !archived
             ? [
                 {
                   label: "Archive project",
@@ -128,7 +130,7 @@ export function ProjectDetailView({
                 },
               ]
             : []),
-          ...(owner && archived
+          ...(canArchive && archived
             ? [
                 {
                   label: "Restore project",
@@ -254,7 +256,7 @@ export function ProjectDetailView({
       ) : null}
       {creating ? (
         <TaskForm
-          actors={taskAssignees(detail)}
+          actors={assignableActors(detail)}
           pending={write.isPending}
           error={write.error}
           onClose={() => {

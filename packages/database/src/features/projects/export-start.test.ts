@@ -1,10 +1,9 @@
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
-import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { organizationApps } from "../../core/apps/schema";
 import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
-import { AccessDeniedError } from "../../errors";
+import { AccessDeniedError, AppDisabledError } from "../../errors";
 import { ActorRepositories, createRepositories } from "../../repositories";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
@@ -123,27 +122,12 @@ test("export startup distinguishes authorized empty projects from denied project
   expect(await rejection(bob.projects.exportStart(project.entityId))).toBeInstanceOf(
     AccessDeniedError,
   );
-  await alice.projects.share(project.entityId, f.bob, "view");
-  await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, f.bob));
-  expect(await rejection(bob.projects.exportStart(project.entityId))).toBeInstanceOf(
-    AccessDeniedError,
-  );
-  await f.db.update(actors).set({ disabledAt: null }).where(eq(actors.entityId, f.bob));
-  await f.db.update(entities).set({ deletedAt: new Date() }).where(eq(entities.entityId, f.bob));
-  expect(await rejection(bob.projects.exportStart(project.entityId))).toBeInstanceOf(
-    AccessDeniedError,
-  );
-  await f.db.update(entities).set({ deletedAt: null }).where(eq(entities.entityId, f.bob));
-  await f.db.delete(member).where(eq(member.id, "bob-a"));
-  expect(await rejection(bob.projects.exportStart(project.entityId))).toBeInstanceOf(
-    AccessDeniedError,
-  );
   await f.db
     .update(organizationApps)
     .set({ enabled: false })
     .where(eq(organizationApps.organizationId, f.orgA));
   expect(await rejection(alice.projects.exportStart(project.entityId))).toBeInstanceOf(
-    AccessDeniedError,
+    AppDisabledError,
   );
   await f.db
     .update(organizationApps)

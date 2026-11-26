@@ -1,6 +1,6 @@
 import { interactionFields } from "@substrate/contracts/context/interactions";
-import type { ServiceErrorCode } from "@substrate/contracts/result";
-import type { PermissionLevel, TaskPriority, TaskStatus } from "@substrate/contracts/tasks";
+import { serviceErrorKind, type ServiceErrorCode } from "@substrate/contracts/result";
+import type { TaskPriority, TaskStatus } from "@substrate/contracts/tasks";
 
 import { ApiError, NetworkError } from "@/api/result";
 
@@ -10,13 +10,6 @@ export const taskPriorityLabels: Record<TaskPriority, string> = {
   medium: "Medium",
   high: "High",
   urgent: "Urgent",
-};
-
-export const permissionLabels: Record<PermissionLevel, string> = {
-  view: "Can view",
-  comment: "Can comment",
-  edit: "Can edit",
-  owner: "Owner",
 };
 
 export const interactionKindLabels = {
@@ -32,10 +25,6 @@ export const interactionKinds = interactionFields.shape.kind.options;
 
 export const outcomeLabels = { open: "Open", won: "Won", lost: "Lost" } as const;
 export const outcomeTones = { open: "outline", won: "accent", lost: "danger" } as const;
-
-export function canEdit(level: PermissionLevel | null | undefined) {
-  return level === "edit" || level === "owner";
-}
 
 export function openTask(status: TaskStatus) {
   return status !== "completed" && status !== "canceled";
@@ -58,15 +47,8 @@ export function errorText(error: Error | null, fallback = "Something went wrong.
   return fallback;
 }
 
-const accessCodes: ServiceErrorCode[] = [
-  "UNAUTHENTICATED",
-  "FORBIDDEN",
-  "NOT_FOUND",
-  "APP_DISABLED",
-  "WORKSPACE_CHANGED",
-];
 export function isAccessError(error: Error | null) {
-  return error instanceof ApiError && accessCodes.includes(error.code);
+  return error instanceof ApiError && serviceErrorKind(error.code) === "access";
 }
 
 function inThisYear(date: Date) {
