@@ -1,6 +1,6 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
-import { AccessDeniedError, ConflictError } from "../../../errors";
+import { AccessDeniedError, ConflictError, ValidationError } from "../../../errors";
 import {
   entityGrants,
   idempotentRequests,
@@ -190,6 +190,22 @@ test("source creation rejects task viewers and foreign or unsupported references
     ),
   ).toMatchObject({ cause: { code: "23503" } });
   expect(await f.db.select().from(messageEntityReferences)).toEqual([]);
+});
+
+test("a link on archived work reports no removal, matching the detach that refuses it", async () => {
+  const { project, repos, reply } = await setup();
+  const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Linked" });
+  await context().attach(reply.id, task.entityId);
+  expect(await context().messageLinks(reply.id)).toMatchObject([
+    { entityId: task.entityId, purpose: "association", canRemove: true },
+  ]);
+  await repos.projects.archive(project.entityId);
+  expect(await context().messageLinks(reply.id)).toMatchObject([
+    { entityId: task.entityId, purpose: "association", canRemove: false },
+  ]);
+  expect(await rejection(context().detach(reply.id, task.entityId))).toBeInstanceOf(
+    ValidationError,
+  );
 });
 
 test("mention and explicit relationships remain independent and target rename and deletion are respected", async () => {

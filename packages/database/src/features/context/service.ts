@@ -1,3 +1,4 @@
+import { atLeast } from "@substrate/contracts/access/levels";
 import type { ContextEntityType } from "@substrate/contracts/context/input";
 
 import {
@@ -26,6 +27,7 @@ import { tasks } from "../tasks/tasks.schema";
 import { requireContextTarget } from "./access";
 import { messagePeople, messageWorkLinks } from "./message-references/message-metadata";
 import { messagePage } from "./message-references/message-page";
+import { referenceArchiveIds } from "./message-references/reference-archive";
 import { recordLabels } from "./record-labels";
 import { messageEntityReferences } from "./schema";
 import { contextSearch } from "./search";
@@ -58,10 +60,7 @@ async function referenceEndpoints(
   const work = await requireContextTarget(ctx, target.id, level);
   if (target.type && work.entityType !== target.type) throw new AccessDeniedError();
   // Neither an archived task's discussion nor archived work changes its linked messages.
-  await requireUnarchived(ctx, [
-    work.entityId,
-    ...(conversation.taskEntityId ? [conversation.taskEntityId] : []),
-  ]);
+  await requireUnarchived(ctx, referenceArchiveIds(work.entityId, conversation.taskEntityId));
   return { conversation, work };
 }
 
@@ -96,7 +95,6 @@ export async function attachReference(
   target: ReferenceTarget,
 ) {
   const { conversation, work } = await referenceEndpoints(ctx, scope, source, target, "edit");
-  if (conversation.organizationId !== scope.organizationId) throw new AccessDeniedError();
   const rows = await ctx.db
     .insert(messageEntityReferences)
     .values({
@@ -138,7 +136,7 @@ export async function detachReference(
       ),
     );
   if (!reference) return false;
-  if (reference.createdByActorEntityId !== ctx.scope.actorEntityId && work.level !== "owner")
+  if (reference.createdByActorEntityId !== ctx.scope.actorEntityId && !atLeast(work.level, "owner"))
     throw new AccessDeniedError();
   const rows = await db
     .delete(messageEntityReferences)

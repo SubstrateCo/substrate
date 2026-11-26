@@ -22,6 +22,7 @@ import {
 import { projects } from "../../projects/schema";
 import { tasks } from "../../tasks/tasks.schema";
 import { messageEntityReferences } from "../schema";
+import { referenceArchived } from "./reference-archive";
 import { and, asc, eq, exists, inArray, isNull, isNotNull, ne, or, sql } from "drizzle-orm";
 
 // Callers authorize every message before resolving its metadata.
@@ -40,7 +41,8 @@ export async function messageWorkLinks(ctx: RepositoryContext, messageIds: strin
       status: tasks.status,
       purpose: messageEntityReferences.purpose,
       canRemove: sql<boolean>`(${messagingConversations.taskEntityId} IS NULL OR
-        ${ctx.accessLevel(messagingConversations.taskEntityId)} >= 'comment'::permission_level)
+        ${ctx.readable(messagingConversations.taskEntityId, "comment")})
+        AND NOT ${referenceArchived(messageEntityReferences.organizationId, messageEntityReferences.entityId, messagingConversations.taskEntityId)}
         AND ${messageEntityReferences.purpose} = 'association' AND (
         ${messageEntityReferences.createdByActorEntityId} = ${ctx.scope.actorEntityId} OR
         work_access.level = 'owner'

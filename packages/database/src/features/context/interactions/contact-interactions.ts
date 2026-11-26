@@ -4,7 +4,6 @@ import { interactionWorkspaceRepository } from "../../../core/contacts/interacti
 import { contactInteractionRepository } from "../../../core/contacts/interactions/interactions.repository";
 import { appEnabledCondition } from "../../../core/permissions/app-visibility";
 import type { RepositoryContext } from "../../../core/repository-context";
-import { AccessDeniedError } from "../../../errors";
 import { ValidationError } from "../../../errors";
 import { recordCrmActivity } from "../../crm/activity/activity";
 import { presentInteraction, presentInteractions } from "../../crm/activity/actor-views";
@@ -32,8 +31,7 @@ export function contextContactInteractionRepository(context: RepositoryContext) 
       if (input.contactEntityId)
         await context.requireAccess(input.contactEntityId, "edit", { type: "contact" });
       if (input.accountEntityId) {
-        const access = await context.requireAccess(input.accountEntityId, "view");
-        if (access.entity.entityType !== "account") throw new AccessDeniedError();
+        await context.requireAccess(input.accountEntityId, "view", { type: "account" });
         condition = interactionScope(
           context,
           "account",
