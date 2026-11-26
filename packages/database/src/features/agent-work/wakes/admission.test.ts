@@ -4,6 +4,7 @@ import {
   decideAdmission,
   type AdmissionDecision,
   type CallerFacts,
+  type InvocationChecks,
   type InvocationRecord,
   type MessageFacts,
   type MessageTrigger,
@@ -291,20 +292,34 @@ test("caller: an agent author never wakes an agent, even one that accepts caller
   ).toEqual({ type: "deny", reason: "agent_author" });
 });
 
+const approvedCall = (checks: InvocationChecks) =>
+  decideAdmission({
+    type: "invocation",
+    trigger: { type: "invocation", invocation: { ...request, id: "i1" }, checks },
+    facts: { agent, ...checks },
+  });
+
 test("invocation: an approved call wakes the agent in the call's session, once", () => {
-  const invocation = { ...request, id: "i1" };
-  expect(
-    decideAdmission({
-      type: "invocation",
-      trigger: { type: "invocation", invocation },
-      facts: { agent },
-    }),
-  ).toEqual({
+  expect(approvedCall({ reachable: true, triggerEnabled: true })).toEqual({
     type: "admit",
     source: "caller_message",
     sourceRef: { invocationId: "i1" },
     sessionKey: thread,
     dedupeKey: wakeDedupeKeys.call("i1"),
+  });
+});
+
+test("invocation: an approved call that is no longer reachable does not wake", () => {
+  expect(approvedCall({ reachable: false, triggerEnabled: true })).toEqual({
+    type: "deny",
+    reason: "not_reachable",
+  });
+});
+
+test("invocation: an approved call whose trigger kind the owner disabled does not wake", () => {
+  expect(approvedCall({ reachable: true, triggerEnabled: false })).toEqual({
+    type: "deny",
+    reason: "not_triggered",
   });
 });
 

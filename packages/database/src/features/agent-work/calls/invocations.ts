@@ -17,7 +17,6 @@ import { user } from "../../../core/authentication/schema";
 import { effectsFor } from "../../../core/effects";
 import type { DatabaseExecutor } from "../../../core/executor";
 import type { SessionIdentity } from "../../../core/session/identity";
-import { workspaceContext } from "../../../core/session/workspace";
 import { AccessDeniedError, ConflictError } from "../../../errors";
 import { userAgentCallers } from "../../agents/callers.schema";
 import { userAgentTriggers } from "../../agents/triggers.schema";
@@ -29,7 +28,13 @@ import {
   messagingParticipants,
 } from "../../messaging/schema";
 import { inStates } from "../machine-sql";
-import { admit } from "../wakes/admission";
+import {
+  admit,
+  callerRunsWithoutApproval,
+  decideAdmission,
+  requestInput,
+  type InvocationTrigger,
+} from "../wakes/admission";
 import { agentWakes } from "../wakes/wakes.schema";
 import { audit, type AuditEvent } from "./audit";
 import { agentAuditEvents, agentInvocations } from "./invocations.schema";
@@ -194,9 +199,7 @@ async function callChecks(db: DatabaseExecutor, rows: InvocationRow[]) {
     const reachable = check.policy !== "owner" && check.reachable;
     checks.set(check.id, {
       reachable,
-      approved:
-        reachable &&
-        (check.policy === "anyone" || check.decidedByUserId !== null || check.allowlisted),
+      approved: reachable && (check.decidedByUserId !== null || callerRunsWithoutApproval(check)),
       triggerEnabled: check.triggerEnabled,
     });
   }
@@ -264,12 +267,14 @@ export async function decideInvocationInTransaction(
   invocationId: string,
   decision: DecideInvocationInput["decision"],
 ) {
-  await workspaceContext(tx, identity);
   const row = await requireOwnedInvocation(tx, identity, invocationId);
   let event: DecisionEvent = "decline";
+  let checks: InvocationTrigger["checks"] = { reachable: false, triggerEnabled: false };
   if (decision !== "decline") {
     const checked = (await callChecks(tx, [row])).get(row.id);
-    event = checked?.reachable && checked.triggerEnabled ? "approve" : "cancel";
+    if (checked) checks = { reachable: checked.reachable, triggerEnabled: checked.triggerEnabled };
+    const trigger: InvocationTrigger = { type: "invocation", invocation: row, checks };
+    event = decideAdmission(requestInput(trigger)).type === "admit" ? "approve" : "cancel";
   }
   const [decided] = await tx
     .update(agentInvocations)
@@ -301,7 +306,7 @@ export async function decideInvocationInTransaction(
   }
   await audit(tx, events);
   if (event === "approve") {
-    for (const value of await admit(tx, [{ type: "invocation", invocation: decided }]))
+    for (const value of await admit(tx, [{ type: "invocation", invocation: decided, checks }]))
       effectsFor(tx).hint(value);
   }
   hint(tx, [decided]);

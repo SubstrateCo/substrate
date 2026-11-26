@@ -64,8 +64,8 @@ export type RequestTrigger = {
   };
 };
 
-/** The owner approved a pending call. */
-type InvocationTrigger = {
+/** The owner approved a pending call. `checks` are read again at decision time. */
+export type InvocationTrigger = {
   type: "invocation";
   invocation: {
     id: string;
@@ -75,6 +75,15 @@ type InvocationTrigger = {
     ownerUserId: string;
     sessionKey: string;
   };
+  checks: InvocationChecks;
+};
+
+/** Whether an approved call may still run, read when the owner decides it. */
+export type InvocationChecks = {
+  /** The policy still accepts callers, both sides can see the conversation, and all are live. */
+  reachable: boolean;
+  /** The owner has not disabled the call's trigger kind. */
+  triggerEnabled: boolean;
 };
 
 export type AdmissionTrigger = MessageTrigger | RequestTrigger | InvocationTrigger;
@@ -111,11 +120,13 @@ export type MessageFacts = {
 
 type RequestFacts = { agent: AdmissionAgent };
 
+type InvocationFacts = RequestFacts & InvocationChecks;
+
 /** One trigger and the facts about one candidate agent. `type` is the trigger's type. */
 export type AdmissionInput =
   | { type: "message"; trigger: MessageTrigger; facts: MessageFacts }
   | { type: "request"; trigger: RequestTrigger; facts: RequestFacts }
-  | { type: "invocation"; trigger: InvocationTrigger; facts: RequestFacts };
+  | { type: "invocation"; trigger: InvocationTrigger; facts: InvocationFacts };
 
 type AdmissionDenial =
   | "agent_author"
@@ -123,8 +134,20 @@ type AdmissionDenial =
   | "not_member"
   | "direct_message"
   | "owner_cannot_see"
+  | "not_reachable"
   | "not_triggered"
   | "rate_limited";
+
+/**
+ * A caller's new call runs without the owner's approval: the policy is anyone, or the caller is
+ * allowlisted. A call the owner already approved runs too; callers add that fact themselves.
+ */
+export function callerRunsWithoutApproval(caller: {
+  policy: AgentCallerPolicy;
+  allowlisted: boolean;
+}) {
+  return caller.policy === "anyone" || caller.allowlisted;
+}
 
 /** A call to record: the invocation machine event that inserts it, and its snapshot. */
 export type InvocationRecord = {
@@ -174,7 +197,7 @@ function callerDecision(
   if (!kind || kind === "direct_message") return { type: "deny", reason: "not_triggered" };
   const record = { id: caller.invocationId, kind, policy: caller.policy };
   const sessionKey = wakeSessionKey(conversationKind, message);
-  const runsNow = caller.policy === "anyone" || caller.allowlisted;
+  const runsNow = callerRunsWithoutApproval(caller);
   const limited = runsNow
     ? caller.admittedToday >= maxAdmittedInvocationsPerDay
     : caller.pending >= maxPendingInvocationsPerCaller;
@@ -210,8 +233,9 @@ function callerDecision(
  *   Explicit agent mentions narrow recipients. The owner's disabled kinds apply.
  *   Under ask, a caller who is not allowlisted waits for the owner's approval.
  *   Excess calls are recorded as rate limited.
- * - The owner's answer or proposal result always wakes the agent in the request's session, and
- *   an approved call wakes it in the call's session.
+ * - The owner's answer or proposal result always wakes the agent in the request's session.
+ * - An approved call wakes the agent in the call's session only while it is still reachable and
+ *   the owner has not disabled its trigger kind; otherwise the call is cancelled.
  */
 export function decideAdmission(input: AdmissionInput): AdmissionDecision {
   if (input.type === "request") {
@@ -229,6 +253,8 @@ export function decideAdmission(input: AdmissionInput): AdmissionDecision {
   }
   if (input.type === "invocation") {
     const { invocation } = input.trigger;
+    if (!input.facts.reachable) return { type: "deny", reason: "not_reachable" };
+    if (!input.facts.triggerEnabled) return { type: "deny", reason: "not_triggered" };
     return {
       type: "admit",
       source: "caller_message",
@@ -489,7 +515,7 @@ async function messageInputs(
   return inputs;
 }
 
-function requestInput(trigger: RequestTrigger | InvocationTrigger): AdmissionInput {
+export function requestInput(trigger: RequestTrigger | InvocationTrigger): AdmissionInput {
   const source = trigger.type === "request" ? trigger.request : trigger.invocation;
   const facts = {
     agent: {
@@ -501,7 +527,7 @@ function requestInput(trigger: RequestTrigger | InvocationTrigger): AdmissionInp
   };
   return trigger.type === "request"
     ? { type: "request", trigger, facts }
-    : { type: "invocation", trigger, facts };
+    : { type: "invocation", trigger, facts: { ...facts, ...trigger.checks } };
 }
 
 const auditActions: Record<InvocationRecord["event"], AgentAuditAction> = {
