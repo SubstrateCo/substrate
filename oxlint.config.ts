@@ -77,6 +77,24 @@ export default defineConfig({
     {
       files: ["apps/web/src/**"],
       rules: {
+        // Pedantic and style React rules that the correctness category does not turn on. They run
+        // only on the renderer: Playwright fixtures and desktop services call unrelated `use` APIs.
+        "react/rules-of-hooks": "error",
+        "react/hooks": "error",
+        "react/capitalized-calls": "error",
+        "react/memo-dependencies": "error",
+        "react/jsx-no-useless-fragment": "error",
+        "react/jsx-no-target-blank": "error",
+        "react/iframe-missing-sandbox": "error",
+        "react/checked-requires-onchange-or-readonly": "error",
+        "react/jsx-no-comment-textnodes": "error",
+        "react/no-unescaped-entities": "error",
+        "react/no-namespace": "error",
+        "react/style-prop-object": "error",
+        "react/self-closing-comp": "error",
+        "react/jsx-curly-brace-presence": "error",
+        "react/jsx-boolean-value": "error",
+        "react/jsx-fragments": "error",
         "no-restricted-properties": [
           "error",
           ...[

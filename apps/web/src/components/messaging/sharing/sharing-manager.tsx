@@ -105,51 +105,48 @@ export function SharingManager({
           onRetry={retry}
         />
         {data && (
-          <>
-            <SharingDetailsView
-              details={data}
-              organizationId={organizationId}
-              now={now}
-              pending={action.isPending}
-              onDisconnect={(id) =>
-                confirm({
-                  kind: "disconnect",
-                  id,
-                  name:
-                    data.connections.find((connection) => connection.organizationId === id)?.name ??
-                    "this organization",
-                })
-              }
-              onRemove={(id) =>
-                confirm({
-                  kind: "remove",
-                  id,
-                  name:
-                    data.participants.find((person) => person.actorId === id)?.name ??
-                    "this person",
-                })
-              }
-              onResend={(id) =>
-                action.mutate(
-                  { kind: "resend", id },
-                  {
-                    onSuccess: () => toast.success("Invitation email resent."),
-                    onError: (error) =>
-                      toast.error(
-                        actionErrorMessage(error, "We couldn’t resend this invitation. Try again."),
-                      ),
-                  },
-                )
-              }
-              onRevoke={(id) =>
-                confirm({
-                  kind: "revoke",
-                  id,
-                  name: data.invitations.find((invite) => invite.id === id)?.email ?? "this person",
-                })
-              }
-            />
-          </>
+          <SharingDetailsView
+            details={data}
+            organizationId={organizationId}
+            now={now}
+            pending={action.isPending}
+            onDisconnect={(id) =>
+              confirm({
+                kind: "disconnect",
+                id,
+                name:
+                  data.connections.find((connection) => connection.organizationId === id)?.name ??
+                  "this organization",
+              })
+            }
+            onRemove={(id) =>
+              confirm({
+                kind: "remove",
+                id,
+                name:
+                  data.participants.find((person) => person.actorId === id)?.name ?? "this person",
+              })
+            }
+            onResend={(id) =>
+              action.mutate(
+                { kind: "resend", id },
+                {
+                  onSuccess: () => toast.success("Invitation email resent."),
+                  onError: (error) =>
+                    toast.error(
+                      actionErrorMessage(error, "We couldn’t resend this invitation. Try again."),
+                    ),
+                },
+              )
+            }
+            onRevoke={(id) =>
+              confirm({
+                kind: "revoke",
+                id,
+                name: data.invitations.find((invite) => invite.id === id)?.email ?? "this person",
+              })
+            }
+          />
         )}
       </SharingInvitationForm>
       {!blocked && confirmation && (

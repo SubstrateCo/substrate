@@ -27,20 +27,20 @@ export function AgentWorkProvider({
 
 export function AgentWorkSlot({ messageId, fromAgent }: { messageId: string; fromAgent: boolean }) {
   const render = useContext(AgentWorkContext);
-  return <>{render?.work({ id: messageId, fromAgent })}</>;
+  return render?.work({ id: messageId, fromAgent });
 }
 
 export function AgentWorkStatus({ messageId }: { messageId: string }) {
   const render = useContext(AgentWorkContext);
-  return <>{render?.status(messageId)}</>;
+  return render?.status(messageId);
 }
 
 export function AgentWorkBadge({ messageId }: { messageId: string }) {
   const render = useContext(AgentWorkContext);
-  return <>{render?.badge(messageId)}</>;
+  return render?.badge(messageId);
 }
 
 export function AgentWorkNotice({ threadId }: { threadId: string | null }) {
   const render = useContext(AgentWorkContext);
-  return <>{render?.notice(threadId)}</>;
+  return render?.notice(threadId);
 }

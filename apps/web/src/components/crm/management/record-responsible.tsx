@@ -9,14 +9,12 @@ export function RecordResponsible({
   actorEntityId: string;
 }) {
   const directory = useRecordPeople(organizationId);
-  if (directory.error) return <>Unavailable</>;
+  if (directory.error) return "Unavailable";
   if (directory.pending)
     return (
       <span role="status" aria-label="Loading">
         <SkeletonText width="6rem" />
       </span>
     );
-  return (
-    <>{directory.people.find((person) => person.id === actorEntityId)?.name ?? "Former member"}</>
-  );
+  return directory.people.find((person) => person.id === actorEntityId)?.name ?? "Former member";
 }

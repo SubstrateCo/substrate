@@ -20,7 +20,7 @@ function Image({
   fallback?: ReactNode;
 }) {
   const [failed, setFailed] = useState<string | null>(null);
-  if (!src || failed === src) return <>{fallback}</>;
+  if (!src || failed === src) return fallback;
   const image = (source: string, mode?: string) => (
     <img
       data-slot="image"
