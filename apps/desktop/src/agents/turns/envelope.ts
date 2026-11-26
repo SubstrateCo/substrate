@@ -59,6 +59,7 @@ export function renderEnvelope(turn: EnvelopeTurn) {
         ["author_kind", item.authorKind],
         ["conversation", item.conversationId],
         ["thread", item.threadId],
+        ["message", item.messageId],
       ])}>${fence(item.body)}</item>`,
     );
   parts.push("</turn>");
@@ -148,6 +149,7 @@ export function envelopeItems(
             authorKind: message.author.kind,
             conversationId: message.conversationId,
             threadId: message.threadId,
+            messageId: id,
             body: message.body,
           },
         ]
@@ -161,7 +163,13 @@ type ItemRenderer = (
 ) => EnvelopeItem | null;
 
 function itemBase(item: InboxRow) {
-  return { id: item.id, source: item.source, conversationId: null, threadId: null };
+  return {
+    id: item.id,
+    source: item.source,
+    conversationId: null,
+    threadId: null,
+    messageId: null,
+  };
 }
 
 const renderers: Record<TriggerDefinition["envelope"], ItemRenderer> = {
@@ -178,6 +186,7 @@ const renderers: Record<TriggerDefinition["envelope"], ItemRenderer> = {
       authorKind: message.author.kind,
       conversationId: message.conversationId,
       threadId: message.threadId,
+      messageId: ref.messageId,
       body: message.body,
     };
   },

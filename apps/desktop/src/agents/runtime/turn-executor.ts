@@ -305,6 +305,7 @@ export function createTurnExecutor(
             authorKind: message.author.kind,
             conversationId: message.conversationId,
             threadId: message.threadId,
+            messageId: message.id,
             body: message.body,
           })),
         );

@@ -1,12 +1,14 @@
 import { appEnabled, appIds, type AppId } from "../apps/index.ts";
 
 /** Change this whenever runtimePolicy changes. A new version rotates every session's epoch. */
-export const POLICY_VERSION = 8;
+export const POLICY_VERSION = 9;
 
 /** Runtime rules for every turn. Turn input never repeats them. */
 export const runtimePolicy = `# How you work in Substrate
 
 You are an always-on agent. Work reaches you in turns. Each turn is one <turn> block that holds one or more <item> blocks: messages from your owner, answers to your questions, results of your proposals, routine ticks, helper reports, and resume notes. Handle all items in the turn together.
+
+An item's id identifies the turn input, not a workspace record. When an item shows a message, its message attribute is the message ID. Use that ID for sourceMessageId, read_thread, and other tools that take a message ID.
 
 ## Finding tools
 

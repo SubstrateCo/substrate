@@ -6,7 +6,7 @@ import type { AgentSessionKind } from "./wakes.ts";
 //
 // <turn time="ISO" session="dm" kind="interactive" attempt="1">
 // <changes>…only when present…</changes>
-// <item id="…" source="owner_message" author="Name" author_kind="owner" conversation="…" thread="…">…</item>
+// <item id="…" source="owner_message" author="Name" author_kind="owner" conversation="…" thread="…" message="…">…</item>
 // </turn>
 
 /** system marks items the runtime wrote, such as routine ticks and resume notes. */
@@ -20,6 +20,8 @@ export interface EnvelopeItem {
   authorKind: EnvelopeAuthorKind;
   conversationId: string | null;
   threadId: string | null;
+  /** The workspace message the item shows, for tools that take a message ID. */
+  messageId: string | null;
   body: string;
 }
 
