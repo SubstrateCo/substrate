@@ -2,9 +2,9 @@ import type { ReactNode } from "react";
 
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { PersonAvatarFallback } from "@/components/people/person-avatar";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { harnessLabel } from "@/lib/agents/harness-meta";
-import { initials } from "@/lib/people/initials";
 import { Bot, LockKeyhole } from "lucide-react";
 
 export type PersonCardProfile = {
@@ -34,6 +34,7 @@ function Header({
   secondary,
   action,
   tags,
+  badge,
   type = "human",
 }: {
   name: string;
@@ -41,6 +42,7 @@ function Header({
   secondary: ReactNode;
   action?: ReactNode;
   tags?: ReactNode;
+  badge?: ReactNode;
   type?: "human" | "agent";
 }) {
   return (
@@ -51,9 +53,7 @@ function Header({
         className="size-10 shrink-0"
       >
         {image && <AvatarImage src={image} alt="" />}
-        <AvatarFallback>
-          {type === "agent" ? <Bot aria-hidden="true" className="size-5" /> : initials(name)}
-        </AvatarFallback>
+        <PersonAvatarFallback name={name} agent={type === "agent"} />
       </Avatar>
       <div className="min-w-0 flex-1">
         <p className="font-medium wrap-anywhere">{name}</p>
@@ -61,6 +61,7 @@ function Header({
         {tags && <div className="mt-1 flex flex-wrap gap-1">{tags}</div>}
         {action && <div className="mt-2">{action}</div>}
       </div>
+      {badge && <div className="shrink-0">{badge}</div>}
     </div>
   );
 }
@@ -126,11 +127,6 @@ export function PersonCard({
     );
   const secondary = profile.agent ? agentLine(profile.agent) : profile.email;
   const tags = [
-    profile.type === "agent" && (
-      <Tag key="agent" icon={<Bot aria-hidden="true" className="size-3" />}>
-        Agent
-      </Tag>
-    ),
     profile.role && <Tag key="role">{roleLabel(profile.role)}</Tag>,
     profile.external && <Tag key="external">External</Tag>,
     profile.self && <Tag key="self">You</Tag>,
@@ -142,7 +138,12 @@ export function PersonCard({
         type={profile.type}
         image={profile.image}
         action={action}
-        tags={tags}
+        tags={tags.length ? tags : undefined}
+        badge={
+          profile.type === "agent" && (
+            <Tag icon={<Bot aria-hidden="true" className="size-3" />}>Agent</Tag>
+          )
+        }
         secondary={
           secondary && <p className="text-xs wrap-anywhere text-muted-foreground">{secondary}</p>
         }

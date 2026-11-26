@@ -36,7 +36,8 @@ for (const kind of ["channel", "group"] as const) {
     await dialog.getByRole("option").filter({ hasText: actors.member.email }).click();
     await picker.fill(agent.name);
     const agentOption = dialog.getByRole("option").filter({ hasText: agent.name });
-    await expect(agentOption.getByText("Agent", { exact: true })).toBeVisible();
+    await expect(agentOption.getByText("Agent", { exact: true })).toHaveCount(0);
+    await expect(agentOption).toHaveAccessibleName(`${agent.name}, Agent`);
     await agentOption.click();
     await expect(dialog.getByRole("checkbox")).toHaveCount(0);
     await dialog.getByRole("button", { name: "Add 2 people", exact: true }).click();
@@ -47,7 +48,8 @@ for (const kind of ["channel", "group"] as const) {
       user.page.getByRole("listitem").filter({ hasText: actors.member.name }),
     ).toBeVisible();
     const row = user.page.getByRole("listitem").filter({ hasText: agent.name });
-    await expect(row.getByText("Agent", { exact: true })).toBeVisible();
+    await expect(row.getByText("Agent", { exact: true })).toHaveCount(0);
+    await expect(row.locator("[tabindex='0'] .sr-only")).toHaveText(", Agent");
     await user.page.keyboard.press("Escape");
     await user.page.getByRole("button", { name: "Add people", exact: true }).click();
     await picker.fill(agent.name);
@@ -79,12 +81,9 @@ test("new group message picks people and agents in the same field", async ({ act
     user.page.getByRole("textbox", { name: `Message ${name}`, exact: true }),
   ).toBeVisible();
   await user.page.getByRole("button", { name: "Members, 3 members", exact: true }).click();
-  await expect(
-    user.page
-      .getByRole("listitem")
-      .filter({ hasText: agent.name })
-      .getByText("Agent", { exact: true }),
-  ).toBeVisible();
+  const row = user.page.getByRole("listitem").filter({ hasText: agent.name });
+  await expect(row.getByText("Agent", { exact: true })).toHaveCount(0);
+  await expect(row.locator("[tabindex='0'] .sr-only")).toHaveText(", Agent");
 });
 
 test("a partial add keeps only the failed agent selected and reports the saved person", async ({

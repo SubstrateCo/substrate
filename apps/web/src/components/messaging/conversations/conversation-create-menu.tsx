@@ -3,7 +3,6 @@ import type { PickerPerson } from "@substrate/contracts/people/picker";
 import { useRef, useState, type ReactNode } from "react";
 
 import { useWorkspaceSearch } from "@/components/context/search/workspace-search-request";
-import { Tag } from "@/components/feedback/tag";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
 import {
@@ -183,11 +182,11 @@ export function DirectMessageCreateMenu({
                 <CommandItem
                   key={agent.id}
                   value={`agent-${agent.id}`}
+                  aria-label={`${agent.name}, Agent`}
                   onSelect={() => choose({ kind: "agent", agent })}
                 >
                   <PersonAvatar name={agent.name} image={agent.image} agent />
                   <span className="truncate font-medium">{agent.name}</span>
-                  <Tag>Agent</Tag>
                 </CommandItem>
               ))}
               {!matches.length && !agentMatches.length && (

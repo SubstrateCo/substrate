@@ -2,7 +2,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { initials } from "@/lib/people/initials";
 import { cva } from "class-variance-authority";
 import { cn } from "cn";
-import { Bot } from "lucide-react";
+import { Bot, UserRound } from "lucide-react";
 
 const personAvatarVariants = cva("", {
   variants: {
@@ -32,7 +32,7 @@ export function PersonAvatar({
   size?: "sm" | "xs";
   className?: string;
 }) {
-  if (!name)
+  if (!name && !agent && !image)
     return (
       <span
         aria-hidden="true"
@@ -51,7 +51,20 @@ export function PersonAvatar({
       className={cn(personAvatarVariants({ size }), className)}
     >
       {image && <AvatarImage src={image} alt="" />}
-      <AvatarFallback>{agent ? <Bot className="size-3.5" /> : initials(name)}</AvatarFallback>
+      <PersonAvatarFallback name={name} agent={agent} />
     </Avatar>
+  );
+}
+
+export function PersonAvatarFallback({ name, agent = false }: { name?: string; agent?: boolean }) {
+  const Icon = agent ? Bot : UserRound;
+  return (
+    <AvatarFallback>
+      {!agent && name?.trim() ? (
+        initials(name)
+      ) : (
+        <Icon aria-hidden="true" className="size-3.5 group-data-[size=default]/avatar:size-5" />
+      )}
+    </AvatarFallback>
   );
 }

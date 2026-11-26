@@ -15,7 +15,6 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 
-import { Tag } from "@/components/feedback/tag";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { FieldDescription, FieldError } from "@/components/ui/field";
 import { Pressable } from "@/components/ui/pressable";
@@ -384,6 +383,7 @@ function PeopleSuggestions({
         <Option
           key={recipientKey(option)}
           id={optionId(index)}
+          label={option.agent ? `${option.agent.name}, Agent` : undefined}
           active={index === activeIndex}
           onHover={() => onHover(index)}
           onChoose={(keepOpen) => onChoose(option, keepOpen)}
@@ -396,7 +396,6 @@ function PeopleSuggestions({
                 agent={!!option.agent}
               />
               <span className="truncate font-medium">{(option.agent ?? option.person)?.name}</span>
-              {option.agent && <Tag>Agent</Tag>}
               {option.person && (
                 <span className="min-w-0 truncate text-muted-foreground">{option.email}</span>
               )}
@@ -419,12 +418,14 @@ function PeopleSuggestions({
 
 function Option({
   id,
+  label,
   active,
   onHover,
   onChoose,
   children,
 }: {
   id: string;
+  label?: string;
   active: boolean;
   onHover: () => void;
   onChoose: (keepOpen: boolean) => void;
@@ -434,6 +435,7 @@ function Option({
     <div
       id={id}
       role="option"
+      aria-label={label}
       aria-selected={active}
       className="flex h-9 min-w-0 cursor-default items-center gap-2 rounded-md px-2 text-sm select-none aria-selected:bg-row-hover"
       onPointerMove={onHover}
@@ -465,7 +467,10 @@ function RecipientChip({
       ) : (
         <Mail aria-hidden="true" className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
       )}
-      <span className="truncate">{label}</span>
+      <span className="truncate">
+        {label}
+        {recipient.agent && <span className="sr-only">, Agent</span>}
+      </span>
       <Pressable
         disabled={disabled}
         aria-label={`Remove ${label}`}

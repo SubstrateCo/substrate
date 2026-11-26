@@ -11,7 +11,6 @@ import { TaskPriorityIcon } from "../task-cues/task-priority-icon";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { TaskDueDatePicker } from "./task-due-date-picker";
-import { Tag } from "@/components/feedback/tag";
 import { NotSet, Property, PropertyList } from "@/components/layout/record-section";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { DueDate } from "@/components/time/due-date";
@@ -93,7 +92,7 @@ export function TaskProperties({
         agent={assignee?.type === "agent"}
       />
       <span className={`truncate ${assignee ? "" : "text-muted-foreground"}`}>{assigneeText}</span>
-      {assignee?.type === "agent" && <Tag size="sm">Agent</Tag>}
+      {assignee?.type === "agent" && <span className="sr-only">, Agent</span>}
     </>
   );
   const dueValue = task.dueDate ? <DueDate value={task.dueDate} /> : <NotSet />;
@@ -141,7 +140,7 @@ export function TaskProperties({
                 variant="property"
                 size="sm"
                 role="combobox"
-                aria-label={`Assignee: ${assigneeText}`}
+                aria-label={`Assignee: ${assigneeText}${assignee?.type === "agent" ? ", Agent" : ""}`}
                 className={trigger}
               />
             }

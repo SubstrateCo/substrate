@@ -273,7 +273,8 @@ test("a member adds and removes their agent through people and members without a
   await expect(dialog).toHaveCount(0);
   await user.page.getByRole("button", { name: "Members, 3 members", exact: true }).click();
   const row = user.page.getByRole("listitem").filter({ hasText: agent.name });
-  await expect(row.getByText("Agent", { exact: true })).toBeVisible();
+  await expect(row.getByText("Agent", { exact: true })).toHaveCount(0);
+  await expect(row.locator("[tabindex='0'] .sr-only")).toHaveText(", Agent");
   await row.getByRole("button", { name: `Remove ${agent.name}`, exact: true }).click();
   await user.page
     .getByRole("dialog", { name: `Remove ${agent.name}?`, exact: true })

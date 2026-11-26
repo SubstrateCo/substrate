@@ -12,9 +12,9 @@ import { DeletedMessageBody } from "@/components/messaging/messages/message-plac
 import { MessageRowLayout } from "@/components/messaging/messages/message-row-layout";
 import { useHasPersonCard } from "@/components/messaging/people/person-card-context";
 import { PersonCardTarget } from "@/components/messaging/people/person-card-slot";
+import { PersonAvatarFallback } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { initials } from "@/lib/people/initials";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { cn } from "cn";
 
 export function MessageItem({
@@ -69,7 +69,10 @@ export function MessageItem({
               className="size-9"
             >
               {message.authorImage && <AvatarImage src={message.authorImage} alt="" />}
-              <AvatarFallback>{initials(message.authorName)}</AvatarFallback>
+              <PersonAvatarFallback
+                name={message.authorName}
+                agent={message.authorType === "agent"}
+              />
             </Avatar>
             {avatarBadge}
           </span>

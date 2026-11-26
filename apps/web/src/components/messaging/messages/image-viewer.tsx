@@ -12,8 +12,9 @@ import {
 import { fitViewerImage } from "./image-viewer-layout";
 import { imageFileActions } from "@/components/attachments/image-file-actions";
 import { ActionContextMenu } from "@/components/layout/action-context-menu";
+import { PersonAvatarFallback } from "@/components/people/person-avatar";
 import { Timestamp } from "@/components/time/timestamp";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -25,7 +26,6 @@ import {
 import { Image } from "@/components/ui/image";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { initials } from "@/lib/people/initials";
 import { cn } from "cn";
 import {
   ArrowUpRight,
@@ -189,7 +189,7 @@ function ImageViewerContent({
             {sender && (
               <Avatar aria-hidden="true" variant={sender.agent ? "agent" : "default"}>
                 {sender.image && <AvatarImage src={sender.image} alt="" />}
-                <AvatarFallback>{initials(sender.name)}</AvatarFallback>
+                <PersonAvatarFallback name={sender.name} agent={sender.agent} />
               </Avatar>
             )}
             <div className="min-w-0">
