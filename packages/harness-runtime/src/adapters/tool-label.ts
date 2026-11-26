@@ -1,15 +1,12 @@
-import { mcpTools } from "@substrate/contracts/harness/tools";
-
 import { z } from "zod";
 
 const maxLength = 120;
 
-const workspaceTitles: ReadonlyMap<string, string> = new Map(
-  Object.entries(mcpTools).map(([name, tool]) => [name, tool.title]),
-);
-
-/** Our own MCP server's name, as the harnesses see it (acp/mcp-provider.ts substrateMcpName). */
-const substrateServer = "substrate";
+/** The host's own MCP server: its name, as the harnesses see it, and its tools' titles. */
+export interface HostTools {
+  server: string;
+  title(tool: string): string | undefined;
+}
 
 /** Shell executables whose script argument follows one of these flags. */
 const shellFlags: ReadonlyMap<string, RegExp> = new Map([
@@ -111,7 +108,7 @@ function host(url: string | undefined) {
  * mcp.server.tool (Codex), mcp/server/tool, or server.tool, server/tool and server_tool
  * (OpenCode) when the server is known.
  */
-function mcpTool(name: string, servers: readonly string[]) {
+function mcpTool(name: string, servers: readonly string[], hostTools?: HostTools) {
   const prefix = /^mcp(__|[./:])/i.exec(name);
   if (prefix) {
     const rest = name.slice(prefix[0].length);
@@ -120,7 +117,7 @@ function mcpTool(name: string, servers: readonly string[]) {
       return { server: rest.slice(0, at), tool: rest.slice(at + prefix[1]!.length) };
   }
   const lower = name.toLowerCase();
-  for (const server of [substrateServer, ...servers]) {
+  for (const server of hostTools ? [hostTools.server, ...servers] : servers) {
     const names = new Set([server.toLowerCase(), server.toLowerCase().replace(/\W/g, "_")]);
     for (const known of names)
       for (const separator of ["__", ".", "/", "_"])
@@ -130,14 +127,14 @@ function mcpTool(name: string, servers: readonly string[]) {
   return undefined;
 }
 
-/** Our own tools by their titles, other servers' tools as "github · Create issue". */
-function mcpTitle(name: string, servers: readonly string[]) {
-  const workspace = workspaceTitles.get(name);
-  if (workspace) return workspace;
-  const tool = mcpTool(name, servers);
+/** The host's tools by their titles, other servers' tools as "github · Create issue". */
+function mcpTitle(name: string, servers: readonly string[], hostTools?: HostTools) {
+  const own = hostTools?.title(name);
+  if (own) return own;
+  const tool = mcpTool(name, servers, hostTools);
   if (!tool) return undefined;
-  if (tool.server.toLowerCase() === substrateServer)
-    return workspaceTitles.get(tool.tool) ?? humanize(tool.tool);
+  if (hostTools && tool.server.toLowerCase() === hostTools.server.toLowerCase())
+    return hostTools.title(tool.tool) ?? humanize(tool.tool);
   return `${tool.server} · ${humanize(tool.tool)}`;
 }
 
@@ -149,11 +146,11 @@ function command(input: ToolInput) {
   return line ? line.split("\n")[0] : undefined;
 }
 
-/** The workspace tools that code-mode code calls, such as tools["substrate"].list_tasks(…). */
-function calledTools(code: string) {
+/** The host tools that code-mode code calls, such as tools["substrate"].list_tasks(…). */
+function calledTools(code: string, hostTools?: HostTools) {
   const titles = new Set<string>();
   for (const match of code.matchAll(/(?:\.|\[["'])([a-z_]+)(?:["']\])?\s*\(/g)) {
-    const title = match[1] && workspaceTitles.get(match[1]);
+    const title = match[1] && hostTools?.title(match[1]);
     if (title) titles.add(title);
   }
   return [...titles];
@@ -171,12 +168,17 @@ function humanize(name: string) {
 
 const detail = (verb: string, value: string | undefined) => (value ? `${verb} · ${value}` : verb);
 
-function describe(name: string, input: ToolInput, servers: readonly string[]) {
-  const mcp = mcpTitle(name, servers);
+function describe(
+  name: string,
+  input: ToolInput,
+  servers: readonly string[],
+  hostTools?: HostTools,
+) {
+  const mcp = mcpTitle(name, servers, hostTools);
   if (mcp) return mcp;
   switch (name.toLowerCase()) {
     case "execute": {
-      const called = input.code ? calledTools(input.code) : [];
+      const called = input.code ? calledTools(input.code, hostTools) : [];
       return called.length ? called.join(", ") : "Run code";
     }
     case "skill":
@@ -219,8 +221,9 @@ export function toolLabel(
   name: string,
   input: ToolInput = {},
   servers: readonly string[] = [],
+  hostTools?: HostTools,
 ): string {
-  return short(describe(name, input, servers));
+  return short(describe(name, input, servers, hostTools));
 }
 
 /** Titles that say nothing about the call; the kind and input describe it instead. */
@@ -287,10 +290,14 @@ export interface ToolCall {
  * title reads through toolLabel, a generic title through the kind and input, and a command
  * title loses its shell wrapper. Other titles are the agent's own words.
  */
-export function toolCallLabel(call: ToolCall, servers: readonly string[] = []): string {
+export function toolCallLabel(
+  call: ToolCall,
+  servers: readonly string[] = [],
+  hostTools?: HostTools,
+): string {
   const { input } = call;
   const kind = toolKind.parse(call.kind);
-  if (call.name) return toolLabel(call.name, input, servers);
+  if (call.name) return toolLabel(call.name, input, servers, hostTools);
   const title = call.title?.trim() ?? "";
   if (genericTitles.has(title.toLowerCase())) return short(kindLabel(kind, input));
   if (kind === "execute") {
@@ -301,6 +308,6 @@ export function toolCallLabel(call: ToolCall, servers: readonly string[] = []): 
     const script = unwrapShell(/^`([^`]+)`$/.exec(title)?.[1] ?? title).split("\n")[0];
     return short(detail("Run", script));
   }
-  if (/^[\w.:/-]+$/.test(title)) return toolLabel(title, input, servers);
+  if (/^[\w.:/-]+$/.test(title)) return toolLabel(title, input, servers, hostTools);
   return short(title);
 }

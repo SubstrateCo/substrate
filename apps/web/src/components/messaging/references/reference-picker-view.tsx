@@ -1,4 +1,3 @@
-import type { AgentCallMode } from "@substrate/contracts/agents";
 import type { ReferenceKind, ReferenceTab } from "@substrate/contracts/messaging/references";
 import { taskStatusLabels, type TaskStatus } from "@substrate/contracts/tasks";
 
@@ -26,10 +25,7 @@ function optionDescription(item: {
   conversationName?: string;
   projectName?: string;
   status?: TaskStatus;
-  callMode?: AgentCallMode;
 }) {
-  if (item.callMode === "ask") return "Calls need the owner’s approval";
-  if (item.callMode === "anyone") return "Available to call";
   if (item.conversationName) return `In ${item.conversationName}`;
   const parts = [item.projectName, item.status && taskStatusLabels[item.status]];
   return parts.filter(Boolean).join(" · ") || undefined;
@@ -70,7 +66,6 @@ export function ReferencePickerView({
     /** Tasks only: tells tasks with the same title apart. */
     projectName?: string;
     status?: TaskStatus;
-    callMode?: AgentCallMode;
   }[];
   /** Nothing to show yet. Rows that still match stay visible while a search refreshes. */
   loading?: boolean;

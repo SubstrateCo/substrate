@@ -103,7 +103,7 @@ const helperStatusLabels: Record<HelperStatus, string> = {
   stopped: "Stopped",
 };
 
-/** One agent's work on its home desktop, including silent, routine, and helper work. */
+/** One agent's work, including silent, routine, and helper work. */
 export function AgentActivityView({
   name,
   rows,

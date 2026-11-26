@@ -7,10 +7,11 @@ import type {
   TurnInput,
   TurnKind,
   TurnResult,
-} from "@substrate/contracts/harness";
+} from "@substrate/contracts/harness-runtime";
 
 import type { JsonValue } from "../json.ts";
 import type { McpLease } from "../mcp.ts";
+import type { HostTools } from "./tool-label.ts";
 
 /**
  * turn: the event belongs to the host's live turn, if one is live.
@@ -27,7 +28,9 @@ export interface AdapterContext {
    * outside a turn fail.
    */
   lease?: McpLease;
-  /** Substrate-owned user MCP servers. The adapter passes them on every session setup. */
+  /** The host MCP server's name and tool titles, for tool call labels. */
+  hostTools?: HostTools;
+  /** The agent's user-added MCP servers. The adapter passes them on every session setup. */
   mcpServers?: HarnessMcpServer[];
   /** The host adds sessionId, organizationId, turnId, generation and timestamp. */
   emit(event: HarnessEventBody, scope?: EventScope): void;

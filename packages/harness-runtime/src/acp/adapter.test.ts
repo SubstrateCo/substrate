@@ -1,4 +1,4 @@
-import type { HarnessEventBody } from "@substrate/contracts/harness";
+import type { HarnessEventBody } from "@substrate/contracts/harness-runtime";
 
 import type { AdapterContext, EventScope, NativeAdapter } from "../adapters/types.ts";
 import type { McpLease } from "../mcp.ts";
@@ -16,6 +16,7 @@ import { rejects } from "node:assert/strict";
 const launch: AcpLaunch = { harness: "claude", command: "fake", args: [], version: "1" };
 
 const lease: McpLease = {
+  server: "substrate",
   url: "http://127.0.0.1:1234/mcp",
   token: "session-secret",
   organizationId: "org-a",

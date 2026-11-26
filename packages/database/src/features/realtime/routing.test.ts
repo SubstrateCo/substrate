@@ -2,10 +2,11 @@ import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { messagingConversations, messagingParticipants, user, userAgents } from "../../schema";
-import { agentWorkFixture, dmTurn } from "../../testing/agent-work";
+import { agentWorkFixture } from "../../testing/agent-work";
 import { setupDatabase } from "../../testing/database";
 import { approveFixtureParticipants } from "../../testing/messaging";
 import { receivesChange } from "../../testing/realtime";
+import { dmTurn } from "../../testing/turns";
 import {
   agentRefreshHints,
   conversationRemovalHints,

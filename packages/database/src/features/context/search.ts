@@ -1,4 +1,3 @@
-import type { AgentCallMode } from "@substrate/contracts/agents";
 import type { ContextSearchBatchKind, ContextSearchKind } from "@substrate/contracts/context/input";
 import { managedPicture, managedPicturePath } from "@substrate/contracts/files/pictures";
 import type { ConversationKind } from "@substrate/contracts/messaging/input";
@@ -77,8 +76,6 @@ interface SearchResult {
   createdAt?: Date;
   // Agent results only: the viewer's own agent definition.
   agentId?: string;
-  // Agent results only: another person's agent that the viewer may call, and how.
-  callMode?: AgentCallMode;
   // Conversation and channel results only.
   private?: boolean;
   membership?: ChannelMembership;
@@ -629,40 +626,13 @@ export async function contextSearch(
       pending.then((rows) => rows.map((row) => ({ ...row, kind: "person" as const }))),
     );
   }
-  // Mention picker: the viewer's own agents that are members here, and, for a person of this
-  // organization in a channel or group, other people's agents that accept callers and whose owner
-  // can see the conversation. Shared agents show their call mode, never their allowlist or
-  // definition. Agents themselves never call other agents.
+  // Mention picker: the viewer's own agents that are members here.
   if (searches("agent") && input.conversationId) {
-    const shared = scope.actorEntityId
-      ? undefined
-      : and(
-          sql`${userAgents.callerPolicy} <> 'owner'`,
-          eq(actors.organizationId, scope.organizationId),
-          inArray(messagingConversations.kind, ["channel", "group"]),
-          exists(
-            db
-              .select({ id: member.id })
-              .from(member)
-              .where(
-                and(
-                  eq(member.userId, scope.userId),
-                  eq(member.organizationId, scope.organizationId),
-                ),
-              ),
-          ),
-          visibleConversations(db, {
-            userId: userAgents.userId,
-            organizationId: scope.organizationId,
-          }),
-        );
     const pending = db
       .select({
         id: actors.entityId,
         title: userAgents.name,
-        ownerUserId: userAgents.userId,
         agentId: userAgents.id,
-        callerPolicy: userAgents.callerPolicy,
         imageFileId: userAgents.imageFileId,
         rank: rankBy(userAgents.name),
       })
@@ -679,9 +649,7 @@ export async function contextSearch(
       .where(
         and(
           liveAgentMember(input.conversationId),
-          shared
-            ? or(eq(userAgents.userId, scope.userId), shared)
-            : eq(userAgents.userId, scope.userId),
+          eq(userAgents.userId, scope.userId),
           query ? containsText(userAgents.name, query) : undefined,
           input.after ? gt(actors.entityId, input.after) : undefined,
         ),
@@ -690,17 +658,11 @@ export async function contextSearch(
       .limit(limit);
     branchRows.push(
       pending.then((rows) =>
-        rows.map(({ ownerUserId, agentId, callerPolicy, imageFileId, ...row }) =>
-          ownerUserId === scope.userId
-            ? { ...row, image: managedPicturePath(imageFileId), agentId, kind: "agent" as const }
-            : {
-                ...row,
-                image: null,
-                // The shared condition admits only agents whose policy is anyone or ask.
-                callMode: callerPolicy === "ask" ? ("ask" as const) : ("anyone" as const),
-                kind: "agent" as const,
-              },
-        ),
+        rows.map(({ imageFileId, ...row }) => ({
+          ...row,
+          image: managedPicturePath(imageFileId),
+          kind: "agent" as const,
+        })),
       ),
     );
   }

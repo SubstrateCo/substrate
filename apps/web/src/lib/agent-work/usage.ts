@@ -1,4 +1,4 @@
-import type { Usage } from "@substrate/contracts/harness";
+import type { Usage } from "@substrate/contracts/harness-runtime";
 
 const compact = (value: number) =>
   value >= 1000 ? `${(value / 1000).toFixed(value >= 10_000 ? 0 : 1)}k` : String(value);

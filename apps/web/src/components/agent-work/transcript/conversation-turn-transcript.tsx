@@ -1,13 +1,16 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { TurnTranscript } from "./turn-transcript";
+import { isAccessFailure } from "@/api/access-failure";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import type { Conversation } from "@/lib/messaging/conversations";
-import { hasAgentWorkBridge } from "@/queries/agent-work/bridge";
-import { localWorkEnabled, turnOptions } from "@/queries/agent-work/local";
-import { conversationRequestsOptions } from "@/queries/agent-work/server";
+import {
+  agentStatusOptions,
+  conversationRequestsOptions,
+  turnOptions,
+} from "@/queries/agent-work/server";
 
-/** The transcript beside a conversation. The turn is read by ID from the home desktop. */
+/** The transcript beside a conversation. The turn's summary comes from the server by ID. */
 export function ConversationTurnTranscript({
   conversation,
   turnId,
@@ -18,28 +21,24 @@ export function ConversationTurnTranscript({
   onClose: () => void;
 }) {
   const { userId, organizationId } = useWorkspaceScope();
-  const bridge = hasAgentWorkBridge();
-  const work = useQuery({
-    ...turnOptions(userId, organizationId, turnId),
-    enabled: localWorkEnabled(userId),
-  });
+  const work = useQuery(turnOptions(userId, organizationId, turnId));
   const requests = useQuery(conversationRequestsOptions(userId, organizationId, conversation.id));
-  const turn = work.data ?? undefined;
+  const statuses = useQuery(agentStatusOptions(userId, organizationId));
+  const turn = work.data;
   const agent = conversation.members.find(
     (member) => member.type === "agent" && member.agentId === turn?.userAgentId,
   );
-  let unavailable: string | undefined;
-  if (!bridge) unavailable = "Open the desktop app that runs this agent to see its transcript.";
-  else if (work.isSuccess && !turn) unavailable = "This work is not on this desktop.";
+  const status = statuses.data?.find((entry) => entry.userAgentId === turn?.userAgentId);
   return (
     <TurnTranscript
       turn={turn}
       turnLoading={work.isPending}
       turnError={work.error}
       onRetryTurn={() => void work.refetch()}
-      agentName={agent?.name ?? "Agent"}
+      agentName={agent?.name ?? status?.agent.name ?? "Agent"}
+      device={status?.device?.name}
       requests={requests.data ?? []}
-      unavailable={unavailable}
+      unavailable={isAccessFailure(work.error) ? "This work is no longer available." : undefined}
       onClose={onClose}
     />
   );

@@ -1,4 +1,4 @@
-import type { HarnessSignInStatus } from "@substrate/contracts/harness";
+import type { HarnessSignInStatus } from "@substrate/contracts/harness-runtime";
 
 import { useLayoutEffect, useRef, useState, type ReactNode } from "react";
 

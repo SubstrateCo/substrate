@@ -1,7 +1,6 @@
 import {
   harnessKinds,
   harnessConfigurationSchema,
-  turnContextSchema,
   type HarnessAgent,
   type HarnessCommand,
   type HarnessCommandResult,
@@ -12,19 +11,17 @@ import {
   type HarnessKind,
   type HarnessLocalScope,
   type HarnessSessionRef,
+  type ToolProvider,
   type TurnResult,
-  type TurnContext,
-} from "@substrate/contracts/harness";
-import type { LocalToolProxy, WorkspaceApiProxy } from "@substrate/contracts/harness/mcp";
-import { leaseTools } from "@substrate/contracts/harness/tools";
+} from "@substrate/contracts/harness-runtime";
 
 import { detectAgent, requireAgent } from "./acp/detect.ts";
 import { openAcpPeer } from "./acp/index.ts";
+import type { HostTools } from "./adapters/tool-label.ts";
 import type { AdapterContext, EventScope, NativeAdapter } from "./adapters/types.ts";
 import { materialize, writeDefaultFiles } from "./config.ts";
 import { HarnessError } from "./errors.ts";
 import { createStartupMcp, type McpLease } from "./mcp.ts";
-import { readProfileMemory } from "./memory.ts";
 import { discoverModels } from "./models/discover.ts";
 import { deleteNativeSkill, saveNativeSkill, scanNativeSkills } from "./native-config.ts";
 import { agentDirectory, helperDirectory, safeId, safePath } from "./paths.ts";
@@ -71,11 +68,13 @@ const systemClock: HostClock = {
   },
 };
 
-export interface HarnessHostOptions {
+export interface HarnessHostOptions<Binding = unknown> {
   accountDirectory: string;
-  workspaceProxy?: WorkspaceApiProxy;
-  /** Receives local tool calls other than memory, which the host handles itself. */
-  localTools?: LocalToolProxy;
+  /**
+   * The host's tools. Sessions of agents with tools get an MCP lease that serves them during
+   * each turn. Without a provider, sessions get no host MCP server.
+   */
+  tools?: ToolProvider<Binding>;
   keepAliveMs?: number;
   interruptGraceMs?: number;
   /** Test seam. Defaults to the registry's native adapters and executable resolution. */
@@ -86,10 +85,8 @@ export interface HarnessHostOptions {
   signIn?: Partial<Omit<SignInOptions, "cwd">>;
 }
 
-/** The host plus what the desktop needs to build a managed prefix. */
+/** The host plus the organization and sign-in controls the desktop uses. */
 export interface RuntimeHarnessHost extends HarnessHost {
-  /** memory/profile.md of the agent, for the managed prefix at epoch start. */
-  readProfile(scope: { organizationId: string; agentId: string }): Promise<string>;
   /**
    * Interrupts and closes every session of the organization, whichever organization is
    * configured last. Each live turn ends with turn.completed before its session.closed.
@@ -109,7 +106,6 @@ export interface RuntimeHarnessHost extends HarnessHost {
 const nativeCloseWaitMs = 2_000;
 
 interface LiveTurn {
-  context: TurnContext;
   turnId: string;
   generation: number;
   settled: Promise<void>;
@@ -149,12 +145,37 @@ interface SessionHolder {
   live?: LiveSession;
 }
 
+/**
+ * What a live session runs on: the agent without its managed skills, which apply when a folder
+ * is written, and with the tools of the session's folder.
+ */
+function sessionDefinition(agent: HarnessAgent, folder: HarnessSessionRef["folder"]) {
+  const { managedSkills: _skills, tools, ...rest } = agent;
+  return JSON.stringify({ ...rest, tools: tools?.[folder === "main" ? "main" : "helper"] ?? null });
+}
+
+/** The provider's binding for a turn. A context of another turn fails the turn command. */
+function bindTurn<Binding>(
+  provider: ToolProvider<Binding>,
+  command: Extract<HarnessCommand, { type: "turn" }>,
+): Binding {
+  try {
+    return provider.bind(command.context, command.turnId);
+  } catch (error) {
+    throw new HarnessError("invalid-turn-context", "Turn context belongs to another turn.", {
+      cause: error,
+    });
+  }
+}
+
 const failedTurn: TurnResult = {
   status: "failed",
   error: "Native turn failed. Check native authentication and configuration.",
 };
 
-export async function createHarnessHost(options: HarnessHostOptions): Promise<RuntimeHarnessHost> {
+export async function createHarnessHost<Binding = unknown>(
+  options: HarnessHostOptions<Binding>,
+): Promise<RuntimeHarnessHost> {
   await mkdir(options.accountDirectory, { recursive: true });
   const accountDirectory = await realpath(options.accountDirectory);
   /** Each organization's agents, from main's last configure. Main configures every new worker. */
@@ -162,10 +183,12 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
   const keepAliveMs = options.keepAliveMs ?? sessionKeepAliveMs;
   const graceMs = options.interruptGraceMs ?? interruptGraceMs;
   const clock = options.clock ?? systemClock;
-  const mcp = await createStartupMcp({
-    workspace: options.workspaceProxy,
-    local: options.localTools,
-  });
+  const provider = options.tools;
+  const mcp = provider ? await createStartupMcp(provider) : undefined;
+  const hostTools: HostTools | undefined = provider && {
+    server: provider.server.name,
+    title: (tool) => provider.describe(tool)?.title,
+  };
   const listeners = new Set<(event: HarnessEvent) => void>();
   const sessions = new Map<string, LiveSession>();
   const opening = new Map<string, OpeningSession>();
@@ -265,10 +288,9 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
     if (!agent)
       throw new HarnessError("agent-not-found", "Agent is not configured in this organization.");
     if (!agent.enabled) throw new HarnessError("agent-disabled", "This agent is disabled.");
-    const agentFolder = await agentDirectory(accountDirectory, command.organizationId, agent.id);
     const folder =
       command.folder === "main"
-        ? agentFolder
+        ? await agentDirectory(accountDirectory, command.organizationId, agent.id)
         : await helperDirectory(
             accountDirectory,
             command.organizationId,
@@ -277,24 +299,21 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
           );
     const definition = harnessDefinitions[agent.harness];
     // The instructions file follows the agent at each open, not only at first write.
-    await writeDefaultFiles(folder, command.organizationId, agent, {
+    await writeDefaultFiles(folder, agent, {
       replace: true,
-      enabledApps: configuration.enabledApps,
       managedPrefix: definition.prefixChannel === "instructions" ? command.prefix : undefined,
     });
-    const lease = agent.useStartupDefaults
-      ? mcp.issue({
-          organizationId: command.organizationId,
-          agentId: agent.id,
-          sessionId: command.sessionId,
-          tools: leaseTools(
-            command.folder === "main" ? "main" : "helper",
-            configuration.enabledApps,
-          ),
-          folder,
-          agentFolder,
-        })
-      : undefined;
+    const tools = agent.tools?.[command.folder === "main" ? "main" : "helper"];
+    const lease =
+      mcp && tools
+        ? mcp.issue({
+            organizationId: command.organizationId,
+            agentId: agent.id,
+            sessionId: command.sessionId,
+            tools,
+            folder,
+          })
+        : undefined;
     lifecycle.lease = lease;
     if (lifecycle.state === "closing") lease?.revoke();
     const holder: SessionHolder = {};
@@ -304,6 +323,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         model: agent.model,
         directory: folder,
         lease,
+        hostTools,
         mcpServers: command.mcpServers,
         emit: (body: HarnessEventBody, eventScope: EventScope = "turn") =>
           emit(scope, body, eventScope === "turn" ? holder.live?.turn : undefined),
@@ -369,13 +389,10 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
     if (!nativeSessionMachine.canFire(live.state, "startTurn"))
       throw new HarnessError("not-connected", "The session is closing.");
     if (!command.input.text.trim()) throw new HarnessError("empty-input", "Turn input is empty.");
-    const context = turnContextSchema.parse(command.context);
-    if (context.turnId !== command.turnId)
-      throw new HarnessError("invalid-turn-context", "Turn context belongs to another turn.");
+    const bound = provider && { turnId: command.turnId, binding: bindTurn(provider, command) };
     const settled = Promise.withResolvers<void>();
     const forced = Promise.withResolvers<TurnResult>();
     const turn: LiveTurn = {
-      context,
       turnId: command.turnId,
       generation: command.generation,
       settled: settled.promise,
@@ -383,7 +400,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
     };
     transitionSession(live, "startTurn");
     live.turn = turn;
-    live.lease?.bind(context);
+    if (bound) live.lease?.bind(bound);
     const scope = { sessionId: live.ref.id, organizationId: live.ref.organizationId };
     emit(scope, { type: "turn.started" }, turn);
     // turn acknowledges at once so interrupts and steering can reach the live turn.
@@ -495,15 +512,6 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
           throw new HarnessError("turn-not-live", "That turn is not running.");
         if (!live.adapter.capabilities.steer || !live.adapter.steer)
           throw new HarnessError("steer-unsupported", "This harness cannot steer a live turn.");
-        if (command.invocationIds?.length) {
-          const invocationIds = [
-            ...new Set([...(live.turn.context.invocationIds ?? []), ...command.invocationIds]),
-          ];
-          const parsed = turnContextSchema.safeParse({ ...live.turn.context, invocationIds });
-          if (!parsed.success)
-            throw new HarnessError("invalid-turn-context", "Too many calls in this turn.");
-          live.turn.context.invocationIds = parsed.data.invocationIds;
-        }
         await live.adapter.steer({ inputId: command.inputId, text: command.text });
         return;
       }
@@ -601,13 +609,10 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         const next = configuration.agents.find(
           (agent) => agent.id === live.ref.agentId && agent.enabled,
         );
-        const tools = next?.useStartupDefaults
-          ? leaseTools(live.ref.folder === "main" ? "main" : "helper", configuration.enabledApps)
-          : [];
         if (
           next &&
-          JSON.stringify(next) === JSON.stringify(live.agent) &&
-          JSON.stringify(tools) === JSON.stringify(live.lease?.endpoint?.tools ?? [])
+          sessionDefinition(next, live.ref.folder) ===
+            sessionDefinition(live.agent, live.ref.folder)
         )
           continue;
         // A live turn finishes on the configuration it started with; the session closes after.
@@ -636,10 +641,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         ?.agents.find((entry) => entry.id === scope.agentId && entry.harness === scope.harness);
       if (!agent)
         throw new HarnessError("agent-not-found", "Agent is not configured for this harness.");
-      await writeDefaultFiles(root, scope.organizationId, agent, {
-        replace: true,
-        enabledApps: configurations.get(scope.organizationId)?.enabledApps,
-      });
+      await writeDefaultFiles(root, agent, { replace: true });
     },
     async inspect() {
       assertOpen();
@@ -650,14 +652,6 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
             ? { harness, available: true, version: launch.version }
             : { harness, available: false };
         }),
-      );
-    },
-    async readProfile(scope) {
-      assertOpen();
-      safeId(scope.organizationId);
-      safeId(scope.agentId);
-      return readProfileMemory(
-        await agentDirectory(accountDirectory, scope.organizationId, scope.agentId),
       );
     },
     async closeOrganization(organizationId) {
@@ -744,7 +738,7 @@ export async function createHarnessHost(options: HarnessHostOptions): Promise<Ru
         ]);
         sessions.clear();
         listeners.clear();
-        await mcp.close();
+        await mcp?.close();
         const failure = results.find((entry) => entry.status === "rejected");
         if (failure?.status === "rejected") throw failure.reason;
       })();

@@ -1,7 +1,7 @@
 import type {
   AgentRequestView,
   AgentStatusView,
-  AgentTurnView,
+  AgentWorkTurnView,
 } from "@substrate/contracts/agent-work";
 
 export interface ConversationAgent {
@@ -15,12 +15,12 @@ export interface ConversationAgent {
  * The owner's agents with work in one conversation. An agent that left still has its turns,
  * requests, and live status here, so membership alone does not decide what shows. Every input
  * is already owner-scoped: members list agent IDs only for the viewer's own agents, and the
- * bridge and server return only the owner's work.
+ * server returns only the owner's work.
  */
 export function conversationAgents(input: {
   conversationId: string;
   members: readonly { agentId: string; name: string }[];
-  turns: readonly AgentTurnView[];
+  turns: readonly AgentWorkTurnView[];
   requests: readonly AgentRequestView[];
   statuses: readonly AgentStatusView[];
 }): ConversationAgent[] {

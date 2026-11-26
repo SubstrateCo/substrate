@@ -1,5 +1,6 @@
+import { agentCatalogSchema, type AgentCatalog } from "@substrate/contracts/agents";
 import { appIds } from "@substrate/contracts/apps";
-import { desktopAgentCatalogSchema } from "@substrate/contracts/harness";
+import { harnessIdSchema } from "@substrate/contracts/harness-runtime";
 
 import { createHash } from "node:crypto";
 import { z } from "zod";
@@ -7,10 +8,10 @@ import { z } from "zod";
 const verifiedSessionSchema = z.object({
   user: z.object({ id: z.string().min(1), emailVerified: z.literal(true) }),
   session: z.object({
-    activeOrganizationId: z.string().regex(/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$/),
+    activeOrganizationId: harnessIdSchema,
   }),
 });
-const catalogSchema = z.object({ success: z.literal(true), data: desktopAgentCatalogSchema });
+const catalogSchema = z.object({ success: z.literal(true), data: agentCatalogSchema });
 const appSettingsSchema = z.object({
   success: z.literal(true),
   data: z.object({ organizationId: z.string(), enabledApps: z.array(z.enum(appIds)) }),
@@ -59,7 +60,7 @@ export class DesktopSessionAuthority {
   private verified: Promise<Authorization> | undefined;
   private verifiedAt = 0;
   private invalidated = false;
-  private cachedCatalog: Promise<z.output<typeof desktopAgentCatalogSchema>> | undefined;
+  private cachedCatalog: Promise<AgentCatalog> | undefined;
   private cachedApps: Promise<z.output<typeof appSettingsSchema>["data"]> | undefined;
   private listeners = new Set<() => void>();
   private options: AuthorityOptions;

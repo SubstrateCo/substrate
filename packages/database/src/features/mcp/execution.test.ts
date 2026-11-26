@@ -1,6 +1,10 @@
+import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/agent-tools/mcp";
+import {
+  mcpTools,
+  type McpOutput,
+  type ServerToolName,
+} from "@substrate/contracts/agent-tools/tools";
 import { sessionKeys } from "@substrate/contracts/agent-work";
-import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
-import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
@@ -14,6 +18,7 @@ import { crmSettings } from "../../features/crm/settings.schema";
 import { agentToolRequests } from "../../features/mcp/schema";
 import { createMessagingService } from "../../features/messaging/service";
 import {
+  actors,
   entities,
   member,
   user,
@@ -22,7 +27,7 @@ import {
   tasks,
   contactInteractions,
   messagingConversations,
-  agentWakes,
+  agentWorkItems,
   agentRequests,
   messageEntityReferences,
   messagingMessages,
@@ -33,23 +38,75 @@ import { contextConversation } from "../../testing/context";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
+import { insertTurn, type TurnSpec } from "../../testing/turns";
 import { executeAgentTool as executeRawTool } from "./execution";
 import { expect, test } from "bun:test";
 import { and, eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
 
+type CallIdentity = Omit<Parameters<typeof executeRawTool>[1], "installationId">;
+const served = new WeakMap<TurnSpec, Map<string, Promise<TurnContext>>>();
+
+/**
+ * The live server turn of a test turn, for the agent behind the identity's actor, leased by the
+ * agent's home desktop. A reused spec is the same turn.
+ */
+function contextFor(identity: CallIdentity, spec: TurnSpec) {
+  const byActor = served.get(spec) ?? new Map<string, Promise<TurnContext>>();
+  served.set(spec, byActor);
+  let context = byActor.get(identity.actorEntityId);
+  if (!context) {
+    context = (async () => {
+      const [agent] = await f.db
+        .select({
+          agentId: userAgents.id,
+          userId: userAgents.userId,
+          homeDeviceId: userAgents.homeDeviceId,
+          organizationId: actors.organizationId,
+        })
+        .from(actors)
+        .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
+        .where(eq(actors.entityId, identity.actorEntityId));
+      const row = await insertTurn(
+        f.db,
+        {
+          agentId: agent!.agentId,
+          actorId: identity.actorEntityId,
+          device: { id: agent!.homeDeviceId! },
+          identity: { userId: agent!.userId, organizationId: agent!.organizationId },
+        },
+        spec,
+      );
+      return { turnId: row.id, attempt: row.attempt };
+    })();
+    byActor.set(identity.actorEntityId, context);
+  }
+  return context;
+}
+
+/** Calls a tool in the spec's server turn, from the spec's installation. */
+async function executeRaw<K extends ServerToolName>(
+  db: DatabaseExecutor,
+  identity: CallIdentity,
+  tool: K,
+  input: WorkspaceApiRequest["input"],
+  spec: TurnSpec,
+) {
+  return executeRawTool(
+    db,
+    { ...identity, installationId: spec.installationId },
+    tool,
+    input,
+    await contextFor(identity, spec),
+  );
+}
+
 // A call these tests expect to run, not to wait for approval, with its committed effects.
 async function executeCommittedTool<K extends ServerToolName>(
-  ...args: [
-    DatabaseExecutor,
-    Parameters<typeof executeRawTool>[1],
-    K,
-    WorkspaceApiRequest["input"],
-    TurnContext,
-  ]
+  ...args: [DatabaseExecutor, CallIdentity, K, WorkspaceApiRequest["input"], TurnSpec]
 ) {
-  const committed = await executeRawTool(...args);
+  const committed = await executeRaw(...args);
   const { result } = committed;
   if ("pending" in result) throw new Error(`${args[2]} waits for approval`);
   return { ...committed, result };
@@ -58,16 +115,15 @@ async function executeCommittedTool<K extends ServerToolName>(
 // Tests that inspect only the payload still use the production commit boundary.
 async function executeAgentTool<K extends ServerToolName>(
   db: DatabaseExecutor,
-  identity: Parameters<typeof executeRawTool>[1],
+  identity: CallIdentity,
   tool: K,
   input: WorkspaceApiRequest["input"],
-  context: TurnContext,
+  spec: TurnSpec,
 ) {
-  const { result } = await executeCommittedTool(db, identity, tool, input, context);
+  const { result } = await executeCommittedTool(db, identity, tool, input, spec);
   // SAFETY: execution parses this payload with the schema registered for K.
   return { ...result, output: result.output as McpOutput<K> };
 }
-
 function trackedTransactions(failAfterWork = false) {
   let count = 0;
   const failure = new Error("Abort tool transaction");
@@ -92,14 +148,13 @@ function trackedTransactions(failAfterWork = false) {
 
 // An interactive turn without a source place on the agent's home desktop: every tool may run,
 // and reply needs a `to`.
+const homeInstallation: string = crypto.randomUUID();
 const turn = {
-  turnId: crypto.randomUUID(),
-  attempt: 1,
-  sessionKey: sessionKeys.routine(crypto.randomUUID()),
+  key: sessionKeys.routine(crypto.randomUUID()),
   origin: null,
-  kind: "interactive" as const,
-  installationId: crypto.randomUUID(),
-};
+  kind: "interactive",
+  installationId: homeInstallation,
+} satisfies TurnSpec;
 
 async function fixture() {
   await f.db.update(user).set({ emailVerified: true });
@@ -136,6 +191,14 @@ async function fixture() {
     call("create_task", { requestId: crypto.randomUUID(), projectId: project.entityId, ...input });
   return { actor, agentId: agent!.id, identity, human, project, call, createTask };
 }
+
+/** Bob's desktop, on the installation the test turn's calls come from. */
+const bobDesktop = () =>
+  registerDevice(f.db, "bob", {
+    installationId: turn.installationId,
+    name: "Bob",
+    platform: "linux",
+  });
 
 async function setCreatedAt(id: string, createdAt: string) {
   await f.db
@@ -421,7 +484,13 @@ test("CRM MCP interaction responses redact private agent identity for coworkers"
   });
   const [agent] = await f.db
     .insert(userAgents)
-    .values({ userId: "bob", name: "Coworker agent", instructions: "", harness: "opencode" })
+    .values({
+      userId: "bob",
+      name: "Coworker agent",
+      instructions: "",
+      harness: "opencode",
+      homeDeviceId: (await bobDesktop()).id,
+    })
     .returning();
   const coworker = await ensureUserAgentActor(f.db, {
     organizationId: f.orgA,
@@ -473,7 +542,13 @@ test("CRM activity attributes the agent but coworkers see no private agent ident
     .permissions.grant({ entityId: account.record.entityId, actorEntityId: f.bob, level: "view" });
   const [coworkerAgent] = await f.db
     .insert(userAgents)
-    .values({ userId: "bob", name: "Coworker agent", instructions: "", harness: "opencode" })
+    .values({
+      userId: "bob",
+      name: "Coworker agent",
+      instructions: "",
+      harness: "opencode",
+      homeDeviceId: (await bobDesktop()).id,
+    })
     .returning();
   const coworkerActor = await ensureUserAgentActor(f.db, {
     organizationId: f.orgA,
@@ -565,7 +640,7 @@ test("CRM MCP runs unattended writes at once and blocks writes from another desk
     ),
   ).toBeInstanceOf(AccessDeniedError);
   expect(await f.forActor(f.alice).crm.listAccounts()).toEqual([]);
-  const { result: background } = await executeRawTool(f.db, identity, "create_crm_account", input, {
+  const { result: background } = await executeRaw(f.db, identity, "create_crm_account", input, {
     ...turn,
     kind: "unattended",
   });
@@ -766,7 +841,7 @@ test("CRM MCP message associations link only the chosen record without publishin
     name: "Customer",
   });
   const input = { messageId: reply.id, target: { type: "account", id: account.record.entityId } };
-  const wakes = await f.db.select().from(agentWakes);
+  const wakes = await f.db.select().from(agentWorkItems);
   const attached = await call("attach_message", input);
   const retry = await call("attach_message", input);
   expect(attached).toEqual({ changed: true });
@@ -774,7 +849,7 @@ test("CRM MCP message associations link only the chosen record without publishin
   expect(await f.db.select().from(messageEntityReferences)).toMatchObject([
     { entityId: account.record.entityId, purpose: "association" },
   ]);
-  expect(await f.db.select().from(agentWakes)).toEqual(wakes);
+  expect(await f.db.select().from(agentWorkItems)).toEqual(wakes);
   expect(await f.db.select().from(contactInteractions)).toEqual([]);
   const thread = await call("read_thread", { messageId: reply.id });
   expect(thread.replies.items.find((item) => item.id === reply.id)?.records).toEqual([
@@ -1050,7 +1125,10 @@ test("MCP discussion replies preserve provenance, references and notification hi
     .select()
     .from(messagingMessages)
     .where(eq(messagingMessages.id, sent.messageId));
-  expect(stored).toMatchObject({ originTurnId: turn.turnId, authorActorEntityId: actor.entityId });
+  expect(stored).toMatchObject({
+    originTurnId: (await contextFor(identity, turn)).turnId,
+    authorActorEntityId: actor.entityId,
+  });
   expect(
     await f.db
       .select()
@@ -1063,7 +1141,7 @@ test("MCP discussion replies preserve provenance, references and notification hi
       createdByActorEntityId: actor.entityId,
     }),
   ]);
-  expect(await f.db.select().from(agentWakes)).toEqual([]);
+  expect(await f.db.select().from(agentWorkItems)).toEqual([]);
   expect(mcp.hints).toContainEqual({
     audience: realtimeKeys.actor(f.orgA, f.bob),
     domain: "notifications",

@@ -1,7 +1,7 @@
 import type { CompletedUpload, UploadTicket } from "@substrate/contracts/files/input";
 import type { ServiceResult } from "@substrate/contracts/result";
 
-import { addAgent, callTool, createAgent, readTool, threadTurn } from "../test-support/agent-work";
+import { addAgent, callTool, createAgent, readTool, startTurn } from "../test-support/agent-work";
 import { conversation, post, test, visit, type Actor } from "../test-support/fixtures";
 import { project, share } from "../test-support/tasks";
 import { expect, type APIResponse } from "@playwright/test";
@@ -54,10 +54,10 @@ test("an agent files a bug from a screenshot message, and the task shows the scr
       attachmentFileIds: [fileId],
     },
   );
-  const turn = threadTurn(channel.id, report.id, agent.installationId);
+  const turn = await startTurn(owner, agent, channel.id, report);
 
   // The agent sees the screenshot on the message and can look at it.
-  const thread = await readTool(owner, agent.id, turn, "read_thread", { messageId: report.id });
+  const thread = await readTool(owner, turn, "read_thread", { messageId: report.id });
   const [screenshot] = thread.root.attachments;
   expect(screenshot).toEqual({
     file: {
@@ -69,11 +69,11 @@ test("an agent files a bug from a screenshot message, and the task shows the scr
     contentType: "image/png",
     size: png.length,
   });
-  const read = await readTool(owner, agent.id, turn, "read_file", { file: screenshot!.file });
+  const read = await readTool(owner, turn, "read_file", { file: screenshot!.file });
   expect(read.content).toMatchObject({ kind: "image", mimeType: "image/webp" });
 
   // The task it files keeps the screenshot through its source message.
-  const task = await callTool(owner, agent.id, turn, "create_task", {
+  const task = await callTool(owner, turn, "create_task", {
     projectId: created.entityId,
     title: "Make human and agent icons distinct",
     sourceMessageId: report.id,

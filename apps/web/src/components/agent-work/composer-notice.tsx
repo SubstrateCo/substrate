@@ -91,9 +91,7 @@ export function ComposerNotice({
               New topic
             </Button>
           </TooltipTrigger>
-          <TooltipContent>
-            The agent keeps its memory but starts this conversation with a clean slate
-          </TooltipContent>
+          <TooltipContent>Starts a fresh session for this conversation</TooltipContent>
         </Tooltip>
       )}
     </div>

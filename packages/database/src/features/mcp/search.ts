@@ -1,4 +1,4 @@
-import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
+import type { McpInput, McpOutput } from "@substrate/contracts/agent-tools/tools";
 
 import { joinActorAccount } from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";

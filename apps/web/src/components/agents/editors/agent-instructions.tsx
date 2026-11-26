@@ -1,4 +1,4 @@
-import { harnessInstructionsFiles, type HarnessKind } from "@substrate/contracts/harness";
+import { harnessInstructionsFiles, type HarnessKind } from "@substrate/contracts/harness-runtime";
 
 import { useId, type ComponentProps, type ReactNode } from "react";
 

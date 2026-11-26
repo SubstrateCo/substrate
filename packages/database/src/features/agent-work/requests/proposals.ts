@@ -1,4 +1,12 @@
 import {
+  mcpCall,
+  mcpTools,
+  toolApps,
+  type McpInput,
+  type ServerToolName,
+  type ToolDefinition,
+} from "@substrate/contracts/agent-tools/tools";
+import {
   canonicalJson,
   proposalAction,
   proposalTargetBasis,
@@ -8,14 +16,6 @@ import {
   type ProposalTargetBasis,
 } from "@substrate/contracts/agent-work";
 import { isOptionalApp } from "@substrate/contracts/apps";
-import {
-  mcpCall,
-  mcpTools,
-  toolApps,
-  type McpInput,
-  type ServerToolName,
-  type ToolDefinition,
-} from "@substrate/contracts/harness/tools";
 
 import { requireAppsEnabled } from "../../../core/apps/access";
 import { deletableAuthors, requireInteraction } from "../../../core/contacts/access";
@@ -44,14 +44,14 @@ const quotedUuid = /"([0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{1
 /**
  * The server tool, if a call of it can wait for the owner and run later without the turn.
  * Reads never need approval. A live-turn-only tool shares data at its owner's request, so it
- * cannot wait.
+ * cannot wait. The agent's own work, such as its helpers, never waits.
  */
-export function proposableTool(tool: string): ServerToolName | null {
+function proposableTool(tool: string): ServerToolName | null {
   const parsed = serverToolName.safeParse(tool);
   if (!parsed.success) return null;
   const name = parsed.data;
   const definition: ToolDefinition = mcpTools[name];
-  return !definition.readOnly && !definition.liveTurnOnly ? name : null;
+  return !definition.readOnly && !definition.liveTurnOnly && !definition.ownWork ? name : null;
 }
 
 /** The stored call input: the parsed input as JSON, without the call's own requestId. */

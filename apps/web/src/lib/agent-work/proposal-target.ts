@@ -1,6 +1,6 @@
+import { mcpTools } from "@substrate/contracts/agent-tools/tools";
 import type { ProposalAction } from "@substrate/contracts/agent-work";
 import type { RecordLabel, RecordLabelType } from "@substrate/contracts/context/input";
-import { mcpTools } from "@substrate/contracts/harness/tools";
 
 import {
   linkedWorkLink,

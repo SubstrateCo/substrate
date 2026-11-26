@@ -1,13 +1,13 @@
 import type { TurnEventView } from "@substrate/contracts/agent-work";
 import { turnEventsPageSize } from "@substrate/contracts/agent-work/desktop";
 
-import { infiniteQueryOptions, queryOptions, skipToken } from "@tanstack/react-query";
+import { queryOptions, skipToken } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 import { agentWorkBridge, hasAgentWorkBridge } from "./bridge";
 
-// Local agent work comes from the bridge on the agent's home desktop. The bridge sends change
-// hints (see sync.ts), so these reads do not poll.
+// Transcripts and the agents homed here come from the bridge on the agent's home desktop. The
+// bridge sends change hints (see sync.ts), so these reads do not poll.
 
 /**
  * Whether local reads can run here: only on a desktop with the bridge, for a signed-in owner.
@@ -18,28 +18,19 @@ export const localWorkEnabled = (userId: string) => hasAgentWorkBridge() && !!us
 // The bridge answers from local storage, so a failed read does not retry.
 const localRead = (userId: string) => ({ enabled: localWorkEnabled(userId), retry: false });
 
-export const localAgentsOptions = (userId: string, organizationId: string) =>
+/** The agents whose home is this desktop, with the server turns it runs for them now. */
+export const homedAgentsOptions = (userId: string, organizationId: string) =>
   queryOptions({
-    queryKey: queryKeys.agentWorkAgents(userId, organizationId),
-    queryFn: () => agentWorkBridge().agents(),
+    queryKey: queryKeys.agentWorkHomed(userId, organizationId),
+    queryFn: () => agentWorkBridge().homedAgents(),
     ...localRead(userId),
   });
 
-export const conversationWorkOptions = (
-  userId: string,
-  organizationId: string,
-  conversationId: string,
-) =>
+/** The attempts of a server turn that ran on this desktop. Empty for turns that ran elsewhere. */
+export const turnRunsOptions = (userId: string, organizationId: string, turnId: string) =>
   queryOptions({
-    queryKey: queryKeys.agentWorkConversation(userId, organizationId, conversationId),
-    queryFn: () => agentWorkBridge().conversation(conversationId),
-    ...localRead(userId),
-  });
-
-export const turnOptions = (userId: string, organizationId: string, turnId: string) =>
-  queryOptions({
-    queryKey: queryKeys.agentWorkTurn(userId, organizationId, turnId),
-    queryFn: () => agentWorkBridge().turn(turnId),
+    queryKey: queryKeys.agentWorkTurnRuns(userId, organizationId, turnId),
+    queryFn: () => agentWorkBridge().turnRuns(turnId),
     ...localRead(userId),
   });
 
@@ -73,22 +64,5 @@ export const turnEventsOptions = (userId: string, organizationId: string, turnId
             signal,
           )
       : skipToken,
-    ...localRead(userId),
-  });
-
-export const agentActivityOptions = (userId: string, organizationId: string, agentId: string) =>
-  infiniteQueryOptions({
-    queryKey: queryKeys.agentWorkActivity(userId, organizationId, agentId),
-    queryFn: ({ pageParam }: { pageParam: string | undefined }) =>
-      agentWorkBridge().agentActivity(agentId, pageParam),
-    initialPageParam: undefined,
-    getNextPageParam: (page) => page.nextCursor ?? undefined,
-    ...localRead(userId),
-  });
-
-export const routinesOptions = (userId: string, organizationId: string, agentId: string) =>
-  queryOptions({
-    queryKey: queryKeys.agentWorkRoutines(userId, organizationId, agentId),
-    queryFn: () => agentWorkBridge().routines.list(agentId),
     ...localRead(userId),
   });

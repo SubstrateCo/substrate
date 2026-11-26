@@ -13,7 +13,7 @@ import type { SessionIdentity } from "../../../core/session/identity";
 import type { MessagingReader, MessagingSessionResolver } from "../../../core/session/messaging";
 import { storedFiles } from "../../../core/storage/schema";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../../errors";
-import { routeWake } from "../../agent-work/wakes/router";
+import { routeMessage } from "../../agent-work/admission/router";
 import { applyMessageEffects } from "../../context/message-references/message-effects";
 import { insertMessageAttachments, messageAttachmentMetadata } from "../../files/metadata";
 import { publishFiles } from "../../files/publication";
@@ -283,7 +283,7 @@ export async function sendMessageAs(
   const effects = await applyMessageEffects(ctx, scope, created, conversation, { seenBy });
   const wakeHints = conversation.taskEntityId
     ? []
-    : await routeWake(tx, scope, created, conversation.kind);
+    : await routeMessage(tx, scope, created, conversation.kind);
   for (const hint of [
     ...messageChangeHints(
       {

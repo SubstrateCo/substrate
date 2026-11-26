@@ -1,4 +1,4 @@
-import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
+import type { McpInput, McpOutput } from "@substrate/contracts/agent-tools/tools";
 import type { TaskStatus } from "@substrate/contracts/tasks";
 import { taskLinkRelation } from "@substrate/contracts/tasks/links";
 

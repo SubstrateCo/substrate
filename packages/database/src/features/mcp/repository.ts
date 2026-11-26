@@ -1,42 +1,10 @@
-import type { TurnContext } from "@substrate/contracts/harness/mcp";
-import type { McpOutput, ServerToolName } from "@substrate/contracts/harness/tools";
+import type { TurnContext } from "@substrate/contracts/agent-tools/mcp";
+import type { McpOutput, ServerToolName } from "@substrate/contracts/agent-tools/tools";
 
-import { actors } from "../../core/actors/schema";
-import { userAgents } from "../../core/actors/user-agents.schema";
-import { desktopDevices } from "../../core/devices/schema";
 import type { DatabaseExecutor } from "../../core/executor";
-import type { SessionIdentity } from "../../core/session/identity";
-import { AccessDeniedError, ConflictError } from "../../errors";
+import { ConflictError } from "../../errors";
 import { agentToolRequests, type PendingToolReceipt } from "./schema";
 import { and, eq } from "drizzle-orm";
-
-export async function requireHomeDevice(
-  tx: DatabaseExecutor,
-  identity: SessionIdentity,
-  actorId: string,
-  installationId: string | undefined,
-) {
-  if (!installationId) throw new AccessDeniedError();
-  // A home change that commits after this read does not stop the caller's write.
-  const [row] = await tx
-    .select({
-      userAgentId: userAgents.id,
-      homeDeviceId: userAgents.homeDeviceId,
-      deviceId: desktopDevices.id,
-    })
-    .from(actors)
-    .innerJoin(userAgents, eq(userAgents.id, actors.userAgentId))
-    .leftJoin(
-      desktopDevices,
-      and(
-        eq(desktopDevices.userId, identity.userId),
-        eq(desktopDevices.installationId, installationId),
-      ),
-    )
-    .where(and(eq(actors.entityId, actorId), eq(userAgents.userId, identity.userId)));
-  if (!row?.homeDeviceId || row.deviceId !== row.homeDeviceId) throw new AccessDeniedError();
-  return row.userAgentId;
-}
 
 type ReceiptKey = {
   organizationId: string;

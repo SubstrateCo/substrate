@@ -4,7 +4,7 @@ import {
   type HarnessKind,
   type HarnessModel,
   type HarnessModelCatalog,
-} from "@substrate/contracts/harness";
+} from "@substrate/contracts/harness-runtime";
 
 import {
   acpAuthRequired,

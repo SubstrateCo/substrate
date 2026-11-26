@@ -1,7 +1,7 @@
 import type {
-  AgentInboxItemView,
   AgentRequestView,
-  AgentTurnView,
+  AgentWorkItemView,
+  AgentWorkTurnView,
 } from "@substrate/contracts/agent-work";
 
 const newest = <T extends { createdAt: string }>(values: readonly T[]) =>
@@ -21,12 +21,13 @@ function add<T>(map: Map<string, T[]>, id: string, value: T) {
  * The message a turn's work shows under, in one conversation, or null when it has no place
  * there (it shows only in the Agents app). In order: the latest message the turn posted here;
  * the anchor of the request an answer or approval turn continues; the place of the turn a
- * recovery turn resumes; the newest source message here.
+ * recovery turn resumes; the newest source message here. A turn in a hidden place has none of
+ * these, so it has no place.
  */
 function turnAnchor(
-  turn: AgentTurnView,
+  turn: AgentWorkTurnView,
   conversationId: string,
-  turns: ReadonlyMap<string, AgentTurnView>,
+  turns: ReadonlyMap<string, AgentWorkTurnView>,
   visited: Set<string> = new Set(),
 ): string | null {
   if (visited.has(turn.id)) return null;
@@ -59,8 +60,8 @@ function turnAnchor(
  * message, so it adds no conversation. Undefined when the turn shows only in the Agents app.
  */
 export function turnConversation(
-  turn: AgentTurnView,
-  turns: ReadonlyMap<string, AgentTurnView>,
+  turn: AgentWorkTurnView,
+  turns: ReadonlyMap<string, AgentWorkTurnView>,
   visited: Set<string> = new Set(),
 ): string | undefined {
   if (visited.has(turn.id)) return undefined;
@@ -74,9 +75,9 @@ export function turnConversation(
 }
 
 /** Turns grouped under the message they show under, oldest first. */
-export function turnPlacements(turns: readonly AgentTurnView[], conversationId: string) {
+export function turnPlacements(turns: readonly AgentWorkTurnView[], conversationId: string) {
   const byId = new Map(turns.map((turn) => [turn.id, turn]));
-  const placements = new Map<string, AgentTurnView[]>();
+  const placements = new Map<string, AgentWorkTurnView[]>();
   const anchors = new Map<string, string>();
   const sorted = [...turns].sort((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt));
   for (const turn of sorted) {
@@ -90,18 +91,18 @@ export function turnPlacements(turns: readonly AgentTurnView[], conversationId: 
 
 /**
  * Owner messages that wait, steer, or need attention, under the message they came from. Items
- * that started a turn are shown by that turn instead.
+ * that started a turn are shown by that turn instead. Items in a hidden place have no source.
  */
 export function itemPlacements(
-  items: readonly AgentInboxItemView[],
-  turns: readonly AgentTurnView[],
+  items: readonly AgentWorkItemView[],
+  turns: readonly AgentWorkTurnView[],
   conversationId: string,
 ) {
   const started = new Set(turns.flatMap((turn) => turn.itemIds));
-  const placements = new Map<string, AgentInboxItemView[]>();
+  const placements = new Map<string, AgentWorkItemView[]>();
   for (const item of items) {
     const ref = item.sourceRef;
-    if (ref.source !== "owner_message" || ref.conversationId !== conversationId) continue;
+    if (ref?.source !== "owner_message" || ref.conversationId !== conversationId) continue;
     if (started.has(item.id)) continue;
     add(placements, ref.messageId, item);
   }

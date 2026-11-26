@@ -1,5 +1,5 @@
 import type { IpcValue } from "@substrate/contracts/desktop/ipc";
-import type { HarnessEvent } from "@substrate/contracts/harness";
+import type { HarnessEvent } from "@substrate/contracts/harness-runtime";
 import { advanceTimersAsync } from "@substrate/contracts/testing/timers";
 
 import { createHarnessProcess } from "./harness-process.ts";

@@ -1,10 +1,11 @@
+import type { AgentCatalog } from "@substrate/contracts/agents";
 import type { IpcValue } from "@substrate/contracts/desktop/ipc";
 import {
   harnessIdSchema,
   type HarnessLocalScope,
   type HarnessMcpServer,
   type HarnessSkill,
-} from "@substrate/contracts/harness";
+} from "@substrate/contracts/harness-runtime";
 import { rendererLocalSchemas, type LocalHarnessMethod } from "@substrate/contracts/harness/ipc";
 
 import type { z } from "zod";
@@ -19,6 +20,24 @@ export interface LocalMcpServers {
   list(organizationId: string, agentId: string): Promise<HarnessMcpServer[]>;
   save(organizationId: string, agentId: string, server: HarnessMcpServer): Promise<void>;
   delete(organizationId: string, agentId: string, id: string): Promise<void>;
+}
+
+/** The agent is not homed on this desktop, so its skills and MCP servers are not edited here. */
+export class AgentNotHomedHere extends Error {
+  constructor() {
+    super("Edit this agent's skills and MCP servers on its home desktop.");
+    this.name = "AgentNotHomedHere";
+  }
+}
+
+/**
+ * Skills and MCP servers stay on the agent's home desktop, which is the only copy the agent uses.
+ * Throws unless agentId is in the verified catalog and homed on this desktop.
+ */
+export function requireHomedHere(catalog: AgentCatalog, agentId: string) {
+  if (!catalog.agents.some((agent) => agent.id === agentId)) throw new Error("Agent not found.");
+  const settings = catalog.runSettings.find((entry) => entry.agentId === agentId);
+  if (!settings?.homeDevice?.current) throw new AgentNotHomedHere();
 }
 
 /** Renderer input for the worker, scoped to the verified organization. Throws when invalid. */

@@ -1,4 +1,4 @@
-import type { HarnessKind, HarnessSignInState } from "@substrate/contracts/harness";
+import type { HarnessKind, HarnessSignInState } from "@substrate/contracts/harness-runtime";
 
 import { queryOptions, skipToken, useMutation, useQueryClient } from "@tanstack/react-query";
 

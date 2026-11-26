@@ -1,4 +1,4 @@
-import { type HarnessSkill } from "@substrate/contracts/harness";
+import { type HarnessSkill } from "@substrate/contracts/harness-runtime";
 
 import { type ReactNode } from "react";
 

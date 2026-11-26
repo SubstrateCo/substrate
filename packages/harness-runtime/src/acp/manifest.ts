@@ -1,4 +1,4 @@
-import type { HarnessKind } from "@substrate/contracts/harness";
+import type { HarnessKind } from "@substrate/contracts/harness-runtime";
 
 import type { AcpPrefixChannel } from "./api.ts";
 

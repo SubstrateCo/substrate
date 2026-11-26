@@ -19,12 +19,12 @@
   "dependencies": {
     "@better-auth/core": "1.7.18",
     "@better-auth/electron": "catalog:auth",
+    "@substrate/agent-host": "workspace:*",
     "@substrate/client-storage": "workspace:*",
     "@substrate/contracts": "workspace:*",
     "@substrate/harness-runtime": "workspace:*",
     "better-auth": "catalog:auth",
     "conf": "^16.0.0",
-    "croner": "^11",
     "electron-updater": "^6.8.11",
     "entities": "4.5.0",
     "ws": "^8.22.1",

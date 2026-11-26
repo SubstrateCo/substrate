@@ -4,20 +4,16 @@ import { RepositoryContext, type PermissionLevel } from "../../../core/repositor
 import { AccessDeniedError, ConflictError, ValidationError } from "../../../errors";
 import {
   agentRequests,
-  agentWakes,
+  agentSessions,
+  agentWorkItems,
   messagingConversations,
   messagingMessages,
   tasks,
 } from "../../../schema";
-import {
-  agentWorkFixture,
-  deviceAgentWork,
-  dmTurn,
-  ownerAgentWork,
-  threadTurn,
-} from "../../../testing/agent-work";
+import { agentWorkFixture, deviceAgentWork, ownerAgentWork } from "../../../testing/agent-work";
 import { setupDatabase } from "../../../testing/database";
 import { rejection } from "../../../testing/rejection";
+import { dmTurn, threadTurn } from "../../../testing/turns";
 import { expect, spyOn, test } from "bun:test";
 import { eq, sql } from "drizzle-orm";
 
@@ -35,17 +31,16 @@ const approval = {
 
 const wakesFor = (requestId: string) =>
   f.db
-    .select({ source: agentWakes.source, sessionKey: agentWakes.sessionKey })
-    .from(agentWakes)
-    .where(sql`${agentWakes.sourceRef}->>'requestId' = ${requestId}`);
+    .select({ source: agentWorkItems.source, sessionKey: agentSessions.key })
+    .from(agentWorkItems)
+    .innerJoin(agentSessions, eq(agentSessions.id, agentWorkItems.sessionId))
+    .where(sql`${agentWorkItems.sourceRef}->>'requestId' = ${requestId}`);
 
 async function blocking() {
   const fixture = await agentWorkFixture(f);
   const turn = dmTurn(fixture.dm.id);
   const input = {
-    userAgentId: fixture.agent.agentId,
-    sessionKey: turn.sessionKey,
-    turnId: turn.turnId,
+    turnId: (await fixture.turn(turn)).turnId,
     epoch: 0,
     kind: "permission" as const,
     mode: "blocking" as const,
@@ -162,9 +157,7 @@ test("an async question's answer wakes the agent exactly once in the question's 
   expect(await rejection(work.respondToRequest(reply.questionId!, answer))).toBeInstanceOf(
     ConflictError,
   );
-  expect(await wakesFor(reply.questionId!)).toEqual([
-    { source: "answer", sessionKey: turn.sessionKey },
-  ]);
+  expect(await wakesFor(reply.questionId!)).toEqual([{ source: "answer", sessionKey: turn.key }]);
   expect((await work.listNeedsYou()).requests).toEqual([]);
 });
 
@@ -175,7 +168,7 @@ const reply = (conversationId: string, body: string) => ({
 });
 
 test("approving a proposal runs the exact call once, even when approved twice at once", async () => {
-  const { dm, owner, alice, propose } = await agentWorkFixture(f);
+  const { dm, owner, alice, propose, turn: contextOf } = await agentWorkFixture(f);
   const channel = await alice.createConversation({ kind: "channel", name: "general" });
   const turn = dmTurn(dm.id, "unattended");
   const proposalId = await propose("reply", reply(channel.id, "Weekly summary"), turn);
@@ -196,7 +189,7 @@ test("approving a proposal runs the exact call once, even when approved twice at
     .from(messagingMessages)
     .where(eq(messagingMessages.conversationId, channel.id));
   expect(posted.map((message) => [message.body, message.originTurnId])).toEqual([
-    ["Weekly summary", turn.turnId],
+    ["Weekly summary", (await contextOf(turn)).turnId],
   ]);
   // The outcome keeps the receipt and the tool's own output, as the call would have returned it.
   expect(approved[0]!.outcome).toEqual({
@@ -210,9 +203,7 @@ test("approving a proposal runs the exact call once, even when approved twice at
       createdAt: posted[0]!.createdAt.toISOString(),
     },
   });
-  expect(await wakesFor(proposalId)).toEqual([
-    { source: "approval_result", sessionKey: turn.sessionKey },
-  ]);
+  expect(await wakesFor(proposalId)).toEqual([{ source: "approval_result", sessionKey: turn.key }]);
 });
 
 test("a proposal stores the call without its requestId, under the tool's title", async () => {
@@ -373,9 +364,7 @@ test("approval checks access again and records a failure; decline runs nothing",
   expect(
     await f.db.select().from(tasks).where(eq(tasks.projectEntityId, project.entityId)),
   ).toEqual([]);
-  expect(await wakesFor(create)).toEqual([
-    { source: "approval_result", sessionKey: turn.sessionKey },
-  ]);
+  expect(await wakesFor(create)).toEqual([{ source: "approval_result", sessionKey: turn.key }]);
   const bobWork = await ownerAgentWork(f.db, { userId: "bob", organizationId: f.orgA });
   expect(await rejection(bobWork.approveProposal(post))).toBeInstanceOf(AccessDeniedError);
 });
@@ -460,9 +449,7 @@ test("an approval runs only while the target is as it was proposed", async () =>
   });
   const [row] = await f.db.select().from(tasks).where(eq(tasks.entityId, task.entityId));
   expect(row).toMatchObject({ status: "not_started", priority: "high" });
-  expect(await wakesFor(update)).toEqual([
-    { source: "approval_result", sessionKey: turn.sessionKey },
-  ]);
+  expect(await wakesFor(update)).toEqual([{ source: "approval_result", sessionKey: turn.key }]);
 
   // A channel that became private has a different audience than the agent proposed for.
   const channel = await alice.createConversation({ kind: "channel", name: "general" });

@@ -1,7 +1,8 @@
-import { sessionKeys, type ProposalOutcome } from "@substrate/contracts/agent-work";
-import type { WorkspaceApiRequest, WorkspaceApiResult } from "@substrate/contracts/harness/mcp";
+import type { WorkspaceApiRequest, WorkspaceApiResult } from "@substrate/contracts/agent-tools/mcp";
+import type { ProposalOutcome } from "@substrate/contracts/agent-work";
 
-import { approvalPollMs, approvalWaitMs, createMcpApiProxy } from "./mcp-api-proxy.ts";
+import { createMcpApiProxy } from "./mcp-api-proxy.ts";
+import { approvalPollMs, approvalWaitMs, workspaceRequestTimeoutMs } from "./request-limits.ts";
 import { expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
 
@@ -12,9 +13,6 @@ const projects: WorkspaceApiRequest = {
   turn: {
     turnId: "0d6f4c3e-8b4f-4c39-9d7e-3f1c2a5b6e71",
     attempt: 1,
-    sessionKey: sessionKeys.dm("9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718"),
-    origin: { conversationId: "9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718", threadId: null },
-    kind: "interactive",
   },
   input: {},
 };
@@ -155,9 +153,14 @@ const executed: ProposalOutcome = {
 
 /**
  * A proxy whose call waits for approval. states are the request's reads in order; the last one
- * repeats. The clock moves only when the proxy sleeps, so no test waits in real time.
+ * repeats. The clock moves only when the proxy sleeps, so no test waits in real time. Only an
+ * interactive live turn waits.
  */
-function held(states: { status: string; outcome: ProposalOutcome | null }[]) {
+function held(
+  states: { status: string; outcome: ProposalOutcome | null }[],
+  serverMs = 0,
+  interactive = true,
+) {
   let now = 0;
   const reads: number[] = [];
   const waits: string[] = [];
@@ -166,7 +169,10 @@ function held(states: { status: string; outcome: ProposalOutcome | null }[]) {
   const proxy = createMcpApiProxy({
     backend: "https://api.example.com",
     isActive: () => true,
-    fetchAPI: async () => Response.json(pending, { status: 202 }),
+    fetchAPI: async () => {
+      now += serverMs;
+      return Response.json(pending, { status: 202 });
+    },
     approval: {
       async status(organizationId, requestId) {
         expect({ organizationId, requestId }).toEqual({
@@ -177,6 +183,7 @@ function held(states: { status: string; outcome: ProposalOutcome | null }[]) {
         return states[Math.min(reads.length - 1, states.length - 1)]!;
       },
       waiting(_request, requestId) {
+        if (!interactive) return null;
         waits.push(requestId);
         return () => released.push(requestId);
       },
@@ -189,7 +196,7 @@ function held(states: { status: string; outcome: ProposalOutcome | null }[]) {
       received.push(decided ? { result, decided } : { result });
     },
   });
-  return { proxy, reads, waits, released, received };
+  return { proxy, reads, waits, released, received, elapsed: () => now };
 }
 const undecided = { status: "pending", outcome: null };
 
@@ -229,7 +236,7 @@ test("an undecided call returns APPROVAL_PENDING unchanged after the wait, withi
   const f = held([undecided]);
   expect(await f.proxy(deleteTask)).toEqual(pending);
   expect(f.reads.at(-1)).toBeLessThanOrEqual(approvalWaitMs);
-  expect(approvalWaitMs).toBeLessThan(60_000);
+  expect(workspaceRequestTimeoutMs).toBeLessThanOrEqual(60_000);
   expect(f.received).toEqual([{ result: pending }]);
   expect(f.released).toEqual([proposalId]);
   const expired = held([{ status: "expired", outcome: null }]);
@@ -237,14 +244,20 @@ test("an undecided call returns APPROVAL_PENDING unchanged after the wait, withi
   expect(expired.reads).toHaveLength(1);
 });
 
+test("a slow server call counts against the wait, so main answers before the worker gives up", async () => {
+  const f = held([undecided], 20_000);
+  expect(await f.proxy(deleteTask)).toEqual(pending);
+  expect(f.reads[0]).toBe(20_000);
+  expect(f.elapsed()).toBeLessThanOrEqual(approvalWaitMs);
+});
+
 test("an unattended call never waits, but a retry of a decided call gets the decision", async () => {
-  const unattended = { ...deleteTask, turn: { ...deleteTask.turn, kind: "unattended" as const } };
-  const open = held([undecided, { status: "executed", outcome: executed }]);
-  expect(await open.proxy(unattended)).toEqual(pending);
+  const open = held([undecided, { status: "executed", outcome: executed }], 0, false);
+  expect(await open.proxy(deleteTask)).toEqual(pending);
   expect(open.reads).toEqual([0]);
   expect(open.waits).toEqual([]);
-  const retried = held([{ status: "executed", outcome: executed }]);
-  expect(await retried.proxy(unattended)).toEqual({ success: true, data: deleted });
+  const retried = held([{ status: "executed", outcome: executed }], 0, false);
+  expect(await retried.proxy(deleteTask)).toEqual({ success: true, data: deleted });
   expect(retried.received[0]?.decided).toEqual({ requestId: proposalId });
 });
 

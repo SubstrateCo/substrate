@@ -8,25 +8,19 @@ import { type ResolvedDeviceIdentity } from "../../core/session/device";
 import { visibleConversations } from "../messaging/access";
 import { conversationDisplayName } from "../messaging/display-name";
 import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { revokedInvocations } from "./calls/invocations";
 import { and, eq, inArray, isNull } from "drizzle-orm";
 
 /**
  * Message bodies for the home desktop, only while the owner can see their conversation now.
  * The same rule as the owner's own reads. Other IDs are returned as inaccessible, without detail.
- * Named calls are checked again first: the message of a call that may not run any more is
- * inaccessible, and the call drops.
  */
 export async function loadSourcesForDevice(
   tx: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,
   messageIds: string[],
-  invocationIds: string[] = [],
 ): Promise<AgentSourcesResult> {
-  const calls = await revokedInvocations(tx, identity, invocationIds);
-  const ids = [...new Set([...messageIds, ...calls.allowed])];
-  const readable = ids.filter((id) => !calls.blocked.has(id));
-  const rows = readable.length
+  const ids = [...new Set(messageIds)];
+  const rows = ids.length
     ? await joinActorAccount(
         tx
           .select({
@@ -50,14 +44,14 @@ export async function loadSourcesForDevice(
           .$dynamic(),
       ).where(
         and(
-          inArray(messagingMessages.id, readable),
+          inArray(messagingMessages.id, ids),
           isNull(messagingMessages.deletedAt),
           visibleConversations(tx, identity),
         ),
       )
     : [];
   const found = new Set(rows.map((row) => row.id));
-  const result: AgentSourcesResult = {
+  return {
     messages: rows
       .sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime() || a.id.localeCompare(b.id))
       .map(({ actorId, name, kind, createdAt, ...row }) => ({
@@ -67,6 +61,4 @@ export async function loadSourcesForDevice(
       })),
     inaccessible: ids.filter((id) => !found.has(id)),
   };
-  if (invocationIds.length) result.inaccessibleInvocations = calls.revoked;
-  return result;
 }

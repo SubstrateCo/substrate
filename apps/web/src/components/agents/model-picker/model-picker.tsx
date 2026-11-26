@@ -1,4 +1,4 @@
-import type { HarnessKind, HarnessModel } from "@substrate/contracts/harness";
+import type { HarnessKind, HarnessModel } from "@substrate/contracts/harness-runtime";
 
 import { useQueries, useQuery } from "@tanstack/react-query";
 

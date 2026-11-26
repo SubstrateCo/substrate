@@ -1,6 +1,6 @@
 import { provisionVerifiedAccount } from "../../../server/integration/test-support/auth";
 import { Mailpit } from "../../../server/integration/test-support/mailpit";
-import { callTool, createAgent, threadTurn } from "../test-support/agent-work";
+import { callTool, createAgent, startTurn } from "../test-support/agent-work";
 import { inviteMember, post, test, visit } from "../test-support/fixtures";
 import { captureScreenshot } from "../test-support/screenshots";
 import { project } from "../test-support/tasks";
@@ -119,8 +119,7 @@ test("missing photos keep humans and agents distinct in search, selections, memb
     const replyBody = "The launch plan is ready for review.";
     await callTool(
       actors.sender,
-      agent.id,
-      threadTurn(channel.id, root.id, agent.installationId),
+      await startTurn(actors.sender, agent, channel.id, root),
       "reply",
       { body: replyBody, to: { conversationId: channel.id } },
     );

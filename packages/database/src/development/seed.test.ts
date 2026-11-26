@@ -135,7 +135,7 @@ describe("development seed", () => {
       }
     }
     expect(await fixture.db.select().from(schema.storedFiles)).toHaveLength(0);
-    expect(await fixture.db.select().from(schema.agentWakes)).toHaveLength(0);
+    expect(await fixture.db.select().from(schema.agentWorkItems)).toHaveLength(0);
   });
 
   test("creates usable teams, assigned projects, and shared conversations; reruns preserve edits without duplicating data or resetting passwords", async () => {

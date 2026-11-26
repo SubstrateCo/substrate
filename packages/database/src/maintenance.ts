@@ -1,6 +1,4 @@
 import type { DatabaseExecutor } from "./core/executor";
-import { expireInvocations } from "./features/agent-work/calls/invocations";
-import { deleteAckedWakes } from "./features/agent-work/wakes/retention";
 import {
   deleteNotificationsOfDeletedEntities,
   deleteReadNotifications,
@@ -28,9 +26,6 @@ export async function pruneRecords(
     return total;
   }
   return {
-    ackedWakes: await drain((limit) => deleteAckedWakes(db, ago(7), limit)),
-    // Not a deletion: pending calls past their 24 hours move to expired, with an audit row.
-    expiredInvocations: await drain((limit) => expireInvocations(db, limit)),
     readNotifications: await drain((limit) => deleteReadNotifications(db, ago(90), limit)),
     deletedTargetNotifications: await drain((limit) =>
       deleteNotificationsOfDeletedEntities(db, limit),

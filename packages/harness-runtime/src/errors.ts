@@ -1,4 +1,4 @@
-import type { HarnessErrorCode } from "@substrate/contracts/harness";
+import type { HarnessErrorCode } from "@substrate/contracts/harness-runtime";
 
 export class HarnessError extends Error {
   constructor(code: HarnessErrorCode, message: string, options?: ErrorOptions) {

@@ -16,7 +16,6 @@ const labels: Record<AgentConversationSection, string> = {
   messages: "Messages",
   activity: "Activity",
   routines: "Routines",
-  calls: "Calls",
 };
 
 export function AgentPageView({
@@ -27,7 +26,6 @@ export function AgentPageView({
   messages,
   activity,
   routines,
-  calls,
   settings,
 }: {
   name: ReactNode;
@@ -37,7 +35,6 @@ export function AgentPageView({
   messages: ReactNode;
   activity: ReactNode;
   routines: ReactNode;
-  calls: ReactNode;
   settings: ReactNode;
 }) {
   const tab = isAgentSettingsSection(section) ? "settings" : section;
@@ -85,7 +82,6 @@ export function AgentPageView({
         </TabsContent>
         <AgentSectionPanel value="activity">{activity}</AgentSectionPanel>
         <AgentSectionPanel value="routines">{routines}</AgentSectionPanel>
-        <AgentSectionPanel value="calls">{calls}</AgentSectionPanel>
         <AgentSectionPanel value="settings">{settings}</AgentSectionPanel>
       </Tabs>
     </section>

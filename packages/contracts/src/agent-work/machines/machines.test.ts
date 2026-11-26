@@ -1,11 +1,9 @@
 import type { Machine, MachineEvent } from "../../state-machine.ts";
 import { helperMachine } from "./helper.ts";
 import { inboxItemMachine } from "./inbox-item.ts";
-import { invocationMachine } from "./invocation.ts";
 import { requestMachine } from "./request.ts";
 import { sessionMachine } from "./session.ts";
 import { turnMachine } from "./turn.ts";
-import { wakeMachine } from "./wake.ts";
 import { expect, test } from "bun:test";
 
 function describeMachine<
@@ -51,11 +49,10 @@ describeMachine("request", requestMachine, [
   ["resolved", "undeliver", "undelivered"],
 ]);
 
-describeMachine("wake", wakeMachine, [["pending", "ack", "acked"]]);
-
 describeMachine("inbox item", inboxItemMachine, [
   ...fromEach(["pending", "confirmed_unconsumed"], "submit", "submitted"),
   ...fromEach(["submitted", "uncertain"], "consume", "consumed"),
+  ...fromEach(["pending", "confirmed_unconsumed"], "receiveInline", "consumed"),
   ["submitted", "requeue", "confirmed_unconsumed"],
   ["submitted", "unconfirm", "uncertain"],
   ...fromEach(["submitted", "uncertain"], "interrupt", "uncertain"),
@@ -88,17 +85,6 @@ describeMachine("turn", turnMachine, [
 describeMachine("session", sessionMachine, [
   ...fromEach(["idle", "working"], "work", "working"),
   ...fromEach(["idle", "working"], "rest", "idle"),
-]);
-
-describeMachine("invocation", invocationMachine, [
-  ["received", "admit", "admitted"],
-  ["received", "hold", "pending_approval"],
-  ["received", "limit", "rate_limited"],
-  ["pending_approval", "approve", "admitted"],
-  ["pending_approval", "decline", "declined"],
-  ["pending_approval", "expire", "expired"],
-  ["pending_approval", "cancel", "cancelled"],
-  ["admitted", "drop", "dropped"],
 ]);
 
 describeMachine("helper", helperMachine, [

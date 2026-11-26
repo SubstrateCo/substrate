@@ -11,11 +11,11 @@ test("agents in the same organization have separate working folders and native c
   const host = await createHarnessHost({ accountDirectory: root });
   const agent = {
     id: "agent-a",
-    name: "Agent",
     harness: "opencode" as const,
     instructions: "Work locally",
     enabled: true,
-    useStartupDefaults: false,
+    managedSkills: [],
+    tools: null,
   };
   const scope = { organizationId: "org-a", agentId: agent.id, harness: agent.harness };
   const secondDirectory = join(root, "orgs", "org-a", "agent-b");

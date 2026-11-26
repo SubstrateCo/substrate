@@ -1,8 +1,8 @@
 import type {
-  AgentInboxItemView,
   AgentRequestView,
   AgentStatusView,
-  AgentTurnView,
+  AgentWorkItemView,
+  AgentWorkTurnView,
   TurnAttentionReason,
 } from "@substrate/contracts/agent-work";
 
@@ -15,9 +15,11 @@ export const silentLabel = "Checked · nothing to report";
 export const steeredLabel = "Added to current work";
 export const noDesktopLabel = "No desktop runs this agent";
 
-/** Where to see an agent's local work from a device that doesn't run it. */
-export const homeDeviceNotice = (deviceName?: string) =>
-  deviceName ? `Open on ${deviceName}` : noDesktopLabel;
+/** Where to see a transcript, which only the desktop that ran the work stores. */
+export const transcriptNotice = (deviceName?: string) =>
+  deviceName
+    ? `Open Substrate on ${deviceName} to see this transcript.`
+    : "Open the desktop app that runs this agent to see its transcript.";
 const resumedLabel = "Resumed after interruption";
 export const stoppedNeedsYouLabel = "Stopped · needs you";
 
@@ -30,7 +32,7 @@ function requestLabel(request: Pick<AgentRequestView, "kind">) {
 
 /** One turn's tone. It does not depend on the clock. */
 export function turnTone(
-  turn: AgentTurnView,
+  turn: AgentWorkTurnView,
   openRequest?: Pick<AgentRequestView, "kind">,
 ): WorkTone {
   if (openRequest) return "attention";
@@ -54,7 +56,7 @@ export function turnTone(
 
 /** One turn as one short line, such as "1m 05s" while working. */
 export function turnLabel(
-  turn: AgentTurnView,
+  turn: AgentWorkTurnView,
   now: number,
   openRequest?: Pick<AgentRequestView, "kind">,
 ): string {
@@ -109,7 +111,7 @@ export interface ItemContext {
   ahead: number;
   /** The agent has live work in another session. */
   busy: boolean;
-  /** Undefined when the agent runs on this desktop. */
+  /** Undefined while the agent's status is unknown. */
   device?: AgentStatusView["device"];
 }
 
@@ -119,7 +121,7 @@ export type ItemStatus = WorkStatus & { sendNow: boolean; uncertain: boolean };
 const uncertainItemLabel = (agentName: string) =>
   `We couldn’t confirm ${agentName} received this message`;
 
-const waits = (item: AgentInboxItemView) =>
+const waits = (item: AgentWorkItemView) =>
   item.lane === "owner" &&
   !item.held &&
   (item.status === "pending" || item.status === "confirmed_unconsumed");
@@ -128,7 +130,7 @@ const waits = (item: AgentInboxItemView) =>
  * How many other sessions of the same agent wait ahead of this item's session. The claim loop
  * takes the session with the oldest waiting owner item first. Pass the items of one agent.
  */
-export function queueAhead(item: AgentInboxItemView, items: readonly AgentInboxItemView[]) {
+export function queueAhead(item: AgentWorkItemView, items: readonly AgentWorkItemView[]) {
   const oldest = new Map<string, number>();
   for (const entry of items) {
     if (!waits(entry)) continue;
@@ -143,7 +145,7 @@ export function queueAhead(item: AgentInboxItemView, items: readonly AgentInboxI
 }
 
 /** An owner message that has not finished in a turn yet. */
-export function itemStatus(item: AgentInboxItemView, context: ItemContext): ItemStatus {
+export function itemStatus(item: AgentWorkItemView, context: ItemContext): ItemStatus {
   const status = (tone: WorkTone, label: string, sendNow = false) => ({
     tone,
     label,
@@ -165,8 +167,8 @@ export function itemStatus(item: AgentInboxItemView, context: ItemContext): Item
 }
 
 /**
- * Status that the home desktop published, for devices that do not run the agent. It has no
- * per-message detail, so it describes the agent as a whole.
+ * The agent's status as the server derives it. It has no per-message detail, so it describes
+ * the agent as a whole.
  */
 export function agentStatus(status: AgentStatusView): WorkStatus {
   const { device } = status;

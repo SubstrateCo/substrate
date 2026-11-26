@@ -1,4 +1,4 @@
-import type { HarnessMcpServer } from "@substrate/contracts/harness";
+import type { HarnessMcpServer } from "@substrate/contracts/harness-runtime";
 
 import { useId, useState, type ReactNode } from "react";
 

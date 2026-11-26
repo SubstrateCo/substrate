@@ -1,11 +1,8 @@
 import type {
-  ackWakesInput,
   closeRequestInput,
   deviceHeartbeatInput,
   openRequestInput,
   placeAccessInput,
-  publishStatusInput,
-  pullWakesInput,
   registerDeviceInput,
   requestAnswersInput,
   sourcesInput,
@@ -26,29 +23,16 @@ export function createDeviceService({ publish }: { publish: CommittedPublisher }
     },
     deviceHeartbeat(this: void, scope: UserScope, input: z.output<typeof deviceHeartbeatInput>) {
       return serviceResult(async () => {
-        // The installation scope checked that input.installationId is this desktop's.
+        // The installation scope checked that input.installationId is this desktop's. The touch
+        // also renews the leases of the turns this desktop runs.
         await publish(await scope.owner.devices.touch(input.installationId));
         return {};
       });
     },
-    pullWakes(this: void, scope: DeviceScope, input: z.output<typeof pullWakesInput>) {
-      return serviceResult(async () =>
-        publish(await scope.device.agentWork.pullWakes(input.limit, input.capabilities)),
-      );
-    },
-    ackWakes(this: void, scope: DeviceScope, input: z.output<typeof ackWakesInput>) {
-      return serviceResult(async () => publish(await scope.device.agentWork.ackWakes(input.ids)));
-    },
     loadSources(this: void, scope: DeviceScope, input: z.output<typeof sourcesInput>) {
       return serviceResult(async () =>
-        publish(await scope.device.agentWork.loadSources(input.messageIds, input.invocationIds)),
+        publish(await scope.device.agentWork.loadSources(input.messageIds)),
       );
-    },
-    publishStatus(this: void, scope: DeviceScope, input: z.output<typeof publishStatusInput>) {
-      return serviceResult(async () => {
-        const { organizationId: _, installationId: __, ...status } = input;
-        return publish(await scope.device.agentWork.publishStatus(status));
-      });
     },
     openRequest(this: void, scope: DeviceScope, input: z.output<typeof openRequestInput>) {
       return serviceResult(async () => {

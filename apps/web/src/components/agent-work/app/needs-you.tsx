@@ -1,18 +1,29 @@
-import type { AgentRequestPlace } from "@substrate/contracts/agent-work";
+import type {
+  AgentRequestPlace,
+  AgentUncertainItemView,
+  AgentWorkPlace,
+} from "@substrate/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
-import { CallCard } from "../calls/call-card";
+import { InboxReceiptView } from "../inbox-receipt-view";
+import { NeedsAttention } from "../needs-attention";
 import { RequestCard } from "../requests/request-card";
 import { NeedsYouView, type NeedsYouEntry } from "./needs-you-view";
-import { Timestamp } from "@/components/time/timestamp";
+import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { hiddenConversation } from "@/lib/agent-work/hidden-records";
 import { needsYouItems } from "@/lib/agent-work/needs-you";
-import { agentStatus } from "@/lib/agent-work/status";
+import { agentStatus, attentionReasonText } from "@/lib/agent-work/status";
+import { conversationName } from "@/lib/messaging/conversations";
 import { agentLink, messageLink } from "@/lib/navigation/record-links";
+import { useDiscardItem, useResendItem } from "@/queries/agent-work/mutations";
 import { needsYouOptions } from "@/queries/agent-work/server";
+import { conversationsQueryOptions } from "@/queries/messaging/options";
+import { toast } from "sonner";
+
+const placeLinkClass = "min-w-0 truncate font-medium text-primary hover:underline";
 
 function Place({ place }: { place: AgentRequestPlace }) {
   const { organizationId } = useWorkspaceScope();
@@ -21,41 +32,63 @@ function Place({ place }: { place: AgentRequestPlace }) {
   return (
     <Link
       {...messageLink(organizationId, place.conversationId, place.anchorMessageId ?? undefined)}
-      className="min-w-0 truncate font-medium text-primary hover:underline"
+      className={placeLinkClass}
     >
       In {place.conversationName}
     </Link>
   );
 }
 
+/**
+ * The place of stopped work. The server sends no names, so the viewer's own conversation list
+ * names it; a place the server or that list hides stays a placeholder.
+ */
+function WorkPlace({ place }: { place: AgentWorkPlace }) {
+  const { organizationId } = useWorkspaceScope();
+  const conversations = useQuery(conversationsQueryOptions(organizationId));
+  const conversation =
+    place && conversations.data?.find((entry) => entry.id === place.conversationId);
+  if (!place || !conversation) return <span>{hiddenConversation}</span>;
+  return (
+    <Link {...messageLink(organizationId, place.conversationId)} className={placeLinkClass}>
+      In {conversationName(conversation)}
+    </Link>
+  );
+}
+
+/** A message the home desktop couldn't confirm the agent received, outside a listed turn. */
+function UncertainItem({ item }: { item: AgentUncertainItemView }) {
+  const { userId, organizationId } = useWorkspaceScope();
+  const resend = useResendItem(userId, organizationId);
+  const discard = useDiscardItem(userId, organizationId);
+  return (
+    <InboxReceiptView
+      label={attentionReasonText("uncertain_input", item.agent.name)}
+      tone="attention"
+      sending={false}
+      resolving={resend.isPending || discard.isPending}
+      onResend={() =>
+        resend.mutate(item.id, {
+          onError: (error) =>
+            toast.error(actionErrorMessage(error, "We couldn't resend the message.")),
+        })
+      }
+      onDiscard={() =>
+        discard.mutate(item.id, {
+          onError: (error) =>
+            toast.error(actionErrorMessage(error, "We couldn't discard the message.")),
+        })
+      }
+    />
+  );
+}
+
+/** Everything that waits for the owner, from the server, so it works on every device. */
 export function NeedsYou() {
   const { userId, organizationId } = useWorkspaceScope();
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
-  const { requests, agents, calls, desktopUpdateRequired } = needsYouItems(needsYou.data);
+  const { requests, turns, items, agents } = needsYouItems(needsYou.data);
   const entries: NeedsYouEntry[] = [
-    ...desktopUpdateRequired.map((update) => ({
-      key: `desktop-update:${update.userAgentId}`,
-      agentName: update.agent.name,
-      place: <span>Desktop needs update</span>,
-      body: (
-        <div className="grid gap-2 text-sm">
-          <p>Update the Substrate desktop app so {update.agent.name} can answer calls.</p>
-          <p className="text-xs text-muted-foreground">
-            {update.droppedCalls} {update.droppedCalls === 1 ? "call dropped" : "calls dropped"}
-            {" · Last dropped "}
-            <Timestamp value={update.lastDroppedAt} format="relative" />
-          </p>
-        </div>
-      ),
-      agentLink: agentLink(organizationId, update.userAgentId),
-    })),
-    ...calls.map((call) => ({
-      key: `call:${call.id}`,
-      agentName: call.agent.name,
-      place: <Place place={call.place} />,
-      body: <CallCard call={call} />,
-      agentLink: agentLink(organizationId, call.userAgentId),
-    })),
     ...requests.map((request) => ({
       key: request.id,
       agentName: request.agent.name,
@@ -63,15 +96,34 @@ export function NeedsYou() {
       body: <RequestCard request={request} />,
       agentLink: agentLink(organizationId, request.userAgentId),
     })),
-    // Agents that need a decision with no request, such as work that stopped.
+    ...turns.map((turn) => ({
+      key: `turn:${turn.id}`,
+      agentName: turn.agent.name,
+      place: <WorkPlace place={turn.place} />,
+      body: (
+        <NeedsAttention
+          turn={turn}
+          agentName={turn.agent.name}
+          uncertainItemIds={turn.uncertainItemIds}
+        />
+      ),
+      agentLink: agentLink(organizationId, turn.userAgentId, "activity", { turnId: turn.id }),
+    })),
+    ...items.map((item) => ({
+      key: `item:${item.id}`,
+      agentName: item.agent.name,
+      place: <WorkPlace place={item.place} />,
+      body: <UncertainItem item={item} />,
+      agentLink: agentLink(organizationId, item.userAgentId, "activity"),
+    })),
+    // Agents that need the owner with nothing listed above.
     ...agents.map((status) => ({
       key: `agent:${status.userAgentId}`,
       agentName: status.agent.name,
       place: <span>{agentStatus(status).label}</span>,
       body: (
         <p className="text-sm text-muted-foreground">
-          Work stopped. Open the agent’s activity to retry, start fresh, or dismiss it
-          {status.device ? ` on ${status.device.name}` : ""}.
+          Work stopped. Open the agent’s activity to retry, start fresh, or dismiss it.
         </p>
       ),
       agentLink: agentLink(organizationId, status.userAgentId, "activity"),

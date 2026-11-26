@@ -1,4 +1,4 @@
-import type { HarnessKind } from "@substrate/contracts/harness";
+import type { HarnessKind } from "@substrate/contracts/harness-runtime";
 
 import { harnessBridge } from "../bridges";
 import type { LocalConfigurationController } from "@/lib/desktop/agents/local-configuration-controller";

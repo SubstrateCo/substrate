@@ -1,4 +1,3 @@
-import type { AgentCallMode } from "@substrate/contracts/agents";
 import { managedPicture, managedPicturePath } from "@substrate/contracts/files/pictures";
 
 import { activeActorCondition } from "../../core/actors/access";
@@ -30,8 +29,6 @@ interface MessagingProfile {
     ownerName: string | null;
     harness: string | null;
     model: string | null;
-    /** How people other than the owner may call the agent, or null when only the owner may. */
-    callMode: AgentCallMode | null;
   } | null;
 }
 
@@ -56,7 +53,6 @@ async function profileActor(db: DatabaseExecutor, scope: SessionIdentity, actorE
         harness: userAgents.harness,
         model: userAgents.model,
         imageFileId: userAgents.imageFileId,
-        callerPolicy: userAgents.callerPolicy,
       },
       ownerName: ownerUser.name,
     })
@@ -86,8 +82,7 @@ async function profileActor(db: DatabaseExecutor, scope: SessionIdentity, actorE
 
 // A viewer may see an actor's profile only through a conversation they can see, when the actor
 // wrote in it or is an active workspace actor with access to it. Before a local agent writes,
-// only its owner can resolve it, and people of its organization when it accepts callers; it
-// sees what its owner sees.
+// only its owner can resolve it; it sees what its owner sees.
 async function requireProfileContext(
   db: DatabaseExecutor,
   scope: SessionIdentity,
@@ -95,11 +90,10 @@ async function requireProfileContext(
   { actor, definition }: Awaited<ReturnType<typeof profileActor>>,
 ) {
   const userId = actor.type === "agent" ? definition?.ownerId : actor.userId;
-  const callable = !!definition && definition.callerPolicy !== "owner" && !scope.actorEntityId;
   const presentAllowed =
     actor.organizationId === scope.organizationId &&
     !!userId &&
-    (actor.type === "human" || userId === scope.userId || callable);
+    (actor.type === "human" || userId === scope.userId);
   const [conversation] = await db
     .select({ id: messagingConversations.id })
     .from(messagingConversations)
@@ -196,8 +190,6 @@ export async function messagingProfile(
       ownerName: definition ? ownerName : null,
       harness: owned ? definition.harness : null,
       model: owned ? definition.model : null,
-      // The mode only: the allowlist stays private to the owner.
-      callMode: definition && definition.callerPolicy !== "owner" ? definition.callerPolicy : null,
     },
   };
 }

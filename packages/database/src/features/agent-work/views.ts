@@ -1,11 +1,6 @@
-import type {
-  AgentRequestView,
-  AgentStatusView,
-  AgentVisibleRequestView,
-} from "@substrate/contracts/agent-work";
+import type { AgentRequestView, AgentVisibleRequestView } from "@substrate/contracts/agent-work";
 
 import type { agentRequests } from "./requests/requests.schema";
-import type { agentStatus } from "./status.schema";
 
 const iso = (value: Date | null) => value?.toISOString() ?? null;
 
@@ -59,30 +54,5 @@ export function toRequestView(row: {
             outcome: request.outcome,
           }
         : null,
-  };
-}
-
-/**
- * An agent's status as its owner sees it now. The live place and activity are hidden once the
- * owner cannot open the live conversation, because activity may quote it.
- */
-export function toStatusView(row: {
-  status: typeof agentStatus.$inferSelect;
-  agent: Agent;
-  liveVisible: boolean;
-  device: AgentStatusView["device"];
-}): AgentStatusView {
-  const { status, agent, liveVisible, device } = row;
-  return {
-    userAgentId: status.userAgentId,
-    agent,
-    state: status.state,
-    queuedCount: status.queuedCount,
-    liveConversationId: liveVisible ? status.liveConversationId : null,
-    liveThreadId: liveVisible ? status.liveThreadId : null,
-    activity: status.liveConversationId === null || liveVisible ? status.activity : null,
-    updatedAt: status.updatedAt.toISOString(),
-    version: status.version,
-    device: device?.id ? device : null,
   };
 }

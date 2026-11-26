@@ -1,5 +1,5 @@
+import type { mcpCall } from "@substrate/contracts/agent-tools/tools";
 import { approvalPendingCode } from "@substrate/contracts/agent-work";
-import type { mcpCall } from "@substrate/contracts/harness/tools";
 import type { ServiceResult } from "@substrate/contracts/result";
 import { approvalPendingMessage, executeUserAgentTool } from "@substrate/database/mcp";
 import type { Database } from "@substrate/database/trusted";
@@ -36,12 +36,13 @@ export function createMcpService({
       call: z.output<typeof mcpCall>,
     ): Promise<ServiceResult<unknown> | { pending: ApprovalPending }> {
       const result = await serviceResult(async () => {
-        const { organizationId, userId } = scope;
-        // The database verifies TurnContext, and requires the home installation for write tools.
+        const { organizationId, userId, installationId } = scope;
+        // The database loads the server turn that TurnContext names. It must be live and leased by
+        // the agent's home device, which must be the installation this request came from.
         return publish(
           await executeUserAgentTool(
             db,
-            { organizationId, userId, userAgentId: call.agentId },
+            { organizationId, userId, userAgentId: call.agentId, installationId },
             call.tool,
             call.input,
             call.turn,

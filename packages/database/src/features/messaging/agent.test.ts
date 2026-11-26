@@ -1,9 +1,10 @@
 import { ensureUserAgentActor } from "../../core/actors/provisioning";
 import { AccessDeniedError } from "../../errors";
 import { user, userAgents, messagingMessages } from "../../schema";
-import { agentWorkFixture, threadTurn } from "../../testing/agent-work";
+import { agentWorkFixture } from "../../testing/agent-work";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
+import { threadTurn } from "../../testing/turns";
 import { createContextService } from "../context/service";
 import { createMessagingService } from "./service";
 import { expect, test } from "bun:test";
@@ -12,7 +13,7 @@ import { eq } from "drizzle-orm";
 const f = setupDatabase();
 
 test("only the agent's owner sees which turn published an agent reply", async () => {
-  const { alice, bob, call } = await agentWorkFixture(f);
+  const { alice, bob, call, turn: contextOf } = await agentWorkFixture(f);
   const channel = await alice.createConversation({
     kind: "channel",
     name: "team",
@@ -21,11 +22,12 @@ test("only the agent's owner sees which turn published an agent reply", async ()
   const root = await alice.sendMessage(channel.id, "Status?");
   const turn = threadTurn(channel.id, root.id);
   const reply = await call("reply", { requestId: crypto.randomUUID(), body: "On track" }, turn);
+  const { turnId } = await contextOf(turn);
   const seen = async (reader: typeof alice) =>
     (await reader.listMessages(channel.id, root.id)).find(
       (message) => message.id === reply.messageId,
     );
-  expect((await seen(alice))?.originTurnId).toBe(turn.turnId);
+  expect((await seen(alice))?.originTurnId).toBe(turnId);
   const member = await seen(bob);
   expect(member?.body).toBe("On track");
   expect(member?.originTurnId).toBeNull();
@@ -35,7 +37,7 @@ test("only the agent's owner sees which turn published an agent reply", async ()
       channel.id,
       reply.messageId,
     );
-  expect((await target("alice")).message.originTurnId).toBe(turn.turnId);
+  expect((await target("alice")).message.originTurnId).toBe(turnId);
   expect((await target("bob")).message.originTurnId).toBeNull();
 });
 

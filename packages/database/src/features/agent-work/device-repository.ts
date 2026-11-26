@@ -1,5 +1,3 @@
-import type { DeviceCapability } from "@substrate/contracts/agent-work";
-
 import { committedWrite } from "../../core/effects";
 import type { DatabaseExecutor } from "../../core/executor";
 import type { ResolvedDeviceIdentity } from "../../core/session/device";
@@ -13,18 +11,11 @@ import {
   type OpenRequestInput,
 } from "./requests/device-requests";
 import { loadSourcesForDevice } from "./sources";
-import { publishStatusForDevice, type PublishStatusInput } from "./status";
-import { pullWakesForDevice, ackWakesForDevice } from "./wakes/wakes";
 
 export function createDeviceWorkRepository(db: DatabaseExecutor, identity: ResolvedDeviceIdentity) {
   return {
-    pullWakes: (limit: number, capabilities: readonly DeviceCapability[] = []) =>
-      committedWrite(pullWakesForDevice)(db, identity, limit, capabilities),
-    ackWakes: (ids: string[]) => committedWrite(ackWakesForDevice)(db, identity, ids),
-    loadSources: (messageIds: string[], invocationIds: string[] = []) =>
-      committedWrite(loadSourcesForDevice)(db, identity, messageIds, invocationIds),
-    publishStatus: (input: PublishStatusInput) =>
-      committedWrite(publishStatusForDevice)(db, identity, input),
+    loadSources: (messageIds: string[]) =>
+      committedWrite(loadSourcesForDevice)(db, identity, messageIds),
     openRequest: (input: OpenRequestInput) =>
       committedWrite(openRequestForDevice)(db, identity, input),
     closeRequest: (requestId: string, status: Parameters<typeof closeRequestForDevice>[3]) =>

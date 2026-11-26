@@ -58,7 +58,7 @@ export function HomeDashboard() {
     showsNotification(item, apps.enabled("tasks")),
   );
   const mentions = groups.filter((item) => item.kind === "mention" && item.unreadCount > 0);
-  const { requests, agents, calls, desktopUpdateRequired } = needsYouItems(needsYou.data);
+  const { requests, turns, items, agents } = needsYouItems(needsYou.data);
   const attentionItems: HomeItem[] = [
     ...requests.map((request): HomeItem => ({
       id: request.id,
@@ -75,10 +75,18 @@ export function HomeDashboard() {
           : { to: "/agents", search: { workspaceId: organizationId } },
       trailing: "Review",
     })),
-    ...calls.map((call): HomeItem => ({
-      id: call.id,
-      title: `Approve a call to ${call.agent.name}`,
-      description: "A caller is waiting for your decision",
+    ...turns.map((turn): HomeItem => ({
+      id: turn.id,
+      title: `${turn.agent.name} needs you`,
+      description: "Work stopped · retry, start fresh, or dismiss it",
+      icon: <Hand className="size-4 text-warning" />,
+      link: agentLink(organizationId, turn.userAgentId, "activity", { turnId: turn.id }),
+      trailing: "Review",
+    })),
+    ...items.map((item): HomeItem => ({
+      id: item.id,
+      title: `${item.agent.name} needs you`,
+      description: "A message may not have arrived · resend or discard it",
       icon: <Hand className="size-4 text-warning" />,
       link: { to: "/agents", search: { workspaceId: organizationId } },
       trailing: "Review",
@@ -90,13 +98,6 @@ export function HomeDashboard() {
       icon: <Hand className="size-4 text-warning" />,
       link: agentLink(organizationId, status.userAgentId, "activity"),
       trailing: "Review",
-    })),
-    ...desktopUpdateRequired.map((status): HomeItem => ({
-      id: `update:${status.userAgentId}`,
-      title: `${status.agent.name} needs a desktop update`,
-      description: "Update the home desktop to run caller calls",
-      icon: <Hand className="size-4 text-warning" />,
-      link: agentLink(organizationId, status.userAgentId),
     })),
     ...mentions.map((item): HomeItem => ({
       id: item.groupKey,

@@ -24,14 +24,24 @@
   "boundaries": [
     {
       "name": "agent-admission",
-      "code": ["packages/database/src/features/agent-work/wakes/admission.ts"],
-      "notIn": ["apps/**", "packages/client-storage/**", "packages/harness-runtime/**"],
+      "code": ["packages/database/src/features/agent-work/admission/admission.ts"],
+      "notIn": [
+        "apps/**",
+        "packages/agent-host/**",
+        "packages/client-storage/**",
+        "packages/harness-runtime/**"
+      ],
       "disable": ["semantic"]
     },
     {
       "name": "agent-work-machines",
       "code": ["packages/contracts/src/agent-work/machines"],
-      "notIn": ["apps/**", "packages/database/**", "packages/client-storage/**"],
+      "notIn": [
+        "apps/**",
+        "packages/agent-host/**",
+        "packages/database/**",
+        "packages/client-storage/**"
+      ],
       "disable": ["semantic"]
     }
   ]

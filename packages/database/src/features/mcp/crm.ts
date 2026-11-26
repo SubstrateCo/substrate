@@ -1,5 +1,5 @@
+import type { McpInput } from "@substrate/contracts/agent-tools/tools";
 import type { CrmFromMessageResult } from "@substrate/contracts/crm/from-message";
-import type { McpInput } from "@substrate/contracts/harness/tools";
 
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";

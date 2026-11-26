@@ -1,10 +1,6 @@
 import type {
-  callsLogInput,
   conversationRequestsInput,
-  decideInvocationInput,
   decideProposalInput,
-  listInvocationsInput,
-  myCallsInput,
   ownerScopeInput,
   respondRequestInput,
 } from "@substrate/contracts/agent-work";
@@ -60,32 +56,6 @@ export function createAgentWorkService({ publish }: { publish: CommittedPublishe
       return serviceResult(async () =>
         publish(await scope.repositories.agentWork.declineProposal(requestId)),
       );
-    },
-    /** The owner's calls of their agents. */
-    listInvocations(
-      this: void,
-      scope: WorkspaceScope,
-      input: z.output<typeof listInvocationsInput>,
-    ) {
-      return serviceResult(() => scope.repositories.agentWork.listInvocations(input.userAgentId));
-    },
-    decideInvocation(
-      this: void,
-      scope: WorkspaceScope,
-      invocationId: string,
-      input: z.output<typeof decideInvocationInput>,
-    ) {
-      return serviceResult(async () =>
-        publish(await scope.repositories.agentWork.decideInvocation(invocationId, input.decision)),
-      );
-    },
-    /** The owner's Calls log of one agent. */
-    listCallsLog(this: void, scope: WorkspaceScope, input: z.output<typeof callsLogInput>) {
-      return serviceResult(() => scope.repositories.agentWork.listCallsLog(input.userAgentId));
-    },
-    /** The caller's own call statuses in one conversation. */
-    listMyCalls(this: void, scope: WorkspaceScope, input: z.output<typeof myCallsInput>) {
-      return serviceResult(() => scope.repositories.agentWork.listMyCalls(input.conversationId));
     },
   };
 }

@@ -1,8 +1,5 @@
-import {
-  harnessInstructionsFiles,
-  startupInstructions,
-  type HarnessKind,
-} from "@substrate/contracts/harness";
+import { startupInstructions } from "@substrate/contracts/agent-tools";
+import { harnessInstructionsFiles, type HarnessKind } from "@substrate/contracts/harness-runtime";
 
 import { useId } from "react";
 

@@ -1,4 +1,3 @@
-import type { AgentCallMode } from "@substrate/contracts/agents";
 import { roleLabel } from "@substrate/contracts/auth/roles";
 
 import { View } from "react-native";
@@ -9,11 +8,6 @@ import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { useMessagingProfile } from "@/features/messaging/queries/use-conversations";
 import { ErrorState, LoadingRows } from "@/features/records/ui/states";
-
-const callModes: Record<AgentCallMode, string> = {
-  anyone: "Anyone here can call this agent",
-  ask: "Calls need the owner's approval",
-};
 
 /** A person or agent as this conversation lets the viewer see them. */
 export function ProfileSheet({
@@ -66,9 +60,6 @@ export function ProfileSheet({
           ) : null}
           {data.agent?.ownerName ? (
             <Text className="text-sm text-muted-foreground">{`Owned by ${data.agent.ownerName}`}</Text>
-          ) : null}
-          {data.agent?.callMode ? (
-            <Text className="text-sm text-muted-foreground">{callModes[data.agent.callMode]}</Text>
           ) : null}
           {data.agent?.model ? (
             <Text className="text-sm text-muted-foreground">{`Model: ${data.agent.model}`}</Text>

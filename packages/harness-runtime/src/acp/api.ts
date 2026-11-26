@@ -5,7 +5,7 @@
  * - adapter.ts: NativeAdapter over a negotiated connection.
  * - models.ts / auth.ts: catalog probe and sign-in over the same connection.
  */
-import type { HarnessErrorCode, HarnessKind } from "@substrate/contracts/harness";
+import type { HarnessErrorCode, HarnessKind } from "@substrate/contracts/harness-runtime";
 
 import type { AdapterContext, NativeAdapter } from "../adapters/types.ts";
 

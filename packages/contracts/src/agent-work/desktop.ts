@@ -1,48 +1,39 @@
-import type { HarnessKind } from "../harness/kinds.ts";
 import type { AgentWorkMethods } from "./ipc.ts";
-import type { AgentStatusState } from "./status.ts";
-import type {
-  AgentHelperView,
-  AgentInboxItemView,
-  AgentSessionView,
-  AgentTurnView,
-} from "./turns.ts";
 
 export { channel as agentWorkChannel } from "./ipc.ts";
 export const agentWorkChangeChannel = "substrate:agent-work:change";
 /** The most events one turnEvents call returns. A full page means more may follow. */
 export const turnEventsPageSize = 1000;
 
-/** Local work in one conversation, for agents homed on this desktop. */
-export interface AgentConversationWork {
-  conversationId: string;
-  sessions: AgentSessionView[];
-  turns: AgentTurnView[];
-  /** Items not yet in a finished turn: pending, held, submitted and uncertain. */
-  items: AgentInboxItemView[];
-}
-
-/** An agent that runs on this desktop. */
-export interface AgentLocalSummary {
+/**
+ * One attempt of a server turn that this desktop ran: the input it sent the harness. The
+ * server's turn summary has everything else.
+ */
+export interface AgentTurnRunView {
+  turnId: string;
+  attempt: number;
+  sessionId: string;
   userAgentId: string;
-  harness: HarnessKind;
-  state: AgentStatusState;
+  /** The local epoch of the native session the attempt ran in. */
+  epoch: number;
+  envelope: string;
+  /** The SHA-256 of the managed prefix, to compare prefixes across turns. */
+  prefixHash: string;
+  /** Transcript events of this attempt. */
+  eventCount: number;
+  createdAt: string;
+}
+
+/** An agent whose home is this desktop, while agent work runs here. */
+export interface AgentHomedHere {
+  userAgentId: string;
+  /** Server turns this desktop runs for the agent now. */
   liveTurnIds: string[];
-  queuedCount: number;
-  needsAttentionTurnIds: string[];
 }
 
-export interface AgentActivityPage {
-  sessions: AgentSessionView[];
-  turns: AgentTurnView[];
-  helpers: AgentHelperView[];
-  nextCursor: string | null;
-}
-
-/** A hint that local agent work changed. It carries IDs only; refetch what it names. */
+/** A hint that local transcripts or homed agents changed. It carries IDs only. */
 export interface AgentWorkChange {
   userAgentId?: string;
-  conversationId?: string;
   turnId?: string;
 }
 

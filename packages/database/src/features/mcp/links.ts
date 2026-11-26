@@ -1,10 +1,10 @@
-import { contextEntityTypes, type ContextEntityType } from "@substrate/contracts/context/input";
 import {
   linkPreview,
   type linkKinds,
   type McpInput,
   type McpOutput,
-} from "@substrate/contracts/harness/tools";
+} from "@substrate/contracts/agent-tools/tools";
+import { contextEntityTypes, type ContextEntityType } from "@substrate/contracts/context/input";
 
 import { joinActorAccount } from "../../core/actors/joined-profile";
 import { entities } from "../../core/entities/schema";

@@ -3,10 +3,8 @@ export {
   deleteAgentInput,
   setAgentPictureInput,
   saveSkillInput,
-  deleteSkillInput,
-  saveMcpServerInput,
-  deleteMcpServerInput,
-} from "./input";
+  agentCatalogSchema,
+} from "./input.ts";
 export {
   agentTriggerKinds,
   agentTriggerPrecedence,
@@ -15,26 +13,13 @@ export {
   type AgentTriggerKind,
   type AgentTriggerSetting,
   type SaveAgentTriggersInput,
-} from "./triggers";
-export {
-  agentCallerPolicies,
-  agentCallerInput,
-  listCallersInput,
-  saveCallerPolicyInput,
-  type AgentCallerInput,
-  type AgentCallerPolicy,
-  type AgentCallMode,
-  type AgentCallers,
-  type AgentCallerView,
-  type SaveCallerPolicyInput,
-} from "./callers";
+} from "./triggers.ts";
 export type {
   SaveAgentInput,
   SaveAgentValues,
   SetAgentPictureInput,
   SaveSkillInput,
-  SaveMcpServerInput,
   AgentConfiguration,
   AgentCatalog,
   AgentRunSettings,
-} from "./input";
+} from "./input.ts";

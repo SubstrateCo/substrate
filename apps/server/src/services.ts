@@ -10,8 +10,9 @@ import { createDesktopService, type DesktopConfig } from "./desktop/service";
 import type { CommittedPublisher } from "./shared/committed";
 import type { ObjectStorage } from "./storage/types";
 import { createDeviceService } from "./v1/agent-work/device-service";
+import { createHostService } from "./v1/agent-work/host-service";
 import { createAgentWorkService } from "./v1/agent-work/service";
-import { createCallerService } from "./v1/agents/callers-service";
+import { createWorkService } from "./v1/agent-work/work-service";
 import { createAgentService } from "./v1/agents/service";
 import { createCalendarService, type CalendarServiceDependencies } from "./v1/calendar/service";
 import { createContactsService } from "./v1/contacts/service";
@@ -72,9 +73,10 @@ export function createServices(deps: {
     }),
     context: createContextService(deps),
     agents: createAgentService(deps),
-    callers: createCallerService(deps),
     agentWork: createAgentWorkService(deps),
     devices: createDeviceService(deps),
+    host: createHostService(deps),
+    work: createWorkService(deps),
     mcp: createMcpService(deps),
     organizations: createOrganizationService(deps),
   };

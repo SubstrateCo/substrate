@@ -1,4 +1,4 @@
-import type { HarnessKind } from "@substrate/contracts/harness";
+import type { HarnessKind } from "@substrate/contracts/harness-runtime";
 
 import { queryOptions, skipToken } from "@tanstack/react-query";
 
@@ -6,15 +6,17 @@ import { queryKeys } from "../keys";
 import { desktopLocalConfiguration } from "@/lib/desktop/agents/local-configuration";
 
 /**
- * One saved agent's files on this desktop. Only the desktop app with an active workspace can read
- * them; elsewhere this is `undefined`.
+ * One saved agent's files on this desktop. Skills and MCP servers stay on the agent's home
+ * desktop, so only the desktop app that is its home can read them; elsewhere this is `undefined`.
  */
 export function localAgentConfiguration(
   userId: string,
   organizationId: string,
   agentId: string | undefined,
   harness: HarnessKind,
+  homedHere: boolean,
 ) {
+  if (!homedHere) return undefined;
   const controller = desktopLocalConfiguration(harness, agentId);
   if (!controller || !agentId) return undefined;
   return {

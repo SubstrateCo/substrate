@@ -24,25 +24,22 @@ afterEach(() => {
 
 test("hints for one turn in the same window invalidate each distinct key once", () => {
   const { invalidated, batcher } = setup();
-  const change = { userAgentId: "a1", turnId: "t1", conversationId: "c1" };
+  const change = { userAgentId: "a1", turnId: "t1" };
   batcher.receive(change);
   batcher.receive(change);
   batcher.receive(change);
   expect(invalidated).toEqual([]);
   jest.advanceTimersByTime(window);
   expect(invalidated).toEqual([
-    queryKeys.agentWorkAgents("user", "org"),
-    queryKeys.agentWorkConversation("user", "org", "c1"),
+    queryKeys.agentWorkHomed("user", "org"),
     queryKeys.agentWorkTurnEvents("user", "org", "t1"),
-    queryKeys.agentWorkActivity("user", "org", "a1"),
-    queryKeys.agentWorkRoutines("user", "org", "a1"),
   ]);
   batcher.dispose();
 });
 
 test("a hint without IDs in the window collapses everything to the local key", () => {
   const { invalidated, batcher } = setup();
-  batcher.receive({ userAgentId: "a1", turnId: "t1", conversationId: "c1" });
+  batcher.receive({ userAgentId: "a1", turnId: "t1" });
   batcher.receive({});
   batcher.receive({ turnId: "t2" });
   jest.advanceTimersByTime(window);

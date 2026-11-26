@@ -21,13 +21,13 @@ Substrate is an Electron workspace for email, messages, docs, tasks, agents, and
 
 ## Agent work
 
-- Agents run on their owner's home desktop. The server keeps shared records and only what other devices need: wakes, requests, and agent status. The desktop keeps sessions, turns, transcripts, routines, and helpers in local SQLite. The native harness only executes turns.
-- Admission decides every wake (`decideAdmission` in `packages/database/src/features/agent-work/wakes/admission.ts`). The owner wakes their agent: owner messages, owner answers and approvals, owner-approved routines, and the agent's own helpers. Other people wake it only as callers that the owner's caller policy admits: human members of the agent's organization, in channels and groups the owner can see. A call runs with the owner's access, and the owner approves it under `ask`. Agent-written messages never wake an agent.
+- The server owns agent control: sessions, work items (the queue), turns and their leases, routines, helpers, requests, and agent status, which it derives on read. The owner's home desktop is the agent host (`packages/agent-host`, wired into Electron by `apps/desktop`): it claims leased turns over `/api/v1/agent-work/host/*`, runs them in native harness sessions, and reports progress and ends. The host keeps only native sessions, turn runs, transcripts, handoffs, skills, and MCP servers locally. The host never decides what work exists. Other devices read and command agent work over HTTP.
+- Admission decides every work item, including host-submitted ones (`decideAdmission` in `packages/database/src/features/agent-work/admission/admission.ts`). Only the owner wakes their agent: owner messages, owner answers and approvals, owner-approved routines, and the agent's own helpers. Other people's thread messages become passive context that never starts a turn, and agent-written messages never wake an agent.
 - Agents publish only through `reply` and `propose`. Assistant text outside tools is the owner-only transcript. A turn with nothing useful to say ends quietly.
 - Change agent-work statuses only through a machine event's compare-and-set (`packages/contracts/src/agent-work/machines/`): match the event's `from` states in the `WHERE` clause and write its `to` state. Add a new transition to the machine table first.
-- Every agent-work trigger needs an entry in `packages/contracts/src/agent-work/triggers/registry.ts`. Local triggers enqueue only through `enqueue()` in client storage; callers do not choose a lane.
-- The desktop host attaches a `TurnContext` to every MCP call. The model never supplies it, and the server checks it before using any field.
-- Runtime rules for agents live in `packages/contracts/src/harness/policy.ts`. Bump `POLICY_VERSION` with every change to that text; the bump rotates every session's context.
+- Every agent-work trigger needs an entry in `packages/contracts/src/agent-work/triggers/registry.ts`. The registry alone chooses an item's lane; callers never choose one.
+- The host attaches a `TurnContext` (`{ turnId, attempt }`) to every MCP call. The model never supplies it. The server loads the turn and uses it only while it is live, in that attempt, and leased by the caller's device, which is the agent's home; everything else comes from the server's turn and session rows.
+- Runtime rules for agents live in `packages/contracts/src/agent-tools/policy.ts`. Bump `POLICY_VERSION` with every change to that text; the bump rotates every session's context.
 
 ## Code organization
 

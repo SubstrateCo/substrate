@@ -2,6 +2,7 @@ import { useEffect, useRef, type ReactNode } from "react";
 
 import { TechnicalDetails } from "../technical-details";
 import { TurnTimelineLoading } from "./turn-timeline";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { PaneState } from "@/components/feedback/pane-state";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
@@ -13,7 +14,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { WorkTone } from "@/lib/agent-work/status";
 import { cn } from "cn";
-import { Bot, Square, X } from "lucide-react";
+import { Bot, Laptop, Square, X } from "lucide-react";
 
 function Detail({ label, children }: { label: string; children: ReactNode }) {
   return (
@@ -70,6 +71,7 @@ function TranscriptDetails({
 
 function TranscriptBody({
   unavailable,
+  timelineNotice,
   loading,
   error,
   onRetry,
@@ -77,6 +79,7 @@ function TranscriptBody({
   timeline,
 }: {
   unavailable?: string;
+  timelineNotice?: string;
   loading: boolean;
   error: Error | null;
   onRetry: () => void;
@@ -84,11 +87,20 @@ function TranscriptBody({
   timeline?: ReactNode;
 }) {
   if (unavailable) return <PaneState label={unavailable} />;
-  if (timeline)
+  if (timeline || timelineNotice)
     return (
       <div className="min-h-0 flex-1 overflow-y-auto">
         {details}
-        {timeline}
+        {timeline ?? (
+          <div className="px-5 py-4">
+            <ContentNotice
+              variant="compact"
+              icon={Laptop}
+              title="The transcript is on another desktop"
+              description={timelineNotice}
+            />
+          </div>
+        )}
       </div>
     );
   if (loading)
@@ -122,6 +134,7 @@ export function TurnTranscriptView({
   outputs,
   timeline,
   unavailable,
+  timelineNotice,
   loading,
   error,
   onRetry,
@@ -140,8 +153,10 @@ export function TurnTranscriptView({
   sources?: ReactNode;
   outputs?: ReactNode;
   timeline?: ReactNode;
-  /** Why the transcript can't show here, such as "Open on MacBook". */
+  /** Why the turn can't show here, such as work that is gone. */
   unavailable?: string;
+  /** Why the timeline can't show here: only the desktop that ran the work stores it. */
+  timelineNotice?: string;
   loading: boolean;
   error: Error | null;
   onRetry: () => void;
@@ -205,6 +220,7 @@ export function TurnTranscriptView({
       />
       <TranscriptBody
         unavailable={unavailable}
+        timelineNotice={timelineNotice}
         loading={loading}
         error={error}
         onRetry={onRetry}

@@ -2,7 +2,7 @@
 export const agentSettingsSections = ["general", "instructions", "skills", "mcps", "run"] as const;
 export type AgentSettingsSection = (typeof agentSettingsSections)[number];
 
-export const agentConversationSections = ["messages", "activity", "routines", "calls"] as const;
+export const agentConversationSections = ["messages", "activity", "routines"] as const;
 export type AgentConversationSection = (typeof agentConversationSections)[number];
 
 /** Messages is the default. Settings sections share one Settings tab. */

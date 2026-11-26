@@ -1,11 +1,11 @@
+import { createAgentWorkRuntime } from "@substrate/agent-host";
+import { agentId, organizationId, runtimeFixture } from "@substrate/agent-host/testing";
 import { AgentWorkStore } from "@substrate/client-storage/agent-work";
-import type { LocalToolRequest } from "@substrate/contracts/harness/mcp";
+import type { LocalToolRequest } from "@substrate/contracts/agent-tools/mcp";
 import type { RealtimeDomain, RealtimeUpdate } from "@substrate/contracts/realtime";
 import { advanceTimersAsync } from "@substrate/contracts/testing/timers";
 
 import { DesktopSessionAuthority } from "../session/desktop-session-authority.ts";
-import { createAgentWorkRuntime } from "./runtime/runtime.ts";
-import { agentId, organizationId, runtimeFixture } from "./runtime/test-support.ts";
 import { createAgentWorkService } from "./service.ts";
 import { afterEach, expect, jest, test } from "bun:test";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
@@ -15,19 +15,14 @@ import type { z } from "zod";
 
 const backend = "https://api.example.com";
 /** A well-formed local tool call. Tests use it where no runtime is available to answer it. */
+const handoff = { objectives: "Ship it.", openWork: "", references: [] };
 const unscopedLocalCall: LocalToolRequest = {
-  tool: "list_helpers",
+  tool: "save_handoff",
   sessionId: "session-1",
   organizationId: "org-1",
   agentId: "00000000-0000-4000-8000-0000000000a1",
-  input: {},
-  turn: {
-    turnId: "00000000-0000-4000-8000-0000000000a2",
-    attempt: 1,
-    sessionKey: "session",
-    origin: null,
-    kind: "interactive",
-  },
+  input: handoff,
+  turn: { turnId: "00000000-0000-4000-8000-0000000000a2", attempt: 1 },
 };
 
 function gate() {
@@ -45,7 +40,7 @@ function gate() {
 
 async function expectUnavailable(service: ReturnType<typeof createAgentWorkService>) {
   // Bun's assertion returns a promise at runtime, despite its synchronous type.
-  await Promise.resolve(expect(service.call("agents")).rejects.toThrow("unavailable"));
+  await Promise.resolve(expect(service.call("homedAgents")).rejects.toThrow("unavailable"));
 }
 
 function change(domain: RealtimeDomain): RealtimeUpdate {
@@ -114,9 +109,9 @@ async function serviceFixture(
   let closeGate: ReturnType<typeof gate> | undefined;
   const closedOrganizations: string[] = [];
   const registeredOrganizations: string[] = [];
-  const pulledOrganizations: string[] = [];
-  /** Wakes the next pull returns. */
-  const wakes: z.core.util.JSONType[] = [];
+  const syncedOrganizations: string[] = [];
+  /** Turns the next claim returns. */
+  const claims: z.core.util.JSONType[] = [];
   const ok = (data: z.core.util.JSONType) => Response.json({ success: true, data });
   const serviceOptions = {
     backend,
@@ -133,7 +128,6 @@ async function serviceFixture(
         closedOrganizations.push(id);
         await closeGate?.wait();
       },
-      readProfile: async () => "",
     },
     async fetchAPI(url: string, init: RequestInit) {
       const path = new URL(url).pathname;
@@ -166,11 +160,11 @@ async function serviceFixture(
         registeredOrganizations.push(organizationId);
         await registrationGate?.wait();
       }
-      if (path === "/api/v1/agent-work/needs-you") return ok({ requests: [] });
-      if (path.endsWith("/wakes/pull")) {
-        pulledOrganizations.push((await new Response(init.body).json()).organizationId);
-        return ok(wakes.splice(0));
+      if (path.endsWith("/host/sync")) {
+        syncedOrganizations.push((await new Response(init.body).json()).organizationId);
+        return ok({ turns: [] });
       }
+      if (path.endsWith("/host/claim")) return ok({ turns: claims.splice(0) });
       if (path.endsWith("/requests/answers")) return ok([]);
       return ok(null);
     },
@@ -187,10 +181,10 @@ async function serviceFixture(
   return {
     service,
     deniedOnce,
-    wakes,
+    claims,
     closedOrganizations,
     registeredOrganizations,
-    pulledOrganizations,
+    syncedOrganizations,
     /** Resolves at the next request to path. */
     requested(path: string) {
       const request = Promise.withResolvers<void>();
@@ -236,7 +230,7 @@ test("calls cannot open agent work before start or after stop", async () => {
   await expectUnavailable(f.service);
   expect(f.sessionChecks()).toBe(0);
   f.service.start();
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   await f.service.stop();
   await expectUnavailable(f.service);
 });
@@ -259,7 +253,7 @@ async function liveServiceFixture() {
     await runtime.close();
   };
   f.service.start();
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   await runtime.message();
   return { ...f, runtime };
 }
@@ -270,30 +264,30 @@ test("a live local tool still works during slow routine verification", async () 
   jest.useFakeTimers();
   jest.advanceTimersByTime(60_001);
   const pending = f.holdSession();
-  const read = f.service.call("agents");
+  const read = f.service.call("homedAgents");
   await pending.entered;
   const result = await f.service.handleLocalTool({
-    tool: "list_helpers" as const,
+    tool: "save_handoff" as const,
     sessionId: turn.sessionId,
     organizationId,
     agentId,
-    input: {},
+    input: handoff,
     turn: turn.context,
   });
   pending.release();
   await read;
-  expect(result).toEqual({ success: true, data: { items: [] } });
+  expect(result).toEqual({ success: true, data: { saved: true } });
 });
 
 test("a session invalidation blocks old local tools during verification and after denial", async () => {
   const f = await liveServiceFixture();
   const turn = f.runtime.turns()[0]!;
   const request = {
-    tool: "list_helpers" as const,
+    tool: "save_handoff" as const,
     sessionId: turn.sessionId,
     organizationId,
     agentId,
-    input: {},
+    input: handoff,
     turn: turn.context,
   };
   const pending = f.holdSession();
@@ -312,24 +306,23 @@ test("a session invalidation blocks old local tools during verification and afte
   });
 });
 
-test("an agents hint during slow verification promptly interrupts a moved live turn", async () => {
+test("an agents hint during slow verification promptly stops a moved live turn", async () => {
   const f = await liveServiceFixture();
   const turn = f.runtime.turns()[0]!;
   jest.useFakeTimers();
   jest.advanceTimersByTime(60_001);
   const pending = f.holdSession();
-  const read = f.service.call("agents");
+  const read = f.service.call("homedAgents");
   await pending.entered;
-  f.runtime.catalog[0]!.home = false;
+  // The move ends the server lease; the hint's sync stops the turn here.
+  f.runtime.control.release(turn.turnId);
   f.service.onRealtime(change("agents"));
   pending.release();
   await read;
-  await f.runtime.settle();
-  expect(await f.runtime.store.turns.get(turn.turnId)).toMatchObject({
-    status: "interrupted",
-    interruption: "moved",
-  });
+  await f.runtime.advance(300);
   expect(f.runtime.nativeSessions()).toEqual([]);
+  expect(f.runtime.runtime.liveTurnIds()).toEqual([]);
+  expect(f.runtime.hostCalls("finish")).toEqual([]);
 });
 
 test("stop drains an in-flight verification without opening a runtime", async () => {
@@ -369,7 +362,7 @@ test("stop waits for runtime startup and closes it only once", async () => {
 test("start during stop waits for retirement before opening another runtime", async () => {
   const f = await serviceFixture();
   f.service.start();
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   const pending = f.holdClose();
   const stopping = f.service.stop();
   await pending.entered;
@@ -377,7 +370,7 @@ test("start during stop waits for retirement before opening another runtime", as
   await expectUnavailable(f.service);
   pending.release();
   await stopping;
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   expect(f.registeredOrganizations).toHaveLength(2);
 });
 
@@ -389,20 +382,20 @@ test("a session change during verification retries instead of dropping the chang
   f.organization("org-2");
   f.service.onRealtime(change("organization"));
   pending.release();
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   expect(f.sessionChecks()).toBe(2);
   expect(f.registeredOrganizations).toEqual(["org-2"]);
-  expect(f.pulledOrganizations.length).toBeGreaterThan(0);
-  expect(f.pulledOrganizations.every((id) => id === "org-2")).toBe(true);
+  expect(f.syncedOrganizations.length).toBeGreaterThan(0);
+  expect(f.syncedOrganizations.every((id) => id === "org-2")).toBe(true);
 });
 
 test("a completed stop can restart agent work", async () => {
   const f = await serviceFixture();
   f.service.start();
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   await f.service.stop();
   f.service.start();
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   expect(f.registeredOrganizations).toHaveLength(2);
   expect(f.closedOrganizations).toEqual(["org-1"]);
 });
@@ -410,10 +403,10 @@ test("a completed stop can restart agent work", async () => {
 test("an account change retires the old runtime even in the same organization", async () => {
   const f = await serviceFixture();
   f.service.start();
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   f.account("user-2");
   f.service.onRealtime(change("session"));
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   expect(f.closedOrganizations).toEqual(["org-1"]);
   expect(f.registeredOrganizations).toHaveLength(2);
 });
@@ -421,7 +414,7 @@ test("an account change retires the old runtime even in the same organization", 
 test("another stop cancels a queued restart", async () => {
   const f = await serviceFixture();
   f.service.start();
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   const pending = f.holdClose();
   const stopping = f.service.stop();
   await pending.entered;
@@ -436,7 +429,7 @@ test("another stop cancels a queued restart", async () => {
 test("a workspace change during retirement cannot publish the superseded workspace", async () => {
   const f = await serviceFixture();
   f.service.start();
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   const pending = f.holdClose();
   f.organization("org-2");
   f.service.onRealtime(change("organization"));
@@ -448,10 +441,10 @@ test("a workspace change during retirement cannot publish the superseded workspa
   f.organization("org-3");
   f.service.onRealtime(change("organization"));
   pending.release();
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   expect(f.registeredOrganizations).toEqual(["org-1", "org-3"]);
   expect(f.closedOrganizations).toEqual(["org-1"]);
-  expect(f.pulledOrganizations).not.toContain("org-2");
+  expect(f.syncedOrganizations).not.toContain("org-2");
 });
 
 test("stop closes a store whose open completes late without starting its runtime", async () => {
@@ -482,10 +475,10 @@ test("a workspace change during store open closes the stale store before replace
     f.organization("org-2");
     f.service.onRealtime(change("organization"));
     pending.release();
-    await f.service.call("agents");
+    await f.service.call("homedAgents");
     expect(opening.closed()).toBe(1);
     expect(f.registeredOrganizations).toEqual(["org-2"]);
-    expect(f.pulledOrganizations.every((id) => id === "org-2")).toBe(true);
+    expect(f.syncedOrganizations.every((id) => id === "org-2")).toBe(true);
   } finally {
     pending.release();
   }
@@ -494,13 +487,13 @@ test("a workspace change during store open closes the stale store before replace
 test("agent work reuses the verified session until a session, access, organization or app hint or ready", async () => {
   const f = await serviceFixture();
   f.service.start();
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   await flush();
   expect(f.sessionChecks()).toBe(1);
 
   // Renderer reads and agent-work hints use the session that was already verified.
   for (let index = 0; index < 3; index++) {
-    await f.service.call("agents");
+    await f.service.call("homedAgents");
     f.service.onRealtime(change("agent-work"));
   }
   await flush();
@@ -508,10 +501,10 @@ test("agent work reuses the verified session until a session, access, organizati
 
   for (const domain of ["session", "access", "organization", "apps"] as const) {
     f.service.onRealtime(change(domain));
-    await f.service.call("agents");
+    await f.service.call("homedAgents");
   }
   f.service.onRealtime({ version: 1, type: "ready" });
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   await flush();
   expect(f.sessionChecks()).toBe(6);
   expect(f.memberChecks()).toBe(6);
@@ -520,69 +513,89 @@ test("agent work reuses the verified session until a session, access, organizati
 test("confirmed session denial blocks access to the previous local runtime", async () => {
   const f = await serviceFixture();
   f.service.start();
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   f.sessionStatus(401);
   f.service.onRealtime(change("session"));
-  await Promise.resolve(expect(f.service.call("agents")).rejects.toThrow("Sign in"));
+  await Promise.resolve(expect(f.service.call("homedAgents")).rejects.toThrow("Sign in"));
 });
 
 test("a server outage preserves the recoverable local runtime", async () => {
   const f = await serviceFixture();
   f.service.start();
-  const before = await f.service.call("agents");
+  const before = await f.service.call("homedAgents");
   f.sessionStatus(503);
   f.service.onRealtime(change("session"));
-  expect(await f.service.call("agents")).toEqual(before);
+  expect(await f.service.call("homedAgents")).toEqual(before);
 });
 
 test("a server call denied with UNAUTHENTICATED verifies the session again", async () => {
   jest.useFakeTimers();
   const f = await serviceFixture();
   f.service.start();
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   await flush();
   expect(f.sessionChecks()).toBe(1);
 
-  f.deniedOnce.add("/api/v1/agent-work/device/wakes/pull");
+  f.deniedOnce.add("/api/v1/agent-work/host/sync");
   const invalidated = f.invalidated();
   f.service.onRealtime(change("agent-work"));
-  // Agent-work hints pull after a short window.
+  // Agent-work hints run the host cycle after a short window.
   await advanceTimersAsync(300);
   await invalidated;
   expect(f.deniedOnce.size).toBe(0);
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   expect(f.sessionChecks()).toBe(2);
 });
 
-test("a wake for an unknown agent reads the catalog from the server again", async () => {
+test("a claimed turn of an agent the cached catalog does not list reads the catalog again", async () => {
   jest.useFakeTimers();
   const f = await serviceFixture();
   f.service.start();
-  await f.service.call("agents");
+  await f.service.call("homedAgents");
   await flush();
   const before = f.catalogReads();
   expect(before).toBeGreaterThan(0);
 
-  // The server adopts unhomed agents at pull, so the cached catalog may not list this one.
-  f.wakes.push({
-    id: "wake-1",
-    userAgentId: "00000000-0000-4000-8000-0000000000a1",
-    source: "owner_message",
-    sourceRef: {
-      messageId: "00000000-0000-4000-8000-0000000000b1",
-      conversationId: "00000000-0000-4000-8000-0000000000c1",
-      threadId: null,
-      kind: "direct_message",
+  // The server adopts unhomed agents at claim, so the cached catalog may not list this one.
+  const sessionId = "00000000-0000-4000-8000-0000000000e1";
+  f.claims.push({
+    turn: {
+      id: "00000000-0000-4000-8000-0000000000f1",
+      userAgentId: "00000000-0000-4000-8000-0000000000a1",
+      sessionId,
+      folderKey: "main:00000000-0000-4000-8000-0000000000a1",
+      kind: "interactive",
+      status: "assigned",
+      attempt: 1,
+      generation: 1,
+      handoff: false,
+      interruption: null,
+      recoveries: 0,
+      autoContinue: true,
+      resumesTurnId: null,
+      leaseExpiresAt: null,
+      createdAt: new Date().toISOString(),
+      startedAt: null,
     },
-    sessionKey: "dm:00000000-0000-4000-8000-0000000000c1",
-    dedupeKey: "msg:00000000-0000-4000-8000-0000000000b1",
-    createdAt: new Date().toISOString(),
-    request: null,
+    session: {
+      id: sessionId,
+      userAgentId: "00000000-0000-4000-8000-0000000000a1",
+      key: "dm:00000000-0000-4000-8000-0000000000c1",
+      kind: "dm",
+      status: "working",
+      parentSessionId: null,
+      helperId: null,
+      origin: { conversationId: "00000000-0000-4000-8000-0000000000c1", threadId: null },
+      destination: null,
+      resetGeneration: 0,
+      resetReason: null,
+    },
+    items: [],
   });
   const catalogRead = f.requested("/api/v1/agents/list");
   f.service.onRealtime(change("agent-work"));
   await advanceTimersAsync(300);
   await catalogRead;
-  expect(f.wakes).toHaveLength(0);
+  expect(f.claims).toHaveLength(0);
   expect(f.catalogReads()).toBe(before + 1);
 });

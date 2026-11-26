@@ -1,3 +1,11 @@
+import { harnessConfiguration, turnContextSchema } from "@substrate/contracts/agent-tools";
+import {
+  localToolRequest,
+  workspaceApiResult,
+  type LocalToolProxy,
+  type WorkspaceApiProxy,
+} from "@substrate/contracts/agent-tools/mcp";
+import { mcpTools } from "@substrate/contracts/agent-tools/tools";
 import type { IpcValue } from "@substrate/contracts/desktop/ipc";
 import {
   harnessIdSchema,
@@ -11,7 +19,7 @@ import {
   type HarnessCommand,
   type HarnessCommandResult,
   type HarnessErrorCode,
-} from "@substrate/contracts/harness";
+} from "@substrate/contracts/harness-runtime";
 import {
   harnessMethods,
   localHarnessMethods,
@@ -20,13 +28,6 @@ import {
   signInHarnessMethods,
 } from "@substrate/contracts/harness/ipc";
 import type { HarnessAPI, HarnessMethod } from "@substrate/contracts/harness/ipc";
-import {
-  localToolRequest,
-  workspaceApiResult,
-  type LocalToolProxy,
-  type WorkspaceApiProxy,
-} from "@substrate/contracts/harness/mcp";
-import { mcpTools } from "@substrate/contracts/harness/tools";
 
 import {
   DesktopSessionAuthority,
@@ -35,8 +36,10 @@ import {
 import { createMcpApiProxy } from "../mcp/mcp-api-proxy.ts";
 import { HarnessWorkerError, type HarnessWorker } from "../worker/protocol.ts";
 import {
+  AgentNotHomedHere,
   prepareLocalInput,
   prepareMcpServerSave,
+  requireHomedHere,
   type LocalMcpServers,
 } from "./local-configuration.ts";
 import { join } from "node:path";
@@ -141,10 +144,9 @@ export function createHarnessController(options: {
     };
   }
 
-  /** An agent of the verified organization's catalog, as main configured the worker with. */
+  /** An agent of the verified organization's catalog that is homed on this desktop. */
   async function requireAgent(agentId: string) {
-    const { agents } = await authority.catalog();
-    if (!agents.some((agent) => agent.id === agentId)) throw new Error("Agent not found.");
+    requireHomedHere(await authority.catalog(), agentId);
   }
 
   /**
@@ -170,6 +172,7 @@ export function createHarnessController(options: {
       }
       case "scanConfiguration": {
         const input = prepareLocalInput(method, value, organizationId);
+        await requireAgent(input.agentId);
         const native = harnessNativeConfigurationSchema.parse(await target.request(method, input));
         return harnessLocalConfigurationSchema.parse({
           ...native,
@@ -182,12 +185,21 @@ export function createHarnessController(options: {
         if (catalog.harness !== input.harness) throw new Error("Invalid model catalog.");
         return catalog;
       }
-      case "saveSkill":
-        return target.request(method, prepareLocalInput(method, value, organizationId));
-      case "deleteSkill":
-        return target.request(method, prepareLocalInput(method, value, organizationId));
-      case "resetDefaults":
-        return target.request(method, prepareLocalInput(method, value, organizationId));
+      case "saveSkill": {
+        const input = prepareLocalInput(method, value, organizationId);
+        await requireAgent(input.agentId);
+        return target.request(method, input);
+      }
+      case "deleteSkill": {
+        const input = prepareLocalInput(method, value, organizationId);
+        await requireAgent(input.agentId);
+        return target.request(method, input);
+      }
+      case "resetDefaults": {
+        const input = prepareLocalInput(method, value, organizationId);
+        await requireAgent(input.agentId);
+        return target.request(method, input);
+      }
     }
   }
 
@@ -251,11 +263,10 @@ export function createHarnessController(options: {
           localTools(sync.current),
         );
         identity = auth.identity;
-        await worker.request("configure", {
-          agents,
-          enabledApps,
-          organizationId: auth.organizationId,
-        });
+        await worker.request(
+          "configure",
+          harnessConfiguration({ agents, enabledApps, organizationId: auth.organizationId }),
+        );
         sync.assertCurrent(auth.identity);
         return { connected: true, organizationId: auth.organizationId };
       }
@@ -290,6 +301,8 @@ export function createHarnessController(options: {
     } catch (error) {
       // Do not reveal account IDs, backend errors, or local file paths to the renderer.
       if (error instanceof CommandFailure) throw new Error("Harness command failed.");
+      if (error instanceof AgentNotHomedHere)
+        throw new HarnessCommandError("agent-not-home", error.message);
       // Only lost access, another account or a stopped worker ends the worker. Network,
       // backend and command failures leave it and its live sessions running.
       if (
@@ -377,6 +390,8 @@ export function createHarnessController(options: {
       let parsed: HarnessCommand;
       try {
         parsed = commandSchema.parse(command);
+        // The worker's tool provider binds the server turn context; main rejects others first.
+        if (parsed.type === "turn") turnContextSchema.parse(parsed.context);
       } catch {
         throw new HarnessCommandError("invalid-command");
       }
@@ -392,17 +407,6 @@ export function createHarnessController(options: {
       }
       // SAFETY: every other command resolves to void.
       return undefined as HarnessCommandResult<C>;
-    },
-    /** memory/profile.md of an agent in the verified organization, for its managed prefix. */
-    async readProfile(agentId: string): Promise<string> {
-      const target = await connected();
-      const scope = {
-        organizationId: target.auth.organizationId,
-        agentId: harnessIdSchema.parse(agentId),
-      };
-      return z
-        .string()
-        .parse(await request(target, () => target.worker.request("readProfile", scope)));
     },
     /**
      * Main-only. Interrupts and closes every native session of the organization, also after

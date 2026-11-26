@@ -1,4 +1,4 @@
-import type { HarnessKind } from "@substrate/contracts/harness";
+import type { HarnessKind } from "@substrate/contracts/harness-runtime";
 
 import { HarnessError } from "../errors.ts";
 import { binaryVersion, findCommands, isWindowsNative } from "../process.ts";

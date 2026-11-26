@@ -16,6 +16,8 @@ export {
 } from "./core/outbox/outbox";
 export type { RealtimeChange } from "./core/outbox/schema";
 export { pruneRecords } from "./maintenance";
+export { sweepAgentLeases } from "./features/agent-work/host/sweep";
+export { fireRoutines } from "./features/agent-work/routines/scheduler";
 export { migrateDatabase } from "./migrations";
 
 export function createStorageRepository(db: Database, references = attachmentReferences) {

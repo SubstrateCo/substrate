@@ -1,17 +1,19 @@
-import type { HarnessAgent, HarnessMcpServer } from "@substrate/contracts/harness";
+import type { AgentConfiguration } from "@substrate/contracts/agents";
+import type { HarnessMcpServer } from "@substrate/contracts/harness-runtime";
 
 import { prepareLocalInput, prepareMcpServerSave } from "./local-configuration.ts";
 import { fixture } from "./test-support.ts";
 import { describe, expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
 
-const agent: HarnessAgent = {
+const agent: AgentConfiguration = {
   id: "agent-1",
   name: "Agent",
   instructions: "",
   harness: "opencode",
   enabled: true,
   useStartupDefaults: true,
+  image: null,
 };
 
 describe("desktop harness local configuration", () => {
@@ -50,7 +52,7 @@ describe("desktop harness local configuration", () => {
       expect(() => prepareMcpServerSave(value)).toThrow();
   });
   test("local file operations use the verified active organization", async () => {
-    const f = fixture();
+    const f = fixture(undefined, [], { agents: [agent] });
     await f.controller.run("synchronize");
     const input = {
       harness: "codex",
@@ -125,6 +127,31 @@ describe("desktop harness local configuration", () => {
     expect(f.mcpServers.get("org-1/agent-1")).toEqual([]);
     expect(f.calls.length).toBe(calls);
   });
+  test("skills and MCP servers of an agent homed on another desktop are not read or changed here", async () => {
+    const stored: HarnessMcpServer = {
+      id: "tools",
+      name: "Tools",
+      transport: "stdio",
+      command: "node",
+    };
+    const f = fixture(undefined, [stored], { agents: [agent], homedElsewhere: [agent.id] });
+    await f.controller.run("synchronize");
+    const scope = { harness: "opencode", agentId: agent.id } as const;
+    for (const [method, value] of [
+      ["scanConfiguration", scope],
+      ["saveSkill", { ...scope, name: "notes", description: "", content: "Keep notes." }],
+      ["deleteSkill", { ...scope, id: "notes" }],
+      ["resetDefaults", scope],
+      ["saveMcpServer", { agentId: agent.id, name: "other", transport: "stdio", command: "node" }],
+      ["deleteMcpServer", { agentId: agent.id, id: "tools" }],
+    ] as const)
+      await rejects(f.controller.run(method, value), {
+        code: "agent-not-home",
+        message: "Edit this agent's skills and MCP servers on its home desktop.",
+      });
+    expect(f.calls.map((call) => call.method)).toEqual(["configure"]);
+    expect(f.mcpServers.get("org-1/agent-1")).toEqual([stored]);
+  });
   test("a scan returns the folder's skills with the agent's stored MCP servers", async () => {
     const stored: HarnessMcpServer = {
       id: "local-helper",
@@ -133,7 +160,7 @@ describe("desktop harness local configuration", () => {
       command: "node",
       args: ["helper.mjs"],
     };
-    const f = fixture(undefined, [stored]);
+    const f = fixture(undefined, [stored], { agents: [agent] });
     await f.controller.run("synchronize");
     expect(
       await f.controller.run("scanConfiguration", { harness: "codex", agentId: "agent-1" }),
@@ -154,10 +181,14 @@ describe("desktop harness local configuration", () => {
     const scanning = new Promise<void>((resolve) => {
       started = resolve;
     });
-    const f = fixture(async () => {
-      started();
-      await gate;
-    });
+    const f = fixture(
+      async () => {
+        started();
+        await gate;
+      },
+      [],
+      { agents: [agent] },
+    );
     await f.controller.run("synchronize");
     const result = f.controller.run("scanConfiguration", { harness: "codex", agentId: "agent-1" });
     await scanning;

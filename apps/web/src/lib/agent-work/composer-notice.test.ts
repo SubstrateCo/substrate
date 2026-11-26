@@ -1,4 +1,4 @@
-import { noticeLines } from "./composer-notice";
+import { noticeLines, noticeThread } from "./composer-notice";
 import type { ConversationAgent } from "./conversation-agents";
 import { conversationId, status, turn } from "./test-support";
 import { expect, test } from "bun:test";
@@ -9,7 +9,6 @@ const base = {
   conversationId,
   threadId: null,
   agents: [member],
-  homed: new Map<string, unknown>(),
   turns: [],
   threadOf: () => null,
   statuses: undefined,
@@ -18,14 +17,27 @@ const kinds = (input: Partial<Parameters<typeof noticeLines>[0]>) =>
   noticeLines({ ...base, ...input }).map((line) => line.kind);
 const published = (fields: Parameters<typeof status>[0]) => new Map([["agent", status(fields)]]);
 
-test("an agent homed here shows only its live turn in the place where it runs", () => {
-  const live = turn({ status: "running" });
-  const homed = new Map([["agent", {}]]);
+test("a live or stopped turn shows in the place where it runs, before the agent's status", () => {
   const statuses = published({ state: "needs_you" });
-  expect(kinds({ homed, turns: [live], statuses })).toEqual(["turn"]);
-  // The turn runs in the conversation, so the thread shows nothing, not the published status.
-  expect(kinds({ homed, turns: [live], statuses, threadId: "thread" })).toEqual([]);
-  expect(kinds({ homed, turns: [turn({ status: "completed" })], statuses })).toEqual([]);
+  expect(kinds({ turns: [turn({ status: "running" })], statuses })).toEqual(["turn"]);
+  expect(kinds({ turns: [turn({ status: "needs_attention" })], statuses })).toEqual(["turn"]);
+  // The turn runs in the conversation, so the thread shows neither the turn nor the status.
+  expect(kinds({ turns: [turn({ status: "running" })], statuses, threadId: "thread" })).toEqual([]);
+  // A finished turn leaves the agent's status line.
+  expect(kinds({ turns: [turn({ status: "completed" })], statuses })).toEqual(["needs_you"]);
+});
+
+test("a turn under its thread's root message shows in the conversation's composer", () => {
+  // A mention in a channel starts a thread session rooted at the mention, which the channel shows.
+  expect(noticeThread("root", "root")).toBeNull();
+  // Work under a reply in the thread shows only in that thread.
+  expect(noticeThread("root", "reply")).toBe("root");
+  expect(noticeThread("root", undefined)).toBe("root");
+  expect(noticeThread(null, "message")).toBeNull();
+});
+
+test("a turn shows for an agent that left the conversation", () => {
+  expect(kinds({ agents: [visitor], turns: [turn({ status: "running" })] })).toEqual(["turn"]);
 });
 
 test("general lines show only in the conversation's own composer, for members", () => {
@@ -38,7 +50,7 @@ test("general lines show only in the conversation's own composer, for members", 
   expect(kinds({ statuses: published({ state: "idle", device: offline }) })).toEqual([]);
 });
 
-test("an agent working here shows its status in that place, member or not", () => {
+test("an agent working here without a loaded turn shows its status in that place", () => {
   const statuses = published({
     state: "working",
     liveConversationId: conversationId,

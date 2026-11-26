@@ -1,6 +1,6 @@
 import type { SaveSkillInput } from "@substrate/contracts/agents";
 import { saveSkillInput } from "@substrate/contracts/agents";
-import type { HarnessSkill } from "@substrate/contracts/harness";
+import type { HarnessSkill } from "@substrate/contracts/harness-runtime";
 
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 

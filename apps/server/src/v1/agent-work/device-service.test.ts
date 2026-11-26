@@ -25,7 +25,13 @@ test("heartbeat marks a registered device seen in the device service", async () 
     repositories: { forOwnerSession: async () => scope.owner },
   });
   const services = createTestServices();
-  const app = createAgentWorkRoutes(services.agentWork, services.devices, scopes);
+  const app = createAgentWorkRoutes(
+    services.agentWork,
+    services.devices,
+    services.host,
+    services.work,
+    scopes,
+  );
   const response = await app.request("/device/heartbeat", {
     method: "POST",
     headers: { "content-type": "application/json", [desktopInstallationHeader]: installationId },
@@ -48,7 +54,13 @@ test("heartbeat rejects missing or mismatched installation headers and unregiste
     repositories: { forOwnerSession: async () => scope.owner },
   });
   const services = createTestServices();
-  const app = createAgentWorkRoutes(services.agentWork, services.devices, scopes);
+  const app = createAgentWorkRoutes(
+    services.agentWork,
+    services.devices,
+    services.host,
+    services.work,
+    scopes,
+  );
 
   for (const header of [undefined, crypto.randomUUID(), installationId]) {
     const headers = new Headers({ "content-type": "application/json" });

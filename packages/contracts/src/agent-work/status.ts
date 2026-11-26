@@ -1,4 +1,4 @@
-/** What the home desktop publishes per agent. Owner-only. */
+/** An agent's status, derived on the server from its sessions, items, turns and requests. */
 export const agentStatusStates = ["idle", "working", "queued", "needs_you"] as const;
 export type AgentStatusState = (typeof agentStatusStates)[number];
 
@@ -17,18 +17,20 @@ export function agentStatusState(input: {
   return "idle";
 }
 
+/** Owner-only. */
 export interface AgentStatusView {
   userAgentId: string;
   agent: { actorId: string; name: string };
   state: AgentStatusState;
+  /** Items that wait to start a turn. */
   queuedCount: number;
-  /** Only when the owner can still open it. */
+  /** The live turn's place, only when the owner can still open it. */
   liveConversationId: string | null;
   liveThreadId: string | null;
-  /** Null when the live conversation is one the owner can no longer open. */
+  /** The live turn's activity. Null when its conversation is one the owner can no longer open. */
   activity: string | null;
+  /** When the agent's work last changed. */
   updatedAt: string;
-  version: number;
   /** The agent's home desktop, or null when no desktop runs this agent. */
   device: { id: string; name: string; online: boolean } | null;
 }

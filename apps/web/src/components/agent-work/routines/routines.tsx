@@ -12,8 +12,8 @@ import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
-import { routinesOptions } from "@/queries/agent-work/local";
 import { useRoutineActions } from "@/queries/agent-work/mutations";
+import { routinesOptions } from "@/queries/agent-work/server";
 import { toast } from "sonner";
 
 const blank = (): RoutineDraft => ({
@@ -26,7 +26,10 @@ const blank = (): RoutineDraft => ({
 
 const saveFailed = "We couldn’t save this routine. Try again.";
 
-/** An agent's routines on its home desktop. */
+/**
+ * An agent's routines, from the server on any owner device. The owner's saves are approved as
+ * saved; a routine the agent wrote or changed waits for the owner to approve it.
+ */
 export function Routines({ agentId, name }: { agentId: string; name: string }) {
   const { userId, organizationId } = useWorkspaceScope();
   const routines = useQuery(routinesOptions(userId, organizationId, agentId));
@@ -71,6 +74,22 @@ export function Routines({ agentId, name }: { agentId: string; name: string }) {
         onAdd={() => editor.open("new")}
         onEdit={(routineId) => editor.open(routineId)}
         onDelete={(routine) => deletion.open(routine)}
+        approvingId={actions.approve.isPending ? actions.approve.variables.routineId : undefined}
+        onApprove={(routine) =>
+          actions.approve.mutate(
+            { routineId: routine.id, revision: routine.revision },
+            {
+              onSuccess: () => toast.success(`${routine.name} approved.`),
+              onError: (error) =>
+                toast.error(
+                  actionErrorMessage(
+                    error,
+                    "We couldn't approve this routine. It may have changed; check it and try again.",
+                  ),
+                ),
+            },
+          )
+        }
       />
       {editingId && (
         <RoutineEditor

@@ -1,13 +1,13 @@
-import type { TurnContext } from "@substrate/contracts/harness/mcp";
-import type { McpInput, ServerToolName } from "@substrate/contracts/harness/tools";
+import type { McpInput, ServerToolName } from "@substrate/contracts/agent-tools/tools";
 
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
-import { AccessDeniedError, ValidationError } from "../../errors";
+import { ValidationError } from "../../errors";
 import { agentActions } from "../agent-work/actions";
 import { attachReference, detachReference } from "../context/service";
 import { createAttachmentRepository } from "../files/repository";
 import { taskRepository } from "../tasks/repository";
+import { mcpAgentWorkTools } from "./agent-work";
 import { mcpContextQueries } from "./context";
 import { mcpCrmTools } from "./crm";
 import { mcpFileQueries, type FileContentReader } from "./files";
@@ -16,6 +16,7 @@ import { mcpMessagingQueries } from "./messaging";
 import { publishingTools } from "./publishing";
 import { mcpSearchQueries } from "./search";
 import { mcpTaskQueries } from "./tasks";
+import type { ServerTurn } from "./turn";
 import { agentWrites } from "./writes";
 
 type Agent = Parameters<typeof agentActions>[2];
@@ -27,12 +28,12 @@ export type ToolHandlers = {
 };
 
 /**
- * What a call runs in. turn: a live turn, checked by the caller; userAgentId is set for writes.
+ * What a call runs in. turn: the live server turn the caller verified.
  * proposal: an approved proposal, with no live turn. It runs as the agent of the turn that
  * proposed it, and its ID keys the call's idempotent writes.
  */
 export type ToolRun =
-  | { kind: "turn"; turn: TurnContext; userAgentId: string | null }
+  | { kind: "turn"; turn: ServerTurn }
   | { kind: "proposal"; id: string; turnId: string };
 
 export const needsLiveTurn = "This tool needs a live turn. It cannot run in a background turn.";
@@ -58,13 +59,17 @@ export function serverToolHandlers(
   const messaging = mcpMessagingQueries(ctx, identity);
   const search = mcpSearchQueries(ctx, identity);
   const crm = () => mcpCrmTools(ctx, identity);
+  // Routines and helpers belong to the live turn's agent and session. They never wait for approval.
+  const own = () => {
+    if (run.kind !== "turn") throw new ValidationError(needsLiveTurn);
+    return mcpAgentWorkTools(ctx, identity, run.turn);
+  };
   async function reply(input: McpInput<"reply">) {
     if (run.kind === "turn") {
-      if (!run.userAgentId) throw new AccessDeniedError();
       return publishingTools(
         ctx,
         identity,
-        { ...agent, userAgentId: run.userAgentId },
+        { ...agent, userAgentId: run.turn.userAgentId },
         run.turn,
       ).reply(input);
     }
@@ -166,6 +171,15 @@ export function serverToolHandlers(
       return queries.getTask(value.taskId);
     },
     reply,
+    list_routines: () => own().listRoutines(),
+    create_routine: (value) => own().createRoutine(value),
+    update_routine: (value) => own().updateRoutine(value),
+    delete_routine: (value) => own().deleteRoutine(value),
+    start_helper: (value) => own().startHelper(value),
+    list_helpers: () => own().listHelpers(),
+    message_helper: (value) => own().messageHelper(value),
+    stop_helper: (value) => own().stopHelper(value),
+    finish_helper: (value) => own().finishHelper(value),
     async attach_message(value) {
       return { changed: await attachReference(ctx, identity, value, value.target) };
     },

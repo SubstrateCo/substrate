@@ -14,6 +14,8 @@ import type { SessionIdentity, OwnerSessionIdentity } from "./core/session/ident
 import { ownerSession } from "./core/session/owner";
 import { workspaceContext, type ResolvedWorkspace } from "./core/session/workspace";
 import { createDeviceWorkRepository } from "./features/agent-work/device-repository";
+import { renewLeases } from "./features/agent-work/host/lease";
+import { createHostRepository } from "./features/agent-work/host/repository";
 import { createAgentWorkReadRepository } from "./features/agent-work/read-repository";
 import { createAgentRepository } from "./features/agents/repository";
 import { calendarRepository } from "./features/calendar/repository";
@@ -35,6 +37,13 @@ import {
 import { createFeedRepository } from "./features/notifications/service";
 import { projectRepository } from "./features/projects/repository";
 import { taskRepository } from "./features/tasks/repository";
+
+/** A heartbeat keeps the device online and renews the leases of the turns it runs. */
+async function touchHost(db: DatabaseExecutor, userId: string, installationId: string) {
+  const device = await touchDevice(db, userId, installationId);
+  await renewLeases(db, device.id);
+  return device;
+}
 
 export class ActorRepositories {
   readonly contacts;
@@ -241,10 +250,10 @@ function standalone(
       "listConversationRequests",
       "listNeedsYou",
       "listStatus",
-      "listInvocations",
-      "listMyCalls",
-      "listCallsLog",
-      "listCallers",
+      "agentActivity",
+      "conversationWork",
+      "turn",
+      "listRoutines",
     ]),
     transaction,
   };
@@ -255,7 +264,10 @@ export function createRepositories(db: DatabaseExecutor) {
     async forDeviceSession(identity: DeviceIdentity) {
       const device = await requireDevice(db, identity);
       const resolved = Object.freeze({ ...identity, deviceId: device.id });
-      return { agentWork: createDeviceWorkRepository(db, resolved) };
+      return {
+        agentWork: createDeviceWorkRepository(db, resolved),
+        host: createHostRepository(db, resolved),
+      };
     },
     async forOwnerSession(identity: OwnerSessionIdentity) {
       const owner = await ownerSession(db, identity);
@@ -263,7 +275,7 @@ export function createRepositories(db: DatabaseExecutor) {
       const devices = {
         register: (input: Parameters<typeof registerDevice>[2]) =>
           registerDevice(db, owner.userId, input),
-        touch: (installationId: string) => touchDevice(db, owner.userId, installationId),
+        touch: (installationId: string) => touchHost(db, owner.userId, installationId),
       };
       const sharing = {
         invitation: (id: string) => readSharingInvitation(db, owner.userId, id),
@@ -286,7 +298,7 @@ export function createRepositories(db: DatabaseExecutor) {
             await ownerSession(tx, identity);
             return work({
               register: (input) => registerDevice(tx, owner.userId, input),
-              touch: (id) => touchDevice(tx, owner.userId, id),
+              touch: (id) => touchHost(tx, owner.userId, id),
             });
           }),
         ),

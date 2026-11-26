@@ -1,12 +1,12 @@
-import { sessionKeys } from "@substrate/contracts/agent-work";
-import type {
-  LocalToolRequest,
-  TurnContext,
-  WorkspaceApiRequest,
-} from "@substrate/contracts/harness/mcp";
-import { leaseTools, type McpToolName } from "@substrate/contracts/harness/tools";
+import type { ToolCallResult } from "@substrate/contracts/harness-runtime";
 
-import { createStartupMcp, type McpLeaseOptions, type StartupMcpHandlers } from "./mcp.ts";
+import { createStartupMcp, type McpLeaseOptions } from "./mcp.ts";
+import {
+  testHint,
+  testServer,
+  testToolProvider,
+  type TestBinding,
+} from "./testing/tool-provider.ts";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { afterEach, beforeEach, expect, setSystemTime, test } from "bun:test";
@@ -16,13 +16,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 const agentId = "ad4f709e-b80e-40f5-80ee-588e1db066e5";
-const turn: TurnContext = {
-  turnId: "0d6f4c3e-8b4f-4c39-9d7e-3f1c2a5b6e71",
-  attempt: 1,
-  sessionKey: sessionKeys.dm("9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718"),
-  origin: { conversationId: "9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718", threadId: null },
-  kind: "interactive",
-};
+const binding: TestBinding = { turnId: "0d6f4c3e-8b4f-4c39-9d7e-3f1c2a5b6e71", attempt: 1 };
+const turn = { turnId: binding.turnId, binding };
 let folder: string;
 
 beforeEach(async () => {
@@ -38,15 +33,25 @@ function leaseOptions(overrides: Partial<McpLeaseOptions> = {}): McpLeaseOptions
     organizationId: "org-a",
     agentId,
     sessionId: "session-a",
-    tools: leaseTools("main", ["messages", "agents", "tasks", "crm"]),
+    tools: [
+      "list_projects",
+      "delete_project",
+      "read_file",
+      "download_file",
+      "read_private",
+      "read_archive",
+    ],
     folder,
-    agentFolder: folder,
     ...overrides,
   };
 }
 
-async function connected(handlers: StartupMcpHandlers, options = leaseOptions()) {
-  const host = await createStartupMcp(handlers);
+async function connected(
+  handle?: Parameters<typeof testToolProvider>[0],
+  options = leaseOptions(),
+) {
+  const tools = testToolProvider(handle);
+  const host = await createStartupMcp(tools.provider);
   const lease = host.issue(options);
   const client = new Client({ name: "mcp-test", version: "1" });
   await client.connect(
@@ -55,6 +60,7 @@ async function connected(handlers: StartupMcpHandlers, options = leaseOptions())
     }),
   );
   return {
+    calls: tools.calls,
     host,
     lease,
     client,
@@ -65,54 +71,62 @@ async function connected(handlers: StartupMcpHandlers, options = leaseOptions())
   };
 }
 
+const answer = (result: ToolCallResult) => async () => result;
+
 function text(result: Awaited<ReturnType<Client["callTool"]>>) {
   // SAFETY: this server returns every result as a single text content block.
   const [content] = result.content as { type: "text"; text: string }[];
   return content!.text;
 }
 
-test("initialization explains discovery without embedding tool schemas or expanding the lease", async () => {
-  const mcp = await connected({}, leaseOptions({ tools: ["list_projects"] }));
+test("initialization uses the provider's identity and offers only the lease's tools", async () => {
+  const mcp = await connected(undefined, leaseOptions({ tools: ["list_projects", "unknown"] }));
   try {
-    const instructions = mcp.client.getInstructions();
-    expect(instructions).toContain("discover");
-    expect(instructions).toContain("skills");
-    expect(instructions!.length).toBeLessThan(1024);
+    expect(mcp.client.getServerVersion()).toMatchObject({ name: testServer.name });
+    expect(mcp.client.getInstructions()).toBe(testServer.instructions);
     const tools = (await mcp.client.listTools()).tools;
     expect(tools.map((tool) => tool.name)).toEqual(["list_projects"]);
-    expect(instructions).not.toContain(JSON.stringify(tools[0]!.inputSchema));
+    expect(tools[0]?.annotations).toMatchObject({
+      title: "List projects",
+      readOnlyHint: true,
+      destructiveHint: false,
+      idempotentHint: true,
+      openWorldHint: false,
+    });
     mcp.lease.bind(turn);
-    expect((await mcp.client.callTool({ name: "reply", arguments: {} })).isError).toBe(true);
+    expect((await mcp.client.callTool({ name: "delete_project", arguments: {} })).isError).toBe(
+      true,
+    );
+    expect(mcp.calls).toEqual([]);
   } finally {
     await mcp.close();
   }
 });
 
-test("server calls carry lease identity and the bound turn; calls outside a turn are rejected", async () => {
-  const calls: WorkspaceApiRequest[] = [];
-  const mcp = await connected({
-    workspace: async (call) => {
-      calls.push(call);
-      return { success: true, data: { items: [], nextCursor: null } };
-    },
-  });
+test("calls carry lease identity and the bound turn; calls outside a turn are rejected", async () => {
+  const mcp = await connected();
   try {
     const outside = await mcp.client.callTool({ name: "list_projects", arguments: {} });
     expect(outside.isError).toBe(true);
-    expect(JSON.parse(text(outside))).toMatchObject({ code: "NO_TURN" });
-    expect(calls).toEqual([]);
+    expect(JSON.parse(text(outside))).toEqual({
+      code: "NO_TURN",
+      message: "No turn is running for this session.",
+      hint: testHint("NO_TURN"),
+    });
+    expect(mcp.calls).toEqual([]);
 
     mcp.lease.bind(turn);
     expect(
       (await mcp.client.callTool({ name: "list_projects", arguments: {} })).structuredContent,
     ).toEqual({ items: [], nextCursor: null });
-    expect(calls).toEqual([
+    expect(mcp.calls).toEqual([
       {
         tool: "list_projects",
+        input: { limit: 25 },
         organizationId: "org-a",
         agentId,
-        turn,
-        input: { archived: "active", limit: 25 },
+        sessionId: "session-a",
+        binding,
       },
     ]);
 
@@ -120,166 +134,58 @@ test("server calls carry lease identity and the bound turn; calls outside a turn
     expect((await mcp.client.callTool({ name: "list_projects", arguments: {} })).isError).toBe(
       true,
     );
-    expect(calls).toHaveLength(1);
+    expect(mcp.calls).toHaveLength(1);
   } finally {
     await mcp.close();
   }
 });
 
-test("CRM tools use the native lease and reject input identity spoofing before forwarding", async () => {
-  const calls: WorkspaceApiRequest[] = [];
-  const mcp = await connected({
-    workspace: async (call) => {
-      calls.push(call);
-      return { success: true, data: { items: [], nextAfterEntityId: null } };
-    },
-  });
+test("input that fails the tool's schema never reaches the provider", async () => {
+  const mcp = await connected();
   try {
-    const listed = new Map((await mcp.client.listTools()).tools.map((tool) => [tool.name, tool]));
-    expect(listed.get("list_crm_records")?.annotations?.readOnlyHint).toBe(true);
-    expect(listed.get("create_crm_deal")?.annotations).toMatchObject({
-      readOnlyHint: false,
-      idempotentHint: true,
-      openWorldHint: false,
-    });
-    const outside = await mcp.client.callTool({
-      name: "list_crm_records",
-      arguments: { kind: "account" },
-    });
-    expect(JSON.parse(text(outside))).toMatchObject({ code: "NO_TURN" });
     mcp.lease.bind(turn);
     const spoofed = await mcp.client.callTool({
-      name: "list_crm_records",
-      arguments: { kind: "account", organizationId: "other-org", turn },
+      name: "list_projects",
+      arguments: { organizationId: "other-org", turn: binding },
     });
     expect(spoofed.isError).toBe(true);
-    expect(calls).toEqual([]);
-    await mcp.client.callTool({
-      name: "list_crm_records",
-      arguments: { kind: "account", search: "Customer" },
-    });
-    expect(calls).toEqual([
-      {
-        tool: "list_crm_records",
-        organizationId: "org-a",
-        agentId,
-        turn,
-        input: { kind: "account", search: "Customer", archived: "active" },
-      },
-    ]);
-  } finally {
-    await mcp.close();
-  }
-});
-
-test("local tools route to the desktop handler with the session and turn", async () => {
-  const calls: LocalToolRequest[] = [];
-  const mcp = await connected({
-    local: async (call) => {
-      calls.push(call);
-      return { success: true, data: { items: [] } };
-    },
-  });
-  try {
-    mcp.lease.bind(turn);
-    await mcp.client.callTool({ name: "list_helpers", arguments: {} });
-    expect(calls).toEqual([
-      {
-        tool: "list_helpers",
-        sessionId: "session-a",
-        organizationId: "org-a",
-        agentId,
-        turn,
-        input: {},
-      },
-    ]);
-  } finally {
-    await mcp.close();
-  }
-});
-
-test("memory tools are handled locally and never reach either proxy", async () => {
-  let proxied = 0;
-  const mcp = await connected({
-    workspace: async () => {
-      proxied++;
-      return { success: true, data: {} };
-    },
-    local: async () => {
-      proxied++;
-      return { success: true, data: {} };
-    },
-  });
-  try {
-    mcp.lease.bind(turn);
-    const result = await mcp.client.callTool({
-      name: "remember",
-      arguments: { layer: "profile", text: "Owner prefers short replies." },
-    });
-    expect(result.structuredContent).toEqual({ layer: "profile", saved: true });
-    expect(await readFile(join(folder, "memory", "profile.md"), "utf8")).toBe(
-      "- Owner prefers short replies.\n",
-    );
-    expect(proxied).toBe(0);
-  } finally {
-    await mcp.close();
-  }
-});
-
-test("helper leases offer no publishing, helper management or memory tools", async () => {
-  const mcp = await connected(
-    {},
-    leaseOptions({ tools: leaseTools("helper", ["messages", "agents", "tasks", "crm"]) }),
-  );
-  try {
-    const names = new Set((await mcp.client.listTools()).tools.map((tool) => tool.name));
-    for (const name of ["reply", "start_helper", "remember", "forget"] satisfies McpToolName[])
-      expect(names.has(name)).toBe(false);
-    expect(names.has("finish_helper")).toBe(true);
+    expect(mcp.calls).toEqual([]);
   } finally {
     await mcp.close();
   }
 });
 
 test("a discovered tool cannot run after its session lease is revoked", async () => {
-  const calls: WorkspaceApiRequest[] = [];
-  const mcp = await connected({
-    workspace: async (call) => {
-      calls.push(call);
-      return { success: true, data: { items: [], nextCursor: null } };
-    },
-  });
+  const mcp = await connected();
   try {
     const tools = (await mcp.client.listTools()).tools;
     expect(tools.some((tool) => tool.name === "list_projects")).toBe(true);
     mcp.lease.bind(turn);
     mcp.lease.revoke();
     await rejects(mcp.client.callTool({ name: "list_projects", arguments: {} }));
-    expect(calls).toEqual([]);
+    expect(mcp.calls).toEqual([]);
   } finally {
     await mcp.close();
   }
 });
 
+const items = Array.from({ length: 200 }, (_, index) => ({
+  id: crypto.randomUUID(),
+  name: `Project ${index} ${"x".repeat(40)}`,
+}));
+
 test("results above the offload limit are written inside the folder and returned as a reference", async () => {
-  const items = Array.from({ length: 200 }, (_, index) => ({
-    id: crypto.randomUUID(),
-    name: `Project ${index} ${"x".repeat(40)}`,
-    archived: false,
-  }));
-  const mcp = await connected({
-    workspace: async () => ({ success: true, data: { items, nextCursor: null } }),
-  });
+  const mcp = await connected(answer({ success: true, data: { items, nextCursor: null } }));
   try {
     mcp.lease.bind(turn);
     const result = await mcp.client.callTool({ name: "list_projects", arguments: {} });
-    const path = `.substrate/outputs/${turn.turnId}/list_projects-1.json`;
+    const path = `.substrate/outputs/${binding.turnId}/list_projects-1.json`;
     expect(result.structuredContent).toMatchObject({ truncated: true, path });
     expect(JSON.parse(await readFile(join(folder, path), "utf8"))).toEqual({
       items,
       nextCursor: null,
     });
-    expect(await readdir(join(folder, ".substrate", "outputs", turn.turnId))).toEqual([
+    expect(await readdir(join(folder, ".substrate", "outputs", binding.turnId))).toEqual([
       "list_projects-1.json",
     ]);
   } finally {
@@ -287,33 +193,69 @@ test("results above the offload limit are written inside the folder and returned
   }
 });
 
-const fileInput = {
-  type: "message_attachment",
-  messageId: "5a9f2d61-0b4e-4c1a-9d3f-7e8a6b5c4d21",
-  attachmentId: "7c1e3b52-9a4d-4f60-8e2b-1d0c9f8a7b63",
-} as const;
-const fileMetadata = { file: fileInput, filename: "bug.png", contentType: "image/png", size: 9 };
+test("an inline result stays in the turn however large it is", async () => {
+  const data = { items, nextCursor: null };
+  const mcp = await connected(answer({ success: true, data }));
+  try {
+    mcp.lease.bind(turn);
+    const result = await mcp.client.callTool({ name: "read_archive", arguments: { id: "a" } });
+    expect(result.structuredContent).toEqual(data);
+    expect(await readdir(folder)).toEqual([]);
+  } finally {
+    await mcp.close();
+  }
+});
 
-test("an image from read_file reaches the model as an image block, not as offloaded JSON", async () => {
-  // Large enough that the generic path would offload it to a file.
-  const data = Buffer.alloc(32 * 1024, 7).toString("base64");
-  const mcp = await connected({
-    workspace: async () => ({
-      success: true,
-      data: { ...fileMetadata, content: { kind: "image", mimeType: "image/webp", data } },
-    }),
+test("a turn-only result is returned when small and refused when large, never written", async () => {
+  let data = { text: "small" };
+  const mcp = await connected(async () => ({ success: true, data }));
+  try {
+    mcp.lease.bind(turn);
+    const call = () => mcp.client.callTool({ name: "read_private", arguments: { id: "a" } });
+    expect((await call()).structuredContent).toEqual(data);
+    data = { text: "💌".repeat(3000) };
+    const large = await call();
+    expect(large.isError).toBe(true);
+    expect(text(large)).not.toContain("💌");
+    expect(await readdir(folder)).toEqual([]);
+  } finally {
+    await mcp.close();
+  }
+});
+
+test("a turn-only result is refused when its turn ended during the call", async () => {
+  const release = Promise.withResolvers<void>();
+  const mcp = await connected(async () => {
+    await release.promise;
+    return { success: true, data: { text: "private" } };
   });
   try {
     mcp.lease.bind(turn);
-    const result = await mcp.client.callTool({ name: "read_file", arguments: { file: fileInput } });
+    const pending = mcp.client.callTool({ name: "read_private", arguments: { id: "a" } });
+    while (!mcp.calls.length) await new Promise((resolve) => setImmediate(resolve));
+    mcp.lease.unbind();
+    mcp.lease.bind({ turnId: crypto.randomUUID(), binding });
+    release.resolve();
+    const result = await pending;
+    expect(result.isError).toBe(true);
+    expect(text(result)).not.toContain("private");
+  } finally {
+    await mcp.close();
+  }
+});
+
+test("an image reaches the model as an image block, not as offloaded JSON", async () => {
+  // Large enough that the generic path would offload it to a file.
+  const data = Buffer.alloc(32 * 1024, 7).toString("base64");
+  const described = { file: "bug", content: { kind: "image", mimeType: "image/webp" } };
+  const mcp = await connected(
+    answer({ success: true, data: described, image: { data, mimeType: "image/webp" } }),
+  );
+  try {
+    mcp.lease.bind(turn);
+    const result = await mcp.client.callTool({ name: "read_file", arguments: { file: "bug" } });
     expect(result.content).toEqual([
-      {
-        type: "text",
-        text: JSON.stringify({
-          ...fileMetadata,
-          content: { kind: "image", mimeType: "image/webp" },
-        }),
-      },
+      { type: "text", text: JSON.stringify(described) },
       { type: "image", data, mimeType: "image/webp" },
     ]);
     expect(await readdir(folder)).toEqual([]);
@@ -322,26 +264,25 @@ test("an image from read_file reaches the model as an image block, not as offloa
   }
 });
 
-test("download_file writes the bytes inside the folder and returns only the path", async () => {
+test("a download writes the bytes inside the folder and returns only the path", async () => {
   const bytes = Buffer.from("%PDF-1.7 report");
-  const mcp = await connected({
-    workspace: async () => ({
+  const attachmentId = "7c1e3b52-9a4d-4f60-8e2b-1d0c9f8a7b63";
+  const metadata = { filename: "../Q3 report?.pdf", size: bytes.length };
+  const mcp = await connected(
+    answer({
       success: true,
-      data: { ...fileMetadata, filename: "../Q3 report?.pdf", data: bytes.toString("base64") },
+      data: metadata,
+      download: { id: attachmentId, filename: metadata.filename, base64: bytes.toString("base64") },
     }),
-  });
+  );
   try {
     mcp.lease.bind(turn);
     const result = await mcp.client.callTool({
       name: "download_file",
-      arguments: { file: fileInput },
+      arguments: { file: "report" },
     });
-    const path = `.substrate/files/${turn.turnId}/${fileInput.attachmentId}-_Q3 report_.pdf`;
-    expect(result.structuredContent).toEqual({
-      ...fileMetadata,
-      filename: "../Q3 report?.pdf",
-      path,
-    });
+    const path = `.substrate/files/${binding.turnId}/${attachmentId}-_Q3 report_.pdf`;
+    expect(result.structuredContent).toEqual({ ...metadata, path });
     expect(text(result)).not.toContain(bytes.toString("base64"));
     expect(await readFile(join(folder, path))).toEqual(bytes);
   } finally {
@@ -349,65 +290,29 @@ test("download_file writes the bytes inside the folder and returns only the path
   }
 });
 
-test("Inbox discovery advertises read-only tools; an oversized private result is never written to the agent folder", async () => {
-  const messageId = crypto.randomUUID();
+test("provider errors reach the agent with their fields and the provider's hint", async () => {
+  const requestId = "5f0c3a2e-7b1d-4e6f-9a8b-0c1d2e3f4a5b";
   const mcp = await connected(
-    {
-      local: async () => ({
-        success: true,
-        data: {
-          messageId,
-          mailboxId: crypto.randomUUID(),
-          mailbox: "Work",
-          subject: "Renewal",
-          from: "Alex",
-          to: "Owner",
-          date: new Date().toISOString(),
-          unread: true,
-          text: "💌".repeat(3000),
-          truncated: false,
-          nextOffset: null,
-          coverage: "gmail",
-        },
-      }),
-    },
-    leaseOptions({ tools: leaseTools("main", ["inbox"]) }),
+    answer({
+      success: false,
+      error: { code: "APPROVAL_PENDING", message: "Waiting for owner approval.", requestId },
+    }),
   );
   try {
-    const tools = new Map((await mcp.client.listTools()).tools.map((tool) => [tool.name, tool]));
-    for (const name of ["search_inbox", "read_inbox_message"])
-      expect(tools.get(name)?.annotations?.readOnlyHint).toBe(true);
     mcp.lease.bind(turn);
     const result = await mcp.client.callTool({
-      name: "read_inbox_message",
-      arguments: { messageId },
+      name: "delete_project",
+      arguments: { projectId: "p" },
     });
     expect(result.isError).toBe(true);
-    expect(text(result)).not.toContain("💌");
-    expect(await readdir(folder)).toEqual([]);
-  } finally {
-    await mcp.close();
-  }
-});
-
-test("API failures reach the agent with their message and a next step", async () => {
-  const mcp = await connected({
-    workspace: async () => ({
-      success: false,
-      error: { code: "FORBIDDEN", message: "Workspace changed. Start a new agent run." },
-    }),
-  });
-  try {
-    mcp.lease.bind(turn);
-    const result = await mcp.client.callTool({ name: "list_projects", arguments: {} });
-    expect(result.isError).toBe(true);
-    expect(JSON.parse(text(result))).toMatchObject({
-      code: "FORBIDDEN",
-      message: "Workspace changed. Start a new agent run.",
-      hint: expect.stringContaining("start a new run"),
+    expect(JSON.parse(text(result))).toEqual({
+      code: "APPROVAL_PENDING",
+      message: "Waiting for owner approval.",
+      requestId,
+      hint: testHint("APPROVAL_PENDING"),
     });
     const tools = new Map((await mcp.client.listTools()).tools.map((tool) => [tool.name, tool]));
-    expect(tools.get("update_task")?.annotations).toMatchObject({
+    expect(tools.get("delete_project")?.annotations).toMatchObject({
       readOnlyHint: false,
       destructiveHint: true,
     });
@@ -416,8 +321,22 @@ test("API failures reach the agent with their message and a next step", async ()
   }
 });
 
+test("a provider that throws makes the operation unavailable", async () => {
+  const mcp = await connected(async () => {
+    throw new Error("down");
+  });
+  try {
+    mcp.lease.bind(turn);
+    const result = await mcp.client.callTool({ name: "list_projects", arguments: {} });
+    expect(result.isError).toBe(true);
+    expect(text(result)).toContain("unavailable");
+  } finally {
+    await mcp.close();
+  }
+});
+
 test("loopback MCP rejects revoked, browser and rebound requests", async () => {
-  const host = await createStartupMcp();
+  const host = await createStartupMcp(testToolProvider().provider);
   const lease = host.issue(leaseOptions());
   try {
     const headers = { Authorization: `Bearer ${lease.token}` };
@@ -443,56 +362,8 @@ test("loopback MCP rejects revoked, browser and rebound requests", async () => {
   }
 });
 
-test("APP_DISABLED tells a stale native session to stop rather than retry", async () => {
-  const mcp = await connected({
-    workspace: async () => ({
-      success: false,
-      error: { code: "APP_DISABLED", message: "Tasks is disabled." },
-    }),
-  });
-  try {
-    mcp.lease.bind(turn);
-    const result = await mcp.client.callTool({ name: "list_projects", arguments: {} });
-    expect(result.isError).toBe(true);
-    expect(JSON.parse(text(result))).toMatchObject({
-      code: "APP_DISABLED",
-      hint: expect.stringContaining("Do not retry"),
-    });
-  } finally {
-    await mcp.close();
-  }
-});
-
-test("APPROVAL_PENDING returns the proposal's requestId and tells the agent not to retry", async () => {
-  const requestId = "5f0c3a2e-7b1d-4e6f-9a8b-0c1d2e3f4a5b";
-  const mcp = await connected({
-    workspace: async () => ({
-      success: false,
-      error: { code: "APPROVAL_PENDING", message: "Waiting for owner approval.", requestId },
-    }),
-  });
-  try {
-    mcp.lease.bind(turn);
-    const result = await mcp.client.callTool({
-      name: "delete_project",
-      arguments: { requestId: crypto.randomUUID(), projectId: crypto.randomUUID() },
-    });
-    expect(result.isError).toBe(true);
-    expect(JSON.parse(text(result))).toMatchObject({
-      code: "APPROVAL_PENDING",
-      requestId,
-      hint: expect.stringContaining("Do not retry or work around it"),
-    });
-  } finally {
-    await mcp.close();
-  }
-});
-
 test("a lease never expires under a bound turn and expires only after it stays unbound", async () => {
-  const host = await createStartupMcp(
-    { workspace: async () => ({ success: true, data: { items: [], nextCursor: null } }) },
-    { leaseTtlMs: 60_000 },
-  );
+  const host = await createStartupMcp(testToolProvider().provider, { leaseTtlMs: 60_000 });
   const lease = host.issue(leaseOptions());
   const client = new Client({ name: "mcp-test", version: "1" });
   // Moves Date.now() only; the HTTP server keeps its real timers.
@@ -522,7 +393,7 @@ test("a lease never expires under a bound turn and expires only after it stays u
 });
 
 test("MCP rejects malformed authorization without accepting bare tokens or crashing", async () => {
-  const host = await createStartupMcp();
+  const host = await createStartupMcp(testToolProvider().provider);
   const lease = host.issue(leaseOptions());
   try {
     for (const authorization of [lease.token, `Bearer ${"é".repeat(64)}`, `Basic ${lease.token}`]) {

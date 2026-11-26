@@ -4,7 +4,7 @@ import { entityGrants, member, storedFiles } from "../../schema";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
-import { agentWakes } from "../agent-work/wakes/wakes.schema";
+import { agentWorkItems } from "../agent-work/work-items.schema";
 import { messagingConversations } from "../messaging/schema";
 import { messagingMessages, messagingParticipants } from "../messaging/schema";
 import { createSharingService } from "../messaging/sharing/service";
@@ -215,7 +215,7 @@ test("task readers may be mentioned without joining; discussions send mentions o
   ]);
   await f.messaging("bob").sendMessage(id, "Reply", sent.id);
   expect(await f.db.select().from(notifications)).toHaveLength(1);
-  expect(await f.db.select().from(agentWakes)).toEqual([]);
+  expect(await f.db.select().from(agentWorkItems)).toEqual([]);
   expect(
     await rejection(
       createSharingService(f.db, { userId: "alice", organizationId: f.orgA }).invite(id, {
@@ -233,7 +233,7 @@ test("task readers may be mentioned without joining; discussions send mentions o
   expect(await f.messaging("bob").listManagedConversations()).toEqual([]);
 });
 
-test("an enabled owner agent wakes for a normal mention but never for the same task discussion mention", async () => {
+test("an enabled owner agent gets work for a normal mention but never for the same task discussion mention", async () => {
   const agent = await ownedAgent(f);
   const normal = await f
     .messaging("alice")
@@ -241,8 +241,8 @@ test("an enabled owner agent wakes for a normal mention but never for the same t
   await f.messaging("alice").addAgent(normal.id, agent.agentId);
   const body = `@[agent:${agent.actorId}] Please investigate`;
   const baseline = await f.messaging("alice").sendMessage(normal.id, body);
-  expect(await f.db.select().from(agentWakes)).toMatchObject([
-    { sourceRef: { messageId: baseline.id, kind: "mention" } },
+  expect(await f.db.select().from(agentWorkItems)).toMatchObject([
+    { sourceRef: { source: "owner_message", messageId: baseline.id } },
   ]);
   const alice = f.forActor(f.alice);
   const project = await alice.projects.create({ name: "Agent task" });
@@ -259,7 +259,7 @@ test("an enabled owner agent wakes for a normal mention but never for the same t
   expect((await f.messaging("alice").listMessages(conversationId)).map((row) => row.id)).toEqual([
     sent.id,
   ]);
-  const wakes = await f.db.select().from(agentWakes);
+  const wakes = await f.db.select().from(agentWorkItems);
   expect(wakes).toMatchObject([{ sourceRef: { messageId: baseline.id } }]);
   expect(wakes).toHaveLength(1);
 });

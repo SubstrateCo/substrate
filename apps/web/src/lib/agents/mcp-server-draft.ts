@@ -2,7 +2,7 @@ import {
   harnessMcpServerSchema,
   maxHarnessMcpServers,
   type HarnessMcpServer,
-} from "@substrate/contracts/harness";
+} from "@substrate/contracts/harness-runtime";
 
 import type { z } from "zod";
 

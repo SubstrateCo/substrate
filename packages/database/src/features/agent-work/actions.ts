@@ -1,4 +1,4 @@
-import type { McpInput } from "@substrate/contracts/harness/tools";
+import type { McpInput } from "@substrate/contracts/agent-tools/tools";
 
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";

@@ -1,5 +1,12 @@
 import { createRepositories } from "@substrate/database";
-import { claimOutbox, finishOutbox, pruneRecords, recordOutbox } from "@substrate/database/trusted";
+import {
+  claimOutbox,
+  finishOutbox,
+  fireRoutines,
+  pruneRecords,
+  recordOutbox,
+  sweepAgentLeases,
+} from "@substrate/database/trusted";
 
 import { createApp } from "./app";
 import { createGoogleLinkTickets } from "./auth/google-link";
@@ -112,11 +119,48 @@ void cleanup();
 const cleanupTimer = setInterval(() => void cleanup(), 60 * 60_000);
 cleanupTimer.unref();
 
+let sweeping = false;
+// Every minute: end the live agent turns of hosts that went away, so their work runs again.
+async function sweepLeases() {
+  if (sweeping) return;
+  sweeping = true;
+  try {
+    await publish(await sweepAgentLeases(db));
+  } catch (error) {
+    console.error("Lease sweep failed", error instanceof Error ? error.name : "Unknown error");
+  } finally {
+    sweeping = false;
+  }
+}
+const leaseTimer = setInterval(() => void sweepLeases(), 60_000);
+leaseTimer.unref();
+
+let scheduling = false;
+// Every 30 seconds: queue the due runs of approved routines. They wait for the agent's host.
+async function scheduleRoutines() {
+  if (scheduling) return;
+  scheduling = true;
+  try {
+    await publish(await fireRoutines(db));
+  } catch (error) {
+    console.error(
+      "Routine scheduling failed",
+      error instanceof Error ? error.name : "Unknown error",
+    );
+  } finally {
+    scheduling = false;
+  }
+}
+const routineTimer = setInterval(() => void scheduleRoutines(), 30_000);
+routineTimer.unref();
+
 let stopping = false;
 function shutdown() {
   if (stopping) return;
   stopping = true;
   clearInterval(cleanupTimer);
+  clearInterval(leaseTimer);
+  clearInterval(routineTimer);
   realtime.stop();
   void server
     .stop(true)

@@ -1,11 +1,12 @@
-import type { ServerToolName } from "@substrate/contracts/harness/tools";
+import type { ServerToolName } from "@substrate/contracts/agent-tools/tools";
 
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { agentRequests, agentWakes, member, taskActivity } from "../../schema";
-import { dmTurn, ownerAgentWork } from "../../testing/agent-work";
+import { agentRequests, agentWorkItems, member, taskActivity } from "../../schema";
+import { ownerAgentWork } from "../../testing/agent-work";
 import { setupDatabase } from "../../testing/database";
 import { mcpFixture } from "../../testing/mcp";
 import { rejection } from "../../testing/rejection";
+import { dmTurn } from "../../testing/turns";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { ZodError } from "zod";
@@ -211,8 +212,8 @@ test("delete_task waits for the owner: nothing is deleted until approval, then t
     expect(await rejection(call("get_task", { taskId: id }))).toBeInstanceOf(AccessDeniedError);
   const wakes = await f.db
     .select()
-    .from(agentWakes)
-    .where(eq(agentWakes.source, "approval_result"));
+    .from(agentWorkItems)
+    .where(eq(agentWorkItems.source, "approval_result"));
   expect(wakes).toHaveLength(1);
 });
 

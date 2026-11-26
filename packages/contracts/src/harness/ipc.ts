@@ -1,9 +1,9 @@
 import { bridgeOutput, type BridgeAPI } from "../desktop/ipc.ts";
-import { harnessKinds } from "./kinds.ts";
-import { harnessIdSchema } from "./local.ts";
-import { harnessMcpServerSchema, harnessSkillSchema } from "./local.ts";
-import type { HarnessInspection, HarnessLocalConfiguration } from "./local.ts";
-import type { HarnessModelCatalog, HarnessSignInState } from "./models.ts";
+import { harnessKinds } from "../harness-runtime/kinds.ts";
+import { harnessIdSchema } from "../harness-runtime/local.ts";
+import { harnessMcpServerSchema, harnessSkillSchema } from "../harness-runtime/local.ts";
+import type { HarnessInspection, HarnessLocalConfiguration } from "../harness-runtime/local.ts";
+import type { HarnessModelCatalog, HarnessSignInState } from "../harness-runtime/models.ts";
 import { z } from "zod";
 
 export const channel = "substrate:harness";

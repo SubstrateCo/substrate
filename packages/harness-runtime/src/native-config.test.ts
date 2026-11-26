@@ -1,4 +1,4 @@
-import { startupSkills, type HarnessConfiguration } from "@substrate/contracts/harness";
+import type { HarnessConfiguration, ManagedSkill } from "@substrate/contracts/harness-runtime";
 
 import { createHarnessHost } from "./host.ts";
 import { saveNativeSkill, scanNativeSkills } from "./native-config.ts";
@@ -8,6 +8,16 @@ import { rejects } from "node:assert/strict";
 import { mkdir, mkdtemp, readFile, readdir, rm, symlink, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+
+const managedSkills: ManagedSkill[] = [
+  {
+    id: "host-search",
+    name: "host-search",
+    description: "Search.",
+    content: "Search first.",
+    installed: true,
+  },
+];
 
 let root: string;
 beforeEach(async () => {
@@ -20,15 +30,14 @@ afterEach(async () => {
 
 const config = (): HarnessConfiguration => ({
   organizationId: "org-a",
-  enabledApps: ["messages", "agents", "tasks", "crm"],
   agents: [
     {
       id: "agent-a",
-      name: "Reviewer",
       harness: "codex",
       instructions: "Review only.",
       enabled: true,
-      useStartupDefaults: true,
+      managedSkills,
+      tools: null,
     },
   ],
 });
@@ -115,23 +124,22 @@ test("recreates the host and synchronizes edited actors without replacing local 
   const first = await createHarnessHost({ accountDirectory: root });
   const configuration: HarnessConfiguration = {
     organizationId: "restart-org",
-    enabledApps: ["messages", "agents", "tasks", "crm", "inbox"],
     agents: [
       {
         id: "opencode-agent",
-        name: "OpenCode agent",
         harness: "opencode",
         instructions: "Initial instructions",
         enabled: true,
-        useStartupDefaults: true,
+        managedSkills,
+        tools: null,
       },
       {
         id: "claude-agent",
-        name: "Claude agent",
         harness: "claude",
         instructions: "Initial Claude instructions",
         enabled: true,
-        useStartupDefaults: true,
+        managedSkills,
+        tools: null,
       },
     ],
   };
@@ -163,7 +171,7 @@ test("recreates the host and synchronizes edited actors without replacing local 
     expect(local.skills.find((skill) => skill.id === "native-review")?.content).toBe(
       "Saved locally",
     );
-    for (const skill of startupSkills)
+    for (const skill of managedSkills)
       expect(local.skills.find((item) => item.id === skill.id)?.content).toBe(skill.content);
     const claudePrompt = join(
       root,

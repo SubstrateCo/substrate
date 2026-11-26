@@ -1,9 +1,8 @@
-import { sessionKeys } from "@substrate/contracts/agent-work";
-import type { HarnessEventBody } from "@substrate/contracts/harness";
-import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
+import type { HarnessEventBody } from "@substrate/contracts/harness-runtime";
 
 import { createStartupMcp, type McpLease } from "../mcp.ts";
 import { startFakeAgent, type FakeAgent, type FakeAgentScript } from "../testing/fake-agent.ts";
+import { testServer, testToolProvider, type TestBinding } from "../testing/tool-provider.ts";
 import { createAcpAdapter } from "./adapter.ts";
 import type { AcpLaunch, AcpProtocolVersion } from "./api.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
@@ -13,16 +12,11 @@ import { join } from "node:path";
 import { z } from "zod";
 
 const launch: AcpLaunch = { harness: "claude", command: "fake", args: [], version: "1" };
-const turn: TurnContext = {
-  turnId: "0d6f4c3e-8b4f-4c39-9d7e-3f1c2a5b6e71",
-  attempt: 1,
-  sessionKey: sessionKeys.dm("9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718"),
-  origin: { conversationId: "9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718", threadId: null },
-  kind: "interactive",
-};
+const binding: TestBinding = { turnId: "0d6f4c3e-8b4f-4c39-9d7e-3f1c2a5b6e71", attempt: 1 };
+const turn = { turnId: binding.turnId, binding };
 const listProjects = {
   mcp: {
-    server: "substrate",
+    server: testServer.name,
     method: "tools/call",
     params: { name: "list_projects", arguments: {} },
   },
@@ -30,7 +24,7 @@ const listProjects = {
 
 let folder: string;
 let host: Awaited<ReturnType<typeof createStartupMcp>>;
-let calls: WorkspaceApiRequest[];
+let calls: ReturnType<typeof testToolProvider>["calls"];
 /** Makes workspace calls never settle, as a stalled server request would. */
 let stallWorkspace: boolean;
 /** Resolves on the first workspace call. */
@@ -39,17 +33,15 @@ let workspaceCalled: PromiseWithResolvers<void>;
 beforeEach(async () => {
   await mkdir(join(tmpdir(), "opencode"), { recursive: true });
   folder = await mkdtemp(join(tmpdir(), "opencode", "acp-mcp-test-"));
-  calls = [];
   stallWorkspace = false;
   workspaceCalled = Promise.withResolvers<void>();
-  host = await createStartupMcp({
-    workspace: async (call) => {
-      calls.push(call);
-      workspaceCalled.resolve();
-      if (stallWorkspace) await new Promise<never>(() => {});
-      return { success: true, data: { items: [], nextCursor: null } };
-    },
+  const tools = testToolProvider(async () => {
+    workspaceCalled.resolve();
+    if (stallWorkspace) await new Promise<never>(() => {});
+    return { success: true, data: { items: [], nextCursor: null } };
   });
+  calls = tools.calls;
+  host = await createStartupMcp(tools.provider);
 });
 afterEach(async () => {
   await host.close();
@@ -63,7 +55,6 @@ function issue(): McpLease {
     sessionId: "session-a",
     tools: ["list_projects"],
     folder,
-    agentFolder: folder,
   });
 }
 
@@ -109,13 +100,13 @@ test("an agent that advertises MCP-over-ACP gets the lease's tools over mcp/mess
   const f = await open(
     {
       agentCapabilities: { mcpCapabilities: { acp: true } },
-      defaultTurn: [{ mcp: { server: "substrate", method: "tools/list" } }, listProjects],
+      defaultTurn: [{ mcp: { server: testServer.name, method: "tools/list" } }, listProjects],
     },
     lease,
   );
   expect(f.setup()).toEqual({
     cwd: folder,
-    mcpServers: [{ type: "acp", name: "substrate", serverId: expect.any(String) }],
+    mcpServers: [{ type: "acp", name: testServer.name, serverId: expect.any(String) }],
   });
   lease.bind(turn);
   await f.run();
@@ -126,34 +117,26 @@ test("an agent that advertises MCP-over-ACP gets the lease's tools over mcp/mess
   expect(calls).toEqual([
     {
       tool: "list_projects",
+      input: { limit: 25 },
       organizationId: "org-a",
       agentId: "agent-a",
-      turn,
-      input: { archived: "active", limit: 25 },
+      sessionId: "session-a",
+      binding,
     },
   ]);
   await f.adapter.disconnect();
 });
 
-test("an image from read_file reaches an MCP-over-ACP agent as an image block", async () => {
-  const file = {
-    type: "message_attachment",
-    messageId: "5a9f2d61-0b4e-4c1a-9d3f-7e8a6b5c4d21",
-    attachmentId: "7c1e3b52-9a4d-4f60-8e2b-1d0c9f8a7b63",
-  };
+test("an image result reaches an MCP-over-ACP agent as an image block", async () => {
+  const file = "bug";
   const data = Buffer.from("webp bytes").toString("base64");
-  const images = await createStartupMcp({
-    workspace: async () => ({
+  const images = await createStartupMcp(
+    testToolProvider(async () => ({
       success: true,
-      data: {
-        file,
-        filename: "bug.png",
-        contentType: "image/png",
-        size: 10,
-        content: { kind: "image", mimeType: "image/webp", data },
-      },
-    }),
-  });
+      data: { file, content: { kind: "image", mimeType: "image/webp" } },
+      image: { data, mimeType: "image/webp" },
+    })).provider,
+  );
   try {
     const lease = images.issue({
       organizationId: "org-a",
@@ -161,7 +144,6 @@ test("an image from read_file reaches an MCP-over-ACP agent as an image block", 
       sessionId: "session-a",
       tools: ["read_file"],
       folder,
-      agentFolder: folder,
     });
     const f = await open(
       {
@@ -169,7 +151,7 @@ test("an image from read_file reaches an MCP-over-ACP agent as an image block", 
         defaultTurn: [
           {
             mcp: {
-              server: "substrate",
+              server: testServer.name,
               method: "tools/call",
               params: { name: "read_file", arguments: { file } },
             },
@@ -252,7 +234,7 @@ test("disconnect finishes while the agent holds an MCP subscription stream open"
       defaultTurn: [
         {
           mcp: {
-            server: "substrate",
+            server: testServer.name,
             method: "subscriptions/listen",
             params: { notifications: { toolsListChanged: true } },
           },
@@ -286,7 +268,7 @@ test("without MCP-over-ACP the lease is declared over HTTP with its bearer token
     mcpServers: [
       {
         type: "http",
-        name: "substrate",
+        name: testServer.name,
         url: lease.url,
         headers: [{ name: "Authorization", value: `Bearer ${lease.token}` }],
       },

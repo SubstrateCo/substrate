@@ -1,13 +1,12 @@
+import type { McpInput, McpOutput } from "@substrate/contracts/agent-tools/tools";
 import { askRequestPayload } from "@substrate/contracts/agent-work";
-import type { TurnContext } from "@substrate/contracts/harness/mcp";
-import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { ValidationError } from "../../errors";
 import { createAsyncRequest } from "../agent-work/requests/async-requests";
-import { replyTarget } from "./turn";
+import { replyTarget, type ServerTurn } from "./turn";
 import { agentWrites } from "./writes";
 
 type Agent = Parameters<typeof agentWrites>[2];
@@ -17,7 +16,7 @@ export function publishingTools(
   ctx: RepositoryContext,
   identity: SessionIdentity,
   agent: Agent & { userAgentId: string },
-  turn: TurnContext,
+  turn: ServerTurn,
 ) {
   const scope = {
     organizationId: identity.organizationId,

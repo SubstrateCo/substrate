@@ -1,4 +1,4 @@
-import type { AgentStatusView, AgentTurnView } from "@substrate/contracts/agent-work";
+import type { AgentStatusView, AgentWorkTurnView } from "@substrate/contracts/agent-work";
 import { liveTurnStatuses } from "@substrate/contracts/agent-work";
 
 import type { ConversationAgent } from "./conversation-agents";
@@ -7,39 +7,44 @@ const noticeTurnStatuses = new Set([...liveTurnStatuses, "needs_attention"]);
 
 /** One agent's line above the composer, before it gets its copy and links. */
 export type NoticeLine =
-  | { kind: "turn"; agent: ConversationAgent; turn: AgentTurnView }
+  | { kind: "turn"; agent: ConversationAgent; turn: AgentWorkTurnView }
   | { kind: "no_desktop"; agent: ConversationAgent }
   | { kind: "needs_you"; agent: ConversationAgent }
   | { kind: "status"; agent: ConversationAgent; status: AgentStatusView };
 
 /**
+ * The thread whose composer carries a turn's line: its session's thread, or null for the
+ * conversation. A turn that shows under its thread's root message, such as the first turn of a
+ * channel mention, shows in the conversation's timeline, so the conversation's composer carries it.
+ */
+export function noticeThread(sessionThreadId: string | null, anchorMessageId: string | undefined) {
+  return anchorMessageId === sessionThreadId ? null : sessionThreadId;
+}
+
+/**
  * What each agent here is doing, for the composer of the conversation (`threadId` null) or of
- * one thread. An agent homed on this desktop shows its live turn in that place. Other agents
- * show their published status where they work now; the conversation's own composer also shows
- * agents that need a desktop, need you, or are offline with work.
+ * one thread. An agent with a live or stopped turn in that place shows the turn. Otherwise it
+ * shows its status where it works now; the conversation's own composer also shows agents that
+ * need a desktop, need you, or are offline with work.
  */
 export function noticeLines(input: {
   conversationId: string;
   threadId: string | null;
   agents: readonly ConversationAgent[];
-  /** Agents homed on this desktop, by agent ID. */
-  homed: ReadonlyMap<string, unknown>;
-  turns: readonly AgentTurnView[];
+  turns: readonly AgentWorkTurnView[];
   /** The thread where a turn's session started, or null for the conversation. */
-  threadOf: (turn: AgentTurnView) => string | null;
+  threadOf: (turn: AgentWorkTurnView) => string | null;
   statuses: ReadonlyMap<string, AgentStatusView> | undefined;
 }): NoticeLine[] {
   const { threadId } = input;
   return input.agents.flatMap((agent): NoticeLine[] => {
-    if (input.homed.has(agent.agentId)) {
-      const current = input.turns.find(
-        (turn) =>
-          turn.userAgentId === agent.agentId &&
-          noticeTurnStatuses.has(turn.status) &&
-          input.threadOf(turn) === threadId,
-      );
-      return current ? [{ kind: "turn", agent, turn: current }] : [];
-    }
+    const current = input.turns.find(
+      (turn) =>
+        turn.userAgentId === agent.agentId &&
+        noticeTurnStatuses.has(turn.status) &&
+        input.threadOf(turn) === threadId,
+    );
+    if (current) return [{ kind: "turn", agent, turn: current }];
     const status = input.statuses?.get(agent.agentId);
     if (!status) return [];
     const here =

@@ -1,5 +1,5 @@
 import type { SaveAgentInput } from "@substrate/contracts/agents";
-import type { HarnessKind } from "@substrate/contracts/harness";
+import type { HarnessKind } from "@substrate/contracts/harness-runtime";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -107,6 +107,7 @@ export function AgentSettings({
                 harness={agent.harness}
                 section={section}
                 defaults={agent.useStartupDefaults}
+                homeDevice={runSettings?.homeDevice ?? null}
               />
             )
           }

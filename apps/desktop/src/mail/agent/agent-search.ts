@@ -1,11 +1,11 @@
-import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
+import { InboxToolError } from "@substrate/agent-host";
+import type { McpInput, McpOutput } from "@substrate/contracts/agent-tools/tools";
 import type { Mailbox } from "@substrate/contracts/mail";
 
-import { InboxToolError } from "./agent-error.ts";
-import { boxName, mailSummary } from "./agent-excerpts.ts";
 import type { GmailWork } from "../gmail/gmail-connection.ts";
 import type { gmailReader } from "../gmail/gmail-reader.ts";
 import type { LocalMail } from "../session.ts";
+import { boxName, mailSummary } from "./agent-excerpts.ts";
 import { randomUUID } from "node:crypto";
 
 type Search = McpInput<"search_inbox">;

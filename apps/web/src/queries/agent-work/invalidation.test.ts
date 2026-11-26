@@ -3,7 +3,7 @@ import { MutationObserver, QueryClient, QueryObserver, type QueryKey } from "@ta
 import { queryKeys } from "../keys";
 import { queryTargetFilter, type QueryTarget } from "../targets";
 import { agentWorkInvalidations } from "./invalidation";
-import { localWorkMutationOptions, requestActionMutationOptions } from "./mutations";
+import { requestActionMutationOptions, workMutationOptions } from "./mutations";
 import { bridgeChangeTargets } from "./sync";
 import { ApiError } from "@/api/result";
 import { describe, expect, test } from "bun:test";
@@ -124,51 +124,53 @@ describe("agent-work mutation invalidation", () => {
     }
   });
 
-  test("a partial desktop failure refreshes local work, not server work or another workspace", async () => {
+  test("a failed work command still refreshes the owner's server work in this workspace", async () => {
     const client = new QueryClient();
-    const local = queryKeys.agentWorkRoutines("user", "org", "agent");
+    const server = [
+      queryKeys.agentWorkRoutines("user", "org", "agent"),
+      queryKeys.agentWorkActivity("user", "org", "agent"),
+    ];
     const untouched = [
-      queryKeys.agentWorkStatus("user", "org"),
+      queryKeys.agentWorkTurnEvents("user", "org", "turn"),
       queryKeys.agentWorkRoutines("user", "other-org", "agent"),
     ];
-    for (const key of [local, ...untouched]) client.setQueryData(key, []);
+    for (const key of [...server, ...untouched]) client.setQueryData(key, []);
     try {
-      const failure = new Error("Desktop response lost");
-      const options = localWorkMutationOptions(client, "user", "org");
+      const conflict = new ApiError("CONFLICT", "The routine changed.", 409);
+      const options = workMutationOptions(client, "user", "org");
       const action = new MutationObserver(
         client,
         options(async (_id: string) => {
-          throw failure;
+          throw conflict;
         }),
       );
-      expect(await action.mutate("routine").catch((error: Error) => error)).toBe(failure);
-      expect(client.getQueryState(local)?.isInvalidated).toBe(true);
+      expect(await action.mutate("routine").catch((error: Error) => error)).toBe(conflict);
+      for (const key of server) expect(client.getQueryState(key)?.isInvalidated).toBe(true);
       for (const key of untouched) expect(client.getQueryState(key)?.isInvalidated).toBe(false);
     } finally {
       client.clear();
     }
   });
 
-  test("an answer refreshes only this owner's agent work in this workspace", () => {
+  test("an answer or command refreshes only this owner's server work in this workspace", () => {
     expect(matched(cached, agentWorkInvalidations("user", "org", { kind: "agent-work" }))).toEqual(
       cached.slice(0, 3),
     );
   });
 
-  test("a local action refreshes only local work, not the server status, needs-you, or requests", () => {
+  test("server work refreshes leave local transcripts and homed agents alone", () => {
     const local = [
-      queryKeys.agentWorkConversation("user", "org", "c1"),
       queryKeys.agentWorkTurnEvents("user", "org", "t1"),
-      queryKeys.agentWorkAgents("user", "org"),
+      queryKeys.agentWorkTurnRuns("user", "org", "t1"),
+      queryKeys.agentWorkHomed("user", "org"),
     ];
     const server = [
       queryKeys.agentWorkStatus("user", "org"),
-      queryKeys.agentWorkNeedsYou("user", "org"),
-      queryKeys.agentWorkRequests("user", "org", "c1"),
+      queryKeys.agentWorkTurn("user", "org", "t1"),
+      queryKeys.agentWorkConversation("user", "org", "c1"),
     ];
-    const keys = agentWorkInvalidations("user", "org", { kind: "local" });
-    expect(keys).toEqual([{ queryKey: queryKeys.agentWorkLocal("user", "org") }]);
-    expect(matched([...local, ...server], keys)).toEqual(local);
+    const keys = agentWorkInvalidations("user", "org", { kind: "agent-work" });
+    expect(matched([...local, ...server], keys)).toEqual(server);
   });
 
   test("an approval refreshes the reactions, notifications, and searches its record shows in", () => {
@@ -225,56 +227,34 @@ describe("agent-work mutation invalidation", () => {
 });
 
 describe("bridge change hints", () => {
-  test("a conversation hint refreshes that conversation's local work and the agent list", () => {
+  test("a turn hint refreshes that turn's events and runs and the homed agents, not other turns", () => {
     const local = [
-      queryKeys.agentWorkConversation("user", "org", "c1"),
-      queryKeys.agentWorkConversation("user", "org", "c2"),
-      queryKeys.agentWorkAgents("user", "org"),
-      queryKeys.agentWorkRequests("user", "org", "c1"),
-    ];
-    expect(matched(local, bridgeChangeTargets("user", "org", { conversationId: "c1" }))).toEqual([
-      local[0]!,
-      local[2]!,
-    ]);
-  });
-
-  test("a turn hint refreshes that turn's view and events, not other turns", () => {
-    const local = [
-      queryKeys.agentWorkTurn("user", "org", "t1"),
       queryKeys.agentWorkTurnEvents("user", "org", "t1"),
-      queryKeys.agentWorkTurn("user", "org", "t2"),
-    ];
-    expect(matched(local, bridgeChangeTargets("user", "org", { turnId: "t1" }))).toEqual(
-      local.slice(0, 2),
-    );
-  });
-
-  test("a steering or output hint for a turn refreshes conversation work without a status change", () => {
-    const local = [
-      queryKeys.agentWorkConversation("user", "org", "c1"),
-      queryKeys.agentWorkConversation("user", "org", "c2"),
-      queryKeys.agentWorkTurnEvents("user", "org", "t1"),
-      queryKeys.agentWorkStatus("user", "org"),
-      queryKeys.agentWorkConversation("user", "other-org", "c1"),
+      queryKeys.agentWorkTurnRuns("user", "org", "t1"),
+      queryKeys.agentWorkHomed("user", "org"),
+      queryKeys.agentWorkTurnEvents("user", "org", "t2"),
+      queryKeys.agentWorkTurnEvents("user", "other-org", "t1"),
     ];
     const change = { userAgentId: "a1", turnId: "t1" };
     expect(matched(local, bridgeChangeTargets("user", "org", change))).toEqual(local.slice(0, 3));
   });
 
-  test("a turn hint that names its conversation refreshes only that conversation", () => {
-    const local = [
+  test("a bridge hint never refreshes server work", () => {
+    const server = [
+      queryKeys.agentWorkStatus("user", "org"),
+      queryKeys.agentWorkTurn("user", "org", "t1"),
       queryKeys.agentWorkConversation("user", "org", "c1"),
-      queryKeys.agentWorkConversation("user", "org", "c2"),
+      queryKeys.agentWorkActivity("user", "org", "a1"),
     ];
-    const change = { userAgentId: "a1", turnId: "t1", conversationId: "c1" };
-    expect(matched(local, bridgeChangeTargets("user", "org", change))).toEqual([local[0]!]);
+    for (const change of [{}, { userAgentId: "a1", turnId: "t1" }])
+      expect(matched(server, bridgeChangeTargets("user", "org", change))).toEqual([]);
   });
 
-  test("a hint without IDs refreshes all local work but not server reads", () => {
+  test("a hint without IDs refreshes every local read of this workspace", () => {
     const local = [
       queryKeys.agentWorkTurnEvents("user", "org", "t1"),
-      queryKeys.agentWorkRoutines("user", "org", "a1"),
-      queryKeys.agentWorkStatus("user", "org"),
+      queryKeys.agentWorkHomed("user", "org"),
+      queryKeys.agentWorkHomed("user", "other-org"),
     ];
     expect(matched(local, bridgeChangeTargets("user", "org", {}))).toEqual(local.slice(0, 2));
   });

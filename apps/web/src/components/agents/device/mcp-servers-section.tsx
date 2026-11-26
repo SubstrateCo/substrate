@@ -1,4 +1,4 @@
-import { maxHarnessMcpServers, type HarnessMcpServer } from "@substrate/contracts/harness";
+import { maxHarnessMcpServers, type HarnessMcpServer } from "@substrate/contracts/harness-runtime";
 
 import { type ReactNode } from "react";
 

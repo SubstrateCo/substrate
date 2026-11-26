@@ -1,0 +1,110 @@
+import type { WorkspaceApiRequest } from "@substrate/contracts/agent-tools/mcp";
+import type { ServerToolName } from "@substrate/contracts/agent-tools/tools";
+
+import type { TurnOutput } from "../runtime/context.ts";
+import { turnOutcome } from "./outcome.ts";
+import { toolOutputs } from "./tool-results.ts";
+import { expect, test } from "bun:test";
+
+test("a turn without outputs is silent", () => {
+  expect(turnOutcome([])).toBe("silent");
+});
+
+test("a question wins over the reply that carried it, and a proposal over a plain reply", () => {
+  const reply = { kind: "message" as const, id: "m", conversationId: "c", threadId: null };
+  expect(turnOutcome([reply, { kind: "request", id: "r", requestKind: "question" }])).toBe("asked");
+  expect(turnOutcome([reply, { kind: "request", id: "r", requestKind: "proposal" }])).toBe(
+    "proposed",
+  );
+  expect(turnOutcome([reply])).toBe("replied");
+});
+
+const ids = {
+  turn: "00000000-0000-4000-8000-000000000001",
+  message: "00000000-0000-4000-8000-000000000002",
+  conversation: "00000000-0000-4000-8000-000000000003",
+  thread: "00000000-0000-4000-8000-000000000004",
+  question: "00000000-0000-4000-8000-000000000005",
+  proposal: "00000000-0000-4000-8000-000000000006",
+  task: "00000000-0000-4000-8000-000000000007",
+  project: "00000000-0000-4000-8000-000000000008",
+};
+const createdAt = "2026-11-09T10:00:00.000Z";
+const call = (tool: ServerToolName): WorkspaceApiRequest => ({
+  tool,
+  input: { requestId: ids.turn, body: "Which one?" },
+  organizationId: "org-1",
+  agentId: "00000000-0000-4000-8000-000000000009",
+  turn: {
+    turnId: ids.turn,
+    attempt: 1,
+  },
+});
+const outcomeOf = (outputs: TurnOutput[]) => turnOutcome(outputs);
+
+test("a server reply with ask records the message in its place and the question", () => {
+  const found = toolOutputs(call("reply"), {
+    success: true,
+    data: {
+      messageId: ids.message,
+      conversationId: ids.conversation,
+      threadId: ids.thread,
+      questionId: ids.question,
+      createdAt,
+    },
+  });
+  expect(found).toEqual({
+    turnId: ids.turn,
+    outputs: [
+      { kind: "message", id: ids.message, conversationId: ids.conversation, threadId: ids.thread },
+      { kind: "request", id: ids.question, requestKind: "question" },
+    ],
+  });
+  expect(outcomeOf(found!.outputs)).toBe("asked");
+});
+
+test("a server call that waits for approval records the proposal request", () => {
+  const found = toolOutputs(call("delete_task"), {
+    success: false,
+    error: { code: "APPROVAL_PENDING", message: "Waiting for approval.", requestId: ids.proposal },
+  });
+  expect(found).toEqual({
+    turnId: ids.turn,
+    outputs: [{ kind: "request", id: ids.proposal, requestKind: "proposal" }],
+  });
+  expect(outcomeOf(found!.outputs)).toBe("proposed");
+});
+
+test("created and updated tasks are task outputs", () => {
+  const task = {
+    id: ids.task,
+    title: "Ship it",
+    description: "",
+    status: "not_started",
+    priority: "none",
+    assignee: null,
+    dueDate: null,
+    project: { id: ids.project, name: "Launch" },
+    parent: null,
+    subtaskCount: 0,
+    source: null,
+    discussionConversationId: null,
+    links: [],
+    linked: { messages: [], messageCount: 0, records: [], recordCount: 0 },
+    createdAt,
+    updatedAt: createdAt,
+  };
+  for (const tool of ["create_task", "update_task"] as const)
+    expect(toolOutputs(call(tool), { success: true, data: task })?.outputs).toEqual([
+      { kind: "task", id: ids.task },
+    ]);
+});
+
+test("failed calls, read tools and unknown result shapes produce nothing", () => {
+  expect(
+    toolOutputs(call("reply"), { success: false, error: { code: "X", message: "x" } }),
+  ).toBeNull();
+  expect(
+    toolOutputs(call("search_content"), { success: true, data: { messageId: ids.message } }),
+  ).toBeNull();
+});

@@ -1,14 +1,13 @@
-import type { AgentInvocationView } from "./invocations.ts";
+import { agentRequestResponse, type AgentRequestResponse } from "../harness-runtime/requests.ts";
 import type { ProposalAction, ProposalOutcome } from "./proposals.ts";
-import {
-  agentRequestResponse,
-  type AgentRequestKind,
-  type AgentRequestMode,
-  type AgentRequestPayload,
-  type AgentRequestResponse,
-  type AgentRequestStatus,
+import type {
+  AgentRequestKind,
+  AgentRequestMode,
+  AgentRequestPayload,
+  AgentRequestStatus,
 } from "./requests.ts";
 import type { AgentStatusView } from "./status.ts";
+import type { InboxSource, TurnAttentionReason } from "./turns.ts";
 import { z } from "zod";
 
 /**
@@ -69,26 +68,40 @@ export interface AgentHiddenRequestView extends AgentRequestViewBase {
 export type AgentRequestView = AgentVisibleRequestView | AgentHiddenRequestView;
 
 /**
- * An agent whose home desktop cannot run caller calls: caller wakes it withheld for a day were
- * dropped. Shows while such a drop is less than 7 days old and no caller wake of the agent was
- * stored by a desktop since the last drop.
+ * Where a turn or item belongs, as the owner can see it now: the session's place, or null when
+ * it has none or the owner cannot open its conversation.
  */
-export interface AgentDesktopUpdateView {
+export type AgentWorkPlace = { conversationId: string; threadId: string | null } | null;
+
+/** A turn that waits for its owner to retry, start fresh or dismiss it. */
+export interface AgentAttentionTurnView {
+  id: string;
   userAgentId: string;
   agent: { actorId: string; name: string };
-  /** Calls dropped for this reason in the last 7 days. */
-  droppedCalls: number;
-  lastDroppedAt: string;
+  sessionId: string;
+  attentionReason: TurnAttentionReason | null;
+  place: AgentWorkPlace;
+  createdAt: string;
+  finishedAt: string | null;
+}
+
+/** An item that the harness may or may not have read. The owner resends or discards it. */
+export interface AgentUncertainItemView {
+  id: string;
+  userAgentId: string;
+  agent: { actorId: string; name: string };
+  turnId: string | null;
+  source: InboxSource;
+  place: AgentWorkPlace;
+  createdAt: string;
 }
 
 export interface AgentNeedsYou {
   requests: AgentRequestView[];
-  /** Agents whose desktop reported needs_you, such as a turn that needs attention. */
+  /** Agents whose derived status is needs_you. */
   agents: AgentStatusView[];
-  /** Calls of the owner's agents that wait for the owner's approval. */
-  calls: AgentInvocationView[];
-  /** Agents whose home desktop must be updated to run caller calls. */
-  desktopUpdateRequired: AgentDesktopUpdateView[];
+  turns: AgentAttentionTurnView[];
+  items: AgentUncertainItemView[];
 }
 
 const ref = z.string().min(1);

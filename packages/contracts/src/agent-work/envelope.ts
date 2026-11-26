@@ -1,4 +1,4 @@
-import type { TurnKind } from "../harness/turn-context.ts";
+import type { TurnKind } from "../harness-runtime/runtime.ts";
 import type { InboxSource } from "./turns.ts";
 import type { AgentSessionKind } from "./wakes.ts";
 

@@ -1,4 +1,4 @@
-import { harnessInstructionsFiles, type HarnessKind } from "@substrate/contracts/harness";
+import { harnessInstructionsFiles, type HarnessKind } from "@substrate/contracts/harness-runtime";
 
 import type { AcpPrefixChannel } from "./acp/api.ts";
 import { requireAgent } from "./acp/detect.ts";

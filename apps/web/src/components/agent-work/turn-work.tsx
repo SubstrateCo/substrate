@@ -1,4 +1,4 @@
-import type { AgentRequestView, AgentTurnView } from "@substrate/contracts/agent-work";
+import type { AgentRequestView, AgentWorkTurnView } from "@substrate/contracts/agent-work";
 import { liveTurnStatuses } from "@substrate/contracts/agent-work";
 
 import { useEffect, useRef } from "react";
@@ -15,7 +15,7 @@ import { useNow } from "@/hooks/use-now";
 import { failedWorkNote, silentLabel, turnLabel, turnTone } from "@/lib/agent-work/status";
 
 type TurnProps = {
-  turn: AgentTurnView;
+  turn: AgentWorkTurnView;
   openRequest?: AgentRequestView;
   onTranscript: (turnId: string) => void;
   onVisibilityChange?: TurnVisibilityChange;
@@ -34,7 +34,7 @@ export function TurnStatusTag({ turn }: Pick<TurnProps, "turn">) {
   return <WorkStatusTag status={{ tone: turnTone(turn), label: turnLabel(turn, now) }} />;
 }
 
-/** One local turn's status, for the header of the reply it belongs to. */
+/** One turn's status, for the header of the reply it belongs to. */
 export function TurnStatus(props: TurnProps) {
   // Muted turns mount no clock and no actions.
   if (turnTone(props.turn, props.openRequest) === "muted") return null;
@@ -83,7 +83,7 @@ function LiveTurnStatus({
 }
 
 /**
- * One local turn's body, where it belongs: its error and attention card under the agent's reply,
+ * One turn's body, where it belongs: its error and attention card under the agent's reply,
  * whose header shows the status. Before the agent replies, a pending reply under the owner
  * message that started it stands in, with the status in its own header.
  */

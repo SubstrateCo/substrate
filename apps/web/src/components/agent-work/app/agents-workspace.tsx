@@ -73,8 +73,8 @@ function AgentsContent({
 }
 
 /**
- * The Agents app. Needs you comes from the server, so it works on every device. Activity,
- * transcripts, and routines come from the agent's home desktop.
+ * The Agents app. Needs you, activity, and routines come from the server, so they work on every
+ * device. Transcripts come from the agent's home desktop.
  */
 export function AgentsWorkspace({
   agentId,
@@ -92,8 +92,11 @@ export function AgentsWorkspace({
   const [creating, setCreating] = useState(false);
   const newAgentButton = useRef<HTMLButtonElement>(null);
   const focusAfterRender = useFocusAfterRender();
-  const { catalogState, retryCatalog, agents, status, selected, homedHere, firstAgent } =
-    useWorkspaceAgents(userId, organizationId, agentId);
+  const { catalogState, retryCatalog, agents, status, selected, firstAgent } = useWorkspaceAgents(
+    userId,
+    organizationId,
+    agentId,
+  );
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
   const go = ({ agentId: id, section: next, ...target }: AgentsSearch) =>
     void navigate(agentLink(organizationId, id, next, target));
@@ -112,7 +115,6 @@ export function AgentsWorkspace({
             agentId={selected.id}
             name={selected.name}
             enabled={selected.enabled}
-            homedHere={homedHere}
             status={status(selected.id)}
             section={section}
             selectedTurnId={turnId}
@@ -163,7 +165,6 @@ export function AgentsWorkspace({
             key={turnId}
             agentId={selected.id}
             agentName={selected.name}
-            homedHere={homedHere}
             device={status(selected.id)?.device?.name}
             turnId={turnId}
             onClose={() => go({ agentId: selected.id, section: "activity" })}

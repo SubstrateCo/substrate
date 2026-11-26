@@ -1,7 +1,6 @@
 import type { AgentRunSettings as AgentRunSettingsData } from "@substrate/contracts/agents";
 
 import { AgentRunSettingsView } from "./agent-run-settings-view";
-import { CallerSettings } from "./caller-settings";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { triggersInput } from "@/lib/agents/triggers";
 import { isDesktop } from "@/lib/desktop/auth";
@@ -21,7 +20,6 @@ export function AgentRunSettings({
     <AgentRunSettingsView
       name={name}
       settings={settings}
-      callers={<CallerSettings agentId={settings.agentId} />}
       canRunHere={isDesktop()}
       moving={home.isPending}
       saving={triggers.isPending}

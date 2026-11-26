@@ -9,6 +9,8 @@ export const inboxItemMachine = defineMachine({
     submit: { from: ["pending", "confirmed_unconsumed"], to: "submitted" },
     /** The turn ended normally, or the harness reported that it read the item. */
     consume: { from: ["submitted", "uncertain"], to: "consumed" },
+    /** A held tool call of a live turn received the decision itself, so the item never runs. */
+    receiveInline: { from: ["pending", "confirmed_unconsumed"], to: "consumed" },
     /** An interrupt receipt says the steered item was still queued. */
     requeue: { from: ["submitted"], to: "confirmed_unconsumed" },
     /** A steered item has no consumption evidence when its turn ends or its steer fails. */

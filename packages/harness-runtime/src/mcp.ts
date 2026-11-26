@@ -1,23 +1,14 @@
-import { approvalPendingCode } from "@substrate/contracts/agent-work";
 import {
   mcpOutputOffloadBytes,
-  type LocalToolProxy,
+  type JsonObject,
   type OffloadedOutput,
-  type TurnContext,
-  type WorkspaceApiProxy,
-  type WorkspaceApiResult,
-} from "@substrate/contracts/harness/mcp";
-import {
-  mcpTools,
-  type LocalToolName,
-  type McpInput,
-  type McpOutput,
-  type McpToolName,
-  type ToolDefinition,
-} from "@substrate/contracts/harness/tools";
+  type ToolCallResult,
+  type ToolDescriptor,
+  type ToolProvider,
+  type ToolServerIdentity,
+} from "@substrate/contracts/harness-runtime";
 
-import { saveDownload } from "./files.ts";
-import { forget, MemoryError, remember } from "./memory.ts";
+import { saveDownload, type SavedDownload } from "./files.ts";
 import { offloadOutput } from "./offload.ts";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/streamableHttp.js";
@@ -32,12 +23,10 @@ export interface McpLeaseOptions {
   agentId: string;
   /** The local agent-work session that owns this endpoint. */
   sessionId: string;
-  /** Tools offered on this endpoint; see leaseTools. */
-  tools: McpToolName[];
+  /** Tools offered on this endpoint, by provider name. */
+  tools: readonly string[];
   /** The session's working folder. Large outputs are written below it. */
   folder: string;
-  /** The main agent folder. Memory files live here, also for helper sessions. */
-  agentFolder: string;
 }
 
 /** A tools/call result. Both MCP SDK generations accept this shape. */
@@ -45,41 +34,13 @@ export type McpToolResult = {
   isError?: boolean;
   /** Text first, then any images the model should see. */
   content: [{ type: "text"; text: string }, ...{ type: "image"; data: string; mimeType: string }[]];
-  structuredContent?: McpOutput<McpToolName> | OffloadedOutput | SavedDownload | ImageRead;
+  structuredContent?: JsonObject | OffloadedOutput | SavedDownload;
 };
 
-type SavedDownload = Awaited<ReturnType<typeof saveDownload>>;
-/** read_file's result for an image, without the bytes, which travel in the image block. */
-type ImageRead = Omit<McpOutput<"read_file">, "content"> & {
-  content: { kind: "image"; mimeType: string };
-};
-
-/**
- * File results that must not go through the generic JSON path: an image becomes an image block
- * the model can see, and downloaded bytes go to the session folder instead of its context.
- */
-async function fileResult(
-  name: McpToolName,
-  data: McpOutput<McpToolName>,
-  folder: string,
-  turnId: string,
-): Promise<McpToolResult | undefined> {
-  if (name === "download_file") {
-    const saved = await saveDownload(folder, turnId, mcpTools.download_file.output.parse(data));
-    return { structuredContent: saved, content: [{ type: "text", text: JSON.stringify(saved) }] };
-  }
-  if (name !== "read_file") return undefined;
-  const read = mcpTools.read_file.output.parse(data);
-  if (read.content.kind !== "image") return undefined;
-  const { data: image, mimeType } = read.content;
-  const described: ImageRead = { ...read, content: { kind: "image", mimeType } };
-  return {
-    structuredContent: described,
-    content: [
-      { type: "text", text: JSON.stringify(described) },
-      { type: "image", data: image, mimeType },
-    ],
-  };
+/** The turn bound to a lease: the host's turn ID and the provider's binding for it. */
+interface LeaseTurn<Binding> {
+  turnId: string;
+  binding: Binding;
 }
 
 /**
@@ -88,18 +49,23 @@ async function fileResult(
  * serve this, so a session sees the same tools and the same NO_TURN rule on either transport.
  */
 export interface McpToolEndpoint {
-  readonly tools: readonly McpToolName[];
+  readonly server: ToolServerIdentity;
+  readonly tools: readonly string[];
+  /** registerTool config for one of the endpoint's tools, for both MCP SDK generations. */
+  config(name: string): ReturnType<typeof mcpToolConfig>;
   /** False once the lease is revoked or expired. A use renews an unexpired lease. */
   touch(): boolean;
   /** Input must already match the tool's input schema; both MCP servers validate it first. */
-  call(name: McpToolName, input: McpInput<McpToolName>): Promise<McpToolResult>;
+  call(name: string, input: JsonObject): Promise<McpToolResult>;
 }
 
 /**
  * A stable MCP endpoint for one native session. Calls succeed only while a turn is bound: the
- * host binds the turn context at each turn and unbinds it when the turn ends.
+ * host binds the turn at each turn and unbinds it when the turn ends.
  */
-export interface McpLease {
+export interface McpLease<Binding = unknown> {
+  /** The MCP server name declared to the native agent. */
+  server: string;
   url: string;
   token: string;
   organizationId: string;
@@ -110,24 +76,12 @@ export interface McpLease {
    * absent on test doubles, which then reach agents only over HTTP.
    */
   endpoint?: McpToolEndpoint;
-  bind(context: TurnContext): void;
+  bind(turn: LeaseTurn<Binding>): void;
   unbind(): void;
   revoke(): void;
 }
 
-export const mcpServerInfo = { name: "substrate", version: "1.0.0" };
-
-export const mcpInstructions =
-  "Substrate connects workspace search, messages, and enabled workspace apps. Tasks, CRM and Inbox are optional. " +
-  "Use your harness's tool discovery to discover relevant operations when their schemas are not loaded; " +
-  "do not assume a capability is unavailable just because its tool is not listed in context. " +
-  "Load the relevant domain skills for workflow guidance. Only tools offered to this session are available; " +
-  "discovery does not grant record access or permission to write.";
-
-/** registerTool config for both MCP SDK generations. */
-export function mcpToolConfig(name: McpToolName) {
-  const tool = mcpTools[name];
-  const hints: ToolDefinition = tool;
+function mcpToolConfig(tool: ToolDescriptor) {
   // No outputSchema: a large result is replaced by an offload reference of another shape.
   return {
     title: tool.title,
@@ -135,84 +89,25 @@ export function mcpToolConfig(name: McpToolName) {
     inputSchema: tool.input,
     annotations: {
       title: tool.title,
-      readOnlyHint: hints.readOnly,
-      destructiveHint: hints.destructive ?? false,
-      idempotentHint: hints.readOnly || (hints.idempotent ?? false),
+      readOnlyHint: tool.readOnly,
+      destructiveHint: tool.destructive,
+      idempotentHint: tool.idempotent,
       openWorldHint: false,
     },
   };
 }
 
-export interface StartupMcpHandlers {
-  workspace?: WorkspaceApiProxy;
-  local?: LocalToolProxy;
-}
-
 /** An open session's lease expires only after it stays unused and unbound this long. */
 const leaseIdleTtlMs = 24 * 60 * 60 * 1000;
 
-interface LeaseState {
+interface LeaseState<Binding> {
   options: McpLeaseOptions;
   /** Ignored while a turn is bound: a lease never expires under a live turn. */
   expires: number;
-  context?: TurnContext;
+  context?: LeaseTurn<Binding>;
   /** Output files per tool in the bound turn. */
   outputs: Map<string, number>;
   endpoint: McpToolEndpoint;
-}
-
-/** What an agent should do next for each workspace API error code. */
-// oxlint-disable-next-line deslop/prefer-literal-union -- Workspace errors use an open string code; unknown codes need the default hint.
-function errorHint(code: string) {
-  switch (code) {
-    case "NOT_FOUND":
-      return "The record does not exist or you cannot access it. Find IDs with search or a list tool; do not guess IDs.";
-    case "INVALID_INPUT":
-      return "Correct the input as the message says, then retry.";
-    case "CONFLICT":
-      return "This requestId was already used with different input. Use a new requestId for a new action.";
-    case "UNAUTHENTICATED":
-    case "FORBIDDEN":
-      return "Stop. Tell your owner to sign in to Substrate in this workspace and start a new run.";
-    case "NO_TURN":
-      return "Do not retry. Substrate tools work only while a turn is running.";
-    case "APP_DISABLED":
-      return "Stop this workflow. Do not retry or use another tool to bypass the disabled app. Tell your owner the app must be enabled first.";
-    case "DECLINED":
-      return "Do not retry this call or work around it. Continue with other work or tell your owner what you could not do.";
-    case "FAILED":
-      return "Your owner approved this call, but it failed as the message says. Do not retry it on your own; tell your owner.";
-    case "RESULT_UNAVAILABLE":
-      return "The call ran. Do not retry it. Read the record again before you continue.";
-    case approvalPendingCode:
-      return "Do not retry or work around it. Your owner approves or declines this exact call; the result arrives as a new item in a later turn. Continue with other work or end your turn.";
-    default:
-      return "Retry once. If it fails again, stop and report the error to your owner.";
-  }
-}
-
-const memoryTools: ReadonlySet<string> = new Set(["remember", "forget"]);
-
-function isLocalTool(name: McpToolName): name is LocalToolName {
-  return mcpTools[name].scope === "local";
-}
-
-async function runMemoryTool(
-  name: McpToolName,
-  folder: string,
-  input: McpInput<McpToolName>,
-): Promise<WorkspaceApiResult> {
-  try {
-    const data =
-      name === "remember"
-        ? await remember(folder, mcpTools.remember.input.parse(input))
-        : await forget(folder, mcpTools.forget.input.parse(input));
-    return { success: true, data };
-  } catch (error) {
-    if (error instanceof MemoryError)
-      return { success: false, error: { code: error.code, message: error.message } };
-    throw error;
-  }
 }
 
 const unavailable: McpToolResult = {
@@ -225,20 +120,49 @@ const unavailable: McpToolResult = {
   ],
 };
 
+function jsonResult(structured: NonNullable<McpToolResult["structuredContent"]>): McpToolResult {
+  return {
+    structuredContent: structured,
+    content: [{ type: "text", text: JSON.stringify(structured) }],
+  };
+}
+
+/**
+ * Results that must not go through the generic JSON path: an image becomes an image block the
+ * model can see, and downloaded bytes go to the session folder instead of its context.
+ */
+async function fileResult(
+  result: Extract<ToolCallResult, { success: true }>,
+  folder: string,
+  turnId: string,
+): Promise<McpToolResult | undefined> {
+  if (result.download)
+    return jsonResult(await saveDownload(folder, turnId, result.download, result.data));
+  if (!result.image) return undefined;
+  const { data, mimeType } = result.image;
+  return {
+    structuredContent: result.data,
+    content: [
+      { type: "text", text: JSON.stringify(result.data) },
+      { type: "image", data, mimeType },
+    ],
+  };
+}
+
 /** Runs one tool call for a lease. live: the lease is still issued and unexpired. */
-async function callTool(
-  lease: LeaseState,
-  handlers: StartupMcpHandlers,
+async function callTool<Binding>(
+  lease: LeaseState<Binding>,
+  provider: ToolProvider<Binding>,
   live: () => boolean,
-  name: McpToolName,
-  input: McpInput<McpToolName>,
+  name: string,
+  input: JsonObject,
 ): Promise<McpToolResult> {
   try {
     if (!live()) throw new Error("Credential revoked or expired");
     if (!lease.options.tools.includes(name)) throw new Error("Tool not offered on this lease");
     // The turn is captured when the call starts; a call in flight at turn end completes.
     const turn = lease.context;
-    const { organizationId, agentId, sessionId } = lease.options;
+    const { organizationId, agentId, sessionId, folder } = lease.options;
     if (!turn)
       return {
         isError: true,
@@ -248,27 +172,19 @@ async function callTool(
             text: JSON.stringify({
               code: "NO_TURN",
               message: "No turn is running for this session.",
-              hint: errorHint("NO_TURN"),
+              hint: provider.errorHint("NO_TURN"),
             }),
           },
         ],
       };
-    let result: WorkspaceApiResult;
-    if (memoryTools.has(name)) result = await runMemoryTool(name, lease.options.agentFolder, input);
-    else if (isLocalTool(name)) {
-      if (!handlers.local) throw new Error("Local tools unavailable");
-      result = await handlers.local({
-        tool: name,
-        sessionId,
-        organizationId,
-        agentId,
-        turn,
-        input,
-      });
-    } else {
-      if (!handlers.workspace) throw new Error("Workspace API unavailable");
-      result = await handlers.workspace({ tool: name, organizationId, agentId, turn, input });
-    }
+    const result = await provider.call({
+      tool: name,
+      input,
+      organizationId,
+      agentId,
+      sessionId,
+      binding: turn.binding,
+    });
     if (!live()) throw new Error("Credential revoked or expired");
     if (!result.success)
       return {
@@ -276,43 +192,39 @@ async function callTool(
         content: [
           {
             type: "text",
-            text: JSON.stringify({ ...result.error, hint: errorHint(result.error.code) }),
+            text: JSON.stringify({ ...result.error, hint: provider.errorHint(result.error.code) }),
           },
         ],
       };
-    const data = mcpTools[name].output.parse(result.data);
-    const file = await fileResult(name, data, lease.options.folder, turn.turnId);
+    const file = await fileResult(result, folder, turn.turnId);
     if (file) return file;
-    const sequence = (lease.outputs.get(name) ?? 0) + 1;
-    // Inbox excerpts are private to the bound owner turn; never persist them to the agent folder.
-    const inbox = name === "search_inbox" || name === "read_inbox_message";
+    const { data } = result;
+    const policy = provider.outputPolicy(name);
     if (
-      inbox &&
+      policy === "turn-only" &&
       (lease.context !== turn || Buffer.byteLength(JSON.stringify(data)) > mcpOutputOffloadBytes)
     )
       return unavailable;
-    // Main sessions share an agent folder. Keep private inbox results in the owner's turn.
-    const offloaded = inbox
-      ? undefined
-      : await offloadOutput(lease.options.folder, turn.turnId, name, sequence, data);
+    const sequence = (lease.outputs.get(name) ?? 0) + 1;
+    const offloaded =
+      policy === "offload"
+        ? await offloadOutput(folder, turn.turnId, name, sequence, data, provider.pagingFields)
+        : undefined;
     if (offloaded) lease.outputs.set(name, sequence);
-    const structured = offloaded ?? data;
-    return {
-      structuredContent: structured,
-      content: [{ type: "text", text: JSON.stringify(structured) }],
-    };
+    return jsonResult(offloaded ?? data);
   } catch {
     return unavailable;
   }
 }
 
-export async function createStartupMcp(
-  handlers: StartupMcpHandlers = {},
+export async function createStartupMcp<Binding>(
+  provider: ToolProvider<Binding>,
   options: { leaseTtlMs?: number } = {},
 ) {
   const ttl = options.leaseTtlMs ?? leaseIdleTtlMs;
-  const leases = new Map<string, LeaseState>();
-  const valid = (lease: LeaseState) => lease.context !== undefined || lease.expires > Date.now();
+  const leases = new Map<string, LeaseState<Binding>>();
+  const valid = (lease: LeaseState<Binding>) =>
+    lease.context !== undefined || lease.expires > Date.now();
   const active = new Set<McpServer>();
   let authority = "";
   const server = createServer(async (request, response) => {
@@ -364,11 +276,12 @@ export async function createStartupMcp(
       response.writeHead(400).end();
       return;
     }
-    const mcp = new McpServer(mcpServerInfo, { instructions: mcpInstructions });
     const { endpoint } = lease;
-    for (const name of endpoint.tools)
-      mcp.registerTool(name, mcpToolConfig(name), (input: McpInput<McpToolName>) =>
-        endpoint.call(name, input),
+    const { name, version, instructions } = endpoint.server;
+    const mcp = new McpServer({ name, version }, { instructions });
+    for (const tool of endpoint.tools)
+      mcp.registerTool(tool, endpoint.config(tool), (input: JsonObject) =>
+        endpoint.call(tool, input),
       );
     const transport = new StreamableHTTPServerTransport({
       sessionIdGenerator: undefined,
@@ -403,26 +316,33 @@ export async function createStartupMcp(
   if (!address.success) throw new Error("MCP loopback listener failed");
   authority = `127.0.0.1:${address.data.port}`;
   return {
-    issue(options: McpLeaseOptions): McpLease {
+    issue(options: McpLeaseOptions): McpLease<Binding> {
       const token = randomBytes(32).toString("hex");
-      const tools = [...options.tools];
+      const tools = options.tools.filter((name) => provider.describe(name) !== undefined);
       const live = () => leases.get(token) === state && valid(state);
-      const state: LeaseState = {
+      const state: LeaseState<Binding> = {
         options: { ...options, tools },
         expires: Date.now() + ttl,
         outputs: new Map<string, number>(),
         endpoint: {
+          server: provider.server,
           tools,
+          config(name) {
+            const tool = provider.describe(name);
+            if (!tool) throw new Error("Unknown tool");
+            return mcpToolConfig(tool);
+          },
           touch() {
             if (!live()) return false;
             state.expires = Date.now() + ttl;
             return true;
           },
-          call: (name, input) => callTool(state, handlers, live, name, input),
+          call: (name, input) => callTool(state, provider, live, name, input),
         },
       };
       leases.set(token, state);
       return {
+        server: provider.server.name,
         url: `http://${authority}/mcp`,
         token,
         organizationId: options.organizationId,

@@ -1,18 +1,37 @@
-import { toolCallLabel, toolInput, toolLabel, type ToolCall } from "./tool-label.ts";
+import {
+  toolCallLabel,
+  toolInput,
+  toolLabel,
+  type HostTools,
+  type ToolCall,
+} from "./tool-label.ts";
 import { expect, test } from "bun:test";
 
 /** Native input as harnesses send it: JSON fields of any type, or not an object at all. */
 type NativeInput = { [key: string]: string | number } | string;
 
-const label = (name: string, input?: NativeInput) => toolLabel(name, toolInput.parse(input));
+const titles = new Map([
+  ["list_tasks", "List tasks"],
+  ["list_projects", "List projects"],
+  ["create_task", "Create task"],
+]);
+/** The host's own MCP server, as the runtime passes it to adapters. */
+const host: HostTools = { server: "substrate", title: (name) => titles.get(name) };
 
-test("workspace tools use their titles under any harness prefix", () => {
+const label = (name: string, input?: NativeInput) =>
+  toolLabel(name, toolInput.parse(input), [], host);
+
+test("host tools use their titles under any harness prefix", () => {
   expect(label("list_tasks")).toBe("List tasks");
   expect(label("mcp__substrate__list_projects")).toBe("List projects");
   expect(label("substrate_create_task")).toBe("Create task");
 });
 
-test("code-mode calls name the workspace tools the code calls, once each", () => {
+test("without host tools, the same names read as any other server's tools", () => {
+  expect(toolLabel("mcp__substrate__list_projects")).toBe("substrate · List projects");
+});
+
+test("code-mode calls name the host tools the code calls, once each", () => {
   const code = `
     const projects = await tools["substrate"].list_projects({});
     for (const p of projects) await tools.substrate.list_tasks({ projectId: p.id });
@@ -76,7 +95,7 @@ const call = (title: string | undefined, kind: string | undefined, input?: AcpIn
   const tool: ToolCall = { input: toolInput.parse(input) };
   if (title !== undefined) tool.title = title;
   if (kind !== undefined) tool.kind = kind;
-  return toolCallLabel(tool);
+  return toolCallLabel(tool, [], host);
 };
 
 test("ACP calls with a generic title read from their kind and input", () => {
@@ -103,9 +122,9 @@ test("ACP identifier titles read as tool names; descriptive titles stay", () => 
   expect(call("mcp.substrate.list_projects", "other")).toBe("List projects");
   expect(call("mcp__github__create_issue", undefined)).toBe("github · Create issue");
   expect(call("Tool search", "other")).toBe("Tool search");
-  expect(toolCallLabel({ name: "mcp__substrate__list_projects", title: "x", input: {} })).toBe(
-    "List projects",
-  );
+  expect(
+    toolCallLabel({ name: "mcp__substrate__list_projects", title: "x", input: {} }, [], host),
+  ).toBe("List projects");
 });
 
 test("long labels are cut to one short line", () => {

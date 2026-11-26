@@ -1,10 +1,10 @@
-import { fileTextPage } from "@substrate/contracts/harness/tools";
+import { fileTextPage } from "@substrate/contracts/agent-tools/tools";
 
 import { AccessDeniedError, ValidationError } from "../../../../../packages/database/src/errors";
 import { storedFiles } from "../../../../../packages/database/src/schema";
-import { dmTurn } from "../../../../../packages/database/src/testing/agent-work";
 import { setupDatabase } from "../../../../../packages/database/src/testing/database";
 import { rejection } from "../../../../../packages/database/src/testing/rejection";
+import { dmTurn } from "../../../../../packages/database/src/testing/turns";
 import { agentWorkFixture } from "./test-support";
 import { expect, test } from "bun:test";
 import sharp from "sharp";

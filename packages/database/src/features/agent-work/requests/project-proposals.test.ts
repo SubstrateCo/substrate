@@ -1,12 +1,13 @@
+import type { WorkspaceApiRequest } from "@substrate/contracts/agent-tools/mcp";
+import type { ServerToolName } from "@substrate/contracts/agent-tools/tools";
 import { staleProposalError } from "@substrate/contracts/agent-work";
-import type { WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
-import type { ServerToolName } from "@substrate/contracts/harness/tools";
 
 import { ValidationError } from "../../../errors";
 import { entities, entityGrants, member, projects } from "../../../schema";
-import { agentWorkFixture, dmTurn, ownerAgentWork } from "../../../testing/agent-work";
+import { agentWorkFixture, ownerAgentWork } from "../../../testing/agent-work";
 import { setupDatabase } from "../../../testing/database";
 import { rejection } from "../../../testing/rejection";
+import { dmTurn } from "../../../testing/turns";
 import { expect, test } from "bun:test";
 import { and, eq } from "drizzle-orm";
 

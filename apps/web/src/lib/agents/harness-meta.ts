@@ -1,5 +1,5 @@
 import type { AgentConfiguration } from "@substrate/contracts/agents";
-import type { HarnessInspection } from "@substrate/contracts/harness";
+import type { HarnessInspection } from "@substrate/contracts/harness-runtime";
 
 export const harnessOptions: {
   value: AgentConfiguration["harness"];

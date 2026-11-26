@@ -5,6 +5,7 @@ import type { ReactNode } from "react";
 import { describeSchedule } from "./schedule";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
@@ -64,6 +65,8 @@ export function RoutineListView({
   onAdd,
   onEdit,
   onDelete,
+  onApprove,
+  approvingId,
 }: {
   name: string;
   routines: AgentRoutineView[];
@@ -73,6 +76,10 @@ export function RoutineListView({
   onAdd: () => void;
   onEdit: (routineId: string) => void;
   onDelete: (routine: AgentRoutineView) => void;
+  /** Approves the routine's current revision, for routines the agent wrote or changed. */
+  onApprove: (routine: AgentRoutineView) => void;
+  /** The routine whose approval is being sent. */
+  approvingId?: string;
 }) {
   const add = (
     <Button type="button" onClick={onAdd}>
@@ -101,12 +108,14 @@ export function RoutineListView({
       {routines.length > 0 && (
         <SettingsList label="Routines">
           {routines.map((routine) => {
-            const next = nextRun(routine);
+            const unapproved = routine.approvedRevision !== routine.revision;
+            const next = unapproved ? undefined : nextRun(routine);
             return (
               <RoutineRow key={routine.id}>
                 <ItemContent className="min-w-0">
                   <ItemTitle className="max-w-full">
                     <span className="truncate">{routine.name}</span>
+                    {unapproved && <Tag tone="warning">Needs your approval</Tag>}
                     {!routine.enabled && <Tag>Paused</Tag>}
                   </ItemTitle>
                   <ItemDescription>
@@ -117,6 +126,19 @@ export function RoutineListView({
                   <ItemDescription>{routine.prompt}</ItemDescription>
                 </ItemContent>
                 <ItemActions>
+                  {unapproved && (
+                    <PendingButton
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      aria-label={`Approve ${routine.name}`}
+                      disabled={!!approvingId}
+                      pending={approvingId === routine.id}
+                      onClick={() => onApprove(routine)}
+                    >
+                      Approve
+                    </PendingButton>
+                  )}
                   <RowActions label={`Actions for ${routine.name}`}>
                     <RowAction label={`Edit ${routine.name}`} onClick={() => onEdit(routine.id)}>
                       <Pencil />

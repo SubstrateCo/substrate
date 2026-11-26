@@ -1,6 +1,6 @@
 import type { AgentConfiguration, SaveAgentInput } from "@substrate/contracts/agents";
 import { saveAgentInput } from "@substrate/contracts/agents";
-import type { HarnessKind } from "@substrate/contracts/harness";
+import type { HarnessKind } from "@substrate/contracts/harness-runtime";
 
 import { revalidateLogic, useForm } from "@tanstack/react-form";
 

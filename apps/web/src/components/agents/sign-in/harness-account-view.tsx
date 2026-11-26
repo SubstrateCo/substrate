@@ -1,4 +1,4 @@
-import type { HarnessAuthMethod } from "@substrate/contracts/harness";
+import type { HarnessAuthMethod } from "@substrate/contracts/harness-runtime";
 
 import { SettingsNote } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";

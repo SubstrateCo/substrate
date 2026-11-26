@@ -1,10 +1,10 @@
+import type { LocalToolProxy } from "@substrate/contracts/agent-tools/mcp";
+import type { AgentConfiguration } from "@substrate/contracts/agents";
 import type {
-  HarnessAgent,
   HarnessErrorCode,
   HarnessMcpServer,
   HarnessSignInState,
-} from "@substrate/contracts/harness";
-import type { LocalToolProxy } from "@substrate/contracts/harness/mcp";
+} from "@substrate/contracts/harness-runtime";
 
 import { DesktopSessionAuthority } from "../../session/desktop-session-authority.ts";
 import { HarnessWorkerError } from "../worker/protocol.ts";
@@ -28,6 +28,17 @@ const sessionRef = {
   resumed: false,
 };
 
+/** The agent the fixture's worker serves, for catalogs that need it. */
+export const catalogAgent: AgentConfiguration = {
+  id: "agent-1",
+  name: "Agent",
+  instructions: "",
+  harness: "codex",
+  enabled: true,
+  useStartupDefaults: true,
+  image: null,
+};
+
 /** The sign-in that the fixture's worker reports. */
 export const signInId = "6f1c2b9e-3d4a-4f5b-8c7d-9e0f1a2b3c4d";
 
@@ -36,7 +47,9 @@ export function fixture(
   storedMcpServers: HarnessMcpServer[] = [],
   options: {
     /** The catalog's agents. */
-    agents?: HarnessAgent[];
+    agents?: AgentConfiguration[];
+    /** Catalog agents homed on another desktop. The others are homed on this one. */
+    homedElsewhere?: string[];
     failExecute?: HarnessErrorCode;
     /** Holds every execute command except interrupt until its promise resolves. */
     holdExecute?: () => Promise<void>;
@@ -85,7 +98,19 @@ export function fixture(
       if (catalogFails) return new Response("Bad gateway", { status: 502 });
       return Response.json({
         success: true,
-        data: { agents: options.agents ?? [], runSettings: [] },
+        data: {
+          agents: options.agents ?? [],
+          runSettings: (options.agents ?? []).map((agent) => ({
+            agentId: agent.id,
+            homeDevice: {
+              id: "device-1",
+              name: "Desktop",
+              online: true,
+              current: !options.homedElsewhere?.includes(agent.id),
+            },
+            triggers: [],
+          })),
+        },
       });
     },
   };
@@ -126,7 +151,6 @@ export function fixture(
             await options.holdExecute?.();
             return command.type === "open" ? sessionRef : undefined;
           }
-          if (method === "readProfile") return "- Owner prefers mornings.\n";
           if (method === "signIn" || method === "readSignIn")
             return {
               loginId: signInId,

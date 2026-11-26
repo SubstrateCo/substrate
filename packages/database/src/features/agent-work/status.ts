@@ -1,139 +1,175 @@
-import type { AgentStatusState, AgentStatusView } from "@substrate/contracts/agent-work";
-import { realtimeKeys } from "@substrate/contracts/realtime";
+import {
+  agentStatusState,
+  liveTurnStatuses,
+  type AgentStatusView,
+  type AgentWorkPlace,
+} from "@substrate/contracts/agent-work";
 
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { deviceOnline } from "../../core/devices/repository";
 import { desktopDevices } from "../../core/devices/schema";
-import { effectsFor } from "../../core/effects";
 import type { DatabaseExecutor } from "../../core/executor";
-import { type ResolvedDeviceIdentity } from "../../core/session/device";
 import type { SessionIdentity } from "../../core/session/identity";
-import { threadRoot, visibleConversationIds, visibleConversations } from "../messaging/access";
-import { messagingConversations, messagingMessages } from "../messaging/schema";
-import { requireHomedAgent } from "./device";
-import { agentStatus } from "./status.schema";
-import { toStatusView } from "./views";
-import { and, asc, eq, inArray, sql, type SQL } from "drizzle-orm";
+import { visibleConversations } from "../messaging/access";
+import { messagingConversations } from "../messaging/schema";
+import { claimableStatuses, startingSources } from "./items";
+import { answerableBy } from "./requests/request-views";
+import { agentRequests } from "./requests/requests.schema";
+import { agentSessions } from "./sessions.schema";
+import { agentTurns } from "./turns.schema";
+import { agentWorkItems } from "./work-items.schema";
+import { and, asc, desc, eq, inArray, isNull, max, sql, type SQL } from "drizzle-orm";
 
-export interface PublishStatusInput {
-  userAgentId: string;
-  state: AgentStatusState;
-  queuedCount: number;
-  liveConversationId?: string;
-  liveThreadId?: string;
-  activity?: string;
-  version: number;
+type Counts = Map<string, number>;
+
+async function countBy(
+  db: DatabaseExecutor,
+  table: typeof agentTurns | typeof agentWorkItems | typeof agentRequests,
+  where: SQL | undefined,
+): Promise<Counts> {
+  const rows = await db
+    .select({ userAgentId: table.userAgentId, count: sql<number>`count(*)`.mapWith(Number) })
+    .from(table)
+    .where(where)
+    .groupBy(table.userAgentId);
+  return new Map(rows.map((row) => [row.userAgentId, row.count]));
 }
 
-/** The home desktop publishes an agent's status. An older or repeated version changes nothing. */
-export async function publishStatusForDevice(
-  tx: DatabaseExecutor,
-  identity: ResolvedDeviceIdentity,
-  input: PublishStatusInput,
+/**
+ * Where a session's work shows: an unattended turn's destination, else where it came from. Null
+ * when it has no place or the owner cannot open its conversation now.
+ */
+export function workPlace(
+  session: Pick<
+    typeof agentSessions.$inferSelect,
+    "originConversationId" | "originThreadId" | "destinationConversationId" | "destinationThreadId"
+  >,
+  kind: "interactive" | "unattended",
+  visible: ReadonlySet<string>,
+): AgentWorkPlace {
+  const destination = session.destinationConversationId
+    ? { conversationId: session.destinationConversationId, threadId: session.destinationThreadId }
+    : null;
+  const origin = session.originConversationId
+    ? { conversationId: session.originConversationId, threadId: session.originThreadId }
+    : null;
+  const place = kind === "unattended" && destination ? destination : (origin ?? destination);
+  return place && visible.has(place.conversationId) ? place : null;
+}
+
+/** The IDs of the conversations the owner can open now, among these. */
+export async function visibleAmong(
+  db: DatabaseExecutor,
+  identity: SessionIdentity,
+  conversationIds: (string | null)[],
 ) {
-  const device = { id: identity.deviceId };
-  await requireHomedAgent(tx, identity, device.id, input.userAgentId);
-  // A place the owner cannot open is not recorded, nor is the activity there. A thread is kept
-  // only when it is a root message in the conversation.
-  const { liveConversationId, liveThreadId } = input;
-  const [live] = liveConversationId
-    ? await tx
-        .select({ id: messagingConversations.id, threadId: messagingMessages.id })
-        .from(messagingConversations)
-        .leftJoin(
-          messagingMessages,
-          liveThreadId ? threadRoot(liveConversationId, liveThreadId) : sql`false`,
-        )
-        .where(
-          and(
-            eq(messagingConversations.id, liveConversationId),
-            visibleConversations(tx, identity),
-          ),
-        )
-    : [];
-  const hidden = Boolean(liveConversationId) && !live;
-  const values = {
-    organizationId: identity.organizationId,
-    ownerUserId: identity.userId,
-    state: input.state,
-    queuedCount: input.queuedCount,
-    liveConversationId: live?.id ?? null,
-    liveThreadId: live?.threadId ?? null,
-    activity: hidden ? null : (input.activity ?? null),
-    version: input.version,
-    updatedAt: sql`now()`,
-  };
-  // The CTE reads the row as it was before this statement, so the owner's views refresh only
-  // when what they show changed.
-  const previous = tx.$with("previous").as(
-    tx
-      .select({
-        state: sql`${agentStatus.state}`.as("state"),
-        queuedCount: sql`${agentStatus.queuedCount}`.as("queued_count"),
-        liveConversationId: sql`${agentStatus.liveConversationId}`.as("live_conversation_id"),
-        liveThreadId: sql`${agentStatus.liveThreadId}`.as("live_thread_id"),
-        activity: sql`${agentStatus.activity}`.as("activity"),
-      })
-      .from(agentStatus)
-      .where(eq(agentStatus.userAgentId, input.userAgentId)),
-  );
-  const applied = await tx
-    .with(previous)
-    .insert(agentStatus)
-    .values({ userAgentId: input.userAgentId, ...values })
-    .onConflictDoUpdate({
-      target: agentStatus.userAgentId,
-      set: values,
-      setWhere: sql`${agentStatus.version} < excluded.version`,
-    })
-    .returning({
-      // Qualified by hand: Drizzle leaves column names bare in RETURNING.
-      same: sql<boolean>`exists (select 1 from "previous" p where
-          (p.state, p.queued_count, p.live_conversation_id, p.live_thread_id, p.activity)
-          is not distinct from (agent_status.state, agent_status.queued_count,
-          agent_status.live_conversation_id, agent_status.live_thread_id, agent_status.activity))`,
-    });
-  const changed = applied.some((row) => !row.same);
-  if (changed)
-    effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
-  return { applied: applied.length > 0, changed };
+  const ids = [...new Set(conversationIds.filter((id): id is string => id !== null))];
+  if (!ids.length) return new Set<string>();
+  const rows = await db
+    .select({ id: messagingConversations.id })
+    .from(messagingConversations)
+    .where(and(inArray(messagingConversations.id, ids), visibleConversations(db, identity)));
+  return new Set(rows.map((row) => row.id));
 }
 
-/** Status rows of the owner's agents in the organization, with each agent's home desktop. */
+/**
+ * The status of each of the owner's agents in the organization, derived from its requests,
+ * turns and items, with its home desktop. The live place and activity are hidden once the owner
+ * cannot open the live conversation, because activity may quote it.
+ */
 export async function statusViews(
   db: DatabaseExecutor,
   identity: SessionIdentity,
-  where?: SQL,
 ): Promise<AgentStatusView[]> {
-  const visible = inArray(agentStatus.liveConversationId, visibleConversationIds(db, identity));
-  const rows = await db
+  const agents = await db
     .select({
-      status: agentStatus,
+      userAgentId: userAgents.id,
       agent: { actorId: actors.entityId, name: userAgents.name },
-      liveVisible: sql<boolean>`coalesce(${visible}, false)`,
       device: { id: desktopDevices.id, name: desktopDevices.name, online: deviceOnline },
     })
-    .from(agentStatus)
-    .innerJoin(
-      userAgents,
-      and(eq(userAgents.id, agentStatus.userAgentId), eq(userAgents.userId, identity.userId)),
-    )
+    .from(userAgents)
     .innerJoin(
       actors,
       and(
         eq(actors.userAgentId, userAgents.id),
-        eq(actors.organizationId, agentStatus.organizationId),
+        eq(actors.organizationId, identity.organizationId),
       ),
     )
     .leftJoin(desktopDevices, eq(desktopDevices.id, userAgents.homeDeviceId))
+    .where(and(eq(userAgents.userId, identity.userId), isNull(userAgents.deletedAt)))
+    .orderBy(asc(userAgents.name), asc(userAgents.id));
+  if (!agents.length) return [];
+  const ids = agents.map((agent) => agent.userAgentId);
+  const owned = <T extends typeof agentTurns | typeof agentWorkItems | typeof agentRequests>(
+    table: T,
+  ) =>
+    and(
+      eq(table.ownerUserId, identity.userId),
+      eq(table.organizationId, identity.organizationId),
+      inArray(table.userAgentId, ids),
+    );
+  const [requests, attention, queued] = await Promise.all([
+    countBy(db, agentRequests, and(owned(agentRequests), answerableBy("answer"))),
+    countBy(db, agentTurns, and(owned(agentTurns), eq(agentTurns.status, "needs_attention"))),
+    countBy(
+      db,
+      agentWorkItems,
+      and(
+        owned(agentWorkItems),
+        inArray(agentWorkItems.status, claimableStatuses),
+        inArray(agentWorkItems.source, startingSources),
+      ),
+    ),
+  ]);
+  const live = await db
+    .select({ turn: agentTurns, session: agentSessions })
+    .from(agentTurns)
+    .innerJoin(agentSessions, eq(agentSessions.id, agentTurns.sessionId))
+    .where(and(owned(agentTurns), inArray(agentTurns.status, [...liveTurnStatuses])))
+    .orderBy(desc(agentTurns.createdAt));
+  const updated = await db
+    .select({ userAgentId: agentSessions.userAgentId, at: max(agentSessions.updatedAt) })
+    .from(agentSessions)
     .where(
       and(
-        eq(agentStatus.ownerUserId, identity.userId),
-        eq(agentStatus.organizationId, identity.organizationId),
-        where,
+        eq(agentSessions.ownerUserId, identity.userId),
+        eq(agentSessions.organizationId, identity.organizationId),
+        inArray(agentSessions.userAgentId, ids),
       ),
     )
-    .orderBy(asc(userAgents.name), asc(agentStatus.userAgentId));
-  return rows.map(toStatusView);
+    .groupBy(agentSessions.userAgentId);
+  const visible = await visibleAmong(
+    db,
+    identity,
+    live.flatMap(({ session }) => [
+      session.originConversationId,
+      session.destinationConversationId,
+    ]),
+  );
+  const now = new Date().toISOString();
+  return agents.map(({ userAgentId, agent, device }) => {
+    const turns = live.filter(({ turn }) => turn.userAgentId === userAgentId);
+    const current = turns.at(0);
+    const place = current ? workPlace(current.session, current.turn.kind, visible) : null;
+    const hasPlace = Boolean(
+      current?.session.originConversationId ?? current?.session.destinationConversationId,
+    );
+    return {
+      userAgentId,
+      agent,
+      state: agentStatusState({
+        openRequests: requests.get(userAgentId) ?? 0,
+        needsAttentionTurns: attention.get(userAgentId) ?? 0,
+        liveTurns: turns.length,
+        pendingItems: queued.get(userAgentId) ?? 0,
+      }),
+      queuedCount: queued.get(userAgentId) ?? 0,
+      liveConversationId: place?.conversationId ?? null,
+      liveThreadId: place?.threadId ?? null,
+      activity: current && (place || !hasPlace) ? current.turn.activity : null,
+      updatedAt: updated.find((row) => row.userAgentId === userAgentId)?.at?.toISOString() ?? now,
+      device: device?.id ? device : null,
+    };
+  });
 }

@@ -1,4 +1,4 @@
-import type { AgentRequestView, AgentTurnView } from "@substrate/contracts/agent-work";
+import type { AgentRequestView, AgentWorkTurnView } from "@substrate/contracts/agent-work";
 import { liveTurnStatuses } from "@substrate/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
@@ -12,15 +12,37 @@ import { useWorkspaceScope } from "@/components/workspace/workspace-scope-contex
 import { useNow } from "@/hooks/use-now";
 import { outputLink } from "@/lib/agent-work/links";
 import { isOpenRequest } from "@/lib/agent-work/requests";
-import { sessionKindLabels, turnLabel, turnTone } from "@/lib/agent-work/status";
+import { sessionKindLabels, transcriptNotice, turnLabel, turnTone } from "@/lib/agent-work/status";
 import { transcriptEntries } from "@/lib/agent-work/transcript";
 import { usageLabel } from "@/lib/agent-work/usage";
 import { messageLink } from "@/lib/navigation/record-links";
-import { turnEventsOptions } from "@/queries/agent-work/local";
+import {
+  homedAgentsOptions,
+  localWorkEnabled,
+  turnEventsOptions,
+  turnRunsOptions,
+} from "@/queries/agent-work/local";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 
+/**
+ * Whether this desktop stores the turn's transcript: it runs the agent now, or it ran an attempt
+ * of the turn before the agent moved. Undefined while that is unknown.
+ */
+function useLocalTranscript(userId: string, organizationId: string, turn?: AgentWorkTurnView) {
+  const enabled = localWorkEnabled(userId) && !!turn;
+  const homed = useQuery({ ...homedAgentsOptions(userId, organizationId), enabled });
+  const runs = useQuery({ ...turnRunsOptions(userId, organizationId, turn?.id ?? ""), enabled });
+  if (!turn) return undefined;
+  if (!localWorkEnabled(userId)) return false;
+  if (homed.data?.some((agent) => agent.userAgentId === turn.userAgentId)) return true;
+  if (runs.data?.length) return true;
+  if (homed.isPending || runs.isPending) return undefined;
+  // A failed bridge read counts as no transcript here.
+  return false;
+}
+
 function transcriptDetails(
-  turn: AgentTurnView | undefined,
+  turn: AgentWorkTurnView | undefined,
   now: ReturnType<typeof useNow>,
   requests: readonly AgentRequestView[],
   organizationId: string,
@@ -70,8 +92,9 @@ function transcriptDetails(
 }
 
 /**
- * One turn's transcript from the home desktop, with its sources and outputs. Links check the
- * viewer's conversations now; a conversation the viewer can no longer open shows a placeholder.
+ * One turn's record: its summary, sources and outputs from the server on any device, and its
+ * timeline from the desktop that ran it. Links check the viewer's conversations now; a
+ * conversation the viewer can no longer open shows a placeholder.
  */
 export function TurnTranscript({
   turn,
@@ -79,24 +102,28 @@ export function TurnTranscript({
   turnError,
   onRetryTurn,
   agentName,
+  device,
   requests,
   unavailable,
   onClose,
 }: {
-  turn?: AgentTurnView;
+  turn?: AgentWorkTurnView;
   turnLoading: boolean;
   turnError: Error | null;
   onRetryTurn: () => void;
   agentName: string;
+  /** The agent's home desktop, to say where its transcripts are. */
+  device?: string;
   requests: readonly AgentRequestView[];
   unavailable?: string;
   onClose: () => void;
 }) {
   const { userId, organizationId } = useWorkspaceScope();
   const live = !!turn && liveTurnStatuses.includes(turn.status);
+  const local = useLocalTranscript(userId, organizationId, turn);
   const events = useQuery({
     ...turnEventsOptions(userId, organizationId, turn?.id),
-    enabled: !unavailable,
+    enabled: !unavailable && local === true,
   });
   const conversations = useQuery(conversationsQueryOptions(organizationId));
   const { onStop, stopping } = useStopTurn(userId, organizationId, turn);
@@ -109,12 +136,13 @@ export function TurnTranscript({
       name={agentName}
       {...transcriptDetails(turn, now, requests, organizationId, canOpenConversation)}
       unavailable={unavailable}
-      loading={turnLoading || events.isPending}
+      timelineNotice={local === false ? transcriptNotice(device) : undefined}
+      loading={turnLoading || (!!turn && (local === undefined || (local && events.isPending)))}
       error={turnError ?? events.error}
       onRetry={() => {
         onRetryTurn();
         // Without a turn the events read is skipped; the turn's own retry loads it first.
-        if (turn) void events.refetch();
+        if (turn && local) void events.refetch();
       }}
       onClose={onClose}
       timeline={

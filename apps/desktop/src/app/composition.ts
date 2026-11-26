@@ -53,7 +53,6 @@ export function composeDesktop(options: {
       synchronize: () => harness.run("synchronize").then(() => {}),
       execute: (command) => harness.execute(command),
       closeOrganization: (organizationId) => harness.closeOrganization(organizationId),
-      readProfile: (agentId) => harness.readProfile(agentId),
     },
     notify: (change) => options.emit(agentWorkChangeChannel, change),
     log: (message) => console.warn(message),

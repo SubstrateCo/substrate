@@ -1,16 +1,16 @@
+import type {
+  LocalToolProxy,
+  LocalToolRequest,
+  WorkspaceApiRequest,
+  WorkspaceApiProxy,
+} from "@substrate/contracts/agent-tools/mcp";
 import type { IpcValue } from "@substrate/contracts/desktop/ipc";
 import {
   harnessEventSchema,
   isHarnessErrorCode,
   type HarnessCommand,
   type HarnessEvent,
-} from "@substrate/contracts/harness";
-import type {
-  LocalToolProxy,
-  LocalToolRequest,
-  WorkspaceApiRequest,
-  WorkspaceApiProxy,
-} from "@substrate/contracts/harness/mcp";
+} from "@substrate/contracts/harness-runtime";
 
 import { createOpenSessions } from "./open-sessions.ts";
 import {

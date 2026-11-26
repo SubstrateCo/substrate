@@ -19,10 +19,11 @@
 
 ## Agent work
 
-- Agent-work device routes require a verified session, a trusted origin, and a registered device.
-- MCP calls require a `TurnContext`. Write tools also require the agent's home device, named by `TurnContext.installationId`.
-- Publish agent-work hints without data, to the owner's audience. A caller gets a data-less hint only when their own call changes.
-- Send caller wakes only to desktops that declare the `caller_wakes` capability when they pull. Older desktops reject unknown wake sources.
+- Agent-work device and host routes (`/agent-work/device/*`, `/agent-work/host/*`) require a verified session, a trusted origin, and a registered device, resolved once by `scopes.device`. Host wire contracts live in `@substrate/contracts/agent-work/control`.
+- MCP calls require a `TurnContext` (`turnId`, `attempt`) for every tool, read or write. The turn must be live, in that attempt, and leased by the agent's home device, which must be the installation in the request header.
+- Heartbeats renew the device's turn leases. A one-minute timer in `main.ts` ends turns whose host went away. A 30-second timer fires due routines; their work waits in the queue until the home host claims it.
+- Owner work routes (`work-routes.ts`: activity, conversation work, turns, routines, and the turn, item and new-topic commands) are workspace scoped and reach only the caller's own agents. Their views and inputs live in `@substrate/contracts/agent-work`.
+- Publish agent-work hints without data, to the owner's audience. The home host syncs on these hints, so owner commands reach it the same way.
 
 ## Integration tests
 

@@ -1,4 +1,4 @@
-import type { AdapterCapabilities } from "@substrate/contracts/harness";
+import type { AdapterCapabilities } from "@substrate/contracts/harness-runtime";
 
 import type { AcpPeerCapabilities } from "./api.ts";
 import type { InitializeResponse as InitializeResponseV2 } from "@agentclientprotocol/sdk/experimental/v2/unstable";

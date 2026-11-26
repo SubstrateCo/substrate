@@ -1,8 +1,4 @@
-import {
-  requestMachine,
-  type AgentNeedsYou,
-  type AgentRequestView,
-} from "@substrate/contracts/agent-work";
+import { requestMachine, type AgentRequestView } from "@substrate/contracts/agent-work";
 
 import { actors } from "../../../core/actors/schema";
 import { userAgents } from "../../../core/actors/user-agents.schema";
@@ -11,10 +7,7 @@ import type { SessionIdentity } from "../../../core/session/identity";
 import { visibleConversations } from "../../messaging/access";
 import { conversationDisplayName } from "../../messaging/display-name";
 import { messagingConversations } from "../../messaging/schema";
-import { awaitingOwner, desktopUpdateViews, invocationViews } from "../calls/invocations";
 import { inStates } from "../machine-sql";
-import { statusViews } from "../status";
-import { agentStatus } from "../status.schema";
 import { toRequestView } from "../views";
 import { agentRequests } from "./requests.schema";
 import { and, desc, eq, exists, gt, inArray, or, sql, type SQL } from "drizzle-orm";
@@ -30,7 +23,7 @@ export function ownedRequests(identity: SessionIdentity) {
 // The place is shown only while the owner can open the conversation. A request in a hidden
 // place is a placeholder: no IDs, names, text, response or proposal. A proposal whose target
 // conversation the owner cannot open is not shown either.
-async function requestViews(
+export async function requestViews(
   db: DatabaseExecutor,
   identity: SessionIdentity,
   where: SQL | undefined,
@@ -118,20 +111,4 @@ export function queryConversationRequests(
       ),
     ),
   );
-}
-
-/**
- * Everything that waits for the owner: open requests, agents that report needs_you, calls that
- * wait for approval, and agents whose desktop needs an update to run caller calls.
- */
-export async function queryNeedsYou(
-  db: DatabaseExecutor,
-  identity: SessionIdentity,
-): Promise<AgentNeedsYou> {
-  return {
-    requests: await requestViews(db, identity, answerableRequest),
-    agents: await statusViews(db, identity, eq(agentStatus.state, "needs_you")),
-    calls: await invocationViews(db, identity, awaitingOwner),
-    desktopUpdateRequired: await desktopUpdateViews(db, identity),
-  };
 }

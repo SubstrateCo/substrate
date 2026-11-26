@@ -1,5 +1,5 @@
 import type { IpcValue } from "@substrate/contracts/desktop/ipc";
-import type { HarnessErrorCode } from "@substrate/contracts/harness";
+import type { HarnessErrorCode } from "@substrate/contracts/harness-runtime";
 import type { RuntimeHarnessHost } from "@substrate/harness-runtime";
 
 type HostMethods = Omit<RuntimeHarnessHost, "subscribe">;

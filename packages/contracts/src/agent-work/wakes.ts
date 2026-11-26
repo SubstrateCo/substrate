@@ -1,52 +1,10 @@
-import { agentTriggerKinds } from "../agents/triggers.ts";
+import { agentRequestResponse } from "../harness-runtime/requests.ts";
 import { conversationKind } from "../messaging/input.ts";
-import { agentInvocationKinds } from "./invocations.ts";
 import { proposalOutcome } from "./proposals.ts";
-import {
-  agentRequestKinds,
-  agentRequestPayload,
-  agentRequestResponse,
-  agentRequestStatuses,
-} from "./requests.ts";
+import { agentRequestKinds, agentRequestPayload, agentRequestStatuses } from "./requests.ts";
 import { z } from "zod";
 
 const id = z.uuid();
-
-/**
- * Owner-authorized server events that wake an agent. Nothing else wakes it from the server.
- * caller_message is a call that the owner's caller policy admitted.
- */
-export const agentWakeSources = [
-  "owner_message",
-  "answer",
-  "approval_result",
-  "caller_message",
-] as const;
-export type AgentWakeSource = (typeof agentWakeSources)[number];
-
-/**
- * What a home desktop declares when it pulls wakes. Without caller_wakes the server holds back
- * caller_message wakes, because older desktops reject an unknown wake source.
- */
-export const deviceCapabilities = ["caller_wakes"] as const;
-export type DeviceCapability = (typeof deviceCapabilities)[number];
-
-/** Why an owner message woke the agent: the owner's triggers, in agentTriggerPrecedence order. */
-export const agentWakeMessageKinds = agentTriggerKinds;
-export type AgentWakeMessageKind = (typeof agentWakeMessageKinds)[number];
-
-/** References only. The desktop loads bodies through device/sources, which re-checks access. */
-export const agentWakeSourceRef = z.union([
-  z.strictObject({
-    messageId: id,
-    conversationId: id,
-    threadId: id.nullable(),
-    kind: z.enum(agentWakeMessageKinds),
-  }),
-  z.strictObject({ requestId: id }),
-  z.strictObject({ invocationId: id }),
-]);
-export type AgentWakeSourceRef = z.infer<typeof agentWakeSourceRef>;
 
 export const agentSessionKinds = ["dm", "thread", "routine", "helper"] as const;
 export type AgentSessionKind = (typeof agentSessionKinds)[number];
@@ -74,24 +32,33 @@ export const sessionKey = z
   .max(200)
   .refine((key) => parseSessionKey(key) !== null, "Invalid session key");
 
-/** The prefix of each wake dedupe key, for queries that build keys in SQL. */
-export const wakeDedupePrefixes = {
-  message: "msg:",
-  answer: "answer:",
-  approval: "approval:",
-  call: "call:",
+/** The slot a session's turns run in. One live turn per folder. */
+export const folderKeys = {
+  main: (userAgentId: string) => `main:${userAgentId}`,
+  /** A helper's folder key is its session key. */
+  helper: sessionKeys.helper,
 };
 
-/** Unique per agent, so a repeated event never creates a second wake. */
+/** Unique per agent, so a repeated event never creates a second work item. */
 export const wakeDedupeKeys = {
-  message: (messageId: string) => `${wakeDedupePrefixes.message}${messageId}`,
-  answer: (requestId: string) => `${wakeDedupePrefixes.answer}${requestId}`,
-  approval: (requestId: string) => `${wakeDedupePrefixes.approval}${requestId}`,
-  call: (invocationId: string) => `${wakeDedupePrefixes.call}${invocationId}`,
-} satisfies Record<keyof typeof wakeDedupePrefixes, (id: string) => string>;
+  message: (messageId: string) => `msg:${messageId}`,
+  answer: (requestId: string) => `answer:${requestId}`,
+  approval: (requestId: string) => `approval:${requestId}`,
+  /** Passive thread messages for one live turn, keyed by the first message of the batch. */
+  threadContext: (turnId: string, messageId: string) => `thread-context:${turnId}:${messageId}`,
+  routine: (routineId: string, revision: number, scheduledAt: string) =>
+    `${sessionKeys.routine(routineId)}:${revision}:${scheduledAt}`,
+  helperTask: (helperId: string) => `${sessionKeys.helper(helperId)}:task`,
+  /** Unique for every message, because the parent may send the same text again. */
+  helperMessage: (helperId: string) =>
+    `${sessionKeys.helper(helperId)}:message:${crypto.randomUUID()}`,
+  helperResult: (helperId: string) => `${sessionKeys.helper(helperId)}:result`,
+  recovery: (turnId: string, attempt: number) => `recovery:${turnId}:${attempt}`,
+  epoch: (sessionId: string, epoch: number) => `epoch:${sessionId}:${epoch}`,
+};
 
 /**
- * The decided request behind an answer or approval_result wake, for the agent's own home device:
+ * The decided request behind an answer or approval_result item, for the agent's own home device:
  * what was asked or proposed, the owner's answer, and what happened.
  */
 export const agentWakeRequestDetail = z.strictObject({
@@ -112,37 +79,6 @@ export type AgentWakeRequestDetail = z.infer<typeof agentWakeRequestDetail>;
 
 /** A server ID in a response. The desktop does not check its format. */
 const ref = z.string().min(1);
-
-/**
- * The call behind a caller_message wake: references only. The desktop reads the body through
- * device/sources with the invocation ID, which rechecks the call and the caller's access.
- */
-export const agentWakeInvocation = z.object({
-  id: ref,
-  messageId: ref,
-  conversationId: ref,
-  threadId: ref.nullable(),
-  kind: z.enum(agentInvocationKinds),
-  /** The caller's person actor in the agent's organization. */
-  callerActorId: ref,
-});
-export type AgentWakeInvocation = z.infer<typeof agentWakeInvocation>;
-
-/** A wake as the home desktop pulls it. */
-export const agentWakeView = z.object({
-  id: ref,
-  userAgentId: ref,
-  source: z.enum(agentWakeSources),
-  sourceRef: agentWakeSourceRef,
-  sessionKey: z.string(),
-  dedupeKey: z.string(),
-  createdAt: z.string(),
-  /** Set for answer and approval_result wakes of the owner's own agent. */
-  request: agentWakeRequestDetail.nullable(),
-  /** Set for caller_message wakes. Servers before caller calls leave it out. */
-  invocation: agentWakeInvocation.nullable().optional(),
-});
-export type AgentWakeView = z.infer<typeof agentWakeView>;
 
 /** A message body for the home desktop, returned only while the owner can see the message. */
 export const agentSourceMessage = z.object({
@@ -165,10 +101,5 @@ export const agentSourcesResult = z.object({
   messages: z.array(agentSourceMessage),
   /** Requested IDs that the owner cannot see now, or that do not exist. */
   inaccessible: z.array(ref),
-  /**
-   * Requested invocations that may not run now: the policy, allowlist, or the caller's
-   * membership or access changed. Their messages are left out of messages.
-   */
-  inaccessibleInvocations: z.array(ref).optional(),
 });
 export type AgentSourcesResult = z.infer<typeof agentSourcesResult>;

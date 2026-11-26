@@ -53,7 +53,6 @@ export function TriggerRow(props: ComponentProps<typeof SettingsRow>) {
 export function AgentRunSettingsView({
   name,
   settings,
-  callers,
   canRunHere,
   moving,
   saving,
@@ -64,7 +63,6 @@ export function AgentRunSettingsView({
 }: {
   name: string;
   settings: AgentRunSettings;
-  callers: ReactNode;
   /** Only the desktop app can become an agent's home. */
   canRunHere: boolean;
   moving: boolean;
@@ -117,7 +115,6 @@ export function AgentRunSettingsView({
           errorDescription="We couldn’t move this agent to this device. Try again."
         />
       </RunsOnCard>
-      {callers}
       <TriggerCard
         footer={
           <SettingsFooter

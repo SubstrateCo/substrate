@@ -2,7 +2,7 @@ import type {
   HarnessKind,
   HarnessSignInState,
   HarnessSignInStatus,
-} from "@substrate/contracts/harness";
+} from "@substrate/contracts/harness-runtime";
 
 import type { AcpLaunch, AcpPeer, OpenAcpPeer } from "./acp/api.ts";
 import { startTerminalLogin, type TerminalLogin } from "./acp/terminal-login.ts";

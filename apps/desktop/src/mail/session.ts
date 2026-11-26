@@ -1,3 +1,4 @@
+import { InboxToolError } from "@substrate/agent-host";
 import { mailListWorker, openMailStore, type MailStore } from "@substrate/client-storage/mail";
 import type { MailScope } from "@substrate/contracts/mail/ipc";
 
@@ -6,7 +7,6 @@ import {
   type DesktopSessionAuthority,
   HarnessAccessDenied,
 } from "../session/desktop-session-authority.ts";
-import { InboxToolError } from "./agent/agent-error.ts";
 import { mailboxSyncJobs } from "./sync-jobs.ts";
 import { addAbortListener } from "node:events";
 import { lstat, mkdir } from "node:fs/promises";

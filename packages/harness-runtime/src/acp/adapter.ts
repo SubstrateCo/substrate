@@ -4,7 +4,7 @@ import type {
   TurnInput,
   TurnResult,
   Usage,
-} from "@substrate/contracts/harness";
+} from "@substrate/contracts/harness-runtime";
 
 import { PendingRequests } from "../adapters/requests.ts";
 import { toolCallLabel, toolInput, type ToolCall } from "../adapters/tool-label.ts";
@@ -25,7 +25,7 @@ import type {
   AcpSessionSetup,
   AcpUpdate,
 } from "./driver.ts";
-import { acpToolServer, substrateMcpName, type AcpToolServer } from "./mcp-provider.ts";
+import { acpToolServer, type AcpToolServer } from "./mcp-provider.ts";
 import { setTimeout } from "node:timers/promises";
 
 export interface AcpAdapterDeps extends AcpConnectDeps {
@@ -46,14 +46,14 @@ interface LiveTurn {
   interrupted: boolean;
 }
 
-/** substrate: the lease's MCP-over-ACP declaration; without it the lease goes over HTTP. */
-function acpMcpServers(context: AdapterContext, substrate?: AcpMcpServerAcp): AcpMcpServer[] {
+/** host: the lease's MCP-over-ACP declaration; without it the lease goes over HTTP. */
+function acpMcpServers(context: AdapterContext, host?: AcpMcpServerAcp): AcpMcpServer[] {
   const servers: AcpMcpServer[] = [];
-  if (substrate) servers.push(substrate);
+  if (host) servers.push(host);
   else if (context.lease)
     servers.push({
       type: "http",
-      name: substrateMcpName,
+      name: context.lease.server,
       url: context.lease.url,
       headers: [{ name: "Authorization", value: `Bearer ${context.lease.token}` }],
     });
@@ -74,12 +74,16 @@ function userServer(server: HarnessMcpServer): AcpMcpServer {
 }
 
 /** servers: the session's MCP server names, so server.tool titles read as MCP tools. */
-function toolTitle(update: Extract<AcpUpdate, { type: "tool" }>, servers: readonly string[]) {
+function toolTitle(
+  update: Extract<AcpUpdate, { type: "tool" }>,
+  servers: readonly string[],
+  host: AdapterContext["hostTools"],
+) {
   const call: ToolCall = { input: toolInput.parse(update.rawInput) };
   if (update.name) call.name = update.name;
   if (update.title) call.title = update.title;
   if (update.kind) call.kind = update.kind;
-  return toolCallLabel(call, servers);
+  return toolCallLabel(call, servers, host);
 }
 
 /** Maps one ACP session onto host turns. */
@@ -163,6 +167,7 @@ class AcpSession {
               title: toolTitle(
                 update,
                 (this.context.mcpServers ?? []).map((server) => server.name),
+                this.context.hostTools,
               ),
             },
             this.scope(),
@@ -240,7 +245,7 @@ class AcpSession {
       const server = acpToolServer(endpoint);
       this.tools = {
         server,
-        registration: connection.provideMcpServer(substrateMcpName, server.handler),
+        registration: connection.provideMcpServer(endpoint.server.name, server.handler),
       };
     }
     const mcpServers = acpMcpServers(context, this.tools?.registration.declaration);

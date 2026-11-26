@@ -1,4 +1,4 @@
-import type { HarnessEventBody } from "@substrate/contracts/harness";
+import type { HarnessEventBody } from "@substrate/contracts/harness-runtime";
 
 import type { EventScope, NativeAdapter } from "../../adapters/types.ts";
 import { startFakeAgent, type FakeAgent, type FakeAgentScript } from "../../testing/fake-agent.ts";

@@ -1,14 +1,15 @@
 export { knownTimeZone } from "../timestamps.ts";
 export * from "./device-input.ts";
 export * from "./envelope.ts";
-export * from "./invocations.ts";
 export * from "./machines/index.ts";
 export * from "./owner-input.ts";
 export * from "./proposals.ts";
 export * from "./request-views.ts";
 export * from "./requests.ts";
+export { agentRequestResponse, type AgentRequestResponse } from "../harness-runtime/requests.ts";
 export * from "./routines.ts";
 export * from "./status.ts";
 export * from "./turns.ts";
 export * from "./triggers/registry.ts";
 export * from "./wakes.ts";
+export * from "./work-views.ts";

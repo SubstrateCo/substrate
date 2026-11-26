@@ -29,7 +29,8 @@ import {
 } from "drizzle-orm/pg-core";
 
 // Something that needs the owner: a blocking native prompt, an async question from reply.ask,
-// or a proposal. The turn and session are opaque IDs from the home desktop's local state.
+// or a proposal. turn_id names a server turn; it has no foreign key, because older rows hold IDs
+// from the desktop's former local state.
 export const agentRequests = pgTable(
   "agent_requests",
   {

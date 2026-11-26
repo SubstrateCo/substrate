@@ -19,28 +19,6 @@ function change(
   return { version: 1, type: "change", id: crypto.randomUUID(), organizationId, domain } as const;
 }
 
-test("a reply hint refreshes only the viewer's calls in its conversation", () => {
-  const targets = realtimeQueryTargets(
-    { ...change("messaging"), conversationId: "conversation", scope: "messages" },
-    "user",
-  );
-  const client = new QueryClient();
-  const own = queryKeys.myAgentCalls("user", "org", "conversation");
-  const unrelated = [
-    queryKeys.myAgentCalls("other", "org", "conversation"),
-    queryKeys.myAgentCalls("user", "other-org", "conversation"),
-    queryKeys.myAgentCalls("user", "org", "other-conversation"),
-    queryKeys.agentWorkNeedsYou("user", "org"),
-    queryKeys.agentCallsLog("user", "org", "agent"),
-  ];
-  for (const key of [own, ...unrelated]) client.setQueryData(key, []);
-  const matched = targets.flatMap((target) => client.getQueryCache().findAll(target));
-  expect(matched.map((query) => query.queryKey)).toContainEqual(own);
-  for (const key of unrelated)
-    expect(matched.map((query) => query.queryKey)).not.toContainEqual(key);
-  client.clear();
-});
-
 test("a task hint during an in-flight read stays stale when its panel becomes hidden", async () => {
   const client = new QueryClient();
   const key = queryKeys.taskAttachments("org", "project", "task");
@@ -228,7 +206,6 @@ test("messaging targets all thread variants of one conversation, not another", (
     "user",
   );
   expect(targets).toEqual([
-    { queryKey: queryKeys.myAgentCalls("user", "org", "conversation") },
     { queryKey: queryKeys.messageUnread("org") },
     { queryKey: queryKeys.conversations("org") },
     { queryKey: queryKeys.conversationMessages("org", "conversation") },
@@ -258,7 +235,6 @@ test("a read-position hint refreshes only unread counts", () => {
     queryKeys.messageTargets("org", "conversation"),
     queryKeys.related("org", "task"),
     queryKeys.search("org"),
-    queryKeys.myAgentCalls("user", "org", "conversation"),
     queryKeys.messageUnread("other-org"),
   ];
   for (const key of [unread, ...untouched]) client.setQueryData(key, []);
@@ -311,7 +287,6 @@ test("a reaction hint refreshes that message's thread and reactions only", () =>
     queryKeys.messagePage("org", "conversation", ["reply"]),
     queryKeys.related("org", "task"),
     queryKeys.search("org"),
-    queryKeys.myAgentCalls("user", "org", "conversation"),
   ];
   expect(matchedKeys(event, [...refreshed, ...untouched])).toEqual(refreshed);
   // A reaction on a main-timeline message refreshes the timeline, not its threads.
@@ -374,7 +349,6 @@ test("a new reply refreshes its thread and the timeline's reply count, nothing e
     queryKeys.messages("org", "conversation"),
     queryKeys.messages("org", "conversation", "root"),
     [...queryKeys.messageTargets("org", "conversation"), "root"],
-    queryKeys.myAgentCalls("user", "org", "conversation"),
   ];
   const untouched = [
     queryKeys.messages("org", "conversation", "other-thread"),
@@ -708,6 +682,8 @@ test("agent-work hints refresh only the owner's agent work in that workspace", (
     queryKeys.agentWorkConversation("user", "org", "conversation"),
     queryKeys.agentWorkRequests("user", "other", "conversation"),
     queryKeys.agentWorkNeedsYou("other", "org"),
+    // Bridge change hints keep local transcripts fresh; server hints leave them alone.
+    queryKeys.agentWorkTurnEvents("user", "org", "turn"),
   ];
   for (const key of keys) client.setQueryData(key, []);
   expect(
@@ -722,7 +698,7 @@ test("agent-work hints refresh only the owner's agent work in that workspace", (
 test("an access change drops the owner's cached agent work for that workspace only", async () => {
   const client = new QueryClient();
   const here = queryKeys.agentWorkNeedsYou("user", "org");
-  const local = queryKeys.agentWorkConversation("user", "org", "conversation");
+  const local = queryKeys.agentWorkTurnEvents("user", "org", "turn");
   const elsewhere = queryKeys.agentWorkNeedsYou("user", "other");
   for (const key of [here, local, elsewhere]) client.setQueryData(key, { requests: [] });
   const cache = createRealtimeCache({

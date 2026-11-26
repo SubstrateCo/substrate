@@ -8,33 +8,20 @@ import { queryKeys } from "../keys";
 import { agentWorkBridge } from "@/lib/desktop/bridges";
 
 /**
- * The local reads a bridge change hint names. A hint without IDs refreshes all local work.
- * The agent list always refreshes, because every change can move an agent's state.
- *
- * Conversation work holds turns and items, so a turn or agent change, such as steering or a new
- * output, also changes it. Without a conversation ID the hint can't say which conversation, so
- * it refreshes every conversation's local work. Only mounted ones refetch.
+ * The local reads a bridge change hint names. A hint without IDs refreshes all local reads.
+ * The homed agents always refresh, because every change can start or end a live turn. Server
+ * work changes through realtime hints, not through the bridge.
  */
 export function bridgeChangeTargets(
   userId: string,
   organizationId: string,
   change: AgentWorkChange,
 ): QueryKey[] {
-  if (!change.conversationId && !change.turnId && !change.userAgentId)
+  if (!change.turnId && !change.userAgentId)
     return [queryKeys.agentWorkLocal(userId, organizationId)];
-  const keys: QueryKey[] = [queryKeys.agentWorkAgents(userId, organizationId)];
-  keys.push(
-    change.conversationId
-      ? queryKeys.agentWorkConversation(userId, organizationId, change.conversationId)
-      : queryKeys.agentWorkConversations(userId, organizationId),
-  );
+  const keys: QueryKey[] = [queryKeys.agentWorkHomed(userId, organizationId)];
   if (change.turnId)
     keys.push(queryKeys.agentWorkTurnEvents(userId, organizationId, change.turnId));
-  if (change.userAgentId)
-    keys.push(
-      queryKeys.agentWorkActivity(userId, organizationId, change.userAgentId),
-      queryKeys.agentWorkRoutines(userId, organizationId, change.userAgentId),
-    );
   return keys;
 }
 
@@ -44,7 +31,7 @@ function startsWith(key: QueryKey, prefix: QueryKey) {
 
 /**
  * Collects the keys of bridge change hints for a short window, then invalidates each distinct
- * key once. The desktop sends several hints within milliseconds, each naming the agent list.
+ * key once. The desktop sends several hints within milliseconds, each naming the homed agents.
  * A key that another pending key covers, such as any local read under the all-local key, is
  * dropped.
  */
@@ -75,7 +62,7 @@ export function createBridgeChangeBatcher(
   };
 }
 
-/** Keeps local agent work fresh on the home desktop. Mount once in the workspace frame. */
+/** Keeps local transcripts fresh on the home desktop. Mount once in the workspace frame. */
 export function useAgentWorkBridgeSync(userId: string | undefined, organizationId?: string | null) {
   const client = useQueryClient();
   useEffect(() => {

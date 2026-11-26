@@ -1,13 +1,12 @@
-import { sessionKeys } from "@substrate/contracts/agent-work";
-
 import { registerDevice } from "../../core/devices/repository";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { agentRequests, agentToolRequests, messagingMessages, userAgents } from "../../schema";
-import { dmTurn, ownerAgentWork, threadTurn } from "../../testing/agent-work";
+import { ownerAgentWork } from "../../testing/agent-work";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { mcpFixture } from "../../testing/mcp";
 import { rejection } from "../../testing/rejection";
+import { dmTurn, routineTurn, threadTurn } from "../../testing/turns";
 import { executeAgentTool } from "./execution";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
@@ -22,20 +21,21 @@ const message = async (id: string) =>
   (await f.db.select().from(messagingMessages).where(eq(messagingMessages.id, id)))[0]!;
 
 test("reply posts top level in a DM and in the thread of a thread turn, with its turn", async () => {
-  const { agent, alice, dm, call } = await mcpFixture(f);
+  const { agent, alice, dm, call, turn: contextOf } = await mcpFixture(f);
   const turn = dmTurn(dm.id);
   const sent = await call("reply", { requestId: crypto.randomUUID(), body: "Done" }, turn);
+  const { turnId } = await contextOf(turn);
   expect(await message(sent.messageId)).toMatchObject({
     conversationId: dm.id,
     threadId: null,
-    originTurnId: turn.turnId,
+    originTurnId: turnId,
     authorActorEntityId: agent.actorId,
   });
   const [receipt] = await f.db
     .select({ turnId: agentToolRequests.turnId, attempt: agentToolRequests.attempt })
     .from(agentToolRequests)
     .where(eq(agentToolRequests.tool, "reply"));
-  expect(receipt).toEqual({ turnId: turn.turnId, attempt: 1 });
+  expect(receipt).toEqual({ turnId, attempt: 1 });
 
   const channel = await alice.createConversation({ kind: "channel", name: "general" });
   const root = await alice.sendMessage(channel.id, "Launch plan");
@@ -67,14 +67,7 @@ test("a background reply posts at once, in place or elsewhere", async () => {
   expect(inPlace).toMatchObject({ conversationId: dm.id, threadId: null });
 
   // A routine turn has no source and publishes to its destination.
-  const routine = {
-    turnId: crypto.randomUUID(),
-    attempt: 1,
-    sessionKey: sessionKeys.routine(crypto.randomUUID()),
-    origin: null,
-    kind: "unattended" as const,
-    destination: { conversationId: channel.id, threadId: null },
-  };
+  const routine = routineTurn({ conversationId: channel.id, threadId: null });
   const sent = await call("reply", { requestId: crypto.randomUUID(), body: "Weekly" }, routine);
   expect(sent).toMatchObject({ conversationId: channel.id, threadId: null });
 
@@ -87,36 +80,25 @@ test("a background reply posts at once, in place or elsewhere", async () => {
   expect(elsewhere.conversationId).toBe(channel.id);
 });
 
-test("the turn must match its session and cannot borrow another agent's turn", async () => {
-  const { alice, dm, call } = await mcpFixture(f);
-  const channel = await alice.createConversation({ kind: "channel", name: "general" });
-  expect(
-    await rejection(
-      call(
-        "reply",
-        { requestId: crypto.randomUUID(), body: "x" },
-        { ...dmTurn(dm.id), origin: { conversationId: channel.id, threadId: null } },
-      ),
-    ),
-  ).toBeInstanceOf(ValidationError);
-
+test("a call cannot borrow another agent's turn", async () => {
+  const { alice, dm, call, turn: contextOf } = await mcpFixture(f);
   const turn = dmTurn(dm.id);
   await call("reply", { requestId: crypto.randomUUID(), body: "Mine" }, turn);
   const other = await ownedAgent(f, "alice", "Writer");
-  const otherDm = await alice.createConversation({ kind: "dm", agentIds: [other.agentId] });
+  await alice.createConversation({ kind: "dm", agentIds: [other.agentId] });
   expect(
     await rejection(
       executeAgentTool(
         f.db,
-        { userId: "alice", organizationId: f.orgA, actorEntityId: other.actorId },
-        "reply",
-        { requestId: crypto.randomUUID(), body: "Borrowed" },
         {
-          ...turn,
-          sessionKey: sessionKeys.dm(otherDm.id),
-          origin: { conversationId: otherDm.id, threadId: null },
+          userId: "alice",
+          organizationId: f.orgA,
+          actorEntityId: other.actorId,
           installationId: other.identity.installationId,
         },
+        "reply",
+        { requestId: crypto.randomUUID(), body: "Borrowed" },
+        await contextOf(turn),
       ),
     ),
   ).toBeInstanceOf(AccessDeniedError);
@@ -124,7 +106,7 @@ test("the turn must match its session and cannot borrow another agent's turn", a
 
 // Replies no longer wait, but proposals stored before that change can still be approved.
 test("an approved stored post to a task discussion posts once, as the agent, with its turn", async () => {
-  const { agent, dm, owner, propose } = await mcpFixture(f);
+  const { agent, dm, owner, propose, turn: contextOf } = await mcpFixture(f);
   const repos = f.forActor(f.alice);
   const project = await repos.projects.create({ name: "Task discussion" });
   const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Follow up" });
@@ -139,7 +121,7 @@ test("an approved stored post to a task discussion posts once, as the agent, wit
   const { outcome } = (await (await ownerAgentWork(f.db, owner)).approveProposal(requestId)).result;
   const posted = await messagesIn(conversationId);
   expect(posted.map((row) => [row.body, row.authorActorEntityId, row.originTurnId])).toEqual([
-    ["Progress to share", agent.actorId, background.turnId],
+    ["Progress to share", agent.actorId, (await contextOf(background)).turnId],
   ]);
   expect(outcome).toMatchObject({
     status: "executed",
@@ -163,7 +145,7 @@ test("background turns cannot ask: reply.ask is rejected before anything posts",
   expect(await f.db.select().from(agentRequests)).toEqual([]);
 });
 
-test("only the agent's home desktop can write; a moved agent's old desktop can only read", async () => {
+test("only a turn leased by the agent's home desktop, called from that desktop, runs any tool", async () => {
   const { agent, dm, call, pending } = await mcpFixture(f);
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
   const task = await f.forActor(f.alice).tasks.create({
@@ -179,10 +161,12 @@ test("only the agent's home desktop can write; a moved agent's old desktop can o
     .update(userAgents)
     .set({ homeDeviceId: desktop.id })
     .where(eq(userAgents.id, agent.agentId));
+  // The old desktop's lease, called from the old desktop, the new one, an unknown one, or none.
   const oldDesktop = { ...dmTurn(dm.id), installationId: agent.identity.installationId };
+  const newCaller = { ...dmTurn(dm.id), installationId: desktop.installationId };
   const unknown = { ...dmTurn(dm.id), installationId: crypto.randomUUID() };
   const withoutDevice = { ...dmTurn(dm.id), installationId: undefined };
-  for (const turn of [oldDesktop, unknown, withoutDevice]) {
+  for (const turn of [oldDesktop, newCaller, unknown, withoutDevice]) {
     expect(
       await rejection(call("reply", { requestId: crypto.randomUUID(), body: "Stale" }, turn)),
     ).toBeInstanceOf(AccessDeniedError);
@@ -192,31 +176,27 @@ test("only the agent's home desktop can write; a moved agent's old desktop can o
         pending("delete_task", { requestId: crypto.randomUUID(), taskId: task.entityId }, turn),
       ),
     ).toBeInstanceOf(AccessDeniedError);
-    expect(
-      await rejection(
-        call(
-          "create_task",
-          { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Task" },
-          turn,
-        ),
-      ),
-    ).toBeInstanceOf(AccessDeniedError);
+    // Reads need a live turn of the home desktop too.
+    expect(await rejection(call("list_projects", {}, turn))).toBeInstanceOf(AccessDeniedError);
   }
   expect(await messagesIn(dm.id)).toEqual([]);
   expect(await f.db.select().from(agentRequests)).toEqual([]);
-  expect((await call("list_projects", {}, oldDesktop)).items).toHaveLength(1);
 
-  // The new home desktop publishes.
-  const home = { ...dmTurn(dm.id), installationId: desktop.installationId };
+  // A turn the new home desktop holds publishes.
+  const home = {
+    ...dmTurn(dm.id),
+    installationId: desktop.installationId,
+    leaseDeviceId: desktop.id,
+  };
   await call("reply", { requestId: crypto.randomUUID(), body: "Moved" }, home);
   expect((await messagesIn(dm.id)).map((row) => row.body)).toEqual(["Moved"]);
+  expect((await call("list_projects", {}, home)).items).toHaveLength(1);
 });
-
 // writeGate's unit test covers each tool and turn kind; this checks the gate runs before writes.
 test("a quiet handoff turn cannot publish but can read", async () => {
   const { dm, call } = await mcpFixture(f);
   await f.forActor(f.alice).projects.create({ name: "Work" });
-  const handoff = { ...dmTurn(dm.id, "unattended"), purpose: "handoff" as const };
+  const handoff = { ...dmTurn(dm.id, "unattended"), handoff: true };
   expect(
     await rejection(
       call("reply", { requestId: crypto.randomUUID(), body: "Handing off" }, handoff),
@@ -229,7 +209,7 @@ test("a quiet handoff turn cannot publish but can read", async () => {
 });
 
 test("reply.ask anchors one async question to the reply", async () => {
-  const { dm, call } = await mcpFixture(f);
+  const { dm, call, turn: contextOf } = await mcpFixture(f);
   const turn = dmTurn(dm.id);
   const sent = await call(
     "reply",
@@ -248,8 +228,8 @@ test("reply.ask anchors one async question to the reply", async () => {
     kind: "question",
     mode: "async",
     status: "pending",
-    turnId: turn.turnId,
-    sessionKey: turn.sessionKey,
+    turnId: (await contextOf(turn)).turnId,
+    sessionKey: turn.key,
     anchorMessageId: sent.messageId,
     conversationId: dm.id,
   });

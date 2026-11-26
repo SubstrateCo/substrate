@@ -1,7 +1,6 @@
 import type { Services } from "./services";
 import type { Scopes } from "./shared/scope";
 import { createAgentWorkRoutes } from "./v1/agent-work/routes";
-import { createCallerRoutes } from "./v1/agents/callers-routes";
 import { createAgentsRoutes } from "./v1/agents/routes";
 import { createCalendarRoutes } from "./v1/calendar/routes";
 import { createContactsExportRoutes } from "./v1/contacts/export-routes";
@@ -49,6 +48,14 @@ export function createProductRoutes(services: Services, scopes: Scopes) {
     .route("/mcp", createMcpRoutes(services.mcp, scopes))
     .route("/context", createContextRoutes(services.context, scopes))
     .route("/agents", createAgentsRoutes(services.agents, scopes))
-    .route("/agents", createCallerRoutes(services.callers, scopes))
-    .route("/agent-work", createAgentWorkRoutes(services.agentWork, services.devices, scopes));
+    .route(
+      "/agent-work",
+      createAgentWorkRoutes(
+        services.agentWork,
+        services.devices,
+        services.host,
+        services.work,
+        scopes,
+      ),
+    );
 }

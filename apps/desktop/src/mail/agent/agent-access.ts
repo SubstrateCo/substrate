@@ -1,18 +1,11 @@
-import { mcpOutputOffloadBytes } from "@substrate/contracts/harness/mcp";
-import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
+import { InboxToolError, type AgentInbox } from "@substrate/agent-host";
+import { mcpOutputOffloadBytes } from "@substrate/contracts/harness-runtime";
 import type { MailScope } from "@substrate/contracts/mail/ipc";
 
-import { InboxToolError } from "./agent-error.ts";
-import { readExcerpt } from "./agent-excerpts.ts";
-import { createInboxSearch, refreshMailLabels } from "./agent-search.ts";
 import type { GmailWork } from "../gmail/gmail-connection.ts";
 import type { createMailSession } from "../session.ts";
-
-/** This is the whole agent-facing mail interface. The verified agent-work runtime binds scope. */
-export interface AgentInbox {
-  search(q: McpInput<"search_inbox">): Promise<McpOutput<"search_inbox">>;
-  read(q: McpInput<"read_inbox_message">): Promise<McpOutput<"read_inbox_message">>;
-}
+import { readExcerpt } from "./agent-excerpts.ts";
+import { createInboxSearch, refreshMailLabels } from "./agent-search.ts";
 
 export function agentInbox(
   { use, checked }: Pick<ReturnType<typeof createMailSession>, "use" | "checked">,

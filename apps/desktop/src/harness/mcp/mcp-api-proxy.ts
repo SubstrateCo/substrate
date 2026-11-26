@@ -1,21 +1,14 @@
-import { approvalPendingCode, type ProposalOutcome } from "@substrate/contracts/agent-work";
 import {
   workspaceApiResult,
   workspaceApiRequest,
   type WorkspaceApiProxy,
   type WorkspaceApiRequest,
   type WorkspaceApiResult,
-} from "@substrate/contracts/harness/mcp";
-import { mcpTools } from "@substrate/contracts/harness/tools";
+} from "@substrate/contracts/agent-tools/mcp";
+import { mcpTools } from "@substrate/contracts/agent-tools/tools";
+import { approvalPendingCode, type ProposalOutcome } from "@substrate/contracts/agent-work";
 
-/**
- * How long an interactive call that needs approval waits for the owner's decision. Claude Code
- * stops an MCP call that sends no first byte within 60 s by default; 45 s leaves room for the
- * server call and the result's way back through the worker.
- */
-export const approvalWaitMs = 45_000;
-/** How often a waiting call reads the decision. */
-export const approvalPollMs = 1_500;
+import { approvalPollMs, approvalWaitMs } from "./request-limits.ts";
 
 /** A held call that the owner decided within the wait. Its result is the final one. */
 export interface DecidedInTurn {
@@ -28,8 +21,11 @@ export interface ApprovalWaiter {
     organizationId: string,
     requestId: string,
   ): Promise<{ status: string; outcome: ProposalOutcome | null }>;
-  /** The call starts to wait on requestId. The returned function ends the wait. */
-  waiting?(request: WorkspaceApiRequest, requestId: string): () => void;
+  /**
+   * The call starts to wait on requestId. The returned function ends the wait. Null when the
+   * call's turn is not a live interactive turn: nobody watches, so the call does not wait.
+   */
+  waiting(request: WorkspaceApiRequest, requestId: string): (() => void) | null;
   /** Test seams. */
   sleep?: (milliseconds: number) => Promise<void>;
   now?: () => number;
@@ -81,8 +77,8 @@ async function readDecision(
 /**
  * The owner's decision on requestId. It is read at once, because a retried call that was
  * already decided returns APPROVAL_PENDING again. With wait, it is read again every
- * approvalPollMs for up to approvalWaitMs. Null when it ends undecided: on time-out, a
- * cancelled or expired request, or once the proxy is inactive.
+ * approvalPollMs until approvalWaitMs after startedAt. Null when it ends undecided: on time-out,
+ * a cancelled or expired request, or once the proxy is inactive.
  */
 async function awaitDecision(
   approval: ApprovalWaiter,
@@ -90,12 +86,14 @@ async function awaitDecision(
   requestId: string,
   isActive: () => boolean,
   wait: boolean,
+  startedAt: number,
 ): Promise<WorkspaceApiResult | null> {
   const now = approval.now ?? Date.now;
   const sleep =
     approval.sleep ??
     ((milliseconds: number) => new Promise<void>((resolve) => setTimeout(resolve, milliseconds)));
-  const deadline = now() + approvalWaitMs;
+  // The server call counts against the wait, so the whole call stays within the worker's limit.
+  const deadline = startedAt + approvalWaitMs;
   for (;;) {
     const decision = await readDecision(approval, request, requestId);
     if (decision === "closed") return null;
@@ -124,6 +122,7 @@ export function createMcpApiProxy(options: {
     const request = workspaceApiRequest.parse(raw);
     mcpTools[request.tool].input.parse(request.input);
     if (!options.isActive()) throw new Error("MCP connection closed.");
+    const startedAt = (options.approval?.now ?? Date.now)();
     const url = new URL("/api/v1/mcp/call", options.backend);
     const init: RequestInit = {
       method: "POST",
@@ -151,8 +150,8 @@ export function createMcpApiProxy(options: {
       return result;
     }
     // Unattended turns have no owner watching, so they only read a decision that already exists.
-    const wait = request.turn.kind === "interactive";
-    const release = wait ? options.approval.waiting?.(request, requestId) : undefined;
+    const release = options.approval.waiting(request, requestId);
+    const wait = release !== null;
     try {
       const decided = await awaitDecision(
         options.approval,
@@ -160,8 +159,9 @@ export function createMcpApiProxy(options: {
         requestId,
         options.isActive,
         wait,
+        startedAt,
       );
-      // Recorded before the agent sees the result, so the later approval_result wake is dropped.
+      // Reported before the agent sees the result, so the server consumes its approval_result item.
       if (decided) await options.onResult?.(request, decided, { requestId });
       else await options.onResult?.(request, result);
       return decided ?? result;

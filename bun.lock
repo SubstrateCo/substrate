@@ -26,12 +26,12 @@
       "dependencies": {
         "@better-auth/core": "1.7.18",
         "@better-auth/electron": "catalog:auth",
+        "@substrate/agent-host": "workspace:*",
         "@substrate/client-storage": "workspace:*",
         "@substrate/contracts": "workspace:*",
         "@substrate/harness-runtime": "workspace:*",
         "better-auth": "catalog:auth",
         "conf": "^16.0.0",
-        "croner": "^11",
         "electron-updater": "^6.8.11",
         "entities": "4.5.0",
         "ws": "^8.22.1",
@@ -202,6 +202,18 @@
         "vite": "^8.3.6",
       },
     },
+    "packages/agent-host": {
+      "name": "@substrate/agent-host",
+      "dependencies": {
+        "@substrate/client-storage": "workspace:*",
+        "@substrate/contracts": "workspace:*",
+        "@substrate/harness-runtime": "workspace:*",
+        "zod": "catalog:",
+      },
+      "devDependencies": {
+        "@types/node": "catalog:tooling",
+      },
+    },
     "packages/client-storage": {
       "name": "@substrate/client-storage",
       "dependencies": {
@@ -226,6 +238,7 @@
       "name": "@substrate/database",
       "dependencies": {
         "@substrate/contracts": "workspace:*",
+        "croner": "^11",
         "drizzle-orm": "catalog:database",
         "libphonenumber-js": "^1.13.16",
         "postgres": "^4.0.0",
@@ -1323,6 +1336,8 @@
     "@stablelib/base64": ["@stablelib/base64@1.0.1", "", {}, "sha512-1bnPQqSxSuc3Ii6MhBysoWCg58j97aUjuCSZrGSmDxNqtytIi0k8utUenAwTZN4V5mXXYGsVUI9zeBqy+jBOSQ=="],
 
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
+
+    "@substrate/agent-host": ["@substrate/agent-host@workspace:packages/agent-host"],
 
     "@substrate/architecture-lint": ["@substrate/architecture-lint@workspace:tooling/architecture-lint"],
 

@@ -1,6 +1,5 @@
-import { harnessKinds } from "../harness/kinds.ts";
-import type { AgentCallerPolicy } from "./callers.ts";
-import type { AgentTriggerSetting } from "./triggers.ts";
+import { harnessKinds } from "../harness-runtime/kinds.ts";
+import { agentTriggerKinds } from "./triggers.ts";
 import { z } from "zod";
 
 const id = z.uuid();
@@ -27,94 +26,34 @@ export const saveSkillInput = z.strictObject({
   description: z.string().max(2000),
   content: z.string().max(100000),
 });
-export const deleteSkillInput = z.strictObject({ id });
-
-const credentialName =
-  /(?:secret|password|passwd|token|api[_-]?key|authorization|credential|private[_-]?key|cookie)/i;
-const credentialValue =
-  /(?:Bearer\s+|-----BEGIN .*PRIVATE KEY|\b(?:sk-|ghp_|github_pat_|AKIA)[A-Za-z0-9_-]{8,})/i;
-const nonSecret = z
-  .string()
-  .max(10000)
-  .refine((value) => !credentialValue.test(value), "Authentication secrets are not supported.");
-const environment = z
-  .record(
-    z
-      .string()
-      .regex(/^[A-Za-z_][A-Za-z0-9_]*$/)
-      .refine(
-        (key) => !credentialName.test(key),
-        "Secret environment variables are not supported.",
-      ),
-    nonSecret,
-  )
-  .default({});
-const args = z
-  .array(
-    nonSecret.refine(
-      (value) => !credentialName.test(value),
-      "Credential arguments are not supported.",
-    ),
-  )
-  .max(200)
-  .default([]);
-const url = z
-  .url()
-  .max(4000)
-  .refine((value) => {
-    const parsed = new URL(value);
-    return (
-      ["http:", "https:"].includes(parsed.protocol) &&
-      !parsed.username &&
-      !parsed.password &&
-      !parsed.hash &&
-      !credentialValue.test(value) &&
-      [...parsed.searchParams.keys()].every((key) => !credentialName.test(key))
-    );
-  }, "Use an HTTP URL without credentials.");
-export const saveMcpServerInput = z.discriminatedUnion("transport", [
-  z.strictObject({
-    id: id.optional(),
-    name,
-    transport: z.literal("stdio"),
-    command: z
-      .string()
-      .trim()
-      .min(1)
-      .max(2000)
-      .refine((value) => !/[\r\n]/.test(value) && !credentialValue.test(value)),
-    args,
-    environment,
-  }),
-  z.strictObject({
-    id: id.optional(),
-    name,
-    transport: z.literal("http"),
-    url,
-    args: z.array(z.never()).default([]),
-    environment: z.record(z.string(), z.never()).default({}),
-  }),
-]);
-export const deleteMcpServerInput = z.strictObject({ id });
 export type SaveAgentInput = z.input<typeof saveAgentInput>;
 /** Validated agent fields, as the route passes them to the repository. */
 export type SaveAgentValues = z.output<typeof saveAgentInput>;
 export type SaveSkillInput = z.input<typeof saveSkillInput>;
-export type SaveMcpServerInput = z.input<typeof saveMcpServerInput>;
 export type SetAgentPictureInput = z.input<typeof setAgentPictureInput>;
-export type AgentConfiguration = Omit<z.output<typeof saveAgentInput>, "id"> & {
-  id: string;
-  image: string | null;
-};
+/** A saved agent, as the catalog returns it. Its fields passed saveAgentInput when saved. */
+const agentConfiguration = z.object({
+  id: z.string(),
+  name: z.string(),
+  instructions: z.string(),
+  harness: z.enum(harnessKinds),
+  model: z.string().optional(),
+  enabled: z.boolean(),
+  useStartupDefaults: z.boolean(),
+  image: z.string().nullable(),
+});
+export type AgentConfiguration = z.infer<typeof agentConfiguration>;
 /** Where and when an agent runs. Kept apart from the editable configuration. */
-export interface AgentRunSettings {
-  agentId: string;
-  homeDevice: { id: string; name: string; online: boolean; current: boolean } | null;
-  triggers: AgentTriggerSetting[];
-  /** Who may call the agent besides its owner. */
-  callerPolicy: AgentCallerPolicy;
-}
-export interface AgentCatalog {
-  agents: AgentConfiguration[];
-  runSettings: AgentRunSettings[];
-}
+const agentRunSettings = z.object({
+  agentId: z.string(),
+  homeDevice: z
+    .object({ id: z.string(), name: z.string(), online: z.boolean(), current: z.boolean() })
+    .nullable(),
+  triggers: z.array(z.object({ kind: z.enum(agentTriggerKinds), enabled: z.boolean() })),
+});
+export type AgentRunSettings = z.infer<typeof agentRunSettings>;
+export const agentCatalogSchema = z.object({
+  agents: z.array(agentConfiguration),
+  runSettings: z.array(agentRunSettings),
+});
+export type AgentCatalog = z.infer<typeof agentCatalogSchema>;

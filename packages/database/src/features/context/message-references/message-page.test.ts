@@ -310,26 +310,16 @@ test("page agents resolve mentions with constant reads under the same rules as c
     expect(row!.agents.length > 0).toBe(profile);
     return row!.agents;
   };
-  // Before it writes, only the owner sees an agent that does not accept callers.
+  // Before it writes, only the owner sees the agent.
   expect(await agentsFor("alice")).toEqual(research);
   expect(await agentsFor("bob")).toEqual([]);
-  await f.db
-    .update(userAgents)
-    .set({ callerPolicy: "anyone" })
-    .where(eq(userAgents.id, definition!.id));
-  expect(await agentsFor("bob")).toEqual(research);
   // A disabled agent is no longer present, and it has not written here.
   await f.db
     .update(actors)
     .set({ disabledAt: new Date() })
     .where(eq(actors.entityId, agent.entityId));
-  expect(await agentsFor("bob")).toEqual([]);
   expect(await agentsFor("alice")).toEqual([]);
   await f.db.update(actors).set({ disabledAt: null }).where(eq(actors.entityId, agent.entityId));
-  await f.db
-    .update(userAgents)
-    .set({ callerPolicy: "owner" })
-    .where(eq(userAgents.id, definition!.id));
   // Once it writes in the conversation, everyone who sees the conversation sees it.
   await f.messaging("alice", f.orgA, agent.entityId).sendMessage(conversation.id, "agent work");
   expect(await agentsFor("bob")).toEqual(research);

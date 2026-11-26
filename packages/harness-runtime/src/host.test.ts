@@ -1,14 +1,13 @@
-import { sessionKeys } from "@substrate/contracts/agent-work";
 import type {
   AdapterCapabilities,
   HarnessAgent,
   HarnessEvent,
   TurnResult,
-} from "@substrate/contracts/harness";
-import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
+} from "@substrate/contracts/harness-runtime";
 
 import type { AdapterContext, NativeAdapter } from "./adapters/types.ts";
 import { createHarnessHost, type ConnectNative, type HostClock } from "./host.ts";
+import { testToolProvider, type TestBinding } from "./testing/tool-provider.ts";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 import { StreamableHTTPClientTransport } from "@modelcontextprotocol/sdk/client/streamableHttp.js";
 import { afterEach, beforeEach, expect, test } from "bun:test";
@@ -19,12 +18,9 @@ import { join } from "node:path";
 
 const agentId = "ad4f709e-b80e-40f5-80ee-588e1db066e5";
 const turnId = "0d6f4c3e-8b4f-4c39-9d7e-3f1c2a5b6e71";
-const context: TurnContext = {
+const context: TestBinding = {
   turnId,
   attempt: 1,
-  sessionKey: sessionKeys.dm("9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718"),
-  origin: { conversationId: "9b2c1d4e-5f60-4a71-8b92-c3d4e5f60718", threadId: null },
-  kind: "interactive",
 };
 const capabilities: AdapterCapabilities = {
   steer: false,
@@ -44,14 +40,16 @@ afterEach(async () => {
   await rm(root, { recursive: true, force: true });
 });
 
+const tools = { main: ["list_projects", "read_file"], helper: ["list_projects"] };
+
 function agent(overrides: Partial<HarnessAgent> = {}): HarnessAgent {
   return {
     id: agentId,
-    name: "Agent",
     instructions: "Work locally",
     harness: "codex",
     enabled: true,
-    useStartupDefaults: true,
+    managedSkills: [],
+    tools,
     ...overrides,
   };
 }
@@ -92,7 +90,6 @@ async function host(
   options: {
     keepAliveMs?: number;
     interruptGraceMs?: number;
-    calls?: WorkspaceApiRequest[];
     steer?: boolean;
     connect?: ConnectNative;
     clock?: HostClock;
@@ -100,24 +97,18 @@ async function host(
 ) {
   const native = fakeNative(options.steer);
   const events: HarnessEvent[] = [];
+  const provider = testToolProvider();
   const created = await createHarnessHost({
     accountDirectory: root,
     connect: options.connect ?? native.connect,
     keepAliveMs: options.keepAliveMs,
     interruptGraceMs: options.interruptGraceMs,
     clock: options.clock,
-    workspaceProxy: async (call) => {
-      options.calls?.push(call);
-      return { success: true, data: { items: [], nextCursor: null } };
-    },
+    tools: provider.provider,
   });
   created.subscribe((event) => events.push(event));
-  await created.configure({
-    organizationId: "org-a",
-    enabledApps: ["messages", "agents", "tasks", "crm"],
-    agents: [agent()],
-  });
-  return { host: created, native, events };
+  await created.configure({ organizationId: "org-a", agents: [agent()] });
+  return { host: created, native, events, calls: provider.calls };
 }
 
 /** Resolves with the next host event that matches. Call it before the action that emits it. */
@@ -161,8 +152,7 @@ const turn = {
 };
 
 test("MCP calls are accepted only while a turn is bound to the session", async () => {
-  const calls: WorkspaceApiRequest[] = [];
-  const f = await host({ calls });
+  const f = await host();
   const client = new Client({ name: "host-test", version: "1" });
   try {
     await f.host.execute(open);
@@ -176,82 +166,41 @@ test("MCP calls are accepted only while a turn is bound to the session", async (
     expect((await call()).isError).toBe(true);
     await f.host.execute(turn);
     expect((await call()).isError).toBeFalsy();
-    expect(calls.map((entry) => entry.turn)).toEqual([context]);
+    expect(f.calls.map((entry) => entry.binding)).toEqual([context]);
     const completed = nextEvent(f, (event) => event.type === "turn.completed");
     f.native.state.finish!({ status: "completed", consumedInputIds: ["item-1"] });
     await completed;
     expect((await call()).isError).toBe(true);
-    expect(calls).toHaveLength(1);
+    expect(f.calls).toHaveLength(1);
   } finally {
     await client.close();
     await f.host.dispose();
   }
 });
 
-test("changing Inbox availability renews the lease even with an unchanged agent definition", async () => {
+test("changing the folder's tools renews the lease; other folders' tools and managed skills do not", async () => {
   const f = await host();
   try {
     await f.host.execute(open);
     const old = f.native.state.context!.lease!.endpoint!;
-    expect(old.tools).not.toContain("search_inbox");
+    expect(old.tools).not.toContain("read_private");
+    const skill = { id: "s", name: "s", description: "", content: "", installed: true };
     await f.host.configure({
       organizationId: "org-a",
-      agents: [agent()],
-      enabledApps: ["messages", "agents", "tasks", "crm", "inbox"],
+      agents: [agent({ managedSkills: [skill], tools: { ...tools, helper: [] } })],
+    });
+    expect(old.touch()).toBe(true);
+    await f.host.configure({
+      organizationId: "org-a",
+      agents: [agent({ tools: { ...tools, main: [...tools.main, "read_private"] } })],
     });
     expect(old.touch()).toBe(false);
     await f.host.execute(open);
     const endpoint = f.native.state.context!.lease!.endpoint!;
-    expect(endpoint.tools).toContain("read_inbox_message");
-    await f.host.configure({
-      organizationId: "org-a",
-      agents: [agent()],
-      enabledApps: ["messages", "agents", "tasks", "crm"],
-    });
+    expect(endpoint.tools).toContain("read_private");
+    await f.host.configure({ organizationId: "org-a", agents: [agent()] });
     expect(endpoint.touch()).toBe(false);
   } finally {
-    await f.host.dispose();
-  }
-});
-
-test("steered calls join the bound MCP context and do not leak into the next turn", async () => {
-  const calls: WorkspaceApiRequest[] = [];
-  const f = await host({ calls, steer: true });
-  const client = new Client({ name: "host-test", version: "1" });
-  try {
-    await f.host.execute(open);
-    const lease = f.native.state.context!.lease!;
-    await client.connect(
-      new StreamableHTTPClientTransport(new URL(lease.url), {
-        requestInit: { headers: { Authorization: `Bearer ${lease.token}` } },
-      }),
-    );
-    await f.host.execute(turn);
-    const invocationId = crypto.randomUUID();
-    await f.host.execute({
-      type: "steer",
-      organizationId: "org-a",
-      sessionId: "session-a",
-      turnId,
-      inputId: "call",
-      text: "Caller asks",
-      invocationIds: [invocationId],
-    });
-    await client.callTool({ name: "list_projects", arguments: {} });
-    expect(calls.at(-1)?.turn.invocationIds).toEqual([invocationId]);
-    const completed = nextEvent(f, (event) => event.type === "turn.completed");
-    f.native.state.finish!({ status: "completed" });
-    await completed;
-    const nextTurnId = crypto.randomUUID();
-    await f.host.execute({
-      ...turn,
-      turnId: nextTurnId,
-      context: { ...context, turnId: nextTurnId },
-    });
-    await client.callTool({ name: "list_projects", arguments: {} });
-    expect(calls.at(-1)?.turn.invocationIds).toBeUndefined();
-  } finally {
-    await client.close();
     await f.host.dispose();
   }
 });
@@ -278,6 +227,20 @@ test("turn events carry the turn; session-scoped native output and the result do
       result: { status: "completed", consumedInputIds: ["item-1"] },
       generation: 1,
     });
+  } finally {
+    await f.host.dispose();
+  }
+});
+
+test("a turn whose context the provider does not bind is rejected before it starts", async () => {
+  const f = await host();
+  try {
+    await f.host.execute(open);
+    await rejects(
+      f.host.execute({ ...turn, context: { ...context, turnId: crypto.randomUUID() } }),
+      { code: "invalid-turn-context" },
+    );
+    expect(f.events.some((event) => event.type === "turn.started")).toBe(false);
   } finally {
     await f.host.dispose();
   }

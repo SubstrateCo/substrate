@@ -1,4 +1,8 @@
-import { fileTextPage, type McpInput, type McpOutput } from "@substrate/contracts/harness/tools";
+import {
+  fileTextPage,
+  type McpInput,
+  type McpOutput,
+} from "@substrate/contracts/agent-tools/tools";
 
 import type { DatabaseExecutor } from "../../core/executor";
 import type { RepositoryContext } from "../../core/repository-context";

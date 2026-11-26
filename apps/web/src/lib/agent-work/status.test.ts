@@ -134,8 +134,8 @@ describe("queue position", () => {
   });
 });
 
-describe("published agent status", () => {
-  test("no device, offline device, and live work read as the desktop reported them", () => {
+describe("derived agent status", () => {
+  test("no device, offline device, and live work read as the server derived them", () => {
     expect(agentStatus(status({ device: null })).label).toBe("No desktop runs this agent");
     expect(
       agentStatus(status({ state: "queued", device: { id: "d", name: "MacBook", online: false } }))

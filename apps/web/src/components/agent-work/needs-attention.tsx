@@ -1,4 +1,4 @@
-import type { AgentTurnView } from "@substrate/contracts/agent-work";
+import type { AgentWorkTurnView } from "@substrate/contracts/agent-work";
 
 import { NeedsAttentionCard, type NeedsAttentionAction } from "./needs-attention-card";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
@@ -15,9 +15,9 @@ const failures: Record<NeedsAttentionAction, string> = {
 };
 
 /**
- * The home desktop's actions for a turn that needs attention. uncertainItemIds are the turn's
- * items the desktop couldn't confirm the agent received; with them, the card offers Resend and
- * Discard for those items.
+ * The owner's actions for a turn that needs attention, from any device. uncertainItemIds are the
+ * turn's items the home desktop couldn't confirm the agent received; with them, the card offers
+ * Resend and Discard for those items.
  */
 export function NeedsAttention({
   turn,
@@ -27,7 +27,8 @@ export function NeedsAttention({
 }: {
   /** Render without a card header, inside a row that names the state. */
   inline?: boolean;
-  turn: AgentTurnView;
+  /** A Needs you entry has no error; the transcript shows it. */
+  turn: Pick<AgentWorkTurnView, "id" | "attentionReason"> & { error?: string | null };
   agentName: string;
   uncertainItemIds?: readonly string[];
 }) {
@@ -45,7 +46,7 @@ export function NeedsAttention({
     <NeedsAttentionCard
       inline={inline}
       text={attentionReasonText(turn.attentionReason, agentName)}
-      error={turn.error}
+      error={turn.error ?? null}
       pending={pending}
       failure={failure}
       onRetry={run("retry", [turn.id])}

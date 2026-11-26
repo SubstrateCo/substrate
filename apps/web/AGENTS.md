@@ -47,8 +47,9 @@
 
 ## Agent work
 
-- Show agent work only to the agent's owner. Callers see only the status of their own calls and published messages, not the owner's work, approvals, allowlist, or Calls log.
-- Read local work through the `substrateAgentWork` bridge on the home desktop. Elsewhere, fall back to server status and requests.
+- Show agent work only to the agent's owner. Other members see only the agent's published messages, not the owner's work or approvals.
+- Read and change agent work over HTTP on every device: activity, conversation work, turn summaries, routines, Needs you, and every command. Realtime `agent-work` hints refresh the server keys.
+- Read only transcripts and the agents homed here through the `substrateAgentWork` bridge on the home desktop. Keep their query keys apart from server keys; bridge change hints refresh only them. Elsewhere, show where to open the transcript.
 - Place work under its outputs, then under its newest accessible source message. Work without an anchor appears only in the Agents app.
 - Notify only for Needs-you items, not for working, finished, quiet, or routine progress.
 - Show records the viewer cannot open as placeholders, such as "A conversation you can't open". Never show their names.

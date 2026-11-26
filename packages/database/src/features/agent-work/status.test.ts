@@ -1,7 +1,9 @@
-import { agentStatus } from "../../schema";
-import { agentWorkFixture, deviceAgentWork, ownerAgentWork } from "../../testing/agent-work";
+import { agentTurns, agentWorkItems } from "../../schema";
+import { agentWorkFixture, ownerAgentWork } from "../../testing/agent-work";
 import { setupDatabase } from "../../testing/database";
+import { insertTurn, routineTurn, threadTurn } from "../../testing/turns";
 import { expect, test } from "bun:test";
+import { eq } from "drizzle-orm";
 
 const f = setupDatabase();
 
@@ -17,121 +19,97 @@ async function sharedThread() {
   return { ...fixture, shared, root };
 }
 
-test("after the owner leaves the live conversation, status shows no place and no activity", async () => {
-  const { agent, alice, owner, shared, root } = await sharedThread();
-  const device = await deviceAgentWork(f.db, agent.identity);
+test("status is derived from queued items, live turns and turns that need the owner", async () => {
+  const { agent, alice, dm, owner } = await agentWorkFixture(f);
   const work = await ownerAgentWork(f.db, owner);
-  const publish = (version: number, state: "working" | "needs_you" = "working") =>
-    device.publishStatus({
-      userAgentId: agent.agentId,
-      state,
-      queuedCount: 0,
-      liveConversationId: shared.id,
-      liveThreadId: root.id,
-      activity: "Reading the secret launch notes",
-      version,
-    });
-  await publish(1);
+  expect((await work.listStatus())[0]).toMatchObject({ state: "idle", queuedCount: 0 });
+  await alice.sendMessage(dm.id, "Summarize the week");
+  expect((await work.listStatus())[0]).toMatchObject({
+    state: "queued",
+    queuedCount: 1,
+    device: { id: agent.device.id },
+  });
+  const turn = await insertTurn(f.db, agent, routineTurn(null));
+  await f.db.update(agentTurns).set({ activity: "Reading" }).where(eq(agentTurns.id, turn.id));
+  expect((await work.listStatus())[0]).toMatchObject({ state: "working", activity: "Reading" });
+  await f.db
+    .update(agentTurns)
+    .set({ status: "needs_attention", attentionReason: "unfinished_tool" })
+    .where(eq(agentTurns.id, turn.id));
+  expect((await work.listStatus())[0]).toMatchObject({ state: "needs_you", activity: null });
+  const needsYou = await work.listNeedsYou();
+  expect(needsYou.agents.map((status) => status.userAgentId)).toEqual([agent.agentId]);
+  expect(needsYou.turns).toEqual([
+    expect.objectContaining({ id: turn.id, attentionReason: "unfinished_tool", place: null }),
+  ]);
+});
+
+test("after the owner leaves the live conversation, status and needs-you show no place or activity", async () => {
+  const { agent, alice, owner, shared, root } = await sharedThread();
+  const work = await ownerAgentWork(f.db, owner);
+  const turn = await insertTurn(f.db, agent, threadTurn(shared.id, root.id));
+  await f.db
+    .update(agentTurns)
+    .set({ activity: "Reading the secret launch notes" })
+    .where(eq(agentTurns.id, turn.id));
   expect((await work.listStatus())[0]).toMatchObject({
     liveConversationId: shared.id,
     liveThreadId: root.id,
     activity: "Reading the secret launch notes",
   });
+  // A steered item that may not have been read waits for the owner too.
+  await f.db.insert(agentWorkItems).values({
+    organizationId: f.orgA,
+    userAgentId: agent.agentId,
+    agentActorEntityId: agent.actorId,
+    ownerUserId: "alice",
+    sessionId: turn.sessionId,
+    source: "owner_message",
+    sourceRef: {
+      source: "owner_message",
+      messageId: root.id,
+      conversationId: shared.id,
+      threadId: root.id,
+    },
+    lane: "owner",
+    dedupeKey: crypto.randomUUID(),
+    availableAt: new Date(),
+    deadlineAt: new Date(),
+    status: "uncertain",
+    steered: true,
+    turnId: turn.id,
+  });
+  expect((await work.listNeedsYou()).items[0]?.place).toEqual({
+    conversationId: shared.id,
+    threadId: root.id,
+  });
 
   await alice.leaveConversation(shared.id);
   const hidden = { liveConversationId: null, liveThreadId: null, activity: null };
   expect((await work.listStatus())[0]).toMatchObject(hidden);
-  // A later publish for the hidden place stores neither the place nor the activity.
-  await publish(2, "needs_you");
-  const [row] = await f.db.select().from(agentStatus);
-  expect(row).toMatchObject(hidden);
+  await f.db
+    .update(agentTurns)
+    .set({ status: "needs_attention", attentionReason: "uncertain_input" })
+    .where(eq(agentTurns.id, turn.id));
   const needsYou = await work.listNeedsYou();
   expect(needsYou.agents[0]).toMatchObject(hidden);
+  expect(needsYou.turns[0]?.place).toBeNull();
+  expect(needsYou.items[0]?.place).toBeNull();
   const text = JSON.stringify([await work.listStatus(), needsYou]);
   for (const secret of ["secret", shared.id, root.id]) expect(text).not.toContain(secret);
 });
 
-test("millisecond status versions from the desktop clock are stored, and older ones change nothing", async () => {
+test("a live turn without a place keeps its activity", async () => {
   const { agent, owner } = await agentWorkFixture(f);
-  const device = await deviceAgentWork(f.db, agent.identity);
   const work = await ownerAgentWork(f.db, owner);
-  const publish = (version: number, state: "working" | "idle") =>
-    device.publishStatus({
-      userAgentId: agent.agentId,
-      state,
-      queuedCount: 0,
-      version,
-    });
-  const now = Date.UTC(2026, 10, 9);
-  await publish(now, "working");
-  await publish(now - 1, "idle");
-  expect((await work.listStatus())[0]).toMatchObject({ state: "working" });
-  await publish(now + 1, "idle");
-  expect((await work.listStatus())[0]).toMatchObject({ state: "idle" });
-});
-
-test("a publish reports a change only when what the owner sees changed", async () => {
-  const { agent, alice } = await agentWorkFixture(f);
-  const device = await deviceAgentWork(f.db, agent.identity);
-  const channel = await alice.createConversation({ kind: "channel", name: "general" });
-  let version = 0;
-  const publish = async (input: { state?: "working" | "idle"; activity?: string }) =>
-    (
-      await device.publishStatus({
-        userAgentId: agent.agentId,
-        state: input.state ?? "working",
-        queuedCount: 0,
-        liveConversationId: channel.id,
-        activity: input.activity,
-        version: ++version,
-      })
-    ).result;
-  const results = [];
-  // A republish of the same status, then an activity change, then a state change.
-  for (const input of [
-    { activity: "Reading" },
-    { activity: "Reading" },
-    { activity: "Drafting" },
-    { state: "idle" as const, activity: "Drafting" },
-  ])
-    results.push(await publish(input));
-  expect(results).toEqual([
-    { applied: true, changed: true },
-    { applied: true, changed: false },
-    { applied: true, changed: true },
-    { applied: true, changed: true },
-  ]);
-  version = 0;
-  expect(await publish({ state: "working" })).toEqual({ applied: false, changed: false });
-});
-
-test("status without a place keeps its activity, and a thread outside the conversation is dropped", async () => {
-  const { agent, alice, owner, root } = await sharedThread();
-  const device = await deviceAgentWork(f.db, agent.identity);
-  const work = await ownerAgentWork(f.db, owner);
-  await device.publishStatus({
-    userAgentId: agent.agentId,
-    state: "working",
-    queuedCount: 1,
-    activity: "Running the weekly routine",
-    version: 1,
-  });
-  expect((await work.listStatus())[0]?.activity).toBe("Running the weekly routine");
-
-  // The root belongs to another conversation, so it is not this conversation's thread.
-  const channel = await alice.createConversation({ kind: "channel", name: "general" });
-  await device.publishStatus({
-    userAgentId: agent.agentId,
-    state: "working",
-    queuedCount: 0,
-    liveConversationId: channel.id,
-    liveThreadId: root.id,
-    activity: "Drafting",
-    version: 2,
-  });
+  const turn = await insertTurn(f.db, agent, routineTurn(null));
+  await f.db
+    .update(agentTurns)
+    .set({ activity: "Running the weekly routine" })
+    .where(eq(agentTurns.id, turn.id));
   expect((await work.listStatus())[0]).toMatchObject({
-    liveConversationId: channel.id,
-    liveThreadId: null,
-    activity: "Drafting",
+    state: "working",
+    liveConversationId: null,
+    activity: "Running the weekly routine",
   });
 });

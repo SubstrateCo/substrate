@@ -43,12 +43,9 @@ export type ReferenceOption = {
   conversationName?: string;
   projectName?: string;
   status?: TaskStatus;
-  callMode?: string | null;
 };
 
 function description(option: ReferenceOption) {
-  if (option.callMode === "ask") return "Calls need the owner's approval";
-  if (option.callMode === "anyone") return "Available to call";
   if (option.conversationName) return `In ${option.conversationName}`;
   return (
     [option.projectName, option.status && taskStatusLabels[option.status]]

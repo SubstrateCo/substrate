@@ -1,4 +1,6 @@
-import { offloadOutput } from "./offload.ts";
+import type { JsonObject } from "@substrate/contracts/harness-runtime";
+
+import { offloadOutput as offload } from "./offload.ts";
 import { helperDirectory } from "./paths.ts";
 import { afterEach, beforeEach, expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
@@ -7,6 +9,14 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 let root: string;
+const pagingFields = ["nextCursor", "nextBefore"];
+const offloadOutput = (
+  folder: string,
+  turnId: string,
+  tool: string,
+  sequence: number,
+  data: JsonObject,
+) => offload(folder, turnId, tool, sequence, data, pagingFields);
 const turnId = "0d6f4c3e-8b4f-4c39-9d7e-3f1c2a5b6e71";
 const large = {
   items: Array.from({ length: 200 }, (_, index) => ({

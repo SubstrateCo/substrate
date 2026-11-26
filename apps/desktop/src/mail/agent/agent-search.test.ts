@@ -1,10 +1,10 @@
-import { mcpOutputOffloadBytes } from "@substrate/contracts/harness/mcp";
-import { mcpTools } from "@substrate/contracts/harness/tools";
+import { mcpTools } from "@substrate/contracts/agent-tools/tools";
+import { mcpOutputOffloadBytes } from "@substrate/contracts/harness-runtime";
 import { mailFlag } from "@substrate/contracts/mail";
 
-import { agentInbox } from "./agent-access.ts";
 import { gmailReader } from "../gmail/gmail-reader.ts";
 import { mailFixture, owner } from "../test-support.ts";
+import { agentInbox } from "./agent-access.ts";
 import { expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
 

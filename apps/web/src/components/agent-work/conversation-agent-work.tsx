@@ -1,8 +1,8 @@
 import type {
-  AgentInboxItemView,
   AgentRequestView,
   AgentStatusView,
-  AgentTurnView,
+  AgentWorkItemView,
+  AgentWorkTurnView,
 } from "@substrate/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
@@ -10,7 +10,6 @@ import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 
 import { AgentWorkProvider } from "./agent-work-slot";
-import { CallStatus } from "./calls/call-status";
 import { ComposerNotice, type ComposerNoticeLine } from "./composer-notice";
 import { InboxReceipt } from "./inbox-receipt";
 import { ProposalBacklink } from "./requests/proposal-backlink";
@@ -20,7 +19,7 @@ import { useVisibleTurnStatuses } from "./use-visible-turn-statuses";
 import { WorkIndicator } from "./work-indicator";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
-import { noticeLines } from "@/lib/agent-work/composer-notice";
+import { noticeLines, noticeThread } from "@/lib/agent-work/composer-notice";
 import { conversationAgents } from "@/lib/agent-work/conversation-agents";
 import { proposalSourceLink } from "@/lib/agent-work/links";
 import { itemPlacements, requestPlacements, turnPlacements } from "@/lib/agent-work/placement";
@@ -28,21 +27,19 @@ import { isOpenRequest } from "@/lib/agent-work/requests";
 import { agentStatus, noDesktopLabel, queueAhead, turnTone } from "@/lib/agent-work/status";
 import type { Conversation } from "@/lib/messaging/conversations";
 import { agentLink } from "@/lib/navigation/record-links";
-import { myCallsOptions } from "@/queries/agent-work/calls";
-import {
-  conversationWorkOptions,
-  localAgentsOptions,
-  localWorkEnabled,
-} from "@/queries/agent-work/local";
 import { useNewTopic } from "@/queries/agent-work/mutations";
-import { agentStatusOptions, conversationRequestsOptions } from "@/queries/agent-work/server";
+import {
+  agentStatusOptions,
+  conversationRequestsOptions,
+  conversationWorkOptions,
+} from "@/queries/agent-work/server";
 import { toast } from "sonner";
 
 function messageWorkLookups(
-  turns: readonly AgentTurnView[],
-  items: readonly AgentInboxItemView[],
+  turns: readonly AgentWorkTurnView[],
+  items: readonly AgentWorkItemView[],
   requests: readonly AgentRequestView[],
-  agentOf: (item: AgentInboxItemView) => string,
+  agentOf: (item: AgentWorkItemView) => string,
 ) {
   // The first open request of each turn.
   const openRequests = new Map<string, AgentRequestView>();
@@ -54,7 +51,7 @@ function messageWorkLookups(
       turn.outputs.flatMap((entry) => (entry.kind === "message" ? [entry.id] : [])),
     ),
   );
-  const itemsByAgent = new Map<string, AgentInboxItemView[]>();
+  const itemsByAgent = new Map<string, AgentWorkItemView[]>();
   const uncertainIds: string[] = [];
   for (const item of items) {
     if (item.status === "uncertain") uncertainIds.push(item.id);
@@ -71,21 +68,12 @@ function messageWorkLookups(
   };
 }
 
-function uncertainItemsForTurn(turn: AgentTurnView, uncertainIds: readonly string[]) {
+function uncertainItemsForTurn(turn: AgentWorkTurnView, uncertainIds: readonly string[]) {
   if (turn.attentionReason !== "uncertain_input" || !uncertainIds.length) return undefined;
   const turnItems = new Set(turn.itemIds);
   return uncertainIds.filter((id) => turnItems.has(id));
 }
 
-/**
- * The owner's agent work in one conversation, for the channel and the thread pane. Callers see
- * only their own call status. The server returns requests and work status only to the owner,
- * and the bridge holds only the work of agents homed on this desktop.
- *
- * Work loads whether or not the agent is still a member, so an agent that left still shows its
- * open requests and turns here. Local turns come from the bridge when an agent is homed on this
- * desktop. Other devices show the server's requests and the status the home desktop published.
- */
 /** The first status listed for each agent. */
 function statusIndex(statuses: readonly AgentStatusView[] | undefined) {
   if (!statuses?.length) return undefined;
@@ -95,6 +83,13 @@ function statusIndex(statuses: readonly AgentStatusView[] | undefined) {
   return index;
 }
 
+/**
+ * The owner's agent work in one conversation, for the channel and the thread pane. The server
+ * returns work, requests and status only to the owner, on any of the owner's devices.
+ *
+ * Work loads whether or not the agent is still a member, so an agent that left still shows its
+ * open requests and turns here.
+ */
 export function ConversationAgentWork({
   conversation,
   onTranscript,
@@ -112,21 +107,14 @@ export function ConversationAgentWork({
       ? [{ agentId: member.agentId, name: member.name }]
       : [],
   );
-  const summaries = useQuery(localAgentsOptions(userId, organizationId));
-  const homed = new Map((summaries.data ?? []).map((summary) => [summary.userAgentId, summary]));
-  // Local work and its controls exist only when an agent of this owner is homed here.
-  const local = useQuery({
-    ...conversationWorkOptions(userId, organizationId, conversation.id),
-    enabled: localWorkEnabled(userId) && homed.size > 0,
-  });
+  const work = useQuery(conversationWorkOptions(userId, organizationId, conversation.id));
   const requests = useQuery(conversationRequestsOptions(userId, organizationId, conversation.id));
   const { data: statuses } = useQuery(agentStatusOptions(userId, organizationId));
   const statusByAgent = statusIndex(statuses);
-  const calls = useQuery(myCallsOptions(userId, organizationId, conversation.id));
   const newTopic = useNewTopic(userId, organizationId);
-  const turns = local.data?.turns ?? [];
-  const sessions = new Map((local.data?.sessions ?? []).map((session) => [session.id, session]));
-  const items = local.data?.items ?? [];
+  const turns = work.data?.turns ?? [];
+  const sessions = new Map((work.data?.sessions ?? []).map((session) => [session.id, session]));
+  const items = work.data?.items ?? [];
 
   const agents = conversationAgents({
     conversationId: conversation.id,
@@ -140,7 +128,7 @@ export function ConversationAgentWork({
   const { placements, anchors } = turnPlacements(turns, conversation.id);
   const waitingItems = itemPlacements(items, turns, conversation.id);
   const { cards, backlinks } = requestPlacements(requests.data ?? [], anchors, conversation.id);
-  const agentOf = (item: AgentInboxItemView) => sessions.get(item.sessionId)?.userAgentId ?? "";
+  const agentOf = (item: AgentWorkItemView) => sessions.get(item.sessionId)?.userAgentId ?? "";
   const { openRequest, outputs, itemsByAgent, uncertainIds } = messageWorkLookups(
     turns,
     items,
@@ -153,9 +141,9 @@ export function ConversationAgentWork({
       conversationId: conversation.id,
       threadId,
       agents,
-      homed,
       turns,
-      threadOf: (turn) => sessions.get(turn.sessionId)?.origin?.threadId ?? null,
+      threadOf: (turn) =>
+        noticeThread(sessions.get(turn.sessionId)?.origin?.threadId ?? null, anchors.get(turn.id)),
       statuses: statusByAgent,
     })
       .filter((line) => line.kind !== "turn" || offscreen.has(line.turn.id))
@@ -196,10 +184,8 @@ export function ConversationAgentWork({
           };
         return { key: agentId, agentName, ...agentStatus(line.status) };
       });
-    const dmAgent =
-      conversation.kind === "dm" && threadId === null
-        ? members.find((agent) => homed.has(agent.agentId))
-        : undefined;
+    // Members list only the viewer's own agents, so the owner can reset their DM session.
+    const dmAgent = conversation.kind === "dm" && threadId === null ? members[0] : undefined;
     return (
       <ComposerNotice
         lines={lines}
@@ -226,16 +212,10 @@ export function ConversationAgentWork({
           const requestCards = cards.get(message.id) ?? [];
           const waiting = waitingItems.get(message.id) ?? [];
           const created = backlinks.get(message.id) ?? [];
-          const myCalls = (calls.data ?? []).filter((call) => call.messageId === message.id);
-          const empty = [placed, requestCards, waiting, created, myCalls].every(
-            (list) => !list.length,
-          );
+          const empty = [placed, requestCards, waiting, created].every((list) => !list.length);
           if (empty) return null;
           return (
             <>
-              {myCalls.map((call) => (
-                <CallStatus key={call.invocationId} call={call} />
-              ))}
               {created.map((request) => {
                 const link = proposalSourceLink(organizationId, request);
                 return (
@@ -245,6 +225,7 @@ export function ConversationAgentWork({
               {waiting.map((item) => {
                 const agentId = agentOf(item);
                 const sameAgent = itemsByAgent.get(agentId) ?? [];
+                const status = statusByAgent?.get(agentId);
                 return (
                   <InboxReceipt
                     key={item.id}
@@ -252,7 +233,8 @@ export function ConversationAgentWork({
                     context={{
                       agentName: name(agentId),
                       ahead: queueAhead(item, sameAgent),
-                      busy: (homed.get(agentId)?.liveTurnIds.length ?? 0) > 0,
+                      busy: status?.state === "working",
+                      device: status?.device,
                     }}
                   />
                 );

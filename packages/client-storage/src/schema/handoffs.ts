@@ -1,9 +1,11 @@
 import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-/** What an epoch handed to the next one. Times are epoch ms. */
+/** What an epoch of a server session handed to the next one. Times are epoch ms. */
 export const handoffs = sqliteTable(
   "handoffs",
   {
+    organizationId: text("organization_id").notNull(),
+    /** The server session ID. */
     sessionId: text("session_id").notNull(),
     epoch: integer("epoch").notNull(),
     objectives: text("objectives").notNull(),
@@ -11,5 +13,5 @@ export const handoffs = sqliteTable(
     references: text("references", { mode: "json" }).$type<string[]>().notNull(),
     createdAt: integer("created_at").notNull(),
   },
-  (table) => [primaryKey({ columns: [table.sessionId, table.epoch] })],
+  (table) => [primaryKey({ columns: [table.organizationId, table.sessionId, table.epoch] })],
 );

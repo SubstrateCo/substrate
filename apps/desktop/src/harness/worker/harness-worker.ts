@@ -1,4 +1,5 @@
-import { isHarnessErrorCode } from "@substrate/contracts/harness";
+import { agentToolProvider } from "@substrate/contracts/agent-tools";
+import { isHarnessErrorCode } from "@substrate/contracts/harness-runtime";
 import { createHarnessHost, type RuntimeHarnessHost } from "@substrate/harness-runtime";
 
 import {
@@ -23,7 +24,6 @@ function errorCode(cause: unknown) {
 const immediateMethods = [
   "execute",
   "listModels",
-  "readProfile",
   "signIn",
   "readSignIn",
   "sendSignInInput",
@@ -76,7 +76,7 @@ port.on(
       void reply(data.id, async () => current?.closeOrganization(data.value));
       return;
     }
-    // Session commands, model discovery and profile reads do not wait behind configuration
+    // Session commands and model discovery do not wait behind configuration
     // work. The host orders commands per session; interrupt and respond reach a live turn at once.
     // Sign-in reads and input also do not wait: a terminal login streams while other work runs.
     if (isImmediate(data)) {
@@ -93,9 +93,6 @@ port.on(
           return;
         case "listModels":
           void reply(data.id, () => current.listModels(data.value));
-          return;
-        case "readProfile":
-          void reply(data.id, () => current.readProfile(data.value));
           return;
         case "signIn":
           void reply(data.id, () => current.signIn(data.value));
@@ -119,8 +116,10 @@ port.on(
         if (data.method === "initialize") {
           const initialized = await createHarnessHost({
             accountDirectory: data.value,
-            workspaceProxy: workspaceProxy.request,
-            localTools: localToolProxy.request,
+            tools: agentToolProvider({
+              workspace: workspaceProxy.request,
+              local: localToolProxy.request,
+            }),
           });
           host = initialized;
           initialized.subscribe((event) => port.postMessage({ event }));

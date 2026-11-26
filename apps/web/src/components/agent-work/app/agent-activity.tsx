@@ -1,16 +1,20 @@
-import type { AgentTurnView, TurnOutcome } from "@substrate/contracts/agent-work";
+import type {
+  AgentWorkHelperView,
+  AgentWorkTurnView,
+  TurnOutcome,
+} from "@substrate/contracts/agent-work";
 
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { NeedsAttention } from "../needs-attention";
 import { TurnStatusTag } from "../turn-work";
-import { AgentActivityView, type ActivityRow } from "./agent-activity-view";
+import { AgentActivityView, type ActivityRow, type HelperRow } from "./agent-activity-view";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { hiddenConversation } from "@/lib/agent-work/hidden-records";
 import { turnConversation } from "@/lib/agent-work/placement";
 import { failedWorkNote, sessionKindLabels, turnTone } from "@/lib/agent-work/status";
 import { conversationName } from "@/lib/messaging/conversations";
-import { agentActivityOptions } from "@/queries/agent-work/local";
+import { agentActivityOptions } from "@/queries/agent-work/server";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
 
 const outcomeLabels: Record<TurnOutcome, string> = {
@@ -22,14 +26,26 @@ const outcomeLabels: Record<TurnOutcome, string> = {
 };
 
 /** The subject of work that has no activity line or outcome yet. The state shows in the tag. */
-const subjectFallbacks: Record<AgentTurnView["sessionKind"], string> = {
+const subjectFallbacks: Record<AgentWorkTurnView["sessionKind"], string> = {
   dm: "Work on your message",
   thread: "Work in a thread",
   routine: "Routine run",
   helper: "Helper task",
 };
 
-/** One agent's work on its home desktop, including silent, routine, and helper work. */
+/** A helper whose parent conversation the owner can't open keeps its state, not its text. */
+const hiddenHelperTask = "A task from a conversation you can't open";
+
+function helperRow(helper: AgentWorkHelperView): HelperRow {
+  return {
+    id: helper.id,
+    task: helper.task ?? hiddenHelperTask,
+    status: helper.status,
+    report: helper.report,
+  };
+}
+
+/** One agent's work, including silent, routine, and helper work, from any owner device. */
 export function AgentActivity({
   agentId,
   name,
@@ -50,7 +66,8 @@ export function AgentActivity({
   );
   const turnsById = new Map(turns.map((turn) => [turn.id, turn]));
   // Name only conversations the viewer can open now. Others stay placeholders.
-  const place = (turn: AgentTurnView) => {
+  const place = (turn: AgentWorkTurnView) => {
+    if (!turn.placeVisible) return hiddenConversation;
     const conversationId = turnConversation(turn, turnsById);
     if (!conversationId) return undefined;
     const conversation = conversations.data?.find((entry) => entry.id === conversationId);
@@ -80,7 +97,7 @@ export function AgentActivity({
     <AgentActivityView
       name={name}
       rows={rows}
-      helpers={activity.data?.pages.flatMap((page) => page.helpers) ?? []}
+      helpers={activity.data?.pages.flatMap((page) => page.helpers.map(helperRow)) ?? []}
       loading={activity.isPending}
       error={activity.error}
       onRetry={() => void activity.refetch()}

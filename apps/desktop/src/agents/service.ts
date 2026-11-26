@@ -1,25 +1,31 @@
+import {
+  createAgentWorkRuntime,
+  createAgentWorkServer,
+  createHostApi,
+  createServerCall,
+  type AgentDirectory,
+  type AgentInbox,
+  type AgentWorkRuntime,
+  type HarnessPort,
+} from "@substrate/agent-host";
 import { AgentWorkStore } from "@substrate/client-storage/agent-work";
-import type { AgentWorkChange } from "@substrate/contracts/agent-work/desktop";
-import type { IpcValue } from "@substrate/contracts/desktop/ipc";
-import type { HarnessEvent } from "@substrate/contracts/harness";
 import type {
   LocalToolRequest,
   WorkspaceApiRequest,
   WorkspaceApiResult,
-} from "@substrate/contracts/harness/mcp";
+} from "@substrate/contracts/agent-tools/mcp";
+import type { AgentWorkChange } from "@substrate/contracts/agent-work/desktop";
+import type { IpcValue } from "@substrate/contracts/desktop/ipc";
+import type { HarnessEvent } from "@substrate/contracts/harness-runtime";
 import type { MailScope } from "@substrate/contracts/mail/ipc";
 import type { RealtimeUpdate } from "@substrate/contracts/realtime";
 
 import type { LocalMcpServers } from "../harness/controller/local-configuration.ts";
-import type { AgentInbox } from "../mail/agent/agent-access.ts";
 import {
   DesktopSessionAuthority,
   HarnessAccessDenied,
 } from "../session/desktop-session-authority.ts";
 import { dispatchAgentWork } from "./bridge/agent-work-bridge.ts";
-import type { AgentDirectory, HarnessPort } from "./runtime/context.ts";
-import { createAgentWorkRuntime, type AgentWorkRuntime } from "./runtime/runtime.ts";
-import { createAgentWorkServer } from "./server/agent-work-server.ts";
 import { agentWorkServiceMachine, type AgentWorkServiceState } from "./service-machine.ts";
 import { lstat, mkdir, realpath } from "node:fs/promises";
 import { join } from "node:path";
@@ -94,17 +100,18 @@ export function createAgentWorkService(options: {
   const sessionChanged = () => {
     authority.invalidate();
   };
+  const call = createServerCall({ ...options, onDenied: sessionChanged });
   const server = createAgentWorkServer({
-    ...options,
-    onDenied: sessionChanged,
+    call,
+    installationId: options.installationId,
     catalog: () => authority.catalog(),
   });
+  const host = createHostApi({ call, installationId: options.installationId });
   const agents = agentDirectory(server, authority);
   let active: Active | undefined;
   let ensuring: Promise<Active | undefined> | undefined;
   let stopping: Promise<void> | undefined;
   let state: AgentWorkServiceState = "stopped";
-  let realtimeConnected = false;
 
   function transition(event: keyof typeof agentWorkServiceMachine.events) {
     const next = agentWorkServiceMachine.next(state, event);
@@ -152,21 +159,19 @@ export function createAgentWorkService(options: {
     const runtime = createRuntime(
       {
         organizationId: auth.organizationId,
-        installationId: options.installationId,
         store,
         server,
+        host,
         harness: options.harness,
         inbox: options.inbox?.({ userId: auth.userId, organizationId: auth.organizationId }),
         agents,
         enabledApps: async () => (await authority.appSettings()).enabledApps,
-        profile: (agentId) => options.harness.readProfile(agentId).catch(() => ""),
         now: () => Date.now(),
         log,
       },
       {
         notify: (change) => options.notify(change),
         device: options.device,
-        realtimeConnected: () => realtimeConnected,
         every(callback, milliseconds) {
           const timer = setInterval(callback, milliseconds);
           return () => clearInterval(timer);
@@ -271,7 +276,6 @@ export function createAgentWorkService(options: {
       return stopping;
     },
     onRealtime(event: RealtimeUpdate) {
-      if (event.type === "status") realtimeConnected = event.status === "connected";
       if (!accepting()) return;
       if (event.type === "status" && event.status === "forbidden") {
         sessionChanged();
@@ -291,20 +295,18 @@ export function createAgentWorkService(options: {
       if (event.domain === "session" || event.domain === "access" || appsChanged) sessionChanged();
       if (event.domain === "access") void ensure();
       if (event.domain === "agents") {
-        // An agent may have moved to or from this desktop.
+        // An agent may have moved to or from this desktop. The server ends moved leases; the
+        // next sync stops their work here.
         agents.invalidate();
         void ensure()
-          .then(async (current) => {
+          .then((current) => {
             if (!available(current)) return;
             current?.runtime.agentsChanged();
-            await current?.runtime.reconcileHome();
-            available(current)?.runtime.hint();
+            current?.runtime.hint();
           })
           .catch(() => log("Could not check where agents run."));
       }
       if (event.domain === "agent-work")
-        void ensure().then((current) => available(current)?.runtime.hint());
-      if (event.domain === "messaging" && (!event.scope || event.scope === "messages"))
         void ensure().then((current) => available(current)?.runtime.hint());
       if (event.domain === "session" || appsChanged)
         void ensure().then((current) => {
@@ -328,9 +330,12 @@ export function createAgentWorkService(options: {
     requestStatus(organizationId: string, requestId: string) {
       return server.requestStatus(organizationId, requestId);
     },
-    /** A held call waits on requestId in its turn. Returns the function that ends the wait. */
+    /**
+     * A held call waits on requestId in its live interactive turn. Returns the function that
+     * ends the wait, or null when the call does not wait.
+     */
     awaitApproval(request: WorkspaceApiRequest, requestId: string) {
-      return active?.runtime.awaitApproval(request, requestId) ?? (() => {});
+      return available(active)?.runtime.awaitApproval(request, requestId) ?? null;
     },
     async handleLocalTool(request: LocalToolRequest): Promise<WorkspaceApiResult> {
       const current = available(active);

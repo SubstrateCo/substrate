@@ -22,7 +22,7 @@ import { projects } from "../../projects/schema";
 import { tasks } from "../../tasks/tasks.schema";
 import { messageEntityReferences } from "../schema";
 import { referenceArchived } from "./reference-archive";
-import { and, asc, eq, exists, inArray, isNull, isNotNull, ne, or, sql } from "drizzle-orm";
+import { and, asc, eq, exists, inArray, isNull, isNotNull, or, sql } from "drizzle-orm";
 
 // Callers authorize every message before resolving its metadata.
 export async function messageWorkLinks(ctx: RepositoryContext, messageIds: string[]) {
@@ -198,7 +198,7 @@ export async function messagePeople(
 /**
  * Mentioned agents, under the rule that resolves a conversation's profiles: the agent wrote or
  * reacted in the conversation, or it is an active agent of the viewer's workspace whose owner sees
- * the conversation, and the viewer owns it or may call it. Callers authorize every message.
+ * the conversation, and the viewer owns it. Callers authorize every message.
  */
 export async function messageAgents(
   db: DatabaseExecutor,
@@ -255,10 +255,7 @@ export async function messageAgents(
               ),
               and(
                 eq(actors.organizationId, scope.organizationId),
-                or(
-                  eq(userAgents.userId, scope.userId),
-                  scope.actorEntityId ? undefined : ne(userAgents.callerPolicy, "owner"),
-                ),
+                eq(userAgents.userId, scope.userId),
                 activeActorCondition(),
                 isNull(entities.deletedAt),
                 visibleConversations(db, {

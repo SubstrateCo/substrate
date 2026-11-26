@@ -364,6 +364,11 @@
       "rule": "C1",
       "files": ["packages/contracts/src/auth/permissions.ts"],
       "reason": "Role definitions are shared by the server and the renderer's organization client; better-auth/plugins/access is pure and browser-safe."
+    },
+    {
+      "rule": "D4",
+      "files": ["packages/database/src/features/agent-work/routines/schedule.ts"],
+      "reason": "croner only computes cron occurrences in memory, with no I/O. Routine saves and the scheduler write next_fire_at in the transaction that computes it."
     }
   ]
 }

@@ -73,8 +73,7 @@ export function realtimeQueryTargets(
       targets.push({ queryKey: queryKeys.agents(userId) });
       break;
     case "agent-work":
-      // Dataless hints refresh owner work or the caller's own call statuses. Server reads
-      // enforce that distinction; both are private, user- and workspace-scoped keys.
+      // Dataless hints refresh the owner's work, a private, user- and workspace-scoped key.
       targets.push({ queryKey: queryKeys.agentWork(userId, organizationId ?? undefined) });
       break;
     case "organization":
@@ -95,11 +94,6 @@ export function realtimeQueryTargets(
       break;
     case "messaging":
       if (!organizationId) break;
-      // A published reply can answer a call without changing the invocation itself.
-      if (event.scope !== "read" && event.scope !== "reactions")
-        targets.push({
-          queryKey: queryKeys.myAgentCalls(userId, organizationId, event.conversationId),
-        });
       targets.push(
         ...domainTargets(event.domain, organizationId, event.conversationId, event.scope, event),
       );

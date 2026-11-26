@@ -1,10 +1,9 @@
+import { startupSkillIds, startupSkills } from "@substrate/contracts/agent-tools";
 import {
-  startupSkillIds,
-  startupSkills,
   type HarnessKind,
   type HarnessMcpServer,
   type HarnessSkill,
-} from "@substrate/contracts/harness";
+} from "@substrate/contracts/harness-runtime";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -80,14 +79,23 @@ export function AgentConfiguration({
   harness,
   section,
   defaults,
+  homeDevice,
 }: {
   agentId?: string;
   harness: HarnessKind;
   section: AgentSection;
   defaults: boolean;
+  /** The agent's home desktop. Its skills and MCP servers are edited only there. */
+  homeDevice: { name: string; current: boolean } | null;
 }) {
   const { userId, organizationId } = useWorkspaceScope();
-  const local = localAgentConfiguration(userId, organizationId, agentId, harness);
+  const local = localAgentConfiguration(
+    userId,
+    organizationId,
+    agentId,
+    harness,
+    !!homeDevice?.current,
+  );
   const available = !!local;
   const container = useRef<HTMLDivElement>(null);
   const {
@@ -113,6 +121,7 @@ export function AgentConfiguration({
     <ConfigurationStatus
       available={available}
       agentId={agentId}
+      homeDeviceName={homeDevice?.name}
       section={section}
       pending={configuration.isPending}
       error={configuration.error}

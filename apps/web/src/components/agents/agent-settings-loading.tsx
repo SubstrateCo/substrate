@@ -11,7 +11,6 @@ import {
   TriggerCard,
   TriggerRow,
 } from "@/components/agents/run-settings/agent-run-settings-view";
-import { CallerSettingsLoading } from "@/components/agents/run-settings/caller-settings-view";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { SettingsSection } from "@/components/layout/settings-section";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -65,7 +64,6 @@ export function AgentSettingsLoading({ section }: { section: AgentSettingsSectio
             <SkeletonText width="12rem" />
           </p>
         </RunsOnCard>
-        <CallerSettingsLoading />
         <TriggerCard>
           {Object.entries(agentTriggers).map(([kind, meta]) => (
             <TriggerRow

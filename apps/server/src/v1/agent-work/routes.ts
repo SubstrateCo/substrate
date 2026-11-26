@@ -1,19 +1,11 @@
 import {
-  ackWakesInput,
-  callsLogInput,
   closeRequestInput,
   conversationRequestsInput,
-  decideInvocationInput,
   decideProposalInput,
   deviceHeartbeatInput,
-  invocationParams,
-  listInvocationsInput,
-  myCallsInput,
   openRequestInput,
   ownerScopeInput,
   placeAccessInput,
-  publishStatusInput,
-  pullWakesInput,
   registerDeviceInput,
   requestAnswersInput,
   requestParams,
@@ -25,12 +17,18 @@ import { respond, v } from "../../shared/http";
 import type { ScopeEnv, Scopes } from "../../shared/scope";
 import type { DeviceScope, UserScope } from "../../shared/scope-types";
 import type { DeviceService } from "./device-service";
+import { createHostRoutes } from "./host-routes";
+import type { HostService } from "./host-service";
 import type { AgentWorkService } from "./service";
+import { createWorkRoutes } from "./work-routes";
+import type { WorkService } from "./work-service";
 import { Hono } from "hono";
 
 export function createAgentWorkRoutes(
   service: AgentWorkService,
   device: DeviceService,
+  host: HostService,
+  work: WorkService,
   scopes: Scopes,
 ) {
   const owner = new Hono<ScopeEnv>()
@@ -75,26 +73,6 @@ export function createAgentWorkRoutes(
           c,
           await service.declineProposal(c.var.scope, c.req.valid("param").id, c.req.valid("json")),
         ),
-    )
-    .get("/invocations", v("query", listInvocationsInput), scopes.workspace("query"), async (c) =>
-      respond(c, await service.listInvocations(c.var.scope, c.req.valid("query"))),
-    )
-    .post(
-      "/invocations/:id/decide",
-      v("param", invocationParams),
-      v("json", decideInvocationInput),
-      scopes.workspace("json"),
-      async (c) =>
-        respond(
-          c,
-          await service.decideInvocation(c.var.scope, c.req.valid("param").id, c.req.valid("json")),
-        ),
-    )
-    .get("/calls", v("query", callsLogInput), scopes.workspace("query"), async (c) =>
-      respond(c, await service.listCallsLog(c.var.scope, c.req.valid("query"))),
-    )
-    .get("/calls/mine", v("query", myCallsInput), scopes.workspace("query"), async (c) =>
-      respond(c, await service.listMyCalls(c.var.scope, c.req.valid("query"))),
     );
   const registration = new Hono<ScopeEnv<UserScope>>().post(
     "/device/register",
@@ -109,17 +87,8 @@ export function createAgentWorkRoutes(
     async (c) => respond(c, await device.deviceHeartbeat(c.var.scope, c.req.valid("json"))),
   );
   const desktop = new Hono<ScopeEnv<DeviceScope>>()
-    .post("/device/wakes/pull", v("json", pullWakesInput), scopes.device("json"), async (c) =>
-      respond(c, await device.pullWakes(c.var.scope, c.req.valid("json"))),
-    )
-    .post("/device/wakes/ack", v("json", ackWakesInput), scopes.device("json"), async (c) =>
-      respond(c, await device.ackWakes(c.var.scope, c.req.valid("json"))),
-    )
     .post("/device/sources", v("json", sourcesInput), scopes.device("json"), async (c) =>
       respond(c, await device.loadSources(c.var.scope, c.req.valid("json"))),
-    )
-    .post("/device/status", v("json", publishStatusInput), scopes.device("json"), async (c) =>
-      respond(c, await device.publishStatus(c.var.scope, c.req.valid("json"))),
     )
     .post("/device/requests", v("json", openRequestInput), scopes.device("json"), async (c) =>
       respond(c, await device.openRequest(c.var.scope, c.req.valid("json"))),
@@ -149,7 +118,9 @@ export function createAgentWorkRoutes(
     );
   return new Hono()
     .route("/", owner)
+    .route("/", createWorkRoutes(work, scopes))
     .route("/", registration)
     .route("/", heartbeat)
-    .route("/", desktop);
+    .route("/", desktop)
+    .route("/", createHostRoutes(host, scopes));
 }

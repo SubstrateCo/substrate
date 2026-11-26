@@ -3,7 +3,6 @@ import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
 import type { DatabaseExecutor } from "../../core/executor";
 import type { DeviceIdentity } from "../../core/session/device";
-import { AccessDeniedError } from "../../errors";
 import { and, eq } from "drizzle-orm";
 
 /** The owner's active agents whose home is this device, with their actor in the organization. */
@@ -32,16 +31,4 @@ function homedAgents(
 export function homedAgentIds(db: DatabaseExecutor, identity: DeviceIdentity, deviceId: string) {
   const homed = homedAgents(db, identity, deviceId).as("homed_agents");
   return db.select({ id: homed.userAgentId }).from(homed);
-}
-
-/** One of the owner's agents that this device runs. */
-export async function requireHomedAgent(
-  db: DatabaseExecutor,
-  identity: DeviceIdentity,
-  deviceId: string,
-  userAgentId: string,
-) {
-  const [agent] = await homedAgents(db, identity, deviceId, userAgentId);
-  if (!agent) throw new AccessDeniedError();
-  return agent;
 }

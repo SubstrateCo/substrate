@@ -1,15 +1,16 @@
 import type { InboxLane, InboxSource } from "../turns.ts";
 
 export interface TriggerDefinition {
-  origin: "server" | "local";
-  principal: "owner" | "caller" | "system" | "agent";
+  /** server: admission creates it. host: the agent's home host submits it, and admission checks the home. */
+  origin: "server" | "host";
+  principal: "owner" | "system" | "agent";
   lane: InboxLane;
   turnMode: "interactive" | "unattended";
   steerable: boolean;
   /** Passive context can join a live turn, but cannot create one. */
   canStartTurn: boolean;
-  /** owner_source: the owner must still see the message. caller_source: also the call. */
-  recheck: "owner_source" | "caller_source" | "none";
+  /** owner_source: the owner must still see the message. */
+  recheck: "owner_source" | "none";
   envelope: "message" | "decision" | "helper_task" | "helper_result" | "routine" | "system";
 }
 
@@ -45,7 +46,7 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     envelope: "decision",
   },
   routine: {
-    origin: "local",
+    origin: "server",
     principal: "system",
     lane: "background",
     turnMode: "unattended",
@@ -55,7 +56,7 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     envelope: "routine",
   },
   helper_task: {
-    origin: "local",
+    origin: "server",
     principal: "agent",
     lane: "system",
     turnMode: "unattended",
@@ -65,7 +66,7 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     envelope: "helper_task",
   },
   helper_result: {
-    origin: "local",
+    origin: "server",
     principal: "agent",
     lane: "background",
     turnMode: "unattended",
@@ -75,7 +76,7 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     envelope: "helper_result",
   },
   recovery: {
-    origin: "local",
+    origin: "host",
     principal: "system",
     lane: "system",
     turnMode: "unattended",
@@ -85,7 +86,7 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     envelope: "system",
   },
   epoch: {
-    origin: "local",
+    origin: "host",
     principal: "system",
     lane: "system",
     turnMode: "unattended",
@@ -94,18 +95,8 @@ export const triggerRegistry: Record<InboxSource, TriggerDefinition> = {
     recheck: "none",
     envelope: "system",
   },
-  caller_message: {
-    origin: "server",
-    principal: "caller",
-    lane: "caller",
-    turnMode: "interactive",
-    steerable: true,
-    canStartTurn: true,
-    recheck: "caller_source",
-    envelope: "message",
-  },
   thread_context: {
-    origin: "local",
+    origin: "server",
     principal: "system",
     lane: "background",
     turnMode: "unattended",

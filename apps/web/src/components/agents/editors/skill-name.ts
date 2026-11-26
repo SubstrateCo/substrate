@@ -1,4 +1,4 @@
-import type { HarnessSkill } from "@substrate/contracts/harness";
+import type { HarnessSkill } from "@substrate/contracts/harness-runtime";
 
 const skillName = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 

@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@substrate/contracts": "workspace:*",
+    "croner": "^11",
     "drizzle-orm": "catalog:database",
     "libphonenumber-js": "^1.13.16",
     "postgres": "^4.0.0",

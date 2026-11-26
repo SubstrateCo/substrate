@@ -1,5 +1,6 @@
 import {
   blockingRequestTimeoutMs,
+  liveTurnStatuses,
   requestMachine,
   type AgentRequestDelivery,
   type AgentRequestOpened,
@@ -11,16 +12,16 @@ import { realtimeKeys } from "@substrate/contracts/realtime";
 import { effectsFor } from "../../../core/effects";
 import type { DatabaseExecutor } from "../../../core/executor";
 import { type DeviceIdentity, type ResolvedDeviceIdentity } from "../../../core/session/device";
-import { AccessDeniedError } from "../../../errors";
-import { homedAgentIds, requireHomedAgent } from "../device";
+import { AccessDeniedError, ConflictError } from "../../../errors";
+import { homedAgentIds } from "../device";
+import { requireDeviceTurn } from "../host/held-turn";
 import { inStates } from "../machine-sql";
 import { requirePlace } from "../place";
+import { agentSessions } from "../sessions.schema";
 import { agentRequests } from "./requests.schema";
 import { and, asc, eq, inArray, isNull, sql } from "drizzle-orm";
 
 export interface OpenRequestInput {
-  userAgentId: string;
-  sessionKey: string;
   turnId: string;
   epoch: number;
   kind: OpenRequestKind;
@@ -40,23 +41,31 @@ function deviceRequests(db: DatabaseExecutor, identity: DeviceIdentity, deviceId
   );
 }
 
-/** Opens a native blocking prompt. Opening the same prompt again returns the same request. */
+/**
+ * Opens a native blocking prompt of a live turn this device holds. The agent and session come
+ * from the turn. Opening the same prompt again returns the same request.
+ */
 export async function openRequestForDevice(
   tx: DatabaseExecutor,
   identity: ResolvedDeviceIdentity,
   input: OpenRequestInput,
 ): Promise<AgentRequestOpened> {
-  const device = { id: identity.deviceId };
-  const agent = await requireHomedAgent(tx, identity, device.id, input.userAgentId);
+  const turn = await requireDeviceTurn(tx, identity, input.turnId);
+  if (!liveTurnStatuses.includes(turn.status) || turn.leaseDeviceId !== identity.deviceId)
+    throw new ConflictError("This device no longer runs this turn.");
+  const [session] = await tx
+    .select({ key: agentSessions.key })
+    .from(agentSessions)
+    .where(eq(agentSessions.id, turn.sessionId));
   const place = await requirePlace(tx, identity, input);
   const [created] = await tx
     .insert(agentRequests)
     .values({
       organizationId: identity.organizationId,
-      userAgentId: agent.userAgentId,
+      userAgentId: turn.userAgentId,
       ownerUserId: identity.userId,
-      agentActorEntityId: agent.actorId,
-      sessionKey: input.sessionKey,
+      agentActorEntityId: turn.agentActorEntityId,
+      sessionKey: session!.key,
       turnId: input.turnId,
       epoch: input.epoch,
       kind: input.kind,
@@ -77,7 +86,7 @@ export async function openRequestForDevice(
     .from(agentRequests)
     .where(
       and(
-        eq(agentRequests.userAgentId, agent.userAgentId),
+        eq(agentRequests.userAgentId, turn.userAgentId),
         eq(agentRequests.turnId, input.turnId),
         eq(agentRequests.nativeRequestId, input.nativeRequestId),
       ),

@@ -35,44 +35,39 @@ export const queryKeys = {
     agentId: string,
     harness: string,
   ) => [...queryKeys.localAgentConfigurations(userId), organizationId, agentId, harness] as const,
-  // Owner work and the caller's own call status are private, so they live under the user.
+  // Owner work is private, so it lives under the user.
   agentWork: (userId: string, organizationId?: string) =>
     [...queryKeys.user(userId), "agent-work", ...(organizationId ? [organizationId] : [])] as const,
-  // Server: requests and status that every owner device can read.
+  // Server: work that every owner device can read. Realtime agent-work hints refresh it.
   agentWorkStatus: (userId: string, organizationId: string) =>
     [...queryKeys.agentWork(userId, organizationId), "status"] as const,
   agentWorkNeedsYou: (userId: string, organizationId: string) =>
     [...queryKeys.agentWork(userId, organizationId), "needs-you"] as const,
-  agentCallers: (userId: string, organizationId: string, agentId: string) =>
-    [...queryKeys.agentWork(userId, organizationId), "callers", agentId] as const,
-  agentCallsLog: (userId: string, organizationId: string, agentId: string) =>
-    [...queryKeys.agentWork(userId, organizationId), "calls", agentId] as const,
-  myAgentCalls: (userId: string, organizationId: string, conversationId?: string) =>
-    [
-      ...queryKeys.agentWork(userId, organizationId),
-      "my-calls",
-      ...(conversationId ? [conversationId] : []),
-    ] as const,
   agentWorkRequests: (userId: string, organizationId: string, conversationId: string) =>
     [...queryKeys.agentWork(userId, organizationId), "requests", conversationId] as const,
-  // Local: what the home desktop's bridge returns. Only that desktop has it.
-  agentWorkLocal: (userId: string, organizationId: string) =>
-    [...queryKeys.agentWork(userId, organizationId), "local"] as const,
-  agentWorkAgents: (userId: string, organizationId: string) =>
-    [...queryKeys.agentWorkLocal(userId, organizationId), "agents"] as const,
-  agentWorkConversations: (userId: string, organizationId: string) =>
-    [...queryKeys.agentWorkLocal(userId, organizationId), "conversation"] as const,
   agentWorkConversation: (userId: string, organizationId: string, conversationId: string) =>
-    [...queryKeys.agentWorkConversations(userId, organizationId), conversationId] as const,
+    [...queryKeys.agentWork(userId, organizationId), "conversation", conversationId] as const,
   agentWorkActivity: (userId: string, organizationId: string, agentId: string) =>
-    [...queryKeys.agentWorkLocal(userId, organizationId), "activity", agentId] as const,
+    [...queryKeys.agentWork(userId, organizationId), "activity", agentId] as const,
+  agentWorkTurn: (userId: string, organizationId: string, turnId: string) =>
+    [...queryKeys.agentWork(userId, organizationId), "turn", turnId] as const,
+  agentWorkRoutines: (userId: string, organizationId: string, agentId: string) =>
+    [...queryKeys.agentWork(userId, organizationId), "routines", agentId] as const,
+  // Local: what the home desktop's bridge returns. Only that desktop has it, and only bridge
+  // change hints refresh it, so it is not under the server key.
+  agentWorkLocal: (userId: string, organizationId?: string) =>
+    [
+      ...queryKeys.user(userId),
+      "agent-work-local",
+      ...(organizationId ? [organizationId] : []),
+    ] as const,
+  agentWorkHomed: (userId: string, organizationId: string) =>
+    [...queryKeys.agentWorkLocal(userId, organizationId), "homed"] as const,
   agentWorkTurnEvents: (userId: string, organizationId: string, turnId: string) =>
     [...queryKeys.agentWorkLocal(userId, organizationId), "turn", turnId] as const,
   // Under the turn's events key, so a change hint for the turn refreshes both.
-  agentWorkTurn: (userId: string, organizationId: string, turnId: string) =>
-    [...queryKeys.agentWorkTurnEvents(userId, organizationId, turnId), "view"] as const,
-  agentWorkRoutines: (userId: string, organizationId: string, agentId: string) =>
-    [...queryKeys.agentWorkLocal(userId, organizationId), "routines", agentId] as const,
+  agentWorkTurnRuns: (userId: string, organizationId: string, turnId: string) =>
+    [...queryKeys.agentWorkTurnEvents(userId, organizationId, turnId), "runs"] as const,
   context: (organizationId: string) =>
     [...queryKeys.organization(organizationId), "context"] as const,
   messageTargets: (organizationId: string, conversationId?: string) =>

@@ -1,12 +1,12 @@
-import { isOptionalApp } from "@substrate/contracts/apps";
-import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
+import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/agent-tools/mcp";
 import {
   mcpTools,
   toolApps,
   type McpInput,
   type McpOutput,
   type ServerToolName,
-} from "@substrate/contracts/harness/tools";
+} from "@substrate/contracts/agent-tools/tools";
+import { isOptionalApp } from "@substrate/contracts/apps";
 
 import { requireAppsEnabled } from "../../core/apps/access";
 import { effectsFor } from "../../core/effects";
@@ -14,18 +14,18 @@ import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ValidationError } from "../../errors";
+import { requireHelper } from "../agent-work/helpers";
 import { proposalInput } from "../agent-work/requests/proposals";
 import { requireMessage } from "../messaging/access";
 import { messageChangeHints } from "../realtime/routing";
 import { taskRepository } from "../tasks/repository";
-import { auditCallerTool, namedIds, requireCallerTurn } from "./caller-turn";
 import { mcpCrmTools } from "./crm";
 import type { FileContentReader } from "./files";
 import { serverToolHandlers } from "./handlers";
 import { proposeToolCall } from "./proposals";
-import { claimToolReceipt, requireHomeDevice, saveToolReceipt } from "./repository";
+import { claimToolReceipt, saveToolReceipt } from "./repository";
 import { mcpTaskQueries } from "./tasks";
-import { requireTurn } from "./turn";
+import { requireLiveTurn, requireTurnPlaces } from "./turn";
 import { approvalNeeded, writeGate } from "./write-gate";
 import { z } from "zod";
 
@@ -64,7 +64,7 @@ export function parseAgentToolInput<K extends ServerToolName>(
 
 export async function executeAgentToolInTransaction<K extends ServerToolName>(
   tx: DatabaseExecutor,
-  identity: SessionIdentity & { actorEntityId: string },
+  identity: SessionIdentity & { actorEntityId: string; installationId?: string },
   tool: K,
   input: McpInput<K>,
   turn: TurnContext,
@@ -76,16 +76,15 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
   // Check current settings before handlers or cached results can expose disabled app data.
   await requireAppsEnabled(ctx, toolApps(tool).filter(isOptionalApp));
   const actor = { id: agent.entityId, name: agent.name, type: agent.type };
-  // A turn that answers callers names their calls; each call is audited, reads included.
-  const calls = await requireCallerTurn(tx, identity, turn);
-  // Writes use the turn context, so the turn is checked before any write runs.
-  let userAgentId: string | null = null;
+  // Every call runs in a live server turn that the calling device holds. Writes also need a
+  // turn that may publish, in places the owner can still see.
+  const live = await requireLiveTurn(tx, identity, turn, identity.installationId);
   if (!definition.readOnly) {
-    const blocked = writeGate(turn, tool);
+    const blocked = writeGate(live, tool);
     if (blocked) throw new ValidationError(blocked);
-    userAgentId = await requireHomeDevice(tx, identity, agent.entityId, turn.installationId);
+    await requireTurnPlaces(tx, identity, live);
   }
-  if (userAgentId) await requireTurn(tx, identity, { actorId: agent.entityId, userAgentId }, turn);
+  const { userAgentId } = live;
   const tasks = taskRepository(ctx);
   const queries = mcpTaskQueries(ctx, identity);
   const crm = () => mcpCrmTools(ctx, identity);
@@ -93,7 +92,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     ctx,
     identity,
     { ...agent, userName },
-    { kind: "turn", turn, userAgentId },
+    { kind: "turn", turn: live },
     reader,
   ); // Recheck access before returning a previously created record's identifiers.
   const replayChecks: ReplayChecks = {
@@ -216,6 +215,10 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     async reply(_, previous) {
       await requireMessage(tx, identity, previous.messageId);
     },
+    // The helper must still belong to this turn's session.
+    async start_helper(_, previous) {
+      await requireHelper(tx, live.sessionId, previous.helperId);
+    },
   };
   const requestId = requestIdOf(input);
   const key = requestId
@@ -223,34 +226,20 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     : undefined;
   const fingerprint = JSON.stringify(input);
   const existing = key ? await claimToolReceipt(tx, key, fingerprint, turn) : undefined;
-  const audited = async (resultIds: string[]) => {
-    if (calls.length)
-      await auditCallerTool(tx, calls, {
-        tool,
-        readOnly: definition.readOnly,
-        turnId: turn.turnId,
-        targetIds: [...namedIds(fingerprint), ...resultIds],
-      });
-  };
   // A retry of a call that waits for the owner returns the same proposal. It names only the
   // proposal, so it reveals nothing new.
   const stored = existing && pendingReceipt.safeParse(existing.result);
-  if (stored?.success) {
-    await audited([]);
-    return { tool, pending: { requestId: stored.data.approvalPending } };
-  }
+  if (stored?.success) return { tool, pending: { requestId: stored.data.approvalPending } };
   // The call waits for the owner: store it as a proposal and commit, without running it.
   if (!existing && approvalNeeded(tool)) {
-    if (!userAgentId) throw new AccessDeniedError();
     const proposalId = await proposeToolCall(
       ctx,
       identity,
       { entityId: agent.entityId, userAgentId },
-      turn,
+      live,
       { tool, input: proposalInput(input) },
     );
     if (key) await saveToolReceipt(tx, key, { approvalPending: proposalId });
-    await audited([]);
     return { tool, pending: { requestId: proposalId } };
   }
   // SAFETY: the handler for `tool` takes McpInput<K>.
@@ -297,7 +286,6 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
       );
     }
   } else if (key) await saveToolReceipt(tx, key, result);
-  await audited(namedIds(JSON.stringify(result)));
   // SAFETY: input and output were parsed with the registry entry for the same tool.
   return { tool, input, output: result } as Extract<AgentToolExecution, { tool: K }>;
 }

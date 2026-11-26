@@ -1,13 +1,12 @@
+import { mcpTools, type ServerToolName } from "@substrate/contracts/agent-tools/tools";
 import { proposalActionHash, type ProposalAction } from "@substrate/contracts/agent-work";
-import type { TurnContext } from "@substrate/contracts/harness/mcp";
-import { mcpTools, type ServerToolName } from "@substrate/contracts/harness/tools";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { createAsyncRequest } from "../agent-work/requests/async-requests";
 import { checkProposalAccess } from "../agent-work/requests/proposals";
-import { turnPlace } from "./turn";
+import { turnPlace, type ServerTurn } from "./turn";
 
 /** What a tool call that waits for the owner returns to the agent. */
 export const approvalPendingMessage =
@@ -22,7 +21,7 @@ export async function proposeToolCall(
   ctx: RepositoryContext,
   identity: SessionIdentity,
   agent: { entityId: string; userAgentId: string },
-  turn: TurnContext,
+  turn: ServerTurn,
   action: { tool: ServerToolName; input: ProposalAction["input"] },
 ) {
   const targetBasis = await checkProposalAccess(ctx, identity, action);

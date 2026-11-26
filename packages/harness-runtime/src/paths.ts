@@ -1,3 +1,5 @@
+import { harnessIdSchema } from "@substrate/contracts/harness-runtime";
+
 import { HarnessError } from "./errors.ts";
 import { lstat, mkdir, readFile, realpath } from "node:fs/promises";
 import { isAbsolute, join, relative, resolve, sep } from "node:path";
@@ -11,7 +13,7 @@ export async function readOptional(path: string): Promise<string | undefined> {
 
 export function safeId(value: string): string {
   if (
-    !/^[a-zA-Z0-9][a-zA-Z0-9_-]{0,127}$/.test(value) ||
+    !harnessIdSchema.safeParse(value).success ||
     /^(con|prn|aux|nul|com[0-9]|lpt[0-9])$/i.test(value)
   ) {
     throw new HarnessError("invalid-id", "IDs must be safe, non-reserved path segments.");

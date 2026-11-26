@@ -1,12 +1,13 @@
-import type { WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
+import type { WorkspaceApiRequest } from "@substrate/contracts/agent-tools/mcp";
 
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 import { crmActivityEvents } from "../../features/crm/activity.schema";
 import { member } from "../../schema";
-import { dmTurn, ownerAgentWork } from "../../testing/agent-work";
+import { ownerAgentWork } from "../../testing/agent-work";
 import { setupDatabase } from "../../testing/database";
 import { mcpFixture } from "../../testing/mcp";
 import { rejection } from "../../testing/rejection";
+import { dmTurn } from "../../testing/turns";
 import { expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 import { z, ZodError } from "zod";

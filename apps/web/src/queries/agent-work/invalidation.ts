@@ -5,24 +5,21 @@ import { domainTargets, type QueryTarget } from "../targets";
 import { z } from "zod";
 
 export type AgentWorkEffect =
-  /** An answer or decline: a server write, so server and local agent work change. */
+  /** An answer, a decline, a work command or a routine change: only the owner's server work. */
   | { kind: "agent-work" }
-  /** A local action or routine edit changes only this desktop's local work. */
-  | { kind: "local" }
   /** An approved proposal also writes the record it proposed. */
   | { kind: "approved"; action: ProposalAction | null };
 
 /**
- * The queries an agent-work mutation can change. An approval also refreshes what a realtime hint
- * for the records it writes would refresh. Without the action, it may have written either.
+ * The queries an agent-work mutation can change. Local transcripts change only through bridge
+ * change hints. An approval also refreshes what a realtime hint for the records it writes would
+ * refresh. Without the action, it may have written either.
  */
 export function agentWorkInvalidations(
   userId: string,
   organizationId: string,
   effect: AgentWorkEffect,
 ): QueryTarget[] {
-  if (effect.kind === "local")
-    return [{ queryKey: queryKeys.agentWorkLocal(userId, organizationId) }];
   const targets: QueryTarget[] = [{ queryKey: queryKeys.agentWork(userId, organizationId) }];
   if (effect.kind !== "approved") return targets;
   const action = effect.action;

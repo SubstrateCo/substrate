@@ -1,4 +1,4 @@
-import { callTool, createAgent as createHomedAgent, threadTurn } from "../test-support/agent-work";
+import { callTool, claimTurn, createAgent as createHomedAgent } from "../test-support/agent-work";
 import { conversation, post, test, visit, type Client } from "../test-support/fixtures";
 import { searches } from "../test-support/search";
 import { expect, type Page } from "@playwright/test";
@@ -43,13 +43,19 @@ test("selecting an agent opens its existing messages and settings keep the conve
     conversationId: dm.id,
     body: "Prepare the launch review",
   });
-  await callTool(account, agent.id, threadTurn(dm.id, root.id, agent.installationId), "reply", {
+  const turn = await claimTurn(account, agent, {
+    id: root.id,
+    conversationId: dm.id,
+    threadId: null,
+  });
+  await callTool(account, turn, "reply", {
     body: "The launch summary is ready",
     to: { conversationId: dm.id },
   });
   const user = await client(account);
   await visit(user, undefined, "/agents");
-  await user.page.getByRole("link", { name: agent.name, exact: true }).click();
+  // The link's name also carries the agent's status, such as "Working on Laptop".
+  await user.page.getByRole("link", { name: agent.name }).click();
   await expect(user.page.getByRole("tab", { name: "Messages", exact: true })).toHaveAttribute(
     "aria-selected",
     "true",

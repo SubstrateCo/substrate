@@ -1,4 +1,4 @@
-import { mcpCall } from "@substrate/contracts/harness/tools";
+import { mcpCall } from "@substrate/contracts/agent-tools/tools";
 
 import { respond, respondAccepted, v } from "../../shared/http";
 import type { ScopeEnv, Scopes } from "../../shared/scope";

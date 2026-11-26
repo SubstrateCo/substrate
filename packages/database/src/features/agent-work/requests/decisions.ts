@@ -18,8 +18,8 @@ import {
   ConflictError,
   ValidationError,
 } from "../../../errors";
+import { admit } from "../admission/admission";
 import { inStates } from "../machine-sql";
-import { wakeForRequest } from "../wakes/wakes";
 import { runProposalAction } from "./proposals";
 import { answerableBy, ownedRequests } from "./request-views";
 import { agentRequests } from "./requests.schema";
@@ -72,7 +72,8 @@ export async function respondToRequestInTransaction(
     .where(and(eq(agentRequests.id, requestId), answerableBy("answer")))
     .returning();
   if (!resolved) throw new ConflictError(closed);
-  if (resolved.mode === "async") await wakeForRequest(tx, resolved, "answer");
+  if (resolved.mode === "async")
+    await admit(tx, [{ type: "request", source: "answer", request: resolved }]);
   effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
   return { status: resolved.status };
 }
@@ -96,7 +97,7 @@ export async function declineProposalInTransaction(
     .where(and(eq(agentRequests.id, requestId), answerableBy("decline")))
     .returning();
   if (!resolved) throw new ConflictError(closed);
-  await wakeForRequest(tx, resolved, "approval_result");
+  await admit(tx, [{ type: "request", source: "approval_result", request: resolved }]);
   effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
   return { status: resolved.status, outcome };
 }
@@ -182,7 +183,7 @@ export async function approveProposalInTransaction(
       ),
     )
     .returning();
-  await wakeForRequest(tx, finished!, "approval_result");
+  await admit(tx, [{ type: "request", source: "approval_result", request: finished! }]);
   effectsFor(tx).hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
   return { status: finished!.status, outcome };
 }

@@ -4,7 +4,12 @@ import type {
   WorkspaceApiRequest,
   WorkspaceApiResult,
   WorkspaceApiProxy,
-} from "@substrate/contracts/harness/mcp";
+} from "@substrate/contracts/agent-tools/mcp";
+
+import { workspaceRequestTimeoutMs } from "../mcp/request-limits.ts";
+
+/** Local tools answer from main's local store and never wait for an approval. */
+const localToolTimeoutMs = 30_000;
 
 /** Main validates the result before it posts this message. */
 export type WorkspaceApiResponse = { apiResponse: number } & (
@@ -18,7 +23,7 @@ export type LocalToolResponse = { localResponse: number } & (
 );
 
 /** Requests the worker sends to main and waits for. */
-function outbound<Request>(post: (id: number, request: Request) => void) {
+function outbound<Request>(post: (id: number, request: Request) => void, timeoutMs: number) {
   let nextID = 0;
   const pending = new Map<
     number,
@@ -34,7 +39,7 @@ function outbound<Request>(post: (id: number, request: Request) => void) {
       const timer = setTimeout(() => {
         pending.delete(id);
         reject(new Error("Request timed out."));
-      }, 30_000);
+      }, timeoutMs);
       pending.set(id, { resolve, reject, timer });
       post(id, value);
     });
@@ -61,7 +66,10 @@ function outbound<Request>(post: (id: number, request: Request) => void) {
 export function createWorkspaceProxy(
   postMessage: (message: { id: number; api: WorkspaceApiRequest }) => void,
 ) {
-  const proxy = outbound<WorkspaceApiRequest>((id, api) => postMessage({ id, api }));
+  const proxy = outbound<WorkspaceApiRequest>(
+    (id, api) => postMessage({ id, api }),
+    workspaceRequestTimeoutMs,
+  );
   const request: WorkspaceApiProxy = proxy.request;
   return {
     request,
@@ -73,7 +81,10 @@ export function createWorkspaceProxy(
 export function createLocalToolProxy(
   postMessage: (message: { id: number; local: LocalToolRequest }) => void,
 ) {
-  const proxy = outbound<LocalToolRequest>((id, local) => postMessage({ id, local }));
+  const proxy = outbound<LocalToolRequest>(
+    (id, local) => postMessage({ id, local }),
+    localToolTimeoutMs,
+  );
   const request: LocalToolProxy = proxy.request;
   return {
     request,

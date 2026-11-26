@@ -1,35 +1,20 @@
 import { bridgeOutput, type BridgeAPI } from "../desktop/ipc.ts";
-import type { AgentActivityPage, AgentConversationWork, AgentLocalSummary } from "./desktop.ts";
-import { createRoutineInput, updateRoutineInput, type AgentRoutineView } from "./routines.ts";
-import type { AgentTurnView, TurnEventView } from "./turns.ts";
+import type { AgentHomedHere, AgentTurnRunView } from "./desktop.ts";
+import type { TurnEventView } from "./turns.ts";
 import { z } from "zod";
 
+// The home desktop's local agent data. Commands, routines and turn summaries are server HTTP.
 export const channel = "substrate:agent-work";
 const id = z.uuid();
-const command = { input: id };
 export const methods = {
-  conversation: { input: id, output: bridgeOutput<AgentConversationWork>() },
-  turn: { input: id, output: bridgeOutput<AgentTurnView | null>() },
+  /** Transcript events of a server turn that ran here, after a seq. */
   turnEvents: {
     input: z.tuple([id, z.number().int().min(0).optional()]),
     output: bridgeOutput<TurnEventView[]>(),
   },
-  agents: { input: z.undefined(), output: bridgeOutput<AgentLocalSummary[]>() },
-  agentActivity: {
-    input: z.tuple([id, z.string().max(40).optional()]),
-    output: bridgeOutput<AgentActivityPage>(),
-  },
-  sendNow: command,
-  resendItem: command,
-  discardItem: command,
-  stop: command,
-  retry: command,
-  dismiss: command,
-  startFresh: command,
-  newTopic: command,
-  "routines.list": { input: id, output: bridgeOutput<AgentRoutineView[]>() },
-  "routines.create": { input: createRoutineInput, output: bridgeOutput<AgentRoutineView>() },
-  "routines.update": { input: updateRoutineInput, output: bridgeOutput<AgentRoutineView>() },
-  "routines.delete": command,
+  /** The attempts of a server turn that ran here, oldest first. Empty for other turns. */
+  turnRuns: { input: id, output: bridgeOutput<AgentTurnRunView[]>() },
+  /** The agents homed on this desktop, while agent work runs here. */
+  homedAgents: { input: z.undefined(), output: bridgeOutput<AgentHomedHere[]>() },
 };
 export type AgentWorkMethods = BridgeAPI<typeof methods>;

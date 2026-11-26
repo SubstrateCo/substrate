@@ -3,13 +3,16 @@ import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 import { commit } from "./core/effects";
 import { workspaceContext } from "./core/session/workspace";
 import { AccessDeniedError, ConflictError } from "./errors";
+import { claimTurns } from "./features/agent-work/host/claim";
 import { proposeToolCall } from "./features/mcp/proposals";
+import { requireLiveTurn } from "./features/mcp/turn";
 import { createRepositories } from "./repositories";
 import { notifications, messagingInvitations, member } from "./schema";
-import { agentWorkFixture, deviceAgentWork, dmTurn, ownerAgentWork } from "./testing/agent-work";
+import { agentWorkFixture, hostWork, ownerAgentWork } from "./testing/agent-work";
 import { setupDatabase } from "./testing/database";
 import { recordQueries } from "./testing/queries";
 import { rejection } from "./testing/rejection";
+import { dmTurn } from "./testing/turns";
 import { beforeEach, expect, test } from "bun:test";
 import { eq } from "drizzle-orm";
 
@@ -32,8 +35,6 @@ test("workspace reads reuse the scope already resolved by forSession", async () 
   expect(await repositories.sharing.inbox()).toEqual([]);
   expect(await repositories.sharing.listConversations()).toMatchObject([{ id: channel.id }]);
   expect(await repositories.agentWork.listStatus()).toEqual([]);
-  expect(await repositories.agentWork.listInvocations()).toEqual([]);
-  expect(await repositories.agentWork.listMyCalls(channel.id)).toEqual([]);
   expect(await repositories.agentWork.listConversationRequests(channel.id)).toEqual([]);
   expect(
     queries.filter(
@@ -233,7 +234,8 @@ test("owner agent writes return committed effects without a workspace", async ()
 });
 
 test("MCP proposals and approved actions expose owner and confirmed notification effects", async () => {
-  const { owner, agent, agentIdentity, dm } = await agentWorkFixture(f);
+  const { owner, agent, agentIdentity, dm, turn } = await agentWorkFixture(f);
+  const context = await turn(dmTurn(dm.id));
   const repositories = await f.forSession("alice");
   const { result: project } = await repositories.projects.create({ name: "Approval" });
   await repositories.permissions.grant({
@@ -242,12 +244,13 @@ test("MCP proposals and approved actions expose owner and confirmed notification
     level: "view",
   });
   const proposed = await commit(f.db, async (tx) => {
-    const { context } = await workspaceContext(tx, agentIdentity);
+    const { context: ctx } = await workspaceContext(tx, agentIdentity);
+    const live = await requireLiveTurn(tx, agentIdentity, context, agent.identity.installationId);
     return proposeToolCall(
-      context,
+      ctx,
       agentIdentity,
       { entityId: agent.actorId, userAgentId: agent.agentId },
-      { ...dmTurn(dm.id), installationId: agent.identity.installationId },
+      live,
       {
         tool: "create_task",
         input: { projectId: project.entityId, title: "Follow up", assigneeActorId: f.bob },
@@ -275,21 +278,15 @@ test("MCP proposals and approved actions expose owner and confirmed notification
   expect(await f.db.select().from(notifications)).toHaveLength(1);
 });
 
-test("device status publication exposes effects only when the owner's view changes", async () => {
-  const { agent } = await agentWorkFixture(f);
-  const status = {
-    userAgentId: agent.agentId,
-    state: "working" as const,
-    queuedCount: 0,
-    version: 1,
-  };
-  const device = await deviceAgentWork(f.db, agent.identity);
-  const first = await device.publishStatus(status);
-  expect(first.hints).toEqual([{ audience: realtimeKeys.user("alice"), domain: "agent-work" }]);
-  const duplicate = await device.publishStatus(status);
-  expect(duplicate.result.applied).toBe(false);
-  expect(duplicate.hints).toEqual([]);
-  const newerSameView = await device.publishStatus({ ...status, version: 2 });
-  expect(newerSameView.result.applied).toBe(true);
-  expect(newerSameView.hints).toEqual([]);
+test("a host claim exposes the owner's agent-work hint, and an empty claim exposes none", async () => {
+  const { agent, alice, dm } = await agentWorkFixture(f);
+  const host = await hostWork(f.db, agent.identity);
+  expect((await host.claim({})).hints).toEqual([]);
+  await alice.sendMessage(dm.id, "Summarize the week");
+  const later = new Date(Date.now() + 5_000);
+  const claimed = await commit(f.db, (tx) =>
+    claimTurns(tx, { ...agent.identity, deviceId: agent.device.id }, {}, later),
+  );
+  expect(claimed.result).toHaveLength(1);
+  expect(claimed.hints).toEqual([{ audience: realtimeKeys.user("alice"), domain: "agent-work" }]);
 });

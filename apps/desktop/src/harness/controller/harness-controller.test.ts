@@ -1,8 +1,8 @@
-import { sessionKeys } from "@substrate/contracts/agent-work";
+import { harnessConfigurationSchema } from "@substrate/contracts/harness-runtime";
 
 import { DesktopSessionAuthority } from "../../session/desktop-session-authority.ts";
 import { createHarnessController } from "./harness-controller.ts";
-import { fixture } from "./test-support.ts";
+import { catalogAgent, fixture } from "./test-support.ts";
 import { describe, expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
 
@@ -82,7 +82,7 @@ describe("desktop harness authority", () => {
     expect(f.directories).toHaveLength(1);
     expect(f.calls.at(-1)).toEqual({
       method: "configure",
-      value: { organizationId: "org-2", agents: [], enabledApps: ["messages", "agents"] },
+      value: { organizationId: "org-2", agents: [] },
     });
   });
   test("model discovery uses verified organization scope and returns only catalog metadata", async () => {
@@ -111,7 +111,7 @@ describe("desktop harness authority", () => {
     expect(f.calls).toEqual([
       {
         method: "configure",
-        value: { organizationId: "org-1", agents: [], enabledApps: ["messages", "agents"] },
+        value: { organizationId: "org-1", agents: [] },
       },
     ]);
     expect(await f.controller.run("status")).toEqual({
@@ -119,6 +119,38 @@ describe("desktop harness authority", () => {
       organizationId: "org-1",
       harnesses: [{ harness: "codex", available: true }],
     });
+  });
+  test("configures each catalog agent with the instructions, skills and tools of the enabled apps", async () => {
+    const f = fixture(undefined, [], { agents: [catalogAgent] });
+    await f.controller.run("synchronize");
+    expect(f.calls.map((call) => call.method)).toEqual(["configure"]);
+    const { agents } = harnessConfigurationSchema.parse(f.calls[0]!.value);
+    const agent = agents[0]!;
+    expect(agent.instructions.startsWith("# Substrate workspace")).toBe(true);
+    // The fixture's organization enables messages and agents only.
+    expect(agent.tools?.main).toContain("reply");
+    expect(agent.tools?.main).not.toContain("get_task");
+    const installed = agent.managedSkills.filter((skill) => skill.installed);
+    expect(installed.map((skill) => skill.id)).not.toContain("substrate-tasks");
+  });
+  test("a turn command without a server turn context never reaches the worker", async () => {
+    const f = fixture(undefined, [], { agents: [catalogAgent] });
+    await f.controller.run("synchronize");
+    const turnId = crypto.randomUUID();
+    await rejects(
+      f.controller.execute({
+        type: "turn",
+        organizationId: "org-1",
+        sessionId: "session-1",
+        turnId,
+        generation: 1,
+        mode: "interactive",
+        input: { inputIds: ["item-1"], text: "<turn></turn>" },
+        context: { turnId, attempt: 0 },
+      }),
+      { code: "invalid-command" },
+    );
+    expect(f.calls.map((call) => call.method)).toEqual(["configure"]);
   });
   test("rejects renderer-selected organizations before fetching a catalog", async () => {
     const f = fixture();
@@ -262,6 +294,7 @@ describe("desktop harness authority", () => {
       },
       [],
       {
+        agents: [catalogAgent],
         holdExecute: () => {
           executing.resolve();
           return hold.promise;
@@ -293,37 +326,25 @@ describe("desktop harness authority", () => {
     const f = fixture(undefined, [], {
       localToolHandler: async (call) => {
         received.push(call);
-        return { success: true, data: { items: [] } };
+        return { success: true, data: { saved: true } };
       },
     });
     await f.controller.run("synchronize");
     const local = f.localTools()!;
     const request = {
-      tool: "list_helpers" as const,
+      tool: "save_handoff" as const,
       sessionId: "session-1",
       organizationId: "org-1",
       agentId: crypto.randomUUID(),
       turn: {
         turnId: crypto.randomUUID(),
         attempt: 1,
-        sessionKey: sessionKeys.dm(crypto.randomUUID()),
-        origin: null,
-        kind: "interactive" as const,
       },
-      input: {},
+      input: { objectives: "Ship it.", openWork: "", references: [] },
     };
-    expect(await local(request)).toEqual({ success: true, data: { items: [] } });
+    expect(await local(request)).toEqual({ success: true, data: { saved: true } });
     await rejects(local({ ...request, input: { unexpected: true } }));
     expect(received).toEqual([request]);
-  });
-  test("readProfile reads only the verified organization", async () => {
-    const f = fixture();
-    await f.controller.run("synchronize");
-    expect(await f.controller.readProfile("agent-1")).toBe("- Owner prefers mornings.\n");
-    expect(f.calls.at(-1)).toEqual({
-      method: "readProfile",
-      value: { organizationId: "org-1", agentId: "agent-1" },
-    });
   });
   test("membership revocation closes the host before any local file operation", async () => {
     const f = fixture();

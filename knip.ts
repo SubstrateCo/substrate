@@ -47,6 +47,10 @@ export default {
       ],
     },
     // Package entry points come from each package.json exports map.
+    "packages/agent-host": {
+      entry: [],
+      project: ["src/**/*.ts"],
+    },
     "packages/client-storage": {
       entry: ["src/mail/list-worker-entry.ts"],
       project: ["src/**/*.ts", "*.config.ts"],

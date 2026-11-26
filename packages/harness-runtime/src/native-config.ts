@@ -1,4 +1,4 @@
-import type { HarnessKind, HarnessSkill } from "@substrate/contracts/harness";
+import type { HarnessKind, HarnessSkill } from "@substrate/contracts/harness-runtime";
 
 import { HarnessError } from "./errors.ts";
 import { readOptional, safeId, safePath } from "./paths.ts";

@@ -1,4 +1,4 @@
-import type { AgentInboxItemView } from "@substrate/contracts/agent-work";
+import type { AgentWorkItemView } from "@substrate/contracts/agent-work";
 
 import { InboxReceiptView } from "./inbox-receipt-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
@@ -7,13 +7,7 @@ import { itemStatus, type ItemContext } from "@/lib/agent-work/status";
 import { useDiscardItem, useResendItem, useSendNow } from "@/queries/agent-work/mutations";
 import { toast } from "sonner";
 
-export function InboxReceipt({
-  item,
-  context,
-}: {
-  item: AgentInboxItemView;
-  context: ItemContext;
-}) {
+export function InboxReceipt({ item, context }: { item: AgentWorkItemView; context: ItemContext }) {
   const { userId, organizationId } = useWorkspaceScope();
   const sendNow = useSendNow(userId, organizationId);
   const resend = useResendItem(userId, organizationId);

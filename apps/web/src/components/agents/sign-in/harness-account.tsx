@@ -1,4 +1,4 @@
-import type { HarnessAuthMethod, HarnessKind } from "@substrate/contracts/harness";
+import type { HarnessAuthMethod, HarnessKind } from "@substrate/contracts/harness-runtime";
 
 import { useQuery } from "@tanstack/react-query";
 

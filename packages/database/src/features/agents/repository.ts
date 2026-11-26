@@ -14,6 +14,8 @@ import { effectsFor } from "../../core/effects";
 import type { DatabaseExecutor } from "../../core/executor";
 import { storedFiles } from "../../core/storage/schema";
 import { AccessDeniedError, ValidationError, violatedConstraint } from "../../errors";
+import { endMovedLeases } from "../agent-work/host/lease";
+import { endAgentTurns, endDeletedAgentWork } from "../agent-work/stop";
 import { agentRefreshHints } from "../realtime/routing";
 import { userAgentTriggers } from "./triggers.schema";
 import { and, eq, inArray, isNull, sql } from "drizzle-orm";
@@ -91,7 +93,6 @@ export function createAgentRepository(
             );
             return { kind, enabled: row?.enabled ?? true };
           }),
-          callerPolicy: agent.callerPolicy,
         })),
       };
     },
@@ -114,14 +115,21 @@ export function createAgentRepository(
             .values({ ...values, userId, homeDeviceId: (await currentDevice())?.id ?? null })
             .returning();
       if (!row) throw new AccessDeniedError();
+      // A disabled agent stops its live turns. Its queue and routines wait until it runs again.
+      if (!row.enabled) await endAgentTurns(db, row.id);
       await changed();
       return configuration(row);
     },
-    /** Moves the agent to the calling desktop. Its folder on the old device is not copied. */
+    /**
+     * Moves the agent to the calling desktop. Its folder on the old device is not copied, and
+     * its live turns there end now, so that their work resumes here.
+     */
     async setHomeDevice(id: string): Promise<null> {
       const device = await currentDevice();
       if (!device) throw new ValidationError("Open Substrate on the desktop that should run it.");
-      return updateOwnAgent(id, { homeDeviceId: device.id });
+      await updateOwnAgent(id, { homeDeviceId: device.id });
+      await endMovedLeases(db, id, device.id);
+      return null;
     },
     async saveTriggers(input: SaveAgentTriggersInput): Promise<null> {
       return db.transaction(async (tx) => {
@@ -177,7 +185,9 @@ export function createAgentRepository(
         });
     },
     async deleteAgent(id: string): Promise<null> {
-      return updateOwnAgent(id, { deletedAt: new Date(), enabled: false, imageFileId: null });
+      await updateOwnAgent(id, { deletedAt: new Date(), enabled: false, imageFileId: null });
+      await endDeletedAgentWork(db, id);
+      return null;
     },
   };
 }
