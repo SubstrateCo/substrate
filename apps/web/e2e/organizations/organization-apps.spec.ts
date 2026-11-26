@@ -25,7 +25,12 @@ test("owner enables independent apps, confirms disable, and restores preserved p
   const crmSwitch = apps.getByRole("switch", { name: "CRM", exact: true });
   await expect(tasksSwitch).not.toBeChecked();
   await expect(crmSwitch).not.toBeChecked();
-  await expect(apps.getByRole("switch", { name: "Inbox", exact: true })).not.toBeChecked();
+  const personal = page.getByRole("region", { name: "Personal apps", exact: true });
+  await expect(personal.getByRole("switch", { name: "Inbox", exact: true })).not.toBeChecked();
+  await expect(apps.getByRole("region", { name: "Inbox", exact: true })).toHaveCount(0);
+  await expect(personal.getByRole("region", { name: "Inbox", exact: true })).toContainText(
+    "Personal",
+  );
   await expect(
     page
       .getByRole("navigation", { name: "Apps", exact: true })
@@ -98,15 +103,49 @@ test("owner enables independent apps, confirms disable, and restores preserved p
   await expect(page.getByText(preserved.name, { exact: true }).first()).toBeVisible();
 });
 
-test("member can view organization apps but cannot change them", async ({ actors, client }) => {
+test("member can change personal apps but not workspace apps", async ({ actors, client }) => {
   const user = await client(actors.member);
+  const secondDevice = await client(actors.member);
+  const owner = await client(actors.sender);
   await visit(user, undefined, "/settings/organization/apps");
+  await visit(secondDevice, undefined, "/settings/organization/apps");
+  await visit(owner, undefined, "/settings/organization/apps");
   await expect(user.page.getByRole("heading", { name: "Apps", exact: true })).toBeVisible();
   await expect(user.page.getByRole("region", { name: "Tasks", exact: true })).toBeVisible();
-  await expect(user.page.getByRole("region", { name: "Inbox", exact: true })).toContainText(
-    "Disabled",
+  const workspace = user.page.getByRole("region", { name: "Workspace apps", exact: true });
+  await expect(workspace.getByRole("switch")).toHaveCount(0);
+  await expect(workspace.getByRole("region", { name: "Tasks", exact: true })).toContainText(
+    "Workspace",
   );
-  await expect(user.page.getByRole("switch")).toHaveCount(0);
+  const personal = user.page.getByRole("region", { name: "Personal apps", exact: true });
+  const inbox = personal.getByRole("switch", { name: "Inbox", exact: true });
+  const otherInbox = secondDevice.page.getByRole("switch", { name: "Inbox", exact: true });
+  const ownerInbox = owner.page.getByRole("switch", { name: "Inbox", exact: true });
+  await expect(inbox).not.toBeChecked();
+  await expect(otherInbox).not.toBeChecked();
+  await expect(ownerInbox).not.toBeChecked();
+  await inbox.click();
+  await expect(inbox).toBeChecked();
+  await expect(otherInbox).toBeChecked();
+  await expect(ownerInbox).not.toBeChecked();
+  await expect(
+    user.page
+      .getByRole("navigation", { name: "Apps", exact: true })
+      .getByRole("link", { name: /^Inbox/ }),
+  ).toBeVisible();
+  await inbox.click();
+  const confirm = user.page.getByRole("dialog", { name: "Disable Inbox?", exact: true });
+  await expect(confirm).toContainText("Other members are not affected.");
+  await confirm.getByRole("button", { name: "Disable Inbox", exact: true }).click();
+  await expect(inbox).not.toBeChecked();
+  await expect(otherInbox).not.toBeChecked();
+  await visit(user, undefined, "/inbox");
+  await expect(
+    user.page.getByText("This personal app is not enabled for you in this workspace.", {
+      exact: false,
+    }),
+  ).toBeVisible();
+  await user.page.getByRole("link", { name: "View apps", exact: true }).click();
   const settings = user.page.getByRole("navigation", { name: "Settings sections", exact: true });
   await expect(settings.getByRole("link", { name: "Apps", exact: true })).toBeVisible();
   await expect(settings.getByRole("link", { name: "Members", exact: true })).toHaveCount(0);

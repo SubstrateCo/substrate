@@ -166,6 +166,32 @@ test("changes forward their record identifiers, which the client contract accept
   f.hub.stop();
 });
 
+test("personal app hints reach only the user's connections, not other organization members", async () => {
+  const f = fixture();
+  const owner = await f.connect("owner");
+  const member = await f.connect("member");
+  const otherWorkspace = await f.connect("member", "other-org");
+  const account = await f.connect("member", null);
+  await f.publish(realtimeKeys.user("member"), "apps");
+  expect(owner.events).toEqual([{ version: 1, type: "ready" }]);
+  for (const [connection, organizationId] of [
+    [member, "org"],
+    [otherWorkspace, "other-org"],
+    [account, null],
+  ] as const) {
+    expect(connection.events.slice(1)).toEqual([
+      {
+        version: 1,
+        type: "change",
+        id: expect.any(String),
+        organizationId,
+        domain: "apps",
+      },
+    ]);
+  }
+  f.hub.stop();
+});
+
 function drift(f: ReturnType<typeof fixture>, peers: { cookie: string }[]) {
   const [revoked, moved, recreated] = peers;
   f.sessions.delete(revoked!.cookie);

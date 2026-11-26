@@ -102,7 +102,10 @@ export function composeDesktop(options: {
     getCookie: () => options.getCookie(),
     emit: (event) => {
       options.emit(realtimeEventChannel, event);
-      if (event.type === "change" && (event.domain === "access" || event.domain === "organization"))
+      if (
+        event.type === "change" &&
+        (event.domain === "access" || event.domain === "organization" || event.domain === "apps")
+      )
         void mail.stop();
       agentWork.onRealtime(event);
       void meetingReminders?.receive(event);

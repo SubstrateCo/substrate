@@ -18,7 +18,7 @@ export function OrganizationAppsProvider({
   children: ReactNode;
 }) {
   const client = useQueryClient();
-  const settings = useQuery(organizationAppsOptions(organizationId));
+  const settings = useQuery(organizationAppsOptions(organizationId, userId));
   const signature = settings.data?.enabledApps.slice().sort().join(",");
   const [applied, setApplied] = useState(signature);
   const ready = !!settings.data && !settings.error && applied === signature;

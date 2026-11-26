@@ -147,6 +147,10 @@ export function realtimeTargets(
   const account = queryKeys.account(userId);
   const scope = organizationId ? { userId, organizationId } : undefined;
   switch (event.domain) {
+    case "apps":
+      return scope
+        ? [{ queryKey: queryKeys.domain(scope, "apps") }, { queryKey: messagingKeys.apps(scope) }]
+        : [];
     case "agents":
     case "agent-work":
       return [{ queryKey: [...account, "agents"] }];

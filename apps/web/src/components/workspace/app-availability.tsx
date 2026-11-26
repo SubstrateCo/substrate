@@ -1,4 +1,5 @@
 import type { AppId } from "@substrate/contracts/apps";
+import { appScope } from "@substrate/contracts/apps";
 
 import { Link } from "@tanstack/react-router";
 
@@ -31,7 +32,11 @@ export function AppAvailability({
       variant={variant}
       icon={Blocks}
       title={`${label} is disabled`}
-      description="This app is not enabled for your organization. Existing data is preserved. An owner or admin can enable it in Apps settings."
+      description={
+        appScope(app) === "user"
+          ? "This personal app is not enabled for you in this workspace. Existing data is preserved. Enable it in Personal apps."
+          : "This workspace app is disabled. Existing data is preserved. An owner or admin can enable it for everyone in Apps settings."
+      }
       action={
         <Button variant="outline" asChild>
           <Link to="/settings/organization/apps">View apps</Link>

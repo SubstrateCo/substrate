@@ -35,10 +35,11 @@ export const test = base.extend<{
     await use({ lists: 0, details: [], unavailable: false });
   },
   inbox: async ({ account, client, gmailPages, historySize, cachedHistory }, use) => {
-    const enabled = await account.request.patch("/api/v1/organizations/apps", {
+    const enabled = await account.request.patch("/api/v1/organizations/apps/user", {
       data: {
         organizationId: account.organizationId,
-        enabledApps: ["messages", "agents", "inbox"],
+        appId: "inbox",
+        enabled: true,
       },
     });
     expect(enabled.ok()).toBe(true);

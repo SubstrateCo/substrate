@@ -1,7 +1,7 @@
 import {
-  coreAppIds,
-  optionalAppIds,
+  organizationOptionalAppIds,
   updateApps,
+  updateUserApp,
   type AppSettings,
 } from "@substrate/contracts/apps";
 import { realtimeKeys } from "@substrate/contracts/realtime";
@@ -12,8 +12,9 @@ import { member } from "../organizations/schema";
 import type { RepositoryContext } from "../repository-context";
 import type { SessionIdentity } from "../session/identity";
 import { enabledApps } from "./access";
-import { organizationApps } from "./schema";
+import { organizationApps, userApps } from "./schema";
 import { and, eq, sql } from "drizzle-orm";
+import type { z } from "zod";
 
 export function appRepository(context: RepositoryContext, identity: SessionIdentity) {
   async function membership() {
@@ -29,7 +30,10 @@ export function appRepository(context: RepositoryContext, identity: SessionIdent
 
   async function get(): Promise<AppSettings> {
     await membership();
-    return { organizationId: identity.organizationId, enabledApps: await enabledApps(context) };
+    return {
+      organizationId: identity.organizationId,
+      enabledApps: await enabledApps(context, identity.userId),
+    };
   }
 
   return {
@@ -43,7 +47,9 @@ export function appRepository(context: RepositoryContext, identity: SessionIdent
       // One statement writes every app, and only for an owner or admin. Concurrent updates write
       // the rows in the same order, so the settings always match one whole update.
       const values = sql.join(
-        optionalAppIds.map((appId) => sql`(${appId}::text, ${apps.includes(appId)}::boolean)`),
+        organizationOptionalAppIds.map(
+          (appId) => sql`(${appId}::text, ${apps.includes(appId)}::boolean)`,
+        ),
         sql`, `,
       );
       const written = await context.db.execute(sql`
@@ -64,10 +70,28 @@ export function appRepository(context: RepositoryContext, identity: SessionIdent
         audience: realtimeKeys.organization(identity.organizationId),
         domain: "organization",
       });
-      return {
-        organizationId: identity.organizationId,
-        enabledApps: [...coreAppIds, ...optionalAppIds.filter((app) => apps.includes(app))],
-      };
+      return get();
+    },
+    async updateUserApp(
+      input: Pick<z.output<typeof updateUserApp>, "appId" | "enabled">,
+    ): Promise<AppSettings> {
+      const parsed = updateUserApp.safeParse({ ...input, organizationId: identity.organizationId });
+      if (!parsed.success) throw new ValidationError("Invalid personal app settings.");
+      const { appId, enabled } = parsed.data;
+      const written = await context.db.execute(sql`
+        INSERT INTO ${userApps} (organization_id, user_id, app_id, enabled)
+        SELECT ${identity.organizationId}, ${identity.userId}, ${appId}, ${enabled}
+        WHERE EXISTS (
+          SELECT 1 FROM ${member}
+          WHERE ${member.organizationId} = ${identity.organizationId}
+            AND ${member.userId} = ${identity.userId}
+        )
+        ON CONFLICT (organization_id, user_id, app_id) DO UPDATE SET enabled = excluded.enabled
+        RETURNING app_id
+      `);
+      if (!written.length) throw new AccessDeniedError();
+      context.effects.hint({ audience: realtimeKeys.user(identity.userId), domain: "apps" });
+      return get();
     },
   };
 }

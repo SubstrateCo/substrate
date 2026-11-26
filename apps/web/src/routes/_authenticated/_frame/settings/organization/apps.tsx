@@ -7,6 +7,11 @@ export const Route = createFileRoute("/_authenticated/_frame/settings/organizati
 });
 
 function AppsRoute() {
-  const { organizationSettings } = Route.useRouteContext();
-  return <OrganizationApps organizationId={organizationSettings.organizationId} />;
+  const { organizationSettings, session } = Route.useRouteContext();
+  return (
+    <OrganizationApps
+      organizationId={organizationSettings.organizationId}
+      userId={session.user.id}
+    />
+  );
 }

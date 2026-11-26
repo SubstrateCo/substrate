@@ -43,7 +43,7 @@ test("app rows reject missing organizations", async () => {
 });
 
 test("owners and admins update their organization, members read but cannot update", async () => {
-  const apps = ["messages", "agents", "crm", "inbox"] as const;
+  const apps = ["messages", "agents", "crm"] as const;
   await f.db.transaction((tx) => repository(context(tx)).update([...apps]));
   expect(await repository(context(), "bob").get()).toEqual({
     organizationId: f.orgA,

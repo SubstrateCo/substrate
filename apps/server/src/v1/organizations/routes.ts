@@ -1,4 +1,4 @@
-import { appsWorkspace, updateApps } from "@substrate/contracts/apps";
+import { appsWorkspace, updateApps, updateUserApp } from "@substrate/contracts/apps";
 import { invitationParams, organizationWorkspace } from "@substrate/contracts/organizations/input";
 
 import { respond, v } from "../../shared/http";
@@ -14,6 +14,9 @@ export function createOrganizationRoutes(service: OrganizationService, scopes: S
     async (c) => respond(c, await service.settingsAccess(c.var.scope)),
   );
   const workspace = new Hono<ScopeEnv>()
+    .patch("/apps/user", v("json", updateUserApp), scopes.workspace("json"), async (c) =>
+      respond(c, await service.updateUserApp(c.var.scope, c.req.valid("json"))),
+    )
     .get("/apps", v("query", appsWorkspace), scopes.workspace("query"), async (c) =>
       respond(c, await service.apps(c.var.scope)),
     )

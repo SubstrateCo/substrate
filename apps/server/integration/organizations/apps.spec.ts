@@ -60,6 +60,83 @@ for (const prefix of ["/api/v1", "/api/mobile"]) {
   });
 }
 
+for (const prefix of ["/api/v1", "/api/mobile"]) {
+  test(`${prefix} personal apps belong to the signed-in member, not the organization`, async ({
+    actors: { owner, member, outsider },
+    request,
+  }) => {
+    const params = { organizationId: owner.organizationId };
+    const path = `${prefix}/organizations/apps`;
+    const input = { ...params, appId: "inbox", enabled: true };
+    try {
+      const enabled = await member.request.patch(`${path}/user`, {
+        headers: { origin: appOrigin },
+        data: input,
+      });
+      expect(enabled.status()).toBe(200);
+      expect((await enabled.json()).data.enabledApps).toContain("inbox");
+      expect(
+        (await (await member.request.get(path, { params })).json()).data.enabledApps,
+      ).toContain("inbox");
+      expect(
+        (await (await owner.request.get(path, { params })).json()).data.enabledApps,
+      ).not.toContain("inbox");
+      expect(
+        (
+          await outsider.request.patch(`${path}/user`, {
+            headers: { origin: appOrigin },
+            data: input,
+          })
+        ).status(),
+      ).toBe(403);
+      expect(
+        (
+          await request.patch(`${path}/user`, {
+            headers: { origin: appOrigin },
+            data: input,
+          })
+        ).status(),
+      ).toBe(401);
+      for (const data of [
+        { ...input, appId: "tasks" },
+        { ...input, userId: "other" },
+      ]) {
+        expect(
+          (
+            await member.request.patch(`${path}/user`, {
+              headers: { origin: appOrigin },
+              data,
+            })
+          ).status(),
+        ).toBe(400);
+      }
+      expect(
+        (
+          await member.request.patch(`${path}/user`, {
+            headers: { origin: "https://untrusted.example" },
+            data: input,
+          })
+        ).status(),
+      ).toBe(403);
+      expect(
+        (
+          await owner.request.patch(path, {
+            headers: { origin: appOrigin },
+            data: { ...params, enabledApps: ["messages", "agents", "inbox"] },
+          })
+        ).status(),
+      ).toBe(400);
+    } finally {
+      const disabled = await member.request.patch(`${path}/user`, {
+        headers: { origin: appOrigin },
+        data: { ...input, enabled: false },
+      });
+      expect(disabled.status()).toBe(200);
+      expect((await disabled.json()).data.enabledApps).not.toContain("inbox");
+    }
+  });
+}
+
 test("new organizations start with optional apps disabled", async ({ actors: { outsider } }) => {
   const previous = outsider.organizationId;
   const suffix = randomUUID();

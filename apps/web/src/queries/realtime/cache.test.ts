@@ -188,6 +188,13 @@ test("organization hints retain role refresh because organization deletion has n
   ]);
 });
 
+test("personal app hints refresh only the current user's app settings", () => {
+  expect(realtimeQueryTargets(change("apps"), "user")).toEqual([
+    { queryKey: queryKeys.organizationApps("org", "user") },
+  ]);
+  expect(realtimeQueryTargets(change("apps", null), "user")).toEqual([]);
+});
+
 test("access hints reload the viewer's role in the organization summary", async () => {
   const client = new QueryClient();
   const key = queryKeys.organizationSummary("org");

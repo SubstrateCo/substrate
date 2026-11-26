@@ -287,12 +287,8 @@ export function createAgentWorkService(options: {
         });
       }
       if (event.type !== "change") return;
-      if (
-        event.domain === "session" ||
-        event.domain === "access" ||
-        event.domain === "organization"
-      )
-        sessionChanged();
+      const appsChanged = event.domain === "organization" || event.domain === "apps";
+      if (event.domain === "session" || event.domain === "access" || appsChanged) sessionChanged();
       if (event.domain === "access") void ensure();
       if (event.domain === "agents") {
         // An agent may have moved to or from this desktop.
@@ -310,7 +306,7 @@ export function createAgentWorkService(options: {
         void ensure().then((current) => available(current)?.runtime.hint());
       if (event.domain === "messaging" && (!event.scope || event.scope === "messages"))
         void ensure().then((current) => available(current)?.runtime.hint());
-      if (event.domain === "session" || event.domain === "organization")
+      if (event.domain === "session" || appsChanged)
         void ensure().then((current) => {
           if (!available(current)) return;
           current?.runtime.agentsChanged();

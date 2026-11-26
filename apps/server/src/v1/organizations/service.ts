@@ -1,4 +1,4 @@
-import type { AppId } from "@substrate/contracts/apps";
+import type { AppId, UserAppId } from "@substrate/contracts/apps";
 import { canShareInvitation } from "@substrate/contracts/auth/roles";
 import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
 import { desktopHandoffURL } from "@substrate/contracts/desktop/links";
@@ -15,6 +15,16 @@ export function createOrganizationService(deps: { apiURL: string; publish: Commi
     updateApps(scope: WorkspaceScope, apps: AppId[]) {
       return serviceResult(async () =>
         deps.publish(await scope.repositories.organizations.updateApps(apps)),
+      );
+    },
+    updateUserApp(scope: WorkspaceScope, input: { appId: UserAppId; enabled: boolean }) {
+      return serviceResult(async () =>
+        deps.publish(
+          await scope.repositories.organizations.updateUserApp({
+            appId: input.appId,
+            enabled: input.enabled,
+          }),
+        ),
       );
     },
     settingsAccess({ session, role }: SettingsScope) {

@@ -14,10 +14,12 @@ export function organizationRepository(context: RepositoryContext, identity: Ses
     // The session already verified this membership, as for people().
     apps: async (): Promise<AppSettings> => ({
       organizationId: identity.organizationId,
-      enabledApps: await enabledApps(context),
+      enabledApps: await enabledApps(context, identity.userId),
     }),
     updateApps: (apps: Parameters<ReturnType<typeof appRepository>["update"]>[0]) =>
       appRepository(context, identity).update(apps),
+    updateUserApp: (input: Parameters<ReturnType<typeof appRepository>["updateUserApp"]>[0]) =>
+      appRepository(context, identity).updateUserApp(input),
     /** The organization's name and logo, with the viewer's own role in it. */
     async summary() {
       const [row] = await context.db

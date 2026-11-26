@@ -491,7 +491,7 @@ test("a workspace change during store open closes the stale store before replace
   }
 });
 
-test("agent work reuses the verified session until a session, access or organization hint or ready", async () => {
+test("agent work reuses the verified session until a session, access, organization or app hint or ready", async () => {
   const f = await serviceFixture();
   f.service.start();
   await f.service.call("agents");
@@ -506,15 +506,15 @@ test("agent work reuses the verified session until a session, access or organiza
   await flush();
   expect(f.sessionChecks()).toBe(1);
 
-  for (const domain of ["session", "access", "organization"] as const) {
+  for (const domain of ["session", "access", "organization", "apps"] as const) {
     f.service.onRealtime(change(domain));
     await f.service.call("agents");
   }
   f.service.onRealtime({ version: 1, type: "ready" });
   await f.service.call("agents");
   await flush();
-  expect(f.sessionChecks()).toBe(5);
-  expect(f.memberChecks()).toBe(5);
+  expect(f.sessionChecks()).toBe(6);
+  expect(f.memberChecks()).toBe(6);
 });
 
 test("confirmed session denial blocks access to the previous local runtime", async () => {

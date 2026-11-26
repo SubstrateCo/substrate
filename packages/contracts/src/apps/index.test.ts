@@ -1,4 +1,11 @@
-import { appEnabled, requiredAppsForEntityType, updateApps } from "./index";
+import {
+  appEnabled,
+  appIds,
+  appScope,
+  requiredAppsForEntityType,
+  updateApps,
+  updateUserApp,
+} from "./index";
 import { expect, test } from "bun:test";
 
 test("core apps cannot be switched off and optional apps must be enabled explicitly", () => {
@@ -21,9 +28,24 @@ test("settings reject missing core apps, duplicate apps, and unknown apps", () =
     ["tasks"],
     ["messages", "agents", "crm", "crm"],
     ["messages", "agents", "email"],
+    ["messages", "agents", "inbox"],
   ])
     expect(updateApps.safeParse({ organizationId: "org", enabledApps }).success).toBe(false);
   expect(
     updateApps.parse({ organizationId: "org", enabledApps: ["messages", "agents"] }).enabledApps,
   ).toEqual(["messages", "agents"]);
+});
+
+test("personal apps are separate from workspace settings", () => {
+  expect(appScope("inbox")).toBe("user");
+  for (const app of appIds.filter((id) => id !== "inbox"))
+    expect(appScope(app)).toBe("organization");
+  expect(
+    updateUserApp.safeParse({ organizationId: "org", appId: "inbox", enabled: true }).success,
+  ).toBe(true);
+  for (const input of [
+    { organizationId: "org", appId: "tasks", enabled: true },
+    { organizationId: "org", appId: "inbox", enabled: true, userId: "other" },
+  ])
+    expect(updateUserApp.safeParse(input).success).toBe(false);
 });

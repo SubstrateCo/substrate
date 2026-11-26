@@ -3,8 +3,8 @@ import type { NotificationFilter } from "@substrate/contracts/context/notificati
 import { partialMatchKey, type QueryKey } from "@tanstack/react-query";
 
 export const queryKeys = {
-  organizationApps: (organizationId: string) =>
-    [...queryKeys.organization(organizationId), "apps"] as const,
+  organizationApps: (organizationId: string, userId?: string) =>
+    [...queryKeys.organization(organizationId), "apps", ...(userId ? [userId] : [])] as const,
   messageUnread: (organizationId: string) =>
     [...queryKeys.messaging(organizationId), "unread"] as const,
   desktopRelease: ["desktop", "release"] as const,
