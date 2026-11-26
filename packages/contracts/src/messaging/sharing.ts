@@ -8,6 +8,12 @@ export type { SharingInvitationStatus } from "./invitation-machine";
 /** A shared conversation's state from the viewer organization's side. */
 export type SharedConversationStatus = "connected" | "needs-approval" | "invited";
 
+export type SharingConfirmation = {
+  kind: "revoke" | "disconnect" | "remove";
+  id: string;
+  name: string;
+};
+
 export const sharingInviteInput = conversationTargetInput.extend({
   email: z.email().max(320),
   shareHistory: z.literal(true),

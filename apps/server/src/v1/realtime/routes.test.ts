@@ -49,9 +49,9 @@ function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
     hub.stop();
     void server.stop(true);
   });
-  function connect(query = "?organizationId=org") {
+  function connect(query = "?organizationId=org", prefix = "/api/v1") {
     const socket = new BunWebSocket(
-      `${server.url.toString().replace("http:", "ws:")}api/v1/realtime${query}`,
+      new URL(`${prefix}/realtime${query}`, server.url).toString().replace("http:", "ws:"),
       {
         headers: { Origin: trustedOrigin, Cookie: "session=test" },
       },
@@ -85,72 +85,78 @@ function fixture(options: Parameters<typeof createRealtimeHub>[1] = {}) {
   };
 }
 
-test("Bun transport upgrades on the HTTP port, sends ready on reconnect, and filters delivery", async () => {
-  const f = fixture();
-  const first = f.connect();
-  expect(await first.next()).toEqual({ version: 1, type: "ready" });
-  const denied: Change = {
-    id: crypto.randomUUID(),
-    domain: "messaging",
-    audience: realtimeKeys.conversation("forbidden-conversation"),
-  };
-  const allowed: Change = {
-    id: crypto.randomUUID(),
-    domain: "messaging",
-    audience: realtimeKeys.conversation("shared-conversation"),
-  };
-  await f.hub.publish(denied);
-  await f.hub.publish(allowed);
-  expect(await first.next()).toEqual({
-    version: 1,
-    type: "change",
-    id: allowed.id,
-    organizationId: "org",
-    domain: "messaging",
-    conversationId: "shared-conversation",
-  });
-  first.socket.close();
-  await first.closed;
-  const second = f.connect("");
-  expect(await second.next()).toEqual({ version: 1, type: "ready" });
-  const profile: Change = {
-    id: crypto.randomUUID(),
-    domain: "profile",
-    audience: realtimeKeys.user("user"),
-  };
-  await f.hub.publish(profile);
-  expect(await second.next()).toEqual({
-    version: 1,
-    type: "change",
-    id: profile.id,
-    organizationId: null,
-    domain: "profile",
-  });
-  const normal = await fetch(new URL("/missing", f.server.url));
-  expect(normal.status).toBe(404);
-  expect(normal.headers.get("x-content-type-options")).toBe("nosniff");
-});
+test.each(["/api/v1", "/api/mobile"])(
+  "%s Bun transport upgrades, reconnects, and filters delivery",
+  async (prefix) => {
+    const f = fixture();
+    const first = f.connect("?organizationId=org", prefix);
+    expect(await first.next()).toEqual({ version: 1, type: "ready" });
+    const denied: Change = {
+      id: crypto.randomUUID(),
+      domain: "messaging",
+      audience: realtimeKeys.conversation("forbidden-conversation"),
+    };
+    const allowed: Change = {
+      id: crypto.randomUUID(),
+      domain: "messaging",
+      audience: realtimeKeys.conversation("shared-conversation"),
+    };
+    await f.hub.publish(denied);
+    await f.hub.publish(allowed);
+    expect(await first.next()).toEqual({
+      version: 1,
+      type: "change",
+      id: allowed.id,
+      organizationId: "org",
+      domain: "messaging",
+      conversationId: "shared-conversation",
+    });
+    first.socket.close();
+    await first.closed;
+    const second = f.connect("", prefix);
+    expect(await second.next()).toEqual({ version: 1, type: "ready" });
+    const profile: Change = {
+      id: crypto.randomUUID(),
+      domain: "profile",
+      audience: realtimeKeys.user("user"),
+    };
+    await f.hub.publish(profile);
+    expect(await second.next()).toEqual({
+      version: 1,
+      type: "change",
+      id: profile.id,
+      organizationId: null,
+      domain: "profile",
+    });
+    const normal = await fetch(new URL("/missing", f.server.url));
+    expect(normal.status).toBe(404);
+    expect(normal.headers.get("x-content-type-options")).toBe("nosniff");
+  },
+);
 
-test("rejects untrusted or missing origins, unauthenticated cookies, and subscription input", async () => {
-  const f = fixture();
-  async function status(path: string, origin: string | null, cookie = "session=test") {
-    const headers = new Headers({ Upgrade: "websocket", Cookie: cookie });
-    if (origin) headers.set("Origin", origin);
-    return (await fetch(new URL(path, f.server.url), { headers })).status;
-  }
-  expect(await status("/api/v1/realtime", "https://evil.example")).toBe(403);
-  expect(await status("/api/v1/realtime", null)).toBe(403);
-  expect(await status("/api/v1/realtime", trustedOrigin, "")).toBe(403);
-  expect(await status("/api/v1/realtime?organizationId=", trustedOrigin)).toBe(400);
-  expect(await status("/api/v1/realtime?room=private", trustedOrigin)).toBe(400);
-  expect(await status("/api/v1/realtime?organizationId=a&organizationId=b", trustedOrigin)).toBe(
-    400,
-  );
-  const invalid = await fetch(new URL("/api/v1/realtime?room=private", f.server.url), {
-    headers: { Upgrade: "websocket", Cookie: "session=test", Origin: trustedOrigin },
-  });
-  expect(await invalid.text()).toBe("");
-});
+test.each(["/api/v1", "/api/mobile"])(
+  "%s rejects untrusted origins, unauthenticated cookies, and subscription input",
+  async (prefix) => {
+    const f = fixture();
+    async function status(path: string, origin: string | null, cookie = "session=test") {
+      const headers = new Headers({ Upgrade: "websocket", Cookie: cookie });
+      if (origin) headers.set("Origin", origin);
+      return (await fetch(new URL(path, f.server.url), { headers })).status;
+    }
+    expect(await status(`${prefix}/realtime`, "https://evil.example")).toBe(403);
+    expect(await status(`${prefix}/realtime`, null)).toBe(403);
+    expect(await status(`${prefix}/realtime`, trustedOrigin, "")).toBe(403);
+    expect(await status(`${prefix}/realtime?organizationId=`, trustedOrigin)).toBe(400);
+    expect(await status(`${prefix}/realtime?room=private`, trustedOrigin)).toBe(400);
+    expect(
+      await status(`${prefix}/realtime?organizationId=a&organizationId=b`, trustedOrigin),
+    ).toBe(400);
+    const invalid = await fetch(new URL(`${prefix}/realtime?room=private`, f.server.url), {
+      headers: { Upgrade: "websocket", Cookie: "session=test", Origin: trustedOrigin },
+    });
+    expect(await invalid.text()).toBe("");
+  },
+);
 
 test("real sockets close on unexpected client data, revocation, oversized payload, and shutdown", async () => {
   const f = fixture();

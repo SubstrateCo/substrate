@@ -1,3 +1,5 @@
+import type { SharingConfirmation as Confirmation } from "@substrate/contracts/messaging/sharing";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { useRef } from "react";
@@ -18,8 +20,6 @@ import { useExpiryTime } from "@/hooks/use-expiry-time";
 import { sharingOptions } from "@/queries/messaging/sharing";
 import { useSharingAction } from "@/queries/messaging/sharing-mutations";
 import { toast } from "sonner";
-
-type Confirmation = { kind: "revoke" | "disconnect" | "remove"; id: string; name: string };
 
 const confirmCopy = {
   disconnect: {

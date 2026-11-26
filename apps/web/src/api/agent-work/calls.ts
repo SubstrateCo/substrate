@@ -4,8 +4,9 @@ import type {
   DecideInvocationInput,
 } from "@substrate/contracts/agent-work";
 import type { AgentCallers, AgentCallerPolicy } from "@substrate/contracts/agents";
+import type { ApiInput } from "@substrate/contracts/http-result";
 
-import { api, type ApiInput } from "../client";
+import { api } from "../client";
 import { readResult } from "../result";
 
 type AgentScope = { organizationId: string; agentId: string };

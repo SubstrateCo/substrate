@@ -11,7 +11,7 @@ function expectMacIconPadding(png: Buffer) {
   expect(png.readUInt8(24)).toBe(8);
   expect(png.readUInt8(25)).toBe(6);
   const chunks: Buffer[] = [];
-  for (let offset = 8; offset < png.length; ) {
+  for (let offset = 8; offset < png.length;) {
     const length = png.readUInt32BE(offset);
     if (png.toString("ascii", offset + 4, offset + 8) === "IDAT")
       chunks.push(png.subarray(offset + 8, offset + 8 + length));
@@ -95,7 +95,7 @@ test("the macOS Dock and bundle icons have transparent outer padding", () => {
   expectMacIconPadding(dock);
   const bundle = readFileSync(new URL(`../${config.build.mac.icon}`, import.meta.url));
   let largest: Buffer | undefined;
-  for (let offset = 8; offset < bundle.length; ) {
+  for (let offset = 8; offset < bundle.length;) {
     const length = bundle.readUInt32BE(offset + 4);
     largest = bundle.subarray(offset + 8, offset + length);
     expectMacIconPadding(largest);

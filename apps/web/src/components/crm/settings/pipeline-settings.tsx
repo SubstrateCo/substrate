@@ -1,3 +1,5 @@
+import type { CrmWrite } from "@substrate/contracts/crm/input";
+
 import { useState } from "react";
 
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
@@ -18,7 +20,9 @@ import { useCrmMutation } from "@/queries/crm/mutations";
 import { ArrowDown, ArrowUp, Plus } from "lucide-react";
 
 type Stage = { id: string; name: string; retired: boolean };
-type DraftStage = { id?: string; name: string; key: string };
+type DraftStage = Extract<CrmWrite, { action: "configureStages" }>["stages"][number] & {
+  key: string;
+};
 
 export function PipelineSettings({ stages, canEdit }: { stages: Stage[]; canEdit: boolean }) {
   const { organizationId } = useWorkspaceScope();

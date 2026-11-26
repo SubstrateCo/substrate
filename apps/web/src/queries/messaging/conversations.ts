@@ -1,10 +1,12 @@
+import type { PickedRecipient } from "@substrate/contracts/people/picker";
+
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 import { invalidateAddedMembers, invalidateDirectMessage } from "./mutations";
 import { addMembers, createConversation } from "@/api/messaging/requests";
 import { agentDirectMessage, type Conversation } from "@/lib/messaging/conversations";
-import { recipientEmails, type PickedRecipient } from "@/lib/people/people-picker";
+import { recipientEmails } from "@/lib/people/people-picker";
 
 type ConversationInput = Omit<
   Parameters<typeof createConversation>[0]["data"],

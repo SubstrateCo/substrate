@@ -10,5 +10,3 @@ const client = createApi();
 export const api = client.api.v1;
 export const desktopApi = client.desktop;
 export type Api = typeof api;
-
-export type ApiInput<T> = { data: T; signal?: AbortSignal };

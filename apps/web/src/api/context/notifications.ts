@@ -4,8 +4,9 @@ import type {
   notificationGroupEventsInput,
   notificationGroupReadInput,
 } from "@substrate/contracts/context/notification-groups";
+import type { ApiInput } from "@substrate/contracts/http-result";
 
-import { api, type ApiInput } from "../client";
+import { api } from "../client";
 import { readResult } from "../result";
 import type { z } from "zod";
 

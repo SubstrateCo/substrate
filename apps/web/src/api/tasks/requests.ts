@@ -1,3 +1,4 @@
+import type { ApiInput } from "@substrate/contracts/http-result";
 import type {
   projectList,
   projectRequest,
@@ -7,7 +8,7 @@ import type {
   TasksWrite,
 } from "@substrate/contracts/tasks/input";
 
-import { api, type ApiInput } from "../client";
+import { api } from "../client";
 import { uploadPictureBytes } from "../files/pictures";
 import { readResult } from "../result";
 import type { z } from "zod";

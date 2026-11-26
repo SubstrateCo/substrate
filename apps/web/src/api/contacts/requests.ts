@@ -1,6 +1,7 @@
 import type { ContactWrite } from "@substrate/contracts/contacts/input";
+import type { ApiInput } from "@substrate/contracts/http-result";
 
-import { api, type ApiInput } from "../client";
+import { api } from "../client";
 import type { RecordListInput } from "../records/input";
 import { readResult } from "../result";
 

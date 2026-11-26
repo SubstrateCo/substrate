@@ -1,3 +1,5 @@
+import type { PickerPerson } from "@substrate/contracts/people/picker";
+
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -16,7 +18,6 @@ import { MessagingWorkspace as MessagingWorkspaceView } from "@/components/messa
 import { AppAvailability } from "@/components/workspace/app-availability";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { messageLink } from "@/lib/navigation/record-links";
-import type { PickerPerson } from "@/lib/people/people-picker";
 import { resourceState } from "@/lib/resource-state";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 import { useDirectMessage } from "@/queries/messaging/conversations";

@@ -1,0 +1,39 @@
+{
+  "expo": {
+    "name": "Substrate",
+    "slug": "substrate",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "scheme": "substrate-mobile",
+    "userInterfaceStyle": "automatic",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.substrate.mobile"
+    },
+    "android": {
+      "package": "com.substrate.mobile"
+    },
+    "web": {
+      "bundler": "metro",
+      "output": "single"
+    },
+    "plugins": [
+      "expo-router",
+      "expo-splash-screen",
+      "expo-status-bar",
+      "expo-secure-store",
+      "@apollohg/react-native-rich-text-editor",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose images to share in your workspace and set project pictures.",
+          "cameraPermission": false,
+          "microphonePermission": false
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    }
+  }
+}

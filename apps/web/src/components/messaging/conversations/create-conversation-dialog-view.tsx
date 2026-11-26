@@ -1,3 +1,6 @@
+import type { ConversationDraft } from "@substrate/contracts/messaging/drafts";
+import type { PickedRecipient, PickerPerson } from "@substrate/contracts/people/picker";
+
 import { revalidateLogic, useForm, useSelector } from "@tanstack/react-form";
 
 import { useState } from "react";
@@ -17,18 +20,7 @@ import {
   FieldLabel,
 } from "@/components/ui/field";
 import type { Conversation } from "@/lib/messaging/conversations";
-import {
-  invitedRecipients,
-  type PickedRecipient,
-  type PickerPerson,
-} from "@/lib/people/people-picker";
-
-export type ConversationDraft = {
-  name: string;
-  recipients: PickedRecipient[];
-  isPrivate: boolean;
-  shareHistory: boolean;
-};
+import { invitedRecipients } from "@/lib/people/people-picker";
 
 const copy = {
   channel: {

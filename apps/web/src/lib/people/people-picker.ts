@@ -1,13 +1,6 @@
+import type { PickedRecipient, PickerPerson } from "@substrate/contracts/people/picker";
+
 import { z } from "zod";
-
-/** A person the viewer may choose, such as a member of the current workspace. */
-export type PickerPerson = { id: string; name: string; email: string; image?: string | null };
-
-/**
- * A chosen recipient. `person` is set when the email address belongs to one of the offered
- * people; without it, the address is someone to invite.
- */
-export type PickedRecipient = { email: string; person?: PickerPerson };
 
 const emailSchema = z.email().max(320);
 

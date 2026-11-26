@@ -38,6 +38,17 @@ export function createPictureRoutes(service: PictureService, scopes: Scopes) {
         );
       },
     )
+    .get("/:purpose/:owner/bytes", v("param", pictureOwnerParam), scopes.user(), async (c) => {
+      const { purpose, owner } = c.req.valid("param");
+      const result = await service.bytes(c.var.scope, purpose, owner);
+      if (!result.success) return respond(c, result);
+      c.header("Cache-Control", "private, no-store");
+      c.header("Vary", "Cookie");
+      c.header("Content-Type", "image/webp");
+      c.header("Content-Disposition", "inline");
+      c.header("X-Content-Type-Options", "nosniff");
+      return c.body(new Uint8Array(result.data.bytes));
+    })
     .get("/:purpose/:owner", v("param", pictureOwnerParam), scopes.user(), async (c) => {
       const { purpose, owner } = c.req.valid("param");
       const result = await service.content(c.var.scope, purpose, owner);

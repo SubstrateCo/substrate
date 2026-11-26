@@ -1,0 +1,13 @@
+{
+  "name": "@substrate/design-tokens",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./mobile": "./src/mobile/index.ts",
+    "./nativewind.css": "./nativewind.css"
+  },
+  "scripts": {
+    "typecheck": "bun check"
+  }
+}

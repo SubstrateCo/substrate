@@ -6,7 +6,9 @@ test("a display name wins, trimmed", () => {
 });
 
 test("a display name equal to the email counts as missing", () => {
-  expect(contactNameFromAttendee("tobias@fernhollow.test", "Tobias@Fernhollow.test")).toBe("Tobias");
+  expect(contactNameFromAttendee("tobias@fernhollow.test", "Tobias@Fernhollow.test")).toBe(
+    "Tobias",
+  );
   expect(contactNameFromAttendee("tobias@fernhollow.test", "   ")).toBe("Tobias");
 });
 

@@ -1,4 +1,5 @@
 import { ServiceError } from "../../shared/service-result";
+import { ObjectNotFoundError } from "../../storage/types";
 import { createPictureService } from "./pictures";
 import { expect, test } from "bun:test";
 import sharp from "sharp";
@@ -22,6 +23,11 @@ async function fixture() {
       canRead: async () => allowed,
     },
     storage: {
+      read: async (key) => {
+        const bytes = objects.get(key);
+        if (!bytes) throw new ObjectNotFoundError();
+        return bytes;
+      },
       put: async (key, bytes) => {
         objects.set(key, bytes);
       },
@@ -107,6 +113,39 @@ test("picture reads require access before issuing a download URL", async () => {
   expect(!denied.success && denied.error.code).toBe("NOT_FOUND");
 });
 
+test("native bytes use the same access check and return neither denied nor missing objects", async () => {
+  const f = await fixture();
+  await f.service.upload(scope, "avatar", await f.image("red"));
+  const result = await f.service.bytes(scope, "avatar", "alice");
+  const stored = f.objects.get("pictures/avatar/alice.webp");
+  if (!result.success || !stored) throw new Error("Expected an uploaded private picture.");
+  expect(result.data.bytes).toEqual(stored);
+  const missing = await f.service.bytes(scope, "avatar", "missing");
+  expect(!missing.success && missing.error.code).toBe("NOT_FOUND");
+  f.deny();
+  const denied = await f.service.bytes(scope, "avatar", "alice");
+  expect(!denied.success && denied.error.code).toBe("NOT_FOUND");
+});
+
+test("denied native picture reads never reach object storage", async () => {
+  let reads = 0;
+  const service = createPictureService({
+    repository: { requirePictureAccess: async () => {}, canReadPicture: async () => false },
+    projects: { requireEdit: async () => {}, canRead: async () => false },
+    storage: {
+      put: async () => {},
+      signDownload: async () => "",
+      read: async () => {
+        reads++;
+        return new Uint8Array([1]);
+      },
+    },
+  });
+  const denied = await service.bytes(scope, "project-icon", "foreign-project");
+  expect(!denied.success && denied.error.code).toBe("NOT_FOUND");
+  expect(reads).toBe(0);
+});
+
 test("project icons reuse the picture upload pipeline with a project-specific object key", async () => {
   const f = await fixture();
   const id = crypto.randomUUID();
@@ -131,7 +170,11 @@ test("project icons check project access and other pictures check workspace acce
       canReadPicture: async () => false,
     },
     projects: { requireEdit: async () => {}, canRead: async (_scope, id) => id === "project" },
-    storage: { put: async () => {}, signDownload: async (key) => `https://s3.test/${key}` },
+    storage: {
+      put: async () => {},
+      signDownload: async (key) => `https://s3.test/${key}`,
+      read: async () => new Uint8Array(),
+    },
   });
   expect((await service.content(scope, "project-icon", "project")).success).toBe(true);
   expect((await service.content(scope, "organization-logo", "project")).success).toBe(false);

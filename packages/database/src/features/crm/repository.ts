@@ -10,6 +10,7 @@ import { crmManagementRepository } from "./management";
 import { assignOwner } from "./ownership";
 import { crmPipelineRepository } from "./pipeline";
 import { crmRecordAccess } from "./record-access";
+import { crmRecordLinks } from "./record-links";
 import { report, reportDeals } from "./reporting/reports";
 import { crmAccounts, crmDeals } from "./schema";
 import { settingsRepository } from "./settings";
@@ -25,6 +26,7 @@ export function crmRepository(context: RepositoryContext) {
     ...crmDealsRepository(context),
     ...crmPipelineRepository(context),
     ...crmManagementRepository(context),
+    ...crmRecordLinks(context),
     home: (today: string) => homeDeals(context, today),
     activity: (id: string, options?: Parameters<typeof listCrmActivity>[2]) =>
       listCrmActivity(context, id, options),

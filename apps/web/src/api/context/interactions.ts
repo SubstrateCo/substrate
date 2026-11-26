@@ -4,8 +4,9 @@ import type {
   InteractionWrite,
   InteractionDirectory,
 } from "@substrate/contracts/context/interactions";
+import type { ApiInput } from "@substrate/contracts/http-result";
 
-import { api, type ApiInput } from "../client";
+import { api } from "../client";
 import { readResult } from "../result";
 
 export const listInteractions = ({

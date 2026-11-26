@@ -2,34 +2,12 @@ import { failure, publicFailure } from "@substrate/contracts/result";
 
 import type { Auth } from "./auth/server";
 import { createDesktopRoutes } from "./desktop/routes";
+import { createProductRoutes } from "./product-routes";
 import type { Services } from "./services";
 import { respond } from "./shared/http";
 import { trustedOrigin } from "./shared/origin";
 import type { Scopes } from "./shared/scope";
-import { createAgentWorkRoutes } from "./v1/agent-work/routes";
-import { createCallerRoutes } from "./v1/agents/callers-routes";
-import { createAgentsRoutes } from "./v1/agents/routes";
-import { createCalendarRoutes } from "./v1/calendar/routes";
-import { createContactsExportRoutes } from "./v1/contacts/export-routes";
-import { createContactsRoutes } from "./v1/contacts/routes";
-import { createContactInteractionsRoutes } from "./v1/context/interactions-routes";
-import { createContextRoutes } from "./v1/context/routes";
-import { createCrmExportRoutes } from "./v1/crm/export-routes";
-import { createCrmFromMessageRoutes } from "./v1/crm/from-message-routes";
-import { createCrmManagementRoutes } from "./v1/crm/management-routes";
-import { createCrmRoutes } from "./v1/crm/routes";
-import { createAttachmentRoutes } from "./v1/files/attachment-routes";
-import { createPictureRoutes } from "./v1/files/picture-routes";
-import { createFilesRoutes } from "./v1/files/routes";
-import { createIntegrationRoutes } from "./v1/integrations/routes";
-import { createMcpRoutes } from "./v1/mcp/routes";
-import { createMeetingRoutes } from "./v1/meetings/routes";
-import { createReadRoutes } from "./v1/messaging/read-routes";
-import { createMessagingRoutes } from "./v1/messaging/routes";
-import { createSharingRoutes } from "./v1/messaging/sharing-routes";
-import { createOrganizationRoutes } from "./v1/organizations/routes";
 import type { createRealtimeRoutes } from "./v1/realtime/routes";
-import { createTasksRoutes } from "./v1/tasks/routes";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { except } from "hono/combine";
@@ -50,7 +28,11 @@ export function createApp({ auth, services, scopes, trustedOrigins, realtime }: 
   const app = new Hono();
   // Upgrade handlers must run before response-mutating middleware. Hono owns routing;
   // Bun only receives its websocket callbacks in main.ts.
-  if (realtime) app.route("/", realtime.app);
+  if (realtime) {
+    app.route("/api/v1", realtime.app);
+    app.route("/api/mobile", realtime.app);
+  }
+  const products = createProductRoutes(services, scopes);
   const wired = app
     .use(secureHeaders())
     // Liveness only: reports that this process serves HTTP, without checking dependencies.
@@ -64,14 +46,19 @@ export function createApp({ auth, services, scopes, trustedOrigins, realtime }: 
       cors({
         origin: (origin) => (trustedOrigins.includes(origin) ? origin : undefined),
         credentials: true,
-        allowMethods: ["GET", "POST", "DELETE", "OPTIONS"],
+        allowMethods: ["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
       }),
     )
     .use(
       "/api/*",
       // These uploads set their own limits on the route.
       except(
-        ["/api/v1/files/pictures/:purpose", "/api/v1/meetings/import"],
+        [
+          "/api/v1/files/pictures/:purpose",
+          "/api/v1/meetings/import",
+          "/api/mobile/files/pictures/:purpose",
+          "/api/mobile/meetings/import",
+        ],
         bodyLimit({
           maxSize: 1024 * 1024,
           onError: (c) =>
@@ -84,37 +71,11 @@ export function createApp({ auth, services, scopes, trustedOrigins, realtime }: 
       await next();
     })
     .use("/api/v1/*", trustedOrigin(trustedOrigins))
+    .use("/api/mobile/*", trustedOrigin(trustedOrigins))
     .on(["GET", "POST"], "/api/auth/*", (c) => auth.handler(c.req.raw))
     .route("/desktop", createDesktopRoutes(services.desktop))
-    .route("/api/v1/organizations", createOrganizationRoutes(services.organizations, scopes))
-    .route("/api/v1/files/pictures", createPictureRoutes(services.pictures, scopes))
-    .route("/api/v1/files/attachments", createAttachmentRoutes(services.attachments, scopes))
-    .route("/api/v1/files", createFilesRoutes(services.files, scopes))
-    .route("/api/v1/tasks", createTasksRoutes(services.tasks, scopes))
-    .route("/api/v1/crm", createCrmExportRoutes(services.crm, scopes))
-    .route("/api/v1/crm", createCrmManagementRoutes(services.crm, scopes))
-    .route("/api/v1/crm", createCrmRoutes(services.crm, scopes))
-    .route("/api/v1/contacts", createContactsExportRoutes(services.contacts, scopes))
-    .route("/api/v1/contacts", createContactsRoutes(services.contacts, scopes))
-    .route(
-      "/api/v1/context/interactions",
-      createContactInteractionsRoutes(services.contactInteractions, scopes),
-    )
-    .route("/api/v1/crm", createCrmFromMessageRoutes(services.crmFromMessage, scopes))
-    .route("/api/v1/calendar", createCalendarRoutes(services.calendar, scopes))
-    .route("/api/v1/meetings", createMeetingRoutes(services.meetings, scopes))
-    .route("/api/v1/integrations", createIntegrationRoutes(services.integrations, scopes))
-    .route("/api/v1/messaging", createMessagingRoutes(services.messaging, scopes))
-    .route("/api/v1/messaging", createReadRoutes(services.messagingRead, scopes))
-    .route("/api/v1/messaging/sharing", createSharingRoutes(services.sharing, scopes))
-    .route("/api/v1/mcp", createMcpRoutes(services.mcp, scopes))
-    .route("/api/v1/context", createContextRoutes(services.context, scopes))
-    .route("/api/v1/agents", createAgentsRoutes(services.agents, scopes))
-    .route("/api/v1/agents", createCallerRoutes(services.callers, scopes))
-    .route(
-      "/api/v1/agent-work",
-      createAgentWorkRoutes(services.agentWork, services.devices, scopes),
-    )
+    .route("/api/v1", products)
+    .route("/api/mobile", products)
     .notFound((c) => respond(c, publicFailure("NOT_FOUND", "Endpoint not found.")))
     .onError((error, c) => {
       if (error instanceof HTTPException && error.status === 400) {

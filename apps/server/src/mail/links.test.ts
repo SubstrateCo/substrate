@@ -2,6 +2,15 @@ import { frontendAuthLink, invitationLink } from "./links";
 import { describe, expect, test } from "bun:test";
 
 describe("browser auth email links", () => {
+  test("native verification and reset credentials are validated on the API before app redirect", () => {
+    for (const path of [
+      "/api/auth/verify-email?token=verify",
+      "/api/auth/reset-password/reset-token?x=1",
+    ]) {
+      const source = `https://api.example.com${path}&callbackURL=${encodeURIComponent("substrate-mobile://reset-password")}`;
+      expect(frontendAuthLink(source, "https://app.example.com")).toBe(source);
+    }
+  });
   test("keeps verification credentials in the browser flow and preserves the desktop authorization query", () => {
     const callback = "/login?client_id=electron&state=state&code_challenge=challenge";
     const link = new URL(
@@ -54,4 +63,14 @@ test("desktop workspace invitations still use the public handoff without forward
   expect(invitationLink("invite-1", "https://app.example.com", { baseURL: options.baseURL })).toBe(
     "https://app.example.com/accept-invitation/invite-1",
   );
+});
+
+test("mobile workspace invitations open the app without changing browser invitations", () => {
+  const link = invitationLink("invite-1", "https://app.example.com", {
+    baseURL: "https://api.example.com",
+    request: new Request("https://api.example.com/api/auth/organization/invite-member", {
+      headers: { Origin: "substrate-mobile://" },
+    }),
+  });
+  expect(link).toBe("substrate-mobile://accept-invitation/invite-1");
 });

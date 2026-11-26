@@ -1,6 +1,7 @@
+import type { ApiInput } from "@substrate/contracts/http-result";
 import type { conversationReadInput } from "@substrate/contracts/messaging/read-state";
 
-import { api, type ApiInput } from "../client";
+import { api } from "../client";
 import { readResult } from "../result";
 import type { z } from "zod";
 

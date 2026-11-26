@@ -1,3 +1,4 @@
+import type { ApiInput } from "@substrate/contracts/http-result";
 import type {
   addAgentInput,
   conversationInput,
@@ -18,7 +19,7 @@ import type {
   workspaceInput,
 } from "@substrate/contracts/messaging/input";
 
-import { api, type ApiInput } from "../client";
+import { api } from "../client";
 import { readResult } from "../result";
 import type { z } from "zod";
 

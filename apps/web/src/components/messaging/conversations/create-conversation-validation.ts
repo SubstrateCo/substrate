@@ -1,7 +1,7 @@
 import { conversationInput, messagingLimits } from "@substrate/contracts/messaging/input";
+import type { PickedRecipient } from "@substrate/contracts/people/picker";
 
 import type { Conversation } from "@/lib/messaging/conversations";
-import type { PickedRecipient } from "@/lib/people/people-picker";
 import { z } from "zod";
 
 export function createConversationDraftSchema(kind: Conversation["kind"]) {

@@ -8,8 +8,11 @@ import type { EntityAccess, RepositoryContext } from "../../../core/repository-c
 import { AccessDeniedError } from "../../../errors";
 import { presentInteraction } from "../../crm/actor-views";
 import { crmAccounts, crmAffiliations, crmContactProfiles } from "../../crm/schema";
+import { visibleConversations } from "../../messaging/access";
+import { messagingConversations, messagingMessages } from "../../messaging/schema";
+import { messageEntityReferences } from "../schema";
 import { requireReadableTargetPage } from "../target-page";
-import { and, eq } from "drizzle-orm";
+import { and, eq, isNull } from "drizzle-orm";
 
 export type InteractionConnection = {
   entityId: string;
@@ -47,6 +50,43 @@ async function linkedRecords(
   });
 }
 
+async function readableSource(context: RepositoryContext, entityId: string) {
+  const { db, scope } = context;
+  if (!scope.userId) return null;
+  const [source] = await db
+    .select({
+      conversationId: messageEntityReferences.conversationId,
+      messageId: messageEntityReferences.messageId,
+    })
+    .from(messageEntityReferences)
+    .innerJoin(
+      messagingMessages,
+      and(
+        eq(messagingMessages.id, messageEntityReferences.messageId),
+        eq(messagingMessages.conversationId, messageEntityReferences.conversationId),
+      ),
+    )
+    .innerJoin(
+      messagingConversations,
+      and(
+        eq(messagingConversations.id, messageEntityReferences.conversationId),
+        eq(messagingConversations.organizationId, messageEntityReferences.organizationId),
+      ),
+    )
+    .where(
+      and(
+        eq(messageEntityReferences.organizationId, scope.organizationId),
+        eq(messageEntityReferences.entityId, entityId),
+        eq(messageEntityReferences.entityType, "contact_interaction"),
+        eq(messageEntityReferences.purpose, "source"),
+        isNull(messagingMessages.deletedAt),
+        visibleConversations(db, { userId: scope.userId, organizationId: scope.organizationId }),
+      ),
+    )
+    .limit(1);
+  return source ?? null;
+}
+
 export async function interactionRecordDetail(context: RepositoryContext, entityId: string) {
   const { interaction: record, contact: access } = await requireInteraction(context, entityId);
   const [contact] = await context.db
@@ -73,6 +113,7 @@ export async function interactionRecordDetail(context: RepositoryContext, entity
     level: access.level,
     archived: !!profile?.archivedAt,
     links: await linkedRecords(context, entityId),
+    source: await readableSource(context, entityId),
   };
 }
 

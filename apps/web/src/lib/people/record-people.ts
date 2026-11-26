@@ -1,11 +1,5 @@
-import type { PickerPerson } from "./people-picker";
-
-/** Active actors from an authoritative, current-organization server response. */
-type RecordActor = {
-  entityId: string;
-  userId: string | null;
-  type: "human" | "agent";
-};
+import type { RecordActor } from "@substrate/contracts/crm/people";
+import type { PickerPerson } from "@substrate/contracts/people/picker";
 
 export function recordPeople(actors: readonly RecordActor[], members: readonly PickerPerson[]) {
   const people = new Map(members.map((person) => [person.id, person]));

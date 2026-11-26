@@ -1,6 +1,8 @@
+import { emojiCategories, type Emoji } from "@substrate/contracts/messaging/emoji";
+
 import { useRef, useState, type ReactNode } from "react";
 
-import { emojiCategories, recentEmojis, rememberEmoji, type Emoji } from "./emoji-data";
+import { recentEmojis, rememberEmoji } from "./emoji-data";
 import { Button } from "@/components/ui/button";
 import { Heading } from "@/components/ui/heading";
 import { Input } from "@/components/ui/input";

@@ -1,3 +1,4 @@
+import type { ApiInput } from "@substrate/contracts/http-result";
 import type { conversationTargetInput, workspaceInput } from "@substrate/contracts/messaging/input";
 import type {
   sharingAcceptInput,
@@ -8,7 +9,7 @@ import type {
   sharingRemoveInput,
 } from "@substrate/contracts/messaging/sharing";
 
-import { api, type ApiInput } from "@/api/client";
+import { api } from "@/api/client";
 import { readResult } from "@/api/result";
 import type { z } from "zod";
 

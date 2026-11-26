@@ -18,6 +18,7 @@
     "@aws-sdk/s3-request-presigner": "^3.922.0",
     "@better-auth/drizzle-adapter": "catalog:auth",
     "@better-auth/electron": "catalog:auth",
+    "@better-auth/expo": "catalog:auth",
     "@hono/bun": "^1.0.1",
     "@hono/zod-validator": "^0.7.6",
     "@substrate/contracts": "workspace:*",

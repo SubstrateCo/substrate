@@ -1,6 +1,7 @@
 import type { AppId } from "@substrate/contracts/apps";
+import type { ApiInput } from "@substrate/contracts/http-result";
 
-import { api, type ApiInput } from "../client";
+import { api } from "../client";
 import { readResult } from "../result";
 
 export const getOrganizationApps = ({ data, signal }: ApiInput<{ organizationId: string }>) =>

@@ -40,6 +40,8 @@
   --color-control-border: var(--control-border);
   --color-border: var(--border);
   --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-overlay: var(--overlay);
   --color-accent-foreground: var(--accent-foreground);
   --color-accent: var(--accent);
   --color-muted-foreground: var(--muted-foreground);
@@ -110,6 +112,8 @@
   --accent: oklch(0.95 0.014 255);
   --accent-foreground: oklch(0.42 0.12 255);
   --destructive: oklch(0.52 0.22 27.325);
+  --destructive-foreground: oklch(1 0 0);
+  --overlay: oklch(0 0 0 / 40%);
   --border: oklch(0.9 0.004 255);
   /* Field boundary: clear against the page. Outline buttons use the quieter control border. */
   --input: oklch(0.64 0.006 255);
@@ -174,6 +178,8 @@
   --accent: oklch(0.3 0.025 255);
   --accent-foreground: oklch(0.96 0.01 255);
   --destructive: oklch(0.704 0.191 22.216);
+  --destructive-foreground: oklch(1 0 0);
+  --overlay: oklch(0 0 0 / 40%);
   --border: oklch(1 0 0 / 9%);
   --input: oklch(0.52 0.006 255);
   --control-border: oklch(0.4 0.005 255);

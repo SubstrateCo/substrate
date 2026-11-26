@@ -7,8 +7,9 @@ import type {
   ownerScopeInput,
   respondRequestInput,
 } from "@substrate/contracts/agent-work";
+import type { ApiInput } from "@substrate/contracts/http-result";
 
-import { api, type ApiInput } from "../client";
+import { api } from "../client";
 import { readResult } from "../result";
 import type { z } from "zod";
 

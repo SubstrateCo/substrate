@@ -1,7 +1,8 @@
+import type { PickerPerson } from "@substrate/contracts/people/picker";
+
 import { queryOptions } from "@tanstack/react-query";
 
 import { getOrganizationPeople } from "@/api/organizations/requests";
-import type { PickerPerson } from "@/lib/people/people-picker";
 import { queryKeys } from "@/queries/keys";
 
 /** Members of the workspace as people to choose, sorted by name. Only members may read them. */

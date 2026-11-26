@@ -4,7 +4,7 @@ import type { StorageScope } from "@substrate/database/storage";
 
 import { ServiceError, serviceResult } from "../../shared/service-result";
 import { requireWorkspace } from "../../shared/workspace";
-import type { ObjectStorage } from "../../storage/types";
+import { ObjectNotFoundError, type ObjectStorage } from "../../storage/types";
 import { normalizePicture } from "./image";
 
 interface PictureDependencies {
@@ -23,7 +23,7 @@ interface PictureDependencies {
     requireEdit(scope: StorageScope, id: string): Promise<void>;
     canRead(scope: StorageScope, id: string): Promise<boolean>;
   };
-  storage: Pick<ObjectStorage, "put" | "signDownload">;
+  storage: Pick<ObjectStorage, "put" | "signDownload" | "read">;
 }
 
 const objectKey = (purpose: PictureKind, owner: string) =>
@@ -71,6 +71,19 @@ export function createPictureService(deps: PictureDependencies) {
         return {
           url: await deps.storage.signDownload(objectKey(purpose, owner), { kind: "inline" }),
         };
+      });
+    },
+    bytes(scope: StorageScope, purpose: PictureKind, owner: string) {
+      return serviceResult(async () => {
+        if (!(await canRead(scope, purpose, owner)))
+          throw new ServiceError("NOT_FOUND", "Picture not found or access denied.");
+        try {
+          return { bytes: await deps.storage.read(objectKey(purpose, owner), MAX_FILE_BYTES) };
+        } catch (error) {
+          if (error instanceof ObjectNotFoundError)
+            throw new ServiceError("NOT_FOUND", "Picture not found or access denied.");
+          throw error;
+        }
       });
     },
   };

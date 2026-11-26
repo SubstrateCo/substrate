@@ -1,3 +1,5 @@
+import type { PickedRecipient, PickerPerson } from "@substrate/contracts/people/picker";
+
 import { useState } from "react";
 
 import { ShareHistoryField } from "./share-history-field";
@@ -5,11 +7,7 @@ import { useUnfinishedRecipient } from "./use-unfinished-recipient";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { PeoplePicker } from "@/components/people/people-picker";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
-import {
-  invitedRecipients,
-  type PickedRecipient,
-  type PickerPerson,
-} from "@/lib/people/people-picker";
+import { invitedRecipients } from "@/lib/people/people-picker";
 
 export function AddMembersDialog({
   name,

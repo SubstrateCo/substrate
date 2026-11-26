@@ -1,0 +1,19 @@
+{
+  "name": "@substrate/design-token-tooling",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate": "bun src/cli.ts",
+    "check": "bun src/cli.ts --check",
+    "typecheck": "bun check",
+    "test": "bun test src && bun src/cli.ts --check"
+  },
+  "dependencies": {
+    "lightningcss": "1.33.0",
+    "oxfmt": "^0.79.0",
+    "tailwindcss": "4.3.4"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:tooling"
+  }
+}

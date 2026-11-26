@@ -89,6 +89,22 @@ export function createFileService(deps: FileServiceDependencies) {
         return { url };
       });
     },
+    bytes(scope: StorageScope, id: string) {
+      return serviceResult(async () => {
+        const file = await repository.getReadable(scope, id);
+        if (!file) throw new ServiceError("NOT_FOUND", "File not found or access denied.");
+        // Only normalized managed pictures may render inline through this endpoint.
+        if (file.purpose === "file")
+          throw new ServiceError("NOT_FOUND", "Picture not found or access denied.");
+        try {
+          return { bytes: await storage.read(file.objectKey, MAX_FILE_BYTES) };
+        } catch (error) {
+          if (error instanceof ObjectNotFoundError)
+            throw new ServiceError("NOT_FOUND", "Picture not found or access denied.");
+          throw error;
+        }
+      });
+    },
     deleteFile(scope: StorageScope, id: string) {
       return serviceResult(async () => {
         await repository.deleteFile(scope, id);

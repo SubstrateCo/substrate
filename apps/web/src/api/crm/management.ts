@@ -1,4 +1,6 @@
-import { api, type ApiInput } from "../client";
+import type { ApiInput } from "@substrate/contracts/http-result";
+
+import { api } from "../client";
 import { readResult } from "../result";
 
 export const getCrmPeople = ({ data, signal }: ApiInput<{ organizationId: string }>) =>

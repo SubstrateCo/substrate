@@ -21,7 +21,14 @@
       },
       {
         "groupName": "react-packages",
-        "elementNamePattern": ["react", "react-dom", "react/**", "react-dom/**"]
+        "elementNamePattern": [
+          "react",
+          "react-dom",
+          "react-native",
+          "react/**",
+          "react-dom/**",
+          "react-native/**"
+        ]
       }
     ],
     "groups": [

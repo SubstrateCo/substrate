@@ -37,6 +37,7 @@ import type { createAuthPublisher } from "./realtime";
 import { normalizeUserName } from "./user-name";
 import { drizzleAdapter } from "@better-auth/drizzle-adapter";
 import { electron } from "@better-auth/electron";
+import { expo } from "@better-auth/expo";
 import { betterAuth } from "better-auth";
 import { APIError, createAuthMiddleware, getSessionFromCtx } from "better-auth/api";
 import { organization } from "better-auth/plugins";
@@ -214,6 +215,12 @@ export function createAuth(deps: {
     },
     plugins: [
       electron(),
+      {
+        ...expo({ disableOriginOverride: true }),
+        // The default initializer trusts every Expo Go origin in development.
+        // Installed mobile clients use our one explicit scheme in every environment.
+        init: undefined,
+      },
       organization({
         ac,
         roles,

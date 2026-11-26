@@ -1,6 +1,7 @@
 import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-access";
 import type { CreateUploadInput } from "@substrate/contracts/files/input";
 import type { PictureKind } from "@substrate/contracts/files/pictures";
+import type { StorageScope } from "@substrate/contracts/files/scope";
 
 import { AccessDeniedError, ConflictError, violatedConstraint } from "../../errors";
 import { userAgents } from "../actors/user-agents.schema";
@@ -21,12 +22,6 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
-
-// Trusted server-only identity scope. Personal files deliberately do not require an actor.
-export interface StorageScope {
-  userId: string;
-  organizationId: string | null;
-}
 
 async function requireScope(
   db: DatabaseExecutor,

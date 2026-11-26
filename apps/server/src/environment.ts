@@ -158,6 +158,7 @@ const variables = z
       webURL: env.SUBSTRATE_WEB_URL,
       // The desktop scheme serves Better Auth's Electron flow; the desktop origin is the bundled renderer.
       trustedOrigins: [
+        "substrate-mobile://",
         `${desktopScheme}:/`,
         ...new Set([env.SUBSTRATE_WEB_URL, desktopOrigin, ...env.FRONTEND_ORIGINS]),
       ],

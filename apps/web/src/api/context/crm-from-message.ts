@@ -1,6 +1,7 @@
 import type { CrmFromMessageInput } from "@substrate/contracts/crm/from-message";
+import type { ApiInput } from "@substrate/contracts/http-result";
 
-import { api, type ApiInput } from "../client";
+import { api } from "../client";
 import { readResult } from "../result";
 
 export const createCrmFromMessage = ({ data, signal }: ApiInput<CrmFromMessageInput>) =>

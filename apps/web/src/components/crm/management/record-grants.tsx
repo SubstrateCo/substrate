@@ -1,8 +1,9 @@
+import type { PickerPerson } from "@substrate/contracts/people/picker";
+
 import { accessLevelLabels, type AccessLevel } from "./access-levels";
 import { recordRows } from "@/components/layout/record-section";
 import { AccessRow } from "@/components/people/access-row";
 import { FieldDescription } from "@/components/ui/field";
-import type { PickerPerson } from "@/lib/people/people-picker";
 
 export function RecordGrants({
   grants,

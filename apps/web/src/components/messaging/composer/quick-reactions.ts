@@ -1,6 +1,8 @@
+import type { Emoji } from "@substrate/contracts/messaging/emoji";
+
 import { useSyncExternalStore } from "react";
 
-import { findEmoji, type Emoji } from "./emoji-data";
+import { findEmoji } from "./emoji-data";
 import { z } from "zod";
 
 /** Quick reactions are a device preference, like the theme, so they stay in localStorage. */

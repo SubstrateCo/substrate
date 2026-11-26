@@ -59,6 +59,11 @@ test("project icon uploads and downloads enforce live project permissions, works
   const readable = await member.get(url);
   expect(readable.ok()).toBe(true);
   expect(readable.headers()["content-type"]).toMatch(/^image\//);
+  const nativeURL = `/api/mobile/files/pictures/project-icon/${project.id}/bytes`;
+  const native = await member.get(nativeURL, { maxRedirects: 0 });
+  expect(native.status()).toBe(200);
+  expect(native.headers()["location"]).toBeUndefined();
+  expect(native.headers()["content-type"]).toBe("image/webp");
   expect((await upload(member)).status()).toBe(404);
   expect(
     (
@@ -95,6 +100,7 @@ test("project icon uploads and downloads enforce live project permissions, works
     }),
   );
   expect((await member.get(replacement.url, { maxRedirects: 0 })).status()).toBe(404);
+  expect((await member.get(nativeURL, { maxRedirects: 0 })).status()).toBe(404);
   expect((await upload(member)).status()).toBe(404);
   await result(
     await tasks.write(owner, {

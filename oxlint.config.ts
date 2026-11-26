@@ -5,6 +5,7 @@ import contracts from "./packages/contracts/package.json" with { type: "json" };
 import database from "./packages/database/package.json" with { type: "json" };
 import { architectureConfig } from "./tooling/architecture-lint/src/config.ts";
 import { designConfig } from "./tooling/design-lint/src/config.ts";
+import { mobileConfig } from "./tooling/mobile-lint/src/config.ts";
 import { configs } from "ai-deslop";
 import { defineConfig } from "oxlint";
 
@@ -15,7 +16,7 @@ const tanstackRecommendedRules = Object.fromEntries(
 );
 
 export default defineConfig({
-  ignorePatterns: [".opencode/**", "tooling/design-lint/**"],
+  ignorePatterns: [".opencode/**", "tooling/design-lint/**", "tooling/mobile-lint/**"],
   plugins: ["unicorn", "typescript", "oxc", "react"],
   jsPlugins: [
     "ai-deslop",
@@ -24,6 +25,7 @@ export default defineConfig({
     "@tanstack/eslint-plugin-router",
     ...designConfig.jsPlugins,
     ...architectureConfig.jsPlugins,
+    ...mobileConfig.jsPlugins,
   ],
   options: configs.recommended.options,
   settings: designConfig.settings,
@@ -70,6 +72,11 @@ export default defineConfig({
     ...architectureConfig.rules,
   },
   overrides: [
+    {
+      // Expo and Babel load these build-time configurations as CommonJS.
+      files: ["apps/mobile/metro.config.js", "apps/mobile/babel.config.js"],
+      rules: { "typescript/no-require-imports": "off" },
+    },
     {
       files: ["apps/web/**"],
       rules: designConfig.rules,
@@ -185,5 +192,6 @@ export default defineConfig({
     },
     ...designConfig.overrides,
     ...architectureConfig.overrides,
+    ...mobileConfig.overrides,
   ],
 });

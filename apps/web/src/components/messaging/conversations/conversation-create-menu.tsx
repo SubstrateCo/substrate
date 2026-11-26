@@ -1,3 +1,5 @@
+import type { PickerPerson } from "@substrate/contracts/people/picker";
+
 import { useRef, useState, type ReactNode } from "react";
 
 import { useWorkspaceSearch } from "@/components/context/search/workspace-search-request";
@@ -13,7 +15,6 @@ import {
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { Conversation } from "@/lib/messaging/conversations";
-import type { PickerPerson } from "@/lib/people/people-picker";
 import { Compass, MessageCircle, Plus, Users } from "lucide-react";
 
 export type DirectMessageAgent = { id: string; name: string; image: string | null };

@@ -101,6 +101,21 @@ function fixture() {
   };
 }
 
+test("legacy picture bytes require a readable normalized picture, never a generic file", async () => {
+  const f = fixture();
+  await f.service.completeUpload(f.scope, f.id);
+  const generic = await f.service.bytes(f.scope, f.id);
+  expect(!generic.success && generic.error.code).toBe("NOT_FOUND");
+  const readable = await f.repository.getReadable(f.scope, f.id);
+  if (!readable) throw new Error("Expected completed file.");
+  readable.purpose = "avatar";
+  const picture = await f.service.bytes(f.scope, f.id);
+  expect(picture.success && new TextDecoder().decode(picture.data.bytes)).toBe("hello");
+  await f.repository.deleteFile(f.scope, f.id);
+  const deleted = await f.service.bytes(f.scope, f.id);
+  expect(!deleted.success && deleted.error.code).toBe("NOT_FOUND");
+});
+
 describe("file workflow", () => {
   test("cleanup acknowledges each successful storage batch with one database write", async () => {
     const f = fixture();

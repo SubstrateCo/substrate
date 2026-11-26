@@ -16,7 +16,7 @@ export const buttonVariants = cva(
           "rounded-full bg-accent text-xs font-semibold text-accent-foreground hover:bg-accent/80",
         // Solid red. Only for the confirm button of a destructive ConfirmDialog.
         destructive:
-          "bg-destructive-solid bg-clip-border text-white hover:bg-destructive-solid/90 focus-visible:border-destructive focus-visible:ring-destructive/30 dark:focus-visible:ring-destructive/40",
+          "bg-destructive-solid bg-clip-border text-destructive-foreground hover:bg-destructive-solid/90 focus-visible:border-destructive focus-visible:ring-destructive/30 dark:focus-visible:ring-destructive/40",
         // Quiet red. For row and section triggers that open a destructive confirm.
         // Icon-only buttons stay muted until hovered or focused.
         "destructive-ghost":

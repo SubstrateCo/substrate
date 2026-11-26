@@ -1,16 +1,10 @@
+import type { MessageRow } from "@substrate/contracts/messaging/message-layout";
+
 import type { Message } from "../types";
 import { isSameDay, toDate } from "@/lib/format/date";
 
 // Messages closer than this to the previous one from the same author share its header.
 const groupWindow = 5 * 60_000;
-
-export type MessageRow<T extends Message = Message> = {
-  message: T;
-  /** The first message of a new day, so the list shows a divider above it. */
-  newDay: boolean;
-  /** Continues the previous message's group: no avatar or name. */
-  grouped: boolean;
-};
 
 function sameAuthor(a: Message, b: Message) {
   if (a.authorActorEntityId || b.authorActorEntityId)

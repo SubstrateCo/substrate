@@ -98,6 +98,7 @@ describe("server environment", () => {
         FRONTEND_ORIGINS: "https://admin.example.com, https://app.example.com",
       }).trustedOrigins,
     ).toEqual([
+      "substrate-mobile://",
       "substrate-dev:/",
       "https://app.example.com",
       "https://desktop.substrate.local",
@@ -106,6 +107,12 @@ describe("server environment", () => {
   });
 
   test("production trusts only production desktop callbacks", () => {
+    expect(parse(production).trustedOrigins).toContain("substrate-mobile://");
+    expect(parse(production).trustedOrigins).not.toContain("http://localhost:8081");
+    expect(parse({}).trustedOrigins).not.toContain("exp://");
+    expect(parse({ FRONTEND_ORIGINS: "http://localhost:8081" }).trustedOrigins).toContain(
+      "http://localhost:8081",
+    );
     expect(parse(production).desktopScheme).toBe("substrate");
     expect(parse(production).trustedOrigins).toContain("substrate:/");
     expect(parse(production).trustedOrigins).not.toContain("substrate-dev:/");

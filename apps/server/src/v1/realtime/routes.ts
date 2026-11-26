@@ -12,7 +12,7 @@ export function createRealtimeRoutes(hub: RealtimeHub, trustedOrigins: string[])
   type Connection = NonNullable<Awaited<ReturnType<RealtimeHub["reserve"]>>>;
   const peers = new WeakMap<object, Connection>();
   const app = new Hono<{ Variables: { connection: Connection } }>().get(
-    "/api/v1/realtime",
+    "/realtime",
     async (c, next) => {
       const origin = c.req.header("origin");
       if (!isTrustedOrigin(origin, trustedOrigins)) return c.body(null, 403);

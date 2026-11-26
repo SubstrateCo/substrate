@@ -17,6 +17,11 @@
       "outputLogs": "errors-only",
       "outputs": []
     },
+    "capture": {
+      "cache": false,
+      "env": ["EXPO_PUBLIC_API_URL", "EXPO_PUBLIC_WEB_URL", "MOBILE_PREVIEW_URL", "MOBILE_API_URL"],
+      "outputs": ["test-results/**", "playwright-report/**"]
+    },
     "transit": {
       "dependsOn": ["^transit"]
     },

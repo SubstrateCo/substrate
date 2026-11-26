@@ -27,7 +27,7 @@ function SheetOverlay({ className, ...props }: React.ComponentProps<typeof Dialo
     <Dialog.Overlay
       data-slot="sheet-overlay"
       className={cn(
-        "fixed inset-0 z-10 bg-black/40 duration-200 ease-drawer motion-reduce:animate-none! data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:duration-150 data-closed:fade-out-0",
+        "fixed inset-0 z-10 bg-overlay duration-200 ease-drawer motion-reduce:animate-none! data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:duration-150 data-closed:fade-out-0",
         className,
       )}
       {...props}

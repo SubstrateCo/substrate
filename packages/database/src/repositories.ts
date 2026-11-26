@@ -183,6 +183,7 @@ function standalone(
       "activity",
       "people",
       "grants",
+      "recordLinks",
       "followUps",
       "settings",
       "timeline",

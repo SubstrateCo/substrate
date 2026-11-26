@@ -18,6 +18,16 @@ export function createFilesRoutes(service: FileService, scopes: Scopes) {
     .delete("/:id", v("param", uploadIdParam), scopes.user(), async (c) =>
       respond(c, await service.deleteFile(c.var.scope, c.req.valid("param").id)),
     )
+    .get("/:id/bytes", v("param", uploadIdParam), scopes.user(), async (c) => {
+      const result = await service.bytes(c.var.scope, c.req.valid("param").id);
+      if (!result.success) return respond(c, result);
+      c.header("Cache-Control", "private, no-store");
+      c.header("Vary", "Cookie");
+      c.header("Content-Type", "image/webp");
+      c.header("Content-Disposition", "inline");
+      c.header("X-Content-Type-Options", "nosniff");
+      return c.body(new Uint8Array(result.data.bytes));
+    })
     .get("/:id/content", v("param", uploadIdParam), scopes.user(), async (c) => {
       const result = await service.content(c.var.scope, c.req.valid("param").id);
       if (!result.success) return respond(c, result);

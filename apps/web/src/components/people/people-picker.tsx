@@ -1,3 +1,5 @@
+import type { PickedRecipient, PickerPerson } from "@substrate/contracts/people/picker";
+
 import {
   useEffect,
   useId,
@@ -18,8 +20,6 @@ import {
   limitMessage,
   matchPeople,
   recipientFor,
-  type PickedRecipient,
-  type PickerPerson,
 } from "@/lib/people/people-picker";
 import { Mail, X } from "lucide-react";
 
