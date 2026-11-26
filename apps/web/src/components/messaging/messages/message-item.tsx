@@ -19,6 +19,7 @@ import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { LinkedMessage } from "@/components/messaging/messages/linked-message";
 import { MessageAttachments } from "@/components/messaging/messages/message-attachments";
+import { messageAuthorName } from "@/components/messaging/messages/message-author";
 import { MessageItem as MessageItemView } from "@/components/messaging/messages/message-item-view";
 import { MessageReaction } from "@/components/messaging/messages/message-reaction";
 import { ReactionPeopleDialog } from "@/components/messaging/messages/reaction-people-dialog";
@@ -121,6 +122,12 @@ export function MessageItem({
             <>
               <ReferencedMessageBody context={context} body={message.body} />
               <MessageAttachments
+                sender={{
+                  name: messageAuthorName(message),
+                  image: message.authorImage,
+                  agent: message.authorType === "agent",
+                  createdAt: message.createdAt,
+                }}
                 attachments={message.attachments}
                 previewHref={(attachment) =>
                   messageAttachmentPreviewUrl({

@@ -82,30 +82,34 @@ test("message images open a keyboard-accessible viewer and disappear live on del
   await expect(
     viewer.getByRole("heading", { name: "launch-dashboard.png", exact: true }),
   ).toBeVisible();
+  const viewedImage = viewer.getByRole("img", { name: "launch-dashboard.png", exact: true });
+  await expect(viewedImage).toBeVisible();
   await expect
-    .poll(() => viewer.locator("img").evaluate((img: HTMLImageElement) => img.naturalWidth))
+    .poll(() => viewedImage.evaluate((img: HTMLImageElement) => img.naturalWidth))
     .toBeGreaterThan(0);
-  await expect(viewer.getByRole("button", { name: "Previous image", exact: true })).toHaveCount(0);
-  await expect(viewer.getByRole("button", { name: "Next image", exact: true })).toHaveCount(0);
-  const downloadLink = viewer.getByRole("link", {
-    name: "Download launch-dashboard.png",
+  await expect(viewer.getByRole("button", { name: "Previous image", exact: true })).toBeVisible();
+  await expect(viewer.getByRole("button", { name: "Next image", exact: true })).toBeVisible();
+  const downloadButton = viewer.getByRole("button", {
+    name: "Download image",
     exact: true,
   });
-  await expect(downloadLink).toBeVisible();
-  await expect(downloadLink).toHaveText("");
-  const downloadBounds = await downloadLink.boundingBox();
+  await expect(downloadButton).toBeVisible();
+  await expect(downloadButton).toHaveText("");
+  const downloadBounds = await downloadButton.boundingBox();
   const closeBounds = await viewer
-    .getByRole("button", { name: "Close", exact: true })
+    .getByRole("button", { name: "Close image viewer", exact: true })
     .boundingBox();
   expect(downloadBounds).not.toBeNull();
   expect(closeBounds).not.toBeNull();
-  expect(downloadBounds!.y).toBe(closeBounds!.y);
+  expect(downloadBounds!.y).toBeGreaterThan(closeBounds!.y + closeBounds!.height);
+  expect(downloadBounds!.x).toBeGreaterThan(member.page.viewportSize()!.width / 2);
   expect(downloadBounds!.height).toBe(closeBounds!.height);
   const downloadEvent = member.page.waitForEvent("download");
-  await downloadLink.click();
+  await downloadButton.click();
   const download = await downloadEvent;
   expect(download.suggestedFilename()).toBe("launch-dashboard.png");
   expect(await readFile((await download.path())!)).toEqual(Buffer.from(encoded, "base64"));
+  await viewedImage.click();
   await member.page.keyboard.press("ArrowRight");
   await expect(
     viewer.getByRole("heading", { name: "dashboard-detail.png", exact: true }),

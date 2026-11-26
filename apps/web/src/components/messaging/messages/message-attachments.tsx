@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { AttachmentList } from "@/components/attachments/attachment-list";
 import { ImageThumbnail } from "@/components/messaging/messages/image-thumbnail";
-import { ImageViewer } from "@/components/messaging/messages/image-viewer";
+import { ImageViewer, type ImageViewerSender } from "@/components/messaging/messages/image-viewer";
 
 const imageTypes = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 
@@ -12,10 +12,12 @@ export function MessageAttachments({
   attachments,
   href,
   previewHref,
+  sender,
 }: {
   attachments: Attachment[];
   href: (attachment: Attachment) => string;
   previewHref: (attachment: Attachment) => string;
+  sender?: ImageViewerSender;
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const images = attachments.filter((attachment) => imageTypes.has(attachment.contentType));
@@ -44,6 +46,7 @@ export function MessageAttachments({
       <AttachmentList attachments={files} href={href} compact />
       {selected && (
         <ImageViewer
+          sender={sender}
           attachment={selected}
           src={previewHref(selected)}
           href={href(selected)}

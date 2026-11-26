@@ -1,42 +1,138 @@
 import type { Attachment } from "@substrate/contracts/files/attachments";
 
-import { useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ComponentProps,
+  type CSSProperties,
+} from "react";
 
+import { fitViewerImage } from "./image-viewer-layout";
 import { imageFileActions } from "@/components/attachments/image-file-actions";
 import { ActionContextMenu } from "@/components/layout/action-context-menu";
+import { Timestamp } from "@/components/time/timestamp";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
-  DialogBody,
+  DialogClose,
   DialogContent,
   DialogDescription,
-  DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Image } from "@/components/ui/image";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { ChevronLeft, ChevronRight, Download } from "lucide-react";
+import { initials } from "@/lib/people/initials";
+import { cn } from "cn";
+import {
+  ArrowUpRight,
+  ChevronLeft,
+  ChevronRight,
+  RotateCw,
+  X,
+  ZoomIn,
+  ZoomOut,
+} from "lucide-react";
 
-export function ImageViewer({
-  attachment,
-  src,
-  href,
-  position,
-  count,
-  onPrevious,
-  onNext,
-  onClose,
-}: {
+export type ImageViewerSender = {
+  name: string;
+  image?: string | null;
+  agent: boolean;
+  createdAt: string;
+};
+
+type ImageViewerProps = {
   attachment: Attachment;
   src: string;
   href: string;
+  sender?: ImageViewerSender;
   position: number;
   count: number;
   onPrevious: () => void;
   onNext: () => void;
   onClose: () => void;
-}) {
+};
+
+export function ImageViewer(props: ImageViewerProps) {
+  return <ImageViewerContent {...props} />;
+}
+
+function ImageViewerContent({
+  attachment,
+  src,
+  href,
+  sender,
+  position,
+  count,
+  onPrevious,
+  onNext,
+  onClose,
+}: ImageViewerProps) {
+  const dialog = useRef<HTMLDivElement>(null);
+  const idleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+  const [idle, setIdle] = useState(false);
+  const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
+  const [rotation, setRotation] = useState(0);
+  const [zoom, setZoom] = useState(1);
+  const [natural, setNatural] = useState({ width: 0, height: 0 });
+  const [viewport, setViewport] = useState({ width: 0, height: 0 });
+  const [selectedId, setSelectedId] = useState(attachment.id);
+  if (selectedId !== attachment.id) {
+    setSelectedId(attachment.id);
+    setStatus("loading");
+    setRotation(0);
+    setZoom(1);
+    setNatural({ width: 0, height: 0 });
+    setIdle(false);
+  }
+  const actions = imageFileActions({
+    href,
+    filename: attachment.filename,
+    contentType: attachment.contentType,
+  });
+  const fit = fitViewerImage(natural, viewport, rotation, zoom);
+  const stageStyle: CSSProperties & Record<`--${string}`, string> = {
+    "--viewer-width": `${fit.width}px`,
+    "--viewer-height": `${fit.height}px`,
+  };
+  const imageStyle: CSSProperties & Record<`--${string}`, string> = {
+    "--image-width": `${fit.imageWidth}px`,
+    "--image-height": `${fit.imageHeight}px`,
+    "--image-rotation": `${rotation}deg`,
+  };
+
+  const showControls = () => {
+    clearTimeout(idleTimer.current);
+    setIdle(false);
+  };
+  const viewingImage = () => {
+    showControls();
+    if (status !== "ready") return;
+    idleTimer.current = setTimeout(() => {
+      if (!dialog.current?.querySelector("[data-viewer-controls]:focus-within")) setIdle(true);
+    }, 2500);
+  };
+
+  // The portal mounts after this component's first effect, so observe the actual ref attachment.
+  const observeStage = useCallback((element: HTMLDivElement | null) => {
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => {
+      setViewport({ width: entry.contentRect.width, height: entry.contentRect.height });
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, []);
+  useEffect(() => () => clearTimeout(idleTimer.current), []);
+
+  const controlsClass = cn(
+    // oxlint-disable-next-line design/no-custom-motion -- Viewer chrome fades only after image-viewing inactivity.
+    "relative z-10 transition-opacity duration-200 focus-within:pointer-events-auto focus-within:opacity-100 motion-reduce:transition-none",
+    idle && "pointer-events-none opacity-0",
+  );
+
   return (
     <Dialog
       open
@@ -45,105 +141,205 @@ export function ImageViewer({
       }}
     >
       <DialogContent
-        size="lg"
+        ref={dialog}
+        showCloseButton={false}
+        // oxlint-disable-next-line shadcn/no-restyle -- Media viewing needs a frameless, locally dark canvas, not the shared form-dialog shell.
+        className="dark inset-0 top-0! left-0! h-full! max-h-none! w-full! max-w-none! translate-x-0 rounded-none! border-0! bg-background! text-foreground! shadow-none!"
+        onOpenAutoFocus={(event) => {
+          event.preventDefault();
+          dialog.current?.focus();
+        }}
+        onPointerMove={showControls}
+        onFocusCapture={showControls}
         onKeyDown={(event) => {
-          if (count < 2) return;
-          if (event.key === "ArrowLeft") {
+          showControls();
+          if (event.target !== event.currentTarget) return;
+          if (count > 1 && event.key === "ArrowLeft") {
             event.preventDefault();
             onPrevious();
           }
-          if (event.key === "ArrowRight") {
+          if (count > 1 && event.key === "ArrowRight") {
             event.preventDefault();
             onNext();
           }
         }}
       >
-        <DialogHeader>
-          <div className="min-w-0 pr-12">
-            <DialogTitle className="truncate">{attachment.filename}</DialogTitle>
+        {status === "ready" && (
+          <div
+            aria-hidden="true"
+            data-slot="image-viewer-backdrop"
+            className="pointer-events-none absolute inset-0 scale-125 opacity-60 blur-3xl"
+          >
+            <Image src={src} alt="" className="size-full object-cover" />
+          </div>
+        )}
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-radial from-transparent via-background/20 to-background/80"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute inset-0 bg-linear-to-b from-background/70 via-transparent to-background/70"
+        />
+        <header
+          data-viewer-controls
+          className={cn(controlsClass, "flex shrink-0 items-center justify-between gap-4 p-6")}
+        >
+          <div className="flex min-w-0 items-center gap-3">
+            {sender && (
+              <Avatar aria-hidden="true" variant={sender.agent ? "agent" : "default"}>
+                {sender.image && <AvatarImage src={sender.image} alt="" />}
+                <AvatarFallback>{initials(sender.name)}</AvatarFallback>
+              </Avatar>
+            )}
+            <div className="min-w-0">
+              <DialogTitle className="truncate">{attachment.filename}</DialogTitle>
+              <DialogDescription>
+                {sender && (
+                  <>
+                    {sender.name} · <Timestamp value={sender.createdAt} format="datetime" /> ·{" "}
+                  </>
+                )}
+                Image {position + 1} of {count}
+              </DialogDescription>
+            </div>
+          </div>
+          <DialogClose asChild>
+            <ViewerButton label="Close image viewer">
+              <X aria-hidden="true" />
+            </ViewerButton>
+          </DialogClose>
+        </header>
+        <div ref={observeStage} className="relative z-0 min-h-0 flex-1 overflow-auto">
+          <div
+            className="grid h-(--viewer-height) min-h-full w-(--viewer-width) min-w-full grid-cols-1 grid-rows-1 place-items-center"
+            style={stageStyle}
+          >
+            {status === "loading" && <Spinner aria-label="Loading image" />}
+            {status === "failed" && (
+              <p role="status" className="p-4 text-sm text-muted-foreground">
+                This image couldn’t be loaded. Try downloading the file.
+              </p>
+            )}
+            {status !== "failed" && (
+              <ActionContextMenu actions={[actions]}>
+                <Image
+                  src={src}
+                  alt={attachment.filename}
+                  loading="eager"
+                  draggable={false}
+                  className={cn(
+                    "col-start-1 row-start-1 h-(--image-height) w-(--image-width) max-w-none rotate-(--image-rotation) object-contain",
+                    status !== "ready" && "invisible",
+                  )}
+                  style={imageStyle}
+                  onLoad={(event) => {
+                    setNatural({
+                      width: event.currentTarget.naturalWidth,
+                      height: event.currentTarget.naturalHeight,
+                    });
+                    setStatus("ready");
+                  }}
+                  onError={() => setStatus("failed")}
+                  onPointerMove={(event) => {
+                    event.stopPropagation();
+                    viewingImage();
+                  }}
+                  onPointerEnter={viewingImage}
+                  onPointerLeave={showControls}
+                  onPointerDown={() => {
+                    dialog.current?.focus();
+                    viewingImage();
+                  }}
+                />
+              </ActionContextMenu>
+            )}
+          </div>
+        </div>
+        <footer
+          data-viewer-controls
+          className={cn(
+            controlsClass,
+            "flex shrink-0 flex-wrap items-center justify-between gap-4 p-6",
+          )}
+        >
+          <div role="group" aria-label="Image view" className="flex items-center gap-0.5">
+            <ViewerButton
+              label="Rotate image"
+              disabled={status !== "ready"}
+              onClick={() => setRotation((value) => (value + 90) % 360)}
+            >
+              <RotateCw aria-hidden="true" />
+            </ViewerButton>
+            <ViewerButton
+              label="Zoom out"
+              disabled={status !== "ready" || zoom <= 1}
+              onClick={() => setZoom((value) => Math.max(1, value - 0.5))}
+            >
+              <ZoomOut aria-hidden="true" />
+            </ViewerButton>
+            <Button
+              variant="ghost"
+              size="sm"
+              aria-label="Reset zoom"
+              disabled={status !== "ready"}
+              onClick={() => setZoom(1)}
+            >
+              {Math.round(zoom * 100)}%
+            </Button>
+            <ViewerButton
+              label="Zoom in"
+              disabled={status !== "ready" || zoom >= 4}
+              onClick={() => setZoom((value) => Math.min(4, value + 0.5))}
+            >
+              <ZoomIn aria-hidden="true" />
+            </ViewerButton>
+          </div>
+          {count > 1 && (
+            <div role="group" aria-label="Image navigation" className="flex gap-0.5">
+              <ViewerButton label="Previous image" onClick={onPrevious}>
+                <ChevronLeft aria-hidden="true" />
+              </ViewerButton>
+              <ViewerButton label="Next image" onClick={onNext}>
+                <ChevronRight aria-hidden="true" />
+              </ViewerButton>
+            </div>
+          )}
+          <div role="group" aria-label="Image file actions" className="ml-auto flex gap-0.5">
+            {actions.map(({ label, icon: Icon, onSelect }) => (
+              <ViewerButton key={label} label={label} onClick={onSelect}>
+                <Icon aria-hidden="true" />
+              </ViewerButton>
+            ))}
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button asChild variant="ghost" size="icon-sm" className="absolute top-4 right-14">
+                <Button asChild variant="ghost" size="icon-sm">
                   <a
-                    href={href}
-                    download={attachment.filename}
-                    aria-label={`Download ${attachment.filename}`}
+                    href={src}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="Open original image"
                   >
-                    <Download aria-hidden="true" />
+                    <ArrowUpRight aria-hidden="true" />
                   </a>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Download {attachment.filename}</TooltipContent>
+              <TooltipContent>Open original image</TooltipContent>
             </Tooltip>
           </div>
-          <DialogDescription>
-            Image {position + 1} of {count}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogBody>
-          <ViewerImage key={src} src={src} href={href} attachment={attachment} />
-          {count > 1 && (
-            <div className="mt-2 hidden justify-center gap-2 pointer-coarse:flex">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="outline"
-                    size="icon-sm"
-                    aria-label="Previous image"
-                    onClick={onPrevious}
-                  >
-                    <ChevronLeft aria-hidden="true" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Previous image</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="outline" size="icon-sm" aria-label="Next image" onClick={onNext}>
-                    <ChevronRight aria-hidden="true" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Next image</TooltipContent>
-              </Tooltip>
-            </div>
-          )}
-        </DialogBody>
+        </footer>
       </DialogContent>
     </Dialog>
   );
 }
 
-function ViewerImage({
-  src,
-  href,
-  attachment,
-}: {
-  src: string;
-  href: string;
-  attachment: Attachment;
-}) {
-  const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
-  const { filename, contentType } = attachment;
+function ViewerButton({ label, ...props }: ComponentProps<typeof Button> & { label: string }) {
   return (
-    <div className="grid min-h-24 place-items-center gap-2">
-      {status === "loading" && <Spinner aria-label="Loading image" />}
-      {status === "failed" && (
-        <p role="status" className="text-sm text-muted-foreground">
-          This image couldn’t be loaded. Try downloading the file.
-        </p>
-      )}
-      {status !== "failed" && (
-        <ActionContextMenu actions={[imageFileActions({ href, filename, contentType })]}>
-          <Image
-            src={src}
-            alt={filename}
-            loading="eager"
-            className="max-h-96 w-full object-contain"
-            onLoad={() => setStatus("ready")}
-            onError={() => setStatus("failed")}
-          />
-        </ActionContextMenu>
-      )}
-    </div>
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button variant="ghost" size="icon-sm" aria-label={label} {...props} />
+      </TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
+    </Tooltip>
   );
 }
