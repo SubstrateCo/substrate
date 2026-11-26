@@ -3,6 +3,53 @@ import { desktopIdentity } from "@substrate/contracts/desktop/identity";
 import config from "../package.json" with { type: "json" };
 import { expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
+import { inflateSync } from "node:zlib";
+
+function expectMacIconPadding(png: Buffer) {
+  const size = png.readUInt32BE(16);
+  expect(png.readUInt32BE(20)).toBe(size);
+  expect(png.readUInt8(24)).toBe(8);
+  expect(png.readUInt8(25)).toBe(6);
+  const chunks: Buffer[] = [];
+  for (let offset = 8; offset < png.length; ) {
+    const length = png.readUInt32BE(offset);
+    if (png.toString("ascii", offset + 4, offset + 8) === "IDAT")
+      chunks.push(png.subarray(offset + 8, offset + 8 + length));
+    offset += length + 12;
+  }
+  const raw = inflateSync(Buffer.concat(chunks));
+  const stride = size * 4;
+  const pixels = Buffer.alloc(size * stride);
+  for (let y = 0; y < size; y++) {
+    const filter = raw[y * (stride + 1)]!;
+    expect(filter).toBeLessThanOrEqual(4);
+    for (let x = 0; x < stride; x++) {
+      const index = y * stride + x;
+      const left = x >= 4 ? pixels[index - 4]! : 0;
+      const up = y > 0 ? pixels[index - stride]! : 0;
+      const corner = x >= 4 && y > 0 ? pixels[index - stride - 4]! : 0;
+      const prediction = left + up - corner;
+      const distances = [left, up, corner].map((value) => Math.abs(prediction - value));
+      const paeth = [left, up, corner][distances.indexOf(Math.min(...distances))]!;
+      const predictor = [0, left, up, Math.floor((left + up) / 2), paeth][filter]!;
+      pixels[index] = (raw[y * (stride + 1) + 1 + x]! + predictor) & 255;
+    }
+  }
+  const padding = Math.round(size * 0.1);
+  let borderAlpha = 0;
+  let visible = false;
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const alpha = pixels[(y * size + x) * 4 + 3]!;
+      const horizontalBorder = x < padding || x >= size - padding;
+      const verticalBorder = y < padding || y >= size - padding;
+      if (horizontalBorder || verticalBorder) borderAlpha = Math.max(borderAlpha, alpha);
+      visible ||= alpha > 0;
+    }
+  }
+  expect(borderAlpha).toBe(0);
+  expect(visible).toBe(true);
+}
 
 test("the installer and packaged runtime use the same production identity", () => {
   const identity = desktopIdentity(true);
@@ -41,6 +88,20 @@ test("the macOS bundle icon includes Dock and Finder resolutions", () => {
   }
   expect(offset).toBe(icon.length);
   expect(types).toEqual(["icp4", "icp5", "icp6", "ic07", "ic08", "ic09"]);
+});
+
+test("the macOS Dock and bundle icons have transparent outer padding", () => {
+  const dock = readFileSync(new URL("../assets/icon-mac.png", import.meta.url));
+  expectMacIconPadding(dock);
+  const bundle = readFileSync(new URL(`../${config.build.mac.icon}`, import.meta.url));
+  let largest: Buffer | undefined;
+  for (let offset = 8; offset < bundle.length; ) {
+    const length = bundle.readUInt32BE(offset + 4);
+    largest = bundle.subarray(offset + 8, offset + length);
+    expectMacIconPadding(largest);
+    offset += length;
+  }
+  expect(dock.equals(largest!)).toBe(true);
 });
 
 test("the macOS menu-bar template has standard and Retina assets", () => {

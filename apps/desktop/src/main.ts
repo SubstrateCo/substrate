@@ -58,7 +58,7 @@ function main() {
   const errorPage = fileURLToPath(errorPageURL);
   const icon = fileURLToPath(
     new URL(
-      `${app.isPackaged ? "./" : "../"}assets/icon.${process.platform === "win32" ? "ico" : "png"}`,
+      `${app.isPackaged ? "./" : "../"}assets/${process.platform === "darwin" ? "icon-mac.png" : `icon.${process.platform === "win32" ? "ico" : "png"}`}`,
       import.meta.url,
     ),
   );
