@@ -1,8 +1,10 @@
-import { useFormatForDisplay, type HotkeySequence } from "@tanstack/react-hotkeys";
+import type { ShortcutId } from "@substrate/contracts/desktop/shortcuts";
+
 import { Link, type LinkProps } from "@tanstack/react-router";
 
+import { ShortcutKeys } from "@/components/shortcuts/shortcut-keys";
+import { ariaKeyShortcuts, useShortcut } from "@/components/shortcuts/use-shortcut";
 import { Button } from "@/components/ui/button";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "cn";
 import type { LucideIcon } from "lucide-react";
@@ -11,7 +13,7 @@ export function WorkspaceAppButton({
   label,
   icon: Icon,
   to,
-  hotkey,
+  shortcut,
   unread = false,
   unreadLabel = "unread notifications",
   dotTone = "primary",
@@ -20,14 +22,14 @@ export function WorkspaceAppButton({
   icon: LucideIcon;
   to: NonNullable<LinkProps["to"]>;
   /** The app shortcut that opens this app. */
-  hotkey: HotkeySequence;
+  shortcut: ShortcutId;
   unread?: boolean;
   /** What the dot means, read after the label. */
   unreadLabel?: string;
   /** Primary for unread notifications; warning for work that needs the person. Red is for errors. */
   dotTone?: "primary" | "warning";
 }) {
-  const format = useFormatForDisplay();
+  const hotkey = useShortcut(shortcut);
   return (
     <Tooltip>
       <TooltipTrigger asChild>
@@ -38,8 +40,7 @@ export function WorkspaceAppButton({
             activeOptions={{ includeSearch: false }}
             activeProps={{ "aria-current": "page" }}
             aria-label={unread ? `${label}, ${unreadLabel}` : label}
-            // Rail shortcuts are letter sequences, which read the same in ARIA syntax.
-            aria-keyshortcuts={hotkey.join(" ")}
+            aria-keyshortcuts={hotkey ? ariaKeyShortcuts(hotkey) : undefined}
           >
             <Icon className="size-5" />
             {unread && (
@@ -56,11 +57,7 @@ export function WorkspaceAppButton({
       </TooltipTrigger>
       <TooltipContent side="right">
         {label}
-        <KbdGroup aria-hidden="true">
-          {hotkey.map((step, index) => (
-            <Kbd key={index}>{format(step)}</Kbd>
-          ))}
-        </KbdGroup>
+        {hotkey && <ShortcutKeys hotkey={hotkey} />}
       </TooltipContent>
     </Tooltip>
   );

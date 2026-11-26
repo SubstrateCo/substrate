@@ -11,3 +11,12 @@ export const desktopSettingsQueryOptions = (bridge: DesktopSettingsAPI) =>
     staleTime: 0,
     retry: false,
   });
+
+// Main reads the shortcuts file once at launch, so one read lasts the whole session.
+export const desktopShortcutsQueryOptions = (bridge: DesktopSettingsAPI) =>
+  queryOptions({
+    queryKey: queryKeys.desktopShortcuts,
+    queryFn: () => bridge.getShortcuts(),
+    staleTime: Infinity,
+    retry: false,
+  });

@@ -1,4 +1,5 @@
-import type { HotkeySequence } from "@tanstack/react-hotkeys";
+import type { ShortcutId } from "@substrate/contracts/desktop/shortcuts";
+
 import type { LinkProps } from "@tanstack/react-router";
 
 import {
@@ -19,7 +20,8 @@ type WorkspaceApp = {
   label: string;
   icon: LucideIcon;
   to: NonNullable<LinkProps["to"]>;
-  hotkey: HotkeySequence;
+  /** The app shortcut that opens this app. The person can change its keys. */
+  shortcut: ShortcutId;
 };
 
 /**
@@ -32,45 +34,45 @@ export const workspaceApps = [
     label: "Home",
     icon: House,
     to: "/dashboard",
-    hotkey: ["G", "H"],
+    shortcut: "app.home",
   },
   {
     id: "messages",
     label: "Messages",
     icon: MessageSquare,
     to: "/messages",
-    hotkey: ["G", "M"],
+    shortcut: "app.messages",
   },
   {
     id: "tasks",
     label: "Tasks",
     icon: ListTodo,
     to: "/tasks",
-    hotkey: ["G", "T"],
+    shortcut: "app.tasks",
   },
-  { id: "inbox", label: "Inbox", icon: Mail, to: "/inbox", hotkey: ["G", "E"] },
-  { id: "crm", label: "CRM", icon: Handshake, to: "/crm", hotkey: ["G", "C"] },
-  { id: "meetings", label: "Meetings", icon: Video, to: "/meetings", hotkey: ["G", "V"] },
+  { id: "inbox", label: "Inbox", icon: Mail, to: "/inbox", shortcut: "app.inbox" },
+  { id: "crm", label: "CRM", icon: Handshake, to: "/crm", shortcut: "app.crm" },
+  { id: "meetings", label: "Meetings", icon: Video, to: "/meetings", shortcut: "app.meetings" },
   {
     id: "interactions",
     label: "Interactions",
     icon: Activity,
     to: "/interactions",
-    hotkey: ["G", "I"],
+    shortcut: "app.interactions",
   },
   {
     id: "calendar",
     label: "Calendar",
     icon: CalendarDays,
     to: "/calendar",
-    hotkey: ["G", "L"],
+    shortcut: "app.calendar",
   },
   {
     id: "agents",
     label: "Agents",
     icon: Bot,
     to: "/agents",
-    hotkey: ["G", "A"],
+    shortcut: "app.agents",
   },
 ] as const satisfies ReadonlyArray<WorkspaceApp & { id: string }>;
 
@@ -78,7 +80,7 @@ export const notificationsApp = {
   label: "Notifications",
   icon: Bell,
   to: "/notifications",
-  hotkey: ["G", "N"],
+  shortcut: "app.notifications",
 } as const satisfies WorkspaceApp;
 
 export type WorkspaceAppId = (typeof workspaceApps)[number]["id"];

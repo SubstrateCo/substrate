@@ -9,6 +9,7 @@ export const queryKeys = {
     [...queryKeys.messaging(organizationId), "unread"] as const,
   desktopRelease: ["desktop", "release"] as const,
   desktopSettings: ["desktop", "settings"] as const,
+  desktopShortcuts: ["desktop", "shortcuts"] as const,
   sharingInvitations: ["sharing-invitations"] as const,
   session: ["auth", "session"] as const,
   // Private to one user. Each key names a kind, then the organization when it has one.

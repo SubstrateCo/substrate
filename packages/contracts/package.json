@@ -30,6 +30,7 @@
     "./desktop/window-ipc": "./src/desktop/window-ipc.ts",
     "./desktop/screen-notifications-ipc": "./src/desktop/screen-notifications-ipc.ts",
     "./desktop/settings-ipc": "./src/desktop/settings-ipc.ts",
+    "./desktop/shortcuts": "./src/desktop/shortcuts.ts",
     "./desktop/updates-ipc": "./src/desktop/updates-ipc.ts",
     "./realtime/ipc": "./src/realtime/ipc.ts",
     "./harness/mcp": "./src/harness/mcp.ts",

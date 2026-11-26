@@ -18,6 +18,7 @@ import {
   setupScreenNotifications,
   type ScreenNotifications,
 } from "./notifications/screen-notifications.ts";
+import { createUserSettingsStore } from "./settings/user-settings-store.ts";
 import { applicationURL, bundledApplicationURL, navigationTarget } from "./shell/navigation.ts";
 import { registerWindowBridge } from "./shell/title-bar.ts";
 import { trustedSender } from "./shell/trusted-sender.ts";
@@ -355,6 +356,9 @@ function main() {
           if (!agentWork) throw new Error("Agent work unavailable.");
           return agentWork.call(method, value);
         });
+        const userSettings = createUserSettingsStore(
+          join(app.getPath("userData"), "user-settings.json"),
+        );
         const readSettings = () => ({
           launchAtLogin: app.getLoginItemSettings({ args: loginArguments }).openAtLogin,
           meetingReminders: screenNotifications?.store.settings() ?? defaultMeetingReminderSettings,
@@ -371,6 +375,8 @@ function main() {
             void composed.meetingReminders?.refresh();
             return readSettings();
           },
+          getShortcuts: () => userSettings.shortcuts(),
+          setShortcuts: (value) => userSettings.setShortcuts(value),
         });
         ipcMain.handle(desktopSettingsChannel, (event, method, value) => {
           if (!trustedSender(event, mainWindow?.webContents, rendererURL))

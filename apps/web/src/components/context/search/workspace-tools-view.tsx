@@ -3,8 +3,10 @@ import { useHotkey } from "@tanstack/react-hotkeys";
 import { useEffect, useEffectEvent, useRef, useState, type ReactNode } from "react";
 
 import { useWorkspaceSearch } from "./workspace-search-request";
+import { appHotkeys } from "@/components/shortcuts/app-hotkeys";
+import { ShortcutKeys } from "@/components/shortcuts/shortcut-keys";
+import { useShortcut } from "@/components/shortcuts/use-shortcut";
 import { Command, CommandInput } from "@/components/ui/command";
-import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { desktopPlatform } from "@/lib/desktop/bridges";
 import { cn } from "cn";
 
@@ -39,7 +41,7 @@ export function WorkspaceTools({
   const results = useRef<HTMLDivElement>(null);
   const activationTimeout = useRef<number | undefined>(undefined);
   const desktop = !!desktopPlatform();
-  const isMac = desktopPlatform() === "darwin";
+  const searchHotkey = useShortcut("search.open");
   function close() {
     setOpen(false);
     setFocusRequest((value) => value + 1);
@@ -77,7 +79,7 @@ export function WorkspaceTools({
     };
   }, []);
   useHotkey(
-    "Mod+K",
+    appHotkeys["search.open"],
     () => {
       setOpen(true);
       setFocusRequest((value) => value + 1);
@@ -131,10 +133,9 @@ export function WorkspaceTools({
               setOpen(true);
             }}
           >
-            <KbdGroup className="max-sm:hidden" aria-label={isMac ? "Command K" : "Control K"}>
-              <Kbd>{isMac ? "⌘" : "Ctrl"}</Kbd>
-              <Kbd>K</Kbd>
-            </KbdGroup>
+            {searchHotkey && (
+              <ShortcutKeys hotkey={searchHotkey} labelled className="max-sm:hidden" />
+            )}
           </CommandInput>
           {open && (
             <div

@@ -1,4 +1,5 @@
 import type { MeetingReminderSettings } from "@substrate/contracts/desktop/screen-notifications-ipc";
+import type { ShortcutSettings } from "@substrate/contracts/desktop/shortcuts";
 import type {
   DesktopUpdatesAPI,
   DesktopUpdateStatus,
@@ -37,6 +38,17 @@ export function useDesktopSettingsUpdate(bridge: DesktopSettingsAPI) {
   return useMutation({
     mutationFn: (enabled: boolean) => bridge.setLaunchAtLogin(enabled),
     onSuccess: (next) => client.setQueryData(queryKeys.desktopSettings, next),
+  });
+}
+
+export function useShortcutsUpdate(bridge: DesktopSettingsAPI | undefined) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: (shortcuts: ShortcutSettings) => {
+      if (!bridge) throw new Error("Shortcuts are saved only in the desktop app.");
+      return bridge.setShortcuts(shortcuts);
+    },
+    onSuccess: (next) => client.setQueryData(queryKeys.desktopShortcuts, next),
   });
 }
 
