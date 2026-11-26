@@ -31,7 +31,7 @@ import {
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { ChevronDown, Inbox, Mail, Plus, RefreshCw, Settings, Tag } from "lucide-react";
 
-type MailboxNav = {
+export type MailboxNav = {
   colors: ReadonlyMap<string, MailColor>;
   connected: readonly Mailbox[];
   scope: Mailbox | null;

@@ -19,6 +19,25 @@ import { snippetText } from "@/lib/mail/body-text";
 import { cn } from "cn";
 import { Mail, Star } from "lucide-react";
 
+function senderName(message: MailConversation) {
+  return message.flags & (mailFlag.sent | mailFlag.drafts)
+    ? `To: ${message.to || "No recipient"}`
+    : message.from.replace(/\s*<[^>]+>\s*$/, "").replace(/^"(.+)"$/, "$1") ||
+        message.from ||
+        "Unknown sender";
+}
+
+function rowLabel(
+  message: MailConversation,
+  mailbox: Mailbox,
+  sender: string,
+  subject: string,
+  stamp: string,
+) {
+  const labels = visibleLabels(mailbox, message.labelIds, true).map(labelName);
+  return `${message.hasUnread ? "Unread. " : ""}${sender}: ${subject}. ${message.messageCount} messages. ${mailbox.address}, ${stamp}${labels.length ? `. Labels: ${labels.join(", ")}` : ""}`;
+}
+
 function MessageRow({
   message,
   mailbox,
@@ -44,20 +63,14 @@ function MessageRow({
   today: Date;
   onOpen: (message: MailConversation) => void;
 }) {
-  const { id, timestamp, flags } = message;
-  const sender =
-    flags & (mailFlag.sent | mailFlag.drafts)
-      ? `To: ${message.to || "No recipient"}`
-      : message.from.replace(/\s*<[^>]+>\s*$/, "").replace(/^"(.+)"$/, "$1") ||
-        message.from ||
-        "Unknown sender";
+  const { id, timestamp } = message;
+  const sender = senderName(message);
   const subject = message.subject || "(No subject)",
     stamp = formatMailListDate(timestamp, today);
-  const labels = visibleLabels(mailbox, message.labelIds, true).map(labelName);
   const weight = message.hasUnread ? rowTitleVariants({ state: "unread" }) : "font-normal";
   const background = message.hasUnread ? "bg-background" : "bg-surface";
   const rowSelected = checked || selected;
-  const label = `${message.hasUnread ? "Unread. " : ""}${sender}: ${subject}. ${message.messageCount} messages. ${mailbox.address}, ${stamp}${labels.length ? `. Labels: ${labels.join(", ")}` : ""}`;
+  const label = rowLabel(message, mailbox, sender, subject, stamp);
   return (
     <li
       id={`message-${id}`}

@@ -1,40 +1,33 @@
-import {
-  conversationKey,
-  filterLabels,
-  type MailConversation,
-  type MailMessageAction,
-  type MailView,
-} from "@substrate/contracts/mail";
+import { conversationKey, type MailView } from "@substrate/contracts/mail";
 import type { MailAPI, MailScope, MailLabelFilter } from "@substrate/contracts/mail/ipc";
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 
-import { ConnectMailbox } from "./connect-mailbox";
-import type { LabelActions } from "./label-menu";
-import { mailboxColors, labelName } from "./mail-colors";
-import { MailPagination, useMailPages } from "./mail-paging";
-import { views } from "./mail-views";
-import { MailboxPicker, MailboxSidebar, MobileViewPicker } from "./mailboxes";
-import { ManageMailboxes } from "./manage-mailboxes";
-import { LabelDisplayToggle } from "./message-labels";
+import { useMailChanges, useReaderSelection } from "./inbox-actions";
+import {
+  folderCounts,
+  labelFilter,
+  mailboxStatus,
+  useFolderPage,
+  useMailAccounts,
+  useSelectedThread,
+} from "./inbox-data";
+import { InboxHeader, SyncNotice } from "./inbox-header";
+import { InboxList } from "./inbox-list";
+import { mailboxColors } from "./mail-colors";
+import { MailPagination } from "./mail-paging";
+import { folderView } from "./mail-views";
+import { MailboxDialogs } from "./mailbox-dialogs";
+import { MailboxSidebar } from "./mailboxes";
 import { Reader } from "./reader";
-import { SelectableMessageList } from "./selectable-message-list";
-import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
-import { LoadingState } from "@/components/feedback/loading-state";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
-import { PageHeader } from "@/components/layout/page-header";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
-import { RowAction } from "@/components/layout/row-actions";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
-import { queryKeys } from "@/queries/keys";
 import { localMailQueries } from "@/queries/mail/options";
-import { Mail, RefreshCw, Search, Tag } from "lucide-react";
 
 export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope }) {
   const [account, setAccount] = useState<string | null>(null);
@@ -42,9 +35,9 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
   const [allTags, setAllTags] = useState(true);
   const [label, setLabel] = useState<MailLabelFilter>();
   const [search, setSearch] = useState("");
-  const [selected, setSelected] = useState<MailConversation>();
-  const [listVisit, setListVisit] = useState(0);
   const field = useRef<HTMLInputElement>(null);
+  const { selected, setSelected, focusList, closeReader } = useReaderSelection(field);
+  const [listVisit, setListVisit] = useState(0);
   const dialog = useStateDialog<"connect" | "manage">(() =>
     document.getElementById("mailbox-switch")?.focus(),
   );
@@ -57,59 +50,20 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
     (id: string, source: string) => api.picture({ userId, organizationId, id, source }),
     [api, userId, organizationId],
   );
-  const accounts = useQuery({
-    ...local.accounts,
-    refetchInterval: (q) => (q.state.data?.some((b) => b.status === "syncing") ? 1500 : false),
-  });
-  const boxes = accounts.data ?? [];
-  const revision = accounts.data?.map((b) => `${b.id}:${b.lastSync}:${b.status}`).join(",");
-  const previousRevision = useRef<string>(undefined);
-  useEffect(() => {
-    if (revision === undefined) return;
-    if (previousRevision.current !== undefined && previousRevision.current !== revision)
-      for (const kind of ["list", "thread", "body"])
-        void client.invalidateQueries({
-          queryKey: [...queryKeys.mail(userId, organizationId), kind],
-        });
-    previousRevision.current = revision;
-  }, [client, organizationId, revision, userId]);
-  const active = boxes.find((b) => b.id === account) ?? null;
-  const selectedLabel = boxes
-    .find((b) => b.id === label?.mailboxId)
-    ?.labels.find((l) => l.id === label?.id);
-  const filter = selectedLabel ? label : undefined;
+  const { accounts, boxes, revision } = useMailAccounts(local, client, scope);
+  const { active, busy, problem } = mailboxStatus(boxes, account);
+  const { selectedLabel, filter } = labelFilter(boxes, label);
   const searchState = useSearchDebounce(search.trim(), organizationId);
-  const busy = boxes.some((b) => (!account || b.id === account) && b.status === "syncing");
-  const problem = boxes.find(
-    (b) => (!account || b.id === account) && (b.status === "retry" || b.status === "reconnect"),
-  );
   const folder = { mailboxId: account, view, label: filter, search };
-  const page = useQuery({
-    ...local.page(folder),
-    enabled: (!label || accounts.isSuccess) && (!searchState.query || !searchState.pending),
-    refetchInterval: busy ? 1500 : false,
-  });
-  // Previous search results are only shown. Paging starts from the new search's own results.
-  const paging = useMailPages(
-    api,
-    scope,
-    folder,
-    boxes.map((box) => box.id),
-    page.isPlaceholderData ? undefined : page.data?.items,
+  const { page, paging, shownFolder, rows } = useFolderPage(api, scope, folder, {
+    boxes,
+    label,
+    accountsRead: accounts.isSuccess,
+    search: searchState,
     busy,
     revision,
-  );
-  // The folder whose results are on screen. The list keeps its state until new results replace
-  // them, instead of starting over on every keystroke.
-  const [shownFolder, setShownFolder] = useState(folder);
-  if (!page.isPlaceholderData && JSON.stringify(shownFolder) !== JSON.stringify(folder))
-    setShownFolder(folder);
-  const rows = page.isPlaceholderData ? page.data.items : paging.items;
-  const selectedBox = boxes.find((b) => b.id === selected?.mailboxId);
-  const thread = useQuery({
-    ...local.thread(selectedBox ? selected?.id : undefined),
-    refetchInterval: selectedBox?.status === "syncing" ? 2500 : false,
   });
+  const { selectedBox, thread } = useSelectedThread(local, boxes, selected);
   const sync = useMutation({
     mutationFn: (mailboxId: string | null) => api.sync({ ...scope, mailboxId }),
     onSuccess: () => {
@@ -125,45 +79,12 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
     setSelected(undefined);
     paging.reset();
   }
-  function focusList() {
-    if (document.getElementById("inbox-reader-heading")) return;
-    const opener = document
-      .getElementById(`message-${selected?.id}`)
-      ?.querySelector<HTMLButtonElement>("[data-mail-open]");
-    (opener ?? field.current)?.focus();
-  }
-  function closeReader() {
-    const key = selected && conversationKey(selected);
-    setSelected((current) => (current && conversationKey(current) === key ? undefined : current));
-    requestAnimationFrame(focusList);
-  }
-  async function changeMessage(id: string, action: MailMessageAction) {
-    const result = await api[action]({ ...scope, id });
-    if (result === "updated" || result === "missing") paging.reset();
-    await client.invalidateQueries({ queryKey: local.root });
-    if (result === "missing" || (result === "updated" && action === "trashMessage")) closeReader();
-    return result;
-  }
-  async function changeConversations(ids: string[], action: MailMessageAction) {
-    const results = await api.changeConversations({ ...scope, ids, action });
-    if (results.some((r) => r.result === "updated" || r.result === "missing")) paging.reset();
-    await client.invalidateQueries({ queryKey: local.root });
-    return results;
-  }
-  const labelActions: LabelActions = {
-    onLabelColor: async (mailboxId, labelId, color) => {
-      await api.labelColor({ ...scope, mailboxId, labelId, color });
-      await client.invalidateQueries({ queryKey: local.accounts.queryKey });
-    },
-    onLabelVisibility: async (mailboxId, change) => {
-      await api.labelVisibility({ ...scope, mailboxId, change });
-      const latest = await client.query({ ...local.accounts, staleTime: 0 });
-      if (label?.mailboxId === mailboxId && change.area !== "rows") {
-        const box = latest.find((b) => b.id === mailboxId);
-        if (!box || !filterLabels(box).some((l) => l.id === label.id)) navigate("inbox");
-      }
-    },
-  };
+  const { changeMessage, changeConversations, labelActions } = useMailChanges(api, scope, {
+    label,
+    resetPages: paging.reset,
+    closeReader,
+    onLabelHidden: () => navigate("inbox"),
+  });
   const nav = {
     connected: boxes,
     colors: mailboxColors(boxes),
@@ -185,21 +106,13 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
     },
     view,
     onView: navigate,
-    counts: { new: data?.newCount, unread: data?.unreadCount, drafts: data?.draftCount },
-    unreadByMailbox: data?.unreadByMailbox,
+    ...folderCounts(data),
     onMailboxUnread: (box: (typeof boxes)[number]) => {
       setAccount(box.id);
       navigate("unread");
     },
   };
-  const current = selectedLabel
-    ? {
-        label: labelName(selectedLabel),
-        icon: Tag,
-        empty: "No messages with this label",
-        hint: "Messages with this label appear here.",
-      }
-    : views[view];
+  const current = folderView(selectedLabel, view);
   // Failed authority checks must also hide cached account names, counts and the open reader.
   const unreadable = accounts.isError || page.isError || thread.isError;
   if (unreadable || paging.failed)
@@ -212,62 +125,6 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
         }}
       />
     );
-  function list() {
-    if (accounts.isPending || (boxes.length && page.isPending))
-      return <LoadingState label="Reading local mail…" />;
-    if (!boxes.length)
-      return (
-        <ContentNotice
-          icon={Mail}
-          title="Connect your first mailbox"
-          description="Read your Gmail inbox on this device."
-          action={<Button onClick={nav.onConnect}>Connect Gmail</Button>}
-        />
-      );
-    if (rows?.length)
-      return (
-        <SelectableMessageList
-          key={JSON.stringify([
-            userId,
-            organizationId,
-            shownFolder,
-            boxes.map((b) => b.id),
-            listVisit,
-          ])}
-          messages={rows}
-          mailboxes={boxes}
-          colors={nav.colors}
-          selected={selected ? conversationKey(selected) : null}
-          unified={!account}
-          onOpen={setSelected}
-          onBeginSelection={() => setSelected(undefined)}
-          onManage={nav.onManage}
-          onChange={changeConversations}
-          allTags={allTags}
-        />
-      );
-    if (search)
-      return (
-        <ContentNotice
-          icon={Search}
-          title="No matching messages"
-          description={`No match in ${current.label}.`}
-          action={
-            <Button
-              onClick={() => {
-                setSearch("");
-                paging.reset();
-                field.current?.focus();
-              }}
-            >
-              Clear search
-            </Button>
-          }
-        />
-      );
-    if (busy || paging.pending) return <LoadingState label="Loading messages…" />;
-    return <ContentNotice icon={current.icon} title={current.empty} description={current.hint} />;
-  }
   return (
     <>
       <PageLayout id="mail" aria-label="Inbox workspace" mobileView="content">
@@ -275,83 +132,60 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
           <MailboxSidebar {...nav} {...viewNav} labelActions={labelActions} />
         )}
         <PageContent>
-          <PageHeader
-            variant="pane"
-            className="@container"
-            leading={!sidebar && <MailboxPicker {...nav} compact />}
-            title={
-              sidebar || !boxes.length ? (
-                current.label
-              ) : (
-                <MobileViewPicker
-                  {...viewNav}
-                  {...nav}
-                  onSync={() => sync.mutate(account)}
-                  syncing={busy || sync.isPending}
-                />
-              )
-            }
-            icon={sidebar ? <current.icon aria-hidden /> : undefined}
-            actions={
-              boxes.length > 0 && (
-                <>
-                  <LabelDisplayToggle
-                    expanded={allTags}
-                    onToggle={() => setAllTags((value) => !value)}
-                  />
-                  <span className="max-[384px]:hidden">
-                    <RowAction
-                      label="Sync mail"
-                      disabled={busy || sync.isPending}
-                      onClick={() => sync.mutate(account)}
-                    >
-                      <RefreshCw aria-hidden />
-                    </RowAction>
-                  </span>
-                </>
-              )
-            }
-          >
-            {boxes.length > 0 && (
-              <div className="max-w-xs min-w-0">
-                <Input
-                  ref={field}
-                  type="search"
-                  maxLength={500}
-                  aria-label="Search messages"
-                  placeholder={`Search ${current.label.toLowerCase()}…`}
-                  value={search}
-                  onChange={(e) => {
-                    setSearch(e.target.value);
-                    setSelected(undefined);
-                    paging.reset();
-                  }}
-                />
-              </div>
-            )}
-          </PageHeader>
-          {(problem || sync.isError) && (
-            <div
-              role="status"
-              className="flex items-center gap-2 border-b px-4 py-1 text-xs text-muted-foreground"
-            >
-              {problem?.status === "reconnect"
-                ? `${problem.address} needs to reconnect.`
-                : "Sync paused. Cached mail is available."}
-              <Button
-                size="xs"
-                variant="link"
-                onClick={() =>
-                  problem?.status === "reconnect"
-                    ? nav.onManage()
-                    : sync.mutate(problem?.id ?? account)
-                }
-              >
-                {problem?.status === "reconnect" ? "Manage mailboxes" : "Retry sync"}
-              </Button>
-            </div>
-          )}
-          {list()}
+          <InboxHeader
+            sidebar={sidebar}
+            nav={nav}
+            viewNav={viewNav}
+            current={current}
+            syncing={busy || sync.isPending}
+            onSync={() => sync.mutate(account)}
+            allTags={allTags}
+            onToggleTags={() => setAllTags((value) => !value)}
+            field={field}
+            search={search}
+            onSearch={(value) => {
+              setSearch(value);
+              setSelected(undefined);
+              paging.reset();
+            }}
+          />
+          <SyncNotice
+            problem={problem}
+            failed={sync.isError}
+            account={account}
+            onManage={nav.onManage}
+            onSync={(mailboxId) => sync.mutate(mailboxId)}
+          />
+          <InboxList
+            accountsPending={accounts.isPending}
+            pagePending={page.isPending}
+            loadingMore={busy || paging.pending}
+            boxes={boxes}
+            rows={rows}
+            listKey={JSON.stringify([
+              userId,
+              organizationId,
+              shownFolder,
+              boxes.map((b) => b.id),
+              listVisit,
+            ])}
+            colors={nav.colors}
+            selected={selected}
+            unified={!account}
+            allTags={allTags}
+            search={search}
+            current={current}
+            onOpen={setSelected}
+            onBeginSelection={() => setSelected(undefined)}
+            onConnect={nav.onConnect}
+            onManage={nav.onManage}
+            onChange={changeConversations}
+            onClearSearch={() => {
+              setSearch("");
+              paging.reset();
+              field.current?.focus();
+            }}
+          />
           {!!boxes.length && !!data && (
             <MailPagination
               paging={paging}
@@ -376,47 +210,22 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
           />
         )}
       </PageLayout>
-      {dialog.value === "connect" && (
-        <ConnectMailbox
-          hasMailboxes={boxes.length > 0}
-          onClose={dialog.close}
-          onRestoreFocus={dialog.restoreFocus}
-          onConnect={async (nickname, chooseClient) => {
-            const id = await api.connectGmail({ ...scope, nickname, chooseClient });
-            if (id === null) return false;
-            setAccount(id);
-            navigate("inbox");
-            await client.invalidateQueries({ queryKey: local.root });
-            return true;
-          }}
-        />
-      )}
-      {dialog.value === "manage" && (
-        <ManageMailboxes
-          boxes={boxes}
-          onClose={dialog.close}
-          onRestoreFocus={dialog.restoreFocus}
-          onRename={async (mailboxId, nickname) => {
-            await api.rename({ ...scope, mailboxId, nickname });
-            await client.invalidateQueries({ queryKey: local.accounts.queryKey });
-          }}
-          {...labelActions}
-          onReconnect={async (mailboxId, chooseClient) => {
-            const result = await api.reconnectGmail({ ...scope, mailboxId, chooseClient });
-            if (result === "connected") await client.invalidateQueries({ queryKey: local.root });
-            return result;
-          }}
-          onDisconnect={async (mailboxId) => {
-            await api.disconnect({ ...scope, mailboxId });
-            if (account === mailboxId) setAccount(null);
-            setSelected(undefined);
-            paging.reset();
-            // Evict old bodies plus unified lists that can still contain this mailbox's rows.
-            await client.cancelQueries({ queryKey: local.root });
-            await client.resetQueries({ queryKey: local.root });
-          }}
-        />
-      )}
+      <MailboxDialogs
+        api={api}
+        scope={scope}
+        dialog={dialog}
+        boxes={boxes}
+        labelActions={labelActions}
+        onConnected={(id) => {
+          setAccount(id);
+          navigate("inbox");
+        }}
+        onDisconnected={(mailboxId) => {
+          if (account === mailboxId) setAccount(null);
+          setSelected(undefined);
+          paging.reset();
+        }}
+      />
     </>
   );
 }

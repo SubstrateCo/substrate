@@ -1,3 +1,6 @@
+import type { MailLabel, MailView } from "@substrate/contracts/mail";
+
+import { labelName } from "./mail-colors";
 import {
   Archive,
   FilePenLine,
@@ -7,6 +10,7 @@ import {
   ShieldAlert,
   Send,
   Star,
+  Tag,
   Trash2,
 } from "lucide-react";
 
@@ -63,6 +67,20 @@ export const views = {
     label: "Trash",
     icon: Trash2,
     empty: "Trash is empty",
-    hint: "Messages in your mailbox’s trash appear here.",
+    hint: "Messages in your mailbox's trash appear here.",
   },
 };
+
+/** The title, icon and empty state of the selected label, or else of the view. */
+export function folderView(label: MailLabel | undefined, view: MailView) {
+  return label
+    ? {
+        label: labelName(label),
+        icon: Tag,
+        empty: "No messages with this label",
+        hint: "Messages with this label appear here.",
+      }
+    : views[view];
+}
+
+export type FolderView = ReturnType<typeof folderView>;
