@@ -1,35 +1,34 @@
 import { roles, type OrganizationRole } from "@substrate/contracts/auth/permissions";
-import { invitableRoles, primaryRole as storedPrimaryRole } from "@substrate/contracts/auth/roles";
+import {
+  invitableRoles,
+  primaryRole as storedPrimaryRole,
+  roleLabel as storedRoleLabel,
+} from "@substrate/contracts/auth/roles";
 
-const roleOptions = {
-  member: {
-    label: "Member",
-    description: "Works in the channels and projects they are added to.",
-  },
-  admin: {
-    label: "Admin",
-    description: "Manages settings and conversations, invites people, and can remove members.",
-  },
-  owner: {
-    label: "Owner",
-    description: "Full control, including invitations, roles, and other owners.",
-  },
-} satisfies Record<OrganizationRole, { label: string; description: string }>;
+const roleDescriptions = {
+  member: "Works in the channels and projects they are added to.",
+  admin: "Manages settings and conversations, invites people, and can remove members.",
+  owner: "Full control, including invitations, roles, and other owners.",
+} satisfies Record<OrganizationRole, string>;
 
 export const organizationRoles: readonly {
   value: OrganizationRole;
   label: string;
   description: string;
-}[] = (["member", "admin", "owner"] as const).map((value) => ({ value, ...roleOptions[value] }));
+}[] = (["member", "admin", "owner"] as const).map((value) => ({
+  value,
+  label: storedRoleLabel(value),
+  description: roleDescriptions[value],
+}));
 
 /** The most powerful stored role, from the shared role parser. */
 export function primaryRole(role: string): OrganizationRole {
   return storedPrimaryRole(role);
 }
 
-/** A human label for a stored role, such as "Admin". */
+/** A human label for a stored role, such as "Admin", from the shared role labels. */
 export function roleLabel(role: string) {
-  return roleOptions[primaryRole(role)].label;
+  return storedRoleLabel(role);
 }
 
 /** The role options the viewer may invite people with, from most to least common. */

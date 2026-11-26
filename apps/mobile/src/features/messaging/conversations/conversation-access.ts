@@ -1,3 +1,8 @@
+import {
+  isOwner,
+  ownerCandidates as hostOwnerCandidates,
+} from "@substrate/contracts/messaging/permissions";
+
 import type {
   Conversation,
   ConversationMember,
@@ -11,18 +16,15 @@ import { humanMembers } from "./conversation-rules";
 
 /** The owner leaving must hand ownership to another person first, when there is one. */
 export function leaveOwnerCandidates(conversation: Conversation, viewerId: string) {
-  const owner = conversation.createdBy === viewerId && conversation.canManage;
-  if (!owner) return [];
+  if (!isOwner(conversation, viewerId)) return [];
   return ownerCandidates(conversation);
 }
 
-/** Ownership stays in the host organization, even when partners share the conversation. */
+/** The people who may become owner, from the shared owner rule. */
 export function ownerCandidates(
   conversation: Pick<Conversation, "members" | "organizationId" | "createdBy">,
 ) {
-  return humanMembers(
-    conversation.members.filter((member) => member.organizationId === conversation.organizationId),
-  ).filter((person) => person.userId !== conversation.createdBy);
+  return humanMembers(hostOwnerCandidates(conversation));
 }
 
 /** Managed metadata omits organization IDs. Only current host-directory members can own it. */

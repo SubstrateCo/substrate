@@ -1,4 +1,4 @@
-import { canShareInvitation, invitableRoles, primaryRole, storedRoles } from "./roles";
+import { canShareInvitation, invitableRoles, primaryRole, roleLabel, storedRoles } from "./roles";
 import { describe, expect, test } from "bun:test";
 
 describe("organization roles", () => {
@@ -7,6 +7,12 @@ describe("organization roles", () => {
     expect(storedRoles(null)).toEqual([]);
     expect(primaryRole("member, admin")).toBe("admin");
     expect(primaryRole("organization-owner")).toBe("member");
+  });
+
+  test("a stored role list is labeled by its strongest role", () => {
+    expect(roleLabel("member,admin")).toBe("Admin");
+    expect(roleLabel("owner")).toBe("Owner");
+    expect(roleLabel("unknown")).toBe("Member");
   });
 
   test("only owners invite owners, and members invite nobody", () => {

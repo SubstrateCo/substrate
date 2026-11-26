@@ -30,6 +30,29 @@ export function canManageOwnAgents(conversation: ConversationFacts) {
   return canLeave(conversation);
 }
 
+/** The viewer owns a conversation they created and still manage. */
+export function isOwner(conversation: ConversationFacts, viewerId: string) {
+  return conversation.createdBy === viewerId && !!conversation.canManage;
+}
+
+/**
+ * Who may become the new owner: people of the host organization other than the current owner,
+ * even when partners share the conversation. Agents never own a conversation.
+ */
+export function ownerCandidates<Member extends MemberFacts>(
+  conversation: Pick<ConversationFacts, "organizationId" | "createdBy"> & {
+    members: readonly Member[];
+  },
+) {
+  return conversation.members.filter(
+    (member) =>
+      member.type === "human" &&
+      !!member.userId &&
+      member.organizationId === conversation.organizationId &&
+      member.userId !== conversation.createdBy,
+  );
+}
+
 /** Managers remove people of the host organization, never themselves or the owner. */
 export function canRemovePerson(
   conversation: ConversationFacts,

@@ -1,4 +1,4 @@
-import { canLeave } from "@substrate/contracts/messaging/permissions";
+import { canLeave, isOwner, ownerCandidates } from "@substrate/contracts/messaging/permissions";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -44,7 +44,7 @@ export function ConversationActions({
   });
   // Running text: a public channel reads "#name", as in the composer and search.
   const name = conversationTextLabel(conversation);
-  const people = humanMembers(conversation.members);
+  const candidates = humanMembers(ownerCandidates(conversation));
   const { leaveLabel, deleteLabel } =
     conversation.kind === "channel"
       ? { leaveLabel: "Leave channel", deleteLabel: "Delete channel" }
@@ -77,7 +77,7 @@ export function ConversationActions({
           userId={userId}
           name={name}
           leaveLabel={leaveLabel}
-          people={people}
+          candidates={candidates}
           pending={leave.isPending}
           error={leave.error}
           onClose={close}
@@ -94,7 +94,7 @@ export function ConversationActions({
         <OwnerDialog
           mode="transfer"
           name={name}
-          candidates={people.filter((person) => person.userId !== conversation.createdBy)}
+          candidates={candidates}
           pending={transfer.isPending}
           error={transfer.error}
           onClose={close}
@@ -135,7 +135,7 @@ function LeaveConversation({
   userId,
   name,
   leaveLabel,
-  people,
+  candidates,
   pending,
   error,
   onClose,
@@ -146,15 +146,14 @@ function LeaveConversation({
   userId: string;
   name: string;
   leaveLabel: string;
-  people: ReturnType<typeof humanMembers>;
+  candidates: ReturnType<typeof humanMembers>;
   pending: boolean;
   error: Error | null;
   onClose: () => void;
   onRestoreFocus: () => void;
   onConfirm: (newOwnerUserId?: string) => void;
 }) {
-  const owner = conversation.createdBy === userId && !!conversation.canManage;
-  const candidates = people.filter((person) => person.userId !== userId);
+  const owner = isOwner(conversation, userId);
   const publicChannel = conversation.kind === "channel" && !conversation.private;
   const dialogProps = { name, leaveLabel, publicChannel, pending, error, onClose, onRestoreFocus };
   if (owner && candidates.length > 0)

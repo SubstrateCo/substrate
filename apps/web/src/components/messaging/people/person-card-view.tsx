@@ -5,6 +5,7 @@ import { Tag } from "@/components/feedback/tag";
 import { PersonAvatarFallback } from "@/components/people/person-avatar";
 import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { harnessLabel } from "@/lib/agents/harness-meta";
+import { roleLabel } from "@/lib/organizations/member-policy";
 import { Bot, LockKeyhole } from "lucide-react";
 
 export type PersonCardProfile = {
@@ -21,11 +22,6 @@ export type PersonCardProfile = {
 function agentLine(agent: NonNullable<PersonCardProfile["agent"]>) {
   if (!agent.harness) return null;
   return ["Agent", harnessLabel(agent.harness), agent.model].filter(Boolean).join(" · ");
-}
-
-function roleLabel(role: string) {
-  const first = role.split(",")[0]!.trim();
-  return first.charAt(0).toUpperCase() + first.slice(1);
 }
 
 function Header({

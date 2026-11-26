@@ -1,4 +1,5 @@
 import type { AgentCallMode } from "@substrate/contracts/agents";
+import { roleLabel } from "@substrate/contracts/auth/roles";
 
 import { View } from "react-native";
 
@@ -50,7 +51,7 @@ export function ProfileSheet({
               </Text>
               <Text className="text-sm text-muted-foreground">
                 {[
-                  data.type === "agent" ? "Agent" : data.role,
+                  data.type === "agent" ? "Agent" : data.role && roleLabel(data.role),
                   data.external ? "Outside this workspace" : undefined,
                 ]
                   .filter(Boolean)

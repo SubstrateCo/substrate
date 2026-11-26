@@ -18,6 +18,17 @@ export function primaryRole(role: string | null | undefined): OrganizationRole {
   return roleOrder.find((candidate) => stored.includes(candidate)) ?? "member";
 }
 
+const roleLabels = {
+  owner: "Owner",
+  admin: "Admin",
+  member: "Member",
+} satisfies Record<OrganizationRole, string>;
+
+/** A human label for the most powerful stored role, such as "Admin". */
+export function roleLabel(role: string | null | undefined) {
+  return roleLabels[primaryRole(role)];
+}
+
 /**
  * The roles the viewer may invite people with, most powerful first. Empty when the viewer may not
  * invite. Better Auth lets only owners invite owners, and enforces it.
