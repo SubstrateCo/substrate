@@ -2,12 +2,12 @@ import type { ConversationKind } from "@substrate/contracts/messaging/input";
 
 import { Link } from "@tanstack/react-router";
 
+import { activityTime } from "./activity-time";
 import { discussionConversationName } from "@/components/context/discussions/conversation-name";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
 import { PersonAvatar } from "@/components/people/person-avatar";
-import { Timestamp } from "@/components/time/timestamp";
 import { Item, ItemActions, ItemContent, ItemMedia } from "@/components/ui/item";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import { CircleDot, Link2, MessageCircle, MessageSquare, Unlink } from "lucide-react";
@@ -80,8 +80,23 @@ export function ActivityRow({ event }: { event: ActivityEvent }) {
           )}
         </>
       }
-      meta={<Timestamp value={event.createdAt} />}
+      meta={<ActivityTimestamp value={event.createdAt} />}
     />
+  );
+}
+
+function ActivityTimestamp({ value }: { value: string }) {
+  const time = activityTime(value);
+  if (!time) return null;
+  return (
+    <time
+      dateTime={time.iso}
+      aria-label={time.full}
+      title={time.full}
+      className="whitespace-nowrap tabular-nums"
+    >
+      {time.label}
+    </time>
   );
 }
 

@@ -1,6 +1,7 @@
 import { useState, type ReactNode } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
+import { orderActivity } from "./activity-order";
 import { ActivityRow, ActivityRowSkeleton, type ActivityEvent } from "./activity-row";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { RecordSection } from "@/components/layout/record-section";
@@ -87,7 +88,8 @@ function ActivityList({
   onExpandedChange: (expanded: boolean) => void;
 }) {
   const hidden = items.length - collapsedCount;
-  const shown = expanded || hidden <= 0 ? items : items.slice(0, collapsedCount);
+  const ordered = orderActivity(items);
+  const shown = expanded || hidden <= 0 ? ordered : ordered.slice(0, collapsedCount);
   return (
     <>
       {loading && !items.length && (
@@ -105,11 +107,14 @@ function ActivityList({
         <ContentNotice variant="inline" title="No activity yet" />
       )}
       {shown.length > 0 && (
-        <ul>
-          {shown.map((event) => (
-            <ActivityRow key={event.id} event={event} />
-          ))}
-        </ul>
+        <>
+          <p className="mb-2 text-xs text-muted-foreground">Newest first</p>
+          <ol aria-label="Activity, newest first">
+            {shown.map((event) => (
+              <ActivityRow key={event.id} event={event} />
+            ))}
+          </ol>
+        </>
       )}
       {hidden > 0 && (
         <Button
