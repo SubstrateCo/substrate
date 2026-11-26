@@ -23,13 +23,15 @@ export function MessageRowLayout({
     <article
       aria-label={label}
       className={cn(
-        "group/message relative flex w-full gap-2.5 px-4 hover:bg-row-hover has-data-[state=open]:bg-row-hover",
+        "group/message relative flex w-full gap-3 px-4 hover:bg-row-hover has-data-[state=open]:bg-row-hover",
         grouped ? "py-0.5" : "pt-2 pb-0.5",
         highlighted &&
           "bg-row-selected before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-primary hover:bg-row-selected",
       )}
     >
-      {avatar}
+      <div data-slot="message-gutter" className="flex w-9 shrink-0 justify-end">
+        {avatar}
+      </div>
       <div className="min-w-0 flex-1">
         {byline && <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">{byline}</div>}
         {children}

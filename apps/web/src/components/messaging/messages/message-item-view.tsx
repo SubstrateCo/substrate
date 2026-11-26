@@ -61,11 +61,7 @@ export function MessageItem({
       grouped={grouped}
       highlighted={highlighted || !!editor}
       avatar={
-        grouped ? (
-          <span className="flex w-9 shrink-0 justify-end text-xs leading-6 whitespace-nowrap text-muted-foreground opacity-0 group-hover/message:opacity-100 group-has-focus-visible/message:opacity-100">
-            <Timestamp value={message.createdAt} format="time" />
-          </span>
-        ) : (
+        !grouped && (
           <span className="relative mt-0.5 h-fit shrink-0">
             <Avatar
               aria-hidden="true"
@@ -136,13 +132,13 @@ function MessageByline({
           {name}
         </span>
       </PersonCardTarget>
-      {message.authorType === "agent" && <Tag>Agent</Tag>}
-      {message.authorExternal && <Tag>External</Tag>}
       <Timestamp
         value={message.createdAt}
         format="time"
-        className="text-xs text-muted-foreground"
+        className="shrink-0 text-xs text-muted-foreground"
       />
+      {message.authorType === "agent" && <Tag>Agent</Tag>}
+      {message.authorExternal && <Tag>External</Tag>}
       {status && <span className="flex min-w-0 self-center">{status}</span>}
     </>
   );
