@@ -14,6 +14,9 @@ import { z } from "zod";
 /** server: the workspace API executes the call. local: the home desktop handles it. */
 export type ToolScope = "server" | "local";
 
+// CRM tools that also read or write tasks.
+const crmTaskTools: ReadonlySet<string> = new Set(["create_crm_follow_up", "list_crm_follow_ups"]);
+
 const serverTools = {
   ...required(crmTools, ["crm"]),
   ...contextTools,
@@ -28,7 +31,7 @@ function required<T extends Record<string, ToolDefinition>>(tools: T, apps: read
   return Object.fromEntries(
     Object.entries(tools).map(([name, tool]) => [
       name,
-      { ...tool, requiredApps: name === "create_crm_follow_up" ? ["crm", "tasks"] : apps },
+      { ...tool, requiredApps: crmTaskTools.has(name) ? ["crm", "tasks"] : apps },
     ]),
   ) as { [K in keyof T]: T[K] & { requiredApps: readonly AppId[] } };
 }

@@ -113,22 +113,75 @@ export function mcpCrmTools(context: RepositoryContext, identity: SessionIdentit
       return { record: await crm.transitionDeal(entityId, change) };
     },
     async listInteractions(input: McpInput<"list_crm_interactions">) {
-      const page = (limit: number, before?: { occurredAt: Date; entityId: string }) =>
-        interactions.listInteractions(input.contactEntityId, { limit, before });
-      const items = await page(
-        input.limit,
-        input.before && { ...input.before, occurredAt: new Date(input.before.occurredAt) },
-      );
+      const page = (limit: number, before?: { occurredAt: string; entityId: string }) =>
+        crm.timeline(input.entityId, {
+          limit,
+          beforeOccurredAt: before?.occurredAt,
+          beforeEntityId: before?.entityId,
+          mode: input.linkedOnly ? "linked" : "participants",
+        });
+      const items = await page(input.limit, input.before);
       const last = items.at(-1);
-      const cursor = last && { occurredAt: last.occurredAt, entityId: last.entityId };
+      const cursor = last && {
+        occurredAt: new Date(last.occurredAt).toISOString(),
+        entityId: last.entityId,
+      };
       // A full page has more only if an interaction follows it.
       const more = items.length === input.limit && cursor && (await page(1, cursor)).length > 0;
+      return { items, nextBefore: more ? cursor : null };
+    },
+    async searchInteractions(input: McpInput<"search_crm_interactions">) {
+      // Without a period the search covers all time; the period fields then only pass validation.
+      const until = input.until ?? new Date().toISOString();
+      const from = input.from ?? new Date(Date.parse(until) - 86_400_000).toISOString();
+      const page = await interactions.workspaceTimeline({
+        organizationId: context.scope.organizationId,
+        from,
+        until,
+        timeZone: "UTC",
+        allTime: input.from ? undefined : "true",
+        contactEntityId: input.contactEntityId,
+        accountEntityId: input.accountEntityId,
+        kind: input.kind,
+        origin: input.origin,
+        search: input.search,
+        beforeOccurredAt: input.before?.occurredAt,
+        beforeEntityId: input.before?.entityId,
+      });
       return {
-        items,
-        nextBefore: more
-          ? { occurredAt: cursor.occurredAt.toISOString(), entityId: cursor.entityId }
-          : null,
+        items: page.items,
+        nextBefore: page.nextCursor && {
+          occurredAt: page.nextCursor.beforeOccurredAt,
+          entityId: page.nextCursor.beforeEntityId,
+        },
       };
+    },
+    getInteraction: (entityId: string) => interactions.workspaceRecord(entityId),
+    async updateInteraction(input: McpInput<"update_crm_interaction">) {
+      return { record: await interactions.updateInteraction(input.entityId, input) };
+    },
+    async findContacts(input: McpInput<"find_crm_contacts">) {
+      const rows = await contacts.findByIdentifier(input);
+      return { items: rows.map(({ entityId, displayName }) => ({ entityId, displayName })) };
+    },
+    async changeContactDetail(input: McpInput<"change_crm_contact_detail">) {
+      await contacts.mutateContactDetail({
+        ...input,
+        organizationId: context.scope.organizationId,
+      });
+      return { record: await contacts.getContact(input.contactEntityId) };
+    },
+    async setAffiliation(input: McpInput<"set_crm_affiliation">) {
+      await crm.setAffiliation(input);
+      return { record: await contacts.getContact(input.contactEntityId) };
+    },
+    async removeAffiliation(input: McpInput<"remove_crm_affiliation">) {
+      await crm.removeAffiliation(input.contactEntityId, input.accountEntityId);
+      return { record: await contacts.getContact(input.contactEntityId) };
+    },
+    followUps: (entityId: string) => crm.followUps(entityId),
+    async requireContact(entityId: string) {
+      await contacts.getContact(entityId);
     },
     async createInteraction(input: McpInput<"create_crm_interaction">) {
       return {

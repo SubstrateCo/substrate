@@ -8,6 +8,11 @@ import {
 } from "@substrate/contracts/agent-work";
 
 import { requireAppEnabled } from "../../../core/apps/access";
+import {
+  deletableAuthors,
+  requireContact,
+  requireInteraction,
+} from "../../../core/contacts/access";
 import { entities } from "../../../core/entities/schema";
 import type { RepositoryContext } from "../../../core/repository-context";
 import type { SessionIdentity } from "../../../core/session/identity";
@@ -29,6 +34,32 @@ type Receipt = Extract<ProposalOutcome, { status: "executed" }>["receipt"];
 async function editableWork(ctx: RepositoryContext, entityId: string) {
   const work = await requireWork(ctx, entityId, "edit");
   return { ...work, version: work.updatedAt.toISOString() };
+}
+
+// An account or deal the agent can change at `minimum`, with its type and version.
+async function crmRecord(ctx: RepositoryContext, entityId: string, minimum: "edit" | "owner") {
+  await requireAppEnabled(ctx, "crm");
+  const { entity } = await ctx.requireAccess(entityId, minimum);
+  if (entity.entityType !== "account" && entity.entityType !== "deal")
+    throw new AccessDeniedError();
+  return { entityType: entity.entityType, version: entity.updatedAt.toISOString() };
+}
+
+// Grants and responsibility go to people; an agent acts with its owner's access.
+async function requirePerson(ctx: RepositoryContext, actorId: string, message: string) {
+  const target = await ctx.requireActiveActor(actorId);
+  if (target.type !== "human") throw new ValidationError(message);
+}
+
+async function entityVersion(ctx: RepositoryContext, entityId: string) {
+  const [row] = await ctx.db
+    .select({ updatedAt: entities.updatedAt })
+    .from(entities)
+    .where(
+      and(eq(entities.organizationId, ctx.scope.organizationId), eq(entities.entityId, entityId)),
+    );
+  if (!row) throw new AccessDeniedError();
+  return row.updatedAt.toISOString();
 }
 
 // A project the agent owns, in the archive state the action needs, and its version.
@@ -106,6 +137,47 @@ export async function checkProposalAccess(
         type: action.type,
         projectUpdatedAt: await ownedProject(ctx, action.input.projectId, true),
       };
+    case "archive_crm_record": {
+      const { kind, entityId } = action.input;
+      await requireAppEnabled(ctx, "crm");
+      if (kind === "contact") await requireContact(ctx, entityId);
+      else if ((await crmRecord(ctx, entityId, "edit")).entityType !== kind)
+        throw new AccessDeniedError();
+      return { type: action.type, recordUpdatedAt: await entityVersion(ctx, entityId) };
+    }
+    case "delete_crm_interaction": {
+      await requireAppEnabled(ctx, "crm");
+      const { interaction } = await requireInteraction(ctx, action.input.entityId);
+      const author = interaction.createdByActorEntityId;
+      if (!(await deletableAuthors(ctx, [author])).has(author)) throw new AccessDeniedError();
+      return {
+        type: action.type,
+        recordUpdatedAt: await entityVersion(ctx, action.input.entityId),
+      };
+    }
+    case "assign_crm_owner": {
+      const { version } = await crmRecord(ctx, action.input.entityId, "edit");
+      await requirePerson(
+        ctx,
+        action.input.ownerActorId,
+        "Responsibility requires an active organization human.",
+      );
+      return { type: action.type, recordUpdatedAt: version };
+    }
+    case "share_crm_record": {
+      const { version } = await crmRecord(ctx, action.input.entityId, "owner");
+      await requirePerson(
+        ctx,
+        action.input.actorId,
+        "Agents use their owner's access. Share with the owner instead.",
+      );
+      return { type: action.type, recordUpdatedAt: version };
+    }
+    case "revoke_crm_access":
+      return {
+        type: action.type,
+        recordUpdatedAt: (await crmRecord(ctx, action.input.entityId, "owner")).version,
+      };
   }
 }
 
@@ -165,6 +237,8 @@ async function bindTargets(
     return bindWork(ctx, action.input.taskId, basis.taskUpdatedAt);
   if ("projectUpdatedAt" in basis && action.type === basis.type && "projectId" in action.input)
     return bindWork(ctx, action.input.projectId, basis.projectUpdatedAt);
+  if ("recordUpdatedAt" in basis && action.type === basis.type && "entityId" in action.input)
+    return bindWork(ctx, action.input.entityId, basis.recordUpdatedAt);
   throw new ConflictError(staleProposalError);
 }
 
@@ -234,11 +308,33 @@ export async function runProposalAction(
     case "revoke_project_access":
       await writes.revokeProjectAccess(action.input);
       return { receipt: project(action.input.projectId) };
+    case "archive_crm_record":
+      await writes.archiveCrmRecord(action.input);
+      return { receipt: crm(action.input.kind, action.input.entityId) };
+    case "delete_crm_interaction":
+      await writes.deleteCrmInteraction(action.input);
+      return { receipt: deleted("contact_interaction", action.input.entityId) };
+    case "assign_crm_owner":
+    case "share_crm_record":
+    case "revoke_crm_access": {
+      // Read before the write: revoking the owner's own grant can end their read access.
+      const { entityType } = await crmRecord(ctx, action.input.entityId, "edit");
+      if (action.type === "assign_crm_owner") await writes.assignCrmOwner(action.input);
+      else if (action.type === "share_crm_record") await writes.shareCrmRecord(action.input);
+      else await writes.revokeCrmAccess(action.input);
+      return { receipt: crm(entityType, action.input.entityId) };
+    }
   }
 }
 
+const crm = (entityType: "account" | "contact" | "deal", id: string): Receipt => ({
+  kind: "crm",
+  entityType,
+  id,
+});
+
 const project = (id: string): Receipt => ({ kind: "project", id });
-const deleted = (entityType: "task" | "project", id: string): Receipt => ({
+const deleted = (entityType: "task" | "project" | "contact_interaction", id: string): Receipt => ({
   kind: "deleted",
   entityType,
   id,

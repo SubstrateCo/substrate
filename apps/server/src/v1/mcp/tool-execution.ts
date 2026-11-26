@@ -134,6 +134,14 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     list_crm_interactions: async (value) => crm().listInteractions(value),
     create_crm_interaction: async (value) => crm().createInteraction(value),
     publish_crm_interaction: async (value) => crm().publishInteraction(value),
+    search_crm_interactions: async (value) => crm().searchInteractions(value),
+    get_crm_interaction: async (value) => crm().getInteraction(value.entityId),
+    update_crm_interaction: async (value) => crm().updateInteraction(value),
+    find_crm_contacts: async (value) => crm().findContacts(value),
+    change_crm_contact_detail: async (value) => crm().changeContactDetail(value),
+    set_crm_affiliation: async (value) => crm().setAffiliation(value),
+    remove_crm_affiliation: async (value) => crm().removeAffiliation(value),
+    list_crm_follow_ups: async (value) => crm().followUps(value.entityId),
     get_me: () => context.getMe(actor, userName),
     search_names: (value) => search.names(value),
     search_content: (value) => search.content(value),
@@ -226,6 +234,20 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     },
     async create_crm_interaction(_, previous) {
       await crm().requireInteraction(previous.record.entityId);
+    },
+    async update_crm_interaction(value) {
+      await crm().requireInteraction(value.entityId);
+    },
+    async change_crm_contact_detail(value) {
+      await crm().requireContact(value.contactEntityId);
+    },
+    async set_crm_affiliation(value) {
+      await crm().requireContact(value.contactEntityId);
+      await crm().get({ kind: "account", entityId: value.accountEntityId });
+    },
+    async remove_crm_affiliation(value) {
+      await crm().requireContact(value.contactEntityId);
+      await crm().get({ kind: "account", entityId: value.accountEntityId });
     },
     async create_task(value, previous) {
       await tasks.get(previous.id);

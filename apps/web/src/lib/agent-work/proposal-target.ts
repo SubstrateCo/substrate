@@ -1,6 +1,13 @@
 import type { ProposalAction } from "@substrate/contracts/agent-work";
 
-import { messageLink, workLink, type RecordLink } from "@/lib/navigation/record-links";
+import {
+  contactLink,
+  crmLink,
+  interactionLink,
+  messageLink,
+  workLink,
+  type RecordLink,
+} from "@/lib/navigation/record-links";
 
 /**
  * A record an action names, as the viewer can see it now. hidden carries no name or link, so the
@@ -24,6 +31,16 @@ type ProjectActionType = Extract<
   "archive_project" | "restore_project" | "delete_project"
 >;
 type AccessActionType = Extract<ProposalAction["type"], "share_project" | "revoke_project_access">;
+type CrmPersonActionType = Extract<
+  ProposalAction["type"],
+  "assign_crm_owner" | "share_crm_record" | "revoke_crm_access"
+>;
+
+/** A CRM record the viewer can read, by its kind and name. */
+export interface ProposalCrmRecord {
+  kind: "account" | "contact" | "deal";
+  name: string;
+}
 
 /**
  * What the viewer can read now. Each lookup returns undefined while it loads and null when the
@@ -39,6 +56,12 @@ export interface ProposalLookups {
   message: (conversationId: string, messageId: string) => { label: string } | null | undefined;
   /** Where the proposal was made, to find its source message. Null when the viewer can't see it. */
   sourceConversationId: string | null;
+  /** An account, contact or deal. */
+  crmRecord: (entityId: string) => ProposalCrmRecord | null | undefined;
+  /** A contact interaction, labelled by its contact and summary. */
+  interaction: (entityId: string) => { label: string } | null | undefined;
+  /** A person in the organization, by actor ID. */
+  person: (actorId: string) => { name: string } | null | undefined;
 }
 
 export type ProposalTarget =
@@ -59,7 +82,10 @@ export type ProposalTarget =
     }
   | { type: "delete_task"; task: ProposalRecord; project: ProposalRecord }
   | { type: ProjectActionType; project: ProposalRecord }
-  | { type: AccessActionType; project: ProposalRecord; person: ProposalRecord };
+  | { type: AccessActionType; project: ProposalRecord; person: ProposalRecord }
+  | { type: "archive_crm_record"; record: ProposalRecord }
+  | { type: "delete_crm_interaction"; interaction: ProposalRecord }
+  | { type: CrmPersonActionType; record: ProposalRecord; person: ProposalRecord };
 
 const loading: ProposalRecord = { access: "loading" };
 const hidden: ProposalRecord = { access: "hidden" };
@@ -107,6 +133,29 @@ function personRecord(detail: ProposalProject | null | undefined, actorId: strin
   });
 }
 
+/** A CRM record of the expected kinds, linked in its own app. */
+function crmRecordTarget(
+  lookups: ProposalLookups,
+  entityId: string,
+  kinds: readonly ProposalCrmRecord["kind"][],
+) {
+  return resolve(lookups.crmRecord(entityId), (record) => {
+    if (!kinds.includes(record.kind)) return hidden;
+    return {
+      access: "visible",
+      label: record.name,
+      link:
+        record.kind === "contact"
+          ? contactLink(lookups.organizationId, entityId)
+          : crmLink(lookups.organizationId, `${record.kind}s`, entityId),
+    } satisfies ProposalRecord;
+  });
+}
+
+function crmPerson(lookups: ProposalLookups, actorId: string) {
+  return resolve(lookups.person(actorId), ({ name }) => ({ access: "visible", label: name }));
+}
+
 /** The project that holds the task, once every readable project has loaded. */
 function taskProject(lookups: ProposalLookups, taskId: string) {
   const { projects } = lookups;
@@ -133,6 +182,14 @@ function namedRecords(target: ProposalTarget): (ProposalRecord | null)[] {
     case "restore_project":
     case "delete_project":
       return [target.project];
+    case "archive_crm_record":
+      return [target.record];
+    case "delete_crm_interaction":
+      return [target.interaction];
+    case "assign_crm_owner":
+    case "share_crm_record":
+    case "revoke_crm_access":
+      return [target.record, target.person];
   }
 }
 
@@ -241,5 +298,37 @@ export function proposalTarget(action: ProposalAction, lookups: ProposalLookups)
         person: personRecord(detail, action.input.actorId),
       };
     }
+    case "archive_crm_record":
+      return {
+        type: "archive_crm_record",
+        record: crmRecordTarget(lookups, action.input.entityId, [action.input.kind]),
+      };
+    case "delete_crm_interaction": {
+      const { entityId } = action.input;
+      return {
+        type: "delete_crm_interaction",
+        interaction: resolve(lookups.interaction(entityId), ({ label }) => ({
+          access: "visible",
+          label,
+          link: interactionLink(organizationId, entityId),
+        })),
+      };
+    }
+    case "assign_crm_owner":
+    case "share_crm_record":
+      return {
+        type: action.type,
+        record: crmRecordTarget(lookups, action.input.entityId, ["account", "deal"]),
+        person: crmPerson(
+          lookups,
+          action.type === "assign_crm_owner" ? action.input.ownerActorId : action.input.actorId,
+        ),
+      };
+    case "revoke_crm_access":
+      return {
+        type: action.type,
+        record: crmRecordTarget(lookups, action.input.entityId, ["account", "deal"]),
+        person: crmPerson(lookups, action.input.actorId),
+      };
   }
 }

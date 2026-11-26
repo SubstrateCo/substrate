@@ -4,7 +4,11 @@ import type { McpInput } from "@substrate/contracts/harness/tools";
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";
+import { contactApplicationRepository } from "../contacts/repository";
+import { contextContactInteractionRepository } from "../context/interactions/contact-interactions";
 import { recordTaskSource } from "../context/service";
+import { crmOwnership } from "../crm/ownership";
+import { crmRepository } from "../crm/repository";
 import { requireMessage } from "../messaging/access";
 import { sendMessageAs } from "../messaging/messages/messages";
 import { projectRepository } from "../projects/repository";
@@ -83,6 +87,30 @@ export function agentActions(ctx: RepositoryContext, identity: SessionIdentity, 
       projects.share(projectId, actorId, level),
     revokeProjectAccess: ({ projectId, actorId }: ActionInput<"revoke_project_access">) =>
       projects.revoke(projectId, actorId),
+    archiveCrmRecord: ({ kind, entityId, archived }: ActionInput<"archive_crm_record">) =>
+      kind === "contact"
+        ? contactApplicationRepository(ctx).archive(entityId, archived)
+        : crmRepository(ctx).archive(entityId, archived),
+    deleteCrmInteraction: ({ entityId }: ActionInput<"delete_crm_interaction">) =>
+      contextContactInteractionRepository(ctx).deleteInteraction(entityId),
+    /** Assigns from the record's current owner and version, which the caller has bound. */
+    async assignCrmOwner({
+      entityId,
+      ownerActorId,
+      accessDecision,
+    }: ActionInput<"assign_crm_owner">) {
+      const current = await crmOwnership(ctx, entityId);
+      return crmRepository(ctx).assignOwner(entityId, {
+        ownerActorEntityId: ownerActorId,
+        expectedOwnerActorEntityId: current.ownerActorEntityId,
+        expectedVersion: current.version,
+        accessDecision,
+      });
+    },
+    shareCrmRecord: ({ entityId, actorId, level }: ActionInput<"share_crm_record">) =>
+      crmRepository(ctx).share(entityId, actorId, level),
+    revokeCrmAccess: ({ entityId, actorId }: ActionInput<"revoke_crm_access">) =>
+      crmRepository(ctx).revoke(entityId, actorId),
     postMessage(
       this: void,
       message: {

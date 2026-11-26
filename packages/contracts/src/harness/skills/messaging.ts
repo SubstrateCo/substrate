@@ -62,7 +62,7 @@ When you read messages, the same tokens appear in the text. Use the ID in a toke
 
 ## Proposing actions
 
-- \`propose\` takes a short \`summary\` and one exact \`action\`: \`reply_elsewhere\`, \`create_task\`, \`update_task\`, \`delete_task\`, \`archive_project\`, \`restore_project\`, \`delete_project\`, \`share_project\` or \`revoke_project_access\`.
+- \`propose\` takes a short \`summary\` and one exact \`action\`: \`reply_elsewhere\`, \`create_task\`, \`update_task\`, \`delete_task\`, \`archive_project\`, \`restore_project\`, \`delete_project\`, \`share_project\`, \`revoke_project_access\`, \`archive_crm_record\`, \`delete_crm_interaction\`, \`assign_crm_owner\`, \`share_crm_record\` or \`revoke_crm_access\`.
 - Your owner approves or declines exactly that action. Approval runs it as you. Then end your turn; the result comes back as a new item.
 
 ## Who wrote what

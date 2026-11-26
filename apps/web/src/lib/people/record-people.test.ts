@@ -1,4 +1,4 @@
-import { recordPeople } from "./record-people-directory";
+import { recordPeople } from "./record-people";
 import { expect, test } from "bun:test";
 
 test("record choices join current workspace humans by user identity, not email or actor identity", () => {

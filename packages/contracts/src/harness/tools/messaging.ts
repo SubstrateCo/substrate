@@ -114,7 +114,7 @@ export const messagingTools = {
     publishes: [{ kind: "request", id: "proposalId", requestKind: "proposal" }],
     title: "Propose an action",
     description:
-      "Ask your owner to approve one exact action: reply_elsewhere (post in another conversation or thread), create_task, update_task, delete_task (with its subtasks), archive_project, restore_project, delete_project (archived projects only), share_project or revoke_project_access. Deleting, archiving and sharing are only possible through propose. Your owner approves or declines exactly this action, and approval runs it as you. The result arrives in a later turn, so end your turn after proposing.",
+      "Ask your owner to approve one exact action: reply_elsewhere (post in another conversation or thread), create_task, update_task, delete_task (with its subtasks), archive_project, restore_project, delete_project (archived projects only), share_project, revoke_project_access, archive_crm_record (archive or restore an account, contact or deal), delete_crm_interaction, assign_crm_owner, share_crm_record or revoke_crm_access. Deleting, archiving, reassigning and sharing are only possible through propose. Your owner approves or declines exactly this action, and approval runs it as you. The result arrives in a later turn, so end your turn after proposing.",
     readOnly: false,
     idempotent: true,
     input: z

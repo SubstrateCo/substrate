@@ -19,6 +19,11 @@ export const proposalActionTypes = [
   "delete_project",
   "share_project",
   "revoke_project_access",
+  "archive_crm_record",
+  "delete_crm_interaction",
+  "assign_crm_owner",
+  "share_crm_record",
+  "revoke_crm_access",
 ] as const;
 export type ProposalActionType = (typeof proposalActionTypes)[number];
 
@@ -67,6 +72,46 @@ export const proposalAction = z.discriminatedUnion("type", [
     type: z.literal("revoke_project_access"),
     input: z.strictObject({ projectId: id, actorId: memberId }),
   }),
+  z.strictObject({
+    type: z.literal("archive_crm_record"),
+    input: z.strictObject({
+      kind: z.enum(["account", "contact", "deal"]),
+      entityId: id,
+      archived: z.boolean().describe("true archives the record; false restores it."),
+    }),
+  }),
+  z.strictObject({
+    type: z.literal("delete_crm_interaction"),
+    input: z.strictObject({
+      entityId: id.describe(
+        "An interaction your owner wrote, or any one if your owner is an admin.",
+      ),
+    }),
+  }),
+  z.strictObject({
+    type: z.literal("assign_crm_owner"),
+    input: z.strictObject({
+      entityId: id.describe("An account or deal."),
+      ownerActorId: memberId.describe("The person who becomes responsible for the record."),
+      accessDecision: z
+        .enum(["require_existing_access", "keep_restricted"])
+        .describe(
+          "require_existing_access fails unless the person can already read the record. keep_restricted assigns without sharing.",
+        ),
+    }),
+  }),
+  z.strictObject({
+    type: z.literal("share_crm_record"),
+    input: z.strictObject({
+      entityId: id.describe("An account or deal."),
+      actorId: memberId,
+      level: z.enum(permissionLevels).describe("view | comment | edit | owner"),
+    }),
+  }),
+  z.strictObject({
+    type: z.literal("revoke_crm_access"),
+    input: z.strictObject({ entityId: id.describe("An account or deal."), actorId: memberId }),
+  }),
 ]);
 export type ProposalAction = z.output<typeof proposalAction>;
 
@@ -98,6 +143,11 @@ export const proposalTargetBasis = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("delete_project"), projectUpdatedAt: version }),
   z.strictObject({ type: z.literal("share_project"), projectUpdatedAt: version }),
   z.strictObject({ type: z.literal("revoke_project_access"), projectUpdatedAt: version }),
+  z.strictObject({ type: z.literal("archive_crm_record"), recordUpdatedAt: version }),
+  z.strictObject({ type: z.literal("delete_crm_interaction"), recordUpdatedAt: version }),
+  z.strictObject({ type: z.literal("assign_crm_owner"), recordUpdatedAt: version }),
+  z.strictObject({ type: z.literal("share_crm_record"), recordUpdatedAt: version }),
+  z.strictObject({ type: z.literal("revoke_crm_access"), recordUpdatedAt: version }),
 ]);
 export type ProposalTargetBasis = z.infer<typeof proposalTargetBasis>;
 
@@ -121,7 +171,16 @@ export const proposalOutcome = z.discriminatedUnion("status", [
       }),
       z.strictObject({ kind: z.literal("task"), id, projectId: id }),
       z.strictObject({ kind: z.literal("project"), id }),
-      z.strictObject({ kind: z.literal("deleted"), entityType: z.enum(["task", "project"]), id }),
+      z.strictObject({
+        kind: z.literal("crm"),
+        entityType: z.enum(["account", "contact", "deal"]),
+        id,
+      }),
+      z.strictObject({
+        kind: z.literal("deleted"),
+        entityType: z.enum(["task", "project", "contact_interaction"]),
+        id,
+      }),
     ]),
   }),
   z.strictObject({ status: z.literal("failed"), error: z.string().max(2000) }),

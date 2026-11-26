@@ -1,24 +1,9 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
-import type { PickerPerson } from "@/lib/people/people-picker";
+import { recordPeople } from "@/lib/people/record-people";
 import { crmPeopleOptions } from "@/queries/crm/management";
 import { workspacePeopleQueryOptions } from "@/queries/organizations/people";
-
-/** Active actors from an authoritative, current-organization server response. */
-type RecordActor = {
-  entityId: string;
-  userId: string | null;
-  type: "human" | "agent";
-};
-
-export function recordPeople(actors: readonly RecordActor[], members: readonly PickerPerson[]) {
-  const people = new Map(members.map((person) => [person.id, person]));
-  return actors.flatMap((actor) => {
-    const person = actor.type === "human" && actor.userId ? people.get(actor.userId) : undefined;
-    return person ? [{ ...person, id: actor.entityId }] : [];
-  });
-}
 
 export function useRecordPeople() {
   const { organizationId } = useWorkspaceScope();

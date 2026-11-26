@@ -18,6 +18,8 @@ const hiddenText = {
   task: "A task you can’t open",
   message: "A message you can’t open",
   person: "Someone you can’t see",
+  record: "A record you can’t open",
+  interaction: "An interaction you can’t open",
 };
 
 type TaskChanges = Partial<{
@@ -209,8 +211,62 @@ export function ProposalPreview({
         </Field>
       </dl>
     );
+  if (action.type === "archive_crm_record" && target.type === "archive_crm_record")
+    return (
+      <dl className="grid gap-1.5 text-sm">
+        <Field label="Action">
+          {action.input.archived ? "Archive" : "Restore"} {crmKindLabels[action.input.kind]}
+        </Field>
+        <Field label="Record">
+          <RecordName record={target.record} kind="record" />
+        </Field>
+      </dl>
+    );
+  if (target.type === "delete_crm_interaction")
+    return (
+      <dl className="grid gap-1.5 text-sm">
+        <Field label="Action">Delete an interaction</Field>
+        <Field label="Interaction">
+          <RecordName record={target.interaction} kind="interaction" />
+        </Field>
+      </dl>
+    );
+  if (
+    target.type === "assign_crm_owner" ||
+    target.type === "share_crm_record" ||
+    target.type === "revoke_crm_access"
+  )
+    return (
+      <dl className="grid gap-1.5 text-sm">
+        <Field label="Action">{crmAccessLabels[target.type]}</Field>
+        <Field label="Record">
+          <RecordName record={target.record} kind="record" />
+        </Field>
+        <Field label="Person">
+          <RecordName record={target.person} kind="person" />
+        </Field>
+        {action.type === "share_crm_record" && (
+          <Field label="Access">{projectPermissionLabels[action.input.level]}</Field>
+        )}
+        {action.type === "assign_crm_owner" && (
+          <Field label="Access">
+            {action.input.accessDecision === "keep_restricted"
+              ? "Don’t share the record"
+              : "Only if they can already open it"}
+          </Field>
+        )}
+      </dl>
+    );
   return null;
 }
+
+const crmKindLabels = { account: "an account", contact: "a contact", deal: "a deal" };
+
+const crmAccessLabels = {
+  assign_crm_owner: "Make someone responsible for a record",
+  share_crm_record: "Share a record",
+  revoke_crm_access: "Remove access to a record",
+};
 
 const projectActionLabels = {
   archive_project: "Archive a project and make its tasks read-only",

@@ -1,6 +1,6 @@
 import type { AgentRequestView, TurnOutputView } from "@substrate/contracts/agent-work";
 
-import { messageLink, workLink } from "@/lib/navigation/record-links";
+import { contactLink, crmLink, messageLink, workLink } from "@/lib/navigation/record-links";
 
 /**
  * The forward link from an executed proposal to the message, task or project it created or
@@ -18,6 +18,13 @@ export function proposalResultLink(organizationId: string, request: AgentRequest
     };
   if (receipt.kind === "project")
     return { link: workLink(organizationId, receipt.id), label: "Open the project" };
+  if (receipt.kind === "crm")
+    return receipt.entityType === "contact"
+      ? { link: contactLink(organizationId, receipt.id), label: "Open the contact" }
+      : {
+          link: crmLink(organizationId, `${receipt.entityType}s`, receipt.id),
+          label: `Open the ${receipt.entityType}`,
+        };
   return {
     link: workLink(organizationId, receipt.projectId, receipt.id),
     label: "Open the task",

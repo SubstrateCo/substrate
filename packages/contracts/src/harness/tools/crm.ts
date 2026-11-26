@@ -1,5 +1,5 @@
-import { contactWrite } from "../../contacts/input.ts";
-import { interactionWrite } from "../../context/interactions.ts";
+import { contactIdentifierSearch, contactWrite } from "../../contacts/input.ts";
+import { interactionFields, interactionWrite } from "../../context/interactions.ts";
 import {
   crmActivityActions,
   crmActivityFields,
@@ -26,6 +26,15 @@ type MutationSchemas = {
 const mutations = Object.fromEntries(
   mutationSchemas.map((schema) => [schema.shape.action.value, schema]),
 ) as MutationSchemas;
+const contactResult = z.object({
+  record: record.describe("The contact as get_crm_record returns it."),
+});
+const interactionItems = z.object({
+  items: z.array(record),
+  nextBefore: interactionCursor
+    .nullable()
+    .describe("Continuation when more interactions follow; null on the last page."),
+});
 
 export const crmTools = {
   create_crm_from_message: {
@@ -223,23 +232,76 @@ export const crmTools = {
     output: recordResult,
   },
   list_crm_interactions: {
-    title: "Read CRM interactions",
+    title: "Read a record's CRM interactions",
     description:
-      "Read historical interactions permitted through a contact, newest occurrence first with entity ID as the tie-break. Pass nextBefore as before to continue. A manual note is not proof of customer contact. Private sources retain their separate access rules.",
+      "Read the interaction history of a contact, account or deal, newest occurrence first with entity ID as the tie-break. For an account or deal it covers its affiliated or participant contacts and interactions linked to it; set linkedOnly to keep only the linked ones. Pass nextBefore as before to continue. A manual note is not proof of customer contact. Private sources retain their separate access rules.",
     readOnly: true,
     input: z
       .object({
-        contactEntityId: id,
+        entityId: id.describe("A contact, account or deal."),
+        linkedOnly: z
+          .boolean()
+          .default(false)
+          .describe("Accounts and deals only: just interactions linked to the record."),
         limit: z.number().int().min(1).max(100).default(50),
         before: interactionCursor.optional(),
       })
       .strict(),
-    output: z.object({
-      items: z.array(record),
-      nextBefore: interactionCursor
-        .nullable()
-        .describe("Continuation when more interactions follow; null on the last page."),
-    }),
+    output: interactionItems,
+  },
+  search_crm_interactions: {
+    title: "Search CRM interactions",
+    description:
+      "Find interactions across the workspace, newest first, 50 per page. Filter by period, contact, account, kind, origin or words in the contact name or summary. A period is from (inclusive) to until (exclusive), at most 32 days; omit both for all time. Pass nextBefore as before to continue with the same filters.",
+    readOnly: true,
+    input: z
+      .object({
+        from: timestamp.optional(),
+        until: timestamp.optional(),
+        contactEntityId: id.optional(),
+        accountEntityId: id
+          .optional()
+          .describe("Interactions of the account's affiliated contacts and linked to it."),
+        kind: interactionFields.shape.kind.optional(),
+        origin: z
+          .enum(["manual", "message_publication", "calendar_event"])
+          .optional()
+          .describe("manual | message_publication | calendar_event"),
+        search: z.string().trim().min(1).max(200).optional(),
+        before: interactionCursor.optional(),
+      })
+      .strict()
+      .refine((value) => !value.from === !value.until, "Supply both from and until, or neither.")
+      .refine(
+        (value) =>
+          !value.from ||
+          !value.until ||
+          (Date.parse(value.until) > Date.parse(value.from) &&
+            Date.parse(value.until) - Date.parse(value.from) <= 32 * 86_400_000),
+        "A period must end after it starts and last at most 32 days.",
+      ),
+    output: interactionItems,
+  },
+  get_crm_interaction: {
+    title: "Read CRM interaction",
+    description:
+      "Read one interaction in full: its contact, kind, times, summary, origin, your access level, whether its contact is archived, and the records linked to it.",
+    readOnly: true,
+    input: z.object({ entityId: id }).strict(),
+    output: record,
+  },
+  update_crm_interaction: {
+    title: "Correct CRM interaction summary",
+    description:
+      "Replace an interaction's summary to correct it. The kind, times and contact do not change. Read it first with get_crm_interaction. Interactive turns only; no notifications or wakes.",
+    readOnly: false,
+    idempotent: true,
+    destructive: true,
+    input: mutations.updateInteraction
+      .omit({ organizationId: true, action: true })
+      .extend({ requestId })
+      .strict(),
+    output: recordResult,
   },
   create_crm_interaction: {
     title: "Record manual CRM interaction",
@@ -261,5 +323,79 @@ export const crmTools = {
     idempotent: true,
     input: mutations.publishInteraction.omit({ organizationId: true, action: true }).strict(),
     output: recordResult,
+  },
+  find_crm_contacts: {
+    title: "Find contacts by email or phone",
+    description:
+      "Find contacts that have this exact email address or phone number. Phone numbers match in any format; set countryCode for a number without a country prefix. A match is a candidate, not proof of identity. Use before creating a contact or adding a detail.",
+    readOnly: true,
+    input: contactIdentifierSearch.omit({ organizationId: true }).strict(),
+    output: z.object({ items: z.array(z.object({ entityId: id, displayName: z.string() })) }),
+  },
+  change_crm_contact_detail: {
+    title: "Change contact email, phone, address or URL",
+    description:
+      "Add, update or remove one email or phone (identifier), postal address or web URL on a contact. Update and remove take the detail id from get_crm_record. An update replaces the detail's fields. isPrimary true makes it the primary of its kind. Never invent details; record only what a person or message states. Interactive turns only. Returns the contact.",
+    readOnly: false,
+    idempotent: true,
+    destructive: true,
+    // Each form action without the organization, plus a requestId.
+    input: z.discriminatedUnion("action", [
+      mutations.addIdentifier.omit({ organizationId: true }).extend({ requestId }).strict(),
+      mutations.updateIdentifier.omit({ organizationId: true }).extend({ requestId }).strict(),
+      mutations.removeIdentifier.omit({ organizationId: true }).extend({ requestId }).strict(),
+      mutations.addAddress.omit({ organizationId: true }).extend({ requestId }).strict(),
+      mutations.updateAddress.omit({ organizationId: true }).extend({ requestId }).strict(),
+      mutations.removeAddress.omit({ organizationId: true }).extend({ requestId }).strict(),
+      mutations.addUrl.omit({ organizationId: true }).extend({ requestId }).strict(),
+      mutations.updateUrl.omit({ organizationId: true }).extend({ requestId }).strict(),
+      mutations.removeUrl.omit({ organizationId: true }).extend({ requestId }).strict(),
+    ]),
+    output: contactResult,
+  },
+  set_crm_affiliation: {
+    title: "Link a contact to an account",
+    description:
+      "Record that a contact works at or represents an account, with an optional job title. isPrimary true makes this the contact's primary account. Repeating it with a new title or isPrimary updates the link. Needs edit access on the account; neither record may be archived. Interactive turns only. Returns the contact.",
+    readOnly: false,
+    idempotent: true,
+    input: mutations.setAffiliation
+      .omit({ organizationId: true, action: true })
+      .extend({ requestId })
+      .strict(),
+    output: contactResult,
+  },
+  remove_crm_affiliation: {
+    title: "Unlink a contact from an account",
+    description:
+      "Remove the link between a contact and an account. Neither record changes otherwise. Interactive turns only. Returns the contact.",
+    readOnly: false,
+    idempotent: true,
+    destructive: true,
+    input: mutations.removeAffiliation
+      .omit({ organizationId: true, action: true })
+      .extend({ requestId })
+      .strict(),
+    output: contactResult,
+  },
+  list_crm_follow_ups: {
+    title: "List a CRM record's open follow-ups",
+    description:
+      "List open tasks linked to an account, contact or deal that you can read, earliest due date first, with the next dated one as nextAction. Use get_task for a task in full.",
+    readOnly: true,
+    input: z.object({ entityId: id }).strict(),
+    output: z.object({
+      tasks: z.array(
+        z.object({
+          entityId: id,
+          projectEntityId: id,
+          title: z.string(),
+          status: z.string(),
+          dueDate: z.iso.date().nullable(),
+          assigneeActorEntityId: id.nullable(),
+        }),
+      ),
+      nextAction: z.object({ entityId: id, dueDate: z.iso.date().nullable() }).nullable(),
+    }),
   },
 } as const;

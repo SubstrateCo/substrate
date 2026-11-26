@@ -422,7 +422,7 @@ test("CRM MCP interaction responses redact private agent identity for coworkers"
       f.db,
       { organizationId: f.orgA, userId: "bob", actorEntityId: coworker.entityId },
       "list_crm_interactions",
-      { contactEntityId: contact.record.entityId },
+      { entityId: contact.record.entityId },
       turn,
     )
   ).output;
@@ -580,7 +580,7 @@ test("CRM interaction retries preserve a single manual interaction", async () =>
   };
   const interaction = await call("create_crm_interaction", input);
   expect(await call("create_crm_interaction", input)).toEqual(interaction);
-  const timeline = await call("list_crm_interactions", { contactEntityId: input.contactEntityId });
+  const timeline = await call("list_crm_interactions", { entityId: input.contactEntityId });
   expect(timeline.items.map((row) => row.entityId)).toEqual([interaction.record.entityId]);
   expect(timeline.items[0]?.origin).toBe("manual");
   expect(timeline.items[0]?.occurredAt).toBe("2026-11-12T10:00:00.000Z");
@@ -636,11 +636,11 @@ test("CRM interaction pagination reaches the 51st entry with stable occurrence-t
         summary: `Call ${index}`,
       }),
     );
-  const first = await call("list_crm_interactions", { contactEntityId: contact.entityId });
+  const first = await call("list_crm_interactions", { entityId: contact.entityId });
   expect(first.items).toHaveLength(50);
   expect(first.nextBefore).not.toBeNull();
   const second = await call("list_crm_interactions", {
-    contactEntityId: contact.entityId,
+    entityId: contact.entityId,
     before: first.nextBefore,
   });
   expect(second.items).toHaveLength(1);
@@ -662,7 +662,7 @@ test("CRM lists give no cursor when the last page is exactly full", async () => 
       occurredAt: new Date("2026-11-12T10:00:00Z"),
       summary,
     });
-  const interactions = { contactEntityId: contact.entityId, limit: 2 };
+  const interactions = { entityId: contact.entityId, limit: 2 };
   expect((await call("list_crm_interactions", interactions)).nextBefore).toBeNull();
   const first = await call("list_crm_interactions", { ...interactions, limit: 1 });
   expect(first.nextBefore).not.toBeNull();

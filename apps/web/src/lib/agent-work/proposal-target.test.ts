@@ -4,6 +4,7 @@ import {
   proposalTarget,
   proposalTargetHidden,
   proposalTargetLoading,
+  type ProposalCrmRecord,
   type ProposalLookups,
   type ProposalProject,
 } from "./proposal-target";
@@ -20,6 +21,12 @@ const project: ProposalProject = {
   members: [{ actorEntityId: "member", name: "Lee" }],
 };
 
+const crmRecords = new Map<string, ProposalCrmRecord>([
+  ["a1", { kind: "account", name: "Northwind" }],
+  ["d1", { kind: "deal", name: "Northwind renewal" }],
+  ["k1", { kind: "contact", name: "Ada Park" }],
+]);
+
 const lookups: ProposalLookups = {
   organizationId: "org",
   conversation: (id) => (id === "c1" ? { name: "General" } : null),
@@ -28,6 +35,9 @@ const lookups: ProposalLookups = {
   message: (conversationId, id) =>
     conversationId === "c1" && id === "m1" ? { label: "Can we ship Friday?" } : null,
   sourceConversationId: "c1",
+  crmRecord: (id) => crmRecords.get(id) ?? null,
+  interaction: (id) => (id === "i1" ? { label: "Ada Park: Intro call" } : null),
+  person: (id) => (id === "lee" ? { name: "Lee" } : null),
 };
 
 const hidden = { access: "hidden" } as const;
@@ -263,5 +273,73 @@ describe("project proposals", () => {
     );
     expect(target).toMatchObject({ person: hidden });
     expect(proposalTargetHidden(target)).toBe(true);
+  });
+});
+
+describe("CRM proposals", () => {
+  test("archiving names the record and links it in its own app", () => {
+    const deal = proposalTarget(
+      { type: "archive_crm_record", input: { kind: "deal", entityId: "d1", archived: true } },
+      lookups,
+    );
+    const contact = proposalTarget(
+      { type: "archive_crm_record", input: { kind: "contact", entityId: "k1", archived: false } },
+      lookups,
+    );
+    expect(deal).toMatchObject({
+      record: { access: "visible", label: "Northwind renewal", link: { to: "/crm" } },
+    });
+    expect(contact).toMatchObject({
+      record: { access: "visible", label: "Ada Park", link: { to: "/contacts" } },
+    });
+  });
+
+  // The stored action names the kind; a record of another kind is not the one it names.
+  test("a record of another kind than the action names is hidden", () => {
+    const target = proposalTarget(
+      { type: "archive_crm_record", input: { kind: "account", entityId: "d1", archived: true } },
+      lookups,
+    );
+    expect(target).toEqual({ type: "archive_crm_record", record: hidden });
+    expect(proposalTargetHidden(target)).toBe(true);
+  });
+
+  test("deleting an interaction names its contact and summary", () => {
+    const target = proposalTarget(
+      { type: "delete_crm_interaction", input: { entityId: "i1" } },
+      lookups,
+    );
+    expect(target).toMatchObject({
+      interaction: {
+        access: "visible",
+        label: "Ada Park: Intro call",
+        link: { to: "/interactions" },
+      },
+    });
+  });
+
+  test("ownership and sharing name the account or deal and the person", () => {
+    const assign = proposalTarget(
+      {
+        type: "assign_crm_owner",
+        input: { entityId: "a1", ownerActorId: "lee", accessDecision: "keep_restricted" },
+      },
+      lookups,
+    );
+    expect(assign).toMatchObject({
+      record: { access: "visible", label: "Northwind" },
+      person: { access: "visible", label: "Lee" },
+    });
+    // A contact has no grants, so sharing one names nothing the action could change.
+    const contact = proposalTarget(
+      { type: "share_crm_record", input: { entityId: "k1", actorId: "lee", level: "view" } },
+      lookups,
+    );
+    expect(contact).toMatchObject({ record: hidden });
+    const stranger = proposalTarget(
+      { type: "revoke_crm_access", input: { entityId: "d1", actorId: "stranger" } },
+      lookups,
+    );
+    expect(proposalTargetHidden(stranger)).toBe(true);
   });
 });
