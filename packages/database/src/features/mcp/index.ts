@@ -3,24 +3,15 @@ export { commit, effectsFor } from "../../core/effects";
 export type { SessionIdentity } from "../../core/session/identity";
 export { workspaceContext } from "../../core/session/workspace";
 export { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
-export { attachReference, detachReference } from "../context/service";
+export { proposableTool, proposalInput } from "../agent-work/requests/proposals";
 export { requireMessage } from "../messaging/access";
 export { messageChangeHints } from "../realtime/routing";
 export { taskRepository } from "../tasks/repository";
 export { auditCallerTool, auditFailedCallerTool, namedIds, requireCallerTurn } from "./caller-turn";
-export { mcpContextQueries } from "./context";
 export { mcpCrmTools } from "./crm";
+export { needsLiveTurn, serverToolHandlers, type ToolRun } from "./handlers";
 export { mcpMeetingTools, requireMeetingTurn } from "./meetings";
-export { listLinkedMessages } from "./links";
-export { mcpMessagingQueries } from "./messaging";
-export { mcpSearchQueries } from "./search";
-export { publishingTools } from "./publishing";
-export {
-  claimToolReceipt,
-  saveToolReceipt,
-  requireHomeDevice,
-  requireOwnedProposal,
-} from "./repository";
+export { approvalPendingMessage, proposeToolCall } from "./proposals";
+export { claimToolReceipt, saveToolReceipt, requireHomeDevice } from "./repository";
 export { mcpTaskQueries } from "./tasks";
-export { requireTurn, proposeInstead } from "./turn";
-export { agentWrites } from "./writes";
+export { requireTurn } from "./turn";

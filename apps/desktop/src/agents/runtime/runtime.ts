@@ -5,7 +5,7 @@ import {
   ownerMessageDebounceMs,
   sessionView,
 } from "@substrate/client-storage/agent-work";
-import type { AgentTurnView } from "@substrate/contracts/agent-work";
+import { wakeDedupeKeys, type AgentTurnView } from "@substrate/contracts/agent-work";
 import {
   turnEventsPageSize,
   type AgentActivityPage,
@@ -280,8 +280,52 @@ export function createAgentWorkRuntime(
     onHarnessEvent(event: HarnessEvent) {
       if (event.organizationId === context.organizationId) executor.onEvent(event);
     },
-    /** Records what a server tool call published, as seen on its way through main. */
-    async observeToolCall(request: WorkspaceApiRequest, result: WorkspaceApiResult) {
+    /**
+     * A held call waits on requestId in its live turn. Until the returned function runs, the
+     * request's approval_result item does not steer into that turn: the call itself may still
+     * bring the decision.
+     */
+    awaitApproval(request: WorkspaceApiRequest, requestId: string) {
+      const state = executor.live.get(request.turn.turnId);
+      if (!state) return () => {};
+      state.awaitingApprovals.add(requestId);
+      return () => {
+        state.awaitingApprovals.delete(requestId);
+        // A held approval_result item may join the turn now.
+        context.changed({ userAgentId: state.userAgentId, turnId: state.turnId });
+      };
+    },
+    /**
+     * Records what a server tool call published, as seen on its way through main. decided: the
+     * call waited for approval and returned the owner's decision itself, so the agent already
+     * has the news that the request's approval_result wake would bring.
+     */
+    async observeToolCall(
+      request: WorkspaceApiRequest,
+      result: WorkspaceApiResult,
+      decided?: { requestId: string },
+    ) {
+      if (decided) {
+        const turn = await context.store.turns.get(request.turn.turnId);
+        if (turn?.organizationId === context.organizationId)
+          await context.store.inbox.deliveredInTurn(
+            {
+              sessionId: turn.sessionId,
+              userAgentId: turn.userAgentId,
+              source: "approval_result",
+              sourceRef: {
+                source: "approval_result",
+                requestId: decided.requestId,
+                anchorMessageId: null,
+                request: null,
+              },
+              dedupeKey: wakeDedupeKeys.approval(decided.requestId),
+            },
+            context.now(),
+          );
+        // The decided request leaves the needs-you list.
+        status.refreshOpenRequests();
+      }
       const found = toolOutputs(request, result);
       if (!found) return;
       // A reply may have asked a question, or a proposal opened a request.

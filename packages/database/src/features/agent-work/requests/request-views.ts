@@ -39,7 +39,8 @@ async function requestViews(
     .select({ id: sql`${messagingConversations.id}::text` })
     .from(messagingConversations)
     .where(visibleConversations(db, identity));
-  const target = sql`${agentRequests.proposedAction}->'input'->>'conversationId'`;
+  // The conversations a proposal names are the keys of its target basis.
+  const targets = sql`jsonb_object_keys(coalesce(${agentRequests.targetBasis}->'conversations', '{}'::jsonb))`;
   const rows = await db
     .select({
       request: agentRequests,
@@ -47,7 +48,7 @@ async function requestViews(
       conversationName: sql<
         string | null
       >`case when ${messagingConversations.id} is null then null else ${conversationDisplayName(db, identity)} end`,
-      targetVisible: sql<boolean>`(${target} IS NULL OR ${inArray(target, visibleIds)})`,
+      targetVisible: sql<boolean>`NOT EXISTS (SELECT 1 FROM ${targets} AS target(id) WHERE NOT ${inArray(sql`target.id`, visibleIds)})`,
     })
     .from(agentRequests)
     .innerJoin(

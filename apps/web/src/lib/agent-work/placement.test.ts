@@ -212,8 +212,8 @@ describe("request placement", () => {
           },
           proposal: {
             action: {
-              type: "reply_elsewhere",
-              input: { conversationId: crypto.randomUUID(), body: "Update" },
+              tool: "reply",
+              input: { body: "Update", to: { conversationId: crypto.randomUUID() } },
             },
             actionHash: "hash",
             outcome: {

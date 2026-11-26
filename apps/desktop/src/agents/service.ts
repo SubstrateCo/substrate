@@ -321,8 +321,20 @@ export function createAgentWorkService(options: {
     onHarnessEvent(event: HarnessEvent) {
       active?.runtime.onHarnessEvent(event);
     },
-    observeToolCall(request: WorkspaceApiRequest, result: WorkspaceApiResult) {
-      return active?.runtime.observeToolCall(request, result);
+    observeToolCall(
+      request: WorkspaceApiRequest,
+      result: WorkspaceApiResult,
+      decided?: { requestId: string },
+    ) {
+      return active?.runtime.observeToolCall(request, result, decided);
+    },
+    /** The server checks that this device is the home of the request's agent. */
+    requestStatus(organizationId: string, requestId: string) {
+      return server.requestStatus(organizationId, requestId);
+    },
+    /** A held call waits on requestId in its turn. Returns the function that ends the wait. */
+    awaitApproval(request: WorkspaceApiRequest, requestId: string) {
+      return active?.runtime.awaitApproval(request, requestId) ?? (() => {});
     },
     async handleLocalTool(request: LocalToolRequest): Promise<WorkspaceApiResult> {
       const current = available(active);

@@ -14,34 +14,29 @@ import {
   workspaceContext,
   AccessDeniedError,
   ValidationError,
-  attachReference,
-  detachReference,
   requireMessage,
   messageChangeHints,
   taskRepository,
   auditCallerTool,
   namedIds,
   requireCallerTurn,
-  mcpContextQueries,
   mcpCrmTools,
   mcpMeetingTools,
   requireMeetingTurn,
-  listLinkedMessages,
-  mcpMessagingQueries,
-  mcpSearchQueries,
-  publishingTools,
   mcpTaskQueries,
   requireTurn,
-  agentWrites,
   requireHomeDevice,
-  requireOwnedProposal,
   claimToolReceipt,
   saveToolReceipt,
+  serverToolHandlers,
+  proposeToolCall,
+  proposalInput,
 } from "@substrate/database/mcp";
 import type { DatabaseExecutor } from "@substrate/database/trusted";
 
-import { writeGate } from "./write-gate";
+import { approvalNeeded, writeGate } from "./write-gate";
 import { createHash } from "node:crypto";
+import { z } from "zod";
 
 type AgentToolExecution = {
   [K in ServerToolName]: {
@@ -51,9 +46,9 @@ type AgentToolExecution = {
   };
 }[ServerToolName];
 
-// Handler results are serialized to JSON, then parsed with the tool's output schema.
-type ToolPayload = object;
-type ToolHandlers = { [K in ServerToolName]: (input: McpInput<K>) => Promise<ToolPayload> };
+/** A call stored as a proposal instead of running. requestId names the proposal. */
+export type PendingToolCall = { tool: ServerToolName; pending: { requestId: string } };
+
 // Every tool that accepts requestId can replay a stored result, so each one must recheck access.
 type ReplayableTool = {
   [K in ServerToolName]: McpInput<K> extends { requestId: string } ? K : never;
@@ -61,6 +56,8 @@ type ReplayableTool = {
 type ReplayChecks = {
   [K in ReplayableTool]: (input: McpInput<K>, output: McpOutput<K>) => Promise<void>;
 };
+
+const pendingReceipt = z.strictObject({ approvalPending: z.uuid() });
 
 function requestIdOf(input: McpInput<ServerToolName>) {
   return "requestId" in input ? input.requestId : undefined;
@@ -80,7 +77,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
   tool: K,
   input: McpInput<K>,
   turn: TurnContext,
-) {
+): Promise<Extract<AgentToolExecution, { tool: K }> | PendingToolCall> {
   const definition = mcpTools[tool];
   // Hints go to the caller's commit() collector and are published after commit.
   const { context: ctx, actor: agent, userName } = await workspaceContext(tx, identity);
@@ -100,87 +97,15 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     userAgentId = await requireMeetingTurn(ctx, identity, turn);
   if (userAgentId) await requireTurn(tx, identity, { actorId: agent.entityId, userAgentId }, turn);
   const tasks = taskRepository(ctx);
-  const writes = agentWrites(ctx, identity, agent);
-  const context = mcpContextQueries(ctx, identity);
   const queries = mcpTaskQueries(ctx, identity);
-  const messaging = mcpMessagingQueries(ctx, identity);
-  const search = mcpSearchQueries(ctx, identity);
   const crm = () => mcpCrmTools(ctx, identity);
   const archive = () => mcpMeetingTools(ctx, identity, turn);
-  const publishing = () => {
-    if (!userAgentId) throw new AccessDeniedError();
-    return publishingTools(ctx, identity, { ...agent, userAgentId }, turn);
-  };
-  const handlers: ToolHandlers = {
-    list_meetings: (value) => archive().list(value),
-    get_meeting: (value) => archive().get(value),
-    read_meeting_source: (value) => archive().read(value),
-    create_meeting: (value) => archive().create(value),
-    create_crm_from_message: async (value) => crm().createFromMessage(value),
-    list_crm_activity: async (value) => crm().activity(value),
-    get_crm_settings: async () => crm().settings(),
-    update_crm_settings: async (value) => crm().updateSettings(value),
-    create_crm_follow_up: async (value) => crm().createFollowUp(value),
-    list_crm_records: async (value) => crm().list(value),
-    get_crm_record: async (value) => crm().get(value),
-    get_crm_pipeline: async () => crm().pipeline(),
-    create_crm_account: async (value) => crm().createAccount(value),
-    update_crm_account: async (value) => crm().updateAccount(value),
-    create_crm_contact: async (value) => crm().createContact(value),
-    update_crm_contact: async (value) => crm().updateContact(value),
-    create_crm_deal: async (value) => crm().createDeal(value),
-    update_crm_deal: async (value) => crm().updateDeal(value),
-    transition_crm_deal: async (value) => crm().transition(value),
-    list_crm_interactions: async (value) => crm().listInteractions(value),
-    create_crm_interaction: async (value) => crm().createInteraction(value),
-    publish_crm_interaction: async (value) => crm().publishInteraction(value),
-    search_crm_interactions: async (value) => crm().searchInteractions(value),
-    get_crm_interaction: async (value) => crm().getInteraction(value.entityId),
-    update_crm_interaction: async (value) => crm().updateInteraction(value),
-    find_crm_contacts: async (value) => crm().findContacts(value),
-    change_crm_contact_detail: async (value) => crm().changeContactDetail(value),
-    set_crm_affiliation: async (value) => crm().setAffiliation(value),
-    remove_crm_affiliation: async (value) => crm().removeAffiliation(value),
-    list_crm_follow_ups: async (value) => crm().followUps(value.entityId),
-    get_me: () => context.getMe(actor, userName),
-    search_names: (value) => search.names(value),
-    search_content: (value) => search.content(value),
-    list_assignees: (value) => context.listAssignees(value),
-    list_projects: (value) => queries.listProjects(value),
-    get_project: (value) => queries.getProject(value),
-    list_tasks: (value) => queries.listTasks(value),
-    get_task: (value) => queries.getTask(value.taskId),
-    list_task_activity: (value) => queries.listActivity(value),
-    list_conversations: (value) => messaging.listConversations(value),
-    read_conversation: (value) => messaging.readConversation(value),
-    read_thread: (value) => messaging.readThread(value),
-    list_linked_messages: (value) => listLinkedMessages(ctx, identity, value),
-    create_task: (value) => writes.createTask(value),
-    update_task: (value) => writes.updateTask(value),
-    move_task: (value) => writes.moveTask(value),
-    create_project: (value) => writes.createProject(value),
-    update_project: (value) => writes.updateProject(value),
-    async get_task_discussion(value) {
-      return { conversationId: await tasks.ensureDiscussion(value.taskId) };
-    },
-    async add_task_link(value) {
-      await tasks.addLink(value.taskId, value.relation, value.otherTaskId);
-      return queries.getTask(value.taskId);
-    },
-    async remove_task_link(value) {
-      await tasks.removeLink(value.taskId, value.linkId);
-      return queries.getTask(value.taskId);
-    },
-    reply: (value) => publishing().reply(value),
-    propose: (value) => publishing().propose(value),
-    async attach_message(value) {
-      return { changed: await attachReference(ctx, identity, value, value.target) };
-    },
-    async detach_message(value) {
-      return { changed: await detachReference(ctx, identity, value, value.target) };
-    },
-  };
-  // Recheck access before returning a previously created record's identifiers.
+  const handlers = serverToolHandlers(
+    ctx,
+    identity,
+    { ...agent, userName },
+    { kind: "turn", turn, userAgentId },
+  ); // Recheck access before returning a previously created record's identifiers.
   const replayChecks: ReplayChecks = {
     async create_meeting(value, previous) {
       await ctx.requireAccess(previous.id, "view");
@@ -265,6 +190,29 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     async update_project(value) {
       await ctx.requireAccess(value.projectId, "view");
     },
+    // A deletion's result names only the IDs in its input, so a replay reveals nothing new.
+    async delete_task() {},
+    async delete_project() {},
+    async delete_crm_interaction() {},
+    async archive_project(value) {
+      await ctx.requireAccess(value.projectId, "view");
+    },
+    async restore_project(value) {
+      await ctx.requireAccess(value.projectId, "view");
+    },
+    async share_project(value) {
+      await ctx.requireAccess(value.projectId, "view");
+    },
+    async revoke_project_access(value) {
+      await ctx.requireAccess(value.projectId, "view");
+    },
+    async archive_crm_record(value) {
+      await crm().get({ kind: value.kind, entityId: value.entityId });
+    },
+    // These results name only the record and person in the input.
+    async assign_crm_owner() {},
+    async share_crm_record() {},
+    async revoke_crm_access() {},
     async get_task_discussion(value) {
       await tasks.get(value.taskId);
     },
@@ -277,9 +225,6 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     },
     async reply(_, previous) {
       await requireMessage(tx, identity, previous.messageId);
-    },
-    async propose(_, previous) {
-      await requireOwnedProposal(tx, identity, previous.proposalId);
     },
   };
   const requestId = requestIdOf(input);
@@ -298,10 +243,42 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
         turn,
       )
     : undefined;
+  const audited = async (resultIds: string[]) => {
+    if (calls.length)
+      await auditCallerTool(tx, calls, {
+        tool,
+        readOnly: definition.readOnly,
+        turnId: turn.turnId,
+        targetIds: [...namedIds(fingerprint), ...resultIds],
+      });
+  };
+  // A retry of a call that waits for the owner returns the same proposal. It names only the
+  // proposal, so it reveals nothing new.
+  const stored = existing && pendingReceipt.safeParse(existing.result);
+  if (stored?.success) {
+    await audited([]);
+    return { tool, pending: { requestId: stored.data.approvalPending } };
+  }
+  // The call waits for the owner: store it as a proposal and commit, without running it.
+  if (!existing && approvalNeeded(turn, tool, input)) {
+    if (!userAgentId) throw new AccessDeniedError();
+    const proposalId = await proposeToolCall(
+      ctx,
+      identity,
+      { entityId: agent.entityId, userAgentId },
+      turn,
+      { tool, input: proposalInput(input) },
+    );
+    if (key) await saveToolReceipt(tx, key, { approvalPending: proposalId });
+    await audited([]);
+    return { tool, pending: { requestId: proposalId } };
+  }
+  // SAFETY: the handler for `tool` takes McpInput<K>.
+  const handler = handlers[tool] as (input: McpInput<K>) => Promise<object>;
   // Stored and new results cross the same trust boundary, so parse them in one place.
   // SAFETY: `definition` is the registry entry for `tool`, so its schema produces McpOutput<K>.
   let result = definition.output.parse(
-    existing ? existing.result : JSON.parse(JSON.stringify(await handlers[tool](input))),
+    existing ? existing.result : JSON.parse(JSON.stringify(await handler(input))),
   ) as McpOutput<K>;
   if (existing) {
     // SAFETY: a stored result exists only for a tool with requestId, and the check is keyed by that tool.
@@ -340,13 +317,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
       );
     }
   } else if (key) await saveToolReceipt(tx, key, result);
-  if (calls.length)
-    await auditCallerTool(tx, calls, {
-      tool,
-      readOnly: definition.readOnly,
-      turnId: turn.turnId,
-      targetIds: [...namedIds(fingerprint), ...namedIds(JSON.stringify(result))],
-    });
+  await audited(namedIds(JSON.stringify(result)));
   // SAFETY: input and output were parsed with the registry entry for the same tool.
   return { tool, input, output: result } as Extract<AgentToolExecution, { tool: K }>;
 }

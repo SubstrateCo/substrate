@@ -79,10 +79,10 @@ test("a server reply with ask records the message in its place and the question"
   expect(outcomeOf(found!.outputs)).toBe("asked");
 });
 
-test("a server propose result records the proposal request", () => {
-  const found = toolOutputs(call("propose"), {
-    success: true,
-    data: { proposalId: ids.proposal, status: "pending" },
+test("a server call that waits for approval records the proposal request", () => {
+  const found = toolOutputs(call("delete_task"), {
+    success: false,
+    error: { code: "APPROVAL_PENDING", message: "Waiting for approval.", requestId: ids.proposal },
   });
   expect(found).toEqual({
     turnId: ids.turn,

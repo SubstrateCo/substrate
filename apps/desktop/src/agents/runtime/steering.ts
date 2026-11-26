@@ -181,7 +181,11 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
           session.rotation === null &&
           state.epoch === session.epoch &&
           turns.get(state.turnId)?.status !== "stopping" &&
-          item.status === "pending";
+          item.status === "pending" &&
+          !(
+            item.sourceRef.source === "approval_result" &&
+            state.awaitingApprovals.has(item.sourceRef.requestId)
+          );
         const withinCallLimit =
           item.source !== "caller_message" ||
           state.invocationIds.length +

@@ -11,6 +11,11 @@ export interface ToolDefinition {
   idempotent?: boolean;
   /** The call can overwrite or remove existing data. */
   destructive?: boolean;
+  /**
+   * owner: every agent call waits for the owner's approval. The server stores it as a proposal
+   * and the call returns APPROVAL_PENDING; approval runs exactly that call.
+   */
+  approval?: "owner";
   input: z.ZodType;
   output: z.ZodType;
   /** Records created or published by a successful call, named by fields in its output. */

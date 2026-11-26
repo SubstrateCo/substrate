@@ -1,3 +1,4 @@
+import { approvalPendingCode } from "@substrate/contracts/agent-work";
 import {
   mcpOutputOffloadBytes,
   type LocalToolProxy,
@@ -142,6 +143,14 @@ function errorHint(code: string) {
       return "Do not retry. Substrate tools work only while a turn is running.";
     case "APP_DISABLED":
       return "Stop this workflow. Do not retry or use another tool to bypass the disabled app. Tell your owner the app must be enabled first.";
+    case "DECLINED":
+      return "Do not retry this call or work around it. Continue with other work or tell your owner what you could not do.";
+    case "FAILED":
+      return "Your owner approved this call, but it failed as the message says. Do not retry it on your own; tell your owner.";
+    case "RESULT_UNAVAILABLE":
+      return "The call ran. Do not retry it. Read the record again before you continue.";
+    case approvalPendingCode:
+      return "Do not retry or work around it. Your owner approves or declines this exact call; the result arrives as a new item in a later turn. Continue with other work or end your turn.";
     default:
       return "Retry once. If it fails again, stop and report the error to your owner.";
   }

@@ -157,6 +157,58 @@ test("a reply recorded from the MCP call makes the turn replied", async () => {
   expect(await f.runtime.turn(crypto.randomUUID())).toBeNull();
 });
 
+test("a decision the held call already returned in its turn neither steers nor starts a turn", async () => {
+  const f = await started({ capabilities: { steer: true } });
+  f.ownerMessage();
+  await f.runtime.sync();
+  await f.advance(600);
+  const turn = f.turns()[0]!;
+  await f.emit(turn.turnId, { type: "turn.started" });
+  const proposalId = crypto.randomUUID();
+  const call = {
+    tool: "delete_task" as const,
+    input: { requestId: crypto.randomUUID(), taskId: crypto.randomUUID() },
+    organizationId,
+    agentId,
+    turn: turn.context,
+  };
+  const approvalWake = () =>
+    f.wakes.push({
+      id: crypto.randomUUID(),
+      userAgentId: agentId,
+      source: "approval_result",
+      sourceRef: { requestId: proposalId },
+      sessionKey: turn.context.sessionKey,
+      dedupeKey: `approval:${proposalId}`,
+      createdAt: new Date(f.now()).toISOString(),
+      request: null,
+    });
+  const release = f.runtime.awaitApproval(call, proposalId);
+  // The owner approves while the call waits: the wake arrives before the call reads the decision.
+  approvalWake();
+  await f.runtime.sync();
+  await f.settle();
+  await f.runtime.observeToolCall(
+    call,
+    { success: true, data: { deleted: true, taskId: call.input.taskId } },
+    { requestId: proposalId },
+  );
+  release();
+  await f.settle();
+  expect(f.commands.filter((command) => command.type === "steer")).toEqual([]);
+  expect(
+    (await f.store.inbox.openForSessions([turn.sessionId])).filter(
+      (row) => row.source === "approval_result",
+    ),
+  ).toEqual([]);
+  await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
+  // A wake delivered again later, also after a restart, finds the same dedupe key.
+  approvalWake();
+  await f.runtime.sync();
+  await f.advance(600);
+  expect(f.turns()).toHaveLength(1);
+});
+
 test("an answer wake runs a turn whose input carries the owner's answer, under the question", async () => {
   const f = await started();
   const conversationId = crypto.randomUUID();

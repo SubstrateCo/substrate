@@ -16,6 +16,19 @@ test("a repeated wake for the same source creates one item", async () => {
   expect(await store.inbox.intake([message], 10)).toEqual([]);
 });
 
+test("news delivered in a turn drops its pending item and keeps later wakes from queueing", async () => {
+  const { store } = fixture;
+  const session = await createSession(store);
+  const early = item(session);
+  await store.inbox.intake([early], 0);
+  await store.inbox.deliveredInTurn(early, 1);
+  const later = item(session);
+  await store.inbox.deliveredInTurn(later, 2);
+  expect(await store.inbox.intake([early, later], 3)).toEqual([]);
+  expect(await store.inbox.openForSessions([session.id])).toEqual([]);
+  expect(await store.turns.claim(3, { organizationId: "org-1" })).toEqual([]);
+});
+
 test("owner messages wait for more messages, and the batch closes two seconds after the first", async () => {
   const { store } = fixture;
   const session = await createSession(store);

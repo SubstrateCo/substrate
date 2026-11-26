@@ -63,7 +63,11 @@ export function composeDesktop(options: {
     authority,
     localToolHandler: (request) => agentWork.handleLocalTool(request),
     mcpServers: agentWork.mcpServers,
-    onResult: (request, result) => agentWork.observeToolCall(request, result),
+    onResult: (request, result, decided) => agentWork.observeToolCall(request, result, decided),
+    approval: {
+      status: (organizationId, requestId) => agentWork.requestStatus(organizationId, requestId),
+      waiting: (request, requestId) => agentWork.awaitApproval(request, requestId),
+    },
     createWorker: (directory, proxy, localTools) =>
       createHarnessProcess(
         utilityProcess,

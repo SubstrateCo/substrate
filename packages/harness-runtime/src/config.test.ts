@@ -61,7 +61,9 @@ for (const harness of harnessKinds) {
     const crm = (await scanNativeSkills(directory, harness)).find(
       (skill) => skill.id === "substrate-crm",
     );
-    expect(crm?.content).toContain("Do not change CRM records.");
+    expect(crm?.content).toContain(
+      "in a background turn every CRM change waits for your owner's approval",
+    );
     expect(crm?.content).toContain("Do not disguise a private-message summary");
   });
 }

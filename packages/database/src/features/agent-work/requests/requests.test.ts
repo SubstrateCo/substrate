@@ -1,5 +1,4 @@
 import { staleProposalError } from "@substrate/contracts/agent-work";
-import type { WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
 
 import { RepositoryContext, type PermissionLevel } from "../../../core/repository-context";
 import { AccessDeniedError, ConflictError, ValidationError } from "../../../errors";
@@ -169,19 +168,17 @@ test("an async question's answer wakes the agent exactly once in the question's 
   expect((await work.listNeedsYou()).requests).toEqual([]);
 });
 
-test("approving a proposal runs the exact action once, even when approved twice at once", async () => {
-  const { dm, owner, alice, call } = await agentWorkFixture(f);
+const reply = (conversationId: string, body: string) => ({
+  requestId: crypto.randomUUID(),
+  body,
+  to: { conversationId },
+});
+
+test("approving a proposal runs the exact call once, even when approved twice at once", async () => {
+  const { dm, owner, alice, propose } = await agentWorkFixture(f);
   const channel = await alice.createConversation({ kind: "channel", name: "general" });
   const turn = dmTurn(dm.id, "unattended");
-  const action = {
-    type: "reply_elsewhere",
-    input: { conversationId: channel.id, body: "Weekly summary" },
-  };
-  const { proposalId } = await call(
-    "propose",
-    { requestId: crypto.randomUUID(), summary: "Post the summary", action },
-    turn,
-  );
+  const proposalId = await propose("reply", reply(channel.id, "Weekly summary"), turn);
   const work = await ownerAgentWork(f.db, owner);
   const results = await Promise.allSettled([
     work.approveProposal(proposalId),
@@ -201,30 +198,55 @@ test("approving a proposal runs the exact action once, even when approved twice 
   expect(posted.map((message) => [message.body, message.originTurnId])).toEqual([
     ["Weekly summary", turn.turnId],
   ]);
+  // The outcome keeps the receipt and the tool's own output, as the call would have returned it.
   expect(approved[0]!.outcome).toEqual({
     status: "executed",
     receipt: { kind: "message", id: posted[0]!.id, conversationId: channel.id, threadId: null },
+    result: {
+      messageId: posted[0]!.id,
+      conversationId: channel.id,
+      threadId: null,
+      questionId: null,
+      createdAt: posted[0]!.createdAt.toISOString(),
+    },
   });
   expect(await wakesFor(proposalId)).toEqual([
     { source: "approval_result", sessionKey: turn.sessionKey },
   ]);
 });
 
+test("a proposal stores the call without its requestId, under the tool's title", async () => {
+  const { dm, propose } = await agentWorkFixture(f);
+  const project = await f.forActor(f.alice).projects.create({ name: "Work" });
+  const proposalId = await propose(
+    "create_task",
+    { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Checklist" },
+    dmTurn(dm.id, "unattended"),
+  );
+  const [row] = await f.db.select().from(agentRequests).where(eq(agentRequests.id, proposalId));
+  expect(row).toMatchObject({
+    kind: "proposal",
+    mode: "async",
+    payload: { type: "proposal", summary: "Create task" },
+    proposedAction: {
+      tool: "create_task",
+      input: { projectId: project.entityId, title: "Checklist" },
+    },
+    targetBasis: { entities: { [project.entityId]: expect.any(String) }, conversations: {} },
+  });
+});
+
 test("an executed proposal is listed in the conversation it posted to, for its owner only", async () => {
-  const { dm, owner, alice, bob, call } = await agentWorkFixture(f);
+  const { dm, owner, alice, bob, propose } = await agentWorkFixture(f);
   const target = await bob.createConversation({
     kind: "channel",
     name: "team",
     private: true,
     emails: ["alice@example.com"],
   });
-  const { proposalId } = await call(
-    "propose",
-    {
-      requestId: crypto.randomUUID(),
-      summary: "Post the update",
-      action: { type: "reply_elsewhere", input: { conversationId: target.id, body: "Update" } },
-    },
+  const proposalId = await propose(
+    "reply",
+    reply(target.id, "Update"),
     dmTurn(dm.id, "unattended"),
   );
   // Before approval the proposal belongs only to the conversation it came from.
@@ -246,28 +268,76 @@ test("an executed proposal is listed in the conversation it posted to, for its o
 });
 
 test("a task proposal's receipt names the task's project", async () => {
-  const { dm, owner, call } = await agentWorkFixture(f);
+  const { dm, owner, propose } = await agentWorkFixture(f);
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
-  const { proposalId } = await call(
-    "propose",
-    {
-      requestId: crypto.randomUUID(),
-      summary: "Track it",
-      action: { type: "create_task", input: { projectId: project.entityId, title: "Checklist" } },
-    },
+  const proposalId = await propose(
+    "create_task",
+    { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Checklist" },
     dmTurn(dm.id, "unattended"),
   );
   const { outcome } = (await (await ownerAgentWork(f.db, owner)).approveProposal(proposalId))
     .result;
   const [task] = await f.db.select().from(tasks).where(eq(tasks.projectEntityId, project.entityId));
-  expect(outcome).toEqual({
+  expect(outcome).toMatchObject({
     status: "executed",
     receipt: { kind: "task", id: task!.entityId, projectId: project.entityId },
   });
 });
 
+test("a proposal cannot name a record the agent cannot read", async () => {
+  const { dm, alice, bob, propose } = await agentWorkFixture(f);
+  const turn = dmTurn(dm.id, "unattended");
+  const outside = f.forActor(f.outsider, f.orgB);
+  const hidden = await outside.projects.create({ name: "Other org" });
+  const secret = await bob.createConversation({
+    kind: "channel",
+    name: "bob",
+    private: true,
+    emails: ["alice@example.com"],
+  });
+  await alice.leaveConversation(secret.id);
+  const before = await f.db.select().from(agentRequests);
+  expect(
+    await rejection(
+      propose(
+        "create_task",
+        { requestId: crypto.randomUUID(), projectId: hidden.entityId, title: "Peek" },
+        turn,
+      ),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(await rejection(propose("reply", reply(secret.id, "Hi"), turn))).toBeInstanceOf(
+    AccessDeniedError,
+  );
+  // Any ID in the input is checked, not only the record the call changes.
+  const own = await f.forActor(f.alice).projects.create({ name: "Work" });
+  const task = await f.forActor(f.alice).tasks.create({
+    projectEntityId: own.entityId,
+    title: "Draft",
+  });
+  const hiddenTask = await outside.tasks.create({
+    projectEntityId: hidden.entityId,
+    title: "Secret",
+  });
+  expect(
+    await rejection(
+      propose(
+        "add_task_link",
+        {
+          requestId: crypto.randomUUID(),
+          taskId: task.entityId,
+          relation: "blocks",
+          otherTaskId: hiddenTask.entityId,
+        },
+        turn,
+      ),
+    ),
+  ).toBeInstanceOf(AccessDeniedError);
+  expect(await f.db.select().from(agentRequests)).toEqual(before);
+});
+
 test("approval checks access again and records a failure; decline runs nothing", async () => {
-  const { dm, owner, alice, bob, call } = await agentWorkFixture(f);
+  const { dm, owner, alice, bob, propose } = await agentWorkFixture(f);
   const shared = await bob.createConversation({
     kind: "channel",
     name: "bob",
@@ -275,15 +345,10 @@ test("approval checks access again and records a failure; decline runs nothing",
     emails: ["alice@example.com"],
   });
   const turn = dmTurn(dm.id, "unattended");
-  const propose = (action: WorkspaceApiRequest["input"]) =>
-    call("propose", { requestId: crypto.randomUUID(), summary: "Do it", action }, turn);
-  const post = await propose({
-    type: "reply_elsewhere",
-    input: { conversationId: shared.id, body: "Hello" },
-  });
+  const post = await propose("reply", reply(shared.id, "Hello"), turn);
   await alice.leaveConversation(shared.id);
   const work = await ownerAgentWork(f.db, owner);
-  expect((await work.approveProposal(post.proposalId)).result.outcome).toEqual({
+  expect((await work.approveProposal(post)).result.outcome).toEqual({
     status: "failed",
     error: "The target no longer exists or is no longer available.",
   });
@@ -295,29 +360,28 @@ test("approval checks access again and records a failure; decline runs nothing",
   ).toEqual([]);
 
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
-  const create = await propose({
-    type: "create_task",
-    input: { projectId: project.entityId, title: "Write checklist" },
-  });
-  expect((await work.declineProposal(create.proposalId)).result).toEqual({
+  const create = await propose(
+    "create_task",
+    { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Write checklist" },
+    turn,
+  );
+  expect((await work.declineProposal(create)).result).toEqual({
     status: "resolved",
     outcome: { status: "declined" },
   });
-  expect(await rejection(work.approveProposal(create.proposalId))).toBeInstanceOf(ConflictError);
+  expect(await rejection(work.approveProposal(create))).toBeInstanceOf(ConflictError);
   expect(
     await f.db.select().from(tasks).where(eq(tasks.projectEntityId, project.entityId)),
   ).toEqual([]);
-  expect(await wakesFor(create.proposalId)).toEqual([
+  expect(await wakesFor(create)).toEqual([
     { source: "approval_result", sessionKey: turn.sessionKey },
   ]);
   const bobWork = await ownerAgentWork(f.db, { userId: "bob", organizationId: f.orgA });
-  expect(await rejection(bobWork.approveProposal(post.proposalId))).toBeInstanceOf(
-    AccessDeniedError,
-  );
+  expect(await rejection(bobWork.approveProposal(post))).toBeInstanceOf(AccessDeniedError);
 });
 
 test("after the owner leaves, a request is a placeholder without IDs, text or proposal", async () => {
-  const { owner, alice, bob, dm, call } = await agentWorkFixture(f);
+  const { owner, alice, bob, dm, call, propose } = await agentWorkFixture(f);
   const shared = await bob.createConversation({
     kind: "channel",
     name: "secret-plans",
@@ -341,29 +405,14 @@ test("after the owner leaves, a request is a placeholder without IDs, text or pr
     },
     turn,
   );
-  const proposed = await call(
-    "propose",
-    {
-      requestId: crypto.randomUUID(),
-      summary: "Secret summary",
-      action: {
-        type: "reply_elsewhere",
-        input: { conversationId: target.id, body: "Secret action body" },
-      },
-    },
-    turn,
-  );
+  const proposed = await propose("reply", reply(target.id, "Secret action body"), {
+    ...turn,
+    kind: "unattended",
+  });
   // From the DM, which stays visible, to a target the owner will leave.
-  const fromDm = await call(
-    "propose",
-    {
-      requestId: crypto.randomUUID(),
-      summary: "Post the update",
-      action: {
-        type: "reply_elsewhere",
-        input: { conversationId: target.id, body: "Secret target body" },
-      },
-    },
+  const fromDm = await propose(
+    "reply",
+    reply(target.id, "Secret target body"),
     dmTurn(dm.id, "unattended"),
   );
   await alice.leaveConversation(shared.id);
@@ -371,14 +420,14 @@ test("after the owner leaves, a request is a placeholder without IDs, text or pr
 
   const views = (await (await ownerAgentWork(f.db, owner)).listNeedsYou()).requests;
   const byId = new Map(views.map((view) => [view.id, view]));
-  for (const id of [asked.questionId!, proposed.proposalId]) {
+  for (const id of [asked.questionId!, proposed]) {
     expect(byId.get(id)!.place).toEqual({ access: "hidden" });
     for (const field of ["sessionKey", "payload", "response", "proposal"])
       expect(byId.get(id)).not.toHaveProperty(field);
   }
-  expect(byId.get(fromDm.proposalId)).toMatchObject({
+  expect(byId.get(fromDm)).toMatchObject({
     place: { access: "visible", conversationId: dm.id },
-    payload: { type: "proposal", summary: "Post the update" },
+    payload: { type: "proposal", summary: "Reply" },
     proposal: null,
   });
   const text = JSON.stringify(views);
@@ -387,47 +436,42 @@ test("after the owner leaves, a request is a placeholder without IDs, text or pr
 });
 
 test("an approval runs only while the target is as it was proposed", async () => {
-  const { dm, owner, alice, call } = await agentWorkFixture(f);
+  const { dm, owner, alice, propose } = await agentWorkFixture(f);
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
   const task = await f.forActor(f.alice).tasks.create({
     projectEntityId: project.entityId,
     title: "Draft",
   });
   const turn = dmTurn(dm.id, "unattended");
-  const propose = (action: WorkspaceApiRequest["input"]) =>
-    call("propose", { requestId: crypto.randomUUID(), summary: "Do it", action }, turn);
-  const update = await propose({
-    type: "update_task",
-    input: { taskId: task.entityId, changes: { status: "completed" } },
-  });
+  const complete = () =>
+    propose(
+      "update_task",
+      { requestId: crypto.randomUUID(), taskId: task.entityId, changes: { status: "completed" } },
+      turn,
+    );
+  const update = await complete();
   // The owner edits the task after the agent proposed.
   await f.forActor(f.alice).tasks.update(task.entityId, { priority: "high" });
-  const stale = {
-    status: "failed" as const,
-    error: "The target changed after this was proposed. Ask the agent to propose again.",
-  };
+  const stale = { status: "failed" as const, error: staleProposalError };
   const work = await ownerAgentWork(f.db, owner);
-  expect((await work.approveProposal(update.proposalId)).result).toEqual({
+  expect((await work.approveProposal(update)).result).toEqual({
     status: "failed",
     outcome: stale,
   });
   const [row] = await f.db.select().from(tasks).where(eq(tasks.entityId, task.entityId));
   expect(row).toMatchObject({ status: "not_started", priority: "high" });
-  expect(await wakesFor(update.proposalId)).toEqual([
+  expect(await wakesFor(update)).toEqual([
     { source: "approval_result", sessionKey: turn.sessionKey },
   ]);
 
   // A channel that became private has a different audience than the agent proposed for.
   const channel = await alice.createConversation({ kind: "channel", name: "general" });
-  const post = await propose({
-    type: "reply_elsewhere",
-    input: { conversationId: channel.id, body: "Hello" },
-  });
+  const post = await propose("reply", reply(channel.id, "Hello"), turn);
   await f.db
     .update(messagingConversations)
     .set({ private: true })
     .where(eq(messagingConversations.id, channel.id));
-  expect((await work.approveProposal(post.proposalId)).result.outcome).toEqual(stale);
+  expect((await work.approveProposal(post)).result.outcome).toEqual(stale);
   expect(
     await f.db
       .select()
@@ -436,27 +480,22 @@ test("an approval runs only while the target is as it was proposed", async () =>
   ).toEqual([]);
 
   // An unchanged target still runs.
-  const fresh = await propose({
-    type: "update_task",
-    input: { taskId: task.entityId, changes: { status: "completed" } },
-  });
-  expect((await work.approveProposal(fresh.proposalId)).result.status).toBe("executed");
+  const fresh = await complete();
+  expect((await work.approveProposal(fresh)).result.status).toBe("executed");
+  const [done] = await f.db.select().from(tasks).where(eq(tasks.entityId, task.entityId));
+  expect(done!.status).toBe("completed");
 });
 
 test("an approval fails when the target changes after its last check, before its write", async () => {
-  const { dm, owner, call } = await agentWorkFixture(f);
+  const { dm, owner, propose } = await agentWorkFixture(f);
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
   const task = await f.forActor(f.alice).tasks.create({
     projectEntityId: project.entityId,
     title: "Draft",
   });
-  const update = await call(
-    "propose",
-    {
-      requestId: crypto.randomUUID(),
-      summary: "Do it",
-      action: { type: "update_task", input: { taskId: task.entityId, changes: { title: "Done" } } },
-    },
+  const update = await propose(
+    "update_task",
+    { requestId: crypto.randomUUID(), taskId: task.entityId, changes: { title: "Done" } },
     dmTurn(dm.id, "unattended"),
   );
   // The owner's edit commits on another connection right after the approval reads the task.
@@ -476,9 +515,7 @@ test("an approval fails when the target changes after its last check, before its
     } as typeof read,
   );
   try {
-    const { outcome } = (
-      await (await ownerAgentWork(f.db, owner)).approveProposal(update.proposalId)
-    ).result;
+    const { outcome } = (await (await ownerAgentWork(f.db, owner)).approveProposal(update)).result;
     expect(armed).toBe(false);
     expect(outcome).toEqual({ status: "failed", error: staleProposalError });
   } finally {

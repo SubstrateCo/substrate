@@ -65,7 +65,7 @@ test("other people and organizations cannot pull or ack someone's wakes", async 
 });
 
 test("answer and approval wakes carry the decided request for the agent's home device", async () => {
-  const { agent, dm, owner, call } = await agentWorkFixture(f);
+  const { agent, dm, owner, call, propose } = await agentWorkFixture(f);
   const turn = dmTurn(dm.id);
   const asked = await call(
     "reply",
@@ -80,16 +80,12 @@ test("answer and approval wakes carry the decided request for the agent's home d
   const work = await ownerAgentWork(f.db, owner);
   await work.respondToRequest(asked.questionId!, answer);
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
-  const proposed = await call(
-    "propose",
-    {
-      requestId: crypto.randomUUID(),
-      summary: "Track the checklist",
-      action: { type: "create_task", input: { projectId: project.entityId, title: "Checklist" } },
-    },
+  const proposalId = await propose(
+    "create_task",
+    { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Checklist" },
     turn,
   );
-  await work.declineProposal(proposed.proposalId);
+  await work.declineProposal(proposalId);
 
   const wakes = (await (await deviceAgentWork(f.db, agent.identity)).pullWakes(50)).result;
   expect(wakes.find((wake) => wake.source === "answer")?.request).toEqual({
@@ -109,9 +105,9 @@ test("answer and approval wakes carry the decided request for the agent's home d
     threadId: null,
   });
   expect(wakes.find((wake) => wake.source === "approval_result")?.request).toMatchObject({
-    id: proposed.proposalId,
+    id: proposalId,
     kind: "proposal",
-    payload: { type: "proposal", summary: "Track the checklist" },
+    payload: { type: "proposal", summary: "Create task" },
     response: null,
     outcome: { status: "declined" },
     conversationId: dm.id,

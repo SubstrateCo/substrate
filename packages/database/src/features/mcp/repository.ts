@@ -7,8 +7,7 @@ import { desktopDevices } from "../../core/devices/schema";
 import type { DatabaseExecutor } from "../../core/executor";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError, ConflictError } from "../../errors";
-import { agentRequests } from "../agent-work/requests/requests.schema";
-import { agentToolRequests } from "./schema";
+import { agentToolRequests, type PendingToolReceipt } from "./schema";
 import { and, eq } from "drizzle-orm";
 
 export async function requireHomeDevice(
@@ -37,18 +36,6 @@ export async function requireHomeDevice(
     .where(and(eq(actors.entityId, actorId), eq(userAgents.userId, identity.userId)));
   if (!row?.homeDeviceId || row.deviceId !== row.homeDeviceId) throw new AccessDeniedError();
   return row.userAgentId;
-}
-
-export async function requireOwnedProposal(
-  tx: DatabaseExecutor,
-  identity: SessionIdentity,
-  proposalId: string,
-) {
-  const [request] = await tx
-    .select({ id: agentRequests.id })
-    .from(agentRequests)
-    .where(and(eq(agentRequests.id, proposalId), eq(agentRequests.ownerUserId, identity.userId)));
-  if (!request) throw new AccessDeniedError();
 }
 
 type ReceiptKey = {
@@ -95,7 +82,7 @@ export async function claimToolReceipt(
 export async function saveToolReceipt(
   tx: DatabaseExecutor,
   key: ReceiptKey,
-  result: McpOutput<ServerToolName>,
+  result: McpOutput<ServerToolName> | PendingToolReceipt,
 ) {
   await tx
     .update(agentToolRequests)

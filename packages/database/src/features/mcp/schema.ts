@@ -13,6 +13,9 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
+/** The receipt of a call that waits for the owner: a retry returns the same proposal. */
+export type PendingToolReceipt = { approvalPending: string };
+
 export const agentToolRequests = pgTable(
   "agent_tool_requests",
   {
@@ -22,7 +25,7 @@ export const agentToolRequests = pgTable(
     requestId: uuid("request_id").notNull(),
     fingerprint: text("fingerprint").notNull(),
     // NULL only inside the transaction that claimed the request and has not saved its result yet.
-    result: jsonb("result").$type<McpOutput<ServerToolName>>(),
+    result: jsonb("result").$type<McpOutput<ServerToolName> | PendingToolReceipt>(),
     // The local turn and attempt that made the write, so recovery can see what already happened.
     turnId: uuid("turn_id"),
     attempt: integer("attempt"),

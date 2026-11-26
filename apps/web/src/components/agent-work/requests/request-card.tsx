@@ -3,6 +3,7 @@ import type { AgentRequestView } from "@substrate/contracts/agent-work";
 import { RequestCardView, RequestResult, type RequestPending } from "./request-card-view";
 import { ApiError } from "@/api/result";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { proposalResultLink } from "@/lib/agent-work/links";
 import { isOpenRequest } from "@/lib/agent-work/requests";
@@ -35,7 +36,11 @@ export function RequestCard({ request }: { request: AgentRequestView }) {
   const attempt = useRequestAction(userId, organizationId);
   const open = isOpenRequest(request);
   // Resolve targets only while the owner can still decide.
-  const target = useProposalTarget(organizationId, request, open);
+  const apps = useOrganizationApps();
+  const target = useProposalTarget(organizationId, request, {
+    enabled: open,
+    crmEnabled: apps.enabled("crm"),
+  });
   if (!open)
     return <RequestResult request={request} link={proposalResultLink(organizationId, request)} />;
   const pending = attempt.isPending ? pendingOf(attempt.variables) : undefined;

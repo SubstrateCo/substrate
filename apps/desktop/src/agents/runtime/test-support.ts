@@ -236,6 +236,7 @@ export async function runtimeFixture(
       answers = [];
       return result;
     },
+    requestStatus: async () => ({ status: "pending", outcome: null }),
     directConversation: async () => crypto.randomUUID(),
     async openRequestIds() {
       record({ method: "openRequestIds", body: null });

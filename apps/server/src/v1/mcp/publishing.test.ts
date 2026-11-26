@@ -12,7 +12,11 @@ import {
   messagingMessages,
   userAgents,
 } from "../../../../../packages/database/src/schema";
-import { dmTurn, threadTurn } from "../../../../../packages/database/src/testing/agent-work";
+import {
+  dmTurn,
+  ownerAgentWork,
+  threadTurn,
+} from "../../../../../packages/database/src/testing/agent-work";
 import { ownedAgent } from "../../../../../packages/database/src/testing/agents";
 import { setupDatabase } from "../../../../../packages/database/src/testing/database";
 import { rejection } from "../../../../../packages/database/src/testing/rejection";
@@ -23,6 +27,9 @@ import { eq } from "drizzle-orm";
 import { ZodError } from "zod";
 
 const f = setupDatabase();
+
+const messagesIn = (conversationId: string) =>
+  f.db.select().from(messagingMessages).where(eq(messagingMessages.conversationId, conversationId));
 
 const message = async (id: string) =>
   (await f.db.select().from(messagingMessages).where(eq(messagingMessages.id, id)))[0]!;
@@ -57,19 +64,21 @@ test("reply posts top level in a DM and in the thread of a thread turn, with its
   });
 });
 
-test("background turns post only to their own place and propose everything else", async () => {
-  const { alice, dm, call } = await agentWorkFixture(f);
+test("a background reply in place runs directly; a reply elsewhere waits for approval", async () => {
+  const { alice, dm, call, pending } = await agentWorkFixture(f);
   const channel = await alice.createConversation({ kind: "channel", name: "general" });
   const background = dmTurn(dm.id, "unattended");
-  expect(
-    await rejection(
-      call(
-        "reply",
-        { requestId: crypto.randomUUID(), body: "Elsewhere", to: { conversationId: channel.id } },
-        background,
-      ),
-    ),
-  ).toMatchObject({ message: expect.stringContaining("Use propose for this action") });
+  const requestId = await pending(
+    "reply",
+    { requestId: crypto.randomUUID(), body: "Elsewhere", to: { conversationId: channel.id } },
+    background,
+  );
+  expect(await messagesIn(channel.id)).toEqual([]);
+  const [request] = await f.db.select().from(agentRequests).where(eq(agentRequests.id, requestId));
+  expect(request).toMatchObject({ kind: "proposal", conversationId: dm.id });
+
+  const inPlace = await call("reply", { requestId: crypto.randomUUID(), body: "Done" }, background);
+  expect(inPlace).toMatchObject({ conversationId: dm.id, threadId: null });
 
   // A routine turn has no source and publishes to its destination.
   const routine = {
@@ -127,48 +136,30 @@ test("the turn must match its session and cannot borrow another agent's turn", a
   ).toBeInstanceOf(AccessDeniedError);
 });
 
-test("background task discussion publishing requires a proposal and does not post before approval", async () => {
-  const { dm, call } = await agentWorkFixture(f);
+test("an approved background post to a task discussion posts once, as the agent, with its turn", async () => {
+  const { agent, dm, owner, pending } = await agentWorkFixture(f);
   const repos = f.forActor(f.alice);
   const project = await repos.projects.create({ name: "Task discussion" });
   const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Follow up" });
   const conversationId = await repos.tasks.ensureDiscussion(task.entityId);
   const background = dmTurn(dm.id, "unattended");
-  const target = { conversationId, body: "Progress to share" };
-  expect(
-    await rejection(
-      call(
-        "reply",
-        {
-          requestId: crypto.randomUUID(),
-          body: target.body,
-          to: { conversationId },
-        },
-        background,
-      ),
-    ),
-  ).toMatchObject({ message: expect.stringContaining("Use propose for this action") });
-  expect(
-    await call(
-      "propose",
-      {
-        requestId: crypto.randomUUID(),
-        summary: "Post the task update",
-        action: { type: "reply_elsewhere", input: target },
-      },
-      background,
-    ),
-  ).toMatchObject({ status: "pending" });
-  expect(
-    await f.db
-      .select()
-      .from(messagingMessages)
-      .where(eq(messagingMessages.conversationId, conversationId)),
-  ).toEqual([]);
+  const requestId = await pending(
+    "reply",
+    { requestId: crypto.randomUUID(), body: "Progress to share", to: { conversationId } },
+    background,
+  );
+  expect(await messagesIn(conversationId)).toEqual([]);
+  const { outcome } = (await (await ownerAgentWork(f.db, owner)).approveProposal(requestId)).result;
+  const posted = await messagesIn(conversationId);
+  expect(posted.map((row) => [row.body, row.authorActorEntityId, row.originTurnId])).toEqual([
+    ["Progress to share", agent.actorId, background.turnId],
+  ]);
+  expect(outcome).toMatchObject({
+    status: "executed",
+    receipt: { kind: "message", id: posted[0]!.id, conversationId, threadId: null },
+    result: { messageId: posted[0]!.id, conversationId, threadId: null, questionId: null },
+  });
 });
-
-const messagesIn = (conversationId: string) =>
-  f.db.select().from(messagingMessages).where(eq(messagingMessages.conversationId, conversationId));
 
 test("background turns cannot ask: reply.ask is rejected before anything posts", async () => {
   const { dm, call } = await agentWorkFixture(f);
@@ -204,16 +195,13 @@ test("only the agent's home desktop can write; a moved agent's old desktop can o
     expect(
       await rejection(call("reply", { requestId: crypto.randomUUID(), body: "Stale" }, turn)),
     ).toBeInstanceOf(AccessDeniedError);
+    // A call that would wait for approval is refused before it is stored.
     expect(
       await rejection(
         call(
-          "propose",
-          {
-            requestId: crypto.randomUUID(),
-            summary: "Track",
-            action: { type: "create_task", input: { projectId: project.entityId, title: "Task" } },
-          },
-          turn,
+          "create_task",
+          { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Task" },
+          { ...turn, kind: "unattended" },
         ),
       ),
     ).toBeInstanceOf(AccessDeniedError);
@@ -309,37 +297,37 @@ test("update_task requires a requestId and replays the same change", async () =>
   ).toBeInstanceOf(ConflictError);
 });
 
-test("propose checks the action's target now and stores the exact action", async () => {
-  const { bob, dm, call } = await agentWorkFixture(f);
+test("a call that waits stores the exact call once, and refuses hidden records", async () => {
+  const { bob, dm, pending } = await agentWorkFixture(f);
   const hidden = await bob.createConversation({ kind: "channel", name: "bob", private: true });
   const turn = dmTurn(dm.id, "unattended");
   expect(
     await rejection(
-      call(
-        "propose",
-        {
-          requestId: crypto.randomUUID(),
-          summary: "Post",
-          action: { type: "reply_elsewhere", input: { conversationId: hidden.id, body: "Hi" } },
-        },
+      pending(
+        "reply",
+        { requestId: crypto.randomUUID(), body: "Hi", to: { conversationId: hidden.id } },
         turn,
       ),
     ),
   ).toBeInstanceOf(AccessDeniedError);
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
-  const action = { type: "create_task", input: { projectId: project.entityId, title: "Plan" } };
-  const { proposalId } = await call(
-    "propose",
-    { requestId: crypto.randomUUID(), summary: "Create the plan task", action },
-    turn,
-  );
-  const [request] = await f.db.select().from(agentRequests).where(eq(agentRequests.id, proposalId));
-  expect(request).toMatchObject({
+  const input = { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Plan" };
+  const requestId = await pending("create_task", input, turn);
+  // A retry with the same requestId returns the same proposal, not a second one.
+  expect(await pending("create_task", input, turn)).toBe(requestId);
+  const requests = await f.db.select().from(agentRequests);
+  expect(requests).toHaveLength(1);
+  expect(requests[0]).toMatchObject({
+    id: requestId,
     kind: "proposal",
     mode: "async",
-    proposedAction: action,
-    payload: { type: "proposal", summary: "Create the plan task" },
+    proposedAction: { tool: "create_task", input: { projectId: project.entityId, title: "Plan" } },
+    payload: { type: "proposal", summary: "Create task" },
     conversationId: dm.id,
   });
-  expect(request!.actionHash).toMatch(/^[0-9a-f]{64}$/);
+  expect(requests[0]!.actionHash).toMatch(/^[0-9a-f]{64}$/);
+  // The same requestId with other input is a conflict, not a new proposal.
+  expect(
+    await rejection(pending("create_task", { ...input, title: "Other" }, turn)),
+  ).toBeInstanceOf(ConflictError);
 });

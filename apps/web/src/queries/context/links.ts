@@ -1,7 +1,12 @@
 import { keepPreviousData, queryOptions, replaceEqualDeep, skipToken } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
-import { getMessagePage, getRelatedContext, type MessagePageContext } from "@/api/context/links";
+import {
+  getMessagePage,
+  getRecordLabels,
+  getRelatedContext,
+  type MessagePageContext,
+} from "@/api/context/links";
 import { loadMessageTarget } from "@/api/context/message-targets";
 
 export const messagePageOptions = (
@@ -55,6 +60,18 @@ export const messagePageOptions = (
     enabled: messageIds.length > 0,
     retry: false,
   });
+
+/** Names for up to 50 record IDs. An ID missing from the result is one the viewer can't open. */
+export const recordLabelsOptions = (organizationId: string, ids: readonly string[]) => {
+  const sorted = [...new Set(ids)].sort();
+  return queryOptions({
+    queryKey: queryKeys.recordLabels(organizationId, sorted),
+    queryFn: sorted.length
+      ? ({ signal }) => getRecordLabels({ data: { organizationId, ids: sorted }, signal })
+      : skipToken,
+    retry: false,
+  });
+};
 
 export const relatedContextOptions = (organizationId: string, entityId: string) =>
   queryOptions({

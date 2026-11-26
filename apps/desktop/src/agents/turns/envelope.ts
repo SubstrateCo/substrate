@@ -82,6 +82,7 @@ function outcomeLine(outcome: ProposalOutcome | null) {
         return `Outcome: approved and done. CRM ${receipt.entityType} ${receipt.id}.`;
       if (receipt.kind === "deleted")
         return `Outcome: approved and done. Deleted ${receipt.entityType} ${receipt.id}.`;
+      if (receipt.kind === "done") return `Outcome: approved and done. ${receipt.tool} ran.`;
       const thread = receipt.threadId ? ` thread ${receipt.threadId}` : "";
       return `Outcome: approved and done. Posted message ${receipt.id} in conversation ${receipt.conversationId}${thread}.`;
     }

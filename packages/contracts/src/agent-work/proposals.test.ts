@@ -14,19 +14,24 @@ test("canonical JSON sorts keys at every level and drops undefined fields", () =
   expect(() => canonicalJson({ n: Number.NaN })).toThrow(TypeError);
 });
 
-test("the action hash ignores key order and changes with any field", async () => {
+test("the action hash ignores key order and changes with the tool or any input field", async () => {
   const first = await proposalActionHash({
-    type: "reply_elsewhere",
-    input: { conversationId, body: "Hello" },
+    tool: "reply",
+    input: { to: { conversationId }, body: "Hello" },
   });
   const reordered = await proposalActionHash(
-    proposalAction.parse({ input: { body: "Hello", conversationId }, type: "reply_elsewhere" }),
+    proposalAction.parse({ input: { body: "Hello", to: { conversationId } }, tool: "reply" }),
   );
   const changed = await proposalActionHash({
-    type: "reply_elsewhere",
-    input: { conversationId, body: "Hello!" },
+    tool: "reply",
+    input: { to: { conversationId }, body: "Hello!" },
+  });
+  const otherTool = await proposalActionHash({
+    tool: "create_task",
+    input: { to: { conversationId }, body: "Hello" },
   });
   expect(first).toMatch(/^[0-9a-f]{64}$/);
   expect(reordered).toBe(first);
   expect(changed).not.toBe(first);
+  expect(otherTool).not.toBe(first);
 });

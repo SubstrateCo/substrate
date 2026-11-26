@@ -37,17 +37,33 @@ import { setupDatabase } from "../../../../../packages/database/src/testing/data
 import { recordQueries } from "../../../../../packages/database/src/testing/queries";
 import { rejection } from "../../../../../packages/database/src/testing/rejection";
 import { scopeFixture } from "../../test-support";
-import { executeAgentTool as executeCommittedTool } from "./execution";
+import { executeAgentTool as executeRawTool } from "./execution";
 import { createMcpService } from "./service";
 import { expect, spyOn, test } from "bun:test";
 import { and, eq, sql } from "drizzle-orm";
 
 const f = setupDatabase();
 
+// A call these tests expect to run, not to wait for approval, with its committed effects.
+async function executeCommittedTool<K extends ServerToolName>(
+  ...args: [
+    DatabaseExecutor,
+    Parameters<typeof executeRawTool>[1],
+    K,
+    WorkspaceApiRequest["input"],
+    TurnContext,
+  ]
+) {
+  const committed = await executeRawTool(...args);
+  const { result } = committed;
+  if ("pending" in result) throw new Error(`${args[2]} waits for approval`);
+  return { ...committed, result };
+}
+
 // Tests that inspect only the payload still use the production commit boundary.
 async function executeAgentTool<K extends ServerToolName>(
   db: DatabaseExecutor,
-  identity: Parameters<typeof executeCommittedTool>[1],
+  identity: Parameters<typeof executeRawTool>[1],
   tool: K,
   input: WorkspaceApiRequest["input"],
   context: TurnContext,
@@ -542,17 +558,14 @@ test("CRM MCP contact writes retain committed context invalidation hints", async
   expect(updated.hints).toContainEqual(expected);
 });
 
-test("CRM MCP blocks unattended writes and writes from another desktop", async () => {
+test("CRM MCP stores unattended writes for approval and blocks writes from another desktop", async () => {
   const { identity } = await fixture();
   const input = { requestId: crypto.randomUUID(), name: "Must not exist" };
-  expect(
-    await rejection(
-      executeAgentTool(f.db, identity, "create_crm_account", input, {
-        ...turn,
-        kind: "unattended",
-      }),
-    ),
-  ).toMatchObject({ name: "ValidationError" });
+  const { result: background } = await executeRawTool(f.db, identity, "create_crm_account", input, {
+    ...turn,
+    kind: "unattended",
+  });
+  if (!("pending" in background)) throw new Error("create_crm_account ran without approval");
   expect(
     await rejection(
       executeAgentTool(f.db, identity, "create_crm_account", input, {
@@ -561,8 +574,11 @@ test("CRM MCP blocks unattended writes and writes from another desktop", async (
       }),
     ),
   ).toBeInstanceOf(AccessDeniedError);
+  // Only the stored proposal's receipt exists; the account waits for approval.
   expect(await f.forActor(f.alice).crm.listAccounts()).toEqual([]);
-  expect(await f.db.select().from(agentToolRequests)).toEqual([]);
+  expect((await f.db.select().from(agentToolRequests)).map((row) => row.result)).toEqual([
+    { approvalPending: background.pending.requestId },
+  ]);
 });
 
 test("CRM interaction retries preserve a single manual interaction", async () => {

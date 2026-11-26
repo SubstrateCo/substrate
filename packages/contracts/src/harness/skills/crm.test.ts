@@ -1,17 +1,14 @@
-import { proposalActionTypes } from "../../agent-work/proposals.ts";
 import { mcpTools } from "../tools/index.ts";
 import { crmSkill } from "./crm.ts";
 import { startupSkills } from "./registry.ts";
 import { expect, test } from "bun:test";
 
-test("the built-in CRM workflow ships once and refers only to registered tools and propose actions", () => {
+test("the built-in CRM workflow ships once and refers only to registered tools", () => {
   expect(startupSkills.filter((skill) => skill.id === "substrate-crm")).toEqual([crmSkill]);
   const references = [...crmSkill.content.matchAll(/`([a-z]+_[a-z_]+)`/g)].map((match) => match[1]);
   expect(references).toContain("transition_crm_deal");
   expect(references).toContain("list_crm_interactions");
-  expect(references).toContain("archive_crm_record");
-  const actions: readonly string[] = proposalActionTypes;
-  for (const name of references) expect(name! in mcpTools || actions.includes(name!)).toBe(true);
+  for (const name of references) expect(name! in mcpTools).toBe(true);
 });
 
 test("new-deal guidance preserves explicit currency and does not rewrite existing deals", () => {

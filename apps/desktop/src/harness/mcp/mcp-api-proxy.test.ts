@@ -1,7 +1,7 @@
-import { sessionKeys } from "@substrate/contracts/agent-work";
+import { sessionKeys, type ProposalOutcome } from "@substrate/contracts/agent-work";
 import type { WorkspaceApiRequest, WorkspaceApiResult } from "@substrate/contracts/harness/mcp";
 
-import { createMcpApiProxy } from "./mcp-api-proxy.ts";
+import { approvalPollMs, approvalWaitMs, createMcpApiProxy } from "./mcp-api-proxy.ts";
 import { expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
 
@@ -134,6 +134,118 @@ test("API permission failures pass through without a fallback or retry", async (
   f.setResult(denied);
   expect(await f.proxy(projects)).toEqual(denied);
   expect(f.requests).toHaveLength(1);
+});
+
+const proposalId = "6a1d2c3b-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
+const pending: WorkspaceApiResult = {
+  success: false,
+  error: { code: "APPROVAL_PENDING", message: "Waiting for approval.", requestId: proposalId },
+};
+const deleteTask: WorkspaceApiRequest = {
+  ...projects,
+  tool: "delete_task",
+  input: { requestId: crypto.randomUUID(), taskId: crypto.randomUUID() },
+};
+const deleted = { deleted: true, taskId: crypto.randomUUID() };
+const executed: ProposalOutcome = {
+  status: "executed",
+  receipt: { kind: "deleted", entityType: "task", id: deleted.taskId },
+  result: deleted,
+};
+
+/**
+ * A proxy whose call waits for approval. states are the request's reads in order; the last one
+ * repeats. The clock moves only when the proxy sleeps, so no test waits in real time.
+ */
+function held(states: { status: string; outcome: ProposalOutcome | null }[]) {
+  let now = 0;
+  const reads: number[] = [];
+  const waits: string[] = [];
+  const released: string[] = [];
+  const received: { result: WorkspaceApiResult; decided?: { requestId: string } }[] = [];
+  const proxy = createMcpApiProxy({
+    backend: "https://api.example.com",
+    isActive: () => true,
+    fetchAPI: async () => Response.json(pending, { status: 202 }),
+    approval: {
+      async status(organizationId, requestId) {
+        expect({ organizationId, requestId }).toEqual({
+          organizationId: "org-a",
+          requestId: proposalId,
+        });
+        reads.push(now);
+        return states[Math.min(reads.length - 1, states.length - 1)]!;
+      },
+      waiting(_request, requestId) {
+        waits.push(requestId);
+        return () => released.push(requestId);
+      },
+      sleep: async (milliseconds) => {
+        now += milliseconds;
+      },
+      now: () => now,
+    },
+    onResult: (_request, result, decided) => {
+      received.push(decided ? { result, decided } : { result });
+    },
+  });
+  return { proxy, reads, waits, released, received };
+}
+const undecided = { status: "pending", outcome: null };
+
+test("an interactive call that needs approval waits and returns the executed tool result", async () => {
+  const f = held([undecided, undecided, { status: "executed", outcome: executed }]);
+  expect(await f.proxy(deleteTask)).toEqual({ success: true, data: deleted });
+  expect(f.reads).toEqual([0, approvalPollMs, 2 * approvalPollMs]);
+  expect(f.received).toEqual([
+    { result: { success: true, data: deleted }, decided: { requestId: proposalId } },
+  ]);
+  expect(f.waits).toEqual([proposalId]);
+  expect(f.released).toEqual([proposalId]);
+});
+
+test("a declined or failed decision is the final result and says not to retry", async () => {
+  expect(
+    await held([{ status: "resolved", outcome: { status: "declined" } }]).proxy(deleteTask),
+  ).toEqual({
+    success: false,
+    error: { code: "DECLINED", message: "Your owner declined this call. Do not retry it." },
+  });
+  const failed = held([{ status: "failed", outcome: { status: "failed", error: "Task gone." } }]);
+  expect(await failed.proxy(deleteTask)).toEqual({
+    success: false,
+    error: { code: "FAILED", message: "Task gone." },
+  });
+  expect(failed.received[0]?.decided).toEqual({ requestId: proposalId });
+});
+
+test("an executed result that does not match the tool's output is not passed on", async () => {
+  const f = held([{ status: "executed", outcome: { ...executed, result: { unexpected: 1 } } }]);
+  const result = await f.proxy(deleteTask);
+  expect(result.success ? null : result.error.code).toBe("RESULT_UNAVAILABLE");
+});
+
+test("an undecided call returns APPROVAL_PENDING unchanged after the wait, within 60 s", async () => {
+  const f = held([undecided]);
+  expect(await f.proxy(deleteTask)).toEqual(pending);
+  expect(f.reads.at(-1)).toBeLessThanOrEqual(approvalWaitMs);
+  expect(approvalWaitMs).toBeLessThan(60_000);
+  expect(f.received).toEqual([{ result: pending }]);
+  expect(f.released).toEqual([proposalId]);
+  const expired = held([{ status: "expired", outcome: null }]);
+  expect(await expired.proxy(deleteTask)).toEqual(pending);
+  expect(expired.reads).toHaveLength(1);
+});
+
+test("an unattended call never waits, but a retry of a decided call gets the decision", async () => {
+  const unattended = { ...deleteTask, turn: { ...deleteTask.turn, kind: "unattended" as const } };
+  const open = held([undecided, { status: "executed", outcome: executed }]);
+  expect(await open.proxy(unattended)).toEqual(pending);
+  expect(open.reads).toEqual([0]);
+  expect(open.waits).toEqual([]);
+  const retried = held([{ status: "executed", outcome: executed }]);
+  expect(await retried.proxy(unattended)).toEqual({ success: true, data: deleted });
+  expect(retried.received[0]?.decided).toEqual({ requestId: proposalId });
 });
 
 test("the explicit result sink receives the verified request and its result before completion", async () => {

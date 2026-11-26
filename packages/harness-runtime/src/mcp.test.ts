@@ -233,13 +233,7 @@ test("helper leases offer no publishing, helper management or memory tools", asy
   );
   try {
     const names = new Set((await mcp.client.listTools()).tools.map((tool) => tool.name));
-    for (const name of [
-      "reply",
-      "propose",
-      "start_helper",
-      "remember",
-      "forget",
-    ] satisfies McpToolName[])
+    for (const name of ["reply", "start_helper", "remember", "forget"] satisfies McpToolName[])
       expect(names.has(name)).toBe(false);
     expect(names.has("finish_helper")).toBe(true);
   } finally {
@@ -456,6 +450,31 @@ test("APP_DISABLED tells a stale native session to stop rather than retry", asyn
     expect(JSON.parse(text(result))).toMatchObject({
       code: "APP_DISABLED",
       hint: expect.stringContaining("Do not retry"),
+    });
+  } finally {
+    await mcp.close();
+  }
+});
+
+test("APPROVAL_PENDING returns the proposal's requestId and tells the agent not to retry", async () => {
+  const requestId = "5f0c3a2e-7b1d-4e6f-9a8b-0c1d2e3f4a5b";
+  const mcp = await connected({
+    workspace: async () => ({
+      success: false,
+      error: { code: "APPROVAL_PENDING", message: "Waiting for owner approval.", requestId },
+    }),
+  });
+  try {
+    mcp.lease.bind(turn);
+    const result = await mcp.client.callTool({
+      name: "delete_project",
+      arguments: { requestId: crypto.randomUUID(), projectId: crypto.randomUUID() },
+    });
+    expect(result.isError).toBe(true);
+    expect(JSON.parse(text(result))).toMatchObject({
+      code: "APPROVAL_PENDING",
+      requestId,
+      hint: expect.stringContaining("Do not retry or work around it"),
     });
   } finally {
     await mcp.close();

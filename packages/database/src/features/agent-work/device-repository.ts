@@ -7,6 +7,7 @@ import {
   openRequestForDevice,
   closeRequestForDevice,
   requestAnswersForDevice,
+  requestStatusForDevice,
   type OpenRequestInput,
 } from "./requests/device-requests";
 import { loadSourcesForDevice } from "./sources";
@@ -27,5 +28,6 @@ export function createDeviceWorkRepository(db: DatabaseExecutor, identity: Resol
     closeRequest: (requestId: string, status: Parameters<typeof closeRequestForDevice>[3]) =>
       committedWrite(closeRequestForDevice)(db, identity, requestId, status),
     requestAnswers: () => requestAnswersForDevice(db, identity),
+    requestStatus: (requestId: string) => requestStatusForDevice(db, identity, requestId),
   };
 }

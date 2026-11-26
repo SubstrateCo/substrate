@@ -82,6 +82,8 @@ export interface LiveTurn {
   stillQueued: string[];
   /** Calls already attached to the turn's MCP context, including steered calls. */
   invocationIds: string[];
+  /** Requests that a held tool call of this turn waits on. Their decisions do not steer in. */
+  awaitingApprovals: Set<string>;
   usage: Usage | null;
   /** The latest tool start, for status. */
   activity: string | null;

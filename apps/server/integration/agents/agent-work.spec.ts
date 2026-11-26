@@ -181,22 +181,29 @@ test("only the home desktop publishes, and a left conversation's requests are pl
   expect(root.ok()).toBe(true);
   const rootId: string = (await root.json()).data.id;
 
-  const turn = (installationId?: string) => ({
+  const turn = (installationId?: string, kind = "interactive") => ({
     turnId: crypto.randomUUID(),
     attempt: 1,
     sessionKey: sessionKeys.thread(rootId),
     origin: { conversationId, threadId: rootId },
-    kind: "interactive",
+    kind,
     installationId,
   });
   const call = (
     installationId: string | undefined,
     tool: WorkspaceApiRequest["tool"],
     input: WorkspaceApiRequest["input"],
+    kind?: string,
   ) =>
     owner.post("/api/v1/mcp/call", {
       headers: { origin },
-      data: { organizationId: workspace.id, agentId, turn: turn(installationId), tool, input },
+      data: {
+        organizationId: workspace.id,
+        agentId,
+        turn: turn(installationId, kind),
+        tool,
+        input,
+      },
     });
   const reply = (installationId?: string) =>
     call(installationId, "reply", {
@@ -209,15 +216,30 @@ test("only the home desktop publishes, and a left conversation's requests are pl
   expect((await reply()).status()).toBe(404);
   expect((await call(other, "list_projects", {})).ok()).toBe(true);
   expect((await reply(home)).ok()).toBe(true);
-  expect(
-    (
-      await call(home, "propose", {
-        requestId: crypto.randomUUID(),
-        summary: `${secret} summary`,
-        action: { type: "reply_elsewhere", input: { conversationId, body: `${secret} action` } },
-      })
-    ).ok(),
-  ).toBe(true);
+  // A background reply elsewhere is accepted for the owner's approval, not run.
+  const proposed = await call(
+    home,
+    "reply",
+    { requestId: crypto.randomUUID(), body: `${secret} action`, to: { conversationId } },
+    "unattended",
+  );
+  expect(proposed.status()).toBe(202);
+  const pendingBody = await proposed.json();
+  expect(pendingBody).toMatchObject({
+    success: false,
+    error: { code: "APPROVAL_PENDING", requestId: expect.any(String) },
+  });
+  // Only the agent's home desktop reads the proposal's status.
+  const status = (installationId: string) =>
+    owner.get(
+      `/api/v1/agent-work/device/requests/${pendingBody.error.requestId}?organizationId=${workspace.id}&installationId=${installationId}`,
+      { headers: { origin, "x-substrate-installation": installationId } },
+    );
+  expect(await (await status(home)).json()).toEqual({
+    success: true,
+    data: { status: "pending", outcome: null },
+  });
+  expect((await status(other)).status()).toBe(404);
 
   expect(
     (

@@ -119,14 +119,10 @@ export function RequestCardView({
       <MessageCard icon={Lightbulb} tone="attention" title={`${request.agent.name} proposes`}>
         <MessageCardBody>
           {request.proposal && target ? (
-            <ProposalPreview action={request.proposal.action} target={target} />
+            <ProposalPreview target={target} />
           ) : (
             <p className="text-xs text-muted-foreground">The proposed action is unavailable.</p>
           )}
-          {/* The agent's own words. The preview above, not this text, says what approval does. */}
-          <p className="text-xs text-muted-foreground">
-            {request.agent.name}’s note: {payload.summary}
-          </p>
           {target && proposalTargetHidden(target) && (
             <p className="text-xs text-muted-foreground">
               You can’t open everything this changes, so you can’t approve it.

@@ -1,35 +1,34 @@
-import { mcpTools } from "@substrate/contracts/harness/tools";
-import { proposeInstead } from "@substrate/database/mcp";
+import { needsLiveTurn } from "@substrate/database/mcp";
 
-import { writeGate } from "./write-gate";
+import { approvalNeeded, writeGate } from "./write-gate";
 import { expect, test } from "bun:test";
 
-test("handoff turns may not write at all", () => {
-  for (const tool of ["reply", "propose", "create_task"] as const)
+test("a handoff turn runs no write tool", () => {
+  for (const tool of ["reply", "create_task", "delete_task"] as const)
     expect(writeGate({ purpose: "handoff", kind: "interactive" }, tool)).toContain("save_handoff");
 });
 
-test("background turns may only reply or propose; interactive turns may run any write", () => {
-  const unattended = { kind: "unattended" as const };
-  expect(writeGate(unattended, "reply")).toBeNull();
-  expect(writeGate(unattended, "propose")).toBeNull();
-  for (const tool of [
-    "create_task",
-    "update_task",
-    "get_task_discussion",
-    "attach_message",
-  ] as const)
-    expect(writeGate(unattended, tool)).toBe(proposeInstead);
-  expect(writeGate({ kind: "interactive" }, "create_task")).toBeNull();
+test("a background turn runs writes that can wait for approval, but not live-turn tools", () => {
+  const unattended = { kind: "unattended" } as const;
+  for (const tool of ["reply", "create_task", "update_crm_account", "delete_task"] as const)
+    expect(writeGate(unattended, tool)).toBeNull();
+  expect(writeGate(unattended, "create_meeting")).toBe(needsLiveTurn);
+  expect(writeGate({ kind: "interactive" }, "create_meeting")).toBeNull();
 });
 
-test("every CRM mutation uses the existing interactive-only write gate", () => {
-  for (const [name, definition] of Object.entries(mcpTools)) {
-    if (!name.includes("_crm_") || definition.readOnly) continue;
-    // SAFETY: all CRM tools in the registry have server scope.
-    const tool = name as import("@substrate/contracts/harness/tools").ServerToolName;
-    expect(writeGate({ kind: "unattended" }, tool)).toBe(proposeInstead);
-    expect(writeGate({ kind: "interactive" }, tool)).toBeNull();
-    expect(writeGate({ kind: "interactive", purpose: "handoff" }, tool)).toContain("save_handoff");
+test("owner-approval tools always wait; a background write waits unless it replies in place", () => {
+  const interactive = { kind: "interactive" } as const;
+  const unattended = { kind: "unattended" } as const;
+  for (const tool of ["delete_task", "delete_project", "delete_crm_interaction"] as const) {
+    expect(approvalNeeded(interactive, tool, {})).toBe(true);
+    expect(approvalNeeded(unattended, tool, {})).toBe(true);
   }
+  expect(approvalNeeded(interactive, "create_task", {})).toBe(false);
+  expect(approvalNeeded(unattended, "create_task", {})).toBe(true);
+  const inPlace = { requestId: crypto.randomUUID(), body: "Done" };
+  const elsewhere = { ...inPlace, to: { conversationId: crypto.randomUUID() } };
+  expect(approvalNeeded(unattended, "reply", inPlace)).toBe(false);
+  expect(approvalNeeded(unattended, "reply", elsewhere)).toBe(true);
+  expect(approvalNeeded(interactive, "reply", elsewhere)).toBe(false);
+  expect(approvalNeeded(unattended, "get_task", {})).toBe(false);
 });

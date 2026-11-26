@@ -64,6 +64,9 @@ export function createDeviceService({ publish }: { publish: CommittedPublisher }
     requestAnswers(this: void, scope: DeviceScope, _input: z.output<typeof requestAnswersInput>) {
       return serviceResult(() => scope.device.agentWork.requestAnswers());
     },
+    requestStatus(this: void, scope: DeviceScope, requestId: string) {
+      return serviceResult(() => scope.device.agentWork.requestStatus(requestId));
+    },
   };
 }
 export type DeviceService = ReturnType<typeof createDeviceService>;

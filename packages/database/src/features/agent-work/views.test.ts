@@ -23,7 +23,7 @@ const request: typeof agentRequests.$inferSelect = {
   conversationId: "conversation",
   threadId: "root",
   payload: { type: "approval", title: "Post", detail: null, options: [] },
-  proposedAction: { type: "reply_elsewhere", input: { conversationId: "target", body: "Hi" } },
+  proposedAction: { tool: "reply", input: { body: "Hi", to: { conversationId: "target" } } },
   actionHash: "hash",
   targetBasis: null,
   response: null,

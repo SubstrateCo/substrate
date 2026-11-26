@@ -90,8 +90,8 @@ describe("request deadlines and outcomes", () => {
 
   test("a decided proposal says how it ended", () => {
     const action = {
-      type: "reply_elsewhere" as const,
-      input: { conversationId: crypto.randomUUID(), body: "Hi" },
+      tool: "reply",
+      input: { body: "Hi", to: { conversationId: crypto.randomUUID() } },
     };
     expect(
       requestOutcome(

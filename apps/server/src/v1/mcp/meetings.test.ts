@@ -42,6 +42,7 @@ test("the owner's agent writes the human's archive once, links its source, and r
     input,
     turn,
   );
+  if ("pending" in result) throw new Error("create_meeting waits for approval");
   const { id } = result.output;
   expect(hints).toContainEqual({
     audience: realtimeKeys.actor(f.orgA, f.alice),

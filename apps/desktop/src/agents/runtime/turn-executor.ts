@@ -417,6 +417,7 @@ export function createTurnExecutor(
       capabilities: opened.capabilities,
       stillQueued: [],
       invocationIds: sourceRequest(remaining).invocationIds,
+      awaitingApprovals: new Set(),
       usage: turn.usage,
       activity: turn.activity,
       conversationId: (destination ?? origin)?.conversationId ?? null,

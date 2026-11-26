@@ -1,5 +1,5 @@
-import { sessionKeys } from "@substrate/contracts/agent-work";
-import type { TurnContext } from "@substrate/contracts/harness/mcp";
+import { approvalPendingCode, sessionKeys } from "@substrate/contracts/agent-work";
+import { workspaceApiResult, type TurnContext } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
 
 import type { Actor } from "./fixtures";
@@ -70,4 +70,31 @@ export async function callTool<K extends ServerToolName>(
   expect(response.ok(), await response.text()).toBe(true);
   // SAFETY: the schema parsed is the named tool's own output schema.
   return mcpTools[tool].output.parse((await response.json()).data) as McpOutput<K>;
+}
+
+/**
+ * Calls a server tool that waits for the owner's approval, such as a deletion. The server stores
+ * the call as a proposal and fails it with APPROVAL_PENDING. Returns the proposal's request ID.
+ */
+export async function proposeTool<K extends ServerToolName>(
+  owner: Actor,
+  agentId: string,
+  turn: TurnContext,
+  tool: K,
+  input: Omit<z.input<(typeof mcpTools)[K]["input"]>, "requestId">,
+): Promise<string> {
+  const response = await owner.request.post("/api/v1/mcp/call", {
+    data: {
+      organizationId: owner.organizationId,
+      agentId,
+      tool,
+      turn,
+      input: { requestId: crypto.randomUUID(), ...input },
+    },
+  });
+  const result = workspaceApiResult.parse(await response.json());
+  expect(result).toMatchObject({ success: false, error: { code: approvalPendingCode } });
+  const requestId = result.success ? undefined : result.error.requestId;
+  if (!requestId) throw new Error("APPROVAL_PENDING returned no requestId.");
+  return requestId;
 }

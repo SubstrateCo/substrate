@@ -1,13 +1,16 @@
 import { sessionKeys } from "@substrate/contracts/agent-work";
 import type { AgentCallerPolicy } from "@substrate/contracts/agents";
 import type { TurnContext, WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
-import { mcpTools, type McpOutput, type ServerToolName } from "@substrate/contracts/harness/tools";
+import { mcpTools, type ServerToolName } from "@substrate/contracts/harness/tools";
 
 import { actors } from "../core/actors/schema";
 import type { DatabaseExecutor } from "../core/executor";
+import type { RepositoryContext } from "../core/repository-context";
 import type { DeviceIdentity } from "../core/session/device";
 import type { SessionIdentity } from "../core/session/identity";
 import { workspaceContext } from "../core/session/workspace";
+import { proposalInput } from "../features/agent-work/requests/proposals";
+import { proposeToolCall } from "../features/mcp/proposals";
 import { publishingTools } from "../features/mcp/publishing";
 import { requireTurn } from "../features/mcp/turn";
 import { createMessagingService } from "../features/messaging/service";
@@ -59,38 +62,53 @@ export async function agentWorkFixture(f: Fixture) {
   const dm = await alice.createConversation({ kind: "dm", agentIds: [agent.agentId] });
   const owner = { userId: "alice", organizationId: f.orgA };
   const agentIdentity = { ...owner, actorEntityId: agent.actorId };
-  const call = async <K extends Extract<ServerToolName, "reply" | "propose">>(
-    tool: K,
-    input: WorkspaceApiRequest["input"],
+  const attach = (turn: TurnContext): TurnContext =>
+    "installationId" in turn ? turn : { ...turn, installationId: agent.identity.installationId };
+  // Fixture writes exercise domain persistence, not server tool dispatch or receipts.
+  const inTurn = <T>(
     turn: TurnContext,
-  ) => {
-    const attachedTurn =
-      "installationId" in turn ? turn : { ...turn, installationId: agent.identity.installationId };
-    const output = await f.db.transaction(async (tx) => {
+    work: (
+      context: RepositoryContext,
+      actor: { entityId: string; name: string; type: "human" | "agent" },
+    ) => Promise<T>,
+  ) =>
+    f.db.transaction(async (tx) => {
       const { context, actor } = await workspaceContext(tx, agentIdentity);
       await requireTurn(
         tx,
         agentIdentity,
         { actorId: agent.actorId, userAgentId: agent.agentId },
-        attachedTurn,
+        turn,
       );
-      const tools = publishingTools(
+      return work(context, actor);
+    });
+  const call = async (tool: "reply", input: WorkspaceApiRequest["input"], turn: TurnContext) => {
+    const attached = attach(turn);
+    const output = await inTurn(attached, (context, actor) =>
+      publishingTools(
         context,
         agentIdentity,
         { ...actor, userAgentId: agent.agentId },
-        attachedTurn,
-      );
-      // Fixture writes exercise domain persistence, not server tool dispatch or receipts.
-      return tool === "reply"
-        ? tools.reply(mcpTools.reply.input.parse(input))
-        : tools.propose(mcpTools.propose.input.parse(input));
-    });
-    return (
-      // SAFETY: the result was parsed with the output schema registered for tool K.
-      mcpTools[tool].output.parse(output) as McpOutput<K>
+        attached,
+      ).reply(mcpTools[tool].input.parse(input)),
+    );
+    return mcpTools[tool].output.parse(output);
+  };
+  /** Stores the call as a proposal, as the server does for a call that needs approval. */
+  const propose = (
+    tool: ServerToolName,
+    input: WorkspaceApiRequest["input"],
+    turn: TurnContext,
+  ) => {
+    const attached = attach(turn);
+    return inTurn(attached, (context, actor) =>
+      proposeToolCall(context, agentIdentity, { ...actor, userAgentId: agent.agentId }, attached, {
+        tool,
+        input: proposalInput(mcpTools[tool].input.parse(input)),
+      }),
     );
   };
-  return { agent, alice, bob, dm, owner, agentIdentity, call };
+  return { agent, alice, bob, dm, owner, agentIdentity, call, propose };
 }
 
 /**

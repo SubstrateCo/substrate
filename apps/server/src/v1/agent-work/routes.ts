@@ -134,6 +134,14 @@ export function createAgentWorkRoutes(
       v("json", requestAnswersInput),
       scopes.device("json"),
       async (c) => respond(c, await device.requestAnswers(c.var.scope, c.req.valid("json"))),
+    )
+    // A request's status and outcome, such as a proposal the desktop waits on.
+    .get(
+      "/device/requests/:id",
+      v("param", requestParams),
+      v("query", requestAnswersInput),
+      scopes.device("query"),
+      async (c) => respond(c, await device.requestStatus(c.var.scope, c.req.valid("param").id)),
     );
   return new Hono()
     .route("/", owner)

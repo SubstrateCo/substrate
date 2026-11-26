@@ -82,7 +82,7 @@ describe("agent-work mutation invalidation", () => {
       ).mutate({
         kind: "approve",
         requestId: "request",
-        action: { type: "create_task", input: { projectId: target, title: "Follow up" } },
+        action: { tool: "create_task", input: { projectId: target, title: "Follow up" } },
       });
       response.resolve([{ links: [] }]);
       await pending;
@@ -180,11 +180,11 @@ describe("agent-work mutation invalidation", () => {
     ];
     const reply = agentWorkInvalidations("user", "org", {
       kind: "approved",
-      action: { type: "reply_elsewhere", input: { conversationId: target, body: "Hi" } },
+      action: { tool: "reply", input: { body: "Hi", to: { conversationId: target } } },
     });
     const task = agentWorkInvalidations("user", "org", {
       kind: "approved",
-      action: { type: "create_task", input: { projectId: target, title: "Follow up" } },
+      action: { tool: "create_task", input: { projectId: target, title: "Follow up" } },
     });
     const unknown = agentWorkInvalidations("user", "org", { kind: "approved", action: null });
     expect(matched(shown, reply)).toEqual([shown[0]!, shown[2]!, shown[3]!]);
@@ -195,7 +195,7 @@ describe("agent-work mutation invalidation", () => {
   test("an approved reply also refreshes the target conversation's messages", () => {
     const keys = agentWorkInvalidations("user", "org", {
       kind: "approved",
-      action: { type: "reply_elsewhere", input: { conversationId: target, body: "Hi" } },
+      action: { tool: "reply", input: { body: "Hi", to: { conversationId: target } } },
     });
     expect(matched(cached, keys)).toEqual([...cached.slice(0, 4), queryKeys.conversations("org")]);
   });
@@ -203,12 +203,24 @@ describe("agent-work mutation invalidation", () => {
   test("an approved task proposal also refreshes tasks, not messages", () => {
     const keys = agentWorkInvalidations("user", "org", {
       kind: "approved",
-      action: { type: "create_task", input: { projectId: target, title: "Follow up" } },
+      action: { tool: "create_task", input: { projectId: target, title: "Follow up" } },
     });
     expect(matched(cached, keys)).toEqual([
       ...cached.slice(0, 3),
       queryKeys.project("org", "project"),
     ]);
+  });
+
+  test("an approved CRM call refreshes CRM records and contacts, not messages", () => {
+    const crm = [queryKeys.crmRecord("org", "deals", target), queryKeys.contacts("org")];
+    const keys = agentWorkInvalidations("user", "org", {
+      kind: "approved",
+      action: {
+        tool: "archive_crm_record",
+        input: { kind: "deal", entityId: target, archived: true },
+      },
+    });
+    expect(matched([...crm, queryKeys.messages("org", target)], keys)).toEqual(crm);
   });
 });
 

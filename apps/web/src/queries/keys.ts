@@ -82,6 +82,9 @@ export const queryKeys = {
       "target",
       ...(conversationId ? [conversationId] : []),
     ] as const,
+  /** Names of record IDs the viewer can open, keyed by the sorted IDs. */
+  recordLabels: (organizationId: string, ids?: readonly string[]) =>
+    [...queryKeys.context(organizationId), "record-labels", ...(ids ? [ids] : [])] as const,
   related: (organizationId: string, entityId?: string) =>
     [...queryKeys.context(organizationId), "related", ...(entityId ? [entityId] : [])] as const,
   // Reads the entity ID back from a related key, so predicates do not count positions.

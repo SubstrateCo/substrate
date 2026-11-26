@@ -1,7 +1,8 @@
 import { staleProposalError } from "@substrate/contracts/agent-work";
 import type { WorkspaceApiRequest } from "@substrate/contracts/harness/mcp";
+import type { ServerToolName } from "@substrate/contracts/harness/tools";
 
-import { AccessDeniedError, ValidationError } from "../../../errors";
+import { ValidationError } from "../../../errors";
 import { entities, entityGrants, member, projects } from "../../../schema";
 import { agentWorkFixture, dmTurn, ownerAgentWork } from "../../../testing/agent-work";
 import { setupDatabase } from "../../../testing/database";
@@ -14,12 +15,12 @@ const f = setupDatabase();
 async function proposals() {
   const fixture = await agentWorkFixture(f);
   const turn = dmTurn(fixture.dm.id);
-  const propose = (action: WorkspaceApiRequest["input"]) =>
-    fixture.call("propose", { requestId: crypto.randomUUID(), summary: "Do it", action }, turn);
+  const propose = (tool: ServerToolName, input: WorkspaceApiRequest["input"]) =>
+    fixture.propose(tool, { requestId: crypto.randomUUID(), ...input }, turn);
   const work = await ownerAgentWork(f.db, fixture.owner);
-  const approve = async (action: WorkspaceApiRequest["input"]) =>
-    (await work.approveProposal((await propose(action)).proposalId)).result.outcome;
-  return { ...fixture, propose, approve };
+  const approve = async (tool: ServerToolName, input: WorkspaceApiRequest["input"]) =>
+    (await work.approveProposal(await propose(tool, input))).result.outcome;
+  return { ...fixture, propose, approve, work };
 }
 
 const deletedAt = async (entityId: string) =>
@@ -58,7 +59,7 @@ test("an approved task deletion removes the task with its subtasks and names wha
     parentTaskEntityId: task.entityId,
     title: "Child",
   });
-  expect(await approve({ type: "delete_task", input: { taskId: task.entityId } })).toEqual({
+  expect(await approve("delete_task", { taskId: task.entityId })).toMatchObject({
     status: "executed",
     receipt: { kind: "deleted", entityType: "task", id: task.entityId },
   });
@@ -66,7 +67,7 @@ test("an approved task deletion removes the task with its subtasks and names wha
   expect(await deletedAt(subtask.entityId)).not.toBeNull();
 });
 
-test("a project is archived, restored, archived again and deleted only through approvals", async () => {
+test("a project is archived, restored, archived again and deleted through approvals", async () => {
   const { approve, propose } = await proposals();
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
   const input = { projectId: project.entityId };
@@ -74,50 +75,39 @@ test("a project is archived, restored, archived again and deleted only through a
     status: "executed",
     receipt: { kind: "project", id: project.entityId },
   } as const;
-  // Deleting or restoring an active project could never run, so it is refused when proposed.
-  expect(await rejection(propose({ type: "delete_project", input }))).toBeInstanceOf(
-    ValidationError,
-  );
-  expect(await rejection(propose({ type: "restore_project", input }))).toBeInstanceOf(
-    ValidationError,
-  );
-  expect(await approve({ type: "archive_project", input })).toEqual(receipt);
+  // Deleting an active project could never run, so it is refused when proposed.
+  expect(await rejection(propose("delete_project", input))).toBeInstanceOf(ValidationError);
+  expect(await approve("archive_project", input)).toMatchObject(receipt);
   expect(await archivedAt(project.entityId)).not.toBeNull();
-  expect(await rejection(propose({ type: "archive_project", input }))).toBeInstanceOf(
-    ValidationError,
-  );
-  expect(await approve({ type: "restore_project", input })).toEqual(receipt);
+  expect(await approve("restore_project", input)).toMatchObject(receipt);
   expect(await archivedAt(project.entityId)).toBeNull();
-  await approve({ type: "archive_project", input });
-  expect(await approve({ type: "delete_project", input })).toEqual({
+  await approve("archive_project", input);
+  expect(await approve("delete_project", input)).toMatchObject({
     status: "executed",
     receipt: { kind: "deleted", entityType: "project", id: project.entityId },
   });
   expect(await deletedAt(project.entityId)).not.toBeNull();
 });
 
-test("sharing grants and revokes a person's access, and never an agent's", async () => {
-  const { agent, approve, propose } = await proposals();
+test("sharing grants and revokes a person's access, and an agent share fails on approval", async () => {
+  const { agent, approve } = await proposals();
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
   const share = { projectId: project.entityId, actorId: f.bob, level: "edit" };
-  expect(await approve({ type: "share_project", input: share })).toMatchObject({
+  expect(await approve("share_project", share)).toMatchObject({
     status: "executed",
+    receipt: { kind: "project", id: project.entityId },
   });
   expect(await grant(project.entityId, f.bob)).toBe("edit");
-  await approve({
-    type: "revoke_project_access",
-    input: { projectId: project.entityId, actorId: f.bob },
-  });
+  await approve("revoke_project_access", { projectId: project.entityId, actorId: f.bob });
   expect(await grant(project.entityId, f.bob)).toBeUndefined();
-  expect(
-    await rejection(
-      propose({ type: "share_project", input: { ...share, actorId: agent.actorId } }),
-    ),
-  ).toBeInstanceOf(ValidationError);
+  expect(await approve("share_project", { ...share, actorId: agent.actorId })).toMatchObject({
+    status: "failed",
+  });
+  expect(await grant(project.entityId, agent.actorId)).toBeUndefined();
 });
 
-test("owner actions need the owner's owner access, not edit access", async () => {
-  const { propose } = await proposals();
+test("an owner action approved with only edit access fails and changes nothing", async () => {
+  const { approve } = await proposals();
   // Without the admin role, Alice has only the edit access Bob grants her.
   await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
   const project = await f.forActor(f.bob).projects.create({ name: "Bob's" });
@@ -126,28 +116,18 @@ test("owner actions need the owner's owner access, not edit access", async () =>
     actorEntityId: f.alice,
     level: "edit",
   });
-  const actions: WorkspaceApiRequest["input"][] = [
-    { type: "archive_project", input: { projectId: project.entityId } },
-    {
-      type: "share_project",
-      input: { projectId: project.entityId, actorId: f.bob, level: "view" },
-    },
-    { type: "revoke_project_access", input: { projectId: project.entityId, actorId: f.bob } },
-  ];
-  for (const action of actions)
-    expect(await rejection(propose(action))).toBeInstanceOf(AccessDeniedError);
+  expect(await approve("archive_project", { projectId: project.entityId })).toMatchObject({
+    status: "failed",
+  });
+  expect(await archivedAt(project.entityId)).toBeNull();
 });
 
 test("an approval fails when the project changed after it was proposed", async () => {
-  const { owner, propose } = await proposals();
+  const { propose, work } = await proposals();
   const repos = f.forActor(f.alice);
   const project = await repos.projects.create({ name: "Work" });
-  const { proposalId } = await propose({
-    type: "archive_project",
-    input: { projectId: project.entityId },
-  });
+  const proposalId = await propose("archive_project", { projectId: project.entityId });
   await repos.projects.update(project.entityId, { name: "Renamed", description: "" });
-  const work = await ownerAgentWork(f.db, owner);
   expect((await work.approveProposal(proposalId)).result.outcome).toEqual({
     status: "failed",
     error: staleProposalError,

@@ -1,4 +1,5 @@
 import type { NewOutput } from "@substrate/client-storage/agent-work";
+import { approvalPendingCode } from "@substrate/contracts/agent-work";
 import type { WorkspaceApiRequest, WorkspaceApiResult } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type ToolDefinition } from "@substrate/contracts/harness/tools";
 
@@ -6,12 +7,22 @@ import { z } from "zod";
 
 const fields = z.record(z.string(), z.unknown());
 
-/** The registry declares which output fields identify published records. */
+/**
+ * The registry declares which output fields identify published records. A call that waits for
+ * the owner's approval published a proposal request instead.
+ */
 export function toolOutputs(
   request: WorkspaceApiRequest,
   result: WorkspaceApiResult,
 ): { turnId: string; outputs: NewOutput[] } | null {
-  if (!result.success) return null;
+  if (!result.success) {
+    const { code, requestId } = result.error;
+    if (code !== approvalPendingCode || !requestId) return null;
+    return {
+      turnId: request.turn.turnId,
+      outputs: [{ kind: "request", id: requestId, requestKind: "proposal" }],
+    };
+  }
   const definition: ToolDefinition = mcpTools[request.tool];
   if (!definition.publishes) return null;
   const parsed = definition.output.safeParse(result.data);

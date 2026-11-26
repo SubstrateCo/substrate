@@ -7,6 +7,7 @@ import {
   contextTargets,
   contextLink,
   contextSearch,
+  contextRecordLabels,
   contextSourceTask,
   contextNotification,
   contextNotificationPage,
@@ -46,6 +47,9 @@ export function createContextRoutes(services: ContextService, scopes: Scopes) {
       respondCancellable(c, (signal) =>
         services.searchContext(c.var.scope, c.req.valid("json"), signal),
       ),
+    )
+    .post("/record-labels", v("json", contextRecordLabels), scopes.workspace("json"), async (c) =>
+      respond(c, await services.getRecordLabels(c.var.scope, c.req.valid("json"))),
     )
     .post("/source-tasks", v("json", contextSourceTask), scopes.workspace("json"), async (c) =>
       respond(c, await services.createTaskFromMessage(c.var.scope, c.req.valid("json"))),

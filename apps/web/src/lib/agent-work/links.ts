@@ -4,13 +4,13 @@ import { contactLink, crmLink, messageLink, workLink } from "@/lib/navigation/re
 
 /**
  * The forward link from an executed proposal to the message, task or project it created or
- * changed. A deleted record has no link.
+ * changed. A deleted record has no link, and neither has a call that names no single record.
  */
 export function proposalResultLink(organizationId: string, request: AgentRequestView) {
   const outcome = request.proposal?.outcome;
   if (outcome?.status !== "executed") return undefined;
   const { receipt } = outcome;
-  if (receipt.kind === "deleted") return undefined;
+  if (receipt.kind === "deleted" || receipt.kind === "done") return undefined;
   if (receipt.kind === "message")
     return {
       link: messageLink(organizationId, receipt.conversationId, receipt.id),

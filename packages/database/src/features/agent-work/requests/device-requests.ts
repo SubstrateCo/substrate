@@ -164,3 +164,20 @@ export async function requestAnswersForDevice(
     response && nativeRequestId ? [{ ...row, nativeRequestId, response }] : [],
   );
 }
+
+/**
+ * A request's status and outcome, for the home desktop of its agent. The desktop reads it to
+ * learn whether a proposal it waits on was decided; the approval_result wake carries the same.
+ */
+export async function requestStatusForDevice(
+  db: DatabaseExecutor,
+  identity: ResolvedDeviceIdentity,
+  requestId: string,
+) {
+  const [request] = await db
+    .select({ status: agentRequests.status, outcome: agentRequests.outcome })
+    .from(agentRequests)
+    .where(and(eq(agentRequests.id, requestId), deviceRequests(db, identity, identity.deviceId)));
+  if (!request) throw new AccessDeniedError();
+  return { status: request.status, outcome: request.outcome ?? null };
+}

@@ -154,15 +154,20 @@ export async function approveProposalInTransaction(
       // A savepoint, so a failed action leaves no partial writes but the decision is kept. Its
       // hints join the transaction only if the savepoint succeeds.
       const result = await tx.transaction(async (sp) => {
-        const { context, actor } = await workspaceContext(sp, agent);
-        return runProposalAction(context, agent, actor, {
-          id: claimed.id,
-          turnId: claimed.turnId,
-          action: parsed.data,
-          targetBasis: claimed.targetBasis,
-        });
+        const { context, actor, userName } = await workspaceContext(sp, agent);
+        return runProposalAction(
+          context,
+          agent,
+          { ...actor, userName },
+          {
+            id: claimed.id,
+            turnId: claimed.turnId,
+            action: parsed.data,
+            targetBasis: claimed.targetBasis,
+          },
+        );
       });
-      outcome = { status: "executed", receipt: result.receipt };
+      outcome = { status: "executed", receipt: result.receipt, result: result.output };
     } catch (error) {
       const failure = error instanceof Error ? proposalFailure(error) : null;
       if (!failure) throw error;

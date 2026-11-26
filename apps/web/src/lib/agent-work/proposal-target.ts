@@ -1,13 +1,14 @@
 import type { ProposalAction } from "@substrate/contracts/agent-work";
+import type { RecordLabel, RecordLabelType } from "@substrate/contracts/context/input";
+import { mcpTools } from "@substrate/contracts/harness/tools";
 
 import {
-  contactLink,
-  crmLink,
-  interactionLink,
+  linkedWorkLink,
   messageLink,
   workLink,
   type RecordLink,
 } from "@/lib/navigation/record-links";
+import { z } from "zod";
 
 /**
  * A record an action names, as the viewer can see it now. hidden carries no name or link, so the
@@ -22,25 +23,18 @@ export type ProposalRecord =
 export interface ProposalProject {
   project: { entityId: string; name: string };
   tasks: readonly { entityId: string; title: string; parentTaskEntityId: string | null }[];
-  actors: readonly { entityId: string; name: string }[];
-  members: readonly { actorEntityId: string; name: string }[];
 }
 
-type ProjectActionType = Extract<
-  ProposalAction["type"],
-  "archive_project" | "restore_project" | "delete_project"
->;
-type AccessActionType = Extract<ProposalAction["type"], "share_project" | "revoke_project_access">;
-type CrmPersonActionType = Extract<
-  ProposalAction["type"],
-  "assign_crm_owner" | "share_crm_record" | "revoke_crm_access"
->;
-
-/** A CRM record the viewer can read, by its kind and name. */
-export interface ProposalCrmRecord {
-  kind: "account" | "contact" | "deal";
-  name: string;
-}
+/** What a hidden record is, so its placeholder can say so without naming it. */
+export type RecordKind =
+  | "conversation"
+  | "thread"
+  | "project"
+  | "task"
+  | "message"
+  | "person"
+  | "record"
+  | "interaction";
 
 /**
  * What the viewer can read now. Each lookup returns undefined while it loads and null when the
@@ -48,26 +42,66 @@ export interface ProposalCrmRecord {
  */
 export interface ProposalLookups {
   organizationId: string;
-  conversation: (conversationId: string) => { name: string } | null | undefined;
+  /** Contacts open in Contacts with CRM on, and in Interactions with it off. */
+  crmEnabled: boolean;
+  /** The name and type of a record ID in the call's input. */
+  label: (id: string) => RecordLabel | null | undefined;
+  /** A project's detail, read only for a task change, to name its project and parent. */
   project: (projectId: string) => ProposalProject | null | undefined;
-  /** The projects that may hold a task, to find it by ID. Undefined while any loads. */
-  projects: readonly ProposalProject[] | undefined;
-  /** A message, as a short plain-text label. */
-  message: (conversationId: string, messageId: string) => { label: string } | null | undefined;
-  /** Where the proposal was made, to find its source message. Null when the viewer can't see it. */
-  sourceConversationId: string | null;
-  /** An account, contact or deal. */
-  crmRecord: (entityId: string) => ProposalCrmRecord | null | undefined;
-  /** A contact interaction, labelled by its contact and summary. */
-  interaction: (entityId: string) => { label: string } | null | undefined;
-  /** A person in the organization, by actor ID. */
-  person: (actorId: string) => { name: string } | null | undefined;
 }
 
+// Each stored input is the tool's input without requestId, so each typed preview parses it with
+// the tool's own schema. An input that does not parse gets the generic preview.
+const typedInputs = {
+  reply: mcpTools.reply.input.omit({ requestId: true }),
+  create_task: mcpTools.create_task.input.omit({ requestId: true }),
+  update_task: mcpTools.update_task.input.omit({ requestId: true }),
+  delete_task: mcpTools.delete_task.input.omit({ requestId: true }),
+  archive_project: mcpTools.archive_project.input.omit({ requestId: true }),
+  restore_project: mcpTools.restore_project.input.omit({ requestId: true }),
+  delete_project: mcpTools.delete_project.input.omit({ requestId: true }),
+  share_project: mcpTools.share_project.input.omit({ requestId: true }),
+  revoke_project_access: mcpTools.revoke_project_access.input.omit({ requestId: true }),
+  archive_crm_record: mcpTools.archive_crm_record.input.omit({ requestId: true }),
+  delete_crm_interaction: mcpTools.delete_crm_interaction.input.omit({ requestId: true }),
+  assign_crm_owner: mcpTools.assign_crm_owner.input.omit({ requestId: true }),
+  share_crm_record: mcpTools.share_crm_record.input.omit({ requestId: true }),
+  revoke_crm_access: mcpTools.revoke_crm_access.input.omit({ requestId: true }),
+};
+type TypedTool = keyof typeof typedInputs;
+type Input<K extends TypedTool> = z.output<(typeof typedInputs)[K]>;
+type TypedAction = { [K in TypedTool]: { tool: K; input: Input<K> } }[TypedTool];
+
+function typedAction(action: ProposalAction): TypedAction | null {
+  if (!Object.hasOwn(typedInputs, action.tool)) return null;
+  // SAFETY: hasOwn checked that the name is a key of typedInputs.
+  const tool = action.tool as TypedTool;
+  const parsed = typedInputs[tool].safeParse(action.input);
+  // A reply without `to` posts in the turn's own place, which the generic preview shows.
+  if (!parsed.success || (tool === "reply" && !("to" in parsed.data && parsed.data.to)))
+    return null;
+  // SAFETY: the input was parsed with the schema of the same tool.
+  return { tool, input: parsed.data } as TypedAction;
+}
+
+/** A field of a stored call, as the generic preview shows it. */
+export type ProposalField =
+  | { label: string; kind: "text"; text: string; markdown: boolean }
+  | { label: string; kind: "record"; record: ProposalRecord; recordKind: RecordKind };
+
+type ProjectTool = "archive_project" | "restore_project" | "delete_project";
+type CrmPersonTool = "assign_crm_owner" | "share_crm_record" | "revoke_crm_access";
+
 export type ProposalTarget =
-  | { type: "reply_elsewhere"; conversation: ProposalRecord; thread: ProposalRecord | null }
+  | {
+      type: "reply";
+      input: Input<"reply">;
+      conversation: ProposalRecord;
+      thread: ProposalRecord | null;
+    }
   | {
       type: "create_task";
+      input: Input<"create_task">;
       project: ProposalRecord;
       parentTask: ProposalRecord | null;
       sourceMessage: ProposalRecord | null;
@@ -75,17 +109,30 @@ export type ProposalTarget =
     }
   | {
       type: "update_task";
+      input: Input<"update_task">;
       task: ProposalRecord;
       project: ProposalRecord;
       parentTask: ProposalRecord | null;
       assignee: ProposalRecord | null;
     }
   | { type: "delete_task"; task: ProposalRecord; project: ProposalRecord }
-  | { type: ProjectActionType; project: ProposalRecord }
-  | { type: AccessActionType; project: ProposalRecord; person: ProposalRecord }
-  | { type: "archive_crm_record"; record: ProposalRecord }
+  | { type: ProjectTool; project: ProposalRecord }
+  | {
+      type: "share_project";
+      input: Input<"share_project">;
+      project: ProposalRecord;
+      person: ProposalRecord;
+    }
+  | { type: "revoke_project_access"; project: ProposalRecord; person: ProposalRecord }
+  | { type: "archive_crm_record"; input: Input<"archive_crm_record">; record: ProposalRecord }
   | { type: "delete_crm_interaction"; interaction: ProposalRecord }
-  | { type: CrmPersonActionType; record: ProposalRecord; person: ProposalRecord };
+  | {
+      type: CrmPersonTool;
+      action: Extract<TypedAction, { tool: CrmPersonTool }>;
+      record: ProposalRecord;
+      person: ProposalRecord;
+    }
+  | { type: "generic"; title: string; fields: ProposalField[] };
 
 const loading: ProposalRecord = { access: "loading" };
 const hidden: ProposalRecord = { access: "hidden" };
@@ -96,14 +143,50 @@ function resolve<T>(value: T | null | undefined, visible: (value: T) => Proposal
   return visible(value);
 }
 
-function taskRecord(organizationId: string, detail: ProposalProject, taskId: string) {
-  const task = detail.tasks.find((entry) => entry.entityId === taskId);
-  if (!task) return hidden;
-  return {
-    access: "visible",
-    label: task.title,
-    link: workLink(organizationId, detail.project.entityId, task.entityId),
-  } satisfies ProposalRecord;
+/** Where a record opens, by its type. People, stages, task links and contact details have no page. */
+function labelLink(lookups: ProposalLookups, label: RecordLabel): RecordLink | undefined {
+  const { organizationId } = lookups;
+  switch (label.type) {
+    case "conversation":
+      return messageLink(organizationId, label.id);
+    case "message":
+      return label.conversationId
+        ? messageLink(organizationId, label.conversationId, label.id)
+        : undefined;
+    case "task":
+    case "project":
+    case "account":
+    case "contact":
+    case "deal":
+    case "contact_interaction":
+    case "calendar_event":
+      return linkedWorkLink(
+        organizationId,
+        { projectEntityId: label.projectId, entityType: label.type, entityId: label.id },
+        lookups.crmEnabled,
+      );
+    case "actor":
+    case "pipeline_stage":
+    case "task_link":
+    case "contact_detail":
+      return undefined;
+  }
+}
+
+/**
+ * A record ID, named from the viewer's own reads. A record of another type than the call expects
+ * is not the one it names, so it is hidden.
+ */
+function labelRecord(
+  lookups: ProposalLookups,
+  id: string,
+  types?: readonly RecordLabelType[],
+): ProposalRecord {
+  return resolve(lookups.label(id), (label) =>
+    types && !types.includes(label.type)
+      ? hidden
+      : { access: "visible", label: label.title, link: labelLink(lookups, label) },
+  );
 }
 
 function projectRecord(organizationId: string, detail: ProposalProject): ProposalRecord {
@@ -114,60 +197,117 @@ function projectRecord(organizationId: string, detail: ProposalProject): Proposa
   };
 }
 
-/** A null assignee removes the assignee, so it is not a record to resolve. */
-function assigneeRecord(detail: ProposalProject | null | undefined, actorId: string | null) {
-  if (!actorId) return null;
-  return resolve(detail, (project) => {
-    const actor = project.actors.find((entry) => entry.entityId === actorId);
-    return actor ? { access: "visible", label: actor.name } : hidden;
-  });
+function parentRecord(organizationId: string, detail: ProposalProject, taskId: string) {
+  const task = detail.tasks.find((entry) => entry.entityId === taskId);
+  if (!task) return hidden;
+  return {
+    access: "visible",
+    label: task.title,
+    link: workLink(organizationId, detail.project.entityId, task.entityId),
+  } satisfies ProposalRecord;
 }
 
-/** A member of the project, or someone who could be added to it. */
-function personRecord(detail: ProposalProject | null | undefined, actorId: string) {
-  return resolve(detail, (project) => {
-    const member = project.members.find((entry) => entry.actorEntityId === actorId);
-    const actor = project.actors.find((entry) => entry.entityId === actorId);
-    const name = member?.name ?? actor?.name;
-    return name ? { access: "visible", label: name } : hidden;
-  });
-}
-
-/** A CRM record of the expected kinds, linked in its own app. */
-function crmRecordTarget(
-  lookups: ProposalLookups,
-  entityId: string,
-  kinds: readonly ProposalCrmRecord["kind"][],
-) {
-  return resolve(lookups.crmRecord(entityId), (record) => {
-    if (!kinds.includes(record.kind)) return hidden;
-    return {
-      access: "visible",
-      label: record.name,
-      link:
-        record.kind === "contact"
-          ? contactLink(lookups.organizationId, entityId)
-          : crmLink(lookups.organizationId, `${record.kind}s`, entityId),
-    } satisfies ProposalRecord;
-  });
-}
-
-function crmPerson(lookups: ProposalLookups, actorId: string) {
-  return resolve(lookups.person(actorId), ({ name }) => ({ access: "visible", label: name }));
-}
-
-/** The project that holds the task, once every readable project has loaded. */
+/** The project that holds a task, from the task's label. Null when the viewer can't open it. */
 function taskProject(lookups: ProposalLookups, taskId: string) {
-  const { projects } = lookups;
-  return (
-    projects &&
-    (projects.find((project) => project.tasks.some((task) => task.entityId === taskId)) ?? null)
-  );
+  const label = lookups.label(taskId);
+  if (label === undefined) return undefined;
+  return label?.type === "task" && label.projectId ? lookups.project(label.projectId) : null;
+}
+
+type Json = ProposalAction["input"][string];
+type JsonObject = Record<string, Json>;
+const recordId = z.uuid();
+const jsonObject = z.record(z.string(), z.json());
+const primitive = z.union([z.string(), z.number()]);
+/** A typed record reference, such as attach_message's target. The label names its type. */
+const typedRef = z.strictObject({ type: z.string(), id: z.uuid() });
+
+function humanize(key: string) {
+  const words = key
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/_/g, " ")
+    .trim()
+    .toLowerCase();
+  return words.charAt(0).toUpperCase() + words.slice(1);
+}
+
+/** A field's name without its ID suffix: assigneeActorId is "Assignee". */
+function fieldLabel(key: string) {
+  const name = key.replace(/(Actor)?(Entity)?Ids?$/, "");
+  if (name === "actor") return "Person";
+  if (!name || name === "entity") return key === "actorId" ? "Person" : "Record";
+  return humanize(name);
+}
+
+function textOf(value: Json) {
+  if (value === null) return "None";
+  if (value === true) return "Yes";
+  if (value === false) return "No";
+  const text = primitive.safeParse(value);
+  return text.success ? String(text.data) : JSON.stringify(value);
+}
+
+type GenericField =
+  | { label: string; kind: "text"; text: string; markdown: boolean }
+  | { label: string; kind: "id"; id: string };
+
+/** Every field of a stored call, with each record ID left to resolve. */
+function genericFields(input: JsonObject) {
+  const fields: GenericField[] = [];
+  const visit = (key: string, value: Json, prefix: string, ownLabel?: string): void => {
+    const label = ownLabel ?? prefix + fieldLabel(key);
+    const object = jsonObject.safeParse(value);
+    const id = recordId.safeParse(value);
+    const ref = typedRef.safeParse(value);
+    if (ref.success) fields.push({ label, kind: "id", id: ref.data.id });
+    else if (Array.isArray(value)) {
+      if (value.length === 0) fields.push({ label, kind: "text", text: "None", markdown: false });
+      value.forEach((entry, index) =>
+        visit(key.replace(/s$/, ""), entry, prefix, `${label} ${index + 1}`),
+      );
+    } else if (object.success)
+      for (const [child, entry] of Object.entries(object.data))
+        visit(child, entry, ownLabel ? `${ownLabel}: ` : prefix);
+    else if (id.success) fields.push({ label, kind: "id", id: id.data });
+    else {
+      const text = textOf(value);
+      fields.push({
+        label,
+        kind: "text",
+        text,
+        markdown: text.includes("\n") || text.length > 120,
+      });
+    }
+  };
+  for (const [key, value] of Object.entries(input)) if (key !== "requestId") visit(key, value, "");
+  return fields;
+}
+
+/** Every record ID in a stored call, at any depth, for one batched label read. */
+export function proposalRecordIds(action: ProposalAction): string[] {
+  const ids = new Set<string>();
+  const visit = (value: Json) => {
+    const id = recordId.safeParse(value);
+    const object = jsonObject.safeParse(value);
+    if (id.success) ids.add(id.data);
+    else if (Array.isArray(value)) value.forEach(visit);
+    else if (object.success) Object.values(object.data).forEach(visit);
+  };
+  Object.values(action.input).forEach(visit);
+  return [...ids];
+}
+
+/** The task whose project detail a typed preview reads, to name its project and parent. */
+export function proposalDetailTask(action: ProposalAction): string | undefined {
+  const typed = typedAction(action);
+  return typed?.tool === "update_task" || typed?.tool === "delete_task"
+    ? typed.input.taskId
+    : undefined;
 }
 
 function namedRecords(target: ProposalTarget): (ProposalRecord | null)[] {
   switch (target.type) {
-    case "reply_elsewhere":
+    case "reply":
       return [target.conversation, target.thread];
     case "create_task":
       return [target.project, target.parentTask, target.sourceMessage, target.assignee];
@@ -190,6 +330,8 @@ function namedRecords(target: ProposalTarget): (ProposalRecord | null)[] {
     case "share_crm_record":
     case "revoke_crm_access":
       return [target.record, target.person];
+    case "generic":
+      return target.fields.flatMap((field) => (field.kind === "record" ? [field.record] : []));
   }
 }
 
@@ -206,129 +348,143 @@ export function proposalTargetHidden(target: ProposalTarget) {
   return namedRecords(target).some((record) => record?.access === "hidden");
 }
 
-function sourceRecord(lookups: ProposalLookups, messageId: string | undefined) {
-  if (!messageId) return null;
-  const conversationId = lookups.sourceConversationId;
-  if (!conversationId) return hidden;
-  return resolve(lookups.message(conversationId, messageId), ({ label }) => ({
-    access: "visible",
-    label,
-    link: messageLink(lookups.organizationId, conversationId, messageId),
-  }));
+/** The tool's title, or its name for a tool this version does not know. */
+function toolTitle(tool: string) {
+  // SAFETY: hasOwn checked that the name is a key of mcpTools.
+  return Object.hasOwn(mcpTools, tool) ? mcpTools[tool as keyof typeof mcpTools].title : tool;
 }
 
-/**
- * Every record the action names, resolved from what the viewer can read, never from the
- * agent's summary. Approval runs the stored action, so the owner must see what it targets.
- */
-export function proposalTarget(action: ProposalAction, lookups: ProposalLookups): ProposalTarget {
+const person = (lookups: ProposalLookups, actorId: string) =>
+  labelRecord(lookups, actorId, ["actor"]);
+const grantTypes: readonly RecordLabelType[] = ["account", "deal"];
+
+function typedTarget(action: TypedAction, lookups: ProposalLookups): ProposalTarget {
   const { organizationId } = lookups;
-  switch (action.type) {
-    case "reply_elsewhere": {
-      const { conversationId, threadId } = action.input;
-      const conversation = lookups.conversation(conversationId);
+  switch (action.tool) {
+    case "reply": {
+      // typedAction keeps only replies with `to`.
+      const { conversationId, threadId } = action.input.to ?? { conversationId: "" };
+      const conversation = labelRecord(lookups, conversationId, ["conversation"]);
+      // A thread in a conversation the viewer can't open, or in another one, is hidden too.
+      const thread = (id: string) => {
+        if (conversation.access === "hidden") return hidden;
+        return resolve(lookups.label(id), (label) =>
+          label.type === "message" && label.conversationId === conversationId
+            ? labelRecord(lookups, id)
+            : hidden,
+        );
+      };
       return {
-        type: "reply_elsewhere",
-        conversation: resolve(conversation, ({ name }) => ({
-          access: "visible",
-          label: name,
-          link: messageLink(organizationId, conversationId),
-        })),
-        thread: threadId
-          ? resolve(conversation && lookups.message(conversationId, threadId), ({ label }) => ({
-              access: "visible",
-              label,
-              link: messageLink(organizationId, conversationId, threadId),
-            }))
-          : null,
+        type: "reply",
+        input: action.input,
+        conversation,
+        thread: threadId ? thread(threadId) : null,
       };
     }
     case "create_task": {
       const { projectId, parentTaskId, sourceMessageId, assigneeActorId } = action.input;
-      const detail = lookups.project(projectId);
+      const project = labelRecord(lookups, projectId, ["project"]);
+      // The parent must be a task of the same project.
+      const parent = (id: string) =>
+        resolve(lookups.label(id), (label) =>
+          label.type === "task" && label.projectId === projectId && project.access !== "hidden"
+            ? labelRecord(lookups, id)
+            : hidden,
+        );
       return {
         type: "create_task",
-        project: resolve(detail, (project) => projectRecord(organizationId, project)),
-        parentTask: parentTaskId
-          ? resolve(detail, (project) => taskRecord(organizationId, project, parentTaskId))
-          : null,
-        sourceMessage: sourceRecord(lookups, sourceMessageId),
-        assignee: assigneeRecord(detail, assigneeActorId ?? null),
+        input: action.input,
+        project,
+        parentTask: parentTaskId ? parent(parentTaskId) : null,
+        sourceMessage: sourceMessageId ? labelRecord(lookups, sourceMessageId, ["message"]) : null,
+        assignee: assigneeActorId ? person(lookups, assigneeActorId) : null,
       };
     }
     case "update_task": {
       const { taskId, changes } = action.input;
       const detail = taskProject(lookups, taskId);
-      const task = detail?.tasks.find((entry) => entry.entityId === taskId);
+      const parentId = detail?.tasks.find((entry) => entry.entityId === taskId)?.parentTaskEntityId;
       return {
         type: "update_task",
-        task: resolve(detail, (project) => taskRecord(organizationId, project, taskId)),
+        input: action.input,
+        task: labelRecord(lookups, taskId, ["task"]),
         project: resolve(detail, (project) => projectRecord(organizationId, project)),
-        parentTask:
-          detail && task?.parentTaskEntityId
-            ? taskRecord(organizationId, detail, task.parentTaskEntityId)
-            : null,
-        assignee: assigneeRecord(detail, changes.assigneeActorId ?? null),
+        // The parent is not in the call, so the project's readable tasks name it.
+        parentTask: detail && parentId ? parentRecord(organizationId, detail, parentId) : null,
+        assignee: changes.assigneeActorId ? person(lookups, changes.assigneeActorId) : null,
       };
     }
     case "delete_task": {
-      const { taskId } = action.input;
-      const detail = taskProject(lookups, taskId);
+      const detail = taskProject(lookups, action.input.taskId);
       return {
         type: "delete_task",
-        task: resolve(detail, (project) => taskRecord(organizationId, project, taskId)),
+        task: labelRecord(lookups, action.input.taskId, ["task"]),
         project: resolve(detail, (project) => projectRecord(organizationId, project)),
       };
     }
     case "archive_project":
     case "restore_project":
-    case "delete_project": {
-      const detail = lookups.project(action.input.projectId);
+    case "delete_project":
       return {
-        type: action.type,
-        project: resolve(detail, (project) => projectRecord(organizationId, project)),
+        type: action.tool,
+        project: labelRecord(lookups, action.input.projectId, ["project"]),
       };
-    }
     case "share_project":
     case "revoke_project_access": {
-      const detail = lookups.project(action.input.projectId);
-      return {
-        type: action.type,
-        project: resolve(detail, (project) => projectRecord(organizationId, project)),
-        person: personRecord(detail, action.input.actorId),
-      };
+      const project = labelRecord(lookups, action.input.projectId, ["project"]);
+      const member = person(lookups, action.input.actorId);
+      return action.tool === "share_project"
+        ? { type: "share_project", input: action.input, project, person: member }
+        : { type: "revoke_project_access", project, person: member };
     }
     case "archive_crm_record":
       return {
         type: "archive_crm_record",
-        record: crmRecordTarget(lookups, action.input.entityId, [action.input.kind]),
+        input: action.input,
+        record: labelRecord(lookups, action.input.entityId, [action.input.kind]),
       };
-    case "delete_crm_interaction": {
-      const { entityId } = action.input;
+    case "delete_crm_interaction":
       return {
         type: "delete_crm_interaction",
-        interaction: resolve(lookups.interaction(entityId), ({ label }) => ({
-          access: "visible",
-          label,
-          link: interactionLink(organizationId, entityId),
-        })),
+        interaction: labelRecord(lookups, action.input.entityId, ["contact_interaction"]),
       };
-    }
     case "assign_crm_owner":
     case "share_crm_record":
+    case "revoke_crm_access": {
+      const personId =
+        action.tool === "assign_crm_owner"
+          ? action.input.ownerActorEntityId
+          : action.input.actorEntityId;
       return {
-        type: action.type,
-        record: crmRecordTarget(lookups, action.input.entityId, ["account", "deal"]),
-        person: crmPerson(
-          lookups,
-          action.type === "assign_crm_owner" ? action.input.ownerActorId : action.input.actorId,
-        ),
+        type: action.tool,
+        action,
+        record: labelRecord(lookups, action.input.entityId, grantTypes),
+        person: person(lookups, personId),
       };
-    case "revoke_crm_access":
-      return {
-        type: action.type,
-        record: crmRecordTarget(lookups, action.input.entityId, ["account", "deal"]),
-        person: crmPerson(lookups, action.input.actorId),
-      };
+    }
   }
+}
+
+/**
+ * Every record the stored call names, resolved from what the viewer can read, never from the
+ * agent's words. Approval runs the stored call, so the owner must see what it targets. Tools
+ * without a typed preview show each input field.
+ */
+export function proposalTarget(action: ProposalAction, lookups: ProposalLookups): ProposalTarget {
+  const typed = typedAction(action);
+  if (typed) return typedTarget(typed, lookups);
+  return {
+    type: "generic",
+    title: toolTitle(action.tool),
+    fields: genericFields(action.input).map((field) =>
+      field.kind === "text"
+        ? field
+        : {
+            label: field.label,
+            kind: "record",
+            record: labelRecord(lookups, field.id),
+            recordKind: "record",
+          },
+    ),
+  };
 }

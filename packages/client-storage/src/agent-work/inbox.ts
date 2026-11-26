@@ -8,7 +8,7 @@ import {
 } from "@substrate/contracts/agent-work";
 
 import type { LocalTransaction, RunTransaction } from "../database.ts";
-import { inbox, turns } from "../schema/index.ts";
+import { inbox, sessions, turns } from "../schema/index.ts";
 import { enqueue, type NewInboxItem } from "./enqueue.ts";
 import { appendEvents, type NewTurnEvent } from "./events.ts";
 import { inStates } from "./machine-sql.ts";
@@ -255,6 +255,38 @@ export function inboxRepository(run: RunTransaction) {
           "drop",
           { reason, held: false },
         );
+      }),
+    /**
+     * The agent already got this item's news inside a turn, such as a held tool call that
+     * returned the owner's decision. Keeps the dedupe key as a dropped item, so that the server
+     * wake with this key, before or after a restart, starts and joins no turn. A pending item
+     * that intake already created is dropped; one already delivered stays as it is.
+     */
+    deliveredInTurn: (item: NewInboxItem, now: number) =>
+      run(async (tx) => {
+        await enqueue(tx, item, now);
+        const session = await tx
+          .select({ organizationId: sessions.organizationId })
+          .from(sessions)
+          .where(eq(sessions.id, item.sessionId))
+          .get();
+        await tx
+          .update(inbox)
+          .set({
+            status: inboxItemMachine.events.drop.to,
+            reason: "delivered_in_turn",
+            held: false,
+          })
+          .where(
+            and(
+              eq(inbox.organizationId, session!.organizationId),
+              eq(inbox.userAgentId, item.userAgentId),
+              eq(inbox.dedupeKey, item.dedupeKey),
+              inStates(inbox.status, inboxItemMachine.from("drop")),
+              // A submitted or consumed item may already be in a turn's input.
+              eq(inbox.status, "pending"),
+            ),
+          );
       }),
     /** Counts claimable items per agent, for status. */
     queuedCounts: (organizationId: string) =>

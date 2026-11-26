@@ -70,6 +70,28 @@ export const contextSearch = contextWorkspace
     message: "Search several kinds without a kind or a cursor.",
     path: ["kinds"],
   });
+/** POST /context/record-labels: names for record IDs, such as those a proposal's input names. */
+export const contextRecordLabels = contextWorkspace.extend({
+  ids: z.array(z.uuid()).min(1).max(50),
+});
+export const recordLabelTypes = [
+  ...contextTargetTypes,
+  "conversation",
+  "message",
+  "actor",
+  "pipeline_stage",
+  "task_link",
+  "contact_detail",
+] as const;
+export type RecordLabelType = (typeof recordLabelTypes)[number];
+/** A record the reader can open. projectId is a task's project; conversationId is a message's. */
+export interface RecordLabel {
+  id: string;
+  type: RecordLabelType;
+  title: string;
+  projectId: string | null;
+  conversationId: string | null;
+}
 export const contextSourceTask = contextMessage.extend({
   requestId: z.uuid(),
   projectEntityId: z.uuid(),

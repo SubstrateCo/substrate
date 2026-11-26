@@ -2,6 +2,7 @@ import {
   agentRequestDelivery,
   agentSourcesResult,
   agentWakeView,
+  proposalOutcome,
   type AgentRequestDelivery,
   type AgentSourcesResult,
   type AgentWakeView,
@@ -82,11 +83,19 @@ export interface AgentWorkServer {
     status: CloseRequestStatus,
   ): Promise<void>;
   requestAnswers(organizationId: string): Promise<AgentRequestDelivery[]>;
+  /** A request's status and outcome, such as a proposal that a held tool call waits on. */
+  requestStatus(organizationId: string, requestId: string): Promise<AgentRequestState>;
   /** The owner's direct conversation with the agent, created when missing. */
   directConversation(organizationId: string, agentId: string): Promise<string>;
   /** IDs of the owner's requests that are still open, from the server's needs-you list. */
   openRequestIds(organizationId: string): Promise<string[]>;
 }
+
+const agentRequestState = z.object({
+  status: z.string(),
+  outcome: proposalOutcome.nullable(),
+});
+export type AgentRequestState = z.output<typeof agentRequestState>;
 
 /** Codes after which the caller verifies the session again. */
 const deniedCodes = new Set(["UNAUTHENTICATED", "FORBIDDEN", "WORKSPACE_CHANGED"]);
@@ -213,6 +222,15 @@ export function createAgentWorkServer(options: {
         "/agent-work/device/requests/answers",
         device(organizationId),
         z.array(agentRequestDelivery),
+      );
+    },
+    async requestStatus(organizationId, requestId) {
+      const query = new URLSearchParams(device(organizationId));
+      return call(
+        `/agent-work/device/requests/${encodeURIComponent(requestId)}?${query}`,
+        undefined,
+        agentRequestState,
+        "GET",
       );
     },
     async directConversation(organizationId, agentId) {

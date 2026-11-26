@@ -234,6 +234,7 @@ function standalone(
       "messageTarget",
       "messageTargets",
       "search",
+      "recordLabels",
     ]),
     sharing: domain("sharing", ["list", "listConversations", "inbox"]),
     feed: domain("feed", ["activity", "list", "groups", "groupEvents", "hasUnread"]),

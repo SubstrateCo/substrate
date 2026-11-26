@@ -26,6 +26,7 @@ import { tasks } from "../tasks/tasks.schema";
 import { requireContextTarget } from "./access";
 import { messagePeople, messageWorkLinks } from "./message-references/message-metadata";
 import { messagePage } from "./message-references/message-page";
+import { recordLabels } from "./record-labels";
 import { messageEntityReferences } from "./schema";
 import { contextSearch } from "./search";
 import { and, desc, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
@@ -405,6 +406,7 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
     },
     search: (input: Parameters<typeof contextSearch>[2], signal?: AbortSignal) =>
       contextSearch(context, scope, input, signal),
+    recordLabels: (ids: string[]) => recordLabels(context, scope, ids),
   };
 }
 

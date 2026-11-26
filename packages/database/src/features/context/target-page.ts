@@ -28,6 +28,11 @@ export function requireReadableTargetPage(ctx: RepositoryContext, entityIds: str
   return targetPage<ContextTargetType>(ctx, entityIds, contextTargetTypes);
 }
 
+/** requireReadableTargetPage without the failure: records the reader cannot open are left out. */
+export function readableTargetsOf(ctx: RepositoryContext, entityIds: string[]) {
+  return targetRows<ContextTargetType>(ctx, entityIds, contextTargetTypes);
+}
+
 /** Linkable records the reader can open. Records they cannot open are left out. */
 export function contextTargetsOf(ctx: RepositoryContext, entityIds: string[]) {
   return targetRows<ContextEntityType>(ctx, entityIds, contextEntityTypes);

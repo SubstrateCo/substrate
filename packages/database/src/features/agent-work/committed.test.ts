@@ -99,17 +99,13 @@ test("scoped agent-work writes commit once each and approval nests its savepoint
   expect(transactionCount).toBe(1);
   const channel = await y.alice.createConversation({ kind: "channel", name: "Updates" });
   for (const decision of ["declineProposal", "approveProposal"] as const) {
-    const proposal = await y.call(
-      "propose",
-      {
-        requestId: crypto.randomUUID(),
-        summary: "Post update",
-        action: { type: "reply_elsewhere", input: { conversationId: channel.id, body: "Update" } },
-      },
+    const proposalId = await y.propose(
+      "reply",
+      { requestId: crypto.randomUUID(), body: "Update", to: { conversationId: channel.id } },
       { ...turn, kind: "unattended" },
     );
     transactionCount = 0;
-    const committed = await owned[decision](proposal.proposalId);
+    const committed = await owned[decision](proposalId);
     expect(committed.hints.length).toBeGreaterThan(0);
     expect(committed.result.outcome.status).toBe(
       decision === "approveProposal" ? "executed" : "declined",

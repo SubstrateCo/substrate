@@ -80,6 +80,7 @@ export function createHarnessController(options: {
   /** The account's local storage of user-added MCP servers. */
   mcpServers: LocalMcpServers;
   onResult?: Parameters<typeof createMcpApiProxy>[0]["onResult"];
+  approval?: Parameters<typeof createMcpApiProxy>[0]["approval"];
   createWorker: (
     accountDirectory: string,
     proxy: WorkspaceApiProxy,
@@ -245,6 +246,7 @@ export function createHarnessController(options: {
             fetchAPI: options.fetchAPI,
             isActive: () => sync.current === generation,
             onResult: options.onResult,
+            approval: options.approval,
           }),
           localTools(sync.current),
         );

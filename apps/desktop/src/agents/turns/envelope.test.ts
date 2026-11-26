@@ -138,7 +138,7 @@ test("an approval result says what the owner decided and what happened, as the s
     id: "p1",
     kind: "proposal",
     status: "executed",
-    payload: { type: "proposal", summary: "Track the checklist" },
+    payload: { type: "proposal", summary: "Create task" },
     response: null,
     outcome: { status: "executed", receipt: { kind: "task", id: "t9", projectId: "p9" } },
     anchorMessageId: null,
@@ -155,7 +155,7 @@ test("an approval result says what the owner decided and what happened, as the s
     messageId: null,
     body: [
       "Your owner decided on your proposal (request p1).",
-      "Proposal: Track the checklist",
+      "Proposal: Create task",
       "Outcome: approved and done. Task t9 in project p9.",
     ].join("\n"),
   });
@@ -165,6 +165,12 @@ test("an approval result says what the owner decided and what happened, as the s
   expect(
     body({ ...proposal, status: "failed", outcome: { status: "failed", error: "Gone." } })?.body,
   ).toEndWith("Outcome: approved, but it failed: Gone.");
+  expect(
+    body({
+      ...proposal,
+      outcome: { status: "executed", receipt: { kind: "done", tool: "share_project" } },
+    })?.body,
+  ).toEndWith("Outcome: approved and done. share_project ran.");
 });
 
 test("an answer without the request detail still says which request it answers", () => {

@@ -10,7 +10,12 @@ export const workspaceApiResult = z.discriminatedUnion("success", [
   z.object({ success: z.literal(true), data: z.json() }),
   z.object({
     success: z.literal(false),
-    error: z.object({ code: z.string(), message: z.string() }),
+    error: z.object({
+      code: z.string(),
+      message: z.string(),
+      /** APPROVAL_PENDING only: the proposal request that waits for the owner. */
+      requestId: z.string().optional(),
+    }),
   }),
 ]);
 export type WorkspaceApiResult = z.infer<typeof workspaceApiResult>;

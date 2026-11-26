@@ -1,6 +1,13 @@
+import type { ServerToolName } from "@substrate/contracts/harness/tools";
+
 import { AccessDeniedError, ValidationError } from "../../../../../packages/database/src/errors";
-import { member, taskActivity } from "../../../../../packages/database/src/schema";
-import { dmTurn } from "../../../../../packages/database/src/testing/agent-work";
+import {
+  agentRequests,
+  agentWakes,
+  member,
+  taskActivity,
+} from "../../../../../packages/database/src/schema";
+import { dmTurn, ownerAgentWork } from "../../../../../packages/database/src/testing/agent-work";
 import { setupDatabase } from "../../../../../packages/database/src/testing/database";
 import { rejection } from "../../../../../packages/database/src/testing/rejection";
 import { agentWorkFixture } from "./test-support";
@@ -17,7 +24,12 @@ async function tools() {
     tool: K,
     input: Parameters<typeof fixture.call>[1],
   ) => fixture.call(tool, input, turn);
-  return { ...fixture, call };
+  const pending = (tool: ServerToolName, input: Parameters<typeof fixture.call>[1]) =>
+    fixture.pending(tool, input, turn);
+  const work = await ownerAgentWork(f.db, fixture.owner);
+  const approve = async (requestId: string) =>
+    (await work.approveProposal(requestId)).result.outcome;
+  return { ...fixture, call, pending, approve, work };
 }
 
 test("create_project and update_project write as the agent and replay their result", async () => {
@@ -175,4 +187,121 @@ test("move_task needs edit access on the destination and an active destination",
   expect(await move(readOnly.entityId)).toBeInstanceOf(AccessDeniedError);
   expect(await move(archived.entityId)).toBeInstanceOf(ValidationError);
   expect((await call("get_task", { taskId: task.entityId })).project.id).toBe(own.entityId);
+});
+
+const requestId = () => crypto.randomUUID();
+
+test("delete_task waits for the owner: nothing is deleted until approval, then the call runs once", async () => {
+  const { pending, approve, call } = await tools();
+  const repos = f.forActor(f.alice);
+  const project = await repos.projects.create({ name: "Work" });
+  const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Parent" });
+  const subtask = await repos.tasks.create({
+    projectEntityId: project.entityId,
+    parentTaskEntityId: task.entityId,
+    title: "Child",
+  });
+  const input = { requestId: requestId(), taskId: task.entityId };
+  const proposalId = await pending("delete_task", input);
+  // A retry returns the same proposal and deletes nothing.
+  expect(await pending("delete_task", input)).toBe(proposalId);
+  expect(await f.db.select().from(agentRequests)).toHaveLength(1);
+  expect((await call("get_task", { taskId: task.entityId })).id).toBe(task.entityId);
+  expect(await approve(proposalId)).toEqual({
+    status: "executed",
+    receipt: { kind: "deleted", entityType: "task", id: task.entityId },
+    result: { deleted: true, taskId: task.entityId },
+  });
+  for (const id of [task.entityId, subtask.entityId])
+    expect(await rejection(call("get_task", { taskId: id }))).toBeInstanceOf(AccessDeniedError);
+  const wakes = await f.db
+    .select()
+    .from(agentWakes)
+    .where(eq(agentWakes.source, "approval_result"));
+  expect(wakes).toHaveLength(1);
+});
+
+test("a declined deletion runs nothing", async () => {
+  const { pending, work, call } = await tools();
+  const project = await f.forActor(f.alice).projects.create({ name: "Work" });
+  const task = await f.forActor(f.alice).tasks.create({
+    projectEntityId: project.entityId,
+    title: "Keep",
+  });
+  const proposalId = await pending("delete_task", {
+    requestId: requestId(),
+    taskId: task.entityId,
+  });
+  expect((await work.declineProposal(proposalId)).result.outcome).toEqual({ status: "declined" });
+  expect((await call("get_task", { taskId: task.entityId })).id).toBe(task.entityId);
+});
+
+test("a project is archived, restored, archived again and deleted on approval", async () => {
+  const { call, pending, approve } = await tools();
+  const project = await f.forActor(f.alice).projects.create({ name: "Work" });
+  const input = () => ({ requestId: requestId(), projectId: project.entityId });
+  // Deleting an active project could never run, so it is refused: archive it first.
+  expect(await rejection(pending("delete_project", input()))).toBeInstanceOf(ValidationError);
+  expect(await call("archive_project", input())).toMatchObject({ archived: true });
+  expect(await call("restore_project", input())).toMatchObject({ archived: false });
+  await call("archive_project", input());
+  const proposalId = await pending("delete_project", input());
+  expect((await call("get_project", { projectId: project.entityId })).archived).toBe(true);
+  expect(await approve(proposalId)).toMatchObject({
+    status: "executed",
+    receipt: { kind: "deleted", entityType: "project", id: project.entityId },
+  });
+  expect(await rejection(call("get_project", { projectId: project.entityId }))).toBeInstanceOf(
+    AccessDeniedError,
+  );
+});
+test("sharing grants and revokes a person's access, never an agent's", async () => {
+  const { agent, call } = await tools();
+  const project = await f.forActor(f.alice).projects.create({ name: "Work" });
+  const shared = await call("share_project", {
+    requestId: requestId(),
+    projectId: project.entityId,
+    actorId: f.bob,
+    level: "edit",
+  });
+  expect(shared.members).toContainEqual(
+    expect.objectContaining({ actor: expect.objectContaining({ id: f.bob }), level: "edit" }),
+  );
+  const revoked = await call("revoke_project_access", {
+    requestId: requestId(),
+    projectId: project.entityId,
+    actorId: f.bob,
+  });
+  expect(revoked.members.map((row) => row.actor.id)).not.toContain(f.bob);
+  expect(
+    await rejection(
+      call("share_project", {
+        requestId: requestId(),
+        projectId: project.entityId,
+        actorId: agent.actorId,
+        level: "view",
+      }),
+    ),
+  ).toBeInstanceOf(ValidationError);
+});
+
+test("owner actions need owner access, not edit access", async () => {
+  const { call } = await tools();
+  await f.db.update(member).set({ role: "member" }).where(eq(member.userId, "alice"));
+  const bob = f.forActor(f.bob);
+  const project = await bob.projects.create({ name: "Bob's" });
+  await bob.permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: f.alice,
+    level: "edit",
+  });
+  const projectId = project.entityId;
+  for (const [tool, extra] of [
+    ["archive_project", {}],
+    ["share_project", { actorId: f.bob, level: "view" }],
+    ["revoke_project_access", { actorId: f.bob }],
+  ] as const)
+    expect(
+      await rejection(call(tool, { requestId: requestId(), projectId, ...extra })),
+    ).toBeInstanceOf(AccessDeniedError);
 });

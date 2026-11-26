@@ -7,6 +7,7 @@ import type {
   contextTargets,
   contextLink,
   contextSearch,
+  contextRecordLabels,
   contextSourceTask,
   contextNotification,
   contextNotificationPage,
@@ -55,6 +56,15 @@ export function createContextService({
       signal?: AbortSignal,
     ) {
       return serviceResult(() => scope.repositories.context.search(input, signal), signal);
+    },
+    getRecordLabels(
+      this: void,
+      scope: WorkspaceScope,
+      input: z.output<typeof contextRecordLabels>,
+    ) {
+      return serviceResult(async () => ({
+        items: await scope.repositories.context.recordLabels(input.ids),
+      }));
     },
     createTaskFromMessage(
       this: void,

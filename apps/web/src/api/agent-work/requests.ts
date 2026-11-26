@@ -16,17 +16,25 @@ import type { z } from "zod";
 // caller can see now; hidden places carry no names.
 const routes = api["agent-work"];
 
+/**
+ * Reads a route whose result holds proposals. Comparing Hono's parsed JSON with the recursive
+ * JSON of a stored tool input is too deep for the type checker, so the caller names the result.
+ */
+const readProposals = <T>(response: Promise<unknown>) =>
+  // SAFETY: each caller names the contract type its route returns.
+  readResult<T>(response as Promise<never>);
+
 export const listConversationRequests = ({
   data,
   signal,
 }: ApiInput<z.input<typeof conversationRequestsInput>>): Promise<AgentRequestView[]> =>
-  readResult(routes.requests.$get({ query: data }, { init: { signal } }));
+  readProposals<AgentRequestView[]>(routes.requests.$get({ query: data }, { init: { signal } }));
 
 export const getNeedsYou = ({
   data,
   signal,
 }: ApiInput<z.input<typeof ownerScopeInput>>): Promise<AgentNeedsYou> =>
-  readResult(routes["needs-you"].$get({ query: data }, { init: { signal } }));
+  readProposals<AgentNeedsYou>(routes["needs-you"].$get({ query: data }, { init: { signal } }));
 
 export const listAgentStatus = ({
   data,

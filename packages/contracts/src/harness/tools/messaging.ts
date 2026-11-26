@@ -1,4 +1,3 @@
-import { proposalAction, proposalSummary } from "../../agent-work/proposals.ts";
 import { agentAsk } from "../../agent-work/requests.ts";
 import { conversationKind } from "../../messaging/input.ts";
 import { messageRecord } from "./links.ts";
@@ -18,8 +17,6 @@ export const replyResult = z.object({
   questionId: id.nullable().describe("The question request, when you set ask."),
   createdAt: timestamp,
 });
-/** What propose returns: the pending proposal request. */
-export const proposeResult = z.object({ proposalId: id, status: z.literal("pending") });
 
 export const messagingTools = {
   list_conversations: {
@@ -85,7 +82,7 @@ export const messagingTools = {
     ],
     title: "Reply",
     description:
-      "Publish your result to your owner. By default it posts where the turn's work came from: top level in a direct message conversation, or in the turn's thread. Set ask to ask your owner one question; the answer arrives in a later turn, so end your turn after asking. In interactive turns only, set to to post in another conversation you can access; background turns must use propose for that.",
+      "Publish your result to your owner. By default it posts where the turn's work came from: top level in a direct message conversation, or in the turn's thread. Set ask to ask your owner one question; the answer arrives in a later turn, so end your turn after asking. Set to to post in another conversation you can access; in background turns that waits for your owner's approval.",
     readOnly: false,
     idempotent: true,
     input: z
@@ -109,21 +106,5 @@ export const messagingTools = {
       })
       .strict(),
     output: replyResult,
-  },
-  propose: {
-    publishes: [{ kind: "request", id: "proposalId", requestKind: "proposal" }],
-    title: "Propose an action",
-    description:
-      "Ask your owner to approve one exact action: reply_elsewhere (post in another conversation or thread), create_task, update_task, delete_task (with its subtasks), archive_project, restore_project, delete_project (archived projects only), share_project, revoke_project_access, archive_crm_record (archive or restore an account, contact or deal), delete_crm_interaction, assign_crm_owner, share_crm_record or revoke_crm_access. Deleting, archiving, reassigning and sharing are only possible through propose. Your owner approves or declines exactly this action, and approval runs it as you. The result arrives in a later turn, so end your turn after proposing.",
-    readOnly: false,
-    idempotent: true,
-    input: z
-      .object({
-        requestId,
-        summary: proposalSummary.describe("One or two sentences: what and why."),
-        action: proposalAction,
-      })
-      .strict(),
-    output: proposeResult,
   },
 } as const;
