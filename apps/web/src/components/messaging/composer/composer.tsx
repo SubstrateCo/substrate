@@ -56,13 +56,12 @@ function DestinationComposer({
         }
         attachmentDrafts={<AttachmentDraftList uploads={uploads} disabled={send.isPending} />}
         onPasteFiles={uploads.add}
-        renderReferences={(activeReference, onInsert, onClose) => (
+        renderReferences={(activeReference, onInsert) => (
           <ReferencePicker
             organizationId={organizationId}
             conversationId={conversationId}
             activeReference={activeReference}
             onInsert={onInsert}
-            onClose={onClose}
           />
         )}
         pending={send.isPending}

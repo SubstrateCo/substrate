@@ -27,10 +27,9 @@ export function useComposerDraft({
   if (!drafts) throw new Error("Composer requires ComposerDraftProvider");
   const draft = drafts.get(draftKey) ?? "";
   const setDraft = (value: string) => drafts.set(draftKey, value);
-  const [focusRequest, setFocusRequest] = useState({ id: 0, caret: 0 });
+  // Focus waits until a send finishes, because the editor is disabled while it is pending.
+  const [pendingCaret, setPendingCaret] = useState<number | null>(null);
   const [initialFocus] = useState(autoFocus ? draft.length : null);
-  const appliedFocus = useRef(0);
-  const currentDestination = useRef(draftKey);
   const editor = useRef<ReferenceEditorHandle>(null);
   const selection = useRef<{ start: number; end: number } | null>(null);
   const composing = useRef(false);
@@ -44,31 +43,27 @@ export function useComposerDraft({
     selection.current = null;
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Restore the selection after the editor applies the new draft.
   }, [draft]);
-  useEffect(() => {
-    currentDestination.current = draftKey;
-  }, [draftKey]);
   // Runs on every mount, so focus survives an editor remount.
   useEffect(() => {
     if (initialFocus !== null) editor.current?.focusAt(initialFocus);
   }, [initialFocus]);
   useEffect(() => {
-    if (focusRequest.id > appliedFocus.current && !pending) {
-      editor.current?.focusAt(focusRequest.caret);
-      appliedFocus.current = focusRequest.id;
-    }
-  }, [focusRequest, pending]);
-  const requestFocus = (caret = 0) =>
-    setFocusRequest((previous) => ({ id: previous.id + 1, caret }));
+    if (pendingCaret === null || pending) return;
+    editor.current?.focusAt(pendingCaret);
+    // oxlint-disable-next-line react/set-state-in-effect -- The request is spent only after the editor has the committed draft and is enabled; one extra render clears it.
+    setPendingCaret(null);
+  }, [pendingCaret, pending]);
+  const requestFocus = (caret = 0) => setPendingCaret(caret);
+  const canSend =
+    (draft.trim() !== "" || hasAttachments) &&
+    attachmentsReady &&
+    !submitDisabled &&
+    draft.length <= messageMaxLength;
   const submit = () => {
-    const sendable =
-      (draft.trim() !== "" || hasAttachments) &&
-      attachmentsReady &&
-      !submitDisabled &&
-      draft.length <= messageMaxLength;
-    if (!sendable || pending || composing.current) return;
+    if (!canSend || pending || composing.current) return;
     onSend(draft.trim(), () => {
       drafts.clear(draftKey, draft);
-      if (currentDestination.current === draftKey) requestFocus();
+      requestFocus();
     });
   };
   const insert = (prefix: string, suffix = "") => {
@@ -82,5 +77,15 @@ export function useComposerDraft({
     };
     setDraft(draft.slice(0, start) + prefix + draft.slice(start, end) + suffix + draft.slice(end));
   };
-  return { draft, setDraft, editor, setComposing, isComposing, submit, insert, requestFocus };
+  return {
+    draft,
+    setDraft,
+    editor,
+    setComposing,
+    isComposing,
+    canSend,
+    submit,
+    insert,
+    requestFocus,
+  };
 }

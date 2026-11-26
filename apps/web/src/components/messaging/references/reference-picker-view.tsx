@@ -1,11 +1,11 @@
 import type { AgentCallMode } from "@substrate/contracts/agents";
 import { taskStatusLabels, type TaskStatus } from "@substrate/contracts/tasks";
 
-import { useContext, useEffect, useId, useRef, useState } from "react";
+import { useContext, useEffect, useId, useImperativeHandle, useRef, useState } from "react";
 
 import { ErrorState } from "../../feedback/error-state";
 import type { WorkspaceReference } from "./entity-reference";
-import { ReferencePickerAccessibility } from "./reference-picker-context";
+import { ReferencePickerLink } from "./reference-picker-context";
 import { ReferencePickerLoadingOption, ReferencePickerOption } from "./reference-picker-option";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -45,7 +45,6 @@ export function ReferencePickerView({
   onKindChange,
   onRetry,
   onInsert,
-  onClose,
 }: {
   query: string;
   kind: ReferenceTab;
@@ -66,13 +65,12 @@ export function ReferencePickerView({
   onKindChange: (kind: ReferenceTab) => void;
   onRetry?: () => void;
   onInsert: (token: string, reference: WorkspaceReference) => void;
-  onClose: () => void;
 }) {
-  const [selection, setSelection] = useState({ query, kind, index: 0 });
-  const index = selection.query === query && selection.kind === kind ? selection.index : 0;
-  if (selection.query !== query || selection.kind !== kind) setSelection({ query, kind, index: 0 });
-  const setIndex = (index: number) => setSelection({ query, kind, index });
-  const listId = useId();
+  // The owner keys this view by query, so a new query starts at the first option.
+  const [index, setIndex] = useState(0);
+  const link = useContext(ReferencePickerLink);
+  const ownListId = useId();
+  const listId = link?.listId ?? ownListId;
   const list = useRef<HTMLDivElement>(null);
   const available = loading || error ? [] : results;
   const selectedIndex = Math.min(index, Math.max(0, available.length - 1));
@@ -80,11 +78,12 @@ export function ReferencePickerView({
     `${listId}-${item.kind}-${item.id}`;
   const selected = available.at(selectedIndex);
   const selectedId = selected ? optionId(selected) : undefined;
-  const setAccessibility = useContext(ReferencePickerAccessibility);
+  const onActiveOptionChange = link?.onActiveOptionChange;
+  // The selection also changes when results load or shrink, not only from keys.
   useEffect(() => {
-    setAccessibility?.({ listId, selectedId });
-    return () => setAccessibility?.(null);
-  }, [listId, selectedId, setAccessibility]);
+    onActiveOptionChange?.(selectedId);
+    return () => onActiveOptionChange?.(undefined);
+  }, [selectedId, onActiveOptionChange]);
   const insert = (item: (typeof results)[number]) =>
     onInsert(`@[${item.kind}:${item.id}]`, {
       id: item.id,
@@ -92,6 +91,19 @@ export function ReferencePickerView({
       label: item.title,
       status: item.status && { value: item.status, label: taskStatusLabels[item.status] },
     });
+  const move = (delta: number) => {
+    const next = Math.max(0, Math.min(available.length - 1, selectedIndex + delta));
+    setIndex(next);
+    return available.at(next);
+  };
+  useImperativeHandle(link?.handle, () => ({
+    move: (delta) => {
+      move(delta);
+    },
+    choose: () => {
+      if (selected) insert(selected);
+    },
+  }));
   useEffect(() => {
     list.current?.querySelector('[aria-selected="true"]')?.scrollIntoView({ block: "nearest" });
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Keep the selected option in view after the selection renders.
@@ -101,34 +113,15 @@ export function ReferencePickerView({
       value={kind}
       onValueChange={(value) => {
         const next = kinds.find((kind) => kind === value);
-        if (next) onKindChange(next);
+        if (!next) return;
+        setIndex(0);
+        onKindChange(next);
       }}
       asChild
     >
       <section
-        data-reference-picker=""
         aria-label="Insert workspace reference"
         className="flex max-h-96 min-h-0 flex-col gap-2 overflow-hidden p-2"
-        onKeyDown={(e) => {
-          if (e.nativeEvent.isComposing) return;
-          if (e.target !== e.currentTarget) return;
-          if (e.key === "Escape") {
-            e.preventDefault();
-            onClose();
-          }
-          if (e.key === "ArrowDown") {
-            e.preventDefault();
-            setIndex(Math.min(selectedIndex + 1, Math.max(0, available.length - 1)));
-          }
-          if (e.key === "ArrowUp") {
-            e.preventDefault();
-            setIndex(Math.max(0, selectedIndex - 1));
-          }
-          if (e.key === "Enter") {
-            e.preventDefault();
-            if (selected) insert(selected);
-          }
-        }}
       >
         <div className="flex shrink-0 items-center gap-1 overflow-x-auto">
           <TabsList aria-label="Reference type">
@@ -178,16 +171,8 @@ export function ReferencePickerView({
                       )
                         return;
                       event.preventDefault();
-                      const next = Math.max(
-                        0,
-                        Math.min(
-                          available.length - 1,
-                          selectedIndex + (event.key === "ArrowDown" ? 1 : -1),
-                        ),
-                      );
-                      setIndex(next);
-                      if (available.length)
-                        document.getElementById(optionId(available[next]!))?.focus();
+                      const next = move(event.key === "ArrowDown" ? 1 : -1);
+                      if (next) document.getElementById(optionId(next))?.focus();
                     }}
                   >
                     {available.map((item, itemIndex) => (

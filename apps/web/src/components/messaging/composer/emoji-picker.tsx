@@ -148,10 +148,17 @@ function EmojiPanel({ onPick: pick }: { onPick: (emoji: string) => void }) {
   const list = useRef<HTMLDivElement>(null);
   const search = query.trim().toLowerCase();
   const matches = search ? allEmojis.filter((item) => item.name.includes(search)) : [];
-  let groups = [...(recent.length ? [{ name: "Recent", emojis: recent }] : []), ...emojiCategories];
-  if (search) groups = matches.length ? [{ name: "Results", emojis: matches }] : [];
+  const results = matches.length ? [{ name: "Results", emojis: matches }] : [];
+  const browse = [
+    ...(recent.length ? [{ name: "Recent", emojis: recent }] : []),
+    ...emojiCategories,
+  ];
+  const groups = search ? results : browse;
+  // Each grid's first option index in the whole list, for arrow-key moves across grids.
+  const offsets = groups.map((_, index) =>
+    groups.slice(0, index).reduce((sum, group) => sum + group.emojis.length, 0),
+  );
   const shown = preview ?? (search ? matches[0] : undefined);
-  let offset = 0;
   const focusOption = (index: number) => {
     const buttons = list.current?.querySelectorAll<HTMLButtonElement>("[data-emoji-option]");
     if (!buttons?.length) return;
@@ -205,22 +212,18 @@ function EmojiPanel({ onPick: pick }: { onPick: (emoji: string) => void }) {
             No emoji match “{query.trim()}”
           </p>
         )}
-        {groups.map((category) => {
-          const groupOffset = offset;
-          offset += category.emojis.length;
-          return (
-            <EmojiGrid
-              key={category.name}
-              label={category.name}
-              emojis={category.emojis}
-              onPick={pick}
-              onPreview={setPreview}
-              offset={groupOffset}
-              active={active}
-              onFocus={setActive}
-            />
-          );
-        })}
+        {groups.map((category, index) => (
+          <EmojiGrid
+            key={category.name}
+            label={category.name}
+            emojis={category.emojis}
+            onPick={pick}
+            onPreview={setPreview}
+            offset={offsets[index]!}
+            active={active}
+            onFocus={setActive}
+          />
+        ))}
       </div>
       <div aria-hidden="true" className="flex h-12 shrink-0 items-center gap-2 border-t px-3">
         {shown ? (

@@ -4,7 +4,10 @@ import type { ReactNode } from "react";
 import { PendingButton } from "../../feedback/pending-button";
 import type { WorkspaceReference } from "../references/entity-reference";
 import { ReferenceEditor } from "../references/reference-editor";
-import { ReferencePickerAccessibility } from "../references/reference-picker-context";
+import {
+  ReferencePickerLink,
+  type ReferencePickerHandle,
+} from "../references/reference-picker-context";
 import { referenceQuery } from "../references/reference-query";
 import type { ReferenceQuery } from "../references/reference-query";
 import { ComposerDraftReferences } from "./composer-draft-context";
@@ -66,38 +69,41 @@ export function Composer({
   renderReferences?: (
     query: ReferenceQuery,
     onInsert: (token: string, reference: WorkspaceReference) => void,
-    onClose: () => void,
   ) => ReactNode;
 }) {
-  const { draft, setDraft, editor, setComposing, isComposing, submit, insert, requestFocus } =
-    useComposerDraft({
-      draftKey,
-      pending,
-      onSend,
-      hasAttachments,
-      attachmentsReady,
-      submitDisabled,
-      autoFocus,
-    });
+  const {
+    draft,
+    setDraft,
+    editor,
+    setComposing,
+    isComposing,
+    canSend,
+    submit,
+    insert,
+    requestFocus,
+  } = useComposerDraft({
+    draftKey,
+    pending,
+    onSend,
+    hasAttachments,
+    attachmentsReady,
+    submitDisabled,
+    autoFocus,
+  });
   const [references, setReferences] = useState(false);
-  const [pickerAccessibility, setPickerAccessibility] = useState<{
-    listId: string;
-    selectedId?: string;
-  } | null>(null);
+  const pickerListId = useId();
+  const picker = useRef<ReferencePickerHandle>(null);
+  const [activeOptionId, setActiveOptionId] = useState<string>();
   const [caret, setCaret] = useState(draft.length);
   const draftReferences = useContext(ComposerDraftReferences);
   if (!draftReferences) throw new Error("Composer requires ComposerDraftProvider");
-  const [localReferences, setLocalReferences] = useState(() => ({
-    key: draftKey,
-    items: draftReferences.get(draftKey) ?? [],
-  }));
-  const resolvedReferences =
-    localReferences.key === draftKey
-      ? localReferences.items
-      : (draftReferences.get(draftKey) ?? []);
+  // Callers key the composer by draft, so the draft key never changes while it is mounted.
+  const [resolvedReferences, setResolvedReferences] = useState(
+    () => draftReferences.get(draftKey) ?? [],
+  );
   const anchor = useRef<HTMLDivElement>(null);
   const activeReference = referenceQuery(draft, caret);
-  const referencePicker = useRef<HTMLDivElement>(null);
+  const pickerOpen = references && !!activeReference && !!renderReferences;
   const closeReferences = () => {
     setReferences(false);
   };
@@ -110,7 +116,7 @@ export function Composer({
       reference,
     ];
     draftReferences.set(draftKey, nextReferences);
-    setLocalReferences({ key: draftKey, items: nextReferences });
+    setResolvedReferences(nextReferences);
     const nextCaret = activeReference.start + token.length + 1;
     requestFocus(nextCaret);
     setCaret(nextCaret);
@@ -153,10 +159,8 @@ export function Composer({
                   references={resolvedReferences}
                   disabled={pending}
                   onPasteFiles={onPasteFiles}
-                  listId={references && activeReference ? pickerAccessibility?.listId : undefined}
-                  activeOptionId={
-                    references && activeReference ? pickerAccessibility?.selectedId : undefined
-                  }
+                  listId={pickerOpen ? pickerListId : undefined}
+                  activeOptionId={pickerOpen ? activeOptionId : undefined}
                   onChange={(value, position) => {
                     setDraft(value);
                     setCaret(position);
@@ -176,11 +180,8 @@ export function Composer({
                       }
                       if (["ArrowDown", "ArrowUp", "Enter"].includes(event.key)) {
                         event.preventDefault();
-                        referencePicker.current
-                          ?.querySelector<HTMLElement>("[data-reference-picker]")
-                          ?.dispatchEvent(
-                            new KeyboardEvent("keydown", { key: event.key, bubbles: true }),
-                          );
+                        if (event.key === "Enter") picker.current?.choose();
+                        else picker.current?.move(event.key === "ArrowDown" ? 1 : -1);
                         return;
                       }
                     }
@@ -206,9 +207,8 @@ export function Composer({
                 />
               </div>
             </PopoverAnchor>
-            {references && activeReference && renderReferences && (
+            {pickerOpen && (
               <PopoverContent
-                ref={referencePicker}
                 variant="reference"
                 className="max-h-(--radix-popover-content-available-height)"
                 aria-label="Workspace references"
@@ -230,12 +230,15 @@ export function Composer({
                     event.preventDefault();
                 }}
               >
-                <ReferencePickerAccessibility value={setPickerAccessibility}>
-                  {renderReferences(activeReference, insertReference, () => {
-                    closeReferences();
-                    requestFocus(caret);
-                  })}
-                </ReferencePickerAccessibility>
+                <ReferencePickerLink
+                  value={{
+                    listId: pickerListId,
+                    handle: picker,
+                    onActiveOptionChange: setActiveOptionId,
+                  }}
+                >
+                  {renderReferences(activeReference, insertReference)}
+                </ReferencePickerLink>
               </PopoverContent>
             )}
             <InputGroupAddon align="block-end">
@@ -245,11 +248,9 @@ export function Composer({
                 {attachmentControls}
                 <ComposerSendControls
                   draft={draft}
-                  hasAttachments={hasAttachments}
-                  attachmentsReady={attachmentsReady}
+                  canSend={canSend}
                   pending={pending}
                   submitLabel={submitLabel}
-                  submitDisabled={submitDisabled}
                   secondaryAction={secondaryAction}
                 />
               </div>
@@ -270,19 +271,15 @@ export function Composer({
 
 function ComposerSendControls({
   draft,
-  hasAttachments,
-  attachmentsReady,
+  canSend,
   pending,
   submitLabel,
-  submitDisabled,
   secondaryAction,
 }: {
   draft: string;
-  hasAttachments: boolean;
-  attachmentsReady: boolean;
+  canSend: boolean;
   pending: boolean;
   submitLabel: string;
-  submitDisabled: boolean;
   secondaryAction?: ReactNode;
 }) {
   const limitId = useId();
@@ -315,9 +312,7 @@ function ComposerSendControls({
         size="sm"
         className={cn("min-w-16", nearLimit && "ml-auto @lg:ml-0")}
         aria-describedby={nearLimit ? limitId : undefined}
-        disabled={
-          (!draft.trim() && !hasAttachments) || !attachmentsReady || overBy > 0 || submitDisabled
-        }
+        disabled={!canSend}
         pending={pending}
       >
         <Send aria-hidden="true" />

@@ -69,13 +69,12 @@ export function EditMessageComposer({
               Cancel
             </Button>
           }
-          renderReferences={(activeReference, onInsert, onCloseReferences) => (
+          renderReferences={(activeReference, onInsert) => (
             <ReferencePicker
               organizationId={organizationId}
               conversationId={message.conversationId}
               activeReference={activeReference}
               onInsert={onInsert}
-              onClose={onCloseReferences}
             />
           )}
           onSend={(next) => edit.mutate(next, { onSuccess: onClose })}

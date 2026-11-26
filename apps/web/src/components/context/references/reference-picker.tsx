@@ -21,13 +21,11 @@ export function ReferencePicker({
   conversationId,
   activeReference,
   onInsert,
-  onClose,
 }: {
   organizationId: string;
   conversationId: string;
   activeReference: ReferenceQuery;
   onInsert: (token: string, reference: WorkspaceReference) => void;
-  onClose: () => void;
 }) {
   const apps = useOrganizationApps();
   const mixedKinds: Extract<ReferenceKind, "person" | "agent" | "task" | "project">[] =
@@ -39,11 +37,10 @@ export function ReferencePicker({
     prefix: activeReference.kind,
     kind: activeReference.kind,
   });
-  const selectedKind =
-    selection.prefix === activeReference.kind ? selection.kind : activeReference.kind;
-  const kind = kinds.includes(selectedKind) ? selectedKind : kinds[0]!;
+  // A new typed prefix ("@task:") replaces the tab the person picked.
   if (selection.prefix !== activeReference.kind)
-    setSelection({ prefix: activeReference.kind, kind });
+    setSelection({ prefix: activeReference.kind, kind: activeReference.kind });
+  const kind = kinds.includes(selection.kind) ? selection.kind : kinds[0]!;
   const debounced = useSearchDebounce(
     query,
     JSON.stringify([organizationId, conversationId, kind]),
@@ -64,6 +61,8 @@ export function ReferencePicker({
   });
   return (
     <ReferencePickerView
+      // A new query starts at the first option.
+      key={query}
       query={query}
       kind={kind}
       kinds={kinds}
@@ -77,7 +76,6 @@ export function ReferencePicker({
       onInsert={(token, reference) => {
         if (!debounced.pending) onInsert(token, reference);
       }}
-      onClose={onClose}
     />
   );
 }
