@@ -1,11 +1,11 @@
-/** Compact elapsed or remaining time, such as 45s, 3m 05s, or 1h 02m. */
+/** Compact elapsed or remaining time, such as 45s, 3m 05s, or 1h 02m 03s. */
 export function formatDuration(ms: number) {
   const seconds = Math.max(0, Math.floor(ms / 1000));
   const pad = (value: number) => String(value).padStart(2, "0");
   if (seconds < 60) return `${seconds}s`;
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return `${minutes}m ${pad(seconds % 60)}s`;
-  return `${Math.floor(minutes / 60)}h ${pad(minutes % 60)}m`;
+  return `${Math.floor(minutes / 60)}h ${pad(minutes % 60)}m ${pad(seconds % 60)}s`;
 }
 
 /** 1st, 2nd, 3rd, 4th, 11th, 21st. */

@@ -2,6 +2,8 @@ import { Link } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
+import { WorkOrb } from "./work-orb";
+import { Tag } from "@/components/feedback/tag";
 import { toneText } from "@/components/feedback/tag-styles";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
@@ -41,14 +43,29 @@ export function ComposerNotice({
       className="flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 px-4 pt-2 text-xs text-muted-foreground"
     >
       {lines.map((line) => (
-        <span key={line.key} className="flex min-w-0 flex-wrap items-center gap-1.5">
-          <Bot aria-hidden="true" className="size-3.5 shrink-0" />
-          <span className="min-w-0 font-medium wrap-anywhere text-foreground">
-            {line.agentName}
-          </span>
-          <span className={cn("min-w-0 truncate tabular-nums", toneText[line.tone])}>
-            {line.label}
-          </span>
+        <span
+          key={line.key}
+          className={cn(
+            "flex min-w-0 flex-wrap items-center gap-1.5",
+            line.tone === "working" && "rounded-md bg-surface shadow-surface",
+          )}
+        >
+          {line.tone === "working" ? (
+            <Tag tone="working" icon={<WorkOrb />}>
+              <span className="truncate font-medium">{line.agentName}</span>
+              <span className="truncate text-muted-foreground tabular-nums">{line.label}</span>
+            </Tag>
+          ) : (
+            <>
+              <Bot aria-hidden="true" className="size-3.5 shrink-0" />
+              <span className="min-w-0 font-medium wrap-anywhere text-foreground">
+                {line.agentName}
+              </span>
+              <span className={cn("min-w-0 truncate tabular-nums", toneText[line.tone])}>
+                {line.label}
+              </span>
+            </>
+          )}
           {line.link && (
             <Link {...line.link.link} className="shrink-0 font-medium text-primary hover:underline">
               {line.link.label}

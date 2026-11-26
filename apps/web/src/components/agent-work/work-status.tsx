@@ -1,3 +1,4 @@
+import { WorkOrb } from "./work-orb";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { toneText } from "@/components/feedback/tag-styles";
 import { Pressable } from "@/components/ui/pressable";
@@ -13,12 +14,7 @@ function ToneIcon({ tone }: { tone: WorkTone }) {
     return <X aria-hidden="true" className="size-3.5 shrink-0 text-destructive" />;
   if (tone === "attention")
     return <CircleAlert aria-hidden="true" className="size-3.5 shrink-0 text-warning" />;
-  if (tone === "working")
-    return (
-      <span aria-hidden="true" className="grid size-3.5 shrink-0 place-items-center">
-        <span className="size-1.5 rounded-full bg-primary motion-safe:animate-pulse" />
-      </span>
-    );
+  if (tone === "working") return <WorkOrb />;
   return null;
 }
 

@@ -52,7 +52,7 @@ export function turnTone(
   }
 }
 
-/** One turn as one short line, such as "Working for 1m 05s". */
+/** One turn as one short line, such as "1m 05s" while working. */
 export function turnLabel(
   turn: AgentTurnView,
   now: number,
@@ -69,7 +69,7 @@ export function turnLabel(
       return resumed ? resumedLabel : "Starting";
     case "running":
     case "waiting":
-      return resumed ? `${resumedLabel} · working for ${ran()}` : `Working for ${ran()}`;
+      return resumed ? `${resumedLabel} · ${ran()}` : ran();
     case "stopping":
       return "Stopping";
     case "completed":

@@ -31,7 +31,8 @@ describe("turn labels", () => {
   });
 
   test("working time counts from the start and stops when the turn ends", () => {
-    expect(turnStatus(turn(started), now).label).toBe("Working for 1m 05s");
+    expect(turnStatus(turn(started), now).label).toBe("1m 05s");
+    expect(turnStatus(turn({ ...started, status: "waiting" }), now).label).toBe("1m 05s");
     expect(
       turnStatus(
         turn({
@@ -47,7 +48,7 @@ describe("turn labels", () => {
 
   test("a resumed turn says it resumed after an interruption", () => {
     expect(turnStatus(turn({ ...started, attempt: 2 }), now).label).toBe(
-      "Resumed after interruption · working for 1m 05s",
+      "Resumed after interruption · 1m 05s",
     );
   });
 
@@ -151,8 +152,13 @@ describe("times", () => {
   test.each([
     [-5000, "0s"],
     [45_900, "45s"],
+    [59_999, "59s"],
+    [60_000, "1m 00s"],
     [185_000, "3m 05s"],
-    [3_720_000, "1h 02m"],
+    [3_599_999, "59m 59s"],
+    [3_600_000, "1h 00m 00s"],
+    [3_720_000, "1h 02m 00s"],
+    [4_986_000, "1h 23m 06s"],
   ])("formats %pms as %s", (ms, text) => {
     expect(formatDuration(ms)).toBe(text);
   });
