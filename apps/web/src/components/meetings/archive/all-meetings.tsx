@@ -150,6 +150,19 @@ const meetingColumns = (organizationId: string, view: MeetingSearch) =>
     }),
   ]);
 
+function archiveTitle(input: MeetingListInput) {
+  if (input.q) return "Search results";
+  if (input.source) return `${providerNames[input.source]} meetings`;
+  return "All meetings";
+}
+
+function archiveDescription(total: number, filters: ReactNode, originals?: number) {
+  const description = `${total} ${total === 1 ? "meeting" : "meetings"}`;
+  if (filters) return `${description} in this view`;
+  if (originals === undefined) return description;
+  return `${description} · ${originals} linked source ${originals === 1 ? "record" : "records"}`;
+}
+
 export function AllMeetings({
   queries,
   input,
@@ -182,19 +195,12 @@ export function AllMeetings({
   // Do not show cached private records after an access failure.
   const page = query.isSuccess ? query.data : undefined;
   const { rows, total } = page ?? { rows: [], total: 0 };
-  let title = "All meetings";
-  if (input.source) title = `${providerNames[input.source]} meetings`;
-  if (input.q) title = "Search results";
-  let description = `${total} ${total === 1 ? "meeting" : "meetings"}`;
-  if (filters) description += " in this view";
-  else if (originals !== undefined)
-    description += ` · ${originals} linked source ${originals === 1 ? "record" : "records"}`;
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-400 flex-col">
       <PageHeader
         className="mb-4 md:mb-5"
-        title={title}
-        description={page ? description : undefined}
+        title={archiveTitle(input)}
+        description={page ? archiveDescription(total, filters, originals) : undefined}
         actions={
           <>
             <Button onClick={addMeeting}>
