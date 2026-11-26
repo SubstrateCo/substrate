@@ -1,14 +1,18 @@
 import { useQuery, type QueryKey } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 
 import { CrmExport } from "@/components/crm/crm-export";
 import { CrmResourceState } from "@/components/crm/crm-resource-state";
 import { sectionLabels, singularLabels, type CrmKind } from "@/components/crm/crm-types";
-import { DealPipeline, DealPipelineLoading } from "@/components/crm/deals/deal-pipeline";
+import {
+  DealPipeline,
+  DealPipelineLoading,
+  type PipelineDeal,
+} from "@/components/crm/deals/deal-pipeline";
 import { RecordEditor } from "@/components/crm/record-editor";
-import { RecordList } from "@/components/crm/record-list";
+import { RecordList, type CrmListRow } from "@/components/crm/record-list";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
@@ -37,16 +41,27 @@ import { Plus } from "lucide-react";
 
 const pageSize = 100;
 
-function useCollectionQueries(
-  organizationId: string,
-  kind: CrmKind,
-  { query: search, pending }: ReturnType<typeof useSearchDebounce>,
-  archived: boolean,
-  afterEntityId: string | undefined,
-  creating: boolean,
+type PipelineStage = ComponentProps<typeof DealPipeline>["stages"][number];
+type PipelineBoard = { deals: PipelineDeal[]; truncated: boolean };
+
+function useCollectionQueries({
+  organizationId,
+  kind,
+  search: { query: search, pending },
+  archived,
+  afterEntityId,
+  creating,
+  board,
+}: {
+  organizationId: string;
+  kind: CrmKind;
+  search: ReturnType<typeof useSearchDebounce>;
+  archived: boolean;
+  afterEntityId: string | undefined;
+  creating: boolean;
   /** The pipeline board reads all open deals instead of one page of deals. */
-  board: boolean,
-) {
+  board: boolean;
+}) {
   const apps = useOrganizationApps();
   const scopedFilters = (section: CrmKind) =>
     kind === section
@@ -138,16 +153,26 @@ export function RecordCollection({
   const navigate = useNavigate();
   const mutation = useRecordMutation(organizationId, kind);
   const showPipeline = kind === "deals" && view === "pipeline" && !archived;
-  const queries = useCollectionQueries(
+  const queries = useCollectionQueries({
     organizationId,
     kind,
-    debounced,
+    search: debounced,
     archived,
-    pages.cursor,
+    afterEntityId: pages.cursor,
     creating,
-    showPipeline,
-  );
+    board: showPipeline,
+  });
   const records = collectionRecords(kind, queries);
+  const boardState = resourceState(queries.boardDeals);
+  const shown = showPipeline
+    ? { query: queries.boardDeals, state: boardState }
+    : { query: records.query, state: records.state };
+  // One error per failed load: deals also need the pipeline and settings.
+  const dealsError = kind === "deals" ? (queries.pipeline.error ?? queries.settings.error) : null;
+  const startCreating = () => {
+    mutation.reset();
+    setCreating(true);
+  };
   return (
     // The pipeline's columns scroll on their own, so the page does not.
     <div
@@ -162,10 +187,7 @@ export function RecordCollection({
         archived={archived}
         search={debounced.query}
         canCreate={records.canCreate}
-        onCreate={() => {
-          mutation.reset();
-          setCreating(true);
-        }}
+        onCreate={startCreating}
       />
       <div className={cn("flex min-w-0 flex-col gap-4", showPipeline && "min-h-0 flex-1")}>
         <div className="flex flex-wrap items-center gap-2">
@@ -208,20 +230,25 @@ export function RecordCollection({
         <RecordCollectionResults
           organizationId={organizationId}
           kind={kind}
-          records={records}
-          queries={queries}
-          searchPending={debounced.pending}
+          rows={records.rows}
+          stages={records.stages}
+          board={boardState.data}
+          pending={(debounced.pending || shown.query.isPending) && !shown.state.data}
+          error={(shown.state.data ? null : shown.state.error) ?? dealsError}
+          stale={shown.state.status === "stale"}
+          loaded={!!shown.state.data}
+          fetching={shown.query.isFetching}
+          onRetry={() => {
+            void shown.query.refetch();
+            if (kind !== "deals") return;
+            void queries.pipeline.refetch();
+            void queries.settings.refetch();
+          }}
+          onRefresh={() => void shown.query.refetch()}
           showPipeline={showPipeline}
           pages={pages}
           filtered={debounced.query !== "" || archived}
-          onCreate={
-            records.canCreate
-              ? () => {
-                  mutation.reset();
-                  setCreating(true);
-                }
-              : undefined
-          }
+          onCreate={records.canCreate ? startCreating : undefined}
         />
       </div>
       {creating && (
@@ -307,9 +334,16 @@ function RecordCollectionHeader({
 function RecordCollectionResults({
   organizationId,
   kind,
-  records: { query: listQuery, state: listState, rows, stages },
-  queries: { boardDeals, pipeline, settings },
-  searchPending,
+  rows,
+  stages,
+  board,
+  pending,
+  error,
+  stale,
+  loaded,
+  fetching,
+  onRetry,
+  onRefresh,
   showPipeline,
   pages,
   filtered,
@@ -319,30 +353,31 @@ function RecordCollectionResults({
   kind: CrmKind;
   filtered: boolean;
   onCreate?: () => void;
-  records: ReturnType<typeof collectionRecords>;
-  queries: ReturnType<typeof useCollectionQueries>;
-  searchPending: boolean;
+  rows: CrmListRow[];
+  stages: PipelineStage[];
+  board: PipelineBoard | undefined;
+  pending: boolean;
+  error: Error | null;
+  /** The shown records failed to refresh. */
+  stale: boolean;
+  /** The shown records have data. */
+  loaded: boolean;
+  fetching: boolean;
+  /** Retries every failed load. */
+  onRetry: () => void;
+  /** Refreshes the shown records. */
+  onRefresh: () => void;
   /** Open deals as a pipeline board instead of a list. */
   showPipeline: boolean;
   pages: ReturnType<typeof useCursorPages<string>>;
 }) {
-  // One error per failed load: deals also need the pipeline and settings.
-  const dealsError = kind === "deals" ? (pipeline.error ?? settings.error) : null;
-  const boardState = resourceState(boardDeals);
-  const query = showPipeline ? boardDeals : listQuery;
-  const state = showPipeline ? boardState : listState;
   return (
     <>
       <CrmResourceState
         noun={kind}
-        pending={(searchPending || query.isPending) && !state.data}
-        error={(state.data ? null : state.error) ?? dealsError}
-        onRetry={() => {
-          void query.refetch();
-          if (kind !== "deals") return;
-          void pipeline.refetch();
-          void settings.refetch();
-        }}
+        pending={pending}
+        error={error}
+        onRetry={onRetry}
         loading={
           showPipeline ? (
             <DealPipelineLoading />
@@ -351,17 +386,13 @@ function RecordCollectionResults({
           )
         }
       />
-      {state.status === "stale" && (
-        <StaleNotice onRetry={() => void query.refetch()}>
-          These records may be out of date.
-        </StaleNotice>
-      )}
-      {state.data &&
+      {stale && <StaleNotice onRetry={onRefresh}>These records may be out of date.</StaleNotice>}
+      {loaded &&
         (showPipeline ? (
           <RecordPipeline
             organizationId={organizationId}
             stages={stages}
-            board={boardState.data}
+            board={board}
             onCreate={filtered ? undefined : onCreate}
           />
         ) : (
@@ -369,7 +400,7 @@ function RecordCollectionResults({
             organizationId={organizationId}
             kind={kind}
             rows={rows}
-            fetching={query.isFetching}
+            fetching={fetching}
             pagination={collectionPagination(rows, pages)}
             filtered={filtered}
             onCreate={onCreate}
@@ -381,7 +412,7 @@ function RecordCollectionResults({
 
 /** The API returns up to `pageSize` records after a cursor and no total. */
 function collectionPagination(
-  rows: ReturnType<typeof collectionRecords>["rows"],
+  rows: CrmListRow[],
   pages: ReturnType<typeof useCursorPages<string>>,
 ) {
   return {
@@ -404,8 +435,8 @@ function RecordPipeline({
   onCreate,
 }: {
   organizationId: string;
-  stages: ReturnType<typeof collectionRecords>["stages"];
-  board: ReturnType<typeof useCollectionQueries>["boardDeals"]["data"];
+  stages: PipelineStage[];
+  board: PipelineBoard | undefined;
   onCreate?: () => void;
 }) {
   return (

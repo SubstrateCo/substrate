@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { cn } from "cn";
-import { Bell, Bot, CheckCheck, Hand, Handshake, ListTodo, MessageSquare } from "lucide-react";
+import { Bell, Bot, CheckCheck, Hand, Handshake, MessageSquare } from "lucide-react";
 
 export type HomeDashboardViewProps = {
   organizationId: string;
@@ -116,12 +116,14 @@ export function HomeDashboardView({
               >
                 <HomeSection
                   title="Needs your attention"
-                  icon={CheckCheck}
                   titleIcon={<Hand aria-hidden="true" className="size-4 text-warning" />}
-                  emptyTitle="You’re caught up"
-                  emptyDescription="No pending decisions or recent mentions here."
-                  emptyAction="Open notifications"
-                  emptyLink={{ to: "/notifications", search }}
+                  empty={{
+                    icon: CheckCheck,
+                    title: "You’re caught up",
+                    description: "No pending decisions or recent mentions here.",
+                    action: "Open notifications",
+                    link: { to: "/notifications", search },
+                  }}
                   hideHeaderWhenEmpty
                   link={{ to: "/agents", search }}
                   linkLabel="Agent requests"
@@ -137,11 +139,7 @@ export function HomeDashboardView({
                   <HomeSection
                     title="My work"
                     description="Assigned to you · earliest due first"
-                    icon={ListTodo}
-                    emptyTitle="No open tasks assigned to you"
-                    emptyDescription="Find work in your projects or create a task."
-                    emptyAction="Browse tasks"
-                    emptyContent={<HomeEmptyWork organizationId={organizationId} />}
+                    empty={{ content: <HomeEmptyWork organizationId={organizationId} /> }}
                     link={{ to: "/tasks", search }}
                     data={tasks}
                   />
@@ -150,10 +148,12 @@ export function HomeDashboardView({
               <HomePanel id="updates" active={activeSection} className="md:grow-2">
                 <HomeSection
                   title="Recent updates"
-                  icon={Bell}
-                  emptyTitle="No other recent updates"
-                  emptyDescription="View past assignments, mentions, and replies."
-                  emptyAction="Open notifications"
+                  empty={{
+                    icon: Bell,
+                    title: "No other recent updates",
+                    description: "View past assignments, mentions, and replies.",
+                    action: "Open notifications",
+                  }}
                   link={{ to: "/notifications", search }}
                   data={updates}
                 />
@@ -163,10 +163,13 @@ export function HomeDashboardView({
               <HomePanel id="agents" active={activeSection} className="md:grow-2">
                 <HomeSection
                   title="My agents"
-                  icon={Bot}
-                  emptyTitle="No agent activity yet"
-                  emptyDescription="Choose an agent and connect its home desktop to start delegating work."
-                  emptyAction="Open agents"
+                  empty={{
+                    icon: Bot,
+                    title: "No agent activity yet",
+                    description:
+                      "Choose an agent and connect its home desktop to start delegating work.",
+                    action: "Open agents",
+                  }}
                   link={{ to: "/agents", search }}
                   data={agents}
                 />
@@ -175,10 +178,12 @@ export function HomeDashboardView({
                 <HomeSection
                   title="Conversations"
                   description="Unread · Direct messages first"
-                  icon={MessageSquare}
-                  emptyTitle="No other unread conversations"
-                  emptyDescription="Open Messages to catch up on channels or start a conversation."
-                  emptyAction="Open messages"
+                  empty={{
+                    icon: MessageSquare,
+                    title: "No other unread conversations",
+                    description: "Open Messages to catch up on channels or start a conversation.",
+                    action: "Open messages",
+                  }}
                   link={{ to: "/messages", search }}
                   data={conversations}
                 />
@@ -188,10 +193,12 @@ export function HomeDashboardView({
                   <HomeSection
                     title="CRM follow-ups"
                     description="Your open deals · closing within 7 days or overdue"
-                    icon={Handshake}
-                    emptyTitle="No deals closing soon"
-                    emptyDescription="CRM follow-up tasks appear in My work."
-                    emptyAction="Open CRM"
+                    empty={{
+                      icon: Handshake,
+                      title: "No deals closing soon",
+                      description: "CRM follow-up tasks appear in My work.",
+                      action: "Open CRM",
+                    }}
                     link={{ to: "/crm", search: { ...search, section: "deals" } }}
                     data={deals}
                   />

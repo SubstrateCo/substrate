@@ -66,56 +66,60 @@ function HomeRows({ items }: { items: HomeItem[] }) {
   );
 }
 
+/** What a section shows without items: a notice with a link, or its own content. */
+export type HomeSectionEmpty =
+  | {
+      icon: LucideIcon;
+      title: string;
+      description: string;
+      action: string;
+      /** Where the action goes, when not the header link. */
+      link?: LinkProps;
+    }
+  | { content: ReactNode };
+
 export function HomeSection({
   title,
   description,
-  icon,
   titleIcon,
-  emptyTitle,
-  emptyDescription,
   link,
   linkLabel,
-  emptyLink = link,
   data,
-  emptyAction,
-  emptyContent,
+  empty,
   hideHeaderWhenEmpty = false,
 }: {
   title: string;
   description?: string;
-  icon: LucideIcon;
   /** An icon before the title, such as `Hand` for what needs you. */
   titleIcon?: ReactNode;
-  emptyTitle: string;
-  emptyDescription: string;
   link: LinkProps;
   /** The header link's text. Without it, the link reads "View all". */
   linkLabel?: string;
-  /** Where the empty state's action goes, when not the header link. */
-  emptyLink?: LinkProps;
   data: HomeSectionData;
-  emptyAction: string;
-  emptyContent?: ReactNode;
+  empty: HomeSectionEmpty;
   /** A quiet section shows only its empty state. */
   hideHeaderWhenEmpty?: boolean;
 }) {
-  const empty = !data.loading && !data.error && !data.items.length;
-  let content = emptyContent ?? (
-    <ContentNotice
-      variant="compact"
-      icon={icon}
-      title={emptyTitle}
-      description={emptyDescription}
-      action={
-        <Button variant="outline" size="sm" asChild>
-          <Link {...emptyLink}>
-            {emptyAction}
-            <ArrowRight aria-hidden="true" data-icon="inline-end" />
-          </Link>
-        </Button>
-      }
-    />
-  );
+  const noItems = !data.loading && !data.error && !data.items.length;
+  let content =
+    "content" in empty ? (
+      empty.content
+    ) : (
+      <ContentNotice
+        variant="compact"
+        icon={empty.icon}
+        title={empty.title}
+        description={empty.description}
+        action={
+          <Button variant="outline" size="sm" asChild>
+            <Link {...(empty.link ?? link)}>
+              {empty.action}
+              <ArrowRight aria-hidden="true" data-icon="inline-end" />
+            </Link>
+          </Button>
+        }
+      />
+    );
   if (data.items.length) content = <HomeRows items={data.items} />;
   if (data.loading)
     content = <LoadingState label={`Loading ${title.toLowerCase()}`} variant="compact" rows={3} />;
@@ -123,7 +127,7 @@ export function HomeSection({
     content = <ErrorState compact title="Couldn’t load this section" onRetry={data.onRetry} />;
   return (
     <Card size="sm" className="min-h-0 min-w-0 flex-1" role="region" aria-label={title}>
-      {!(empty && hideHeaderWhenEmpty) && (
+      {!(noItems && hideHeaderWhenEmpty) && (
         <CardHeader className="flex shrink-0 items-start justify-between gap-3">
           <div className="space-y-1">
             <CardTitle>
@@ -134,7 +138,7 @@ export function HomeSection({
             </CardTitle>
             {description && <CardDescription>{description}</CardDescription>}
           </div>
-          {!empty && (
+          {!noItems && (
             <Button asChild variant="ghost" size="xs">
               <Link
                 {...link}
