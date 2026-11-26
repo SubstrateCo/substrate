@@ -69,9 +69,10 @@ export function CalendarWeek({
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-x-auto">
       <div className="flex min-h-0 min-w-xl flex-1 flex-col">
-        <div className="flex shrink-0 border-b">
+        {/* Reserve the same scrollbar gutter in each band, even when it cannot scroll. */}
+        <div className="flex shrink-0 scrollbar-gutter-stable overflow-y-hidden border-b">
           <div className="w-14 shrink-0" />
-          <div className="grid flex-1 grid-cols-7">
+          <div data-testid="week-day-headings" className="grid flex-1 grid-cols-7">
             {days.map((day) => {
               const today = isSameDay(day, now);
               return (
@@ -96,11 +97,11 @@ export function CalendarWeek({
           </div>
         </div>
         {hasAllDay && (
-          <div className="flex shrink-0 border-b">
+          <div className="flex shrink-0 scrollbar-gutter-stable overflow-y-hidden border-b">
             <div className="flex w-14 shrink-0 items-start justify-end px-2 py-1.5 text-xs text-muted-foreground">
               All day
             </div>
-            <div className="grid flex-1 grid-cols-7">
+            <div data-testid="week-all-day-columns" className="grid flex-1 grid-cols-7">
               {columns.map(({ day, allDay }) => (
                 <ul key={day.getTime()} className="min-w-0 space-y-0.5 border-l p-0.5">
                   {allDay.map((event) => (
@@ -118,7 +119,11 @@ export function CalendarWeek({
             </div>
           </div>
         )}
-        <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
+        <div
+          ref={scroller}
+          data-testid="week-time-scroller"
+          className="min-h-0 flex-1 scrollbar-gutter-stable overflow-y-auto"
+        >
           <div className="relative flex h-288">
             <div aria-hidden="true" className="w-14 shrink-0">
               {hours.map((hour) => (
@@ -131,7 +136,7 @@ export function CalendarWeek({
                 </div>
               ))}
             </div>
-            <div className="grid flex-1 grid-cols-7">
+            <div data-testid="week-time-columns" className="grid flex-1 grid-cols-7">
               {columns.map(({ day, placed }) => (
                 <DayColumn
                   key={day.getTime()}

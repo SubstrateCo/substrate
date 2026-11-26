@@ -131,7 +131,19 @@ try {
       },
       result: {
         fullSync: true,
-        events: [event(false), event(true)],
+        events: [
+          event(false),
+          event(true),
+          {
+            ...event(false),
+            providerEventId: "planning-day",
+            title: "Planning day",
+            startsAt: "2020-01-15T00:00:00Z",
+            endsAt: "2020-01-16T00:00:00Z",
+            allDay: true,
+            attendees: [],
+          },
+        ],
         cancelledEventIds: [],
         nextCursor: "e2e-cursor",
       },
