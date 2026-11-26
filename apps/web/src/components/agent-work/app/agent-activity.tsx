@@ -18,6 +18,7 @@ const outcomeLabels: Record<TurnOutcome, string> = {
   // The tag already says "Checked · nothing to report".
   silent: "Checked in",
   asked: "Asked you a question",
+  proposed: "Proposed an action",
 };
 
 /** The subject of work that has no activity line or outcome yet. The state shows in the tag. */

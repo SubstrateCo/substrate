@@ -13,6 +13,7 @@ import { AgentWorkProvider } from "./agent-work-slot";
 import { CallStatus } from "./calls/call-status";
 import { ComposerNotice, type ComposerNoticeLine } from "./composer-notice";
 import { InboxReceipt } from "./inbox-receipt";
+import { ProposalBacklink } from "./requests/proposal-backlink";
 import { RequestCard } from "./requests/request-card";
 import { TurnLabel, TurnStatus, TurnWork } from "./turn-work";
 import { WorkIndicator } from "./work-indicator";
@@ -20,6 +21,7 @@ import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { noticeLines } from "@/lib/agent-work/composer-notice";
 import { conversationAgents } from "@/lib/agent-work/conversation-agents";
+import { proposalSourceLink } from "@/lib/agent-work/links";
 import { itemPlacements, requestPlacements, turnPlacements } from "@/lib/agent-work/placement";
 import { isOpenRequest } from "@/lib/agent-work/requests";
 import { agentStatus, noDesktopLabel, queueAhead, turnTone } from "@/lib/agent-work/status";
@@ -135,7 +137,7 @@ export function ConversationAgentWork({
     agents.find((agent) => agent.agentId === agentId)?.name ?? "Agent";
   const { placements, anchors } = turnPlacements(turns, conversation.id);
   const waitingItems = itemPlacements(items, turns, conversation.id);
-  const cards = requestPlacements(requests.data ?? [], anchors, conversation.id);
+  const { cards, backlinks } = requestPlacements(requests.data ?? [], anchors, conversation.id);
   const agentOf = (item: AgentInboxItemView) => sessions.get(item.sessionId)?.userAgentId ?? "";
   const { openRequest, outputs, itemsByAgent, uncertainIds } = messageWorkLookups(
     turns,
@@ -211,14 +213,23 @@ export function ConversationAgentWork({
           const placed = placements.get(message.id) ?? [];
           const requestCards = cards.get(message.id) ?? [];
           const waiting = waitingItems.get(message.id) ?? [];
+          const created = backlinks.get(message.id) ?? [];
           const myCalls = (calls.data ?? []).filter((call) => call.messageId === message.id);
-          const empty = [placed, requestCards, waiting, myCalls].every((list) => !list.length);
+          const empty = [placed, requestCards, waiting, created, myCalls].every(
+            (list) => !list.length,
+          );
           if (empty) return null;
           return (
             <>
               {myCalls.map((call) => (
                 <CallStatus key={call.invocationId} call={call} />
               ))}
+              {created.map((request) => {
+                const link = proposalSourceLink(organizationId, request);
+                return (
+                  <ProposalBacklink key={`b${request.id}`} link={link?.link} label={link?.label} />
+                );
+              })}
               {waiting.map((item) => {
                 const agentId = agentOf(item);
                 const sameAgent = itemsByAgent.get(agentId) ?? [];

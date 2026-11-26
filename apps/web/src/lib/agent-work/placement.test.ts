@@ -155,7 +155,7 @@ describe("inbox item placement", () => {
 
 describe("request placement", () => {
   test("a request shows under its anchor, else under its turn's place", () => {
-    const cards = requestPlacements(
+    const { cards } = requestPlacements(
       [
         request({ id: "anchored" }),
         request({
@@ -177,7 +177,7 @@ describe("request placement", () => {
   });
 
   test("hidden requests and requests of other conversations never show here", () => {
-    const cards = requestPlacements(
+    const { cards } = requestPlacements(
       [
         hiddenRequest({ id: "hidden" }),
         request({
@@ -195,5 +195,37 @@ describe("request placement", () => {
       conversationId,
     );
     expect(cards.size).toBe(0);
+  });
+
+  test("an executed proposal links back from the message it created", () => {
+    const { backlinks } = requestPlacements(
+      [
+        request({
+          kind: "proposal",
+          status: "executed",
+          place: {
+            access: "visible",
+            conversationId: "dm",
+            threadId: null,
+            conversationName: "DM",
+            anchorMessageId: null,
+          },
+          proposal: {
+            action: {
+              type: "reply_elsewhere",
+              input: { conversationId: crypto.randomUUID(), body: "Update" },
+            },
+            actionHash: "hash",
+            outcome: {
+              status: "executed",
+              receipt: { kind: "message", id: "created", conversationId, threadId: null },
+            },
+          },
+        }),
+      ],
+      new Map<string, string>(),
+      conversationId,
+    );
+    expect(ids(backlinks)).toEqual({ created: ["request"] });
   });
 });

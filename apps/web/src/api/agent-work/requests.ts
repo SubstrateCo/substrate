@@ -3,6 +3,7 @@ import type {
   AgentRequestView,
   AgentStatusView,
   conversationRequestsInput,
+  decideProposalInput,
   ownerScopeInput,
   respondRequestInput,
 } from "@substrate/contracts/agent-work";
@@ -35,6 +36,19 @@ export const listAgentStatus = ({
 
 type RequestAction<T> = ApiInput<T & { requestId: string }>;
 
+const decideProposal =
+  (decision: "approve" | "decline") =>
+  ({
+    data: { requestId, ...json },
+    signal,
+  }: RequestAction<z.input<typeof decideProposalInput>>): Promise<void> =>
+    readResult(
+      routes.requests[":id"][decision].$post(
+        { param: { id: requestId }, json },
+        { init: { signal } },
+      ),
+    ).then(() => undefined);
+
 export const respondToRequest = ({
   data: { requestId, ...json },
   signal,
@@ -42,3 +56,6 @@ export const respondToRequest = ({
   readResult(
     routes.requests[":id"].respond.$post({ param: { id: requestId }, json }, { init: { signal } }),
   ).then(() => undefined);
+
+export const approveProposal = decideProposal("approve");
+export const declineProposal = decideProposal("decline");

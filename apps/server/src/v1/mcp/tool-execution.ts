@@ -34,6 +34,7 @@ import {
   requireTurn,
   agentWrites,
   requireHomeDevice,
+  requireOwnedProposal,
   claimToolReceipt,
   saveToolReceipt,
 } from "@substrate/database/mcp";
@@ -159,17 +160,6 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     move_task: (value) => writes.moveTask(value),
     create_project: (value) => writes.createProject(value),
     update_project: (value) => writes.updateProject(value),
-    delete_task: (value) => writes.deleteTask(value),
-    archive_project: (value) => writes.archiveProject(value),
-    restore_project: (value) => writes.restoreProject(value),
-    delete_project: (value) => writes.deleteProject(value),
-    share_project: (value) => writes.shareProject(value),
-    revoke_project_access: (value) => writes.revokeProjectAccess(value),
-    archive_crm_record: async (value) => crm().archiveRecord(value),
-    delete_crm_interaction: async (value) => crm().deleteInteraction(value),
-    assign_crm_owner: async (value) => crm().assignOwner(value),
-    share_crm_record: async (value) => crm().share(value),
-    revoke_crm_access: async (value) => crm().revoke(value),
     async get_task_discussion(value) {
       return { conversationId: await tasks.ensureDiscussion(value.taskId) };
     },
@@ -182,6 +172,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
       return queries.getTask(value.taskId);
     },
     reply: (value) => publishing().reply(value),
+    propose: (value) => publishing().propose(value),
     async attach_message(value) {
       return { changed: await attachReference(ctx, identity, value, value.target) };
     },
@@ -274,29 +265,6 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     async update_project(value) {
       await ctx.requireAccess(value.projectId, "view");
     },
-    // A deletion's result names only the IDs in its input, so a replay reveals nothing new.
-    async delete_task() {},
-    async delete_project() {},
-    async delete_crm_interaction() {},
-    async archive_project(value) {
-      await ctx.requireAccess(value.projectId, "view");
-    },
-    async restore_project(value) {
-      await ctx.requireAccess(value.projectId, "view");
-    },
-    async share_project(value) {
-      await ctx.requireAccess(value.projectId, "view");
-    },
-    async revoke_project_access(value) {
-      await ctx.requireAccess(value.projectId, "view");
-    },
-    async archive_crm_record(value) {
-      await crm().get({ kind: value.kind, entityId: value.entityId });
-    },
-    // These results name only the record and person in the input.
-    async assign_crm_owner() {},
-    async share_crm_record() {},
-    async revoke_crm_access() {},
     async get_task_discussion(value) {
       await tasks.get(value.taskId);
     },
@@ -309,6 +277,9 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     },
     async reply(_, previous) {
       await requireMessage(tx, identity, previous.messageId);
+    },
+    async propose(_, previous) {
+      await requireOwnedProposal(tx, identity, previous.proposalId);
     },
   };
   const requestId = requestIdOf(input);

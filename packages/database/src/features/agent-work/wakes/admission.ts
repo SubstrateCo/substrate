@@ -50,9 +50,10 @@ export type MessageTrigger = {
   conversationKind: ConversationKind;
 };
 
-/** The owner answered an agent's request. */
+/** The owner decided an agent's request: an answer, or a proposal result. */
 export type RequestTrigger = {
   type: "request";
+  source: "answer" | "approval_result";
   request: {
     id: string;
     organizationId: string;
@@ -209,18 +210,21 @@ function callerDecision(
  *   Explicit agent mentions narrow recipients. The owner's disabled kinds apply.
  *   Under ask, a caller who is not allowlisted waits for the owner's approval.
  *   Excess calls are recorded as rate limited.
- * - The owner's answer always wakes the agent in the request's session, and an approved call
- *   wakes it in the call's session.
+ * - The owner's answer or proposal result always wakes the agent in the request's session, and
+ *   an approved call wakes it in the call's session.
  */
 export function decideAdmission(input: AdmissionInput): AdmissionDecision {
   if (input.type === "request") {
-    const { request } = input.trigger;
+    const { request, source } = input.trigger;
     return {
       type: "admit",
-      source: "answer",
+      source,
       sourceRef: { requestId: request.id },
       sessionKey: request.sessionKey,
-      dedupeKey: wakeDedupeKeys.answer(request.id),
+      dedupeKey:
+        source === "answer"
+          ? wakeDedupeKeys.answer(request.id)
+          : wakeDedupeKeys.approval(request.id),
     };
   }
   if (input.type === "invocation") {

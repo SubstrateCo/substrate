@@ -284,7 +284,7 @@ export function createAgentWorkRuntime(
     async observeToolCall(request: WorkspaceApiRequest, result: WorkspaceApiResult) {
       const found = toolOutputs(request, result);
       if (!found) return;
-      // A reply may have asked a question.
+      // A reply may have asked a question, or a proposal opened a request.
       status.refreshOpenRequests();
       const turn = await context.store.turns.get(found.turnId);
       if (!turn || turn.organizationId !== context.organizationId) return;

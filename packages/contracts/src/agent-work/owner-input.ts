@@ -19,3 +19,5 @@ export const respondRequestInput = z.strictObject({
   organizationId,
   response: agentRequestResponse,
 });
+/** POST /agent-work/requests/:id/approve and /decline, for proposals. */
+export const decideProposalInput = z.strictObject({ organizationId });

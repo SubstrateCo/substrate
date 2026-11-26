@@ -34,7 +34,7 @@ export function createStatusPublisher(
   let openRequests: Promise<Set<string>> | undefined;
 
   /**
-   * Questions without an answer wake, that the server still lists as open. The
+   * Questions and proposals without an answer wake, that the server still lists as open. The
    * server can remove a request without a wake, such as when its conversation is deleted. When
    * the server cannot be reached, every unanswered request counts as open.
    */

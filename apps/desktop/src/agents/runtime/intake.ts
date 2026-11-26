@@ -73,12 +73,13 @@ async function wakeItem(context: RuntimeContext, wake: AgentWakeView): Promise<W
       },
     };
   if (!("requestId" in ref)) return { skip: "the wake has no source" };
+  const source = wake.source === "approval_result" ? "approval_result" : "answer";
   return {
     item: {
       ...common,
-      source: "answer",
+      source,
       sourceRef: {
-        source: "answer",
+        source,
         requestId: ref.requestId,
         anchorMessageId: wake.request?.anchorMessageId ?? null,
         request: wake.request,

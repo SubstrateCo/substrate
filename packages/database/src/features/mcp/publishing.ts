@@ -1,4 +1,4 @@
-import { askRequestPayload } from "@substrate/contracts/agent-work";
+import { askRequestPayload, proposalActionHash } from "@substrate/contracts/agent-work";
 import type { TurnContext } from "@substrate/contracts/harness/mcp";
 import type { McpInput, McpOutput } from "@substrate/contracts/harness/tools";
 import { realtimeKeys } from "@substrate/contracts/realtime";
@@ -7,12 +7,13 @@ import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { ValidationError } from "../../errors";
 import { createAsyncRequest } from "../agent-work/requests/async-requests";
-import { replyTarget } from "./turn";
+import { checkProposalAccess } from "../agent-work/requests/proposals";
+import { replyTarget, turnPlace } from "./turn";
 import { agentWrites } from "./writes";
 
 type Agent = Parameters<typeof agentWrites>[2];
 
-/** reply: the only way an agent publishes to its owner or asks them a question. */
+/** reply and propose: the only ways an agent publishes to its owner or asks for approval. */
 export function publishingTools(
   ctx: RepositoryContext,
   identity: SessionIdentity,
@@ -31,7 +32,9 @@ export function publishingTools(
     async reply(input: McpInput<"reply">): Promise<McpOutput<"reply">> {
       // Checked before the message posts, so a rejected ask publishes nothing.
       if (input.ask && turn.kind === "unattended")
-        throw new ValidationError("Background work cannot ask your owner. Reply without ask.");
+        throw new ValidationError(
+          "Background work cannot ask your owner. Reply without ask, or use propose.",
+        );
       const target = replyTarget(turn, input.to);
       const message = await agentWrites(ctx, identity, agent).postMessage({
         conversationId: target.conversationId,
@@ -59,6 +62,28 @@ export function publishingTools(
         questionId,
         createdAt: message.createdAt.toISOString(),
       };
+    },
+    async propose(input: McpInput<"propose">): Promise<McpOutput<"propose">> {
+      const targetBasis = await checkProposalAccess(ctx, identity, input.action);
+      // requireTurn already checked that the owner can see the turn's places.
+      const place = turnPlace(turn);
+      const proposalId = await createAsyncRequest(ctx.db, {
+        ...scope,
+        place: {
+          conversationId: place?.conversationId ?? null,
+          threadId: place?.threadId ?? null,
+          anchorMessageId: null,
+        },
+        request: {
+          kind: "proposal",
+          summary: input.summary,
+          action: input.action,
+          actionHash: await proposalActionHash(input.action),
+          targetBasis,
+        },
+      });
+      ctx.effects.hint({ audience: realtimeKeys.user(identity.userId), domain: "agent-work" });
+      return { proposalId, status: "pending" };
     },
   };
 }

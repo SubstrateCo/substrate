@@ -2,8 +2,8 @@ import { z } from "zod";
 
 const text = (max: number) => z.string().max(max);
 
-/** permission and question are native blocking prompts or reply.ask. */
-export const agentRequestKinds = ["permission", "question"] as const;
+/** permission and question are native blocking prompts or reply.ask; proposal comes from propose. */
+export const agentRequestKinds = ["permission", "question", "proposal"] as const;
 export type AgentRequestKind = (typeof agentRequestKinds)[number];
 
 /** blocking: a native callback waits on the home desktop. async: the turn ended; the answer wakes the agent. */
@@ -14,6 +14,9 @@ export const agentRequestStatuses = [
   "pending",
   "resolved",
   "delivered",
+  "executing",
+  "executed",
+  "failed",
   "cancelled",
   "expired",
   "orphaned",
@@ -59,10 +62,12 @@ export const agentRequestPayload = z.discriminatedUnion("type", [
     title: text(300).min(1),
     questions: z.array(agentQuestion).min(1).max(10),
   }),
+  /** The exact action is stored beside the payload; see proposals.ts. */
+  z.strictObject({ type: z.literal("proposal"), summary: text(2000).min(1) }),
 ]);
 export type AgentRequestPayload = z.infer<typeof agentRequestPayload>;
 
-/** Answers to approval and question payloads. */
+/** Answers to approval and question payloads. Proposals use approve and decline instead. */
 export const agentRequestResponse = z.discriminatedUnion("type", [
   z.strictObject({ type: z.literal("approval"), optionId: text(100).min(1) }),
   z.strictObject({
@@ -139,6 +144,8 @@ export function responseMatchesPayload(
         )
       );
     }
+    case "proposal":
+      return false;
   }
 }
 

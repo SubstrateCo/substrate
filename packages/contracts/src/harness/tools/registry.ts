@@ -78,7 +78,11 @@ export const localToolCall = z
   .strict();
 
 /** Server tools only the main session may call: helpers report through finish_helper instead. */
-const mainOnlyServerTools: ReadonlySet<string> = new Set(["reply", ...Object.keys(meetingTools)]);
+const mainOnlyServerTools: ReadonlySet<string> = new Set([
+  "reply",
+  "propose",
+  ...Object.keys(meetingTools),
+]);
 
 /** Tools offered on a lease. Helper sessions cannot publish, manage helpers, or edit memory. */
 export function leaseTools(

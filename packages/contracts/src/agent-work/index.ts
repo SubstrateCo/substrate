@@ -4,6 +4,7 @@ export * from "./envelope.ts";
 export * from "./invocations.ts";
 export * from "./machines/index.ts";
 export * from "./owner-input.ts";
+export * from "./proposals.ts";
 export * from "./request-views.ts";
 export * from "./requests.ts";
 export * from "./routines.ts";

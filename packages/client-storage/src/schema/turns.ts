@@ -97,8 +97,8 @@ export const outputs = sqliteTable(
     /** For message outputs. */
     conversationId: text("conversation_id"),
     threadId: text("thread_id"),
-    /** For request outputs: always question. */
-    requestKind: text("request_kind").$type<"question">(),
+    /** For request outputs: question or proposal. */
+    requestKind: text("request_kind").$type<"question" | "proposal">(),
     createdAt: integer("created_at").notNull(),
   },
   (table) => [

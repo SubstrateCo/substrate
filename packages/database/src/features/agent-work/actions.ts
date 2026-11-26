@@ -1,23 +1,35 @@
+import type { ProposalAction } from "@substrate/contracts/agent-work";
 import type { McpInput } from "@substrate/contracts/harness/tools";
 
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";
+import { contactApplicationRepository } from "../contacts/repository";
+import { contextContactInteractionRepository } from "../context/interactions/contact-interactions";
 import { recordTaskSource } from "../context/service";
+import { crmOwnership } from "../crm/ownership";
+import { crmRepository } from "../crm/repository";
 import { requireMessage } from "../messaging/access";
 import { sendMessageAs } from "../messaging/messages/messages";
 import { projectRepository } from "../projects/repository";
 import { taskRepository } from "../tasks/repository";
 
 type Agent = { entityId: string; name: string; type: "human" | "agent" };
+type ActionInput<T extends ProposalAction["type"]> = Extract<ProposalAction, { type: T }>["input"];
 
-/** Writes an agent makes as its own actor with its owner's access. */
+/**
+ * Writes an agent makes as its own actor with its owner's access. MCP tools and approved
+ * proposals both use these, so an approval runs exactly the checks the tool runs.
+ */
 export function agentActions(ctx: RepositoryContext, identity: SessionIdentity, agent: Agent) {
   const { db: tx } = ctx;
   const tasks = taskRepository(ctx);
   const projects = projectRepository(ctx);
   return {
-    async createTask({ sourceMessageId, ...value }: Omit<McpInput<"create_task">, "requestId">) {
+    async createTask({
+      sourceMessageId,
+      ...value
+    }: Extract<ProposalAction, { type: "create_task" }>["input"]) {
       let source;
       if (sourceMessageId) {
         source = await requireMessage(tx, identity, sourceMessageId);
@@ -38,7 +50,10 @@ export function agentActions(ctx: RepositoryContext, identity: SessionIdentity, 
         );
       return task;
     },
-    async updateTask({ taskId, changes }: Pick<McpInput<"update_task">, "taskId" | "changes">) {
+    async updateTask({
+      taskId,
+      changes,
+    }: Extract<ProposalAction, { type: "update_task" }>["input"]) {
       return tasks.update(taskId, { ...changes, assigneeActorEntityId: changes.assigneeActorId });
     },
     /** Moves the task from the project it is in now. A move that commits first fails this one. */
@@ -46,6 +61,11 @@ export function agentActions(ctx: RepositoryContext, identity: SessionIdentity, 
       const task = await tasks.get(taskId);
       await tasks.move(taskId, task.projectEntityId, projectId, parentTaskId);
       return tasks.get(taskId);
+    },
+    async deleteTask({ taskId }: ActionInput<"delete_task">) {
+      const task = await tasks.get(taskId);
+      await tasks.delete(taskId, task.projectEntityId);
+      return task;
     },
     createProject({ name, description }: Omit<McpInput<"create_project">, "requestId">) {
       return projects.create({ name, description });
@@ -60,6 +80,37 @@ export function agentActions(ctx: RepositoryContext, identity: SessionIdentity, 
         });
       });
     },
+    archiveProject: ({ projectId }: ActionInput<"archive_project">) => projects.archive(projectId),
+    restoreProject: ({ projectId }: ActionInput<"restore_project">) => projects.restore(projectId),
+    deleteProject: ({ projectId }: ActionInput<"delete_project">) => projects.delete(projectId),
+    shareProject: ({ projectId, actorId, level }: ActionInput<"share_project">) =>
+      projects.share(projectId, actorId, level),
+    revokeProjectAccess: ({ projectId, actorId }: ActionInput<"revoke_project_access">) =>
+      projects.revoke(projectId, actorId),
+    archiveCrmRecord: ({ kind, entityId, archived }: ActionInput<"archive_crm_record">) =>
+      kind === "contact"
+        ? contactApplicationRepository(ctx).archive(entityId, archived)
+        : crmRepository(ctx).archive(entityId, archived),
+    deleteCrmInteraction: ({ entityId }: ActionInput<"delete_crm_interaction">) =>
+      contextContactInteractionRepository(ctx).deleteInteraction(entityId),
+    /** Assigns from the record's current owner and version, which the caller has bound. */
+    async assignCrmOwner({
+      entityId,
+      ownerActorId,
+      accessDecision,
+    }: ActionInput<"assign_crm_owner">) {
+      const current = await crmOwnership(ctx, entityId);
+      return crmRepository(ctx).assignOwner(entityId, {
+        ownerActorEntityId: ownerActorId,
+        expectedOwnerActorEntityId: current.ownerActorEntityId,
+        expectedVersion: current.version,
+        accessDecision,
+      });
+    },
+    shareCrmRecord: ({ entityId, actorId, level }: ActionInput<"share_crm_record">) =>
+      crmRepository(ctx).share(entityId, actorId, level),
+    revokeCrmAccess: ({ entityId, actorId }: ActionInput<"revoke_crm_access">) =>
+      crmRepository(ctx).revoke(entityId, actorId),
     postMessage(
       this: void,
       message: {

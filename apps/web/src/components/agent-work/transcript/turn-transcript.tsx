@@ -3,8 +3,8 @@ import { liveTurnStatuses } from "@substrate/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
 
+import { RecordName } from "../requests/proposal-preview";
 import { RequestCard } from "../requests/request-card";
-import { ConversationRecordName } from "./conversation-record";
 import { TurnTimeline } from "./turn-timeline";
 import { TurnTranscriptView } from "./turn-transcript-view";
 import { useStopTurn } from "@/components/agent-work/use-stop-turn";
@@ -29,8 +29,9 @@ function transcriptDetails(
   if (!turn) return {};
   const openRequest = requests.find((entry) => entry.turnId === turn.id && isOpenRequest(entry));
   const sources = turn.sourceMessages.map((source) => (
-    <ConversationRecordName
+    <RecordName
       key={source.messageId}
+      kind="conversation"
       record={
         canOpenConversation(source.conversationId)
           ? {
@@ -45,8 +46,9 @@ function transcriptDetails(
   const outputs = turn.outputs.flatMap((entry) => {
     if (entry.kind !== "message") return [];
     return [
-      <ConversationRecordName
+      <RecordName
         key={entry.id}
+        kind="conversation"
         record={
           canOpenConversation(entry.conversationId)
             ? { access: "visible", label: "The reply", link: outputLink(organizationId, entry) }

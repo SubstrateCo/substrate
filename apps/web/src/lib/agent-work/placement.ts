@@ -108,18 +108,29 @@ export function itemPlacements(
   return placements;
 }
 
-/** Request cards under their anchor message, else under their turn's place. */
+/**
+ * Request cards under their anchor message, else under their turn's place. Executed proposals
+ * also show a backlink under the message they created.
+ */
 export function requestPlacements(
   requests: readonly AgentRequestView[],
   turnAnchors: ReadonlyMap<string, string>,
   conversationId: string,
 ) {
   const cards = new Map<string, AgentRequestView[]>();
+  const backlinks = new Map<string, AgentRequestView[]>();
   for (const request of requests) {
+    const receipt = request.proposal?.outcome;
+    if (
+      receipt?.status === "executed" &&
+      receipt.receipt.kind === "message" &&
+      receipt.receipt.conversationId === conversationId
+    )
+      add(backlinks, receipt.receipt.id, request);
     const { place } = request;
     if (place.access !== "visible" || place.conversationId !== conversationId) continue;
     const anchor = place.anchorMessageId ?? turnAnchors.get(request.turnId);
     if (anchor) add(cards, anchor, request);
   }
-  return cards;
+  return { cards, backlinks };
 }

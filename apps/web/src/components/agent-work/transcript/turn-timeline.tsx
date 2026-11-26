@@ -93,7 +93,7 @@ export function TurnTimeline({
               <li key={entry.key} className="min-w-0 text-xs text-muted-foreground">
                 <span className="flex items-center gap-2">
                   <Hand aria-hidden="true" className="size-3.5 shrink-0" />
-                  Asked you
+                  {entry.kind === "proposal" ? "Proposed an action" : "Asked you"}
                 </span>
                 {renderRequest(entry.requestId)}
               </li>

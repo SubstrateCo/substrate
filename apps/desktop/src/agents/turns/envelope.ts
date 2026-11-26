@@ -6,6 +6,7 @@ import {
   type EnvelopeItem,
   type EnvelopeResumeNote,
   type EnvelopeTurn,
+  type ProposalOutcome,
   type TriggerDefinition,
 } from "@substrate/contracts/agent-work";
 
@@ -65,9 +66,37 @@ export function renderEnvelope(turn: EnvelopeTurn) {
   return parts.join("\n");
 }
 
-/** What the owner answered on a request, in a fixed order so the same detail gives the same text. */
-function decisionLines(request: AgentWakeRequestDetail) {
+function outcomeLine(outcome: ProposalOutcome | null) {
+  if (!outcome) return "Outcome: not known yet.";
+  switch (outcome.status) {
+    case "declined":
+      return "Outcome: declined. Nothing ran.";
+    case "failed":
+      return `Outcome: approved, but it failed: ${outcome.error}`;
+    case "executed": {
+      const { receipt } = outcome;
+      if (receipt.kind === "task")
+        return `Outcome: approved and done. Task ${receipt.id} in project ${receipt.projectId}.`;
+      if (receipt.kind === "project") return `Outcome: approved and done. Project ${receipt.id}.`;
+      if (receipt.kind === "crm")
+        return `Outcome: approved and done. CRM ${receipt.entityType} ${receipt.id}.`;
+      if (receipt.kind === "deleted")
+        return `Outcome: approved and done. Deleted ${receipt.entityType} ${receipt.id}.`;
+      const thread = receipt.threadId ? ` thread ${receipt.threadId}` : "";
+      return `Outcome: approved and done. Posted message ${receipt.id} in conversation ${receipt.conversationId}${thread}.`;
+    }
+  }
+}
+
+/** What the owner decided on a request, in a fixed order so the same detail gives the same text. */
+function decisionLines(source: "answer" | "approval_result", request: AgentWakeRequestDetail) {
   const { payload } = request;
+  if (source === "approval_result")
+    return [
+      `Your owner decided on your proposal (request ${request.id}).`,
+      `Proposal: ${payload.type === "proposal" ? payload.summary : payload.title}`,
+      outcomeLine(request.outcome),
+    ];
   const lines = [`Your owner answered your question (request ${request.id}).`];
   const response = request.response;
   if (payload.type === "questions")
@@ -78,7 +107,7 @@ function decisionLines(request: AgentWakeRequestDetail) {
       const answer = response?.type === "questions" ? response.answers[entry.id] : undefined;
       lines.push(`Answer: ${answer?.length ? answer.join(" | ") : "(no answer)"}`);
     }
-  else if (response?.type === "approval") {
+  else if (payload.type === "approval" && response?.type === "approval") {
     const chosen = payload.options.find((option) => option.id === response.optionId);
     lines.push(`Question: ${payload.title}`, `Answer: ${chosen?.label ?? response.optionId}`);
   }
@@ -169,16 +198,20 @@ const renderers: Record<TriggerDefinition["envelope"], ItemRenderer> = {
   decision: (item) => {
     const ref = item.sourceRef;
     const base = itemBase(item);
-    if (ref.source !== "answer") return null;
+    if (ref.source !== "answer" && ref.source !== "approval_result") return null;
     const lines = ref.request
-      ? decisionLines(ref.request)
-      : [`Your owner answered request ${ref.requestId}. The answer is not available.`];
+      ? decisionLines(ref.source, ref.request)
+      : [
+          ref.source === "answer"
+            ? `Your owner answered request ${ref.requestId}. The answer is not available.`
+            : `Your owner decided on proposal ${ref.requestId}. The result is not available.`,
+        ];
     if (item.body) lines.push(item.body);
     return {
       ...base,
-      // The answer is the owner's words.
+      // The answer is the owner's words; a proposal's outcome is reported by the system.
       author: null,
-      authorKind: "owner",
+      authorKind: ref.source === "answer" ? "owner" : "system",
       conversationId: ref.request?.conversationId ?? null,
       threadId: ref.request?.threadId ?? null,
       body: lines.join("\n"),

@@ -4,6 +4,9 @@ import type {
   AgentRequestPayload,
   AgentRequestResponse,
   AgentRequestStatus,
+  ProposalAction,
+  ProposalOutcome,
+  ProposalTargetBasis,
 } from "@substrate/contracts/agent-work";
 
 import { actors } from "../../../core/actors/schema";
@@ -25,8 +28,8 @@ import {
   uuid,
 } from "drizzle-orm/pg-core";
 
-// Something that needs the owner: a blocking native prompt or an async question from reply.ask.
-// The turn and session are opaque IDs from the home desktop's local state.
+// Something that needs the owner: a blocking native prompt, an async question from reply.ask,
+// or a proposal. The turn and session are opaque IDs from the home desktop's local state.
 export const agentRequests = pgTable(
   "agent_requests",
   {
@@ -49,7 +52,13 @@ export const agentRequests = pgTable(
     }),
     threadId: uuid("thread_id"),
     payload: jsonb("payload").$type<AgentRequestPayload>().notNull(),
+    proposedAction: jsonb("proposed_action").$type<ProposalAction>(),
+    actionHash: text("action_hash"),
+    // Proposals only: the targets' state at propose time. Approval runs only while it matches.
+    targetBasis: jsonb("target_basis").$type<ProposalTargetBasis>(),
     response: jsonb("response").$type<AgentRequestResponse>(),
+    // Proposals only: declined, or the receipt of the executed action, or why it failed.
+    outcome: jsonb("outcome").$type<ProposalOutcome>(),
     status: text("status").$type<AgentRequestStatus>().notNull().default("pending"),
     resolvedByUserId: text("resolved_by_user_id").references(() => user.id, {
       onDelete: "set null",
@@ -92,6 +101,10 @@ export const agentRequests = pgTable(
     check(
       "agent_request_blocking_check",
       sql`${table.mode} <> 'blocking' OR ${table.nativeRequestId} IS NOT NULL`,
+    ),
+    check(
+      "agent_request_proposal_check",
+      sql`(${table.kind} = 'proposal') = (${table.proposedAction} IS NOT NULL AND ${table.actionHash} IS NOT NULL) AND (${table.kind} <> 'proposal' OR ${table.mode} = 'async')`,
     ),
     check(
       "agent_request_place_check",

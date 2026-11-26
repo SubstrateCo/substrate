@@ -185,7 +185,7 @@ export async function claimTurns(
       resumesTurnId: recovery?.sourceRef.source === "recovery" ? recovery.sourceRef.turnId : null,
       sourceMessages: [],
       requestAnchors: batch.flatMap((item) =>
-        item.sourceRef.source === "answer"
+        item.sourceRef.source === "answer" || item.sourceRef.source === "approval_result"
           ? [
               {
                 requestId: item.sourceRef.requestId,

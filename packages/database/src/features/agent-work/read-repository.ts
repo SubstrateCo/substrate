@@ -12,7 +12,11 @@ import {
 import { queryCallsLog } from "./calls/audit";
 import { decideInvocationInTransaction, invocationViews, queryMyCalls } from "./calls/invocations";
 import { agentInvocations } from "./calls/invocations.schema";
-import { respondToRequestInTransaction } from "./requests/decisions";
+import {
+  approveProposalInTransaction,
+  declineProposalInTransaction,
+  respondToRequestInTransaction,
+} from "./requests/decisions";
 import { queryConversationRequests, queryNeedsYou } from "./requests/request-views";
 import { statusViews } from "./status";
 import { eq } from "drizzle-orm";
@@ -38,6 +42,8 @@ export function createAgentWorkReadRepository(
     listCallers: (userAgentId: string) => queryCallers(db, identity, userAgentId),
     respondToRequest: (requestId: string, response: AgentRequestResponse) =>
       respondToRequestInTransaction(db, identity, requestId, response),
+    approveProposal: (requestId: string) => approveProposalInTransaction(db, identity, requestId),
+    declineProposal: (requestId: string) => declineProposalInTransaction(db, identity, requestId),
     decideInvocation: (invocationId: string, decision: DecideInvocationInput["decision"]) =>
       decideInvocationInTransaction(db, identity, invocationId, decision),
     saveCallerPolicy: (userAgentId: string, policy: AgentCallerPolicy) =>

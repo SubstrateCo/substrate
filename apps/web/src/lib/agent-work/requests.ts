@@ -2,9 +2,15 @@ import type { AgentRequestView } from "@substrate/contracts/agent-work";
 
 /** One line that says how a request ended, or that it still waits. */
 export function requestOutcome(request: AgentRequestView) {
+  const outcome = request.proposal?.outcome;
+  if (outcome?.status === "declined") return "Declined";
+  if (outcome?.status === "failed") return `Approved, but it failed: ${outcome.error}`;
+  if (outcome?.status === "executed") return "Approved";
   switch (request.status) {
     case "pending":
       return "Waiting for your answer";
+    case "executing":
+      return "Approved · running";
     case "expired":
       return "Expired without an answer";
     case "cancelled":
@@ -13,6 +19,10 @@ export function requestOutcome(request: AgentRequestView) {
       return "No longer needed";
     case "undelivered":
       return `Your answer arrived after the agent stopped waiting · ${requestAnswer(request)}`;
+    case "failed":
+      return "Failed";
+    case "executed":
+      return "Approved";
     case "resolved":
     case "delivered":
       break;
@@ -35,8 +45,8 @@ function requestAnswer(request: AgentRequestView) {
 }
 
 /**
- * When a blocking request stops waiting. Async questions wait until the owner answers, so they
- * have no deadline in the client.
+ * When a blocking request stops waiting. Async questions and proposals wait until the owner
+ * answers, so they have no deadline in the client.
  */
 export function requestDeadline(request: Pick<AgentRequestView, "mode" | "expiresAt">) {
   if (request.mode !== "blocking" || !request.expiresAt) return null;

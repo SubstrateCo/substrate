@@ -1,4 +1,4 @@
-import { MutationObserver, QueryClient, type QueryKey } from "@tanstack/react-query";
+import { MutationObserver, QueryClient, QueryObserver, type QueryKey } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 import { queryTargetFilter, type QueryTarget } from "../targets";
@@ -7,6 +7,15 @@ import { localWorkMutationOptions, requestActionMutationOptions } from "./mutati
 import { bridgeChangeTargets } from "./sync";
 import { ApiError } from "@/api/result";
 import { describe, expect, test } from "bun:test";
+
+type Requests = NonNullable<Parameters<typeof requestActionMutationOptions>[3]>;
+
+/** Server requests that all settle with `settle`. */
+const requests = (settle: () => Promise<void>): Requests => ({
+  respondToRequest: settle,
+  approveProposal: settle,
+  declineProposal: settle,
+});
 
 const target = crypto.randomUUID();
 
@@ -39,6 +48,54 @@ const cached = [
 ];
 
 describe("agent-work mutation invalidation", () => {
+  test("an approved task reads overlapping context targets once without canceling them", async () => {
+    const client = new QueryClient();
+    const keys = [
+      queryKeys.activity("org", "task"),
+      queryKeys.related("org", "task"),
+      queryKeys.messagePage("org", "conversation", ["message"]),
+    ];
+    const reads = keys.map(() => 0);
+    let canceled = 0;
+    const response = Promise.withResolvers<{ links: unknown[] }[]>();
+    const stops = keys.map((queryKey, index) =>
+      new QueryObserver(client, {
+        queryKey,
+        initialData: [{ links: ["task"] }],
+        staleTime: Infinity,
+        queryFn: ({ signal }) => {
+          reads[index]++;
+          signal.addEventListener("abort", () => canceled++);
+          return response.promise;
+        },
+      }).subscribe(() => {}),
+    );
+    try {
+      const pending = new MutationObserver(
+        client,
+        requestActionMutationOptions(
+          client,
+          "user",
+          "org",
+          requests(async () => {}),
+        ),
+      ).mutate({
+        kind: "approve",
+        requestId: "request",
+        action: { type: "create_task", input: { projectId: target, title: "Follow up" } },
+      });
+      response.resolve([{ links: [] }]);
+      await pending;
+      expect(reads).toEqual([1, 1, 1]);
+      expect(canceled).toBe(0);
+      for (const key of keys) expect(client.getQueryData(key)).toEqual([{ links: [] }]);
+    } finally {
+      response.resolve([]);
+      stops.forEach((stop) => stop());
+      client.clear();
+    }
+  });
+
   test("a conflict still refreshes the owner's requests, but not another owner's", async () => {
     const client = new QueryClient();
     const key = queryKeys.agentWorkRequests("user", "org", "conversation");
@@ -47,12 +104,17 @@ describe("agent-work mutation invalidation", () => {
     try {
       const action = new MutationObserver(
         client,
-        requestActionMutationOptions(client, "user", "org", async () => {
-          throw new ApiError("CONFLICT", "Already answered.", 409);
-        }),
+        requestActionMutationOptions(
+          client,
+          "user",
+          "org",
+          requests(async () => {
+            throw new ApiError("CONFLICT", "Already answered.", 409);
+          }),
+        ),
       );
       const result = await action
-        .mutate({ requestId: "request", response: { type: "approval", optionId: "allow" } })
+        .mutate({ kind: "decline", requestId: "request" })
         .catch((error: Error) => error);
       expect(result).toMatchObject({ status: 409 });
       expect(client.getQueryState(key)?.isInvalidated).toBe(true);
@@ -107,6 +169,46 @@ describe("agent-work mutation invalidation", () => {
     const keys = agentWorkInvalidations("user", "org", { kind: "local" });
     expect(keys).toEqual([{ queryKey: queryKeys.agentWorkLocal("user", "org") }]);
     expect(matched([...local, ...server], keys)).toEqual(local);
+  });
+
+  test("an approval refreshes the reactions, notifications, and searches its record shows in", () => {
+    const shown = [
+      queryKeys.messageReactions("org", target, "m1"),
+      queryKeys.notifications("org"),
+      [...queryKeys.search("org"), { query: "follow" }],
+      [...queryKeys.searchPages("org"), { query: "follow" }],
+    ];
+    const reply = agentWorkInvalidations("user", "org", {
+      kind: "approved",
+      action: { type: "reply_elsewhere", input: { conversationId: target, body: "Hi" } },
+    });
+    const task = agentWorkInvalidations("user", "org", {
+      kind: "approved",
+      action: { type: "create_task", input: { projectId: target, title: "Follow up" } },
+    });
+    const unknown = agentWorkInvalidations("user", "org", { kind: "approved", action: null });
+    expect(matched(shown, reply)).toEqual([shown[0]!, shown[2]!, shown[3]!]);
+    expect(matched(shown, task)).toEqual(shown.slice(1));
+    expect(matched(shown, unknown)).toEqual(shown);
+  });
+
+  test("an approved reply also refreshes the target conversation's messages", () => {
+    const keys = agentWorkInvalidations("user", "org", {
+      kind: "approved",
+      action: { type: "reply_elsewhere", input: { conversationId: target, body: "Hi" } },
+    });
+    expect(matched(cached, keys)).toEqual([...cached.slice(0, 4), queryKeys.conversations("org")]);
+  });
+
+  test("an approved task proposal also refreshes tasks, not messages", () => {
+    const keys = agentWorkInvalidations("user", "org", {
+      kind: "approved",
+      action: { type: "create_task", input: { projectId: target, title: "Follow up" } },
+    });
+    expect(matched(cached, keys)).toEqual([
+      ...cached.slice(0, 3),
+      queryKeys.project("org", "project"),
+    ]);
   });
 });
 

@@ -63,7 +63,7 @@ export function NeedsYouView({
           <ContentNotice
             icon={CheckCheck}
             title="Nothing needs you"
-            description="When an agent asks a question or needs your approval, it shows here."
+            description="When an agent asks a question or proposes an action, it shows here."
           />
         )}
         {entries.length > 0 && (

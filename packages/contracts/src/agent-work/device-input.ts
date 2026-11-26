@@ -57,7 +57,7 @@ export const publishStatusInput = z.strictObject({
 
 const [approvalPayload, questionsPayload] = agentRequestPayload.options;
 
-/** Native blocking prompts only. Async questions start from reply.ask. */
+/** Native blocking prompts only. Async questions and proposals start from MCP tools. */
 export const openRequestInput = z.strictObject({
   ...device,
   userAgentId: id,

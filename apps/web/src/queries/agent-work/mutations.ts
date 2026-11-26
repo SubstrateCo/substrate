@@ -2,6 +2,7 @@ import type {
   AgentRequestResponse,
   ApproveRoutineInput,
   CreateRoutineInput,
+  ProposalAction,
   UpdateRoutineInput,
 } from "@substrate/contracts/agent-work";
 import { createRoutineInput, updateRoutineInput } from "@substrate/contracts/agent-work";
@@ -17,28 +18,45 @@ import {
 import { invalidateTargets } from "../targets";
 import { agentWorkBridge } from "./bridge";
 import { agentWorkInvalidations } from "./invalidation";
-import { respondToRequest } from "@/api/agent-work/requests";
+import { approveProposal, declineProposal, respondToRequest } from "@/api/agent-work/requests";
 
-export type RequestAction = { requestId: string; response: AgentRequestResponse };
+export type RequestAction =
+  | { kind: "respond"; requestId: string; response: AgentRequestResponse }
+  | { kind: "approve"; requestId: string; action: ProposalAction | null }
+  | { kind: "decline"; requestId: string };
 
 /**
- * Answers, as one mutation, so its state is always the latest attempt. They go to the server,
- * so any owner device can send them.
+ * Answers and proposal decisions, as one mutation, so its state is always the latest attempt.
+ * They go to the server, so any owner device can make them.
  */
 export function requestActionMutationOptions(
   client: QueryClient,
   userId: string,
   organizationId: string,
-  respond = respondToRequest,
+  requests = { respondToRequest, approveProposal, declineProposal },
 ) {
   return mutationOptions({
-    mutationFn: ({ requestId, response }: RequestAction) =>
-      respond({ data: { organizationId, requestId, response } }),
+    mutationFn: (input: RequestAction) => {
+      const { requestId } = input;
+      if (input.kind === "respond")
+        return requests.respondToRequest({
+          data: { organizationId, requestId, response: input.response },
+        });
+      if (input.kind === "approve")
+        return requests.approveProposal({ data: { organizationId, requestId } });
+      return requests.declineProposal({ data: { organizationId, requestId } });
+    },
     // A conflict means another device answered first. Refresh to show that answer.
-    onSettled: () =>
+    onSettled: (_data, _error, input) =>
       invalidateTargets(
         client,
-        agentWorkInvalidations(userId, organizationId, { kind: "agent-work" }),
+        agentWorkInvalidations(
+          userId,
+          organizationId,
+          input.kind === "approve"
+            ? { kind: "approved", action: input.action }
+            : { kind: "agent-work" },
+        ),
       ),
   });
 }

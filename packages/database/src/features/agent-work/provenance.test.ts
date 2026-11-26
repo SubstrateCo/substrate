@@ -33,7 +33,7 @@ test("wakes and requests name the user agent's own agent actor", async () => {
     turnId: crypto.randomUUID(),
     kind: "question" as const,
     mode: "async" as const,
-    payload: { type: "approval" as const, title: "x", detail: null, options: [] },
+    payload: { type: "proposal" as const, summary: "x" },
   });
   // Another agent's actor, and the owner's own human actor.
   for (const actorId of [other.actorId, f.alice]) {

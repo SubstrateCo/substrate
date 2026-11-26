@@ -47,6 +47,7 @@ const detailOf = (request: RequestRow): AgentWakeRequestDetail => ({
   status: request.status,
   payload: request.payload,
   response: request.response ?? null,
+  outcome: request.outcome ?? null,
   anchorMessageId: request.anchorMessageId,
   conversationId: request.conversationId,
   threadId: request.threadId,
@@ -222,11 +223,12 @@ export async function ackWakesForDevice(
   return { acked: acked.length };
 }
 
-/** Wakes the agent with the owner's answer to a request. One wake per request. */
+/** Wakes the agent with the owner's decision on a request. One wake per request and kind. */
 export async function wakeForRequest(
   db: DatabaseExecutor,
   request: typeof agentRequests.$inferSelect,
+  source: "answer" | "approval_result",
 ) {
   // Callers publish their own agent-work hint, so admit's hints are not needed here.
-  await admit(db, [{ type: "request", request }]);
+  await admit(db, [{ type: "request", source, request }]);
 }

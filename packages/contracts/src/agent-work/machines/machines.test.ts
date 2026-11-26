@@ -40,6 +40,10 @@ const fromEach = <S extends string, Ev extends string>(states: readonly S[], eve
 
 describeMachine("request", requestMachine, [
   ["pending", "answer", "resolved"],
+  ["pending", "decline", "resolved"],
+  ["pending", "approve", "executing"],
+  ["executing", "execute", "executed"],
+  ["executing", "fail", "failed"],
   ["resolved", "deliver", "delivered"],
   ["pending", "cancel", "cancelled"],
   ["pending", "expire", "expired"],

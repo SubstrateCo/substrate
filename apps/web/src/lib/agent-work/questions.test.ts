@@ -88,6 +88,31 @@ describe("request deadlines and outcomes", () => {
     );
   });
 
+  test("a decided proposal says how it ended", () => {
+    const action = {
+      type: "reply_elsewhere" as const,
+      input: { conversationId: crypto.randomUUID(), body: "Hi" },
+    };
+    expect(
+      requestOutcome(
+        request({
+          kind: "proposal",
+          status: "resolved",
+          proposal: { action, actionHash: "h", outcome: { status: "declined" } },
+        }),
+      ),
+    ).toBe("Declined");
+    expect(
+      requestOutcome(
+        request({
+          kind: "proposal",
+          status: "failed",
+          proposal: { action, actionHash: "h", outcome: { status: "failed", error: "No access" } },
+        }),
+      ),
+    ).toBe("Approved, but it failed: No access");
+  });
+
   test("an answered question shows the answer", () => {
     expect(
       requestOutcome(

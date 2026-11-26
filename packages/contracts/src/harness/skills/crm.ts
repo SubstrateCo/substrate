@@ -43,7 +43,7 @@ export const crmSkill: HarnessSkill = {
 
 - Call \`list_crm_activity\` for shared internal account, contact or deal changes by people and agents. Pass nextCursor as before to continue. Activity is not customer-contact history: an account edit, stage change, agent action or completed task does not count as a call, meeting or message with the customer. Use interactions for observed customer contact. An agent label does not establish customer identity or grant access to that agent's private definition. Do not guess or reveal private agent names or IDs from a generic label.
 - Call \`list_crm_interactions\` with a contact, account or deal to read its history. Call \`search_crm_interactions\` to find interactions across the workspace by period, kind, origin or words, and \`get_crm_interaction\` to read one in full. Continue with nextBefore as before until it is null; occurrence time and entity ID keep tied entries stable. Use \`create_crm_interaction\` only for a manual interaction.
-- Use \`update_crm_interaction\` only to correct a summary. Use \`delete_crm_interaction\` only when your owner asks.
+- Use \`update_crm_interaction\` only to correct a summary. Deleting an interaction needs \`propose\` with \`delete_crm_interaction\`.
 - Historical customer contact is an interaction; future work is a task. An internal note or completed task is not automatically a customer touch.
 - Manual interactions record observed facts and occurrence time. Do not disguise a private-message summary as a manual interaction to bypass source publication controls.
 - Before publishing source-derived text, ask your owner to approve the exact summary and its audience: everyone in the workspace can read contacts and retain that summary after source access is removed. Use \`publish_crm_interaction\` with messageId to preserve structured provenance, and set consentToContactAudience only after that explicit approval. This is different from linking a message, which does not copy its text into the CRM audience.
@@ -61,9 +61,9 @@ export const crmSkill: HarnessSkill = {
 
 ## Approval, publishing and retries
 
-- Archive or restore a record with \`archive_crm_record\`, change an account's or deal's owner with \`assign_crm_owner\`, and share or unshare one with \`share_crm_record\` or \`revoke_crm_access\`. Do these only when your owner asks, and only in interactive turns. Share and assign only to people, never to agents.
-- In background turns, read and prepare recommendations only. Do not change CRM records. For any change, send a plain reply requesting a later interactive instruction without ask, then end the turn rather than inventing an action. Background reply rejects the ask field.
-- Publish messages only with reply. Text outside those tools is the private transcript. Do not create an automatic wake or send outreach from a CRM change.
+- Archiving or restoring a record, deleting an interaction, changing a record's owner, and sharing or unsharing a record are possible only through \`propose\`, with \`archive_crm_record\`, \`delete_crm_interaction\`, \`assign_crm_owner\`, \`share_crm_record\` or \`revoke_crm_access\`. Your owner approves each one. Share and assign only to people, never to agents.
+- In background turns, read and prepare recommendations only. Do not change CRM records. Only the propose actions above are available, and your owner approves each one; for other changes, send a plain reply requesting a later interactive instruction without ask, then end the turn rather than inventing an action. Background reply rejects the ask field.
+- Publish messages only with reply or propose. Text outside those tools is the private transcript. Do not create an automatic wake or send outreach from a CRM change.
 - Where a tool accepts requestId, use a new one for each new action. Retry the same action with the same requestId and input. Message publication instead deduplicates by contact and message: a repeat returns the existing interaction unchanged, so do not change the summary to force another publication. Read after a conflict; a new requestId is not permission to overwrite stale state.
 - Report only confirmed changes and clearly name any unsupported source capture, publication, follow-up, import or automation. CSV import is not supported.
 `,

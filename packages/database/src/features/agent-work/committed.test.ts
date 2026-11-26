@@ -58,7 +58,7 @@ test("scoped device writes commit in one transaction each", async () => {
   }
 });
 
-test("scoped agent-work writes commit once each", async () => {
+test("scoped agent-work writes commit once each and approval nests its savepoint", async () => {
   const x = await callerFixture(f);
   const agentWork = (await createRepositories(db).forSession(x.owner)).agentWork;
   const writes = [
@@ -97,6 +97,25 @@ test("scoped agent-work writes commit once each", async () => {
     ).result,
   ).toEqual({ status: "resolved" });
   expect(transactionCount).toBe(1);
+  const channel = await y.alice.createConversation({ kind: "channel", name: "Updates" });
+  for (const decision of ["declineProposal", "approveProposal"] as const) {
+    const proposal = await y.call(
+      "propose",
+      {
+        requestId: crypto.randomUUID(),
+        summary: "Post update",
+        action: { type: "reply_elsewhere", input: { conversationId: channel.id, body: "Update" } },
+      },
+      { ...turn, kind: "unattended" },
+    );
+    transactionCount = 0;
+    const committed = await owned[decision](proposal.proposalId);
+    expect(committed.hints.length).toBeGreaterThan(0);
+    expect(committed.result.outcome.status).toBe(
+      decision === "approveProposal" ? "executed" : "declined",
+    );
+    expect(transactionCount).toBe(decision === "approveProposal" ? 2 : 1);
+  }
 });
 
 // Fail a later insert after the mutation, on the real transaction executor.
