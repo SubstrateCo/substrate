@@ -1,10 +1,13 @@
-import type { InteractionSourceEvent } from "@substrate/contracts/calendar";
-
-import { Link } from "@tanstack/react-router";
-
 import { useMemo } from "react";
 
-import { interactionOrigins, interactionTypes, type InteractionRow } from "./interaction-types";
+import { ContactProfileLink, InteractionRecordLink } from "./interaction-link";
+import {
+  emptySources,
+  interactionOrigins,
+  interactionTypes,
+  type InteractionRow,
+  type InteractionSources,
+} from "./interaction-types";
 import { MeetingSourceLink } from "@/components/calendar/meeting-source-link";
 import {
   AppTable,
@@ -16,12 +19,8 @@ import { Timestamp } from "@/components/time/timestamp";
 import { Activity } from "lucide-react";
 
 const column = createAppColumnHelper<InteractionRow>();
-const emptySources: Readonly<Record<string, InteractionSourceEvent>> = {};
 
-function interactionColumns(
-  organizationId: string,
-  sources: Readonly<Record<string, InteractionSourceEvent>>,
-) {
+function interactionColumns(organizationId: string, sources: InteractionSources) {
   return column.columns([
     column.accessor("occurredAt", {
       header: "Time",
@@ -36,41 +35,29 @@ function interactionColumns(
       header: "Contact",
       meta: { width: "w-36" },
       cell: ({ row }) => (
-        <Link
-          from="/interactions/"
-          to="/interactions"
-          search={(previous) => ({
-            ...previous,
-            workspaceId: organizationId,
-            section: "person",
-            profileId: row.original.contactEntityId,
-            recordId: undefined,
-          })}
+        <ContactProfileLink
+          organizationId={organizationId}
+          contactEntityId={row.original.contactEntityId}
           className="block truncate text-muted-foreground underline-offset-4 hover:underline"
           title={row.original.contactName}
         >
           {row.original.contactName}
-        </Link>
+        </ContactProfileLink>
       ),
     }),
     column.accessor("summary", {
       header: "Summary",
       cell: ({ row }) => (
         <>
-          <Link
-            from="/interactions/"
-            to="/interactions"
-            search={(previous) => ({
-              ...previous,
-              workspaceId: organizationId,
-              recordId: row.original.entityId,
-            })}
+          <InteractionRecordLink
+            organizationId={organizationId}
+            entityId={row.original.entityId}
             className={tableLink}
             aria-label={`Open interaction: ${row.original.summary}`}
             title={row.original.summary}
           >
             {row.original.summary}
-          </Link>
+          </InteractionRecordLink>
           <MeetingSourceLink
             organizationId={organizationId}
             source={sources[row.original.entityId]}
@@ -127,7 +114,7 @@ export function InteractionTable({
   rows: InteractionRow[];
   organizationId: string;
   /** The meetings that calendar interactions came from, by interaction. */
-  sources?: Readonly<Record<string, InteractionSourceEvent>>;
+  sources?: InteractionSources;
   pagination: AppTablePagination;
   fetching: boolean;
 }) {

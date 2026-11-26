@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
+import { InteractionRecordLink } from "./interaction-link";
 import type { getInteractionProfile } from "@/api/context/interactions";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { recordRows } from "@/components/layout/record-section";
@@ -47,18 +48,13 @@ function ConnectionLink({
     return <MeetingLink organizationId={organizationId} connection={connection} />;
   if (connection.entityType === "contact_interaction")
     return (
-      <Link
-        from="/interactions/"
-        to="/interactions"
-        search={(previous) => ({
-          ...previous,
-          workspaceId: organizationId,
-          recordId: connection.entityId,
-        })}
+      <InteractionRecordLink
+        organizationId={organizationId}
+        entityId={connection.entityId}
         className="min-w-0 wrap-anywhere underline underline-offset-4"
       >
         {connection.title}
-      </Link>
+      </InteractionRecordLink>
     );
   return (
     <Link

@@ -1,12 +1,11 @@
-import type { InteractionSourceEvent } from "@substrate/contracts/calendar";
-
-import { Link } from "@tanstack/react-router";
-
+import { ContactProfileLink, InteractionRecordLink } from "./interaction-link";
 import { InteractionRow } from "./interaction-row";
 import {
+  emptySources,
   interactionOrigins,
   interactionTypes,
   type InteractionRow as Row,
+  type InteractionSources,
 } from "./interaction-types";
 import { MeetingSourceLink } from "@/components/calendar/meeting-source-link";
 import { Tag } from "@/components/feedback/tag";
@@ -14,12 +13,12 @@ import { Tag } from "@/components/feedback/tag";
 export function InteractionList({
   rows,
   organizationId,
-  sources = {},
+  sources = emptySources,
 }: {
   rows: Row[];
   organizationId: string;
   /** The meetings that calendar interactions came from, by interaction. */
-  sources?: Readonly<Record<string, InteractionSourceEvent>>;
+  sources?: InteractionSources;
 }) {
   return (
     <ol aria-label="Interactions" className="grid gap-px">
@@ -34,35 +33,23 @@ export function InteractionList({
             kind={row.kind}
             occurredAt={row.occurredAt}
             contact={
-              <Link
-                from="/interactions/"
-                to="/interactions"
-                search={(previous) => ({
-                  ...previous,
-                  workspaceId: organizationId,
-                  section: "person",
-                  profileId: row.contactEntityId,
-                  recordId: undefined,
-                })}
+              <ContactProfileLink
+                organizationId={organizationId}
+                contactEntityId={row.contactEntityId}
                 className="underline-offset-4 hover:underline"
               >
                 {row.contactName}
-              </Link>
+              </ContactProfileLink>
             }
             summary={
-              <Link
-                from="/interactions/"
-                to="/interactions"
-                search={(previous) => ({
-                  ...previous,
-                  workspaceId: organizationId,
-                  recordId: row.entityId,
-                })}
+              <InteractionRecordLink
+                organizationId={organizationId}
+                entityId={row.entityId}
                 className="underline-offset-4 hover:underline"
                 aria-label={`Open interaction: ${row.summary}`}
               >
                 {row.summary}
-              </Link>
+              </InteractionRecordLink>
             }
             details={[
               <span key="kind">{interactionTypes[row.kind].label}</span>,

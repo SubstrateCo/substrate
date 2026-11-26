@@ -6,7 +6,7 @@ import type {
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 
 import type { getInteractionDirectory } from "@/api/context/interactions";
 import { SegmentedControl } from "@/components/forms/segmented-control";
@@ -147,7 +147,7 @@ function DirectoryPage({
     placeholderData: keepPreviousData,
   });
   const pageSize = input.pageSize ?? 25;
-  const [columns] = useState(() => directoryColumns(input.type));
+  const columns = useMemo(() => directoryColumns(input.type), [input.type]);
   return (
     <AppTable
       name={input.type === "people" ? "People directory" : "Organization directory"}

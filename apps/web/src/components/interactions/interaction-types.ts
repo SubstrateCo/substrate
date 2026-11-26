@@ -1,3 +1,4 @@
+import type { InteractionSourceEvent } from "@substrate/contracts/calendar";
 import type { InteractionKind } from "@substrate/contracts/context/interactions";
 
 import type { getInteractionActivity, getInteractionTimeline } from "@/api/context/interactions";
@@ -5,6 +6,10 @@ import { Calendar, Mail, MessageSquare, Layers, NotebookPen, Phone } from "lucid
 
 export type InteractionActivity = Awaited<ReturnType<typeof getInteractionActivity>>;
 export type InteractionRow = Awaited<ReturnType<typeof getInteractionTimeline>>["items"][number];
+/** The meetings that calendar interactions came from, by interaction. */
+export type InteractionSources = Readonly<Record<string, InteractionSourceEvent>>;
+/** One shared empty value, so a table's column memo stays stable. */
+export const emptySources: InteractionSources = {};
 export type InteractionSection =
   | "dashboard"
   | "timeline"

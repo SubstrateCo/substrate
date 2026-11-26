@@ -1,10 +1,11 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 
 import { useState, type ReactNode } from "react";
 
 import { InteractionDashboard } from "./interaction-dashboard";
 import { InteractionDetail } from "./interaction-detail";
 import { InteractionDirectory } from "./interaction-directory";
+import { ContactProfileLink } from "./interaction-link";
 import { interactionWindow } from "./interaction-period";
 import { InteractionProfile } from "./interaction-profile";
 import { InteractionTimeline } from "./interaction-timeline";
@@ -262,21 +263,15 @@ function InteractionRecordSheet({
           organizationId={organizationId}
           entityId={recordId}
           renderContact={(contact) => (
-            <Link
-              from="/interactions/"
-              to="/interactions"
-              search={(previous) => ({
-                ...previous,
-                section: "person",
-                profileId: contact.entityId,
-                recordId: undefined,
-                // The record can be older than the current period.
-                days: "all",
-              })}
+            <ContactProfileLink
+              organizationId={organizationId}
+              contactEntityId={contact.entityId}
+              // The record can be older than the current period.
+              allTime
               className="min-w-0 truncate underline-offset-4 hover:underline"
             >
               {contact.name}
-            </Link>
+            </ContactProfileLink>
           )}
         />
       )}

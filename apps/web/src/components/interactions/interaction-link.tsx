@@ -25,3 +25,55 @@ export function InteractionLink({
     </Link>
   );
 }
+
+type InteractionsLinkProps = {
+  organizationId: string;
+  children: ReactNode;
+  className?: string;
+  title?: string;
+  "aria-label"?: string;
+};
+
+/** Inside Interactions: open one interaction's record sheet and keep the current view. */
+export function InteractionRecordLink({
+  organizationId,
+  entityId,
+  ...props
+}: InteractionsLinkProps & { entityId: string }) {
+  return (
+    <Link
+      from="/interactions/"
+      to="/interactions"
+      search={(previous) => ({ ...previous, workspaceId: organizationId, recordId: entityId })}
+      {...props}
+    />
+  );
+}
+
+/** Inside Interactions: open a contact's profile, keep the current filters, and close any record. */
+export function ContactProfileLink({
+  organizationId,
+  contactEntityId,
+  allTime,
+  ...props
+}: InteractionsLinkProps & {
+  contactEntityId: string;
+  /** Show all time, for a record that can be older than the current period. */
+  allTime?: boolean;
+}) {
+  return (
+    <Link
+      from="/interactions/"
+      to="/interactions"
+      search={(previous) => ({
+        ...previous,
+        workspaceId: organizationId,
+        section: "person",
+        profileId: contactEntityId,
+        recordId: undefined,
+        days: allTime ? "all" : previous.days,
+      })}
+      {...props}
+    />
+  );
+}
