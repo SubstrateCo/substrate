@@ -38,6 +38,7 @@ test("week columns stay aligned with the headings while scrolling and resizing",
   const scroller = page.getByTestId("week-time-scroller");
   await expect(headings.locator(":scope > *")).toHaveCount(7);
   await expect(allDay.getByRole("link", { name: "Planning day", exact: true })).toBeVisible();
+  // Layout settles after the injected scrollbar style, scrolling and resizing; retry until it holds.
   const assertAligned = async () => {
     const expected = await columnEdges(headings);
     for (const band of [allDay, timed]) {
@@ -53,7 +54,7 @@ test("week columns stay aligned with the headings while scrolling and resizing",
   expect(await scroller.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(
     true,
   );
-  await assertAligned();
+  await expect(assertAligned).toPass();
   await captureScreenshot(page, "calendar-week-aligned-columns");
   const initialEdges = await columnEdges(timed);
   const initialScrollTop = await scroller.evaluate((element) => element.scrollTop);
@@ -63,9 +64,9 @@ test("week columns stay aligned with the headings while scrolling and resizing",
   await expect
     .poll(() => scroller.evaluate((element) => element.scrollTop))
     .not.toBe(initialScrollTop);
-  await assertAligned();
+  await expect(assertAligned).toPass();
   expect(await columnEdges(timed)).toEqual(initialEdges);
 
   await page.setViewportSize({ width: 1000, height: 700 });
-  await assertAligned();
+  await expect(assertAligned).toPass();
 });

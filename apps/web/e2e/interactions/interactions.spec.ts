@@ -327,22 +327,24 @@ test("dashboard selects today, browses day-specific pages, and handles empty day
         return !!box && box.x + box.width <= width;
       })
       .toBe(true);
-    const bar = await dailyChart.locator("rect").evaluateAll((rectangles) => {
-      const bounds = rectangles
-        .map((rect) => rect.getBoundingClientRect())
-        .filter((rect) => rect.width > 0 && rect.height > 0 && rect.width < 150)
-        .sort((a, b) => b.x - a.x || b.height - a.height)[0]!;
-      return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
-    });
-    await page.mouse.move(bar.x + bar.width / 2, bar.y + bar.height / 2);
     const tip = page.getByRole("status").filter({ hasText: "Message" });
-    await expect(tip).toBeVisible();
-    await expect
-      .poll(async () => {
-        const box = await tip.boundingBox();
-        return !!box && (box.x + box.width <= bar.x || box.x >= bar.x + bar.width);
-      })
-      .toBe(true);
+    // The chart redraws its bars and tooltip offset after the resize settles, so measure, hover,
+    // and check together against the bar as it is now.
+    let bar = { x: 0, y: 0, width: 0, height: 0 };
+    await expect(async () => {
+      bar = await dailyChart.locator("rect").evaluateAll((rectangles) => {
+        const bounds = rectangles
+          .map((rect) => rect.getBoundingClientRect())
+          .filter((rect) => rect.width > 0 && rect.height > 0 && rect.width < 150)
+          .sort((a, b) => b.x - a.x || b.height - a.height)[0]!;
+        return { x: bounds.x, y: bounds.y, width: bounds.width, height: bounds.height };
+      });
+      await page.mouse.move(0, 0);
+      await page.mouse.move(bar.x + bar.width / 2, bar.y + bar.height / 2);
+      await expect(tip).toBeVisible({ timeout: 1_000 });
+      const box = await tip.boundingBox();
+      expect(!!box && (box.x + box.width <= bar.x || box.x >= bar.x + bar.width)).toBe(true);
+    }).toPass();
     await page.mouse.click(bar.x + bar.width / 2, bar.y + bar.height / 2);
     await expect(page.getByLabel("Selected day: Today", { exact: true })).toBeVisible();
     await expect(dailyChart).toBeFocused();
