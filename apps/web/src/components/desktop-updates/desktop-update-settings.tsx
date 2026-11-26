@@ -3,17 +3,13 @@ import type {
   DesktopUpdateStatus,
 } from "@substrate/contracts/desktop/updates-ipc";
 
-import { useMutation } from "@tanstack/react-query";
-
 import { PendingButton } from "@/components/feedback/pending-button";
 import { SettingsCard, SettingsRow } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import { useDesktopUpdates } from "@/hooks/use-desktop-updates";
 import { updatesBridge } from "@/lib/desktop/bridges";
+import { useDesktopUpdateCommand } from "@/queries/desktop/mutations";
 import { ArrowUpRight } from "lucide-react";
-import { toast } from "sonner";
-
-type UpdateCommand = () => Promise<DesktopUpdateStatus | void>;
 
 // Only packaged desktop builds update. Browsers and development builds show nothing.
 export function DesktopUpdateSettings() {
@@ -24,19 +20,16 @@ export function DesktopUpdateSettings() {
 
 function ConnectedUpdateSettings({ bridge }: { bridge: DesktopUpdatesAPI }) {
   const status = useDesktopUpdates(bridge);
-  const command = useMutation({
-    mutationFn: (action: UpdateCommand) => action(),
-    onError: () => toast.error("We couldn’t finish the update. Try again."),
-  });
+  const command = useDesktopUpdateCommand(bridge);
   if (!status || status.install === "unavailable") return null;
 
   return (
     <DesktopUpdateSettingsView
       status={status}
-      pending={command.isPending}
-      onCheck={() => command.mutate(() => bridge.checkForUpdates())}
-      onInstall={() => command.mutate(() => bridge.installNow())}
-      onDownload={() => command.mutate(() => bridge.openDownloadPage())}
+      pending={command.pending}
+      onCheck={() => command.run("check")}
+      onInstall={() => command.run("install")}
+      onDownload={() => command.run("download")}
     />
   );
 }

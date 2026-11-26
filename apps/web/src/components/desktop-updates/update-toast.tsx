@@ -1,4 +1,5 @@
 import type { UpdateNoticeContent } from "./update-notice-content";
+import { PendingButton } from "@/components/feedback/pending-button";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { CircleAlert, X } from "lucide-react";
@@ -9,10 +10,13 @@ import { CircleAlert, X } from "lucide-react";
  */
 export function UpdateToast({
   content,
+  pending,
   onAction,
   onClose,
 }: {
   content: UpdateNoticeContent;
+  /** True while an update command runs, from this notice or from settings. */
+  pending: boolean;
   onAction: () => void;
   onClose: () => void;
 }) {
@@ -26,14 +30,15 @@ export function UpdateToast({
         <p className="text-sm wrap-anywhere text-muted-foreground">{content.description}</p>
         {content.action && (
           <div className="mt-3 flex gap-2">
-            <Button
+            <PendingButton
               type="button"
               size="sm"
               variant={content.tone === "error" ? "outline" : "default"}
+              pending={pending}
               onClick={onAction}
             >
               {content.action.label}
-            </Button>
+            </PendingButton>
           </div>
         )}
       </div>

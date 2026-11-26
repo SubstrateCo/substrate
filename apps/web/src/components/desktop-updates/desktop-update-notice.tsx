@@ -1,7 +1,4 @@
-import type {
-  DesktopUpdatesAPI,
-  DesktopUpdateStatus,
-} from "@substrate/contracts/desktop/updates-ipc";
+import type { DesktopUpdatesAPI } from "@substrate/contracts/desktop/updates-ipc";
 
 import { useEffect, useState } from "react";
 
@@ -9,9 +6,15 @@ import { updateNoticeContent, type UpdateNoticeAction } from "./update-notice-co
 import { UpdateToast } from "./update-toast";
 import { useDesktopUpdates } from "@/hooks/use-desktop-updates";
 import { updatesBridge } from "@/lib/desktop/bridges";
+import { useDesktopUpdateCommand, type DesktopUpdateCommand } from "@/queries/desktop/mutations";
 import { toast } from "sonner";
 
 const toastId = "desktop-update";
+const commands: Record<UpdateNoticeAction, DesktopUpdateCommand> = {
+  install: "install",
+  download: "download",
+  retry: "check",
+};
 
 // Only the desktop app has this bridge. Browsers show nothing.
 export function DesktopUpdateNotice() {
@@ -23,6 +26,7 @@ export function DesktopUpdateNotice() {
 /** Shows the update that needs the person as one toast, updated in place as the status changes. */
 function UpdateNoticeToast({ bridge }: { bridge: DesktopUpdatesAPI }) {
   const status = useDesktopUpdates(bridge);
+  const { pending, run } = useDesktopUpdateCommand(bridge);
   // The notice the person closed stays hidden until the update means something new.
   const [dismissedKey, setDismissedKey] = useState<string>();
 
@@ -32,11 +36,6 @@ function UpdateNoticeToast({ bridge }: { bridge: DesktopUpdatesAPI }) {
       toast.dismiss(toastId);
       return;
     }
-    const run: Record<UpdateNoticeAction, () => Promise<DesktopUpdateStatus | void>> = {
-      install: () => bridge.installNow(),
-      download: () => bridge.openDownloadPage(),
-      retry: () => bridge.checkForUpdates(),
-    };
     const { key, action } = content;
     // Sonner reports programmatic dismissals too. Only the person's own close counts, so a
     // dismissal after this notice was replaced or hidden is ignored.
@@ -45,12 +44,10 @@ function UpdateNoticeToast({ bridge }: { bridge: DesktopUpdatesAPI }) {
       () => (
         <UpdateToast
           content={content}
+          pending={pending}
           onClose={() => toast.dismiss(toastId)}
           onAction={() => {
-            if (!action) return;
-            void run[action.kind]().catch(() => {
-              toast.error("We couldn't finish the update. Try again.");
-            });
+            if (action) run(commands[action.kind]);
           }}
         />
       ),
@@ -65,7 +62,7 @@ function UpdateNoticeToast({ bridge }: { bridge: DesktopUpdatesAPI }) {
     return () => {
       replaced = true;
     };
-  }, [bridge, status, dismissedKey]);
+  }, [status, dismissedKey, pending, run]);
 
   useEffect(() => () => void toast.dismiss(toastId), []);
   return null;
