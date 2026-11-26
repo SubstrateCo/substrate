@@ -8,7 +8,7 @@ test("the policy text changes only together with POLICY_VERSION", () => {
     version: POLICY_VERSION,
     hash: createHash("sha256").update(runtimePolicy).digest("hex"),
   }).toEqual({
-    version: 11,
-    hash: "0709bb1952a5bd552489b533b95c55d24607d0ca9f1b5e30128d90c010822615",
+    version: 12,
+    hash: "cbc53b5d500bd2d26276be1d3ab79562ae7cfce4fa8d0b48478b5eca24fc2fe1",
   });
 });

@@ -36,7 +36,7 @@ export type ToolRun =
   | { kind: "turn"; turn: TurnContext; userAgentId: string | null }
   | { kind: "proposal"; id: string; turnId: string };
 
-export const needsLiveTurn = "This tool needs a live turn. It cannot wait for approval.";
+export const needsLiveTurn = "This tool needs a live turn. It cannot run in a background turn.";
 
 /**
  * The server tools, run as the agent with its owner's access. Tool calls and approved proposals

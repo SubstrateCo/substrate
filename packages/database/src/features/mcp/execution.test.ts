@@ -23,6 +23,7 @@ import {
   contactInteractions,
   messagingConversations,
   agentWakes,
+  agentRequests,
   messageEntityReferences,
   messagingMessages,
   messagingParticipants,
@@ -552,14 +553,9 @@ test("CRM MCP contact writes retain committed context invalidation hints", async
   expect(updated.hints).toContainEqual(expected);
 });
 
-test("CRM MCP stores unattended writes for approval and blocks writes from another desktop", async () => {
+test("CRM MCP runs unattended writes at once and blocks writes from another desktop", async () => {
   const { identity } = await fixture();
-  const input = { requestId: crypto.randomUUID(), name: "Must not exist" };
-  const { result: background } = await executeRawTool(f.db, identity, "create_crm_account", input, {
-    ...turn,
-    kind: "unattended",
-  });
-  if (!("pending" in background)) throw new Error("create_crm_account ran without approval");
+  const input = { requestId: crypto.randomUUID(), name: "Northwind" };
   expect(
     await rejection(
       executeAgentTool(f.db, identity, "create_crm_account", input, {
@@ -568,11 +564,16 @@ test("CRM MCP stores unattended writes for approval and blocks writes from anoth
       }),
     ),
   ).toBeInstanceOf(AccessDeniedError);
-  // Only the stored proposal's receipt exists; the account waits for approval.
   expect(await f.forActor(f.alice).crm.listAccounts()).toEqual([]);
-  expect((await f.db.select().from(agentToolRequests)).map((row) => row.result)).toEqual([
-    { approvalPending: background.pending.requestId },
+  const { result: background } = await executeRawTool(f.db, identity, "create_crm_account", input, {
+    ...turn,
+    kind: "unattended",
+  });
+  if ("pending" in background) throw new Error("create_crm_account waited for approval");
+  expect((await f.forActor(f.alice).crm.listAccounts()).map((row) => row.name)).toEqual([
+    "Northwind",
   ]);
+  expect(await f.db.select().from(agentRequests)).toEqual([]);
 });
 
 test("CRM interaction retries preserve a single manual interaction", async () => {

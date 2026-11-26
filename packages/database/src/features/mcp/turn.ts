@@ -77,24 +77,16 @@ export async function requireTurn(
 
 /**
  * Where reply posts. By default, where the work came from: top level in a DM, or the turn's
- * thread. Background turns with a destination post there. Only interactive turns choose a target.
+ * thread. Background turns with a destination post there. Any turn may choose a target.
  */
 export function replyTarget(
   turn: TurnContext,
   to: { conversationId: string; threadId?: string } | undefined,
 ): TurnPlace {
-  if (to) {
-    // A background reply elsewhere waits for the owner's approval and never reaches here.
-    if (turn.kind !== "interactive")
-      throw new ValidationError("Not possible in a background turn. Reply to your owner instead.");
-    return { conversationId: to.conversationId, threadId: to.threadId ?? null };
-  }
+  if (to) return { conversationId: to.conversationId, threadId: to.threadId ?? null };
   if (turn.kind === "unattended" && turn.destination) return turn.destination;
   const place = turn.origin ?? turn.destination;
-  if (!place)
-    throw new ValidationError(
-      "This turn has no place to reply. Set to; in a background turn that waits for your owner's approval.",
-    );
+  if (!place) throw new ValidationError("This turn has no place to reply. Set to.");
   return place;
 }
 

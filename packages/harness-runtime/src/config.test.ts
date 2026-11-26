@@ -62,7 +62,7 @@ for (const harness of harnessKinds) {
       (skill) => skill.id === "substrate-crm",
     );
     expect(crm?.content).toContain(
-      "in a background turn every CRM change waits for your owner's approval",
+      "a change runs at once, and only deletions wait for your owner's approval",
     );
     expect(crm?.content).toContain("Do not disguise a private-message summary");
   });

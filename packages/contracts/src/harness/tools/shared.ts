@@ -17,8 +17,7 @@ export interface ToolDefinition {
    */
   approval?: "owner";
   /**
-   * The write runs only in a live interactive turn. It never waits for approval, so background
-   * turns cannot make it.
+   * The write runs only in a live interactive turn. Background turns cannot make it.
    */
   liveTurnOnly?: true;
   input: z.ZodType;

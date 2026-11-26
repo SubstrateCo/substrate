@@ -259,7 +259,7 @@ export async function executeAgentToolInTransaction<K extends ServerToolName>(
     return { tool, pending: { requestId: stored.data.approvalPending } };
   }
   // The call waits for the owner: store it as a proposal and commit, without running it.
-  if (!existing && approvalNeeded(turn, tool, input)) {
+  if (!existing && approvalNeeded(tool)) {
     if (!userAgentId) throw new AccessDeniedError();
     const proposalId = await proposeToolCall(
       ctx,

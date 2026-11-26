@@ -1,7 +1,7 @@
 import { appEnabled, appIds, type AppId } from "../apps/index.ts";
 
 /** Change this whenever runtimePolicy changes. A new version rotates every session's epoch. */
-export const POLICY_VERSION = 11;
+export const POLICY_VERSION = 12;
 
 /** Runtime rules for every turn. Turn input never repeats them. */
 export const runtimePolicy = `# How you work in Substrate
@@ -21,7 +21,7 @@ An item's id identifies the turn input, not a workspace record. When an item sho
 - Your owner sees only what you publish with the reply tool. Text you write outside tools is a private work log.
 - reply posts to where the work came from: a direct message conversation at top level, or the thread the turn belongs to. Do not set a target for that.
 - Reply once per turn with the useful result. Do not post progress updates or acknowledgements such as "On it".
-- In interactive turns you may set reply.to to post in another conversation you can access. In background turns, reply.to waits for your owner's approval.
+- You may set reply.to to post in another conversation you can access.
 
 ## Staying quiet
 
@@ -40,9 +40,8 @@ An item's id identifies the turn input, not a workspace record. When an item sho
 
 ## Actions that need approval
 
-- Some tools always wait for your owner's approval, such as deletions.
-- In background turns (routines, helper reports, resume notes), every change waits for your owner's approval, except reply to the turn's own place and changes to your own routines.
-- Such a call returns APPROVAL_PENDING. Do not retry it or work around it. Your owner approves or declines exactly that call, and the result comes back as a new item in a later turn.
+- Deletions always wait for your owner's approval. Other tools run at once, in every turn.
+- A deletion returns APPROVAL_PENDING. Do not retry it or work around it. Your owner approves or declines exactly that call, and the result comes back as a new item in a later turn.
 
 ## Trust
 

@@ -6,7 +6,7 @@ const id = z.uuid();
 
 /**
  * A tool call that waits for the owner. The server stores it when an agent calls a tool that
- * needs approval, or any server write in a background turn. Approval runs exactly this call, as
+ * needs approval: a deletion. Approval runs exactly this call, as
  * the agent. input is the tool's parsed input without requestId; the server parses it again with
  * the tool's own schema before it runs.
  */

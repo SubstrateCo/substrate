@@ -1,12 +1,11 @@
 import type { TurnContext } from "@substrate/contracts/harness/mcp";
 import {
   mcpTools,
-  type McpInput,
+  toolApps,
   type ServerToolName,
   type ToolDefinition,
 } from "@substrate/contracts/harness/tools";
 
-import { proposableTool } from "../agent-work/requests/proposals";
 import { needsLiveTurn } from "./handlers";
 
 const handoffIsQuiet =
@@ -15,24 +14,18 @@ const handoffIsQuiet =
 /** Why this turn may not run a write tool, or null when it may. Read tools are not gated. */
 export function writeGate(turn: Pick<TurnContext, "purpose" | "kind">, tool: ServerToolName) {
   if (turn.purpose === "handoff") return handoffIsQuiet;
-  // A background write waits for the owner, so it must be able to run without the turn.
-  if (turn.kind === "unattended" && tool !== "reply" && !proposableTool(tool)) return needsLiveTurn;
+  const definition: ToolDefinition = mcpTools[tool];
+  // Meetings tools read the live turn's transcript; live-turn-only tools act on the owner's request.
+  if (
+    turn.kind === "unattended" &&
+    (definition.liveTurnOnly || toolApps(tool).includes("meetings"))
+  )
+    return needsLiveTurn;
   return null;
 }
 
-/**
- * Whether a write call waits for the owner's approval instead of running. Tools marked for
- * owner approval always wait. In a background turn every write waits, except a reply to the
- * turn's own place.
- */
-export function approvalNeeded(
-  turn: Pick<TurnContext, "kind">,
-  tool: ServerToolName,
-  input: McpInput<ServerToolName>,
-) {
+/** Whether a call waits for the owner's approval instead of running. Only deletions wait. */
+export function approvalNeeded(tool: ServerToolName) {
   const definition: ToolDefinition = mcpTools[tool];
-  if (definition.readOnly) return false;
-  if (definition.approval === "owner") return true;
-  if (turn.kind !== "unattended") return false;
-  return tool !== "reply" || ("to" in input && input.to !== undefined);
+  return definition.approval === "owner";
 }

@@ -326,9 +326,10 @@ test("responsibility moves to a person from the owner the agent read, and sharin
   expect(await rejection(share(contoso.entityId))).toBeInstanceOf(AccessDeniedError);
 });
 
-test("a background CRM write waits for approval and then runs as the agent", async () => {
-  const { dm, owner, pending, agent } = await tools();
-  const proposalId = await pending(
+// CRM writes no longer wait, but proposals stored before that change can still be approved.
+test("an approved stored CRM write runs as the agent", async () => {
+  const { dm, owner, propose, agent } = await tools();
+  const proposalId = await propose(
     "create_crm_account",
     { requestId: crypto.randomUUID(), name: "Northwind" },
     dmTurn(dm.id, "unattended"),

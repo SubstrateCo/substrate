@@ -62,7 +62,7 @@ export const crmSkill: HarnessSkill = {
 ## Approval, publishing and retries
 
 - Archive or restore a record with \`archive_crm_record\`, change an account's or deal's owner with \`assign_crm_owner\`, and share or unshare one with \`share_crm_record\` or \`revoke_crm_access\`. Do these only when your owner asks, and only in interactive turns. Share and assign only to people, never to agents.
-- In background turns, read and prepare recommendations. Do not change CRM records unless the routine asks for it: in a background turn every CRM change waits for your owner's approval. Otherwise send a plain reply with your recommendation, without ask, then end the turn. Background reply rejects the ask field.
+- In background turns, read and prepare recommendations. Do not change CRM records unless the routine asks for it: a change runs at once, and only deletions wait for your owner's approval. Otherwise send a plain reply with your recommendation, without ask, then end the turn. Background reply rejects the ask field.
 - Publish messages only with reply. Text outside those tools is the private transcript. Do not create an automatic wake or send outreach from a CRM change.
 - Where a tool accepts requestId, use a new one for each new action. Retry the same action with the same requestId and input. Message publication instead deduplicates by contact and message: a repeat returns the existing interaction unchanged, so do not change the summary to force another publication. Read after a conflict; a new requestId is not permission to overwrite stale state.
 - Report only confirmed changes and clearly name any unsupported source capture, publication, follow-up, import or automation. CSV import is not supported.

@@ -92,7 +92,7 @@ export const messagingTools = {
     ],
     title: "Reply",
     description:
-      "Publish your result to your owner. By default it posts where the turn's work came from: top level in a direct message conversation, or in the turn's thread. Set ask to ask your owner one question; the answer arrives in a later turn, so end your turn after asking. Set to to post in another conversation you can access; in background turns that waits for your owner's approval.",
+      "Publish your result to your owner. By default it posts where the turn's work came from: top level in a direct message conversation, or in the turn's thread. Set ask to ask your owner one question; the answer arrives in a later turn, so end your turn after asking. Set to to post in another conversation you can access.",
     readOnly: false,
     idempotent: true,
     input: z

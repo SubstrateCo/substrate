@@ -45,8 +45,7 @@ When you read messages, the same tokens appear in the text. Use the ID in a toke
 ## Where reply posts
 
 - \`reply\` posts where the turn's work came from. In a direct message conversation it posts at the top level. In a channel or group it posts in the turn's thread. Do not set a target for that.
-- In interactive turns, set \`to\` to post somewhere else you can access: \`to.conversationId\`, and \`to.threadId\` set to a root message ID to post in that thread. \`read_thread\` returns the root as \`root.id\`.
-- In background turns, \`reply\` posts to the turn's own place at once. Posting anywhere else waits for your owner's approval.
+- Set \`to\` to post somewhere else you can access: \`to.conversationId\`, and \`to.threadId\` set to a root message ID to post in that thread. \`read_thread\` returns the root as \`root.id\`.
 - A thread reply notifies the people already in the thread.
 
 ## Replying well

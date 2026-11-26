@@ -70,7 +70,7 @@ These cannot be undone from here. Do them only when your owner asks, and name th
 - \`get_task\` returns \`discussionConversationId\`, or null when nobody has opened the discussion.
 - In an interactive turn, call \`get_task_discussion\` with the task ID to open or create its discussion. This does not post a message.
 - Read it with \`read_conversation\`; use \`read_thread\` for replies. Task view access permits reading, but posting requires comment access.
-- Publish only with \`reply\` using \`to.conversationId\`. In background turns, posting elsewhere waits for your owner's approval. Do not write messages through another path.
+- Publish only with \`reply\` using \`to.conversationId\`. Do not write messages through another path.
 - Discussion access comes from the task. There are no separate members or sharing controls. Task discussion messages and mentions do not wake agents.
 
 ## Links to messages
@@ -95,9 +95,5 @@ When you change many tasks, first list the changes in your reply. Make the chang
 ## Retries
 
 Generate a new \`requestId\` for each new task, change, discussion resolution or reply. Reuse it only to retry the same call after an error.
-
-## Background turns
-
-In background turns, such as routines, every task or project change waits for your owner's approval. Such a call returns APPROVAL_PENDING. Do not retry it or work around it. Your owner approves or declines exactly that call, and the result comes back as a new item in a later turn.
 `,
 };

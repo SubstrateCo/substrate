@@ -51,18 +51,17 @@ test("reply posts top level in a DM and in the thread of a thread turn, with its
   });
 });
 
-test("a background reply in place runs directly; a reply elsewhere waits for approval", async () => {
-  const { alice, dm, call, pending } = await mcpFixture(f);
+test("a background reply posts at once, in place or elsewhere", async () => {
+  const { alice, dm, call } = await mcpFixture(f);
   const channel = await alice.createConversation({ kind: "channel", name: "general" });
   const background = dmTurn(dm.id, "unattended");
-  const requestId = await pending(
+  const posted = await call(
     "reply",
     { requestId: crypto.randomUUID(), body: "Elsewhere", to: { conversationId: channel.id } },
     background,
   );
-  expect(await messagesIn(channel.id)).toEqual([]);
-  const [request] = await f.db.select().from(agentRequests).where(eq(agentRequests.id, requestId));
-  expect(request).toMatchObject({ kind: "proposal", conversationId: dm.id });
+  expect((await messagesIn(channel.id)).map((row) => row.id)).toEqual([posted.messageId]);
+  expect(await f.db.select().from(agentRequests)).toEqual([]);
 
   const inPlace = await call("reply", { requestId: crypto.randomUUID(), body: "Done" }, background);
   expect(inPlace).toMatchObject({ conversationId: dm.id, threadId: null });
@@ -123,14 +122,15 @@ test("the turn must match its session and cannot borrow another agent's turn", a
   ).toBeInstanceOf(AccessDeniedError);
 });
 
-test("an approved background post to a task discussion posts once, as the agent, with its turn", async () => {
-  const { agent, dm, owner, pending } = await mcpFixture(f);
+// Replies no longer wait, but proposals stored before that change can still be approved.
+test("an approved stored post to a task discussion posts once, as the agent, with its turn", async () => {
+  const { agent, dm, owner, propose } = await mcpFixture(f);
   const repos = f.forActor(f.alice);
   const project = await repos.projects.create({ name: "Task discussion" });
   const task = await repos.tasks.create({ projectEntityId: project.entityId, title: "Follow up" });
   const conversationId = await repos.tasks.ensureDiscussion(task.entityId);
   const background = dmTurn(dm.id, "unattended");
-  const requestId = await pending(
+  const requestId = await propose(
     "reply",
     { requestId: crypto.randomUUID(), body: "Progress to share", to: { conversationId } },
     background,
@@ -164,8 +164,12 @@ test("background turns cannot ask: reply.ask is rejected before anything posts",
 });
 
 test("only the agent's home desktop can write; a moved agent's old desktop can only read", async () => {
-  const { agent, dm, call } = await mcpFixture(f);
+  const { agent, dm, call, pending } = await mcpFixture(f);
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
+  const task = await f.forActor(f.alice).tasks.create({
+    projectEntityId: project.entityId,
+    title: "Keep",
+  });
   const desktop = await registerDevice(f.db, "alice", {
     installationId: crypto.randomUUID(),
     name: "Desktop",
@@ -185,11 +189,7 @@ test("only the agent's home desktop can write; a moved agent's old desktop can o
     // A call that would wait for approval is refused before it is stored.
     expect(
       await rejection(
-        call(
-          "create_task",
-          { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Task" },
-          { ...turn, kind: "unattended" },
-        ),
+        pending("delete_task", { requestId: crypto.randomUUID(), taskId: task.entityId }, turn),
       ),
     ).toBeInstanceOf(AccessDeniedError);
     expect(
@@ -284,37 +284,28 @@ test("update_task requires a requestId and replays the same change", async () =>
   ).toBeInstanceOf(ConflictError);
 });
 
-test("a call that waits stores the exact call once, and refuses hidden records", async () => {
-  const { bob, dm, pending } = await mcpFixture(f);
-  const hidden = await bob.createConversation({ kind: "channel", name: "bob", private: true });
-  const turn = dmTurn(dm.id, "unattended");
-  expect(
-    await rejection(
-      pending(
-        "reply",
-        { requestId: crypto.randomUUID(), body: "Hi", to: { conversationId: hidden.id } },
-        turn,
-      ),
-    ),
-  ).toBeInstanceOf(AccessDeniedError);
+test("a call that waits stores the exact call once", async () => {
+  const { dm, pending } = await mcpFixture(f);
+  const turn = dmTurn(dm.id);
   const project = await f.forActor(f.alice).projects.create({ name: "Work" });
-  const input = { requestId: crypto.randomUUID(), projectId: project.entityId, title: "Plan" };
-  const requestId = await pending("create_task", input, turn);
-  // A retry with the same requestId returns the same proposal, not a second one.
-  expect(await pending("create_task", input, turn)).toBe(requestId);
+  const tasks = f.forActor(f.alice).tasks;
+  const task = await tasks.create({ projectEntityId: project.entityId, title: "Plan" });
+  const other = await tasks.create({ projectEntityId: project.entityId, title: "Other" });
+  const input = { requestId: crypto.randomUUID(), taskId: task.entityId };
+  const requestId = await pending("delete_task", input, turn);
   const requests = await f.db.select().from(agentRequests);
   expect(requests).toHaveLength(1);
   expect(requests[0]).toMatchObject({
     id: requestId,
     kind: "proposal",
     mode: "async",
-    proposedAction: { tool: "create_task", input: { projectId: project.entityId, title: "Plan" } },
-    payload: { type: "proposal", summary: "Create task" },
+    proposedAction: { tool: "delete_task", input: { taskId: task.entityId } },
+    payload: { type: "proposal", summary: "Delete task" },
     conversationId: dm.id,
   });
   expect(requests[0]!.actionHash).toMatch(/^[0-9a-f]{64}$/);
   // The same requestId with other input is a conflict, not a new proposal.
   expect(
-    await rejection(pending("create_task", { ...input, title: "Other" }, turn)),
+    await rejection(pending("delete_task", { ...input, taskId: other.entityId }, turn)),
   ).toBeInstanceOf(ConflictError);
 });
