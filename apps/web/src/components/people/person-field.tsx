@@ -1,3 +1,4 @@
+import type { PickerPerson } from "@substrate/contracts/people/picker";
 import { useId, type ReactNode } from "react";
 
 import { PersonAvatar } from "@/components/people/person-avatar";
@@ -13,7 +14,7 @@ import {
 } from "@/components/ui/combobox";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 
-type Person = { id: string; name: string; image?: string | null };
+type Person = Omit<PickerPerson, "email">;
 
 /**
  * A labelled single choice of a workspace person: a field button that opens a searchable list.
