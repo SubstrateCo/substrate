@@ -63,39 +63,16 @@ export function ConversationSection({
   return (
     <Collapsible open={!collapsed} onOpenChange={(open) => setCollapsed(!open)} asChild>
       <section aria-label={sectionLabels[section]}>
-        <div className="flex h-7 items-center justify-between gap-1 pr-1 pl-2">
-          <Heading level={2} variant="inherit" className="min-w-0">
-            <CollapsibleTrigger asChild>
-              <Button type="button" variant="disclosure" size="xs" className="-ml-2">
-                {sectionLabels[section]}
-                {collapsed && items.length > 0 && (
-                  <span className="font-normal tabular-nums">
-                    {items.length}
-                    <span className="sr-only"> conversations</span>
-                  </span>
-                )}
-                <ChevronRight
-                  aria-hidden="true"
-                  className={
-                    collapsed
-                      ? "transition-transform duration-150 ease-out"
-                      : "rotate-90 transition-transform duration-150 ease-out"
-                  }
-                />
-              </Button>
-            </CollapsibleTrigger>
-          </Heading>
-          {section !== "partner" && (
-            <ConversationCreateMenu
-              section={section}
-              people={people}
-              agents={agents}
-              onCreate={onCreate}
-              onMessagePerson={onMessagePerson}
-              onMessageAgent={onMessageAgent}
-            />
-          )}
-        </div>
+        <ConversationSectionHeader
+          section={section}
+          collapsed={collapsed}
+          count={items.length}
+          people={people}
+          agents={agents}
+          onCreate={onCreate}
+          onMessagePerson={onMessagePerson}
+          onMessageAgent={onMessageAgent}
+        />
         {pinned && (
           <div className="mt-0.5">
             <ConversationSidebarItem
@@ -139,5 +116,61 @@ export function ConversationSection({
         </CollapsibleContent>
       </section>
     </Collapsible>
+  );
+}
+
+function ConversationSectionHeader({
+  section,
+  collapsed,
+  count,
+  people,
+  agents,
+  onCreate,
+  onMessagePerson,
+  onMessageAgent,
+}: {
+  section: keyof typeof sectionLabels;
+  collapsed: boolean;
+  count: number;
+  people?: PickerPerson[];
+  agents?: DirectMessageAgent[];
+  onCreate: (kind: Conversation["kind"]) => void;
+  onMessagePerson?: (person: PickerPerson) => void;
+  onMessageAgent?: (agent: DirectMessageAgent) => void;
+}) {
+  return (
+    <div className="flex h-7 items-center justify-between gap-1 pr-1 pl-2">
+      <Heading level={2} variant="inherit" className="min-w-0">
+        <CollapsibleTrigger asChild>
+          <Button type="button" variant="disclosure" size="xs" className="-ml-2">
+            {sectionLabels[section]}
+            {collapsed && count > 0 && (
+              <span className="font-normal tabular-nums">
+                {count}
+                <span className="sr-only"> conversations</span>
+              </span>
+            )}
+            <ChevronRight
+              aria-hidden="true"
+              className={
+                collapsed
+                  ? "transition-transform duration-150 ease-out"
+                  : "rotate-90 transition-transform duration-150 ease-out"
+              }
+            />
+          </Button>
+        </CollapsibleTrigger>
+      </Heading>
+      {section !== "partner" && (
+        <ConversationCreateMenu
+          section={section}
+          people={people}
+          agents={agents}
+          onCreate={onCreate}
+          onMessagePerson={onMessagePerson}
+          onMessageAgent={onMessageAgent}
+        />
+      )}
+    </div>
   );
 }

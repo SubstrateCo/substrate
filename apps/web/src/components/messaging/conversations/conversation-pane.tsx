@@ -9,9 +9,8 @@ import { useMessageHistory } from "../messages/use-message-history";
 import { ThreadPane } from "../threads/thread-pane";
 import { AddMembersDialog } from "./add-members-dialog";
 import { ConversationActions } from "./conversation-actions";
-import type { HeaderMember } from "./conversation-header";
 import { LeftChannelNotice } from "./left-channel-notice";
-import { RemoveMemberAction, RemoveMemberDialog } from "./remove-member-action";
+import { useMemberRemoval } from "./remove-member-action";
 import { AgentWorkNotice } from "@/components/agent-work/agent-work-slot";
 import { ConversationAgentWork } from "@/components/agent-work/conversation-agent-work";
 import { ConversationTurnTranscript } from "@/components/agent-work/transcript/conversation-turn-transcript";
@@ -58,7 +57,7 @@ export function ConversationPane({
   const task = conversation.task;
   const target = useMessageTarget(organizationId, conversation.id, messageId);
   const [addingMembers, setAddingMembers] = useState(false);
-  const [removingMember, setRemovingMember] = useState<HeaderMember | null>(null);
+  const removal = useMemberRemoval(organizationId, conversation, userId);
   const { messages, history, loadOlder, timeline, unread } = useConversationTimeline(
     {
       organizationId,
@@ -139,11 +138,7 @@ export function ConversationPane({
             </Link>
           )
         }
-        memberAction={(member) =>
-          canRemoveMember(conversation, userId, member) ? (
-            <RemoveMemberAction member={member} onRemove={() => setRemovingMember(member)} />
-          ) : null
-        }
+        memberAction={removal.memberAction}
         state={resource.status}
         error={messages.error}
         onRetry={() => void messages.refetch()}
@@ -183,15 +178,7 @@ export function ConversationPane({
         }
         thread={aside}
       />
-      {removingMember && (
-        <RemoveMemberDialog
-          organizationId={organizationId}
-          conversationId={conversation.id}
-          member={removingMember}
-          publicChannel={conversation.kind === "channel" && !conversation.private}
-          onClose={() => setRemovingMember(null)}
-        />
-      )}
+      {removal.dialog}
     </ConversationAgentWork>
   );
 }
@@ -299,18 +286,6 @@ function useConversationTimeline(
         setLatestVisibleIn(visible ? options.conversationId : undefined),
     },
   };
-}
-
-function canRemoveMember(conversation: Conversation, userId: string, member: HeaderMember) {
-  return (
-    !conversation.task &&
-    conversation.canManage &&
-    conversation.kind !== "dm" &&
-    member.type === "human" &&
-    member.organizationId === conversation.organizationId &&
-    member.userId !== userId &&
-    member.userId !== conversation.createdBy
-  );
 }
 
 function ConversationComposer({

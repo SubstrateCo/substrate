@@ -41,19 +41,13 @@ export function MessagingWorkspace({
   // One list serves every selection, so switching conversations reads nothing again. The list
   // leaves out task discussions; a selected one is read with the list that includes it.
   const conversations = useQuery(conversationsQueryOptions(organizationId));
-  const listed =
-    !conversationId || !!conversations.data?.some((item) => item.id === conversationId);
-  const selection = useQuery({
-    ...conversationsQueryOptions(organizationId, conversationId),
-    enabled: !!conversationId && conversations.isSuccess && !listed,
-  });
+  const { listed, selection, selecting } = useUnlistedSelection(
+    organizationId,
+    conversations,
+    conversationId,
+  );
   const unread = useQuery(unreadCountsOptions(organizationId));
-  const workspacePeople = useQuery(workspacePeopleQueryOptions(organizationId));
-  const people = (workspacePeople.data ?? []).filter((person) => person.id !== userId);
-  const catalog = useQuery(agentCatalogQueryOptions(userId));
-  const agents = (catalog.data?.agents ?? [])
-    .filter((agent) => agent.enabled)
-    .map((agent) => ({ id: agent.id, name: agent.name, image: agent.image }));
+  const { people, agents } = useDirectMessageTargets(organizationId, userId);
   const navigate = useNavigate();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const open = (id: string) => {
@@ -95,7 +89,6 @@ export function MessagingWorkspace({
         (conversation) => conversation.id === conversationId,
       )
     : sidebarConversations[0];
-  const selecting = !listed && (conversations.isPending || selection.isPending);
   const pane = selected && (
     <ConversationPane
       key={selected.id}
@@ -146,4 +139,31 @@ export function MessagingWorkspace({
       )}
     </MessagingWorkspaceView>
   );
+}
+
+/** Reads a selected conversation that the list leaves out, such as a task discussion. */
+function useUnlistedSelection(
+  organizationId: string,
+  conversations: { data?: { id: string }[]; isSuccess: boolean; isPending: boolean },
+  conversationId?: string,
+) {
+  const listed =
+    !conversationId || !!conversations.data?.some((item) => item.id === conversationId);
+  const selection = useQuery({
+    ...conversationsQueryOptions(organizationId, conversationId),
+    enabled: !!conversationId && conversations.isSuccess && !listed,
+  });
+  const selecting = !listed && (conversations.isPending || selection.isPending);
+  return { listed, selection, selecting };
+}
+
+/** The people and enabled agents the viewer can start a direct message with. */
+function useDirectMessageTargets(organizationId: string, userId: string) {
+  const workspacePeople = useQuery(workspacePeopleQueryOptions(organizationId));
+  const people = (workspacePeople.data ?? []).filter((person) => person.id !== userId);
+  const catalog = useQuery(agentCatalogQueryOptions(userId));
+  const agents = (catalog.data?.agents ?? [])
+    .filter((agent) => agent.enabled)
+    .map((agent) => ({ id: agent.id, name: agent.name, image: agent.image }));
+  return { people, agents };
 }
