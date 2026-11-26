@@ -1,6 +1,6 @@
 {
   "name": "@substrate/desktop",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "private": true,
   "description": "The connected Substrate desktop workspace",
   "author": "Substrate",
