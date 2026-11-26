@@ -68,6 +68,47 @@ function TranscriptDetails({
   );
 }
 
+function TranscriptBody({
+  unavailable,
+  loading,
+  error,
+  onRetry,
+  details,
+  timeline,
+}: {
+  unavailable?: string;
+  loading: boolean;
+  error: Error | null;
+  onRetry: () => void;
+  details: ReactNode;
+  timeline?: ReactNode;
+}) {
+  if (unavailable) return <PaneState label={unavailable} />;
+  if (timeline)
+    return (
+      <div className="min-h-0 flex-1 overflow-y-auto">
+        {details}
+        {timeline}
+      </div>
+    );
+  if (loading)
+    return (
+      <div role="status" aria-label="Loading transcript" className="min-h-0 flex-1 overflow-y-auto">
+        <div aria-hidden="true">
+          <TranscriptDetails loading />
+          <TurnTimelineLoading />
+        </div>
+      </div>
+    );
+  return (
+    <PaneState
+      label={error ? "Transcript unavailable" : "Loading transcript"}
+      error={error}
+      onRetry={onRetry}
+    />
+  );
+}
+
 /** A turn's full record in its own side panel. */
 export function TurnTranscriptView({
   name,
@@ -114,39 +155,6 @@ export function TurnTranscriptView({
     // When the panel covers the page, focus moves into it.
     if (covers) close.current?.focus();
   }, [covers]);
-  let body: ReactNode;
-  if (unavailable) body = <PaneState label={unavailable} />;
-  else if (timeline)
-    body = (
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <TranscriptDetails
-          startedAt={startedAt}
-          session={session}
-          sources={sources}
-          outputs={outputs}
-          usage={usage}
-          diagnostic={diagnostic}
-        />
-        {timeline}
-      </div>
-    );
-  else if (loading)
-    body = (
-      <div role="status" aria-label="Loading transcript" className="min-h-0 flex-1 overflow-y-auto">
-        <div aria-hidden="true">
-          <TranscriptDetails loading />
-          <TurnTimelineLoading />
-        </div>
-      </div>
-    );
-  else
-    body = (
-      <PaneState
-        label={error ? "Transcript unavailable" : "Loading transcript"}
-        error={error}
-        onRetry={onRetry}
-      />
-    );
   return (
     <PageAside aria-label="Agent transcript">
       <PageHeader
@@ -195,7 +203,23 @@ export function TurnTranscriptView({
           </>
         }
       />
-      {body}
+      <TranscriptBody
+        unavailable={unavailable}
+        loading={loading}
+        error={error}
+        onRetry={onRetry}
+        details={
+          <TranscriptDetails
+            startedAt={startedAt}
+            session={session}
+            sources={sources}
+            outputs={outputs}
+            usage={usage}
+            diagnostic={diagnostic}
+          />
+        }
+        timeline={timeline}
+      />
     </PageAside>
   );
 }

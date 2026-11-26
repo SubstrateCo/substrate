@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
-import { linkOptions, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 
-import { useRef, useState } from "react";
+import { useRef, useState, type ReactNode } from "react";
 
 import { ActivityTurnTranscript } from "../transcript/activity-turn-transcript";
 import { AgentPage } from "./agent-page";
@@ -15,6 +15,7 @@ import { PaneState } from "@/components/feedback/pane-state";
 import { useFocusAfterRender } from "@/components/feedback/use-focus-after-render";
 import type { AgentPageSection } from "@/lib/agent-work/agent-sections";
 import { needsYouCount } from "@/lib/agent-work/needs-you";
+import { agentLink } from "@/lib/navigation/record-links";
 import type { ResourceState } from "@/lib/resource-state";
 import { needsYouOptions } from "@/queries/agent-work/server";
 import { Unlink } from "lucide-react";
@@ -46,6 +47,36 @@ function MissingAgent({
   return <PaneState label="Couldn’t load agent" error={catalogState.error} onRetry={onRetry} />;
 }
 
+/** Needs you or the first-agent prompt without a selection; otherwise the selected agent. */
+function AgentsContent({
+  userId,
+  organizationId,
+  agentId,
+  firstAgent,
+  catalogState,
+  onRetryCatalog,
+  onCreate,
+  agent,
+}: {
+  userId: string;
+  organizationId: string;
+  agentId?: string;
+  firstAgent: boolean;
+  catalogState: ResourceState<unknown>;
+  onRetryCatalog: () => void;
+  onCreate: () => void;
+  /** The page of the agent `agentId` names, when the catalog lists it. */
+  agent: ReactNode;
+}) {
+  if (!agentId)
+    return firstAgent ? (
+      <FirstAgentView onCreate={onCreate} />
+    ) : (
+      <NeedsYou userId={userId} organizationId={organizationId} />
+    );
+  return agent || <MissingAgent catalogState={catalogState} onRetry={onRetryCatalog} />;
+}
+
 /**
  * The Agents app. Needs you comes from the server, so it works on every device. Activity,
  * transcripts, and routines come from the agent's home desktop.
@@ -72,47 +103,45 @@ export function AgentsWorkspace({
   const { catalogState, retryCatalog, agents, status, selected, homedHere, firstAgent } =
     useWorkspaceAgents(userId, organizationId, agentId);
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
-  const agentLink = ({ section: next, ...search }: AgentsSearch) =>
-    linkOptions({
-      to: "/agents",
-      search: {
-        workspaceId: organizationId,
-        ...search,
-        section: next === "messages" ? undefined : next,
-      },
-    });
-  const go = (search: AgentsSearch) => void navigate(agentLink(search));
-  let content;
-  if (!agentId)
-    content = firstAgent ? (
-      <FirstAgentView onCreate={() => setCreating(true)} />
-    ) : (
-      <NeedsYou userId={userId} organizationId={organizationId} />
-    );
-  else if (!selected) content = <MissingAgent catalogState={catalogState} onRetry={retryCatalog} />;
-  else
-    content = (
-      <AgentPage
-        key={agentId}
-        userId={userId}
-        organizationId={organizationId}
-        agentId={agentId}
-        name={selected.name}
-        enabled={selected.enabled}
-        homedHere={homedHere}
-        status={status(agentId)}
-        section={section}
-        selectedTurnId={turnId}
-        messageId={messageId}
-        onMessageNavigate={(target) => go({ agentId, section: "messages", ...target })}
-        onSectionChange={(next) => go({ agentId, section: next })}
-        onTranscript={(id) => go({ agentId, section: "activity", turnId: id })}
-        onDeleted={() => {
-          go({});
-          focusAfterRender(() => newAgentButton.current);
-        }}
-      />
-    );
+  const go = ({ agentId: id, section: next, ...target }: AgentsSearch) =>
+    void navigate(agentLink(organizationId, id, next, target));
+  const content = (
+    <AgentsContent
+      userId={userId}
+      organizationId={organizationId}
+      agentId={agentId}
+      firstAgent={firstAgent}
+      catalogState={catalogState}
+      onRetryCatalog={retryCatalog}
+      onCreate={() => setCreating(true)}
+      agent={
+        selected && (
+          <AgentPage
+            key={selected.id}
+            userId={userId}
+            organizationId={organizationId}
+            agentId={selected.id}
+            name={selected.name}
+            enabled={selected.enabled}
+            homedHere={homedHere}
+            status={status(selected.id)}
+            section={section}
+            selectedTurnId={turnId}
+            messageId={messageId}
+            onMessageNavigate={(target) =>
+              go({ agentId: selected.id, section: "messages", ...target })
+            }
+            onSectionChange={(next) => go({ agentId: selected.id, section: next })}
+            onTranscript={(id) => go({ agentId: selected.id, section: "activity", turnId: id })}
+            onDeleted={() => {
+              go({});
+              focusAfterRender(() => newAgentButton.current);
+            }}
+          />
+        )
+      }
+    />
+  );
   return (
     <AgentsWorkspaceView
       agents={agents}
@@ -121,7 +150,7 @@ export function AgentsWorkspace({
       onRetryCatalog={retryCatalog}
       needsYouCount={needsYouCount(needsYou.data)}
       selectedAgentId={agentId}
-      agentLink={(id) => agentLink({ agentId: id })}
+      agentLink={(id) => agentLink(organizationId, id)}
       onCreate={() => setCreating(true)}
       createButtonRef={newAgentButton}
       editor={

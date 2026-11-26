@@ -1,3 +1,5 @@
+import type { ReactNode } from "react";
+
 import { TechnicalDetails } from "./technical-details";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { toneBorder, toneFill } from "@/components/feedback/tag";
@@ -7,6 +9,34 @@ import { cn } from "cn";
 import { CircleAlert, TriangleAlert } from "lucide-react";
 
 export type NeedsAttentionAction = "retry" | "dismiss" | "startFresh" | "resend" | "discard";
+
+/** One action on stopped work. While any action is sent, every action is disabled. */
+function StopAction({
+  action,
+  pending,
+  variant = "outline",
+  onClick,
+  children,
+}: {
+  action: NeedsAttentionAction;
+  pending?: NeedsAttentionAction;
+  variant?: "default" | "outline" | "ghost";
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <PendingButton
+      type="button"
+      size="sm"
+      variant={variant}
+      disabled={!!pending}
+      pending={pending === action}
+      onClick={onClick}
+    >
+      {children}
+    </PendingButton>
+  );
+}
 
 /**
  * Work that stopped and will not continue on its own. Retry resumes the same session; Start
@@ -41,24 +71,6 @@ export function NeedsAttentionCard({
   onResend?: () => void;
   onDiscard?: () => void;
 }) {
-  const busy = !!pending;
-  const button = (
-    action: NeedsAttentionAction,
-    label: string,
-    onClick: () => void,
-    variant: "default" | "outline" | "ghost" = "outline",
-  ) => (
-    <PendingButton
-      type="button"
-      size="sm"
-      variant={variant}
-      disabled={busy}
-      pending={pending === action}
-      onClick={onClick}
-    >
-      {label}
-    </PendingButton>
-  );
   const content = (
     <>
       <p>{text}</p>
@@ -71,14 +83,24 @@ export function NeedsAttentionCard({
       )}
       {onResend && onDiscard ? (
         <div className="flex flex-wrap gap-2">
-          {button("resend", "Resend", onResend, "default")}
-          {button("discard", "Discard", onDiscard)}
+          <StopAction action="resend" pending={pending} variant="default" onClick={onResend}>
+            Resend
+          </StopAction>
+          <StopAction action="discard" pending={pending} onClick={onDiscard}>
+            Discard
+          </StopAction>
         </div>
       ) : (
         <div className="flex flex-wrap gap-2">
-          {button("retry", "Retry", onRetry, "default")}
-          {button("startFresh", "Start fresh", onStartFresh)}
-          {button("dismiss", "Dismiss", onDismiss, "ghost")}
+          <StopAction action="retry" pending={pending} variant="default" onClick={onRetry}>
+            Retry
+          </StopAction>
+          <StopAction action="startFresh" pending={pending} onClick={onStartFresh}>
+            Start fresh
+          </StopAction>
+          <StopAction action="dismiss" pending={pending} variant="ghost" onClick={onDismiss}>
+            Dismiss
+          </StopAction>
         </div>
       )}
     </>

@@ -4,7 +4,6 @@ import type {
   AgentStatusView,
   AgentTurnView,
 } from "@substrate/contracts/agent-work";
-import { liveTurnStatuses } from "@substrate/contracts/agent-work";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -19,6 +18,7 @@ import { RequestCard } from "./requests/request-card";
 import { TurnLabel, TurnStatus, TurnWork } from "./turn-work";
 import { WorkIndicator } from "./work-indicator";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { noticeLines } from "@/lib/agent-work/composer-notice";
 import { conversationAgents } from "@/lib/agent-work/conversation-agents";
 import { proposalSourceLink } from "@/lib/agent-work/links";
 import { itemPlacements, requestPlacements, turnPlacements } from "@/lib/agent-work/placement";
@@ -35,8 +35,6 @@ import {
 import { useNewTopic } from "@/queries/agent-work/mutations";
 import { agentStatusOptions, conversationRequestsOptions } from "@/queries/agent-work/server";
 import { toast } from "sonner";
-
-const noticeTurnStatuses = new Set([...liveTurnStatuses, "needs_attention"]);
 
 function messageWorkLookups(
   turns: readonly AgentTurnView[],
@@ -151,58 +149,43 @@ export function ConversationAgentWork({
   );
 
   const notice = (threadId: string | null) => {
-    const lines: ComposerNoticeLine[] = [];
-    for (const agent of agents) {
-      const summary = homed.get(agent.agentId);
-      if (summary) {
-        const current = turns.find(
-          (turn) =>
-            turn.userAgentId === agent.agentId &&
-            noticeTurnStatuses.has(turn.status) &&
-            (sessions.get(turn.sessionId)?.origin?.threadId ?? null) === threadId,
-        );
-        if (current) {
-          const request = openRequest(current.id);
-          lines.push({
-            key: agent.agentId,
-            agentName: agent.name,
-            tone: turnTone(current, request),
-            label: <TurnLabel turn={current} openRequest={request} />,
-          });
-        }
-        continue;
+    const lines = noticeLines({
+      conversationId: conversation.id,
+      threadId,
+      agents,
+      homed,
+      turns,
+      threadOf: (turn) => sessions.get(turn.sessionId)?.origin?.threadId ?? null,
+      statuses: statusByAgent,
+    }).map((line): ComposerNoticeLine => {
+      const { agentId, name: agentName } = line.agent;
+      if (line.kind === "turn") {
+        const request = openRequest(line.turn.id);
+        return {
+          key: agentId,
+          agentName,
+          tone: turnTone(line.turn, request),
+          label: <TurnLabel turn={line.turn} openRequest={request} />,
+        };
       }
-      const status = statusByAgent?.get(agent.agentId);
-      if (!status) continue;
-      const here =
-        status.liveConversationId === conversation.id && (status.liveThreadId ?? null) === threadId;
-      // General lines describe the agent as a whole, so they show only where it is a member.
-      if (!agent.member && !here) continue;
-      if (!status.device) {
-        if (threadId === null)
-          lines.push({
-            key: agent.agentId,
-            agentName: agent.name,
-            tone: "idle",
-            label: noDesktopLabel,
-            link: {
-              link: agentLink(organizationId, agent.agentId, "run"),
-              label: "Choose a desktop",
-            },
-          });
-        continue;
-      }
-      if (status.state === "needs_you" && threadId === null)
-        lines.push({
-          key: agent.agentId,
-          agentName: agent.name,
+      if (line.kind === "no_desktop")
+        return {
+          key: agentId,
+          agentName,
+          tone: "idle",
+          label: noDesktopLabel,
+          link: { link: agentLink(organizationId, agentId, "run"), label: "Choose a desktop" },
+        };
+      if (line.kind === "needs_you")
+        return {
+          key: agentId,
+          agentName,
           tone: "attention",
           label: "Needs you",
-          link: { link: agentLink(organizationId, agent.agentId), label: "Open Agents" },
-        });
-      else if (here || (!status.device.online && status.state !== "idle" && threadId === null))
-        lines.push({ key: agent.agentId, agentName: agent.name, ...agentStatus(status) });
-    }
+          link: { link: agentLink(organizationId, agentId), label: "Open Agents" },
+        };
+      return { key: agentId, agentName, ...agentStatus(line.status) };
+    });
     const dmAgent =
       conversation.kind === "dm" && threadId === null
         ? members.find((agent) => homed.has(agent.agentId))

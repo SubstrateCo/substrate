@@ -57,10 +57,21 @@ export function meetingLink(organizationId: string, meetingId: string, view?: Me
   });
 }
 
-export function agentLink(organizationId: string, agentId: string, section?: AgentPageSection) {
+/** An agent's page, or Needs you without `agentId`. Messages is the default section. */
+export function agentLink(
+  organizationId: string,
+  agentId?: string,
+  section?: AgentPageSection,
+  target?: { turnId?: string; messageId?: string },
+) {
   return linkOptions({
     to: "/agents",
-    search: { workspaceId: organizationId, agentId, section },
+    search: {
+      workspaceId: organizationId,
+      agentId,
+      section: section === "messages" ? undefined : section,
+      ...target,
+    },
   });
 }
 

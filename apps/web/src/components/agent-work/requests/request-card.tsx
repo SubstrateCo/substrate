@@ -20,6 +20,14 @@ function failure(error: Error, fallback: string) {
     : actionErrorMessage(error, fallback);
 }
 
+/** The control that shows progress while an action is sent. */
+function pendingOf(input: RequestAction): RequestPending {
+  if (input.kind !== "respond") return { kind: input.kind };
+  return input.response.type === "approval"
+    ? { kind: "option", optionId: input.response.optionId }
+    : { kind: "answer" };
+}
+
 export function RequestCard({
   userId,
   organizationId,
@@ -36,16 +44,7 @@ export function RequestCard({
   const target = useProposalTarget(organizationId, request, open);
   if (!open)
     return <RequestResult request={request} link={proposalResultLink(organizationId, request)} />;
-  let pending: RequestPending | undefined;
-  if (attempt.isPending) {
-    const input = attempt.variables;
-    if (input.kind !== "respond") pending = { kind: input.kind };
-    else
-      pending =
-        input.response.type === "approval"
-          ? { kind: "option", optionId: input.response.optionId }
-          : { kind: "answer" };
-  }
+  const pending = attempt.isPending ? pendingOf(attempt.variables) : undefined;
   const error = attempt.isError
     ? failure(attempt.error, failures[attempt.variables.kind])
     : undefined;

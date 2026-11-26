@@ -88,12 +88,7 @@ export function AgentActivity({
     <AgentActivityView
       name={name}
       rows={rows}
-      helpers={(activity.data?.pages.flatMap((page) => page.helpers) ?? []).map((helper) => ({
-        id: helper.id,
-        task: helper.task,
-        status: helper.status,
-        report: helper.report,
-      }))}
+      helpers={activity.data?.pages.flatMap((page) => page.helpers) ?? []}
       loading={activity.isPending}
       error={activity.error}
       onRetry={() => void activity.refetch()}

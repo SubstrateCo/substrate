@@ -10,10 +10,6 @@ import { MessageCard, MessageCardBody } from "@/components/messaging/messages/me
 import { Button } from "@/components/ui/button";
 import { CheckCheck, Hand } from "lucide-react";
 
-function NeedsYouItem({ children }: { children: ReactNode }) {
-  return <li className="grid min-w-0 gap-1.5">{children}</li>;
-}
-
 export type NeedsYouEntry = {
   key: string;
   agentName: string;
@@ -48,7 +44,7 @@ export function NeedsYouView({
           <div role="status" aria-label="Loading what needs you">
             <ul aria-hidden="true" className="grid gap-5">
               {[0, 1].map((i) => (
-                <NeedsYouItem key={i}>
+                <li key={i} className="grid min-w-0 gap-1.5">
                   <p className="text-xs">
                     <SkeletonText width="10rem" />
                   </p>
@@ -58,7 +54,7 @@ export function NeedsYouView({
                       <SkeletonText width="12rem" />
                     </MessageCardBody>
                   </MessageCard>
-                </NeedsYouItem>
+                </li>
               ))}
             </ul>
           </div>
@@ -73,7 +69,7 @@ export function NeedsYouView({
         {entries.length > 0 && (
           <ul aria-label="Needs you" className="grid gap-5">
             {entries.map((entry) => (
-              <NeedsYouItem key={entry.key}>
+              <li key={entry.key} className="grid min-w-0 gap-1.5">
                 <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
                   {entry.agentLink ? (
                     <Button
@@ -92,7 +88,7 @@ export function NeedsYouView({
                   {entry.place}
                 </p>
                 {entry.body}
-              </NeedsYouItem>
+              </li>
             ))}
           </ul>
         )}

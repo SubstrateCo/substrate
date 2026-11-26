@@ -23,17 +23,13 @@ function RoutineRow({ children }: { children: ReactNode }) {
   );
 }
 
-function RoutineContent({ children }: { children: ReactNode }) {
-  return <ItemContent className="min-w-0">{children}</ItemContent>;
-}
-
 function RoutineRowsLoading() {
   return (
     <div role="status" aria-label="Loading routines">
       <SettingsList hidden>
         {[0, 1].map((i) => (
           <RoutineRow key={i}>
-            <RoutineContent>
+            <ItemContent className="min-w-0">
               <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
                 <SkeletonText width="12rem" />
               </p>
@@ -43,7 +39,7 @@ function RoutineRowsLoading() {
               <p className="line-clamp-2 text-xs text-muted-foreground">
                 <SkeletonText width="20rem" />
               </p>
-            </RoutineContent>
+            </ItemContent>
           </RoutineRow>
         ))}
       </SettingsList>
@@ -116,7 +112,7 @@ export function RoutineListView({
             const next = nextRun(routine);
             return (
               <RoutineRow key={routine.id}>
-                <RoutineContent>
+                <ItemContent className="min-w-0">
                   <ItemTitle className="max-w-full">
                     <span className="truncate">{routine.name}</span>
                     {!needsApproval && !routine.enabled && <Tag>Paused</Tag>}
@@ -146,7 +142,7 @@ export function RoutineListView({
                       </PendingButton>
                     </div>
                   )}
-                </RoutineContent>
+                </ItemContent>
                 <ItemActions>
                   <RowActions label={`Actions for ${routine.name}`}>
                     <RowAction label={`Edit ${routine.name}`} onClick={() => onEdit(routine.id)}>

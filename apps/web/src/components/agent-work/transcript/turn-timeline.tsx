@@ -42,7 +42,7 @@ export function TurnTimeline({
   outputLink,
 }: {
   entries: TranscriptEntry[];
-  renderRequest: (requestId: string, kind: string) => ReactNode;
+  renderRequest: (requestId: string) => ReactNode;
   outputLink: (entry: Extract<TranscriptEntry, { type: "output" }>) => RecordLink | undefined;
 }) {
   if (!entries.length)
@@ -95,7 +95,7 @@ export function TurnTimeline({
                   <Hand aria-hidden="true" className="size-3.5 shrink-0" />
                   {entry.kind === "proposal" ? "Proposed an action" : "Asked you"}
                 </span>
-                {renderRequest(entry.requestId, entry.kind)}
+                {renderRequest(entry.requestId)}
               </li>
             );
           case "output": {

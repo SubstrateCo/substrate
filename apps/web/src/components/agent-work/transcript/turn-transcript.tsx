@@ -5,12 +5,11 @@ import { useQuery } from "@tanstack/react-query";
 
 import { RecordName } from "../requests/proposal-preview";
 import { RequestCard } from "../requests/request-card";
-import { RequestResult } from "../requests/request-card-view";
 import { TurnTimeline } from "./turn-timeline";
 import { TurnTranscriptView } from "./turn-transcript-view";
 import { useStopTurn } from "@/components/agent-work/use-stop-turn";
 import { useNow } from "@/hooks/use-now";
-import { outputLink, proposalResultLink } from "@/lib/agent-work/links";
+import { outputLink } from "@/lib/agent-work/links";
 import { isOpenRequest } from "@/lib/agent-work/requests";
 import { sessionKindLabels, turnLabel, turnTone } from "@/lib/agent-work/status";
 import { transcriptEntries } from "@/lib/agent-work/transcript";
@@ -132,11 +131,10 @@ export function TurnTranscript({
             }
             renderRequest={(requestId) => {
               const found = request(requestId);
-              if (!found) return null;
-              return isOpenRequest(found) ? (
-                <RequestCard userId={userId} organizationId={organizationId} request={found} />
-              ) : (
-                <RequestResult request={found} link={proposalResultLink(organizationId, found)} />
+              return (
+                found && (
+                  <RequestCard userId={userId} organizationId={organizationId} request={found} />
+                )
               );
             }}
           />

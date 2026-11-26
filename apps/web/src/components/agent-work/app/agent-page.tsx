@@ -21,7 +21,7 @@ import { Laptop } from "lucide-react";
  */
 export function AgentPage(props: ComponentProps<typeof AgentPageContent>) {
   return (
-    <UnsavedDraftsProvider key={props.agentId}>
+    <UnsavedDraftsProvider>
       <AgentPageContent {...props} />
     </UnsavedDraftsProvider>
   );
@@ -85,7 +85,6 @@ function AgentPageContent({
       onSectionChange={onSectionChange}
       messages={
         <AgentMessages
-          key={agentId}
           userId={userId}
           organizationId={organizationId}
           agentId={agentId}
