@@ -10,6 +10,10 @@ export const sectionLabels: Record<CrmSection | "contacts", string> = {
 
 export const singularLabels = { accounts: "account", contacts: "contact", deals: "deal" } as const;
 const outcomeLabels = { open: "Open", won: "Won", lost: "Lost" } as const;
+export const outcomeOptions = (["open", "won", "lost"] as const).map((value) => ({
+  value,
+  label: outcomeLabels[value],
+}));
 // oxlint-disable-next-line deslop/prefer-literal-union -- Persisted outcomes are strings; retain the unknown-value fallback.
 export function outcomeLabel(outcome: string) {
   if (outcome === "open" || outcome === "won" || outcome === "lost") return outcomeLabels[outcome];

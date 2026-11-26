@@ -6,6 +6,7 @@ import { useState } from "react";
 import { CrmActivity } from "../crm-activity";
 import { crmResource } from "../crm-resource";
 import { accessLabel, dealAmount, outcomeLabel } from "../crm-types";
+import { accountOptions, contactOptions } from "../customer-options";
 import { FollowUps } from "../follow-ups";
 import { InteractionRollup } from "../interaction-rollup";
 import { recordChangeDialog, type RecordChangeDialog } from "../record-change-dialog";
@@ -121,14 +122,8 @@ export function DealDetail({
           name={deal.title}
           archived={archived}
           record={editingRecord}
-          accounts={(resourceState(accounts).data ?? []).map((row) => ({
-            value: row.entityId,
-            label: row.name,
-          }))}
-          contacts={(resourceState(contacts).data ?? []).map(({ contact }) => ({
-            value: contact.entityId,
-            label: contact.displayName,
-          }))}
+          accounts={accountOptions(resourceState(accounts).data)}
+          contacts={contactOptions(resourceState(contacts).data)}
           stages={stages}
           mutation={mutation}
           onClose={() => setDialog(null)}

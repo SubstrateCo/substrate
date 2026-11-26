@@ -33,12 +33,6 @@ export function CrmWorkspace({
   recordId?: string;
 }) {
   const navigate = useNavigate();
-  let content;
-  if (section === "settings") content = <CrmSettings organizationId={organizationId} />;
-  else if (section === "deals" || !recordId)
-    content = <RecordCollection key={section} organizationId={organizationId} kind={section} />;
-  else
-    content = <AccountDetail key={recordId} organizationId={organizationId} entityId={recordId} />;
   return (
     <PageLayout id="crm" aria-label="CRM workspace">
       <PageSidebar aria-label="CRM">
@@ -56,7 +50,9 @@ export function CrmWorkspace({
           />
         </PageSidebarContent>
       </PageSidebar>
-      <PageContent className="@container">{content}</PageContent>
+      <PageContent className="@container">
+        <CrmContent organizationId={organizationId} section={section} recordId={recordId} />
+      </PageContent>
       <PageSheet
         open={section === "deals" && !!recordId}
         label="Deal"
@@ -70,4 +66,20 @@ export function CrmWorkspace({
       </PageSheet>
     </PageLayout>
   );
+}
+
+/** The open section. A deal opens in a sheet over its list; an account replaces the list. */
+function CrmContent({
+  organizationId,
+  section,
+  recordId,
+}: {
+  organizationId: string;
+  section: CrmSection;
+  recordId?: string;
+}) {
+  if (section === "settings") return <CrmSettings organizationId={organizationId} />;
+  if (section === "deals" || !recordId)
+    return <RecordCollection key={section} organizationId={organizationId} kind={section} />;
+  return <AccountDetail key={recordId} organizationId={organizationId} entityId={recordId} />;
 }

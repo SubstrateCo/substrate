@@ -5,6 +5,8 @@ import { RecordEditor, type RecordDraft } from "./record-editor";
 import type { ComboboxOption } from "@/components/ui/combobox";
 import type { useRecordMutation } from "@/queries/records/mutations";
 
+const noOptions: ComboboxOption[] = [];
+
 /** Renders the edit or archive dialog of a CRM record detail and closes it after a successful change. */
 export function RecordChangeDialogs({
   dialog,
@@ -14,9 +16,9 @@ export function RecordChangeDialogs({
   name,
   archived,
   record,
-  accounts = [],
-  contacts = [],
-  stages = [],
+  accounts = noOptions,
+  contacts = noOptions,
+  stages = noOptions,
   mutation,
   onClose,
 }: {

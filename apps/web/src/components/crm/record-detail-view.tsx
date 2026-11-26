@@ -186,17 +186,9 @@ function RecordActionsMenu({
   // focus there when it closes instead of to the removed menu item.
   const pending = useRef<(() => void) | null>(null);
   if (!tools.length && !archive) return null;
-  const item = (tool: RecordTool) => (
-    <DropdownMenuItem
-      key={tool.label}
-      onSelect={() => {
-        pending.current = tool.onSelect;
-      }}
-    >
-      {tool.icon}
-      {tool.label}
-    </DropdownMenuItem>
-  );
+  function choose(run: () => void) {
+    pending.current = run;
+  }
   return (
     <DropdownMenu>
       <Tooltip>
@@ -220,11 +212,29 @@ function RecordActionsMenu({
           run();
         }}
       >
-        {tools.map(item)}
+        {tools.map((tool) => (
+          <RecordToolItem key={tool.label} tool={tool} onChoose={choose} />
+        ))}
         {archive && tools.length > 0 && <DropdownMenuSeparator />}
-        {archive && item(archive)}
+        {archive && <RecordToolItem tool={archive} onChoose={choose} />}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+/** One More actions item. Choosing it hands its action to the menu to run after the menu closes. */
+function RecordToolItem({
+  tool,
+  onChoose,
+}: {
+  tool: RecordTool;
+  onChoose: (run: () => void) => void;
+}) {
+  return (
+    <DropdownMenuItem onSelect={() => onChoose(tool.onSelect)}>
+      {tool.icon}
+      {tool.label}
+    </DropdownMenuItem>
   );
 }
 

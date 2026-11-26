@@ -1,17 +1,8 @@
-import type { CrmWrite } from "@substrate/contracts/crm/input";
-
+import { accessLevelLabels, type AccessLevel } from "./access-levels";
 import { recordRows } from "@/components/layout/record-section";
 import { AccessRow } from "@/components/people/access-row";
 import { FieldDescription } from "@/components/ui/field";
 import type { PickerPerson } from "@/lib/people/people-picker";
-
-type Level = Extract<CrmWrite, { action: "share" }>["level"];
-const levelLabels: Record<Level, string> = {
-  view: "Can view",
-  comment: "Can comment",
-  edit: "Can edit",
-  owner: "Can manage access",
-};
 
 export function RecordGrants({
   grants,
@@ -19,7 +10,7 @@ export function RecordGrants({
   disabled,
   onRemove,
 }: {
-  grants: readonly { actorEntityId: string; level: Level }[];
+  grants: readonly { actorEntityId: string; level: AccessLevel }[];
   people: readonly PickerPerson[];
   disabled: boolean;
   onRemove: (person: { actorEntityId: string; name: string }) => void;
@@ -41,7 +32,7 @@ export function RecordGrants({
             key={grant.actorEntityId}
             name={name}
             image={person?.image}
-            level={levelLabels[grant.level]}
+            level={accessLevelLabels[grant.level]}
             disabled={disabled}
             onRemove={() => onRemove({ actorEntityId: grant.actorEntityId, name })}
           />

@@ -2,6 +2,7 @@ import type { DealOutcome } from "@substrate/contracts/crm/input";
 
 import { useState } from "react";
 
+import { outcomeOptions } from "../crm-types";
 import { formText } from "../form-text";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { NativeField } from "@/components/forms/native-form";
@@ -59,16 +60,7 @@ export function DealTransition({
       }
     >
       <SelectField label="Stage" value={stageId} onChange={setStageId} options={stages} />
-      <SelectField
-        label="Outcome"
-        value={outcome}
-        onChange={setOutcome}
-        options={[
-          { value: "open", label: "Open" },
-          { value: "won", label: "Won" },
-          { value: "lost", label: "Lost" },
-        ]}
-      />
+      <SelectField label="Outcome" value={outcome} onChange={setOutcome} options={outcomeOptions} />
       {outcome === "lost" && (
         <NativeField
           id="crm-lost-reason"

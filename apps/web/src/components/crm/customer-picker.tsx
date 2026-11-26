@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useDeferredValue, useId, useState, type ReactNode } from "react";
 
+import { accountOptions, contactOptions } from "./customer-options";
 import { Button } from "@/components/ui/button";
 import {
   Combobox,
@@ -53,16 +54,10 @@ export function CustomerPicker({
     enabled: open && kind === "contacts",
   });
   const query = { accounts, contacts }[kind];
-  const options: ComboboxOption[] = {
-    accounts: (resourceState(accounts).data ?? []).map((row) => ({
-      value: row.entityId,
-      label: row.name,
-    })),
-    contacts: (resourceState(contacts).data ?? []).map(({ contact }) => ({
-      value: contact.entityId,
-      label: contact.displayName,
-    })),
-  }[kind];
+  const options =
+    kind === "accounts"
+      ? accountOptions(resourceState(accounts).data)
+      : contactOptions(resourceState(contacts).data);
   let status: ReactNode = null;
   if (query.isFetching) status = <Spinner className="size-3.5" aria-label={`Searching ${kind}`} />;
   else if (query.error) status = "Couldn’t load customer records.";

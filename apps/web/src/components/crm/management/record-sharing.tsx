@@ -1,9 +1,8 @@
-import type { CrmWrite } from "@substrate/contracts/crm/input";
-
 import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
+import { accessLevelLabels, type AccessLevel } from "./access-levels";
 import { RecordGrants } from "./record-grants";
 import { RecordPersonField } from "./record-people";
 import { useRecordPeople } from "./record-people-directory";
@@ -16,13 +15,11 @@ import { FieldLegend, FieldSet } from "@/components/ui/field";
 import { crmGrantsOptions } from "@/queries/crm/management";
 import { useCrmMutation } from "@/queries/crm/mutations";
 
-type Level = Extract<CrmWrite, { action: "share" }>["level"];
-const permissions: { value: Level; label: string }[] = [
-  { value: "view", label: "Can view" },
-  { value: "comment", label: "Can comment" },
-  { value: "edit", label: "Can edit" },
-  { value: "owner", label: "Can manage access" },
-];
+const permissions = Object.entries(accessLevelLabels).map(([value, label]) => ({
+  // SAFETY: The keys of accessLevelLabels are exactly the access levels.
+  value: value as AccessLevel,
+  label,
+}));
 
 export type RecordSharingProps = {
   organizationId: string;
@@ -30,7 +27,7 @@ export type RecordSharingProps = {
   name: string;
   /** The record kind in copy, such as "deal". */
   noun: string;
-  level: Level;
+  level: AccessLevel;
   onClose: () => void;
   onRestoreFocus?: () => void;
 };
@@ -51,7 +48,7 @@ export function RecordSharing({
     enabled: level === "owner",
   });
   const [personId, setPersonId] = useState("");
-  const [permission, setPermission] = useState<Level>("view");
+  const [permission, setPermission] = useState<AccessLevel>("view");
   const [removing, setRemoving] = useState<{ actorEntityId: string; name: string } | null>(null);
   const actor = directory.people.find((candidate) => candidate.id === personId);
   const ready = !directory.pending && !directory.error && !grants.isPending && !grants.error;

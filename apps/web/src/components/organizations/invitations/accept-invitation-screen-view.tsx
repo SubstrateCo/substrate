@@ -73,32 +73,30 @@ export function AcceptInvitationScreen({
       {ready && (
         <>
           <InvitationDetails invitation={ready} />
-          <>
-            <FormMessage
-              error={error}
-              errorDescription="We couldn’t accept this invitation. Please try again."
-            />
-            <PendingButton
-              className="w-full"
-              size="lg"
-              pending={pending}
-              disabled={declining}
-              onClick={onAccept}
-            >
-              Accept invitation
-            </PendingButton>
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full"
-              size="lg"
-              disabled={pending || declining}
-              onClick={onDecline}
-            >
-              Decline invitation
-            </Button>
-            {declineDialog}
-          </>
+          <FormMessage
+            error={error}
+            errorDescription="We couldn’t accept this invitation. Please try again."
+          />
+          <PendingButton
+            className="w-full"
+            size="lg"
+            pending={pending}
+            disabled={declining}
+            onClick={onAccept}
+          >
+            Accept invitation
+          </PendingButton>
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full"
+            size="lg"
+            disabled={pending || declining}
+            onClick={onDecline}
+          >
+            Decline invitation
+          </Button>
+          {declineDialog}
         </>
       )}
     </AuthFrame>
