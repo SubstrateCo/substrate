@@ -1,7 +1,7 @@
 import { outboxClaimLimit, type OutboxBatch } from "@substrate/database/trusted";
 
 /** How often the relay looks for batches that the server did not publish. */
-export const outboxRelayMs = 5_000;
+const outboxRelayMs = 5_000;
 
 interface Dependencies {
   /** Claims up to `claimLimit` due batches. */

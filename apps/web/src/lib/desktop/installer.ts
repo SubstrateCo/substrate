@@ -1,6 +1,6 @@
 export type InstallerPlatform = "windows" | "mac";
 
-export const installerPlatforms = ["windows", "mac"] as const satisfies InstallerPlatform[];
+const installerPlatforms = ["windows", "mac"] as const satisfies InstallerPlatform[];
 
 export const installerPlatformNames: Record<InstallerPlatform, string> = {
   windows: "Windows",

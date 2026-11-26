@@ -18,7 +18,7 @@ export const outboxMaxAttempts = 12;
  * also drops the realtime subscription and its sockets, and reconnecting clients resync, so these
  * hints no longer add anything.
  */
-export const outboxMaxAge = "15 minutes";
+const outboxMaxAge = "15 minutes";
 
 /** Gives each hint its event ID and stores the batch until it is published. */
 export async function recordOutbox(

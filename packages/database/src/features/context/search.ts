@@ -119,7 +119,7 @@ export function containsText(column: SQLWrapper, query: string) {
 
 // How well a short field matches the query, best first: 0 is the whole text, 1 a prefix, 2 the
 // start of a later word, and 3 anything else, such as a substring or a description word.
-export function matchRank(column: SQLWrapper, query: string) {
+function matchRank(column: SQLWrapper, query: string) {
   const key = trigramKey(column);
   return sql<number>`(CASE WHEN ${key} = lower(${query}) THEN 0
     WHEN starts_with(${key}, lower(${query})) THEN 1

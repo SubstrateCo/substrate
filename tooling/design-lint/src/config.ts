@@ -9,7 +9,7 @@ const DIALOG_INSETS =
  * Shared blocks outside components/ui that own their look through variants, so callers may only
  * place them. Paths are relative to components/.
  */
-export const SHARED_BLOCKS = [
+const SHARED_BLOCKS = [
   "people/person-avatar",
   "layout/page-sheet",
   "layout/page-header",

@@ -22,9 +22,9 @@ export type InteractionFilters = {
   scope?: InteractionScope;
 };
 
-export const interactionDays = ["7", "30", "all"] as const;
-export const interactionOriginValues = ["manual", "message_publication", "calendar_event"] as const;
-export const interactionScopes = ["related", "linked"] as const;
+const interactionDays = ["7", "30", "all"] as const;
+const interactionOriginValues = ["manual", "message_publication", "calendar_event"] as const;
+const interactionScopes = ["related", "linked"] as const;
 
 function choice<T extends string>(
   value: FilterValue<InteractionFilterId>,

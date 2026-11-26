@@ -95,7 +95,7 @@ const agentRequestState = z.object({
   status: z.string(),
   outcome: proposalOutcome.nullable(),
 });
-export type AgentRequestState = z.output<typeof agentRequestState>;
+type AgentRequestState = z.output<typeof agentRequestState>;
 
 /** Codes after which the caller verifies the session again. */
 const deniedCodes = new Set(["UNAUTHENTICATED", "FORBIDDEN", "WORKSPACE_CHANGED"]);

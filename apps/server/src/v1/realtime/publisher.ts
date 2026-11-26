@@ -43,8 +43,6 @@ export function createRefreshPublisher(
   };
 }
 
-export type RefreshPublisher = ReturnType<typeof createRefreshPublisher>;
-
 export function createRedisPublisher(outbox?: OutboxStore) {
   let client: RedisClient | undefined;
   let closed = false;

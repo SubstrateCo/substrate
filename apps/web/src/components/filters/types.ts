@@ -3,9 +3,9 @@ import type { ReactNode } from "react";
 import type { LucideIcon } from "lucide-react";
 
 /** Operators for an option field. "is not" excludes the chosen values. */
-export type OptionFilterOperator = "is" | "is not";
+type OptionFilterOperator = "is" | "is not";
 /** Operators for a date field. "is before" and "is after" exclude the chosen day. */
-export type DateFilterOperator = "is" | "is before" | "is after";
+type DateFilterOperator = "is" | "is before" | "is after";
 export type FilterOperator = OptionFilterOperator | DateFilterOperator;
 
 /** One choice in an option field. `icon` is a small leading mark, such as a lucide icon or a `PersonAvatar size="xs"`. */
