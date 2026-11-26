@@ -13,8 +13,10 @@ import { ContactForm } from "@/components/contacts/contact-form";
 import { InteractionsScreen } from "@/components/interactions/interactions-screen";
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
+import { useOrganizationAdmin } from "@/features/organizations/use-organization-admin";
 import { useWorkspaceApps } from "@/features/records/apps";
 import { crmSection, type CrmSection } from "@/features/records/crm/crm-navigation";
+import { crmToolbarActions } from "@/features/records/crm/crm-toolbar";
 import type { FilterField } from "@/features/records/filters";
 import {
   formatDate,
@@ -80,6 +82,7 @@ const createLabels: Record<CrmSection, string> = {
 export function CrmScreen({ organizationId, onOpenRecord, crmEnabled }: CrmScreenProps) {
   const scope = useRecordScope(organizationId);
   const apps = useWorkspaceApps(scope);
+  const admin = useOrganizationAdmin(organizationId);
   // Contacts and interactions are core. A failed app lookup hides only the CRM sections.
   const crm = crmEnabled ?? apps.enabled("crm");
   const params = useLocalSearchParams<{ crmSection?: string }>();
@@ -92,12 +95,13 @@ export function CrmScreen({ organizationId, onOpenRecord, crmEnabled }: CrmScree
   if (crmEnabled === undefined && apps.query.isPending)
     return <LoadingRows label="Loading contacts" />;
   const current: CrmSection = !crm && crmSections.has(section) ? "contacts" : section;
+  const actions = crmToolbarActions({ section: current, crm, admin: admin.allowed });
   const archivable =
     crm && current !== "pipeline" && current !== "interactions" && current !== "reports";
   return (
     <View className="flex-1 bg-surface" testID="crm-screen">
       <ListToolbar title={crm ? "CRM" : "People"}>
-        {current === "contacts" || current === "accounts" || current === "deals" ? (
+        {actions.export ? (
           <Button
             variant="ghost"
             size="icon"
@@ -108,7 +112,7 @@ export function CrmScreen({ organizationId, onOpenRecord, crmEnabled }: CrmScree
           </Button>
         ) : null}
 
-        {current === "pipeline" ? (
+        {actions.editStages ? (
           <Button
             variant="ghost"
             size="icon"
@@ -118,7 +122,7 @@ export function CrmScreen({ organizationId, onOpenRecord, crmEnabled }: CrmScree
             <Icon as={Settings2} className="size-5 text-foreground" />
           </Button>
         ) : null}
-        {crm && current !== "pipeline" ? (
+        {actions.settings ? (
           <Button
             variant="ghost"
             size="icon"
@@ -186,7 +190,7 @@ export function CrmScreen({ organizationId, onOpenRecord, crmEnabled }: CrmScree
         onOpenRecord={onOpenRecord}
         creating={creating}
         onCreateClose={() => setCreating(false)}
-        editingStages={editingStages}
+        editingStages={editingStages && actions.editStages}
         onStagesClose={() => setEditingStages(false)}
       />
       {creating && (current === "deals" || current === "pipeline" || current === "reports") ? (
@@ -197,9 +201,15 @@ export function CrmScreen({ organizationId, onOpenRecord, crmEnabled }: CrmScree
         />
       ) : null}
       {settings && crm ? (
-        <CrmSettingsSheet scope={scope} onClose={() => setSettings(false)} />
+        <CrmSettingsSheet
+          scope={scope}
+          canEdit={admin.allowed}
+          onClose={() => setSettings(false)}
+        />
       ) : null}
-      {exporting && (current === "contacts" || current === "accounts" || current === "deals") ? (
+      {exporting &&
+      actions.export &&
+      (current === "contacts" || current === "accounts" || current === "deals") ? (
         <ExportRecords
           scope={scope}
           kind={current}

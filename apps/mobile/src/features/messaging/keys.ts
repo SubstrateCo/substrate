@@ -18,7 +18,6 @@ export const messagingKeys = {
   deleteImpact: (scope: QueryScope, conversationId: string) =>
     [...messagingKeys.all(scope), "delete-impact", conversationId] as const,
   managed: (scope: QueryScope) => [...messagingKeys.all(scope), "managed"] as const,
-  settingsAccess: (scope: QueryScope) => [...messagingKeys.all(scope), "settings-access"] as const,
   profile: (scope: QueryScope, conversationId: string, actorId: string) =>
     [...messagingKeys.all(scope), "profile", conversationId, actorId] as const,
   target: (scope: QueryScope, conversationId: string, messageId: string) =>

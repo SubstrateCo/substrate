@@ -8,7 +8,16 @@ import { FormSheet } from "@/features/records/ui/sheet";
 import { ErrorState, LoadingRows } from "@/features/records/ui/states";
 import type { QueryScope } from "@/queries/keys";
 
-export function CrmSettingsSheet({ scope, onClose }: { scope: QueryScope; onClose: () => void }) {
+/** Members read the settings. Only workspace owners and admins can change them. */
+export function CrmSettingsSheet({
+  scope,
+  canEdit,
+  onClose,
+}: {
+  scope: QueryScope;
+  canEdit: boolean;
+  onClose: () => void;
+}) {
   const query = useQuery(recordQueries.crmSettings(scope));
   if (!query.data)
     return (
@@ -33,17 +42,24 @@ export function CrmSettingsSheet({ scope, onClose }: { scope: QueryScope; onClos
       </FormSheet>
     );
   return (
-    <CurrencyForm scope={scope} initial={query.data.defaultCurrency ?? ""} onClose={onClose} />
+    <CurrencyForm
+      scope={scope}
+      initial={query.data.defaultCurrency ?? ""}
+      canEdit={canEdit}
+      onClose={onClose}
+    />
   );
 }
 
 function CurrencyForm({
   scope,
   initial,
+  canEdit,
   onClose,
 }: {
   scope: QueryScope;
   initial: string;
+  canEdit: boolean;
   onClose: () => void;
 }) {
   const [currency, setCurrency] = useState(initial);
@@ -56,7 +72,7 @@ function CurrencyForm({
       description="Workspace admins can set the default currency for new deals. Existing deals keep their currency."
       dirty={value !== initial}
       pending={write.isPending}
-      canSave={valid && value !== initial}
+      canSave={canEdit && valid && value !== initial}
       error={write.error}
       onClose={onClose}
       onSave={() =>
@@ -73,7 +89,12 @@ function CurrencyForm({
         maxLength={3}
         autoCapitalize="characters"
         placeholder="USD"
-        description="Leave empty for no default."
+        editable={canEdit}
+        description={
+          canEdit
+            ? "Leave empty for no default."
+            : "Only workspace owners and admins can change CRM settings."
+        }
         error={valid ? null : "Use a three-letter currency code, like USD."}
       />
     </FormSheet>

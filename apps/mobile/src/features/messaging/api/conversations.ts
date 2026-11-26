@@ -20,8 +20,6 @@ export const createConversation = (json: Json<typeof conversations.$post>) =>
   readResult(conversations.$post({ json }));
 export const listManagedConversations = (query: { organizationId: string }, signal?: AbortSignal) =>
   readResult(conversations.managed.$get({ query }, init(signal)));
-export const getSettingsAccess = (signal?: AbortSignal) =>
-  readResult(api.organizations["settings-access"].$get({}, init(signal)));
 export const addMembers = (json: Json<typeof messaging.members.$post>) =>
   readResult(messaging.members.$post({ json }));
 export const removeMember = (json: ConversationTarget & { actorId: string }) =>
