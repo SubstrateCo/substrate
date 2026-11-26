@@ -2,6 +2,7 @@ import type { InteractionKind } from "@substrate/contracts/context/interactions"
 
 import { useState, type ReactNode } from "react";
 
+import { interactionTypes } from "./interaction-types";
 import { formText } from "@/components/crm/form-text";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { NativeField } from "@/components/forms/native-form";
@@ -80,11 +81,7 @@ export function InteractionEditor({
   );
 }
 
-const kinds = [
-  { value: "call", label: "Call" },
-  { value: "meeting", label: "Meeting" },
-  { value: "email", label: "Email" },
-  { value: "message", label: "Message" },
-  { value: "note", label: "Internal note" },
-  { value: "other", label: "Other" },
-] satisfies { value: InteractionKind; label: string }[];
+const kinds = (["call", "meeting", "email", "message", "note", "other"] as const).map((value) => ({
+  value,
+  label: interactionTypes[value].label,
+}));

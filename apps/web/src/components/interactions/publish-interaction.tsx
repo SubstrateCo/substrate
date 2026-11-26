@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 
 import { useState } from "react";
 
+import { interactionTypes } from "./interaction-types";
 import { CrmResourceState } from "@/components/crm/crm-resource-state";
 import { formText } from "@/components/crm/form-text";
 import { FormDialog } from "@/components/feedback/form-dialog";
@@ -154,11 +155,6 @@ function PublicationEditor({
   );
 }
 
-const publicationKinds = [
-  { value: "message", label: "Message" },
-  { value: "email", label: "Email" },
-  { value: "meeting", label: "Meeting" },
-  { value: "call", label: "Call" },
-  { value: "note", label: "Internal note" },
-  { value: "other", label: "Other" },
-] satisfies { value: InteractionKind; label: string }[];
+const publicationKinds = (["message", "email", "meeting", "call", "note", "other"] as const).map(
+  (value) => ({ value, label: interactionTypes[value].label }),
+);

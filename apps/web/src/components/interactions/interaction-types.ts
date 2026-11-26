@@ -51,7 +51,7 @@ export const interactionTypes = {
     textClass: "text-chart-5",
   },
   note: {
-    label: "Note",
+    label: "Internal note",
     icon: NotebookPen,
     color: "var(--chart-4)",
     textClass: "text-chart-4",
