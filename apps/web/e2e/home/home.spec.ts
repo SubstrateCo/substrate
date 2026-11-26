@@ -1,8 +1,31 @@
 import { provisionWorkspaceSession } from "../../../server/integration/test-support/organizations";
 import { post, visit } from "../test-support/fixtures";
+import { captureScreenshot } from "../test-support/screenshots";
 import { detail, project } from "../test-support/tasks";
 import { test } from "../test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
+
+test("Home empty sections keep their full content clear of card padding", async ({
+  account,
+  client,
+}) => {
+  const user = await client(account);
+  await visit(user, undefined, "/dashboard");
+  await expect(user.page.getByText("No open tasks assigned to you", { exact: true })).toBeVisible();
+
+  for (const height of [900, 650]) {
+    await user.page.setViewportSize({ width: 1440, height });
+    for (const name of ["Needs your attention", "My work", "Recent updates"]) {
+      const items = user.page.getByRole("group", { name: `${name} items`, exact: true });
+      await expect(items.getByRole("link").first()).toBeVisible();
+      expect(
+        await items.evaluate((element) => element.scrollHeight - element.clientHeight),
+        `${name} at ${height}px should not clip its empty state`,
+      ).toBeLessThanOrEqual(1);
+    }
+  }
+  await captureScreenshot(user.page, "home-padding-fixed");
+});
 
 test("Home has useful empty states and Messages has its own route", async ({ account, client }) => {
   const user = await client(account);

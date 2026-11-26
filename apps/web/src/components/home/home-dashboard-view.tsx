@@ -50,7 +50,7 @@ function HomePanel({
   return (
     <div
       className={cn(
-        "flex min-h-0 min-w-0 flex-1 max-md:flex-none",
+        "flex min-w-0 flex-auto shrink-0 max-md:flex-none",
         active !== id && "max-md:hidden",
         className,
       )}
@@ -79,7 +79,7 @@ export function HomeDashboardView({
     <PageLayout id="home" aria-label="Home">
       <PageContent>
         <div
-          className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 max-md:overflow-y-auto md:gap-6 md:p-6"
+          className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 md:gap-6 md:p-6"
           data-home-dashboard
         >
           <PageHeader
@@ -107,8 +107,8 @@ export function HomeDashboardView({
               </div>
             }
           />
-          <div className="flex min-h-0 flex-1 flex-col gap-4 max-md:flex-none md:flex-row">
-            <div className="flex min-h-0 min-w-0 flex-col gap-4 max-md:contents md:flex-1 xl:flex-7">
+          <div className="flex flex-1 flex-col gap-4 max-md:flex-none md:flex-row">
+            <div className="flex min-w-0 flex-col gap-4 max-md:contents md:flex-1 xl:flex-7">
               <HomePanel
                 id="attention"
                 active={activeSection}
@@ -159,7 +159,7 @@ export function HomeDashboardView({
                 />
               </HomePanel>
             </div>
-            <div className="flex min-h-0 min-w-0 flex-col gap-4 max-md:contents md:flex-1 xl:flex-5">
+            <div className="flex min-w-0 flex-col gap-4 max-md:contents md:flex-1 xl:flex-5">
               <HomePanel id="agents" active={activeSection} className="md:grow-2">
                 <HomeSection
                   title="My agents"
