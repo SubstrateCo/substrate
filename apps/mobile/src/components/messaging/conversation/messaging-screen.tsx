@@ -171,7 +171,7 @@ function OpenConversation({
             : undefined
         }
       />
-      {target.error ? <Notice>The linked message isn't available.</Notice> : null}
+      {target.error ? <Notice>The linked message isn&apos;t available.</Notice> : null}
       <MessageTimeline
         organizationId={organizationId}
         conversationId={conversation.id}
@@ -195,7 +195,8 @@ function OpenConversation({
       {!conversation.joined && !conversation.task ? (
         <View className="gap-2 border-t border-border px-4 py-3">
           <Text className="text-sm text-muted-foreground">
-            You aren't a member of this channel. Join to get it in your list, or post to rejoin.
+            You aren&apos;t a member of this channel. Join to get it in your list, or post to
+            rejoin.
           </Text>
           <MutationError error={management.join.error} />
           <Button

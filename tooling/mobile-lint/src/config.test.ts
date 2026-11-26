@@ -23,7 +23,9 @@ function lint(filename: string, input: string): string[] {
       config,
       JSON.stringify({
         ...mobileConfig,
+        plugins: ["react"],
         jsPlugins: [
+          require.resolve("eslint-plugin-react-native"),
           {
             name: "mobile",
             specifier: join(import.meta.dirname, "index.ts"),

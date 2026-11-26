@@ -204,11 +204,9 @@ export function AuthScreen({
           </>
         ) : null}
         {mode === "login" || mode === "invite" ? (
-          <>
-            <Button variant="ghost" disabled={flow.isPending} onPress={() => changeMode("forgot")}>
-              <Text>Forgot password?</Text>
-            </Button>
-          </>
+          <Button variant="ghost" disabled={flow.isPending} onPress={() => changeMode("forgot")}>
+            <Text>Forgot password?</Text>
+          </Button>
         ) : (
           <View className="gap-2">
             {invalidReset ? (

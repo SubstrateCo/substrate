@@ -176,7 +176,7 @@ function TaskInProject({
         }
       />
       {archived ? (
-        <Notice icon={Archive}>This task's project is archived and read-only.</Notice>
+        <Notice icon={Archive}>This task&apos;s project is archived and read-only.</Notice>
       ) : null}
       {!archived && !editable ? <Notice>You can view this task but not change it.</Notice> : null}
       <ScrollView

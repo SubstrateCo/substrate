@@ -31,6 +31,8 @@ export function MobileLifecycle({
       clearPrivateQueries(queryClient);
       resetPrivateState();
     };
+    // Identity changes must clear private data before the next screen paints.
+    // oxlint-disable-next-line react/exhaustive-effect-dependencies
   }, [userId, organizationId, queryClient]);
 
   useEffect(() => {
