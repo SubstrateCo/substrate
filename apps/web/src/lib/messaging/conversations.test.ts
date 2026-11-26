@@ -1,6 +1,5 @@
 import {
   agentDirectMessage,
-  conversationAgentOptions,
   conversationLabel,
   conversationName,
   humanMembers,
@@ -73,25 +72,4 @@ test("a new message to an agent reuses its joined DM, not a channel it is in", (
   ];
   expect(agentDirectMessage(conversations, "d1")?.id).toBe("dm");
   expect(agentDirectMessage(conversations, "d2")).toBeUndefined();
-});
-
-test("agent options match members by definition ID, hide disabled agents, hide disabled agents, and keep unmatched members removable", () => {
-  const image = "/api/v1/files/00000000-0000-0000-0000-000000000001/content";
-  expect(
-    conversationAgentOptions(
-      [
-        { id: "d1", name: "Helper", image, enabled: true },
-        { id: "d2", name: "Writer", enabled: true },
-        { id: "d3", name: "Off", enabled: false },
-      ],
-      [
-        { id: "actor-helper", title: "Renamed helper", agentId: "d1" },
-        { id: "actor-off", title: "Off", image, agentId: "d3" },
-      ],
-    ),
-  ).toEqual([
-    { agentId: "d1", name: "Helper", image, actorId: "actor-helper" },
-    { agentId: "d2", name: "Writer", actorId: undefined },
-    { agentId: "d3", name: "Off", image, actorId: "actor-off" },
-  ]);
 });

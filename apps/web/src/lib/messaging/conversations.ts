@@ -60,38 +60,6 @@ export function conversationTextLabel(
   return conversationLabel({ ...conversation, name: conversationName(conversation) });
 }
 
-/**
- * Joins the viewer's enabled agents with their agent members here, by agent definition ID.
- * Members that match no enabled agent stay removable.
- */
-export function conversationAgentOptions(
-  agents: readonly { id: string; name: string; image?: string | null; enabled: boolean }[],
-  members: readonly { id: string; title: string; image?: string | null; agentId?: string }[],
-): { agentId: string; name: string; image?: string | null; actorId?: string }[] {
-  const matched = new Set<string>();
-  const options = agents.flatMap((agent) => {
-    if (!agent.enabled) return [];
-    const member = members.find((entry) => entry.agentId === agent.id);
-    if (member) matched.add(member.id);
-    return [{ agentId: agent.id, name: agent.name, image: agent.image, actorId: member?.id }];
-  });
-  return [
-    ...options,
-    ...members.flatMap((member) =>
-      matched.has(member.id)
-        ? []
-        : [
-            {
-              agentId: member.agentId ?? member.id,
-              name: member.title,
-              image: member.image,
-              actorId: member.id,
-            },
-          ],
-    ),
-  ];
-}
-
 /** The viewer's open DM with their agent, so a new message reuses it. */
 export function agentDirectMessage<
   C extends Pick<Conversation, "kind" | "joined"> & { members: readonly ConversationMember[] },

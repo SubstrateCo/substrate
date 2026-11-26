@@ -36,11 +36,11 @@ export function recipientFor(text: string, people: readonly PickerPerson[]) {
 }
 
 export function invitedRecipients(value: readonly PickedRecipient[]) {
-  return value.filter((recipient) => !recipient.person);
+  return value.filter((recipient) => !recipient.person && !recipient.agent);
 }
 
 export function recipientEmails(value: readonly PickedRecipient[]) {
-  return value.map((recipient) => recipient.email);
+  return value.flatMap((recipient) => (recipient.email ? [recipient.email] : []));
 }
 
 export type CreateDraft = { name: string; recipients: PickedRecipient[] };

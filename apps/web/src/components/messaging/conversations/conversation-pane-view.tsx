@@ -109,7 +109,10 @@ function PaneHeader({
   blocked: boolean;
 }) {
   const canAddMembers =
-    !blocked && !taskLink && conversation?.kind !== "dm" && conversation?.canManage;
+    !blocked &&
+    !taskLink &&
+    conversation?.kind !== "dm" &&
+    (conversation?.canManage || conversation?.joined);
   return (
     <ConversationHeader
       title={title}

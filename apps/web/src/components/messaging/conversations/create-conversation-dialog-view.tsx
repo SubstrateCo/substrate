@@ -1,5 +1,9 @@
 import type { ConversationDraft } from "@substrate/contracts/messaging/drafts";
-import type { PickedRecipient, PickerPerson } from "@substrate/contracts/people/picker";
+import type {
+  PickedRecipient,
+  PickerAgent,
+  PickerPerson,
+} from "@substrate/contracts/people/picker";
 
 import { revalidateLogic, useForm, useSelector } from "@tanstack/react-form";
 
@@ -50,6 +54,7 @@ function recipientStatus(kind: Conversation["kind"], chosen: number) {
 export function CreateConversationDialog({
   kind,
   people,
+  agents,
   onSubmit,
   onClose,
   onRestoreFocus,
@@ -59,6 +64,7 @@ export function CreateConversationDialog({
   kind: Conversation["kind"];
   /** People to suggest, without the viewer. */
   people: readonly PickerPerson[];
+  agents?: readonly PickerAgent[];
   onSubmit: (draft: ConversationDraft) => void;
   onClose: () => void;
   /** Focus the control that opened the dialog, which the dialog cannot find by itself. */
@@ -133,6 +139,7 @@ export function CreateConversationDialog({
                 <PeoplePicker
                   id="conversation-recipients"
                   people={people}
+                  agents={agents}
                   value={field.state.value}
                   max={kind === "dm" ? 1 : undefined}
                   limitText={limit}

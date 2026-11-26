@@ -2,6 +2,7 @@ import { membersButtonSelector, type HeaderMember } from "./conversation-header"
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
+import { useConversationAgents } from "@/queries/messaging/agents";
 import { useRemoveMember } from "@/queries/messaging/message-mutations";
 import { UserMinus } from "lucide-react";
 
@@ -36,20 +37,31 @@ export function RemoveMemberDialog({
 }) {
   const { organizationId } = useWorkspaceScope();
   const remove = useRemoveMember(organizationId, conversationId, member.actorId);
+  const agents = useConversationAgents(organizationId, conversationId);
+  const agent = member.type === "agent";
+  const removal = agent ? agents.remove : remove;
+  let description =
+    "They and their agents will lose access through this organization. Access through another connected organization is unchanged. Their past messages and linked work will remain.";
+  if (agent)
+    description =
+      "This agent stops reading and replying here. Its earlier messages stay, and you can add it back later.";
+  else if (publicChannel)
+    description =
+      "This ends their membership. This channel is public: they can still read its history, post, and rejoin.";
   return (
     <ConfirmDialog
       destructive
       title={`Remove ${member.name}?`}
-      description={
-        publicChannel
-          ? "This ends their membership. This channel is public: they can still read its history, post, and rejoin."
-          : "They and their agents will lose access through this organization. Access through another connected organization is unchanged. Their past messages and linked work will remain."
-      }
+      description={description}
       confirmLabel="Remove member"
-      pending={remove.isPending}
-      error={remove.error}
+      pending={removal.isPending}
+      error={removal.error}
       errorDescription="This member couldn’t be removed. Try again."
-      onConfirm={() => remove.mutate(undefined, { onSuccess: onClose })}
+      onConfirm={() =>
+        agent
+          ? agents.remove.mutate(member.actorId, { onSuccess: onClose })
+          : remove.mutate(undefined, { onSuccess: onClose })
+      }
       onClose={onClose}
       onRestoreFocus={() => {
         document.querySelector<HTMLElement>(membersButtonSelector)?.focus();

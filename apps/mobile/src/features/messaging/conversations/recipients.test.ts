@@ -1,9 +1,29 @@
-import { createConversationProblem, recipientFor } from "./recipients";
+import {
+  createConversationProblem,
+  invitedRecipients,
+  matchPeople,
+  recipientEmails,
+  recipientFor,
+} from "./recipients";
 import { describe, expect, test } from "bun:test";
 
 const ada = { id: "u1", name: "Ada", email: "ada@example.com" };
 
 describe("recipients", () => {
+  test("mixed recipients keep agents out of email requests and invitations", () => {
+    const agent = { agent: { id: "assistant", name: "Assistant" } };
+    const person = { email: ada.email, person: ada };
+    const invitation = { email: "pat@partner.com" };
+    const recipients = [person, agent, invitation];
+
+    expect(recipientEmails(recipients)).toEqual([ada.email, invitation.email]);
+    expect(invitedRecipients(recipients)).toEqual([invitation]);
+    expect(recipientEmails([agent])).toEqual([]);
+    expect(invitedRecipients([agent])).toEqual([]);
+    expect(matchPeople([ada], "", [agent])).toEqual([ada]);
+    expect(matchPeople([ada], "", recipients)).toEqual([]);
+  });
+
   test("a typed member address picks the member; another address is an invitation", () => {
     expect(recipientFor(" Ada@Example.com ", [ada])).toEqual({
       email: "ada@example.com",

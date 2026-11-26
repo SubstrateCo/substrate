@@ -3,12 +3,29 @@ import {
   limitMessage,
   matchPeople,
   recipientFor,
+  recipientAgentIds,
+  recipientEmails,
+  recipientKey,
+  invitedRecipients,
   unfinishedRecipientMessage,
 } from "./people-picker";
 import { expect, test } from "bun:test";
 
 const ada = { id: "u1", name: "Ada Lovelace", email: "ada@northstar.test" };
 const bob = { id: "u2", name: "Bob Chen", email: "Bob@Northstar.test" };
+
+test("agents stay distinct from people and email invitations", () => {
+  const agent = { agent: { id: "u1", name: "Ada's assistant" } };
+  const person = { email: ada.email, person: ada };
+  const invitation = { email: "guest@example.test" };
+  const selected = [agent, person, invitation];
+  expect(recipientEmails(selected)).toEqual([ada.email, invitation.email]);
+  expect(recipientAgentIds(selected)).toEqual(["u1"]);
+  expect(invitedRecipients(selected)).toEqual([invitation]);
+  expect(recipientKey(agent)).not.toBe(recipientKey(person));
+  expect(matchPeople([ada, bob], "", [agent])).toEqual([ada, bob]);
+  expect(addTypedRecipients([agent], ada.email, [ada], { max: 1 }).overflow).toBe(true);
+});
 
 test("people match by name or email and chosen people drop out", () => {
   expect(matchPeople([ada, bob], "chen", [])).toEqual([bob]);

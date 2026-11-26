@@ -1,4 +1,8 @@
-import type { PickedRecipient, PickerPerson } from "@substrate/contracts/people/picker";
+import type {
+  PickedRecipient,
+  PickerAgent,
+  PickerPerson,
+} from "@substrate/contracts/people/picker";
 
 import {
   useEffect,
@@ -11,6 +15,7 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 
+import { Tag } from "@/components/feedback/tag";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { FieldDescription, FieldError } from "@/components/ui/field";
 import { Pressable } from "@/components/ui/pressable";
@@ -20,6 +25,7 @@ import {
   limitMessage,
   matchPeople,
   recipientFor,
+  recipientKey,
 } from "@/lib/people/people-picker";
 import { Mail, X } from "lucide-react";
 
@@ -28,13 +34,25 @@ const separators = new Set([",", ";", " "]);
 function suggestionsFor(
   query: string,
   people: readonly PickerPerson[],
+  agents: readonly PickerAgent[],
   selected: readonly PickedRecipient[],
   allowEmail: boolean,
 ): PickedRecipient[] {
-  const options = matchPeople(people, query, selected).map((person) => ({
+  const options: PickedRecipient[] = matchPeople(people, query, selected).map((person) => ({
     email: person.email.toLowerCase(),
     person,
   }));
+  options.push(
+    ...agents.flatMap((agent) =>
+      agent.name.toLowerCase().includes(query.trim().toLowerCase()) &&
+      !selected.some((entry) => entry.agent?.id === agent.id)
+        ? [{ agent }]
+        : [],
+    ),
+  );
+  options.sort((a, b) =>
+    (a.agent?.name ?? a.person?.name ?? "").localeCompare(b.agent?.name ?? b.person?.name ?? ""),
+  );
   const typed = recipientFor(query, people, allowEmail);
   if (typed && !typed.person && !selected.some((entry) => entry.email === typed.email)) {
     return [...options, typed];
@@ -101,6 +119,7 @@ function pickerInputState({
 export function PeoplePicker({
   id,
   people,
+  agents = [],
   value,
   onValueChange,
   onPendingTextChange,
@@ -116,6 +135,8 @@ export function PeoplePicker({
   id: string;
   /** The people to suggest. Leave out the viewer and anyone who cannot be chosen. */
   people: readonly PickerPerson[];
+  /** Eligible agents, when this action supports agent membership. */
+  agents?: readonly PickerAgent[];
   value: readonly PickedRecipient[];
   onValueChange: (value: PickedRecipient[]) => void;
   /** Called with the text typed into the field that is not a chip yet. */
@@ -144,7 +165,7 @@ export function PeoplePicker({
   // Where focus goes once the chips have changed: the input may not exist until then.
   const focusAfterChange = useRef<"input" | "chip">(undefined);
   const noticeId = `${listId}-limit`;
-  const options = suggestionsFor(query, people, value, allowEmail);
+  const options = suggestionsFor(query, people, agents, value, allowEmail);
   const { full, notice, expanded, showInput, showOptions, description } = pickerInputState({
     selectedCount: value.length,
     optionCount: options.length,
@@ -187,9 +208,9 @@ export function PeoplePicker({
     setOverflowing(result.overflow);
     setOpen(false);
   };
-  const remove = (email: string) => {
+  const remove = (key: string) => {
     focusAfterChange.current = "input";
-    onValueChange(value.filter((entry) => entry.email !== email));
+    onValueChange(value.filter((entry) => recipientKey(entry) !== key));
   };
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.nativeEvent.isComposing) return;
@@ -260,10 +281,10 @@ export function PeoplePicker({
       >
         {value.map((recipient) => (
           <RecipientChip
-            key={recipient.email}
+            key={recipientKey(recipient)}
             recipient={recipient}
             disabled={disabled}
-            onRemove={() => remove(recipient.email)}
+            onRemove={() => remove(recipientKey(recipient))}
           />
         ))}
         {showInput && (
@@ -361,17 +382,24 @@ function PeopleSuggestions({
     >
       {options.map((option, index) => (
         <Option
-          key={option.email}
+          key={recipientKey(option)}
           id={optionId(index)}
           active={index === activeIndex}
           onHover={() => onHover(index)}
           onChoose={(keepOpen) => onChoose(option, keepOpen)}
         >
-          {option.person ? (
+          {(option.agent ?? option.person) ? (
             <>
-              <PersonAvatar name={option.person.name} image={option.person.image} />
-              <span className="truncate font-medium">{option.person.name}</span>
-              <span className="min-w-0 truncate text-muted-foreground">{option.email}</span>
+              <PersonAvatar
+                name={(option.agent ?? option.person)?.name}
+                image={(option.agent ?? option.person)?.image}
+                agent={!!option.agent}
+              />
+              <span className="truncate font-medium">{(option.agent ?? option.person)?.name}</span>
+              {option.agent && <Tag>Agent</Tag>}
+              {option.person && (
+                <span className="min-w-0 truncate text-muted-foreground">{option.email}</span>
+              )}
             </>
           ) : (
             <>
@@ -425,14 +453,15 @@ function RecipientChip({
   disabled: boolean;
   onRemove: () => void;
 }) {
-  const label = recipient.person?.name ?? recipient.email;
+  const label = recipient.agent?.name ?? recipient.person?.name ?? recipient.email;
+  const person = recipient.agent ?? recipient.person;
   return (
     <span
-      title={recipient.person ? recipient.email : "Gets an email invitation"}
+      title={recipient.agent ? "Agent" : (recipient.person?.email ?? "Gets an email invitation")}
       className="inline-flex h-6 max-w-full min-w-0 items-center gap-1.5 rounded-md bg-muted pr-0.5 pl-0.5 text-sm"
     >
-      {recipient.person ? (
-        <PersonAvatar name={label} image={recipient.person.image} size="xs" />
+      {person ? (
+        <PersonAvatar name={label} image={person.image} size="xs" agent={!!recipient.agent} />
       ) : (
         <Mail aria-hidden="true" className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
       )}

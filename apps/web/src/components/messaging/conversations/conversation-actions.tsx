@@ -4,7 +4,6 @@ import { ConversationActionsMenu } from "./actions/conversation-actions-menu";
 import { DeleteConversationDialog } from "./actions/delete-conversation-dialog";
 import { LeaveConversationDialog } from "./actions/leave-conversation-dialog";
 import { OwnerDialog } from "./actions/owner-dialog";
-import { ConversationAgents } from "./conversation-agents";
 import { focusConversationSidebar } from "./conversation-sidebar-focus";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { SharingManager } from "@/components/messaging/sharing/sharing-manager";
@@ -18,7 +17,7 @@ import { useConversationManagement } from "@/queries/messaging/management";
 import { deleteImpactQueryOptions } from "@/queries/messaging/options";
 import { toast } from "sonner";
 
-type Dialog = "agents" | "leave" | "transfer" | "delete" | "sharing";
+type Dialog = "leave" | "transfer" | "delete" | "sharing";
 
 export function ConversationActions({
   conversation,
@@ -59,7 +58,6 @@ export function ConversationActions({
         leaveLabel={leaveLabel}
         deleteLabel={deleteLabel}
         onSharing={conversation.canShare ? () => open("sharing") : undefined}
-        onAgents={canLeave ? () => open("agents") : undefined}
         onLeave={canLeave ? () => open("leave") : undefined}
         {...ownershipActions}
       />
@@ -67,15 +65,6 @@ export function ConversationActions({
         <SharingManager
           organizationId={organizationId}
           conversationId={conversation.id}
-          name={name}
-          onClose={close}
-          onRestoreFocus={restoreFocus}
-        />
-      )}
-      {dialog === "agents" && (
-        <ConversationAgents
-          conversationId={conversation.id}
-          members={conversation.members}
           name={name}
           onClose={close}
           onRestoreFocus={restoreFocus}

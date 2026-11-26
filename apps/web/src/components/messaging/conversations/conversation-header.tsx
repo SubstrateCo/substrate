@@ -18,6 +18,8 @@ export type HeaderMember = {
   name: string;
   image?: string | null;
   type: "human" | "agent";
+  /** Present only for an agent owned by the viewer. */
+  agentId?: string | null;
   external?: boolean;
   organizationId: string;
 };

@@ -89,10 +89,18 @@ export function unfinishedRecipientMessage(text: string, limit?: string) {
 }
 
 export function recipientEmails(value: readonly PickedRecipient[]) {
-  return value.map((recipient) => recipient.email);
+  return value.flatMap((recipient) => (recipient.email ? [recipient.email] : []));
+}
+
+export function recipientAgentIds(value: readonly PickedRecipient[]) {
+  return value.flatMap((recipient) => (recipient.agent ? [recipient.agent.id] : []));
+}
+
+export function recipientKey(recipient: PickedRecipient) {
+  return recipient.agent ? `agent:${recipient.agent.id}` : recipient.email;
 }
 
 /** Recipients who are not one of the offered people and will receive an invitation. */
 export function invitedRecipients(value: readonly PickedRecipient[]) {
-  return value.filter((recipient) => !recipient.person);
+  return value.filter((recipient) => !recipient.person && !recipient.agent);
 }

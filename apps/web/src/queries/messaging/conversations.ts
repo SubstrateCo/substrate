@@ -4,9 +4,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
 import { invalidateAddedMembers, invalidateDirectMessage } from "./mutations";
-import { addMembers, createConversation } from "@/api/messaging/requests";
+import { addAgent, addMembers, createConversation } from "@/api/messaging/requests";
+import { addConversationRecipients } from "@/lib/messaging/add-members";
 import { agentDirectMessage, type Conversation } from "@/lib/messaging/conversations";
-import { recipientEmails } from "@/lib/people/people-picker";
 
 type ConversationInput = Omit<
   Parameters<typeof createConversation>[0]["data"],
@@ -58,9 +58,20 @@ export function useAddMembers(organizationId: string, conversationId: string) {
       recipients: PickedRecipient[];
       shareHistory: boolean;
     }) =>
-      addMembers({
-        data: { organizationId, conversationId, emails: recipientEmails(recipients), shareHistory },
+      addConversationRecipients(recipients, {
+        people: async (emails) => {
+          await addMembers({
+            data: { organizationId, conversationId, emails, shareHistory },
+          });
+        },
+        agent: async (agentId) => {
+          await addAgent({ data: { organizationId, conversationId, agentId } });
+        },
       }),
-    onSuccess: () => invalidateAddedMembers(client, organizationId, conversationId),
+    onSettled: () =>
+      Promise.all([
+        invalidateAddedMembers(client, organizationId, conversationId),
+        client.invalidateQueries({ queryKey: queryKeys.search(organizationId) }),
+      ]),
   });
 }

@@ -7,12 +7,11 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Bot, Crown, Ellipsis, Globe, LogOut, Trash2 } from "lucide-react";
+import { Crown, Ellipsis, Globe, LogOut, Trash2 } from "lucide-react";
 
 export function ConversationActionsMenu({
   leaveLabel = "Leave conversation",
   deleteLabel,
-  onAgents,
   onLeave,
   onTransfer,
   onDelete,
@@ -22,13 +21,12 @@ export function ConversationActionsMenu({
   leaveLabel?: string;
   /** "Delete channel" or "Delete group": the item names what it destroys. */
   deleteLabel: string;
-  onAgents?: () => void;
   onLeave?: () => void;
   onTransfer?: () => void;
   onDelete?: () => void;
   onSharing?: () => void;
 }) {
-  const hasActions = [onAgents, onLeave, onTransfer, onDelete, onSharing].some(Boolean);
+  const hasActions = [onLeave, onTransfer, onDelete, onSharing].some(Boolean);
   if (!hasActions) return null;
   return (
     <DropdownMenu>
@@ -49,12 +47,6 @@ export function ConversationActionsMenu({
             External collaboration
           </DropdownMenuItem>
         )}
-        {onAgents && (
-          <DropdownMenuItem onSelect={onAgents}>
-            <Bot />
-            Your agents
-          </DropdownMenuItem>
-        )}
         {onLeave && (
           <DropdownMenuItem onSelect={onLeave}>
             <LogOut />
@@ -69,7 +61,7 @@ export function ConversationActionsMenu({
         )}
         {onDelete && (
           <>
-            {(onSharing || onAgents || onLeave || onTransfer) && <DropdownMenuSeparator />}
+            {(onSharing || onLeave || onTransfer) && <DropdownMenuSeparator />}
             <DropdownMenuItem variant="destructive" onSelect={onDelete}>
               <Trash2 />
               {deleteLabel}

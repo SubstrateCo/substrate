@@ -251,27 +251,36 @@ test("agent definitions and run settings can be created, edited, persisted and d
   await expect(firstAgent).toBeVisible();
 });
 
-test("a member adds and removes their agent in a channel without an agent search", async ({
+test("a member adds and removes their agent through people and members without an agent search", async ({
   actors,
   client,
 }) => {
-  const user = await client(actors.partner);
+  const user = await client(actors.member);
   const agent = await createHomedAgent(user.actor);
-  const channel = await conversation(user.actor);
+  const channel = await conversation(actors.sender, [actors.member.email]);
   const requests = searches(user.page);
   await visit(user, channel.id);
-  await user.page.getByRole("button", { name: "Conversation actions", exact: true }).click();
-  await user.page.getByRole("menuitem", { name: "Your agents", exact: true }).click();
+  await user.page.getByRole("button", { name: "Add people", exact: true }).click();
   const dialog = user.page.getByRole("dialog");
-  const row = dialog.getByRole("listitem").filter({ hasText: agent.name });
-  await row.getByRole("button", { name: "Add", exact: true }).click();
-  await expect(row.getByText("In this conversation", { exact: true })).toBeVisible();
+  const picker = dialog.getByRole("combobox", { name: "People", exact: true });
+  await picker.fill(actors.sender.name);
+  await expect(dialog.getByRole("option").filter({ hasText: actors.sender.name })).toHaveCount(0);
+  await expect(picker).toHaveAttribute("placeholder", "Search your agents");
+  await picker.fill(agent.name);
+  await dialog.getByRole("option").filter({ hasText: agent.name }).click();
+  await expect(dialog.getByText("Gets an email invitation", { exact: true })).toHaveCount(0);
+  await dialog.getByRole("button", { name: "Add people", exact: true }).click();
+  await expect(dialog).toHaveCount(0);
+  await user.page.getByRole("button", { name: "Members, 3 members", exact: true }).click();
+  const row = user.page.getByRole("listitem").filter({ hasText: agent.name });
+  await expect(row.getByText("Agent", { exact: true })).toBeVisible();
   await row.getByRole("button", { name: `Remove ${agent.name}`, exact: true }).click();
   await user.page
-    .getByRole("dialog", { name: `Remove ${agent.name} from` })
-    .getByRole("button", { name: `Remove ${agent.name}`, exact: true })
+    .getByRole("dialog", { name: `Remove ${agent.name}?`, exact: true })
+    .getByRole("button", { name: "Remove member", exact: true })
     .click();
-  await expect(row.getByRole("button", { name: "Add", exact: true })).toBeVisible();
-  await expect(row.getByText("In this conversation", { exact: true })).toHaveCount(0);
+  await expect(
+    user.page.getByRole("button", { name: "Members, 2 members", exact: true }),
+  ).toBeVisible();
   expect(requests.filter((request) => "kind" in request && request.kind === "agent")).toEqual([]);
 });
