@@ -6,7 +6,7 @@ import type { RefObject } from "react";
 import { labelChoices, labelOptionValue, parseLabelOptionValue } from "./label-filter-value";
 import { defaultLabelColor, ink, labelName } from "./mail-colors";
 import type { FolderView } from "./mail-views";
-import { MailboxPicker, MobileViewPicker, type MailboxNav, type ViewNav } from "./mailboxes";
+import { MailboxPicker, MobileViewPicker, type MailboxNav, type ViewNav } from "./mailboxes/mailboxes";
 import { LabelDisplayToggle } from "./message-labels";
 import { FilterBar, type FilterField, type FilterValue } from "@/components/filters";
 import { PageHeader } from "@/components/layout/page-header";

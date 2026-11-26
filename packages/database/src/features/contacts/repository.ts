@@ -16,7 +16,7 @@ import {
   type RepositoryContext,
 } from "../../core/repository-context";
 import { AccessDeniedError } from "../../errors";
-import { recordCrmActivity } from "../crm/activity";
+import { recordCrmActivity } from "../crm/activity/activity";
 import { crmAccounts, crmAffiliations, crmContactProfiles } from "../crm/schema";
 import { mutateContactDetail } from "./contact-detail-actions";
 import { and, asc, eq, gt, ilike, isNotNull, isNull, sql } from "drizzle-orm";

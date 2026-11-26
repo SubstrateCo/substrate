@@ -2,12 +2,12 @@ import { handleBridge } from "@substrate/contracts/desktop/ipc";
 import type { MailMessageAction } from "@substrate/contracts/mail";
 import { channel, methods, type MailScope } from "@substrate/contracts/mail/ipc";
 
-import { agentInbox } from "./agent-access.ts";
-import { checkKeyring, openGrant, sealGrant, withGmail } from "./gmail-connection.ts";
-import { syncFailureKind } from "./gmail-reader.ts";
-import { connectGoogle } from "./google-auth.ts";
-import { pickGoogleClient } from "./google-client-picker.ts";
-import { clientForConsent, environmentGoogleClient } from "./google-client.ts";
+import { agentInbox } from "./agent/agent-access.ts";
+import { checkKeyring, openGrant, sealGrant, withGmail } from "./gmail/gmail-connection.ts";
+import { syncFailureKind } from "./gmail/gmail-reader.ts";
+import { connectGoogle } from "./google/google-auth.ts";
+import { pickGoogleClient } from "./google/google-client-picker.ts";
+import { clientForConsent, environmentGoogleClient } from "./google/google-client.ts";
 import { applyMailActions } from "./message-actions.ts";
 import { nextMailPage, readOlderSource } from "./older-page.ts";
 import { readMailPicture, referencedPicture } from "./pictures.ts";

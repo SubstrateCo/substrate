@@ -10,7 +10,7 @@ import type {
   Usage,
 } from "@substrate/contracts/harness";
 
-import type { AgentInbox } from "../../mail/agent-access.ts";
+import type { AgentInbox } from "../../mail/agent/agent-access.ts";
 import type { AgentWorkServer, CatalogAgent } from "../server/agent-work-server.ts";
 
 /** The harness controller, as the runtime uses it. Main checks account and organization. */

@@ -10,7 +10,7 @@ import { previousRequest, recordRequest, requestFingerprint } from "../../core/r
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { taskRepository } from "../tasks/repository";
 import { tasks } from "../tasks/tasks.schema";
-import { recordCrmActivity } from "./activity";
+import { recordCrmActivity } from "./activity/activity";
 import { crmAccounts, crmContactProfiles, crmDeals } from "./schema";
 import { and, asc, eq, notInArray, or } from "drizzle-orm";
 

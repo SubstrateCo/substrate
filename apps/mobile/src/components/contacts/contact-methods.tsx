@@ -10,7 +10,7 @@ import {
   addressLine,
   addressText,
   type AddressText,
-} from "@/features/records/contact-address";
+} from "@/features/records/crm/contact-address";
 import { useContactWrite } from "@/features/records/queries";
 import type { ContactDetail } from "@/features/records/requests";
 import { SelectField, SwitchField, TextField } from "@/features/records/ui/fields";

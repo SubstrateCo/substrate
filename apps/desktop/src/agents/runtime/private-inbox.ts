@@ -2,7 +2,7 @@ import type { SessionRow } from "@substrate/client-storage/agent-work";
 import type { LocalToolRequest } from "@substrate/contracts/harness/mcp";
 import { mcpTools } from "@substrate/contracts/harness/tools";
 
-import { InboxToolError } from "../../mail/agent-error.ts";
+import { InboxToolError } from "../../mail/agent/agent-error.ts";
 import type { LiveTurn, RuntimeContext } from "./context.ts";
 
 /** A lease names a session but not everyone who can wake that session may read the owner's mail. */

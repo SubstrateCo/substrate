@@ -7,7 +7,7 @@ import {
 } from "@substrate/contracts/harness/mcp";
 import { mcpTools, type LocalToolName, type McpOutput } from "@substrate/contracts/harness/tools";
 
-import { InboxToolError } from "../../mail/agent-error.ts";
+import { InboxToolError } from "../../mail/agent/agent-error.ts";
 import { createRoutines } from "../routines/routines.ts";
 import type { RuntimeContext } from "../runtime/context.ts";
 import { runPrivateInbox } from "../runtime/private-inbox.ts";

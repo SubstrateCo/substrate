@@ -17,7 +17,7 @@ import { contactApplicationRepository } from "../contacts/repository";
 import { messageEntityReferences } from "../context/schema";
 import { requireMessage } from "../messaging/access";
 import { referenceChangeHints } from "../realtime/routing";
-import { recordCrmActivity } from "./activity";
+import { recordCrmActivity } from "./activity/activity";
 import { crmRepository } from "./repository";
 
 // The identity and actor context are supplied by the host, never by model/request fields.

@@ -2,7 +2,7 @@ import type { MailStore, SyncedMail } from "@substrate/client-storage/mail";
 import { mailPageSize, type Mailbox } from "@substrate/contracts/mail";
 import type { MailPageSource, OlderMailPage, OlderMailQuery } from "@substrate/contracts/mail/ipc";
 
-import type { gmailReader } from "./gmail-reader.ts";
+import type { gmailReader } from "./gmail/gmail-reader.ts";
 import { ReconnectRequired } from "./provider.ts";
 
 type OlderReader = Pick<ReturnType<typeof gmailReader>, "olderIds" | "olderMessages">;

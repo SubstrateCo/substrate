@@ -5,7 +5,7 @@ import { useState } from "react";
 import { RecordPickerField } from "./record-picker";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { removeDealContact, selectDealPrimary } from "@/features/records/deal-contacts";
+import { removeDealContact, selectDealPrimary } from "@/features/records/crm/deal-contacts";
 import { recordQueries } from "@/features/records/queries";
 import type { DealDetail } from "@/features/records/requests";
 import { dateFieldValid, DateField, SelectField, TextField } from "@/features/records/ui/fields";

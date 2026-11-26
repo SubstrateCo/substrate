@@ -8,7 +8,7 @@ import { View } from "react-native";
 import { uploadFile } from "@/api/files/uploads";
 import { Text } from "@/components/ui/text";
 import { pickDocuments } from "@/features/messaging/composer/pick-files";
-import { taskApi, saveTaskAttachment, type TaskTarget } from "@/features/records/task-api";
+import { taskApi, saveTaskAttachment, type TaskTarget } from "@/features/records/tasks/task-api";
 import { DetailSection, Row } from "@/features/records/ui/rows";
 import { ActionSheet, ConfirmSheet } from "@/features/records/ui/sheet";
 import { ErrorState, MutationError } from "@/features/records/ui/states";

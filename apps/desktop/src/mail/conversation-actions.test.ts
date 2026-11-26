@@ -1,6 +1,6 @@
 import { mailFlag } from "@substrate/contracts/mail";
 
-import { gmailReader } from "./gmail-reader.ts";
+import { gmailReader } from "./gmail/gmail-reader.ts";
 import { applyMailActions } from "./message-actions.ts";
 import { mailFixture, owner } from "./test-support.ts";
 import { expect, test } from "bun:test";

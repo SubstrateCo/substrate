@@ -1,7 +1,7 @@
 import { RepositoryContext } from "../../core/repository-context";
 import { contextConversation } from "../../testing/context";
 import { setupDatabase } from "../../testing/database";
-import { listCrmActivity } from "../crm/activity";
+import { listCrmActivity } from "../crm/activity/activity";
 import { crmActivityEvents } from "../crm/activity.schema";
 import { expect, test } from "bun:test";
 import { and, eq, inArray } from "drizzle-orm";

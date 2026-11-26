@@ -4,7 +4,7 @@ import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
 import { rejection } from "../../testing/rejection";
 import { mcpCrmTools } from "../mcp/crm";
-import { recordCrmActivities } from "./activity";
+import { recordCrmActivities } from "./activity/activity";
 import { crmActivityEvents } from "./activity.schema";
 import { requireDealRelations } from "./deals/deal-relations";
 import { expect, test } from "bun:test";

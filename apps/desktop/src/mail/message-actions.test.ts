@@ -1,7 +1,7 @@
 import { openMailStore } from "@substrate/client-storage/mail";
 import { mailFlag, type MailMessageAction } from "@substrate/contracts/mail";
 
-import { gmailReader } from "./gmail-reader.ts";
+import { gmailReader } from "./gmail/gmail-reader.ts";
 import { applyMailActions } from "./message-actions.ts";
 import { syncMailbox } from "./provider.ts";
 import { mailboxSyncJobs } from "./sync-jobs.ts";

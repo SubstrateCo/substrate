@@ -4,8 +4,8 @@ import { requireInteraction } from "../../../core/contacts/access";
 import { parseInput } from "../../../core/contacts/inputs";
 import { contactInteractionRepository } from "../../../core/contacts/interactions/interactions.repository";
 import type { RepositoryContext } from "../../../core/repository-context";
-import { recordCrmActivity } from "../../crm/activity";
-import { presentInteraction } from "../../crm/actor-views";
+import { recordCrmActivity } from "../../crm/activity/activity";
+import { presentInteraction } from "../../crm/activity/actor-views";
 import { z } from "zod";
 
 export function contextInteractionActions(context: RepositoryContext) {

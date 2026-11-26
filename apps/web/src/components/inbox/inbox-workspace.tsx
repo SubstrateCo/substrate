@@ -15,15 +15,15 @@ import {
   useSelectedThread,
 } from "./inbox-data";
 import { InboxHeader, LabelFilterBar, SyncNotice } from "./inbox-header";
-import { InboxList } from "./inbox-list";
+import { InboxList } from "./list/inbox-list";
 import { InboxWorkspaceContext, type InboxWorkspaceValue } from "./inbox-workspace-context";
 import { mailboxColors } from "./mail-colors";
 import { MailPagination } from "./mail-paging";
 import { folderView } from "./mail-views";
-import { MailboxDialogs } from "./mailbox-dialogs";
-import { MailboxSidebar } from "./mailboxes";
-import { Reader } from "./reader";
-import { SelectableMessageList } from "./selectable-message-list";
+import { MailboxDialogs } from "./mailboxes/mailbox-dialogs";
+import { MailboxSidebar } from "./mailboxes/mailboxes";
+import { Reader } from "./reader/reader";
+import { SelectableMessageList } from "./list/selectable-message-list";
 import { ErrorState } from "@/components/feedback/error-state";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";

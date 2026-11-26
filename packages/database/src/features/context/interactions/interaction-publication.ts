@@ -7,8 +7,8 @@ import { contactInteractionRepository } from "../../../core/contacts/interaction
 import { contactInteractions } from "../../../core/contacts/interactions/interactions.schema";
 import type { RepositoryContext } from "../../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../../errors";
-import { recordCrmActivity } from "../../crm/activity";
-import { presentInteraction } from "../../crm/actor-views";
+import { recordCrmActivity } from "../../crm/activity/activity";
+import { presentInteraction } from "../../crm/activity/actor-views";
 import { crmContactProfiles } from "../../crm/schema";
 import { requireMessage } from "../../messaging/access";
 import { messageEntityReferences } from "../schema";

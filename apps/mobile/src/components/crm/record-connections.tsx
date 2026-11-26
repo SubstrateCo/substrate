@@ -3,7 +3,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
 import { View } from "react-native";
 
-import { crmQueries } from "@/features/records/crm-queries";
+import { crmQueries } from "@/features/records/crm/crm-queries";
 import { refreshRecords } from "@/features/records/invalidation";
 import { recordRequests } from "@/features/records/requests";
 import { targetForEntity, type OnOpenRecord } from "@/features/records/types";

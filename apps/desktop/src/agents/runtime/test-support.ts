@@ -26,7 +26,7 @@ import {
 } from "@substrate/harness-runtime";
 
 import { createOpenSessions } from "../../harness/worker/open-sessions.ts";
-import type { AgentInbox } from "../../mail/agent-access.ts";
+import type { AgentInbox } from "../../mail/agent/agent-access.ts";
 import type { AgentWorkServer, CatalogAgent } from "../server/agent-work-server.ts";
 import { createAgentWorkRuntime } from "./runtime.ts";
 import { mkdir, mkdtemp, rm } from "node:fs/promises";

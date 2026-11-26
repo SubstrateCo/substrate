@@ -28,7 +28,7 @@ import { Text } from "@/components/ui/text";
 import { canEdit, formatDate, taskPriorityLabels } from "@/features/records/format";
 import { recordQueries, useRecordScope, useTasksWrite } from "@/features/records/queries";
 import type { ProjectDetail, ProjectTask } from "@/features/records/requests";
-import { taskApi } from "@/features/records/task-api";
+import { taskApi } from "@/features/records/tasks/task-api";
 import type { OnOpenRecord } from "@/features/records/types";
 import { dateFieldValid, DateField } from "@/features/records/ui/fields";
 import { DetailHeader } from "@/features/records/ui/layout";

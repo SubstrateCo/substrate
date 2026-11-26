@@ -11,8 +11,8 @@ import {
   personName,
   type RecordPerson,
   type ResponsibleRecord,
-} from "@/features/records/crm-management";
-import { crmQueries, useCrmAccessWrite, useRecordPeople } from "@/features/records/crm-queries";
+} from "@/features/records/crm/crm-management";
+import { crmQueries, useCrmAccessWrite, useRecordPeople } from "@/features/records/crm/crm-queries";
 import { SelectField, SwitchField } from "@/features/records/ui/fields";
 import { DetailSection, Property, Row } from "@/features/records/ui/rows";
 import { ActionSheet, ConfirmSheet, FormSheet } from "@/features/records/ui/sheet";

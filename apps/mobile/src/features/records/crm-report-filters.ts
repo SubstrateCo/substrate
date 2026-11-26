@@ -1,5 +1,5 @@
 import { oneOf, type DateRange, type FilterOption } from "./filters";
-import { reportPeriod } from "./report-period";
+import { reportPeriod } from "./crm/report-period";
 
 /** The CRM report's filter bar value. Close date and stale days always have a value. */
 export type ReportFilterValue = {

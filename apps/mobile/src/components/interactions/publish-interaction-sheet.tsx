@@ -7,8 +7,8 @@ import { useState } from "react";
 import { RecordPickerField } from "@/components/crm/record-picker";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { publicationSources } from "@/features/records/crm-management";
-import { crmQueries, usePublishInteraction } from "@/features/records/crm-queries";
+import { publicationSources } from "@/features/records/crm/crm-management";
+import { crmQueries, usePublishInteraction } from "@/features/records/crm/crm-queries";
 import {
   formatDateTime,
   interactionKindLabels,

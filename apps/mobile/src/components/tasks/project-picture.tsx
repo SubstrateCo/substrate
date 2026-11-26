@@ -5,8 +5,8 @@ import { View } from "react-native";
 
 import { ProjectIcon } from "./project-icon";
 import { recordRequests } from "@/features/records/requests";
-import { taskApi } from "@/features/records/task-api";
-import { projectPictureFile } from "@/features/records/task-file-helpers";
+import { taskApi } from "@/features/records/tasks/task-api";
+import { projectPictureFile } from "@/features/records/tasks/task-file-helpers";
 import { DetailSection, Row } from "@/features/records/ui/rows";
 import { ConfirmSheet } from "@/features/records/ui/sheet";
 import { MutationError } from "@/features/records/ui/states";

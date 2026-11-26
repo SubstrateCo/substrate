@@ -4,7 +4,7 @@ import { useMutation } from "@tanstack/react-query";
 
 import { useState } from "react";
 
-import { exportRecords } from "@/features/records/export-records";
+import { exportRecords } from "@/features/records/export/export-records";
 import { SelectField, SwitchField, TextField } from "@/features/records/ui/fields";
 import { FormSheet } from "@/features/records/ui/sheet";
 import type { QueryScope } from "@/queries/keys";

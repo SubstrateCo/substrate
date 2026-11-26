@@ -1,6 +1,6 @@
 import type { RecordTarget } from "./navigation";
 import { authRouteFromUrl } from "@/features/auth/navigation";
-import { crmSection } from "@/features/records/crm-navigation";
+import { crmSection } from "@/features/records/crm/crm-navigation";
 
 const identifier = /^[a-zA-Z0-9_-]{1,200}$/;
 

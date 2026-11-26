@@ -2,8 +2,8 @@ import { requireAppEnabled } from "../../core/apps/access";
 import { requireContact } from "../../core/contacts/access";
 import { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
-import { recordCrmActivities } from "./activity";
-import { crmRecordAccess } from "./record-access";
+import { recordCrmActivities } from "./activity/activity";
+import { crmRecordAccess } from "./access/record-access";
 import { crmAccounts, crmAffiliations, crmContactProfiles } from "./schema";
 import { and, eq, ne, sql } from "drizzle-orm";
 

@@ -2,7 +2,7 @@ import { openMailStore, type SyncedMail } from "@substrate/client-storage/mail";
 import { conversationKey, mailFlag, type MailConversation } from "@substrate/contracts/mail";
 import type { OlderMailQuery } from "@substrate/contracts/mail/ipc";
 
-import { gmailReader } from "./gmail-reader.ts";
+import { gmailReader } from "./gmail/gmail-reader.ts";
 import { nextMailPage, readOlderSource } from "./older-page.ts";
 import { expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";

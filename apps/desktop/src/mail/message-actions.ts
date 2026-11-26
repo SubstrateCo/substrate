@@ -1,8 +1,8 @@
 import type { MailMessageAction } from "@substrate/contracts/mail";
 import type { MailActionResult } from "@substrate/contracts/mail/ipc";
 
-import { WritePermissionRequired } from "./gmail-actions.ts";
-import type { GmailWork } from "./gmail-connection.ts";
+import { WritePermissionRequired } from "./gmail/gmail-actions.ts";
+import type { GmailWork } from "./gmail/gmail-connection.ts";
 import { ReconnectRequired } from "./provider.ts";
 import type { LocalMail } from "./session.ts";
 

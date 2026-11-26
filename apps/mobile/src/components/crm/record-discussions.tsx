@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 
 import { Icon } from "@/components/ui/icon";
-import { crmQueries } from "@/features/records/crm-queries";
+import { crmQueries } from "@/features/records/crm/crm-queries";
 import { formatDateTime } from "@/features/records/format";
 import type { OnOpenConversation } from "@/features/records/types";
 import { DetailSection, Row } from "@/features/records/ui/rows";

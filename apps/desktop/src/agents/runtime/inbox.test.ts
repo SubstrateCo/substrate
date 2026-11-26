@@ -2,8 +2,8 @@ import { mcpOutputOffloadBytes } from "@substrate/contracts/harness/mcp";
 import { leaseTools, mcpTools } from "@substrate/contracts/harness/tools";
 import { mailFlag } from "@substrate/contracts/mail";
 
-import { agentInbox } from "../../mail/agent-access.ts";
-import { gmailReader } from "../../mail/gmail-reader.ts";
+import { agentInbox } from "../../mail/agent/agent-access.ts";
+import { gmailReader } from "../../mail/gmail/gmail-reader.ts";
 import { mailFixture } from "../../mail/test-support.ts";
 import { agentId, organizationId, runtimeFixture } from "./test-support.ts";
 import { expect, test } from "bun:test";

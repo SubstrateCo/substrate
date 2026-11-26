@@ -10,7 +10,7 @@ import {
   validDate,
   type InteractionKind,
 } from "@/features/records/format";
-import { interactionMinutes } from "@/features/records/interaction-duration";
+import { interactionMinutes } from "@/features/records/interactions/interaction-duration";
 import { SelectField, TextField } from "@/features/records/ui/fields";
 import { FormSheet } from "@/features/records/ui/sheet";
 import type { QueryScope } from "@/queries/keys";

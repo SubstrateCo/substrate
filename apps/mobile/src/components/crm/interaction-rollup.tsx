@@ -6,7 +6,7 @@ import { useState } from "react";
 
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { crmQueries } from "@/features/records/crm-queries";
+import { crmQueries } from "@/features/records/crm/crm-queries";
 import { formatDateTime, interactionKindLabels } from "@/features/records/format";
 import type { OnOpenRecord } from "@/features/records/types";
 import { DetailSection, Row, Segments } from "@/features/records/ui/rows";

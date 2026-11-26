@@ -6,7 +6,7 @@ import {
   type DesktopSessionAuthority,
   HarnessAccessDenied,
 } from "../session/desktop-session-authority.ts";
-import { InboxToolError } from "./agent-error.ts";
+import { InboxToolError } from "./agent/agent-error.ts";
 import { mailboxSyncJobs } from "./sync-jobs.ts";
 import { addAbortListener } from "node:events";
 import { lstat, mkdir } from "node:fs/promises";

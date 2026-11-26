@@ -14,7 +14,7 @@ import { InteractionsScreen } from "@/components/interactions/interactions-scree
 import { Button } from "@/components/ui/button";
 import { Icon } from "@/components/ui/icon";
 import { useWorkspaceApps } from "@/features/records/apps";
-import { crmSection, type CrmSection } from "@/features/records/crm-navigation";
+import { crmSection, type CrmSection } from "@/features/records/crm/crm-navigation";
 import type { FilterField } from "@/features/records/filters";
 import {
   formatDate,

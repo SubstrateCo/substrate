@@ -3,7 +3,7 @@ import { handleBridge, type IpcValue } from "@substrate/contracts/desktop/ipc";
 import { mailFlag, type MailMessageAction } from "@substrate/contracts/mail";
 import { channel, methods } from "@substrate/contracts/mail/ipc";
 
-import { gmailReader } from "../../../desktop/src/mail/gmail-reader";
+import { gmailReader } from "../../../desktop/src/mail/gmail/gmail-reader";
 import { applyMailActions } from "../../../desktop/src/mail/message-actions";
 import { nextMailPage, readOlderSource } from "../../../desktop/src/mail/older-page";
 import { mailboxSyncJobs } from "../../../desktop/src/mail/sync-jobs";

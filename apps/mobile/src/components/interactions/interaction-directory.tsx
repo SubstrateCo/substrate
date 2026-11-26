@@ -11,7 +11,7 @@ import {
   directoryFilters,
   interactionPeriod,
   type DirectoryFilterId,
-} from "@/features/records/interaction-filters";
+} from "@/features/records/interactions/interaction-filters";
 import { recordRequests } from "@/features/records/requests";
 import type { OnOpenRecord } from "@/features/records/types";
 import { SelectField } from "@/features/records/ui/fields";

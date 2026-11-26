@@ -7,7 +7,7 @@ import { TaskForm, type TaskDraft } from "./task-form";
 import { canEdit, newRequestId } from "@/features/records/format";
 import { refreshRecords } from "@/features/records/invalidation";
 import { recordQueries, useRecordScope } from "@/features/records/queries";
-import { taskApi } from "@/features/records/task-api";
+import { taskApi } from "@/features/records/tasks/task-api";
 import type { OnOpenRecord } from "@/features/records/types";
 import { ConfirmSheet, PickerSheet } from "@/features/records/ui/sheet";
 import { ErrorState, LoadingRows } from "@/features/records/ui/states";

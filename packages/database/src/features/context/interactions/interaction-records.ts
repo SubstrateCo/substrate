@@ -6,7 +6,7 @@ import { contacts } from "../../../core/contacts/schema";
 import { linkRepository } from "../../../core/links/repository";
 import type { EntityAccess, RepositoryContext } from "../../../core/repository-context";
 import { AccessDeniedError } from "../../../errors";
-import { presentInteraction } from "../../crm/actor-views";
+import { presentInteraction } from "../../crm/activity/actor-views";
 import { crmAccounts, crmAffiliations, crmContactProfiles } from "../../crm/schema";
 import { visibleConversations } from "../../messaging/access";
 import { messagingConversations, messagingMessages } from "../../messaging/schema";

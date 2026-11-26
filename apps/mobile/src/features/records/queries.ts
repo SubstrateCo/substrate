@@ -15,7 +15,7 @@ import {
   interactionPeriod,
   type InteractionDays,
   type InteractionOrigin,
-} from "./interaction-filters";
+} from "./interactions/interaction-filters";
 import { refreshRecords } from "./invalidation";
 import { createRecord, recordRequests } from "./requests";
 import { authClient } from "@/api/auth-client";

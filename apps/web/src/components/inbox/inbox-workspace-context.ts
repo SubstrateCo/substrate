@@ -3,7 +3,7 @@ import type { MailAPI, MailScope } from "@substrate/contracts/mail/ipc";
 import { createContext, useContext } from "react";
 
 import type { LabelActions } from "./label-menu";
-import type { ReaderActions } from "./reader-actions";
+import type { ReaderActions } from "./reader/reader-actions";
 
 /** The mail bridge, scope and actions that every part of the inbox workspace shares. */
 export type InboxWorkspaceValue = {

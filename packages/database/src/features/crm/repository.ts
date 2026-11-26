@@ -1,21 +1,21 @@
 import { RepositoryContext } from "../../core/repository-context";
 import { ValidationError } from "../../errors";
 import { crmAccountsRepository } from "./accounts";
-import { recordCrmActivity, listCrmActivity } from "./activity";
+import { recordCrmActivity, listCrmActivity } from "./activity/activity";
 import { crmAffiliationsRepository } from "./affiliations";
 import { crmDealsRepository } from "./deals/deals";
 import { createFollowUp, followUps } from "./follow-ups";
 import { homeDeals } from "./home";
 import { crmManagementRepository } from "./management";
-import { assignOwner } from "./ownership";
+import { assignOwner } from "./access/ownership";
 import { crmPipelineRepository } from "./pipeline";
-import { crmRecordAccess } from "./record-access";
+import { crmRecordAccess } from "./access/record-access";
 import { crmRecordLinks } from "./record-links";
 import { report, reportDeals } from "./reporting/reports";
 import { crmAccounts, crmDeals } from "./schema";
 import { settingsRepository } from "./settings";
-import { crmSharing } from "./sharing";
-import { timeline } from "./timeline";
+import { crmSharing } from "./access/sharing";
+import { timeline } from "./activity/timeline";
 import { and, isNull, isNotNull, sql } from "drizzle-orm";
 
 export function crmRepository(context: RepositoryContext) {

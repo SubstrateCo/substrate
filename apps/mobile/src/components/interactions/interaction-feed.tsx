@@ -7,7 +7,7 @@ import { InteractionForm } from "./interaction-form";
 import { InteractionRow } from "./interaction-row";
 import type { FilterField, FilterValue } from "@/features/records/filters";
 import { interactionKindLabels, interactionKinds } from "@/features/records/format";
-import { timelineFilters, type TimelineFilterId } from "@/features/records/interaction-filters";
+import { timelineFilters, type TimelineFilterId } from "@/features/records/interactions/interaction-filters";
 import { recordQueries, useCreateInteraction } from "@/features/records/queries";
 import type { OnOpenRecord } from "@/features/records/types";
 import { FilterBar } from "@/features/records/ui/filter-bar";

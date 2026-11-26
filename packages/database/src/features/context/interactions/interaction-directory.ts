@@ -10,7 +10,7 @@ import { contactInteractions } from "../../../core/contacts/interactions/interac
 import { contacts } from "../../../core/contacts/schema";
 import type { RepositoryContext } from "../../../core/repository-context";
 import { crmAccounts } from "../../crm/schema";
-import { interactionScope } from "../../crm/timeline";
+import { interactionScope } from "../../crm/activity/timeline";
 import { and, asc, desc, eq, ilike, sql } from "drizzle-orm";
 
 export async function interactionDirectoryPage(

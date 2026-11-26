@@ -5,7 +5,7 @@ import { InteractionDirectory } from "./interaction-directory";
 import { InteractionFeed } from "./interaction-feed";
 import { InteractionForm } from "./interaction-form";
 import { useWorkspaceApps } from "@/features/records/apps";
-import { interactionView, type InteractionView } from "@/features/records/crm-navigation";
+import { interactionView, type InteractionView } from "@/features/records/crm/crm-navigation";
 import { useCreateInteraction } from "@/features/records/queries";
 import type { OnOpenRecord } from "@/features/records/types";
 import { Segments } from "@/features/records/ui/rows";

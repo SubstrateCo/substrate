@@ -5,7 +5,7 @@ import { requireContact } from "../../core/contacts/access";
 import { contactDetailRows, readContactProfile } from "../../core/contacts/profile";
 import { contactRepository } from "../../core/contacts/repository";
 import type { RepositoryContext } from "../../core/repository-context";
-import { recordCrmActivity } from "../crm/activity";
+import { recordCrmActivity } from "../crm/activity/activity";
 
 type Action =
   | "addIdentifier"

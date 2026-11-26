@@ -16,7 +16,7 @@ import type { RepositoryContext } from "../../core/repository-context";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { contactApplicationRepository } from "../contacts/repository";
-import { recordCrmActivity } from "../crm/activity";
+import { recordCrmActivity } from "../crm/activity/activity";
 import { crmContactProfiles } from "../crm/schema";
 import { completionGates, endedMeetingsQuery } from "./completion-queries";
 import { contactNameFromAttendee, isGeneratedContactName } from "./contact-name";

@@ -13,7 +13,7 @@ import type { SessionIdentity } from "../../core/session/identity";
 import { workspaceContext } from "../../core/session/workspace";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { recordTaskActivity } from "../activity/events";
-import { recordCrmActivity } from "../crm/activity";
+import { recordCrmActivity } from "../crm/activity/activity";
 import { requireMessage, visibleConversations } from "../messaging/access";
 import { messageViews, selectMessages } from "../messaging/messages/messages";
 import { messagingConversations, messagingMessages } from "../messaging/schema";

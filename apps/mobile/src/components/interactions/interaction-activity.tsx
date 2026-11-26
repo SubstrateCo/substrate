@@ -7,7 +7,7 @@ import { InteractionRow } from "./interaction-row";
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
 import { interactionKindLabels } from "@/features/records/format";
-import { interactionPeriod } from "@/features/records/interaction-filters";
+import { interactionPeriod } from "@/features/records/interactions/interaction-filters";
 import { recordRequests } from "@/features/records/requests";
 import type { OnOpenRecord } from "@/features/records/types";
 import { DetailSection, Property, Row, Segments } from "@/features/records/ui/rows";

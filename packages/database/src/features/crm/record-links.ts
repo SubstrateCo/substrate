@@ -5,7 +5,7 @@ import { linkRepository } from "../../core/links/repository";
 import type { RepositoryContext } from "../../core/repository-context";
 import { AccessDeniedError, ValidationError } from "../../errors";
 import { contextTargetsOf } from "../context/target-page";
-import { recordCrmActivity } from "./activity";
+import { recordCrmActivity } from "./activity/activity";
 import { crmAccounts, crmContactProfiles, crmDeals } from "./schema";
 import { and, eq } from "drizzle-orm";
 

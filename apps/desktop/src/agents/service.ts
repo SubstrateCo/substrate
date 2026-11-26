@@ -11,7 +11,7 @@ import type { MailScope } from "@substrate/contracts/mail/ipc";
 import type { RealtimeUpdate } from "@substrate/contracts/realtime";
 
 import type { LocalMcpServers } from "../harness/controller/local-configuration.ts";
-import type { AgentInbox } from "../mail/agent-access.ts";
+import type { AgentInbox } from "../mail/agent/agent-access.ts";
 import {
   DesktopSessionAuthority,
   HarnessAccessDenied,
