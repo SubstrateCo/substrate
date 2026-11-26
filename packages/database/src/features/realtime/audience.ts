@@ -6,9 +6,8 @@ import { user } from "../../core/authentication/schema";
 import { entities } from "../../core/entities/schema";
 import type { DatabaseExecutor } from "../../core/executor";
 import { entityReaders } from "../../core/permissions/visibility";
-import { liveApprovedParticipant, publicChannel, visibleConversations } from "../messaging/access";
-import { messagingConversations, messagingParticipants } from "../messaging/schema";
-import { and, eq, inArray, isNotNull, isNull, or, sql } from "drizzle-orm";
+import { conversationReaders } from "../messaging/access";
+import { and, eq, inArray, isNull, or } from "drizzle-orm";
 
 declare const resolved: unique symbol;
 
@@ -113,7 +112,7 @@ export async function resolveReceivers(
 export type AudienceFilter = (receiver: RealtimeReceiver) => boolean;
 
 // Resolves who may receive an audience, once per change. Only conversation and entity audiences
-// read the database, each in one statement. Conversations use visibleConversations' predicates: a public channel reaches its
+// read the database: one statement, or two for a task discussion. Conversations use conversationReaders, the set form of visibleConversations: a public channel reaches its
 // own workspace, and a live, approved human participant reaches the participant's workspace. Callers pass receivers freshly returned by resolveReceiver.
 export async function audienceRecipients(
   db: DatabaseExecutor,
@@ -132,69 +131,9 @@ export async function audienceRecipients(
         receiver.organizationId === audience[1] &&
         receiver.actorId === audience[2];
     case "conversation": {
-      const rows = await db
-        .select({
-          organizationId: messagingConversations.organizationId,
-          publicChannel: publicChannel(),
-          userId: actors.userId,
-          participantOrganizationId: messagingParticipants.organizationId,
-        })
-        .from(messagingConversations)
-        .leftJoin(
-          messagingParticipants,
-          and(
-            eq(messagingParticipants.conversationId, messagingConversations.id),
-            liveApprovedParticipant(db),
-          ),
-        )
-        .leftJoin(
-          actors,
-          and(
-            eq(actors.entityId, messagingParticipants.actorEntityId),
-            eq(actors.organizationId, messagingParticipants.organizationId),
-            eq(actors.type, "human"),
-          ),
-        )
-        .where(
-          and(
-            eq(messagingConversations.id, audience[1]),
-            isNull(messagingConversations.taskEntityId),
-          ),
-        )
-        .unionAll(
-          db
-            .select({
-              organizationId: messagingConversations.organizationId,
-              publicChannel: sql<boolean>`false`,
-              userId: actors.userId,
-              participantOrganizationId: actors.organizationId,
-            })
-            .from(messagingConversations)
-            .innerJoin(
-              actors,
-              and(
-                eq(actors.organizationId, messagingConversations.organizationId),
-                eq(actors.type, "human"),
-              ),
-            )
-            .where(
-              and(
-                eq(messagingConversations.id, audience[1]),
-                isNotNull(messagingConversations.taskEntityId),
-                visibleConversations(db, {
-                  userId: actors.userId,
-                  organizationId: actors.organizationId,
-                }),
-              ),
-            ),
-        );
-      const publicIn = rows.find((row) => row.publicChannel)?.organizationId;
+      const { publicIn, readers } = await conversationReaders(db, audience[1]);
       const members = new Set(
-        rows.flatMap((row) =>
-          row.userId && row.participantOrganizationId
-            ? [JSON.stringify([row.userId, row.participantOrganizationId])]
-            : [],
-        ),
+        readers.map((reader) => JSON.stringify([reader.userId, reader.organizationId])),
       );
       return (receiver) =>
         workspace(receiver) &&

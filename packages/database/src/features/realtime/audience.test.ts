@@ -16,7 +16,7 @@ import { recordQueries } from "../../testing/queries";
 import { receivesChange } from "../../testing/realtime";
 import { audienceRecipients, resolveReceiver, resolveReceivers } from "./audience";
 import { beforeEach, expect, test } from "bun:test";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 
 const fixture = setupDatabase();
@@ -268,6 +268,60 @@ test("a project audience reaches its grantees and admins in one statement, never
       receivers[0]!,
     ),
   ).toBe(false);
+});
+
+test("a task discussion reaches the people who can view the task, once for everyone, and participant rows grant nothing", async () => {
+  const project = await fixture.forActor(fixture.alice).projects.create({ name: "Discussed" });
+  const task = await fixture
+    .forActor(fixture.alice)
+    .tasks.create({ projectEntityId: project.entityId, title: "Discuss" });
+  const id = await fixture.forActor(fixture.alice).tasks.ensureDiscussion(task.entityId);
+  const carol = { userId: "carol", organizationId: fixture.orgA };
+  await fixture.db.insert(user).values({
+    id: "carol",
+    name: "Carol",
+    email: "carol@example.com",
+    emailVerified: true,
+  });
+  await fixture.db
+    .insert(member)
+    .values({ id: "carol-a", userId: "carol", organizationId: fixture.orgA, role: "admin" });
+  await ensureHumanActor(fixture.db, carol);
+  // A participant row in a task discussion does not reach anyone.
+  await fixture.db.insert(messagingParticipants).values({
+    conversationId: id,
+    actorEntityId: fixture.bob,
+    actorType: "human",
+    organizationId: fixture.orgA,
+  });
+  const receivers = await Promise.all(
+    [alice, bob, carol, external].map((identity) => resolveReceiver(fixture.db, identity)),
+  );
+  const audience = realtimeKeys.conversation(id);
+  const { db, queries } = recordQueries();
+  const receives = await audienceRecipients(db, audience);
+  // One statement reads the conversation; one reads every task reader.
+  expect(queries).toHaveLength(2);
+  // Alice owns the project and Carol is an admin; Bob has no grant; the partner is elsewhere.
+  expect(receivers.map((receiver) => receives(receiver!))).toEqual([true, false, true, false]);
+  await fixture.forActor(fixture.alice).permissions.grant({
+    entityId: project.entityId,
+    actorEntityId: fixture.bob,
+    level: "view",
+  });
+  const granted = await audienceRecipients(fixture.db, audience);
+  expect(receivers.map((receiver) => granted(receiver!))).toEqual([true, true, true, false]);
+  await fixture.db
+    .update(schema.organizationApps)
+    .set({ enabled: false })
+    .where(
+      and(
+        eq(schema.organizationApps.organizationId, fixture.orgA),
+        eq(schema.organizationApps.appId, "tasks"),
+      ),
+    );
+  const disabled = await audienceRecipients(fixture.db, audience);
+  expect(receivers.map((receiver) => disabled(receiver!))).toEqual([false, false, false, false]);
 });
 
 test("a contact audience reaches every member, like contact access", async () => {

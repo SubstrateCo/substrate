@@ -202,10 +202,8 @@ export function readOperations(
     ) {
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
-        const { actor, context } = await authenticate(tx);
-        const conversation = await loadConversation(tx, scope, conversationId);
-        if (conversation.taskEntityId)
-          await context.requireAccess(conversation.taskEntityId, "view");
+        const { actor } = await authenticate(tx);
+        await loadConversation(tx, scope, conversationId);
         const [message] = await tx
           .select({
             id: messagingMessages.id,

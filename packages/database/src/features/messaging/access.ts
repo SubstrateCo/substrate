@@ -4,7 +4,7 @@ import { userAgents } from "../../core/actors/user-agents.schema";
 import { entities } from "../../core/entities/schema";
 import type { DatabaseExecutor } from "../../core/executor";
 import { member } from "../../core/organizations/schema";
-import { entityAccessLevel } from "../../core/permissions/visibility";
+import { entityReaders, readableCondition } from "../../core/permissions/visibility";
 import type { SessionIdentity } from "../../core/session/identity";
 import {
   AccessDeniedError,
@@ -207,11 +207,88 @@ function taskDiscussionAccess(
             eq(viewer.type, "human"),
             activeActorCondition(viewer),
             isNull(viewerEntity.deletedAt),
-            sql`${entityAccessLevel({ organizationId: scope.organizationId, actorEntityId: viewer.entityId }, messagingConversations.taskEntityId)} >= ${minimum}::permission_level`,
+            readableCondition(
+              { organizationId: scope.organizationId, actorEntityId: viewer.entityId },
+              messagingConversations.taskEntityId,
+              minimum,
+              "task",
+            ),
           ),
         ),
     ),
   );
+}
+
+/**
+ * The set form of visibleConversations for one conversation: the workspace that sees it as a
+ * public channel, and the people who see it, as user and organization pairs. A task discussion's
+ * readers are the people who can view the task, computed once with entityReaders, not once per
+ * person. Agent rows never grant access. A missing conversation has no readers.
+ */
+export async function conversationReaders(
+  db: DatabaseExecutor,
+  conversationId: string,
+): Promise<{ publicIn: string | null; readers: { userId: string; organizationId: string }[] }> {
+  const rows = await db
+    .select({
+      organizationId: messagingConversations.organizationId,
+      taskEntityId: messagingConversations.taskEntityId,
+      publicChannel: publicChannel(),
+      userId: actors.userId,
+      participantOrganizationId: messagingParticipants.organizationId,
+    })
+    .from(messagingConversations)
+    .leftJoin(
+      messagingParticipants,
+      and(
+        eq(messagingParticipants.conversationId, messagingConversations.id),
+        isNull(messagingConversations.taskEntityId),
+        liveApprovedParticipant(db),
+      ),
+    )
+    .leftJoin(
+      actors,
+      and(
+        eq(actors.entityId, messagingParticipants.actorEntityId),
+        eq(actors.organizationId, messagingParticipants.organizationId),
+        eq(actors.type, "human"),
+      ),
+    )
+    .where(eq(messagingConversations.id, conversationId));
+  const [conversation] = rows;
+  if (!conversation) return { publicIn: null, readers: [] };
+  if (!conversation.taskEntityId)
+    return {
+      publicIn: conversation.publicChannel ? conversation.organizationId : null,
+      readers: rows.flatMap(({ userId, participantOrganizationId: organizationId }) =>
+        userId && organizationId ? [{ userId, organizationId }] : [],
+      ),
+    };
+  // entityReaders holds the active-human, membership, task-access and apps terms of
+  // taskDiscussionAccess; the reader's own actor entity must also be live.
+  const readers = await db
+    .select({ userId: actors.userId, organizationId: actors.organizationId })
+    .from(actors)
+    .innerJoin(
+      entities,
+      and(
+        eq(entities.entityId, actors.entityId),
+        eq(entities.organizationId, actors.organizationId),
+      ),
+    )
+    .where(
+      and(
+        eq(actors.organizationId, conversation.organizationId),
+        isNull(entities.deletedAt),
+        sql`${actors.entityId} IN (${entityReaders(conversation.organizationId, conversation.taskEntityId)})`,
+      ),
+    );
+  return {
+    publicIn: null,
+    readers: readers.flatMap(({ userId, organizationId }) =>
+      userId ? [{ userId, organizationId }] : [],
+    ),
+  };
 }
 
 /** A subquery of the IDs of the conversations the scope can see. */
