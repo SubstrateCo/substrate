@@ -189,7 +189,6 @@ export function OrganizationApps({
                                 )}
                               </ItemTitle>
                             </div>
-                            <Tag>{scope === "user" ? "Personal" : "Workspace"}</Tag>
                             {entry.required && <Tag>Required</Tag>}
                             {!entry.required && canChange && (
                               <Switch
