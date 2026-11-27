@@ -132,6 +132,40 @@ test("channel and thread drafts stay isolated and restore reference labels", asy
   await expect(reply).toHaveText("thread draft");
 });
 
+test("pasted text joins the line at the caret and keeps its own line breaks", async ({
+  actors,
+  client,
+}) => {
+  const channel = await conversation(actors.sender);
+  const sender = await client(actors.sender);
+  const { page } = sender;
+  await visit(sender, channel.id);
+  const editor = page.getByRole("textbox", { name: /^Message / });
+  await editor.fill("@");
+  await page.getByRole("tab", { name: "People", exact: true }).click();
+  await editor.fill(`@${actors.sender.name.split(" ")[0]}`);
+  await page.getByRole("option", { name: actors.sender.name, exact: true }).click();
+  await editor.pressSequentially("before ");
+  await editor.evaluate((element) => {
+    const clipboard = new DataTransfer();
+    clipboard.setData("text/plain", "pasted first\npasted second");
+    element.dispatchEvent(
+      new ClipboardEvent("paste", { clipboardData: clipboard, bubbles: true, cancelable: true }),
+    );
+  });
+  await editor.pressSequentially(" after");
+  await editor.press("Enter");
+  await expect(editor).toBeEmpty();
+  const response = await actors.sender.request.get("/api/v1/messaging/messages", {
+    params: { organizationId: actors.sender.organizationId, conversationId: channel.id },
+  });
+  expect(response.ok()).toBe(true);
+  const { data } = await response.json();
+  expect(data.map((message: { body: string }) => message.body)).toEqual([
+    expect.stringMatching(/^@\[person:[^\]]+\] before pasted first\npasted second after$/),
+  ]);
+});
+
 test("revoked conversation drafts do not return when access is granted again", async ({
   actors,
   client,

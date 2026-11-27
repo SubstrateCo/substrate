@@ -11,6 +11,7 @@ import { ReferencesContext } from "@/components/messaging/references/references-
 import { WorkspaceReferenceNode } from "@/components/messaging/references/workspace-reference-node";
 import { referenceKey } from "@/lib/messaging/reference-token";
 import { closeHistory } from "@tiptap/pm/history";
+import { Fragment, Slice } from "@tiptap/pm/model";
 import { Selection, TextSelection } from "@tiptap/pm/state";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -104,7 +105,7 @@ export function ReferenceEditor({
         }
         return event.defaultPrevented;
       },
-      handlePaste: (_view, event) => {
+      handlePaste: (view, event) => {
         const text = event.clipboardData?.getData("text/plain") ?? "";
         const files = onPasteFiles
           ? pastedFiles({ files: Array.from(event.clipboardData?.files ?? []), text })
@@ -116,7 +117,11 @@ export function ReferenceEditor({
         }
         if (!text) return false;
         event.preventDefault();
-        editor.commands.insertContent(referenceDocument(text).content ?? []);
+        // An open slice joins the first and last pasted lines to the text around the caret.
+        // Closed paragraphs would split the current line where the caret is.
+        const { schema, tr } = view.state;
+        const lines = Fragment.fromJSON(schema, referenceDocument(text).content);
+        view.dispatch(tr.replaceSelection(new Slice(lines, 1, 1)).scrollIntoView());
         return true;
       },
     },
