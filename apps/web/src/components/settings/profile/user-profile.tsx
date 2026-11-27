@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { SettingsGrid, SettingsPanel } from "@/components/layout/settings-page";
+import { SettingsPanel } from "@/components/layout/settings-page";
 import { NameSettingsCard } from "@/components/settings/name-settings-card";
 import { AccountEmailCard } from "@/components/settings/profile/account-email-card";
 import { PictureSettings } from "@/components/settings/profile/picture-settings";
@@ -18,8 +18,9 @@ export function UserProfile() {
   const user = resource.data?.user;
   return (
     <SettingsPanel title="Profile" description="How you appear to people in every workspace.">
-      <SettingsGrid>
+      <div className="min-w-0 divide-y border-y py-6">
         <PictureSettings
+          layout="row"
           state={resource.status}
           title="Profile picture"
           description="Shown next to your messages, tasks, and mentions."
@@ -50,7 +51,7 @@ export function UserProfile() {
             <AccountEmailCard email={user.email} verified={user.emailVerified} />
           </>
         )}
-      </SettingsGrid>
+      </div>
     </SettingsPanel>
   );
 }

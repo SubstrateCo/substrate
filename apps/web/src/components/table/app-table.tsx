@@ -63,6 +63,7 @@ type AppTableEmpty = {
   description: string;
   icon: LucideIcon;
   action?: ReactNode;
+  variant?: "pane" | "compact";
 };
 
 type AppTableProps<TData extends RowData> = {

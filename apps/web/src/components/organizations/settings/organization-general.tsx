@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { SettingsGrid, SettingsPanel } from "@/components/layout/settings-page";
+import { SettingsPanel } from "@/components/layout/settings-page";
 import { OrganizationPicture } from "@/components/organizations/settings/organization-picture";
 import { NameSettingsCard } from "@/components/settings/name-settings-card";
 import { useOrganizationMutations } from "@/queries/organizations/mutations";
@@ -14,7 +14,7 @@ export function OrganizationGeneral({ organizationId }: { organizationId: string
       title="General"
       description="The name and logo everyone in this organization sees."
     >
-      <SettingsGrid>
+      <div className="min-w-0 divide-y border-y py-6">
         {organization.data && (
           <NameSettingsCard
             id="organization-name"
@@ -33,7 +33,7 @@ export function OrganizationGeneral({ organizationId }: { organizationId: string
           />
         )}
         <OrganizationPicture organizationId={organizationId} />
-      </SettingsGrid>
+      </div>
     </SettingsPanel>
   );
 }

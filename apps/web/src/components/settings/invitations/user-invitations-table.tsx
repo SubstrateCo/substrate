@@ -144,6 +144,7 @@ export function UserInvitationsTable({
         errorTitle="Couldn’t load your invitations"
         onRetry={onRetry}
         empty={{
+          variant: "compact",
           title: "No pending invitations",
           description: "When someone invites you to their workspace, you can review it here.",
           icon: Mail,

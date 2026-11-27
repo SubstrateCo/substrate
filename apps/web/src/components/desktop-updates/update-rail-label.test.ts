@@ -20,6 +20,7 @@ test("keeps the update discoverable from availability through restart", () => {
 });
 
 test("does not claim an update exists for quiet, failed, or unsupported checks", () => {
+  expect(updateRailLabel(status({ status: "installing", version: "0.2.0" }))).toBeUndefined();
   for (const state of ["idle", "checking", "current", "error"] as const)
     expect(updateRailLabel(status({ status: state }))).toBeUndefined();
   expect(

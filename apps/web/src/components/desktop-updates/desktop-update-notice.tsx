@@ -3,6 +3,7 @@ import type { DesktopUpdatesAPI } from "@substrate/contracts/desktop/updates-ipc
 import { useEffect, useState } from "react";
 
 import { updateNoticeContent, type UpdateNoticeAction } from "./update-notice-content";
+import { UpdateRestartDialog } from "./update-restart-dialog";
 import { UpdateToast } from "./update-toast";
 import { useDesktopUpdates } from "@/hooks/use-desktop-updates";
 import { updatesBridge } from "@/lib/desktop/bridges";
@@ -65,5 +66,7 @@ function UpdateNoticeToast({ bridge }: { bridge: DesktopUpdatesAPI }) {
   }, [status, dismissedKey, pending, run]);
 
   useEffect(() => () => void toast.dismiss(toastId), []);
-  return null;
+  return status?.state.status === "installing" ? (
+    <UpdateRestartDialog version={status.state.version} />
+  ) : null;
 }

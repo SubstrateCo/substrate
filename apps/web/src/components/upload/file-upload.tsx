@@ -20,6 +20,7 @@ interface FileUploadProps {
   /** True while the caller's mutation checks the chosen files. */
   pending?: boolean;
   chooseButtonRef?: Ref<HTMLButtonElement>;
+  framed?: boolean;
   onFiles: (files: File[]) => void;
 }
 
@@ -38,6 +39,7 @@ export function FileUpload({
   error: externalError,
   pending = false,
   chooseButtonRef,
+  framed = true,
   onFiles,
 }: FileUploadProps) {
   const input = useRef<HTMLInputElement>(null);
@@ -56,6 +58,7 @@ export function FileUpload({
   return (
     <Field>
       <FileUploadLayout
+        framed={framed}
         data-dragging={dragging || undefined}
         className={cn(error && "border-destructive", dragging && "border-primary bg-accent")}
         onDragOver={(event) => {
@@ -131,11 +134,16 @@ export function FileUploadContent({
   );
 }
 
-export function FileUploadLayout({ className, ...props }: React.ComponentProps<"div">) {
+export function FileUploadLayout({
+  className,
+  framed = true,
+  ...props
+}: React.ComponentProps<"div"> & { framed?: boolean }) {
   return (
     <div
       className={cn(
-        "flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 rounded-lg border border-dashed p-3 transition-colors duration-150 ease-out sm:flex-nowrap sm:gap-4",
+        "flex min-w-0 flex-wrap items-center gap-x-4 gap-y-2 rounded-lg transition-colors duration-150 ease-out sm:flex-nowrap sm:gap-4",
+        framed && "border border-dashed p-3",
         className,
       )}
       {...props}

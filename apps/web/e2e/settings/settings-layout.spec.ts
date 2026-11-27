@@ -20,7 +20,7 @@ test("settings use the available width without clipping app names or controls", 
       const box = await content.boundingBox();
       const frame = await content.locator("..").boundingBox();
       expect(box!.x - frame!.x).toBeLessThanOrEqual(24);
-      if (width === 1920) expect(box!.width).toBe(1280);
+      expect(frame!.x + frame!.width - box!.x - box!.width).toBeLessThanOrEqual(24);
       expect((await inbox.boundingBox())!.width).toBeCloseTo(
         (await messages.boundingBox())!.width,
         0,
@@ -46,7 +46,31 @@ test("settings use the available width without clipping app names or controls", 
   }
 });
 
-test("related settings share a row on wide windows and stack on narrow windows", async ({
+test("profile name validates, discards, and saves without changing other profile details", async ({
+  account,
+  client,
+}) => {
+  const user = await client(account);
+  await visit(user, undefined, "/settings/user");
+  const name = user.page.getByLabel("Full name", { exact: true });
+  await expect(name).toHaveValue(account.name);
+  await expect(user.page.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
+  await name.fill("");
+  await user.page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(name).toHaveAttribute("aria-invalid", "true");
+  await expect(user.page.getByText("Enter your name.", { exact: true })).toBeVisible();
+  await user.page.getByRole("button", { name: "Discard", exact: true }).click();
+  await expect(name).toHaveValue(account.name);
+  await expect(name).not.toHaveAttribute("aria-invalid", "true");
+  await name.fill("Alex Morgan");
+  await user.page.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(user.page.getByRole("button", { name: "Save", exact: true })).toHaveCount(0);
+  await user.page.reload();
+  await expect(name).toHaveValue("Alex Morgan");
+  await expect(user.page.getByText(account.email, { exact: true })).toBeVisible();
+});
+
+test("settings details stay grouped vertically at every window size", async ({
   account,
   client,
 }) => {
@@ -69,13 +93,12 @@ test("related settings share a row on wide windows and stack on narrow windows",
       await expect(async () => {
         const a = await left.boundingBox();
         const b = await right.boundingBox();
-        if (width === 1920) {
-          expect(a!.y).toBe(b!.y);
-          expect(b!.x).toBeGreaterThan(a!.x + a!.width);
-        } else {
-          expect(a!.x).toBe(b!.x);
-          expect(b!.y).toBeGreaterThanOrEqual(a!.y + a!.height);
-        }
+        expect(a!.x).toBe(b!.x);
+        expect(b!.y).toBeGreaterThanOrEqual(a!.y + a!.height);
+        expect(
+          await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+          "settings do not overflow the window",
+        ).toBe(true);
       }).toPass();
     }
   }

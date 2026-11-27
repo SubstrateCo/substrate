@@ -7,7 +7,7 @@ import type { DesktopSettingsAPI } from "@substrate/contracts/desktop/window";
 import { useQuery } from "@tanstack/react-query";
 
 import { ErrorState } from "@/components/feedback/error-state";
-import { SettingsCard, SettingsRow } from "@/components/layout/settings-section";
+import { SettingsSection, SettingsRow } from "@/components/layout/settings-section";
 import {
   Select,
   SelectContent,
@@ -49,7 +49,7 @@ function DesktopPreferencesCard({ bridge }: { bridge: DesktopSettingsAPI }) {
   const settings = useQuery(desktopSettingsQueryOptions(bridge));
   const update = useDesktopSettingsUpdate(bridge);
   return (
-    <SettingsCard
+    <SettingsSection
       title="Desktop"
       description="Your agents run on this computer while Substrate is open."
     >
@@ -60,7 +60,7 @@ function DesktopPreferencesCard({ bridge }: { bridge: DesktopSettingsAPI }) {
           onRetry={() => void settings.refetch()}
         />
       ) : (
-        <>
+        <div className="min-w-0 divide-y">
           <SettingsRow
             label="Open at login"
             htmlFor="desktop-launch-at-login"
@@ -79,9 +79,9 @@ function DesktopPreferencesCard({ bridge }: { bridge: DesktopSettingsAPI }) {
             }
           />
           <MeetingReminderRows bridge={bridge} reminders={settings.data?.meetingReminders} />
-        </>
+        </div>
       )}
-    </SettingsCard>
+    </SettingsSection>
   );
 }
 

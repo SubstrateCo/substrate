@@ -34,13 +34,22 @@ export interface PictureUploadProps {
   disabled?: boolean;
   /** Whose picture this is. Without a picture, the preview shows the initials people see elsewhere. */
   name?: string;
+  framed?: boolean;
 }
 
-export function PictureUploadLoading({ kind, label }: { kind: PictureKind; label: string }) {
+export function PictureUploadLoading({
+  kind,
+  label,
+  framed = true,
+}: {
+  kind: PictureKind;
+  label: string;
+  framed?: boolean;
+}) {
   return (
     <div role="status" aria-label={label}>
       <Field aria-hidden="true">
-        <FileUploadLayout>
+        <FileUploadLayout framed={framed}>
           <FileUploadContent
             preview={
               <span
@@ -77,6 +86,7 @@ export function PictureUpload({
   onRemove,
   disabled = false,
   name: owner,
+  framed = true,
 }: PictureUploadProps) {
   const [source, setSource] = useState<{ file: File; src: string } | null>(null);
   const [selection, setSelection] = useState<
@@ -130,6 +140,7 @@ export function PictureUpload({
   return (
     <section aria-label={name} className="min-w-0">
       <FileUpload
+        framed={framed}
         chooseButtonRef={chooseButton}
         accept={pictureAccept}
         maxSize={pictureMaxSize}

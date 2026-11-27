@@ -9,7 +9,7 @@ import {
 
 import { useState } from "react";
 
-import { GroupTitle, SettingsCard, SettingsRow } from "@/components/layout/settings-section";
+import { SettingsSection, SettingsRow } from "@/components/layout/settings-section";
 import { ShortcutKeys } from "@/components/shortcuts/shortcut-keys";
 import { hotkeySteps, useShortcutLabel } from "@/components/shortcuts/use-shortcut";
 import { Button } from "@/components/ui/button";
@@ -28,22 +28,24 @@ export function KeyboardShortcutsSettings() {
   const { resetCustomHotkeys } = useCustomHotkeys();
   if (!desktopSettingsBridge()) return null;
   return (
-    <SettingsCard label="Keyboard shortcuts">
-      <GroupTitle
-        title="Keyboard shortcuts"
-        description="Select Change, then press up to two keys, such as G then H, or one combination, such as Ctrl+K. Press Escape to cancel."
-        actions={
-          items.some((item) => item.isCustom) && (
-            <Button type="button" variant="outline" size="sm" onClick={resetCustomHotkeys}>
-              Reset all
-            </Button>
-          )
-        }
-      />
-      {items.map((item) => (
-        <ShortcutRow key={item.appHotkey.id} item={item} />
-      ))}
-    </SettingsCard>
+    <SettingsSection
+      label="Keyboard shortcuts"
+      title="Keyboard shortcuts"
+      description="Select Change, then press up to two keys, such as G then H, or one combination, such as Ctrl+K. Press Escape to cancel."
+      actions={
+        items.some((item) => item.isCustom) && (
+          <Button type="button" variant="outline" size="sm" onClick={resetCustomHotkeys}>
+            Reset all
+          </Button>
+        )
+      }
+    >
+      <div className="min-w-0 divide-y">
+        {items.map((item) => (
+          <ShortcutRow key={item.appHotkey.id} item={item} />
+        ))}
+      </div>
+    </SettingsSection>
   );
 }
 

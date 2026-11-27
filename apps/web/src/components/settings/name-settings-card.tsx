@@ -3,9 +3,9 @@ import { useState } from "react";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { NativeField, NativeForm } from "@/components/forms/native-form";
-import { SettingsCard, SettingsFooter } from "@/components/layout/settings-section";
+import { SettingsDetail, SettingsFooter } from "@/components/layout/settings-section";
 
-/** A card that edits one display name and saves it with its own footer. */
+/** A display-name detail with its own draft and save controls. */
 export function NameSettingsCard({
   id,
   title,
@@ -48,31 +48,15 @@ export function NameSettingsCard({
         description={`Your new ${label.toLowerCase()} isn’t saved.`}
         name={label}
       />
-      <NativeForm
-        key={formVersion}
-        pending={pending}
-        className="min-w-0"
-        onSubmit={() => {
-          if (!dirty) return;
-          onSave(current.trim(), () => setDraft(null));
-        }}
-      >
-        <SettingsCard
-          title={title}
-          description={description}
-          footer={
-            !readOnlyNote && (
-              <SettingsFooter
-                dirty={dirty}
-                pending={pending}
-                error={error && actionErrorMessage(error, errorDescription)}
-                onDiscard={() => {
-                  setDraft(null);
-                  setFormVersion((version) => version + 1);
-                }}
-              />
-            )
-          }
+      <SettingsDetail title={title} description={description}>
+        <NativeForm
+          key={formVersion}
+          pending={pending}
+          className="max-w-xl min-w-0 space-y-4"
+          onSubmit={() => {
+            if (!dirty) return;
+            onSave(current.trim(), () => setDraft(null));
+          }}
         >
           <NativeField
             id={id}
@@ -90,8 +74,19 @@ export function NameSettingsCard({
             description={readOnlyNote}
             onChange={(event) => setDraft(event.target.value)}
           />
-        </SettingsCard>
-      </NativeForm>
+          {!readOnlyNote && (dirty || pending || error) && (
+            <SettingsFooter
+              dirty={dirty}
+              pending={pending}
+              error={error && actionErrorMessage(error, errorDescription)}
+              onDiscard={() => {
+                setDraft(null);
+                setFormVersion((version) => version + 1);
+              }}
+            />
+          )}
+        </NativeForm>
+      </SettingsDetail>
     </>
   );
 }

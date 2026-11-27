@@ -4,7 +4,7 @@ import type {
 } from "@substrate/contracts/desktop/updates-ipc";
 
 import { PendingButton } from "@/components/feedback/pending-button";
-import { SettingsCard, SettingsRow } from "@/components/layout/settings-section";
+import { SettingsSection, SettingsRow } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import { useDesktopUpdates } from "@/hooks/use-desktop-updates";
 import { updatesBridge } from "@/lib/desktop/bridges";
@@ -48,8 +48,10 @@ function updateDescription({ install, state }: DesktopUpdateStatus) {
       return `Downloading version ${state.version} (${Math.floor(state.percent)}%).`;
     case "ready":
       return `Version ${state.version} is ready. Restart Substrate to install it.`;
+    case "installing":
+      return `Stopping background work before installing version ${state.version}. Substrate will reopen automatically.`;
     case "error":
-      return "Couldn’t check for updates. Check your connection and try again.";
+      return "Couldn’t finish the update. Try again, or close and reopen Substrate.";
     case "idle":
       return;
   }
@@ -70,7 +72,7 @@ function DesktopUpdateSettingsView({
 }) {
   return (
     <div id="updates" tabIndex={-1} className="scroll-mt-6">
-      <SettingsCard title="Updates">
+      <SettingsSection title="Updates">
         <SettingsRow
           label={`Substrate ${status.appVersion}`}
           description={<span role="status">{updateDescription(status)}</span>}
@@ -84,7 +86,7 @@ function DesktopUpdateSettingsView({
             />
           }
         />
-      </SettingsCard>
+      </SettingsSection>
     </div>
   );
 }
@@ -103,6 +105,7 @@ function UpdateControl({
   onInstall: () => void;
   onDownload: () => void;
 }) {
+  if (state.status === "installing") return <PendingButton pending>Restarting…</PendingButton>;
   if (state.status === "ready" && install === "automatic")
     return (
       <PendingButton pending={pending} onClick={onInstall}>

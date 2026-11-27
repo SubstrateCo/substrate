@@ -129,6 +129,7 @@ export function InvitationTable({
       errorTitle="Couldn’t load invitations"
       onRetry={onRetry}
       empty={{
+        variant: "compact",
         title: "No invitations yet",
         description: "Invitations you send appear here until they are accepted.",
         icon: Send,

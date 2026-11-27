@@ -28,6 +28,9 @@ describe("updateNoticeContent", () => {
     expect(
       updateNoticeContent(status("automatic", { status: "ready", version: "0.2.0" }))?.action?.kind,
     ).toBe("install");
+    expect(
+      updateNoticeContent(status("automatic", { status: "installing", version: "0.2.0" })),
+    ).toBeUndefined();
   });
 
   test("download progress keeps one notice, so closing it hides the rest of that download", () => {

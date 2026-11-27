@@ -12,6 +12,7 @@ export function OrganizationPicture({ organizationId }: { organizationId: string
   const mutations = usePictureMutations({ kind: "organization-logo", organizationId });
   return (
     <PictureSettings
+      layout="row"
       state={resource.status}
       title="Logo"
       description="Shown in the workspace switcher for everyone in it."

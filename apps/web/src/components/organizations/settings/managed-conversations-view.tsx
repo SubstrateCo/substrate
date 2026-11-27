@@ -105,6 +105,7 @@ export function ManagedConversations({
         loading={resource.status === "loading"}
         loadingMessage="Loading conversations"
         empty={{
+          variant: "compact",
           icon: Hash,
           title: "No channels or group messages",
           description:

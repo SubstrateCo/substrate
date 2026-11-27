@@ -52,6 +52,7 @@ export function updateNoticeContent(status: DesktopUpdateStatus): UpdateNoticeCo
     case "idle":
     case "checking":
     case "current":
+    case "installing":
       return undefined;
   }
 }

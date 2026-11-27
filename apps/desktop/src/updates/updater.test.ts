@@ -26,7 +26,7 @@ class FakeEngine extends EventEmitter {
   }
 }
 
-function setup(install: UpdateInstall) {
+function setup(install: UpdateInstall, prepareInstall?: () => Promise<void>) {
   const engine = new FakeEngine();
   const changes: DesktopUpdateStatus[] = [];
   const opened: string[] = [];
@@ -44,6 +44,7 @@ function setup(install: UpdateInstall) {
     },
     prepareInstall: async () => {
       steps.push("shutdown");
+      await prepareInstall?.();
     },
     log: () => {},
   });
@@ -68,6 +69,55 @@ describe("updateInstallMode", () => {
 });
 
 describe("Windows updates", () => {
+  test("announces restart while shutdown is pending and ignores late update events", async () => {
+    const shutdown = Promise.withResolvers<void>();
+    const { engine, updater, changes } = setup("automatic", () => shutdown.promise);
+    engine.emit("update-downloaded", { version: "0.2.0" });
+    const installing = updater.installNow();
+    try {
+      expect(changes.at(-1)?.state).toEqual({ status: "installing", version: "0.2.0" });
+      expect(engine.installs).toEqual([]);
+      engine.emit("update-not-available");
+      engine.emit("update-downloaded", { version: "0.2.0" });
+      await updater.checkForUpdates();
+      await updater.installNow();
+      expect(updater.status().state).toEqual({ status: "installing", version: "0.2.0" });
+      expect(engine.checks).toBe(0);
+    } finally {
+      shutdown.resolve();
+      await installing;
+    }
+    expect(engine.installs).toEqual([[true, true]]);
+  });
+
+  test("an installer exception clears restart progress and reports the failure", async () => {
+    const { engine, updater } = setup("automatic");
+    engine.emit("update-downloaded", { version: "0.2.0" });
+    engine.quitAndInstall = () => {
+      throw new Error("installer unavailable");
+    };
+    await updater.installNow();
+    expect(updater.status().state).toEqual({ status: "error" });
+  });
+
+  test("a late failed check cannot dismiss restart progress during shutdown", async () => {
+    const shutdown = Promise.withResolvers<void>();
+    const check = Promise.withResolvers<null>();
+    const { engine, updater } = setup("automatic", () => shutdown.promise);
+    engine.nextCheck = () => check.promise;
+    const checking = updater.checkForUpdates();
+    engine.emit("update-downloaded", { version: "0.2.0" });
+    const installing = updater.installNow();
+    try {
+      check.reject(new Error("check disconnected"));
+      await checking;
+      expect(updater.status().state).toEqual({ status: "installing", version: "0.2.0" });
+    } finally {
+      shutdown.resolve();
+      await installing;
+    }
+  });
+
   test("download progress leads to a ready update that installs after shutdown", async () => {
     const { engine, updater, steps, attention } = setup("automatic");
     expect(engine.autoDownload).toBe(true);

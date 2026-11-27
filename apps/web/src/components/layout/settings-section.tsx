@@ -120,6 +120,33 @@ export function GroupTitle({
   );
 }
 
+/** A form detail with a quiet description and a consistently aligned control column. */
+export function SettingsDetail({
+  title,
+  description,
+  children,
+}: {
+  title: string;
+  description?: ReactNode;
+  children: ReactNode;
+}) {
+  const id = useId();
+  return (
+    <section
+      aria-labelledby={id}
+      className="grid min-w-0 gap-4 py-6 first:pt-0 last:pb-0 @3xl/content:grid-cols-3 @3xl/content:gap-6"
+    >
+      <div className="max-w-sm min-w-0 space-y-2">
+        <Heading level={3} id={id}>
+          {title}
+        </Heading>
+        {description && <p className="text-sm text-muted-foreground">{description}</p>}
+      </div>
+      <div className="min-w-0 @3xl/content:col-span-2">{children}</div>
+    </section>
+  );
+}
+
 /**
  * One setting inside a card: the label and description on the left, its control on the right.
  * Pass `htmlFor` when the control is a single labelable element, such as a Switch.

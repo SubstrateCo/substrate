@@ -73,7 +73,7 @@ export function createDesktopUpdater(options: {
     engine.autoDownload = install === "automatic";
     engine.autoInstallOnAppQuit = install === "automatic";
     engine.on("update-available", ({ version }) => {
-      if (state.status === "ready" || state.status === "downloading") return;
+      if (installing || state.status === "ready" || state.status === "downloading") return;
       set(
         install === "automatic"
           ? { status: "downloading", version, percent: 0 }
@@ -87,8 +87,12 @@ export function createDesktopUpdater(options: {
         percent: Math.min(100, Math.max(0, Number.isFinite(percent) ? percent : 0)),
       });
     });
-    engine.on("update-downloaded", ({ version }) => set({ status: "ready", version }));
-    engine.on("update-not-available", () => set({ status: "current" }));
+    engine.on("update-downloaded", ({ version }) => {
+      if (!installing) set({ status: "ready", version });
+    });
+    engine.on("update-not-available", () => {
+      if (!installing) set({ status: "current" });
+    });
     // A failed check also rejects its promise, and check() reports that. This event alone
     // reports download failures, which happen after the check has finished.
     engine.on("error", (error) => {
@@ -116,13 +120,14 @@ export function createDesktopUpdater(options: {
         "Desktop update check failed.",
         error instanceof Error ? error : new Error(String(error)),
       );
-      set(manual ? { status: "error" } : previous);
+      if (!installing) set(manual ? { status: "error" } : previous);
     }
   }
 
   async function check(manual: boolean) {
     // A downloaded or downloading update is already the newest this session can install.
-    if (engine && state.status !== "downloading" && state.status !== "ready") {
+    const hasUpdate = state.status === "downloading" || state.status === "ready";
+    if (engine && !installing && !hasUpdate) {
       pendingCheck ??= runCheck(manual).finally(() => {
         pendingCheck = undefined;
       });
@@ -150,6 +155,7 @@ export function createDesktopUpdater(options: {
       if (!engine || install !== "automatic" || installing) return;
       if (state.status !== "ready") return;
       installing = true;
+      set({ status: "installing", version: state.version });
       try {
         await options.prepareInstall();
       } catch (error) {
@@ -161,7 +167,16 @@ export function createDesktopUpdater(options: {
       }
       // Silent, then start the new version. The installer keeps the existing install directory.
       // A failure emits the error event before this returns.
-      engine.quitAndInstall(true, true);
+      try {
+        engine.quitAndInstall(true, true);
+      } catch (error) {
+        log(
+          "Desktop update installation failed.",
+          error instanceof Error ? error : new Error(String(error)),
+        );
+        installing = false;
+        set({ status: "error" });
+      }
     },
     async openDownloadPage() {
       if (install !== "manual" || state.status !== "available") return;

@@ -1,4 +1,4 @@
-import { SettingsCard, SettingsRow } from "@/components/layout/settings-section";
+import { SettingsSection, SettingsRow } from "@/components/layout/settings-section";
 import { EmojiPopover } from "@/components/messaging/composer/emoji-picker";
 import {
   defaultQuickReactions,
@@ -15,7 +15,7 @@ export function QuickReactionsSettings() {
   const emojis = quickReactions.map((item) => item.emoji);
   const isDefault = emojis.join() === defaultQuickReactions.join();
   return (
-    <SettingsCard title="Messages">
+    <SettingsSection title="Messages">
       <SettingsRow
         label="Quick reactions"
         description="Shown first when you point at a message. Select one to replace it."
@@ -55,6 +55,6 @@ export function QuickReactionsSettings() {
           </div>
         }
       />
-    </SettingsCard>
+    </SettingsSection>
   );
 }

@@ -9,6 +9,7 @@ import type { DesktopSettingsAPI } from "@substrate/contracts/desktop/window";
 import { useIsMutating, useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
+import { confirmDiscardDrafts } from "@/lib/navigation/unsaved-drafts";
 import { toast } from "sonner";
 
 export type DesktopUpdateCommand = "check" | "install" | "download";
@@ -23,8 +24,11 @@ export function useDesktopUpdateCommand(bridge: DesktopUpdatesAPI) {
   const pending = useIsMutating({ mutationKey: updateCommandKey, exact: true }) > 0;
   const command = useMutation({
     mutationKey: updateCommandKey,
-    mutationFn: (kind: DesktopUpdateCommand): Promise<DesktopUpdateStatus | void> => {
-      if (kind === "install") return bridge.installNow();
+    mutationFn: async (kind: DesktopUpdateCommand): Promise<DesktopUpdateStatus | void> => {
+      if (kind === "install") {
+        if (!(await confirmDiscardDrafts())) return;
+        return bridge.installNow();
+      }
       if (kind === "download") return bridge.openDownloadPage();
       return bridge.checkForUpdates();
     },

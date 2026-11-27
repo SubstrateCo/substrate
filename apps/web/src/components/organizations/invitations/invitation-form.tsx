@@ -23,9 +23,9 @@ export type InvitationRoleOption = {
 
 // On wide screens the fields share one subgrid: labels, then controls, then errors and hints.
 // The button sits on the control row, so an error under the email never moves it.
-const subgridField = "min-w-0 @lg:row-span-3 @lg:grid @lg:grid-rows-subgrid";
-const emailColumn = "@lg:col-span-6";
-const roleColumn = "@lg:col-span-3";
+const subgridField = "min-w-0 @2xl:row-span-3 @2xl:grid @2xl:grid-rows-subgrid";
+const emailColumn = "@2xl:col-span-6";
+const roleColumn = "@2xl:col-span-3";
 
 export function InvitationForm({
   roles,
@@ -50,7 +50,7 @@ export function InvitationForm({
   return (
     <>
       <form
-        className="grid gap-4 @lg:grid-cols-12 @lg:gap-x-3 @lg:gap-y-2"
+        className="grid gap-4 @2xl:grid-cols-12 @2xl:gap-x-3 @2xl:gap-y-2"
         onInvalidCapture={validation.onInvalid}
         onInputCapture={validation.onInput}
         onSubmit={(event) => {
@@ -105,12 +105,15 @@ export function InvitationForm({
           </Select>
         </Field>
         {/* Before the button in the DOM, so a stacked form keeps the hint under the role. */}
-        <FieldDescription id={`${id}-role-description`} className="@lg:col-span-12 @lg:row-start-4">
+        <FieldDescription
+          id={`${id}-role-description`}
+          className="@2xl:col-span-12 @2xl:row-start-4"
+        >
           {roleOption.description}
         </FieldDescription>
         <PendingButton
           ref={inviteButton}
-          className="@lg:col-span-3 @lg:col-start-10 @lg:row-start-2"
+          className="justify-self-start @2xl:col-span-3 @2xl:col-start-10 @2xl:row-start-2"
           disabled={disabled}
           pending={sending}
         >

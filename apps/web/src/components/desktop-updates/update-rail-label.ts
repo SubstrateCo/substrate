@@ -13,6 +13,7 @@ export function updateRailLabel({ install, state }: DesktopUpdateStatus) {
     case "checking":
     case "current":
     case "error":
+    case "installing":
       return undefined;
   }
 }

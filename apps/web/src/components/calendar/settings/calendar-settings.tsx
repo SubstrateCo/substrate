@@ -38,11 +38,12 @@ export function CalendarSettingsPage({ organizationId }: { organizationId: strin
   return (
     <SettingsPanel title="Calendars">
       {organizationId ? (
-        <AppAvailability app="calendar">
+        <AppAvailability app="calendar" variant="compact">
           <CalendarSettings key={organizationId} organizationId={organizationId} />
         </AppAvailability>
       ) : (
         <ContentNotice
+          variant="compact"
           icon={Building2}
           title="Choose an organization"
           description="Calendars connect to one organization. Open an organization to connect yours."

@@ -5,7 +5,7 @@ import {
   type PictureUploadProps,
 } from "../../upload/picture-upload";
 import { StaleNotice } from "@/components/feedback/stale-notice";
-import { SettingsCard } from "@/components/layout/settings-section";
+import { SettingsCard, SettingsDetail } from "@/components/layout/settings-section";
 import type { ResourceStatus } from "@/lib/resource-state";
 
 /**
@@ -17,6 +17,7 @@ export function PictureSettings({
   state,
   description,
   onRetry,
+  layout = "card",
   ...upload
 }: PictureUploadProps & {
   title: string;
@@ -24,16 +25,18 @@ export function PictureSettings({
   state: ResourceStatus;
   description: string;
   onRetry: () => void;
+  layout?: "card" | "row";
 }) {
+  const Frame = layout === "row" ? SettingsDetail : SettingsCard;
   return (
-    <SettingsCard title={title} description={description}>
+    <Frame title={title} description={description}>
       <PictureSettingsBody
         subject={title.toLowerCase()}
         state={state}
         onRetry={onRetry}
-        upload={upload}
+        upload={{ ...upload, framed: layout !== "row" }}
       />
-    </SettingsCard>
+    </Frame>
   );
 }
 
@@ -50,7 +53,13 @@ function PictureSettingsBody({
 }) {
   switch (state) {
     case "loading":
-      return <PictureUploadLoading kind={upload.kind} label={`Loading ${subject}`} />;
+      return (
+        <PictureUploadLoading
+          kind={upload.kind}
+          framed={upload.framed}
+          label={`Loading ${subject}`}
+        />
+      );
     case "error":
     case "unavailable":
       return (

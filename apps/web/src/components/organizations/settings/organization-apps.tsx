@@ -175,34 +175,32 @@ export function OrganizationApps({
                 title={scopeCopy[scope].title}
                 description={scopeCopy[scope].description}
               >
-                <div className="@container">
-                  <div className="grid grid-cols-1 gap-4 @3xl:grid-cols-2 @6xl:grid-cols-3">
-                    {catalog.flatMap((entry) => {
-                      if (appScope(entry.id) !== scope) return [];
-                      const app = workspaceApps.find((item) => item.id === entry.id)!;
-                      return (
-                        <AppCard
-                          key={entry.id}
-                          id={entry.id}
-                          label={app.label}
-                          icon={app.icon}
-                          description={entry.description}
-                          agentSupport={entry.agentSupport}
-                          mode={appCardMode({
-                            entry,
-                            canChange: scope === "user" || canManage,
-                            enabled: data.enabledApps.includes(entry.id),
-                            pending,
-                            onChange: (app, checked) => {
-                              reset();
-                              if (!checked) setDisabling(app);
-                              else change(app, true);
-                            },
-                          })}
-                        />
-                      );
-                    })}
-                  </div>
+                <div className="min-w-0 divide-y rounded-xl border bg-card px-4 sm:px-6">
+                  {catalog.flatMap((entry) => {
+                    if (appScope(entry.id) !== scope) return [];
+                    const app = workspaceApps.find((item) => item.id === entry.id)!;
+                    return (
+                      <AppCard
+                        key={entry.id}
+                        id={entry.id}
+                        label={app.label}
+                        icon={app.icon}
+                        description={entry.description}
+                        agentSupport={entry.agentSupport}
+                        mode={appCardMode({
+                          entry,
+                          canChange: scope === "user" || canManage,
+                          enabled: data.enabledApps.includes(entry.id),
+                          pending,
+                          onChange: (app, checked) => {
+                            reset();
+                            if (!checked) setDisabling(app);
+                            else change(app, true);
+                          },
+                        })}
+                      />
+                    );
+                  })}
                 </div>
               </SettingsSection>
             ))}

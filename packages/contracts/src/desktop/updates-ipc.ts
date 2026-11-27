@@ -16,6 +16,8 @@ export const updateStateSchema = z.discriminatedUnion("status", [
   z.object({ status: z.literal("downloading"), version, percent: z.number().min(0).max(100) }),
   /** Downloaded and installs when the app restarts. */
   z.object({ status: z.literal("ready"), version }),
+  /** Background work is stopping before the installer restarts the app. */
+  z.object({ status: z.literal("installing"), version }),
   z.object({ status: z.literal("error") }),
 ]);
 export type DesktopUpdateState = z.infer<typeof updateStateSchema>;
