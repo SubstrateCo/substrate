@@ -50,7 +50,6 @@ test("Expo web preview: existing-account sign-in and invalid credentials", async
   await verifyExistingAccount(request, existingAccount.email);
   await page.goto("/");
   await expect(page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
-  await expect(page.getByRole("button", { name: /Create (an )?account/i })).toHaveCount(0);
   await captureScreenshot(page, info, "auth-sign-in");
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page.getByText("Enter a valid email address.", { exact: true })).toBeVisible();

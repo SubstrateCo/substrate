@@ -46,31 +46,18 @@ test("the macOS search shortcut stays on one line beside the input", async ({
   }).toPass();
 });
 
-test("the default workspace destination is Messages without dashboard summary requests", async ({
-  account,
-  client,
-}) => {
-  const user = await client(account);
-  const summaryRequests: string[] = [];
-  user.page.on("request", (request) => {
-    if (/\/api\/v1\/(?:tasks|crm)\/home(?:\?|$)/.test(request.url()))
-      summaryRequests.push(request.url());
-  });
-  await user.page.goto("/login?redirect=%2Flogin");
-  await expect(user.page).toHaveURL(/\/messages(?:\?|$)/);
-  await expect(rail(user.page, "Messages")).toHaveAttribute("aria-current", "page");
-  await expect(rail(user.page, "Home")).toHaveCount(0);
-  expect(summaryRequests).toEqual([]);
-});
-
-test("G then an app key opens that app, and the rail marks it current", async ({
+test("workspace defaults to Messages and app shortcuts navigate except inside dialogs", async ({
   account,
   client,
 }) => {
   const user = await client(account);
   const { page } = user;
-  await visit(user);
+  const since = user.events.length;
+  await page.goto("/login?redirect=%2Flogin");
+  await expect(page).toHaveURL(/\/messages(?:\?|$)/);
+  await user.waitForEvent(since, (event) => event.type === "ready", "The workspace is connected");
   await expect(rail(page, "Messages")).toHaveAttribute("aria-current", "page");
+  await rail(page, "Messages").focus();
   await page.keyboard.press("g");
   await page.keyboard.press("t");
   await expect(page).toHaveURL(/\/tasks/);
@@ -80,7 +67,13 @@ test("G then an app key opens that app, and the rail marks it current", async ({
   await page.keyboard.press("m");
   await expect(page).toHaveURL(/\/messages/);
   await expect(rail(page, "Messages")).toHaveAttribute("aria-current", "page");
-  await expect(rail(page, "Home")).toHaveCount(0);
+  await page.getByRole("button", { name: `Signed in as ${account.name}`, exact: true }).click();
+  const menu = page.getByRole("dialog");
+  await menu.getByRole("link", { name: "User settings", exact: true }).focus();
+  await page.keyboard.press("g");
+  await page.keyboard.press("t");
+  await expect(menu).toBeVisible();
+  await expect(page).toHaveURL(/\/messages/);
 });
 
 test("app shortcuts leave the search field and its own shortcuts alone", async ({
@@ -128,17 +121,4 @@ test("app shortcuts leave the search field and its own shortcuts alone", async (
   await page.keyboard.press("Escape");
   await expect(types).toBeHidden();
   await expect(input).toBeFocused();
-});
-
-test("app shortcuts do not fire inside an open dialog", async ({ account, client }) => {
-  const user = await client(account);
-  const { page } = user;
-  await visit(user);
-  await page.getByRole("button", { name: `Signed in as ${account.name}`, exact: true }).click();
-  const menu = page.getByRole("dialog");
-  await menu.getByRole("link", { name: "User settings", exact: true }).focus();
-  await page.keyboard.press("g");
-  await page.keyboard.press("t");
-  await expect(menu).toBeVisible();
-  await expect(page).toHaveURL(/\/messages/);
 });

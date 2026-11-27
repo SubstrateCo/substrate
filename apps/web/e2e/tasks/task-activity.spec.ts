@@ -3,10 +3,7 @@ import { captureScreenshot } from "../test-support/screenshots";
 import { project } from "../test-support/tasks";
 import { expect } from "@playwright/test";
 
-test("task activity shows compact dates without row numbers and keeps newest-first order", async ({
-  actors,
-  client,
-}) => {
+test("task activity keeps newest-first order and accessible dates", async ({ actors, client }) => {
   const actor = actors.sender;
   const [created, channel] = await Promise.all([
     project(actor),
@@ -56,7 +53,6 @@ test("task activity shows compact dates without row numbers and keeps newest-fir
     expect(date.title).toBe(date.accessible);
     if (index > 0)
       expect(Date.parse(dates[index - 1]!.iso)).toBeGreaterThanOrEqual(Date.parse(date.iso));
-    await expect(rows.nth(index).getByText(`${index + 1}.`, { exact: true })).toHaveCount(0);
   }
   await activity.scrollIntoViewIfNeeded();
   await captureScreenshot(user.page, "task-activity-chronology");

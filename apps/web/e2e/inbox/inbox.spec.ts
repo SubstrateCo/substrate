@@ -530,7 +530,6 @@ test("labels do not shift the mailbox picker; the toolbar stays on one row and d
   await expect(labelFilters).toBeHidden();
   expect(await bounds()).toEqual(before);
   const rows = page.getByRole("region", { name: "Messages", exact: true });
-  await expect(rows.getByRole("heading")).toHaveCount(0);
   const proof = rows.getByRole("button", { name: /Atlas cover proofs/ });
   const d = await proof.locator("time").boundingBox(),
     from = await proof.getByText("Mira Park", { exact: true }).boundingBox(),
@@ -553,7 +552,6 @@ test("labels do not shift the mailbox picker; the toolbar stays on one row and d
     .locator('header[data-slot="page-header"]')
     .filter({ has: page.getByRole("searchbox", { name: "Search messages" }) });
   await expect(toolbar.getByRole("button", { name: "Sync mail" })).toBeVisible();
-  await expect(toolbar).not.toContainText(/conversations?|threads?|unread messages/i);
   const name = await toolbar.getByRole("heading", { name: "Inbox", exact: true }).boundingBox(),
     search = await toolbar.getByRole("searchbox").boundingBox();
   expect(Math.abs(name!.y + name!.height / 2 - (search!.y + search!.height / 2))).toBeLessThan(2);

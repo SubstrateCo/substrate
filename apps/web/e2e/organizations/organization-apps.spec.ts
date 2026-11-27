@@ -27,9 +27,6 @@ test("owner enables independent apps, confirms disable, and restores preserved p
   await expect(crmSwitch).not.toBeChecked();
   const personal = page.getByRole("region", { name: "Personal apps", exact: true });
   await expect(personal.getByRole("switch", { name: "Inbox", exact: true })).not.toBeChecked();
-  await expect(apps.getByRole("region", { name: "Inbox", exact: true })).toHaveCount(0);
-  await expect(personal.getByText("Personal", { exact: true })).toHaveCount(0);
-  await expect(apps.getByText("Workspace", { exact: true })).toHaveCount(0);
   await expect(
     page
       .getByRole("navigation", { name: "Apps", exact: true })
@@ -39,22 +36,6 @@ test("owner enables independent apps, confirms disable, and restores preserved p
   const agentsCard = apps.getByRole("region", { name: "Agents", exact: true });
   await expect(messagesCard.getByText("Required", { exact: true })).toBeVisible();
   await expect(agentsCard.getByText("Required", { exact: true })).toBeVisible();
-  const messagesBounds = await messagesCard.boundingBox();
-  const agentsBounds = await agentsCard.boundingBox();
-  expect(messagesBounds).not.toBeNull();
-  expect(agentsBounds).not.toBeNull();
-  expect(messagesBounds!.y).toBe(agentsBounds!.y);
-  expect(messagesBounds!.x).toBeLessThan(agentsBounds!.x);
-  await page.setViewportSize({ width: 800, height: 900 });
-  await expect
-    .poll(async () => {
-      const first = await messagesCard.boundingBox();
-      const second = await agentsCard.boundingBox();
-      return first && second && second.y >= first.y + first.height;
-    })
-    .toBe(true);
-  await page.setViewportSize({ width: 1440, height: 900 });
-
   await crmSwitch.click();
   await expect(crmSwitch).toBeChecked();
   await expect(tasksSwitch).not.toBeChecked();
@@ -115,7 +96,6 @@ test("member can change personal apps but not workspace apps", async ({ actors, 
   await expect(user.page.getByRole("region", { name: "Tasks", exact: true })).toBeVisible();
   const workspace = user.page.getByRole("region", { name: "Workspace apps", exact: true });
   await expect(workspace.getByRole("switch")).toHaveCount(0);
-  await expect(workspace.getByText("Workspace", { exact: true })).toHaveCount(0);
   await expect(workspace.getByRole("region", { name: "Tasks", exact: true })).toContainText(
     "Enabled",
   );

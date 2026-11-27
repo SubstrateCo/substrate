@@ -167,9 +167,6 @@ test("an owner invites a teammate, who accepts without receiving project access 
   await invitee.page.getByRole("link", { name: "Organization settings", exact: true }).click();
   await expect(invitee.page).toHaveURL(/\/settings\/organization\/apps$/);
   await expect(invitee.page.getByRole("heading", { name: "Apps", exact: true })).toBeVisible();
-  await expect(
-    invitee.page.getByRole("button", { name: /^(Enable|Disable) (Tasks|CRM)$/ }),
-  ).toHaveCount(0);
   const settings = invitee.page.getByRole("navigation", { name: "Settings sections", exact: true });
   await expect(settings.getByRole("link", { name: "Apps", exact: true })).toBeVisible();
   await expect(

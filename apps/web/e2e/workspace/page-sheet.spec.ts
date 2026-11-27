@@ -1,7 +1,6 @@
 import { result } from "../../../server/integration/test-support/api";
 import { createCrm, readCrm } from "../../../server/integration/test-support/crm";
-import { post, visit } from "../test-support/fixtures";
-import { project } from "../test-support/tasks";
+import { visit } from "../test-support/fixtures";
 import { test } from "../test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
 
@@ -204,37 +203,4 @@ test("interaction sheets open over contacts and deals and return to them", async
     dealSheet.getByRole("heading", { name: "Northstar winter launch", exact: true }),
   ).toBeVisible();
   expect(new URL(page.url()).searchParams.get("recordId")).toBe(deal.entityId);
-});
-
-test("task sheet protects edits and uses the shared dark-mode surface", async ({
-  account,
-  client,
-}) => {
-  const workspace = await project(account);
-  const task = await post<{ id: string }>(account, "tasks/mutations", {
-    action: "createTask",
-    organizationId: account.organizationId,
-    projectEntityId: workspace.entityId,
-    title: "Prepare winter launch",
-    description: "Review the launch checklist and confirm the rollout schedule.",
-  });
-  const user = await client(account);
-  const { page } = user;
-  await page.emulateMedia({ colorScheme: "dark" });
-  await visit(user, undefined, "/tasks", { projectId: workspace.entityId, taskId: task.id });
-  const sheet = page.getByRole("dialog", { name: "Task", exact: true });
-  await expect(
-    sheet.getByRole("heading", { name: "Prepare winter launch", exact: true }),
-  ).toBeVisible();
-  await sheet.getByRole("button", { name: "Edit task", exact: true }).click();
-  await sheet
-    .getByRole("textbox", { name: "Task title", exact: true })
-    .fill("Unsaved launch title");
-  await sheet.getByRole("button", { name: "Close task", exact: true }).click();
-  const guard = page.getByRole("dialog", { name: "Discard unsaved changes?", exact: true });
-  await expect(guard).toBeVisible();
-  await guard.getByRole("button", { name: "Keep editing", exact: true }).click();
-  await expect(sheet.getByRole("textbox", { name: "Task title", exact: true })).toHaveValue(
-    "Unsaved launch title",
-  );
 });

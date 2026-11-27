@@ -36,10 +36,8 @@ for (const kind of ["channel", "group"] as const) {
     await dialog.getByRole("option").filter({ hasText: actors.member.email }).click();
     await picker.fill(agent.name);
     const agentOption = dialog.getByRole("option").filter({ hasText: agent.name });
-    await expect(agentOption.getByText("Agent", { exact: true })).toHaveCount(0);
     await expect(agentOption).toHaveAccessibleName(`${agent.name}, Agent`);
     await agentOption.click();
-    await expect(dialog.getByRole("checkbox")).toHaveCount(0);
     await dialog.getByRole("button", { name: "Add 2 people", exact: true }).click();
     await expect(dialog).toHaveCount(0);
     const count = kind === "channel" ? 3 : 5;
@@ -48,7 +46,6 @@ for (const kind of ["channel", "group"] as const) {
       user.page.getByRole("listitem").filter({ hasText: actors.member.name }),
     ).toBeVisible();
     const row = user.page.getByRole("listitem").filter({ hasText: agent.name });
-    await expect(row.getByText("Agent", { exact: true })).toHaveCount(0);
     await expect(row.locator("[tabindex='0'] .sr-only")).toHaveText(", Agent");
     await user.page.keyboard.press("Escape");
     await user.page.getByRole("button", { name: "Add people and agents", exact: true }).click();
@@ -65,7 +62,6 @@ test("new group message picks people and agents in the same field", async ({ act
   const user = await client(actors.sender);
   await visit(user);
   await user.page.getByRole("button", { name: "New message", exact: true }).click();
-  await expect(user.page.getByRole("group", { name: "Your agents", exact: true })).toHaveCount(0);
   await user.page.getByRole("option", { name: "New group message", exact: true }).click();
   const dialog = user.page.getByRole("dialog", { name: "New group message", exact: true });
   const picker = dialog.getByRole("combobox", { name: "To", exact: true });
@@ -82,7 +78,6 @@ test("new group message picks people and agents in the same field", async ({ act
   ).toBeVisible();
   await user.page.getByRole("button", { name: "Members, 3 members", exact: true }).click();
   const row = user.page.getByRole("listitem").filter({ hasText: agent.name });
-  await expect(row.getByText("Agent", { exact: true })).toHaveCount(0);
   await expect(row.locator("[tabindex='0'] .sr-only")).toHaveText(", Agent");
 });
 

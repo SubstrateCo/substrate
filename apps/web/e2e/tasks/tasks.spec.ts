@@ -246,7 +246,6 @@ test("project sharing needs confirmation and revocation removes cached private c
       .getByRole("heading", { name: title, exact: true }),
   ).toBeVisible();
   await expect(member.page.getByRole("button", { name: "Edit task", exact: true })).toHaveCount(0);
-  await expect(member.page.getByLabel("Add a comment", { exact: true })).toHaveCount(0);
   await member.page.getByRole("button", { name: "Close task", exact: true }).click();
   await member.page.getByRole("radio", { name: "Board", exact: true }).click();
   const board = member.page.getByRole("region", { name: "Task board", exact: true });

@@ -1,7 +1,7 @@
 import { conversation, conversationButton, post, test, visit } from "../test-support/fixtures";
 import { expect } from "@playwright/test";
 
-test("editing and deleting a thread root retains its replies and permalink", async ({
+test("canceling, saving, and deleting a thread root preserves its replies and permalink", async ({
   actors,
   client,
 }) => {
@@ -19,7 +19,17 @@ test("editing and deleting a thread root retains its replies and permalink", asy
   const { page } = sender;
   await visit(sender, channel.id);
   const article = page.getByRole("article").filter({ hasText: "Original thread announcement" });
-  await article.getByRole("button", { name: "More message actions", exact: true }).click();
+  const actions = article.getByRole("button", { name: "More message actions", exact: true });
+  await actions.click();
+  await page.getByRole("menuitem", { name: "Edit message", exact: true }).click();
+  const field = article.getByRole("textbox", { name: "Edit message", exact: true });
+  await field.pressSequentially(" Discard this edit");
+  await field.press("Escape");
+  await expect(field).toHaveCount(0);
+  await expect(article).toContainText("Original thread announcement");
+  await expect(article).not.toContainText("Discard this edit");
+  await expect(actions).toBeFocused();
+  await actions.click();
   await page.getByRole("menuitem", { name: "Edit message", exact: true }).click();
   await article
     .getByRole("textbox", { name: "Edit message", exact: true })
@@ -70,10 +80,8 @@ test("editing a message inserts a workspace reference from the picker", async ({
   const article = page.getByRole("article").filter({ hasText: original });
   await article.getByRole("button", { name: "More message actions", exact: true }).click();
   await page.getByRole("menuitem", { name: "Edit message", exact: true }).click();
-  // The message is edited in place, not in a dialog.
   const field = article.getByRole("textbox", { name: "Edit message", exact: true });
   await expect(field).toBeFocused();
-  await expect(page.getByRole("dialog")).toHaveCount(0);
   // The existing reference renders as its chip, not as a raw token.
   await expect(field).toContainText(actors.sender.name);
   await expect(field).not.toContainText(senderActorId);
@@ -89,27 +97,6 @@ test("editing a message inserts a workspace reference from the picker", async ({
   await expect(updated).toContainText(original);
   await expect(updated).toContainText(actors.sender.name);
   await expect(updated).toContainText(actors.member.name);
-});
-
-test("Escape cancels an inline edit without saving", async ({ actors, client }) => {
-  const channel = await conversation(actors.sender);
-  const original = "Keep this wording";
-  await post(actors.sender, "messaging/messages", { conversationId: channel.id, body: original });
-  const sender = await client(actors.sender);
-  const { page } = sender;
-  await visit(sender, channel.id);
-  const article = page.getByRole("article").filter({ hasText: original });
-  const actions = article.getByRole("button", { name: "More message actions", exact: true });
-  await actions.click();
-  await page.getByRole("menuitem", { name: "Edit message", exact: true }).click();
-  const field = article.getByRole("textbox", { name: "Edit message", exact: true });
-  await field.pressSequentially(" but discard this");
-  await field.press("Escape");
-  await expect(field).toHaveCount(0);
-  await expect(article).toContainText(original);
-  await expect(article).not.toContainText("discard this");
-  await expect(article).not.toContainText("Edited");
-  await expect(actions).toBeFocused();
 });
 
 test("removing an internal member through the member list clears their open private conversation", async ({

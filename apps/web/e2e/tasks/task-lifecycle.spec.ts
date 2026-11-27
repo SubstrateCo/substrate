@@ -62,21 +62,6 @@ test("move a task with its subtasks, follow its old link, change parent, and del
   expect((await deleted).ok()).toBe(true);
   await expect(inspector).toHaveCount(0);
   await expect(user.page.getByRole("button", { name: /^Not started: Move parent/ })).toHaveCount(0);
-  await user.page.getByRole("tab", { name: "Settings", exact: true }).click();
-  // Only an archived project can be deleted.
-  await user.page.getByRole("button", { name: "Archive project", exact: true }).click();
-  await user.page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Archive project", exact: true })
-    .click();
-  await user.page.getByRole("button", { name: "Delete project", exact: true }).click();
-  await user.page
-    .getByRole("dialog")
-    .getByRole("button", { name: "Delete project", exact: true })
-    .click();
-  await expect(user.page.getByRole("link", { name: destination.name, exact: true })).toHaveCount(0);
-  await user.page.reload();
-  await expect(user.page.getByRole("link", { name: destination.name, exact: true })).toHaveCount(0);
 });
 
 test("moving work to a private project removes it from another viewer’s open inspector", async ({

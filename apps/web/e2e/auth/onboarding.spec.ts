@@ -43,7 +43,6 @@ test("a visitor creates an organization before installing and can resume setup",
   await page.getByLabel("Email", { exact: true }).fill(teammate);
   await page.getByRole("button", { name: "Send invitation", exact: true }).click();
   await expect(page.getByText("Invitation email sent.", { exact: true })).toBeVisible();
-  await expect(page.getByRole("region", { name: "Sent invitations", exact: true })).toHaveCount(0);
   const invitation = await new Mailpit(request).link(
     teammate,
     `Join Public ${id} on Substrate`,
@@ -54,7 +53,6 @@ test("a visitor creates an organization before installing and can resume setup",
   await expect(
     page.getByRole("heading", { name: "Your workspace is ready", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("region", { name: "Sent invitations", exact: true })).toHaveCount(0);
   await page.getByRole("link", { name: "Workspaces", exact: true }).click();
   await expect(page.getByRole("button", { name: `Public ${id}`, exact: true })).toHaveCount(1);
   await page.getByRole("button", { name: "Create a workspace", exact: true }).click();
@@ -82,7 +80,9 @@ test("a desktop-sent teammate invitation can be accepted by a new user in the br
   );
   await page.goto(invitation);
   await page.getByRole("link", { name: "Continue in browser", exact: true }).click();
-  await page.getByRole("link", { name: "Create account to accept invitation", exact: true }).click();
+  await page
+    .getByRole("link", { name: "Create account to accept invitation", exact: true })
+    .click();
   await signUp(page, email, password);
   await verifyEmail(page, request, email);
   await signIn(page, email, password);

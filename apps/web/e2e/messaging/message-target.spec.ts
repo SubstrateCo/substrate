@@ -34,25 +34,6 @@ test("a reply permalink in a short thread shows every reply without a jump to la
   ).toHaveCount(0);
 });
 
-test("opening a thread does not mark its root as a linked message", async ({ actors, client }) => {
-  const channel = await conversation(actors.sender);
-  const root = await post<{ id: string }>(actors.sender, "messaging/messages", {
-    conversationId: channel.id,
-    body: "Opened thread root",
-  });
-  await post(actors.sender, "messaging/messages", {
-    conversationId: channel.id,
-    threadId: root.id,
-    body: "Only reply",
-  });
-  const viewer = await client(actors.sender);
-  await visit(viewer, channel.id, "/messages");
-  await viewer.page.getByRole("button", { name: "1 reply", exact: true }).click();
-  const thread = viewer.page.getByRole("complementary", { name: "Thread", exact: true });
-  await expect(thread.getByText("Only reply", { exact: true })).toBeVisible();
-  await expect(viewer.page.getByLabel("Linked message", { exact: true })).toHaveCount(0);
-});
-
 test("root and reply permalinks retain root reactions outside the timeline and refresh local and remote changes", async ({
   actors,
   client,

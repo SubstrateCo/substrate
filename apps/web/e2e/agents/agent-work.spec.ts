@@ -100,7 +100,6 @@ test("agent messages and task activity retain attribution and source links", asy
   const article = user.page.getByRole("article").filter({ hasText: "Agent progress report" });
   await expect(article.getByText(agent.name, { exact: true })).toBeVisible();
   await expect(article.getByText("Agent", { exact: true })).toBeVisible();
-  await expect(article.getByText("External", { exact: true })).toHaveCount(0);
   const task = await callTool(owner, turn, "create_task", {
     projectId: created.entityId,
     title: "Agent follow-up",
@@ -126,7 +125,6 @@ test("agent messages and task activity retain attribution and source links", asy
   const notes = user.page.getByRole("article").filter({ hasText: "Agent investigation notes" });
   await expect(notes.getByText(agent.name, { exact: true })).toBeVisible();
   await expect(notes.getByText("Agent", { exact: true })).toBeVisible();
-  await expect(notes.getByText("External", { exact: true })).toHaveCount(0);
   expect(new URL(user.page.url()).searchParams.get("conversationId")).toBe(
     discussion.conversationId,
   );
@@ -154,9 +152,6 @@ test("the owner answers an agent's question from another window; members see onl
   const pane = thread.page.getByRole("complementary", { name: "Thread" });
   const card = pane.getByRole("region", { name: "The agent has a question" });
   await expect(card.getByText("Blue or green?")).toBeVisible();
-  // Async questions wait for the owner; they show no deadline.
-  await expect(card.getByText(/Expires in/)).toHaveCount(0);
-
   // While the question is open, a member sees the agent's published reply and nothing of the
   // owner's agent work, neither in the thread nor on the Agents rail button.
   const member = await client(actors.member);

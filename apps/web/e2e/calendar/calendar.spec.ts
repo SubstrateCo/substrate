@@ -31,7 +31,6 @@ test("a new user sees how to connect a calendar in settings and in the Calendar 
   await expect(
     page.getByRole("button", { name: "Connect Google account", exact: true }),
   ).toBeVisible();
-  await expect(page.getByRole("button", { name: /Outlook|Microsoft/ })).toHaveCount(0);
 
   const apps = page.getByRole("navigation", { name: "Apps", exact: true });
   await apps.getByRole("link", { name: /^Calendar/ }).click();
@@ -42,7 +41,10 @@ test("a new user sees how to connect a calendar in settings and in the Calendar 
   await expect(page).toHaveURL(/\/settings\/user\/calendars/);
 });
 
-test("Calendar is hidden and explained while the app is disabled", async ({ account, client }) => {
+test("a disabled Calendar explains how to enable it and the owner enables it in apps", async ({
+  account,
+  client,
+}) => {
   await setApps(account, false);
   const user = await client(account);
   const { page } = user;
@@ -62,12 +64,6 @@ test("Calendar is hidden and explained while the app is disabled", async ({ acco
     page.getByRole("heading", { name: "Calendar is disabled", exact: true }),
   ).toBeVisible();
   await expect(page.getByRole("link", { name: "View apps", exact: true })).toBeVisible();
-});
-
-test("an owner enables Calendar in organization apps", async ({ account, client }) => {
-  await setApps(account, false);
-  const user = await client(account);
-  const { page } = user;
   await visit(user, undefined, "/settings/organization/apps");
   const calendar = page
     .getByRole("region", { name: "Workspace apps", exact: true })
@@ -80,22 +76,6 @@ test("an owner enables Calendar in organization apps", async ({ account, client 
       .getByRole("navigation", { name: "Apps", exact: true })
       .getByRole("link", { name: /^Calendar/ }),
   ).toBeVisible();
-});
-
-test("the week view and agenda share the period controls", async ({ account, client }) => {
-  await setApps(account, true);
-  const user = await client(account);
-  const { page } = user;
-  // A past week, so "Today" is always available.
-  await visit(user, undefined, "/calendar", { date: "2020-01-15" });
-  await page.getByRole("combobox", { name: "Calendar view", exact: true }).click();
-  await page.getByRole("option", { name: "Week", exact: true }).click();
-  await expect(page).toHaveURL(/view=week/);
-  await expect(page.getByRole("heading", { name: "January 2020", exact: true })).toBeVisible();
-  await page.getByRole("button", { name: "Next week", exact: true }).click();
-  await expect(page).toHaveURL(/date=2020-01-22/);
-  await page.getByRole("button", { name: "Today", exact: true }).click();
-  await expect(page).not.toHaveURL(/date=/);
 });
 
 test("month view persists and shares event selection, filtering, navigation and Today", async ({
@@ -174,6 +154,10 @@ test("month view persists and shares event selection, filtering, navigation and 
   await visit(user, undefined, "/calendar", { view: "week", date: "2020-01-15" });
   await expect(picker).toHaveText("Week");
   await expect(month).toHaveCount(0);
+  await page.getByRole("button", { name: "Next week", exact: true }).click();
+  await expect(page).toHaveURL(/date=2020-01-22/);
+  await page.getByRole("button", { name: "Today", exact: true }).click();
+  await expect(page).not.toHaveURL(/date=/);
 });
 
 test("an event opens beside the calendar from its link and shows what it recorded", async ({
@@ -198,7 +182,6 @@ test("an event opens beside the calendar from its link and shows what it recorde
   await expect
     .poll(() => selectedRow.evaluate((element) => getComputedStyle(element).backgroundColor))
     .toBe(selectedBackground);
-  await expect(panel.getByText("Will be added as contact")).toHaveCount(0);
   await expect(panel.getByText("Recorded", { exact: true })).toBeVisible();
   const recorded = panel.getByRole("list", { name: "Recorded interactions", exact: true });
   await expect(recorded.getByRole("link", { name: "Jordan Lee", exact: true })).toHaveAttribute(
@@ -229,7 +212,6 @@ test("an event opens beside the calendar from its link and shows what it recorde
   await expect(panel.getByRole("list", { name: "Recorded interactions", exact: true })).toHaveCount(
     0,
   );
-  await expect(panel.getByText("Will be added as contact")).toHaveCount(0);
 });
 
 test("a calendar interaction links back to its meeting from the contact", async ({

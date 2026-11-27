@@ -37,9 +37,6 @@ test("Expo web preview: task detail, subtasks, links, and persisted status", asy
   await expect(
     projectConnections.getByRole("button", { name: "Northstar Studio · synthetic", exact: true }),
   ).toBeVisible();
-  await expect(
-    projectConnections.getByRole("button", { name: "Link record", exact: true }),
-  ).toHaveCount(0);
   await page
     .getByRole("button", { name: "Review the mobile launch checklist", exact: true })
     .click();
@@ -48,9 +45,6 @@ test("Expo web preview: task detail, subtasks, links, and persisted status", asy
   await expect(
     taskConnections.getByRole("button", { name: "Northstar Studio · synthetic", exact: true }),
   ).toBeVisible();
-  await expect(
-    taskConnections.getByRole("button", { name: "Link record", exact: true }),
-  ).toHaveCount(0);
   const messageBacklink = page.getByTestId("task-detail").getByRole("button", {
     name: "The mobile launch checklist is ready for review.",
     exact: true,

@@ -98,11 +98,6 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   await expect(
     page.getByRole("heading", { name: "Interaction dashboard", exact: true }),
   ).toBeVisible();
-  await expect(
-    page
-      .getByRole("navigation", { name: "Interactions views" })
-      .getByRole("link", { name: "Timeline", exact: true }),
-  ).toHaveCount(0);
   await expect(total(page)).toHaveText("51");
   await expect(
     page.getByRole("group", { name: "Period is Last 30 days", exact: true }),
@@ -130,10 +125,6 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   await expect(page.getByRole("status").filter({ hasText: "Email" })).toBeVisible();
   await page.keyboard.press("Escape");
   await page.getByRole("heading", { name: "Interaction dashboard", exact: true }).click();
-  await expect(
-    page.getByText("A clear picture of your contact activity.", { exact: true }),
-  ).toHaveCount(0);
-  await expect(page.getByText("View daily counts", { exact: true })).toHaveCount(0);
   expect(await page.evaluate(() => document.documentElement.scrollHeight <= innerHeight)).toBe(
     true,
   );
@@ -270,7 +261,6 @@ test("dashboard selects today, browses day-specific pages, and handles empty day
     .first()
     .evaluate((row) => row.getBoundingClientRect().height);
   expect(rowHeight).toBeLessThanOrEqual(40);
-  await expect(page.getByRole("heading", { name: "Interaction mix", exact: true })).toHaveCount(0);
   await expect(page.getByRole("button", { name: "Next day", exact: true })).toBeDisabled();
   const nextDayX = (await page
     .getByRole("button", { name: "Next day", exact: true })
@@ -538,14 +528,10 @@ test("create interactions, browse directories and profiles, and inspect source c
   await expect(details).toHaveCount(0);
 });
 
-test("empty dark dashboard and timeline do not invent activity", async ({ account, client }) => {
-  expect(
-    (
-      await account.request.post("/api/auth/organization/update", {
-        data: { organizationId: account.organizationId, data: { name: "Substrate demo" } },
-      })
-    ).ok(),
-  ).toBe(true);
+test("empty dashboard and timeline explain empty and unmatched results", async ({
+  account,
+  client,
+}) => {
   const user = await client(account);
   const { page } = user;
   await page.emulateMedia({ colorScheme: "dark" });

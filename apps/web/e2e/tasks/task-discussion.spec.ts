@@ -38,7 +38,6 @@ test("task discussion opens shared messaging and links back to its task", async 
   const entry = details.getByRole("link", { name: "View full conversation", exact: true });
   await expect(entry).toBeVisible();
   await expect(details.getByRole("textbox")).toHaveCount(0);
-  await expect(details.getByRole("region", { name: "Task comments", exact: true })).toHaveCount(0);
   await entry.click();
   await expect(sender.page.getByRole("textbox", { name: /^Message / })).toBeVisible();
   const conversationId = new URL(sender.page.url()).searchParams.get("conversationId");
@@ -99,7 +98,7 @@ test("a view-only task discussion cannot send, and revocation clears its open me
   );
   await message.getByRole("button", { name: "More message actions", exact: true }).click();
   await expect(
-    member.page.getByRole("menuitem", { name: "Link existing work", exact: true }),
+    member.page.getByRole("menuitem", { name: "Link work or CRM", exact: true }),
   ).toHaveCount(0);
   await expect(
     member.page.getByRole("menuitem", { name: "Copy message link", exact: true }),

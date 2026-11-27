@@ -19,7 +19,10 @@ async function failCatalog(route: Route, status = 503) {
   });
 }
 
-test("a delayed catalog shows loading without blocking Needs you", async ({ account, client }) => {
+test("a delayed catalog keeps Needs you usable and opens selected settings when loaded", async ({
+  account,
+  client,
+}) => {
   const agent = await createAgent(account);
   const user = await client(account);
   const release = Promise.withResolvers<void>();
@@ -35,12 +38,28 @@ test("a delayed catalog shows loading without blocking Needs you", async ({ acco
     await expect(user.page.getByRole("heading", { name: "Needs you", exact: true })).toBeVisible();
     await expect(user.page.getByRole("heading", { name: "Nothing needs you" })).toBeVisible();
     await expect(sidebar(user.page).getByRole("link", { name: "Needs you" })).toBeEnabled();
+    const search = new URLSearchParams({
+      workspaceId: account.organizationId,
+      agentId: agent.id,
+      settings: "overview",
+    });
+    await user.page.goto(`/agents?${search}`);
+    await expect(
+      user.page.getByRole("status", { name: "Loading agent", exact: true }),
+    ).toBeVisible();
+    await expect(
+      user.page.getByRole("dialog", { name: "Agent settings", exact: true }),
+    ).toHaveCount(0);
   } finally {
     release.resolve();
     await user.page.unrouteAll({ behavior: "wait" });
   }
   await expect(agents(user.page).getByRole("link", { name: agent.name })).toBeVisible();
   await expect(agents(user.page).getByRole("status", { name: "Loading agents" })).toHaveCount(0);
+  await expect(
+    user.page.getByRole("dialog", { name: "Agent settings", exact: true }),
+  ).toBeVisible();
+  await expect(user.page.getByLabel("Agent name", { exact: true })).toHaveValue(agent.name);
 });
 
 test("an initial catalog failure can be retried without blocking Needs you", async ({

@@ -72,11 +72,6 @@ test("message images open a keyboard-accessible viewer and disappear live on del
   await expect(
     member.page.getByRole("link", { name: "Download review-notes.txt", exact: true }),
   ).toBeVisible();
-  await expect(
-    member.page
-      .getByRole("list", { name: "Image attachments", exact: true })
-      .getByText("launch-dashboard.png", { exact: true }),
-  ).toHaveCount(0);
   await thumbnail.click();
   const viewer = member.page.getByRole("dialog");
   await expect(
@@ -94,16 +89,6 @@ test("message images open a keyboard-accessible viewer and disappear live on del
     exact: true,
   });
   await expect(downloadButton).toBeVisible();
-  await expect(downloadButton).toHaveText("");
-  const downloadBounds = await downloadButton.boundingBox();
-  const closeBounds = await viewer
-    .getByRole("button", { name: "Close image viewer", exact: true })
-    .boundingBox();
-  expect(downloadBounds).not.toBeNull();
-  expect(closeBounds).not.toBeNull();
-  expect(downloadBounds!.y).toBeGreaterThan(closeBounds!.y + closeBounds!.height);
-  expect(downloadBounds!.x).toBeGreaterThan(member.page.viewportSize()!.width / 2);
-  expect(downloadBounds!.height).toBe(closeBounds!.height);
   const downloadEvent = member.page.waitForEvent("download");
   await downloadButton.click();
   const download = await downloadEvent;

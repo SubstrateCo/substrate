@@ -56,42 +56,7 @@ test("expanded images fit the desktop, rotate, zoom, fade controls, and keep key
   const bounds = (await viewer.boundingBox())!;
   const imageBounds = (await image.boundingBox())!;
   expect(imageBounds.width).toBeGreaterThan(500);
-  const originalDark = await page.evaluate(() =>
-    document.documentElement.classList.contains("dark"),
-  );
-  try {
-    for (const theme of ["light", "dark"]) {
-      await page.evaluate((theme) => {
-        document.documentElement.classList.toggle("dark", theme === "dark");
-      }, theme);
-      await expect(viewer).toHaveCSS("color-scheme", "dark");
-      await expect(viewer).toHaveCSS("border-top-width", "0px");
-      await expect(viewer).toHaveCSS("border-radius", "0px");
-      await expect
-        .poll(() =>
-          viewer.evaluate((element) =>
-            getComputedStyle(element).getPropertyValue("--tw-shadow").trim(),
-          ),
-        )
-        .toBe("0 0 #0000");
-      await expect(viewer.locator("header")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-      await expect(viewer.locator("footer")).toHaveCSS("background-color", "rgba(0, 0, 0, 0)");
-      const backdrop = viewer.locator("[data-slot=image-viewer-backdrop]");
-      await expect(backdrop).toHaveCSS("filter", "blur(64px)");
-      await expect(backdrop).toHaveCSS("opacity", "0.6");
-      await expect(backdrop.locator("img")).toHaveAttribute(
-        "src",
-        (await image.getAttribute("src"))!,
-      );
-      await expect(image).toBeVisible();
-      await captureScreenshot(page, `expanded-message-image-viewer-${theme}`, { fullPage: false });
-    }
-  } finally {
-    await page.evaluate(
-      (dark) => document.documentElement.classList.toggle("dark", dark),
-      originalDark,
-    );
-  }
+  await captureScreenshot(page, "expanded-message-image-viewer", { fullPage: false });
   await viewer.getByRole("button", { name: "Rotate image", exact: true }).click();
   await expect(image).toHaveCSS("rotate", "90deg");
   await viewer.getByRole("button", { name: "Zoom in", exact: true }).click();

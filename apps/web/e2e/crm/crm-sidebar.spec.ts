@@ -12,7 +12,6 @@ test("CRM sections use a sidebar and preserve section navigation", async ({ acco
   const accounts = navigation.getByRole("link", { name: "Accounts", exact: true });
   const settings = navigation.getByRole("link", { name: "Settings", exact: true });
   await expect(deals).toHaveAttribute("aria-current", "page");
-  await expect(navigation.getByText("CRM", { exact: true })).toHaveCount(0);
   const dealsBounds = await deals.boundingBox();
   const accountsBounds = await accounts.boundingBox();
   expect(dealsBounds).not.toBeNull();

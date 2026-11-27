@@ -1,6 +1,6 @@
 import { result } from "../../../server/integration/test-support/api";
 import { createCrm, readCrm, writeCrm } from "../../../server/integration/test-support/crm";
-import { visit, type Actor } from "../test-support/fixtures";
+import type { Actor } from "../test-support/fixtures";
 import { test } from "../test-support/workspace-fixtures";
 import { expect, type Page } from "@playwright/test";
 
@@ -101,12 +101,13 @@ async function failReads(page: Page, pathname: string) {
 }
 
 for (const kind of ["accounts", "deals", "contacts"] as const) {
-  test(`${kind} detail initial failure shows an error, not cached content`, async ({
+  test(`${kind} detail retries initial and cached failures, then clears data on access loss`, async ({
     account,
     client,
   }) => {
     const saved = await record(account, kind);
     const user = await client(account);
+    const { page } = user;
     const setStatus = await failReads(
       user.page,
       kind === "contacts"
@@ -118,6 +119,7 @@ for (const kind of ["accounts", "deals", "contacts"] as const) {
       recordId: saved.entityId,
     });
     if (kind !== "contacts") search.set("section", kind);
+    const since = user.events.length;
     await user.page.goto(`${kind === "contacts" ? "/contacts" : "/crm"}?${search}`);
     const detail =
       kind === "accounts"
@@ -128,37 +130,13 @@ for (const kind of ["accounts", "deals", "contacts"] as const) {
           });
     await expect(detail.getByText("Couldn’t load CRM", { exact: true })).toBeVisible();
     await expect(detail.getByText(saved.name, { exact: true })).toHaveCount(0);
-    await expect(detail.getByText("This record may be out of date.")).toHaveCount(0);
     setStatus(200);
     await detail.getByRole("button", { name: "Try again", exact: true }).click();
-    await expect(detail.getByRole("heading", { name: saved.name, exact: true })).toBeVisible();
-    await expect(detail.getByText("Couldn’t load CRM", { exact: true })).toHaveCount(0);
-  });
-
-  test(`${kind} detail keeps readable cached data, retries, and hides it after access loss`, async ({
-    account,
-    client,
-  }) => {
-    const saved = await record(account, kind);
-    const user = await client(account);
-    const { page } = user;
-    await visit(user, undefined, kind === "contacts" ? "/contacts" : "/crm", {
-      section: kind === "contacts" ? undefined : kind,
-      recordId: saved.entityId,
-    });
-    const detail =
-      kind === "accounts"
-        ? page
-        : page.getByRole("dialog", { name: kind === "contacts" ? "Contact" : "Deal", exact: true });
     const heading = detail.getByRole("heading", { name: saved.name, exact: true });
     await expect(heading).toBeVisible();
     await expect(detail.getByText(saved.summary, { exact: true })).toBeVisible();
-    const setStatus = await failReads(
-      page,
-      kind === "contacts"
-        ? "/api/v1/contacts/record"
-        : `/api/v1/crm/${kind === "accounts" ? "account" : "deal"}`,
-    );
+    await user.waitForEvent(since, (event) => event.type === "ready", "Live updates are connected");
+    setStatus(500);
     await saved.refresh();
     const stale = detail.getByRole("status").filter({ hasText: "This record may be out of date." });
     await expect(stale).toBeVisible();
@@ -182,17 +160,36 @@ for (const kind of ["accounts", "deals", "contacts"] as const) {
 }
 
 for (const kind of ["accounts", "deals"] as const) {
-  test(`${kind} collection keeps cached rows through refresh failure and retry`, async ({
+  test(`${kind} collection retries initial and cached failures, then clears rows on access loss`, async ({
     account,
     client,
   }) => {
     const saved = await record(account, kind);
     const user = await client(account);
     const { page } = user;
-    await visit(user, undefined, "/crm", { section: kind });
-    const name = page.getByText(saved.name, { exact: true });
-    await expect(name).toBeVisible();
     const setStatus = await failReads(page, `/api/v1/crm/${kind}`);
+    const search = new URLSearchParams({
+      workspaceId: account.organizationId,
+      section: kind,
+    });
+    const since = user.events.length;
+    await page.goto(`/crm?${search}`);
+    await expect(page.getByText(`Couldn’t load ${kind}`, { exact: true })).toBeVisible();
+    const name = page.getByText(saved.name, { exact: true });
+    await expect(name).toHaveCount(0);
+    setStatus(200);
+    await page.getByRole("button", { name: "Try again", exact: true }).click();
+    await expect(name).toBeVisible();
+    await user.waitForEvent(since, (event) => event.type === "ready", "Live updates are connected");
+    if (kind === "deals") {
+      // The list and pipeline have separate queries; recover both before testing cached data.
+      await page.getByRole("radio", { name: "List", exact: true }).click();
+      await page.getByRole("button", { name: "Try again", exact: true }).click();
+      await expect(name).toBeVisible();
+      await page.getByRole("radio", { name: "Pipeline", exact: true }).click();
+      await expect(name).toBeVisible();
+    }
+    setStatus(500);
     await saved.refresh();
     const stale = page.getByRole("status").filter({ hasText: "These records may be out of date." });
     await expect(stale).toBeVisible();
@@ -215,26 +212,5 @@ for (const kind of ["accounts", "deals"] as const) {
     await expect(name).toHaveCount(0);
     await expect(page.getByText(/Page 1 ·/)).toHaveCount(0);
     await expect(page.getByRole("button", { name: "Try again", exact: true })).toHaveCount(0);
-  });
-
-  test(`${kind} collection initial failure shows an error, then retry loads real records`, async ({
-    account,
-    client,
-  }) => {
-    const saved = await record(account, kind);
-    const user = await client(account);
-    const setStatus = await failReads(user.page, `/api/v1/crm/${kind}`);
-    const search = new URLSearchParams({
-      workspaceId: account.organizationId,
-      section: kind,
-    });
-    await user.page.goto(`/crm?${search}`);
-    await expect(user.page.getByText(`Couldn’t load ${kind}`, { exact: true })).toBeVisible();
-    await expect(user.page.getByText(saved.name, { exact: true })).toHaveCount(0);
-    await expect(user.page.getByText("These records may be out of date.")).toHaveCount(0);
-    setStatus(200);
-    await user.page.getByRole("button", { name: "Try again", exact: true }).click();
-    await expect(user.page.getByText(saved.name, { exact: true })).toBeVisible();
-    await expect(user.page.getByText(`Couldn’t load ${kind}`, { exact: true })).toHaveCount(0);
   });
 }
