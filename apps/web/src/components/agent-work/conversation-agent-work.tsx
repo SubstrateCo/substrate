@@ -208,7 +208,10 @@ export function ConversationAgentWork({
         };
       });
     // Members list only the viewer's own agents, so the owner can reset their DM session.
-    const dmAgent = conversation.kind === "dm" && threadId === null ? members[0] : undefined;
+    const dmAgent =
+      (conversation.kind === "dm" || conversation.kind === "agent_dm") && threadId === null
+        ? members[0]
+        : undefined;
     return (
       <ComposerNotice
         lines={lines}

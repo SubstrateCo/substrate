@@ -1,4 +1,8 @@
-import { messagingLimits, type ConversationKind } from "@substrate/contracts/messaging/input";
+import {
+  isDirectConversation,
+  messagingLimits,
+  type ConversationKind,
+} from "@substrate/contracts/messaging/input";
 
 import { AccessDeniedError, ConflictError, ValidationError } from "../../errors";
 
@@ -46,7 +50,7 @@ const owns = (conversation: ConversationFacts, viewer: Viewer) =>
 export const canManage = (conversation: ConversationFacts, viewer: Viewer) =>
   !conversation.taskEntityId &&
   !viewer.agent &&
-  conversation.kind !== "dm" &&
+  !isDirectConversation(conversation.kind) &&
   (owns(conversation, viewer) || (viewer.admin && hosts(conversation, viewer)));
 
 /**
@@ -59,7 +63,7 @@ export function canShare(
   viewer: Viewer,
   partner: { connected: boolean; visible: boolean },
 ) {
-  if (viewer.agent || conversation.taskEntityId) return false;
+  if (viewer.agent || conversation.taskEntityId || conversation.kind === "agent_dm") return false;
   if (hosts(conversation, viewer)) {
     if (conversation.kind === "channel") return viewer.admin;
     return owns(conversation, viewer) || (viewer.admin && conversation.kind !== "dm");
@@ -93,6 +97,7 @@ export function validateExternalInvitations(
   invitations: { count: number; shareHistory: boolean },
 ) {
   if (!invitations.count) return;
+  if (conversation.kind === "agent_dm") throw new AccessDeniedError();
   if (conversation.kind === "channel" && !viewer.admin)
     throw new ValidationError(
       "Only organization owners and admins can invite partner organizations to channels.",
@@ -108,7 +113,7 @@ export function validateCreate(
   input: { kind: ConversationKind; name?: string; private?: boolean },
   recipients: number,
 ) {
-  if (input.kind === "dm" && recipients !== 1)
+  if (isDirectConversation(input.kind) && recipients !== 1)
     throw new ValidationError("A DM requires exactly one recipient.");
   if (input.kind === "group" && recipients < 2)
     throw new ValidationError("A group DM requires at least two recipients.");
@@ -127,7 +132,7 @@ export function leavePlan(
   newOwnerUserId?: string,
 ): "leave" | "transfer" | "blocked" {
   // Agents only read and post.
-  if (viewer.agent || conversation.kind === "dm" || conversation.taskEntityId)
+  if (viewer.agent || isDirectConversation(conversation.kind) || conversation.taskEntityId)
     throw new AccessDeniedError();
   if (!owns(conversation, viewer)) return "leave";
   return newOwnerUserId && newOwnerUserId !== viewer.userId ? "transfer" : "blocked";

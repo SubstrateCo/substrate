@@ -20,6 +20,8 @@ export function createConversationDraftSchema(kind: Conversation["kind"]) {
       if (recipients.length > messagingLimits.recipients)
         message = `Add no more than ${messagingLimits.recipients} people.`;
       else if (kind === "dm" && recipients.length !== 1) message = "Choose a person to message.";
+      else if (kind === "agent_dm" && (recipients.length !== 1 || !recipients[0]?.agent))
+        message = "Choose one of your agents.";
       else if (kind === "group" && recipients.length < 2)
         message = "Choose at least two people for a group message.";
       if (message) context.addIssue({ code: "custom", message });

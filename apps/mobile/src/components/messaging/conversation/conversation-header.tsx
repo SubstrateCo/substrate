@@ -26,7 +26,7 @@ export function ConversationHeader({
 }) {
   const partner = directPartner(conversation, viewerId);
   const partners = conversation.organizations.filter((org) => !org.own).map((org) => org.name);
-  const subtitle = conversation.task
+  let subtitle = conversation.task
     ? "Task discussion"
     : [
         conversation.kind !== "dm"
@@ -36,6 +36,7 @@ export function ConversationHeader({
       ]
         .filter(Boolean)
         .join(" · ");
+  if (conversation.kind === "agent_dm") subtitle = "Agent DM";
   const name = conversationName(conversation);
   const press = conversation.task ? onOpenTask : onDetails;
   return (

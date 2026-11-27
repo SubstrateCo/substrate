@@ -124,7 +124,7 @@ export function readOperations(
     // These are the people reply notifications reach.
     const inThread = alias(messagingMessages, "in_thread");
     const followed = or(
-      eq(messagingConversations.kind, "dm"),
+      inArray(messagingConversations.kind, ["dm", "agent_dm"]),
       exists(
         db
           .select({ one: sql`1` })

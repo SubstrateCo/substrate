@@ -24,7 +24,11 @@ export type Notification = {
   actorName: string | null;
   actorImage: string | null;
   /** Where it happened, as the reader sees it. */
-  source: { kind: "project" | "channel" | "dm" | "group"; name: string; private?: boolean };
+  source: {
+    kind: "project" | "channel" | "dm" | "agent_dm" | "group";
+    name: string;
+    private?: boolean;
+  };
   /** One line of the message, with references the reader cannot open left unnamed. */
   excerpt: string | null;
   link: RecordLink;
@@ -45,6 +49,7 @@ const kindIcons = {
 
 /** Where it happened: "#launch", a private channel by its bare name, a group, or "a direct message". */
 function place(source: Notification["source"]) {
+  if (source.kind === "agent_dm") return "an agent DM";
   if (source.kind === "dm") return "a direct message";
   if (source.kind === "project") return source.name;
   return conversationLabel({ ...source, kind: source.kind });
@@ -59,6 +64,8 @@ function sentence(item: Notification) {
   if (item.kind === "mention" && item.source.kind === "project")
     return { verb: "mentioned you in a comment on", object: item.title };
   if (item.kind === "mention") return { verb: "mentioned you in", object: place(item.source) };
+  if (item.kind === "message" && item.source.kind === "agent_dm")
+    return { verb: "sent you", object: "an agent DM" };
   if (item.kind === "message")
     return item.source.kind === "dm"
       ? { verb: "sent you", object: "a direct message" }

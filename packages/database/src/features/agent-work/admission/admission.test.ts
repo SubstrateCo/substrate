@@ -71,6 +71,24 @@ const messageCases: [string, MessageTrigger, Partial<MessageFacts>, AdmissionDec
   ["a mention wins over a DM", sent(owner, "dm"), { mentioned: true }, admitted(dm)],
   ["an owner's DM admits work", sent(owner, "dm"), {}, admitted(dm)],
   [
+    "an owner's agent DM uses one DM session, including replies",
+    sent(owner, "agent_dm"),
+    {},
+    admitted(dm),
+  ],
+  [
+    "agent replies in an agent DM never start more work",
+    sent({ kind: "agent", actorEntityId: "a1" }, "agent_dm"),
+    {},
+    { type: "deny", reason: "own_message" },
+  ],
+  [
+    "a disabled direct-message trigger stops agent DM work",
+    sent(owner, "agent_dm"),
+    { disabled: ["direct_message"] },
+    { type: "deny", reason: "not_triggered" },
+  ],
+  [
     "an owner's thread reply does not admit work for an agent that never joined",
     sent(owner, "group"),
     {},

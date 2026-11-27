@@ -22,6 +22,7 @@ import {
   isNotNull,
   isNull,
   lte,
+  ne,
   or,
   sql,
   type SQLWrapper,
@@ -132,46 +133,74 @@ export function liveApprovedParticipant(
 // callers' correlated columns, such as an outer actors.user_id, bound to the outer row.
 const participantActor = alias(actors, "participant_actor");
 
-// A local agent's scope carries its owner's user ID, so the agent sees what the owner sees.
-// Agent membership rows never grant access.
+// A local agent reads with its owner's access. Agent DMs also require its own membership,
+// so the owner's other agents cannot read them. Agent membership alone never grants access.
 //
 // The participant subquery joins its own conversation row, which approvedParticipant reads,
 // instead of the outer one. It is uncorrelated for a fixed scope, so PostgreSQL computes the
 // viewer's conversations once instead of once per conversation row.
 export function visibleConversations(
   db: DatabaseExecutor,
-  scope: { userId: string | SQLWrapper; organizationId: string | SQLWrapper },
+  scope: {
+    userId: string | SQLWrapper;
+    organizationId: string | SQLWrapper;
+    actorEntityId?: string;
+  },
 ) {
-  return or(
-    taskDiscussionAccess(db, scope),
-    and(
-      isNull(messagingConversations.taskEntityId),
-      or(
-        and(publicChannel(), eq(messagingConversations.organizationId, scope.organizationId)),
-        inArray(
-          messagingConversations.id,
-          db
-            .select({ id: messagingParticipants.conversationId })
-            .from(messagingParticipants)
-            .innerJoin(
-              participantActor,
-              and(
-                eq(participantActor.entityId, messagingParticipants.actorEntityId),
-                eq(participantActor.userId, scope.userId),
-                eq(participantActor.organizationId, scope.organizationId),
-                eq(participantActor.type, "human"),
-              ),
+  const directParticipant = alias(messagingParticipants, "agent_dm_viewer");
+  return and(
+    or(
+      ne(messagingConversations.kind, "agent_dm"),
+      and(
+        eq(messagingConversations.organizationId, scope.organizationId),
+        eq(messagingConversations.createdBy, scope.userId),
+        scope.actorEntityId
+          ? exists(
+              db
+                .select({ id: directParticipant.actorEntityId })
+                .from(directParticipant)
+                .where(
+                  and(
+                    eq(directParticipant.conversationId, messagingConversations.id),
+                    eq(directParticipant.actorEntityId, scope.actorEntityId),
+                    isNull(directParticipant.leftAt),
+                  ),
+                ),
             )
-            .innerJoin(
-              messagingConversations,
-              eq(messagingConversations.id, messagingParticipants.conversationId),
-            )
-            .where(
-              and(
-                eq(messagingParticipants.organizationId, scope.organizationId),
-                liveApprovedParticipant(db),
+          : undefined,
+      ),
+    ),
+    or(
+      taskDiscussionAccess(db, scope),
+      and(
+        isNull(messagingConversations.taskEntityId),
+        or(
+          and(publicChannel(), eq(messagingConversations.organizationId, scope.organizationId)),
+          inArray(
+            messagingConversations.id,
+            db
+              .select({ id: messagingParticipants.conversationId })
+              .from(messagingParticipants)
+              .innerJoin(
+                participantActor,
+                and(
+                  eq(participantActor.entityId, messagingParticipants.actorEntityId),
+                  eq(participantActor.userId, scope.userId),
+                  eq(participantActor.organizationId, scope.organizationId),
+                  eq(participantActor.type, "human"),
+                ),
+              )
+              .innerJoin(
+                messagingConversations,
+                eq(messagingConversations.id, messagingParticipants.conversationId),
+              )
+              .where(
+                and(
+                  eq(messagingParticipants.organizationId, scope.organizationId),
+                  liveApprovedParticipant(db),
+                ),
               ),
-            ),
+          ),
         ),
       ),
     ),
@@ -294,7 +323,7 @@ export async function conversationReaders(
 /** A subquery of the IDs of the conversations the scope can see. */
 export function visibleConversationIds(
   db: DatabaseExecutor,
-  scope: { userId: string; organizationId: string },
+  scope: { userId: string; organizationId: string; actorEntityId?: string },
 ) {
   return db
     .select({ id: messagingConversations.id })

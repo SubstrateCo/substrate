@@ -1,4 +1,10 @@
-import { canLeave, canRemoveMember, isOwner, ownerCandidates } from "./permissions";
+import {
+  canLeave,
+  canManageOwnAgents,
+  canRemoveMember,
+  isOwner,
+  ownerCandidates,
+} from "./permissions";
 import { expect, test } from "bun:test";
 
 const conversation = {
@@ -21,6 +27,8 @@ const task = { taskEntityId: "t" };
 test("members cannot leave a DM or a task discussion", () => {
   expect(canLeave(conversation)).toBe(true);
   expect(canLeave({ ...conversation, kind: "dm" })).toBe(false);
+  expect(canLeave({ ...conversation, kind: "agent_dm" })).toBe(false);
+  expect(canManageOwnAgents({ ...conversation, kind: "agent_dm" })).toBe(false);
   expect(canLeave({ ...conversation, task })).toBe(false);
   expect(canLeave({ ...conversation, joined: false })).toBe(false);
 });
@@ -35,6 +43,7 @@ test("even managers cannot remove another person's agent or an agent from a DM",
   const manager = { ...conversation, canManage: true };
   expect(canRemoveMember(manager, "owner", { ...ownAgent, agentId: null })).toBe(false);
   expect(canRemoveMember({ ...conversation, kind: "dm" }, "member", ownAgent)).toBe(false);
+  expect(canRemoveMember({ ...conversation, kind: "agent_dm" }, "member", ownAgent)).toBe(false);
 });
 
 test("the viewer owns only a conversation they created and still manage", () => {

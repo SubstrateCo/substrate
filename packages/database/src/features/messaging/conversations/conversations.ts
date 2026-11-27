@@ -1,4 +1,4 @@
-import type { ConversationKind } from "@substrate/contracts/messaging/input";
+import { isDirectConversation, type ConversationKind } from "@substrate/contracts/messaging/input";
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
 import { actors } from "../../../core/actors/schema";
@@ -237,6 +237,13 @@ export function conversationOperations(
       if (scope.actorEntityId) throw new AccessDeniedError();
       return db.transaction(async (tx) => {
         const { actor, viewer } = await authenticate(tx);
+        if (
+          input.kind === "agent_dm" &&
+          ((input.emails?.length ?? 0) !== 0 || input.agentIds?.length !== 1)
+        )
+          throw new ValidationError("An agent DM requires exactly one owned agent and no people.");
+        if (input.kind === "dm" && input.agentIds?.length)
+          throw new ValidationError("Use an agent DM to message your agent.");
         const { people, external } = await recipients(tx, scope, input.emails ?? []);
         const selected = [...people, ...(await ownedAgents(tx, scope, input.agentIds ?? []))];
         const values = validateCreate(input, selected.length + external.length);
@@ -245,8 +252,12 @@ export function conversationOperations(
           const existing = await findExternalDirectMessage(tx, scope, external[0]!);
           if (existing) return conversationView(existing);
           dmKey = externalDirectMessageKey(scope, external[0]!);
-        } else if (input.kind === "dm")
-          dmKey = directMessageKey(scope.organizationId, [actor.entityId, selected[0]!.entityId]);
+        } else if (isDirectConversation(input.kind))
+          dmKey = directMessageKey(
+            scope.organizationId,
+            [actor.entityId, selected[0]!.entityId],
+            input.kind,
+          );
         let conversation: typeof messagingConversations.$inferSelect | undefined;
         while (!conversation) {
           [conversation] = await tx
@@ -330,7 +341,8 @@ export function conversationOperations(
       return db.transaction(async (tx) => {
         const { actor, viewer } = await authenticate(tx);
         const conversation = await requireManaged(tx, viewer, conversationId);
-        if (conversation.kind === "dm" || actorId === actor.entityId) throw new AccessDeniedError();
+        if (isDirectConversation(conversation.kind) || actorId === actor.entityId)
+          throw new AccessDeniedError();
         const [target] = await tx
           .select({ userId: actors.userId })
           .from(messagingParticipants)
@@ -377,6 +389,7 @@ export function conversationOperations(
         await authenticate(tx);
         const conversation = await loadConversation(tx, scope, conversationId);
         if (conversation.taskEntityId) throw new AccessDeniedError();
+        if (conversation.kind === "agent_dm") throw new AccessDeniedError();
         if (conversation.kind === "dm")
           throw new ValidationError("Start a direct conversation with the agent instead.");
         const [agent] = await ownedAgents(tx, scope, [agentId]);
@@ -392,7 +405,8 @@ export function conversationOperations(
       return db.transaction(async (tx) => {
         await authenticate(tx);
         const conversation = await loadConversation(tx, scope, conversationId);
-        if (conversation.kind === "dm" || conversation.taskEntityId) throw new AccessDeniedError();
+        if (isDirectConversation(conversation.kind) || conversation.taskEntityId)
+          throw new AccessDeniedError();
         const removed = await endParticipation(
           tx,
           and(
@@ -421,7 +435,8 @@ export function conversationOperations(
       return db.transaction(async (tx) => {
         const { actor } = await authenticate(tx);
         const conversation = await loadConversation(tx, scope, conversationId);
-        if (conversation.taskEntityId) throw new AccessDeniedError();
+        if (conversation.taskEntityId || conversation.kind === "agent_dm")
+          throw new AccessDeniedError();
         const changed =
           (
             await writeMembers(
@@ -530,6 +545,7 @@ export function conversationOperations(
             and(
               eq(messagingConversations.organizationId, scope.organizationId),
               ne(messagingConversations.kind, "dm"),
+              ne(messagingConversations.kind, "agent_dm"),
               isNull(messagingConversations.taskEntityId),
             ),
           )

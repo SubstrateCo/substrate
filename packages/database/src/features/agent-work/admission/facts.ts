@@ -1,6 +1,7 @@
 import type { TurnPlace } from "@substrate/contracts/agent-tools";
 import { liveTurnStatuses, parseSessionKey, sessionKeys } from "@substrate/contracts/agent-work";
 import type { AgentTriggerKind } from "@substrate/contracts/agents";
+import { isDirectConversation } from "@substrate/contracts/messaging/input";
 
 import { actors } from "../../../core/actors/schema";
 import { userAgents } from "../../../core/actors/user-agents.schema";
@@ -17,7 +18,7 @@ import { threadParticipation } from "./thread-participation";
 import { and, eq, inArray, ne, sql } from "drizzle-orm";
 
 const passiveThread = (trigger: MessageTrigger) =>
-  trigger.message.threadId !== null && trigger.conversationKind !== "dm";
+  trigger.message.threadId !== null && !isDirectConversation(trigger.conversationKind);
 
 /** The live turns of these agents' sessions for the thread, with their passive batch counts. */
 async function threadTurns(db: DatabaseExecutor, rootId: string, userAgentIds: string[]) {

@@ -63,6 +63,15 @@ describe("canShare", () => {
       false,
     );
   });
+
+  test("agent DMs cannot be shared by owners, admins, or partners", () => {
+    for (const actor of [
+      viewer(),
+      viewer({ admin: true }),
+      viewer({ organizationId: "partner", admin: true }),
+    ])
+      expect(canShare(conversation("agent_dm"), actor, connected)).toBe(false);
+  });
 });
 
 test("canManage allows the host owner and host admins, never DMs, partners or agents", () => {
@@ -70,6 +79,7 @@ test("canManage allows the host owner and host admins, never DMs, partners or ag
   expect(canManage(conversation("channel"), viewer({ userId: "other", admin: true }))).toBe(true);
   expect(canManage(conversation("channel"), viewer({ userId: "other" }))).toBe(false);
   expect(canManage(conversation("dm"), viewer({ admin: true }))).toBe(false);
+  expect(canManage(conversation("agent_dm"), viewer({ admin: true }))).toBe(false);
   expect(canManage(conversation("group"), viewer({ agent: true }))).toBe(false);
   // A legacy external creator keeps no authority in the host organization.
   expect(canManage(conversation("group"), viewer({ organizationId: "partner", admin: true }))).toBe(
@@ -106,6 +116,7 @@ test("external invitations need history consent, and an admin for channels", () 
     validateExternalInvitations({ kind }, viewer({ admin }), { count: 1, shareHistory });
   expect(invite("channel", false, true)).toThrow(ValidationError);
   expect(invite("group", false, false)).toThrow(ValidationError);
+  expect(invite("agent_dm", true, true)).toThrow(AccessDeniedError);
   expect(invite("channel", true, true)).not.toThrow();
   expect(invite("group", false, true)).not.toThrow();
   expect(() =>
@@ -135,6 +146,7 @@ test("owners leave only by naming another owner; DMs and agents cannot leave", (
   expect(() => leavePlan(conversation("dm"), viewer({ userId: "member" }))).toThrow(
     AccessDeniedError,
   );
+  expect(() => leavePlan(conversation("agent_dm"), viewer(), "next")).toThrow(AccessDeniedError);
   expect(() => leavePlan(conversation("group"), viewer({ agent: true }))).toThrow(
     AccessDeniedError,
   );

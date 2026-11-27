@@ -170,7 +170,7 @@ export async function applyMessageEffects(
           .where(
             and(
               eq(messagingConversations.id, message.conversationId),
-              inArray(messagingConversations.kind, ["dm", "group"]),
+              inArray(messagingConversations.kind, ["dm", "agent_dm", "group"]),
               eq(actors.type, "human"),
               liveApprovedParticipant(db),
             ),

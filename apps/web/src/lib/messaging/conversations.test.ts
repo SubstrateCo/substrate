@@ -54,8 +54,16 @@ test("a new message to an agent reuses its joined DM, not a channel it is in", (
       members: [me, helper],
     },
     {
-      id: "left",
+      id: "ordinary-dm",
       kind: "dm" as const,
+      name: null,
+      private: true,
+      joined: true,
+      members: [me, helper],
+    },
+    {
+      id: "left",
+      kind: "agent_dm" as const,
       name: null,
       private: true,
       joined: false,
@@ -63,7 +71,7 @@ test("a new message to an agent reuses its joined DM, not a channel it is in", (
     },
     {
       id: "dm",
-      kind: "dm" as const,
+      kind: "agent_dm" as const,
       name: null,
       private: true,
       joined: true,

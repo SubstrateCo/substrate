@@ -1,3 +1,5 @@
+import { isDirectConversation } from "@substrate/contracts/messaging/input";
+
 import type { Conversation, ConversationMember } from "../types";
 
 type Named = Pick<Conversation, "name" | "kind"> & { task?: Conversation["task"] };
@@ -55,7 +57,7 @@ export function humanMembers(members: readonly ConversationMember[]) {
 }
 
 export function directPartner(conversation: Conversation, viewerId: string) {
-  if (conversation.kind !== "dm") return undefined;
+  if (!isDirectConversation(conversation.kind)) return undefined;
   const others = conversation.members.filter((member) => member.userId !== viewerId);
   return others.length === 1 ? others[0] : undefined;
 }
@@ -105,7 +107,7 @@ export function conversationAgentOptions(
 export function agentDirectMessage(conversations: readonly Conversation[], agentId: string) {
   return conversations.find(
     (conversation) =>
-      conversation.kind === "dm" &&
+      conversation.kind === "agent_dm" &&
       conversation.joined &&
       conversation.members.some((member) => member.type === "agent" && member.agentId === agentId),
   );

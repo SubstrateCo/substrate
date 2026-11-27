@@ -30,7 +30,7 @@ export function useCreateConversation(organizationId: string) {
   const refresh = useRefreshMessaging(organizationId);
   return useMutation({
     mutationFn: async (input: CreateConversationInput) => {
-      if (input.kind === "dm" && input.agentIds?.length === 1) {
+      if (input.kind === "agent_dm" && input.agentIds?.length === 1 && !input.emails?.length) {
         const existing = agentDirectMessage(
           client.getQueryData<Conversation[]>(messagingKeys.conversations(scope)) ?? [],
           input.agentIds[0]!,

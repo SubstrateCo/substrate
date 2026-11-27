@@ -26,7 +26,7 @@ export function CreateConversationForm({
   onSubmit,
   onClose,
 }: {
-  kind: ConversationKind;
+  kind: Exclude<ConversationKind, "agent_dm">;
   people: readonly PickerPerson[];
   pending: boolean;
   error: unknown;

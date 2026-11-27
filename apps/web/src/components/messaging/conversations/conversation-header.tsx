@@ -3,6 +3,7 @@ import { useRef, type ReactNode } from "react";
 import { ownOrganizationFirst, type ChannelOrganization } from "./channel-organizations";
 import { ConversationKindIcon } from "./conversation-kind-icon";
 import { ConversationOrganizations } from "./conversation-organizations";
+import { Tag } from "@/components/feedback/tag";
 import { PageHeader } from "@/components/layout/page-header";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
@@ -150,7 +151,7 @@ export function ConversationHeader({
   renderMemberAction?: (member: HeaderMember) => ReactNode;
   taskLink?: ReactNode;
 }) {
-  const dm = visibility?.kind === "dm";
+  const dm = visibility?.kind === "dm" || visibility?.kind === "agent_dm";
   const dmMembers = dm ? members.filter((member) => !viewerId || member.userId !== viewerId) : [];
   const dmPartner = dmMembers.length === 1 ? dmMembers[0] : undefined;
   let icon = visibility && <ConversationKindIcon {...visibility} />;
@@ -159,7 +160,16 @@ export function ConversationHeader({
   return (
     <PageHeader
       variant="pane"
-      title={taskLink ?? title}
+      title={
+        taskLink ??
+        (visibility?.kind === "agent_dm" ? (
+          <>
+            {title} <Tag>Agent DM</Tag>
+          </>
+        ) : (
+          title
+        ))
+      }
       icon={icon}
       actions={
         <>

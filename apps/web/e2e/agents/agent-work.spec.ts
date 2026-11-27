@@ -232,7 +232,7 @@ test("the owner approves an agent's routine and reviews its work from a browser"
   const owner = actors.sender;
   const agent = await createAgent(owner);
   const dm = await post<{ id: string }>(owner, "messaging/conversations", {
-    kind: "dm",
+    kind: "agent_dm",
     agentIds: [agent.id],
   });
   const source = await ownerMessage(owner, dm.id, "Send me a summary every weekday morning");

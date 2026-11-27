@@ -66,7 +66,7 @@ export function agentDirectMessage<
 >(conversations: readonly C[], agentId: string) {
   return conversations.find(
     (conversation) =>
-      conversation.kind === "dm" &&
+      conversation.kind === "agent_dm" &&
       conversation.joined &&
       conversation.members.some((member) => member.type === "agent" && member.agentId === agentId),
   );

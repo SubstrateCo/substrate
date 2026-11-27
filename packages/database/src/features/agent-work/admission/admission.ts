@@ -9,7 +9,7 @@ import {
 } from "@substrate/contracts/agent-work";
 import type { AgentTriggerKind } from "@substrate/contracts/agents";
 import type { TurnKind } from "@substrate/contracts/harness-runtime";
-import type { ConversationKind } from "@substrate/contracts/messaging/input";
+import { isDirectConversation, type ConversationKind } from "@substrate/contracts/messaging/input";
 import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
 import type { DatabaseExecutor } from "../../../core/executor";
@@ -163,7 +163,7 @@ function messageKind(trigger: MessageTrigger, facts: MessageFacts) {
   );
   return wakeKind({
     mentioned: facts.mentioned,
-    directMessage: trigger.conversationKind === "dm",
+    directMessage: isDirectConversation(trigger.conversationKind),
     workedInThread: !!trigger.message.threadId && facts.participatedInThread && !addressed,
     disabled: facts.disabled,
   });
@@ -178,7 +178,7 @@ function threadContext(
 ): Extract<AdmissionDecision, { type: "admit" }> | null {
   const { message } = trigger;
   const turn = facts.threadTurn;
-  if (!message.threadId || trigger.conversationKind === "dm" || !turn) return null;
+  if (!message.threadId || isDirectConversation(trigger.conversationKind) || !turn) return null;
   const joins =
     turn.kind === "interactive" &&
     !turn.handoff &&
@@ -228,10 +228,12 @@ function decideMessage(trigger: MessageTrigger, facts: MessageFacts): AdmissionD
       },
       session: {
         key,
-        kind: conversationKind === "dm" ? "dm" : "thread",
+        kind: isDirectConversation(conversationKind) ? "dm" : "thread",
         origin: {
           conversationId: message.conversationId,
-          threadId: conversationKind === "dm" ? null : (message.threadId ?? message.id),
+          threadId: isDirectConversation(conversationKind)
+            ? null
+            : (message.threadId ?? message.id),
         },
       },
       dedupeKey: wakeDedupeKeys.message(message.id),

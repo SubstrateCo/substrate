@@ -27,7 +27,7 @@ test("MCP calls require a verified owner, active workspace, trusted origin and s
   const agentId: string = (await saved.json()).data.id;
   const dm = await owner.post("/api/v1/messaging/conversations", {
     headers: { origin },
-    data: { organizationId: workspace.id, kind: "dm", agentIds: [agentId] },
+    data: { organizationId: workspace.id, kind: "agent_dm", agentIds: [agentId] },
   });
   expect(dm.ok()).toBe(true);
   const sent = await owner.post("/api/v1/messaging/messages", {

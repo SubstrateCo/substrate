@@ -1,4 +1,4 @@
-import type { ConversationKind } from "./input";
+import { isDirectConversation, type ConversationKind } from "./input";
 
 // What the viewer may do in a conversation, from the server's `canManage` and the facts the
 // conversation list returns. `canManage` already excludes DMs, task discussions, and agents.
@@ -22,7 +22,7 @@ type MemberFacts = {
 
 /** A member leaves anywhere but a DM or a task discussion. */
 export function canLeave(conversation: ConversationFacts) {
-  return !!conversation.joined && conversation.kind !== "dm" && !conversation.task;
+  return !!conversation.joined && !isDirectConversation(conversation.kind) && !conversation.task;
 }
 
 /** A member adds and removes their own agents wherever they may leave. */

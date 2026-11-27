@@ -85,7 +85,7 @@ test("a call cannot borrow another agent's turn", async () => {
   const turn = dmTurn(dm.id);
   await call("reply", { requestId: crypto.randomUUID(), body: "Mine" }, turn);
   const other = await ownedAgent(f, "alice", "Writer");
-  await alice.createConversation({ kind: "dm", agentIds: [other.agentId] });
+  await alice.createConversation({ kind: "agent_dm", agentIds: [other.agentId] });
   expect(
     await rejection(
       executeAgentTool(

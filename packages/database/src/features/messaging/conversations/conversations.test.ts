@@ -270,7 +270,7 @@ test("starting a DM with the same person returns the existing DM", async () => {
 test("starting a DM with the same agent returns the existing DM", async () => {
   const agent = await ownedAgent(fixture);
   const chat = service("alice");
-  const input = { kind: "dm" as const, agentIds: [agent.agentId] };
+  const input = { kind: "agent_dm" as const, agentIds: [agent.agentId] };
   const [dm, concurrent] = await Promise.all([
     chat.createConversation(input),
     chat.createConversation(input),

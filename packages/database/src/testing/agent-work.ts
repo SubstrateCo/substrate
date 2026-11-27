@@ -41,7 +41,7 @@ export async function agentWorkFixture(f: Fixture) {
   const agent = await ownedAgent(f);
   const alice = createMessagingService(f.db, { organizationId: f.orgA, userId: "alice" });
   const bob = createMessagingService(f.db, { organizationId: f.orgA, userId: "bob" });
-  const dm = await alice.createConversation({ kind: "dm", agentIds: [agent.agentId] });
+  const dm = await alice.createConversation({ kind: "agent_dm", agentIds: [agent.agentId] });
   const owner = { userId: "alice", organizationId: f.orgA };
   const agentIdentity = { ...owner, actorEntityId: agent.actorId };
   const turn = turnContexts(f.db, agent);

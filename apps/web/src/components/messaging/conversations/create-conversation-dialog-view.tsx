@@ -1,4 +1,5 @@
 import type { ConversationDraft } from "@substrate/contracts/messaging/drafts";
+import { isDirectConversation } from "@substrate/contracts/messaging/input";
 import type {
   PickedRecipient,
   PickerAgent,
@@ -37,6 +38,11 @@ const copy = {
     description: "Message one person. Only the two of you can read it.",
     submit: "Start conversation",
   },
+  agent_dm: {
+    title: "New agent DM",
+    description: "A private conversation between you and one of your agents.",
+    submit: "Start conversation",
+  },
   group: {
     title: "New group message",
     description: "A private conversation with several people.",
@@ -44,9 +50,15 @@ const copy = {
   },
 };
 
-const minimumRecipients: Record<Conversation["kind"], number> = { channel: 0, dm: 1, group: 2 };
+const minimumRecipients: Record<Conversation["kind"], number> = {
+  channel: 0,
+  dm: 1,
+  agent_dm: 1,
+  group: 2,
+};
 
 function recipientStatus(kind: Conversation["kind"], chosen: number) {
+  if (kind === "agent_dm") return "Choose your agent";
   if (kind === "dm") return "Choose a person";
   return chosen === 1 ? "Choose one more person" : "Choose at least two people";
 }
@@ -73,7 +85,9 @@ export function CreateConversationDialog({
   error?: Error | null;
 }) {
   const [shareHistory, setShareHistory] = useState(false);
-  const limit = kind === "dm" ? "Choose one person for a direct message." : undefined;
+  const limit = isDirectConversation(kind)
+    ? "Choose one person or agent for a direct message."
+    : undefined;
   const unfinishedRecipient = useUnfinishedRecipient("conversation-recipients", limit);
   const recipients: PickedRecipient[] = [];
   const form = useForm({
@@ -90,7 +104,7 @@ export function CreateConversationDialog({
   const text = copy[kind];
   const chosen = useSelector(form.store, (state) => state.values.recipients.length);
   const missing = Math.max(0, minimumRecipients[kind] - chosen);
-  const nameField = kind !== "dm" && (
+  const nameField = !isDirectConversation(kind) && (
     <form.Field name="name">
       {(field) => (
         <FormTextField
@@ -138,10 +152,10 @@ export function CreateConversationDialog({
                 </FieldLabel>
                 <PeoplePicker
                   id="conversation-recipients"
-                  people={people}
+                  people={kind === "agent_dm" ? [] : people}
                   agents={agents}
                   value={field.state.value}
-                  max={kind === "dm" ? 1 : undefined}
+                  max={isDirectConversation(kind) ? 1 : undefined}
                   limitText={limit}
                   placeholder={
                     kind === "dm"

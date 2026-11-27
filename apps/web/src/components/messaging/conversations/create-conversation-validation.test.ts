@@ -1,10 +1,11 @@
 import type { ConversationKind } from "@substrate/contracts/messaging/input";
+import type { PickedRecipient } from "@substrate/contracts/people/picker";
 
 import { createConversationDraftSchema } from "./create-conversation-validation";
 import { expect, test } from "bun:test";
 
 const person = (email: string) => ({ email });
-type Draft = { name?: string; recipients?: { email: string }[] };
+type Draft = { name?: string; recipients?: PickedRecipient[] };
 const messages = (kind: ConversationKind, draft: Draft) =>
   createConversationDraftSchema(kind)
     .safeParse({ name: "", recipients: [], isPrivate: false, ...draft })
@@ -32,4 +33,11 @@ test("a DM has exactly one person and recipients stay within the server limit", 
   expect(messages("channel", { name: "launch", recipients: many })).toEqual([
     "Add no more than 30 people.",
   ]);
+});
+
+test("an agent DM requires one agent and no people", () => {
+  const agent = { agent: { id: "agent", name: "Research" } };
+  expect(messages("agent_dm", { recipients: [agent] })).toEqual([]);
+  for (const recipients of [[], [person("a@x.test")], [agent, person("a@x.test")], [agent, agent]])
+    expect(messages("agent_dm", { recipients })).toEqual(["Choose one of your agents."]);
 });

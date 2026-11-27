@@ -1,5 +1,5 @@
 import type { ConversationVisibility } from "@/lib/messaging/conversations";
-import { Hash, LockKeyhole, MessageCircle, Users, type LucideProps } from "lucide-react";
+import { Bot, Hash, LockKeyhole, MessageCircle, Users, type LucideProps } from "lucide-react";
 
 /**
  * The icon of a conversation's kind: `Hash` for a public channel, `LockKeyhole` for a private one,
@@ -11,6 +11,7 @@ export function ConversationKindIcon({
   ...props
 }: ConversationVisibility & LucideProps) {
   if (kind === "dm") return <MessageCircle aria-hidden="true" {...props} />;
+  if (kind === "agent_dm") return <Bot aria-hidden="true" {...props} />;
   if (kind === "group") return <Users aria-hidden="true" {...props} />;
   return locked ? (
     <LockKeyhole aria-hidden="true" {...props} />

@@ -30,7 +30,7 @@ test("only the owner's home desktop claims work, and only the owner sees and ans
   const agentId: string = (await saved.json()).data.id;
   const dm = await owner.post("/api/v1/messaging/conversations", {
     headers: { origin },
-    data: { organizationId: workspace.id, kind: "dm", agentIds: [agentId] },
+    data: { organizationId: workspace.id, kind: "agent_dm", agentIds: [agentId] },
   });
   expect(dm.ok()).toBe(true);
   const conversationId: string = (await dm.json()).data.id;
@@ -146,7 +146,7 @@ test("only the home desktop's turn runs tools, and a left conversation's request
   // The owner asks in their DM; the agent's interactive turn replies in the member's thread.
   const dm = await owner.post("/api/v1/messaging/conversations", {
     headers: { origin },
-    data: { organizationId: workspace.id, kind: "dm", agentIds: [agentId] },
+    data: { organizationId: workspace.id, kind: "agent_dm", agentIds: [agentId] },
   });
   expect(dm.ok()).toBe(true);
   const dmId: string = (await dm.json()).data.id;

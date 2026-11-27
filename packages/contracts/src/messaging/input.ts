@@ -7,8 +7,11 @@ export const messagingLimits = { recipients: 30, agents: 20, body: 20_000, emoji
 
 const id = z.uuid();
 const emails = z.array(z.email().max(320)).max(messagingLimits.recipients);
-export const conversationKind = z.enum(["dm", "group", "channel"]);
+export const conversationKind = z.enum(["dm", "agent_dm", "group", "channel"]);
 export type ConversationKind = z.infer<typeof conversationKind>;
+
+export const isDirectConversation = (kind: ConversationKind) =>
+  kind === "dm" || kind === "agent_dm";
 
 export const workspaceInput = z.object({ organizationId });
 export const conversationListInput = workspaceInput.extend({ conversationId: id.optional() });

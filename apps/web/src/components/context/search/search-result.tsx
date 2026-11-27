@@ -40,6 +40,7 @@ export type SearchResultItem = {
 
 function conversationNoun(item: SearchResultItem) {
   if (item.conversationKind === "dm") return "Direct message";
+  if (item.conversationKind === "agent_dm") return "Agent DM";
   if (item.conversationKind === "group") return "Group";
   return item.private ? "Private channel" : "Channel";
 }

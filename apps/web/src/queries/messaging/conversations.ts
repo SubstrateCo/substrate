@@ -18,7 +18,7 @@ export function useDirectMessage(organizationId: string) {
   return useMutation({
     mutationFn: async ({ id, ...input }: ConversationInput & { id?: string | null }) => {
       if (id) return { id };
-      if (input.agentIds?.length === 1) {
+      if (input.agentIds?.length === 1 && !input.emails?.length) {
         const conversations = client.getQueryData<Conversation[]>(
           queryKeys.conversations(organizationId),
         );
@@ -26,7 +26,14 @@ export function useDirectMessage(organizationId: string) {
         if (existing) return { id: existing.id };
       }
       // The server returns an existing DM with the same person instead of creating another one.
-      return createConversation({ data: { ...input, organizationId, kind: "dm", private: true } });
+      return createConversation({
+        data: {
+          ...input,
+          organizationId,
+          kind: input.agentIds?.length ? "agent_dm" : "dm",
+          private: true,
+        },
+      });
     },
     onSuccess: (_, input) => {
       if (!input.id) return invalidateDirectMessage(client, organizationId);
@@ -45,7 +52,7 @@ export function useCreateConversation(organizationId: string, kind: Conversation
     onSuccess: () =>
       client.invalidateQueries({ queryKey: queryKeys.conversations(organizationId) }),
   });
-  return kind === "dm" ? direct : create;
+  return kind === "dm" || kind === "agent_dm" ? direct : create;
 }
 
 export function useAddMembers(organizationId: string, conversationId: string) {

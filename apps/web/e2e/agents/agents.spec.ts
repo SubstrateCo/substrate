@@ -38,7 +38,7 @@ test("selecting an agent opens its existing messages and settings keep the conve
 }) => {
   const agent = await createHomedAgent(account);
   const dm = await post<{ id: string }>(account, "messaging/conversations", {
-    kind: "dm",
+    kind: "agent_dm",
     private: true,
     agentIds: [agent.id],
   });
@@ -91,6 +91,10 @@ test("selecting an agent opens its existing messages and settings keep the conve
   await user.page.reload();
   await expect(thread).toBeVisible();
   await visit(user, dm.id);
+  await expect(user.page.getByText("Agent DM", { exact: true })).toBeVisible();
+  await expect(
+    user.page.getByRole("button", { name: "Add people and agents", exact: true }),
+  ).toHaveCount(0);
   await expect(
     user.page.getByRole("article").filter({ hasText: "Review the checklist next" }),
   ).toBeVisible();
@@ -113,7 +117,7 @@ test("an agent without a DM waits for Start conversation and then reuses it", as
         data: z.array(z.object({ id: z.uuid(), kind: z.string() })),
       })
       .parse(await response.json());
-    return data.filter((item) => item.kind === "dm");
+    return data.filter((item) => item.kind === "agent_dm");
   };
   const start = user.page.getByRole("button", { name: "Start conversation", exact: true });
   await expect(start).toBeVisible();

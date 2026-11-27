@@ -8,8 +8,12 @@ import { messagingInvitations } from "../sharing.schema";
 import { and, desc, eq, inArray, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
-export function directMessageKey(organizationId: string, actorIds: [string, string]) {
-  return JSON.stringify(["dm", organizationId, ...[...actorIds].sort()]);
+export function directMessageKey(
+  organizationId: string,
+  actorIds: [string, string],
+  kind: "dm" | "agent_dm" = "dm",
+) {
+  return JSON.stringify([kind, organizationId, ...[...actorIds].sort()]);
 }
 
 export function externalDirectMessageKey(scope: SessionIdentity, email: string) {

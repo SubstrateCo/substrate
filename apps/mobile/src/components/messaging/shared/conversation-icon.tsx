@@ -1,10 +1,11 @@
 import { Icon } from "@/components/ui/icon";
 import type { Conversation } from "@/features/messaging/types";
 import { cn } from "@/lib/utils";
-import { Hash, ListTodo, LockKeyhole, MessageCircle, Users } from "lucide-react-native";
+import { Bot, Hash, ListTodo, LockKeyhole, MessageCircle, Users } from "lucide-react-native";
 
 function conversationIcon(conversation: Pick<Conversation, "kind" | "private" | "task">) {
   if (conversation.task) return ListTodo;
+  if (conversation.kind === "agent_dm") return Bot;
   if (conversation.kind === "channel") return conversation.private ? LockKeyhole : Hash;
   return conversation.kind === "group" ? Users : MessageCircle;
 }

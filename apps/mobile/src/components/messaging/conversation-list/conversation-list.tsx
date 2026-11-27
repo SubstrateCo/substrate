@@ -28,7 +28,7 @@ import type { ConversationKind } from "@/features/messaging/types";
 
 type Panel =
   | { kind: "new" }
-  | { kind: "create"; conversation: ConversationKind }
+  | { kind: "create"; conversation: Exclude<ConversationKind, "agent_dm"> }
   | { kind: "browse" }
   | { kind: "manage" }
   | { kind: "invitations" };
@@ -68,7 +68,7 @@ export function ConversationList({
     create.mutate(
       choice.kind === "person"
         ? { kind: "dm", emails: [choice.person.email] }
-        : { kind: "dm", agentIds: [choice.agent.id] },
+        : { kind: "agent_dm", agentIds: [choice.agent.id] },
       { onSuccess: ({ id }) => open(id) },
     );
   };

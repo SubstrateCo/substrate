@@ -80,7 +80,7 @@ async function readableSource(context: RepositoryContext, entityId: string) {
         eq(messageEntityReferences.entityType, "contact_interaction"),
         eq(messageEntityReferences.purpose, "source"),
         isNull(messagingMessages.deletedAt),
-        visibleConversations(db, { userId: scope.userId, organizationId: scope.organizationId }),
+        visibleConversations(db, { ...scope, userId: scope.userId }),
       ),
     )
     .limit(1);

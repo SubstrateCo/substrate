@@ -126,41 +126,44 @@ export function sharingQueries(
         })
         .from(messagingConversations)
         .where(
-          or(
-            and(
-              eq(messagingConversations.organizationId, scope.organizationId),
+          and(
+            ne(messagingConversations.kind, "agent_dm"),
+            or(
+              and(
+                eq(messagingConversations.organizationId, scope.organizationId),
+                admin
+                  ? or(
+                      ne(messagingConversations.kind, "dm"),
+                      eq(messagingConversations.createdBy, scope.userId),
+                    )
+                  : and(
+                      ne(messagingConversations.kind, "channel"),
+                      eq(messagingConversations.createdBy, scope.userId),
+                    ),
+              ),
               admin
-                ? or(
+                ? and(
                     ne(messagingConversations.kind, "dm"),
-                    eq(messagingConversations.createdBy, scope.userId),
-                  )
-                : and(
-                    ne(messagingConversations.kind, "channel"),
-                    eq(messagingConversations.createdBy, scope.userId),
-                  ),
-            ),
-            admin
-              ? and(
-                  ne(messagingConversations.kind, "dm"),
-                  inArray(
-                    messagingConversations.id,
-                    db
-                      .select({ id: messagingConnections.conversationId })
-                      .from(messagingConnections)
-                      .where(
-                        and(
-                          eq(messagingConnections.organizationId, scope.organizationId),
-                          isNull(messagingConnections.disconnectedAt),
+                    inArray(
+                      messagingConversations.id,
+                      db
+                        .select({ id: messagingConnections.conversationId })
+                        .from(messagingConnections)
+                        .where(
+                          and(
+                            eq(messagingConnections.organizationId, scope.organizationId),
+                            isNull(messagingConnections.disconnectedAt),
+                          ),
                         ),
-                      ),
-                  ),
-                )
-              : undefined,
-            // Host DMs are shared by their creator only, above. Partners share DMs they can see.
-            and(
-              eq(messagingConversations.kind, "dm"),
-              ne(messagingConversations.organizationId, scope.organizationId),
-              visibleConversations(db, scope),
+                    ),
+                  )
+                : undefined,
+              // Host DMs are shared by their creator only, above. Partners share DMs they can see.
+              and(
+                eq(messagingConversations.kind, "dm"),
+                ne(messagingConversations.organizationId, scope.organizationId),
+                visibleConversations(db, scope),
+              ),
             ),
           ),
         )

@@ -88,7 +88,7 @@ async function destinationOf(
     return place;
   }
   const direct = await createMessagingService(db, owner).createConversation({
-    kind: "dm",
+    kind: "agent_dm",
     agentIds: [userAgentId],
   });
   return { conversationId: direct.id, threadId: null };

@@ -58,9 +58,9 @@ test("DM messages admit work in one session per conversation, once per message",
     .select()
     .from(messagingMessages)
     .where(eq(messagingMessages.id, first.id));
-  expect(await routeMessage(f.db, { userId: "alice", organizationId: f.orgA }, row!, "dm")).toEqual(
-    [],
-  );
+  expect(
+    await routeMessage(f.db, { userId: "alice", organizationId: f.orgA }, row!, "agent_dm"),
+  ).toEqual([]);
   expect(await wakes()).toHaveLength(2);
 });
 
