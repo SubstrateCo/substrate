@@ -227,6 +227,48 @@ export function agentStatus(status: AgentStatusView): WorkStatus {
   return { tone: "idle", label: "Idle" };
 }
 
+/** The agent page header's status. The timeline shows the activity, so this has none. */
+export type AgentHeaderStatus = WorkStatus & {
+  orb: WorkOrbState | null;
+  /** The conversation of the live work, when it is not the page's own conversation. */
+  elsewhereConversationId: string | null;
+};
+
+/**
+ * What the agent does as a whole, for its page header, or null while it is idle. Live work in
+ * another conversation names that conversation; the server sends its ID only while the owner can
+ * open it.
+ */
+export function agentHeaderStatus(
+  status: AgentStatusView,
+  homeConversationId: string | undefined,
+): AgentHeaderStatus | null {
+  const { device } = status;
+  const line = (tone: WorkTone, label: string, orb: WorkOrbState | null = null) => ({
+    tone,
+    label,
+    orb,
+    elsewhereConversationId: null,
+  });
+  if (status.state === "needs_you") return line("attention", "Needs you");
+  if (!device) return line("idle", noDesktopLabel);
+  if (!device.online) return line("idle", `${device.name} is offline`);
+  if (status.state === "working") {
+    const place = status.liveConversationId;
+    return {
+      ...line("working", "Working", "solving"),
+      elsewhereConversationId: place && place !== homeConversationId ? place : null,
+    };
+  }
+  if (status.state === "queued")
+    return line(
+      "idle",
+      status.queuedCount > 1 ? `Queued · ${status.queuedCount}` : "Queued",
+      queuedOrb,
+    );
+  return null;
+}
+
 export const sessionKindLabels = {
   dm: "Direct message",
   thread: "Thread",

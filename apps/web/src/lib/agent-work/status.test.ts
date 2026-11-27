@@ -1,4 +1,5 @@
 import {
+  agentHeaderStatus,
   agentStatus,
   attentionFallback,
   attentionReasonText,
@@ -162,6 +163,48 @@ describe("derived agent status", () => {
       "Working on MacBook · Reading files",
     );
     expect(agentStatus(status({ state: "needs_you" })).tone).toBe("attention");
+  });
+});
+
+describe("agent page header status", () => {
+  test("idle shows nothing; other states show one short word", () => {
+    expect(agentHeaderStatus(status(), "dm")).toBeNull();
+    expect(agentHeaderStatus(status({ state: "needs_you" }), "dm")).toMatchObject({
+      tone: "attention",
+      label: "Needs you",
+    });
+    expect(agentHeaderStatus(status({ state: "queued", queuedCount: 1 }), "dm")?.label).toBe(
+      "Queued",
+    );
+    expect(agentHeaderStatus(status({ state: "queued", queuedCount: 3 }), "dm")?.label).toBe(
+      "Queued · 3",
+    );
+    expect(agentHeaderStatus(status({ device: null }), "dm")?.label).toBe(
+      "No desktop runs this agent",
+    );
+    expect(
+      agentHeaderStatus(
+        status({ state: "working", device: { id: "d", name: "MacBook", online: false } }),
+        "dm",
+      )?.label,
+    ).toBe("MacBook is offline");
+  });
+
+  test("working names its place only when that place is not this page's conversation", () => {
+    const working = (liveConversationId: string | null) =>
+      agentHeaderStatus(
+        status({ state: "working", liveConversationId, activity: "Reading files" }),
+        "dm",
+      );
+    expect(working("dm")).toEqual({
+      tone: "working",
+      label: "Working",
+      orb: "solving",
+      elsewhereConversationId: null,
+    });
+    expect(working("channel")?.elsewhereConversationId).toBe("channel");
+    // The server leaves out places the owner can no longer open.
+    expect(working(null)?.elsewhereConversationId).toBeNull();
   });
 });
 
