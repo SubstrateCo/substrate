@@ -186,7 +186,10 @@ export function ConversationAgentWork({
             agentName,
             tone: "idle",
             label: noDesktopLabel,
-            link: { link: agentLink(organizationId, agentId, "run"), label: "Choose a desktop" },
+            link: {
+              link: agentLink(organizationId, agentId, { settings: "overview" }),
+              label: "Choose a desktop",
+            },
           };
         if (line.kind === "needs_you")
           return {

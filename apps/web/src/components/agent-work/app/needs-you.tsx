@@ -107,14 +107,14 @@ export function NeedsYou() {
           uncertainItemIds={turn.uncertainItemIds}
         />
       ),
-      agentLink: agentLink(organizationId, turn.userAgentId, "activity", { turnId: turn.id }),
+      agentLink: agentLink(organizationId, turn.userAgentId, { view: "work", turnId: turn.id }),
     })),
     ...items.map((item) => ({
       key: `item:${item.id}`,
       agentName: item.agent.name,
       place: <WorkPlace place={item.place} />,
       body: <UncertainItem item={item} />,
-      agentLink: agentLink(organizationId, item.userAgentId, "activity"),
+      agentLink: agentLink(organizationId, item.userAgentId, { view: "work" }),
     })),
     // Agents that need the owner with nothing listed above.
     ...agents.map((status) => ({
@@ -123,10 +123,10 @@ export function NeedsYou() {
       place: <span>{agentStatus(status).label}</span>,
       body: (
         <p className="text-sm text-muted-foreground">
-          Work stopped. Open the agent’s activity to retry, start fresh, or dismiss it.
+          Work stopped. Open the agent’s work to retry, start fresh, or dismiss it.
         </p>
       ),
-      agentLink: agentLink(organizationId, status.userAgentId, "activity"),
+      agentLink: agentLink(organizationId, status.userAgentId, { view: "work" }),
     })),
   ];
   return (

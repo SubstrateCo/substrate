@@ -43,7 +43,7 @@ function ActivityRowContent({
 
 function ActivityRowsLoading() {
   return (
-    <div role="status" aria-label="Loading activity">
+    <div role="status" aria-label="Loading work">
       <SettingsList hidden>
         {[0, 1, 2].map((i) => (
           <li key={i} className="grid">
@@ -94,7 +94,101 @@ export type ActivityRow = {
   attention?: ReactNode;
 };
 
+/** A row of work, or two or more finished routine runs folded into one. */
+export type ActivityItem =
+  | { kind: "row"; row: ActivityRow }
+  | { kind: "routines"; id: string; rows: ActivityRow[] };
+
 export type HelperRow = { id: string; task: string; status: HelperStatus; report: string | null };
+
+function ActivityRowButton({
+  row,
+  onTranscript,
+}: {
+  row: ActivityRow;
+  onTranscript: (turnId: string) => void;
+}) {
+  return (
+    <Item asChild size="xs">
+      <button
+        type="button"
+        aria-current={row.selected ? "true" : undefined}
+        onClick={() => onTranscript(row.id)}
+        className={cn("text-left", rowStateVariants({ selected: row.selected }))}
+      >
+        <ItemContent className="min-w-0">
+          <ActivityRowContent
+            summary={
+              <span
+                className={cn(
+                  "min-w-0 flex-1 truncate text-sm",
+                  rowTitleVariants({ selected: row.selected }),
+                )}
+              >
+                {row.summary}
+              </span>
+            }
+            time={
+              <Timestamp value={row.createdAt} className="shrink-0 text-xs text-muted-foreground" />
+            }
+            status={row.status}
+            place={[row.kind, row.place].filter(Boolean).join(" · ")}
+          />
+          {row.note && <span className="text-xs text-muted-foreground">{row.note}</span>}
+        </ItemContent>
+      </button>
+    </Item>
+  );
+}
+
+/**
+ * Finished routine runs in a row, folded so they don't push other work out of view. It opens on
+ * its own when it holds the selected run.
+ */
+function RoutineRunsGroup({
+  rows,
+  onTranscript,
+}: {
+  rows: ActivityRow[];
+  onTranscript: (turnId: string) => void;
+}) {
+  // A group always holds two or more runs, newest first.
+  const newest = rows[0];
+  return (
+    <Collapsible className="group/runs" defaultOpen={rows.some((row) => row.selected)}>
+      <CollapsibleTrigger asChild>
+        <Item asChild size="xs">
+          <button type="button" className="text-left hover:bg-row-hover">
+            <ItemMedia>
+              <ChevronRight
+                aria-hidden="true"
+                className="size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-out group-data-[state=open]/runs:rotate-90 motion-reduce:transition-none"
+              />
+            </ItemMedia>
+            <ItemContent className="min-w-0">
+              <span className="truncate text-sm">{rows.length} routine runs finished</span>
+            </ItemContent>
+            <ItemActions>
+              <Timestamp
+                value={newest.createdAt}
+                className="shrink-0 text-xs text-muted-foreground"
+              />
+            </ItemActions>
+          </button>
+        </Item>
+      </CollapsibleTrigger>
+      <CollapsibleContent>
+        <ul aria-label={`${rows.length} routine runs`} className="divide-y border-t bg-inset pl-6">
+          {rows.map((row) => (
+            <li key={row.id} className="grid">
+              <ActivityRowButton row={row} onTranscript={onTranscript} />
+            </li>
+          ))}
+        </ul>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
 
 const helperStatusLabels: Record<HelperStatus, string> = {
   running: "Running",
@@ -106,7 +200,7 @@ const helperStatusLabels: Record<HelperStatus, string> = {
 /** One agent's work, including silent, routine, and helper work. */
 export function AgentActivityView({
   name,
-  rows,
+  items,
   helpers,
   loading,
   error,
@@ -117,7 +211,7 @@ export function AgentActivityView({
   onTranscript,
 }: {
   name: string;
-  rows: ActivityRow[];
+  items: ActivityItem[];
   helpers: HelperRow[];
   loading: boolean;
   error: Error | null;
@@ -130,59 +224,32 @@ export function AgentActivityView({
   return (
     <div className="grid gap-8">
       <SettingsSection
-        title="Activity"
-        description="Everything this agent worked on, newest first. Open a row to see its transcript."
+        title="Work"
+        description="Everything this agent worked on, newest first, including routines and helpers. Open a row to see its transcript."
       >
-        {error && <ErrorState variant="compact" title="Couldn’t load activity" onRetry={onRetry} />}
-        {loading && !rows.length && <ActivityRowsLoading />}
-        {!loading && !error && !rows.length && (
+        {error && <ErrorState variant="compact" title="Couldn’t load work" onRetry={onRetry} />}
+        {loading && !items.length && <ActivityRowsLoading />}
+        {!loading && !error && !items.length && (
           <ContentNotice
             icon={Activity}
             title="No work yet"
             description={`When you message ${name} or one of its routines runs, the work shows here.`}
           />
         )}
-        {rows.length > 0 && (
-          <SettingsList label="Activity">
-            {rows.map((row) => (
-              <li key={row.id} className="grid">
-                <Item asChild size="xs">
-                  <button
-                    type="button"
-                    aria-current={row.selected ? "true" : undefined}
-                    onClick={() => onTranscript(row.id)}
-                    className={cn("text-left", rowStateVariants({ selected: row.selected }))}
-                  >
-                    <ItemContent className="min-w-0">
-                      <ActivityRowContent
-                        summary={
-                          <span
-                            className={cn(
-                              "min-w-0 flex-1 truncate text-sm",
-                              rowTitleVariants({ selected: row.selected }),
-                            )}
-                          >
-                            {row.summary}
-                          </span>
-                        }
-                        time={
-                          <Timestamp
-                            value={row.createdAt}
-                            className="shrink-0 text-xs text-muted-foreground"
-                          />
-                        }
-                        status={row.status}
-                        place={[row.kind, row.place].filter(Boolean).join(" · ")}
-                      />
-                      {row.note && (
-                        <span className="text-xs text-muted-foreground">{row.note}</span>
-                      )}
-                    </ItemContent>
-                  </button>
-                </Item>
-                {row.attention}
-              </li>
-            ))}
+        {items.length > 0 && (
+          <SettingsList label="Work">
+            {items.map((item) =>
+              item.kind === "row" ? (
+                <li key={item.row.id} className="grid">
+                  <ActivityRowButton row={item.row} onTranscript={onTranscript} />
+                  {item.row.attention}
+                </li>
+              ) : (
+                <li key={`routines:${item.id}`} className="grid">
+                  <RoutineRunsGroup rows={item.rows} onTranscript={onTranscript} />
+                </li>
+              ),
+            )}
           </SettingsList>
         )}
         {hasMore && (

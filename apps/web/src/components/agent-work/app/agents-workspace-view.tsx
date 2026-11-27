@@ -43,6 +43,7 @@ export function AgentsWorkspaceView({
   createButtonRef,
   editor,
   content,
+  sheet,
   aside,
 }: {
   agents: AgentListItem[];
@@ -57,6 +58,8 @@ export function AgentsWorkspaceView({
   createButtonRef?: Ref<HTMLButtonElement>;
   editor?: ReactNode;
   content: ReactNode;
+  /** The selected agent's settings, a `PageSheet` over the content. */
+  sheet?: ReactNode;
   aside?: ReactNode;
 }) {
   return (
@@ -175,6 +178,7 @@ export function AgentsWorkspaceView({
           )}
           {content}
         </PageContent>
+        {sheet}
         {aside}
       </PageLayout>
       {editor}

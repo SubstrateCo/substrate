@@ -9,12 +9,14 @@ import { AgentsWorkspaceView } from "./agents-workspace-view";
 import { FirstAgentView } from "./first-agent-view";
 import { NeedsYou } from "./needs-you";
 import { useWorkspaceAgents } from "./use-workspace-agents";
-import { AgentSettings } from "@/components/agents/agent-settings";
+import { NewAgentDialog } from "@/components/agents/new-agent-dialog";
+import { AgentSettingsSheet } from "@/components/agents/settings/agent-settings-sheet";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { PaneState } from "@/components/feedback/pane-state";
 import { useFocusAfterRender } from "@/components/feedback/use-focus-after-render";
+import { PageSheet } from "@/components/layout/page-sheet";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
-import type { AgentPageSection } from "@/lib/agent-work/agent-sections";
+import type { AgentSettingsPage, AgentView } from "@/lib/agent-work/agent-sections";
 import { needsYouCount } from "@/lib/agent-work/needs-you";
 import { agentLink } from "@/lib/navigation/record-links";
 import type { ResourceState } from "@/lib/resource-state";
@@ -25,7 +27,8 @@ type AgentsSearch = {
   agentId?: string;
   turnId?: string;
   messageId?: string;
-  section?: AgentPageSection;
+  view?: AgentView;
+  settings?: AgentSettingsPage;
 };
 
 /** The pane for an agent the catalog doesn't list: still loading, gone, or failed to load. */
@@ -73,19 +76,22 @@ function AgentsContent({
 }
 
 /**
- * The Agents app. Needs you, activity, and routines come from the server, so they work on every
- * device. Transcripts come from the agent's home desktop.
+ * The Agents app. Needs you, work, and routines come from the server, so they work on every
+ * device. Transcripts come from the agent's home desktop. An agent's settings open in a sheet over
+ * its page, so the conversation stays in place.
  */
 export function AgentsWorkspace({
   agentId,
   turnId,
   messageId,
-  section,
+  view,
+  settings,
 }: {
   agentId?: string;
   turnId?: string;
   messageId?: string;
-  section: AgentPageSection;
+  view: AgentView;
+  settings?: AgentSettingsPage;
 }) {
   const { userId, organizationId } = useWorkspaceScope();
   const navigate = useNavigate();
@@ -98,8 +104,12 @@ export function AgentsWorkspace({
     agentId,
   );
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
-  const go = ({ agentId: id, section: next, ...target }: AgentsSearch) =>
-    void navigate(agentLink(organizationId, id, next, target));
+  const go = ({ agentId: id, ...target }: AgentsSearch) =>
+    void navigate(agentLink(organizationId, id, target));
+  const onDeleted = () => {
+    go({});
+    focusAfterRender(() => newAgentButton.current);
+  };
   const content = (
     <AgentsContent
       agentId={agentId}
@@ -116,22 +126,42 @@ export function AgentsWorkspace({
             name={selected.name}
             enabled={selected.enabled}
             status={status(selected.id)}
-            section={section}
+            view={view}
+            settingsOpen={!!settings}
             selectedTurnId={turnId}
             messageId={messageId}
             onMessageNavigate={(target) =>
-              go({ agentId: selected.id, section: "messages", ...target })
+              go({ agentId: selected.id, view: "messages", settings, ...target })
             }
-            onSectionChange={(next) => go({ agentId: selected.id, section: next })}
-            onTranscript={(id) => go({ agentId: selected.id, section: "activity", turnId: id })}
-            onDeleted={() => {
-              go({});
-              focusAfterRender(() => newAgentButton.current);
-            }}
+            onViewChange={(next) => go({ agentId: selected.id, view: next, settings })}
+            onSettingsChange={(open) =>
+              go({ agentId: selected.id, view, settings: open ? "overview" : undefined })
+            }
+            // The transcript opens beside the work, so it takes the place of the settings.
+            onTranscript={(id) => go({ agentId: selected.id, view: "work", turnId: id })}
           />
         )
       }
     />
+  );
+  const sheet = (
+    <PageSheet
+      open={!!selected && !!settings}
+      label="Agent settings"
+      onOpenChange={(open) => {
+        if (!open && selected) go({ agentId: selected.id, view });
+      }}
+    >
+      {selected && settings && (
+        <AgentSettingsSheet
+          key={selected.id}
+          agentId={selected.id}
+          page={settings}
+          onPageChange={(page) => go({ agentId: selected.id, view, settings: page })}
+          onDeleted={onDeleted}
+        />
+      )}
+    </PageSheet>
   );
   return (
     <AgentsWorkspaceView
@@ -146,7 +176,7 @@ export function AgentsWorkspace({
       createButtonRef={newAgentButton}
       editor={
         creating && (
-          <AgentSettings
+          <NewAgentDialog
             onClose={() => setCreating(false)}
             onCreated={(id) => {
               setCreating(false);
@@ -156,9 +186,10 @@ export function AgentsWorkspace({
         )
       }
       content={content}
+      sheet={sheet}
       aside={
-        // A selected agent is the one agentId names.
-        section === "activity" &&
+        // A selected agent is the one agentId names. In Messages, the conversation opens its own.
+        view === "work" &&
         selected &&
         turnId && (
           <ActivityTurnTranscript
@@ -167,7 +198,7 @@ export function AgentsWorkspace({
             agentName={selected.name}
             device={status(selected.id)?.device?.name}
             turnId={turnId}
-            onClose={() => go({ agentId: selected.id, section: "activity" })}
+            onClose={() => go({ agentId: selected.id, view: "work" })}
           />
         )
       }

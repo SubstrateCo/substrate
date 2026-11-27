@@ -1,11 +1,12 @@
 import { maxHarnessMcpServers, type HarnessMcpServer } from "@substrate/contracts/harness-runtime";
 
-import { type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
 import { CatalogRow } from "../catalog/catalog-row";
-import { configurationSections } from "./configuration-section-copy";
+import { BuiltInGroup, ConfigurationPage, ConfigurationSearch } from "./configuration-page";
+import { configurationSections, matchesSearch } from "./configuration-section-copy";
 import { McpServerRow } from "./startup-configuration";
-import { SettingsList, SettingsNote, SettingsSection } from "@/components/layout/settings-section";
+import { SettingsList, SettingsNote } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import { mcpServerLimitReached } from "@/lib/agents/mcp-server-draft";
 import { Blocks, Info, Plus } from "lucide-react";
@@ -15,6 +16,30 @@ function serverDetail(server: HarnessMcpServer) {
   if (server.transport === "stdio") return `Runs ${server.command}`;
   return `Connects to ${new URL(server.url).host}`;
 }
+
+/*
+ * Future: connection health, once the agent host checks each server and reports it.
+ * Servers that can't connect would be pinned above the list with the reason and a Fix action, and
+ * each row would show a status dot and its tool count:
+ *
+ * const broken = servers.filter((server) => health[server.id]?.state === "failed");
+ * {broken.length > 0 && (
+ *   <SettingsList title={`Can't connect · ${broken.length}`}>
+ *     {broken.map((server) => (
+ *       <CatalogRow
+ *         key={server.id}
+ *         name={server.name}
+ *         detail={health[server.id].reason}
+ *         picture={<WorkIndicator tone="failed" label="Can't connect" compact />}
+ *         disabled={busy}
+ *         onEdit={() => onEdit(server)}
+ *         onDelete={() => onDelete(server)}
+ *       />
+ *     ))}
+ *   </SettingsList>
+ * )}
+ * detail={`${serverDetail(server)} · ${health[server.id]?.toolCount ?? "?"} tools`}
+ */
 
 export function McpServersSection({
   servers,
@@ -40,36 +65,46 @@ export function McpServersSection({
   onEdit: (server: HarnessMcpServer) => void;
   onDelete: (server: HarnessMcpServer) => void;
 }) {
+  const [query, setQuery] = useState("");
   const full = mcpServerLimitReached(servers);
+  const shown = servers.filter((server) => matchesSearch(query, server.name, serverDetail(server)));
+  let empty = "No servers of your own yet. Add one to give this agent more tools.";
+  if (query.trim()) empty = "No servers match.";
   return (
-    <SettingsSection
-      title={configurationSections.mcps.title}
+    <ConfigurationPage
       description={configurationSections.mcps.description}
-      actions={
+      toolbar={
         <>
-          {refresh}
-          <Button
-            type="button"
-            size="sm"
-            disabled={!available || !scanned || full || busy}
-            onClick={onCreate}
-          >
-            <Plus />
-            New server
-          </Button>
+          {scanned && servers.length > 0 && (
+            <ConfigurationSearch
+              label="servers"
+              count={servers.length}
+              value={query}
+              onChange={setQuery}
+            />
+          )}
+          <div className="ml-auto flex items-center gap-2">
+            {refresh}
+            <Button
+              type="button"
+              size="sm"
+              disabled={!available || !scanned || full || busy}
+              onClick={onCreate}
+            >
+              <Plus />
+              New server
+            </Button>
+          </div>
         </>
       }
     >
       {status}
-      {defaults && (
-        <SettingsList description="Substrate adds the built-in server, which lets the agent read and post in this workspace.">
-          <McpServerRow name="substrate" detail="Substrate workspace" builtIn />
-        </SettingsList>
-      )}
       {scanned && (
-        <SettingsList title={configurationSections.mcps.listTitle}>
-          {servers.length ? (
-            servers.map((server) => (
+        <SettingsList
+          title={`${configurationSections.mcps.listTitle} · ${servers.length} of ${maxHarnessMcpServers}`}
+        >
+          {shown.length ? (
+            shown.map((server) => (
               <CatalogRow
                 key={server.id}
                 name={server.name}
@@ -83,9 +118,7 @@ export function McpServersSection({
               />
             ))
           ) : (
-            <li className="px-4 py-3 text-sm text-muted-foreground">
-              No servers of your own yet. Add one to give this agent more tools.
-            </li>
+            <li className="px-4 py-3 text-sm text-muted-foreground">{empty}</li>
           )}
         </SettingsList>
       )}
@@ -95,6 +128,17 @@ export function McpServersSection({
           another.
         </SettingsNote>
       )}
-    </SettingsSection>
+      {defaults && (
+        <BuiltInGroup
+          title="Built-in server"
+          count={1}
+          description="Substrate adds the built-in server, which lets the agent read and post in this workspace."
+        >
+          <SettingsList label="Built-in server">
+            <McpServerRow name="substrate" detail="Substrate workspace" builtIn />
+          </SettingsList>
+        </BuiltInGroup>
+      )}
+    </ConfigurationPage>
   );
 }

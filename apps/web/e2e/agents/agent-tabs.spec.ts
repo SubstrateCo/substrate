@@ -2,7 +2,7 @@ import { createAgent } from "../test-support/agent-work";
 import { test } from "../test-support/fixtures";
 import { expect } from "@playwright/test";
 
-test("an agent waits for its catalog before mounting its tab panels", async ({
+test("an agent waits for its catalog before opening its settings sheet", async ({
   account,
   client,
 }) => {
@@ -19,7 +19,7 @@ test("an agent waits for its catalog before mounting its tab panels", async ({
     const search = new URLSearchParams({
       workspaceId: account.organizationId,
       agentId: agent.id,
-      section: "general",
+      settings: "overview",
     });
     await user.page.goto(`/agents?${search}`);
     await user.waitForEvent(
@@ -30,12 +30,16 @@ test("an agent waits for its catalog before mounting its tab panels", async ({
     await expect(
       user.page.getByRole("status", { name: "Loading agent", exact: true }),
     ).toBeVisible();
-    await expect(user.page.getByRole("tablist", { name: "Agent views" })).toHaveCount(0);
+    await expect(
+      user.page.getByRole("dialog", { name: "Agent settings", exact: true }),
+    ).toHaveCount(0);
   } finally {
     release.resolve();
     await user.page.unrouteAll({ behavior: "wait" });
   }
-  await expect(user.page.getByRole("tabpanel", { name: "Settings", exact: true })).toBeVisible();
+  await expect(
+    user.page.getByRole("dialog", { name: "Agent settings", exact: true }),
+  ).toBeVisible();
   await expect(user.page.getByLabel("Agent name", { exact: true })).toHaveValue(agent.name);
   await expect(
     user.page.getByText(

@@ -1,29 +1,17 @@
-/** The settings sections of an agent. Name, model, and instructions share one draft. */
-export const agentSettingsSections = ["general", "instructions", "skills", "mcps", "run"] as const;
-export type AgentSettingsSection = (typeof agentSettingsSections)[number];
+/** What the agent page shows: its direct conversation, or its work. Messages is the default. */
+export const agentViews = ["messages", "work"] as const;
+export type AgentView = (typeof agentViews)[number];
 
-export const agentConversationSections = ["messages", "activity", "routines"] as const;
-export type AgentConversationSection = (typeof agentConversationSections)[number];
+/**
+ * The pages of the settings sheet. The overview holds every setting and a summary of each
+ * collection; routines, skills, and MCP servers open as full lists inside the sheet.
+ */
+export const agentSettingsPages = ["overview", "routines", "skills", "mcps"] as const;
+export type AgentSettingsPage = (typeof agentSettingsPages)[number];
 
-/** Messages is the default. Settings sections share one Settings tab. */
-export const agentPageSections = [...agentConversationSections, ...agentSettingsSections] as const;
-export type AgentPageSection = (typeof agentPageSections)[number];
-
-export const agentSectionLabels: Record<AgentSettingsSection, string> = {
-  general: "General",
-  instructions: "Instructions",
+export const agentSettingsPageLabels: Record<AgentSettingsPage, string> = {
+  overview: "Settings",
+  routines: "Routines",
   skills: "Skills",
   mcps: "MCP servers",
-  run: "Run settings",
 };
-
-const sectionListFormatter = new Intl.ListFormat("en", { style: "long", type: "conjunction" });
-
-/** "General and Run settings": the sections a draft touches, for copy. */
-export function listSections(sections: readonly AgentSettingsSection[]) {
-  return sectionListFormatter.format(sections.map((section) => agentSectionLabels[section]));
-}
-
-export function isAgentSettingsSection(value: unknown): value is AgentSettingsSection {
-  return agentSettingsSections.some((section) => section === value);
-}

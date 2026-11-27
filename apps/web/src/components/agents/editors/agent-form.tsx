@@ -7,23 +7,12 @@ import { revalidateLogic, useForm } from "@tanstack/react-form";
 import { useId, type ReactNode } from "react";
 
 import { AgentInstructions } from "./agent-instructions";
-import { GeneralSettingsLayout, InstructionsSettingsLayout } from "./agent-settings-layout";
-import { UnsavedSectionsBar } from "./unsaved-sections-bar";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import type { FormDialogEditor } from "@/components/feedback/form-dialog";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
-import { RegisterDraft } from "@/components/feedback/unsaved-drafts";
-import { useDiscardDrafts, useDraftKeys } from "@/components/feedback/unsaved-drafts-context";
 import { FormTextField } from "@/components/forms/form-text-field";
-import { SettingsFooter, SettingsRow } from "@/components/layout/settings-section";
+import { SettingsCard, SettingsFooter } from "@/components/layout/settings-section";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
-import { Switch } from "@/components/ui/switch";
-import {
-  agentSettingsSections,
-  isAgentSettingsSection,
-  listSections,
-  type AgentSettingsSection,
-} from "@/lib/agent-work/agent-sections";
 import { z } from "zod";
 
 const agentFields = saveAgentInput.extend({
@@ -36,15 +25,17 @@ const agentFields = saveAgentInput.extend({
 
 export type AgentSection = "skills" | "mcps";
 
-/** Whether general and instructions differ from the saved agent. */
-function definitionChanges(values: SaveAgentInput, saved: SaveAgentInput) {
-  return [
+/**
+ * Whether the name, model, or instructions differ from the saved agent. Enabled is not part of the
+ * draft: its switch saves at once in "When it runs".
+ */
+function definitionChanged(values: SaveAgentInput, saved: SaveAgentInput) {
+  return (
     values.name !== saved.name ||
-      values.enabled !== saved.enabled ||
-      values.harness !== saved.harness ||
-      (values.model ?? undefined) !== (saved.model ?? undefined),
-    values.instructions !== saved.instructions,
-  ] as const;
+    values.harness !== saved.harness ||
+    (values.model ?? undefined) !== (saved.model ?? undefined) ||
+    values.instructions !== saved.instructions
+  );
 }
 
 /** The draft's runtime and model, for the model field the settings compose. */
@@ -62,13 +53,7 @@ type AgentFormProps = {
   /** Renders the built-in rules preview for the draft's runtime and name. */
   renderStartupInstructions: (draft: { harness: HarnessKind; name: string }) => ReactNode;
   agent?: AgentConfiguration;
-  /** The settings section to show for an existing agent. */
-  section?: AgentSettingsSection;
-  onSectionChange?: (section: AgentSettingsSection) => void;
   picture?: ReactNode;
-  /** Keeps its own draft, registered under "run". */
-  runSettings?: ReactNode;
-  deleteAction?: ReactNode;
   pending: boolean;
   renderCreate?: (editor: FormDialogEditor) => ReactNode;
   /** Starts the save mutation. Call `onSuccess` once the agent is stored. */
@@ -77,36 +62,27 @@ type AgentFormProps = {
   error?: Error | null;
   /** Clears the save mutation's error. */
   onResetError?: () => void;
-  /** The skills or MCP servers of the saved runtime, shown in those sections. */
-  configuration?: ReactNode;
 };
 
 /**
- * Create mode is a short dialog. Edit mode shows one settings section; name, model, and
- * instructions share one draft across sections, and leaving the settings with a draft asks first.
+ * Create mode is a short dialog. Edit mode is one card with the name, model, and instructions in
+ * one draft; leaving the settings overview with a draft asks first.
  */
 export function AgentForm({
   renderModel,
   renderStartupInstructions,
   agent,
-  section = "general",
-  onSectionChange,
   picture,
-  runSettings,
-  deleteAction,
   pending,
   renderCreate,
   onSave,
   error: saveError,
   onResetError,
-  configuration,
 }: AgentFormProps) {
   const error = saveError
     ? actionErrorMessage(saveError, "We couldn’t save this agent. Try again.")
     : undefined;
   const formId = useId();
-  const runSettingsDirty = useDraftKeys().includes("run");
-  const discardDrafts = useDiscardDrafts();
   const defaultValues: SaveAgentInput = agent
     ? {
         id: agent.id,
@@ -135,35 +111,19 @@ export function AgentForm({
     validators: { onDynamic: agentFields },
     onSubmit: ({ value }) => {
       if (pending) return;
-      onSave(agentFields.parse(value), { onSuccess: () => form.reset(value) });
-    },
-    onSubmitInvalid: ({ formApi }) => {
-      // Show the section that holds the first error.
-      if (!formApi.getFieldMeta("name")?.isValid) onSectionChange?.("general");
-      else if (!formApi.getFieldMeta("instructions")?.isValid) onSectionChange?.("instructions");
+      // The saved agent owns enabled; its own switch may have changed it since the draft began.
+      const input = agent ? { ...value, enabled: agent.enabled } : value;
+      onSave(agentFields.parse(input), { onSuccess: () => form.reset(input) });
     },
   });
   return (
     <form.Subscribe
       selector={(state) =>
-        [
-          state.isSubmitting,
-          ...(agent ? definitionChanges(state.values, defaultValues) : ([false, false] as const)),
-        ] as const
+        [state.isSubmitting, !!agent && definitionChanged(state.values, defaultValues)] as const
       }
     >
-      {([isSubmitting, generalChanged, instructionsChanged]) => {
+      {([isSubmitting, dirty]) => {
         const busy = pending || isSubmitting;
-        const dirty = generalChanged || instructionsChanged;
-        // Name, model, and instructions share one draft; run settings save on their own.
-        const changed: Record<AgentSettingsSection, boolean> = {
-          general: generalChanged,
-          instructions: instructionsChanged,
-          run: runSettingsDirty,
-          skills: false,
-          mcps: false,
-        };
-        const unsaved = agentSettingsSections.filter((item) => changed[item]);
         const nameField = (
           <form.Field name="name">
             {(field) => (
@@ -273,77 +233,32 @@ export function AgentForm({
                 void submit();
               }}
             />
-            <RegisterDraft name="general" dirty={generalChanged} />
-            <RegisterDraft name="instructions" dirty={instructionsChanged} />
             <UnsavedChangesGuard
-              dirty={unsaved.length > 0}
-              description={`Your changes in ${listSections(unsaved)} aren’t saved.`}
-              name={`Agent settings: ${listSections(unsaved)}`}
+              dirty={dirty}
+              description="Your changes to this agent’s name, model, or instructions aren’t saved."
+              name={`Agent settings: ${agent.name}`}
+              // Moving the view or a thread under the open overview keeps the draft.
               shouldBlock={({ next }) =>
                 next.routeId !== "/_authenticated/_frame/_workspace/agents" ||
-                !(next.search.agentId === agent.id && isAgentSettingsSection(next.search.section))
+                !(next.search.agentId === agent.id && next.search.settings === "overview")
               }
             />
-            {section === "general" && (
-              <GeneralSettingsLayout
-                footer={footer}
-                disabled={busy}
-                profile={
-                  <>
-                    {nameField}
-                    {picture}
-                    <form.Field name="enabled">
-                      {(field) => (
-                        <SettingsRow
-                          label="Enabled"
-                          description="Allow this agent to join conversations and respond to its triggers."
-                          htmlFor={`${formId}-enabled`}
-                          control={
-                            <Switch
-                              id={`${formId}-enabled`}
-                              checked={field.state.value}
-                              disabled={busy}
-                              onCheckedChange={(value) => field.handleChange(value)}
-                            />
-                          }
-                        />
-                      )}
-                    </form.Field>
-                  </>
-                }
-                model={modelField}
-                deleteAction={deleteAction}
-              />
-            )}
-            {section === "instructions" && (
-              <InstructionsSettingsLayout footer={footer} disabled={busy}>
+            <SettingsCard label="Agent details" footer={footer}>
+              <fieldset disabled={busy} className="grid min-w-0 gap-6">
+                <div className="grid min-w-0 gap-4">
+                  {nameField}
+                  {picture}
+                </div>
+                <Field>
+                  <FieldLabel htmlFor={`${formId}-model`}>Model</FieldLabel>
+                  {modelField}
+                  <FieldDescription>
+                    It runs on this agent’s desktop with the tools installed there.
+                  </FieldDescription>
+                </Field>
                 {instructionsField}
-              </InstructionsSettingsLayout>
-            )}
-            {(section === "skills" || section === "mcps") && (
-              <>
-                <form.Subscribe selector={(state) => state.values.harness !== agent.harness}>
-                  {(runtimeChanged) =>
-                    runtimeChanged && (
-                      <p className="mb-4 text-sm text-muted-foreground">
-                        These files use the saved runtime. Save the model change to switch runtimes.
-                      </p>
-                    )
-                  }
-                </form.Subscribe>
-                {configuration}
-              </>
-            )}
-            <div hidden={section !== "run"}>{runSettings}</div>
-            <UnsavedSectionsBar
-              sections={unsaved.filter((item) => item !== section)}
-              onSectionChange={(next) => onSectionChange?.(next)}
-              onDiscardAll={() => {
-                form.reset();
-                onResetError?.();
-                discardDrafts();
-              }}
-            />
+              </fieldset>
+            </SettingsCard>
           </div>
         );
       }}

@@ -4,10 +4,13 @@ import { searches } from "../test-support/search";
 import { expect, type Page } from "@playwright/test";
 import { z } from "zod";
 
-const section = (page: Page, name: string) =>
-  page
-    .getByRole("navigation", { name: "Agent sections", exact: true })
-    .getByRole("button", { name, exact: true });
+const settings = (page: Page) => page.getByRole("dialog", { name: "Agent settings", exact: true });
+
+const openSettings = (page: Page) =>
+  page.getByRole("button", { name: "Settings", exact: true }).click();
+
+const closeSettings = (page: Page) =>
+  settings(page).getByRole("button", { name: "Close agent settings", exact: true }).click();
 
 const instructions = (page: Page) =>
   page.getByRole("textbox", { name: "Additional instructions (optional)", exact: true });
@@ -25,7 +28,7 @@ async function createAgent(user: Client, name: string) {
     .getByRole("button", { name: "Create agent", exact: true })
     .click();
   await expect(user.page.getByRole("dialog")).toHaveCount(0);
-  await user.page.getByRole("tab", { name: "Settings", exact: true }).click();
+  await openSettings(user.page);
   await expect(user.page.getByLabel("Agent name", { exact: true })).toHaveValue(name);
 }
 
@@ -56,10 +59,12 @@ test("selecting an agent opens its existing messages and settings keep the conve
   await visit(user, undefined, "/agents");
   // The link's name also carries the agent's status, such as "Working on Laptop".
   await user.page.getByRole("link", { name: agent.name }).click();
-  await expect(user.page.getByRole("tab", { name: "Messages", exact: true })).toHaveAttribute(
-    "aria-selected",
+  await expect(user.page.getByRole("radio", { name: "Messages", exact: true })).toHaveAttribute(
+    "aria-checked",
     "true",
   );
+  // The agent page has no tabs: a view switch and a Settings button replace them.
+  await expect(user.page.getByRole("tablist")).toHaveCount(0);
   await expect(
     user.page.getByRole("article").filter({ hasText: "Prepare the launch review" }),
   ).toBeVisible();
@@ -67,10 +72,10 @@ test("selecting an agent opens its existing messages and settings keep the conve
   await expect(reply.getByText(agent.name, { exact: true })).toBeVisible();
   const editor = user.page.getByRole("textbox", { name: `Message ${agent.name}`, exact: true });
   await editor.fill("Review the checklist next");
-  await user.page.getByRole("tab", { name: "Settings", exact: true }).click();
+  await openSettings(user.page);
   await expect(user.page.getByLabel("Agent name", { exact: true })).toHaveValue(agent.name);
-  await user.page.getByRole("tab", { name: "Messages", exact: true }).click();
-  await expect(user.page.getByLabel("Agent name", { exact: true })).toHaveCount(0);
+  await closeSettings(user.page);
+  await expect(settings(user.page)).toHaveCount(0);
   await expect(editor).toHaveText("Review the checklist next");
   await editor.press("Enter");
   await expect(
@@ -113,9 +118,9 @@ test("an agent without a DM waits for Start conversation and then reuses it", as
   const start = user.page.getByRole("button", { name: "Start conversation", exact: true });
   await expect(start).toBeVisible();
   expect(await list()).toHaveLength(0);
-  await user.page.getByRole("tab", { name: "Settings", exact: true }).click();
+  await openSettings(user.page);
   await expect(user.page.getByLabel("Agent name", { exact: true })).toHaveValue(agent.name);
-  await user.page.getByRole("tab", { name: "Messages", exact: true }).click();
+  await closeSettings(user.page);
   await expect(start).toBeVisible();
   await user.page.reload();
   await expect(start).toBeVisible();
@@ -152,14 +157,15 @@ test("a disabled agent directs the owner to enable it before starting a conversa
   await user.page.getByRole("button", { name: "Open settings", exact: true }).click();
   const enabled = user.page.getByRole("switch", { name: "Enabled", exact: true });
   await expect(enabled).not.toBeChecked();
-  await enabled.click();
-  await user.page.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(
-    user.page
-      .getByRole("region", { name: "Agent details", exact: true })
-      .getByText("All changes saved", { exact: true }),
-  ).toBeVisible();
-  await user.page.getByRole("tab", { name: "Messages", exact: true }).click();
+  // The switch saves at once; there is no Save step for it.
+  await Promise.all([
+    user.page.waitForResponse(
+      (response) => response.url().endsWith("/actors/save") && response.ok(),
+    ),
+    enabled.click(),
+  ]);
+  await expect(enabled).toBeChecked();
+  await closeSettings(user.page);
   await user.page.getByRole("button", { name: "Start conversation", exact: true }).click();
   await expect(
     user.page.getByRole("textbox", { name: `Message ${name}`, exact: true }),
@@ -186,13 +192,12 @@ test("agent definitions and run settings can be created, edited, persisted and d
   await user.page.getByRole("button", { name: "Discard", exact: true }).click();
   await expect(user.page.getByLabel("Agent name", { exact: true })).toHaveValue(name);
   await expect(save).toBeDisabled();
-  await section(user.page, "Instructions").click();
+  // Name, model, and instructions are one card on one page, saved together.
   await expect(instructions(user.page)).toHaveValue(
     "Review release tasks. Do not contact external services.",
   );
   await instructions(user.page).fill("Summarize release risks only.");
   const updatedName = `${name} updated`;
-  await section(user.page, "General").click();
   await user.page.getByLabel("Agent name", { exact: true }).fill(updatedName);
   await Promise.all([
     user.page.waitForResponse(
@@ -203,46 +208,37 @@ test("agent definitions and run settings can be created, edited, persisted and d
   const sidebar = user.page.getByRole("region", { name: "Your agents", exact: true });
   await expect(sidebar.getByRole("link", { name: updatedName, exact: true })).toBeVisible();
   await expect(sidebar.getByRole("link", { name, exact: true })).toHaveCount(0);
+  // The open sheet is part of the URL, so it survives a reload.
   await user.page.reload();
-  await section(user.page, "Instructions").click();
   await expect(instructions(user.page)).toHaveValue("Summarize release risks only.");
 
-  await section(user.page, "Run settings").click();
+  // A trigger switch saves at once, with no Save button.
   const directMessage = user.page.getByRole("switch", { name: "Direct message", exact: true });
   const enabled = await directMessage.isChecked();
-  await directMessage.click();
   await Promise.all([
     user.page.waitForResponse(
       (response) => response.url().endsWith("/actors/triggers") && response.ok(),
     ),
-    user.page
-      .getByRole("region", { name: "Triggers", exact: true })
-      .getByRole("button", { name: "Save", exact: true })
-      .click(),
+    directMessage.click(),
   ]);
   await user.page.reload();
-  await section(user.page, "Run settings").click();
   await expect(directMessage).toBeChecked({ checked: !enabled });
-  await section(user.page, "Instructions").click();
+
+  // Closing the sheet with a draft asks first.
   await instructions(user.page).fill("Unsaved draft");
-  await user.page.getByRole("tab", { name: "Messages", exact: true }).click();
+  await closeSettings(user.page);
   const discard = user.page.getByRole("dialog", { name: "Discard unsaved changes?", exact: true });
   await discard.getByRole("button", { name: "Keep editing", exact: true }).click();
   await expect(instructions(user.page)).toHaveValue("Unsaved draft");
-  await user.page.getByRole("tab", { name: "Messages", exact: true }).click();
+  await closeSettings(user.page);
   await discard.getByRole("button", { name: "Discard changes", exact: true }).click();
-  await expect(user.page.getByRole("tab", { name: "Messages", exact: true })).toHaveAttribute(
-    "aria-selected",
-    "true",
-  );
-  await user.page.getByRole("tab", { name: "Settings", exact: true }).click();
-  await section(user.page, "Instructions").click();
+  await expect(settings(user.page)).toHaveCount(0);
+  await openSettings(user.page);
   await expect(instructions(user.page)).toHaveValue("Summarize release risks only.");
 
-  await section(user.page, "General").click();
   await user.page.getByRole("button", { name: `Delete ${updatedName}`, exact: true }).click();
   await user.page
-    .getByRole("dialog")
+    .getByRole("dialog", { name: `Delete ${updatedName}?`, exact: true })
     .getByRole("button", { name: "Delete agent", exact: true })
     .click();
   await expect(sidebar.getByRole("link", { name: updatedName, exact: true })).toHaveCount(0);

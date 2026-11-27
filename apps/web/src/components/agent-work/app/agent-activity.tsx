@@ -8,8 +8,14 @@ import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { NeedsAttention } from "../needs-attention";
 import { TurnStatusTag } from "../turn-work";
-import { AgentActivityView, type ActivityRow, type HelperRow } from "./agent-activity-view";
+import {
+  AgentActivityView,
+  type ActivityItem,
+  type ActivityRow,
+  type HelperRow,
+} from "./agent-activity-view";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
+import { groupActivity } from "@/lib/agent-work/activity-groups";
 import { hiddenConversation } from "@/lib/agent-work/hidden-records";
 import { turnConversation } from "@/lib/agent-work/placement";
 import { failedWorkNote, sessionKindLabels, turnTone } from "@/lib/agent-work/status";
@@ -73,7 +79,7 @@ export function AgentActivity({
     const conversation = conversations.data?.find((entry) => entry.id === conversationId);
     return conversation ? `In ${conversationName(conversation)}` : hiddenConversation;
   };
-  const rows: ActivityRow[] = turns.map((turn) => {
+  const row = (turn: AgentWorkTurnView): ActivityRow => {
     const failed = turnTone(turn) === "failed";
     return {
       id: turn.id,
@@ -92,11 +98,16 @@ export function AgentActivity({
         <NeedsAttention turn={turn} agentName={name} inline />
       ),
     };
-  });
+  };
+  const items: ActivityItem[] = groupActivity(turns).map((entry) =>
+    entry.kind === "turn"
+      ? { kind: "row", row: row(entry.turn) }
+      : { kind: "routines", id: entry.id, rows: entry.turns.map(row) },
+  );
   return (
     <AgentActivityView
       name={name}
-      rows={rows}
+      items={items}
       helpers={activity.data?.pages.flatMap((page) => page.helpers.map(helperRow)) ?? []}
       loading={activity.isPending}
       error={activity.error}

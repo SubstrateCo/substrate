@@ -1,165 +1,138 @@
 import type { AgentRoutineView } from "@substrate/contracts/agent-work";
 
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 
-import { describeSchedule } from "./schedule";
+import { RoutineRow, RoutineRowLoading, type RoutineRowActions } from "./routine-row";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
-import { PendingButton } from "@/components/feedback/pending-button";
-import { SkeletonText } from "@/components/feedback/skeleton-text";
-import { Tag } from "@/components/feedback/tag";
-import { RowAction, RowActions } from "@/components/layout/row-actions";
-import { SettingsList, SettingsSection } from "@/components/layout/settings-section";
+import { SegmentedControl } from "@/components/forms/segmented-control";
+import { SettingsList } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
-import { Item, ItemActions, ItemContent, ItemDescription, ItemTitle } from "@/components/ui/item";
-import { formatDateTime, formatTimeZone, formatZonedDateTime } from "@/lib/format/date";
-import { CalendarClock, Pencil, Plus, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  groupRoutines,
+  type RoutineFilter,
+  type RoutineGroup,
+} from "@/lib/agent-work/routine-groups";
+import { CalendarClock, Plus, Search } from "lucide-react";
 
-function RoutineRow({ children }: { children: ReactNode }) {
+const groupTitles: Record<RoutineGroup, string> = {
+  needsYou: "Needs you",
+  soon: "Next 24 hours",
+  later: "Later",
+  paused: "Paused",
+};
+
+const filterOptions = [
+  { value: "all", label: "All" },
+  { value: "needsYou", label: "Needs you" },
+  { value: "active", label: "Active" },
+  { value: "paused", label: "Paused" },
+] as const satisfies readonly { value: RoutineFilter; label: string }[];
+
+function NewRoutineButton({ onAdd }: { onAdd: () => void }) {
   return (
-    <Item asChild size="xs" className="group/row">
-      <li>{children}</li>
-    </Item>
-  );
-}
-
-function RoutineRowsLoading() {
-  return (
-    <div role="status" aria-label="Loading routines">
-      <SettingsList hidden>
-        {[0, 1].map((i) => (
-          <RoutineRow key={i}>
-            <ItemContent className="min-w-0">
-              <p className="flex min-w-0 items-center gap-2 text-sm font-medium">
-                <SkeletonText width="12rem" />
-              </p>
-              <p className="truncate text-xs text-muted-foreground">
-                <SkeletonText width="16rem" />
-              </p>
-              <p className="line-clamp-2 text-xs text-muted-foreground">
-                <SkeletonText width="20rem" />
-              </p>
-            </ItemContent>
-          </RoutineRow>
-        ))}
-      </SettingsList>
-    </div>
-  );
-}
-
-/** Next run in the viewer's zone, with the schedule's own clock in the tooltip. */
-function nextRun(routine: AgentRoutineView) {
-  if (!routine.enabled || !routine.nextFireAt) return undefined;
-  return {
-    text: `Next run ${formatDateTime(routine.nextFireAt)} in your time zone`,
-    title: `${formatZonedDateTime(routine.nextFireAt, routine.timezone)} in the schedule’s time zone`,
-  };
-}
-
-export function RoutineListView({
-  name,
-  routines,
-  loading,
-  error,
-  onRetry,
-  onAdd,
-  onEdit,
-  onDelete,
-  onApprove,
-  approvingId,
-}: {
-  name: string;
-  routines: AgentRoutineView[];
-  loading: boolean;
-  error: Error | null;
-  onRetry: () => void;
-  onAdd: () => void;
-  onEdit: (routineId: string) => void;
-  onDelete: (routine: AgentRoutineView) => void;
-  /** Approves the routine's current revision, for routines the agent wrote or changed. */
-  onApprove: (routine: AgentRoutineView) => void;
-  /** The routine whose approval is being sent. */
-  approvingId?: string;
-}) {
-  const add = (
-    <Button type="button" onClick={onAdd}>
+    <Button type="button" size="sm" onClick={onAdd}>
       <Plus aria-hidden="true" />
       New routine
     </Button>
   );
-  return (
-    <SettingsSection
-      title="Routines"
-      description={`Work ${name} starts on a schedule. ${name} can also add and change routines.`}
-      actions={routines.length > 0 && add}
-    >
-      {error && !routines.length && (
-        <ErrorState variant="compact" title="Couldn’t load routines" onRetry={onRetry} />
-      )}
-      {loading && !routines.length && <RoutineRowsLoading />}
-      {!loading && !error && !routines.length && (
-        <ContentNotice
-          icon={CalendarClock}
-          title="No routines yet"
-          description={`A routine asks ${name} to do something on a schedule, like a summary every weekday at 9:00 AM.`}
-          action={add}
-        />
-      )}
-      {routines.length > 0 && (
-        <SettingsList label="Routines">
-          {routines.map((routine) => {
-            const unapproved = routine.approvedRevision !== routine.revision;
-            const next = unapproved ? undefined : nextRun(routine);
-            return (
-              <RoutineRow key={routine.id}>
-                <ItemContent className="min-w-0">
-                  <ItemTitle className="max-w-full">
-                    <span className="truncate">{routine.name}</span>
-                    {unapproved && <Tag tone="warning">Needs your approval</Tag>}
-                    {!routine.enabled && <Tag>Paused</Tag>}
-                  </ItemTitle>
-                  <ItemDescription>
-                    {describeSchedule(routine.cron)} ·{" "}
-                    {formatTimeZone(routine.timezone, routine.nextFireAt ?? undefined)}
-                  </ItemDescription>
-                  {next && <ItemDescription title={next.title}>{next.text}</ItemDescription>}
-                  <ItemDescription>{routine.prompt}</ItemDescription>
-                </ItemContent>
-                <ItemActions>
-                  {unapproved && (
-                    <PendingButton
-                      type="button"
-                      size="sm"
-                      variant="outline"
-                      aria-label={`Approve ${routine.name}`}
-                      disabled={!!approvingId}
-                      pending={approvingId === routine.id}
-                      onClick={() => onApprove(routine)}
-                    >
-                      Approve
-                    </PendingButton>
-                  )}
-                  <RowActions label={`Actions for ${routine.name}`}>
-                    <RowAction label={`Edit ${routine.name}`} onClick={() => onEdit(routine.id)}>
-                      <Pencil />
-                    </RowAction>
-                    <RowAction
-                      label={`Delete ${routine.name}`}
-                      destructive
-                      onClick={() => onDelete(routine)}
-                    >
-                      <Trash2 />
-                    </RowAction>
-                  </RowActions>
-                </ItemActions>
-              </RoutineRow>
-            );
-          })}
+}
+
+/**
+ * Every routine of one agent, in groups: what needs the owner, the next 24 hours, later, and
+ * paused. Search and a filter keep a long list short.
+ */
+export function RoutineListView({
+  name,
+  routines,
+  now,
+  loading,
+  error,
+  onRetry,
+  onAdd,
+  ...actions
+}: {
+  name: string;
+  routines: AgentRoutineView[];
+  now: number;
+  loading: boolean;
+  error: Error | null;
+  onRetry: () => void;
+  onAdd: () => void;
+} & RoutineRowActions) {
+  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useState<RoutineFilter>("all");
+  const groups = groupRoutines(routines, { now, query, filter });
+  let content: ReactNode;
+  if (error && !routines.length)
+    content = <ErrorState variant="compact" title="Couldn’t load routines" onRetry={onRetry} />;
+  else if (loading && !routines.length)
+    content = (
+      <div role="status" aria-label="Loading routines">
+        <SettingsList hidden>
+          <RoutineRowLoading />
+          <RoutineRowLoading />
         </SettingsList>
+      </div>
+    );
+  else if (!routines.length)
+    content = (
+      <ContentNotice
+        variant="compact"
+        icon={CalendarClock}
+        title="No routines yet"
+        description={`A routine asks ${name} to do something on a schedule, like a summary every weekday at 9:00 AM.`}
+        action={<NewRoutineButton onAdd={onAdd} />}
+      />
+    );
+  else if (!groups.length)
+    content = <ContentNotice variant="compact" icon={Search} title="No routines match" />;
+  else
+    content = (
+      <div className="grid min-w-0 gap-6" role="list" aria-label="Routines">
+        {groups.map(({ group, routines: items }) => (
+          <div role="listitem" key={group}>
+            <SettingsList title={`${groupTitles[group]} · ${items.length}`}>
+              {items.map((routine) => (
+                <RoutineRow key={routine.id} routine={routine} showPrompt {...actions} />
+              ))}
+            </SettingsList>
+          </div>
+        ))}
+      </div>
+    );
+  return (
+    <div className="grid min-w-0 gap-4">
+      <p className="text-sm text-muted-foreground">
+        Work {name} starts on a schedule. {name} can also add and change routines; you approve them
+        before they run.
+      </p>
+      {routines.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2">
+          <Input
+            type="search"
+            aria-label="Search routines"
+            placeholder={`Search ${routines.length} routines`}
+            className="w-72 max-w-full"
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+          />
+          <SegmentedControl
+            aria-label="Show routines"
+            value={filter}
+            options={filterOptions}
+            onValueChange={setFilter}
+          />
+          <div className="ml-auto">
+            <NewRoutineButton onAdd={onAdd} />
+          </div>
+        </div>
       )}
+      {content}
       {error && routines.length > 0 && (
         <ErrorState variant="compact" title="Couldn’t refresh routines" onRetry={onRetry} />
       )}
-    </SettingsSection>
+    </div>
   );
 }

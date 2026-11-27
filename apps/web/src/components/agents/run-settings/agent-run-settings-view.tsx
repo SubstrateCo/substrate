@@ -1,155 +1,131 @@
-import {
-  agentTriggers,
-  type AgentRunSettings,
-  type AgentTriggerSetting,
-} from "@substrate/contracts/agents";
+import { agentTriggers, type AgentTriggerSetting } from "@substrate/contracts/agents";
 
-import { useState, type ComponentProps, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
-import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
-import { useRegisterDraft } from "@/components/feedback/unsaved-drafts-context";
-import {
-  SettingsCard,
-  SettingsFooter,
-  SettingsRow,
-  SettingsSection,
-} from "@/components/layout/settings-section";
+import { SettingsCard, SettingsRow } from "@/components/layout/settings-section";
+import { Item, ItemActions, ItemContent, ItemMedia } from "@/components/ui/item";
 import { Switch } from "@/components/ui/switch";
 import { homeDeviceLabel } from "@/lib/agents/triggers";
 import { Laptop } from "lucide-react";
 
-export function RunsOnCard({ children, action }: { children: ReactNode; action?: ReactNode }) {
+type HomeDevice = { name: string; online: boolean; current: boolean } | null;
+
+/** "When it runs": the shared frame of the card and its loading view. */
+export function WhenItRunsCard({ children }: { children: ReactNode }) {
   return (
-    <SettingsCard title="Runs on">
-      <div className="flex flex-wrap items-center gap-3">
-        <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-muted">
-          <Laptop aria-hidden="true" className="size-4 text-muted-foreground" />
-        </span>
-        <div className="min-w-0 flex-1">{children}</div>
-        {action}
-      </div>
+    <SettingsCard title="When it runs" description="Changes here save at once.">
+      <div className="grid min-w-0 divide-y">{children}</div>
     </SettingsCard>
   );
 }
 
-export function TriggerCard({ children, footer }: { children: ReactNode; footer?: ReactNode }) {
+export function RunsOnRow({ device, action }: { device: ReactNode; action?: ReactNode }) {
   return (
-    <SettingsCard title="Triggers" description="Messages that start this agent." footer={footer}>
-      <ul className="-mx-5 -mb-5 divide-y border-t">{children}</ul>
-    </SettingsCard>
+    <Item size="xs">
+      <ItemMedia variant="icon">
+        <Laptop aria-hidden="true" className="text-muted-foreground" />
+      </ItemMedia>
+      <ItemContent className="min-w-0">{device}</ItemContent>
+      {action && <ItemActions>{action}</ItemActions>}
+    </Item>
   );
 }
 
-export function TriggerRow(props: ComponentProps<typeof SettingsRow>) {
-  return (
-    <li className="px-2">
-      <SettingsRow {...props} />
-    </li>
-  );
-}
-
+/**
+ * Where the agent runs, whether it is on, and which messages start it. Each switch saves at once,
+ * so this card has no footer and holds no draft.
+ */
 export function AgentRunSettingsView({
-  name,
-  settings,
+  enabled,
+  triggers,
+  homeDevice,
   canRunHere,
   moving,
   saving,
   moveError,
   saveError,
   onRunHere,
-  onSave,
+  onEnabledChange,
+  onTriggerChange,
 }: {
-  name: string;
-  settings: AgentRunSettings;
+  enabled: boolean;
+  triggers: readonly AgentTriggerSetting[];
+  homeDevice: HomeDevice;
   /** Only the desktop app can become an agent's home. */
   canRunHere: boolean;
   moving: boolean;
+  /** A switch's change is being saved. */
   saving: boolean;
   /** Moving the agent to this device failed. */
   moveError?: Error | null;
-  /** Saving the triggers failed. */
+  /** Saving a switch failed. */
   saveError?: Error | null;
   onRunHere: () => void;
-  onSave: (triggers: AgentTriggerSetting[], onSuccess: () => void) => void;
+  onEnabledChange: (enabled: boolean) => void;
+  onTriggerChange: (kind: AgentTriggerSetting["kind"], enabled: boolean) => void;
 }) {
-  const [draft, setDraft] = useState<AgentTriggerSetting[] | null>(null);
-  const triggers = draft ?? settings.triggers;
-  const update = (kind: AgentTriggerSetting["kind"], change: Partial<AgentTriggerSetting>) =>
-    setDraft((current) =>
-      (current ?? settings.triggers).map((trigger) =>
-        trigger.kind === kind ? { ...trigger, ...change } : trigger,
-      ),
-    );
-  const device = settings.homeDevice;
-  const dirty = triggers.some(
-    (trigger) =>
-      settings.triggers.find((saved) => saved.kind === trigger.kind)?.enabled !== trigger.enabled,
-  );
-  useRegisterDraft("run", dirty, () => setDraft(null));
   return (
-    <SettingsSection
-      title="Run settings"
-      label={`Run settings for ${name}`}
-      description="Choose where this agent runs and which messages start it."
-    >
-      <RunsOnCard
+    <WhenItRunsCard>
+      <RunsOnRow
+        device={
+          <>
+            <p className="text-sm font-medium">{homeDeviceLabel(homeDevice)}</p>
+            {!canRunHere && !homeDevice?.current && (
+              <p className="text-xs text-muted-foreground">
+                Open Substrate on a desktop to run this agent there.
+              </p>
+            )}
+            <FormMessage
+              error={moveError}
+              errorDescription="We couldn’t move this agent to this device. Try again."
+            />
+          </>
+        }
         action={
           canRunHere &&
-          !device?.current && (
+          !homeDevice?.current && (
             <PendingButton size="sm" variant="outline" pending={moving} onClick={onRunHere}>
               Run on this device
             </PendingButton>
           )
         }
-      >
-        <p className="text-sm font-medium">{homeDeviceLabel(device)}</p>
-        {!canRunHere && !device?.current && (
-          <p className="text-xs text-muted-foreground">
-            Open Substrate on a desktop to run this agent there.
-          </p>
-        )}
-        <FormMessage
-          error={moveError}
-          errorDescription="We couldn’t move this agent to this device. Try again."
-        />
-      </RunsOnCard>
-      <TriggerCard
-        footer={
-          <SettingsFooter
-            dirty={dirty}
-            pending={saving}
-            error={
-              saveError &&
-              actionErrorMessage(saveError, "We couldn’t save run settings. Try again.")
-            }
-            onDiscard={() => setDraft(null)}
-            onSave={() => onSave(triggers, () => setDraft(null))}
+      />
+      <SettingsRow
+        label="Enabled"
+        description="Allow this agent to join conversations and respond to its triggers."
+        htmlFor="agent-enabled"
+        control={
+          <Switch
+            id="agent-enabled"
+            checked={enabled}
+            disabled={saving}
+            onCheckedChange={onEnabledChange}
           />
         }
-      >
-        {triggers.map((trigger) => {
-          const meta = agentTriggers[trigger.kind];
-          const id = `agent-trigger-${trigger.kind}`;
-          return (
-            <TriggerRow
-              key={trigger.kind}
-              label={meta.title}
-              description={meta.description}
-              htmlFor={id}
-              control={
-                <Switch
-                  id={id}
-                  checked={trigger.enabled}
-                  disabled={saving}
-                  onCheckedChange={(enabled) => update(trigger.kind, { enabled })}
-                />
-              }
-            />
-          );
-        })}
-      </TriggerCard>
-    </SettingsSection>
+      />
+      {triggers.map((trigger) => {
+        const meta = agentTriggers[trigger.kind];
+        const id = `agent-trigger-${trigger.kind}`;
+        return (
+          <SettingsRow
+            key={trigger.kind}
+            label={meta.title}
+            description={meta.description}
+            htmlFor={id}
+            control={
+              <Switch
+                id={id}
+                checked={trigger.enabled}
+                disabled={saving}
+                onCheckedChange={(next) => onTriggerChange(trigger.kind, next)}
+              />
+            }
+          />
+        );
+      })}
+      <FormMessage error={saveError} errorDescription="We couldn’t save that change. Try again." />
+    </WhenItRunsCard>
   );
 }

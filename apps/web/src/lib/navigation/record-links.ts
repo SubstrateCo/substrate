@@ -3,7 +3,7 @@ import type { CrmExport } from "@substrate/contracts/crm/export";
 
 import { linkOptions } from "@tanstack/react-router";
 
-import type { AgentPageSection } from "@/lib/agent-work/agent-sections";
+import type { AgentSettingsPage, AgentView } from "@/lib/agent-work/agent-sections";
 
 /** A task opens in its project. Pass the link to `Link`, `navigate`, or `useRecordUrl`. */
 export function workLink(organizationId: string, projectEntityId: string, taskEntityId?: string) {
@@ -49,20 +49,28 @@ export function messageLink(organizationId: string, conversationId: string, mess
   });
 }
 
-/** An agent's page, or Needs you without `agentId`. Messages is the default section. */
+/**
+ * An agent's page, or Needs you without `agentId`. Messages is the default view; `settings` opens
+ * the settings sheet on that page over the view.
+ */
 export function agentLink(
   organizationId: string,
   agentId?: string,
-  section?: AgentPageSection,
-  target?: { turnId?: string; messageId?: string },
+  target?: {
+    view?: AgentView;
+    settings?: AgentSettingsPage;
+    turnId?: string;
+    messageId?: string;
+  },
 ) {
+  const { view, ...rest } = target ?? {};
   return linkOptions({
     to: "/agents",
     search: {
       workspaceId: organizationId,
       agentId,
-      section: section === "messages" ? undefined : section,
-      ...target,
+      view: view === "messages" ? undefined : view,
+      ...rest,
     },
   });
 }

@@ -253,14 +253,18 @@ test("the owner approves an agent's routine and reviews its work from a browser"
 
   // The browser runs no agent, so routines and activity come from the server.
   const user = await client(owner);
-  await visit(user, undefined, "/agents", { agentId: agent.id, section: "routines" });
-  const routines = user.page.getByRole("list", { name: "Routines", exact: true });
+  // The overview lists only what needs the owner and the next runs; "Show all" opens the list.
+  await visit(user, undefined, "/agents", { agentId: agent.id, settings: "overview" });
+  const sheet = user.page.getByRole("dialog", { name: "Agent settings", exact: true });
+  await sheet.getByRole("button", { name: "Manage routines", exact: true }).click();
+  const routines = sheet.getByRole("list", { name: "Routines", exact: true });
   await expect(routines.getByText("Needs your approval", { exact: true })).toBeVisible();
   await routines.getByRole("button", { name: `Approve ${name}`, exact: true }).click();
   await expect(routines.getByText("Needs your approval", { exact: true })).toHaveCount(0);
   await expect(user.page.getByText(`${name} approved.`)).toBeVisible();
 
-  await user.page.getByRole("tab", { name: "Activity", exact: true }).click();
-  const activity = user.page.getByRole("list", { name: "Activity", exact: true });
-  await expect(activity.getByText("Checked in", { exact: true })).toBeVisible();
+  await sheet.getByRole("button", { name: "Close agent settings", exact: true }).click();
+  await user.page.getByRole("radio", { name: "Work", exact: true }).click();
+  const work = user.page.getByRole("list", { name: "Work", exact: true });
+  await expect(work.getByText("Checked in", { exact: true })).toBeVisible();
 });

@@ -4,24 +4,19 @@ import type { ReactNode } from "react";
 
 import { WorkOrb } from "../work-orb";
 import { toneText } from "@/components/feedback/tag-styles";
+import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import {
-  agentConversationSections,
-  isAgentSettingsSection,
-  type AgentConversationSection,
-  type AgentPageSection,
-} from "@/lib/agent-work/agent-sections";
+import { Button } from "@/components/ui/button";
+import type { AgentView } from "@/lib/agent-work/agent-sections";
 import type { AgentHeaderStatus } from "@/lib/agent-work/status";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
-import { Bot, CircleAlert, MonitorOff } from "lucide-react";
+import { Bot, CircleAlert, MonitorOff, Settings } from "lucide-react";
 
-const labels: Record<AgentConversationSection, string> = {
-  messages: "Messages",
-  activity: "Activity",
-  routines: "Routines",
-};
+const viewOptions = [
+  { value: "messages", label: "Messages" },
+  { value: "work", label: "Work" },
+] as const satisfies readonly { value: AgentView; label: string }[];
 
 function HeaderStatusIcon({ status }: { status: AgentHeaderStatus }) {
   if (status.orb) return <WorkOrb state={status.orb} />;
@@ -58,80 +53,71 @@ function HeaderStatus({
   );
 }
 
+/**
+ * One agent: its conversation or its work, with settings in a sheet over either. There are no
+ * tabs; the view switch and the Settings button sit in the header.
+ */
 export function AgentPageView({
   name,
   status,
   elsewhere,
-  section,
-  onSectionChange,
+  view,
+  onViewChange,
+  settingsOpen,
+  onSettingsChange,
   messages,
-  activity,
-  routines,
-  settings,
+  work,
 }: {
   name: ReactNode;
   status?: AgentHeaderStatus | null;
   /** The conversation where the agent works now, when it is not this page's conversation. */
   elsewhere?: { link: RecordLink; label: string };
-  section: AgentPageSection;
-  onSectionChange: (section: AgentPageSection) => void;
+  view: AgentView;
+  onViewChange: (view: AgentView) => void;
+  settingsOpen: boolean;
+  onSettingsChange: (open: boolean) => void;
   messages: ReactNode;
-  activity: ReactNode;
-  routines: ReactNode;
-  settings: ReactNode;
+  work: ReactNode;
 }) {
-  const tab = isAgentSettingsSection(section) ? "settings" : section;
   return (
     <section aria-label="Agent" className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface">
       <PageHeader
         variant="pane"
-        title={name}
+        title={
+          <span className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="truncate">{name}</span>
+            {status && <HeaderStatus status={status} elsewhere={elsewhere} />}
+          </span>
+        }
         icon={<Bot aria-hidden="true" />}
-        actions={status && <HeaderStatus status={status} elsewhere={elsewhere} />}
+        actions={
+          <div className="flex items-center gap-2">
+            <SegmentedControl
+              aria-label="Agent view"
+              value={view}
+              options={viewOptions}
+              onValueChange={onViewChange}
+            />
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              aria-pressed={settingsOpen}
+              onClick={() => onSettingsChange(!settingsOpen)}
+            >
+              <Settings aria-hidden="true" />
+              Settings
+            </Button>
+          </div>
+        }
       />
-      <Tabs
-        value={tab}
-        activationMode="manual"
-        onValueChange={(value) => {
-          if (value === "settings") return onSectionChange("general");
-          const next = agentConversationSections.find((item) => item === value);
-          if (next) onSectionChange(next);
-        }}
-        className="min-h-0 flex-1"
-      >
-        <div className="shrink-0 overflow-x-auto border-b px-4 pb-1">
-          <TabsList variant="line" aria-label="Agent views">
-            {agentConversationSections.map((item) => (
-              <TabsTrigger key={item} value={item}>
-                {labels[item]}
-              </TabsTrigger>
-            ))}
-            <TabsTrigger value="settings">Settings</TabsTrigger>
-          </TabsList>
+      {view === "messages" ? (
+        <div className="flex min-h-0 flex-1 flex-col">{messages}</div>
+      ) : (
+        <div className="min-h-0 flex-1 overflow-y-auto p-6">
+          <div className="mx-auto w-full max-w-4xl">{work}</div>
         </div>
-        <TabsContent value="messages" className="flex min-h-0 flex-1 flex-col">
-          {messages}
-        </TabsContent>
-        <AgentSectionPanel value="activity">{activity}</AgentSectionPanel>
-        <AgentSectionPanel value="routines">{routines}</AgentSectionPanel>
-        <AgentSectionPanel value="settings">{settings}</AgentSectionPanel>
-      </Tabs>
+      )}
     </section>
-  );
-}
-
-function AgentSectionPanel({
-  value,
-  children,
-}: {
-  value: Exclude<AgentConversationSection, "messages"> | "settings";
-  children: ReactNode;
-}) {
-  return (
-    <TabsContent value={value} className="flex min-h-0 flex-1 flex-col">
-      <div className="min-h-0 flex-1 overflow-y-auto p-6">
-        <div className="mx-auto w-full max-w-4xl">{children}</div>
-      </div>
-    </TabsContent>
   );
 }

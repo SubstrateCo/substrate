@@ -1,38 +1,78 @@
-import type { AgentRunSettings as AgentRunSettingsData } from "@substrate/contracts/agents";
+import type {
+  AgentConfiguration,
+  AgentRunSettings as AgentRunSettingsData,
+} from "@substrate/contracts/agents";
 
 import { AgentRunSettingsView } from "./agent-run-settings-view";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { triggersInput } from "@/lib/agents/triggers";
 import { isDesktop } from "@/lib/desktop/auth";
-import { useAgentRunSettingsMutations } from "@/queries/agents/mutations";
+import { useAgentMutations, useAgentRunSettingsMutations } from "@/queries/agents/mutations";
 import { toast } from "sonner";
 
+/** The saved agent as a save input, with one change. Leaves any draft in the details card alone. */
+function savedAgent(agent: AgentConfiguration, enabled: boolean) {
+  return {
+    id: agent.id,
+    name: agent.name,
+    instructions: agent.instructions,
+    harness: agent.harness,
+    model: agent.model,
+    enabled,
+    useStartupDefaults: agent.useStartupDefaults,
+  };
+}
+
 export function AgentRunSettings({
-  name,
+  agent,
   settings,
 }: {
-  name: string;
+  agent: AgentConfiguration;
   settings: AgentRunSettingsData;
 }) {
   const { userId } = useWorkspaceScope();
   const { home, triggers } = useAgentRunSettingsMutations(userId, settings.agentId);
+  const { save } = useAgentMutations(userId);
+  // Show a switch's new state while it saves; the catalog refresh then confirms it.
+  const shownTriggers = triggers.isPending
+    ? settings.triggers.map((trigger) => ({
+        ...trigger,
+        enabled:
+          triggers.variables.triggers.find((next) => next.kind === trigger.kind)?.enabled ??
+          trigger.enabled,
+      }))
+    : settings.triggers;
+  const shownEnabled = save.isPending ? save.variables.enabled : agent.enabled;
   return (
     <AgentRunSettingsView
-      name={name}
-      settings={settings}
+      enabled={shownEnabled}
+      triggers={shownTriggers}
+      homeDevice={settings.homeDevice}
       canRunHere={isDesktop()}
       moving={home.isPending}
-      saving={triggers.isPending}
+      saving={triggers.isPending || save.isPending}
       moveError={home.error}
-      saveError={triggers.error}
+      saveError={triggers.error ?? save.error}
       onRunHere={() =>
         home.mutate(undefined, {
-          onSuccess: () => toast.success(`${name} now runs on this device.`),
+          onSuccess: () => toast.success(`${agent.name} now runs on this device.`),
         })
       }
-      onSave={(next, onSuccess) =>
-        triggers.mutate(triggersInput(settings.agentId, next), { onSuccess })
-      }
+      onEnabledChange={(enabled) => {
+        triggers.reset();
+        save.mutate(savedAgent(agent, enabled));
+      }}
+      onTriggerChange={(kind, enabled) => {
+        save.reset();
+        triggers.mutate(
+          triggersInput(
+            settings.agentId,
+            settings.triggers.map((trigger) =>
+              trigger.kind === kind ? { ...trigger, enabled } : trigger,
+            ),
+          ),
+        );
+      }}
     />
   );
 }

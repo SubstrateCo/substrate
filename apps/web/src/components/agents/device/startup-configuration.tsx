@@ -15,14 +15,7 @@ import { Blocks } from "lucide-react";
 /** Skills that Substrate writes into the agent folder. */
 export function StartupSkills({ skills, scanned }: { skills: HarnessSkill[]; scanned: boolean }) {
   return (
-    <SettingsList
-      title="Substrate skills"
-      description={
-        scanned
-          ? "Read from this agent’s local files. Substrate updates these skills on sync."
-          : "Default skill definitions. Open the desktop app to inspect this agent’s local files."
-      }
-    >
+    <SettingsList label="Substrate skills">
       {skills.map((skill) => (
         <Item key={skill.id} asChild size="xs">
           <li>

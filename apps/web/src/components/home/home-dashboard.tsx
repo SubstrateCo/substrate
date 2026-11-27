@@ -80,7 +80,7 @@ export function HomeDashboard() {
       title: `${turn.agent.name} needs you`,
       description: "Work stopped · retry, start fresh, or dismiss it",
       icon: <Hand className="size-4 text-warning" />,
-      link: agentLink(organizationId, turn.userAgentId, "activity", { turnId: turn.id }),
+      link: agentLink(organizationId, turn.userAgentId, { view: "work", turnId: turn.id }),
       trailing: "Review",
     })),
     ...items.map((item): HomeItem => ({
@@ -94,9 +94,9 @@ export function HomeDashboard() {
     ...agents.map((status): HomeItem => ({
       id: status.userAgentId,
       title: `${status.agent.name} needs you`,
-      description: "Work stopped · open activity to decide what happens next",
+      description: "Work stopped · open its work to decide what happens next",
       icon: <Hand className="size-4 text-warning" />,
-      link: agentLink(organizationId, status.userAgentId, "activity"),
+      link: agentLink(organizationId, status.userAgentId, { view: "work" }),
       trailing: "Review",
     })),
     ...mentions.map((item): HomeItem => ({

@@ -77,7 +77,7 @@ export function NeedsYouView({
                       size="xs"
                       variant="link"
                       className="-mx-2"
-                      aria-label={`${entry.agentName}, open activity`}
+                      aria-label={`${entry.agentName}, open agent`}
                     >
                       <Link {...entry.agentLink}>{entry.agentName}</Link>
                     </Button>
