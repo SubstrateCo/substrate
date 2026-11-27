@@ -70,9 +70,13 @@ export const harnessNativeConfigurationSchema = z.object({
   harness: z.enum(harnessKinds),
   skills: z.array(harnessSkillSchema.strip()),
 });
-/** The agent folder's skills, plus the agent's MCP servers from Substrate's local storage. */
+/**
+ * The agent folder's skills, plus the agent's MCP servers and working folder from Substrate's
+ * local storage. A null workspace: sessions work in the agent folder.
+ */
 export const harnessLocalConfigurationSchema = harnessNativeConfigurationSchema.extend({
   mcpServers: z.array(harnessMcpServerSchema).max(maxHarnessMcpServers),
+  workspace: z.string().nullable(),
 });
 export const harnessInspectionSchema = z.object({
   harness: z.enum(harnessKinds),

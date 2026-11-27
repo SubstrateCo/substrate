@@ -225,7 +225,8 @@ test("owner agent writes return committed effects without a workspace", async ()
     instructions: "Help",
     harness: "opencode",
     enabled: true,
-    useStartupDefaults: true,
+    disabledApps: [],
+    substrateGuide: true,
   });
   expect(saved.hints).toEqual([{ audience: realtimeKeys.user("alice"), domain: "agents" }]);
   const deleted = await owner.agents.deleteAgent(saved.result.id);

@@ -34,6 +34,8 @@ export interface AcpPeerCapabilities {
   delete: boolean;
   /** session/options (draft): config options without a session. */
   sessionOptions: boolean;
+  /** Session setup accepts extra workspace roots besides cwd. */
+  additionalDirectories: boolean;
   systemPrompt: { append: boolean; override: boolean };
   mcp: { http: boolean; stdio: boolean; acp: boolean };
   /** _meta.steering.supported (_session/steering) on v1, or native prompt-while-busy on v2. */
@@ -94,6 +96,8 @@ export interface AcpConnectOptions {
   /** Managed prefix; sent as systemPrompt append when prefixChannel is systemPrompt. */
   prefix: string;
   resumeId?: string;
+  /** Added to the launch environment of this session's agent process. */
+  launchEnvironment?: Record<string, string>;
   context: AdapterContext;
 }
 

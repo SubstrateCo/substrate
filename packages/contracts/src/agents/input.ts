@@ -5,6 +5,13 @@ import { z } from "zod";
 
 const id = z.uuid();
 const name = z.string().trim().min(1).max(200);
+/** Optional apps whose Substrate skill and tools an agent can go without. */
+export const agentOptionalAppIds = ["tasks", "crm", "inbox"] as const;
+export type AgentOptionalAppId = (typeof agentOptionalAppIds)[number];
+const disabledApps = z
+  .array(z.enum(agentOptionalAppIds))
+  .max(agentOptionalAppIds.length)
+  .refine((apps) => new Set(apps).size === apps.length, "Apps must be unique.");
 export const saveAgentInput = z.strictObject({
   id: id.optional(),
   name,
@@ -12,7 +19,10 @@ export const saveAgentInput = z.strictObject({
   harness: z.enum(harnessKinds),
   model: z.string().trim().min(1).max(500).optional(),
   enabled: z.boolean(),
-  useStartupDefaults: z.boolean().default(true),
+  /** Apps whose Substrate skill and tools the agent does not get, even when they are enabled. */
+  disabledApps: disabledApps.default([]),
+  /** Adds Substrate's workspace guide before the agent's own instructions. */
+  substrateGuide: z.boolean().default(true),
 });
 export const deleteAgentInput = z.strictObject({ id });
 export const saveSkillInput = z.strictObject({
@@ -38,7 +48,8 @@ const agentConfiguration = z.object({
   harness: z.enum(harnessKinds),
   model: z.string().optional(),
   enabled: z.boolean(),
-  useStartupDefaults: z.boolean(),
+  disabledApps: z.array(z.enum(agentOptionalAppIds)),
+  substrateGuide: z.boolean(),
   avatar: agentAvatarCode,
 });
 export type AgentConfiguration = z.infer<typeof agentConfiguration>;

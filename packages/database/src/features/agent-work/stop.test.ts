@@ -29,7 +29,8 @@ async function claimedTurn() {
         instructions: row!.instructions,
         harness: row!.harness,
         enabled: false,
-        useStartupDefaults: row!.useStartupDefaults,
+        disabledApps: row!.disabledApps,
+        substrateGuide: row!.substrateGuide,
       }),
     );
   };

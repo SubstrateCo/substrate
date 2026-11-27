@@ -28,6 +28,7 @@ import {
   signInHarnessMethods,
 } from "@substrate/contracts/harness/ipc";
 import type { HarnessAPI, HarnessMethod } from "@substrate/contracts/harness/ipc";
+import { workspaceDirectory } from "@substrate/harness-runtime/paths";
 
 import {
   DesktopSessionAuthority,
@@ -41,6 +42,7 @@ import {
   prepareMcpServerSave,
   requireHomedHere,
   type LocalMcpServers,
+  type LocalWorkspaces,
 } from "./local-configuration.ts";
 import { join } from "node:path";
 import { z } from "zod";
@@ -52,6 +54,13 @@ const interruptReceiptSchema = z.object({ stillQueuedInputIds: z.array(z.string(
 
 /** A native command failed after authorization passed. Other sessions keep running. */
 class CommandFailure extends Error {}
+
+/** The chosen working folder cannot be used. The message names the reason, never the path. */
+class WorkspaceRejected extends Error {
+  constructor(message = "This folder can't be used as a working folder.") {
+    super(message);
+  }
+}
 
 /**
  * A main-only session command failed. code is a fixed harness error code such as
@@ -82,6 +91,10 @@ export function createHarnessController(options: {
   localToolHandler?: LocalToolProxy;
   /** The account's local storage of user-added MCP servers. */
   mcpServers: LocalMcpServers;
+  /** The account's local storage of agents' working folders. */
+  workspaces: LocalWorkspaces;
+  /** Asks the owner for a folder in a native dialog. Null when they cancel. */
+  pickWorkspace: () => Promise<string | null>;
   onResult?: Parameters<typeof createMcpApiProxy>[0]["onResult"];
   approval?: Parameters<typeof createMcpApiProxy>[0]["approval"];
   createWorker: (
@@ -157,9 +170,29 @@ export function createHarnessController(options: {
     target: HarnessWorker,
     method: z.infer<typeof localMethodSchema>,
     value: IpcValue,
-    organizationId: string,
+    auth: Authorization,
   ) {
+    const { organizationId } = auth;
     switch (method) {
+      case "chooseWorkspace": {
+        const { agentId } = rendererLocalSchemas.chooseWorkspace.parse(value);
+        await requireAgent(agentId);
+        const chosen = await options.pickWorkspace();
+        if (chosen === null) return;
+        const accountDirectory = join(options.accountsDirectory, auth.accountKey);
+        let path: string;
+        try {
+          path = await workspaceDirectory(accountDirectory, chosen);
+        } catch (error) {
+          throw new WorkspaceRejected(error instanceof Error ? error.message : undefined);
+        }
+        return options.workspaces.set(organizationId, agentId, path);
+      }
+      case "clearWorkspace": {
+        const { agentId } = rendererLocalSchemas.clearWorkspace.parse(value);
+        await requireAgent(agentId);
+        return options.workspaces.set(organizationId, agentId, null);
+      }
       case "saveMcpServer": {
         const { agentId, server } = prepareMcpServerSave(value);
         await requireAgent(agentId);
@@ -177,6 +210,7 @@ export function createHarnessController(options: {
         return harnessLocalConfigurationSchema.parse({
           ...native,
           mcpServers: await options.mcpServers.list(organizationId, input.agentId),
+          workspace: await options.workspaces.get(organizationId, input.agentId),
         });
       }
       case "listModels": {
@@ -282,7 +316,7 @@ export function createHarnessController(options: {
       if (localMethod.success) {
         if (!worker || identity !== auth.identity) throw new Error("Organization unavailable.");
         const local = capture();
-        const result = await runLocal(worker, localMethod.data, value, auth.organizationId);
+        const result = await runLocal(worker, localMethod.data, value, auth);
         local.assertCurrent(auth.identity);
         return result;
       }
@@ -303,6 +337,8 @@ export function createHarnessController(options: {
       if (error instanceof CommandFailure) throw new Error("Harness command failed.");
       if (error instanceof AgentNotHomedHere)
         throw new HarnessCommandError("agent-not-home", error.message);
+      if (error instanceof WorkspaceRejected)
+        throw new HarnessCommandError("invalid-workspace", error.message);
       // Only lost access, another account or a stopped worker ends the worker. Network,
       // backend and command failures leave it and its live sessions running.
       if (

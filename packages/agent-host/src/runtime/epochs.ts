@@ -1,5 +1,5 @@
 import type { EpochRotationReason, NativeSessionRow } from "@substrate/client-storage/agent-work";
-import { appAvailability, POLICY_VERSION } from "@substrate/contracts/agent-tools";
+import { agentApps, appAvailability, POLICY_VERSION } from "@substrate/contracts/agent-tools";
 import { type AdapterCapabilities, type Usage } from "@substrate/contracts/harness-runtime";
 
 import type { RuntimeContext } from "./context.ts";
@@ -51,13 +51,25 @@ export function createEpochs(context: RuntimeContext) {
   }
 
   return {
-    /** App changes use the existing policy rotation, without editing an epoch's frozen prefix. */
-    async refreshApps() {
-      if (!context.enabledApps) return;
-      const availability = appAvailability(await context.enabledApps());
-      for (const session of await context.store.nativeSessions.withPrefix(context.organizationId))
-        if (!session.rotation && !session.prefix!.split("\n").includes(availability))
+    /**
+     * Rotates the epochs that no longer match their agent's settings, without editing their
+     * frozen prefix or working folder: a change to the organization's apps or to the apps the
+     * agent goes without rotates for policy, and a new working folder rotates for workspace.
+     */
+    async refreshSettings() {
+      const org = context.organizationId;
+      const enabledApps = await context.enabledApps?.();
+      const agents = new Map((await context.agents.all()).map((agent) => [agent.id, agent]));
+      for (const session of await context.store.nativeSessions.withPrefix(org)) {
+        const agent = agents.get(session.userAgentId);
+        // A missing agent runs no more turns here, so its sessions keep their epoch.
+        if (!agent || session.rotation) continue;
+        const availability = enabledApps && appAvailability(agentApps(enabledApps, agent));
+        if (availability && !session.prefix!.split("\n").includes(availability))
           await rotate(session.sessionId, "policy");
+        else if (session.workspace !== (await context.store.workspaces.get(org, agent.id)))
+          await rotate(session.sessionId, "workspace");
+      }
     },
     /** After a finished turn: compact natively where the harness can, else rotate. */
     async afterTurn(sessionId: string, usage: Usage | null, capabilities: AdapterCapabilities) {

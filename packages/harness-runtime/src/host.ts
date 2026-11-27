@@ -24,8 +24,8 @@ import { HarnessError } from "./errors.ts";
 import { createStartupMcp, type McpLease } from "./mcp.ts";
 import { discoverModels } from "./models/discover.ts";
 import { deleteNativeSkill, saveNativeSkill, scanNativeSkills } from "./native-config.ts";
-import { agentDirectory, helperDirectory, safeId, safePath } from "./paths.ts";
-import { connectHarness, harnessDefinitions } from "./registry.ts";
+import { agentDirectory, helperDirectory, safeId, safePath, workspaceDirectory } from "./paths.ts";
+import { connectHarness, harnessDefinitions, type HarnessDefinition } from "./registry.ts";
 import {
   nativeSessionMachine,
   transitionSession,
@@ -136,6 +136,8 @@ interface LiveSession extends SessionLifecycle {
   epoch: number;
   /** The user-added MCP servers, as JSON, that the native session was set up with. */
   mcpServers: string;
+  /** The working folder the open command named, if any. */
+  workspace?: string;
   turn?: LiveTurn;
   idleSince: number;
 }
@@ -297,12 +299,21 @@ export async function createHarnessHost<Binding = unknown>(
             agent.id,
             command.folder.helperId,
           );
-    const definition = harnessDefinitions[agent.harness];
+    const definition: HarnessDefinition = harnessDefinitions[agent.harness];
+    const workspace = command.workspace
+      ? await workspaceDirectory(accountDirectory, command.workspace)
+      : undefined;
     // The instructions file follows the agent at each open, not only at first write.
     await writeDefaultFiles(folder, agent, {
       replace: true,
       managedPrefix: definition.prefixChannel === "instructions" ? command.prefix : undefined,
     });
+    // A harness working in another folder does not read this folder's instructions file. Unless
+    // its launch environment points it there, they follow the prefix in the system prompt.
+    const prefix =
+      workspace && !definition.managedEnvironment
+        ? `${command.prefix}\n${agent.instructions}`
+        : command.prefix;
     const tools = agent.tools?.[command.folder === "main" ? "main" : "helper"];
     const lease =
       mcp && tools
@@ -321,7 +332,8 @@ export async function createHarnessHost<Binding = unknown>(
     try {
       const context: AdapterContext = {
         model: agent.model,
-        directory: folder,
+        directory: workspace ?? folder,
+        managedDirectory: workspace && folder,
         lease,
         hostTools,
         mcpServers: command.mcpServers,
@@ -331,19 +343,14 @@ export async function createHarnessHost<Binding = unknown>(
       let adapter: NativeAdapter;
       let resumed = Boolean(command.nativeSessionId);
       try {
-        adapter = await connectNative(
-          agent.harness,
-          context,
-          command.prefix,
-          command.nativeSessionId,
-        );
+        adapter = await connectNative(agent.harness, context, prefix, command.nativeSessionId);
       } catch (error) {
         if (!command.nativeSessionId) throw error;
         if (command.requireResume)
           throw new HarnessError("resume-failed", "The native session could not be resumed.", {
             cause: error,
           });
-        adapter = await connectNative(agent.harness, context, command.prefix);
+        adapter = await connectNative(agent.harness, context, prefix);
         resumed = false;
       }
       const ref: HarnessSessionRef = {
@@ -362,6 +369,7 @@ export async function createHarnessHost<Binding = unknown>(
         adapter,
         epoch: command.epoch,
         mcpServers: JSON.stringify(command.mcpServers),
+        workspace: command.workspace,
         lease,
         idleSince: clock.now(),
       });
@@ -468,10 +476,11 @@ export async function createHarnessHost<Binding = unknown>(
         JSON.stringify(existing.ref.folder) !== JSON.stringify(command.folder)
       )
         throw new HarnessError("session-conflict", "Session belongs to another agent folder.");
-      // Changed MCP servers apply at session setup, so the session reopens (and resumes) with them.
+      // Changed MCP servers and working folders apply at session setup, so the session reopens.
       const stale =
         existing.epoch !== command.epoch ||
         existing.mcpServers !== JSON.stringify(command.mcpServers) ||
+        existing.workspace !== command.workspace ||
         (command.nativeSessionId !== undefined &&
           command.nativeSessionId !== existing.ref.nativeSessionId);
       if (!stale && (existing.state === "idle" || existing.state === "running")) {

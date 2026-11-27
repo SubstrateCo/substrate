@@ -16,6 +16,7 @@ import type {
   RecoveryDecision,
 } from "@substrate/contracts/agent-work/control";
 import type { AgentWorkChange } from "@substrate/contracts/agent-work/desktop";
+import type { AgentOptionalAppId } from "@substrate/contracts/agents";
 import type { AppId } from "@substrate/contracts/apps";
 import type {
   HarnessCommand,
@@ -96,6 +97,8 @@ export interface CatalogAgent {
   name: string;
   harness: (typeof harnessKinds)[number];
   enabled: boolean;
+  /** Enabled apps whose Substrate skill and tools the agent does not get. */
+  disabledApps: AgentOptionalAppId[];
   /** The agent's home device is this host. Only home agents run here. */
   home: boolean;
 }
@@ -140,12 +143,12 @@ export interface HarnessPort {
 }
 
 /**
- * The local execution store: native sessions and epochs, turn attempts, transcripts, handoffs
- * and MCP servers. `AgentWorkStore` from `@substrate/client-storage/agent-work` implements it.
+ * The local execution store: native sessions and epochs, turn attempts, transcripts, handoffs,
+ * MCP servers and working folders. `AgentWorkStore` from `@substrate/client-storage/agent-work` implements it.
  */
 export type HostStore = Pick<
   AgentWorkStore,
-  "nativeSessions" | "turnRuns" | "events" | "handoffs" | "mcpServers"
+  "nativeSessions" | "turnRuns" | "events" | "handoffs" | "mcpServers" | "workspaces"
 >;
 
 /** The owner's agents from the server catalog, cached. */

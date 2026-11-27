@@ -42,6 +42,8 @@ export function composeDesktop(options: {
   screenNotifications?: Pick<ScreenNotifications, "center" | "store" | "activate" | "deactivate">;
   openExternal?: (url: string) => void;
   openCalendarEvent?: (target: CalendarEventTarget) => void;
+  /** Asks the owner for an agent's working folder in a native dialog. */
+  pickWorkspace?: () => Promise<string | null>;
 }) {
   const authority = new DesktopSessionAuthority(options);
   const mail = createMailService({ ...options, authority });
@@ -62,6 +64,8 @@ export function composeDesktop(options: {
     authority,
     localToolHandler: (request) => agentWork.handleLocalTool(request),
     mcpServers: agentWork.mcpServers,
+    workspaces: agentWork.workspaces,
+    pickWorkspace: options.pickWorkspace ?? (async () => null),
     onResult: (request, result, decided) => agentWork.observeToolCall(request, result, decided),
     approval: {
       status: (organizationId, requestId) => agentWork.requestStatus(organizationId, requestId),

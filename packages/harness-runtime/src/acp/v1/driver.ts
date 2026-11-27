@@ -79,6 +79,10 @@ function setupV1(setup: AcpSessionSetup): NewSessionRequest {
       }
     }),
   };
+  // NewSessionRequest (:5459), LoadSessionRequest (:5777) and ResumeSessionRequest (:6205)
+  // in dist/v1/unstable/schema/types.gen.d.ts.
+  if (setup.additionalDirectories?.length)
+    request.additionalDirectories = setup.additionalDirectories;
   if (setup.systemPrompt)
     request.systemPrompt = {
       mode: "append",

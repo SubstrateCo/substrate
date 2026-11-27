@@ -132,7 +132,22 @@ test("the instructions channel sends no system prompt", async () => {
   await f.adapter.disconnect();
 });
 
+test("a session in another folder adds its own folder as an extra root", async () => {
+  const f = await open(
+    { agentCapabilities: { sessionCapabilities: { additionalDirectories: {} } } },
+    {},
+    { directory: "C:/project", managedDirectory: "C:/agent" },
+  );
+  expect(f.calls("session/new")).toEqual([
+    { cwd: "C:/project", additionalDirectories: ["C:/agent"], mcpServers: [] },
+  ]);
+  await f.adapter.disconnect();
+});
+
 test("setup fails as unsupported when the agent lacks a required capability", async () => {
+  await rejects(open({}, {}, { directory: "C:/project", managedDirectory: "C:/agent" }), {
+    code: "unsupported-capability",
+  });
   await rejects(open({}, { prefixChannel: "systemPrompt", prefix: "p" }), {
     code: "unsupported-capability",
   });

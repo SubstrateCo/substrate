@@ -19,6 +19,7 @@ function fakePeer(methods: AcpAuthMethod[], options: { logout?: boolean } = {}) 
       close: false,
       delete: false,
       sessionOptions: false,
+      additionalDirectories: false,
       systemPrompt: { append: false, override: false },
       mcp: { http: false, stdio: false, acp: false },
       steering: "none",

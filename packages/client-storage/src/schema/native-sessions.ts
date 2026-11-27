@@ -3,7 +3,7 @@ import type { HarnessKind } from "@substrate/contracts/harness-runtime";
 import { integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 /** Why a session's epoch is rotating. */
-export type EpochRotationReason = "usage" | "turns" | "policy";
+export type EpochRotationReason = "usage" | "turns" | "policy" | "workspace";
 
 /**
  * The native harness session of a server session on this host, one per epoch. The server owns
@@ -26,6 +26,11 @@ export const nativeSessions = sqliteTable(
     prefix: text("prefix"),
     /** The runtime policy version the current epoch's prefix was built with. */
     policyVersion: integer("policy_version"),
+    /**
+     * The working folder of the current epoch, fixed with its first prefix: a native session
+     * resumes only in the folder it started in. Null: the agent's own folder.
+     */
+    workspace: text("workspace"),
     /** Set while the epoch's handoff item waits on the server. */
     rotation: text("rotation").$type<EpochRotationReason>(),
     /** The server reset generation that the current epoch started after. */

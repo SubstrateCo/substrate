@@ -9,4 +9,4 @@ export {
   type ManagedPrefixInput,
 } from "./policy.ts";
 export { agentToolProvider, type AgentToolHandlers } from "./provider.ts";
-export { harnessConfiguration, type RuntimeAgentDefinition } from "./configuration.ts";
+export { agentApps, harnessConfiguration, type RuntimeAgentDefinition } from "./configuration.ts";

@@ -55,5 +55,13 @@ export function useAgentConfigurationMutations(local: LocalAgentConfiguration | 
     onSuccess: (_result, id) =>
       updateServers((servers) => servers.filter((entry) => entry.id !== id)),
   });
-  return { save, remove, reset, saveServer, removeServer };
+  const chooseWorkspace = useMutation<void, Error, void>({
+    mutationFn: run((controller) => controller.chooseWorkspace()),
+    onSuccess,
+  });
+  const clearWorkspace = useMutation<void, Error, void>({
+    mutationFn: run((controller) => controller.clearWorkspace()),
+    onSuccess,
+  });
+  return { save, remove, reset, saveServer, removeServer, chooseWorkspace, clearWorkspace };
 }

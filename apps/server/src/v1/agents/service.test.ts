@@ -10,7 +10,8 @@ const input = {
   instructions: "Help",
   harness: "opencode" as const,
   enabled: true,
-  useStartupDefaults: true,
+  disabledApps: [],
+  substrateGuide: true,
 };
 
 test("agent reads and avatar changes use the resolved owner repository without a workspace", async () => {

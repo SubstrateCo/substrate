@@ -5,6 +5,9 @@ import { prepareLocalInput, prepareMcpServerSave } from "./local-configuration.t
 import { fixture } from "./test-support.ts";
 import { describe, expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
+import { mkdtemp, realpath, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 const agent: AgentConfiguration = {
   id: "agent-1",
@@ -12,7 +15,8 @@ const agent: AgentConfiguration = {
   instructions: "",
   harness: "opencode",
   enabled: true,
-  useStartupDefaults: true,
+  disabledApps: [],
+  substrateGuide: true,
   avatar: "100000",
 };
 
@@ -127,7 +131,7 @@ describe("desktop harness local configuration", () => {
     expect(f.mcpServers.get("org-1/agent-1")).toEqual([]);
     expect(f.calls.length).toBe(calls);
   });
-  test("skills and MCP servers of an agent homed on another desktop are not read or changed here", async () => {
+  test("skills, MCP servers and the working folder of an agent homed elsewhere are not read or changed here", async () => {
     const stored: HarnessMcpServer = {
       id: "tools",
       name: "Tools",
@@ -144,6 +148,8 @@ describe("desktop harness local configuration", () => {
       ["resetDefaults", scope],
       ["saveMcpServer", { agentId: agent.id, name: "other", transport: "stdio", command: "node" }],
       ["deleteMcpServer", { agentId: agent.id, id: "tools" }],
+      ["chooseWorkspace", { agentId: agent.id }],
+      ["clearWorkspace", { agentId: agent.id }],
     ] as const)
       await rejects(f.controller.run(method, value), {
         code: "agent-not-home",
@@ -170,7 +176,53 @@ describe("desktop harness local configuration", () => {
       harness: "codex",
       skills: [],
       mcpServers: [stored],
+      workspace: null,
     });
+  });
+  test("a chosen working folder is stored as its real path and shows in the scan", async () => {
+    const accounts = await mkdtemp(join(tmpdir(), "substrate-accounts-"));
+    const project = await mkdtemp(join(tmpdir(), "substrate-project-"));
+    try {
+      const f = fixture(undefined, [], {
+        agents: [agent],
+        accountsDirectory: accounts,
+        pickedWorkspace: project,
+      });
+      await f.controller.run("synchronize");
+      await f.controller.run("chooseWorkspace", { agentId: "agent-1" });
+      expect(f.workspaces.get("org-1/agent-1")).toBe(await realpath(project));
+      expect(
+        await f.controller.run("scanConfiguration", { harness: "codex", agentId: "agent-1" }),
+      ).toMatchObject({ workspace: await realpath(project) });
+      await f.controller.run("clearWorkspace", { agentId: "agent-1" });
+      expect(f.workspaces.has("org-1/agent-1")).toBe(false);
+    } finally {
+      await rm(accounts, { recursive: true, force: true });
+      await rm(project, { recursive: true, force: true });
+    }
+  });
+  test("a cancelled dialog keeps the working folder, and Substrate's own folders are refused", async () => {
+    const accounts = await mkdtemp(join(tmpdir(), "substrate-accounts-"));
+    try {
+      const cancelled = fixture(undefined, [], { agents: [agent], accountsDirectory: accounts });
+      await cancelled.controller.run("synchronize");
+      cancelled.workspaces.set("org-1/agent-1", "C:\\kept");
+      await cancelled.controller.run("chooseWorkspace", { agentId: "agent-1" });
+      expect(cancelled.workspaces.get("org-1/agent-1")).toBe("C:\\kept");
+
+      const inside = fixture(undefined, [], {
+        agents: [agent],
+        accountsDirectory: accounts,
+        pickedWorkspace: accounts,
+      });
+      await inside.controller.run("synchronize");
+      await rejects(inside.controller.run("chooseWorkspace", { agentId: "agent-1" }), {
+        code: "invalid-workspace",
+      });
+      expect(inside.workspaces.size).toBe(0);
+    } finally {
+      await rm(accounts, { recursive: true, force: true });
+    }
   });
   test("a scan cannot return private configuration after sign-out", async () => {
     let release!: () => void;

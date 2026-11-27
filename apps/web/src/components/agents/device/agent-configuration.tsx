@@ -78,13 +78,11 @@ export function AgentConfiguration({
   agentId,
   harness,
   section,
-  defaults,
   homeDevice,
 }: {
   agentId?: string;
   harness: HarnessKind;
   section: AgentSection;
-  defaults: boolean;
   /** The agent's home desktop. Its skills and MCP servers are edited only there. */
   homeDevice: { name: string; current: boolean } | null;
 }) {
@@ -106,7 +104,7 @@ export function AgentConfiguration({
   } = useStateDialog<ConfigurationDialog>(container);
   const configuration = useQuery(localConfigurationOptions(userId, local));
   const { save, remove, reset, saveServer, removeServer } = useAgentConfigurationMutations(local);
-  const { skills, managedSkills } = skillLists(configuration.data?.skills, !available && defaults);
+  const { skills, managedSkills } = skillLists(configuration.data?.skills, !available);
   const servers = configuration.data?.mcpServers ?? [];
   const skill =
     dialog?.kind === "editSkill" ? skills.find((item) => item.id === dialog.id) : undefined;
@@ -149,7 +147,6 @@ export function AgentConfiguration({
       <McpServersSection
         servers={servers}
         scanned={!!configuration.data}
-        defaults={defaults}
         available={available}
         refresh={refresh}
         status={status}

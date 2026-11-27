@@ -13,6 +13,7 @@ const steeringMeta = z.object({ steering: z.object({ supported: z.literal(true) 
  * - loadSession: AgentCapabilities.loadSession (:1501).
  * - resume, close, delete, sessionOptions: sessionCapabilities.resume (:1737), .close (:1744),
  *   .delete (:1641), .options (:1714). Present and non-null means supported.
+ * - additionalDirectories: sessionCapabilities.additionalDirectories (:1653).
  * - systemPrompt: sessionCapabilities.systemPrompt (:1660) means append; its mode.override
  *   (:1848) adds override.
  * - mcp: mcpCapabilities.http (:1590) and .acp (:1604). Stdio servers need no capability: they
@@ -32,6 +33,7 @@ export function peerCapabilitiesV1(initialized: InitializeResponse): AcpPeerCapa
     close: session.close != null,
     delete: session.delete != null,
     sessionOptions: session.options != null,
+    additionalDirectories: session.additionalDirectories != null,
     systemPrompt: {
       append: session.systemPrompt != null,
       override: session.systemPrompt?.mode?.override != null,
@@ -54,6 +56,7 @@ export function peerCapabilitiesV1(initialized: InitializeResponse): AcpPeerCapa
  *   prompt, cancel and update (:1811-1818). So resume and close need no marker, and loadSession
  *   is session/resume with replayFrom (ResumeSessionRequest.replayFrom :7255).
  * - delete, sessionOptions: session.delete (:1888) and session.options (:1960).
+ * - additionalDirectories: session.additionalDirectories (:1899).
  * - systemPrompt: session.systemPrompt (:1906) means append; its mode.override (:2333) adds
  *   override.
  * - mcp: session.mcp (:1881) with stdio (:2169), http (:2176) and acp (:2189). v2 makes stdio an
@@ -73,6 +76,7 @@ export function peerCapabilitiesV2(initialized: InitializeResponseV2): AcpPeerCa
     close: session != null,
     delete: session?.delete != null,
     sessionOptions: session?.options != null,
+    additionalDirectories: session?.additionalDirectories != null,
     systemPrompt: {
       append: session?.systemPrompt != null,
       override: session?.systemPrompt?.mode?.override != null,

@@ -15,7 +15,8 @@ const agent = {
   instructions: "Help",
   harness: "opencode" as const,
   enabled: true,
-  useStartupDefaults: true,
+  disabledApps: [],
+  substrateGuide: true,
 };
 
 test("saving an agent writes only its configuration fields", async () => {
@@ -57,7 +58,7 @@ test("user definitions do not require organization membership and cannot cross o
   const owner = createAgentRepository(f.db, "solo");
   const other = createAgentRepository(f.db, "bob");
   const saved = await owner.saveAgent(agent);
-  expect(saved.useStartupDefaults).toBe(true);
+  expect(saved).toMatchObject({ disabledApps: [], substrateGuide: true });
   expect((await other.list()).agents).toEqual([]);
   await rejection(other.saveAgent({ ...agent, id: saved.id, name: "Changed" }));
   await rejection(other.deleteAgent(saved.id));
@@ -68,14 +69,20 @@ test("user definitions do not require organization membership and cannot cross o
     name: "Updated",
     model: "test-model",
     enabled: false,
-    useStartupDefaults: false,
+    disabledApps: ["crm", "inbox"],
+    substrateGuide: false,
   });
   expect(updated).toMatchObject({
     id: saved.id,
     name: "Updated",
     model: "test-model",
     enabled: false,
-    useStartupDefaults: false,
+    disabledApps: ["crm", "inbox"],
+    substrateGuide: false,
+  });
+  expect((await owner.list()).agents[0]).toMatchObject({
+    disabledApps: ["crm", "inbox"],
+    substrateGuide: false,
   });
 });
 

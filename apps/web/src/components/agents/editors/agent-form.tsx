@@ -26,8 +26,8 @@ const agentFields = saveAgentInput.extend({
 export type AgentSection = "skills" | "mcps";
 
 /**
- * Whether the name, model, or instructions differ from the saved agent. Enabled is not part of the
- * draft: its switch saves at once in "When it runs".
+ * Whether the name, model, or instructions differ from the saved agent. Enabled, apps and the
+ * guide are not part of the draft: their switches save at once.
  */
 function definitionChanged(values: SaveAgentInput, saved: SaveAgentInput) {
   return (
@@ -89,7 +89,8 @@ export function AgentForm({
         harness: agent.harness,
         model: agent.model,
         enabled: agent.enabled,
-        useStartupDefaults: agent.useStartupDefaults,
+        disabledApps: agent.disabledApps,
+        substrateGuide: agent.substrateGuide,
       }
     : {
         name: "",
@@ -97,7 +98,8 @@ export function AgentForm({
         harness: "opencode",
         model: undefined,
         enabled: true,
-        useStartupDefaults: true,
+        disabledApps: [],
+        substrateGuide: true,
       };
   const form = useForm({
     defaultValues,
@@ -109,8 +111,16 @@ export function AgentForm({
     validators: { onDynamic: agentFields },
     onSubmit: ({ value }) => {
       if (pending) return;
-      // The saved agent owns enabled; its own switch may have changed it since the draft began.
-      const input = agent ? { ...value, enabled: agent.enabled } : value;
+      // The saved agent owns enabled, its apps and its guide; their switches save at once and may
+      // have changed them since the draft began.
+      const input = agent
+        ? {
+            ...value,
+            enabled: agent.enabled,
+            disabledApps: agent.disabledApps,
+            substrateGuide: agent.substrateGuide,
+          }
+        : value;
       onSave(agentFields.parse(input), { onSuccess: () => form.reset(input) });
     },
   });
@@ -159,15 +169,15 @@ export function AgentForm({
         const instructionsField = (
           <form.Subscribe
             selector={(state) =>
-              [state.values.harness, state.values.name, state.values.useStartupDefaults] as const
+              [state.values.harness, state.values.name, state.values.substrateGuide] as const
             }
           >
-            {([harness, name, defaults]) => (
+            {([harness, name, guide]) => (
               <form.Field name="instructions">
                 {(field) => (
                   <AgentInstructions
                     startupInstructions={renderStartupInstructions({ harness, name })}
-                    defaults={defaults ?? true}
+                    defaults={guide ?? true}
                     creating={!agent}
                     value={field.state.value}
                     invalid={!field.state.meta.isValid}

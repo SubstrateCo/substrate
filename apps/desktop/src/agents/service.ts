@@ -20,7 +20,10 @@ import type { HarnessEvent } from "@substrate/contracts/harness-runtime";
 import type { MailScope } from "@substrate/contracts/mail/ipc";
 import type { RealtimeUpdate } from "@substrate/contracts/realtime";
 
-import type { LocalMcpServers } from "../harness/controller/local-configuration.ts";
+import type {
+  LocalMcpServers,
+  LocalWorkspaces,
+} from "../harness/controller/local-configuration.ts";
 import {
   DesktopSessionAuthority,
   HarnessAccessDenied,
@@ -255,8 +258,21 @@ export function createAgentWorkService(options: {
       (await organizationStore(organizationId)).mcpServers.delete(organizationId, agentId, id),
   };
 
+  /** The agents' working folders. A change rotates the agent's sessions to a new epoch. */
+  const workspaces: LocalWorkspaces = {
+    get: async (organizationId, agentId) =>
+      (await organizationStore(organizationId)).workspaces.get(organizationId, agentId),
+    async set(organizationId, agentId, path) {
+      await (
+        await organizationStore(organizationId)
+      ).workspaces.set(organizationId, agentId, path, Date.now());
+      available(active)?.runtime.agentsChanged();
+    },
+  };
+
   return {
     mcpServers,
+    workspaces,
     start() {
       if (transition("start")) void ensure();
       else transition("restart");

@@ -12,6 +12,7 @@ import { realtimeChannel } from "@substrate/contracts/realtime";
 import * as realtimeIPC from "@substrate/contracts/realtime/ipc";
 
 import { installationId } from "./agents/installation.ts";
+import { pickWorkspace } from "./agents/workspace-picker.ts";
 import { composeDesktop } from "./app/composition.ts";
 import { createDesktopAuthClient, sessionTokenCookie } from "./auth/auth-client.ts";
 import { HarnessCommandError } from "./harness/controller/harness-controller.ts";
@@ -363,6 +364,7 @@ function main() {
             showWindow();
             void mainWindow?.loadURL(destination.href).catch(() => {});
           },
+          pickWorkspace,
         });
         const composed = services;
         ipcMain.handle(mailIPC.channel, (event, method, value) => {
@@ -425,6 +427,8 @@ function main() {
           resetDefaults: (input) => composed.harness.run("resetDefaults", input),
           saveMcpServer: (input) => composed.harness.run("saveMcpServer", input),
           deleteMcpServer: (input) => composed.harness.run("deleteMcpServer", input),
+          chooseWorkspace: (input) => composed.harness.run("chooseWorkspace", input),
+          clearWorkspace: (input) => composed.harness.run("clearWorkspace", input),
           signIn: (input) => composed.harness.run("signIn", input),
           readSignIn: (input) => composed.harness.run("readSignIn", input),
           sendSignInInput: (input) => composed.harness.run("sendSignInInput", input),

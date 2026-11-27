@@ -4,9 +4,12 @@ import type {
   HarnessMcpServer,
 } from "@substrate/contracts/harness-runtime";
 
-type LocalAgentConfiguration = Pick<HarnessLocalConfiguration, "skills" | "mcpServers">;
+type LocalAgentConfiguration = Pick<
+  HarnessLocalConfiguration,
+  "skills" | "mcpServers" | "workspace"
+>;
 
-// The desktop adapter owns local skill files and MCP servers. No cloud requests.
+// The desktop adapter owns local skill files, MCP servers and working folders. No cloud requests.
 export interface LocalConfigurationController {
   scan(): Promise<LocalAgentConfiguration>;
   saveSkill(input: SaveSkillInput): Promise<void>;
@@ -15,4 +18,8 @@ export interface LocalConfigurationController {
   /** Adds or replaces a user-added MCP server in Substrate's local storage. */
   saveMcpServer(server: HarnessMcpServer): Promise<void>;
   deleteMcpServer(id: string): Promise<void>;
+  /** Asks for a working folder in the desktop's own dialog. A cancel changes nothing. */
+  chooseWorkspace(): Promise<void>;
+  /** Returns the agent to its own folder. */
+  clearWorkspace(): Promise<void>;
 }

@@ -65,7 +65,6 @@ function ServerIcon({ server }: { server: HarnessMcpServer }) {
 export function McpServersSection({
   servers,
   scanned,
-  defaults,
   available,
   refresh,
   status,
@@ -76,7 +75,6 @@ export function McpServersSection({
 }: {
   servers: readonly HarnessMcpServer[];
   scanned: boolean;
-  defaults: boolean;
   available: boolean;
   refresh: ReactNode;
   status: ReactNode;
@@ -145,16 +143,14 @@ export function McpServersSection({
           another.
         </SettingsNote>
       )}
-      {defaults && (
-        <BuiltInGroup
-          title="Built-in server"
-          description="Substrate connects every session to your workspace. It can't be removed."
-          count={1}
-          noun="server"
-        >
-          <BuiltInServer />
-        </BuiltInGroup>
-      )}
+      <BuiltInGroup
+        title="Built-in server"
+        description="Substrate connects every session to your workspace. It can't be removed."
+        count={1}
+        noun="server"
+      >
+        <BuiltInServer />
+      </BuiltInGroup>
     </ConfigurationPage>
   );
 }

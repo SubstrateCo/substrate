@@ -23,7 +23,8 @@ test("agent avatar changes accept only stored avatar codes", async () => {
         instructions: "",
         harness: "claude",
         enabled: true,
-        useStartupDefaults: true,
+        disabledApps: [],
+        substrateGuide: true,
       },
     };
   };

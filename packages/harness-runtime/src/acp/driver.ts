@@ -60,6 +60,8 @@ export interface AcpMcpRegistration {
 /** Fields every session setup request carries. */
 export interface AcpSessionSetup {
   cwd: string;
+  /** Extra workspace roots. Send only when capabilities.additionalDirectories. */
+  additionalDirectories?: string[];
   mcpServers: AcpMcpServer[];
   /** Appended to the agent's own instructions. Send only when capabilities.systemPrompt.append. */
   systemPrompt?: string;

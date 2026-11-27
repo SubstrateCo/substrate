@@ -5,23 +5,11 @@ import type {
 
 import { AgentRunSettingsView } from "./agent-run-settings-view";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
+import { savedAgentInput } from "@/lib/agents/saved-agent";
 import { triggersInput } from "@/lib/agents/triggers";
 import { isDesktop } from "@/lib/desktop/auth";
 import { useAgentMutations, useAgentRunSettingsMutations } from "@/queries/agents/mutations";
 import { toast } from "sonner";
-
-/** The saved agent as a save input, with one change. Leaves any draft in the details card alone. */
-function savedAgent(agent: AgentConfiguration, enabled: boolean) {
-  return {
-    id: agent.id,
-    name: agent.name,
-    instructions: agent.instructions,
-    harness: agent.harness,
-    model: agent.model,
-    enabled,
-    useStartupDefaults: agent.useStartupDefaults,
-  };
-}
 
 export function AgentRunSettings({
   agent,
@@ -60,7 +48,7 @@ export function AgentRunSettings({
       }
       onEnabledChange={(enabled) => {
         triggers.reset();
-        save.mutate(savedAgent(agent, enabled));
+        save.mutate(savedAgentInput(agent, { enabled }));
       }}
       onTriggerChange={(kind, enabled) => {
         save.reset();

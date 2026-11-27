@@ -34,6 +34,7 @@ async function rotate(
       nativeSessionId: null,
       prefix: null,
       policyVersion: null,
+      workspace: null,
       rotation: null,
       resetGeneration,
       updatedAt: now,
@@ -90,19 +91,28 @@ export function nativeSessionRepository(run: RunTransaction) {
           .set({ ...input, updatedAt: now })
           .where(scoped(organizationId, sessionId)),
       ),
+    /**
+     * Records the epoch's prefix. The first one also fixes the epoch's working folder; a later
+     * one, such as after a policy change, keeps it.
+     */
     setPrefix: (
       organizationId: string,
       sessionId: string,
-      prefix: string,
-      policyVersion: number,
+      input: { prefix: string; policyVersion: number; workspace: string | null },
       now: number,
     ) =>
-      run((tx) =>
-        tx
+      run(async (tx) => {
+        const row = await requireSession(tx, organizationId, sessionId);
+        await tx
           .update(nativeSessions)
-          .set({ prefix, policyVersion, updatedAt: now })
-          .where(scoped(organizationId, sessionId)),
-      ),
+          .set({
+            prefix: input.prefix,
+            policyVersion: input.policyVersion,
+            workspace: row.prefix === null ? input.workspace : row.workspace,
+            updatedAt: now,
+          })
+          .where(scoped(organizationId, sessionId));
+      }),
     /** A turn of the current epoch finished. */
     countTurn: (organizationId: string, sessionId: string, now: number) =>
       run(async (tx) => {

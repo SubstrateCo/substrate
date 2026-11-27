@@ -8,6 +8,13 @@
       "when": 1795738360634,
       "tag": "0000_initial",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1795817825247,
+      "tag": "0001_agent_workspaces",
+      "breakpoints": true
     }
   ]
 }

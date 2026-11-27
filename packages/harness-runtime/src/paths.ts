@@ -48,6 +48,31 @@ export async function safePath(
   return target;
 }
 
+/** Whether `path` is `root` or inside it. Both must be canonical. */
+function within(root: string, path: string) {
+  const rel = relative(root, path);
+  return rel === "" || (!isAbsolute(rel) && rel !== ".." && !rel.startsWith(`..${sep}`));
+}
+
+/**
+ * A folder the user chose for an agent's sessions to work in, as its canonical path. It must be
+ * an existing directory apart from the account's managed folders: neither inside them nor
+ * containing them, so a session never reaches other agents' files.
+ */
+export async function workspaceDirectory(accountDirectory: string, path: string): Promise<string> {
+  if (!isAbsolute(path))
+    throw new HarnessError("invalid-workspace", "The working folder must be an absolute path.");
+  const canonical = await realpath(path).catch(() => undefined);
+  const stat = canonical === undefined ? undefined : await lstat(canonical);
+  if (canonical === undefined || !stat?.isDirectory())
+    throw new HarnessError("invalid-workspace", "The working folder does not exist.");
+  await mkdir(accountDirectory, { recursive: true });
+  const account = await realpath(accountDirectory);
+  if (within(account, canonical) || within(canonical, account))
+    throw new HarnessError("invalid-workspace", "The working folder overlaps Substrate's folders.");
+  return canonical;
+}
+
 export async function organizationDirectory(
   accountDirectory: string,
   organizationId: string,

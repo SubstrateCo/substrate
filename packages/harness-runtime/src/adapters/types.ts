@@ -21,7 +21,13 @@ export type EventScope = "turn" | "session";
 
 export interface AdapterContext {
   model?: HarnessAgent["model"];
+  /** The session's working directory. */
   directory: string;
+  /**
+   * The session's own folder, with its instructions file and skills, when the session works in
+   * another directory. The adapter adds it to the session as an extra root.
+   */
+  managedDirectory?: string;
   /**
    * Stable MCP endpoint and token for the native session's configuration. The host binds the
    * current turn's context to it at each turn and unbinds it when the turn ends, so calls made

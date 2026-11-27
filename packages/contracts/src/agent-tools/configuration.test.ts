@@ -1,19 +1,21 @@
-import { harnessConfiguration } from "./configuration.ts";
+import type { AppId } from "../apps/index.ts";
+import { harnessConfiguration, type RuntimeAgentDefinition } from "./configuration.ts";
 import { startupSkills } from "./skills/index.ts";
 import { expect, test } from "bun:test";
 
-const definition = {
+const definition: RuntimeAgentDefinition = {
   id: "agent-a",
   name: "Agent",
   instructions: "Work locally",
-  harness: "codex" as const,
+  harness: "codex",
   enabled: true,
-  useStartupDefaults: true,
+  disabledApps: [],
+  substrateGuide: true,
 };
 
 function runtimeAgent(
-  overrides: Partial<typeof definition> = {},
-  enabledApps = ["tasks" as const],
+  overrides: Partial<RuntimeAgentDefinition> = {},
+  enabledApps: AppId[] = ["tasks"],
 ) {
   return harnessConfiguration({
     organizationId: "org-a",
@@ -22,7 +24,7 @@ function runtimeAgent(
   }).agents[0]!;
 }
 
-test("startup defaults prepend Substrate's instructions and install the skills of enabled apps", () => {
+test("the guide prepends Substrate's instructions, and enabled apps install their skills", () => {
   const agent = runtimeAgent();
   expect(agent.instructions.startsWith("# Substrate workspace")).toBe(true);
   expect(agent.instructions).toContain("Organization ID: org-a");
@@ -47,9 +49,25 @@ test("helper folders get no publishing, helper management or local tools", () =>
   expect(tools?.helper).toContain("list_projects");
 });
 
-test("without startup defaults the agent runs on its own instructions, with no host tools", () => {
-  const agent = runtimeAgent({ useStartupDefaults: false });
+test("without the guide the agent runs on its own instructions and keeps its tools", () => {
+  const agent = runtimeAgent({ substrateGuide: false });
   expect(agent.instructions).toBe("Work locally");
-  expect(agent.tools).toBeNull();
-  expect(agent.managedSkills.every((skill) => !skill.installed)).toBe(true);
+  expect(agent.tools?.main).toContain("reply");
+  expect(agent.tools?.main).toContain("create_task");
+});
+
+test("a disabled app removes its skill and tools, and the core tools stay", () => {
+  const agent = runtimeAgent({ disabledApps: ["tasks"] }, ["tasks", "crm"]);
+  const installed = agent.managedSkills.filter((skill) => skill.installed).map((skill) => skill.id);
+  expect(installed).not.toContain("substrate-tasks");
+  expect(installed).toContain("substrate-crm");
+  expect(agent.tools?.main).not.toContain("create_task");
+  expect(agent.tools?.main).toContain("create_crm_account");
+  for (const core of ["reply", "save_handoff", "get_me", "search_names"])
+    expect(agent.tools?.main).toContain(core);
+});
+
+test("disabling an app the organization has not enabled changes nothing", () => {
+  const disabled = runtimeAgent({ disabledApps: ["crm"] }, ["tasks"]);
+  expect(disabled).toEqual(runtimeAgent({}, ["tasks"]));
 });

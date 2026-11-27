@@ -21,6 +21,9 @@ export const rendererLocalSchemas = {
     ),
   ),
   deleteMcpServer: z.strictObject({ agentId: id, id }),
+  /** Main asks the owner for a folder in a native dialog. The renderer never sends a path. */
+  chooseWorkspace: z.strictObject({ agentId: id }),
+  clearWorkspace: z.strictObject({ agentId: id }),
 };
 const loginId = z.uuid();
 /**
@@ -70,6 +73,8 @@ export const methods = {
   resetDefaults: { input: rendererLocalSchemas.resetDefaults },
   saveMcpServer: { input: rendererLocalSchemas.saveMcpServer },
   deleteMcpServer: { input: rendererLocalSchemas.deleteMcpServer },
+  chooseWorkspace: { input: rendererLocalSchemas.chooseWorkspace },
+  clearWorkspace: { input: rendererLocalSchemas.clearWorkspace },
   signIn: { input: rendererSignInSchemas.signIn, output: bridgeOutput<HarnessSignInState>() },
   readSignIn: {
     input: rendererSignInSchemas.readSignIn,

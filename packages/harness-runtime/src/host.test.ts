@@ -59,14 +59,16 @@ interface FakeNative {
   context?: AdapterContext;
   finish?: (result: TurnResult) => void;
   resumes: (string | undefined)[];
+  prefix?: string;
 }
 
 function fakeNative(steer = false) {
   const state: FakeNative = { resumes: [] };
-  const connect: ConnectNative = async (_harness, adapterContext, _prefix, resumeId) => {
+  const connect: ConnectNative = async (_harness, adapterContext, prefix, resumeId) => {
     state.resumes.push(resumeId);
     if (resumeId === "lost") throw new Error("missing native session");
     state.context = adapterContext;
+    state.prefix = prefix;
     let finish: ((result: TurnResult) => void) | undefined;
     const adapter: NativeAdapter = {
       capabilities: { ...capabilities, steer },
@@ -309,6 +311,65 @@ test("helper sessions open in their own folder", async () => {
     );
   } finally {
     await f.host.dispose();
+  }
+});
+
+test("a session with a working folder works there and keeps its own folder as an extra root", async () => {
+  const f = await host();
+  const project = await mkdtemp(join(tmpdir(), "opencode", "harness-project-"));
+  try {
+    await f.host.execute({ ...open, workspace: project });
+    const folder = join(await realpath(root), "orgs", "org-a", agentId);
+    expect(f.native.state.context).toMatchObject({
+      directory: await realpath(project),
+      managedDirectory: folder,
+    });
+    // The project's own instructions file is left alone; the agent's stays in its folder.
+    await rejects(readFile(join(project, "AGENTS.md"), "utf8"), { code: "ENOENT" });
+    expect(await readFile(join(folder, "AGENTS.md"), "utf8")).toContain("Work locally");
+    // A system-prompt harness reads no instructions file from the extra root.
+    expect(f.native.state.prefix).toBe("# Managed policy\n\nWork locally");
+  } finally {
+    await f.host.dispose();
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
+test("an instructions-file harness keeps the plain prefix in a working folder", async () => {
+  const f = await host();
+  const project = await mkdtemp(join(tmpdir(), "opencode", "harness-project-"));
+  try {
+    await f.host.configure({ organizationId: "org-a", agents: [agent({ harness: "opencode" })] });
+    await f.host.execute({ ...open, workspace: project });
+    expect(f.native.state.prefix).toBe("# Managed policy\n");
+  } finally {
+    await f.host.dispose();
+    await rm(project, { recursive: true, force: true });
+  }
+});
+
+test("a working folder that is missing or overlaps Substrate's folders is rejected", async () => {
+  const f = await host();
+  try {
+    for (const workspace of [join(root, "missing"), join(root, "orgs"), tmpdir(), "relative"])
+      await rejects(f.host.execute({ ...open, workspace }), { code: "invalid-workspace" });
+  } finally {
+    await f.host.dispose();
+  }
+});
+
+test("a changed working folder reopens the session", async () => {
+  const f = await host();
+  const project = await mkdtemp(join(tmpdir(), "opencode", "harness-project-"));
+  try {
+    await f.host.execute({ ...open, nativeSessionId: "native-1" });
+    await f.host.execute({ ...open, nativeSessionId: "native-1", workspace: project });
+    expect(f.native.state.resumes).toEqual(["native-1", "native-1"]);
+    expect(f.native.state.context?.directory).toBe(await realpath(project));
+    expect(closedEvents(f.events)).toEqual([["session-a", "closed"]]);
+  } finally {
+    await f.host.dispose();
+    await rm(project, { recursive: true, force: true });
   }
 });
 

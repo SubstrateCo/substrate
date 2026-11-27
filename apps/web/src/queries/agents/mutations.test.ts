@@ -12,7 +12,8 @@ const agent = (id: string, avatar: string): AgentConfiguration => ({
   instructions: "",
   harness: "opencode",
   enabled: true,
-  useStartupDefaults: true,
+  disabledApps: [],
+  substrateGuide: true,
   avatar,
 });
 const catalog = (): AgentCatalog => ({

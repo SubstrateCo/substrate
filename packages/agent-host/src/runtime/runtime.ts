@@ -107,10 +107,10 @@ export function createAgentWorkRuntime(
       });
   }
 
-  async function refreshApps() {
+  async function refreshSettings() {
     await epochs
-      .refreshApps()
-      .catch(() => context.log("Could not refresh enabled workspace apps."));
+      .refreshSettings()
+      .catch(() => context.log("Could not refresh agent sessions after a settings change."));
   }
 
   /** Agent-work hints: a burst, such as the echoes of this desktop's own reports, runs once. */
@@ -142,7 +142,7 @@ export function createAgentWorkRuntime(
         .register(options.device)
         .catch(() => context.log("Could not register this desktop."));
       await epochs.rotateOutdatedPolicy().catch(() => {});
-      await refreshApps();
+      await refreshSettings();
       timers.add(
         options.every(() => {
           void context.server.heartbeat().catch(() => context.log("Could not reach the server."));
@@ -179,11 +179,17 @@ export function createAgentWorkRuntime(
       });
       dispose();
     },
-    /** Agents changed, or hints may have been missed: the next turn synchronizes the harness. */
-    agentsChanged: () => executor.unsynchronize(),
+    /**
+     * Agents changed, or hints may have been missed: the next turn synchronizes the harness, and
+     * sessions of agents whose apps changed rotate.
+     */
+    agentsChanged() {
+      executor.unsynchronize();
+      void refreshSettings();
+    },
     /** Reconnects and session or app changes run the cycle, and deliver answers, at once. */
     async sync() {
-      await refreshApps();
+      await refreshSettings();
       pump();
       await cycling;
       await requests.deliver().catch(() => context.log("Could not deliver agent answers."));

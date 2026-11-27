@@ -35,7 +35,8 @@ export const catalogAgent: AgentConfiguration = {
   instructions: "",
   harness: "codex",
   enabled: true,
-  useStartupDefaults: true,
+  disabledApps: [],
+  substrateGuide: true,
   avatar: "100000",
 };
 
@@ -56,6 +57,10 @@ export function fixture(
     localToolHandler?: LocalToolProxy;
     /** What the worker answers for signIn and readSignIn, before main parses it. */
     signInState?: Partial<HarnessSignInState>;
+    /** The accounts root. Tests that check working folders pass a real directory. */
+    accountsDirectory?: string;
+    /** The folder the owner picks in the native dialog. Null: they cancel. */
+    pickedWorkspace?: string | null;
   } = {},
 ) {
   let session = {
@@ -117,10 +122,22 @@ export function fixture(
   const authority = new DesktopSessionAuthority(connection);
   /** Local MCP servers by organization and agent. */
   const mcpServers = new Map<string, HarnessMcpServer[]>([["org-1/agent-1", storedMcpServers]]);
+  /** Local working folders by organization and agent. */
+  const workspaces = new Map<string, string>();
   const controller = createHarnessController({
     ...connection,
     authority,
-    accountsDirectory: "accounts",
+    accountsDirectory: options.accountsDirectory ?? "accounts",
+    workspaces: {
+      get: async (organizationId, agentId) =>
+        workspaces.get(`${organizationId}/${agentId}`) ?? null,
+      set: async (organizationId, agentId, path) => {
+        const key = `${organizationId}/${agentId}`;
+        if (path === null) workspaces.delete(key);
+        else workspaces.set(key, path);
+      },
+    },
+    pickWorkspace: async () => options.pickedWorkspace ?? null,
     localToolHandler: options.localToolHandler,
     mcpServers: {
       list: async (organizationId, agentId) => mcpServers.get(`${organizationId}/${agentId}`) ?? [],
@@ -198,6 +215,7 @@ export function fixture(
     controller,
     calls,
     mcpServers,
+    workspaces,
     directories,
     setSession: (value: typeof session) => {
       session = value;

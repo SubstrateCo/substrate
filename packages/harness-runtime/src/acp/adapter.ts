@@ -252,6 +252,11 @@ class AcpSession {
     if (mcpServers.some((server) => server.type === "http") && !capabilities.mcp.http)
       unsupported(`Installed ${options.launch.harness} does not advertise ACP HTTP MCP support.`);
     const setup: AcpSessionSetup = { cwd: context.directory, mcpServers };
+    if (context.managedDirectory) {
+      if (!capabilities.additionalDirectories)
+        unsupported(`Installed ${options.launch.harness} cannot work in another folder.`);
+      setup.additionalDirectories = [context.managedDirectory];
+    }
     if (options.prefixChannel === "systemPrompt") {
       if (!capabilities.systemPrompt.append)
         unsupported(`Installed ${options.launch.harness} does not accept an ACP system prompt.`);
@@ -462,7 +467,9 @@ export async function createAcpAdapter(
 ): Promise<NativeAdapter> {
   const session = new AcpSession(options.context);
   const live = await connectAcp(
-    options.launch,
+    options.launchEnvironment
+      ? { ...options.launch, env: { ...options.launch.env, ...options.launchEnvironment } }
+      : options.launch,
     options.context.directory,
     session.handlers,
     AbortSignal.timeout(setupTimeoutMs),

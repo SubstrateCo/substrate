@@ -3,6 +3,9 @@ import type { HarnessCommand } from "@substrate/contracts/harness-runtime";
 
 import { agentId, CodeError, deferred, organizationId, runtimeFixture } from "./test-support.ts";
 import { afterEach, expect, test } from "bun:test";
+import { mkdir, mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 let fixture: Awaited<ReturnType<typeof runtimeFixture>> | undefined;
 afterEach(async () => {
@@ -291,6 +294,39 @@ test("a full context submits an epoch handoff; its turn saves notes and the next
   expect(next.input.text).toContain("References: doc-1");
 });
 
+test("a new working folder rotates the epoch: the handoff keeps the old folder, the next epoch opens in the new one", async () => {
+  await mkdir(join(tmpdir(), "opencode"), { recursive: true });
+  const before = await mkdtemp(join(tmpdir(), "opencode", "agent-project-"));
+  const after = await mkdtemp(join(tmpdir(), "opencode", "agent-project-"));
+  try {
+    const f = await started();
+    await f.store.workspaces.set(organizationId, agentId, before, 0);
+    const sent = await f.message();
+    const first = f.turns()[0]!;
+    expect(opens(f).at(-1)).toMatchObject({ epoch: 0, workspace: before });
+    await f.emit(first.turnId, { type: "turn.completed", result: { status: "completed" } });
+
+    await f.store.workspaces.set(organizationId, agentId, after, 1);
+    f.runtime.agentsChanged();
+    await f.settle();
+    expect(await f.store.nativeSessions.get(organizationId, sent.sessionId)).toMatchObject({
+      rotation: "workspace",
+      workspace: before,
+    });
+    await f.hint();
+    const handoff = f.turns().at(-1)!;
+    expect(f.control.turns.get(handoff.turnId)!.turn.handoff).toBe(true);
+    expect(opens(f).at(-1)).toMatchObject({ epoch: 0, workspace: before });
+    await f.emit(handoff.turnId, { type: "turn.completed", result: { status: "completed" } });
+
+    await f.message({ conversationId: sent.conversationId });
+    expect(opens(f).at(-1)).toMatchObject({ epoch: 1, workspace: after });
+  } finally {
+    await rm(before, { recursive: true, force: true });
+    await rm(after, { recursive: true, force: true });
+  }
+});
+
 test("app changes rotate the epoch without changing its frozen managed prefix", async () => {
   const f = await started();
   const sent = await f.message();
@@ -302,6 +338,31 @@ test("app changes rotate the epoch without changing its frozen managed prefix", 
   const after = await f.store.nativeSessions.get(organizationId, sent.sessionId);
   expect(after).toMatchObject({ prefix: before?.prefix, rotation: "policy" });
   expect(f.hostCalls("submitEpoch")).toHaveLength(1);
+});
+
+test("an enabled app the agent stops using rotates its epoch", async () => {
+  const f = await started();
+  f.apps.enabledApps = ["messages", "agents", "tasks"];
+  const sent = await f.message();
+  const before = await f.store.nativeSessions.get(organizationId, sent.sessionId);
+  expect(before?.prefix).toContain("Enabled workspace apps: messages, agents, tasks");
+  f.catalog[0]!.disabledApps = ["tasks"];
+  f.runtime.agentsChanged();
+  await f.settle();
+  const after = await f.store.nativeSessions.get(organizationId, sent.sessionId);
+  expect(after).toMatchObject({ prefix: before?.prefix, rotation: "policy" });
+  expect(f.hostCalls("submitEpoch")).toHaveLength(1);
+});
+
+test("an agent that goes without an app the organization has off keeps its epoch", async () => {
+  const f = await started();
+  const sent = await f.message();
+  f.catalog[0]!.disabledApps = ["crm"];
+  f.runtime.agentsChanged();
+  await f.settle();
+  const after = await f.store.nativeSessions.get(organizationId, sent.sessionId);
+  expect(after?.rotation).toBeNull();
+  expect(f.hostCalls("submitEpoch")).toEqual([]);
 });
 
 test("a turn the server no longer gives this desktop stops here without a report", async () => {

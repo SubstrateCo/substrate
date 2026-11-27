@@ -94,7 +94,6 @@ function AgentSettingsBody({
           agentId={agent.id}
           harness={agent.harness}
           section={page}
-          defaults={agent.useStartupDefaults}
           homeDevice={runSettings?.homeDevice ?? null}
         />
       );

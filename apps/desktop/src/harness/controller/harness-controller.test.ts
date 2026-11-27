@@ -7,6 +7,7 @@ import { describe, expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
 
 const noMcpServers = { list: async () => [], save: async () => {}, delete: async () => {} };
+const noWorkspaces = { get: async () => null, set: async () => {} };
 
 const open = {
   type: "open" as const,
@@ -48,6 +49,8 @@ describe("desktop harness authority", () => {
       authority: new DesktopSessionAuthority(connection),
       accountsDirectory: "accounts",
       mcpServers: noMcpServers,
+      workspaces: noWorkspaces,
+      pickWorkspace: async () => null,
       createWorker: () => {
         created++;
         return {
@@ -377,6 +380,8 @@ describe("desktop harness authority", () => {
       authority: new DesktopSessionAuthority(connection),
       accountsDirectory: "accounts",
       mcpServers: noMcpServers,
+      workspaces: noWorkspaces,
+      pickWorkspace: async () => null,
       createWorker: () => {
         created = true;
         throw new Error("Unexpected process");

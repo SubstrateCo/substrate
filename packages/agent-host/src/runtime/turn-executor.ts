@@ -1,5 +1,5 @@
 import type { NativeSessionRow, NewTurnEvent } from "@substrate/client-storage/agent-work";
-import { managedPrefix, POLICY_VERSION } from "@substrate/contracts/agent-tools";
+import { agentApps, managedPrefix, POLICY_VERSION } from "@substrate/contracts/agent-tools";
 import {
   agentActivityMaxLength,
   type EnvelopeResumeNote,
@@ -16,7 +16,7 @@ import {
   type Usage,
 } from "@substrate/contracts/harness-runtime";
 
-import type { HostFinish, HostProgress } from "../ports.ts";
+import type { CatalogAgent, HostFinish, HostProgress } from "../ports.ts";
 import { envelopeItem, renderEnvelope, sortItems } from "../turns/envelope.ts";
 import { turnOutcome } from "../turns/outcome.ts";
 import type { LiveTurn, RuntimeContext } from "./context.ts";
@@ -289,23 +289,31 @@ export function createTurnExecutor(
    * The session's prefix for this epoch. Built once, so it stays byte-stable. A handoff turn
    * runs in the old epoch, so it keeps the old prefix even when the policy changed.
    */
-  async function prefix(native: NativeSessionRow, agentName: string, handoff: boolean) {
+  async function prefix(native: NativeSessionRow, agent: CatalogAgent, handoff: boolean) {
     if (native.prefix && (handoff || native.policyVersion === POLICY_VERSION))
-      return { value: native.prefix, policyVersion: native.policyVersion ?? POLICY_VERSION };
+      return {
+        value: native.prefix,
+        policyVersion: native.policyVersion ?? POLICY_VERSION,
+        workspace: native.workspace,
+      };
+    const enabledApps = await context.enabledApps?.();
     const value = managedPrefix({
-      agentName,
+      agentName: agent.name,
       agentId: native.userAgentId,
       organizationId: org,
-      enabledApps: await context.enabledApps?.(),
+      enabledApps: enabledApps && agentApps(enabledApps, agent),
     });
+    // The epoch keeps the working folder it started with; a new epoch takes the current one.
+    const workspace = native.prefix
+      ? native.workspace
+      : await context.store.workspaces.get(org, native.userAgentId);
     await context.store.nativeSessions.setPrefix(
       org,
       native.sessionId,
-      value,
-      POLICY_VERSION,
+      { prefix: value, policyVersion: POLICY_VERSION, workspace },
       context.now(),
     );
-    return { value, policyVersion: POLICY_VERSION };
+    return { value, policyVersion: POLICY_VERSION, workspace };
   }
 
   async function changes(native: NativeSessionRow) {
@@ -425,7 +433,7 @@ export function createTurnExecutor(
       () => true,
       () => false,
     );
-    const managed = await prefix(native, agent.name, turn.handoff);
+    const managed = await prefix(native, agent, turn.handoff);
     const stop = stopRequests.get(turn.id);
     if (stop) return endUnstarted(ref, stop);
     let status;
@@ -480,6 +488,7 @@ export function createTurnExecutor(
       prefix: managed.value,
       mcpServers: await context.store.mcpServers.list(org, session.userAgentId),
     };
+    if (managed.workspace) open.workspace = managed.workspace;
     if (native.nativeSessionId) open.nativeSessionId = native.nativeSessionId;
     let opened;
     try {
@@ -492,6 +501,12 @@ export function createTurnExecutor(
           "The agent's previous session could not resume.",
         );
       if (transient(error)) return retryLater(ref, error);
+      if (errorCode(error) === "invalid-workspace")
+        return needsAttention(
+          ref,
+          "failed",
+          "The agent's working folder is missing or can't be used. Choose another in its settings.",
+        );
       return needsAttention(ref, "failed", "The agent could not start. Check its harness setup.");
     }
     if (opened.nativeSessionId !== native.nativeSessionId)

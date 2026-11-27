@@ -1,3 +1,5 @@
+import type { AgentOptionalAppId } from "@substrate/contracts/agents";
+
 import { user } from "../authentication/schema";
 import { desktopDevices } from "../devices/schema";
 import { idColumn } from "../ids";
@@ -6,6 +8,7 @@ import {
   boolean,
   check,
   foreignKey,
+  jsonb,
   pgTable,
   text,
   timestamp,
@@ -29,7 +32,10 @@ export const userAgents = pgTable(
     // ID when it is created; the owner may change it.
     avatarCode: text("avatar_code").notNull(),
     enabled: boolean("enabled").notNull().default(true),
-    useStartupDefaults: boolean("use_startup_defaults").notNull().default(true),
+    // Enabled apps whose Substrate skill and tools this agent does not get. The core tools stay.
+    disabledApps: jsonb("disabled_apps").$type<AgentOptionalAppId[]>().notNull().default([]),
+    // Adds Substrate's workspace guide before the agent's own instructions.
+    substrateGuide: boolean("substrate_guide").notNull().default(true),
     // The desktop that runs this local agent. Its working folder lives on that device.
     homeDeviceId: uuid("home_device_id"),
     deletedAt: timestamp("deleted_at", { withTimezone: true }),

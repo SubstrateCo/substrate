@@ -6,6 +6,7 @@ import type {
 import { AgentAppearance } from "./agent-appearance";
 import { ToolsSummary } from "./tools-summary";
 import { Routines } from "@/components/agent-work/routines/routines";
+import { AgentAdvancedSettings } from "@/components/agents/advanced/agent-advanced-settings";
 import { AgentForm } from "@/components/agents/editors/agent-form";
 import { useAgentFieldRenderers } from "@/components/agents/editors/use-agent-field-renderers";
 import { AgentRunSettings } from "@/components/agents/run-settings/agent-run-settings";
@@ -58,6 +59,7 @@ export function AgentSettingsOverview({
         homeDevice={runSettings?.homeDevice ?? null}
         onOpen={onOpenPage}
       />
+      <AgentAdvancedSettings agent={agent} homeDevice={runSettings?.homeDevice ?? null} />
       <Button
         type="button"
         variant="destructive-ghost"

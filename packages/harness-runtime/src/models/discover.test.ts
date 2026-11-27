@@ -15,6 +15,7 @@ function agents(probe: AcpPeer["probeConfigOptions"]) {
       close: false,
       delete: false,
       sessionOptions: false,
+      additionalDirectories: false,
       systemPrompt: { append: false, override: false },
       mcp: { http: false, stdio: false, acp: false },
       steering: "none",

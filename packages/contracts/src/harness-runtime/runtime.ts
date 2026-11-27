@@ -92,6 +92,11 @@ export const commandSchema = z.discriminatedUnion("type", [
     epoch: z.number().int().min(0),
     requireResume: z.boolean().optional(),
     prefix: z.string().max(100_000),
+    /**
+     * An absolute folder the session works in instead of its own folder. The session's folder
+     * still holds its instructions and skills and joins the session as an extra root.
+     */
+    workspace: z.string().min(1).max(4096).optional(),
     /** The agent's user-added MCP servers, passed to the harness at session setup. */
     mcpServers: z.array(harnessMcpServerSchema).max(maxHarnessMcpServers),
   }),

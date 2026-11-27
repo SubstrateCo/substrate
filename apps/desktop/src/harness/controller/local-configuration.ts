@@ -10,16 +10,26 @@ import { rendererLocalSchemas, type LocalHarnessMethod } from "@substrate/contra
 
 import type { z } from "zod";
 
-/** Renderer-local methods for MCP servers. Main keeps them in local storage, not agent folders. */
-type McpServerMethod = "saveMcpServer" | "deleteMcpServer";
+/**
+ * Renderer-local methods for MCP servers and working folders. Main keeps them in local storage,
+ * not agent folders.
+ */
+type MainLocalMethod = "saveMcpServer" | "deleteMcpServer" | "chooseWorkspace" | "clearWorkspace";
 /** Renderer-local methods that the harness worker serves from the agent folder. */
-export type NativeLocalMethod = Exclude<LocalHarnessMethod, McpServerMethod>;
+export type NativeLocalMethod = Exclude<LocalHarnessMethod, MainLocalMethod>;
 
 /** An agent's user-added MCP servers in the account's local storage, per organization. */
 export interface LocalMcpServers {
   list(organizationId: string, agentId: string): Promise<HarnessMcpServer[]>;
   save(organizationId: string, agentId: string, server: HarnessMcpServer): Promise<void>;
   delete(organizationId: string, agentId: string, id: string): Promise<void>;
+}
+
+/** An agent's working folder in the account's local storage, per organization. */
+export interface LocalWorkspaces {
+  get(organizationId: string, agentId: string): Promise<string | null>;
+  /** Null returns the agent to its own folder. Its sessions then move to a new epoch. */
+  set(organizationId: string, agentId: string, path: string | null): Promise<void>;
 }
 
 /** The agent is not homed on this desktop, so its skills and MCP servers are not edited here. */

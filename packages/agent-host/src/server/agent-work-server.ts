@@ -123,6 +123,7 @@ export function createAgentWorkServer(options: {
         name: agent.name,
         harness: agent.harness,
         enabled: agent.enabled,
+        disabledApps: agent.disabledApps,
         home: home.has(agent.id),
       }));
     },

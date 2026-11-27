@@ -4,11 +4,12 @@ import { handoffRepository } from "./handoffs.ts";
 import { mcpServerRepository } from "./mcp-servers.ts";
 import { nativeSessionRepository } from "./native-sessions.ts";
 import { turnRunRepository } from "./turn-runs.ts";
+import { workspaceRepository } from "./workspaces.ts";
 
 /**
  * What the agent host keeps for one account: native sessions, turn attempts, transcripts,
- * handoffs and MCP servers. The server owns sessions, work items and turns. Every operation runs
- * in its own transaction, one at a time.
+ * handoffs, MCP servers and working folders. The server owns sessions, work items and turns.
+ * Every operation runs in its own transaction, one at a time.
  */
 export class AgentWorkStore {
   readonly nativeSessions: ReturnType<typeof nativeSessionRepository>;
@@ -16,6 +17,7 @@ export class AgentWorkStore {
   readonly events: ReturnType<typeof eventRepository>;
   readonly handoffs: ReturnType<typeof handoffRepository>;
   readonly mcpServers: ReturnType<typeof mcpServerRepository>;
+  readonly workspaces: ReturnType<typeof workspaceRepository>;
   readonly close: () => void;
 
   private constructor(run: RunTransaction, close: () => void) {
@@ -24,6 +26,7 @@ export class AgentWorkStore {
     this.events = eventRepository(run);
     this.handoffs = handoffRepository(run);
     this.mcpServers = mcpServerRepository(run);
+    this.workspaces = workspaceRepository(run);
     this.close = close;
   }
 

@@ -29,6 +29,7 @@ export const harnessErrors = {
   "invalid-skill": ["definitive"],
   "invalid-skill-name": ["definitive"],
   "invalid-turn-context": ["definitive"],
+  "invalid-workspace": ["definitive"],
   "native-auth-required": ["definitive"],
   "native-request": ["definitive"],
   "no-live-turn": ["definitive", "undelivered"],

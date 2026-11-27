@@ -599,7 +599,7 @@ export async function runtimeFixture(
   const timers: { at: number; callback: () => void; cleared: boolean }[] = [];
   const intervals = new Map<number, () => void>();
   const catalog: CatalogAgent[] = options.agents ?? [
-    { id: agentId, name: "Scout", harness: "claude", enabled: true, home: true },
+    { id: agentId, name: "Scout", harness: "claude", enabled: true, disabledApps: [], home: true },
   ];
   /** catalogLookup: reading one agent from the catalog fails, as when its cache expired offline. */
   const outage = { sources: false, openRequest: false, catalogLookup: false };
@@ -705,7 +705,8 @@ export async function runtimeFixture(
           instructions: "",
           harness: agent.harness,
           enabled: agent.enabled,
-          useStartupDefaults: Boolean(options.inbox),
+          disabledApps: agent.disabledApps,
+          substrateGuide: Boolean(options.inbox),
         })),
       }),
     );

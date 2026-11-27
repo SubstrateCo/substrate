@@ -26,6 +26,24 @@ async function open(sessionId: string, policyVersion = 1, organizationId = "org-
   );
 }
 
+test("an epoch's first prefix fixes its working folder until the next epoch", async () => {
+  const { store } = fixture;
+  const id = await session();
+  const prefix = (workspace: string | null, policyVersion = 1) =>
+    store.nativeSessions.setPrefix("org-1", id, { prefix: "p", policyVersion, workspace }, 1);
+  await prefix("C:\\project-a");
+  // A rebuilt prefix, such as after a policy change, keeps the folder the session started in.
+  await prefix("C:\\project-b", 2);
+  expect(await store.nativeSessions.get("org-1", id)).toMatchObject({
+    workspace: "C:\\project-a",
+    policyVersion: 2,
+  });
+  await store.nativeSessions.rotate("org-1", id, 2);
+  expect((await store.nativeSessions.get("org-1", id))?.workspace).toBeNull();
+  await prefix("C:\\project-b");
+  expect((await store.nativeSessions.get("org-1", id))?.workspace).toBe("C:\\project-b");
+});
+
 test("a session without a native session rotates at once; an open one hands off once", async () => {
   const { store } = fixture;
   const fresh = await session();

@@ -8,36 +8,48 @@ import { leaseTools } from "./tools/index.ts";
 /** The agent fields that decide how the runtime runs it. */
 export type RuntimeAgentDefinition = Pick<
   AgentConfiguration,
-  "id" | "name" | "instructions" | "harness" | "model" | "enabled" | "useStartupDefaults"
+  | "id"
+  | "name"
+  | "instructions"
+  | "harness"
+  | "model"
+  | "enabled"
+  | "disabledApps"
+  | "substrateGuide"
 >;
 
+/** The organization's enabled apps, without the ones the agent goes without. */
+export function agentApps(
+  enabledApps: readonly AppId[],
+  agent: Pick<AgentConfiguration, "disabledApps">,
+): AppId[] {
+  return enabledApps.filter((app) => !agent.disabledApps.some((disabled) => disabled === app));
+}
+
 /**
- * An agent as the harness runtime runs it. With startup defaults, its instructions start with
- * Substrate's, the skills of its enabled apps are installed, and its sessions get the Substrate
- * tools of those apps.
+ * An agent as the harness runtime runs it. Its sessions always get the core Substrate tools,
+ * plus the skills and tools of its apps. With the guide, its instructions start with Substrate's.
  */
 function harnessAgent(
   organizationId: string,
   agent: RuntimeAgentDefinition,
   enabledApps: readonly AppId[],
 ): HarnessAgent {
-  const defaults = agent.useStartupDefaults;
-  const installed = defaults ? enabledStartupSkills(enabledApps) : [];
+  const apps = agentApps(enabledApps, agent);
+  const installed = enabledStartupSkills(apps);
   return {
     id: agent.id,
     harness: agent.harness,
     model: agent.model,
     enabled: agent.enabled,
-    instructions: defaults
+    instructions: agent.substrateGuide
       ? `${startupInstructions({ ...agent, organizationId })}${agent.instructions}`
       : agent.instructions,
     managedSkills: startupSkills.map((skill) => ({
       ...skill,
       installed: installed.includes(skill),
     })),
-    tools: defaults
-      ? { main: leaseTools("main", enabledApps), helper: leaseTools("helper", enabledApps) }
-      : null,
+    tools: { main: leaseTools("main", apps), helper: leaseTools("helper", apps) },
   };
 }
 

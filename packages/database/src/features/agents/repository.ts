@@ -29,7 +29,8 @@ function configuration(row: typeof userAgents.$inferSelect): AgentConfiguration 
     instructions: row.instructions,
     harness: row.harness,
     enabled: row.enabled,
-    useStartupDefaults: row.useStartupDefaults,
+    disabledApps: row.disabledApps,
+    substrateGuide: row.substrateGuide,
   };
   if (row.model !== null) result.model = row.model;
   return result;
@@ -106,7 +107,8 @@ export function createAgentRepository(
         harness: input.harness,
         model: input.model ?? null,
         enabled: input.enabled,
-        useStartupDefaults: input.useStartupDefaults,
+        disabledApps: input.disabledApps,
+        substrateGuide: input.substrateGuide,
       };
       // A new local agent lives on the desktop that created it. Its look is generated from its ID.
       const created = newId();
