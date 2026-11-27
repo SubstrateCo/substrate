@@ -26,6 +26,9 @@ function eligible(db: DatabaseExecutor, ctx: RepositoryContext, scope: SessionId
   return sql`
     SELECT ${notifications.id} AS id, ${notifications.createdAt} AS created_at,
       ${notifications.readAt} AS read_at, ${notifications.kind} AS kind,
+      CASE WHEN ${notifications.entityId} IS NULL
+        THEN 'message:' || ${notifications.messageId}::text
+        ELSE 'notification:' || ${notifications.id}::text END AS attention_key,
       ${notifications.eventKey} AS event_key, ${notifications.entityId} AS entity_id,
       ${messagingMessages.authorActorEntityId} AS message_actor,
       CASE WHEN ${notifications.entityId} IS NOT NULL
@@ -66,6 +69,13 @@ export function createNotificationGroups(
 ) {
   const { db } = ctx;
   return {
+    async attentionKeys() {
+      const rows = await db.execute<{ key: string }>(sql`
+        SELECT attention_key AS key FROM (${eligible(db, ctx, scope)}) eligible
+        WHERE read_at IS NULL
+      `);
+      return rows.map((row) => row.key);
+    },
     async groups({ after, limit, filter }: Page & { filter: NotificationFilter }) {
       const rows = await db.execute<{
         id: string;

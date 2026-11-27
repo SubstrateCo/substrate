@@ -1,4 +1,5 @@
-import { needsYouCount, needsYouItems } from "./needs-you";
+import { needsYouCount, needsYouItems } from "@substrate/contracts/agent-work/needs-you";
+
 import { attentionTurn, request, status, uncertainItem } from "./test-support";
 import { expect, test } from "bun:test";
 

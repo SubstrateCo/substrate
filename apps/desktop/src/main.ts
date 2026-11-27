@@ -1,4 +1,5 @@
 import { agentWorkChannel } from "@substrate/contracts/agent-work/desktop";
+import * as attentionIPC from "@substrate/contracts/desktop/attention-ipc";
 import { desktopIdentity } from "@substrate/contracts/desktop/identity";
 import { handleBridge } from "@substrate/contracts/desktop/ipc";
 import { resolveDesktopLink } from "@substrate/contracts/desktop/links";
@@ -12,8 +13,10 @@ import * as realtimeIPC from "@substrate/contracts/realtime/ipc";
 
 import { installationId } from "./agents/installation.ts";
 import { composeDesktop } from "./app/composition.ts";
-import { createDesktopAuthClient } from "./auth/auth-client.ts";
+import { createDesktopAuthClient, sessionTokenCookie } from "./auth/auth-client.ts";
 import { HarnessCommandError } from "./harness/controller/harness-controller.ts";
+import { createAttentionSession } from "./notifications/attention-session.ts";
+import { createNativeAttentionBadge } from "./notifications/native-attention-badge.ts";
 import {
   setupScreenNotifications,
   type ScreenNotifications,
@@ -91,6 +94,7 @@ function main() {
   let agentWork: ReturnType<typeof composeDesktop>["agentWork"] | undefined;
   let services: ReturnType<typeof composeDesktop> | undefined;
   let tray: Tray | undefined;
+  let attentionSession: ReturnType<typeof createAttentionSession> | undefined;
   // Closing the window hides it so agents keep running. Quit from the tray or the app menu.
   let quitting = false;
   // A login launch starts in the tray.
@@ -104,6 +108,7 @@ function main() {
     : ["--hidden"];
   const startHidden = process.argv.includes("--hidden");
   async function stopSession() {
+    attentionSession?.clear();
     await services?.shutdown();
   }
   const { authClient, handleAuthLink, initializeSession } = createDesktopAuthClient(
@@ -111,9 +116,13 @@ function main() {
     publicConfig.webURL ?? applicationURL,
     smokeTest,
     () => mainWindow,
-    stopSession,
+    () => {
+      attentionSession?.suspend();
+      void stopSession().catch(console.error);
+    },
     async () => {
       await stopSession();
+      attentionSession?.resume();
       if (!smokeTest) agentWork?.start();
       const contents = mainWindow && !mainWindow.isDestroyed() ? mainWindow.webContents : undefined;
       if (contents && !contents.isDestroyed() && target(contents.getURL()) === "internal")
@@ -256,6 +265,28 @@ function main() {
       .whenReady()
       .then(() => {
         initializeSession();
+        const attentionBadge = createNativeAttentionBadge(
+          () => mainWindow,
+          join(dirname(icon), "attention-badges.png"),
+        );
+        attentionSession = createAttentionSession({
+          apply: attentionBadge.set,
+          token: () => sessionTokenCookie(authClient.getCookie()),
+          readIdentity: async () => {
+            const session = await authClient.getSession();
+            const user = session.data?.user;
+            return user ? { userId: user.id, verified: user.emailVerified } : null;
+          },
+        });
+        const badgeSession = attentionSession;
+        const dispatchAttention = handleBridge(attentionIPC.channel, attentionIPC.methods, {
+          set: (input) => badgeSession.set(input),
+        });
+        ipcMain.handle(attentionIPC.channel, (event, method, value) => {
+          if (!trustedSender(event, mainWindow?.webContents, rendererURL))
+            throw new Error("Attention unavailable.");
+          return dispatchAttention(method, value);
+        });
         registerWindowBridge(rendererURL, backend, () => mainWindow);
         const desktopSession = session.fromPartition(sessionPartition);
         const installation = installationId(app.getPath("userData"));

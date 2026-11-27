@@ -51,144 +51,154 @@ export function readOperations(
   scope: Readonly<SessionIdentity>,
   authenticate: MessagingSessionResolver,
 ) {
-  return {
-    async unreadCounts() {
-      const { actor } = await authenticate(db);
-      if (scope.actorEntityId) throw new AccessDeniedError();
-      // Person mentions are the body's `@[person:<actor>]` tokens, which sending and editing
-      // check. Matching is case-insensitive, like the parser.
-      const mention = `@[person:${actor.entityId.toLowerCase()}]`;
-      const mentions = (body: AnyPgColumn) => sql`strpos(lower(${body}), ${mention}) > 0`;
-      const mentionCount = sql<number>`(count(*) FILTER (WHERE ${mentions(messagingMessages.body)}))::int`;
-      // Live messages others wrote, in conversations the Messages list shows.
-      const unreadFromOthers = () =>
-        and(
-          // Authentication resolves the scope's human actor. Its approved participation already
-          // satisfies visibleConversations, including partner conversations.
-          liveApprovedParticipant(db),
-          visibleConversations(db, scope),
-          // Match the Messages list: task discussions open only from their task, so they must not
-          // light the Messages dot with nothing there to read.
-          isNull(messagingConversations.taskEntityId),
-          ne(messagingMessages.authorActorEntityId, actor.entityId),
-          notInArray(
-            messagingMessages.authorActorEntityId,
-            db.select({ id: actors.entityId }).from(actors).where(eq(actors.userId, scope.userId)),
-          ),
-          isNull(messagingMessages.deletedAt),
-        );
-      const membership = and(
-        eq(messagingParticipants.conversationId, messagingConversations.id),
-        eq(messagingParticipants.actorEntityId, actor.entityId),
+  async function unreadRows(includeMessageIds = false) {
+    const { actor } = await authenticate(db);
+    if (scope.actorEntityId) throw new AccessDeniedError();
+    // Person mentions are the body's `@[person:<actor>]` tokens, which sending and editing
+    // check. Matching is case-insensitive, like the parser.
+    const mention = `@[person:${actor.entityId.toLowerCase()}]`;
+    const mentions = (body: AnyPgColumn) => sql`strpos(lower(${body}), ${mention}) > 0`;
+    const mentionCount = sql<number>`(count(*) FILTER (WHERE ${mentions(messagingMessages.body)}))::int`;
+    // Live messages others wrote, in conversations the Messages list shows.
+    const unreadFromOthers = () =>
+      and(
+        // Authentication resolves the scope's human actor. Its approved participation already
+        // satisfies visibleConversations, including partner conversations.
+        liveApprovedParticipant(db),
+        visibleConversations(db, scope),
+        // Match the Messages list: task discussions open only from their task, so they must not
+        // light the Messages dot with nothing there to read.
+        isNull(messagingConversations.taskEntityId),
+        ne(messagingMessages.authorActorEntityId, actor.entityId),
+        notInArray(
+          messagingMessages.authorActorEntityId,
+          db.select({ id: actors.entityId }).from(actors).where(eq(actors.userId, scope.userId)),
+        ),
+        isNull(messagingMessages.deletedAt),
       );
-      // The main timeline counts against the conversation's read position.
-      const timeline = await db
-        .select({
-          conversationId: messagingConversations.id,
-          unreadCount: sql<number>`count(*)::int`,
-          mentionCount,
-          // Where the "New" divider goes.
-          firstUnreadMessageId: sql<string | null>`(array_agg(${messagingMessages.id}
+    const membership = and(
+      eq(messagingParticipants.conversationId, messagingConversations.id),
+      eq(messagingParticipants.actorEntityId, actor.entityId),
+    );
+    // The main timeline counts against the conversation's read position.
+    const timeline = await db
+      .select({
+        conversationId: messagingConversations.id,
+        unreadCount: sql<number>`count(*)::int`,
+        messageIds: includeMessageIds
+          ? sql<string[]>`array_agg(${messagingMessages.id}::text)`
+          : sql<string[]>`ARRAY[]::text[]`,
+        mentionCount,
+        // Where the "New" divider goes.
+        firstUnreadMessageId: sql<string | null>`(array_agg(${messagingMessages.id}
             ORDER BY ${messagingMessages.createdAt}, ${messagingMessages.id}))[1]`,
-        })
-        .from(messagingConversations)
-        .innerJoin(messagingParticipants, membership)
-        .innerJoin(
-          messagingMessages,
-          eq(messagingMessages.conversationId, messagingConversations.id),
-        )
-        .leftJoin(
-          messagingReadPositions,
-          and(
-            eq(messagingReadPositions.conversationId, messagingConversations.id),
-            eq(messagingReadPositions.actorEntityId, actor.entityId),
-          ),
-        )
-        .where(
-          and(
-            unreadFromOthers(),
-            isNull(messagingMessages.threadId),
-            // Bounds the message index scan to unread rows. The joined read position cannot,
-            // because it is on the nullable side of the left join. The row comparison is exact.
-            sql`${messagingMessages.createdAt} >= coalesce((SELECT bound.message_created_at
+      })
+      .from(messagingConversations)
+      .innerJoin(messagingParticipants, membership)
+      .innerJoin(messagingMessages, eq(messagingMessages.conversationId, messagingConversations.id))
+      .leftJoin(
+        messagingReadPositions,
+        and(
+          eq(messagingReadPositions.conversationId, messagingConversations.id),
+          eq(messagingReadPositions.actorEntityId, actor.entityId),
+        ),
+      )
+      .where(
+        and(
+          unreadFromOthers(),
+          isNull(messagingMessages.threadId),
+          // Bounds the message index scan to unread rows. The joined read position cannot,
+          // because it is on the nullable side of the left join. The row comparison is exact.
+          sql`${messagingMessages.createdAt} >= coalesce((SELECT bound.message_created_at
               FROM ${messagingReadPositions} bound
               WHERE bound.conversation_id = ${messagingConversations.id}
                 AND bound.actor_entity_id = ${actor.entityId}), '-infinity'::timestamptz)`,
-            sql`(${messagingReadPositions.messageCreatedAt} IS NULL OR
+          sql`(${messagingReadPositions.messageCreatedAt} IS NULL OR
             (${messagingMessages.createdAt}, ${messagingMessages.id}) >
             (${messagingReadPositions.messageCreatedAt}, ${messagingReadPositions.messageId}))`,
-          ),
-        )
-        .groupBy(messagingConversations.id);
-      // Replies count against their own thread's position, and only in threads the reader follows:
-      // every thread of a direct message, and elsewhere threads they wrote in or were mentioned in.
-      // These are the people reply notifications reach.
-      const inThread = alias(messagingMessages, "in_thread");
-      const followed = or(
-        eq(messagingConversations.kind, "dm"),
-        exists(
-          db
-            .select({ one: sql`1` })
-            .from(inThread)
-            .where(
-              and(
-                eq(inThread.conversationId, messagingMessages.conversationId),
-                or(
-                  eq(inThread.id, messagingMessages.threadId),
-                  eq(inThread.threadId, messagingMessages.threadId),
-                ),
-                isNull(inThread.deletedAt),
-                or(eq(inThread.authorActorEntityId, actor.entityId), mentions(inThread.body)),
-              ),
-            ),
         ),
-      );
-      const replies = await db
-        .select({
-          conversationId: messagingConversations.id,
-          unreadCount: sql<number>`count(*)::int`,
-          mentionCount,
-          // The root of each unread reply, once per reply, so the timeline can mark its thread.
-          unreadReplyThreadIds: sql<string[]>`array_agg(${messagingMessages.threadId}::text
-            ORDER BY ${messagingMessages.createdAt}, ${messagingMessages.id})`,
-        })
-        .from(messagingConversations)
-        .innerJoin(messagingParticipants, membership)
-        .innerJoin(
-          messagingMessages,
-          eq(messagingMessages.conversationId, messagingConversations.id),
-        )
-        .leftJoin(
-          messagingThreadReadPositions,
-          and(
-            eq(messagingThreadReadPositions.threadId, messagingMessages.threadId),
-            eq(messagingThreadReadPositions.actorEntityId, actor.entityId),
+      )
+      .groupBy(messagingConversations.id);
+    // Replies count against their own thread's position, and only in threads the reader follows:
+    // every thread of a direct message, and elsewhere threads they wrote in or were mentioned in.
+    // These are the people reply notifications reach.
+    const inThread = alias(messagingMessages, "in_thread");
+    const followed = or(
+      eq(messagingConversations.kind, "dm"),
+      exists(
+        db
+          .select({ one: sql`1` })
+          .from(inThread)
+          .where(
+            and(
+              eq(inThread.conversationId, messagingMessages.conversationId),
+              or(
+                eq(inThread.id, messagingMessages.threadId),
+                eq(inThread.threadId, messagingMessages.threadId),
+              ),
+              isNull(inThread.deletedAt),
+              or(eq(inThread.authorActorEntityId, actor.entityId), mentions(inThread.body)),
+            ),
           ),
-        )
-        .where(
-          and(
-            unreadFromOthers(),
-            isNotNull(messagingMessages.threadId),
-            sql`(${messagingThreadReadPositions.messageCreatedAt} IS NULL OR
+      ),
+    );
+    const replies = await db
+      .select({
+        conversationId: messagingConversations.id,
+        unreadCount: sql<number>`count(*)::int`,
+        messageIds: includeMessageIds
+          ? sql<string[]>`array_agg(${messagingMessages.id}::text)`
+          : sql<string[]>`ARRAY[]::text[]`,
+        mentionCount,
+        // The root of each unread reply, once per reply, so the timeline can mark its thread.
+        unreadReplyThreadIds: sql<string[]>`array_agg(${messagingMessages.threadId}::text
+            ORDER BY ${messagingMessages.createdAt}, ${messagingMessages.id})`,
+      })
+      .from(messagingConversations)
+      .innerJoin(messagingParticipants, membership)
+      .innerJoin(messagingMessages, eq(messagingMessages.conversationId, messagingConversations.id))
+      .leftJoin(
+        messagingThreadReadPositions,
+        and(
+          eq(messagingThreadReadPositions.threadId, messagingMessages.threadId),
+          eq(messagingThreadReadPositions.actorEntityId, actor.entityId),
+        ),
+      )
+      .where(
+        and(
+          unreadFromOthers(),
+          isNotNull(messagingMessages.threadId),
+          sql`(${messagingThreadReadPositions.messageCreatedAt} IS NULL OR
             (${messagingMessages.createdAt}, ${messagingMessages.id}) >
             (${messagingThreadReadPositions.messageCreatedAt}, ${messagingThreadReadPositions.messageId}))`,
-            followed,
-          ),
-        )
-        .groupBy(messagingConversations.id);
-      const repliesIn = new Map(replies.map((row) => [row.conversationId, row]));
-      const counts: UnreadCount[] = timeline.map((row) => {
-        const reply = repliesIn.get(row.conversationId);
-        repliesIn.delete(row.conversationId);
-        return {
-          ...row,
-          unreadCount: row.unreadCount + (reply?.unreadCount ?? 0),
-          mentionCount: row.mentionCount + (reply?.mentionCount ?? 0),
-          unreadReplyThreadIds: reply?.unreadReplyThreadIds ?? [],
-        };
+          followed,
+        ),
+      )
+      .groupBy(messagingConversations.id);
+    const repliesIn = new Map(replies.map((row) => [row.conversationId, row]));
+    const counts = timeline.map((row) => {
+      const reply = repliesIn.get(row.conversationId);
+      repliesIn.delete(row.conversationId);
+      return {
+        ...row,
+        unreadCount: row.unreadCount + (reply?.unreadCount ?? 0),
+        messageIds: [...row.messageIds, ...(reply?.messageIds ?? [])],
+        mentionCount: row.mentionCount + (reply?.mentionCount ?? 0),
+        unreadReplyThreadIds: reply?.unreadReplyThreadIds ?? [],
+      };
+    });
+    for (const reply of repliesIn.values()) counts.push({ ...reply, firstUnreadMessageId: null });
+    return counts;
+  }
+  return {
+    async unreadCounts(): Promise<UnreadCount[]> {
+      return (await unreadRows()).map(({ messageIds, ...row }) => {
+        void messageIds;
+        return row;
       });
-      for (const reply of repliesIn.values()) counts.push({ ...reply, firstUnreadMessageId: null });
-      return counts;
+    },
+    async unreadMessageIds() {
+      return (await unreadRows(true)).flatMap((row) => row.messageIds);
     },
     /**
      * Reads the main timeline through a top-level message, or a thread through one of its replies.

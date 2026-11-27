@@ -3,6 +3,7 @@ import type {
   AgentUncertainItemView,
   AgentWorkPlace,
 } from "@substrate/contracts/agent-work";
+import { needsYouItems } from "@substrate/contracts/agent-work/needs-you";
 
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
@@ -14,7 +15,6 @@ import { NeedsYouView, type NeedsYouEntry } from "./needs-you-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { hiddenConversation } from "@/lib/agent-work/hidden-records";
-import { needsYouItems } from "@/lib/agent-work/needs-you";
 import { agentStatus, attentionReasonText } from "@/lib/agent-work/status";
 import { conversationName } from "@/lib/messaging/conversations";
 import { agentLink, messageLink } from "@/lib/navigation/record-links";

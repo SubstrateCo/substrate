@@ -18,6 +18,7 @@ import { renewLeases } from "./features/agent-work/host/lease";
 import { createHostRepository } from "./features/agent-work/host/repository";
 import { createAgentWorkReadRepository } from "./features/agent-work/read-repository";
 import { createAgentRepository } from "./features/agents/repository";
+import { accountAttention } from "./features/attention/summary";
 import { calendarRepository } from "./features/calendar/repository";
 import { contactApplicationRepository } from "./features/contacts/repository";
 import { contextContactInteractionRepository } from "./features/context/interactions/contact-interactions";
@@ -286,6 +287,7 @@ export function createRepositories(db: DatabaseExecutor) {
           ),
       };
       return {
+        attention: () => accountAttention(db, owner.userId),
         agents: commitWrites(agents, ["list"], (work) =>
           commit(db, async (tx) => {
             await ownerSession(tx, identity);

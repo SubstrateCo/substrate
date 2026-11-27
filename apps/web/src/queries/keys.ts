@@ -14,6 +14,7 @@ export const queryKeys = {
   session: ["auth", "session"] as const,
   // Private to one user. Each key names a kind, then the organization when it has one.
   user: (userId: string) => ["users", userId] as const,
+  attention: (userId: string) => [...queryKeys.user(userId), "attention"] as const,
   mail: (userId: string, organizationId: string) =>
     [...queryKeys.user(userId), "mail", organizationId] as const,
   agents: (userId: string) => [...queryKeys.user(userId), "agents"] as const,

@@ -1,3 +1,5 @@
+import { needsYouCount } from "@substrate/contracts/agent-work/needs-you";
+
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
@@ -17,7 +19,6 @@ import { useFocusAfterRender } from "@/components/feedback/use-focus-after-rende
 import { PageSheet } from "@/components/layout/page-sheet";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import type { AgentSettingsPage, AgentView } from "@/lib/agent-work/agent-sections";
-import { needsYouCount } from "@/lib/agent-work/needs-you";
 import { agentLink } from "@/lib/navigation/record-links";
 import type { ResourceState } from "@/lib/resource-state";
 import { needsYouOptions } from "@/queries/agent-work/server";

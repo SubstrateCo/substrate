@@ -4,6 +4,7 @@ import {
   type AgentWorkChange,
 } from "@substrate/contracts/agent-work/desktop";
 import * as agentWorkIPC from "@substrate/contracts/agent-work/ipc";
+import * as attentionIPC from "@substrate/contracts/desktop/attention-ipc";
 import { exposeBridge } from "@substrate/contracts/desktop/ipc";
 import * as settingsIPC from "@substrate/contracts/desktop/settings-ipc";
 import * as updatesIPC from "@substrate/contracts/desktop/updates-ipc";
@@ -33,6 +34,10 @@ const origin = process.argv
   ?.slice("--substrate-origin=".length);
 if (process.isMainFrame && window.location.origin === origin) {
   setupRenderer();
+  contextBridge.exposeInMainWorld(
+    "substrateAttention",
+    exposeBridge(attentionIPC.channel, attentionIPC.methods, ipcRenderer.invoke.bind(ipcRenderer)),
+  );
   contextBridge.exposeInMainWorld(
     "substrateMail",
     exposeBridge(mailIPC.channel, mailIPC.methods, ipcRenderer.invoke.bind(ipcRenderer)),

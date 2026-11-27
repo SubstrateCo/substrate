@@ -424,6 +424,8 @@ export function createRealtimeCache({
       seen.add(event.id);
       if (seen.size > 1000) seen.delete(seen.values().next().value!);
       if (event.domain === "access" && organizationId) {
+        // The account summary is outside the workspace cache cleared by this reset.
+        void queryClient.invalidateQueries({ queryKey: queryKeys.attention(userId) });
         return resetAccess().catch((error: Error) => {
           if (!disposed) onHealth?.("stale");
           throw error;
@@ -431,6 +433,8 @@ export function createRealtimeCache({
       }
       if (isDisposed()) return;
       let targets = realtimeQueryTargets(event, userId);
+      // Include access, app availability, and deletions; batch bursts with the other reads.
+      targets.push({ queryKey: queryKeys.attention(userId) });
       const at = ++clock;
       const epoch = generation;
       const location = newMessageLocation(event);

@@ -1,3 +1,5 @@
+import { needsYouCount } from "@substrate/contracts/agent-work/needs-you";
+
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
@@ -10,9 +12,9 @@ import { WorkspaceTools } from "@/components/context/search/workspace-tools";
 import { DesktopUpdateRail } from "@/components/desktop-updates/desktop-update-rail";
 import { OrganizationSwitcher } from "@/components/organizations/switcher/organization-switcher";
 import { useAppShortcuts } from "@/components/workspace/use-app-shortcuts";
+import { useDesktopAttention } from "@/components/workspace/use-desktop-attention";
 import { UserMenu } from "@/components/workspace/user-menu";
 import { WorkspaceShell } from "@/components/workspace/workspace-shell";
-import { needsYouCount } from "@/lib/agent-work/needs-you";
 import { needsYouOptions } from "@/queries/agent-work/server";
 import { useAgentWorkBridgeSync } from "@/queries/agent-work/sync";
 import { notificationUnreadOptions } from "@/queries/context/notification-groups";
@@ -41,6 +43,7 @@ export function WorkspaceFrame({
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
   useAgentWorkBridgeSync(userId, organizationId);
   useAppShortcuts();
+  useDesktopAttention(userId);
   return (
     <WorkspaceSearchProvider>
       <WorkspaceShell

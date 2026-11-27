@@ -19,6 +19,31 @@ function change(
   return { version: 1, type: "change", id: crypto.randomUUID(), organizationId, domain } as const;
 }
 
+for (const domain of ["messaging", "notifications", "agent-work", "access"] as const) {
+  test(`${domain} hints refresh account attention without touching another account`, async () => {
+    const client = new QueryClient();
+    const key = queryKeys.attention("user");
+    const other = queryKeys.attention("other");
+    client.setQueryData(key, { count: 6 });
+    client.setQueryData(other, { count: 9 });
+    const cache = createRealtimeCache({
+      queryClient: client,
+      organizationId: "org",
+      userId: "user",
+      revalidate: async () => {},
+    });
+    try {
+      await cache.receive(change(domain));
+      await advanceTimersAsync(100);
+      expect(client.getQueryState(key)?.isInvalidated).toBe(true);
+      expect(client.getQueryState(other)?.isInvalidated).toBe(false);
+    } finally {
+      cache.dispose();
+      client.clear();
+    }
+  });
+}
+
 test("a task hint during an in-flight read stays stale when its panel becomes hidden", async () => {
   const client = new QueryClient();
   const key = queryKeys.taskAttachments("org", "project", "task");

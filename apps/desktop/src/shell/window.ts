@@ -34,6 +34,8 @@ export function createShellWindow(options: {
       contextIsolation: true,
       sandbox: true,
       webSecurity: true,
+      // Account attention must keep reconciling while the workspace is hidden in the tray.
+      backgroundThrottling: false,
       partition: options.partition,
       preload: options.preload,
       additionalArguments: [

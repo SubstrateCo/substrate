@@ -2,6 +2,7 @@ import type { Services } from "./services";
 import type { Scopes } from "./shared/scope";
 import { createAgentWorkRoutes } from "./v1/agent-work/routes";
 import { createAgentsRoutes } from "./v1/agents/routes";
+import { createAttentionRoutes } from "./v1/attention/routes";
 import { createCalendarRoutes } from "./v1/calendar/routes";
 import { createContactsExportRoutes } from "./v1/contacts/export-routes";
 import { createContactsRoutes } from "./v1/contacts/routes";
@@ -25,6 +26,7 @@ import { Hono } from "hono";
 
 export function createProductRoutes(services: Services, scopes: Scopes) {
   return new Hono()
+    .route("/attention", createAttentionRoutes(services.attention, scopes))
     .route("/organizations", createOrganizationRoutes(services.organizations, scopes))
     .route("/files/pictures", createPictureRoutes(services.pictures, scopes))
     .route("/files/attachments", createAttachmentRoutes(services.attachments, scopes))

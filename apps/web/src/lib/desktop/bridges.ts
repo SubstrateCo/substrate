@@ -1,4 +1,5 @@
 import type { AgentWorkAPI } from "@substrate/contracts/agent-work/desktop";
+import type { DesktopAttentionAPI } from "@substrate/contracts/desktop/attention-ipc";
 import type { ScreenNotificationsBridge } from "@substrate/contracts/desktop/screen-notifications-ipc";
 import type { DesktopUpdatesAPI } from "@substrate/contracts/desktop/updates-ipc";
 import type { DesktopSettingsAPI, DesktopWindowAPI } from "@substrate/contracts/desktop/window";
@@ -10,6 +11,7 @@ import type { ExposedBridges, ElectronClientOptions } from "@better-auth/electro
 
 declare global {
   interface Window extends Partial<ExposedBridges<ElectronClientOptions>> {
+    readonly substrateAttention?: DesktopAttentionAPI;
     readonly substrateHarness?: HarnessAPI;
     readonly substrateMail?: MailAPI;
     readonly substrateAgentWork?: AgentWorkAPI;
@@ -23,6 +25,7 @@ declare global {
 }
 
 export const harnessBridge = () => window.substrateHarness;
+export const attentionBridge = () => window.substrateAttention;
 export const mailBridge = () => window.substrateMail;
 export const agentWorkBridge = () => window.substrateAgentWork;
 export const windowBridge = () => window.substrateWindow;

@@ -1,12 +1,6 @@
-import type { AgentNeedsYou } from "@substrate/contracts/agent-work";
+import type { AgentNeedsYou } from "./request-views.ts";
 
-/**
- * What the Needs you list shows, and what the rail and the Agents app count. Every request and
- * every stopped turn shows. An uncertain item shows on its own only when its turn is not listed;
- * otherwise the turn's card offers Resend and Discard for it. An agent's needs_you status shows
- * only when none of its requests or turns shows, because they already explain why the agent
- * needs the owner.
- */
+/** Match the Needs you list without counting an agent or uncertain item twice. */
 export function needsYouItems(data: AgentNeedsYou | undefined) {
   const requests = data?.requests ?? [];
   const turns = (data?.turns ?? []).map((turn) => ({

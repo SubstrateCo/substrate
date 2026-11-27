@@ -14,6 +14,7 @@ import { createHostService } from "./v1/agent-work/host-service";
 import { createAgentWorkService } from "./v1/agent-work/service";
 import { createWorkService } from "./v1/agent-work/work-service";
 import { createAgentService } from "./v1/agents/service";
+import { createAttentionService } from "./v1/attention/service";
 import { createCalendarService, type CalendarServiceDependencies } from "./v1/calendar/service";
 import { createContactsService } from "./v1/contacts/service";
 import { createContactInteractionsService } from "./v1/context/interactions-service";
@@ -44,6 +45,7 @@ export function createServices(deps: {
 }) {
   const repository = createStorageRepository(deps.db);
   return {
+    attention: createAttentionService(),
     desktop: createDesktopService(deps.desktop),
     calendar: createCalendarService({ ...deps.calendar, publish: deps.publish }),
     integrations: createIntegrationService({
