@@ -5,22 +5,8 @@
     {
       "idx": 0,
       "version": "6",
-      "when": 1795548327334,
+      "when": 1795738360634,
       "tag": "0000_initial",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "6",
-      "when": 1795722529807,
-      "tag": "0001_drop_routine_approval",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "6",
-      "when": 1795729909723,
-      "tag": "0002_agent_control_plane",
       "breakpoints": true
     }
   ]

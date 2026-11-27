@@ -5,50 +5,8 @@
     {
       "idx": 0,
       "version": "7",
-      "when": 1795548327631,
+      "when": 1795738360051,
       "tag": "0000_initial",
-      "breakpoints": true
-    },
-    {
-      "idx": 1,
-      "version": "7",
-      "when": 1795647500372,
-      "tag": "0001_yummy_earthquake",
-      "breakpoints": true
-    },
-    {
-      "idx": 2,
-      "version": "7",
-      "when": 1795706453460,
-      "tag": "0002_spicy_unicorn",
-      "breakpoints": true
-    },
-    {
-      "idx": 3,
-      "version": "7",
-      "when": 1795715885201,
-      "tag": "0003_curved_next_avengers",
-      "breakpoints": true
-    },
-    {
-      "idx": 4,
-      "version": "7",
-      "when": 1795728149291,
-      "tag": "0004_clear_havok",
-      "breakpoints": true
-    },
-    {
-      "idx": 5,
-      "version": "7",
-      "when": 1795737067531,
-      "tag": "0005_round_the_twelve",
-      "breakpoints": true
-    },
-    {
-      "idx": 6,
-      "version": "7",
-      "when": 1795737068531,
-      "tag": "0006_agent_control_plane",
       "breakpoints": true
     }
   ]
