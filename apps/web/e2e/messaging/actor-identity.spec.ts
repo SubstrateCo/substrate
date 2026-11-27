@@ -69,7 +69,7 @@ test("missing photos keep humans and agents distinct in search, selections, memb
     await page.emulateMedia({ colorScheme: "dark" });
     await visit(user, channel.id);
     await expect(page.locator("html")).toHaveClass(/dark/);
-    await page.getByRole("button", { name: "Add people", exact: true }).click();
+    await page.getByRole("button", { name: "Add people and agents", exact: true }).click();
     const dialog = page.getByRole("dialog");
     const picker = dialog.getByRole("combobox", { name: "People", exact: true });
     await picker.fill("Maya");

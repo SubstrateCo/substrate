@@ -262,7 +262,7 @@ test("a member adds and removes their agent through people and members without a
   const channel = await conversation(actors.sender, [actors.member.email]);
   const requests = searches(user.page);
   await visit(user, channel.id);
-  await user.page.getByRole("button", { name: "Add people", exact: true }).click();
+  await user.page.getByRole("button", { name: "Add people and agents", exact: true }).click();
   const dialog = user.page.getByRole("dialog");
   const picker = dialog.getByRole("combobox", { name: "People", exact: true });
   await picker.fill(actors.sender.name);

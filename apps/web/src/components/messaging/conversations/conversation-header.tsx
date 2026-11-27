@@ -116,13 +116,13 @@ export function AddPeopleButton({ expanded, onClick }: { expanded: boolean; onCl
           variant="ghost"
           size="icon-sm"
           onClick={onClick}
-          aria-label="Add people"
+          aria-label="Add people and agents"
           aria-expanded={expanded}
         >
           <UserPlus />
         </Button>
       </TooltipTrigger>
-      <TooltipContent>Add people</TooltipContent>
+      <TooltipContent>Add people and agents</TooltipContent>
     </Tooltip>
   );
 }

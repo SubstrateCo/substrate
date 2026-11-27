@@ -24,7 +24,7 @@ for (const kind of ["channel", "group"] as const) {
           });
     const user = await client(actors.sender);
     await visit(user, target.id);
-    await user.page.getByRole("button", { name: "Add people", exact: true }).click();
+    await user.page.getByRole("button", { name: "Add people and agents", exact: true }).click();
     const dialog = user.page.getByRole("dialog");
     const picker = dialog.getByRole("combobox", { name: "People", exact: true });
     await picker.press("ArrowDown");
@@ -51,7 +51,7 @@ for (const kind of ["channel", "group"] as const) {
     await expect(row.getByText("Agent", { exact: true })).toHaveCount(0);
     await expect(row.locator("[tabindex='0'] .sr-only")).toHaveText(", Agent");
     await user.page.keyboard.press("Escape");
-    await user.page.getByRole("button", { name: "Add people", exact: true }).click();
+    await user.page.getByRole("button", { name: "Add people and agents", exact: true }).click();
     await picker.fill(agent.name);
     await expect(dialog.getByRole("option").filter({ hasText: agent.name })).toHaveCount(0);
     await picker.fill(actors.member.email);
@@ -94,7 +94,7 @@ test("a partial add keeps only the failed agent selected and reports the saved p
   const channel = await conversation(actors.sender);
   const user = await client(actors.sender);
   await visit(user, channel.id);
-  await user.page.getByRole("button", { name: "Add people", exact: true }).click();
+  await user.page.getByRole("button", { name: "Add people and agents", exact: true }).click();
   const dialog = user.page.getByRole("dialog");
   const picker = dialog.getByRole("combobox", { name: "People", exact: true });
   await picker.fill(actors.member.name);
@@ -139,5 +139,7 @@ test("a direct message can choose an agent but does not offer membership changes
   await expect(
     user.page.getByRole("textbox", { name: `Message ${agent.name}`, exact: true }),
   ).toBeVisible();
-  await expect(user.page.getByRole("button", { name: "Add people", exact: true })).toHaveCount(0);
+  await expect(
+    user.page.getByRole("button", { name: "Add people and agents", exact: true }),
+  ).toHaveCount(0);
 });

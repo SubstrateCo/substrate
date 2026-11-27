@@ -15,7 +15,9 @@ async function expectNoManagement(page: Page) {
   await expect(page.getByRole("button", { name: "Conversation actions", exact: true })).toHaveCount(
     0,
   );
-  await expect(page.getByRole("button", { name: "Add people", exact: true })).toHaveCount(0);
+  await expect(
+    page.getByRole("button", { name: "Add people and agents", exact: true }),
+  ).toHaveCount(0);
   await expect(page.getByRole("button", { name: /^Members(?:,|$)/ })).toHaveCount(0);
 }
 
