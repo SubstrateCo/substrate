@@ -3,7 +3,7 @@ import type { CalendarEventSummary } from "@substrate/contracts/calendar";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { linkOptions, useNavigate } from "@tanstack/react-router";
 
-import { useState, type ComponentProps } from "react";
+import { useEffect, useState, type ComponentProps } from "react";
 
 import { CalendarEventPanel } from "../event/calendar-event-panel";
 import { CalendarMonth } from "./calendar-month";
@@ -14,6 +14,7 @@ import {
   type CalendarBodyState,
 } from "./calendar-workspace-view";
 import { isCalendarAccessRequired } from "@/api/calendar/access";
+import { usePanelReturn } from "@/components/layout/use-panel-return";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useNow } from "@/hooks/use-now";
 import {
@@ -42,8 +43,19 @@ export function CalendarWorkspace({
 }) {
   const { organizationId } = useWorkspaceScope();
   const navigate = useNavigate({ from: "/calendar/" });
-  const [preferredView, setPreferredView] = useState(readCalendarView);
+  const dismiss = usePanelReturn();
+  const [preferredView] = useState(readCalendarView);
   const view = requestedView ?? preferredView;
+  // Freeze this visit's resolved preference in its URL before it can change on another visit.
+  useEffect(() => {
+    if (!requestedView)
+      void navigate({
+        to: "/calendar",
+        search: (previous) => ({ ...previous, view }),
+        replace: true,
+        resetScroll: false,
+      });
+  }, [navigate, requestedView, view]);
   const now = useNow(true, 60_000);
   const anchor = viewAnchor(date, new Date(now));
   const days = visibleDays(view, anchor);
@@ -73,12 +85,23 @@ export function CalendarWorkspace({
   const today = startOfDay(new Date(now));
   const showsToday = days.some((day) => day.getTime() === today.getTime());
   const search = (next: { view?: CalendarViewMode; date?: string; eventId?: string }) =>
-    void navigate({ to: "/calendar", search: (previous) => ({ ...previous, ...next }) });
+    void navigate({
+      to: "/calendar",
+      search: (previous) => ({ ...previous, ...next }),
+      resetScroll: false,
+    });
   // The open event lives in the URL, so the pane is linkable and Back closes it.
   const eventLink = (event: CalendarEventSummary) =>
     linkOptions({
       to: "/calendar",
-      search: { workspaceId: organizationId, view, date, eventId: event.entityId },
+      search: (previous) => ({
+        ...previous,
+        workspaceId: organizationId,
+        view,
+        date,
+        eventId: event.entityId,
+      }),
+      resetScroll: false,
     });
   const titleDate = view === "week" ? days[3]! : anchor;
   return (
@@ -110,7 +133,6 @@ export function CalendarWorkspace({
         onStep: (direction) => search({ date: shiftAnchor(view, anchor, direction) }),
         onViewChange: (next) => {
           saveCalendarView(next);
-          setPreferredView(next);
           search({ view: next, date: date ? formatDateOnly(anchor) : undefined });
         },
       }}
@@ -132,7 +154,7 @@ export function CalendarWorkspace({
             key={eventId}
             eventId={eventId}
             now={now}
-            onClose={() => search({ eventId: undefined })}
+            onClose={() => dismiss({ eventId: undefined })}
           />
         )
       }

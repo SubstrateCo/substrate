@@ -16,7 +16,7 @@ function CrmRoute() {
   const { section, recordId } = Route.useSearch();
   return (
     <AppAvailability app="crm">
-      <CrmWorkspace section={section ?? "deals"} recordId={recordId} />
+      <CrmWorkspace section={section} recordId={recordId} />
     </AppAvailability>
   );
 }

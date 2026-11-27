@@ -22,6 +22,7 @@ export function RecordSheetLink({ children }: { children: string }) {
     <Link
       to="/messages"
       search={(previous) => ({ ...previous, sheet: true })}
+      resetScroll={false}
       className={linkClassName}
     >
       {children}

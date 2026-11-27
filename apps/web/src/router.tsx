@@ -3,6 +3,7 @@ import { createRouter } from "@tanstack/react-router";
 
 import { routeTree } from "./routeTree.gen";
 import { PageLoading } from "@/components/feedback/page-loading";
+import { trackPanelHistory } from "@/lib/navigation/panel-history";
 import { createRefreshErrorCache } from "@/queries/refresh-error-cache";
 
 export function getRouter() {
@@ -17,6 +18,7 @@ export function getRouter() {
     defaultPreload: "intent",
     defaultPendingComponent: PageLoading,
   });
+  trackPanelHistory(router.history);
   return router;
 }
 

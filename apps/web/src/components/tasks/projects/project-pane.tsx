@@ -9,8 +9,10 @@ import { ProjectForm } from "./editor/project-form";
 import { ProjectPicture } from "./editor/project-picture";
 import { ProjectArchivedNotice } from "./project-archived-notice";
 import { ProjectExport } from "./project-export";
+import type { ProjectTab } from "./project-tabs";
 import { ProjectSharing } from "./sharing/project-sharing";
 import { useProjectRestore } from "./use-project-restore";
+import { usePanelReturn } from "@/components/layout/use-panel-return";
 import { ProjectPane as ProjectPaneView } from "@/components/tasks/projects/project-pane-view";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { workLink } from "@/lib/navigation/record-links";
@@ -21,9 +23,11 @@ import { toast } from "sonner";
 export function ProjectPane({
   projectEntityId,
   taskId,
+  tab,
 }: {
   projectEntityId: string;
   taskId?: string;
+  tab: ProjectTab;
 }) {
   const { organizationId } = useWorkspaceScope();
   const { query: project, resource, capabilities } = useProject(organizationId, projectEntityId);
@@ -31,6 +35,7 @@ export function ProjectPane({
   const update = useTaskUpdate(organizationId, projectEntityId);
   const restore = useProjectRestore(organizationId);
   const navigate = useNavigate();
+  const dismiss = usePanelReturn();
   const archivedById = resource.data?.project.archivedByActorEntityId;
   const archivedBy = archivedById
     ? (resource.data?.actors.find((actor) => actor.entityId === archivedById)?.name ??
@@ -43,16 +48,32 @@ export function ProjectPane({
       capabilities={capabilities}
       statusPending={update.isPending}
       selectedTaskId={taskId ?? null}
-      onSelectTask={(selected) =>
+      tab={tab}
+      onSelectTab={(next) =>
         void navigate({
           to: "/tasks",
-          search: {
-            workspaceId: organizationId,
-            projectId: projectEntityId,
-            taskId: selected ?? undefined,
-          },
+          search: (previous) => ({
+            ...previous,
+            tab: next === "tasks" ? undefined : next,
+            taskId: undefined,
+          }),
+          resetScroll: false,
         })
       }
+      onSelectTask={(selected) => {
+        if (!selected) return dismiss({ taskId: undefined });
+        void navigate({
+          to: "/tasks",
+          search: (previous) => ({
+            ...previous,
+            workspaceId: organizationId,
+            projectId: projectEntityId,
+            taskId: selected,
+            tab: undefined,
+          }),
+          resetScroll: false,
+        });
+      }}
       onTaskStatusChange={(task, status) =>
         update.mutate(
           {

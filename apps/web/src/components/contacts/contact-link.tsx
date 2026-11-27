@@ -9,5 +9,12 @@ export function ContactLink({
 }: {
   entityId: string;
 } & ComponentProps<"a">) {
-  return <Link to="." search={(previous) => ({ ...previous, contactId: entityId })} {...props} />;
+  return (
+    <Link
+      to="."
+      search={(previous) => ({ ...previous, contactId: entityId })}
+      resetScroll={false}
+      {...props}
+    />
+  );
 }

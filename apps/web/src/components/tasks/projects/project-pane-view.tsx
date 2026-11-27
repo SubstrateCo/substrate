@@ -6,17 +6,14 @@ import { useState, type ComponentProps, type ReactNode, type RefObject } from "r
 import { TaskSheet, UnavailableTask } from "../detail/task-sheet";
 import { TaskList } from "../list/task-list";
 import type { ProjectDetail, Task } from "../types";
-import { useGuardedTab } from "./pane/use-guarded-tab";
 import { useTaskPanel } from "./pane/use-task-panel";
 import { ProjectIcon } from "./project-icon";
 import { ProjectHeaderLayout, ProjectTabLayout } from "./project-layout";
-import { projectTabs } from "./project-tabs";
-import { DiscardChangesDialog } from "@/components/feedback/discard-changes-dialog";
+import { isProjectTab, projectTabs, type ProjectTab } from "./project-tabs";
 import { ErrorState } from "@/components/feedback/error-state";
 import { FormDialog, type FormDialogEditor } from "@/components/feedback/form-dialog";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { UnsavedDraftsProvider } from "@/components/feedback/unsaved-drafts";
-import { useDraftKeys } from "@/components/feedback/unsaved-drafts-context";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageContent } from "@/components/layout/page-layout";
@@ -54,6 +51,8 @@ function ProjectPaneContent({
   renderTaskForm,
   renderTaskDetail,
   selectedTaskId,
+  tab,
+  onSelectTab,
   onSelectTask,
   onTaskStatusChange,
   headerActions,
@@ -81,6 +80,8 @@ function ProjectPaneContent({
     onSelectTask: (id: string) => void;
   }) => ReactNode;
   selectedTaskId: string | null;
+  tab: ProjectTab;
+  onSelectTab: (tab: ProjectTab) => void;
   onSelectTask: (id: string | null) => void;
   onTaskStatusChange: (task: Task, status: TaskStatus) => void;
   headerActions?: ReactNode;
@@ -89,12 +90,10 @@ function ProjectPaneContent({
   statusPending?: boolean;
 }) {
   const [view, setView] = useState<"list" | "board">("list");
-  const taskDirty = useDraftKeys().length > 0;
   const { panel, inspector, newTaskButton, restoreFocus } = useTaskPanel({
     selectedTaskId,
     onSelectTask,
   });
-  const { tab, setTab, tabsRef, ...tabGuard } = useGuardedTab(inspector, taskDirty);
   if (!detail) return <ProjectPaneState state={state} onRetry={onRetry} />;
   const { canEdit } = capabilities;
   const { selectedTaskId: openTaskId } = panel;
@@ -103,7 +102,13 @@ function ProjectPaneContent({
   return (
     <>
       <PageContent>
-        <Tabs value={tab} onValueChange={tabGuard.change} className="min-h-0 min-w-0 flex-1">
+        <Tabs
+          value={tab}
+          onValueChange={(next) => {
+            if (isProjectTab(next)) onSelectTab(next);
+          }}
+          className="min-h-0 min-w-0 flex-1"
+        >
           <div className="flex min-h-0 flex-1 flex-col">
             <ProjectHeaderLayout>
               <ProjectPaneHeader
@@ -113,7 +118,7 @@ function ProjectPaneContent({
                 onCreateTask={canEdit ? panel.create : undefined}
               />
               <ProjectTabLayout>
-                <TabsList ref={tabsRef} variant="line">
+                <TabsList variant="line">
                   {projectTabs.map(({ value, label }) => (
                     <TabsTrigger key={value} value={value} className="flex-none">
                       {label}
@@ -178,7 +183,6 @@ function ProjectPaneContent({
       <TaskSheet
         open={Boolean(openTaskId && tab === "tasks")}
         inspector={inspector}
-        onFocusCapture={tabGuard.trackInspectorFocus}
         onClose={panel.close}
       >
         {selected ? (
@@ -197,19 +201,10 @@ function ProjectPaneContent({
           creating={panel.creating}
           renderTaskForm={renderTaskForm}
           onSaved={(id) => {
-            setTab("tasks");
             panel.saved(id);
           }}
           onCancel={panel.cancel}
           onRestoreFocus={restoreFocus}
-        />
-      )}
-      {tabGuard.pendingTab && (
-        <DiscardChangesDialog
-          description="Your task edits or comment haven’t been saved."
-          onClose={tabGuard.cancel}
-          onRestoreFocus={tabGuard.restoreFocus}
-          onConfirm={tabGuard.confirm}
         />
       )}
     </>

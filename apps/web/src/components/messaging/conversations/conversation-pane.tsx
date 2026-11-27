@@ -25,6 +25,7 @@ import { AgentWorkNotice } from "@/components/agent-work/agent-work-slot";
 import { ConversationAgentWork } from "@/components/agent-work/conversation-agent-work";
 import { ConversationTurnTranscript } from "@/components/agent-work/transcript/conversation-turn-transcript";
 import { ErrorState } from "@/components/feedback/error-state";
+import { usePanelReturn } from "@/components/layout/use-panel-return";
 import { ConversationPane as ConversationPaneView } from "@/components/messaging/conversations/conversation-pane-view";
 import { JumpToLatest, OlderMessages } from "@/components/messaging/messages/message-history";
 import { MessageLoading } from "@/components/messaging/messages/message-loading";
@@ -58,6 +59,7 @@ export function ConversationPane({
 }) {
   const { organizationId, userId } = useWorkspaceScope();
   const navigate = useNavigate();
+  const dismiss = usePanelReturn();
   const navigateConversation = useConversationNavigation(
     organizationId,
     conversation.id,
@@ -94,12 +96,7 @@ export function ConversationPane({
             conversation={conversation}
             source={source}
             open={sheet}
-            onClose={() =>
-              void navigate({
-                to: "/messages",
-                search: (previous) => ({ ...previous, sheet: undefined }),
-              })
-            }
+            onClose={() => dismiss({ sheet: undefined })}
           />
         }
         renderMemberAction={(member) =>
@@ -157,8 +154,8 @@ export function ConversationPane({
             turnId={turnId}
             target={target}
             timeline={timeline}
-            onTranscriptClose={() => transcript()}
-            onThreadClose={() => navigateConversation({})}
+            onTranscriptClose={() => dismiss({ turnId: undefined })}
+            onThreadClose={() => dismiss({ messageId: undefined, turnId: undefined })}
           />
         }
       />
@@ -185,7 +182,17 @@ function useConversationNavigation(
     if (onNavigate) return onNavigate(target);
     // Threads and transcripts keep the record the conversation was opened from.
     const link = messageLink(organizationId, conversationId, undefined, source);
-    void navigate({ ...link, search: { ...link.search, ...target } });
+    void navigate({
+      ...link,
+      search: (previous) => ({
+        ...previous,
+        ...link.search,
+        messageId: undefined,
+        turnId: undefined,
+        ...target,
+      }),
+      resetScroll: false,
+    });
   };
 }
 

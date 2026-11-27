@@ -29,6 +29,7 @@ import {
   SidebarNav,
 } from "@/components/layout/page-layout";
 import { PageSheet } from "@/components/layout/page-sheet";
+import { usePanelReturn } from "@/components/layout/use-panel-return";
 import { Button } from "@/components/ui/button";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
@@ -238,17 +239,13 @@ function InteractionsContent({
 }
 
 function InteractionRecordSheet({ recordId }: { recordId?: string }) {
-  const navigate = useNavigate({ from: "/interactions/" });
+  const dismiss = usePanelReturn();
   return (
     <PageSheet
       open={!!recordId}
       label="Interaction"
       onOpenChange={(open) => {
-        if (!open)
-          void navigate({
-            to: "/interactions",
-            search: (previous) => ({ ...previous, recordId: undefined }),
-          });
+        if (!open) dismiss({ recordId: undefined });
       }}
     >
       {recordId && (

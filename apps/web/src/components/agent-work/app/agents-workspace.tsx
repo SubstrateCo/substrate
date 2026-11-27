@@ -17,6 +17,7 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import { PaneState } from "@/components/feedback/pane-state";
 import { useFocusAfterRender } from "@/components/feedback/use-focus-after-render";
 import { PageSheet } from "@/components/layout/page-sheet";
+import { usePanelReturn } from "@/components/layout/use-panel-return";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import type { AgentSettingsPage, AgentView } from "@/lib/agent-work/agent-sections";
 import { agentLink } from "@/lib/navigation/record-links";
@@ -95,7 +96,8 @@ export function AgentsWorkspace({
   settings?: AgentSettingsPage;
 }) {
   const { userId, organizationId } = useWorkspaceScope();
-  const navigate = useNavigate();
+  const navigate = useNavigate({ from: "/agents" });
+  const dismiss = usePanelReturn();
   const [creating, setCreating] = useState(false);
   const newAgentButton = useRef<HTMLButtonElement>(null);
   const focusAfterRender = useFocusAfterRender();
@@ -107,6 +109,14 @@ export function AgentsWorkspace({
   const needsYou = useQuery(needsYouOptions(userId, organizationId));
   const go = ({ agentId: id, ...target }: AgentsSearch) =>
     void navigate(agentLink(organizationId, id, target));
+  const changeSettings = (page?: AgentSettingsPage) => {
+    if (!page || (page === "overview" && settings)) return dismiss({ settings: page });
+    void navigate({
+      to: "/agents",
+      search: (previous) => ({ ...previous, settings: page }),
+      resetScroll: false,
+    });
+  };
   const onDeleted = () => {
     go({});
     focusAfterRender(() => newAgentButton.current);
@@ -136,9 +146,7 @@ export function AgentsWorkspace({
               go({ agentId: selected.id, view: "messages", settings, ...target })
             }
             onViewChange={(next) => go({ agentId: selected.id, view: next, settings })}
-            onSettingsChange={(open) =>
-              go({ agentId: selected.id, view, settings: open ? "overview" : undefined })
-            }
+            onSettingsChange={(open) => changeSettings(open ? "overview" : undefined)}
             // The transcript opens beside the work, so it takes the place of the settings.
             onTranscript={(id) => go({ agentId: selected.id, view: "work", turnId: id })}
           />
@@ -151,7 +159,7 @@ export function AgentsWorkspace({
       open={!!selected && !!settings}
       label="Agent settings"
       onOpenChange={(open) => {
-        if (!open && selected) go({ agentId: selected.id, view });
+        if (!open && selected) changeSettings();
       }}
     >
       {selected && settings && (
@@ -159,7 +167,7 @@ export function AgentsWorkspace({
           key={selected.id}
           agentId={selected.id}
           page={settings}
-          onPageChange={(page) => go({ agentId: selected.id, view, settings: page })}
+          onPageChange={changeSettings}
           onDeleted={onDeleted}
         />
       )}
@@ -199,7 +207,7 @@ export function AgentsWorkspace({
             agentName={selected.name}
             device={status(selected.id)?.device?.name}
             turnId={turnId}
-            onClose={() => go({ agentId: selected.id, view: "work" })}
+            onClose={() => dismiss({ turnId: undefined })}
           />
         )
       }

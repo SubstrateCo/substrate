@@ -3,7 +3,7 @@ import type { PickerAgent, PickerPerson } from "@substrate/contracts/people/pick
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import { ConversationPane } from "../conversations/conversation-pane";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
@@ -59,7 +59,7 @@ export function MessagingWorkspace({
   );
   const unread = useQuery(unreadCountsOptions(organizationId));
   const { people, agents } = useDirectMessageTargets(organizationId, userId);
-  const navigate = useNavigate();
+  const navigate = useNavigate({ from: "/messages" });
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const open = (id: string) => {
     void navigate({
@@ -100,6 +100,16 @@ export function MessagingWorkspace({
         (conversation) => conversation.id === conversationId,
       )
     : sidebarConversations[0];
+  const selectedId = selected?.id;
+  useEffect(() => {
+    if (!conversationId && selectedId)
+      void navigate({
+        to: "/messages",
+        search: (previous) => ({ ...previous, conversationId: selectedId }),
+        replace: true,
+        resetScroll: false,
+      });
+  }, [conversationId, navigate, selectedId]);
   const loading = conversations.isPending || selecting;
   return (
     <MessagingWorkspaceView

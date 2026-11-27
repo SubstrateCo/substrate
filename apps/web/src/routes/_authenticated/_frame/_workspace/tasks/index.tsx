@@ -6,14 +6,18 @@ import { z } from "zod";
 
 export const Route = createFileRoute("/_authenticated/_frame/_workspace/tasks/")({
   component: TasksRoute,
-  validateSearch: z.object({ projectId: z.uuid().optional(), taskId: z.uuid().optional() }),
+  validateSearch: z.object({
+    projectId: z.uuid().optional(),
+    taskId: z.uuid().optional(),
+    tab: z.enum(["tasks", "discussions", "settings"]).optional(),
+  }),
 });
 
 function TasksRoute() {
-  const { projectId, taskId } = Route.useSearch();
+  const { projectId, taskId, tab } = Route.useSearch();
   return (
     <AppAvailability app="tasks">
-      <TasksWorkspace projectId={projectId} taskId={taskId} />
+      <TasksWorkspace projectId={projectId} taskId={taskId} tab={tab} />
     </AppAvailability>
   );
 }

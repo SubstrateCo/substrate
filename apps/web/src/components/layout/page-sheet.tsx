@@ -93,8 +93,17 @@ export function PageSheet({
             onCloseAutoFocus={(event) => {
               event.preventDefault();
               if (suspended || outside.current) return;
-              if (opener.current instanceof HTMLElement && opener.current.isConnected)
-                opener.current.focus({ preventScroll: true });
+              if (opener.current instanceof HTMLElement && opener.current.isConnected) {
+                // History may reopen a sheet while focus is on a different tab. Returning focus
+                // to that now-inactive tab would activate it and overwrite the forward branch.
+                const element = opener.current;
+                const target = element.matches('[role="tab"][aria-selected="false"]')
+                  ? element
+                      .closest('[role="tablist"]')
+                      ?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+                  : element;
+                target?.focus({ preventScroll: true });
+              }
             }}
             onInteractOutside={(event) => {
               if (event.detail.originalEvent.type === "focusin") {
@@ -102,6 +111,10 @@ export function PageSheet({
                 return;
               }
               const original = event.detail.originalEvent;
+              if ("button" in original && original.button !== 0) {
+                event.preventDefault();
+                return;
+              }
               if (
                 press.current?.event === original
                   ? press.current.keepsOpen

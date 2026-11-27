@@ -33,6 +33,7 @@ function recordColumns(kind: CrmKind, organizationId: string) {
       cell: ({ row }) => (
         <Link
           {...recordLink(organizationId, kind, row.original.entityId)}
+          resetScroll={kind === "accounts"}
           className={tableLink}
           title={row.original.name}
         >

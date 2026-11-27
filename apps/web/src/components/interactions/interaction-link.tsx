@@ -20,6 +20,7 @@ export function InteractionLink({
     <Link
       to="."
       search={(previous) => ({ ...previous, interactionId: entityId })}
+      resetScroll={false}
       className={className}
       aria-label={label}
     >
@@ -46,6 +47,7 @@ export function InteractionRecordLink({
       from="/interactions/"
       to="/interactions"
       search={(previous) => ({ ...previous, workspaceId: organizationId, recordId: entityId })}
+      resetScroll={false}
       {...props}
     />
   );

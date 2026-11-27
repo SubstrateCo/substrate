@@ -1,4 +1,6 @@
-import { type ReactNode } from "react";
+import { useNavigate } from "@tanstack/react-router";
+
+import { useEffect, type ReactNode } from "react";
 
 import { WorkspaceLinkPrompt } from "@/components/workspace/workspace-link-prompt";
 import { useActivateOrganization } from "@/queries/organizations/selection-mutations";
@@ -14,6 +16,19 @@ export function WorkspaceLinkBoundary({
   children: ReactNode;
 }) {
   const change = useActivateOrganization(null);
+  const navigate = useNavigate();
+  // App-rail and typed URLs may omit the workspace. Resolve it once, so history and copied
+  // record links keep the same explicit scope.
+  useEffect(() => {
+    if (!workspaceId)
+      void navigate({
+        to: ".",
+        search: (previous) => ({ ...previous, workspaceId: organizationId }),
+        hash: true,
+        replace: true,
+        resetScroll: false,
+      });
+  }, [navigate, organizationId, workspaceId]);
   if (!workspaceId || workspaceId === organizationId) return children;
   return (
     <WorkspaceLinkPrompt

@@ -1,4 +1,4 @@
-import { Link, useNavigate } from "@tanstack/react-router";
+import { Link } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
@@ -8,6 +8,7 @@ import { ContactDetail } from "@/components/contacts/contact-detail";
 import { InteractionDetail } from "@/components/interactions/interaction-detail";
 import { PageSheet } from "@/components/layout/page-sheet";
 import { PageSheetSuspendedContext } from "@/components/layout/page-sheet-context";
+import { usePanelReturn } from "@/components/layout/use-panel-return";
 import { interactionPersonLink } from "@/lib/navigation/record-links";
 
 type SheetRecord = { kind: "interaction"; id: string } | { kind: "contact"; id: string };
@@ -34,7 +35,7 @@ export function WorkspaceRecordSheet({
   interactionId?: string;
   children: ReactNode;
 }) {
-  const navigate = useNavigate();
+  const dismiss = usePanelReturn();
   const record = sheetRecord(contactId, interactionId);
   return (
     <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
@@ -46,13 +47,11 @@ export function WorkspaceRecordSheet({
         label={sheetLabels[record?.kind ?? "contact"]}
         onOpenChange={(next) => {
           if (!next)
-            void navigate({
-              to: ".",
-              search: (previous) =>
-                record?.kind === "interaction"
-                  ? { ...previous, interactionId: undefined }
-                  : { ...previous, contactId: undefined },
-            });
+            dismiss(
+              record?.kind === "interaction"
+                ? { interactionId: undefined }
+                : { contactId: undefined },
+            );
         }}
       >
         {record && <RecordSheetContent record={record} />}
@@ -91,6 +90,7 @@ function ContactNameLink({ contact }: { contact: { entityId: string; name: strin
         contactId: contact.entityId,
         interactionId: undefined,
       })}
+      resetScroll={false}
       className={className}
     >
       {contact.name}
