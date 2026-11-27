@@ -40,19 +40,26 @@ test("expanded images fit the desktop, rotate, zoom, fade controls, and keep key
   await expect(viewer.getByText("Image 1 of 2", { exact: false })).toBeVisible();
   await expect(viewer.locator("time")).toHaveCount(1);
   const viewport = page.viewportSize()!;
+  // Large windows inset the viewer to 80%, keeping its close button clear of the window controls.
+  const inset = viewport.width >= 1024 ? 0.1 : 0;
   await expect
     .poll(async () => {
       const bounds = await viewer.boundingBox();
       return (
         bounds && {
-          left: bounds.x,
-          top: bounds.y,
-          right: bounds.x + bounds.width,
-          bottom: bounds.y + bounds.height,
+          left: Math.round(bounds.x),
+          top: Math.round(bounds.y),
+          right: Math.round(bounds.x + bounds.width),
+          bottom: Math.round(bounds.y + bounds.height),
         }
       );
     })
-    .toEqual({ left: 0, top: 0, right: viewport.width, bottom: viewport.height });
+    .toEqual({
+      left: Math.round(viewport.width * inset),
+      top: Math.round(viewport.height * inset),
+      right: Math.round(viewport.width * (1 - inset)),
+      bottom: Math.round(viewport.height * (1 - inset)),
+    });
   const bounds = (await viewer.boundingBox())!;
   const imageBounds = (await image.boundingBox())!;
   expect(imageBounds.width).toBeGreaterThan(500);

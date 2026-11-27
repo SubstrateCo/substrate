@@ -142,8 +142,8 @@ function ImageViewerContent({
       <DialogContent
         ref={dialog}
         showCloseButton={false}
-        // oxlint-disable-next-line shadcn/no-restyle -- Media viewing needs a frameless, locally dark canvas, not the shared form-dialog shell.
-        className="dark inset-0 top-0! left-0! h-full! max-h-none! w-full! max-w-none! translate-x-0 rounded-none! border-0! bg-background! text-foreground! shadow-none!"
+        // oxlint-disable-next-line shadcn/no-restyle -- Media viewing needs a frameless, locally dark canvas, not the shared form-dialog shell. Large windows inset it to 80% so its close button stays clear of the window controls.
+        className="dark inset-0 top-0! left-0! h-full! max-h-none! w-full! max-w-none! translate-x-0 rounded-none! border-0! bg-background! text-foreground! shadow-none! lg:top-1/10! lg:left-1/10! lg:h-4/5! lg:w-4/5! lg:rounded-xl! lg:border! lg:shadow-floating!"
         onOpenAutoFocus={(event) => {
           event.preventDefault();
           dialog.current?.focus();
