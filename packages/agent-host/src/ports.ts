@@ -1,4 +1,5 @@
 import type { AgentWorkStore } from "@substrate/client-storage/agent-work";
+import type { McpInput, McpOutput } from "@substrate/contracts/agent-tools/tools";
 import type {
   AgentRequestDelivery,
   AgentSourcesResult,
@@ -16,8 +17,11 @@ import type {
 } from "@substrate/contracts/agent-work/control";
 import type { AgentWorkChange } from "@substrate/contracts/agent-work/desktop";
 import type { AppId } from "@substrate/contracts/apps";
-import type { HarnessCommand, HarnessCommandResult, harnessKinds } from "@substrate/contracts/harness-runtime";
-import type { McpInput, McpOutput } from "@substrate/contracts/agent-tools/tools";
+import type {
+  HarnessCommand,
+  HarnessCommandResult,
+  harnessKinds,
+} from "@substrate/contracts/harness-runtime";
 
 import type { AgentRequestState, ThreadMessage } from "./server/agent-work-server.ts";
 import type { z } from "zod";

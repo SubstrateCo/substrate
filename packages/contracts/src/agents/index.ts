@@ -1,9 +1,4 @@
-export {
-  saveAgentInput,
-  deleteAgentInput,
-  saveSkillInput,
-  agentCatalogSchema,
-} from "./input.ts";
+export { saveAgentInput, deleteAgentInput, saveSkillInput, agentCatalogSchema } from "./input.ts";
 export {
   agentTriggerKinds,
   agentTriggerPrecedence,

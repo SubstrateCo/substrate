@@ -9,8 +9,8 @@ import { readableInteractionPeriod } from "../../../core/contacts/interactions/i
 import { contactInteractions } from "../../../core/contacts/interactions/interactions.schema";
 import { contacts } from "../../../core/contacts/schema";
 import type { RepositoryContext } from "../../../core/repository-context";
-import { crmAccounts } from "../../crm/schema";
 import { interactionScope } from "../../crm/activity/timeline";
+import { crmAccounts } from "../../crm/schema";
 import { and, asc, desc, eq, ilike, sql } from "drizzle-orm";
 
 export async function interactionDirectoryPage(

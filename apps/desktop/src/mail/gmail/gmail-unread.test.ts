@@ -1,9 +1,9 @@
 import { openMailStore, type SyncedMail } from "@substrate/client-storage/mail";
 import { mailFlag } from "@substrate/contracts/mail";
 
-import { gmailReader } from "./gmail-reader.ts";
 import { nextMailPage, readOlderSource } from "../older-page.ts";
 import { syncMailbox } from "../provider.ts";
+import { gmailReader } from "./gmail-reader.ts";
 import { expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";

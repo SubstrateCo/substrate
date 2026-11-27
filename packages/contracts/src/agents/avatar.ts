@@ -1,4 +1,5 @@
 import { isAvatarCode } from "@substrate/agent-avatars/config";
+
 import { z } from "zod";
 
 /**

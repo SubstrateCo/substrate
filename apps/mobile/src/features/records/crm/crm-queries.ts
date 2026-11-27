@@ -9,10 +9,10 @@ import {
   useQueryClient,
 } from "@tanstack/react-query";
 
-import { messageRecordInput, recordPeople, type MessageRecordDraft } from "./crm-management";
-import { timelineCursor } from "./crm-timeline";
 import { refreshRecords } from "../invalidation";
 import { recordRequests } from "../requests";
+import { messageRecordInput, recordPeople, type MessageRecordDraft } from "./crm-management";
+import { timelineCursor } from "./crm-timeline";
 import { queryKeys, type QueryScope } from "@/queries/keys";
 
 const firstTimelinePage = (): { beforeOccurredAt: string; beforeEntityId: string } | undefined =>

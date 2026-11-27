@@ -2,9 +2,9 @@ import type { SyncedMail, SyncPage } from "@substrate/client-storage/mail";
 import { mailPageSize, type MailMessageAction } from "@substrate/contracts/mail";
 import type { MailFolder } from "@substrate/contracts/mail/ipc";
 
+import { ReconnectRequired, type MailChanges } from "../provider.ts";
 import { changeGmailLabels, gmailBase, type GmailRequest } from "./gmail-actions.ts";
 import { flagsFor, gmailFlags, gmailMessageState } from "./gmail-labels.ts";
-import { ReconnectRequired, type MailChanges } from "../provider.ts";
 import { setTimeout } from "node:timers/promises";
 import { z } from "zod";
 

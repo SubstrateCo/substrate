@@ -1,7 +1,7 @@
 import { openMailStore } from "@substrate/client-storage/mail";
 
-import { gmailReader } from "./gmail-reader.ts";
 import { syncMailbox } from "../provider.ts";
+import { gmailReader } from "./gmail-reader.ts";
 import { expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
 import { mkdtemp, rm } from "node:fs/promises";

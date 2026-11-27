@@ -56,9 +56,7 @@ test("pending images show local previews, keep file fallbacks, and release previ
   expect(removedUrl).toMatch(/^blob:/);
   await drafts.getByRole("button", { name: "Remove screenshot.png", exact: true }).click();
   await expect(preview).toHaveCount(0);
-  await expect
-    .poll(() => page.evaluate(() => window.revokedAttachmentUrls))
-    .toContain(removedUrl);
+  await expect.poll(() => page.evaluate(() => window.revokedAttachmentUrls)).toContain(removedUrl);
 
   await zone.getByLabel("Choose attachment files").setInputFiles({
     name: "send.png",
@@ -71,9 +69,7 @@ test("pending images show local previews, keep file fallbacks, and release previ
   await expect(drafts.getByText("Ready to attach", { exact: true })).toHaveCount(3);
   await zone.getByRole("button", { name: "Send", exact: true }).click();
   await expect(drafts).toHaveCount(0);
-  await expect
-    .poll(() => page.evaluate(() => window.revokedAttachmentUrls))
-    .toContain(sentUrl);
+  await expect.poll(() => page.evaluate(() => window.revokedAttachmentUrls)).toContain(sentUrl);
   await expect(page.getByRole("button", { name: "Preview send.png", exact: true })).toBeVisible();
 });
 

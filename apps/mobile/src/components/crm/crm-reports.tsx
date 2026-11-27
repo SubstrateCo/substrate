@@ -7,7 +7,6 @@ import { ScrollView, View } from "react-native";
 
 import { Button } from "@/components/ui/button";
 import { Text } from "@/components/ui/text";
-import { useRecordPeople } from "@/features/records/crm/crm-queries";
 import {
   currencyOptions,
   initialReportFilters,
@@ -16,6 +15,7 @@ import {
   type ReportFilters,
   type ReportFilterValue,
 } from "@/features/records/crm-report-filters";
+import { useRecordPeople } from "@/features/records/crm/crm-queries";
 import { withValues, type FilterFieldOf } from "@/features/records/filters";
 import { formatDate, formatMoney, outcomeLabels, todayDate } from "@/features/records/format";
 import { recordQueries } from "@/features/records/queries";

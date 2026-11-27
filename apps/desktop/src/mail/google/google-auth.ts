@@ -1,7 +1,7 @@
 import { parseGrantedScopes } from "@substrate/contracts/integrations/google";
 
-import type { GoogleClient } from "./google-client.ts";
 import { ReconnectRequired } from "../provider.ts";
+import type { GoogleClient } from "./google-client.ts";
 import { createAuthorizationURL } from "@better-auth/core/oauth2";
 import { randomBytes } from "node:crypto";
 import { createServer } from "node:http";

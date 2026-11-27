@@ -4,8 +4,8 @@ import { RepositoryContext } from "../../../core/repository-context";
 import { contextConversation } from "../../../testing/context";
 import { setupDatabase } from "../../../testing/database";
 import { rejection } from "../../../testing/rejection";
-import { listCrmActivity } from "./activity";
 import { crmActivityEvents } from "../activity.schema";
+import { listCrmActivity } from "./activity";
 import { expect, test } from "bun:test";
 
 const f = setupDatabase();

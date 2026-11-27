@@ -5,8 +5,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useState, type ComponentProps } from "react";
 
 import { useInboxWorkspace } from "../inbox-workspace-context";
-import { MailBodyContent } from "./mail-body-content";
 import { MessageLabels } from "../message-labels";
+import { MailBodyContent } from "./mail-body-content";
 import { ReaderActionBar } from "./reader-actions";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { LoadingState } from "@/components/feedback/loading-state";

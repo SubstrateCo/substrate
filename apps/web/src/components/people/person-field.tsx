@@ -1,4 +1,5 @@
 import type { PickerPerson } from "@substrate/contracts/people/picker";
+
 import { useId, type ReactNode } from "react";
 
 import { PersonAvatar } from "@/components/people/person-avatar";

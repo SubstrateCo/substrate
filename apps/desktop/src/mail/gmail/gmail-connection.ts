@@ -1,4 +1,3 @@
-import { gmailReader } from "./gmail-reader.ts";
 import { gmailAccess } from "../google/google-auth.ts";
 import {
   environmentGoogleClient,
@@ -8,6 +7,7 @@ import {
 } from "../google/google-client.ts";
 import { ReconnectRequired } from "../provider.ts";
 import type { LocalMail } from "../session.ts";
+import { gmailReader } from "./gmail-reader.ts";
 import { safeStorage } from "electron";
 
 export function checkKeyring() {

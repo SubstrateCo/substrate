@@ -1,6 +1,6 @@
+import { ReconnectRequired } from "../provider.ts";
 import { connectGoogle, gmailAccess } from "./google-auth.ts";
 import { readGoogleClientFile } from "./google-client.ts";
-import { ReconnectRequired } from "../provider.ts";
 import { expect, test } from "bun:test";
 import { rejects } from "node:assert/strict";
 import { createHash } from "node:crypto";

@@ -8,8 +8,8 @@ import { ownedAgent } from "../../../testing/agents";
 import { setupDatabase } from "../../../testing/database";
 import { rejection } from "../../../testing/rejection";
 import { contactApplicationRepository } from "../../contacts/repository";
-import { listCrmActivity, recordCrmActivity } from "./activity";
 import { crmActivityEvents } from "../activity.schema";
+import { listCrmActivity, recordCrmActivity } from "./activity";
 import { expect, test } from "bun:test";
 import { eq, sql } from "drizzle-orm";
 

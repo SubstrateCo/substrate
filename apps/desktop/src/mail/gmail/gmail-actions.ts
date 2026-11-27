@@ -1,7 +1,7 @@
 import { mailFlag, type MailMessageAction } from "@substrate/contracts/mail";
 
-import { gmailMessageState } from "./gmail-labels.ts";
 import { ReconnectRequired } from "../provider.ts";
+import { gmailMessageState } from "./gmail-labels.ts";
 import { z } from "zod";
 
 export class WritePermissionRequired extends Error {}
