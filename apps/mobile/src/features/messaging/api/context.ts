@@ -1,3 +1,5 @@
+import type { SetAgentAvatarInput } from "@substrate/contracts/agents";
+
 import type { Json } from "./conversations";
 import { api } from "@/api/client";
 import { readResult } from "@/api/result";
@@ -27,3 +29,6 @@ export const getOrganizationPeople = (query: { organizationId: string }, signal?
   readResult(api.organizations.people.$get({ query }, init(signal)));
 export const listAgents = (signal?: AbortSignal) =>
   readResult(api.agents.list.$post({}, init(signal)));
+/** Sets the owner's body and colour choices for an agent. Null keeps the generated choice. */
+export const setAgentAvatar = (json: SetAgentAvatarInput) =>
+  readResult(api.agents.actors.avatar.$post({ json }));

@@ -1,4 +1,4 @@
-import type { PickerPerson } from "@substrate/contracts/people/picker";
+import type { PickerAgent, PickerPerson } from "@substrate/contracts/people/picker";
 
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
@@ -11,7 +11,6 @@ import { ContentNotice } from "@/components/feedback/content-notice";
 import {
   ChannelCreateActions,
   DirectMessageCreateMenu,
-  type DirectMessageAgent,
 } from "@/components/messaging/conversations/conversation-create-menu";
 import { CreateConversationDialog } from "@/components/messaging/conversations/create-conversation-dialog";
 import { MessagingWorkspace as MessagingWorkspaceView } from "@/components/messaging/workspace/messaging-workspace-view";
@@ -29,7 +28,7 @@ import { toast } from "sonner";
 
 type DirectMessageTarget =
   | { kind: "person"; person: PickerPerson }
-  | { kind: "agent"; agent: DirectMessageAgent };
+  | { kind: "agent"; agent: PickerAgent };
 
 export function MessagingWorkspace({
   conversationId,
@@ -175,6 +174,6 @@ function useDirectMessageTargets(organizationId: string, userId: string) {
   const catalog = useQuery(agentCatalogQueryOptions(userId));
   const agents = (catalog.data?.agents ?? [])
     .filter((agent) => agent.enabled)
-    .map((agent) => ({ id: agent.id, name: agent.name, image: agent.image }));
+    .map((agent) => ({ id: agent.id, name: agent.name, avatar: agent.avatar }));
   return { people, agents };
 }

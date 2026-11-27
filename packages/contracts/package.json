@@ -86,6 +86,7 @@
     "test": "bun test src"
   },
   "dependencies": {
+    "@substrate/agent-avatars": "workspace:*",
     "better-auth": "catalog:auth",
     "zod": "catalog:"
   }

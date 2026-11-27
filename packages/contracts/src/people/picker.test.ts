@@ -13,8 +13,6 @@ test("people match by name or email and chosen people drop out", () => {
 });
 
 test("a chosen agent does not hide a person", () => {
-  expect(matchPeople([ada, bob], "", [{ agent: { id: "u1", name: "Ada's assistant" } }])).toEqual([
-    ada,
-    bob,
-  ]);
+  const agent = { id: "u1", name: "Ada's assistant", avatar: "100000" };
+  expect(matchPeople([ada, bob], "", [{ agent }])).toEqual([ada, bob]);
 });

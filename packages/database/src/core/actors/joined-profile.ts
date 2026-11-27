@@ -9,7 +9,7 @@ import { and, eq, sql } from "drizzle-orm";
 import type { PgSelectQueryBuilder } from "drizzle-orm/pg-core";
 
 // Name and picture columns for a query that joined the actor's profile with joinActorProfile.
-// Use actorDisplayName and actorPicture when the query does not join these tables.
+// Use actorDisplayName when the query does not join these tables.
 
 /** Joins the actor's agent and the person's account. Enough for joinedActorName. */
 export function joinActorAccount<T extends PgSelectQueryBuilder>(
@@ -40,13 +40,11 @@ export function joinedActorName(actor: ActorColumns = actors) {
 }
 
 /**
- * The agent's picture for its owner, or the person's picture for members of the organization.
- * Needs the joins from joinActorProfile.
+ * The person's picture for members of the organization. Agents have no picture; see
+ * joinedActorAvatar. Needs the joins from joinActorProfile.
  */
-export function joinedActorPicture(viewerUserId: string, actor: ActorColumns = actors) {
-  return sql<string | null>`case when ${actor.type} = 'agent' then
-    case when ${userAgents.userId} = ${viewerUserId}
-      then '/api/v1/files/' || ${userAgents.imageFileId}::text || '/content' end
+export function joinedActorPicture(actor: ActorColumns = actors) {
+  return sql<string | null>`case when ${actor.type} = 'agent' then null
     else case when ${member.id} is not null then ${user.image} end end`.mapWith(
     (value: string | null) => {
       const parsed = managedPicture.safeParse(value);

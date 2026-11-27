@@ -1,3 +1,4 @@
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
 import type { Attachment } from "@substrate/contracts/files/attachments";
 
 import {
@@ -10,6 +11,7 @@ import {
 } from "react";
 
 import { fitViewerImage } from "./image-viewer-layout";
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { imageFileActions } from "@/components/attachments/image-file-actions";
 import { ActionContextMenu } from "@/components/layout/action-context-menu";
 import { PersonAvatarFallback } from "@/components/people/person-avatar";
@@ -40,6 +42,7 @@ import {
 export type ImageViewerSender = {
   name: string;
   image?: string | null;
+  avatar?: AgentAvatarCode | null;
   agent: boolean;
   createdAt: string;
 };
@@ -186,11 +189,15 @@ function ImageViewerContent({
           className={cn(controlsClass, "flex shrink-0 items-center justify-between gap-4 p-6")}
         >
           <div className="flex min-w-0 items-center gap-3">
-            {sender && (
-              <Avatar aria-hidden="true" variant={sender.agent ? "agent" : "default"}>
-                {sender.image && <AvatarImage src={sender.image} alt="" />}
-                <PersonAvatarFallback name={sender.name} agent={sender.agent} />
-              </Avatar>
+            {sender?.agent ? (
+              <AgentAvatarView avatar={sender.avatar ?? null} size="md" />
+            ) : (
+              sender && (
+                <Avatar aria-hidden="true">
+                  {sender.image && <AvatarImage src={sender.image} alt="" />}
+                  <PersonAvatarFallback name={sender.name} />
+                </Avatar>
+              )
             )}
             <div className="min-w-0">
               <DialogTitle className="truncate">{attachment.filename}</DialogTitle>

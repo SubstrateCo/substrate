@@ -2,6 +2,7 @@ import { roleLabel } from "@substrate/contracts/auth/roles";
 
 import { View } from "react-native";
 
+import { AgentFace } from "../shared/agent-face";
 import { PanelSheet } from "../shared/panel-sheet";
 import { PersonAvatar } from "../shared/person-avatar";
 import { Button } from "@/components/ui/button";
@@ -38,7 +39,11 @@ export function ProfileSheet({
       {data ? (
         <View className="gap-4">
           <View className="flex-row items-center gap-3">
-            <PersonAvatar name={data.name} image={data.image} agent={data.type === "agent"} />
+            {data.type === "agent" ? (
+              <AgentFace name={data.name} code={data.avatar} size="lg" />
+            ) : (
+              <PersonAvatar name={data.name} image={data.image} size="lg" />
+            )}
             <View className="flex-1">
               <Text className="text-base font-semibold">
                 {data.self ? `${data.name} (you)` : data.name}

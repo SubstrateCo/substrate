@@ -1,0 +1,46 @@
+export {
+  AVATAR_CODE_PATTERN,
+  decodeAvatarCode,
+  encodeAvatarCode,
+  isAvatarCode,
+  withAvatarChoices,
+  type AvatarChoices,
+} from "./code.ts";
+export {
+  agentAvatarLook,
+  generateAvatar,
+  generateAvatarCode,
+  hashSeed,
+  type AgentLookChoices,
+  type GenerateOptions,
+} from "./generate.ts";
+export {
+  avatarConfigSchema,
+  DEFAULT_CONFIG,
+  resolveConfig,
+  resolvePalette,
+  type AvatarConfig,
+  type Palette,
+} from "./resolve.ts";
+export {
+  AMBIENT_LEVELS,
+  BODIES,
+  BODY_COLOR_NAMES,
+  BODY_COLORS,
+  EYE_COLOR_NAMES,
+  EYE_COLORS,
+  EYE_STYLES,
+  FILLS,
+  GESTURES,
+  MOODS,
+  WORLDS,
+  type AmbientLevel,
+  type AvatarBody,
+  type AvatarFill,
+  type BodyColorName,
+  type EyeColorName,
+  type EyeStyle,
+  type Gesture,
+  type Mood,
+  type World,
+} from "./presets.ts";

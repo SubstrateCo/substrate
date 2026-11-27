@@ -14,7 +14,7 @@ const ada = { id: "u1", name: "Ada Lovelace", email: "ada@northstar.test" };
 const bob = { id: "u2", name: "Bob Chen", email: "Bob@Northstar.test" };
 
 test("agents stay distinct from people and email invitations", () => {
-  const agent = { agent: { id: "u1", name: "Ada's assistant" } };
+  const agent = { agent: { id: "u1", name: "Ada's assistant", avatar: "100000" } };
   const person = { email: ada.email, person: ada };
   const invitation = { email: "guest@example.test" };
   const selected = [agent, person, invitation];

@@ -532,7 +532,13 @@ test("disconnect removes search, profiles, realtime and owner-based agent reads"
   const context = createContextService(f.db, identity);
   const [definition] = await f.db
     .insert(userAgents)
-    .values({ userId: "outsider", name: "Partner helper", harness: "opencode", instructions: "" })
+    .values({
+      userId: "outsider",
+      name: "Partner helper",
+      avatarCode: "100000",
+      harness: "opencode",
+      instructions: "",
+    })
     .returning();
   const agent = await ensureUserAgentActor(f.db, { ...identity, userAgentId: definition!.id });
   const agentChat = createMessagingService(f.db, { ...identity, actorEntityId: agent.entityId });

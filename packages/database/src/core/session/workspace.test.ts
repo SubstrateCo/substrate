@@ -98,7 +98,13 @@ test("agent workspace names remain distinct from the owner's name", async () => 
   await f.verifyEmails();
   const [agent] = await f.db
     .insert(userAgents)
-    .values({ userId: "alice", name: "Writer", instructions: "", harness: "opencode" })
+    .values({
+      userId: "alice",
+      name: "Writer",
+      instructions: "",
+      avatarCode: "100000",
+      harness: "opencode",
+    })
     .returning();
   const actor = await ensureUserAgentActor(f.db, {
     organizationId: f.orgA,

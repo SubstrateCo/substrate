@@ -1,4 +1,4 @@
-import { storedFiles, user, userAgents } from "../../../schema";
+import { user, userAgents } from "../../../schema";
 import { ownedAgent } from "../../../testing/agents";
 import { setupDatabase } from "../../../testing/database";
 import { messagingMessages, messagingParticipants } from "../schema";
@@ -12,22 +12,8 @@ test("message author metadata uses joins instead of per-message SQL subplans", a
   const agent = await ownedAgent(f);
   const humanImage = `/api/v1/files/pictures/avatar/alice?v=${crypto.randomUUID()}`;
   await f.db.update(user).set({ image: humanImage }).where(eq(user.id, "alice"));
-  const fileId = crypto.randomUUID();
-  await f.db.insert(storedFiles).values({
-    id: fileId,
-    ownerUserId: "alice",
-    uploadedBy: "alice",
-    purpose: "avatar",
-    filename: "agent.webp",
-    contentType: "image/webp",
-    size: 10,
-    objectKey: `pictures/${fileId}`,
-    sha256: "hash",
-  });
-  await f.db
-    .update(userAgents)
-    .set({ imageFileId: fileId })
-    .where(eq(userAgents.id, agent.agentId));
+  const avatar = "131005";
+  await f.db.update(userAgents).set({ avatarCode: avatar }).where(eq(userAgents.id, agent.agentId));
   const conversation = await f
     .messaging("alice")
     .createConversation({ kind: "channel", name: "Authors" });
@@ -57,16 +43,20 @@ test("message author metadata uses joins instead of per-message SQL subplans", a
     const isAgent = row.message.authorActorEntityId === agent.actorId;
     expect(row).toMatchObject({
       authorName: isAgent ? "Research" : "Alice",
-      authorImage: isAgent ? `/api/v1/files/${fileId}/content` : humanImage,
+      authorImage: isAgent ? null : humanImage,
+      authorAvatar: isAgent ? avatar : null,
       authorType: isAgent ? "agent" : "human",
       authorExternal: false,
     });
   }
+  // The agent's avatar is not private: other viewers see it too. Agents never have a picture.
   for (const row of await query("bob")) {
     expect(row.authorImage).toBe(row.authorType === "agent" ? null : humanImage);
+    expect(row.authorAvatar).toBe(row.authorType === "agent" ? avatar : null);
   }
   for (const row of await query("outsider", f.orgB)) {
     expect(row.authorImage).toBeNull();
+    expect(row.authorAvatar).toBe(row.authorType === "agent" ? avatar : null);
     expect(row.authorExternal).toBe(row.authorType !== "agent");
   }
   await f.db

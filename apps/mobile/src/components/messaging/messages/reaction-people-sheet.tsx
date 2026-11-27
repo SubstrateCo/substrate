@@ -1,5 +1,6 @@
 import { FlatList, View } from "react-native";
 
+import { AgentFace } from "../shared/agent-face";
 import { PanelSheet } from "../shared/panel-sheet";
 import { PersonAvatar } from "../shared/person-avatar";
 import { Button } from "@/components/ui/button";
@@ -31,12 +32,11 @@ export function ReactionPeopleSheet({
         keyExtractor={(row) => row.actorId}
         renderItem={({ item }) => (
           <View className="min-h-12 flex-row items-center gap-3 border-b border-border px-4">
-            <PersonAvatar
-              name={item.name}
-              image={item.image}
-              agent={item.type === "agent"}
-              size="sm"
-            />
+            {item.type === "agent" ? (
+              <AgentFace name={item.name} code={item.avatar} size="sm" />
+            ) : (
+              <PersonAvatar name={item.name} image={item.image} size="sm" />
+            )}
             <Text className="flex-1 text-[15px]" numberOfLines={1}>
               {item.self ? `${item.name} (you)` : item.name}
             </Text>

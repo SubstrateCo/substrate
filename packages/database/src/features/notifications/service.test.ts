@@ -8,7 +8,6 @@ import {
   taskActivity,
   messagingParticipants,
   messagingMessages,
-  storedFiles,
   userAgents,
 } from "../../schema";
 import { ownedAgent } from "../../testing/agents";
@@ -25,25 +24,11 @@ import { eq, sql } from "drizzle-orm";
 const f = setupDatabase();
 const feed = (userId: string) => createFeedService(f.db, { userId, organizationId: f.orgA });
 
-test("joined notification and activity projections keep agent pictures private to their owner", async () => {
+test("joined notification and activity projections show agent avatars to every recipient", async () => {
   const { alice, project } = await setup();
   const agent = await ownedAgent(f);
-  const fileId = crypto.randomUUID();
-  await f.db.insert(storedFiles).values({
-    id: fileId,
-    ownerUserId: "alice",
-    uploadedBy: "alice",
-    purpose: "avatar",
-    filename: "agent.webp",
-    contentType: "image/webp",
-    size: 10,
-    objectKey: `pictures/${fileId}`,
-    sha256: "hash",
-  });
-  await f.db
-    .update(userAgents)
-    .set({ imageFileId: fileId })
-    .where(eq(userAgents.id, agent.agentId));
+  const avatar = "131005";
+  await f.db.update(userAgents).set({ avatarCode: avatar }).where(eq(userAgents.id, agent.agentId));
   const task = await alice.tasks.create({ projectEntityId: project.entityId, title: "Agent work" });
   const [event] = await f.db
     .insert(taskActivity)
@@ -63,12 +48,12 @@ test("joined notification and activity projections keep agent pictures private t
       eventKey: event!.id,
     })),
   );
+  const shown = { actorName: "Research", actorImage: null, actorAvatar: avatar };
   for (const userId of ["alice", "bob"]) {
-    const actorImage = userId === "alice" ? `/api/v1/files/${fileId}/content` : null;
-    expect((await feed(userId).list())[0]).toMatchObject({ actorName: "Research", actorImage });
+    expect((await feed(userId).list())[0]).toMatchObject(shown);
     expect(
       (await feed(userId).activity(task.entityId)).find((row) => row.id === event!.id),
-    ).toMatchObject({ actorName: "Research", actorImage });
+    ).toMatchObject(shown);
   }
 });
 

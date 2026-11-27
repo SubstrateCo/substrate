@@ -1,4 +1,5 @@
 import type { AgentStatusView } from "@substrate/contracts/agent-work";
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -19,6 +20,7 @@ import { conversationsQueryOptions } from "@/queries/messaging/options";
 export function AgentPage({
   agentId,
   name,
+  avatar,
   enabled,
   status,
   view,
@@ -32,6 +34,7 @@ export function AgentPage({
 }: {
   agentId: string;
   name: string;
+  avatar: AgentAvatarCode;
   enabled: boolean;
   status?: AgentStatusView;
   view: AgentView;
@@ -54,6 +57,7 @@ export function AgentPage({
   return (
     <AgentPageView
       name={name}
+      avatar={avatar}
       status={header}
       elsewhere={
         place && {

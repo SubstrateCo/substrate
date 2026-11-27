@@ -28,14 +28,28 @@ test("only a public channel is written with a hash", () => {
 test("only people with accounts can be chosen as owners", () => {
   expect(
     humanMembers([
-      { actorId: "a1", type: "human", userId: "u1", name: "Ada", image: null },
-      { actorId: "a2", type: "agent", userId: null, name: "Helper", image: null },
+      { actorId: "a1", type: "human", userId: "u1", name: "Ada", image: null, avatar: null },
+      {
+        actorId: "a2",
+        type: "agent",
+        userId: null,
+        name: "Helper",
+        image: null,
+        avatar: "100000",
+      },
     ]),
   ).toEqual([{ userId: "u1", name: "Ada" }]);
 });
 
 test("a new message to an agent reuses its joined DM, not a channel it is in", () => {
-  const me = { actorId: "me", type: "human" as const, userId: "u1", name: "Ada", image: null };
+  const me = {
+    actorId: "me",
+    type: "human" as const,
+    userId: "u1",
+    name: "Ada",
+    image: null,
+    avatar: null,
+  };
   const helper = {
     actorId: "h",
     type: "agent" as const,
@@ -43,6 +57,7 @@ test("a new message to an agent reuses its joined DM, not a channel it is in", (
     agentId: "d1",
     name: "Helper",
     image: null,
+    avatar: "100000",
   };
   const conversations = [
     {

@@ -5,7 +5,8 @@ const { withNativeWind } = require("nativewind/metro");
 const config = getDefaultConfig(__dirname);
 
 // The web app uses a newer React. Shared workspace packages must use the React that this Expo SDK supports.
-const singletons = ["react", "react-dom", "react-native", "react-native-web"];
+// Native view libraries register their views once, so shared packages must use the app's copy too.
+const singletons = ["react", "react-dom", "react-native", "react-native-web", "react-native-svg"];
 const projectOrigin = path.join(__dirname, "package.json");
 const upstreamResolveRequest = config.resolver.resolveRequest;
 

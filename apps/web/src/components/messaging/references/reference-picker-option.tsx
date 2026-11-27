@@ -1,8 +1,10 @@
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
 import type { ReferenceKind } from "@substrate/contracts/messaging/references";
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
 import type { ReactNode } from "react";
 
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { entityKinds } from "@/components/context/entity-kinds";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { PersonAvatar } from "@/components/people/person-avatar";
@@ -56,6 +58,7 @@ export function ReferencePickerOption({
   kind,
   title,
   image,
+  avatar,
   description,
   status,
   selected,
@@ -66,6 +69,8 @@ export function ReferencePickerOption({
   kind: ReferenceKind;
   title: string;
   image?: string | null;
+  /** An agent's look. */
+  avatar?: AgentAvatarCode | null;
   description?: string;
   /** Tasks only: replaces the kind icon. */
   status?: TaskStatus;
@@ -77,7 +82,12 @@ export function ReferencePickerOption({
   let icon = <Icon aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />;
   if (status) icon = <TaskStatusIcon status={status} />;
   if (kind === "person" || kind === "agent")
-    icon = <PersonAvatar name={title} image={image} agent={kind === "agent"} size="xs" />;
+    icon =
+      kind === "agent" ? (
+        <AgentAvatarView avatar={avatar ?? null} size="xs" />
+      ) : (
+        <PersonAvatar name={title} image={image} size="xs" />
+      );
   return (
     <Button
       id={id}

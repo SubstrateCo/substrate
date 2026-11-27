@@ -36,7 +36,7 @@ test("a DM has exactly one person and recipients stay within the server limit", 
 });
 
 test("an agent DM requires one agent and no people", () => {
-  const agent = { agent: { id: "agent", name: "Research" } };
+  const agent = { agent: { id: "agent", name: "Research", avatar: "100000" } };
   expect(messages("agent_dm", { recipients: [agent] })).toEqual([]);
   for (const recipients of [[], [person("a@x.test")], [agent, person("a@x.test")], [agent, agent]])
     expect(messages("agent_dm", { recipients })).toEqual(["Choose one of your agents."]);

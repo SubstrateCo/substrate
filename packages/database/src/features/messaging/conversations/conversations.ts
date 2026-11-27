@@ -211,13 +211,14 @@ export function conversationOperations(
                 members.filter((participant) => participant.userId !== scope.userId),
               ),
             members: members.map(
-              ({ actorId, type, userId, agentId, name, image, organizationId }) => ({
+              ({ actorId, type, userId, agentId, name, image, avatar, organizationId }) => ({
                 actorId,
                 type,
                 userId,
                 agentId,
                 name,
                 image,
+                avatar,
                 organizationId,
                 external: organizationId !== scope.organizationId,
               }),
@@ -557,7 +558,14 @@ export function conversationOperations(
         );
         return rows.map((row) => {
           const members = (byConversation.get(row.id) ?? []).map(
-            ({ actorId, type, userId, name, image }) => ({ actorId, type, userId, name, image }),
+            ({ actorId, type, userId, name, image, avatar }) => ({
+              actorId,
+              type,
+              userId,
+              name,
+              image,
+              avatar,
+            }),
           );
           return {
             ...row,

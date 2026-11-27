@@ -1,3 +1,4 @@
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
 import type { ReferenceKind, ReferenceTab } from "@substrate/contracts/messaging/references";
 import { taskStatusLabels, type TaskStatus } from "@substrate/contracts/tasks";
 
@@ -62,6 +63,8 @@ export function ReferencePickerView({
     kind: ReferenceKind;
     title: string;
     image?: string | null;
+    /** Agents only. */
+    avatar?: AgentAvatarCode | null;
     conversationName?: string;
     /** Tasks only: tells tasks with the same title apart. */
     projectName?: string;
@@ -147,6 +150,7 @@ export function ReferencePickerView({
       kind={item.kind}
       title={item.title}
       image={item.image}
+      avatar={item.avatar}
       status={item.status}
       description={optionDescription(item)}
       selected={item === selected}

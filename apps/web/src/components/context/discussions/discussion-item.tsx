@@ -1,3 +1,4 @@
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
 import type { ConversationKind } from "@substrate/contracts/messaging/input";
 
 import { Link } from "@tanstack/react-router";
@@ -5,6 +6,7 @@ import { Link } from "@tanstack/react-router";
 import { useId, useState } from "react";
 
 import { discussionConversationName } from "./conversation-name";
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
@@ -27,6 +29,7 @@ export type Discussion = {
   private?: boolean;
   authorName: string | null;
   authorImage?: string | null;
+  authorAvatar?: AgentAvatarCode | null;
   authorType?: "human" | "agent";
   createdAt: string;
   body: string;
@@ -55,12 +58,11 @@ export function DiscussionItem({ item }: { item: Discussion }) {
   return (
     <DiscussionItemLayout
       avatar={
-        <PersonAvatar
-          name={author}
-          image={item.authorImage}
-          agent={item.authorType === "agent"}
-          className="mt-0.5"
-        />
+        item.authorType === "agent" ? (
+          <AgentAvatarView avatar={item.authorAvatar ?? null} className="mt-0.5" />
+        ) : (
+          <PersonAvatar name={author} image={item.authorImage} className="mt-0.5" />
+        )
       }
       meta={
         <>

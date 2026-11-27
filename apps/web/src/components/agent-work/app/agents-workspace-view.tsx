@@ -1,8 +1,11 @@
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
+
 import { Link, type LinkProps } from "@tanstack/react-router";
 
 import type { ReactNode, Ref } from "react";
 
 import { WorkIndicator } from "../work-indicator";
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
@@ -15,7 +18,6 @@ import {
   PageSidebarGroupTitle,
   PageSidebarHeader,
 } from "@/components/layout/page-layout";
-import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { WorkStatus } from "@/lib/agent-work/status";
@@ -26,7 +28,7 @@ import { ArrowLeft, Hand, Plus } from "lucide-react";
 export type AgentListItem = {
   id: string;
   name: string;
-  image?: string | null;
+  avatar: AgentAvatarCode;
   status?: WorkStatus;
 };
 
@@ -149,7 +151,7 @@ export function AgentsWorkspaceView({
                 >
                   <Link {...agentLink(agent.id)}>
                     <span className="relative grid size-6 shrink-0 place-items-center">
-                      <PersonAvatar name={agent.name} image={agent.image} agent />
+                      <AgentAvatarView avatar={agent.avatar} />
                       {agent.status && (
                         <WorkIndicator
                           tone={agent.status.tone}

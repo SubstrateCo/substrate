@@ -36,7 +36,7 @@ export const catalogAgent: AgentConfiguration = {
   harness: "codex",
   enabled: true,
   useStartupDefaults: true,
-  image: null,
+  avatar: "100000",
 };
 
 /** The sign-in that the fixture's worker reports. */

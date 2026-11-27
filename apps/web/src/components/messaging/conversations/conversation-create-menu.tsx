@@ -1,7 +1,8 @@
-import type { PickerPerson } from "@substrate/contracts/people/picker";
+import type { PickerAgent, PickerPerson } from "@substrate/contracts/people/picker";
 
 import { useRef, useState, type ReactNode } from "react";
 
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { useWorkspaceSearch } from "@/components/context/search/workspace-search-request";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
@@ -17,12 +18,10 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import type { Conversation } from "@/lib/messaging/conversations";
 import { Compass, MessageCircle, Plus, Users } from "lucide-react";
 
-export type DirectMessageAgent = { id: string; name: string; image: string | null };
-
 type Choice =
   | { kind: "create"; conversation: Conversation["kind"] }
   | { kind: "person"; person: PickerPerson }
-  | { kind: "agent"; agent: DirectMessageAgent };
+  | { kind: "agent"; agent: PickerAgent };
 
 function SectionAction({
   label,
@@ -78,11 +77,11 @@ export function DirectMessageCreateMenu({
   onMessageAgent,
 }: {
   people?: PickerPerson[];
-  agents?: DirectMessageAgent[];
+  agents?: PickerAgent[];
   /** Called with focus on the button that opened the dialog, so closing it can return there. */
   onCreate: (kind: Conversation["kind"]) => void;
   onMessagePerson?: (person: PickerPerson) => void;
-  onMessageAgent?: (agent: DirectMessageAgent) => void;
+  onMessageAgent?: (agent: PickerAgent) => void;
 }) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
@@ -185,7 +184,7 @@ export function DirectMessageCreateMenu({
                   aria-label={`${agent.name}, Agent`}
                   onSelect={() => choose({ kind: "agent", agent })}
                 >
-                  <PersonAvatar name={agent.name} image={agent.image} agent />
+                  <AgentAvatarView avatar={agent.avatar} />
                   <span className="truncate font-medium">{agent.name}</span>
                 </CommandItem>
               ))}

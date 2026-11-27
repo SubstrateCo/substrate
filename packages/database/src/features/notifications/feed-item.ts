@@ -1,3 +1,4 @@
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
 import type { ConversationKind } from "@substrate/contracts/messaging/input";
 
 export interface FeedRow {
@@ -23,6 +24,8 @@ export interface FeedRow {
   /** Who acted: the message author or the person who assigned the task. */
   actorName: string | null;
   actorImage: string | null;
+  /** Set when the actor is an agent. */
+  actorAvatar: AgentAvatarCode | null;
 }
 
 /** A feed row as the recipient sees it, or null when its target is no longer readable. */
@@ -34,6 +37,7 @@ export function toFeedItem(row: FeedRow) {
     createdAt: row.createdAt,
     actorName: row.actorName,
     actorImage: row.actorImage,
+    actorAvatar: row.actorAvatar,
   };
   if (row.entityId) {
     if (!row.work) return null;

@@ -1,7 +1,6 @@
 export {
   saveAgentInput,
   deleteAgentInput,
-  setAgentPictureInput,
   saveSkillInput,
   agentCatalogSchema,
 } from "./input.ts";
@@ -17,9 +16,14 @@ export {
 export type {
   SaveAgentInput,
   SaveAgentValues,
-  SetAgentPictureInput,
   SaveSkillInput,
   AgentConfiguration,
   AgentCatalog,
   AgentRunSettings,
 } from "./input.ts";
+export {
+  agentAvatarCode,
+  setAgentAvatarInput,
+  type AgentAvatarCode,
+  type SetAgentAvatarInput,
+} from "./avatar.ts";

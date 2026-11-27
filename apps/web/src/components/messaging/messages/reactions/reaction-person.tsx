@@ -1,4 +1,5 @@
 import type { Reactor } from "@/api/messaging/requests";
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { Tag } from "@/components/feedback/tag";
 import { PersonCardTarget } from "@/components/messaging/people/person-card-slot";
@@ -17,7 +18,11 @@ export function ReactionPerson({
     <Item asChild size="xs">
       <li>
         <ItemMedia>
-          <PersonAvatar name={person.name} image={person.image} agent={person.type === "agent"} />
+          {person.type === "agent" ? (
+            <AgentAvatarView avatar={person.avatar} />
+          ) : (
+            <PersonAvatar name={person.name} image={person.image} />
+          )}
         </ItemMedia>
         <ItemContent className="min-w-0">
           <PersonCardTarget actorId={person.actorId} name={person.name}>

@@ -169,6 +169,7 @@ async function fixture() {
       userId: "alice",
       name: "Research",
       instructions: "",
+      avatarCode: "100000",
       harness: "opencode",
       homeDeviceId: device.id,
     })
@@ -488,6 +489,7 @@ test("CRM MCP interaction responses redact private agent identity for coworkers"
       userId: "bob",
       name: "Coworker agent",
       instructions: "",
+      avatarCode: "100000",
       harness: "opencode",
       homeDeviceId: (await bobDesktop()).id,
     })
@@ -546,6 +548,7 @@ test("CRM activity attributes the agent but coworkers see no private agent ident
       userId: "bob",
       name: "Coworker agent",
       instructions: "",
+      avatarCode: "100000",
       harness: "opencode",
       homeDeviceId: (await bobDesktop()).id,
     })

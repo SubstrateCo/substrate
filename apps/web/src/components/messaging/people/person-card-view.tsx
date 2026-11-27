@@ -1,5 +1,8 @@
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
+
 import type { ReactNode } from "react";
 
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
 import { PersonAvatarFallback } from "@/components/people/person-avatar";
@@ -15,6 +18,7 @@ export type PersonCardProfile = {
   external: boolean;
   email: string | null;
   image: string | null;
+  avatar: AgentAvatarCode | null;
   role: string | null;
   agent: { ownerName: string | null; harness: string | null; model: string | null } | null;
 };
@@ -27,6 +31,7 @@ function agentLine(agent: NonNullable<PersonCardProfile["agent"]>) {
 function Header({
   name,
   image,
+  avatar,
   secondary,
   action,
   tags,
@@ -35,6 +40,7 @@ function Header({
 }: {
   name: string;
   image?: string | null;
+  avatar?: AgentAvatarCode | null;
   secondary: ReactNode;
   action?: ReactNode;
   tags?: ReactNode;
@@ -43,14 +49,14 @@ function Header({
 }) {
   return (
     <div className="flex min-w-0 items-start gap-3">
-      <Avatar
-        aria-hidden="true"
-        variant={type === "agent" ? "agent" : "default"}
-        className="size-10 shrink-0"
-      >
-        {image && <AvatarImage src={image} alt="" />}
-        <PersonAvatarFallback name={name} agent={type === "agent"} />
-      </Avatar>
+      {type === "agent" ? (
+        <AgentAvatarView avatar={avatar ?? null} size="xl" />
+      ) : (
+        <Avatar aria-hidden="true" className="size-10 shrink-0">
+          {image && <AvatarImage src={image} alt="" />}
+          <PersonAvatarFallback name={name} />
+        </Avatar>
+      )}
       <div className="min-w-0 flex-1">
         <p className="font-medium wrap-anywhere">{name}</p>
         {secondary}
@@ -66,16 +72,19 @@ function Header({
 export function PersonIdentityCard({
   name,
   image,
+  avatar,
   type,
 }: {
   name: string;
   image?: string | null;
+  avatar?: AgentAvatarCode | null;
   type: "human" | "agent";
 }) {
   return (
     <Header
       name={name}
       image={image}
+      avatar={avatar}
       type={type}
       secondary={
         <p className="text-xs text-muted-foreground">{type === "agent" ? "Agent" : "Person"}</p>
@@ -133,6 +142,7 @@ export function PersonCard({
         name={profile.name}
         type={profile.type}
         image={profile.image}
+        avatar={profile.avatar}
         action={action}
         tags={tags.length ? tags : undefined}
         badge={

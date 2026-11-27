@@ -2,7 +2,7 @@ import { entities } from "../../core/entities/schema";
 import { member } from "../../core/organizations/schema";
 import { AccessDeniedError } from "../../errors";
 import { ActorRepositories } from "../../repositories";
-import { user, userAgents, storedFiles } from "../../schema";
+import { user, userAgents } from "../../schema";
 import { ownedAgent } from "../../testing/agents";
 import { setupDatabase } from "../../testing/database";
 import { recordQueries } from "../../testing/queries";
@@ -28,7 +28,7 @@ test("project tasks expose only their own existing discussion without creating o
   ).toBeNull();
 });
 
-test("project members and available actors join current names and private pictures", async () => {
+test("project members and available actors join current names, pictures and agent avatars", async () => {
   const agent = await ownedAgent(f);
   const alice = f.forActor(f.alice);
   const project = await alice.projects.create({ name: "Actor metadata" });
@@ -44,21 +44,9 @@ test("project members and available actors join current names and private pictur
   });
   const image = `/api/v1/files/pictures/avatar/alice?v=${crypto.randomUUID()}`;
   await f.db.update(user).set({ name: "Zoe", image }).where(eq(user.id, "alice"));
-  const fileId = crypto.randomUUID();
-  await f.db.insert(storedFiles).values({
-    id: fileId,
-    ownerUserId: "alice",
-    uploadedBy: "alice",
-    purpose: "avatar",
-    filename: "agent.webp",
-    contentType: "image/webp",
-    size: 10,
-    objectKey: `pictures/${fileId}`,
-    sha256: "hash",
-  });
   await f.db
     .update(userAgents)
-    .set({ name: "Amy", imageFileId: fileId })
+    .set({ name: "Amy", avatarCode: "131005" })
     .where(eq(userAgents.id, agent.agentId));
   const { db, queries } = recordQueries();
   for (const viewer of [f.alice, f.bob, agent.actorId]) {
@@ -69,9 +57,11 @@ test("project members and available actors join current names and private pictur
     for (const rows of [result.members, result.actors]) {
       expect(rows.find((row) => row.name === "Zoe")?.image).toBe(image);
     }
-    expect(result.actors.find((row) => row.name === "Amy")?.image).toBe(
-      viewer === f.bob ? null : `/api/v1/files/${fileId}/content`,
-    );
+    expect(result.actors.find((row) => row.name === "Amy")).toMatchObject({
+      image: null,
+      avatar: "131005",
+    });
+    expect(result.actors.find((row) => row.name === "Zoe")?.avatar).toBeNull();
     expect(result.actors.find((row) => row.entityId === agent.actorId)?.assignable).toBe(
       viewer !== f.bob,
     );
@@ -175,7 +165,14 @@ test("project detail preserves protected output in one SELECT statement", async 
   });
   expect(actual.actors.map((actor) => actor.entityId)).toEqual([f.alice, f.bob]);
   expect(actual.members).toEqual([
-    { actorEntityId: f.alice, name: "Alice", image: null, type: "human", level: "owner" },
+    {
+      actorEntityId: f.alice,
+      name: "Alice",
+      image: null,
+      avatar: null,
+      type: "human",
+      level: "owner",
+    },
   ]);
 });
 

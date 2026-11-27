@@ -1,5 +1,8 @@
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
+
 import type { ReactNode } from "react";
 
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import {
@@ -19,6 +22,7 @@ import { UserMinus } from "lucide-react";
 export function AccessRow({
   name,
   image,
+  avatar,
   agent = false,
   meta,
   level,
@@ -28,6 +32,8 @@ export function AccessRow({
 }: {
   name: string;
   image?: string | null;
+  /** An agent's look. */
+  avatar?: AgentAvatarCode | null;
   agent?: boolean;
   meta?: ReactNode;
   /** The level as text, such as "Can edit". */
@@ -41,7 +47,11 @@ export function AccessRow({
     <Item asChild size="xs" className="group/row min-w-0 flex-nowrap">
       <li>
         <ItemMedia>
-          <PersonAvatar name={name} image={image} agent={agent} />
+          {agent ? (
+            <AgentAvatarView avatar={avatar ?? null} />
+          ) : (
+            <PersonAvatar name={name} image={image} />
+          )}
         </ItemMedia>
         <ItemContent className="min-w-0">
           <ItemTitle className="max-w-full">

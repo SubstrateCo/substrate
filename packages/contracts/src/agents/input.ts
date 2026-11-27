@@ -1,4 +1,5 @@
 import { harnessKinds } from "../harness-runtime/kinds.ts";
+import { agentAvatarCode } from "./avatar.ts";
 import { agentTriggerKinds } from "./triggers.ts";
 import { z } from "zod";
 
@@ -14,7 +15,6 @@ export const saveAgentInput = z.strictObject({
   useStartupDefaults: z.boolean().default(true),
 });
 export const deleteAgentInput = z.strictObject({ id });
-export const setAgentPictureInput = z.strictObject({ id, fileId: id.nullable() });
 export const saveSkillInput = z.strictObject({
   id: id.optional(),
   name: z
@@ -30,7 +30,6 @@ export type SaveAgentInput = z.input<typeof saveAgentInput>;
 /** Validated agent fields, as the route passes them to the repository. */
 export type SaveAgentValues = z.output<typeof saveAgentInput>;
 export type SaveSkillInput = z.input<typeof saveSkillInput>;
-export type SetAgentPictureInput = z.input<typeof setAgentPictureInput>;
 /** A saved agent, as the catalog returns it. Its fields passed saveAgentInput when saved. */
 const agentConfiguration = z.object({
   id: z.string(),
@@ -40,7 +39,7 @@ const agentConfiguration = z.object({
   model: z.string().optional(),
   enabled: z.boolean(),
   useStartupDefaults: z.boolean(),
-  image: z.string().nullable(),
+  avatar: agentAvatarCode,
 });
 export type AgentConfiguration = z.infer<typeof agentConfiguration>;
 /** Where and when an agent runs. Kept apart from the editable configuration. */

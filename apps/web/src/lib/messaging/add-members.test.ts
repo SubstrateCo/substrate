@@ -5,7 +5,7 @@ const person = {
   email: "ada@example.test",
   person: { id: "ada", name: "Ada", email: "ada@example.test" },
 };
-const agent = { agent: { id: "assistant", name: "Assistant" } };
+const agent = { agent: { id: "assistant", name: "Assistant", avatar: "100000" } };
 
 test("mixed recipients use email membership for people and owned-agent membership for agents", async () => {
   const emails: string[][] = [];
@@ -38,7 +38,7 @@ test("agent-only selection never calls the manager-only people action", async ()
 });
 
 test("partial failure identifies completed selections so only the remaining choices are retried", async () => {
-  const second = { agent: { id: "second", name: "Second" } };
+  const second = { agent: { id: "second", name: "Second", avatar: "100000" } };
   let failure: unknown;
   try {
     await addConversationRecipients([person, agent, second], {

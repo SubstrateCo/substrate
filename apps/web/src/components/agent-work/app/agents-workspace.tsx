@@ -125,6 +125,7 @@ export function AgentsWorkspace({
             key={selected.id}
             agentId={selected.id}
             name={selected.name}
+            avatar={selected.avatar}
             enabled={selected.enabled}
             status={status(selected.id)}
             view={view}

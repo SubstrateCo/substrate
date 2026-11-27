@@ -14,6 +14,7 @@ const member = (userId: string, organizationId = "org"): ConversationMember => (
   agentId: null,
   name: userId,
   image: null,
+  avatar: null,
   organizationId,
   external: organizationId !== "org",
 });

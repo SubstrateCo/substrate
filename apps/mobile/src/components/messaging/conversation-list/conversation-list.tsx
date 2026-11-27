@@ -101,7 +101,7 @@ export function ConversationList({
           people={people.data ?? []}
           agents={(agents.data ?? [])
             .filter((agent) => agent.enabled)
-            .map(({ id, name, image }) => ({ id, name, image }))}
+            .map(({ id, name, avatar }) => ({ id, name, avatar }))}
           pending={create.isPending}
           error={create.error ?? people.error}
           canBrowse={browsable.length > 0}

@@ -35,6 +35,7 @@ export function ProjectMemberRow({
     <AccessRow
       name={member.name}
       image={member.image}
+      avatar={member.avatar}
       agent={member.type === "agent"}
       meta={
         <>

@@ -1,13 +1,11 @@
 import { user } from "../authentication/schema";
 import { desktopDevices } from "../devices/schema";
 import { idColumn } from "../ids";
-import { storedFiles } from "../storage/schema";
 import { sql } from "drizzle-orm";
 import {
   boolean,
   check,
   foreignKey,
-  index,
   pgTable,
   text,
   timestamp,
@@ -27,8 +25,9 @@ export const userAgents = pgTable(
     instructions: text("instructions").notNull(),
     harness: text("harness", { enum: ["opencode", "claude", "codex"] }).notNull(),
     model: text("model"),
-    imageFileId: uuid("image_file_id"),
-    picturePurpose: text("picture_purpose").notNull().default("avatar"),
+    // How the agent looks, as a code from @substrate/agent-avatars. Generated from the agent's
+    // ID when it is created; the owner may change it.
+    avatarCode: text("avatar_code").notNull(),
     enabled: boolean("enabled").notNull().default(true),
     useStartupDefaults: boolean("use_startup_defaults").notNull().default(true),
     // The desktop that runs this local agent. Its working folder lives on that device.
@@ -42,14 +41,6 @@ export const userAgents = pgTable(
       columns: [table.userId, table.homeDeviceId],
       foreignColumns: [desktopDevices.userId, desktopDevices.id],
     }),
-    check("user_agent_picture_purpose", sql`${table.picturePurpose} = 'avatar'`),
-    foreignKey({
-      name: "user_agent_picture_file_owner_fk",
-      columns: [table.imageFileId, table.userId, table.picturePurpose],
-      foreignColumns: [storedFiles.id, storedFiles.ownerUserId, storedFiles.purpose],
-    }),
-    index("user_agents_image_file_idx")
-      .on(table.imageFileId)
-      .where(sql`${table.imageFileId} IS NOT NULL`),
+    check("user_agents_avatar_code_check", sql`${table.avatarCode} ~ '^1[0-9a-z]{5}$'`),
   ],
 );

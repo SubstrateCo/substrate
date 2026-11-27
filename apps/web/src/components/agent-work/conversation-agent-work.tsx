@@ -17,7 +17,6 @@ import { RequestCard } from "./requests/request-card";
 import { TurnLabel, TurnStatus, TurnWork } from "./turn-work";
 import { useVisibleTurnStatuses } from "./use-visible-turn-statuses";
 import { WorkIndicator } from "./work-indicator";
-import { WorkAvatar } from "./work-orb";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { noticeLines, noticeThread } from "@/lib/agent-work/composer-notice";
@@ -34,7 +33,7 @@ import {
   agentStatus,
   noDesktopLabel,
   queueAhead,
-  turnOrb,
+  turnMood,
   turnTone,
   waits,
 } from "@/lib/agent-work/status";
@@ -46,6 +45,7 @@ import {
   conversationRequestsOptions,
   conversationWorkOptions,
 } from "@/queries/agent-work/server";
+import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 import { toast } from "sonner";
 
 function messageWorkLookups(
@@ -138,6 +138,10 @@ export function ConversationAgentWork({
   });
   const name = (agentId: string) =>
     agents.find((agent) => agent.agentId === agentId)?.name ?? "Agent";
+  // Agent work is the owner's, so the owner's catalog has every agent here.
+  const { data: catalog } = useQuery(agentCatalogQueryOptions(userId));
+  const avatarOf = (agentId: string) =>
+    catalog?.agents.find((agent) => agent.id === agentId)?.avatar ?? null;
   const { placements, anchors } = turnPlacements(turns, conversation.id);
   const waitingItems = itemPlacements(items, turns, conversation.id);
   const { cards, backlinks } = requestPlacements(requests.data ?? [], anchors, conversation.id);
@@ -166,14 +170,16 @@ export function ConversationAgentWork({
       .filter((line) => line.kind !== "turn" || offscreen.has(line.turn.id))
       .map((line): ComposerNoticeLine => {
         const { agentId, name: agentName } = line.agent;
+        const avatar = avatarOf(agentId);
         if (line.kind === "turn") {
           const request = openRequest(line.turn.id);
           return {
             key: agentId,
             turnId: line.turn.id,
             agentName,
+            avatar,
             tone: turnTone(line.turn, request),
-            orb: turnOrb(line.turn, request),
+            mood: turnMood(line.turn, request),
             label: <TurnLabel turn={line.turn} openRequest={request} />,
             status: (
               <TurnStatus turn={line.turn} openRequest={request} onTranscript={onTranscript} />
@@ -184,6 +190,7 @@ export function ConversationAgentWork({
           return {
             key: agentId,
             agentName,
+            avatar,
             tone: "idle",
             label: noDesktopLabel,
             link: {
@@ -195,6 +202,7 @@ export function ConversationAgentWork({
           return {
             key: agentId,
             agentName,
+            avatar,
             tone: "attention",
             label: "Needs you",
             link: { link: agentLink(organizationId, agentId), label: "Open Agents" },
@@ -203,8 +211,9 @@ export function ConversationAgentWork({
         return {
           key: agentId,
           agentName,
+          avatar,
           ...status,
-          orb: status.tone === "working" ? "solving" : null,
+          mood: status.tone === "working" ? "working" : null,
         };
       });
     // Members list only the viewer's own agents, so the owner can reset their DM session.
@@ -259,6 +268,7 @@ export function ConversationAgentWork({
                   <InboxReceipt
                     key={item.id}
                     item={item}
+                    agentId={agentId}
                     asReply={asReply}
                     context={{
                       agentName: name(agentId),
@@ -301,14 +311,13 @@ export function ConversationAgentWork({
             )),
         badge: (messageId) => {
           const turn = replyTurn(messageId);
-          // Live work shows the orb in place of the avatar instead.
-          if (!turn || turnOrb(turn, openRequest(turn.id))) return null;
+          // Live work shows in the avatar's mood instead.
+          if (!turn || turnMood(turn, openRequest(turn.id))) return null;
           return <WorkIndicator tone={turnTone(turn, openRequest(turn.id))} />;
         },
-        avatar: (messageId) => {
+        mood: (messageId) => {
           const turn = replyTurn(messageId);
-          const orb = turn && turnOrb(turn, openRequest(turn.id));
-          return orb ? <WorkAvatar state={orb} /> : null;
+          return turn ? turnMood(turn, openRequest(turn.id)) : null;
         },
         pendingReply: (messageId) =>
           (placements.get(messageId) ?? []).some(

@@ -1,19 +1,20 @@
+import { generateAvatarCode } from "@substrate/agent-avatars/config";
 import {
   agentTriggerKinds,
   type SaveAgentTriggersInput,
   type AgentCatalog,
   type AgentConfiguration,
   type SaveAgentValues,
+  type AgentAvatarCode,
 } from "@substrate/contracts/agents";
-import { managedPicturePath } from "@substrate/contracts/files/pictures";
+import { newId } from "@substrate/contracts/ids";
 
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { deviceOnline, findDevice } from "../../core/devices/repository";
 import { desktopDevices } from "../../core/devices/schema";
 import { effectsFor } from "../../core/effects";
 import type { DatabaseExecutor } from "../../core/executor";
-import { storedFiles } from "../../core/storage/schema";
-import { AccessDeniedError, ValidationError, violatedConstraint } from "../../errors";
+import { AccessDeniedError, ValidationError } from "../../errors";
 import { endMovedLeases } from "../agent-work/host/lease";
 import { endAgentTurns, endDeletedAgentWork } from "../agent-work/stop";
 import { agentRefreshHints } from "../realtime/routing";
@@ -23,7 +24,7 @@ import { and, eq, inArray, isNull, sql } from "drizzle-orm";
 function configuration(row: typeof userAgents.$inferSelect): AgentConfiguration {
   const result: AgentConfiguration = {
     id: row.id,
-    image: managedPicturePath(row.imageFileId),
+    avatar: row.avatarCode,
     name: row.name,
     instructions: row.instructions,
     harness: row.harness,
@@ -107,12 +108,19 @@ export function createAgentRepository(
         enabled: input.enabled,
         useStartupDefaults: input.useStartupDefaults,
       };
-      // A new local agent lives on the desktop that created it.
+      // A new local agent lives on the desktop that created it. Its look is generated from its ID.
+      const created = newId();
       const [row] = id
         ? await db.update(userAgents).set(values).where(ownAgent(id)).returning()
         : await db
             .insert(userAgents)
-            .values({ ...values, userId, homeDeviceId: (await currentDevice())?.id ?? null })
+            .values({
+              ...values,
+              id: created,
+              userId,
+              avatarCode: generateAvatarCode(created),
+              homeDeviceId: (await currentDevice())?.id ?? null,
+            })
             .returning();
       if (!row) throw new AccessDeniedError();
       // A disabled agent stops its live turns. Its queue and routines wait until it runs again.
@@ -152,40 +160,19 @@ export function createAgentRepository(
         return null;
       });
     },
-    async setPicture(id: string, fileId: string | null): Promise<AgentConfiguration> {
-      return db
-        .transaction(async (tx) => {
-          if (fileId !== null) {
-            const [file] = await tx
-              .select()
-              .from(storedFiles)
-              .where(
-                and(
-                  eq(storedFiles.id, fileId),
-                  eq(storedFiles.ownerUserId, userId),
-                  eq(storedFiles.purpose, "avatar"),
-                ),
-              );
-            if (!file) throw new AccessDeniedError();
-          }
-          const [row] = await tx
-            .update(userAgents)
-            .set({ imageFileId: fileId })
-            .where(ownAgent(id))
-            .returning();
-          if (!row) throw new AccessDeniedError();
-          await changed(tx);
-          return configuration(row);
-        })
-        .catch((error: Error) => {
-          // The composite foreign key arbitrates deletion after the avatar ownership read.
-          if (violatedConstraint(error) === "user_agent_picture_file_owner_fk")
-            throw new AccessDeniedError();
-          throw error;
-        });
+    // The route validates the code.
+    async setAvatar(id: string, avatar: AgentAvatarCode): Promise<AgentConfiguration> {
+      const [row] = await db
+        .update(userAgents)
+        .set({ avatarCode: avatar })
+        .where(ownAgent(id))
+        .returning();
+      if (!row) throw new AccessDeniedError();
+      await changed();
+      return configuration(row);
     },
     async deleteAgent(id: string): Promise<null> {
-      await updateOwnAgent(id, { deletedAt: new Date(), enabled: false, imageFileId: null });
+      await updateOwnAgent(id, { deletedAt: new Date(), enabled: false });
       await endDeletedAgentWork(db, id);
       return null;
     },

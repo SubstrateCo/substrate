@@ -3,6 +3,7 @@ import { Link, type LinkProps } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 
 import { ConversationKindIcon } from "./conversation-kind-icon";
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { badgeCount } from "@/components/feedback/badge-count";
 import { CountBadge } from "@/components/feedback/count-badge";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
@@ -99,6 +100,14 @@ export function ConversationSidebarItem({
 }
 
 function ConversationSidebarIcon({ conversation }: { conversation: Conversation }) {
+  // A DM with an agent shows that agent, as its messages do.
+  const agent =
+    conversation.kind === "agent_dm"
+      ? conversation.members.find((member) => member.type === "agent")
+      : undefined;
+  // The 20px avatar centres on the 16px icon column, so its label lines up with the others.
+  if (agent)
+    return <AgentAvatarView avatar={agent.avatar} size="xs" ambient="off" className="-mx-0.5" />;
   if (conversation.kind === "channel" && conversation.private)
     return (
       <Tooltip>

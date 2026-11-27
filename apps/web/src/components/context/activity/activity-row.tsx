@@ -1,8 +1,10 @@
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
 import type { ConversationKind } from "@substrate/contracts/messaging/input";
 
 import { Link } from "@tanstack/react-router";
 
 import { activityTime } from "./activity-time";
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { discussionConversationName } from "@/components/context/discussions/conversation-name";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
@@ -17,6 +19,7 @@ export type ActivityEvent = {
   action: string;
   actorName: string | null;
   actorImage?: string | null;
+  actorAvatar?: AgentAvatarCode | null;
   actorType?: "human" | "agent";
   createdAt: string;
   source: {
@@ -43,12 +46,11 @@ export function ActivityRow({ event }: { event: ActivityEvent }) {
       icon={<Icon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />}
       content={
         <>
-          <PersonAvatar
-            name={event.actorName ?? "Unknown"}
-            image={event.actorImage}
-            agent={event.actorType === "agent"}
-            size="xs"
-          />
+          {event.actorType === "agent" ? (
+            <AgentAvatarView avatar={event.actorAvatar ?? null} size="xs" />
+          ) : (
+            <PersonAvatar name={event.actorName ?? "Unknown"} image={event.actorImage} size="xs" />
+          )}
           <span className="max-w-full truncate font-medium">{event.actorName ?? "Unknown"}</span>
           {event.actorType === "agent" && (
             <Tag size="sm" className="shrink-0">

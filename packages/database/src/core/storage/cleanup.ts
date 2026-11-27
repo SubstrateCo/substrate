@@ -1,5 +1,4 @@
 import { isForeignKeyViolation } from "../../errors";
-import { userAgents } from "../actors/user-agents.schema";
 import type { Database } from "../executor";
 import { fileUploads, storedFiles, storageCandidates } from "./schema";
 import { and, eq, inArray, isNull, lt, not, notExists, sql, type SQL } from "drizzle-orm";
@@ -25,17 +24,7 @@ export function createStorageCleanup(db: Database, fileReferences: SQL) {
     },
     async pruneUnusedFiles(before: Date) {
       const prune = db.transaction(async (tx) => {
-        const unused = () =>
-          and(
-            not(fileReferences),
-            lt(storedFiles.createdAt, before),
-            notExists(
-              tx
-                .select({ id: userAgents.id })
-                .from(userAgents)
-                .where(eq(userAgents.imageFileId, storedFiles.id)),
-            ),
-          );
+        const unused = () => and(not(fileReferences), lt(storedFiles.createdAt, before));
         // One statement picks a batch and deletes it. A publication that commits while the delete
         // waits for the row changes its publication time, so the row no longer matches the batch
         // and the file is kept.

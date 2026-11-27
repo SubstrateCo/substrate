@@ -1,7 +1,10 @@
+import type { Mood } from "@substrate/agent-avatars/config";
+
 import type { ReactNode } from "react";
 
 import { MessageMarkdown } from "../markdown/message-markdown";
 import type { Message } from "../types";
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { Tag } from "@/components/feedback/tag";
 import { messageAuthorName } from "@/components/messaging/messages/message-author";
 import {
@@ -28,14 +31,14 @@ export function MessageItem({
   body,
   editor,
   actions,
-  avatar,
+  authorMood,
   avatarBadge,
   status,
   renderReaction,
   children,
 }: {
-  /** Replaces the author's avatar, such as while an agent's reply is still being worked on. */
-  avatar?: ReactNode;
+  /** What an agent author is doing, such as working while its reply is still being worked on. */
+  authorMood?: Mood;
   /** Replaces the body while the message is edited in place. */
   editor?: ReactNode;
   message: Message;
@@ -66,17 +69,12 @@ export function MessageItem({
       avatar={
         !grouped && (
           <span className="relative mt-0.5 h-fit shrink-0">
-            {avatar ?? (
-              <Avatar
-                aria-hidden="true"
-                variant={message.authorType === "agent" ? "agent" : "default"}
-                className="size-9"
-              >
+            {message.authorType === "agent" ? (
+              <AgentAvatarView avatar={message.authorAvatar ?? null} size="lg" mood={authorMood} />
+            ) : (
+              <Avatar aria-hidden="true" className="size-9">
                 {message.authorImage && <AvatarImage src={message.authorImage} alt="" />}
-                <PersonAvatarFallback
-                  name={message.authorName}
-                  agent={message.authorType === "agent"}
-                />
+                <PersonAvatarFallback name={message.authorName} />
               </Avatar>
             )}
             {avatarBadge}

@@ -1,12 +1,12 @@
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
+
 import type { ReactNode } from "react";
 
 import { WorkIndicator } from "./work-indicator";
-import { WorkAvatar } from "./work-orb";
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { Tag } from "@/components/feedback/tag";
-import { PersonAvatarFallback } from "@/components/people/person-avatar";
-import { Avatar } from "@/components/ui/avatar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { WorkOrbState, WorkTone } from "@/lib/agent-work/status";
+import type { WorkMood, WorkTone } from "@/lib/agent-work/status";
 import { LockKeyhole } from "lucide-react";
 
 /**
@@ -18,15 +18,18 @@ import { LockKeyhole } from "lucide-react";
  */
 export function PendingReply({
   name,
-  orb,
+  avatar,
+  mood,
   tone,
   status,
   line,
   children,
 }: {
   name: string;
-  /** Queued and live work show the orb in the place of the avatar. */
-  orb: WorkOrbState | null;
+  /** The agent's look, or null while it is not known. */
+  avatar: AgentAvatarCode | null;
+  /** Queued and live work show in the avatar's mood. */
+  mood: WorkMood | null;
   /** Ended work shows its dot on the avatar. */
   tone: WorkTone;
   /** The work's status, in the byline. */
@@ -39,16 +42,10 @@ export function PendingReply({
     // The owner message's bottom padding and the reply's top padding, so the reply lands here.
     <section aria-label={`${name} reply`} className="relative mt-2.5 min-w-0">
       <span className="absolute top-0.5 -left-12">
-        {orb ? (
-          <WorkAvatar state={orb} />
-        ) : (
-          <span className="relative block h-fit">
-            <Avatar aria-hidden="true" variant="agent" className="size-9">
-              <PersonAvatarFallback agent />
-            </Avatar>
-            <WorkIndicator tone={tone} />
-          </span>
-        )}
+        <span className="relative block h-fit">
+          <AgentAvatarView avatar={avatar} size="lg" mood={mood ?? undefined} />
+          {!mood && <WorkIndicator tone={tone} />}
+        </span>
       </span>
       <div className="flex min-w-0 flex-wrap items-baseline gap-x-2 gap-y-0.5">
         {/* oxlint-disable-next-line design/no-decorative-class -- The agent's name, as in a message byline. */}

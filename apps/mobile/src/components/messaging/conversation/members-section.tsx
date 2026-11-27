@@ -1,5 +1,6 @@
 import { View } from "react-native";
 
+import { AgentFace } from "../shared/agent-face";
 import { SheetSection } from "../shared/panel-sheet";
 import { PersonAvatar } from "../shared/person-avatar";
 import { Badge } from "@/components/ui/badge";
@@ -46,12 +47,11 @@ export function MembersSection({
                   onPress={() => onProfile(member)}
                   accessibilityLabel={`Profile of ${member.name}`}
                 >
-                  <PersonAvatar
-                    name={member.name}
-                    image={member.image}
-                    agent={member.type === "agent"}
-                    size="sm"
-                  />
+                  {member.type === "agent" ? (
+                    <AgentFace name={member.name} code={member.avatar} size="sm" />
+                  ) : (
+                    <PersonAvatar name={member.name} image={member.image} size="sm" />
+                  )}
                   <Text className="shrink text-[15px] font-normal" numberOfLines={1}>
                     {member.userId === viewerId ? `${member.name} (you)` : member.name}
                   </Text>

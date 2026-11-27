@@ -1,3 +1,4 @@
+import type { Mood } from "@substrate/agent-avatars/config";
 import type {
   AgentRequestView,
   AgentStatusView,
@@ -54,30 +55,29 @@ export function turnTone(
   }
 }
 
-/** The orb's animation for live work. Each name is a state of the `thinking-orbs` orb. */
-export type WorkOrbState = "breathing" | "connecting" | "solving" | "listening";
+/** The mood of the agent's own avatar while its work is live. */
+export type WorkMood = Extract<Mood, "thinking" | "working" | "listening" | "waiting">;
 
 /** Queued work waits calmly for its turn. */
-export const queuedOrb: WorkOrbState = "breathing";
+export const queuedMood: WorkMood = "waiting";
 
 /**
- * The orb animation for a live turn, or null when the work has ended: connecting while it
- * starts, solving while it runs, listening while it waits for the owner, and breathing while
- * it stops.
+ * The avatar's mood for a live turn, or null when the work has ended: thinking while it starts,
+ * working while it runs, listening while it waits for the owner, and waiting while it stops.
  */
-export function turnOrb(
+export function turnMood(
   turn: AgentWorkTurnView,
   openRequest?: Pick<AgentRequestView, "kind">,
-): WorkOrbState | null {
+): WorkMood | null {
   switch (turn.status) {
     case "assigned":
-      return openRequest ? "listening" : "connecting";
+      return openRequest ? "listening" : "thinking";
     case "running":
-      return openRequest ? "listening" : "solving";
+      return openRequest ? "listening" : "working";
     case "waiting":
       return "listening";
     case "stopping":
-      return "breathing";
+      return "waiting";
     case "completed":
     case "cancelled":
     case "interrupted":
@@ -229,7 +229,7 @@ export function agentStatus(status: AgentStatusView): WorkStatus {
 
 /** The agent page header's status. The timeline shows the activity, so this has none. */
 export type AgentHeaderStatus = WorkStatus & {
-  orb: WorkOrbState | null;
+  mood: WorkMood | null;
   /** The conversation of the live work, when it is not the page's own conversation. */
   elsewhereConversationId: string | null;
 };
@@ -244,10 +244,10 @@ export function agentHeaderStatus(
   homeConversationId: string | undefined,
 ): AgentHeaderStatus | null {
   const { device } = status;
-  const line = (tone: WorkTone, label: string, orb: WorkOrbState | null = null) => ({
+  const line = (tone: WorkTone, label: string, mood: WorkMood | null = null) => ({
     tone,
     label,
-    orb,
+    mood,
     elsewhereConversationId: null,
   });
   if (status.state === "needs_you") return line("attention", "Needs you");
@@ -256,7 +256,7 @@ export function agentHeaderStatus(
   if (status.state === "working") {
     const place = status.liveConversationId;
     return {
-      ...line("working", "Working", "solving"),
+      ...line("working", "Working", "working"),
       elsewhereConversationId: place && place !== homeConversationId ? place : null,
     };
   }
@@ -264,7 +264,7 @@ export function agentHeaderStatus(
     return line(
       "idle",
       status.queuedCount > 1 ? `Queued · ${status.queuedCount}` : "Queued",
-      queuedOrb,
+      queuedMood,
     );
   return null;
 }

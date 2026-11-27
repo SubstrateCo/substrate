@@ -13,7 +13,7 @@ const agent: AgentConfiguration = {
   harness: "opencode",
   enabled: true,
   useStartupDefaults: true,
-  image: null,
+  avatar: "100000",
 };
 
 describe("desktop harness local configuration", () => {

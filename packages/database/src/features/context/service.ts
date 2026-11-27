@@ -1,6 +1,7 @@
 import { atLeast } from "@substrate/contracts/access/levels";
 import type { ContextEntityType } from "@substrate/contracts/context/input";
 
+import { joinedActorAvatar } from "../../core/actors/avatar";
 import {
   joinActorProfile,
   joinedActorName,
@@ -321,7 +322,8 @@ export function createContextRepository(context: RepositoryContext, scope: Sessi
         deletedAt: messagingMessages.deletedAt,
         threadId: messagingMessages.threadId,
         authorName: joinedActorName(),
-        authorImage: joinedActorPicture(scope.userId),
+        authorImage: joinedActorPicture(),
+        authorAvatar: joinedActorAvatar(),
         authorType: actors.type,
         createdAt: messagingMessages.createdAt,
         replyCount: sql<number>`(select count(*)::int from ${messagingMessages} replies where replies.conversation_id = ${messagingMessages.conversationId} and replies.thread_id = coalesce(${messagingMessages.threadId}, ${messagingMessages.id}))`,

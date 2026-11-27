@@ -5,28 +5,6 @@ import { fakePictureServer, jsonBody } from "@/api/files/pictures.test-support";
 import { queryKeys } from "@/queries/keys";
 import { expect, test } from "bun:test";
 
-test("agent pictures refresh only their owner's catalog", async () => {
-  const client = new QueryClient();
-  const owner = queryKeys.agents("owner");
-  const untouched = [
-    queryKeys.agents("other"),
-    queryKeys.session,
-    queryKeys.projects("organization"),
-  ];
-  for (const key of [owner, ...untouched]) client.setQueryData(key, { image: "old" });
-  try {
-    await pictureMutationOptions(client, {
-      kind: "agent",
-      userId: "owner",
-      agentId: "agent",
-    }).refresh();
-    expect(client.getQueryState(owner)?.isInvalidated).toBe(true);
-    for (const key of untouched) expect(client.getQueryState(key)?.isInvalidated).toBe(false);
-  } finally {
-    client.clear();
-  }
-});
-
 test("project pictures refresh their detail and workspace catalog, not other project details", async () => {
   const client = new QueryClient();
   const affected = [

@@ -33,7 +33,13 @@ test("joined member metadata keeps partner pictures and other owners' agent IDs 
   await f.db.update(user).set({ image }).where(eq(user.id, "alice"));
   const [agent] = await f.db
     .insert(userAgents)
-    .values({ userId: "alice", name: "Scout", instructions: "", harness: "opencode" })
+    .values({
+      userId: "alice",
+      name: "Scout",
+      instructions: "",
+      avatarCode: "100000",
+      harness: "opencode",
+    })
     .returning();
   const chat = f.messaging("alice");
   const conversation = await chat.createConversation({

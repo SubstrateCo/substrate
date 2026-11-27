@@ -10,6 +10,7 @@ import { View } from "react-native";
 import { PanelSheet, SheetSection } from "../shared/panel-sheet";
 import { SharingSheet } from "../sharing/sharing-sheet";
 import { AddMembersForm } from "./add-members-form";
+import { AgentAppearanceSheet } from "./agent-appearance-sheet";
 import { AgentsSection } from "./agents-section";
 import { MembersSection } from "./members-section";
 import { Button } from "@/components/ui/button";
@@ -40,7 +41,8 @@ type Panel =
   | { kind: "leave"; newOwnerUserId?: string }
   | { kind: "pick-owner"; purpose: "leave" | "transfer" }
   | { kind: "transfer"; userId: string; name: string }
-  | { kind: "delete" };
+  | { kind: "delete" }
+  | { kind: "appearance"; agentId: string };
 
 /** Members, agents, sharing and management for one conversation. */
 export function ConversationDetailsSheet({
@@ -98,6 +100,7 @@ export function ConversationDetailsSheet({
           busyId={busyAgent}
           onAdd={(agentId) => manage.addAgent.mutate(agentId)}
           onRemove={(actorId) => manage.removeAgent.mutate(actorId)}
+          onAppearance={(agentId) => setPanel({ kind: "appearance", agentId })}
         />
       ) : null}
       {conversation.canShare || leaving || conversation.canManage ? (
@@ -154,6 +157,13 @@ export function ConversationDetailsSheet({
               { onSuccess: () => setPanel(undefined) },
             )
           }
+        />
+      ) : null}
+      {panel?.kind === "appearance" ? (
+        <AgentAppearanceSheet
+          organizationId={organizationId}
+          agentId={panel.agentId}
+          onClose={() => setPanel(undefined)}
         />
       ) : null}
       {panel?.kind === "sharing" ? (

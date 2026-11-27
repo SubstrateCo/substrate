@@ -1,3 +1,4 @@
+import { joinedActorAvatar } from "../../../core/actors/avatar";
 import {
   joinActorProfile,
   joinedActorName,
@@ -30,10 +31,11 @@ import { and, desc, eq, exists, inArray, isNull, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 // selectMessages joins account, agent and viewer-organization membership once per author.
-function messageAuthorColumns(scope: SessionIdentity) {
+function messageAuthorColumns() {
   return {
     authorName: joinedActorName(),
-    authorImage: joinedActorPicture(scope.userId),
+    authorImage: joinedActorPicture(),
+    authorAvatar: joinedActorAvatar(),
     authorType: sql<"human" | "agent">`${actors.type}`,
     authorExternal: sql<boolean>`${actors.type} <> 'agent' AND ${member.id} is null`,
   };
@@ -116,7 +118,7 @@ export function selectMessages(db: DatabaseExecutor, scope: SessionIdentity) {
     db
       .select({
         message: messagingMessages,
-        ...messageAuthorColumns(scope),
+        ...messageAuthorColumns(),
         authorOwnerUserId: userAgents.userId,
       })
       .from(messagingMessages)
@@ -387,7 +389,7 @@ export function messageOperations(
           validThread: conversation.validThread,
           validAnchor: conversation.validAnchor,
           message: messagingMessages,
-          ...messageAuthorColumns(scope),
+          ...messageAuthorColumns(),
           authorOwnerUserId: userAgents.userId,
           attachments: sql<Awaited<ReturnType<typeof messageAttachmentMetadata>>>`coalesce((
             select json_agg(json_build_object(

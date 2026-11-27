@@ -23,6 +23,7 @@ describe("actor provisioning", () => {
         userId: "alice",
         name: "Assistant",
         instructions: "Help",
+        avatarCode: "100000",
         harness: "opencode",
       })
       .returning();
@@ -75,6 +76,7 @@ describe("actor provisioning", () => {
         userId: "alice",
         name: "Assistant",
         instructions: "Help",
+        avatarCode: "100000",
         harness: "opencode",
       })
       .returning();
@@ -119,6 +121,7 @@ describe("actor provisioning", () => {
         userId: "alice",
         name: "Assistant",
         instructions: "Help",
+        avatarCode: "100000",
         harness: "opencode",
       })
       .returning();
@@ -155,6 +158,7 @@ describe("actor provisioning", () => {
       type: "agent",
       assignable: false,
       image: null,
+      avatar: "100000",
     });
     expect(
       await rejection(

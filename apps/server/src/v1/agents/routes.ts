@@ -2,7 +2,7 @@ import {
   saveAgentTriggersInput,
   saveAgentInput,
   deleteAgentInput,
-  setAgentPictureInput,
+  setAgentAvatarInput,
 } from "@substrate/contracts/agents";
 
 import { respond, v } from "../../shared/http";
@@ -20,8 +20,8 @@ export function createAgentsRoutes(services: AgentService, scopes: Scopes) {
     .post("/actors/delete", v("json", deleteAgentInput), scopes.user(), async (c) =>
       respond(c, await services.deleteAgent(c.var.scope, c.req.valid("json"))),
     )
-    .post("/actors/picture", v("json", setAgentPictureInput), scopes.user(), async (c) =>
-      respond(c, await services.setAgentPicture(c.var.scope, c.req.valid("json"))),
+    .post("/actors/avatar", v("json", setAgentAvatarInput), scopes.user(), async (c) =>
+      respond(c, await services.setAgentAvatar(c.var.scope, c.req.valid("json"))),
     )
     .post("/actors/triggers", v("json", saveAgentTriggersInput), scopes.user(), async (c) =>
       respond(c, await services.saveAgentTriggers(c.var.scope, c.req.valid("json"))),

@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import { Platform, View } from "react-native";
 
+import { AgentFace } from "../shared/agent-face";
 import { PersonAvatar } from "../shared/person-avatar";
 import { MessagePressable, useScreenReaderEnabled } from "@/components/gestures/message-pressable";
 import { Button } from "@/components/ui/button";
@@ -46,8 +47,10 @@ export function MessageRow({
   const agent = message.authorType === "agent";
   const screenReader = useScreenReaderEnabled();
   const showMore = !!onActions && (Platform.OS === "web" || screenReader);
-  const avatar = (
-    <PersonAvatar name={message.authorName} image={message.authorImage} agent={agent} />
+  const avatar = agent ? (
+    <AgentFace name={message.authorName} code={message.authorAvatar} />
+  ) : (
+    <PersonAvatar name={message.authorName} image={message.authorImage} />
   );
   return (
     <MessagePressable

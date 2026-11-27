@@ -61,7 +61,13 @@ test("any member can correct an interaction, but only its author or an admin can
 test("an agent's interaction belongs to its owner for deletion", async () => {
   const [definition] = await f.db
     .insert(userAgents)
-    .values({ userId: "bob", name: "Assistant", instructions: "", harness: "opencode" })
+    .values({
+      userId: "bob",
+      name: "Assistant",
+      instructions: "",
+      avatarCode: "100000",
+      harness: "opencode",
+    })
     .returning();
   const agent = await ensureUserAgentActor(f.db, {
     organizationId: f.orgA,

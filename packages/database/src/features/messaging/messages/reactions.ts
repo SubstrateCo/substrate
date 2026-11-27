@@ -1,3 +1,4 @@
+import { joinedActorAvatar } from "../../../core/actors/avatar";
 import {
   joinActorProfile,
   joinedActorName,
@@ -44,7 +45,8 @@ export function reactionOperations(
           .select({
             actorId: actors.entityId,
             name: joinedActorName(),
-            image: joinedActorPicture(scope.userId),
+            image: joinedActorPicture(),
+            avatar: joinedActorAvatar(),
             type: actors.type,
             self: sql<boolean>`${actors.entityId} = ${actor.entityId}`,
             emojis: sql<

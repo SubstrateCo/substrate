@@ -14,11 +14,15 @@ const toggleVariants = cva(
         // One option of a SegmentedControl: the chosen option is a raised chip on a muted track.
         segmented:
           "text-muted-foreground hover:bg-transparent hover:text-foreground data-[state=on]:bg-background data-[state=on]:text-foreground data-[state=on]:shadow-surface dark:data-[state=on]:bg-foreground/12",
+        // One visual choice in a grid of tiles, such as an avatar shape or colour. The chosen tile
+        // is a selected icon tile with a primary edge.
+        tile: "hover:bg-row-hover data-[state=on]:bg-row-selected data-[state=on]:text-row-selected-foreground data-[state=on]:inset-ring data-[state=on]:inset-ring-primary/40",
       },
       size: {
         default:
           "h-8 min-w-8 px-2.5 has-data-[icon=inline-end]:pr-2 has-data-[icon=inline-start]:pl-2",
         sm: "h-7 min-w-7 rounded-md px-2.5 text-xs has-data-[icon=inline-end]:pr-1.5 has-data-[icon=inline-start]:pl-1.5 [&_svg:not([class*='size-'])]:size-3.5",
+        tile: "size-10 p-0",
       },
     },
     defaultVariants: {

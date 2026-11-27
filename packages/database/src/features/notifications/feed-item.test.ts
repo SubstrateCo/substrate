@@ -14,6 +14,7 @@ const base: FeedRow = {
   threadId: null,
   actorName: "Alice",
   actorImage: null,
+  actorAvatar: null,
 };
 
 test("work notices take the current work title and project, and hide unreadable work", () => {
@@ -25,6 +26,7 @@ test("work notices take the current work title and project, and hide unreadable 
     createdAt: base.createdAt,
     actorName: "Alice",
     actorImage: null,
+    actorAvatar: null,
     title: "Ship",
     entityId: "t1",
     projectEntityId: "p1",

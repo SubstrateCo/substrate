@@ -94,7 +94,13 @@ test("project access hints reset only the granted actor and an agent's owner", a
   ]);
   const [definition] = await fixture.db
     .insert(userAgents)
-    .values({ userId: "alice", name: "Helper", instructions: "", harness: "opencode" })
+    .values({
+      userId: "alice",
+      name: "Helper",
+      instructions: "",
+      avatarCode: "100000",
+      harness: "opencode",
+    })
     .returning();
   const agent = await ensureUserAgentActor(fixture.db, {
     organizationId: fixture.orgA,
@@ -113,7 +119,13 @@ test("project access hints reset only the granted actor and an agent's owner", a
 test("agent changes refresh the owner's agents and workspace labels without an access hint", async () => {
   const [definition] = await fixture.db
     .insert(userAgents)
-    .values({ userId: "alice", name: "Helper", instructions: "", harness: "opencode" })
+    .values({
+      userId: "alice",
+      name: "Helper",
+      instructions: "",
+      avatarCode: "100000",
+      harness: "opencode",
+    })
     .returning();
   await ensureUserAgentActor(fixture.db, {
     organizationId: fixture.orgA,

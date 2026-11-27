@@ -1,0 +1,45 @@
+{
+  "name": "@substrate/agent-avatars",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./config": "./src/config/index.ts",
+    "./native": {
+      "browser": "./src/native/web/index.ts",
+      "default": "./src/native/index.ts"
+    }
+  },
+  "scripts": {
+    "dev": "vite --config playground/vite.config.ts",
+    "typecheck": "bun check",
+    "test": "bun test src"
+  },
+  "dependencies": {
+    "zod": "catalog:"
+  },
+  "devDependencies": {
+    "@types/bun": "catalog:tooling",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.2.1",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "react-native": "0.85.3",
+    "react-native-svg": "15.15.4",
+    "vite": "^8.3.6"
+  },
+  "peerDependencies": {
+    "react": "^19.2.0",
+    "react-native": ">=0.80.0",
+    "react-native-svg": "^15.0.0"
+  },
+  "peerDependenciesMeta": {
+    "react-native": {
+      "optional": true
+    },
+    "react-native-svg": {
+      "optional": true
+    }
+  }
+}

@@ -1,6 +1,14 @@
+import { decodeAvatarCode } from "@substrate/agent-avatars/config";
+
 import { createAgent } from "../test-support/agent-work";
 import { test, visit } from "../test-support/fixtures";
+import { captureScreenshot } from "../test-support/screenshots";
 import { expect } from "@playwright/test";
+import { z } from "zod";
+
+const savedCatalog = z.object({
+  data: z.object({ agents: z.array(z.object({ id: z.string(), avatar: z.string() })) }),
+});
 
 test("agent settings keep their controls within the sheet at desktop and narrow widths", async ({
   account,
@@ -31,8 +39,9 @@ test("agent settings keep their controls within the sheet at desktop and narrow 
     await expect(sheet.getByLabel("Agent name", { exact: true })).toHaveValue(agent.name);
     for (const control of [
       sheet.getByLabel("Agent name", { exact: true }),
-      sheet.getByRole("button", { name: "Edit agent picture", exact: true }),
       sheet.getByRole("button", { name: /^Model:/ }),
+      sheet.getByRole("radio", { name: "Hexagon", exact: true }),
+      sheet.getByRole("radio", { name: "Cloud", exact: true }),
       sheet.getByRole("switch", { name: "Enabled", exact: true }),
       sheet.getByRole("switch", { name: "Run Morning brief on schedule", exact: true }),
       sheet.getByRole("button", { name: /Skills/ }),
@@ -73,13 +82,6 @@ test("agent settings keep their controls within the sheet at desktop and narrow 
     expect(routineIcon).not.toBeNull();
     expect(toolIcon).not.toBeNull();
     expect(Math.abs(routineIcon!.x - toolIcon!.x)).toBeLessThanOrEqual(2);
-    const picture = sheet.getByRole("button", { name: "Edit agent picture", exact: true });
-    await picture.scrollIntoViewIfNeeded();
-    await picture.click();
-    const editor = user.page.getByRole("dialog", { name: "Agent picture", exact: true });
-    await expect(editor.getByRole("button", { name: "Choose picture", exact: true })).toBeVisible();
-    await editor.getByRole("button", { name: "Close", exact: true }).click();
-    await expect(picture).toBeFocused();
     await sheet.getByRole("button", { name: "Manage routines", exact: true }).click();
     const search = await sheet
       .getByRole("searchbox", { name: "Search routines", exact: true })
@@ -92,6 +94,49 @@ test("agent settings keep their controls within the sheet at desktop and narrow 
     );
     await sheet.getByRole("button", { name: "Back to settings", exact: true }).click();
   }
+});
+
+test("an agent's shape and colour save at once and stay after reload", async ({
+  account,
+  client,
+}) => {
+  const agent = await createAgent(account, "Release helper");
+  const user = await client(account);
+  await visit(user, undefined, "/agents", { agentId: agent.id, settings: "overview" });
+  const sheet = user.page.getByRole("dialog", { name: "Agent settings", exact: true });
+  const bodies = sheet.getByRole("group", { name: "Shape", exact: true });
+  const colours = sheet.getByRole("group", { name: "Colour", exact: true });
+  // The generated look already holds one shape and one colour; pick others.
+  await expect(bodies.getByRole("radio", { checked: true })).toHaveCount(1);
+  await expect(colours.getByRole("radio", { checked: true })).toHaveCount(1);
+  const body = bodies.getByRole("radio", { checked: false }).first();
+  const colour = colours.getByRole("radio", { checked: false }).first();
+  const bodyName = await body.getAttribute("aria-label");
+  const colourName = await colour.getAttribute("aria-label");
+  expect(bodyName).toBeTruthy();
+  expect(colourName).toBeTruthy();
+  const saved = (choice: Promise<unknown>) =>
+    Promise.all([
+      user.page.waitForResponse(
+        (response) => response.url().endsWith("/api/v1/agents/actors/avatar") && response.ok(),
+      ),
+      choice,
+    ]);
+  await saved(body.click());
+  await saved(colour.click());
+  await colours.scrollIntoViewIfNeeded();
+  await captureScreenshot(user.page, "agent-appearance-light");
+  await user.page.emulateMedia({ colorScheme: "dark" });
+  await captureScreenshot(user.page, "agent-appearance-dark");
+  await user.page.reload();
+  await expect(bodies.getByRole("radio", { name: bodyName!, exact: true })).toBeChecked();
+  await expect(colours.getByRole("radio", { name: colourName!, exact: true })).toBeChecked();
+  const catalog = await account.request.post("/api/v1/agents/list", { data: {} });
+  expect(catalog.ok()).toBe(true);
+  const { data } = savedCatalog.parse(await catalog.json());
+  const look = decodeAvatarCode(data.agents.find((item) => item.id === agent.id)?.avatar ?? "");
+  expect(look?.body).toBe(bodyName!.toLowerCase());
+  expect(look?.color).toBe(colourName!.toLowerCase());
 });
 
 test("a weekly routine saves its schedule and reopens with the same fields", async ({

@@ -22,6 +22,7 @@ function group(groupKey: string, newestCursor = earlier): NotificationGroup {
     createdAt: "2026-11-10T10:00:00.000Z",
     actorName: "Maya",
     actorImage: null,
+    actorAvatar: null,
     title: "New thread reply",
     entityId: null,
     projectEntityId: null,

@@ -11,6 +11,7 @@ import { TaskPriorityIcon } from "../task-cues/task-priority-icon";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { TaskDueDatePicker } from "./task-due-date-picker";
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { NotSet, Property, PropertyList } from "@/components/layout/record-section";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { DueDate } from "@/components/time/due-date";
@@ -85,12 +86,11 @@ export function TaskProperties({
   const assigneeText = assigneeLabel(task.assigneeActorEntityId, detail.actors);
   const assigneeValue = (
     <>
-      <PersonAvatar
-        size="xs"
-        name={assignee?.name}
-        image={assignee?.image}
-        agent={assignee?.type === "agent"}
-      />
+      {assignee?.type === "agent" ? (
+        <AgentAvatarView avatar={assignee.avatar} size="xs" />
+      ) : (
+        <PersonAvatar size="xs" name={assignee?.name} image={assignee?.image} />
+      )}
       <span className={`truncate ${assignee ? "" : "text-muted-foreground"}`}>{assigneeText}</span>
       {assignee?.type === "agent" && <span className="sr-only">, Agent</span>}
     </>

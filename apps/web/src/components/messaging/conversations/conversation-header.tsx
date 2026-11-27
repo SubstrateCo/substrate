@@ -1,8 +1,11 @@
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
+
 import { useRef, type ReactNode } from "react";
 
 import { ownOrganizationFirst, type ChannelOrganization } from "./channel-organizations";
 import { ConversationKindIcon } from "./conversation-kind-icon";
 import { ConversationOrganizations } from "./conversation-organizations";
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { Tag } from "@/components/feedback/tag";
 import { PageHeader } from "@/components/layout/page-header";
 import { PersonAvatar } from "@/components/people/person-avatar";
@@ -17,6 +20,8 @@ export type HeaderMember = {
   userId: string | null;
   name: string;
   image?: string | null;
+  /** Set exactly for an agent. */
+  avatar?: AgentAvatarCode | null;
   type: "human" | "agent";
   /** Present only for an agent owned by the viewer. */
   agentId?: string | null;
@@ -28,7 +33,8 @@ export type HeaderMember = {
 export const membersButtonSelector = "[data-conversation-members]";
 
 function MemberAvatar({ member }: { member: HeaderMember }) {
-  return <PersonAvatar name={member.name} image={member.image} agent={member.type === "agent"} />;
+  if (member.type === "agent") return <AgentAvatarView avatar={member.avatar ?? null} />;
+  return <PersonAvatar name={member.name} image={member.image} />;
 }
 
 /** Who can read here: a count that opens the member list. */

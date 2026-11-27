@@ -11,6 +11,7 @@
     "dev": "bun run --filter @substrate/desktop dev",
     "dev:server": "bun run --filter @substrate/server dev",
     "dev:web": "bun run --filter @substrate/web dev",
+    "dev:avatars": "bun run --filter @substrate/agent-avatars dev",
     "dev:mobile": "bun run --filter @substrate/mobile dev",
     "dev:mobile:android": "bun run --filter @substrate/mobile dev:android",
     "dev:mobile:ios": "bun run --filter @substrate/mobile dev:ios",

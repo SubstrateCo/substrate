@@ -1,8 +1,10 @@
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
+
 import { Link } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
-import { WorkOrb } from "../work-orb";
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { toneText } from "@/components/feedback/tag-styles";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
@@ -11,15 +13,16 @@ import type { AgentView } from "@/lib/agent-work/agent-sections";
 import type { AgentHeaderStatus } from "@/lib/agent-work/status";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
-import { Bot, CircleAlert, MonitorOff, Settings } from "lucide-react";
+import { CircleAlert, MonitorOff, Settings } from "lucide-react";
 
 const viewOptions = [
   { value: "messages", label: "Messages" },
   { value: "work", label: "Work" },
 ] as const satisfies readonly { value: AgentView; label: string }[];
 
+/** Live work shows in the header avatar's mood, so only problems get an icon. */
 function HeaderStatusIcon({ status }: { status: AgentHeaderStatus }) {
-  if (status.orb) return <WorkOrb state={status.orb} />;
+  if (status.mood) return null;
   if (status.tone === "attention")
     return <CircleAlert aria-hidden="true" className="size-3.5 shrink-0 text-warning" />;
   // No desktop, or the desktop is offline.
@@ -59,6 +62,7 @@ function HeaderStatus({
  */
 export function AgentPageView({
   name,
+  avatar,
   status,
   elsewhere,
   view,
@@ -69,6 +73,7 @@ export function AgentPageView({
   work,
 }: {
   name: ReactNode;
+  avatar: AgentAvatarCode;
   status?: AgentHeaderStatus | null;
   /** The conversation where the agent works now, when it is not this page's conversation. */
   elsewhere?: { link: RecordLink; label: string };
@@ -89,7 +94,15 @@ export function AgentPageView({
             {status && <HeaderStatus status={status} elsewhere={elsewhere} />}
           </span>
         }
-        icon={<Bot aria-hidden="true" />}
+        leading={
+          <AgentAvatarView
+            avatar={avatar}
+            size="md"
+            mood={status?.mood ?? undefined}
+            ambient="lively"
+            interactive
+          />
+        }
         actions={
           <div className="flex items-center gap-2">
             <SegmentedControl

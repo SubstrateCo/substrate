@@ -19,8 +19,8 @@ function ToneIcon({ tone }: { tone: WorkTone }) {
 /**
  * A turn's work as one status in the reply's header, such as "Worked for 28s". It opens the
  * transcript, which holds the steps. Requests, attention cards, and errors stay in the message
- * body so they are never hidden. Live work shows its orb in the place of the avatar, and Stop
- * at the end of the line, so neither moves while the label changes.
+ * body so they are never hidden. Live work shows in the agent avatar's mood, and Stop at the end
+ * of the line, so neither moves while the label changes.
  */
 export function WorkStatus({
   tone,

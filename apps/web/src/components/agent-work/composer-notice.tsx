@@ -1,22 +1,26 @@
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
+
 import { Link } from "@tanstack/react-router";
 
 import type { ReactNode } from "react";
 
-import { WorkOrb } from "./work-orb";
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { toneText } from "@/components/feedback/tag-styles";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { WorkOrbState, WorkTone } from "@/lib/agent-work/status";
+import type { WorkMood, WorkTone } from "@/lib/agent-work/status";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
-import { Bot, MessageSquarePlus } from "lucide-react";
+import { MessageSquarePlus } from "lucide-react";
 
 export type ComposerNoticeLine = {
   key: string;
   agentName: string;
+  /** The agent's look, or null while it is not known. */
+  avatar: AgentAvatarCode | null;
   tone: WorkTone;
-  /** The orb's animation while the agent works or waits for the owner, else null. */
-  orb?: WorkOrbState | null;
+  /** The avatar's mood while the agent works or waits for the owner, else null. */
+  mood?: WorkMood | null;
   label: ReactNode;
   /** Local turns keep their transcript and stop controls when the source is offscreen. */
   status?: ReactNode;
@@ -40,11 +44,7 @@ function NoticePill({ line }: { line: ComposerNoticeLine }) {
   const { turnId } = line;
   return (
     <div className="pointer-events-auto flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border bg-surface pr-1 pl-2 text-xs text-muted-foreground shadow-floating">
-      {line.orb ? (
-        <WorkOrb state={line.orb} />
-      ) : (
-        <Bot aria-hidden="true" className="size-3.5 shrink-0" />
-      )}
+      <AgentAvatarView avatar={line.avatar} size="xs" mood={line.mood ?? undefined} />
       <span className="shrink-0 font-medium text-foreground">{line.agentName}</span>
       {line.status ?? (
         <span className={cn("min-w-0 truncate pr-2 tabular-nums", toneText[line.tone])}>

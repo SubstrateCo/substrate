@@ -1,8 +1,8 @@
+import { generateAvatarCode } from "@substrate/agent-avatars/config";
+
 import { userAgents } from "../../core/actors/user-agents.schema";
 import { user } from "../../core/authentication/schema";
-import { createStorageRepository } from "../../core/storage/repository";
-import { storedFiles } from "../../core/storage/schema";
-import { AccessDeniedError, ConflictError } from "../../errors";
+import { AccessDeniedError } from "../../errors";
 import { setupDatabase } from "../../testing/database";
 import { rejection } from "../../testing/rejection";
 import { createAgentRepository } from "./repository";
@@ -18,18 +18,6 @@ const agent = {
   useStartupDefaults: true,
 };
 
-const avatar = () => ({
-  id: crypto.randomUUID(),
-  ownerUserId: "alice",
-  uploadedBy: "alice",
-  purpose: "avatar",
-  filename: "avatar.webp",
-  contentType: "image/webp",
-  size: 200,
-  objectKey: crypto.randomUUID(),
-  sha256: "a".repeat(64),
-});
-
 test("saving an agent writes only its configuration fields", async () => {
   const owner = createAgentRepository(f.db, "alice");
   const saved = await owner.saveAgent(agent);
@@ -40,112 +28,28 @@ test("saving an agent writes only its configuration fields", async () => {
   expect(row).toMatchObject({ name: "Renamed", userId: "alice", deletedAt: null });
 });
 
-test("agent pictures require a live owned agent and a completed owned avatar", async () => {
+test("a new agent gets the look generated from its ID", async () => {
+  const saved = await createAgentRepository(f.db, "alice").saveAgent(agent);
+  expect(saved.avatar).toBe(generateAvatarCode(saved.id));
+});
+
+test("only the owner changes a live agent's avatar code", async () => {
   const owner = createAgentRepository(f.db, "alice");
   const saved = await owner.saveAgent(agent);
-  expect(saved.image).toBeNull();
-  const picture = avatar();
-  const foreign = { ...avatar(), ownerUserId: "bob", uploadedBy: "bob" };
-  const logo = {
-    ...avatar(),
-    ownerUserId: null,
-    organizationId: f.orgA,
-    purpose: "organization-logo",
-  };
-  const raw = { ...logo, id: crypto.randomUUID(), objectKey: crypto.randomUUID(), purpose: "file" };
-  await f.db.insert(storedFiles).values([picture, foreign, logo, raw]);
-  const pending = await createStorageRepository(f.db).createUpload(
-    { userId: "alice", organizationId: null },
-    { purpose: "avatar", filename: "avatar.png", contentType: "image/png", size: 200 },
-    crypto.randomUUID(),
-    new Date(Date.now() + 60000),
-  );
-  for (const fileId of [crypto.randomUUID(), pending.id, foreign.id, logo.id, raw.id])
-    expect(await rejection(owner.setPicture(saved.id, fileId))).toBeInstanceOf(AccessDeniedError);
+  const chosen = saved.avatar === "131005" ? "141005" : "131005";
+  expect((await owner.setAvatar(saved.id, chosen)).avatar).toBe(chosen);
+  expect((await owner.list()).agents[0]?.avatar).toBe(chosen);
+  expect((await owner.saveAgent({ ...agent, id: saved.id })).avatar).toBe(chosen);
   expect(
-    await rejection(createAgentRepository(f.db, "bob").setPicture(saved.id, picture.id)),
+    await rejection(createAgentRepository(f.db, "bob").setAvatar(saved.id, saved.avatar)),
   ).toBeInstanceOf(AccessDeniedError);
-  const updated = await owner.setPicture(saved.id, picture.id);
-  expect(updated.image).toBe(`/api/v1/files/${picture.id}/content`);
-  expect((await owner.list()).agents[0]?.image).toBe(updated.image);
-  expect((await owner.saveAgent({ ...agent, id: saved.id })).image).toBe(updated.image);
-  expect((await owner.setPicture(saved.id, null)).image).toBeNull();
+  expect((await owner.list()).agents[0]?.avatar).toBe(chosen);
   await owner.deleteAgent(saved.id);
-  expect(await rejection(owner.setPicture(saved.id, picture.id))).toBeInstanceOf(AccessDeniedError);
-});
-
-test("agent avatars survive cleanup and cannot be deleted until cleared or agent deletion", async () => {
-  const owner = createAgentRepository(f.db, "alice");
-  const storage = createStorageRepository(f.db);
-  const scope = { userId: "alice", organizationId: null };
-  const saved = await owner.saveAgent(agent);
-  const picture = avatar();
-  await f.db.insert(storedFiles).values(picture);
-  await owner.setPicture(saved.id, picture.id);
-  expect(await rejection(storage.deleteFile(scope, picture.id))).toBeInstanceOf(ConflictError);
-  await storage.pruneUnusedFiles(new Date(Date.now() + 60000));
-  expect(await storage.getReadable(scope, picture.id)).toMatchObject({ id: picture.id });
-  await owner.setPicture(saved.id, null);
-  await storage.deleteFile(scope, picture.id);
-  expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, picture.id))).toEqual([]);
-  const next = avatar();
-  await f.db.insert(storedFiles).values(next);
-  await owner.setPicture(saved.id, next.id);
-  await owner.deleteAgent(saved.id);
+  expect(await rejection(owner.setAvatar(saved.id, saved.avatar))).toBeInstanceOf(
+    AccessDeniedError,
+  );
   const [row] = await f.db.select().from(userAgents).where(eq(userAgents.id, saved.id));
-  expect(row?.imageFileId).toBeNull();
-  await storage.pruneUnusedFiles(new Date(Date.now() + 60000));
-  expect(await f.db.select().from(storedFiles).where(eq(storedFiles.id, next.id))).toEqual([]);
-});
-
-test("PostgreSQL enforces agent picture owner and fixed purpose", async () => {
-  const saved = await createAgentRepository(f.db, "bob").saveAgent(agent);
-  const picture = avatar();
-  await f.db.insert(storedFiles).values(picture);
-  expect(
-    await rejection(
-      f.db
-        .update(userAgents)
-        .set({ imageFileId: picture.id })
-        .where(eq(userAgents.id, saved.id))
-        .execute(),
-    ),
-  ).toMatchObject({ cause: { code: "23503" } });
-  expect(
-    await rejection(
-      f.db
-        .update(userAgents)
-        .set({ picturePurpose: "file" })
-        .where(eq(userAgents.id, saved.id))
-        .execute(),
-    ),
-  ).toMatchObject({ cause: { code: "23514" } });
-});
-
-test("concurrent picture assignment and deletion leave no dangling picture", async () => {
-  const owner = createAgentRepository(f.db, "alice");
-  const storage = createStorageRepository(f.db);
-  const saved = await owner.saveAgent(agent);
-  const picture = avatar();
-  await f.db.insert(storedFiles).values(picture);
-  const [assignment, deletion] = await Promise.allSettled([
-    owner.setPicture(saved.id, picture.id),
-    storage.deleteFile({ userId: "alice", organizationId: null }, picture.id),
-  ]);
-  expect([assignment, deletion].filter((result) => result.status === "fulfilled")).toHaveLength(1);
-  const [row] = await f.db.select().from(userAgents).where(eq(userAgents.id, saved.id));
-  const remaining = await f.db.select().from(storedFiles).where(eq(storedFiles.id, picture.id));
-  if (assignment.status === "fulfilled") {
-    expect(row?.imageFileId).toBe(picture.id);
-    expect(remaining).toHaveLength(1);
-    expect(deletion.status === "rejected" ? deletion.reason : undefined).toBeInstanceOf(
-      ConflictError,
-    );
-  } else {
-    expect(assignment.reason).toBeInstanceOf(AccessDeniedError);
-    expect(row?.imageFileId).toBeNull();
-    expect(remaining).toHaveLength(0);
-  }
+  expect(row?.avatarCode).toBe(chosen);
 });
 
 test("user definitions do not require organization membership and cannot cross owners", async () => {

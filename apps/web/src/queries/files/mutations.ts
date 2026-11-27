@@ -6,7 +6,6 @@ import {
 } from "@tanstack/react-query";
 import { useRouter } from "@tanstack/react-router";
 
-import { setAgentPicture, uploadAgentPicture } from "@/api/agents/requests";
 import { pictureApi } from "@/api/files/pictures";
 import { setProjectPicture, uploadProjectPicture } from "@/api/tasks/requests";
 import { queryKeys } from "@/queries/keys";
@@ -14,7 +13,6 @@ import { queryKeys } from "@/queries/keys";
 type PictureTarget =
   | { kind: "avatar" }
   | { kind: "organization-logo"; organizationId: string }
-  | { kind: "agent"; userId: string; agentId: string }
   | { kind: "project"; organizationId: string; projectEntityId: string };
 
 interface PictureUpload {
@@ -44,9 +42,6 @@ export function pictureMutationOptions(
           }),
         ]);
         return;
-      case "agent":
-        await queryClient.invalidateQueries({ queryKey: queryKeys.agents(target.userId) });
-        return;
       case "project":
         await Promise.all([
           queryClient.invalidateQueries({
@@ -71,8 +66,6 @@ export function pictureMutationOptions(
               onCommit,
               target.organizationId,
             );
-          case "agent":
-            return uploadAgentPicture(target.agentId, file, signal, onCommit);
           case "project":
             return uploadProjectPicture(
               target.organizationId,
@@ -92,8 +85,6 @@ export function pictureMutationOptions(
             return pictures.removePicture("avatar");
           case "organization-logo":
             return pictures.removePicture("organization-logo", target.organizationId);
-          case "agent":
-            return setAgentPicture(target.agentId, null);
           case "project":
             return setProjectPicture(target.organizationId, target.projectEntityId, null);
         }

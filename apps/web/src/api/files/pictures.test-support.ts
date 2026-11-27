@@ -1,4 +1,3 @@
-import { createAgentPictureApi } from "../agents/requests";
 import { createApi } from "../client";
 import { createPictureApi } from "./pictures";
 import { organizationClient } from "better-auth/client/plugins";
@@ -37,7 +36,6 @@ export function fakePictureServer(...responders: Responder[]) {
   return {
     requests,
     pictures: createPictureApi(auth, http),
-    agentPictures: createAgentPictureApi(http, fetch),
   };
 }
 

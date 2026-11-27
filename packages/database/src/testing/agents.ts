@@ -16,7 +16,14 @@ export async function ownedAgent(f: Fixture, userId = "alice", name = "Research"
   });
   const [agent] = await f.db
     .insert(userAgents)
-    .values({ userId, name, instructions: "", harness: "claude", homeDeviceId: device.id })
+    .values({
+      userId,
+      name,
+      instructions: "",
+      avatarCode: "100000",
+      harness: "claude",
+      homeDeviceId: device.id,
+    })
     .returning();
   const actor = await ensureUserAgentActor(f.db, {
     organizationId: f.orgA,

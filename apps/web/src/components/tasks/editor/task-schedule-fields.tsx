@@ -5,6 +5,7 @@ import { AssigneePicker } from "../assignee/assignee-picker";
 import { taskPriorityOptions, taskStatusOptions } from "../task-cues/task-options";
 import type { ProjectDetail } from "../types";
 import type { TaskEditorForm } from "./task-form-view";
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { DateField } from "@/components/forms/date-field";
 import { SelectField } from "@/components/forms/select-field";
 import { PersonAvatar } from "@/components/people/person-avatar";
@@ -88,12 +89,11 @@ export function TaskScheduleFields({
                   />
                 }
               >
-                <PersonAvatar
-                  size="xs"
-                  name={actor?.name}
-                  image={actor?.image}
-                  agent={actor?.type === "agent"}
-                />
+                {actor?.type === "agent" ? (
+                  <AgentAvatarView avatar={actor.avatar} size="xs" />
+                ) : (
+                  <PersonAvatar size="xs" name={actor?.name} image={actor?.image} />
+                )}
                 <span className="min-w-0 flex-1 truncate text-left">
                   {value && !actor
                     ? "Former member. Choose someone else."

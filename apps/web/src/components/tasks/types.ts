@@ -1,4 +1,5 @@
 import { permissionLabels } from "@substrate/contracts/access/levels";
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
 import {
   permissionLevels,
   type PermissionLevel,
@@ -45,6 +46,8 @@ export interface ProjectDetail {
     actorEntityId: string;
     name: string;
     image?: string | null;
+    /** Set exactly for an agent. */
+    avatar: AgentAvatarCode | null;
     type: "human" | "agent";
     level: PermissionLevel;
   }[];
@@ -53,6 +56,8 @@ export interface ProjectDetail {
     entityId: string;
     name: string;
     image?: string | null;
+    /** Set exactly for an agent. */
+    avatar: AgentAvatarCode | null;
     type: "human" | "agent";
     assignable: boolean;
   }[];

@@ -178,7 +178,13 @@ test("a conversation audience resolves in one statement for every receiver, and 
   if (!conversation) throw new Error("Missing conversation");
   const [definition] = await fixture.db
     .insert(schema.userAgents)
-    .values({ userId: "bob", name: "Helper", instructions: "", harness: "opencode" })
+    .values({
+      userId: "bob",
+      name: "Helper",
+      instructions: "",
+      avatarCode: "100000",
+      harness: "opencode",
+    })
     .returning();
   const agent = await ensureUserAgentActor(fixture.db, {
     organizationId: fixture.orgA,

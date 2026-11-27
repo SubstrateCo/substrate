@@ -1,3 +1,5 @@
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
+
 import { Link } from "@tanstack/react-router";
 
 import { useState, type MouseEvent, type ReactNode } from "react";
@@ -5,6 +7,7 @@ import { useState, type MouseEvent, type ReactNode } from "react";
 import { RowAction, RowActions } from "../../layout/row-actions";
 import { rowTitleVariants } from "../../layout/row-state";
 import { Timestamp } from "../../time/timestamp";
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { Button } from "@/components/ui/button";
@@ -23,6 +26,8 @@ export type Notification = {
   /** Who acted, or null when the server could not name them. */
   actorName: string | null;
   actorImage: string | null;
+  /** Set exactly when the actor is an agent. */
+  actorAvatar?: AgentAvatarCode | null;
   /** Where it happened, as the reader sees it. */
   source: {
     kind: "project" | "channel" | "dm" | "agent_dm" | "group";
@@ -108,9 +113,13 @@ export function NotificationItem({
           unread={!item.read}
           avatar={
             <>
-              <PersonAvatar name={actor} image={item.actorImage} />
-              <span className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-surface text-muted-foreground ring-2 ring-surface">
-                <Icon className="size-3" />
+              {item.actorAvatar ? (
+                <AgentAvatarView avatar={item.actorAvatar} />
+              ) : (
+                <PersonAvatar name={actor} image={item.actorImage} />
+              )}
+              <span className="absolute -right-1 -bottom-1 flex size-3.5 items-center justify-center rounded-full bg-surface text-muted-foreground ring-1 ring-surface">
+                <Icon className="size-2.5" />
               </span>
             </>
           }

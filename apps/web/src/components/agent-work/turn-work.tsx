@@ -1,6 +1,8 @@
 import type { AgentRequestView, AgentWorkTurnView } from "@substrate/contracts/agent-work";
 import { liveTurnStatuses } from "@substrate/contracts/agent-work";
 
+import { useQuery } from "@tanstack/react-query";
+
 import { useEffect, useRef } from "react";
 
 import { NeedsAttention } from "./needs-attention";
@@ -12,7 +14,14 @@ import { MutedWorkLine, WorkStatus } from "./work-status";
 import { WorkStatusTag } from "./work-status-tag";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useNow } from "@/hooks/use-now";
-import { failedWorkNote, silentLabel, turnLabel, turnOrb, turnTone } from "@/lib/agent-work/status";
+import {
+  failedWorkNote,
+  silentLabel,
+  turnLabel,
+  turnMood,
+  turnTone,
+} from "@/lib/agent-work/status";
+import { agentAvatarQueryOptions } from "@/queries/agents/catalog";
 
 type TurnProps = {
   turn: AgentWorkTurnView;
@@ -105,6 +114,9 @@ export function TurnWork({
   uncertainItemIds?: readonly string[];
 }) {
   const { turn, openRequest } = props;
+  const { userId } = useWorkspaceScope();
+  // Only the owner sees agent work, so the agent is in the viewer's own catalog.
+  const { data: avatar } = useQuery(agentAvatarQueryOptions(userId, turn.userAgentId));
   const tone = turnTone(turn, openRequest);
   if (tone === "muted") return <MutedWorkLine label={silentLabel} />;
   const body = (
@@ -124,7 +136,8 @@ export function TurnWork({
   return (
     <PendingReply
       name={agentName}
-      orb={turnOrb(turn, openRequest)}
+      avatar={avatar ?? null}
+      mood={turnMood(turn, openRequest)}
       tone={tone}
       status={<TurnStatus {...props} inlineActivity={false} />}
       line={tone === "working" ? activityLine(turn) : undefined}

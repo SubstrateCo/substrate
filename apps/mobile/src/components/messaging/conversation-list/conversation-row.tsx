@@ -1,5 +1,6 @@
 import { View } from "react-native";
 
+import { AgentFace } from "../shared/agent-face";
 import { ConversationKindIcon } from "../shared/conversation-icon";
 import { PersonAvatar } from "../shared/person-avatar";
 import { Badge } from "@/components/ui/badge";
@@ -33,6 +34,10 @@ export function ConversationRow({
   ]
     .filter(Boolean)
     .join(", ");
+  let leading = <ConversationKindIcon conversation={conversation} />;
+  if (partner?.type === "agent")
+    leading = <AgentFace name={partner.name} code={partner.avatar} size="sm" />;
+  else if (partner) leading = <PersonAvatar name={partner.name} image={partner.image} size="sm" />;
   return (
     <Button
       variant="ghost"
@@ -46,18 +51,7 @@ export function ConversationRow({
         selected && "bg-accent",
       )}
     >
-      <View className="w-6 items-center">
-        {partner ? (
-          <PersonAvatar
-            name={partner.name}
-            image={partner.image}
-            agent={partner.type === "agent"}
-            size="sm"
-          />
-        ) : (
-          <ConversationKindIcon conversation={conversation} />
-        )}
-      </View>
+      <View className="w-6 items-center">{leading}</View>
       <Text
         numberOfLines={1}
         className={cn(

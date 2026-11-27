@@ -11,6 +11,7 @@ import { listMessages } from "../features/messaging/api/messages";
 import { clearPrivateQueries, watchAccessFailures } from "../queries/privacy";
 import { createRealtimeCache } from "../queries/realtime/cache";
 import { resetPrivateState } from "./private-state";
+import { changeRevalidatesSession } from "./session-events";
 import { addNetworkStateListener } from "expo-network";
 
 export function MobileLifecycle({
@@ -98,8 +99,7 @@ export function MobileLifecycle({
         void revalidate().catch(() => {});
       } else if (event.type === "change") {
         cache.receive(event);
-        if (event.domain === "organization" || event.domain === "profile")
-          void revalidate().catch(() => {});
+        if (changeRevalidatesSession(event.domain)) void revalidate().catch(() => {});
       }
     });
     const appSubscription = AppState.addEventListener("change", (state) => {

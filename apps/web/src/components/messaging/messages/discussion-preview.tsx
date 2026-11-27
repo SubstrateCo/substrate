@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 
 import type { Message } from "@/api/messaging/requests";
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
@@ -59,12 +60,15 @@ export function DiscussionPreview({
             <DiscussionRow
               key={message.id}
               avatar={
-                <PersonAvatar
-                  name={messageAuthorName(message)}
-                  image={message.authorImage}
-                  agent={message.authorType === "agent"}
-                  className="mt-0.5 shrink-0"
-                />
+                message.authorType === "agent" ? (
+                  <AgentAvatarView avatar={message.authorAvatar ?? null} className="mt-0.5" />
+                ) : (
+                  <PersonAvatar
+                    name={messageAuthorName(message)}
+                    image={message.authorImage}
+                    className="mt-0.5 shrink-0"
+                  />
+                )
               }
               byline={
                 <>

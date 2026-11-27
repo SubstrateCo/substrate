@@ -1,8 +1,9 @@
 /* Generated from apps/web/src/components/styles.css and Tailwind defaults. Do not edit.
-Source SHA-256: 073b1679795a193fcaf020d2325643907954f2b736b1527d0447a982fa51b0d3 */
+Source SHA-256: 2e23249dd11948d37b88a8bc2b7ab4a7019e73c6323d3ccde4a49b76d8952036 */
 :root {
   --accent: rgba(232, 239, 248, 1);
   --accent-foreground: rgba(21, 77, 140, 1);
+  --agent-avatar-outline: rgba(255, 255, 255, 0);
   --background: rgba(246, 247, 248, 1);
   --border: rgba(220, 222, 225, 1);
   --card: rgba(255, 255, 255, 1);
@@ -56,6 +57,7 @@ Source SHA-256: 073b1679795a193fcaf020d2325643907954f2b736b1527d0447a982fa51b0d3
 .dark {
   --accent: rgba(37, 47, 58, 1);
   --accent-foreground: rgba(237, 242, 249, 1);
+  --agent-avatar-outline: rgba(255, 255, 255, 0.42);
   --background: rgba(16, 18, 19, 1);
   --border: rgba(255, 255, 255, 0.09);
   --card: rgba(28, 30, 32, 1);

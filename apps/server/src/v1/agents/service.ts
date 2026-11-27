@@ -2,7 +2,7 @@ import type {
   saveAgentTriggersInput,
   saveAgentInput,
   deleteAgentInput,
-  setAgentPictureInput,
+  setAgentAvatarInput,
 } from "@substrate/contracts/agents";
 
 import type { CommittedPublisher } from "../../shared/committed";
@@ -18,9 +18,9 @@ export function createAgentService({ publish }: { publish: CommittedPublisher })
     saveAgent(this: void, scope: UserScope, input: z.output<typeof saveAgentInput>) {
       return serviceResult(async () => publish(await scope.owner.agents.saveAgent(input)));
     },
-    setAgentPicture(this: void, scope: UserScope, input: z.output<typeof setAgentPictureInput>) {
+    setAgentAvatar(this: void, scope: UserScope, input: z.output<typeof setAgentAvatarInput>) {
       return serviceResult(async () =>
-        publish(await scope.owner.agents.setPicture(input.id, input.fileId)),
+        publish(await scope.owner.agents.setAvatar(input.id, input.avatar)),
       );
     },
     deleteAgent(this: void, scope: UserScope, input: z.output<typeof deleteAgentInput>) {

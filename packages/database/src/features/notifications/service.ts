@@ -1,5 +1,6 @@
 import { realtimeKeys } from "@substrate/contracts/realtime";
 
+import { joinedActorAvatar } from "../../core/actors/avatar";
 import {
   joinActorProfile,
   joinedActorName,
@@ -37,7 +38,8 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
           id: taskActivity.id,
           action: taskActivity.action,
           actorName: joinedActorName(),
-          actorImage: joinedActorPicture(scope.userId),
+          actorImage: joinedActorPicture(),
+          actorAvatar: joinedActorAvatar(),
           actorType: actors.type,
           createdAt: taskActivity.createdAt,
           sourceMessageId: taskActivity.sourceMessageId,
@@ -66,6 +68,7 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
             action: row.action,
             actorName: row.actorName,
             actorImage: row.actorImage,
+            actorAvatar: row.actorAvatar,
             actorType: row.actorType,
             createdAt: row.createdAt,
             source: message
@@ -131,7 +134,8 @@ export function createFeedRepository(ctx: RepositoryContext, scope: SessionIdent
           body: messagingMessages.body,
           // Null when the notice has no actor.
           actorName: sql<string | null>`${joinedActorName(actor)}`,
-          actorImage: joinedActorPicture(scope.userId, actor),
+          actorImage: joinedActorPicture(actor),
+          actorAvatar: joinedActorAvatar(actor),
         })
         .from(notifications)
         .leftJoin(

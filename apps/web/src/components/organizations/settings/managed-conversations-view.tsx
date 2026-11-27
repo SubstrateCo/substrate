@@ -1,5 +1,6 @@
 import type { ConversationKind } from "@substrate/contracts/messaging/input";
 
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { ErrorState } from "@/components/feedback/error-state";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { Tag } from "@/components/feedback/tag";
@@ -41,14 +42,15 @@ function MemberSummary({ members }: { members: ConversationMember[] }) {
           aria-label={`View ${label}`}
         >
           <span className="flex gap-0.5">
-            {members.slice(0, shownAvatars).map((person) => (
-              <PersonAvatar
-                key={person.actorId}
-                name={person.name}
-                image={person.image}
-                agent={person.type === "agent"}
-              />
-            ))}
+            {members
+              .slice(0, shownAvatars)
+              .map((person) =>
+                person.type === "agent" ? (
+                  <AgentAvatarView key={person.actorId} avatar={person.avatar} />
+                ) : (
+                  <PersonAvatar key={person.actorId} name={person.name} image={person.image} />
+                ),
+              )}
           </span>
           <span className="whitespace-nowrap tabular-nums">{label}</span>
         </Pressable>
@@ -58,11 +60,11 @@ function MemberSummary({ members }: { members: ConversationMember[] }) {
         <ul aria-label="Conversation members" className="max-h-64 space-y-1 overflow-y-auto">
           {members.map((person) => (
             <li key={person.actorId} className="flex items-center gap-2 rounded-md px-2 py-1">
-              <PersonAvatar
-                name={person.name}
-                image={person.image}
-                agent={person.type === "agent"}
-              />
+              {person.type === "agent" ? (
+                <AgentAvatarView avatar={person.avatar} />
+              ) : (
+                <PersonAvatar name={person.name} image={person.image} />
+              )}
               <span className="min-w-0 flex-1 text-sm wrap-anywhere">{person.name}</span>
               {person.type === "agent" && <Tag>Agent</Tag>}
               {person.external && <Tag>External</Tag>}

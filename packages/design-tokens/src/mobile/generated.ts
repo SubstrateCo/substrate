@@ -1,10 +1,11 @@
 /* Generated from apps/web/src/components/styles.css and Tailwind defaults. Do not edit.
-Source SHA-256: 073b1679795a193fcaf020d2325643907954f2b736b1527d0447a982fa51b0d3 */
+Source SHA-256: 2e23249dd11948d37b88a8bc2b7ab4a7019e73c6323d3ccde4a49b76d8952036 */
 import { metrics } from "../generated.ts";
 export const mobileTheme = {
   light: {
     accent: "#e8eff8",
     accentForeground: "#154d8c",
+    agentAvatarOutline: "#ffffff00",
     background: "#f6f7f8",
     border: "#dcdee1",
     card: "#ffffff",
@@ -57,6 +58,7 @@ export const mobileTheme = {
   dark: {
     accent: "#252f3a",
     accentForeground: "#edf2f9",
+    agentAvatarOutline: "#ffffff6b",
     background: "#101213",
     border: "#ffffff17",
     card: "#1c1e20",

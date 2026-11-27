@@ -23,6 +23,7 @@ test("export startup reads one bounded page with the same export fields as expor
       userId: "alice",
       name: "Helper",
       instructions: "Help",
+      avatarCode: "100000",
       harness: "opencode",
     })
     .returning();

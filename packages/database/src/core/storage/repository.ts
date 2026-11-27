@@ -2,8 +2,7 @@ import type { CreateUploadInput } from "@substrate/contracts/files/input";
 import type { PictureKind } from "@substrate/contracts/files/pictures";
 import type { StorageScope } from "@substrate/contracts/files/scope";
 
-import { AccessDeniedError, ConflictError, violatedConstraint } from "../../errors";
-import { userAgents } from "../actors/user-agents.schema";
+import { AccessDeniedError, ConflictError } from "../../errors";
 import type { Database, DatabaseExecutor } from "../executor";
 import { adminRoleCondition } from "../organizations/roles";
 import { member } from "../organizations/schema";
@@ -217,49 +216,37 @@ export function createStorageRepository(
       return row.admin !== null ? file : null;
     },
     async deleteFile(scope: StorageScope, id: string) {
-      await db
-        .transaction(async (tx) => {
-          const [file] = await tx.select().from(storedFiles).where(eq(storedFiles.id, id));
-          if (!file) throw new AccessDeniedError();
-          const ownedByOtherUser = file.ownerUserId !== null && file.ownerUserId !== scope.userId;
-          const inOtherOrganization =
-            file.organizationId !== null && file.organizationId !== scope.organizationId;
-          if (file.uploadedBy !== scope.userId || ownedByOtherUser || inOtherOrganization)
-            throw new AccessDeniedError();
-          await requireScope(tx, scope, file.purpose, false);
-          const deleted = await tx
-            .delete(storedFiles)
-            .where(
-              and(
-                eq(storedFiles.id, id),
-                // Reference subqueries use the statement snapshot. Also detect publication
-                // that commits while this delete waits for its conditional row write.
-                file.publishedAt === null
-                  ? isNull(storedFiles.publishedAt)
-                  : eq(storedFiles.publishedAt, file.publishedAt),
-                not(fileReferences),
-                notExists(
-                  tx
-                    .select({ id: userAgents.id })
-                    .from(userAgents)
-                    .where(eq(userAgents.imageFileId, storedFiles.id)),
-                ),
-              ),
-            )
-            .returning({ id: storedFiles.id });
-          if (!deleted.length)
-            throw new ConflictError("Remove the attachment before deleting this file.");
-          await tx.update(fileUploads).set({ deletedAt: new Date() }).where(eq(fileUploads.id, id));
-          await tx
-            .insert(storageCandidates)
-            .values({ objectKey: file.objectKey })
-            .onConflictDoNothing();
-        })
-        .catch((error: Error) => {
-          if (violatedConstraint(error) === "user_agent_picture_file_owner_fk")
-            throw new ConflictError("Remove the attachment before deleting this file.");
-          throw error;
-        });
+      await db.transaction(async (tx) => {
+        const [file] = await tx.select().from(storedFiles).where(eq(storedFiles.id, id));
+        if (!file) throw new AccessDeniedError();
+        const ownedByOtherUser = file.ownerUserId !== null && file.ownerUserId !== scope.userId;
+        const inOtherOrganization =
+          file.organizationId !== null && file.organizationId !== scope.organizationId;
+        if (file.uploadedBy !== scope.userId || ownedByOtherUser || inOtherOrganization)
+          throw new AccessDeniedError();
+        await requireScope(tx, scope, file.purpose, false);
+        const deleted = await tx
+          .delete(storedFiles)
+          .where(
+            and(
+              eq(storedFiles.id, id),
+              // Reference subqueries use the statement snapshot. Also detect publication
+              // that commits while this delete waits for its conditional row write.
+              file.publishedAt === null
+                ? isNull(storedFiles.publishedAt)
+                : eq(storedFiles.publishedAt, file.publishedAt),
+              not(fileReferences),
+            ),
+          )
+          .returning({ id: storedFiles.id });
+        if (!deleted.length)
+          throw new ConflictError("Remove the attachment before deleting this file.");
+        await tx.update(fileUploads).set({ deletedAt: new Date() }).where(eq(fileUploads.id, id));
+        await tx
+          .insert(storageCandidates)
+          .values({ objectKey: file.objectKey })
+          .onConflictDoNothing();
+      });
     },
   };
 }

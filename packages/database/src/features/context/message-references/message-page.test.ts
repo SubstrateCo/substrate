@@ -272,7 +272,13 @@ test("page agents resolve mentions with constant reads under the same rules as c
   await chat.addMembers(conversation.id, ["bob@example.com"]);
   const [definition] = await f.db
     .insert(userAgents)
-    .values({ userId: "alice", name: "Research", instructions: "", harness: "claude" })
+    .values({
+      userId: "alice",
+      name: "Research",
+      instructions: "",
+      avatarCode: "100000",
+      harness: "claude",
+    })
     .returning();
   const agent = await ensureUserAgentActor(f.db, {
     organizationId: f.orgA,

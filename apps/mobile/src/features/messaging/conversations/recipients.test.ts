@@ -10,7 +10,7 @@ const ada = { id: "u1", name: "Ada", email: "ada@example.com" };
 
 describe("recipients", () => {
   test("mixed recipients keep agents out of email requests and invitations", () => {
-    const agent = { agent: { id: "assistant", name: "Assistant" } };
+    const agent = { agent: { id: "assistant", name: "Assistant", avatar: "100000" } };
     const person = { email: ada.email, person: ada };
     const invitation = { email: "pat@partner.com" };
     const recipients = [person, agent, invitation];

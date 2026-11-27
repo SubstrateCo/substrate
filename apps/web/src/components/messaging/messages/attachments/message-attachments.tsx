@@ -4,7 +4,10 @@ import { useState } from "react";
 
 import { AttachmentList } from "@/components/attachments/attachment-list";
 import { ImageThumbnail } from "@/components/messaging/messages/attachments/image-thumbnail";
-import { ImageViewer, type ImageViewerSender } from "@/components/messaging/messages/attachments/image-viewer";
+import {
+  ImageViewer,
+  type ImageViewerSender,
+} from "@/components/messaging/messages/attachments/image-viewer";
 
 const imageTypes = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
 

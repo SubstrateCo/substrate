@@ -168,7 +168,13 @@ test("access removal also checks assignments to the person’s agents, but ignor
   });
   const [definition] = await f.db
     .insert(userAgents)
-    .values({ userId: "bob", name: "Helper", instructions: "Help", harness: "opencode" })
+    .values({
+      userId: "bob",
+      name: "Helper",
+      instructions: "Help",
+      avatarCode: "100000",
+      harness: "opencode",
+    })
     .returning();
   const agent = await ensureUserAgentActor(f.db, {
     userId: "bob",

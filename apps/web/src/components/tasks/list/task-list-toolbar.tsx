@@ -9,6 +9,7 @@ import {
   type TaskSort,
 } from "./task-filters";
 import { TaskFilterLayout } from "./task-list-layout";
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import {
   FilterBar,
   SortControl,
@@ -35,14 +36,12 @@ function taskFilterFields(
   const actorOption = (actor: ProjectDetail["actors"][number]): FilterOption => ({
     value: actor.entityId,
     label: actor.name,
-    icon: (
-      <PersonAvatar
-        size="xs"
-        name={actor.name}
-        image={actor.image}
-        agent={actor.type === "agent"}
-      />
-    ),
+    icon:
+      actor.type === "agent" ? (
+        <AgentAvatarView avatar={actor.avatar} size="xs" />
+      ) : (
+        <PersonAvatar size="xs" name={actor.name} image={actor.image} />
+      ),
     group: actor.type === "agent" ? "Agents" : "People",
   });
   const former =

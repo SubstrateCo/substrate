@@ -73,7 +73,13 @@ test("admins do not gain owner access to other people's actor records", async ()
 test("an admin's agent acts with the admin's live access", async () => {
   const [agent] = await f.db
     .insert(userAgents)
-    .values({ userId: "alice", name: "Assistant", instructions: "", harness: "opencode" })
+    .values({
+      userId: "alice",
+      name: "Assistant",
+      instructions: "",
+      avatarCode: "100000",
+      harness: "opencode",
+    })
     .returning();
   const actor = await ensureUserAgentActor(f.db, {
     organizationId: f.orgA,

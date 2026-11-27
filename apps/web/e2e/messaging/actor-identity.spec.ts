@@ -1,20 +1,26 @@
 import { provisionVerifiedAccount } from "../../../server/integration/test-support/auth";
 import { Mailpit } from "../../../server/integration/test-support/mailpit";
-import { callTool, createAgent, startTurn } from "../test-support/agent-work";
+import { callTool, createAgent, finishTurn, startTurn } from "../test-support/agent-work";
 import { inviteMember, post, test, visit } from "../test-support/fixtures";
 import { captureScreenshot } from "../test-support/screenshots";
 import { project } from "../test-support/tasks";
 import { expect, type Locator } from "@playwright/test";
 
+/** An agent's avatar box, holding the body that the agent avatar package draws. */
+const agentAvatar = (container: Locator) =>
+  container.locator("[data-slot=agent-avatar]:has([data-part=body])");
+
 async function expectIdentity(container: Locator, agent: boolean, letters?: string) {
   const avatar = container.locator("[data-slot=avatar]");
-  const fallback = avatar.locator("[data-slot=avatar-fallback]");
-  await expect(avatar).toHaveAttribute("data-variant", agent ? "agent" : "default");
   if (agent) {
-    await expect(fallback.locator("svg.lucide-bot")).toBeVisible();
-  } else {
-    await expect(fallback).toHaveText(letters!);
+    // An agent draws its own animated body instead of a person's circle.
+    await expect(agentAvatar(container)).toBeVisible();
+    await expect(avatar).toHaveCount(0);
+    return;
   }
+  const fallback = avatar.locator("[data-slot=avatar-fallback]");
+  await expect(agentAvatar(container)).toHaveCount(0);
+  await expect(fallback).toHaveText(letters!);
   for (const surface of [avatar, fallback]) {
     await expect
       .poll(() =>
@@ -23,7 +29,7 @@ async function expectIdentity(container: Locator, agent: boolean, letters?: stri
           return parseFloat(style.borderTopLeftRadius) >= element.getBoundingClientRect().width / 2;
         }),
       )
-      .toBe(!agent);
+      .toBe(true);
   }
 }
 
@@ -111,14 +117,16 @@ test("missing photos keep humans and agents distinct in search, selections, memb
       body,
     });
     const replyBody = "The launch plan is ready for review.";
-    await callTool(
-      actors.sender,
-      await startTurn(actors.sender, agent, channel.id, root),
-      "reply",
-      { body: replyBody, to: { conversationId: channel.id } },
-    );
-    await expectIdentity(page.getByRole("article").filter({ hasText: body }), false, "AM");
+    const turn = await startTurn(actors.sender, agent, channel.id, root);
+    await callTool(actors.sender, turn, "reply", {
+      body: replyBody,
+      to: { conversationId: channel.id },
+    });
+    // The agent shows as itself both while its turn is live (in a working mood) and after.
     const reply = page.getByRole("article").filter({ hasText: replyBody });
+    await expectIdentity(reply, true);
+    await finishTurn(actors.sender, turn, { status: "completed", outcome: "replied" });
+    await expectIdentity(page.getByRole("article").filter({ hasText: body }), false, "AM");
     await expectIdentity(reply, true);
     await expect(reply.getByText("Agent", { exact: true })).toBeVisible();
     await captureScreenshot(page, "actor-identity-dark-messages");
@@ -133,7 +141,7 @@ test("missing photos keep humans and agents distinct in search, selections, memb
         .poll(async () => {
           const name = await profile.getByText(agent.name, { exact: true }).boundingBox();
           const tag = await badge.boundingBox();
-          const avatar = await profile.locator("[data-slot=avatar]").boundingBox();
+          const avatar = await agentAvatar(profile).boundingBox();
           const card = await profile.boundingBox();
           return {
             alignedToHeader: !!tag && !!avatar && Math.abs(tag.y - avatar.y) < 1,

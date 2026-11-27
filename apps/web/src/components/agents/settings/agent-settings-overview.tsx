@@ -3,10 +3,10 @@ import type {
   AgentRunSettings as RunSettings,
 } from "@substrate/contracts/agents";
 
+import { AgentAppearance } from "./agent-appearance";
 import { ToolsSummary } from "./tools-summary";
 import { Routines } from "@/components/agent-work/routines/routines";
 import { AgentForm } from "@/components/agents/editors/agent-form";
-import { AgentPicture } from "@/components/agents/editors/agent-picture";
 import { useAgentFieldRenderers } from "@/components/agents/editors/use-agent-field-renderers";
 import { AgentRunSettings } from "@/components/agents/run-settings/agent-run-settings";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
@@ -18,7 +18,7 @@ import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 /**
- * Every setting of one agent on one scrolling page: its details, when it runs, a summary of its
+ * Every setting of one agent on one scrolling page: its details, its look, when it runs, a summary of its
  * routines and tools, and delete. Only the details section holds a draft; everything else saves at
  * once or opens its own list.
  */
@@ -44,13 +44,13 @@ export function AgentSettingsOverview({
         key={agent.id}
         {...renderers}
         agent={agent}
-        picture={<AgentPicture agentId={agent.id} name={agent.name} image={agent.image} />}
         pending={pending}
         // The mutation outlives each agent's form; show only this agent's failure.
         error={save.variables?.id === agent.id ? save.error : null}
         onResetError={() => save.reset()}
         onSave={(input, options) => save.mutate(input, { onSuccess: options.onSuccess })}
       />
+      <AgentAppearance agent={agent} />
       {runSettings && <AgentRunSettings key={agent.id} agent={agent} settings={runSettings} />}
       <Routines agentId={agent.id} name={agent.name} onShowAll={() => onOpenPage("routines")} />
       <ToolsSummary

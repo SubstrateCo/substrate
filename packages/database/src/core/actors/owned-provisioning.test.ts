@@ -20,6 +20,7 @@ async function profiles(count: number) {
         userId: "alice",
         name: `Assistant ${i}`,
         instructions: "Help",
+        avatarCode: "100000",
         harness: "opencode" as const,
       })),
     )
@@ -92,9 +93,13 @@ test("owned provisioning filters owner and profile lifecycle without replacing i
     .update(userAgents)
     .set({ deletedAt: new Date() })
     .where(eq(userAgents.id, deleted!.id));
-  await f.db
-    .insert(userAgents)
-    .values({ userId: "bob", name: "Bob's", instructions: "Help", harness: "opencode" });
+  await f.db.insert(userAgents).values({
+    userId: "bob",
+    name: "Bob's",
+    instructions: "Help",
+    avatarCode: "100000",
+    harness: "opencode",
+  });
   const result = await ensureOwnedAgentActors(f.db, input);
   expect(new Set(result.map((actor) => actor.userAgentId))).toEqual(
     new Set([active!.id, restored!.id]),

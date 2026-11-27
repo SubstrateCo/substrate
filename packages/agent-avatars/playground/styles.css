@@ -1,0 +1,461 @@
+:root {
+  font-family: "Inter", "Segoe UI", system-ui, sans-serif;
+  color: #2d3138;
+  --page: #f4f2ec;
+  --card: #ffffff;
+  --muted: #6b6f76;
+  --track: #efebe3;
+  --accent: #2f4858;
+  --ring: rgba(47, 72, 88, 0.35);
+  --card-edge: rgba(255, 255, 255, 0.6);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+.page {
+  min-height: 100vh;
+  background: var(--page);
+  padding: 32px clamp(16px, 4vw, 48px) 64px;
+  transition:
+    background 0.3s ease,
+    color 0.3s ease;
+}
+
+.page.dark {
+  --page: #111317;
+  --card: #1b1e24;
+  --muted: #9aa0aa;
+  --track: #262a32;
+  --accent: #d8e2ea;
+  --ring: rgba(216, 226, 234, 0.35);
+  --card-edge: rgba(255, 255, 255, 0.04);
+  --agent-avatar-outline: rgba(255, 255, 255, 0.3);
+  color: #e8eaee;
+}
+
+.page-header h1 {
+  margin: 0;
+  font-size: 28px;
+  letter-spacing: -0.02em;
+}
+
+.page-header p {
+  margin: 6px 0 24px;
+  color: var(--muted);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr);
+  gap: 24px;
+  align-items: start;
+}
+
+.card {
+  background: var(--card);
+  border-radius: 28px;
+  padding: 24px;
+  box-shadow:
+    0 1px 0 var(--card-edge) inset,
+    0 18px 40px -24px rgba(20, 24, 32, 0.35);
+}
+
+.card.wide {
+  grid-column: 1 / -1;
+}
+
+.card h2 {
+  margin: 20px 0 10px;
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--muted);
+}
+
+.card h2:first-child {
+  margin-top: 0;
+}
+
+/* The stage: a lit room with a perspective floor. */
+.stage-card {
+  grid-row: span 2;
+  padding: 0;
+  overflow: hidden;
+}
+
+.stage {
+  position: relative;
+  height: 560px;
+  perspective: 900px;
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 30%, rgba(255, 255, 255, 0.9), transparent 70%),
+    linear-gradient(180deg, #e9e4d8 0%, #ddd5c4 100%);
+  overflow: hidden;
+}
+
+.dark .stage {
+  background:
+    radial-gradient(ellipse 60% 50% at 50% 30%, rgba(120, 140, 190, 0.25), transparent 70%),
+    linear-gradient(180deg, #181b22 0%, #0d0f13 100%);
+}
+
+.stage-floor {
+  position: absolute;
+  left: -50%;
+  right: -50%;
+  bottom: -10%;
+  height: 75%;
+  transform-origin: 50% 100%;
+  transform: rotateX(72deg);
+  background-image:
+    linear-gradient(rgba(60, 50, 30, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(60, 50, 30, 0.12) 1px, transparent 1px);
+  background-size: 64px 64px;
+  mask-image: linear-gradient(to top, black 30%, transparent 95%);
+}
+
+.dark .stage-floor {
+  background-image:
+    linear-gradient(rgba(160, 180, 255, 0.12) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(160, 180, 255, 0.12) 1px, transparent 1px);
+}
+
+.stage-actor {
+  position: absolute;
+  transform: translateX(-50%);
+}
+
+.stage-actor.hero {
+  left: 50%;
+  bottom: 9%;
+}
+
+/* Controls modelled on a soft segmented control. */
+.segmented {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding: 8px;
+  background: var(--track);
+  border-radius: 24px;
+}
+
+.segmented.compact {
+  display: inline-flex;
+}
+
+.segment {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 15px;
+  padding: 9px 16px;
+  border-radius: 999px;
+  cursor: pointer;
+  opacity: 0.8;
+  transition:
+    background 0.15s ease,
+    box-shadow 0.15s ease;
+}
+
+.segment:hover {
+  opacity: 1;
+}
+
+.segment.selected {
+  background: var(--card);
+  opacity: 1;
+  box-shadow: 0 4px 10px -4px rgba(20, 24, 32, 0.3);
+}
+
+.gestures {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.gesture {
+  border: 0;
+  background: var(--accent);
+  color: var(--page);
+  font: inherit;
+  font-weight: 500;
+  padding: 10px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow:
+    0 -3px 0 rgba(0, 0, 0, 0.22) inset,
+    0 6px 12px -6px rgba(20, 24, 32, 0.5);
+  transition:
+    transform 0.08s ease,
+    box-shadow 0.08s ease;
+}
+
+.gesture:active {
+  transform: translateY(2px);
+  box-shadow:
+    0 -1px 0 rgba(0, 0, 0, 0.22) inset,
+    0 2px 6px -4px rgba(20, 24, 32, 0.5);
+}
+
+.toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px 24px;
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+.toggle input[type="checkbox"] {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+}
+
+.toggle select,
+.gallery-form input {
+  font: inherit;
+  color: inherit;
+  background: var(--track);
+  border: 0;
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+
+.hint {
+  font-size: 13px;
+  color: var(--muted);
+  margin: 12px 0 0;
+}
+
+.tiles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tile,
+.board-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  background: var(--track);
+  color: inherit;
+  font: inherit;
+  font-size: 12px;
+  border-radius: 18px;
+  padding: 10px 10px 8px;
+  cursor: pointer;
+  outline: 2px solid transparent;
+  transition:
+    outline-color 0.15s ease,
+    transform 0.15s ease;
+}
+
+.tile:hover,
+.board-item:hover {
+  transform: translateY(-2px);
+}
+
+.tile.selected {
+  outline-color: var(--ring);
+}
+
+.swatches {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.swatch {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  border: 0;
+  cursor: pointer;
+  box-shadow:
+    0 -3px 6px rgba(0, 0, 0, 0.18) inset,
+    0 2px 4px rgba(0, 0, 0, 0.12);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.swatch.selected,
+.custom-color.selected {
+  outline: 2px solid var(--ring);
+  outline-offset: 2px;
+}
+
+.custom-color {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  color: var(--muted);
+  padding: 4px 8px;
+  border-radius: 999px;
+}
+
+.custom-color input {
+  width: 30px;
+  height: 30px;
+  border: 0;
+  padding: 0;
+  background: none;
+  cursor: pointer;
+}
+
+.size-strip {
+  display: flex;
+  align-items: flex-end;
+  gap: 28px;
+  flex-wrap: wrap;
+}
+
+.size-strip figure {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.size-strip figcaption {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.snippet {
+  margin: 20px 0 0;
+  padding: 14px 16px;
+  background: var(--track);
+  border-radius: 14px;
+  font-size: 13px;
+  overflow-x: auto;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+  gap: 12px;
+}
+
+.board-item {
+  padding: 16px 8px 10px;
+}
+
+.gallery-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.gallery-header h2 {
+  margin: 0;
+}
+
+.gallery-form {
+  display: flex;
+  gap: 8px;
+}
+
+.gallery-form input {
+  min-width: 220px;
+  padding: 10px 14px;
+}
+
+@media (max-width: 960px) {
+  .layout {
+    grid-template-columns: 1fr;
+  }
+
+  .stage-card {
+    grid-row: auto;
+  }
+}
+
+.stress-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.crowd {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+/* Space: no floor, a soft field of distant lights that drifts slowly. */
+.stage.space {
+  background:
+    radial-gradient(ellipse 55% 45% at 50% 50%, rgba(255, 255, 255, 0.95), transparent 70%),
+    radial-gradient(ellipse 80% 60% at 20% 90%, rgba(196, 210, 255, 0.55), transparent 70%),
+    linear-gradient(180deg, #eef0fb 0%, #e4e0f2 100%);
+}
+
+.dark .stage.space {
+  background:
+    radial-gradient(ellipse 50% 40% at 50% 50%, rgba(90, 110, 200, 0.28), transparent 70%),
+    radial-gradient(ellipse 70% 50% at 15% 85%, rgba(150, 70, 190, 0.22), transparent 70%),
+    linear-gradient(180deg, #0b0d18 0%, #05060b 100%);
+}
+
+.stage-stars {
+  position: absolute;
+  inset: -20%;
+  background-image:
+    radial-gradient(1.5px 1.5px at 20px 30px, rgba(80, 90, 140, 0.45), transparent),
+    radial-gradient(1px 1px at 120px 80px, rgba(80, 90, 140, 0.35), transparent),
+    radial-gradient(2px 2px at 200px 160px, rgba(80, 90, 140, 0.3), transparent),
+    radial-gradient(1px 1px at 60px 200px, rgba(80, 90, 140, 0.4), transparent);
+  background-size: 240px 240px;
+  animation: stars-drift 90s linear infinite;
+}
+
+.dark .stage-stars {
+  background-image:
+    radial-gradient(1.5px 1.5px at 20px 30px, rgba(255, 255, 255, 0.8), transparent),
+    radial-gradient(1px 1px at 120px 80px, rgba(255, 255, 255, 0.6), transparent),
+    radial-gradient(2px 2px at 200px 160px, rgba(190, 210, 255, 0.7), transparent),
+    radial-gradient(1px 1px at 60px 200px, rgba(255, 255, 255, 0.5), transparent);
+}
+
+@keyframes stars-drift {
+  to {
+    transform: translate(-240px, 120px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .stage-stars {
+    animation: none;
+  }
+}
+
+.stage.space .stage-actor.hero {
+  bottom: auto;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}

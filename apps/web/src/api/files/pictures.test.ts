@@ -1,17 +1,10 @@
 import { fakePictureServer, jsonBody } from "./pictures.test-support";
 import { expect, test } from "bun:test";
 
-type PictureResponse =
-  | { uploadId: string; uploadUrl: string; headers: Record<string, string> }
-  | { fileId: string }
-  | { fileId: string | null; url: string | null }
-  | { url: string }
-  | { logo: null };
+type PictureResponse = { url: string } | { logo: null };
 const success = (data: PictureResponse) => Response.json({ success: true, data });
 const file = () => new File(["picture"], "cropped.png", { type: "image/png" });
 const pictureUrl = `/api/v1/files/pictures/avatar/alice?v=${crypto.randomUUID()}`;
-const prepared = () =>
-  success({ uploadId: "upload-1", uploadUrl: "https://storage.test/picture", headers: {} });
 
 test("uploads picture bytes before saving the returned URL through Better Auth", async () => {
   const { requests, pictures } = fakePictureServer(
@@ -32,77 +25,6 @@ test("uploads picture bytes before saving the returned URL through Better Auth",
   expect(requests[1]?.init?.method).toBe("POST");
   expect(await jsonBody(requests[1])).toEqual({ image: pictureUrl });
   expect(requests).toHaveLength(2);
-});
-
-test("attaches an agent avatar by file ID without changing the human profile", async () => {
-  const controller = new AbortController();
-  let committing = false;
-  const { requests, agentPictures } = fakePictureServer(
-    prepared,
-    () => new Response(null, { status: 200 }),
-    () => success({ fileId: "file-1" }),
-    ({ init }) => {
-      expect(committing).toBe(true);
-      controller.abort();
-      expect(init?.signal?.aborted).not.toBe(true);
-      return Response.json({
-        success: true,
-        data: { id: "agent-1", image: "/api/v1/files/file-1/content" },
-      });
-    },
-  );
-  const result = await agentPictures.uploadAgentPicture(
-    "agent-1",
-    file(),
-    controller.signal,
-    () => {
-      committing = true;
-    },
-  );
-  expect(result.image).toBe("/api/v1/files/file-1/content");
-  expect(await jsonBody(requests[0])).toMatchObject({ purpose: "avatar" });
-  expect(requests[1]?.init?.credentials).toBe("omit");
-  expect(requests[3]?.url).toEndWith("/api/v1/agents/actors/picture");
-  expect(await jsonBody(requests[3])).toEqual({ id: "agent-1", fileId: "file-1" });
-  expect(requests).toHaveLength(4);
-});
-
-test("agent avatar cancellation before commit does not attach the completed file", async () => {
-  const controller = new AbortController();
-  const { requests, agentPictures } = fakePictureServer(
-    prepared,
-    () => new Response(null, { status: 200 }),
-    () => {
-      // The person cancels while the completed upload's response arrives.
-      controller.abort();
-      return success({ fileId: "file-1" });
-    },
-  );
-  let committing = false;
-  await agentPictures
-    .uploadAgentPicture("agent-1", file(), controller.signal, () => {
-      committing = true;
-    })
-    .then(
-      () => {
-        throw new Error("Expected cancellation before attachment");
-      },
-      (error: Error) => {
-        expect(error.name).toBe("AbortError");
-      },
-    );
-  expect(committing).toBe(false);
-  expect(requests).toHaveLength(3);
-});
-
-test("removes an agent avatar with a nullable file ID, not a user update", async () => {
-  const { requests, agentPictures } = fakePictureServer(() =>
-    Response.json({ success: true, data: { id: "agent-1", image: null } }),
-  );
-  await agentPictures.setAgentPicture("agent-1", null);
-  expect(requests[0]?.url).toEndWith("/api/v1/agents/actors/picture");
-  expect(await jsonBody(requests[0])).toEqual({ id: "agent-1", fileId: null });
-  expect(requests).toHaveLength(1);
 });
 
 test("does not save a picture URL when the upload fails", async () => {

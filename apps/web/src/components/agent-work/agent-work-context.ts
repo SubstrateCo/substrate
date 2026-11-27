@@ -1,5 +1,7 @@
 import { createContext, useContext, type ReactNode } from "react";
 
+import type { WorkMood } from "@/lib/agent-work/status";
+
 export type AgentWorkRenderer = {
   /** Work, waiting messages, and request cards under the message they belong to. */
   work: (message: { id: string; fromAgent: boolean }) => ReactNode;
@@ -7,8 +9,8 @@ export type AgentWorkRenderer = {
   status: (messageId: string) => ReactNode;
   /** The work's status dot, on the avatar of the agent's reply. */
   badge: (messageId: string) => ReactNode;
-  /** Replaces the avatar of the agent's reply while its work runs. Null keeps the avatar. */
-  avatar: (messageId: string) => ReactNode;
+  /** The mood of the reply author's avatar while its work runs, or null. */
+  mood: (messageId: string) => WorkMood | null;
   /** The owner message shows a pending agent reply row under it. */
   pendingReply: (messageId: string) => boolean;
   /** A line above the composer about the owner's agents here. Null threadId is the main pane. */
@@ -19,10 +21,10 @@ export type AgentWorkRenderer = {
 // provider, as for people who own no agent here, the slots render nothing.
 export const AgentWorkContext = createContext<AgentWorkRenderer | null>(null);
 
-/** The avatar to show in place of the agent reply's own, or null. */
-export function useAgentWorkAvatar(messageId: string): ReactNode {
+/** The mood of the agent reply's avatar while its work runs, or null. */
+export function useAgentWorkMood(messageId: string): WorkMood | null {
   const render = useContext(AgentWorkContext);
-  return render?.avatar(messageId) ?? null;
+  return render?.mood(messageId) ?? null;
 }
 
 /**

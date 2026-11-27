@@ -1,7 +1,10 @@
 import { useInfiniteQuery } from "@tanstack/react-query";
 
 import type { Message } from "@/api/messaging/requests";
-import { ReactionNotice, ReactionPerson } from "@/components/messaging/messages/reactions/reaction-person";
+import {
+  ReactionNotice,
+  ReactionPerson,
+} from "@/components/messaging/messages/reactions/reaction-person";
 import { Button } from "@/components/ui/button";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { messageReactionsOptions } from "@/queries/messaging/reactions";

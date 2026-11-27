@@ -233,6 +233,7 @@ test("related discussions and message targets retain agent attribution after own
       userId: "alice",
       name: "Research",
       instructions: "",
+      avatarCode: "100000",
       harness: "opencode",
     })
     .returning();

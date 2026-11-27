@@ -7,7 +7,9 @@
     "noEmit": true,
     "types": ["bun"],
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "react-native": ["./node_modules/react-native"],
+      "react-native-svg": ["./node_modules/react-native-svg"]
     }
   },
   "include": ["src", "scripts", ".expo/types/**/*.ts", "expo-env.d.ts", "nativewind-env.d.ts"]

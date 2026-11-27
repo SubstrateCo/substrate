@@ -1,9 +1,10 @@
-import type { PickerPerson } from "@substrate/contracts/people/picker";
+import type { PickerAgent, PickerPerson } from "@substrate/contracts/people/picker";
 import { matchPeople } from "@substrate/contracts/people/picker";
 
 import { useState } from "react";
 import { FlatList, View } from "react-native";
 
+import { AgentFace } from "../shared/agent-face";
 import { PanelSheet } from "../shared/panel-sheet";
 import { PersonAvatar } from "../shared/person-avatar";
 import { Button } from "@/components/ui/button";
@@ -15,7 +16,7 @@ import { Compass, Hash, Mail, Users } from "lucide-react-native";
 
 export type NewConversationChoice =
   | { kind: "person"; person: PickerPerson }
-  | { kind: "agent"; agent: { id: string; name: string; image: string | null } }
+  | { kind: "agent"; agent: PickerAgent }
   | { kind: "create"; conversation: "dm" | "group" | "channel" }
   | { kind: "browse" };
 
@@ -37,7 +38,7 @@ function ChoiceRow({
   if (choice.kind === "person")
     leading = <PersonAvatar name={choice.person.name} image={choice.person.image} size="sm" />;
   else if (choice.kind === "agent")
-    leading = <PersonAvatar name={choice.agent.name} image={choice.agent.image} agent size="sm" />;
+    leading = <AgentFace name={choice.agent.name} code={choice.agent.avatar} size="sm" />;
   else {
     const icon = { dm: Mail, group: Users, channel: Hash, browse: Compass }[
       choice.kind === "create" ? choice.conversation : "browse"
@@ -77,7 +78,7 @@ export function NewConversationSheet({
   onClose,
 }: {
   people: PickerPerson[];
-  agents: { id: string; name: string; image: string | null }[];
+  agents: PickerAgent[];
   pending: boolean;
   error: unknown;
   canBrowse: boolean;

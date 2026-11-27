@@ -17,7 +17,7 @@ export function useWorkspaceAgents(userId: string, organizationId: string, agent
       id: agent.id,
       name: agent.name,
       enabled: agent.enabled,
-      image: agent.image,
+      avatar: agent.avatar,
       status: derived && agentStatus(derived),
     };
   });

@@ -1,12 +1,5 @@
 import { AccessDeniedError } from "../../../errors";
-import {
-  member,
-  messagingParticipants,
-  messagingReactions,
-  storedFiles,
-  user,
-  userAgents,
-} from "../../../schema";
+import { member, messagingParticipants, messagingReactions, user } from "../../../schema";
 import { ownedAgent } from "../../../testing/agents";
 import { setupDatabase } from "../../../testing/database";
 import { recordQueries } from "../../../testing/queries";
@@ -86,6 +79,7 @@ test("reactor access checks the message and conversation in one statement withou
       actorId,
       name: actorId === fixture.alice ? "Alice" : "Bob",
       image: null,
+      avatar: null,
       type: "human",
       self: actorId === fixture.alice,
       emojis: [actorId === fixture.alice ? "👍" : "🎉"],
@@ -127,26 +121,10 @@ test("partner reactors reuse conversation-scoped profiles without revealing memb
   });
 });
 
-test("joined reactor metadata keeps agent pictures owner-only and partner pictures tied to viewer membership", async () => {
+test("joined reactor metadata shows agent avatars to every viewer and ties partner pictures to viewer membership", async () => {
   const agent = await ownedAgent(fixture);
   const image = `/api/v1/files/pictures/avatar/outsider?v=${crypto.randomUUID()}`;
   await fixture.db.update(user).set({ image }).where(eq(user.id, "outsider"));
-  const fileId = crypto.randomUUID();
-  await fixture.db.insert(storedFiles).values({
-    id: fileId,
-    ownerUserId: "alice",
-    uploadedBy: "alice",
-    purpose: "avatar",
-    filename: "agent.webp",
-    contentType: "image/webp",
-    size: 10,
-    objectKey: `pictures/${fileId}`,
-    sha256: "hash",
-  });
-  await fixture.db
-    .update(userAgents)
-    .set({ imageFileId: fileId })
-    .where(eq(userAgents.id, agent.agentId));
   const channel = await service("alice").createConversation({
     kind: "channel",
     name: "Metadata",
@@ -177,7 +155,8 @@ test("joined reactor metadata keeps agent pictures owner-only and partner pictur
       expect.objectContaining({
         actorId: agent.actorId,
         name: "Research",
-        image: `/api/v1/files/${fileId}/content`,
+        image: null,
+        avatar: "100000",
       }),
       expect.objectContaining({ actorId: fixture.outsider, name: "Outsider", image: null }),
     ]),
@@ -189,6 +168,11 @@ test("joined reactor metadata keeps agent pictures owner-only and partner pictur
   expect(
     (await service("bob").listReactions(message.id)).items.every((row) => row.image === null),
   ).toBe(true);
+  expect(
+    (await service("bob").listReactions(message.id)).items.find(
+      (row) => row.actorId === agent.actorId,
+    )?.avatar,
+  ).toBe("100000");
   await fixture.db.insert(member).values({
     id: crypto.randomUUID(),
     organizationId: fixture.orgA,

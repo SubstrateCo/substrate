@@ -23,6 +23,7 @@
     "@rn-primitives/portal": "1.5.2",
     "@rn-primitives/slot": "1.5.2",
     "@rn-primitives/switch": "1.5.2",
+    "@substrate/agent-avatars": "workspace:*",
     "@substrate/contracts": "workspace:*",
     "@substrate/design-tokens": "workspace:*",
     "@substrate/server": "workspace:*",

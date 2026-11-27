@@ -1,3 +1,4 @@
+import { joinedActorAvatar } from "../../../core/actors/avatar";
 import {
   joinActorProfile,
   joinedActorName,
@@ -112,7 +113,8 @@ export async function activeMembers(
               string | null
             >`case when ${userAgents.userId} = ${scope.userId} then ${userAgents.id} end`,
             name,
-            image: joinedActorPicture(scope.userId),
+            image: joinedActorPicture(),
+            avatar: joinedActorAvatar(),
             organizationId: messagingParticipants.organizationId,
           })
           .from(messagingParticipants)

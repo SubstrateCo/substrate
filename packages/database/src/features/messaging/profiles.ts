@@ -1,4 +1,5 @@
-import { managedPicture, managedPicturePath } from "@substrate/contracts/files/pictures";
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
+import { managedPicture } from "@substrate/contracts/files/pictures";
 
 import { activeActorCondition } from "../../core/actors/access";
 import { actors } from "../../core/actors/schema";
@@ -23,6 +24,8 @@ interface MessagingProfile {
   external: boolean;
   email: string | null;
   image: string | null;
+  /** Set for an agent. Agents have no picture. */
+  avatar: AgentAvatarCode | null;
   role: string | null;
   directConversationId: string | null;
   agent: {
@@ -52,7 +55,7 @@ async function profileActor(db: DatabaseExecutor, scope: SessionIdentity, actorE
         ownerId: userAgents.userId,
         harness: userAgents.harness,
         model: userAgents.model,
-        imageFileId: userAgents.imageFileId,
+        avatarCode: userAgents.avatarCode,
       },
       ownerName: ownerUser.name,
     })
@@ -168,6 +171,7 @@ export async function messagingProfile(
       external: !person,
       email: person?.email ?? null,
       image: person && image.success ? image.data : null,
+      avatar: null,
       role: person?.role ?? null,
       directConversationId:
         person && !self && !scope.actorEntityId
@@ -176,14 +180,15 @@ export async function messagingProfile(
       agent: null,
     };
   }
-  // Agent configuration and pictures stay private to the agent's owner.
+  // Agent configuration stays private to the agent's owner. Its avatar is public.
   const owned = !!definition && definition.ownerId === scope.userId;
   return {
     ...base,
     self,
     external: actor.organizationId !== scope.organizationId,
     email: null,
-    image: owned ? managedPicturePath(definition.imageFileId) : null,
+    image: null,
+    avatar: definition?.avatarCode ?? null,
     role: null,
     directConversationId: null,
     agent: {

@@ -9,7 +9,7 @@ import { ReferencedMessageBody } from "../../context/references/referenced-messa
 import { EditMessageComposer } from "./edit-message-composer";
 import { messageAttachmentUrl, messageAttachmentPreviewUrl } from "@/api/files/attachments";
 import type { Message } from "@/api/messaging/requests";
-import { useAgentWorkAvatar } from "@/components/agent-work/agent-work-context";
+import { useAgentWorkMood } from "@/components/agent-work/agent-work-context";
 import {
   AgentWorkBadge,
   AgentWorkSlot,
@@ -77,7 +77,7 @@ export function MessageItem({
     restoreFocus,
   } = useStateDialog<MessageDialog>(actionsTrigger);
   const reaction = useToggleReaction(organizationId, message.conversationId, message.id);
-  const workAvatar = useAgentWorkAvatar(message.id);
+  const workMood = useAgentWorkMood(message.id);
   const react = (emoji: string) =>
     reaction.mutate(emoji, {
       onError: (error) =>
@@ -127,6 +127,7 @@ export function MessageItem({
                 sender={{
                   name: messageAuthorName(message),
                   image: message.authorImage,
+                  avatar: message.authorAvatar,
                   agent: message.authorType === "agent",
                   createdAt: message.createdAt,
                 }}
@@ -164,7 +165,7 @@ export function MessageItem({
               }}
             />
           }
-          avatar={workAvatar}
+          authorMood={workMood ?? undefined}
           avatarBadge={<AgentWorkBadge messageId={message.id} />}
           status={
             message.authorType === "agent" ? <AgentWorkStatus messageId={message.id} /> : undefined

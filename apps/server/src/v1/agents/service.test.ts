@@ -13,29 +13,29 @@ const input = {
   useStartupDefaults: true,
 };
 
-test("agent reads and picture changes use the resolved owner repository without a workspace", async () => {
+test("agent reads and avatar changes use the resolved owner repository without a workspace", async () => {
   const scope = { ...scopeFixture(), organizationId: null };
   const id = crypto.randomUUID();
-  const fileId = crypto.randomUUID();
-  const configuration = { ...input, id, image: `/api/v1/files/${fileId}/content` };
-  const setPicture = mock(async () => ({ result: configuration, hints: [] }));
+  const avatar = "131005";
+  const configuration = { ...input, id, avatar };
+  const setAvatar = mock(async () => ({ result: configuration, hints: [] }));
   const catalog = { agents: [], runSettings: [] };
   scope.owner = {
     ...scope.owner,
-    agents: { ...scope.owner.agents, list: async () => catalog, setPicture },
+    agents: { ...scope.owner.agents, list: async () => catalog, setAvatar },
   };
   const service = createAgentService({ publish: async (committed) => committed.result });
   expect(await service.listAgents(scope)).toEqual({ success: true, data: catalog });
-  expect(await service.setAgentPicture(scope, { id, fileId })).toEqual({
+  expect(await service.setAgentAvatar(scope, { id, avatar })).toEqual({
     success: true,
     data: configuration,
   });
-  expect(setPicture).toHaveBeenCalledWith(id, fileId);
+  expect(setAvatar).toHaveBeenCalledWith(id, avatar);
 });
 
 test("committed writes publish their hints and failed writes never publish", async () => {
   const scope = scopeFixture();
-  const saved = { ...input, id: crypto.randomUUID(), image: null };
+  const saved = { ...input, id: crypto.randomUUID(), avatar: "100000" };
   const committed: Committed<typeof saved> = {
     result: saved,
     hints: [{ audience: ["user", scope.userId], domain: "agents" }],

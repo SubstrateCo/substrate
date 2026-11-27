@@ -1,5 +1,6 @@
 import { View } from "react-native";
 
+import { AgentFace } from "../shared/agent-face";
 import { ConversationKindIcon } from "../shared/conversation-icon";
 import { PersonAvatar } from "../shared/person-avatar";
 import { Button } from "@/components/ui/button";
@@ -39,6 +40,10 @@ export function ConversationHeader({
   if (conversation.kind === "agent_dm") subtitle = "Agent DM";
   const name = conversationName(conversation);
   const press = conversation.task ? onOpenTask : onDetails;
+  let leading = <ConversationKindIcon conversation={conversation} />;
+  if (partner?.type === "agent")
+    leading = <AgentFace name={partner.name} code={partner.avatar} size="sm" ambient="subtle" />;
+  else if (partner) leading = <PersonAvatar name={partner.name} image={partner.image} size="sm" />;
   return (
     <Button
       variant="ghost"
@@ -51,16 +56,7 @@ export function ConversationHeader({
       className="min-h-12 flex-row items-center justify-start gap-3 rounded-none border-b border-border px-4 py-1 active:bg-accent"
       testID="conversation-header"
     >
-      {partner ? (
-        <PersonAvatar
-          name={partner.name}
-          image={partner.image}
-          agent={partner.type === "agent"}
-          size="sm"
-        />
-      ) : (
-        <ConversationKindIcon conversation={conversation} />
-      )}
+      {leading}
       <View className="min-w-0 flex-1">
         <Text className="text-[15px] font-semibold" numberOfLines={1}>
           {name}

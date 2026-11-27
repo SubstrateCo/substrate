@@ -29,6 +29,7 @@ test("person profiles show contact details only to workspace members who share t
     external: false,
     email: "bob@example.com",
     image: null,
+    avatar: null,
     role: "member",
     directConversationId: dm.id,
     agent: null,
@@ -79,6 +80,7 @@ test("external authors keep their name without contact details", async () => {
     external: true,
     email: null,
     image: null,
+    avatar: null,
     role: null,
     directConversationId: null,
     agent: null,
@@ -93,6 +95,7 @@ test("agent profiles show the owner to members and configuration only to the own
       userId: "alice",
       name: "Research",
       instructions: "",
+      avatarCode: "100000",
       harness: "claude",
       model: "sonnet",
     })
@@ -120,6 +123,7 @@ test("agent profiles show the owner to members and configuration only to the own
     name: "Research",
     email: null,
     image: null,
+    avatar: "100000",
     agent: { ownerName: "Alice", harness: null, model: null },
   });
 });

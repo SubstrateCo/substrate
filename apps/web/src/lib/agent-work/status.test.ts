@@ -8,7 +8,7 @@ import {
   silentLabel,
   steeredLabel,
   turnLabel,
-  turnOrb,
+  turnMood,
   turnTone,
   type ItemContext,
 } from "./status";
@@ -69,19 +69,19 @@ describe("turn labels", () => {
   });
 });
 
-describe("orb animation", () => {
+describe("work mood", () => {
   test("each live state has its own animation; an open request listens for the owner", () => {
-    expect(turnOrb(turn({ status: "assigned" }))).toBe("connecting");
-    expect(turnOrb(turn(started))).toBe("solving");
-    expect(turnOrb(turn({ ...started, status: "waiting" }))).toBe("listening");
-    expect(turnOrb(turn(started), { kind: "question" })).toBe("listening");
-    expect(turnOrb(turn({ status: "stopping" }))).toBe("breathing");
+    expect(turnMood(turn({ status: "assigned" }))).toBe("thinking");
+    expect(turnMood(turn(started))).toBe("working");
+    expect(turnMood(turn({ ...started, status: "waiting" }))).toBe("listening");
+    expect(turnMood(turn(started), { kind: "question" })).toBe("listening");
+    expect(turnMood(turn({ status: "stopping" }))).toBe("waiting");
   });
 
-  test("ended work shows no orb, even with a request still open", () => {
-    expect(turnOrb(turn({ status: "completed", outcome: "replied" }))).toBeNull();
-    expect(turnOrb(turn({ status: "needs_attention" }), { kind: "question" })).toBeNull();
-    expect(turnOrb(turn({ status: "failed" }))).toBeNull();
+  test("ended work shows no work mood, even with a request still open", () => {
+    expect(turnMood(turn({ status: "completed", outcome: "replied" }))).toBeNull();
+    expect(turnMood(turn({ status: "needs_attention" }), { kind: "question" })).toBeNull();
+    expect(turnMood(turn({ status: "failed" }))).toBeNull();
   });
 });
 
@@ -199,7 +199,7 @@ describe("agent page header status", () => {
     expect(working("dm")).toEqual({
       tone: "working",
       label: "Working",
-      orb: "solving",
+      mood: "working",
       elsewhereConversationId: null,
     });
     expect(working("channel")?.elsewhereConversationId).toBe("channel");

@@ -16,6 +16,7 @@ async function assistant() {
       userId: "alice",
       name: "Assistant",
       instructions: "Help",
+      avatarCode: "100000",
       harness: "opencode",
     })
     .returning();
@@ -105,6 +106,7 @@ test("agent-created records belong to the owner and keep agent activity attribut
     type: "agent",
     assignable: true,
     image: null,
+    avatar: "100000",
   });
   const task = await agent.tasks.create({
     projectEntityId: project.entityId,
@@ -152,6 +154,7 @@ test("other members cannot see or assign a user's local agent, but see it on ass
       type: "agent",
       assignable: true,
       image: null,
+      avatar: "100000",
     });
   await alice.tasks.update(task.entityId, { assigneeActorEntityId: actor.entityId });
   // Keeping the existing assignee does not block other edits.
@@ -169,6 +172,7 @@ test("other members cannot see or assign a user's local agent, but see it on ass
     type: "agent",
     assignable: false,
     image: null,
+    avatar: "100000",
   });
 });
 

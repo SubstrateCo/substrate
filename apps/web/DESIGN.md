@@ -78,7 +78,7 @@ flowchart LR
 ### People
 
 - `PeoplePicker` adds people to a conversation, project, or group; `allowEmail` adds "Invite <email>". Do not ask for exact email addresses when the people are known. Organization invitations keep an email field.
-- `PersonAvatar` shows a person or agent in rows, chips, and pickers; `Avatar` is for larger heads (message authors, person cards, the user menu, picture upload). A person is a circle with initials and an agent is a rounded square with the Bot mark. An organization uses `WorkspaceTile`, never an `Avatar`.
+- `PersonAvatar` shows a person in rows, chips, and pickers; `Avatar` is for larger person heads (message authors, person cards, the user menu, picture upload). A person is a circle with initials. An agent always uses `AgentAvatarView` with its stored avatar code, never `PersonAvatar` and never an uploaded picture; the Bot mark is only its fallback for a missing code. Use `ambient="off"` at `xs`, `subtle` in rows and lists, and `lively` only in the agent's own header and settings. An organization uses `WorkspaceTile`, never an `Avatar`.
 - `Tag` is the small label beside a name ("Agent", "External"). A status passes `tone` and an `icon`, so colour is never the only signal; a surface that carries a status reuses `toneBorder` and `toneFill`.
 - `AccessRow` is one person or agent with access to a record or project.
 

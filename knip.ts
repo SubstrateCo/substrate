@@ -47,6 +47,9 @@ export default {
       ],
     },
     // Package entry points come from each package.json exports map.
+    "packages/agent-avatars": {
+      project: ["src/**/*.{ts,tsx}", "playground/**/*.{ts,tsx}"],
+    },
     "packages/agent-host": {
       entry: [],
       project: ["src/**/*.ts"],

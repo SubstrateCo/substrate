@@ -5,7 +5,10 @@ import { useEffect } from "react";
 import type { Message } from "@/api/messaging/requests";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { PendingButton } from "@/components/feedback/pending-button";
-import { ReactionNotice, ReactionPerson } from "@/components/messaging/messages/reactions/reaction-person";
+import {
+  ReactionNotice,
+  ReactionPerson,
+} from "@/components/messaging/messages/reactions/reaction-person";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { messageReactionsOptions } from "@/queries/messaging/reactions";
 

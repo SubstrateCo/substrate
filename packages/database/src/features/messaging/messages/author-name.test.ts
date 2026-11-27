@@ -64,7 +64,13 @@ test("agent messages show the agent's current name, not its owner's", async () =
   await f.db.update(user).set({ emailVerified: true });
   const [agent] = await f.db
     .insert(userAgents)
-    .values({ userId: "alice", name: "Research", instructions: "", harness: "opencode" })
+    .values({
+      userId: "alice",
+      name: "Research",
+      instructions: "",
+      avatarCode: "100000",
+      harness: "opencode",
+    })
     .returning();
   const actor = await ensureUserAgentActor(f.db, {
     organizationId: f.orgA,

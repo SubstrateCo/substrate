@@ -16,6 +16,7 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { PersonAvatar } from "@/components/people/person-avatar";
 import { FieldDescription, FieldError } from "@/components/ui/field";
 import { Pressable } from "@/components/ui/pressable";
@@ -390,11 +391,11 @@ function PeopleSuggestions({
         >
           {(option.agent ?? option.person) ? (
             <>
-              <PersonAvatar
-                name={(option.agent ?? option.person)?.name}
-                image={(option.agent ?? option.person)?.image}
-                agent={!!option.agent}
-              />
+              {option.agent ? (
+                <AgentAvatarView avatar={option.agent.avatar} />
+              ) : (
+                <PersonAvatar name={option.person?.name} image={option.person?.image} />
+              )}
               <span className="truncate font-medium">{(option.agent ?? option.person)?.name}</span>
               {option.person && (
                 <span className="min-w-0 truncate text-muted-foreground">{option.email}</span>
@@ -456,17 +457,16 @@ function RecipientChip({
   onRemove: () => void;
 }) {
   const label = recipient.agent?.name ?? recipient.person?.name ?? recipient.email;
-  const person = recipient.agent ?? recipient.person;
+  let avatar = <Mail aria-hidden="true" className="ml-1 size-3.5 shrink-0 text-muted-foreground" />;
+  if (recipient.agent) avatar = <AgentAvatarView avatar={recipient.agent.avatar} size="xs" />;
+  else if (recipient.person)
+    avatar = <PersonAvatar name={label} image={recipient.person.image} size="xs" />;
   return (
     <span
       title={recipient.agent ? "Agent" : (recipient.person?.email ?? "Gets an email invitation")}
       className="inline-flex h-6 max-w-full min-w-0 items-center gap-1.5 rounded-md bg-muted pr-0.5 pl-0.5 text-sm"
     >
-      {person ? (
-        <PersonAvatar name={label} image={person.image} size="xs" agent={!!recipient.agent} />
-      ) : (
-        <Mail aria-hidden="true" className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
-      )}
+      {avatar}
       <span className="truncate">
         {label}
         {recipient.agent && <span className="sr-only">, Agent</span>}

@@ -1,5 +1,6 @@
+import type { AgentAvatarCode } from "@substrate/contracts/agents";
 import type { ContextSearchBatchKind, ContextSearchKind } from "@substrate/contracts/context/input";
-import { managedPicture, managedPicturePath } from "@substrate/contracts/files/pictures";
+import { managedPicture } from "@substrate/contracts/files/pictures";
 import type { ConversationKind } from "@substrate/contracts/messaging/input";
 import type { TaskStatus } from "@substrate/contracts/tasks";
 
@@ -74,8 +75,9 @@ interface SearchResult {
   excerpt?: string;
   authorName?: string;
   createdAt?: Date;
-  // Agent results only: the viewer's own agent definition.
+  // Agent results only: the viewer's own agent definition and how it looks.
   agentId?: string;
+  avatar?: AgentAvatarCode;
   // Conversation and channel results only.
   private?: boolean;
   membership?: ChannelMembership;
@@ -633,7 +635,7 @@ export async function contextSearch(
         id: actors.entityId,
         title: userAgents.name,
         agentId: userAgents.id,
-        imageFileId: userAgents.imageFileId,
+        avatar: userAgents.avatarCode,
         rank: rankBy(userAgents.name),
       })
       .from(messagingParticipants)
@@ -658,9 +660,8 @@ export async function contextSearch(
       .limit(limit);
     branchRows.push(
       pending.then((rows) =>
-        rows.map(({ imageFileId, ...row }) => ({
+        rows.map((row) => ({
           ...row,
-          image: managedPicturePath(imageFileId),
           kind: "agent" as const,
         })),
       ),

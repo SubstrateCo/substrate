@@ -12,6 +12,7 @@ import {
   permissionActorEntityId,
   visibleActorCondition,
 } from "../../core/actors/access";
+import { joinedActorAvatar } from "../../core/actors/avatar";
 import { joinedActorName } from "../../core/actors/joined-profile";
 import { actors } from "../../core/actors/schema";
 import { userAgents } from "../../core/actors/user-agents.schema";
@@ -40,23 +41,15 @@ import { type SelectedFields } from "drizzle-orm/pg-core";
 export function projectRepository(context: RepositoryContext) {
   const { db, scope } = context;
   const name = joinedActorName();
-  // This uncorrelated lookup also supports contexts that contain only an ActorScope.
-  const viewerUserId =
-    scope.userId !== undefined
-      ? sql`${scope.userId}`
-      : sql`(select coalesce(viewer.user_id, owner.user_id)
-    from ${actors} viewer left join ${userAgents} owner on owner.id = viewer.user_agent_id
-    where viewer.entity_id = ${scope.actorEntityId} and viewer.organization_id = ${scope.organizationId})`;
   // Joined on `user`: whether the person is still a member here.
   const organizationMember = and(
     eq(member.userId, user.id),
     eq(member.organizationId, scope.organizationId),
   );
   // Read inside JSON aggregates; withPictures accepts only managed pictures afterwards.
-  const image = sql<string | null>`case when ${actors.type} = 'agent' then
-    case when ${userAgents.userId} = ${viewerUserId}
-      then '/api/v1/files/' || ${userAgents.imageFileId}::text || '/content' end
+  const image = sql<string | null>`case when ${actors.type} = 'agent' then null
     else case when ${member.id} is not null then ${user.image} end end`;
+  const avatar = joinedActorAvatar();
   const projectWhere = (id: string) =>
     and(eq(projects.organizationId, scope.organizationId), eq(projects.entityId, id));
   // The project row and the actor's level. A row exists only when the actor can read the
@@ -88,6 +81,7 @@ export function projectRepository(context: RepositoryContext) {
             actorEntityId: string;
             name: string;
             image: string | null;
+            avatar: string | null;
             type: "human" | "agent";
             level: PermissionLevel;
           }[]
@@ -95,6 +89,7 @@ export function projectRepository(context: RepositoryContext) {
           actorEntityId: actors.entityId,
           name,
           image,
+          avatar,
           type: actors.type,
           level: entityGrants.level,
         })}) ORDER BY ${name}, ${actors.entityId}), '[]'::json)`,
@@ -138,6 +133,7 @@ export function projectRepository(context: RepositoryContext) {
             entityId: string;
             name: string;
             image: string | null;
+            avatar: string | null;
             type: "human" | "agent";
             assignable: boolean;
           }[]
@@ -145,6 +141,7 @@ export function projectRepository(context: RepositoryContext) {
           entityId: actors.entityId,
           name,
           image,
+          avatar,
           type: actors.type,
           assignable: sql`coalesce(${assignable}, false)`,
         })}) ORDER BY ${name}, ${actors.entityId}), '[]'::json)`,

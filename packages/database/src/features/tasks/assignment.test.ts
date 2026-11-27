@@ -43,7 +43,13 @@ test("hidden agents may be retained, but not newly assigned, and still need owne
   });
   const [definition] = await f.db
     .insert(userAgents)
-    .values({ userId: "bob", name: "Helper", instructions: "Help", harness: "opencode" })
+    .values({
+      userId: "bob",
+      name: "Helper",
+      instructions: "Help",
+      avatarCode: "100000",
+      harness: "opencode",
+    })
     .returning();
   const agent = await ensureUserAgentActor(f.db, {
     userId: "bob",

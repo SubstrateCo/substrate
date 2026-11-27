@@ -53,7 +53,6 @@ type AgentFormProps = {
   /** Renders the built-in rules preview for the draft's runtime and name. */
   renderStartupInstructions: (draft: { harness: HarnessKind; name: string }) => ReactNode;
   agent?: AgentConfiguration;
-  picture?: ReactNode;
   pending: boolean;
   renderCreate?: (editor: FormDialogEditor) => ReactNode;
   /** Starts the save mutation. Call `onSuccess` once the agent is stored. */
@@ -72,7 +71,6 @@ export function AgentForm({
   renderModel,
   renderStartupInstructions,
   agent,
-  picture,
   pending,
   renderCreate,
   onSave,
@@ -244,10 +242,7 @@ export function AgentForm({
             />
             <SettingsSection title="Agent details">
               <fieldset disabled={busy} className="grid min-w-0 gap-4">
-                <div className="flex min-w-0 items-center gap-4">
-                  {picture}
-                  <div className="min-w-0 flex-1">{nameField}</div>
-                </div>
+                {nameField}
                 <Field>
                   <FieldLabel htmlFor={`${formId}-model`}>Model</FieldLabel>
                   {modelField}
