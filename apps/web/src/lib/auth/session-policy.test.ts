@@ -58,23 +58,23 @@ describe("verified route session policy", () => {
 
 describe("guest route session policy", () => {
   test("allows signed-out visitors", () => {
-    expect(guestSessionRedirect(null, "/dashboard")).toBeNull();
+    expect(guestSessionRedirect(null, "/messages")).toBeNull();
   });
 
   test("redirects restored verified sessions without an organization to selection", () => {
-    expect(guestSessionRedirect(session, "/dashboard")).toEqual({ href: "/organizations" });
+    expect(guestSessionRedirect(session, "/messages")).toEqual({ href: "/organizations" });
   });
 
-  test("redirects restored verified workspace sessions to dashboard", () => {
+  test("redirects restored verified workspace sessions to Messages", () => {
     expect(
       guestSessionRedirect(
         {
           ...session,
           session: { ...session.session, activeOrganizationId: "organization-1" },
         },
-        "/dashboard",
+        "/messages",
       ),
-    ).toEqual({ href: "/dashboard" });
+    ).toEqual({ href: "/messages" });
   });
 
   test("honors an invitation destination", () => {

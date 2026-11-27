@@ -12,7 +12,7 @@ export function SignOutButton({ destination }: { destination?: string }) {
     <SignOutButtonView
       pending={signOut.isPending}
       onSignOut={() =>
-        void leaveDocument(authHref("/login", destination ?? "/dashboard"), async () => {
+        void leaveDocument(authHref("/login", destination ?? "/messages"), async () => {
           const { revocationError } = await signOut.mutateAsync();
           if (revocationError)
             toast.warning("Signed out on this device. Could not confirm server sign-out.");

@@ -14,7 +14,7 @@ import { organizationsQueryOptions } from "@/queries/organizations/options";
 import { useActivateOrganization } from "@/queries/organizations/selection-mutations";
 import { toast } from "sonner";
 
-export function OrganizationSelection({ destination = "/dashboard" }: { destination?: string }) {
+export function OrganizationSelection({ destination = "/messages" }: { destination?: string }) {
   const organizations = useQuery(organizationsQueryOptions());
   const invitations = useQuery(userInvitationsQueryOptions());
   const now = useExpiryTime(invitations.data?.map((item) => item.expiresAt));

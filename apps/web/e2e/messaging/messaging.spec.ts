@@ -109,7 +109,7 @@ test("cross-organization dm and channel creation and bidirectional live messages
       await conversationButton(sender.page, name).click();
     }
     await send(sender.page, outgoing);
-    // The recipient stays on the open dashboard; socket invalidation must discover the new conversation.
+    // The recipient stays on Messages; socket invalidation must discover the new conversation.
     await conversationButton(partner.page, kind === "channel" ? name : actors.sender.name).click();
     await expect(partner.page.getByText(outgoing, { exact: true })).toBeVisible();
     await expectChange(partner, partnerSince, "messaging", channel.id);

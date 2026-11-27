@@ -7,20 +7,12 @@ import {
   getAccount,
   getDeal,
   getPipeline,
-  getHomeDeals,
   listAccounts,
   listDeals,
   getFollowUps,
   getCrmSettings,
   getCrmTimeline,
 } from "@/api/crm/requests";
-
-export const homeDealsOptions = (organizationId: string, today: string) =>
-  queryOptions({
-    queryKey: queryKeys.homeDeals(organizationId, today),
-    queryFn: ({ signal }) => getHomeDeals({ data: { organizationId, today }, signal }),
-    retry: false,
-  });
 
 export const accountsOptions = (
   organizationId: string,

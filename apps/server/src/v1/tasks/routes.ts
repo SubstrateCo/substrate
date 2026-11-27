@@ -1,6 +1,5 @@
 import { projectExport } from "@substrate/contracts/tasks/export";
 import {
-  tasksWorkspace,
   projectList,
   projectRequest,
   taskRequest,
@@ -16,9 +15,6 @@ import { Hono } from "hono";
 
 export function createTasksRoutes(services: TasksService, scopes: Scopes) {
   return new Hono<ScopeEnv>()
-    .get("/home", v("query", tasksWorkspace), scopes.workspace("query"), async (c) =>
-      respond(c, await services.home(c.var.scope)),
-    )
     .get("/export", v("query", projectExport), scopes.workspace("query"), async (c) => {
       const input = c.req.valid("query");
       const result = await services.export(c.var.scope, input);

@@ -31,7 +31,7 @@ export function DesktopInstall({
   );
   return (
     <DesktopInstallView
-      openHref={desktopLink(path.success ? path.data : "/dashboard", desktop.scheme)}
+      openHref={desktopLink(path.success ? path.data : "/messages", desktop.scheme)}
       browserLink={browserLink}
       platform={platform}
       primary={primary}

@@ -4,7 +4,6 @@ import type {
   projectRequest,
   taskRequest,
   taskLocationRequest,
-  tasksWorkspace,
   TasksWrite,
 } from "@substrate/contracts/tasks/input";
 
@@ -15,8 +14,6 @@ import type { z } from "zod";
 
 export const listProjects = ({ data, signal }: ApiInput<z.input<typeof projectList>>) =>
   readResult(api.tasks.projects.$get({ query: data }, { init: { signal } }));
-export const getHomeTasks = ({ data, signal }: ApiInput<z.input<typeof tasksWorkspace>>) =>
-  readResult(api.tasks.home.$get({ query: data }, { init: { signal } }));
 export const getProject = ({ data, signal }: ApiInput<z.input<typeof projectRequest>>) =>
   readResult(api.tasks.project.$get({ query: data }, { init: { signal } }));
 export const getTaskLocation = ({ data, signal }: ApiInput<z.input<typeof taskLocationRequest>>) =>

@@ -6,9 +6,7 @@ import { NotFound } from "@/components/feedback/not-found";
 
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
   component: Outlet,
-  notFoundComponent: () => (
-    <NotFound homeLink={<Link to="/dashboard">Go to your workspace</Link>} />
-  ),
+  notFoundComponent: () => <NotFound homeLink={<Link to="/messages">Go to your workspace</Link>} />,
   errorComponent: RootError,
 });
 

@@ -90,7 +90,7 @@ test("dashboard and timeline use real sample records in dark mode", async ({ acc
   const { page } = user;
   await page.setViewportSize({ width: 1440, height: 1080 });
   await page.emulateMedia({ colorScheme: "dark", reducedMotion: "reduce" });
-  await visit(user, undefined, "/dashboard");
+  await visit(user);
   await page
     .getByRole("navigation", { name: "Apps", exact: true })
     .getByRole("link", { name: "Interactions", exact: true })

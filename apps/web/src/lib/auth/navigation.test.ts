@@ -6,7 +6,7 @@ describe("auth redirect policy", () => {
   test("starts standalone browser authentication in public setup without replacing an explicit destination", () => {
     expect(authSearch.parse({}).redirect).toBe("/onboarding");
     expect(authSearch.parse({ redirect: "https://evil.test" }).redirect).toBe("/onboarding");
-    expect(authSearch.parse({ redirect: "/dashboard" }).redirect).toBe("/dashboard");
+    expect(authSearch.parse({ redirect: "/messages" }).redirect).toBe("/messages");
   });
   test("opens the page with fallbacks when a search value is malformed", () => {
     expect(authSearch.parse({ redirect: 42, email: ["a"], state: {} })).toEqual({
@@ -63,7 +63,7 @@ describe("auth redirect policy", () => {
       "/%zz",
       null,
     ]) {
-      expect(safeRedirect(destination)).toBe("/dashboard");
+      expect(safeRedirect(destination)).toBe("/messages");
     }
   });
   test("retains internal query strings", () => {

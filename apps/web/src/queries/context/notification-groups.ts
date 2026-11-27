@@ -41,18 +41,6 @@ export const notificationGroupsOptions = (organizationId: string, filter: Notifi
     retry: false,
   });
 
-/**
- * The newest groups, one page, for Home. A separate key keeps Home from holding every page the
- * panel loaded, which each refresh would read again.
- */
-export const notificationPreviewOptions = (organizationId: string) =>
-  queryOptions({
-    queryKey: queryKeys.notificationPreview(organizationId),
-    queryFn: ({ signal }) =>
-      getNotificationGroups({ data: { organizationId, filter: "all", limit: 20 }, signal }),
-    retry: false,
-  });
-
 export const notificationGroupEventsOptions = (organizationId: string, groupKey: string) =>
   infiniteQueryOptions({
     queryKey: queryKeys.notificationEvents(organizationId, groupKey),
@@ -107,10 +95,6 @@ export function markNotificationGroupsRead(
       (feed) => feed && { ...feed, pages: feed.pages.map((page) => markPage(page, filter)) },
     );
   }
-  client.setQueryData<GroupPage>(
-    queryKeys.notificationPreview(organizationId),
-    (page) => page && markPage(page, "all"),
-  );
   type Events = InfiniteData<Awaited<ReturnType<typeof getNotificationGroupEvents>>>;
   client.setQueriesData<Events>(
     { queryKey: queryKeys.notificationEvents(organizationId, target?.groupKey) },

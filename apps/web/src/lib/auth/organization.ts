@@ -12,7 +12,7 @@ import { leaveDocument } from "@/lib/navigation/unsaved-drafts";
  */
 export function activateOrganization(
   organizationId: string,
-  destination: string | null = "/dashboard",
+  destination: string | null = "/messages",
 ) {
   return leaveDocument(destination, async () => {
     unwrap(await authClient.organization.setActive({ organizationId }));

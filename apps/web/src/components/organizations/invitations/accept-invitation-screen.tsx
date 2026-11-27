@@ -21,13 +21,13 @@ export function AcceptInvitationScreen({ invitationId }: { invitationId: string 
   const session = useQuery({ ...sessionQueryOptions(), staleTime: Infinity });
   const navigate = useNavigate();
   const now = useExpiryTime(invitation.data ? [invitation.data.expiresAt] : undefined);
-  const activate = useActivateOrganization(isDesktop() ? "/dashboard" : "/setup/complete");
+  const activate = useActivateOrganization(isDesktop() ? "/messages" : "/setup/complete");
   const accept = useAcceptInvitation(invitationId);
   // After declining, open the current workspace, or choose one when there is none.
   const decline = useDeclineInvitationConfirm({
     onDeclined: () =>
       void navigate({
-        to: session.data?.session.activeOrganizationId ? "/dashboard" : "/organizations",
+        to: session.data?.session.activeOrganizationId ? "/messages" : "/organizations",
       }),
   });
   const available =

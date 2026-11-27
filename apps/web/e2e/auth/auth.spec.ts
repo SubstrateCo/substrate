@@ -12,7 +12,7 @@ test("an unverified account cannot open the workspace until its email is verifie
   const password = `Unverified-${id}!`;
   await page.goto("/signup");
   await signUp(page, email, password, "New teammate");
-  await page.goto("/dashboard");
+  await page.goto("/messages");
   await expect(page).toHaveURL(/\/login|\/verify-email/);
   await page.goto("/login");
   await signIn(page, email, password);
@@ -56,7 +56,7 @@ test("password recovery replaces the password and invalidates old sessions", asy
 }) => {
   const old = await client(account);
   await visit(old);
-  await page.goto("/forgot-password?redirect=%2Fdashboard");
+  await page.goto("/forgot-password?redirect=%2Fmessages");
   await page.getByLabel("Email", { exact: true }).fill(account.email);
   await page.getByRole("button", { name: "Send reset link", exact: true }).click();
   await expect(page.getByRole("heading", { name: "Check your inbox", exact: true })).toBeVisible();
@@ -73,7 +73,7 @@ test("password recovery replaces the password and invalidates old sessions", asy
   await expect(
     page.getByText("Your password was changed. You can now sign in.", { exact: true }),
   ).toBeVisible();
-  await old.page.goto("/dashboard");
+  await old.page.goto("/messages");
   await expect(old.page.getByRole("button", { name: "Sign in", exact: true })).toBeVisible();
   await page.getByRole("link", { name: "Sign in", exact: true }).click();
   await signIn(page, account.email, account.password);

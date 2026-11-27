@@ -22,10 +22,10 @@ describe("desktop handoff URLs", () => {
 describe("external desktop links", () => {
   test("routes each environment's links only to its own desktop", () => {
     for (const scheme of ["substrate", "substrate-dev"] as const) {
-      const link = desktopLink("/dashboard?workspaceId=org", scheme);
-      expect(link).toBe(`${scheme}://open/dashboard?workspaceId=org`);
+      const link = desktopLink("/messages?workspaceId=org", scheme);
+      expect(link).toBe(`${scheme}://open/messages?workspaceId=org`);
       expect(resolveDesktopLink(link, desktopOrigin, scheme)).toBe(
-        `${desktopOrigin}/dashboard?workspaceId=org`,
+        `${desktopOrigin}/messages?workspaceId=org`,
       );
       const other = scheme === "substrate" ? "substrate-dev" : "substrate";
       expect(resolveDesktopLink(link, desktopOrigin, other)).toBeNull();

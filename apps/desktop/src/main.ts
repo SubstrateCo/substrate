@@ -315,7 +315,7 @@ function main() {
             return () => notification.close();
           },
           openMessage: ({ organizationId, conversationId, messageId }) => {
-            const destination = new URL("/dashboard", rendererURL);
+            const destination = new URL("/messages", rendererURL);
             destination.searchParams.set("workspaceId", organizationId);
             destination.searchParams.set("conversationId", conversationId);
             destination.searchParams.set("messageId", messageId);

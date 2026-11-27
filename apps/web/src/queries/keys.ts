@@ -104,9 +104,6 @@ export const queryKeys = {
     [...queryKeys.notifications(organizationId), "unread-status"] as const,
   notificationGroups: (organizationId: string, filter: NotificationFilter) =>
     [...queryKeys.notifications(organizationId), "groups", filter] as const,
-  // Home's newest groups: one page, apart from the panel's paged feed.
-  notificationPreview: (organizationId: string) =>
-    [...queryKeys.notifications(organizationId), "preview"] as const,
   // Without a group key, every group's events.
   notificationEvents: (organizationId: string, groupKey?: string) =>
     [
@@ -133,10 +130,7 @@ export const queryKeys = {
     [...queryKeys.organization(organizationId), "invitations"] as const,
   invitation: (invitationId: string) => ["invitations", invitationId] as const,
   tasks: (organizationId: string) => [...queryKeys.organization(organizationId), "tasks"] as const,
-  homeTasks: (organizationId: string) => [...queryKeys.tasks(organizationId), "home"] as const,
   crm: (organizationId: string) => [...queryKeys.organization(organizationId), "crm"] as const,
-  homeDeals: (organizationId: string, today: string) =>
-    [...queryKeys.crm(organizationId), "home", today] as const,
   contacts: (organizationId: string) =>
     [...queryKeys.organization(organizationId), "contacts"] as const,
   // The viewer's calendars and events in one organization. Sync changes refresh all of them.

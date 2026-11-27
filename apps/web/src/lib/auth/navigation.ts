@@ -4,7 +4,7 @@ import { linkOptions } from "@tanstack/react-router";
 
 import type { ElectronAuthorization } from "../desktop/authorization-query";
 import { z } from "zod";
-export function safeRedirect(value: string | null | undefined, fallback = "/dashboard"): string {
+export function safeRedirect(value: string | null | undefined, fallback = "/messages"): string {
   if (value == null || !value.startsWith("/") || value.startsWith("//")) return fallback;
   try {
     const decoded = decodeURIComponent(value);

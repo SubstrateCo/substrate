@@ -5,7 +5,7 @@ import { isDesktop } from "@/lib/desktop/auth";
 
 export const Route = createFileRoute("/_public/")({
   beforeLoad: () => {
-    if (isDesktop()) throw redirect({ to: "/dashboard" });
+    if (isDesktop()) throw redirect({ to: "/messages" });
   },
   component: WelcomeScreen,
 });

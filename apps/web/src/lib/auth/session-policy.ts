@@ -14,13 +14,13 @@ export function verifiedSessionAccess(session: Session, destination: string) {
 /** Where a signed-in visitor goes instead of a guest page. A destination is any internal URL. */
 export function guestSessionRedirect(session: Session, destination: string) {
   if (!session) return null;
-  const fallback = session.session.activeOrganizationId ? "/dashboard" : "/organizations";
+  const fallback = session.session.activeOrganizationId ? "/messages" : "/organizations";
   let target = safeRedirect(destination, fallback);
   const pathname = decodeURIComponent(new URL(target, "https://startup.invalid").pathname);
   if (/^\/(login|signup)\/?$/i.test(pathname)) target = fallback;
   if (!session.user.emailVerified) {
     return authLink("/verify-email", target, session.user.email);
   }
-  if (target === "/dashboard" && !session.session.activeOrganizationId) target = "/organizations";
+  if (target === "/messages" && !session.session.activeOrganizationId) target = "/organizations";
   return { href: target };
 }

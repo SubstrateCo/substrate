@@ -12,7 +12,6 @@ const shortcut = <const Id extends ShortcutId>(id: Id, name: string) => ({
  * keys, so code that registers one of these gets the person's keys, not the defaults.
  */
 export const appHotkeys = defineAppHotkeys({
-  "app.home": shortcut("app.home", "Go to Home"),
   "app.messages": shortcut("app.messages", "Go to Messages"),
   "app.tasks": shortcut("app.tasks", "Go to Tasks"),
   "app.inbox": shortcut("app.inbox", "Go to Inbox"),

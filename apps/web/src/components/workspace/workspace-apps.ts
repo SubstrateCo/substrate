@@ -8,7 +8,6 @@ import {
   Bot,
   CalendarDays,
   Handshake,
-  House,
   ListTodo,
   Mail,
   MessageSquare,
@@ -28,13 +27,6 @@ type WorkspaceApp = {
  * Each app's route decides when it is active.
  */
 export const workspaceApps = [
-  {
-    id: "home",
-    label: "Home",
-    icon: House,
-    to: "/dashboard",
-    shortcut: "app.home",
-  },
   {
     id: "messages",
     label: "Messages",

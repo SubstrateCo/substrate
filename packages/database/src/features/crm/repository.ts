@@ -10,7 +10,6 @@ import { crmAffiliationsRepository } from "./affiliations";
 import { crmDealsRepository } from "./deals/deals";
 import { crmExportAccess } from "./export-access";
 import { createFollowUp, followUps } from "./follow-ups";
-import { homeDeals } from "./home";
 import { crmManagementRepository } from "./management";
 import { crmPipelineRepository } from "./pipeline";
 import { crmRecordLinks } from "./record-links";
@@ -29,7 +28,6 @@ export function crmRepository(context: RepositoryContext) {
     ...crmManagementRepository(context),
     ...crmRecordLinks(context),
     ...crmExportAccess(context),
-    home: (today: string) => homeDeals(context, today),
     activity: (id: string, options?: Parameters<typeof listCrmActivity>[2]) =>
       listCrmActivity(context, id, options),
     assignOwner: (id: string, input: Parameters<typeof assignOwner>[2]) =>

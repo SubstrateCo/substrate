@@ -5,7 +5,6 @@ import { z } from "zod";
  * a chord such as `Mod+K`, or a sequence of chords such as `["G", "H"]`.
  */
 export const defaultShortcuts = {
-  "app.home": ["G", "H"],
   "app.messages": ["G", "M"],
   "app.tasks": ["G", "T"],
   "app.inbox": ["G", "E"],

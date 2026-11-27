@@ -23,7 +23,7 @@ test("shutdown does not read webContents from an already destroyed BrowserWindow
 test("only a live internal renderer receives socket updates", () => {
   const sent: unknown[][] = [];
   let destroyed = false;
-  let url = "https://desktop.substrate.local/dashboard";
+  let url = "https://desktop.substrate.local/messages";
   const window = {
     isDestroyed: () => false,
     webContents: {

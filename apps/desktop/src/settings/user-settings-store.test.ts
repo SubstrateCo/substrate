@@ -36,10 +36,12 @@ test("missing or invalid shortcuts get their defaults and valid ones stay", () =
   const path = file();
   writeFileSync(
     path,
-    JSON.stringify({ shortcuts: { "app.home": ["G", "D"], "search.open": 42, "app.tasks": [] } }),
+    JSON.stringify({
+      shortcuts: { "app.messages": ["G", "D"], "search.open": 42, "app.tasks": [] },
+    }),
   );
   const store = createUserSettingsStore(path);
-  expect(store.shortcuts()).toEqual({ ...defaultShortcuts, "app.home": ["G", "D"] });
+  expect(store.shortcuts()).toEqual({ ...defaultShortcuts, "app.messages": ["G", "D"] });
   expect(saved(path).shortcuts).toEqual(store.shortcuts());
 });
 
@@ -57,8 +59,8 @@ test("a file that is not JSON is used as defaults and left alone until a save", 
   const store = createUserSettingsStore(path);
   expect(store.shortcuts()).toEqual(defaultShortcuts);
   expect(readFileSync(path, "utf8")).toBe("{broken");
-  store.setShortcuts({ ...defaultShortcuts, "app.home": "Mod+1" });
-  expect(saved(path).shortcuts["app.home"]).toBe("Mod+1");
+  store.setShortcuts({ ...defaultShortcuts, "app.messages": "Mod+1" });
+  expect(saved(path).shortcuts["app.messages"]).toBe("Mod+1");
 });
 
 test("a saved change survives a restart, leaves no temporary file, and rejects bad input", () => {

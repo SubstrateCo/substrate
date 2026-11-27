@@ -6,7 +6,6 @@ import { crmReportFilters } from "./report-input.ts";
 import { z } from "zod";
 
 export const crmWorkspace = z.object({ organizationId });
-export const crmHome = crmWorkspace.extend({ today: z.iso.date() });
 export const crmList = crmWorkspace.extend(recordListFields);
 /** The pipeline board reads only open deals, so closed ones do not fill its pages. */
 export const crmDealList = crmList.extend({ outcome: z.enum(["open", "won", "lost"]).optional() });

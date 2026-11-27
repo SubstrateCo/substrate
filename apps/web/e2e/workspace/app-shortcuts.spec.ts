@@ -6,6 +6,23 @@ const apps = (page: Page) => page.getByRole("navigation", { name: "Apps", exact:
 const rail = (page: Page, name: string) =>
   apps(page).getByRole("link", { name: new RegExp(`^${name}(?:,|$)`) });
 
+test("the default workspace destination is Messages without dashboard summary requests", async ({
+  account,
+  client,
+}) => {
+  const user = await client(account);
+  const summaryRequests: string[] = [];
+  user.page.on("request", (request) => {
+    if (/\/api\/v1\/(?:tasks|crm)\/home(?:\?|$)/.test(request.url()))
+      summaryRequests.push(request.url());
+  });
+  await user.page.goto("/login?redirect=%2Flogin");
+  await expect(user.page).toHaveURL(/\/messages(?:\?|$)/);
+  await expect(rail(user.page, "Messages")).toHaveAttribute("aria-current", "page");
+  await expect(rail(user.page, "Home")).toHaveCount(0);
+  expect(summaryRequests).toEqual([]);
+});
+
 test("G then an app key opens that app, and the rail marks it current", async ({
   account,
   client,
@@ -23,10 +40,7 @@ test("G then an app key opens that app, and the rail marks it current", async ({
   await page.keyboard.press("m");
   await expect(page).toHaveURL(/\/messages/);
   await expect(rail(page, "Messages")).toHaveAttribute("aria-current", "page");
-  await page.keyboard.press("g");
-  await page.keyboard.press("h");
-  await expect(page).toHaveURL(/\/dashboard/);
-  await expect(rail(page, "Home")).toHaveAttribute("aria-current", "page");
+  await expect(rail(page, "Home")).toHaveCount(0);
 });
 
 test("app shortcuts leave the search field and its own shortcuts alone", async ({

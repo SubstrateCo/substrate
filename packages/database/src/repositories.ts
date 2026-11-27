@@ -177,7 +177,6 @@ function standalone(
       "getContact",
     ]),
     crm: domain("crm", [
-      "home",
       "listAccounts",
       "getAccount",
       "pipeline",
@@ -222,7 +221,7 @@ function standalone(
       "list",
       "exportStart",
     ]),
-    tasks: domain("tasks", ["get", "list", "listLinks", "exportPage", "home"]),
+    tasks: domain("tasks", ["get", "list", "listLinks", "exportPage"]),
     messaging: domain("messaging", [
       "listConversations",
       "unreadCounts",

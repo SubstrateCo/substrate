@@ -1,5 +1,4 @@
 import { permissionLabels } from "@substrate/contracts/access/levels";
-import { taskStatusLabels } from "@substrate/contracts/tasks";
 
 import { useQuery } from "@tanstack/react-query";
 
@@ -13,25 +12,16 @@ import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import { useWorkspaceApps } from "@/features/records/apps";
 import { recordQueries, useRecordScope, useTasksWrite } from "@/features/records/queries";
-import type { HomeTask, ProjectSummary } from "@/features/records/requests";
+import type { ProjectSummary } from "@/features/records/requests";
 import type { OnOpenRecord, WorkspaceScreenProps } from "@/features/records/types";
 import { ListToolbar, SearchBar } from "@/features/records/ui/layout";
-import {
-  Chip,
-  DueChip,
-  PriorityChip,
-  Row,
-  Segments,
-  SectionHeader,
-  TaskStatusIcon,
-} from "@/features/records/ui/rows";
+import { Chip, Row, Segments, SectionHeader } from "@/features/records/ui/rows";
 import { EmptyState, ErrorState, LoadingRows } from "@/features/records/ui/states";
 import type { QueryScope } from "@/queries/keys";
 import { Archive, FolderKanban, Plus } from "lucide-react-native";
 
 type ProjectView = "active" | "archived";
-type Item = { type: "task"; task: HomeTask } | { type: "project"; project: ProjectSummary };
-type Section = { key: "mine" | "projects"; title: string; data: Item[] };
+type Section = { title: string; data: ProjectSummary[] };
 
 export function TasksScreen({ organizationId, onOpenRecord }: WorkspaceScreenProps) {
   const scope = useRecordScope(organizationId);
@@ -61,33 +51,20 @@ function EnabledTasks({ organizationId, onOpenRecord }: WorkspaceScreenProps) {
   const [view, setView] = useState<ProjectView>("active");
   const [search, setSearch] = useState("");
   const [creating, setCreating] = useState(false);
-  const home = useQuery({ ...recordQueries.homeTasks(scope), enabled: view === "active" });
   const projects = useQuery(recordQueries.projects(scope, view));
   const write = useTasksWrite(scope);
 
   const sections = useMemo(() => {
     const term = search.trim().toLowerCase();
     const matches = (text: string) => !term || text.toLowerCase().includes(term);
-    const result: Section[] = [];
-    if (view === "active" && (home.data?.length || home.error)) {
-      const tasks = (home.data ?? []).filter(
-        (task) => matches(task.title) || matches(task.projectName),
-      );
-      if (tasks.length || home.error)
-        result.push({
-          key: "mine",
-          title: "Up next for you",
-          data: tasks.map((task) => ({ type: "task", task })),
-        });
-    }
     const list = (projects.data ?? []).filter((project) => matches(project.name));
-    result.push({
-      key: "projects",
-      title: view === "active" ? "Projects" : "Archived projects",
-      data: list.map((project) => ({ type: "project", project })),
-    });
-    return result;
-  }, [home.data, home.error, projects.data, search, view]);
+    return [
+      {
+        title: view === "active" ? "Projects" : "Archived projects",
+        data: list,
+      },
+    ];
+  }, [projects.data, search, view]);
 
   return (
     <View className="flex-1 bg-surface" testID="tasks-screen">
@@ -111,7 +88,7 @@ function EnabledTasks({ organizationId, onOpenRecord }: WorkspaceScreenProps) {
           { value: "archived", label: "Archived" },
         ]}
       />
-      <SearchBar value={search} onChange={setSearch} placeholder="Filter projects and tasks" />
+      <SearchBar value={search} onChange={setSearch} placeholder="Filter projects" />
       {projects.isPending ? <LoadingRows label="Loading projects" /> : null}
       {projects.isError ? (
         <ErrorState
@@ -123,17 +100,12 @@ function EnabledTasks({ organizationId, onOpenRecord }: WorkspaceScreenProps) {
       {projects.isSuccess ? (
         <SectionList
           sections={sections}
-          keyExtractor={(item) =>
-            item.type === "task" ? `t:${item.task.entityId}` : `p:${item.project.entityId}`
-          }
+          keyExtractor={(item) => item.entityId}
           stickySectionHeadersEnabled={false}
           refreshControl={
             <RefreshControl
-              refreshing={projects.isRefetching || home.isRefetching}
-              onRefresh={() => {
-                void projects.refetch();
-                if (view === "active") void home.refetch();
-              }}
+              refreshing={projects.isRefetching}
+              onRefresh={() => void projects.refetch()}
             />
           }
           renderSectionHeader={({ section }) => (
@@ -144,13 +116,11 @@ function EnabledTasks({ organizationId, onOpenRecord }: WorkspaceScreenProps) {
               section={section}
               view={view}
               search={search}
-              homeError={home.error}
-              onRetryHome={() => void home.refetch()}
               onCreate={() => setCreating(true)}
             />
           )}
           renderItem={({ item }) => (
-            <ItemRow item={item} scope={scope} onOpenRecord={onOpenRecord} />
+            <ItemRow project={item} scope={scope} onOpenRecord={onOpenRecord} />
           )}
         />
       ) : null}
@@ -188,21 +158,13 @@ function SectionFooter({
   section,
   view,
   search,
-  homeError,
-  onRetryHome,
   onCreate,
 }: {
   section: Section;
   view: ProjectView;
   search: string;
-  homeError: Error | null;
-  onRetryHome: () => void;
   onCreate: () => void;
 }) {
-  if (section.key === "mine")
-    return homeError ? (
-      <ErrorState compact error={homeError} noun="your tasks" onRetry={onRetryHome} />
-    ) : null;
   if (section.data.length) return null;
   const invite = view === "active" && !search;
   return (
@@ -226,34 +188,14 @@ function SectionFooter({
 }
 
 function ItemRow({
-  item,
+  project,
   scope,
   onOpenRecord,
 }: {
-  item: Item;
+  project: ProjectSummary;
   scope: QueryScope;
   onOpenRecord: OnOpenRecord;
 }) {
-  if (item.type === "task") {
-    const { task } = item;
-    return (
-      <Row
-        title={task.title}
-        subtitle={`${task.projectName} · ${taskStatusLabels[task.status]}`}
-        leading={<TaskStatusIcon status={task.status} />}
-        trailing={
-          <>
-            <PriorityChip priority={task.priority} />
-            <DueChip value={task.dueDate} />
-          </>
-        }
-        onPress={() =>
-          onOpenRecord({ kind: "task", id: task.entityId, projectId: task.projectEntityId })
-        }
-      />
-    );
-  }
-  const { project } = item;
   return (
     <Row
       title={project.name}

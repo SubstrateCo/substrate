@@ -1,14 +1,7 @@
 import { queryOptions, skipToken } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
-import { getHomeTasks, getProject, getTaskLocation, listProjects } from "@/api/tasks/requests";
-
-export const homeTasksOptions = (organizationId: string) =>
-  queryOptions({
-    queryKey: queryKeys.homeTasks(organizationId),
-    queryFn: ({ signal }) => getHomeTasks({ data: { organizationId }, signal }),
-    retry: false,
-  });
+import { getProject, getTaskLocation, listProjects } from "@/api/tasks/requests";
 
 export const projectsQueryOptions = (organizationId: string) =>
   queryOptions({

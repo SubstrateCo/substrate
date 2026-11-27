@@ -70,34 +70,20 @@ test("work label refreshes match a named entity, not its project unless the page
   client.clear();
 });
 
-test("a task change refreshes Home work only in its workspace", async () => {
+test("a task change refreshes notification groups only in its workspace", async () => {
   const client = new QueryClient();
-  const home = queryKeys.homeTasks("org");
-  const other = queryKeys.homeTasks("other");
-  client.setQueryData(home, [{ entityId: "task", status: "in_progress" }]);
-  client.setQueryData(other, [{ entityId: "other-task" }]);
-  await invalidateTargets(
-    client,
-    domainTargets("tasks", "org", undefined, undefined, {
-      projectId: "project",
-      taskIds: ["task"],
-    }),
-  );
-  expect(client.getQueryState(home)?.isInvalidated).toBe(true);
-  expect(client.getQueryState(other)?.isInvalidated).toBe(false);
-  client.clear();
-});
-
-test("a task change refreshes Home's notification preview, which has its own key", async () => {
-  const client = new QueryClient();
-  const preview = queryKeys.notificationPreview("org");
-  // Home reads one page apart from the panel's feed, so it never holds the panel's pages.
-  expect(preview.slice(0, -1)).not.toEqual(queryKeys.notificationGroups("org", "all"));
-  client.setQueryData(preview, { items: [], nextCursor: null });
+  const groups = queryKeys.notificationGroups("org", "all");
+  const other = queryKeys.notificationGroups("other", "all");
+  client.setQueryData(groups, {
+    pages: [{ items: [], nextCursor: null }],
+    pageParams: [undefined],
+  });
+  client.setQueryData(other, { pages: [{ items: [], nextCursor: null }], pageParams: [undefined] });
   await invalidateTargets(
     client,
     domainTargets("tasks", "org", undefined, undefined, { projectId: "project", taskIds: ["t"] }),
   );
-  expect(client.getQueryState(preview)?.isInvalidated).toBe(true);
+  expect(client.getQueryState(groups)?.isInvalidated).toBe(true);
+  expect(client.getQueryState(other)?.isInvalidated).toBe(false);
   client.clear();
 });

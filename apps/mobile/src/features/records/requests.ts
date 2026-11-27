@@ -74,8 +74,6 @@ export const recordRequests = {
 
   projects: (data: Workspace & { archived?: RecordArchiveFilter }, options: Init = {}) =>
     readResult(api.tasks.projects.$get({ query: data }, init(options))),
-  homeTasks: (data: Workspace, options: Init = {}) =>
-    readResult(api.tasks.home.$get({ query: data }, init(options))),
   project: (data: Workspace & { projectEntityId: string }, options: Init = {}) =>
     readResult(api.tasks.project.$get({ query: data }, init(options))),
   taskLocation: (data: Workspace & { taskEntityId: string }, options: Init = {}) =>
@@ -207,7 +205,6 @@ export const createRecord = {
 };
 
 export type ProjectSummary = Awaited<ReturnType<typeof recordRequests.projects>>[number];
-export type HomeTask = Awaited<ReturnType<typeof recordRequests.homeTasks>>[number];
 export type ProjectDetail = Awaited<ReturnType<typeof recordRequests.project>>;
 export type ProjectTask = ProjectDetail["tasks"][number];
 export type ProjectActor = ProjectDetail["actors"][number];

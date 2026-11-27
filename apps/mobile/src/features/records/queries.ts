@@ -78,13 +78,6 @@ export const recordQueries = {
         recordRequests.projects({ organizationId: scope.organizationId, archived }, { signal }),
       retry: false,
     }),
-  homeTasks: (scope: QueryScope) =>
-    queryOptions({
-      queryKey: queryKeys.list(scope, "tasks", { view: "home" }),
-      queryFn: ({ signal }) =>
-        recordRequests.homeTasks({ organizationId: scope.organizationId }, { signal }),
-      retry: false,
-    }),
   // Without a project, nothing is read. The placeholder stays only in the key.
   project: (scope: QueryScope, projectEntityId: string | undefined) =>
     queryOptions({

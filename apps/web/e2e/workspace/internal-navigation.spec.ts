@@ -31,7 +31,7 @@ test("sign-in opens the authenticated app without replacing the document", async
   account,
   page,
 }) => {
-  await page.goto("/login?redirect=%2Fdashboard");
+  await page.goto("/login?redirect=%2Fmessages");
   const timeOrigin = await page.evaluate(() => performance.timeOrigin);
   await signIn(page, account.email, account.password);
   await expect(

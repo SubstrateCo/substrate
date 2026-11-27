@@ -49,7 +49,7 @@ test("switching workspaces clears private messages, reconnects in the selected o
     .click();
   await user.page.getByRole("menuitem", { name, exact: true }).click();
   await reconnect;
-  await expect(user.page).toHaveURL(/\/dashboard$/);
+  await expect(user.page).toHaveURL(/\/messages$/);
   await expect(user.page.getByText(privateBody, { exact: true })).toHaveCount(0);
   await expect(conversationButton(user.page, first.name)).toHaveCount(0);
   await user.waitForEvent(
@@ -154,7 +154,7 @@ test("an owner invites a teammate, who accepts without receiving project access 
   await expect(
     invitee.page.getByRole("heading", { name: "Your workspace is ready", exact: true }),
   ).toBeVisible();
-  await invitee.page.goto("/dashboard");
+  await invitee.page.goto("/messages");
   await expect(
     invitee.page.getByRole("button", {
       name: `Switch workspace, current: ${actors.sender.organizationName}`,

@@ -7,7 +7,7 @@ import {
   useCreateOrganization,
 } from "@/queries/organizations/selection-mutations";
 
-export function CreateOrganizationForm({ destination = "/dashboard" }: { destination?: string }) {
+export function CreateOrganizationForm({ destination = "/messages" }: { destination?: string }) {
   const activate = useActivateOrganization(destination);
   const create = useCreateOrganization();
   const created = create.data;

@@ -22,7 +22,7 @@ export function SetupCompleteScreen({
 }) {
   const router = useRouter();
   const browserLink = linkOptions({
-    to: conversationId ? "/messages" : "/dashboard",
+    to: "/messages",
     search: { workspaceId: organizationId, conversationId },
   });
   const destination = router.buildLocation(browserLink).href;

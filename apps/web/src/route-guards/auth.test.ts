@@ -39,13 +39,13 @@ test("workspace navigations reuse a verified session instead of refetching it", 
   const client = new QueryClient();
   const { options, counter } = countedSession(() => session(true));
   try {
-    await requireVerifiedSession(client, "/dashboard", options);
+    await requireVerifiedSession(client, "/messages", options);
     await requireVerifiedSession(client, "/tasks", options);
     expect((await requireVerifiedSession(client, "/notifications", options)).user.id).toBe("user");
     expect(counter.reads).toBe(1);
     // Realtime session events invalidate the cached session; the next navigation rechecks it.
     await client.invalidateQueries({ queryKey: queryKeys.session });
-    await requireVerifiedSession(client, "/dashboard", options);
+    await requireVerifiedSession(client, "/messages", options);
     expect(counter.reads).toBe(2);
   } finally {
     client.clear();
@@ -57,12 +57,12 @@ test("an unverified session is rechecked on each navigation, so verification els
   let verified = false;
   const { options, counter } = countedSession(() => session(verified));
   try {
-    const denied = await requireVerifiedSession(client, "/dashboard", options).catch(
+    const denied = await requireVerifiedSession(client, "/messages", options).catch(
       (redirect: { options: { to?: string } }) => redirect.options.to,
     );
     expect(denied).toBe("/verify-email");
     verified = true;
-    expect((await requireVerifiedSession(client, "/dashboard", options)).user.emailVerified).toBe(
+    expect((await requireVerifiedSession(client, "/messages", options)).user.emailVerified).toBe(
       true,
     );
     expect(counter.reads).toBe(2);

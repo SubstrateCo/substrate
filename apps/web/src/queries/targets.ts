@@ -187,7 +187,6 @@ function workTargets(
   taskIds: string[] | undefined,
 ): QueryTarget[] {
   const shared: QueryTarget[] = [
-    { queryKey: queryKeys.homeTasks(organizationId) },
     { queryKey: queryKeys.crm(organizationId) },
     // Task discussions show their task's current title and project backlink.
     { queryKey: queryKeys.conversations(organizationId), discussesWork: { projectId, taskIds } },
@@ -218,7 +217,6 @@ function workTargets(
     { queryKey: queryKeys.messagePages(organizationId), linksTo: taskIds },
     { queryKey: queryKeys.notificationGroups(organizationId, "all") },
     { queryKey: queryKeys.notificationGroups(organizationId, "unread") },
-    { queryKey: queryKeys.notificationPreview(organizationId) },
     { queryKey: queryKeys.notificationEvents(organizationId) },
     ...shared,
   ];
