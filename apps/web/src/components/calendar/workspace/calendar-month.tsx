@@ -87,10 +87,10 @@ export function CalendarMonth({
                                 <CalendarColorDot color={event.color} />
                               </ItemMedia>
                               <ItemContent className="min-w-0">
-                                <ItemTitle>
+                                <ItemTitle className="w-full">
                                   <span
                                     className={cn(
-                                      "truncate text-xs",
+                                      "min-w-0 truncate text-xs",
                                       eventEnded(event, now) &&
                                         !selected &&
                                         "text-muted-foreground",
