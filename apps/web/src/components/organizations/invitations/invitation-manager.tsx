@@ -27,7 +27,10 @@ export function InvitationManager({
   /** Show the form in a settings card under the page header. */
   framed?: boolean;
 }) {
-  const invitations = useQuery(invitationsQueryOptions(organizationId));
+  const invitations = useQuery({
+    ...invitationsQueryOptions(organizationId),
+    enabled: framed,
+  });
   const now = useExpiryTime(invitations.data?.map((invitation) => invitation.expiresAt));
   const { invite, cancel } = useInvitationMutations(organizationId);
   const { mutateAsync: readInvitationLink } = useInvitationLink(organizationId);

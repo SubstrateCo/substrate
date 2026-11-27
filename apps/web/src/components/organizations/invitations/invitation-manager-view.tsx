@@ -22,8 +22,8 @@ export type InvitationListItem = {
 const inviteDescription = "Invite people by email. They join with the role you pick.";
 
 /**
- * The invitation form and the sent invitations. `framed` puts the form in a settings card under
- * a page header; otherwise the section brings its own heading, as in setup.
+ * `framed` shows the form in a settings card with sent invitations below it.
+ * Otherwise, setup shows only the form with its own heading.
  */
 export function InvitationManager({
   roles,
@@ -120,7 +120,6 @@ export function InvitationManager({
         <p className="text-sm text-muted-foreground">{inviteDescription}</p>
       </header>
       {form}
-      {(loading || loadError || Boolean(invitations?.length)) && sent}
     </section>
   );
 }
