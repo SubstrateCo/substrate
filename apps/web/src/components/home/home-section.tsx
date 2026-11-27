@@ -71,7 +71,7 @@ export type HomeSectionEmpty =
   | {
       icon: LucideIcon;
       title: string;
-      description: string;
+      description?: string;
       action: string;
       /** Where the action goes, when not the header link. */
       link?: LinkProps;
@@ -86,7 +86,6 @@ export function HomeSection({
   linkLabel,
   data,
   empty,
-  hideHeaderWhenEmpty = false,
 }: {
   title: string;
   description?: string;
@@ -97,8 +96,6 @@ export function HomeSection({
   linkLabel?: string;
   data: HomeSectionData;
   empty: HomeSectionEmpty;
-  /** A quiet section shows only its empty state. */
-  hideHeaderWhenEmpty?: boolean;
 }) {
   const noItems = !data.loading && !data.error && !data.items.length;
   let content =
@@ -129,7 +126,7 @@ export function HomeSection({
     );
   return (
     <Card size="sm" className="min-h-0 min-w-0 flex-1" role="region" aria-label={title}>
-      {!(noItems && hideHeaderWhenEmpty) && (
+      {!noItems && (
         <CardHeader className="flex shrink-0 items-start justify-between gap-3">
           <div className="space-y-1">
             <CardTitle>
@@ -140,16 +137,11 @@ export function HomeSection({
             </CardTitle>
             {description && <CardDescription>{description}</CardDescription>}
           </div>
-          {!noItems && (
-            <Button asChild variant="ghost" size="xs">
-              <Link
-                {...link}
-                aria-label={linkLabel ? undefined : `View all ${title.toLowerCase()}`}
-              >
-                {linkLabel ?? "View all"} <ArrowRight aria-hidden="true" data-icon="inline-end" />
-              </Link>
-            </Button>
-          )}
+          <Button asChild variant="ghost" size="xs">
+            <Link {...link} aria-label={linkLabel ? undefined : `View all ${title.toLowerCase()}`}>
+              {linkLabel ?? "View all"} <ArrowRight aria-hidden="true" data-icon="inline-end" />
+            </Link>
+          </Button>
         </CardHeader>
       )}
       <CardContent
@@ -158,7 +150,11 @@ export function HomeSection({
         role="group"
         aria-label={`${title} items`}
       >
-        {content}
+        {noItems ? (
+          <div className="flex min-h-full items-center justify-center">{content}</div>
+        ) : (
+          content
+        )}
       </CardContent>
     </Card>
   );

@@ -48,13 +48,7 @@ function HomePanel({
   children: ReactNode;
 }) {
   return (
-    <div
-      className={cn(
-        "flex min-w-0 flex-auto shrink-0 max-md:flex-none",
-        active !== id && "max-md:hidden",
-        className,
-      )}
-    >
+    <div className={cn("flex min-h-0 min-w-0 flex-1", active !== id && "max-md:hidden", className)}>
       {children}
     </div>
   );
@@ -74,12 +68,11 @@ export function HomeDashboardView({
   const { organizationId } = useWorkspaceScope();
   const search = { workspaceId: organizationId };
   const [activeSection, setActiveSection] = useState("attention");
-  const quietAttention = !attention.loading && !attention.error && !attention.items.length;
   return (
     <PageLayout id="home" aria-label="Home">
       <PageContent>
         <div
-          className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto p-4 md:gap-6 md:p-6"
+          className="flex min-h-0 flex-1 flex-col gap-4 overflow-hidden p-4 md:gap-6 md:p-6"
           data-home-dashboard
         >
           <PageHeader
@@ -107,35 +100,25 @@ export function HomeDashboardView({
               </div>
             }
           />
-          <div className="flex flex-1 flex-col gap-4 max-md:flex-none md:flex-row">
-            <div className="flex min-w-0 flex-col gap-4 max-md:contents md:flex-1 xl:flex-7">
-              <HomePanel
-                id="attention"
-                active={activeSection}
-                className={quietAttention ? "md:flex-none" : "md:grow-2"}
-              >
+          <div className="flex min-h-0 flex-1 flex-col gap-4 md:flex-row">
+            <div className="flex min-h-0 min-w-0 flex-col gap-4 max-md:contents md:flex-1 xl:flex-7">
+              <HomePanel id="attention" active={activeSection} className="md:grow-2">
                 <HomeSection
                   title="Needs your attention"
                   titleIcon={<Hand aria-hidden="true" className="size-4 text-warning" />}
                   empty={{
                     icon: CheckCheck,
                     title: "You’re caught up",
-                    description: "No pending decisions or recent mentions here.",
                     action: "Open notifications",
                     link: { to: "/notifications", search },
                   }}
-                  hideHeaderWhenEmpty
                   link={{ to: "/agents", search }}
                   linkLabel="Agent requests"
                   data={attention}
                 />
               </HomePanel>
               {tasksEnabled && (
-                <HomePanel
-                  id="tasks"
-                  active={activeSection}
-                  className={quietAttention ? "md:grow-4" : "md:grow-3"}
-                >
+                <HomePanel id="tasks" active={activeSection} className="md:grow-3">
                   <HomeSection
                     title="My work"
                     description="Assigned to you · earliest due first"
@@ -151,7 +134,6 @@ export function HomeDashboardView({
                   empty={{
                     icon: Bell,
                     title: "No other recent updates",
-                    description: "View past assignments, mentions, and replies.",
                     action: "Open notifications",
                   }}
                   link={{ to: "/notifications", search }}
@@ -159,15 +141,13 @@ export function HomeDashboardView({
                 />
               </HomePanel>
             </div>
-            <div className="flex min-w-0 flex-col gap-4 max-md:contents md:flex-1 xl:flex-5">
+            <div className="flex min-h-0 min-w-0 flex-col gap-4 max-md:contents md:flex-1 xl:flex-5">
               <HomePanel id="agents" active={activeSection} className="md:grow-2">
                 <HomeSection
                   title="My agents"
                   empty={{
                     icon: Bot,
                     title: "No agent activity yet",
-                    description:
-                      "Choose an agent and connect its home desktop to start delegating work.",
                     action: "Open agents",
                   }}
                   link={{ to: "/agents", search }}
@@ -181,7 +161,6 @@ export function HomeDashboardView({
                   empty={{
                     icon: MessageSquare,
                     title: "No other unread conversations",
-                    description: "Open Messages to catch up on channels or start a conversation.",
                     action: "Open messages",
                   }}
                   link={{ to: "/messages", search }}
@@ -196,7 +175,6 @@ export function HomeDashboardView({
                     empty={{
                       icon: Handshake,
                       title: "No deals closing soon",
-                      description: "CRM follow-up tasks appear in My work.",
                       action: "Open CRM",
                     }}
                     link={{ to: "/crm", search: { ...search, section: "deals" } }}
