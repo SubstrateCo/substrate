@@ -128,15 +128,18 @@ export function AppTable<TData extends RowData>({
 }: AppTableProps<TData>) {
   const table = usePagedTable({ columns, data, getRowId, pagination, rowActions });
   const rows = table.getRowModel().rows;
-  const pager = pagerProps(table, name, pagination, fetching);
+  const pager = pagerProps(table, name, pagination, fetching || loading);
   const parts = tableParts({ hasRows: rows.length > 0, loading, error, pager });
   const showLoading = useDelayedLoading(parts.initialLoading);
+  const paginated = pagination.mode === "server" || table.getPageCount() > 1;
   return (
     <table.AppTable>
       <div
         className={cn(
           "@container min-w-0",
           layout === "ledger" ? "flex min-h-0 flex-col gap-2" : "space-y-3",
+          // oxlint-disable-next-line shadcn/no-arbitrary-values -- Cap the stable results area to the window height so its pager stays reachable in short windows.
+          paginated && "flex h-128 max-h-[60dvh] shrink-0 flex-col gap-3 space-y-0",
           parts.initialLoading && !showLoading && "invisible",
         )}
       >
@@ -146,23 +149,34 @@ export function AppTable<TData extends RowData>({
           </span>
         )}
         {parts.inlineError && <ErrorState variant="compact" title={errorTitle} onRetry={onRetry} />}
-        {parts.hasRows && renderMobileRow && (
-          <MobileTableRows name={name} rows={rows} renderRow={renderMobileRow} />
-        )}
-        {parts.framed ? (
-          <AppTableFrame
-            table={table}
-            name={name}
-            layout={layout}
-            loading={loading}
-            initialLoading={parts.initialLoading}
-            desktopOnly={parts.hasRows && !!renderMobileRow}
-            selectedRowId={selectedRowId}
-            onRowClick={onRowClick}
-          />
-        ) : (
-          <AppTableNotice error={error} errorTitle={errorTitle} onRetry={onRetry} empty={empty} />
-        )}
+        <div
+          data-slot="table-results"
+          role={paginated ? "region" : undefined}
+          aria-label={paginated ? `${name} results` : undefined}
+          tabIndex={paginated ? 0 : undefined}
+          className={cn(
+            "min-w-0",
+            paginated && "min-h-0 flex-1 scrollbar-gutter-stable overflow-auto",
+          )}
+        >
+          {parts.hasRows && renderMobileRow && (
+            <MobileTableRows name={name} rows={rows} renderRow={renderMobileRow} />
+          )}
+          {parts.framed ? (
+            <AppTableFrame
+              table={table}
+              name={name}
+              layout={layout}
+              loading={loading}
+              initialLoading={parts.initialLoading}
+              desktopOnly={parts.hasRows && !!renderMobileRow}
+              selectedRowId={selectedRowId}
+              onRowClick={onRowClick}
+            />
+          ) : (
+            <AppTableNotice error={error} errorTitle={errorTitle} onRetry={onRetry} empty={empty} />
+          )}
+        </div>
         {parts.pager && <Pager {...parts.pager} summary={pageSummary} />}
       </div>
     </table.AppTable>
@@ -191,8 +205,8 @@ function tableParts({
     announceLoading: loading && (hasRows || initialLoading),
     // An error over rows that are still shown is a compact notice above them.
     inlineError: !!error && hasRows,
-    // An empty later page keeps its pager, so the person can go back.
-    pager: pager && (hasRows || pager.pageIndex > 0) && !initialLoading ? pager : undefined,
+    // Page-size controls and the way back stay available through loading and empty results.
+    pager,
   };
 }
 

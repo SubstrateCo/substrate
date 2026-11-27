@@ -60,7 +60,11 @@ export function Pager({
       {pageSize !== undefined && pageSizeOptions && onPageSizeChange && (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <span>Rows per page</span>
-          <Select value={String(pageSize)} onValueChange={(value) => onPageSizeChange(+value)}>
+          <Select
+            value={String(pageSize)}
+            onValueChange={(value) => onPageSizeChange(+value)}
+            disabled={disabled}
+          >
             <SelectTrigger aria-label="Rows per page" size="sm">
               <SelectValue />
             </SelectTrigger>

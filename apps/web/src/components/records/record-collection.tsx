@@ -255,6 +255,7 @@ export function RecordCollection({ kind }: { kind: CrmKind }) {
           }}
           onRefresh={() => void shown.query.refetch()}
           showPipeline={showPipeline}
+          pagination={collectionPagination(records.rows, pages)}
         >
           {!!shown.state.data &&
             (showPipeline ? (
@@ -346,6 +347,7 @@ function RecordCollectionResults({
   onRetry,
   onRefresh,
   showPipeline,
+  pagination,
   children,
 }: {
   kind: CrmKind;
@@ -359,6 +361,7 @@ function RecordCollectionResults({
   onRefresh: () => void;
   /** Open deals as a pipeline board instead of a list. */
   showPipeline: boolean;
+  pagination: AppTablePagination;
   /** The loaded list or pipeline board. */
   children: ReactNode;
 }) {
@@ -370,7 +373,11 @@ function RecordCollectionResults({
         error={error}
         onRetry={onRetry}
         loading={
-          showPipeline ? <DealPipelineLoading /> : <RecordList kind={kind} rows={[]} loading />
+          showPipeline ? (
+            <DealPipelineLoading />
+          ) : (
+            <RecordList kind={kind} rows={[]} pagination={pagination} loading />
+          )
         }
       />
       {stale && <StaleNotice onRetry={onRefresh}>These records may be out of date.</StaleNotice>}
