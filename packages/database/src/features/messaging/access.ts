@@ -352,9 +352,10 @@ export function mentionablePerson(
 /**
  * A live, active agent member of the conversation. Agent rows never grant access; callers add
  * the owner when only the owner may address the agent. `actor` is the participant's actor.
+ * `conversationId` is an ID or an outer conversation column.
  */
 export function liveAgentMember(
-  conversationId: string,
+  conversationId: string | SQLWrapper,
   {
     participant = messagingParticipants,
     actor = actors,

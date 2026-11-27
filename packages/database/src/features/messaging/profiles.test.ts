@@ -127,3 +127,28 @@ test("agent profiles show the owner to members and configuration only to the own
     agent: { ownerName: "Alice", harness: null, model: null },
   });
 });
+
+test("agent profiles resolve for members while the agent is a live member, before it writes", async () => {
+  await f.db.update(user).set({ emailVerified: true });
+  const [definition] = await f.db
+    .insert(userAgents)
+    .values({
+      userId: "alice",
+      name: "Research",
+      instructions: "",
+      avatarCode: "100000",
+      harness: "claude",
+    })
+    .returning();
+  const general = await chat("alice").createConversation({ kind: "channel", name: "general" });
+  const { actorId } = await chat("alice").addAgent(general.id, definition!.id);
+  expect(await chat("bob").getProfile(general.id, actorId)).toMatchObject({
+    type: "agent",
+    name: "Research",
+  });
+  // Once it leaves without writing, other members can no longer resolve it.
+  await chat("alice").removeAgent(general.id, actorId);
+  expect(await rejection(chat("bob").getProfile(general.id, actorId))).toBeInstanceOf(
+    AccessDeniedError,
+  );
+});

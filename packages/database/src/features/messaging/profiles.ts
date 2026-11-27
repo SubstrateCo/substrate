@@ -10,9 +10,14 @@ import type { DatabaseExecutor } from "../../core/executor";
 import { member } from "../../core/organizations/schema";
 import type { SessionIdentity } from "../../core/session/identity";
 import { AccessDeniedError } from "../../errors";
-import { visibleConversations } from "./access";
+import { liveAgentMember, visibleConversations } from "./access";
 import { directConversationId } from "./conversations/direct-messages";
-import { messagingConversations, messagingMessages, messagingReactions } from "./schema";
+import {
+  messagingConversations,
+  messagingMessages,
+  messagingParticipants,
+  messagingReactions,
+} from "./schema";
 import { and, eq, exists, isNull, or, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
@@ -84,8 +89,8 @@ async function profileActor(db: DatabaseExecutor, scope: SessionIdentity, actorE
 }
 
 // A viewer may see an actor's profile only through a conversation they can see, when the actor
-// wrote in it or is an active workspace actor with access to it. Before a local agent writes,
-// only its owner can resolve it; it sees what its owner sees.
+// wrote in it, is a live agent member of it, or is an active workspace actor with access to it.
+// Before a local agent writes or joins, only its owner can resolve it; it sees what its owner sees.
 async function requireProfileContext(
   db: DatabaseExecutor,
   scope: SessionIdentity,
@@ -127,6 +132,22 @@ async function requireProfileContext(
                 ),
               ),
           ),
+          actor.type === "agent"
+            ? exists(
+                db
+                  .select({ id: actors.entityId })
+                  .from(messagingParticipants)
+                  .innerJoin(actors, eq(actors.entityId, messagingParticipants.actorEntityId))
+                  .innerJoin(entities, eq(entities.entityId, actors.entityId))
+                  .where(
+                    and(
+                      liveAgentMember(conversationId),
+                      eq(actors.entityId, actor.entityId),
+                      isNull(entities.deletedAt),
+                    ),
+                  ),
+              )
+            : undefined,
           presentAllowed
             ? exists(
                 db

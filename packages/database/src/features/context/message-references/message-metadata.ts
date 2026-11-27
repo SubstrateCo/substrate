@@ -12,10 +12,11 @@ import type { RepositoryContext } from "../../../core/repository-context";
 import type { SessionIdentity } from "../../../core/session/identity";
 import { messageReferences } from "../../../core/text/references";
 import { crmAccounts, crmDeals } from "../../crm/schema";
-import { mentionablePerson, visibleConversations } from "../../messaging/access";
+import { liveAgentMember, mentionablePerson, visibleConversations } from "../../messaging/access";
 import {
   messagingConversations,
   messagingMessages,
+  messagingParticipants,
   messagingReactions,
 } from "../../messaging/schema";
 import { projects } from "../../projects/schema";
@@ -197,8 +198,9 @@ export async function messagePeople(
 
 /**
  * Mentioned agents, under the rule that resolves a conversation's profiles: the agent wrote or
- * reacted in the conversation, or it is an active agent of the viewer's workspace whose owner sees
- * the conversation, and the viewer owns it. Callers authorize every message.
+ * reacted in the conversation, it is a live member of it, or it is an active agent of the viewer's
+ * workspace whose owner sees the conversation, and the viewer owns it. Callers authorize every
+ * message.
  */
 export async function messageAgents(
   db: DatabaseExecutor,
@@ -252,6 +254,20 @@ export async function messageAgents(
                       eq(messagingMessages.authorActorEntityId, actors.entityId),
                     ),
                   ),
+              ),
+              and(
+                isNull(entities.deletedAt),
+                exists(
+                  db
+                    .select({ id: messagingParticipants.actorEntityId })
+                    .from(messagingParticipants)
+                    .where(
+                      and(
+                        liveAgentMember(messagingConversations.id),
+                        eq(messagingParticipants.actorEntityId, actors.entityId),
+                      ),
+                    ),
+                ),
               ),
               and(
                 eq(actors.organizationId, scope.organizationId),

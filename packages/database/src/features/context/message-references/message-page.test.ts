@@ -337,6 +337,32 @@ test("page agents resolve mentions with constant reads under the same rules as c
   expect((await context("bob").messagePage([elsewhere!.id]))[0]!.agents).toEqual([]);
 });
 
+test("page agents resolve for every member while the agent is a live member, before it writes", async () => {
+  const { chat, conversation } = await setup();
+  await chat.addMembers(conversation.id, ["bob@example.com"]);
+  const [definition] = await f.db
+    .insert(userAgents)
+    .values({
+      userId: "alice",
+      name: "Research",
+      instructions: "",
+      avatarCode: "100000",
+      harness: "claude",
+    })
+    .returning();
+  const { actorId } = await chat.addAgent(conversation.id, definition!.id);
+  const [mention] = await insertMessages(conversation.id, [`@[agent:${actorId}]`]);
+  const agentsFor = async () => (await context("bob").messagePage([mention!.id]))[0]!.agents;
+  expect(await agentsFor()).toEqual([{ id: actorId, name: "Research" }]);
+  // A disabled member agent no longer resolves.
+  await f.db.update(actors).set({ disabledAt: new Date() }).where(eq(actors.entityId, actorId));
+  expect(await agentsFor()).toEqual([]);
+  await f.db.update(actors).set({ disabledAt: null }).where(eq(actors.entityId, actorId));
+  // Once it leaves without writing, other members no longer resolve it.
+  await chat.removeAgent(conversation.id, actorId);
+  expect(await agentsFor()).toEqual([]);
+});
+
 test("page context deduplicates requested IDs in order and keeps people tokens within each message and conversation", async () => {
   const { chat, conversation } = await setup();
   await chat.addMembers(conversation.id, ["bob@example.com"]);
