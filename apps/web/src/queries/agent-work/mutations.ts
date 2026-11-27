@@ -150,6 +150,7 @@ export function useAttentionAction(userId: string, organizationId: string) {
   );
 }
 
+/** @public The New topic control is hidden for now; keep this for when it returns. */
 export const useNewTopic = (userId: string, organizationId: string) =>
   useWorkAction(userId, organizationId, (conversationId: string) =>
     startNewTopic({ data: { organizationId, conversationId } }),

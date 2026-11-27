@@ -17,7 +17,6 @@ import { RequestCard } from "./requests/request-card";
 import { TurnLabel, TurnStatus, TurnWork } from "./turn-work";
 import { useVisibleTurnStatuses } from "./use-visible-turn-statuses";
 import { WorkIndicator } from "./work-indicator";
-import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { noticeLines, noticeThread } from "@/lib/agent-work/composer-notice";
 import { conversationAgents } from "@/lib/agent-work/conversation-agents";
@@ -39,14 +38,12 @@ import {
 } from "@/lib/agent-work/status";
 import type { Conversation } from "@/lib/messaging/conversations";
 import { agentLink } from "@/lib/navigation/record-links";
-import { useNewTopic } from "@/queries/agent-work/mutations";
 import {
   agentStatusOptions,
   conversationRequestsOptions,
   conversationWorkOptions,
 } from "@/queries/agent-work/server";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
-import { toast } from "sonner";
 
 function messageWorkLookups(
   turns: readonly AgentWorkTurnView[],
@@ -124,7 +121,6 @@ export function ConversationAgentWork({
   const requests = useQuery(conversationRequestsOptions(userId, organizationId, conversation.id));
   const { data: statuses } = useQuery(agentStatusOptions(userId, organizationId));
   const statusByAgent = statusIndex(statuses);
-  const newTopic = useNewTopic(userId, organizationId);
   const turns = work.data?.turns ?? [];
   const sessions = new Map((work.data?.sessions ?? []).map((session) => [session.id, session]));
   const items = work.data?.items ?? [];
@@ -216,27 +212,8 @@ export function ConversationAgentWork({
           mood: status.tone === "working" ? "working" : null,
         };
       });
-    // Members list only the viewer's own agents, so the owner can reset their DM session.
-    const dmAgent =
-      (conversation.kind === "dm" || conversation.kind === "agent_dm") && threadId === null
-        ? members[0]
-        : undefined;
-    return (
-      <ComposerNotice
-        lines={lines}
-        startingTopic={newTopic.isPending}
-        onNewTopic={
-          dmAgent
-            ? () =>
-                newTopic.mutate(conversation.id, {
-                  onSuccess: () => toast.success(`${dmAgent.name} starts a new topic`),
-                  onError: (error) =>
-                    toast.error(actionErrorMessage(error, "We couldn’t start a new topic.")),
-                })
-            : undefined
-        }
-      />
-    );
+    // New topic is hidden for now; `useNewTopic` and the command stay in place.
+    return <ComposerNotice lines={lines} startingTopic={false} />;
   };
 
   return (

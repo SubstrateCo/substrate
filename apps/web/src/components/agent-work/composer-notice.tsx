@@ -91,16 +91,19 @@ export function ComposerNotice({
 }) {
   if (!lines.length && !onNewTopic) return null;
   return (
-    <div role="status" aria-label="Agent status" className="relative">
-      {!!lines.length && (
-        <div className="pointer-events-none absolute inset-x-4 bottom-full mb-3 flex flex-col items-start gap-1.5">
-          {lines.map((line) => (
-            <NoticePill key={line.key} line={line} />
-          ))}
-        </div>
-      )}
+    <div role="status" aria-label="Agent status" className="flex items-end gap-2 px-4">
+      {/* Anchored to the composer's top edge, beside the New topic row rather than above it. */}
+      <div className="relative min-w-0 flex-1 self-stretch">
+        {!!lines.length && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 mb-3 flex flex-col items-start gap-1.5">
+            {lines.map((line) => (
+              <NoticePill key={line.key} line={line} />
+            ))}
+          </div>
+        )}
+      </div>
       {onNewTopic && (
-        <div className="flex justify-end px-4 pt-2">
+        <div className="shrink-0 pt-2">
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
