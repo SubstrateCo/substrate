@@ -19,6 +19,7 @@ import { BackLink, PageHeader } from "@/components/layout/page-header";
 import { PageSheetHeader, PageSheetBody } from "@/components/layout/page-sheet";
 import { usePageSheet } from "@/components/layout/page-sheet-context";
 import { Property, PropertyList } from "@/components/layout/record-section";
+import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -106,7 +107,13 @@ export function RecordDetailView({
         }
         name={name}
         archived={archived}
-        summary={summary && <RecordSummary>{summary}</RecordSummary>}
+        summary={
+          summary && (
+            <RecordSummary>
+              <MessageMarkdown body={summary} />
+            </RecordSummary>
+          )
+        }
         properties={
           properties && (
             <RecordProperties>
@@ -406,7 +413,7 @@ function RecordTitle({
 }
 
 function RecordSummary({ children }: { children: ReactNode }) {
-  return <p className="text-sm/relaxed wrap-anywhere whitespace-pre-wrap">{children}</p>;
+  return <div className="min-w-0 wrap-anywhere">{children}</div>;
 }
 
 function RecordProperties({ children }: { children: ReactNode }) {
