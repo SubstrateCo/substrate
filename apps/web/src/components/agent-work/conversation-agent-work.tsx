@@ -231,7 +231,9 @@ export function ConversationAgentWork({
               {created.map((request) => {
                 const link = proposalSourceLink(organizationId, request);
                 return (
-                  <ProposalBacklink key={`b${request.id}`} link={link?.link} label={link?.label} />
+                  <div key={`b${request.id}`} className="pr-4 pl-16">
+                    <ProposalBacklink link={link?.link} label={link?.label} />
+                  </div>
                 );
               })}
               {waiting.map((item) => {
@@ -242,18 +244,19 @@ export function ConversationAgentWork({
                 const sameAgent = itemsByAgent.get(agentId) ?? [];
                 const status = statusByAgent?.get(agentId);
                 return (
-                  <InboxReceipt
-                    key={item.id}
-                    item={item}
-                    agentId={agentId}
-                    asReply={asReply}
-                    context={{
-                      agentName: name(agentId),
-                      ahead: queueAhead(item, sameAgent),
-                      busy: status?.state === "working",
-                      device: status?.device,
-                    }}
-                  />
+                  <div key={item.id} className={asReply ? undefined : "pr-4 pl-16"}>
+                    <InboxReceipt
+                      item={item}
+                      agentId={agentId}
+                      asReply={asReply}
+                      context={{
+                        agentName: name(agentId),
+                        ahead: queueAhead(item, sameAgent),
+                        busy: status?.state === "working",
+                        device: status?.device,
+                      }}
+                    />
+                  </div>
                 );
               })}
               {placed.map((turn) => (
@@ -269,7 +272,9 @@ export function ConversationAgentWork({
                 />
               ))}
               {requestCards.map((request) => (
-                <RequestCard key={request.id} request={request} />
+                <div key={request.id} className="pr-4 pl-16">
+                  <RequestCard request={request} />
+                </div>
               ))}
             </>
           );
@@ -297,9 +302,8 @@ export function ConversationAgentWork({
           return turn ? turnMood(turn, openRequest(turn.id)) : null;
         },
         pendingReply: (messageId) =>
-          (placements.get(messageId) ?? []).some(
-            (turn) => turnTone(turn, openRequest(turn.id)) !== "muted",
-          ) || (waitingItems.get(messageId) ?? []).some((item) => queuedReplies.has(item.id)),
+          !!placements.get(messageId)?.length ||
+          (waitingItems.get(messageId) ?? []).some((item) => queuedReplies.has(item.id)),
         notice,
       }}
     >

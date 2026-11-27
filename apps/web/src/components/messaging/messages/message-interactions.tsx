@@ -33,7 +33,7 @@ export function MessageToolbar({
     <div
       role="group"
       aria-label="Message actions"
-      className="absolute -top-5 right-4 z-10 flex w-fit items-center gap-0.5 rounded-lg border bg-popover p-0.5 text-popover-foreground shadow-raised transition-opacity duration-100 group-hover/message:group-not-has-[[data-nested-row]:hover]/message:opacity-100 group-has-focus-visible/message:opacity-100 has-data-[state=open]:opacity-100 motion-reduce:transition-none max-sm:pointer-coarse:static max-sm:pointer-coarse:mt-1 [@media(hover:hover)]:opacity-0"
+      className="absolute -top-5 right-4 z-10 flex w-fit items-center gap-0.5 rounded-lg border bg-popover p-0.5 text-popover-foreground shadow-raised transition-opacity duration-100 group-hover/message:opacity-100 group-has-focus-visible/message:opacity-100 has-data-[state=open]:opacity-100 motion-reduce:transition-none max-sm:pointer-coarse:static max-sm:pointer-coarse:mt-1 [@media(hover:hover)]:opacity-0"
     >
       {canReact &&
         quickReactions.map(({ emoji, name }) => {

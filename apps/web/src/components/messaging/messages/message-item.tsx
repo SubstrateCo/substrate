@@ -169,7 +169,6 @@ export function MessageItem({
           onReact={canPost ? react : undefined}
           pending={reaction.isPending}
         >
-          <AgentWorkSlot messageId={message.id} fromAgent={message.authorType === "agent"} />
           {canPost && dialog?.kind === "delete" && (
             <ConfirmDialog
               destructive
@@ -201,6 +200,7 @@ export function MessageItem({
             />
           )}
         </MessageItemView>
+        <AgentWorkSlot messageId={message.id} fromAgent={message.authorType === "agent"} />
       </PersonCardProvider>
     </LinkedMessage>
   );

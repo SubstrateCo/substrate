@@ -125,8 +125,8 @@ function TurnBody({
 
 /**
  * One turn's body, where it belongs: its error and attention card under the agent's reply,
- * whose header shows the status. Before the agent replies, a pending reply under the owner
- * message that started it stands in, with the status in its own header.
+ * whose header shows the status. Before the agent replies, a separate reply row after the
+ * source message stands in. Quiet turns keep their result in that same row.
  */
 export function TurnWork({
   agentName,
@@ -145,9 +145,20 @@ export function TurnWork({
   // Only the owner sees agent work, so the agent is in the viewer's own catalog.
   const { data: avatar } = useQuery(agentAvatarQueryOptions(userId, turn.userAgentId));
   const tone = turnTone(turn, openRequest);
-  if (tone === "muted") return <MutedWorkLine label={silentLabel} />;
+  if (underReply)
+    return (
+      <div className="pr-4 pl-16">
+        {tone === "muted" ? (
+          <MutedWorkLine label={silentLabel} />
+        ) : (
+          <TurnBody turn={turn} agentName={agentName} uncertainItemIds={uncertainItemIds} />
+        )}
+      </div>
+    );
   const body = <TurnBody turn={turn} agentName={agentName} uncertainItemIds={uncertainItemIds} />;
-  if (underReply) return body;
+  let line: string | undefined;
+  if (tone === "muted") line = silentLabel;
+  else if (tone === "working") line = activityLine(turn);
   return (
     <PendingReply
       name={agentName}
@@ -155,7 +166,7 @@ export function TurnWork({
       mood={turnMood(turn, openRequest)}
       tone={tone}
       status={<TurnStatus {...props} inlineActivity={false} />}
-      line={tone === "working" ? activityLine(turn) : undefined}
+      line={line}
     >
       {body}
     </PendingReply>

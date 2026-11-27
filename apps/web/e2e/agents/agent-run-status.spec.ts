@@ -139,12 +139,12 @@ test("a queued status expanding the last message stays fully visible at the bott
     conversationId: channel.id,
     body: `${mention} ${body}`,
   });
-  const message = user.page.getByRole("article").filter({ hasText: body });
-  await expect(message.getByText("Queued", { exact: true })).toBeVisible();
+  const pending = user.page.getByRole("region", { name: "Jarvis reply", exact: true });
+  await expect(pending.getByText("Queued", { exact: true })).toBeVisible();
   expect(await timeline.evaluate((element) => element.scrollHeight > element.clientHeight)).toBe(
     true,
   );
-  await expect(message.getByText("Queued", { exact: true })).toBeInViewport({ ratio: 1 });
+  await expect(pending.getByText("Queued", { exact: true })).toBeInViewport({ ratio: 1 });
   await expect
     .poll(() =>
       timeline.evaluate(
@@ -153,6 +153,53 @@ test("a queued status expanding the last message stays fully visible at the bott
     )
     .toBeLessThanOrEqual(1);
   await captureScreenshot(user.page, "agent-queued-status-last-message");
+});
+
+test("quiet agent work stays in its own message row between human messages", async ({
+  actors,
+  client,
+}) => {
+  const owner = actors.sender;
+  const agent = await createAgent(owner, "Jarvis");
+  const channel = await conversation(owner, [actors.member.email]);
+  await addAgent(owner, channel.id, agent.id);
+  const mention = await agentMention(owner, channel.id, agent.id);
+  const root = await post<{ id: string }>(owner, "messaging/messages", {
+    conversationId: channel.id,
+    body: `${mention} Check the release notes.`,
+  });
+  const turn = await claimTurn(owner, agent, {
+    id: root.id,
+    conversationId: channel.id,
+    threadId: null,
+  });
+  const user = await client(owner);
+  await visit(user, channel.id);
+  const pending = user.page.getByRole("region", { name: "Jarvis reply", exact: true });
+  await expect(pending.getByRole("button", { name: /Working ·/ })).toBeVisible();
+  await post(actors.member, "messaging/messages", {
+    conversationId: channel.id,
+    body: "We still need the desktop app.",
+  });
+  await post(owner, "messaging/messages", {
+    conversationId: channel.id,
+    body: "Yes, let the agent decide.",
+  });
+  await finishTurn(owner, turn, { status: "completed", outcome: "silent" });
+  await expect(pending.getByText("Checked · nothing to report", { exact: true })).toBeVisible();
+  // Agent work is a sibling row, not nested in any user's article.
+  await expect(user.page.getByRole("article").filter({ has: pending })).toHaveCount(0);
+  await expect(pending.getByRole("article")).toHaveCount(1);
+  await expect(pending.getByText("We still need the desktop app.")).toHaveCount(0);
+  await expect(pending.getByText("Yes, let the agent decide.")).toHaveCount(0);
+  const followUp = user.page.getByRole("article").filter({ hasText: "Yes, let the agent decide." });
+  await expect(followUp.getByText(owner.name, { exact: true })).toBeVisible();
+  const agentBox = await pending.boundingBox();
+  const memberBox = await user.page
+    .getByRole("article")
+    .filter({ hasText: "We still need the desktop app." })
+    .boundingBox();
+  expect(agentBox!.y + agentBox!.height).toBeLessThanOrEqual(memberBox!.y);
 });
 
 test("finished work moves to the published result and keeps its existing transcript link", async ({
