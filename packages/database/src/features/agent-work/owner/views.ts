@@ -421,21 +421,21 @@ export async function conversationWork(
     .orderBy(desc(agentSessions.updatedAt), desc(agentSessions.id));
   const ids = rows.map((session) => session.id);
   if (!ids.length) return { conversationId, sessions: [], turns: [], items: [] };
-  const [turns, items] = await Promise.all([
-    db
-      .select()
-      .from(agentTurns)
-      .where(inArray(agentTurns.sessionId, ids))
-      .orderBy(desc(agentTurns.createdAt), desc(agentTurns.id))
-      .limit(conversationTurnLimit),
-    db
-      .select()
-      .from(agentWorkItems)
-      .where(
-        and(inArray(agentWorkItems.sessionId, ids), inArray(agentWorkItems.status, openStatuses)),
-      )
-      .orderBy(asc(agentWorkItems.createdAt), asc(agentWorkItems.id)),
-  ]);
+  // Read the queue first. If the host consumes an item between these reads, its turn is
+  // already committed when we load turns. The reverse order can miss both item and turn.
+  const items = await db
+    .select()
+    .from(agentWorkItems)
+    .where(
+      and(inArray(agentWorkItems.sessionId, ids), inArray(agentWorkItems.status, openStatuses)),
+    )
+    .orderBy(asc(agentWorkItems.createdAt), asc(agentWorkItems.id));
+  const turns = await db
+    .select()
+    .from(agentTurns)
+    .where(inArray(agentTurns.sessionId, ids))
+    .orderBy(desc(agentTurns.createdAt), desc(agentTurns.id))
+    .limit(conversationTurnLimit);
   const sessions = new Map(rows.map((session) => [session.id, session]));
   const visible = await sessionVisibility(db, identity, rows);
   return {

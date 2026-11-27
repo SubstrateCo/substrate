@@ -1,7 +1,7 @@
 import { sessionKeys } from "@substrate/contracts/agent-work";
 
 import { AccessDeniedError, ValidationError } from "../../../errors";
-import { agentTurns } from "../../../schema";
+import { agentTurns, agentWorkItems } from "../../../schema";
 import { hostWork, ownerAgentWork } from "../../../testing/agent-work";
 import { setupDatabase } from "../../../testing/database";
 import { hostFixture } from "../../../testing/host";
@@ -9,10 +9,71 @@ import { rejection } from "../../../testing/rejection";
 import { insertTurn } from "../../../testing/turns";
 import { executeAgentTool } from "../../mcp/execution";
 import { activityPageSize } from "./views";
-import { expect, test } from "bun:test";
+import { expect, spyOn, test } from "bun:test";
 import { eq } from "drizzle-orm";
+import { drizzle } from "drizzle-orm/postgres-js";
 
 const f = setupDatabase();
+
+test("conversation work keeps its source visible when the host consumes it during the read", async () => {
+  const x = await views();
+  const message = await x.alice.sendMessage(x.dm.id, "Start working");
+  const host = await hostWork(f.db, x.agent.identity);
+  const db = drizzle(f.db.$client);
+  const owner = await ownerAgentWork(db, { userId: "alice", organizationId: f.orgA });
+  const select = db.select.bind(db);
+  // Force the host's real writes between the first and second queue/turn snapshots.
+  // Serializing these reads models a valid schedule even when the view starts them together.
+  let reads = Promise.resolve();
+  let advanced = false;
+  const intercept = (fields?: Parameters<typeof select>[0]) => {
+    const builder = fields ? select(fields) : select();
+    const from = builder.from.bind(builder);
+    // SAFETY: The wrapper forwards the original table and preserves the builder's result type.
+    builder.from = ((table: Parameters<typeof from>[0]) => {
+      const query = from(table);
+      if (table === agentTurns || table === agentWorkItems) {
+        const execute = query.execute.bind(query);
+        query.execute = async (...input: Parameters<typeof execute>) => {
+          if (advanced) return execute(...input);
+          const result = reads.then(async () => {
+            const rows = await execute(...input);
+            if (advanced) return rows;
+            advanced = true;
+            const [claimed] = await x.claim();
+            await host.start(claimed!.turn.id, { attempt: 1, droppedItemIds: [] });
+            await host.progress(claimed!.turn.id, {
+              attempt: 1,
+              consumedItemIds: claimed!.items.map((item) => item.id),
+            });
+            return rows;
+          });
+          reads = result.then(() => {});
+          return result;
+        };
+      }
+      return query;
+    }) as typeof builder.from;
+    return builder;
+  };
+  // SAFETY: The interceptor forwards both select overloads without changing their selection.
+  const read = spyOn(db, "select").mockImplementation(intercept as typeof db.select);
+  try {
+    const work = await owner.conversationWork(x.dm.id);
+    expect(advanced).toBe(true);
+    expect(
+      work.items.some(
+        (item) =>
+          item.sourceRef?.source === "owner_message" && item.sourceRef.messageId === message.id,
+      ) ||
+        work.turns.some((turn) =>
+          turn.sourceMessages.some((source) => source.messageId === message.id),
+        ),
+    ).toBe(true);
+  } finally {
+    read.mockRestore();
+  }
+});
 
 async function views() {
   const x = await hostFixture(f);
