@@ -16,22 +16,24 @@ export function MessageLoading({ label }: { label: string }) {
         {[0, 1, 2, 3].map((index) => (
           <MessageRowLayout
             key={index}
-            avatar={
-              <div className="relative mt-0.5 size-9 shrink-0 overflow-hidden rounded-full">
-                <Skeleton className="size-full" />
-              </div>
-            }
-            byline={
-              <>
-                {/* oxlint-disable-next-line design/no-decorative-class -- The message author. */}
-                <span className="text-sm font-semibold">
-                  <SkeletonText width="7rem" />
-                </span>
-                <span className="text-xs">
-                  <SkeletonText width="3rem" />
-                </span>
-              </>
-            }
+            author={{
+              avatar: (
+                <div className="relative mt-0.5 size-9 shrink-0 overflow-hidden rounded-full">
+                  <Skeleton className="size-full" />
+                </div>
+              ),
+              byline: (
+                <>
+                  {/* oxlint-disable-next-line design/no-decorative-class -- The message author. */}
+                  <span className="text-sm font-semibold">
+                    <SkeletonText width="7rem" />
+                  </span>
+                  <span className="text-xs">
+                    <SkeletonText width="3rem" />
+                  </span>
+                </>
+              ),
+            }}
           >
             <div className="text-sm">
               <SkeletonText width={index % 2 ? "14rem" : "22rem"} />

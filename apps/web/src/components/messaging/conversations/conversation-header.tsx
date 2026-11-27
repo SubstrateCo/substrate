@@ -5,13 +5,13 @@ import { useRef, type ReactNode } from "react";
 import { ownOrganizationFirst, type ChannelOrganization } from "./channel-organizations";
 import { ConversationKindIcon } from "./conversation-kind-icon";
 import { ConversationOrganizations } from "./conversation-organizations";
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { Tag } from "@/components/feedback/tag";
 import { PageHeader } from "@/components/layout/page-header";
-import { PersonAvatar } from "@/components/people/person-avatar";
+import { ActorAvatar, ActorKindSuffix } from "@/components/people/actor-avatar";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { actorIdentity } from "@/lib/actors/identity";
 import type { ConversationVisibility } from "@/lib/messaging/conversations";
 import { ListTodo, UserPlus, Users } from "lucide-react";
 
@@ -31,11 +31,6 @@ export type HeaderMember = {
 
 /** Marks the members button, so focus can return to it after the member list closes. */
 export const membersButtonSelector = "[data-conversation-members]";
-
-function MemberAvatar({ member }: { member: HeaderMember }) {
-  if (member.type === "agent") return <AgentAvatarView avatar={member.avatar ?? null} />;
-  return <PersonAvatar name={member.name} image={member.image} />;
-}
 
 /** Who can read here: a count that opens the member list. */
 function MembersButton({
@@ -91,7 +86,7 @@ function MembersButton({
                   key={member.actorId}
                   className="group/row flex h-9 items-center gap-2 rounded-md px-2 text-sm"
                 >
-                  <MemberAvatar member={member} />
+                  <ActorAvatar actor={actorIdentity(member)} />
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <span
@@ -99,7 +94,7 @@ function MembersButton({
                         tabIndex={0}
                       >
                         {member.name}
-                        {member.type === "agent" && <span className="sr-only">, Agent</span>}
+                        <ActorKindSuffix actor={actorIdentity(member)} />
                       </span>
                     </TooltipTrigger>
                     <TooltipContent>{member.name}</TooltipContent>
@@ -143,7 +138,6 @@ export function ConversationHeader({
   addMembers,
   actions,
   renderMemberAction,
-  taskLink,
 }: {
   title: ReactNode;
   /** Omitted while the conversation is unavailable. */
@@ -155,44 +149,50 @@ export function ConversationHeader({
   addMembers?: ReactNode;
   actions?: ReactNode;
   renderMemberAction?: (member: HeaderMember) => ReactNode;
-  taskLink?: ReactNode;
 }) {
   const dm = visibility?.kind === "dm" || visibility?.kind === "agent_dm";
   const dmMembers = dm ? members.filter((member) => !viewerId || member.userId !== viewerId) : [];
   const dmPartner = dmMembers.length === 1 ? dmMembers[0] : undefined;
-  let icon = visibility && <ConversationKindIcon {...visibility} />;
-  if (dmPartner) icon = <MemberAvatar member={dmPartner} />;
-  if (taskLink) icon = <ListTodo aria-hidden="true" />;
   return (
     <PageHeader
       variant="pane"
       title={
-        taskLink ??
-        (visibility?.kind === "agent_dm" ? (
+        visibility?.kind === "agent_dm" ? (
           <>
             {title} <Tag>Agent DM</Tag>
           </>
         ) : (
           title
-        ))
+        )
       }
-      icon={icon}
+      icon={
+        dmPartner ? (
+          <ActorAvatar actor={actorIdentity(dmPartner)} />
+        ) : (
+          visibility && <ConversationKindIcon {...visibility} />
+        )
+      }
       actions={
         <>
-          {!taskLink && organizations.length > 1 && (
+          {organizations.length > 1 && (
             <ConversationOrganizations organizations={organizations} members={members} />
           )}
-          {!taskLink && members.length > 0 && !dm && (
+          {members.length > 0 && !dm && (
             <MembersButton
               members={members}
               organizations={organizations}
               renderMemberAction={renderMemberAction}
             />
           )}
-          {!taskLink && addMembers}
+          {addMembers}
           {actions}
         </>
       }
     />
   );
+}
+
+/** A task discussion's header: the link back to its task. */
+export function TaskDiscussionHeader({ taskLink }: { taskLink: ReactNode }) {
+  return <PageHeader variant="pane" title={taskLink} icon={<ListTodo aria-hidden="true" />} />;
 }

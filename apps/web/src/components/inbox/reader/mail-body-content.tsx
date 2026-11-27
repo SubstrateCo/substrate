@@ -1,5 +1,7 @@
 import type { MailBody } from "@substrate/contracts/mail";
 
+import type { ReactNode } from "react";
+
 import { Newsletter } from "./newsletter";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "@/components/ui/collapsible";
@@ -44,48 +46,57 @@ export function MailBodyContent({ body, id }: { body: MailBody; id: string }) {
     );
   return (
     <div className="min-w-0 space-y-3 text-sm/6 wrap-anywhere">
-      {detail ? (
-        <>
-          <section
-            aria-label="Meeting details"
-            className="space-y-3 rounded-lg border bg-background p-4"
-          >
-            <div className="flex items-start gap-2">
-              <CalendarDays aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
-              <div>
-                <p className="font-medium">{detail.when}</p>
-                {detail.zone && <p className="text-xs text-muted-foreground">{detail.zone}</p>}
-                {detail.changed && (
-                  <p className="mt-1 text-xs text-muted-foreground">{detail.changed}</p>
-                )}
-              </div>
-            </div>
-            <div className="flex flex-wrap items-center gap-3">
-              <Button asChild size="sm">
-                <a href={detail.meet} target="_blank" rel="noopener noreferrer">
-                  <Video aria-hidden />
-                  Join Google Meet
-                </a>
-              </Button>
-              {detail.reschedule && <TextLink href={detail.reschedule}>Reschedule</TextLink>}
-              {detail.cancel && <TextLink href={detail.cancel}>Cancel meeting</TextLink>}
-            </div>
-          </section>
-          <Collapsible>
-            <CollapsibleTrigger asChild>
-              <Button variant="disclosure" size="sm" className="group">
-                <ChevronRight aria-hidden className="group-aria-expanded:rotate-90" />
-                Full invitation
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent>
-              <div className="space-y-2 pt-2">{content}</div>
-            </CollapsibleContent>
-          </Collapsible>
-        </>
-      ) : (
-        content
-      )}
+      {detail ? <MeetingInvitation detail={detail}>{content}</MeetingInvitation> : content}
     </div>
+  );
+}
+
+/** A meeting invitation: its details and join link, with the full message folded below. */
+function MeetingInvitation({
+  detail,
+  children,
+}: {
+  detail: NonNullable<ReturnType<typeof meetingDetails>>;
+  children: ReactNode;
+}) {
+  return (
+    <>
+      <section
+        aria-label="Meeting details"
+        className="space-y-3 rounded-lg border bg-background p-4"
+      >
+        <div className="flex items-start gap-2">
+          <CalendarDays aria-hidden className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+          <div>
+            <p className="font-medium">{detail.when}</p>
+            {detail.zone && <p className="text-xs text-muted-foreground">{detail.zone}</p>}
+            {detail.changed && (
+              <p className="mt-1 text-xs text-muted-foreground">{detail.changed}</p>
+            )}
+          </div>
+        </div>
+        <div className="flex flex-wrap items-center gap-3">
+          <Button asChild size="sm">
+            <a href={detail.meet} target="_blank" rel="noopener noreferrer">
+              <Video aria-hidden />
+              Join Google Meet
+            </a>
+          </Button>
+          {detail.reschedule && <TextLink href={detail.reschedule}>Reschedule</TextLink>}
+          {detail.cancel && <TextLink href={detail.cancel}>Cancel meeting</TextLink>}
+        </div>
+      </section>
+      <Collapsible>
+        <CollapsibleTrigger asChild>
+          <Button variant="disclosure" size="sm" className="group">
+            <ChevronRight aria-hidden className="group-aria-expanded:rotate-90" />
+            Full invitation
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <div className="space-y-2 pt-2">{children}</div>
+        </CollapsibleContent>
+      </Collapsible>
+    </>
   );
 }

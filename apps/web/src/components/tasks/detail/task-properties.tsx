@@ -11,9 +11,8 @@ import { TaskPriorityIcon } from "../task-cues/task-priority-icon";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { ProjectDetail, Task, TaskDraft } from "../types";
 import { TaskDueDatePicker } from "./task-due-date-picker";
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { NotSet, Property, PropertyList } from "@/components/layout/record-section";
-import { PersonAvatar } from "@/components/people/person-avatar";
+import { ActorAvatar, ActorKindSuffix } from "@/components/people/actor-avatar";
 import { DueDate } from "@/components/time/due-date";
 import { Button } from "@/components/ui/button";
 import {
@@ -23,6 +22,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { actorIdentity, actorLabel } from "@/lib/actors/identity";
 import { formatDueDate } from "@/lib/format/date";
 import { CalendarDays, ChevronDown } from "lucide-react";
 
@@ -82,101 +82,127 @@ export function TaskProperties({
   canEdit: boolean;
   onChange: (patch: Partial<TaskDraft>) => void;
 }) {
-  const assignee = detail.actors.find((actor) => actor.entityId === task.assigneeActorEntityId);
-  const assigneeText = assigneeLabel(task.assigneeActorEntityId, detail.actors);
-  const assigneeValue = (
-    <>
-      {assignee?.type === "agent" ? (
-        <AgentAvatarView avatar={assignee.avatar} size="xs" />
-      ) : (
-        <PersonAvatar size="xs" name={assignee?.name} image={assignee?.image} />
-      )}
-      <span className={`truncate ${assignee ? "" : "text-muted-foreground"}`}>{assigneeText}</span>
-      {assignee?.type === "agent" && <span className="sr-only">, Agent</span>}
-    </>
+  if (canEdit) return <EditableTaskProperties detail={detail} task={task} onChange={onChange} />;
+  return <ReadOnlyTaskProperties detail={detail} task={task} />;
+}
+
+function taskAssignee(detail: ProjectDetail, task: Task) {
+  const assigned = detail.actors.find((actor) => actor.entityId === task.assigneeActorEntityId);
+  return {
+    actor: assigned && actorIdentity(assigned),
+    text: assigneeLabel(task.assigneeActorEntityId, detail.actors),
+  };
+}
+
+function AssigneeValue({ assignee }: { assignee: ReturnType<typeof taskAssignee> }) {
+  return (
+    <span className="flex min-w-0 items-center gap-2">
+      <ActorAvatar actor={assignee.actor} size="xs" />
+      <span className={`truncate ${assignee.actor ? "" : "text-muted-foreground"}`}>
+        {assignee.text}
+      </span>
+      <ActorKindSuffix actor={assignee.actor} />
+    </span>
   );
-  const dueValue = task.dueDate ? <DueDate value={task.dueDate} /> : <NotSet />;
+}
+
+function DueValue({ value }: { value: string | null }) {
+  return (
+    <span className="flex items-center gap-2">
+      <CalendarDays aria-hidden="true" className="size-3.5 text-muted-foreground" />
+      {value ? <DueDate value={value} /> : <NotSet />}
+    </span>
+  );
+}
+
+function EditableTaskProperties({
+  detail,
+  task,
+  onChange,
+}: {
+  detail: ProjectDetail;
+  task: Task;
+  onChange: (patch: Partial<TaskDraft>) => void;
+}) {
+  const assignee = taskAssignee(detail, task);
   return (
     <PropertyList>
       <Property label="Status">
-        {canEdit ? (
-          <PropertySelect
-            label="Status"
-            value={task.status}
-            options={taskStatusOptions}
-            onChange={(status) => onChange({ status })}
-          />
-        ) : (
-          <span className="flex items-center gap-2">
-            <TaskStatusIcon status={task.status} />
-            {taskStatusLabels[task.status]}
-          </span>
-        )}
+        <PropertySelect
+          label="Status"
+          value={task.status}
+          options={taskStatusOptions}
+          onChange={(status) => onChange({ status })}
+        />
       </Property>
       <Property label="Priority">
-        {canEdit ? (
-          <PropertySelect
-            label="Priority"
-            value={task.priority}
-            options={taskPriorityOptions}
-            onChange={(priority) => onChange({ priority })}
-          />
-        ) : (
-          <span className="flex items-center gap-2">
-            <TaskPriorityIcon priority={task.priority} />
-            {taskPriorityLabels[task.priority]}
-          </span>
-        )}
+        <PropertySelect
+          label="Priority"
+          value={task.priority}
+          options={taskPriorityOptions}
+          onChange={(priority) => onChange({ priority })}
+        />
       </Property>
       <Property label="Assignee">
-        {canEdit ? (
-          <AssigneePicker
-            value={task.assigneeActorEntityId}
-            assignees={assignableActors(detail, task.assigneeActorEntityId)}
-            onChange={(assigneeActorEntityId) => onChange({ assigneeActorEntityId })}
-            trigger={
-              <Button
-                type="button"
-                variant="property"
-                size="sm"
-                role="combobox"
-                aria-label={`Assignee: ${assigneeText}${assignee?.type === "agent" ? ", Agent" : ""}`}
-                className={trigger}
-              />
-            }
-          >
-            <span className="flex min-w-0 items-center gap-2">{assigneeValue}</span>
-          </AssigneePicker>
-        ) : (
-          <span className="flex min-w-0 items-center gap-2">{assigneeValue}</span>
-        )}
-      </Property>
-      <Property label="Due date">
-        {canEdit ? (
-          <TaskDueDatePicker value={task.dueDate} onChange={(dueDate) => onChange({ dueDate })}>
+        <AssigneePicker
+          value={task.assigneeActorEntityId}
+          assignees={assignableActors(detail, task.assigneeActorEntityId)}
+          onChange={(assigneeActorEntityId) => onChange({ assigneeActorEntityId })}
+          trigger={
             <Button
               type="button"
               variant="property"
               size="sm"
-              aria-label={`Due date: ${dueText(task.dueDate)}`}
-              className={`${trigger} group/property`}
-            >
-              <span className="flex items-center gap-2">
-                <CalendarDays aria-hidden="true" className="text-muted-foreground" />
-                {dueValue}
-              </span>
-              <ChevronDown
-                aria-hidden="true"
-                className="text-muted-foreground opacity-0 group-hover/property:opacity-100 group-focus-visible/property:opacity-100"
-              />
-            </Button>
-          </TaskDueDatePicker>
-        ) : (
-          <span className="flex items-center gap-2">
-            <CalendarDays aria-hidden="true" className="size-4 text-muted-foreground" />
-            {dueValue}
-          </span>
-        )}
+              role="combobox"
+              aria-label={actorLabel(assignee.actor, `Assignee: ${assignee.text}`)}
+              className={trigger}
+            />
+          }
+        >
+          <AssigneeValue assignee={assignee} />
+        </AssigneePicker>
+      </Property>
+      <Property label="Due date">
+        <TaskDueDatePicker value={task.dueDate} onChange={(dueDate) => onChange({ dueDate })}>
+          <Button
+            type="button"
+            variant="property"
+            size="sm"
+            aria-label={`Due date: ${dueText(task.dueDate)}`}
+            className={`${trigger} group/property`}
+          >
+            <DueValue value={task.dueDate} />
+            <ChevronDown
+              aria-hidden="true"
+              className="text-muted-foreground opacity-0 group-hover/property:opacity-100 group-focus-visible/property:opacity-100"
+            />
+          </Button>
+        </TaskDueDatePicker>
+      </Property>
+    </PropertyList>
+  );
+}
+
+function ReadOnlyTaskProperties({ detail, task }: { detail: ProjectDetail; task: Task }) {
+  return (
+    <PropertyList>
+      <Property label="Status">
+        <span className="flex items-center gap-2">
+          <TaskStatusIcon status={task.status} />
+          {taskStatusLabels[task.status]}
+        </span>
+      </Property>
+      <Property label="Priority">
+        <span className="flex items-center gap-2">
+          <TaskPriorityIcon priority={task.priority} />
+          {taskPriorityLabels[task.priority]}
+        </span>
+      </Property>
+      <Property label="Assignee">
+        <AssigneeValue assignee={taskAssignee(detail, task)} />
+      </Property>
+      <Property label="Due date">
+        <DueValue value={task.dueDate} />
       </Property>
     </PropertyList>
   );

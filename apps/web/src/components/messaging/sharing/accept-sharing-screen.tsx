@@ -3,8 +3,13 @@ import { Link, linkOptions, useRouter } from "@tanstack/react-router";
 
 import { useState, type ReactNode } from "react";
 
-import type { SharingAcceptance, SharingInvitation } from "@/api/messaging/sharing";
-import { ApiError } from "@/api/result";
+import {
+  invitationOutcome,
+  isPermanentFailure,
+  type AcceptedWorkspace,
+  type InvitationOutcome,
+} from "./invitation-outcome";
+import type { SharingInvitation } from "@/api/messaging/sharing";
 import { AuthFrame } from "@/components/auth/auth-frame";
 import { AuthNavLink } from "@/components/auth/auth-link";
 import { SignOutButton } from "@/components/auth/sign-out/sign-out-button";
@@ -24,19 +29,6 @@ import {
 } from "@/queries/messaging/sharing-mutations";
 import { organizationsQueryOptions } from "@/queries/organizations/options";
 import { RefreshCw } from "lucide-react";
-
-/** A 4xx other than a timeout or rate limit will not change on retry. */
-function isPermanentFailure(error: Error | null) {
-  return (
-    error instanceof ApiError &&
-    error.status >= 400 &&
-    error.status < 500 &&
-    error.status !== 408 &&
-    error.status !== 429
-  );
-}
-
-type AcceptedWorkspace = { organizationId: string; conversationId: string | null };
 
 function useSharingActivation() {
   const activate = useActivateSharingOrganization();
@@ -69,25 +61,21 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
   const accept = useAcceptSharingInvitation(invitationId, organizationId);
   const decline = useDeclineSharingInvitation(invitationId);
   const path = `/accept-sharing/${invitationId}`;
-  const declined = decline.isSuccess;
-  const { available, accepted, missing, waitingForApproval, formOwnsError } = invitationState({
+  const outcome = invitationOutcome({
     invitation: invite.data,
     result: accept.data,
     now,
-    declined,
-    loading: invite.isPending,
+    declined: decline.isSuccess,
     error: invite.error,
   });
   const mutationError = accept.error ?? decline.error ?? activate.error;
   const retry = () => void invite.refetch();
+  const copy =
+    outcome.kind === "missing" || outcome.kind === "closed" ? unavailableCopy : invitationCopy;
   return (
     <AuthFrame
-      title={missing ? "This invitation isn’t available" : "External collaboration invitation"}
-      description={
-        missing
-          ? "It may have expired or been sent to another email. Sign in with the invited email, or ask the sender for a new invitation."
-          : "Join from your own workspace. You won’t become a member of the inviting workspace."
-      }
+      title={copy.title}
+      description={copy.description}
       actions={
         <>
           <AuthNavLink to="/organizations">Workspaces</AuthNavLink>
@@ -103,19 +91,14 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
           onRetry={() => void organizations.refetch()}
         />
       )}
-      <InvitationOutcome
-        declined={declined}
-        accepted={accepted}
-        waitingForApproval={waitingForApproval}
-        canRespond={available}
-        found={!!invite.data}
+      <InvitationOutcomeView
+        outcome={outcome}
         opening={activate.isPending}
         onOpen={activateShared}
         onCheckApproval={retry}
-      >
-        {invite.data && (
+        renderForm={(invitation) => (
           <SharingAcceptanceForm
-            invitation={invite.data}
+            invitation={invitation}
             organizations={organizations.data ?? []}
             organizationId={organizationId}
             confirmed={confirmed}
@@ -133,73 +116,40 @@ export function AcceptSharingScreen({ invitationId }: { invitationId: string }) 
             onDecline={() => decline.mutate()}
           />
         )}
-      </InvitationOutcome>
-      {!formOwnsError && <FormMessage error={mutationError} />}
+      />
+      {/* The form shows its own error. */}
+      {outcome.kind !== "respond" && <FormMessage error={mutationError} />}
     </AuthFrame>
   );
 }
 
-function invitationState({
-  invitation,
-  result,
-  now,
-  declined,
-  loading,
-  error,
-}: {
-  invitation: SharingInvitation | undefined;
-  result: SharingAcceptance | undefined;
-  now: number;
-  declined: boolean;
-  loading: boolean;
-  error: Error | null;
-}) {
-  const available =
-    invitation?.status === "pending" && new Date(invitation.expiresAt).getTime() > now;
-  const waitingForApproval = result?.status === "approval-required";
-  let accepted: AcceptedWorkspace | undefined;
-  if (result?.status === "accepted") accepted = result;
-  else if (invitation?.status === "accepted" && invitation.targetOrganizationId)
-    accepted = {
-      organizationId: invitation.targetOrganizationId,
-      conversationId: invitation.conversationId,
-    };
-  return {
-    available,
-    accepted,
-    waitingForApproval,
-    missing:
-      !loading &&
-      !accepted &&
-      !declined &&
-      (isPermanentFailure(error) || (!!invitation && !available && !waitingForApproval)),
-    formOwnsError: available && !accepted && !declined,
-  };
-}
+const invitationCopy = {
+  title: "External collaboration invitation",
+  description: "Join from your own workspace. You won’t become a member of the inviting workspace.",
+};
 
-function InvitationOutcome({
-  declined,
-  accepted,
-  waitingForApproval,
-  canRespond,
-  found,
+const unavailableCopy = {
+  title: "This invitation isn’t available",
+  description:
+    "It may have expired or been sent to another email. Sign in with the invited email, or ask the sender for a new invitation.",
+};
+
+function InvitationOutcomeView({
+  outcome,
   opening,
   onOpen,
   onCheckApproval,
-  children,
+  renderForm,
 }: {
-  declined: boolean;
-  accepted?: AcceptedWorkspace;
-  waitingForApproval: boolean;
-  canRespond: boolean;
-  found: boolean;
+  outcome: InvitationOutcome<SharingInvitation>;
   opening: boolean;
   onOpen: (workspace: AcceptedWorkspace) => void;
   onCheckApproval: () => void;
-  children: ReactNode;
+  renderForm: (invitation: SharingInvitation) => ReactNode;
 }) {
-  if (declined) return <FormMessage message="Invitation declined. No access was granted." />;
-  if (accepted)
+  if (outcome.kind === "declined")
+    return <FormMessage message="Invitation declined. No access was granted." />;
+  if (outcome.kind === "accepted")
     return (
       <>
         <FormMessage message="Invitation accepted. Your access is saved." />
@@ -207,13 +157,13 @@ function InvitationOutcome({
           className="w-full"
           size="lg"
           pending={opening}
-          onClick={() => onOpen(accepted)}
+          onClick={() => onOpen(outcome.workspace)}
         >
           Continue setup
         </PendingButton>
       </>
     );
-  if (waitingForApproval)
+  if (outcome.kind === "approval")
     return (
       <>
         <p role="status" className="text-sm">
@@ -226,8 +176,10 @@ function InvitationOutcome({
         </Button>
       </>
     );
-  if (canRespond) return children;
-  return found ? <WorkspacesLink /> : null;
+  if (outcome.kind === "respond") return renderForm(outcome.invitation);
+  if (outcome.kind === "closed") return <WorkspacesLink />;
+  // The load notice shows loading, a retry, or the way back for a missing invitation.
+  return null;
 }
 
 function InvitationLoadNotice({

@@ -8,7 +8,8 @@ import { SkeletonText } from "../../feedback/skeleton-text";
 import { ProjectIcon } from "../projects/project-icon";
 import type { Project } from "../types";
 import { ContentNotice } from "@/components/feedback/content-notice";
-import { ErrorState } from "@/components/feedback/error-state";
+import { ListBody } from "@/components/feedback/list-body";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import {
   PageSidebar,
   PageSidebarContent,
@@ -21,14 +22,13 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Heading } from "@/components/ui/heading";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import type { ResourceStatus } from "@/lib/resource-state";
+import { listPhase } from "@/lib/resource-state";
 import { cn } from "cn";
 import { ChevronRight, Plus, RotateCcw } from "lucide-react";
 
 export function ProjectSidebar({
   projects,
   archivedProjects = [],
-  state,
   selectedId,
   loading,
   error,
@@ -43,7 +43,6 @@ export function ProjectSidebar({
   projects: Project[];
   /** Archived projects the reader can open; each carries the reader's level. */
   archivedProjects?: Project[];
-  state: ResourceStatus;
   selectedId?: string;
   loading: boolean;
   error?: Error | null;
@@ -55,6 +54,8 @@ export function ProjectSidebar({
   projectLink: (id: string) => LinkProps;
   createButtonRef?: Ref<HTMLButtonElement>;
 }) {
+  // With no projects to show, the main pane shows the load error.
+  const phase = listPhase({ items: projects, loading, error });
   return (
     <PageSidebar aria-label="Projects">
       <PageSidebarHeader
@@ -76,49 +77,49 @@ export function ProjectSidebar({
           </Tooltip>
         }
       />
-      {/* With no projects to show, the main pane shows the load error. */}
-      {error && !projects.length ? null : (
+      {phase.status === "error" ? null : (
         <PageSidebarContent>
-          {loading && !projects.length && (
-            <div
-              role="status"
-              aria-label="Loading projects"
-              className="flex gap-0.5 overflow-x-auto md:flex-col"
-            >
-              {[96, 128, 80].map((width) => (
-                <ProjectSidebarItem key={width} loading width={width} />
-              ))}
-            </div>
-          )}
-          {error && (
-            <div className="px-2">
-              <ErrorState
-                variant="inline"
-                title={state === "unavailable" ? "Projects unavailable" : "Couldn’t load projects"}
-                onRetry={state === "unavailable" ? undefined : onRetry}
-              />
-            </div>
-          )}
-          {!loading && !error && !projects.length && (
-            <div className="px-2">
-              {/* The header's New project button and the main pane offer the create action. */}
-              <ContentNotice
-                variant="inline"
-                title={archivedProjects.length ? "No active projects" : "No projects yet"}
-              />
-            </div>
-          )}
-          <div className="flex gap-0.5 overflow-x-auto md:flex-col">
-            {projects.map((project) => (
-              <ProjectSidebarItem
-                key={project.entityId}
-                project={project}
-                selected={selectedId === project.entityId}
-                onClick={() => onSelect(project.entityId)}
-                link={projectLink(project.entityId)}
-              />
-            ))}
-          </div>
+          <ListBody
+            phase={phase}
+            loading={
+              <div
+                role="status"
+                aria-label="Loading projects"
+                className="flex gap-0.5 overflow-x-auto md:flex-col"
+              >
+                {[96, 128, 80].map((width) => (
+                  <ProjectSidebarItem key={width} loading width={width} />
+                ))}
+              </div>
+            }
+            error={null}
+            empty={
+              <div className="px-2">
+                {/* The header's New project button and the main pane offer the create action. */}
+                <ContentNotice
+                  variant="inline"
+                  title={archivedProjects.length ? "No active projects" : "No projects yet"}
+                />
+              </div>
+            }
+            stale={
+              <StaleNotice className="px-2" title="Couldn’t load projects" onRetry={onRetry} />
+            }
+          >
+            {(rows) => (
+              <div className="flex gap-0.5 overflow-x-auto md:flex-col">
+                {rows.map((project) => (
+                  <ProjectSidebarItem
+                    key={project.entityId}
+                    project={project}
+                    selected={selectedId === project.entityId}
+                    onClick={() => onSelect(project.entityId)}
+                    link={projectLink(project.entityId)}
+                  />
+                ))}
+              </div>
+            )}
+          </ListBody>
           {archivedProjects.length > 0 && (
             <ArchivedProjects
               projects={archivedProjects}

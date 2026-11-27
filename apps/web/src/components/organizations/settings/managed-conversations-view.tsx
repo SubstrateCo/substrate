@@ -1,17 +1,17 @@
 import type { ConversationKind } from "@substrate/contracts/messaging/input";
 
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { ErrorState } from "@/components/feedback/error-state";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { Tag } from "@/components/feedback/tag";
 import { RowAction } from "@/components/layout/row-actions";
 import { ConversationActionsMenu } from "@/components/messaging/conversations/actions/conversation-actions-menu";
-import { PersonAvatar } from "@/components/people/person-avatar";
+import { ActorAvatar, ActorKindTag } from "@/components/people/actor-avatar";
 import { AppTable, createAppColumnHelper } from "@/components/table";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Pressable } from "@/components/ui/pressable";
+import { actorIdentity } from "@/lib/actors/identity";
 import type { ConversationMember } from "@/lib/messaging/conversations";
-import type { ResourceStatus } from "@/lib/resource-state";
+import type { ResourceState } from "@/lib/resource-state";
 import { Hash, LockKeyhole, UserPlus, Users } from "lucide-react";
 
 export interface ManagedConversationRow {
@@ -42,15 +42,9 @@ function MemberSummary({ members }: { members: ConversationMember[] }) {
           aria-label={`View ${label}`}
         >
           <span className="flex gap-0.5">
-            {members
-              .slice(0, shownAvatars)
-              .map((person) =>
-                person.type === "agent" ? (
-                  <AgentAvatarView key={person.actorId} avatar={person.avatar} />
-                ) : (
-                  <PersonAvatar key={person.actorId} name={person.name} image={person.image} />
-                ),
-              )}
+            {members.slice(0, shownAvatars).map((person) => (
+              <ActorAvatar key={person.actorId} actor={actorIdentity(person)} />
+            ))}
           </span>
           <span className="whitespace-nowrap tabular-nums">{label}</span>
         </Pressable>
@@ -58,18 +52,17 @@ function MemberSummary({ members }: { members: ConversationMember[] }) {
       <PopoverContent align="start" collisionPadding={8}>
         <p className="px-2 text-sm font-medium">Members</p>
         <ul aria-label="Conversation members" className="max-h-64 space-y-1 overflow-y-auto">
-          {members.map((person) => (
-            <li key={person.actorId} className="flex items-center gap-2 rounded-md px-2 py-1">
-              {person.type === "agent" ? (
-                <AgentAvatarView avatar={person.avatar} />
-              ) : (
-                <PersonAvatar name={person.name} image={person.image} />
-              )}
-              <span className="min-w-0 flex-1 text-sm wrap-anywhere">{person.name}</span>
-              {person.type === "agent" && <Tag>Agent</Tag>}
-              {person.external && <Tag>External</Tag>}
-            </li>
-          ))}
+          {members.map((person) => {
+            const actor = actorIdentity(person);
+            return (
+              <li key={person.actorId} className="flex items-center gap-2 rounded-md px-2 py-1">
+                <ActorAvatar actor={actor} />
+                <span className="min-w-0 flex-1 text-sm wrap-anywhere">{person.name}</span>
+                <ActorKindTag actor={actor} />
+                {person.external && <Tag>External</Tag>}
+              </li>
+            );
+          })}
         </ul>
       </PopoverContent>
     </Popover>
@@ -78,52 +71,39 @@ function MemberSummary({ members }: { members: ConversationMember[] }) {
 
 // Admins see names and members only. Nothing here opens the messages.
 export function ManagedConversations({
-  rows,
-  state,
-  loading,
-  error,
+  resource,
   onRetry,
   onAddMembers,
   onTransfer,
   onDelete,
 }: {
-  rows?: ManagedConversationRow[];
-  state: ResourceStatus;
-  loading: boolean;
-  error?: Error | null;
+  resource: ResourceState<ManagedConversationRow[]>;
   onRetry: () => void;
   onAddMembers: (id: string) => void;
   onTransfer: (id: string) => void;
   onDelete: (id: string) => void;
 }) {
-  if (state === "error" || state === "unavailable")
+  if (resource.status === "unavailable")
     return (
       <ErrorState
-        title={
-          state === "unavailable" ? "Conversations unavailable" : "Couldn’t load conversations"
-        }
-        description={
-          state === "unavailable"
-            ? "Check that you still have access to this workspace."
-            : undefined
-        }
-        onRetry={state === "unavailable" ? undefined : onRetry}
+        title="Conversations unavailable"
+        description="Check that you still have access to this workspace."
       />
     );
+  if (resource.status === "error")
+    return <ErrorState title="Couldn’t load conversations" onRetry={onRetry} />;
   return (
     <div className="space-y-3">
-      {state === "stale" && (
-        <StaleNotice onRetry={onRetry}>This list may be out of date.</StaleNotice>
+      {resource.status === "stale" && (
+        <StaleNotice title="This list may be out of date." onRetry={onRetry} />
       )}
       <AppTable
         name="Channels and group messages"
         columns={columns}
-        data={rows ?? []}
+        data={resource.data ?? []}
         getRowId={(row) => row.id}
-        loading={loading && !rows}
+        loading={resource.status === "loading"}
         loadingMessage="Loading conversations"
-        error={error}
-        onRetry={onRetry}
         empty={{
           icon: Hash,
           title: "No channels or group messages",

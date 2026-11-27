@@ -162,7 +162,41 @@ export function AgentConfiguration({
   return (
     <div ref={container} tabIndex={-1}>
       {content}
-      {dialog?.kind === "editSkill" && (
+      <ConfigurationDialogs
+        dialog={dialog}
+        skill={skill}
+        servers={servers}
+        mutations={{ save, remove, reset, saveServer, removeServer }}
+        close={close}
+        restoreFocus={restoreFocus}
+      />
+    </div>
+  );
+}
+
+/** The open editor or confirmation, if any. Each closes itself once its change is saved. */
+function ConfigurationDialogs({
+  dialog,
+  skill,
+  servers,
+  mutations: { save, remove, reset, saveServer, removeServer },
+  close,
+  restoreFocus,
+}: {
+  dialog: ConfigurationDialog | undefined;
+  /** The skill being edited, or none for a new one. */
+  skill: HarnessSkill | undefined;
+  servers: HarnessMcpServer[];
+  mutations: Pick<
+    ReturnType<typeof useAgentConfigurationMutations>,
+    "save" | "remove" | "reset" | "saveServer" | "removeServer"
+  >;
+  close: () => void;
+  restoreFocus: () => void;
+}) {
+  switch (dialog?.kind) {
+    case "editSkill":
+      return (
         <SkillEditor
           skill={skill}
           pending={save.isPending}
@@ -181,8 +215,9 @@ export function AgentConfiguration({
             })
           }
         />
-      )}
-      {dialog?.kind === "editServer" && (
+      );
+    case "editServer":
+      return (
         <McpServerEditor
           server={dialog.server}
           servers={servers}
@@ -202,8 +237,9 @@ export function AgentConfiguration({
             })
           }
         />
-      )}
-      {dialog?.kind === "deleteServer" && (
+      );
+    case "deleteServer":
+      return (
         <ConfirmDialog
           title={`Delete ${dialog.server.name}?`}
           description="This removes the server from this agent on this desktop. New sessions won’t use it. You can’t undo this."
@@ -226,8 +262,9 @@ export function AgentConfiguration({
             removeServer.reset();
           }}
         />
-      )}
-      {dialog?.kind === "reset" && (
+      );
+    case "reset":
+      return (
         <ConfirmDialog
           title="Reset Substrate defaults?"
           description="This replaces the agent’s instructions file and Substrate skills on this device with the saved agent settings. Local edits to those files are lost. Your other skills and MCP servers are not changed."
@@ -250,8 +287,9 @@ export function AgentConfiguration({
             reset.reset();
           }}
         />
-      )}
-      {dialog?.kind === "deleteSkill" && (
+      );
+    case "deleteSkill":
+      return (
         <ConfirmDialog
           title={`Delete ${dialog.skill.name}?`}
           description="This deletes the skill’s file from this agent’s folder on this desktop. New sessions won’t use it. You can’t undo this."
@@ -274,7 +312,8 @@ export function AgentConfiguration({
             remove.reset();
           }}
         />
-      )}
-    </div>
-  );
+      );
+    case undefined:
+      return null;
+  }
 }

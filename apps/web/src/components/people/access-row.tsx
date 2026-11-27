@@ -1,10 +1,7 @@
-import type { AgentAvatarCode } from "@substrate/contracts/agents";
-
 import type { ReactNode } from "react";
 
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
-import { PersonAvatar } from "@/components/people/person-avatar";
+import { ActorAvatar } from "@/components/people/actor-avatar";
 import {
   Item,
   ItemActions,
@@ -13,6 +10,7 @@ import {
   ItemMedia,
   ItemTitle,
 } from "@/components/ui/item";
+import type { ActorIdentity } from "@/lib/actors/identity";
 import { UserMinus } from "lucide-react";
 
 /**
@@ -20,21 +18,14 @@ import { UserMinus } from "lucide-react";
  * the level (text, or a ghost select for a viewer who may change it), and a remove action when the viewer may remove them.
  */
 export function AccessRow({
-  name,
-  image,
-  avatar,
-  agent = false,
+  actor,
   meta,
   level,
   levelControl,
   disabled = false,
   onRemove,
 }: {
-  name: string;
-  image?: string | null;
-  /** An agent's look. */
-  avatar?: AgentAvatarCode | null;
-  agent?: boolean;
+  actor: ActorIdentity;
   meta?: ReactNode;
   /** The level as text, such as "Can edit". */
   level: string;
@@ -43,15 +34,12 @@ export function AccessRow({
   disabled?: boolean;
   onRemove?: () => void;
 }) {
+  const { name } = actor;
   return (
     <Item asChild size="xs" className="group/row min-w-0 flex-nowrap">
       <li>
         <ItemMedia>
-          {agent ? (
-            <AgentAvatarView avatar={avatar ?? null} />
-          ) : (
-            <PersonAvatar name={name} image={image} />
-          )}
+          <ActorAvatar actor={actor} />
         </ItemMedia>
         <ItemContent className="min-w-0">
           <ItemTitle className="max-w-full">
@@ -65,7 +53,7 @@ export function AccessRow({
               <span className="block px-2.5 text-sm text-muted-foreground">{level}</span>
             )}
           </div>
-          {onRemove && (
+          {onRemove ? (
             <RowActions label={`Actions for ${name}`}>
               <RowAction
                 label={`Remove ${name}’s access`}
@@ -76,8 +64,9 @@ export function AccessRow({
                 <UserMinus aria-hidden="true" />
               </RowAction>
             </RowActions>
+          ) : (
+            <span aria-hidden="true" className="w-7 shrink-0" />
           )}
-          {!onRemove && <span aria-hidden="true" className="w-7 shrink-0" />}
         </ItemActions>
       </li>
     </Item>

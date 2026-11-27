@@ -35,6 +35,8 @@ export type MailboxNav = {
   colors: ReadonlyMap<string, MailColor>;
   connected: readonly Mailbox[];
   scope: Mailbox | null;
+  /** All inboxes of more than one mailbox: views and labels are grouped by mailbox. */
+  unified: boolean;
   onSelect: (box: Mailbox | null) => void;
   onConnect: () => void;
   onManage: () => void;
@@ -71,7 +73,7 @@ export function MailboxSidebar({
           <nav aria-label="Mail views" className="space-y-0.5">
             {mailViews.map((id) => {
               const { label, icon: Icon } = views[id];
-              if (id === "unread" && !accounts.scope && accounts.connected.length > 1)
+              if (id === "unread" && accounts.unified)
                 return (
                   <UnreadMailboxes
                     key={id}
@@ -102,7 +104,7 @@ export function MailboxSidebar({
         )}
         <SidebarLabels
           boxes={accounts.scope ? [accounts.scope] : accounts.connected}
-          grouped={!accounts.scope && accounts.connected.length > 1}
+          grouped={accounts.unified}
           colors={accounts.colors}
           filter={filter}
           onLabel={onLabel}
@@ -112,81 +114,97 @@ export function MailboxSidebar({
   );
 }
 
-export function MailboxPicker({
+function mailboxSwitchLabel(scope: Mailbox | null) {
+  return `Switch mailbox: ${scope ? mailboxName(scope) : "All inboxes"}`;
+}
+
+/** The sidebar's mailbox switch, which names the chosen mailbox. */
+export function MailboxPicker(nav: MailboxNav) {
+  const { scope, colors } = nav;
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          id="mailbox-switch"
+          variant="outline"
+          size="sm"
+          className="w-full justify-start"
+          aria-label={mailboxSwitchLabel(scope)}
+          title={scope?.address ?? "All connected Gmail accounts"}
+        >
+          <Mail aria-hidden />{" "}
+          <span
+            className={`min-w-0 flex-1 truncate text-left ${scope ? ink[colors.get(scope.id)!] : ""}`}
+          >
+            {scope ? mailboxName(scope) : "All inboxes"}
+          </span>{" "}
+          <ChevronDown aria-hidden />
+        </Button>
+      </DropdownMenuTrigger>
+      <MailboxMenuContent {...nav} />
+    </DropdownMenu>
+  );
+}
+
+/** The header's icon-only mailbox switch, shown without the sidebar. */
+export function CompactMailboxPicker(nav: MailboxNav) {
+  const label = mailboxSwitchLabel(nav.scope);
+  return (
+    <DropdownMenu>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <DropdownMenuTrigger asChild>
+            <Button id="mailbox-switch" variant="outline" size="icon-sm" aria-label={label}>
+              <Mail aria-hidden />
+            </Button>
+          </DropdownMenuTrigger>
+        </TooltipTrigger>
+        <TooltipContent>{label}</TooltipContent>
+      </Tooltip>
+      <MailboxMenuContent {...nav} />
+    </DropdownMenu>
+  );
+}
+
+function MailboxMenuContent({
   connected,
   scope,
   colors,
   onSelect,
   onConnect,
   onManage,
-  compact = false,
-}: MailboxNav & { compact?: boolean }) {
-  const label = `Switch mailbox: ${scope ? mailboxName(scope) : "All inboxes"}`;
-  const trigger = (
-    <DropdownMenuTrigger asChild>
-      <Button
-        id="mailbox-switch"
-        variant="outline"
-        size={compact ? "icon-sm" : "sm"}
-        className={compact ? undefined : "w-full justify-start"}
-        aria-label={label}
-        title={compact ? undefined : (scope?.address ?? "All connected Gmail accounts")}
-      >
-        <Mail aria-hidden />{" "}
-        {!compact && (
-          <>
-            <span
-              className={`min-w-0 flex-1 truncate text-left ${scope ? ink[colors.get(scope.id)!] : ""}`}
-            >
-              {scope ? mailboxName(scope) : "All inboxes"}
-            </span>{" "}
-            <ChevronDown aria-hidden />
-          </>
-        )}
-      </Button>
-    </DropdownMenuTrigger>
-  );
+}: MailboxNav) {
   return (
-    <DropdownMenu>
-      {compact ? (
-        <Tooltip>
-          <TooltipTrigger asChild>{trigger}</TooltipTrigger>
-          <TooltipContent>{label}</TooltipContent>
-        </Tooltip>
-      ) : (
-        trigger
-      )}
-      <DropdownMenuContent>
-        <DropdownMenuRadioGroup
-          value={scope?.id ?? "all"}
-          onValueChange={(id) => onSelect(connected.find((box) => box.id === id) ?? null)}
-        >
-          <DropdownMenuRadioItem value="all">
-            <Inbox aria-hidden /> All inboxes
+    <DropdownMenuContent>
+      <DropdownMenuRadioGroup
+        value={scope?.id ?? "all"}
+        onValueChange={(id) => onSelect(connected.find((box) => box.id === id) ?? null)}
+      >
+        <DropdownMenuRadioItem value="all">
+          <Inbox aria-hidden /> All inboxes
+        </DropdownMenuRadioItem>
+        {connected.map((box) => (
+          <DropdownMenuRadioItem key={box.id} value={box.id}>
+            <Mail aria-hidden />
+            <span className="min-w-0 truncate" title={box.address}>
+              <span className={ink[colors.get(box.id)!]}>{box.address}</span>
+              {box.nickname && (
+                <span className="ml-2 text-xs text-muted-foreground">{box.nickname}</span>
+              )}
+            </span>
           </DropdownMenuRadioItem>
-          {connected.map((box) => (
-            <DropdownMenuRadioItem key={box.id} value={box.id}>
-              <Mail aria-hidden />
-              <span className="min-w-0 truncate" title={box.address}>
-                <span className={ink[colors.get(box.id)!]}>{box.address}</span>
-                {box.nickname && (
-                  <span className="ml-2 text-xs text-muted-foreground">{box.nickname}</span>
-                )}
-              </span>
-            </DropdownMenuRadioItem>
-          ))}
-        </DropdownMenuRadioGroup>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onSelect={onConnect}>
-          <Plus aria-hidden /> Connect Gmail
+        ))}
+      </DropdownMenuRadioGroup>
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onSelect={onConnect}>
+        <Plus aria-hidden /> Connect Gmail
+      </DropdownMenuItem>
+      {connected.length > 0 && (
+        <DropdownMenuItem onSelect={onManage}>
+          <Settings aria-hidden /> Manage mailboxes
         </DropdownMenuItem>
-        {connected.length > 0 && (
-          <DropdownMenuItem onSelect={onManage}>
-            <Settings aria-hidden /> Manage mailboxes
-          </DropdownMenuItem>
-        )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      )}
+    </DropdownMenuContent>
   );
 }
 
@@ -196,6 +214,7 @@ export function MobileViewPicker({
   counts,
   connected,
   scope,
+  unified,
   colors,
   unreadByMailbox,
   onMailboxUnread,
@@ -246,7 +265,7 @@ export function MobileViewPicker({
             );
           })}
         </DropdownMenuRadioGroup>
-        {!scope && connected.length > 1 && (
+        {unified && (
           <>
             <DropdownMenuSeparator />
             <DropdownMenuLabel>Unread by mailbox</DropdownMenuLabel>
@@ -269,9 +288,7 @@ export function MobileViewPicker({
           .map(({ box: b, labels }) => (
             <div key={b.id}>
               <DropdownMenuSeparator />
-              <DropdownMenuLabel>
-                {scope || connected.length === 1 ? "Labels" : `Labels · ${b.address}`}
-              </DropdownMenuLabel>
+              <DropdownMenuLabel>{unified ? `Labels · ${b.address}` : "Labels"}</DropdownMenuLabel>
               {labels.map((l) => (
                 <DropdownMenuItem
                   key={l.id}

@@ -27,12 +27,10 @@ export function OrganizationSelection({ destination = "/messages" }: { destinati
   }));
   return (
     <OrganizationSelectionView
-      organizations={resourceState(organizations).data}
-      state={resourceState(organizations).status}
+      workspaces={resourceState(organizations)}
       // Wait for both lists, so the create form does not collapse when invitations arrive.
-      loading={organizations.isPending || invitations.isPending}
+      invitationsPending={invitations.isPending}
       openingId={select.isPending ? select.variables : undefined}
-      loadError={organizations.error}
       onRetry={() => void organizations.refetch()}
       onSelect={(id) =>
         select.mutate(id, {

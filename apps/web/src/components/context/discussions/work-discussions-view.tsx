@@ -3,38 +3,27 @@ import { useState, type ReactNode } from "react";
 import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
 import { DiscussionItem, DiscussionItemSkeleton, type Discussion } from "./discussion-item";
+import { ListBody } from "@/components/feedback/list-body";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { RecordSection } from "@/components/layout/record-section";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useDelayedLoading } from "@/hooks/use-delayed-loading";
+import { listPhase, type ListPhase } from "@/lib/resource-state";
 import { cn } from "cn";
 import { ChevronDown, MessagesSquare } from "lucide-react";
 
-/**
- * Messages that link or reference a record. A page shows them as a list with a full empty state.
- * An inspector shows a one-line section that opens when there is something to read.
- */
-export function WorkDiscussions({
-  items,
-  loading,
-  error,
-  onRetry,
-  label = "Related discussions",
-  emptyTitle = "No linked discussions",
-  variant = "inspector",
-  children,
-}: {
+export type WorkDiscussionsProps = {
   items: Discussion[];
   loading: boolean;
   error?: Error | null;
   onRetry: () => void;
   label?: string;
-  /** The inline empty line in an inspector, such as "No source messages". */
-  emptyTitle?: string;
-  variant?: "inspector" | "page";
   children?: ReactNode;
-}) {
-  const [open, setOpen] = useState<boolean>();
+};
+
+/** Each message once per purpose, so a message linked and referenced shows once for each. */
+function discussionPhase({ items, loading, error }: WorkDiscussionsProps) {
   const seen = new Set<string>();
   const uniqueRows = items.filter((item) => {
     const key = `${item.messageId}:${item.purpose}`;
@@ -42,35 +31,74 @@ export function WorkDiscussions({
     seen.add(key);
     return true;
   });
-  const list = <DiscussionList items={uniqueRows} />;
-  const failure = error && (
-    <ErrorState variant="compact" title="Couldn’t load discussions" onRetry={onRetry} />
+  return listPhase({ items: uniqueRows, loading, error });
+}
+
+function DiscussionsBody({
+  phase,
+  onRetry,
+  empty,
+}: {
+  phase: ListPhase<Discussion>;
+  onRetry: () => void;
+  empty: ReactNode;
+}) {
+  return (
+    <ListBody
+      phase={phase}
+      loading={<DiscussionLoading />}
+      error={<ErrorState variant="compact" title="Couldn’t load discussions" onRetry={onRetry} />}
+      empty={empty}
+      stale={<StaleNotice title="Couldn’t load discussions" onRetry={onRetry} />}
+    >
+      {(rows) => <DiscussionList items={rows} />}
+    </ListBody>
   );
-  const empty = !loading && !error && !uniqueRows.length;
-  const showLoading = loading && !uniqueRows.length;
-  if (variant === "page")
-    return (
-      <section aria-label={label} className="flex flex-1 flex-col gap-3">
-        {children}
-        {showLoading && <DiscussionLoading />}
-        {failure}
-        {empty && (
+}
+
+/** Messages that link or reference a record, as a page's list with a full empty state. */
+export function PageDiscussions(props: WorkDiscussionsProps) {
+  const { label = "Related discussions", onRetry, children } = props;
+  return (
+    <section aria-label={label} className="flex flex-1 flex-col gap-3">
+      {children}
+      <DiscussionsBody
+        phase={discussionPhase(props)}
+        onRetry={onRetry}
+        empty={
           <ContentNotice
             icon={MessagesSquare}
             title="No discussions yet"
             description="Messages linked to this record appear here when you can read them."
           />
-        )}
-        {list}
-      </section>
-    );
-  if (empty)
+        }
+      />
+    </section>
+  );
+}
+
+/**
+ * Messages that link or reference a record, as an inspector's section. With nothing to read it is
+ * one line.
+ */
+export function InspectorDiscussions({
+  emptyTitle = "No linked discussions",
+  ...props
+}: WorkDiscussionsProps & {
+  /** The inline empty line, such as "No source messages". */
+  emptyTitle?: string;
+}) {
+  const { label = "Related discussions", onRetry, children } = props;
+  const [open, setOpen] = useState<boolean>();
+  const phase = discussionPhase(props);
+  if (phase.status === "empty")
     return (
       <RecordSection aria-label={label} title={label}>
         <ContentNotice variant="inline" title={emptyTitle} />
       </RecordSection>
     );
-  const expanded = open ?? (uniqueRows.length > 0 || !!error || showLoading);
+  // Loading, failed, and loaded sections open on their own.
+  const expanded = open ?? true;
   return (
     <Collapsible asChild open={expanded} onOpenChange={setOpen}>
       <RecordSection
@@ -80,8 +108,8 @@ export function WorkDiscussions({
           <CollapsibleTrigger asChild>
             <Button type="button" variant="disclosure" size="xs" className="-ml-2">
               {label}
-              {!!uniqueRows.length && (
-                <span className="font-normal tabular-nums">{uniqueRows.length}</span>
+              {"items" in phase && (
+                <span className="font-normal tabular-nums">{phase.items.length}</span>
               )}
               <ChevronDown
                 aria-hidden="true"
@@ -94,9 +122,7 @@ export function WorkDiscussions({
         <CollapsibleContent>
           <div className="grid gap-2">
             {children}
-            {showLoading && <DiscussionLoading />}
-            {failure}
-            {list}
+            <DiscussionsBody phase={phase} onRetry={onRetry} empty={null} />
           </div>
         </CollapsibleContent>
       </RecordSection>

@@ -1,4 +1,8 @@
-import type { HarnessKind, HarnessModel } from "@substrate/contracts/harness-runtime";
+import type {
+  HarnessAuthMethod,
+  HarnessKind,
+  HarnessModel,
+} from "@substrate/contracts/harness-runtime";
 
 import { useQueries, useQuery } from "@tanstack/react-query";
 
@@ -22,6 +26,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Spinner } from "@/components/ui/spinner";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { harnessLabel, harnessOptions, visibleHarnessOptions } from "@/lib/agents/harness-meta";
+import { type ModelCatalogState, modelCatalogState } from "@/lib/agents/model-catalog-state";
 import { harnessBridge } from "@/lib/desktop/bridges";
 import { harnessStatusQueryOptions } from "@/queries/agents/harness-status";
 import { harnessModelsQueryOptions } from "@/queries/agents/models";
@@ -61,52 +66,49 @@ function PickerNote({
 }
 
 function ModelCatalogStatus({
-  available,
+  state,
   label,
-  unavailable,
-  loading,
-  error,
   onRetry,
 }: {
-  available: boolean;
+  state: ModelCatalogState;
   label: string;
-  unavailable: boolean;
-  loading: boolean;
-  error: Error | null;
   onRetry: () => void;
 }) {
-  if (!available)
-    return (
-      <PickerNote icon={<Laptop aria-hidden="true" />}>
-        Open Substrate on your desktop to see {label}’s models. Until then, the agent uses the
-        default model.
-      </PickerNote>
-    );
-  if (error)
-    return (
-      <PickerNote
-        icon={<CircleAlert aria-hidden="true" className="text-destructive" />}
-        action={
-          <Button type="button" size="xs" variant="outline" className="w-fit" onClick={onRetry}>
-            <RefreshCw aria-hidden="true" />
-            Try again
-          </Button>
-        }
-      >
-        <span role="alert">We couldn’t load {label}’s models.</span>
-      </PickerNote>
-    );
-  if (unavailable)
-    return (
-      <PickerNote icon={<Laptop aria-hidden="true" />}>
-        {label} isn’t installed on this desktop. Install it, then refresh.
-      </PickerNote>
-    );
-  if (loading)
-    return <PickerNote icon={<Spinner aria-hidden="true" />}>Loading {label} models</PickerNote>;
-  return null;
+  switch (state.kind) {
+    case "desktop-required":
+      return (
+        <PickerNote icon={<Laptop aria-hidden="true" />}>
+          Open Substrate on your desktop to see {label}’s models. Until then, the agent uses the
+          default model.
+        </PickerNote>
+      );
+    case "error":
+      return (
+        <PickerNote
+          icon={<CircleAlert aria-hidden="true" className="text-destructive" />}
+          action={
+            <Button type="button" size="xs" variant="outline" className="w-fit" onClick={onRetry}>
+              <RefreshCw aria-hidden="true" />
+              Try again
+            </Button>
+          }
+        >
+          <span role="alert">We couldn’t load {label}’s models.</span>
+        </PickerNote>
+      );
+    case "unavailable":
+      return (
+        <PickerNote icon={<Laptop aria-hidden="true" />}>
+          {label} isn’t installed on this desktop. Install it, then refresh.
+        </PickerNote>
+      );
+    case "loading":
+      return <PickerNote icon={<Spinner aria-hidden="true" />}>Loading {label} models</PickerNote>;
+    case "sign-in":
+    case "ready":
+      return null;
+  }
 }
-
 function useModelCatalogs({
   userId,
   organizationId,
@@ -152,13 +154,12 @@ function useModelCatalogs({
     options,
     choices,
     groups,
-    selected: {
-      unavailable: selected.data?.status === "unavailable",
-      signIn: selected.data?.status === "sign-in",
-      methods: selected.data?.auth?.methods ?? [],
+    state: modelCatalogState({
+      desktop: available,
+      catalog: selected.data,
       loading: selected.isPending && selected.fetchStatus === "fetching",
       error: selected.error,
-    },
+    }),
     refreshing: catalogs.some((catalog) => catalog.isFetching),
     refresh: () => {
       catalogs.forEach((catalog, index) => {
@@ -296,6 +297,24 @@ function ModelList({
   );
 }
 
+/** A sign-in in place of the models, nothing for a runtime that is not installed, or the models. */
+function PickerBody({
+  state,
+  label,
+  onSignIn,
+  children,
+}: {
+  state: ModelCatalogState;
+  label: string;
+  onSignIn?: (method: HarnessAuthMethod) => void;
+  children: ReactNode;
+}) {
+  if (state.kind === "sign-in")
+    return <PickerSignIn label={label} methods={state.methods} onSignIn={onSignIn} />;
+  if (state.kind === "unavailable") return null;
+  return children;
+}
+
 // T3 Code's grouped model rows, adapted to our native bridge and UI primitives.
 // Source: pingdotgg/t3code/apps/web/src/components/chat (MIT, icons/LICENSE).
 export function ModelPicker({
@@ -331,7 +350,7 @@ export function ModelPicker({
     browseHarness,
     searching: !!query,
   });
-  const { available, options, groups, selected, refreshing, refresh } = catalogs;
+  const { available, options, groups, state, refreshing, refresh } = catalogs;
   const { choices, saved } = withSavedModel(catalogs.choices, harness, model);
   const modelName = saved?.name ?? defaultModelLabel;
   const label = harnessLabel(harness);
@@ -389,20 +408,17 @@ export function ModelPicker({
             onValueChange={chooseHarness}
           />
         </div>
-        {selected.signIn && (
-          <PickerSignIn
-            label={selectedLabel}
-            methods={selected.methods}
-            onSignIn={
-              onSignIn &&
-              ((method) => {
-                setOpen(false);
-                onSignIn(browseHarness, method);
-              })
-            }
-          />
-        )}
-        {!selected.unavailable && !selected.signIn && (
+        <PickerBody
+          state={state}
+          label={selectedLabel}
+          onSignIn={
+            onSignIn &&
+            ((method) => {
+              setOpen(false);
+              onSignIn(browseHarness, method);
+            })
+          }
+        >
           <Command
             key={`${open}/${browseHarness}`}
             className="min-h-0 flex-1"
@@ -427,16 +443,9 @@ export function ModelPicker({
               onSelect={select}
             />
           </Command>
-        )}
+        </PickerBody>
         <div className="flex shrink-0 flex-wrap items-center justify-end gap-x-3 gap-y-2 border-t px-3 py-2 sm:flex-nowrap">
-          <ModelCatalogStatus
-            available={available}
-            label={selectedLabel}
-            unavailable={selected.unavailable}
-            loading={selected.loading}
-            error={selected.error}
-            onRetry={refresh}
-          />
+          <ModelCatalogStatus state={state} label={selectedLabel} onRetry={refresh} />
           <PendingButton
             type="button"
             variant="ghost"

@@ -9,13 +9,16 @@ import { taskAttachmentUrl, type TaskAttachmentTarget } from "@/api/files/attach
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { FormMessage } from "@/components/feedback/form-message";
+import { ListBody } from "@/components/feedback/list-body";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { PendingButton } from "@/components/feedback/pending-button";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { RecordSection } from "@/components/layout/record-section";
 import { RowAction, RowActions } from "@/components/layout/row-actions";
 import { SettingsNote } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
+import { listPhase } from "@/lib/resource-state";
 import { useTaskAttachmentMutations } from "@/queries/attachments/mutations";
 import { taskAttachmentsOptions } from "@/queries/files/attachments";
 import {
@@ -96,6 +99,12 @@ export function TaskAttachments({
   const { add, remove } = useTaskAttachmentMutations(target);
   const canAttach = canEdit && query.isSuccess;
   const canPick = canAttach && !add.isPending;
+  const loadError = (
+    <FormMessage
+      error={query.error}
+      errorDescription="Couldn’t load attachments. Reopen the task to try again."
+    />
+  );
   return (
     <FileDropZone label="Task attachments" disabled={!canPick} onFiles={uploads.add}>
       <UnsavedChangesGuard
@@ -113,36 +122,43 @@ export function TaskAttachments({
           canEdit && <AttachFilesButton iconOnly disabled={!canPick} onFiles={uploads.add} />
         }
       >
-        {query.isPending && <LoadingState label="Loading attachments" variant="compact" rows={1} />}
-        <FormMessage
-          error={query.error}
-          errorDescription="Couldn’t load attachments. Reopen the task to try again."
-        />
-        {query.isSuccess && (
-          <AttachmentList
-            attachments={query.data}
-            href={(attachment) => taskAttachmentUrl({ ...target, attachmentId: attachment.id })}
-            renderActions={
-              canEdit
-                ? (attachment) => (
-                    <RowActions label={`Actions for ${attachment.filename}`}>
-                      <RowAction
-                        label={`Remove ${attachment.filename}`}
-                        destructive
-                        disabled={remove.isPending}
-                        onClick={() => setRemoving(attachment)}
-                      >
-                        <Trash2 />
-                      </RowAction>
-                    </RowActions>
-                  )
-                : undefined
-            }
-          />
-        )}
-        {query.isSuccess && !query.data.length && (
-          <TaskAttachmentEmptyState canEdit={canEdit} hasDrafts={uploads.items.length > 0} />
-        )}
+        <ListBody
+          phase={listPhase({ items: query.data, loading: query.isPending, error: query.error })}
+          loading={<LoadingState label="Loading attachments" variant="compact" rows={1} />}
+          error={loadError}
+          empty={
+            <TaskAttachmentEmptyState canEdit={canEdit} hasDrafts={uploads.items.length > 0} />
+          }
+          stale={
+            <StaleNotice
+              title="Couldn’t load attachments"
+              description="Reopen the task to try again."
+            />
+          }
+        >
+          {(attachments) => (
+            <AttachmentList
+              attachments={attachments}
+              href={(attachment) => taskAttachmentUrl({ ...target, attachmentId: attachment.id })}
+              renderActions={
+                canEdit
+                  ? (attachment) => (
+                      <RowActions label={`Actions for ${attachment.filename}`}>
+                        <RowAction
+                          label={`Remove ${attachment.filename}`}
+                          destructive
+                          disabled={remove.isPending}
+                          onClick={() => setRemoving(attachment)}
+                        >
+                          <Trash2 />
+                        </RowAction>
+                      </RowActions>
+                    )
+                  : undefined
+              }
+            />
+          )}
+        </ListBody>
         <TaskAttachmentDrafts
           uploads={uploads}
           canAttach={canAttach}

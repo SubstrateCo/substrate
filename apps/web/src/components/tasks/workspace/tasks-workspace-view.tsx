@@ -10,7 +10,7 @@ import { FormDialog, type FormDialogEditor } from "@/components/feedback/form-di
 import { useFocusReturn } from "@/components/feedback/use-focus-return";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
-import type { ResourceStatus } from "@/lib/resource-state";
+import { listPhase, type ListPhase, type ResourceStatus } from "@/lib/resource-state";
 import { FolderKanban, Plus, Unlink } from "lucide-react";
 
 export function TasksWorkspace({
@@ -60,7 +60,6 @@ export function TasksWorkspace({
   return (
     <PageLayout id="tasks" aria-label="Tasks application">
       <ProjectSidebar
-        state={state}
         projects={projects}
         archivedProjects={archivedProjects}
         onRestore={onRestoreProject}
@@ -77,36 +76,12 @@ export function TasksWorkspace({
       {selectedProjectId && project}
       {!selectedProjectId && (
         <PageContent>
-          {error && !projects.length && (
-            <ErrorState
-              title={state === "unavailable" ? "Projects unavailable" : "Couldn’t load projects"}
-              description={
-                state === "unavailable"
-                  ? "Check that you still have access to this workspace."
-                  : undefined
-              }
-              onRetry={state === "unavailable" ? undefined : onRetry}
-            />
-          )}
-          {!loading && !error && (
-            <ContentNotice
-              icon={projects.length ? Unlink : FolderKanban}
-              title={projects.length ? "Project unavailable" : "No projects yet"}
-              description={
-                projects.length
-                  ? "This project was removed or you no longer have access. Choose another project."
-                  : "Create a project to plan work with tasks, subtasks, and comments."
-              }
-              action={
-                !projects.length && (
-                  <Button onClick={openCreate}>
-                    <Plus aria-hidden />
-                    New project
-                  </Button>
-                )
-              }
-            />
-          )}
+          <NoProjectSelected
+            phase={listPhase({ items: projects, loading, error })}
+            unavailable={state === "unavailable"}
+            onRetry={onRetry}
+            onCreate={openCreate}
+          />
         </PageContent>
       )}
       {creating &&
@@ -126,5 +101,52 @@ export function TasksWorkspace({
           ),
         })}
     </PageLayout>
+  );
+}
+
+/** The main pane without a selected project. The sidebar shows the projects. */
+function NoProjectSelected({
+  phase,
+  unavailable,
+  onRetry,
+  onCreate,
+}: {
+  phase: ListPhase<Project>;
+  unavailable: boolean;
+  onRetry: () => void;
+  onCreate: () => void;
+}) {
+  if (phase.status === "loading") return null;
+  if (phase.status === "error")
+    return (
+      <ErrorState
+        title={unavailable ? "Projects unavailable" : "Couldn’t load projects"}
+        description={
+          unavailable ? "Check that you still have access to this workspace." : undefined
+        }
+        onRetry={unavailable ? undefined : onRetry}
+      />
+    );
+  if (phase.status === "empty")
+    return (
+      <ContentNotice
+        icon={FolderKanban}
+        title="No projects yet"
+        description="Create a project to plan work with tasks, subtasks, and comments."
+        action={
+          <Button onClick={onCreate}>
+            <Plus aria-hidden />
+            New project
+          </Button>
+        }
+      />
+    );
+  // Projects loaded, so the selected one was removed or is out of reach.
+  return (
+    <ContentNotice
+      icon={Unlink}
+      title="Project unavailable"
+      description="This project was removed or you no longer have access. Choose another project."
+    />
   );
 }

@@ -63,11 +63,20 @@ function useTaskForm({
 
 export type TaskEditorForm = ReturnType<typeof useTaskForm>;
 
-function formLabels(editing: boolean, subtask: boolean) {
-  if (editing) return { formLabel: "Edit task", submitLabel: "Save" };
-  if (subtask) return { formLabel: "New subtask", submitLabel: "Create subtask" };
-  return { formLabel: "New task", submitLabel: "Create task" };
+const errorDescription =
+  "Couldn’t save this task. Check its fields and make sure the assignee still has project access.";
+
+/** Ctrl+Enter (Cmd+Enter on macOS) saves from any field. */
+function isSaveShortcut(event: KeyboardEvent<HTMLElement>) {
+  return event.key === "Enter" && (event.ctrlKey || event.metaKey);
 }
+
+type TaskFormProps = {
+  detail: ProjectDetail;
+  onSubmit: (draft: TaskDraft) => void;
+  pending: boolean;
+  error?: Error | null;
+};
 
 /**
  * Creates a task in a dialog, or edits a task's title and description inline. Status, priority,
@@ -75,77 +84,52 @@ function formLabels(editing: boolean, subtask: boolean) {
  * latest values when it saves.
  */
 export function TaskForm({
-  detail,
   task,
-  parentTaskEntityId,
-  onSubmit,
   onCancel,
   pending = false,
-  error,
   initialStatus,
   renderCreate,
   onDirtyChange,
   attachments,
   attachmentsReady = true,
-}: {
-  detail: ProjectDetail;
+  ...form
+}: Omit<TaskFormProps, "pending"> & {
   task?: Task;
-  parentTaskEntityId?: string;
-  onSubmit: (draft: TaskDraft) => void;
   onCancel: () => void;
   pending?: boolean;
-  error?: Error | null;
   initialStatus?: Task["status"];
   renderCreate?: (editor: FormDialogEditor) => ReactNode;
   onDirtyChange?: (dirty: boolean) => void;
   attachments?: ReactNode;
   attachmentsReady?: boolean;
 }) {
+  if (renderCreate)
+    return (
+      <TaskCreateForm
+        {...form}
+        pending={pending}
+        initialStatus={initialStatus}
+        renderCreate={renderCreate}
+        attachments={attachments}
+        attachmentsReady={attachmentsReady}
+      />
+    );
+  if (!task) return null;
+  return (
+    <TaskInlineEditForm
+      {...form}
+      pending={pending}
+      task={task}
+      onCancel={onCancel}
+      onDirtyChange={onDirtyChange}
+    />
+  );
+}
+
+/** The title and description fields both forms share. */
+function TaskTextFields({ form }: { form: TaskEditorForm }) {
   const id = useId();
-  const initial = useRef(task);
-  const assignees = assignableActors(detail, task?.assigneeActorEntityId);
-  const form = useTaskForm({
-    task,
-    assignees,
-    pending: pending || !attachmentsReady,
-    initialStatus,
-    // The form reads its options again after each render, so `task` here is the latest one.
-    onSubmit: (draft) => {
-      const current = task;
-      onSubmit(
-        current && !renderCreate
-          ? {
-              ...draft,
-              title: draft.title === initial.current?.title ? current.title : draft.title,
-              description:
-                draft.description === initial.current?.description
-                  ? current.description
-                  : draft.description,
-              status: current.status,
-              priority: current.priority,
-              assigneeActorEntityId: current.assigneeActorEntityId,
-              dueDate: current.dueDate,
-            }
-          : draft,
-      );
-    },
-    onDirtyChange,
-  });
-  const { formLabel, submitLabel } = formLabels(!!task, !!parentTaskEntityId);
-  const submit = () => {
-    if (!pending && attachmentsReady) void form.handleSubmit();
-  };
-  // Ctrl+Enter (Cmd+Enter on macOS) saves from any field. Escape cancels an inline edit.
-  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
-    if (event.key === "Enter" && (event.ctrlKey || event.metaKey)) {
-      event.preventDefault();
-      submit();
-    } else if (event.key === "Escape" && !renderCreate && !pending) {
-      event.preventDefault();
-      onCancel();
-    }
-  };
-  const fields = (
+  return (
     <>
       <form.Field name="title">
         {(field) => (
@@ -171,43 +155,105 @@ export function TaskForm({
           />
         )}
       </form.Field>
-      {renderCreate && (
+    </>
+  );
+}
+
+/** A new task's fields, rendered into the caller's dialog. */
+function TaskCreateForm({
+  detail,
+  onSubmit,
+  pending,
+  error,
+  initialStatus,
+  renderCreate,
+  attachments,
+  attachmentsReady,
+}: TaskFormProps & {
+  initialStatus?: Task["status"];
+  renderCreate: (editor: FormDialogEditor) => ReactNode;
+  attachments?: ReactNode;
+  attachmentsReady: boolean;
+}) {
+  const assignees = assignableActors(detail);
+  const form = useTaskForm({
+    assignees,
+    pending: pending || !attachmentsReady,
+    initialStatus,
+    onSubmit,
+  });
+  const submit = () => {
+    if (!pending && attachmentsReady) void form.handleSubmit();
+  };
+  return renderCreate({
+    fields: (
+      <div className="@container min-w-0 space-y-4">
+        <TaskTextFields form={form} />
         <TaskScheduleFields form={form} assignees={assignees} actors={detail.actors} />
-      )}
-      {attachments}
-    </>
-  );
-  const errorDescription =
-    "Couldn’t save this task. Check its fields and make sure the assignee still has project access.";
-  if (renderCreate)
-    return renderCreate({
-      fields: <div className="@container min-w-0 space-y-4">{fields}</div>,
-      onKeyDown,
-      pending,
-      disabled: !attachmentsReady,
-      error,
-      errorDescription,
-      onSubmit: submit,
-    });
-  const actions = (
-    <>
-      <Button
-        type="button"
-        variant="outline"
-        disabled={pending}
-        onPointerDown={(event) => event.preventDefault()}
-        onClick={onCancel}
-      >
-        Cancel
-      </Button>
-      <PendingButton type="submit" pending={pending} disabled={!attachmentsReady}>
-        {submitLabel}
-      </PendingButton>
-    </>
-  );
+        {attachments}
+      </div>
+    ),
+    onKeyDown: (event) => {
+      if (!isSaveShortcut(event)) return;
+      event.preventDefault();
+      submit();
+    },
+    pending,
+    disabled: !attachmentsReady,
+    error,
+    errorDescription,
+    onSubmit: submit,
+  });
+}
+
+/** Edits a task's title and description in place; Escape cancels. */
+function TaskInlineEditForm({
+  detail,
+  task,
+  onSubmit,
+  onCancel,
+  pending,
+  error,
+  onDirtyChange,
+}: TaskFormProps & {
+  task: Task;
+  onCancel: () => void;
+  onDirtyChange?: (dirty: boolean) => void;
+}) {
+  const initial = useRef(task);
+  const form = useTaskForm({
+    task,
+    assignees: assignableActors(detail, task.assigneeActorEntityId),
+    pending,
+    // The form reads its options again after each render, so `task` here is the latest one.
+    onSubmit: (draft) =>
+      onSubmit({
+        ...draft,
+        title: draft.title === initial.current.title ? task.title : draft.title,
+        description:
+          draft.description === initial.current.description ? task.description : draft.description,
+        status: task.status,
+        priority: task.priority,
+        assigneeActorEntityId: task.assigneeActorEntityId,
+        dueDate: task.dueDate,
+      }),
+    onDirtyChange,
+  });
+  const submit = () => {
+    if (!pending) void form.handleSubmit();
+  };
+  const onKeyDown = (event: KeyboardEvent<HTMLElement>) => {
+    if (isSaveShortcut(event)) {
+      event.preventDefault();
+      submit();
+    } else if (event.key === "Escape" && !pending) {
+      event.preventDefault();
+      onCancel();
+    }
+  };
   return (
     <form
-      aria-label={formLabel}
+      aria-label="Edit task"
       aria-busy={pending}
       noValidate
       className="@container min-w-0 space-y-4"
@@ -218,10 +264,23 @@ export function TaskForm({
       }}
     >
       <fieldset disabled={pending} className="min-w-0 space-y-4">
-        {fields}
+        <TaskTextFields form={form} />
         <FormMessage error={error} errorDescription={errorDescription} />
       </fieldset>
-      <div className="flex justify-end gap-2">{actions}</div>
+      <div className="flex justify-end gap-2">
+        <Button
+          type="button"
+          variant="outline"
+          disabled={pending}
+          onPointerDown={(event) => event.preventDefault()}
+          onClick={onCancel}
+        >
+          Cancel
+        </Button>
+        <PendingButton type="submit" pending={pending}>
+          Save
+        </PendingButton>
+      </div>
     </form>
   );
 }

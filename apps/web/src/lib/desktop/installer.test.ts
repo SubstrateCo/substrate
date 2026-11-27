@@ -1,4 +1,4 @@
-import { browserInstallerPlatform, chooseInstallers } from "./installer";
+import { browserInstallerPlatform, chooseInstallers, installMode } from "./installer";
 import { describe, expect, test } from "bun:test";
 
 const agents = {
@@ -47,5 +47,20 @@ describe("installer choice", () => {
       primary: undefined,
       others: [],
     });
+  });
+});
+
+describe("installMode", () => {
+  test("the viewer's installer is primary, and stays primary after a failed refresh", () => {
+    expect(installMode("ready", "mac")).toEqual({ kind: "download", platform: "mac" });
+    expect(installMode("stale", "mac")).toEqual({ kind: "download", platform: "mac" });
+  });
+  test("a checked release without the viewer's installer makes the browser primary", () => {
+    expect(installMode("ready", undefined)).toEqual({ kind: "browser" });
+    expect(installMode("stale", undefined)).toEqual({ kind: "browser" });
+  });
+  test("a failed first check offers neither the installer nor the browser as primary", () => {
+    expect(installMode("error", undefined)).toEqual({ kind: "error" });
+    expect(installMode("loading", undefined)).toEqual({ kind: "loading" });
   });
 });

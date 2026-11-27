@@ -35,19 +35,14 @@ export function CalendarRow({
   now,
   pending,
   actions,
-  readOnly = false,
 }: {
   calendar: CalendarView;
   now: number;
   /** A change to this calendar is saving. */
   pending: boolean;
+  /** Detached calendars have none and only show their history. */
   actions?: CalendarRowActions;
-  /** Detached calendars only show their history. */
-  readOnly?: boolean;
 }) {
-  const id = useId();
-  const allowed = calendarActions(calendar);
-  const disconnected = calendar.syncStatus === "disconnected";
   return (
     <Item asChild size="xs">
       <li>
@@ -68,86 +63,102 @@ export function CalendarRow({
             </span>
           </div>
         </ItemContent>
-        {!readOnly && actions && (
-          <ItemActions className="max-w-full min-w-0 flex-wrap">
-            {!disconnected && (
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                <Label variant="caption" className="min-w-0" htmlFor={`${id}-interactions`}>
-                  Create contacts and interactions
-                </Label>
-                <Switch
-                  id={`${id}-interactions`}
-                  checked={calendar.recordsInteractions}
-                  disabled={pending}
-                  onCheckedChange={(value) => actions.onRecordsInteractions(calendar, value)}
-                />
-              </div>
-            )}
-            {allowed.reconnect && (
-              <Button
-                variant="outline"
-                size="sm"
-                disabled={pending}
-                onClick={() => actions.onReconnect(calendar)}
-              >
-                <RotateCcw aria-hidden />
-                Reconnect
-              </Button>
-            )}
-            {!disconnected && (
-              <DropdownMenu>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        disabled={pending}
-                        aria-label={`Actions for ${calendar.name}`}
-                      >
-                        <Ellipsis />
-                      </Button>
-                    </DropdownMenuTrigger>
-                  </TooltipTrigger>
-                  <TooltipContent>{`Actions for ${calendar.name}`}</TooltipContent>
-                </Tooltip>
-                <DropdownMenuContent align="end">
-                  {allowed.pause && (
-                    <DropdownMenuItem onSelect={() => actions.onPause(calendar, true)}>
-                      <Pause />
-                      Pause sync
-                    </DropdownMenuItem>
-                  )}
-                  {allowed.resume && (
-                    <DropdownMenuItem onSelect={() => actions.onPause(calendar, false)}>
-                      <Play />
-                      Resume sync
-                    </DropdownMenuItem>
-                  )}
-                  {allowed.backfill && (
-                    <DropdownMenuItem onSelect={() => actions.onBackfill(calendar)}>
-                      <History />
-                      Backfill past meetings
-                    </DropdownMenuItem>
-                  )}
-                  {allowed.disconnect && (
-                    <>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem
-                        variant="destructive"
-                        onSelect={() => actions.onDisconnect(calendar)}
-                      >
-                        <Unlink />
-                        Disconnect calendar
-                      </DropdownMenuItem>
-                    </>
-                  )}
-                </DropdownMenuContent>
-              </DropdownMenu>
-            )}
-          </ItemActions>
-        )}
+        {actions && <CalendarRowControls calendar={calendar} pending={pending} actions={actions} />}
       </li>
     </Item>
+  );
+}
+
+/** A disconnected calendar can only be reconnected; a connected one has its switch and menu. */
+function CalendarRowControls({
+  calendar,
+  pending,
+  actions,
+}: {
+  calendar: CalendarView;
+  pending: boolean;
+  actions: CalendarRowActions;
+}) {
+  const id = useId();
+  const allowed = calendarActions(calendar);
+  if (calendar.syncStatus === "disconnected") {
+    if (!allowed.reconnect) return null;
+    return (
+      <ItemActions className="max-w-full min-w-0 flex-wrap">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={pending}
+          onClick={() => actions.onReconnect(calendar)}
+        >
+          <RotateCcw aria-hidden />
+          Reconnect
+        </Button>
+      </ItemActions>
+    );
+  }
+  return (
+    <ItemActions className="max-w-full min-w-0 flex-wrap">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
+        <Label variant="caption" className="min-w-0" htmlFor={`${id}-interactions`}>
+          Create contacts and interactions
+        </Label>
+        <Switch
+          id={`${id}-interactions`}
+          checked={calendar.recordsInteractions}
+          disabled={pending}
+          onCheckedChange={(value) => actions.onRecordsInteractions(calendar, value)}
+        />
+      </div>
+      <DropdownMenu>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="icon-sm"
+                disabled={pending}
+                aria-label={`Actions for ${calendar.name}`}
+              >
+                <Ellipsis />
+              </Button>
+            </DropdownMenuTrigger>
+          </TooltipTrigger>
+          <TooltipContent>{`Actions for ${calendar.name}`}</TooltipContent>
+        </Tooltip>
+        <DropdownMenuContent align="end">
+          {allowed.pause && (
+            <DropdownMenuItem onSelect={() => actions.onPause(calendar, true)}>
+              <Pause />
+              Pause sync
+            </DropdownMenuItem>
+          )}
+          {allowed.resume && (
+            <DropdownMenuItem onSelect={() => actions.onPause(calendar, false)}>
+              <Play />
+              Resume sync
+            </DropdownMenuItem>
+          )}
+          {allowed.backfill && (
+            <DropdownMenuItem onSelect={() => actions.onBackfill(calendar)}>
+              <History />
+              Backfill past meetings
+            </DropdownMenuItem>
+          )}
+          {allowed.disconnect && (
+            <>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                variant="destructive"
+                onSelect={() => actions.onDisconnect(calendar)}
+              >
+                <Unlink />
+                Disconnect calendar
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </ItemActions>
   );
 }

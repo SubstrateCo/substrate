@@ -141,34 +141,18 @@ export function PictureUpload({
         preview={<CurrentPicture kind={kind} value={value} name={name} owner={owner} />}
         actions={
           value && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="destructive-ghost"
-                  size="icon"
-                  disabled={busy}
-                  aria-busy={removing}
-                  aria-label={removing ? "Removing picture." : "Remove picture"}
-                  onClick={() => {
-                    opening.current?.abort();
-                    opening.current = null;
-                    setSelection({ status: "idle" });
-                    onRemove({
-                      onError: () =>
-                        toast.error("We couldn’t remove this picture. Please try again."),
-                    });
-                  }}
-                >
-                  {removing ? (
-                    <Spinner aria-hidden="true" role="presentation" />
-                  ) : (
-                    <Trash2 aria-hidden="true" />
-                  )}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Remove picture</TooltipContent>
-            </Tooltip>
+            <RemovePictureButton
+              removing={removing}
+              disabled={busy}
+              onRemove={() => {
+                opening.current?.abort();
+                opening.current = null;
+                setSelection({ status: "idle" });
+                onRemove({
+                  onError: () => toast.error("We couldn’t remove this picture. Please try again."),
+                });
+              }}
+            />
           )
         }
         onFiles={([file]) => void open(file)}
@@ -191,6 +175,41 @@ export function PictureUpload({
         />
       )}
     </section>
+  );
+}
+
+/** Removes the picture at once: it can be uploaded again. */
+function RemovePictureButton({
+  removing,
+  disabled,
+  onRemove,
+}: {
+  removing: boolean;
+  disabled: boolean;
+  onRemove: () => void;
+}) {
+  const label = removing ? "Removing picture." : "Remove picture";
+  return (
+    <Tooltip>
+      <TooltipTrigger asChild>
+        <Button
+          type="button"
+          variant="destructive-ghost"
+          size="icon"
+          disabled={disabled}
+          aria-busy={removing}
+          aria-label={label}
+          onClick={onRemove}
+        >
+          {removing ? (
+            <Spinner aria-hidden="true" role="presentation" />
+          ) : (
+            <Trash2 aria-hidden="true" />
+          )}
+        </Button>
+      </TooltipTrigger>
+      <TooltipContent>Remove picture</TooltipContent>
+    </Tooltip>
   );
 }
 

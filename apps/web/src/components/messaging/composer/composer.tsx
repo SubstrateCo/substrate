@@ -2,7 +2,7 @@ import { useContext } from "react";
 
 import { ReferencePicker } from "../../context/references/reference-picker";
 import { usePrefetchReferences } from "../../context/references/reference-search";
-import { AttachFilesButton, AttachmentDraftList } from "@/components/attachments/attachment-picker";
+import { AttachFilesButton, ComposerDraftStrip } from "@/components/attachments/attachment-picker";
 import { FileDropZone } from "@/components/attachments/file-drop-zone";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { ComposerSendRequests } from "@/components/messaging/composer/composer-draft-context";
@@ -60,9 +60,7 @@ function DestinationComposer({
           attachmentControls={
             <AttachFilesButton iconOnly disabled={send.isPending} onFiles={uploads.add} />
           }
-          attachmentDrafts={
-            <AttachmentDraftList uploads={uploads} disabled={send.isPending} compact />
-          }
+          attachmentDrafts={<ComposerDraftStrip uploads={uploads} disabled={send.isPending} />}
           onPasteFiles={uploads.add}
           renderReferences={(activeReference, onInsert) => (
             <ReferencePicker

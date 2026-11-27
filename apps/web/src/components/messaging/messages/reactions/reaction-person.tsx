@@ -1,11 +1,10 @@
 import type { Reactor } from "@/api/messaging/requests";
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { LoadingState } from "@/components/feedback/loading-state";
-import { Tag } from "@/components/feedback/tag";
 import { PersonCardTarget } from "@/components/messaging/people/person-card-slot";
-import { PersonAvatar } from "@/components/people/person-avatar";
+import { ActorAvatar, ActorKindTag } from "@/components/people/actor-avatar";
 import { Button } from "@/components/ui/button";
 import { Item, ItemActions, ItemContent, ItemMedia } from "@/components/ui/item";
+import { actorIdentity } from "@/lib/actors/identity";
 
 export function ReactionPerson({
   person,
@@ -14,15 +13,12 @@ export function ReactionPerson({
   person: Reactor;
   showEmojis?: boolean;
 }) {
+  const actor = actorIdentity(person);
   return (
     <Item asChild size="xs">
       <li>
         <ItemMedia>
-          {person.type === "agent" ? (
-            <AgentAvatarView avatar={person.avatar} />
-          ) : (
-            <PersonAvatar name={person.name} image={person.image} />
-          )}
+          <ActorAvatar actor={actor} />
         </ItemMedia>
         <ItemContent className="min-w-0">
           <PersonCardTarget actorId={person.actorId} name={person.name}>
@@ -32,7 +28,7 @@ export function ReactionPerson({
           </PersonCardTarget>
         </ItemContent>
         <ItemActions className="max-w-1/2">
-          {person.type === "agent" && <Tag>Agent</Tag>}
+          <ActorKindTag actor={actor} />
           {showEmojis && (
             <span className="text-right wrap-anywhere" aria-label="Reactions">
               {person.emojis.join(" ")}
@@ -44,7 +40,7 @@ export function ReactionPerson({
   );
 }
 
-export function ReactionNotice({ error, onRetry }: { error: boolean; onRetry: () => void }) {
+export function ReactionNotice({ error, onRetry }: { error: Error | null; onRetry: () => void }) {
   if (!error) return <LoadingState label="Loading reactions" variant="compact" rows={2} />;
   return (
     <div className="py-3 text-sm text-muted-foreground" role="status">

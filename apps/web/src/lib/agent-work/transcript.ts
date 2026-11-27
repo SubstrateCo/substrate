@@ -4,6 +4,8 @@ import type {
   TurnOutputView,
 } from "@substrate/contracts/agent-work";
 
+import { transcriptNotice } from "./status";
+
 type StepState = "done" | "current" | "error";
 
 export type TranscriptEntry =
@@ -91,4 +93,42 @@ export function transcriptEntries(
   if (!working)
     for (const step of tools.values()) if (step.state === "current") step.state = "error";
   return entries;
+}
+
+/** What a transcript panel shows under its header. */
+export type TranscriptBodyState =
+  | { kind: "unavailable"; reason: string }
+  | { kind: "elsewhere"; notice: string }
+  | { kind: "timeline" }
+  | { kind: "loading" }
+  | { kind: "error"; error: Error };
+
+/**
+ * The timeline lives only on the desktop that ran the turn, so `local` (undefined while unknown)
+ * decides between the timeline here and a notice naming that desktop. Loading wins over an
+ * error, so a retry that is running replaces the error.
+ */
+export function transcriptBody({
+  unavailable,
+  device,
+  turn,
+  local,
+  events,
+  error,
+}: {
+  unavailable?: string;
+  /** The agent's home desktop, to say where its transcripts are. */
+  device?: string;
+  turn: { loading: boolean; loaded: boolean };
+  local: boolean | undefined;
+  events: { loaded: boolean; pending: boolean };
+  error: Error | null;
+}): TranscriptBodyState {
+  if (unavailable) return { kind: "unavailable", reason: unavailable };
+  if (turn.loaded && events.loaded) return { kind: "timeline" };
+  if (local === false) return { kind: "elsewhere", notice: transcriptNotice(device) };
+  if (turn.loading || (turn.loaded && (local === undefined || events.pending)))
+    return { kind: "loading" };
+  if (error) return { kind: "error", error };
+  return { kind: "loading" };
 }

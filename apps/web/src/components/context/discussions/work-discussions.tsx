@@ -2,7 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 
 import type { ReactNode } from "react";
 
-import { WorkDiscussions as WorkDiscussionsView } from "@/components/context/discussions/work-discussions-view";
+import {
+  InspectorDiscussions,
+  PageDiscussions,
+  type WorkDiscussionsProps,
+} from "@/components/context/discussions/work-discussions-view";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { messageLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
@@ -33,25 +37,22 @@ export function WorkDiscussions({
     ...conversationsQueryOptions(organizationId),
     enabled: visible,
   });
-  return (
-    <WorkDiscussionsView
-      items={(resourceState(related).data ?? []).map((item) => {
-        const conversation = conversations.data?.find((entry) => entry.id === item.conversationId);
-        return {
-          ...item,
-          conversationKind: conversation?.kind,
-          private: conversation?.private,
-          link: messageLink(organizationId, item.conversationId, item.messageId),
-        };
-      })}
-      loading={related.isPending}
-      error={related.error}
-      onRetry={() => void related.refetch()}
-      label={label}
-      emptyTitle={emptyTitle}
-      variant={variant}
-    >
-      {children}
-    </WorkDiscussionsView>
-  );
+  const props: WorkDiscussionsProps = {
+    items: (resourceState(related).data ?? []).map((item) => {
+      const conversation = conversations.data?.find((entry) => entry.id === item.conversationId);
+      return {
+        ...item,
+        conversationKind: conversation?.kind,
+        private: conversation?.private,
+        link: messageLink(organizationId, item.conversationId, item.messageId),
+      };
+    }),
+    loading: related.isPending,
+    error: related.error,
+    onRetry: () => void related.refetch(),
+    label,
+    children,
+  };
+  if (variant === "page") return <PageDiscussions {...props} />;
+  return <InspectorDiscussions {...props} emptyTitle={emptyTitle} />;
 }

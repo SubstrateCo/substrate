@@ -16,14 +16,15 @@ import {
 } from "react";
 import { flushSync } from "react-dom";
 
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
-import { PersonAvatar } from "@/components/people/person-avatar";
+import { ActorAvatar, ActorKindSuffix } from "@/components/people/actor-avatar";
 import { FieldDescription, FieldError } from "@/components/ui/field";
 import { Pressable } from "@/components/ui/pressable";
+import { actorLabel, type ActorIdentity } from "@/lib/actors/identity";
 import {
   addTypedRecipients,
   isEmailAddress,
   limitMessage,
+  recipientActor,
   recipientFor,
   recipientKey,
 } from "@/lib/people/people-picker";
@@ -380,40 +381,51 @@ function PeopleSuggestions({
       // Keep focus in the input while choosing with the pointer.
       onMouseDown={(event) => event.preventDefault()}
     >
-      {options.map((option, index) => (
-        <Option
-          key={recipientKey(option)}
-          id={optionId(index)}
-          label={option.agent ? `${option.agent.name}, Agent` : undefined}
-          active={index === activeIndex}
-          onHover={() => onHover(index)}
-          onChoose={(keepOpen) => onChoose(option, keepOpen)}
-        >
-          {(option.agent ?? option.person) ? (
-            <>
-              {option.agent ? (
-                <AgentAvatarView avatar={option.agent.avatar} />
-              ) : (
-                <PersonAvatar name={option.person?.name} image={option.person?.image} />
-              )}
-              <span className="truncate font-medium">{(option.agent ?? option.person)?.name}</span>
-              {option.person && (
-                <span className="min-w-0 truncate text-muted-foreground">{option.email}</span>
-              )}
-            </>
-          ) : (
-            <>
-              <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                <Mail aria-hidden="true" className="size-3.5" />
-              </span>
-              <span className="truncate">
-                Invite <span className="font-medium">{option.email}</span>
-              </span>
-            </>
-          )}
-        </Option>
-      ))}
+      {options.map((option, index) => {
+        const actor = recipientActor(option);
+        return (
+          <Option
+            key={recipientKey(option)}
+            id={optionId(index)}
+            label={actor?.kind === "agent" ? actorLabel(actor) : undefined}
+            active={index === activeIndex}
+            onHover={() => onHover(index)}
+            onChoose={(keepOpen) => onChoose(option, keepOpen)}
+          >
+            <RecipientOption recipient={option} actor={actor} />
+          </Option>
+        );
+      })}
     </div>
+  );
+}
+
+function RecipientOption({
+  recipient,
+  actor,
+}: {
+  recipient: PickedRecipient;
+  actor: ActorIdentity | null;
+}) {
+  if (actor)
+    return (
+      <>
+        <ActorAvatar actor={actor} />
+        <span className="truncate font-medium">{actor.name}</span>
+        {recipient.person && (
+          <span className="min-w-0 truncate text-muted-foreground">{recipient.email}</span>
+        )}
+      </>
+    );
+  return (
+    <>
+      <span className="flex size-6 shrink-0 items-center justify-center rounded-md bg-muted text-muted-foreground">
+        <Mail aria-hidden="true" className="size-3.5" />
+      </span>
+      <span className="truncate">
+        Invite <span className="font-medium">{recipient.email}</span>
+      </span>
+    </>
   );
 }
 
@@ -456,20 +468,23 @@ function RecipientChip({
   disabled: boolean;
   onRemove: () => void;
 }) {
-  const label = recipient.agent?.name ?? recipient.person?.name ?? recipient.email;
-  let avatar = <Mail aria-hidden="true" className="ml-1 size-3.5 shrink-0 text-muted-foreground" />;
-  if (recipient.agent) avatar = <AgentAvatarView avatar={recipient.agent.avatar} size="xs" />;
-  else if (recipient.person)
-    avatar = <PersonAvatar name={label} image={recipient.person.image} size="xs" />;
+  const actor = recipientActor(recipient);
+  const label = actor?.name ?? recipient.email;
   return (
     <span
-      title={recipient.agent ? "Agent" : (recipient.person?.email ?? "Gets an email invitation")}
+      title={
+        actor?.kind === "agent" ? "Agent" : (recipient.person?.email ?? "Gets an email invitation")
+      }
       className="inline-flex h-6 max-w-full min-w-0 items-center gap-1.5 rounded-md bg-muted pr-0.5 pl-0.5 text-sm"
     >
-      {avatar}
+      {actor ? (
+        <ActorAvatar actor={actor} size="xs" />
+      ) : (
+        <Mail aria-hidden="true" className="ml-1 size-3.5 shrink-0 text-muted-foreground" />
+      )}
       <span className="truncate">
         {label}
-        {recipient.agent && <span className="sr-only">, Agent</span>}
+        <ActorKindSuffix actor={actor} />
       </span>
       <Pressable
         disabled={disabled}

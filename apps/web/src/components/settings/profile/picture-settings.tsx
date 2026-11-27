@@ -4,57 +4,70 @@ import {
   PictureUploadLoading,
   type PictureUploadProps,
 } from "../../upload/picture-upload";
-import { FormMessage } from "@/components/feedback/form-message";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { SettingsCard } from "@/components/layout/settings-section";
-import { Button } from "@/components/ui/button";
 import type { ResourceStatus } from "@/lib/resource-state";
 
-/** A settings card for a profile picture or logo. Changes save as soon as the crop is saved. */
+/**
+ * A settings card for a profile picture or logo. Changes save as soon as the crop is saved. A
+ * failed refresh keeps the current picture, with the error above it.
+ */
 export function PictureSettings({
   title,
   state,
   description,
-  loading = false,
-  error,
   onRetry,
   ...upload
 }: PictureUploadProps & {
   title: string;
+  /** The load state of the record that owns the picture. */
   state: ResourceStatus;
   description: string;
-  loading?: boolean;
-  error?: Error | null;
   onRetry: () => void;
 }) {
-  const subject = title.toLowerCase();
-  const loaded = upload.value !== undefined;
-  let mode: "failed" | "loading" | "blocked" | "stale" | "ready" = "ready";
-  if (error && (state === "unavailable" || !loaded)) mode = "failed";
-  else if (loading && !loaded) mode = "loading";
-  else if (state === "unavailable") mode = "blocked";
-  else if (error) mode = "stale";
   return (
     <SettingsCard title={title} description={description}>
-      {mode === "loading" && (
-        <PictureUploadLoading kind={upload.kind} label={`Loading ${subject}`} />
-      )}
-      {mode === "failed" && (
-        <ErrorState variant="compact" title={`Couldn’t load the ${subject}`} onRetry={onRetry} />
-      )}
-      {mode === "stale" && (
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="min-w-0 flex-1">
-            <FormMessage
-              error={error}
-              errorDescription={`Couldn’t refresh the ${subject}. The current one is still shown.`}
-            />
-          </div>
-          <Button type="button" variant="outline" onClick={onRetry}>
-            Try again
-          </Button>
-        </div>
-      )}
-      {(mode === "stale" || mode === "ready") && <PictureUpload {...upload} />}
+      <PictureSettingsBody
+        subject={title.toLowerCase()}
+        state={state}
+        onRetry={onRetry}
+        upload={upload}
+      />
     </SettingsCard>
   );
+}
+
+function PictureSettingsBody({
+  subject,
+  state,
+  onRetry,
+  upload,
+}: {
+  subject: string;
+  state: ResourceStatus;
+  onRetry: () => void;
+  upload: PictureUploadProps;
+}) {
+  switch (state) {
+    case "loading":
+      return <PictureUploadLoading kind={upload.kind} label={`Loading ${subject}`} />;
+    case "error":
+    case "unavailable":
+      return (
+        <ErrorState variant="compact" title={`Couldn’t load the ${subject}`} onRetry={onRetry} />
+      );
+    case "stale":
+      return (
+        <>
+          <StaleNotice
+            title={`Couldn’t refresh the ${subject}`}
+            description="The current one is still shown."
+            onRetry={onRetry}
+          />
+          <PictureUpload {...upload} />
+        </>
+      );
+    case "ready":
+      return <PictureUpload {...upload} />;
+  }
 }

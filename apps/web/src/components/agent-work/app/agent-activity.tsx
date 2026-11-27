@@ -7,6 +7,7 @@ import type {
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { NeedsAttention } from "../needs-attention";
+import { NeedsAttentionInline } from "../needs-attention-card";
 import { TurnStatusTag } from "../turn-work";
 import {
   AgentActivityView,
@@ -95,7 +96,9 @@ export function AgentActivity({
       createdAt: turn.createdAt,
       selected: turn.id === selectedTurnId,
       attention: turn.status === "needs_attention" && (
-        <NeedsAttention turn={turn} agentName={name} inline />
+        <NeedsAttentionInline>
+          <NeedsAttention turn={turn} agentName={name} />
+        </NeedsAttentionInline>
       ),
     };
   };

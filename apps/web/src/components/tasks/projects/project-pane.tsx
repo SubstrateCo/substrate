@@ -4,8 +4,7 @@ import { WorkDiscussions } from "../../context/discussions/work-discussions";
 import { CopyLink } from "../../context/links/copy-link";
 import { TaskDetail } from "../detail/task-detail";
 import { TaskForm } from "../editor/task-form";
-import { ProjectArchive } from "./editor/project-archive";
-import { ProjectDelete } from "./editor/project-delete";
+import { ProjectDangerZone } from "./editor/project-danger-zone";
 import { ProjectForm } from "./editor/project-form";
 import { ProjectPicture } from "./editor/project-picture";
 import { ProjectArchivedNotice } from "./project-archived-notice";
@@ -73,12 +72,9 @@ export function ProjectPane({
           <ProjectExport projectEntityId={projectEntityId} />
         </>
       }
-      context={
-        project.data &&
-        !project.error && (
-          <WorkDiscussions entityId={projectEntityId} label="Project discussions" variant="page" />
-        )
-      }
+      renderContext={() => (
+        <WorkDiscussions entityId={projectEntityId} label="Project discussions" variant="page" />
+      )}
       onRetry={() => void project.refetch()}
       notice={
         archivedAt && (
@@ -90,24 +86,18 @@ export function ProjectPane({
           />
         )
       }
-      editor={
-        resource.data && (
-          <>
-            <ProjectPicture project={resource.data.project} />
-            <ProjectForm project={resource.data.project} />
-          </>
-        )
-      }
-      dangerZone={
-        resource.data &&
-        capabilities.canArchive &&
-        (archivedAt ? (
-          <ProjectDelete project={resource.data.project} />
-        ) : (
-          <ProjectArchive project={resource.data.project} />
-        ))
-      }
-      sharing={resource.data && <ProjectSharing projectEntityId={projectEntityId} />}
+      renderSettings={(detail) => (
+        <>
+          {capabilities.canEdit && (
+            <>
+              <ProjectPicture project={detail.project} />
+              <ProjectForm project={detail.project} />
+            </>
+          )}
+          <ProjectSharing projectEntityId={projectEntityId} />
+          {capabilities.canArchive && <ProjectDangerZone project={detail.project} />}
+        </>
+      )}
       renderTaskForm={({
         parentTaskEntityId,
         onSaved,

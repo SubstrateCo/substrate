@@ -5,6 +5,7 @@ import type { PermissionLevel } from "@substrate/contracts/tasks";
 import { recordRows } from "@/components/layout/record-section";
 import { AccessRow } from "@/components/people/access-row";
 import { FieldDescription } from "@/components/ui/field";
+import { actorIdentity } from "@/lib/actors/identity";
 
 export function RecordGrants({
   grants,
@@ -32,8 +33,7 @@ export function RecordGrants({
         return (
           <AccessRow
             key={grant.actorEntityId}
-            name={name}
-            image={person?.image}
+            actor={actorIdentity({ name, image: person?.image })}
             level={crmAccessLabels[grant.level]}
             disabled={disabled}
             onRemove={() => onRemove({ actorEntityId: grant.actorEntityId, name })}

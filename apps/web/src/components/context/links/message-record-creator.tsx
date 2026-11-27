@@ -4,7 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { MessageRecordEditor } from "./message-record-editor";
-import { CrmResourceState } from "@/components/crm/crm-resource-state";
+import { CrmResourceFallback } from "@/components/crm/crm-resource-state";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
@@ -38,28 +38,15 @@ export function MessageRecordCreator({
   const error = pipeline.error ?? settings.error;
   if (kind === "deal" && (loading || error || !stages.length))
     return (
-      <ConfirmDialog
-        title="Create deal from this message"
-        description="Choose an active CRM stage and use the workspace currency default."
+      <DealStageGate
+        pending={loading}
+        error={error}
+        onRetry={() => {
+          void pipeline.refetch();
+          void settings.refetch();
+        }}
         onClose={onClose}
-      >
-        <CrmResourceState
-          compact
-          pending={loading}
-          error={error}
-          onRetry={() => {
-            void pipeline.refetch();
-            void settings.refetch();
-          }}
-        />
-        {!loading && !error && !stages.length && (
-          <ContentNotice
-            icon={Handshake}
-            title="No active stages"
-            description="Add an active stage in CRM settings before creating a deal."
-          />
-        )}
-      </ConfirmDialog>
+      />
     );
   const section = { account: "accounts", contact: "contacts", deal: "deals" } as const;
   return (
@@ -87,5 +74,36 @@ export function MessageRecordCreator({
         )
       }
     />
+  );
+}
+
+/** A deal needs an active stage: shown while stages load, fail, or none exist. */
+function DealStageGate({
+  pending,
+  error,
+  onRetry,
+  onClose,
+}: {
+  pending: boolean;
+  error: Error | null;
+  onRetry: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <ConfirmDialog
+      title="Create deal from this message"
+      description="Choose an active CRM stage and use the workspace currency default."
+      onClose={onClose}
+    >
+      {pending || error ? (
+        <CrmResourceFallback compact pending={pending} error={error} onRetry={onRetry} />
+      ) : (
+        <ContentNotice
+          icon={Handshake}
+          title="No active stages"
+          description="Add an active stage in CRM settings before creating a deal."
+        />
+      )}
+    </ConfirmDialog>
   );
 }

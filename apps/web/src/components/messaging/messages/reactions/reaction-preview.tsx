@@ -35,7 +35,7 @@ export function ReactionPreview({
         {count === 1 ? "1 person reacted" : `${count} people reacted`}
       </p>
       {people.isPending || people.isError ? (
-        <ReactionNotice error={people.isError} onRetry={() => void people.refetch()} />
+        <ReactionNotice error={people.error} onRetry={() => void people.refetch()} />
       ) : (
         <ul className="mt-1" aria-label="People who reacted">
           {items?.map((person) => (

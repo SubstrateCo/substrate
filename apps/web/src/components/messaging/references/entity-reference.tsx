@@ -3,6 +3,8 @@ import type { TaskStatus } from "@substrate/contracts/tasks";
 
 import { Link } from "@tanstack/react-router";
 
+import type { ReactNode } from "react";
+
 import { entityKinds } from "@/components/context/entity-kinds";
 import { useHasPersonCard } from "@/components/messaging/people/person-card-context";
 import { PersonCardTarget } from "@/components/messaging/people/person-card-slot";
@@ -43,69 +45,86 @@ export function EntityReference({
   loading?: boolean;
 }) {
   if (reference) return <ResolvedReference reference={reference} />;
-  const label = loading ? "Loading reference" : "Unavailable reference";
+  if (loading) return <LoadingReference />;
+  return <UnavailableReference />;
+}
+
+function LoadingReference() {
   return (
-    <span
-      className={referenceClass}
-      role={loading ? "status" : undefined}
-      aria-label={loading ? label : undefined}
-    >
-      {loading ? (
-        <Spinner aria-hidden="true" className="size-3.5 shrink-0 self-center" />
-      ) : (
-        <LockKeyhole aria-hidden="true" className="size-3.5 shrink-0 self-center opacity-70" />
-      )}
-      <span className="truncate">{label}</span>
+    <span className={referenceClass} role="status" aria-label="Loading reference">
+      <Spinner aria-hidden="true" className="size-3.5 shrink-0 self-center" />
+      <span className="truncate">Loading reference</span>
+    </span>
+  );
+}
+
+function UnavailableReference() {
+  return (
+    <span className={referenceClass}>
+      <LockKeyhole aria-hidden="true" className="size-3.5 shrink-0 self-center opacity-70" />
+      <span className="truncate">Unavailable reference</span>
     </span>
   );
 }
 
 function ResolvedReference({ reference }: { reference: WorkspaceReference }) {
   const hasPersonCard = useHasPersonCard();
-  const Icon = referenceIcons[reference.kind];
   const label = plainReferenceText(reference.label);
-  const { status } = reference;
-  const content = (
-    <>
-      {status ? (
-        <span className="flex shrink-0 self-center [&>svg]:size-3.5">
-          <TaskStatusIcon status={status.value} />
-        </span>
-      ) : (
-        <Icon aria-hidden="true" className="size-3.5 shrink-0 self-center opacity-70" />
-      )}
-      <span className="truncate">{label}</span>
-      {status && <span className="sr-only">, {status.label}</span>}
-    </>
-  );
-  if (
-    !reference.link &&
-    (reference.kind === "person" || reference.kind === "agent") &&
-    hasPersonCard
-  )
+  const { status, link } = reference;
+  const content = <ReferenceContent reference={reference} label={label} />;
+  const tooltip = status ? `${label} · ${status.label}` : label;
+  if (link)
+    return (
+      <ReferenceTooltip label={tooltip}>
+        <Link
+          {...link}
+          data-slot="entity-reference"
+          className={`${referenceClass} hover:bg-row-selected focus-visible:outline-2 focus-visible:outline-ring`}
+        >
+          {content}
+        </Link>
+      </ReferenceTooltip>
+    );
+  if ((reference.kind === "person" || reference.kind === "agent") && hasPersonCard)
     return (
       <PersonCardTarget actorId={reference.id} name={label}>
         <span className={`${referenceClass} hover:bg-row-selected`}>{content}</span>
       </PersonCardTarget>
     );
   return (
+    <ReferenceTooltip label={tooltip}>
+      <span className={referenceClass}>{content}</span>
+    </ReferenceTooltip>
+  );
+}
+
+/** The kind icon and label. A task shows its status icon, named for screen readers. */
+function ReferenceContent({ reference, label }: { reference: WorkspaceReference; label: string }) {
+  const { status } = reference;
+  if (status)
+    return (
+      <>
+        <span className="flex shrink-0 self-center [&>svg]:size-3.5">
+          <TaskStatusIcon status={status.value} />
+        </span>
+        <span className="truncate">{label}</span>
+        <span className="sr-only">, {status.label}</span>
+      </>
+    );
+  const Icon = referenceIcons[reference.kind];
+  return (
+    <>
+      <Icon aria-hidden="true" className="size-3.5 shrink-0 self-center opacity-70" />
+      <span className="truncate">{label}</span>
+    </>
+  );
+}
+
+function ReferenceTooltip({ label, children }: { label: string; children: ReactNode }) {
+  return (
     <Tooltip>
-      <TooltipTrigger asChild>
-        {reference.link ? (
-          <Link
-            {...reference.link}
-            data-slot="entity-reference"
-            className={`${referenceClass} hover:bg-row-selected focus-visible:outline-2 focus-visible:outline-ring`}
-          >
-            {content}
-          </Link>
-        ) : (
-          <span className={referenceClass}>{content}</span>
-        )}
-      </TooltipTrigger>
-      <TooltipContent>
-        {reference.status ? `${label} · ${reference.status.label}` : label}
-      </TooltipContent>
+      <TooltipTrigger asChild>{children}</TooltipTrigger>
+      <TooltipContent>{label}</TooltipContent>
     </Tooltip>
   );
 }

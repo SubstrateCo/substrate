@@ -1,6 +1,6 @@
 import type { TurnEventView } from "@substrate/contracts/agent-work";
 
-import { transcriptEntries } from "./transcript";
+import { transcriptBody, transcriptEntries } from "./transcript";
 import { usageLabel } from "./usage";
 import { describe, expect, test } from "bun:test";
 
@@ -93,5 +93,46 @@ describe("usage", () => {
     expect(
       usageLabel({ inputTokens: 12_345, outputTokens: 980, contextUsed: 45, contextWindow: 100 }),
     ).toBe("12k in · 980 out · 45% of context");
+  });
+});
+
+describe("transcriptBody", () => {
+  const failure = new Error("Network request failed");
+  const loadedTurn = { loading: false, loaded: true };
+  const body = (input: Partial<Parameters<typeof transcriptBody>[0]>) =>
+    transcriptBody({
+      turn: loadedTurn,
+      local: true,
+      events: { loaded: false, pending: false },
+      error: null,
+      ...input,
+    });
+
+  test("work that is gone says why, before anything loads", () => {
+    expect(body({ unavailable: "This work is gone", error: failure })).toEqual({
+      kind: "unavailable",
+      reason: "This work is gone",
+    });
+  });
+  test("the timeline shows here only once this desktop has its events", () => {
+    expect(body({ events: { loaded: true, pending: false }, error: failure }).kind).toBe(
+      "timeline",
+    );
+    expect(body({ local: false, device: "Studio Mac" })).toEqual({
+      kind: "elsewhere",
+      notice: "Open Substrate on Studio Mac to see this transcript.",
+    });
+  });
+  test("an unknown or loading local transcript is loading, not an error", () => {
+    expect(body({ local: undefined, error: failure }).kind).toBe("loading");
+    expect(body({ events: { loaded: false, pending: true } }).kind).toBe("loading");
+    expect(body({ turn: { loading: true, loaded: false }, local: undefined }).kind).toBe("loading");
+  });
+  test("a failed read with nothing to show is an error", () => {
+    expect(body({ turn: { loading: false, loaded: false }, error: failure })).toEqual({
+      kind: "error",
+      error: failure,
+    });
+    expect(body({ error: failure }).kind).toBe("error");
   });
 });

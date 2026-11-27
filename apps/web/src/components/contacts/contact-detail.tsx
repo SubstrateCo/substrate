@@ -12,9 +12,10 @@ import { AffiliationEditor } from "@/components/crm/affiliation-editor";
 import { CrmActivity } from "@/components/crm/crm-activity";
 import { crmResource } from "@/components/crm/crm-resource";
 import { FollowUps } from "@/components/crm/follow-ups";
-import { recordChangeDialog, type RecordChangeDialog } from "@/components/crm/record-change-dialog";
+import type { RecordChangeDialog } from "@/components/crm/record-change-dialog";
 import { RecordChangeDialogs } from "@/components/crm/record-change-dialogs";
 import { RecordDetailView, RecordDetailLoading } from "@/components/crm/record-detail-view";
+import type { RecordDraft } from "@/components/crm/record-editor";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { InteractionEditor } from "@/components/interactions/interaction-editor";
 import { InteractionHistory } from "@/components/interactions/interaction-history";
@@ -35,14 +36,13 @@ import { contactOptions } from "@/queries/contacts/options";
 import { useRecordMutation } from "@/queries/records/mutations";
 import { Plus } from "lucide-react";
 
+type ContactDialog = RecordChangeDialog | "interaction" | "affiliation";
+
 export function ContactDetail({ entityId }: { entityId: string }) {
   const { organizationId } = useWorkspaceScope();
   const query = useQuery(contactOptions(organizationId, entityId));
-  const apps = useOrganizationApps();
   const mutation = useRecordMutation(organizationId, "contacts");
-  const [dialog, setDialog] = useState<RecordChangeDialog | "interaction" | "affiliation" | null>(
-    null,
-  );
+  const [dialog, setDialog] = useState<ContactDialog | null>(null);
   const { data, fallback, staleNotice } = crmResource(
     query,
     <RecordDetailLoading kind="contacts" />,
@@ -51,7 +51,6 @@ export function ContactDetail({ entityId }: { entityId: string }) {
   const { profile, affiliations, level } = data;
   const archived = !!data.archivedAt;
   const capabilities = crmRecordCapabilities({ level, archived });
-  const change = recordChangeDialog(dialog);
   const canChange = capabilities.canEdit;
   const open = (next: NonNullable<typeof dialog>) => {
     mutation.reset();
@@ -139,33 +138,65 @@ export function ContactDetail({ entityId }: { entityId: string }) {
         </WorkDiscussions>
         <CrmActivity entityId={entityId} />
       </RecordDetailView>
-      {change && (
-        <RecordChangeDialogs
-          dialog={change}
-          kind="contacts"
-          entityId={entityId}
-          name={profile.displayName}
-          archived={archived}
-          record={profile}
-          onClose={() => setDialog(null)}
-        />
-      )}
-      {dialog === "interaction" && (
-        <InteractionEditor
-          pending={mutation.isPending}
-          error={mutation.error}
-          onClose={() => setDialog(null)}
-          onSubmit={(draft) =>
-            mutation.mutate(
-              { action: "createInteraction", organizationId, contactEntityId: entityId, ...draft },
-              { onSuccess: () => setDialog(null) },
-            )
-          }
-        />
-      )}
-      {dialog === "affiliation" && apps.enabled("crm") && (
-        <AffiliationEditor contactEntityId={entityId} onClose={() => setDialog(null)} />
-      )}
+      <ContactDialogs
+        dialog={dialog}
+        entityId={entityId}
+        profile={profile}
+        archived={archived}
+        mutation={mutation}
+        onClose={() => setDialog(null)}
+      />
     </>
+  );
+}
+
+/** The open edit, archive, new interaction, or link account dialog of a contact. */
+function ContactDialogs({
+  dialog,
+  entityId,
+  profile,
+  archived,
+  mutation,
+  onClose,
+}: {
+  dialog: ContactDialog | null;
+  entityId: string;
+  profile: RecordDraft & { displayName: string };
+  archived: boolean;
+  mutation: ReturnType<typeof useRecordMutation>;
+  onClose: () => void;
+}) {
+  const { organizationId } = useWorkspaceScope();
+  const apps = useOrganizationApps();
+  if (!dialog) return null;
+  if (dialog === "interaction")
+    return (
+      <InteractionEditor
+        pending={mutation.isPending}
+        error={mutation.error}
+        onClose={onClose}
+        onSubmit={(draft) =>
+          mutation.mutate(
+            { action: "createInteraction", organizationId, contactEntityId: entityId, ...draft },
+            { onSuccess: onClose },
+          )
+        }
+      />
+    );
+  if (dialog === "affiliation") {
+    // Accounts are part of CRM; the dialog closes if CRM is turned off while it is open.
+    if (!apps.enabled("crm")) return null;
+    return <AffiliationEditor contactEntityId={entityId} onClose={onClose} />;
+  }
+  return (
+    <RecordChangeDialogs
+      dialog={dialog}
+      kind="contacts"
+      entityId={entityId}
+      name={profile.displayName}
+      archived={archived}
+      record={profile}
+      onClose={onClose}
+    />
   );
 }

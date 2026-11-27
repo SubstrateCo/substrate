@@ -3,7 +3,7 @@ import { permissionLevels, type PermissionLevel } from "@substrate/contracts/tas
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { RecordGrants } from "./record-grants";
 import { RecordPersonField } from "./record-people";
@@ -12,9 +12,11 @@ import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { FormMessage } from "@/components/feedback/form-message";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { SelectField } from "@/components/forms/select-field";
 import { FieldLegend, FieldSet } from "@/components/ui/field";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
+import { resourceState, type ResourceState } from "@/lib/resource-state";
 import { crmGrantsOptions } from "@/queries/crm/management";
 import { useCrmMutation } from "@/queries/crm/mutations";
 
@@ -73,24 +75,22 @@ export function RecordSharing({
       >
         <FieldSet className="min-w-0">
           <FieldLegend variant="label">Direct access</FieldLegend>
-          {grants.isPending && (
-            <LoadingState label="Loading direct access" variant="compact" rows={2} />
-          )}
-          <FormMessage
-            error={grants.error}
-            errorDescription="Couldn’t load direct access. Close this dialog and try again."
-          />
-          {ready && (
-            <RecordGrants
-              grants={grants.data}
-              people={directory.people}
-              disabled={mutation.isPending}
-              onRemove={(person) => {
-                mutation.reset();
-                setRemoving(person);
-              }}
-            />
-          )}
+          <DirectAccessBody
+            state={resourceState(grants)}
+            directoryReady={!directory.pending && !directory.error}
+          >
+            {(rows) => (
+              <RecordGrants
+                grants={rows}
+                people={directory.people}
+                disabled={mutation.isPending}
+                onRemove={(person) => {
+                  mutation.reset();
+                  setRemoving(person);
+                }}
+              />
+            )}
+          </DirectAccessBody>
         </FieldSet>
         <RecordPersonField
           directory={directory}
@@ -139,6 +139,38 @@ export function RecordSharing({
           }
         />
       )}
+    </>
+  );
+}
+
+/** The record's grants. A failed refresh keeps the loaded grants under the error. */
+function DirectAccessBody<T>({
+  state,
+  directoryReady,
+  children,
+}: {
+  state: ResourceState<T>;
+  directoryReady: boolean;
+  children: (grants: T) => ReactNode;
+}) {
+  if (state.status === "loading")
+    return <LoadingState label="Loading direct access" variant="compact" rows={2} />;
+  if (state.data === undefined)
+    return (
+      <FormMessage
+        error={state.error}
+        errorDescription="Couldn’t load direct access. Close this dialog and try again."
+      />
+    );
+  return (
+    <>
+      {state.status === "stale" && (
+        <StaleNotice
+          title="Couldn’t load direct access"
+          description="Close this dialog and try again."
+        />
+      )}
+      {directoryReady && children(state.data)}
     </>
   );
 }

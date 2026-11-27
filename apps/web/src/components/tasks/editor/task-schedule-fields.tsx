@@ -5,12 +5,12 @@ import { AssigneePicker } from "../assignee/assignee-picker";
 import { taskPriorityOptions, taskStatusOptions } from "../task-cues/task-options";
 import type { ProjectDetail } from "../types";
 import type { TaskEditorForm } from "./task-form-view";
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { DateField } from "@/components/forms/date-field";
 import { SelectField } from "@/components/forms/select-field";
-import { PersonAvatar } from "@/components/people/person-avatar";
+import { ActorAvatar } from "@/components/people/actor-avatar";
 import { Button } from "@/components/ui/button";
 import { Field, FieldError, FieldLabel } from "@/components/ui/field";
+import { actorIdentity } from "@/lib/actors/identity";
 
 /** Sets the value, then checks an invalid field again so its error clears on a valid choice. */
 function change<T>(
@@ -89,11 +89,7 @@ export function TaskScheduleFields({
                   />
                 }
               >
-                {actor?.type === "agent" ? (
-                  <AgentAvatarView avatar={actor.avatar} size="xs" />
-                ) : (
-                  <PersonAvatar size="xs" name={actor?.name} image={actor?.image} />
-                )}
+                <ActorAvatar actor={actor && actorIdentity(actor)} size="xs" />
                 <span className="min-w-0 flex-1 truncate text-left">
                   {value && !actor
                     ? "Former member. Choose someone else."

@@ -8,9 +8,11 @@ import { ErrorState } from "../../feedback/error-state";
 import type { WorkspaceReference } from "./entity-reference";
 import { ReferencePickerLink } from "./reference-picker-context";
 import { ReferencePickerLoadingOption, ReferencePickerOption } from "./reference-picker-option";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { listPhase, type ListPhase } from "@/lib/resource-state";
 
 const kindLabels: Record<ReferenceTab, string> = {
   all: "All",
@@ -41,6 +43,33 @@ function groupByKind<T extends { kind: ReferenceKind }>(rows: readonly T[]) {
     else groups.push({ kind: row.kind, rows: [row] });
   }
   return groups;
+}
+
+/** Shown above the options, which stay mounted for the composer's active option. */
+function ReferenceSearchNotice({
+  phase,
+  onRetry,
+}: {
+  phase: ListPhase<unknown>;
+  onRetry?: () => void;
+}) {
+  if (phase.status === "loading")
+    return (
+      <div role="status" aria-label="Searching references">
+        <ReferencePickerLoadingOption />
+        <ReferencePickerLoadingOption />
+        <ReferencePickerLoadingOption />
+      </div>
+    );
+  if (phase.status === "error")
+    return <ErrorState variant="compact" title="Couldn’t search references" onRetry={onRetry} />;
+  if (phase.status === "stale")
+    return <StaleNotice title="Couldn’t search references" onRetry={onRetry} />;
+  if (phase.status === "empty")
+    return (
+      <p className="px-2 py-1.5 text-sm text-muted-foreground">No accessible references found.</p>
+    );
+  return null;
 }
 
 export function ReferencePickerView({
@@ -86,7 +115,10 @@ export function ReferencePickerView({
   const ownListId = useId();
   const listId = link?.listId ?? ownListId;
   const list = useRef<HTMLDivElement>(null);
-  const groups = groupByKind(error ? [] : results);
+  const phase = listPhase({ items: results, loading, error });
+  const groups = groupByKind(
+    phase.status === "ready" || phase.status === "stale" ? phase.items : [],
+  );
   const available = groups.flatMap((group) => group.rows);
   const optionId = (item: { id: string; kind: ReferenceKind }) =>
     `${listId}-${item.kind}-${item.id}`;
@@ -103,7 +135,7 @@ export function ReferencePickerView({
     return () => onActiveOptionChange?.(undefined);
   }, [selectedId, onActiveOptionChange]);
   // A query with spaces that matches nothing is probably prose, so the picker steps aside.
-  const noMatches = !loading && !error && available.length === 0;
+  const noMatches = phase.status === "empty";
   const onDismiss = link?.onDismiss;
   useEffect(() => {
     if (noMatches && query.includes(" ")) onDismiss?.();
@@ -194,25 +226,7 @@ export function ReferencePickerView({
             <div ref={type === kind ? list : undefined} className="min-h-8 flex-1 overflow-y-auto">
               {type === kind && (
                 <>
-                  {loading && (
-                    <div role="status" aria-label="Searching references">
-                      <ReferencePickerLoadingOption />
-                      <ReferencePickerLoadingOption />
-                      <ReferencePickerLoadingOption />
-                    </div>
-                  )}
-                  {error && (
-                    <ErrorState
-                      variant="compact"
-                      title="Couldn’t search references"
-                      onRetry={onRetry}
-                    />
-                  )}
-                  {noMatches && (
-                    <p className="px-2 py-1.5 text-sm text-muted-foreground">
-                      No accessible references found.
-                    </p>
-                  )}
+                  <ReferenceSearchNotice phase={phase} onRetry={onRetry} />
                   <div
                     id={listId}
                     role="listbox"

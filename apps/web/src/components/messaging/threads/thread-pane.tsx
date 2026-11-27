@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { Composer } from "../composer/composer";
 import { MessageItem } from "../messages/message-item";
@@ -11,6 +11,7 @@ import { AgentWorkNotice } from "@/components/agent-work/agent-work-slot";
 import type { MessageContextState } from "@/components/context/references/message-context";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { JumpToLatest, OlderMessages } from "@/components/messaging/messages/message-history";
+import { MessageLoading } from "@/components/messaging/messages/message-loading";
 import { ThreadPane as ThreadPaneView } from "@/components/messaging/threads/thread-pane-view";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { resourceState } from "@/lib/resource-state";
@@ -63,21 +64,17 @@ export function ThreadPane({
   return (
     <ThreadPaneView
       state={resource.status}
-      loading={replies.isPending}
       error={replies.error}
       onRetry={() => void replies.refetch()}
       root={
         root && <MessageItem threadRoot message={root} canPost={canPost} context={rootContext} />
       }
       replies={
-        empty ? (
-          <ContentNotice
-            icon={MessagesSquare}
-            title="No replies yet"
-            description={canPost ? "Reply below to start the thread." : undefined}
-          />
-        ) : (
-          resource.data && (
+        <ThreadReplies
+          loaded={!!resource.data}
+          empty={empty}
+          canPost={canPost}
+          list={
             <MessageList
               messages={replyRows}
               conversationId={conversationId}
@@ -89,13 +86,17 @@ export function ThreadPane({
               header={
                 <>
                   {root && <ReplyCount count={root.replyCount} />}
-                  <OlderMessages replies {...history} onOlder={() => loadOlder(rows[0]?.id)} />
+                  <OlderMessages
+                    label="Older replies"
+                    {...history}
+                    onOlder={() => loadOlder(rows[0]?.id)}
+                  />
                 </>
               }
-              footer={<JumpToLatest replies {...history} />}
+              footer={<JumpToLatest label="Latest replies" {...history} />}
             />
-          )
-        )
+          }
+        />
       }
       composer={
         <>
@@ -132,6 +133,29 @@ function useRootContext(
     error: rootContext.error,
     onRetry: () => void rootContext.refetch(),
   };
+}
+
+function ThreadReplies({
+  loaded,
+  empty,
+  canPost,
+  list,
+}: {
+  loaded: boolean;
+  empty: boolean;
+  canPost: boolean;
+  list: ReactNode;
+}) {
+  if (!loaded) return <MessageLoading label="Loading replies" />;
+  if (empty)
+    return (
+      <ContentNotice
+        icon={MessagesSquare}
+        title="No replies yet"
+        description={canPost ? "Reply below to start the thread." : undefined}
+      />
+    );
+  return list;
 }
 
 function ReplyCount({ count }: { count: number }) {

@@ -1,20 +1,24 @@
 import type { AgentRoutineView } from "@substrate/contracts/agent-work";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 
 import { RoutineRow, RoutineRowLoading, type RoutineRowActions } from "./routine-row";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
+import { ListBody } from "@/components/feedback/list-body";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { RecordSection, recordRows } from "@/components/layout/record-section";
 import { SettingsList } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { ItemDescription } from "@/components/ui/item";
 import {
   groupRoutines,
   type RoutineFilter,
   type RoutineGroup,
 } from "@/lib/agent-work/routine-groups";
+import { listPhase } from "@/lib/resource-state";
 import { CalendarClock, Plus, Search } from "lucide-react";
 
 const groupTitles: Record<RoutineGroup, string> = {
@@ -63,45 +67,6 @@ export function RoutineListView({
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<RoutineFilter>("all");
   const groups = groupRoutines(routines, { now, query, filter });
-  let content: ReactNode;
-  if (error && !routines.length)
-    content = <ErrorState variant="compact" title="Couldn’t load routines" onRetry={onRetry} />;
-  else if (loading && !routines.length)
-    content = (
-      <div role="status" aria-label="Loading routines">
-        <SettingsList hidden>
-          <RoutineRowLoading />
-          <RoutineRowLoading />
-        </SettingsList>
-      </div>
-    );
-  else if (!routines.length)
-    content = (
-      <ContentNotice
-        variant="compact"
-        icon={CalendarClock}
-        title="No routines yet"
-        action={<NewRoutineButton onAdd={onAdd} />}
-      />
-    );
-  else if (!groups.length)
-    content = <ContentNotice variant="compact" icon={Search} title="No routines match" />;
-  else
-    content = (
-      <div className="grid min-w-0 gap-6" role="list" aria-label="Routines">
-        {groups.map(({ group, routines: items }) => (
-          <div role="listitem" key={group}>
-            <RecordSection title={groupTitles[group]} count={items.length}>
-              <ul aria-label={groupTitles[group]} className={recordRows}>
-                {items.map((routine) => (
-                  <RoutineRow key={routine.id} routine={routine} showPrompt {...actions} />
-                ))}
-              </ul>
-            </RecordSection>
-          </div>
-        ))}
-      </div>
-    );
   return (
     <div className="grid min-w-0 gap-4">
       {routines.length > 0 && (
@@ -125,10 +90,52 @@ export function RoutineListView({
           />
         </div>
       )}
-      {content}
-      {error && routines.length > 0 && (
-        <ErrorState variant="compact" title="Couldn’t refresh routines" onRetry={onRetry} />
-      )}
+      <ListBody
+        phase={listPhase({ items: routines, loading, error })}
+        loading={
+          <div role="status" aria-label="Loading routines">
+            <SettingsList hidden>
+              <RoutineRowLoading />
+              <RoutineRowLoading />
+            </SettingsList>
+          </div>
+        }
+        error={<ErrorState variant="compact" title="Couldn’t load routines" onRetry={onRetry} />}
+        empty={
+          <ContentNotice
+            variant="compact"
+            icon={CalendarClock}
+            title="No routines yet"
+            action={<NewRoutineButton onAdd={onAdd} />}
+          />
+        }
+        stale={<StaleNotice title="Couldn’t refresh routines" onRetry={onRetry} />}
+      >
+        {() =>
+          groups.length ? (
+            <div className="grid min-w-0 gap-6" role="list" aria-label="Routines">
+              {groups.map(({ group, routines: items }) => (
+                <div role="listitem" key={group}>
+                  <RecordSection title={groupTitles[group]} count={items.length}>
+                    <ul aria-label={groupTitles[group]} className={recordRows}>
+                      {items.map((routine) => (
+                        <RoutineRow
+                          key={routine.id}
+                          routine={routine}
+                          detail={<ItemDescription>{routine.prompt}</ItemDescription>}
+                          {...actions}
+                        />
+                      ))}
+                    </ul>
+                  </RecordSection>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <ContentNotice variant="compact" icon={Search} title="No routines match" />
+          )
+        }
+      </ListBody>
     </div>
   );
 }

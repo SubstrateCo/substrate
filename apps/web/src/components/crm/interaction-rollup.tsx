@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
-import { CrmResourceState } from "./crm-resource-state";
+import { CrmResourceBoundary } from "./crm-resource-state";
 import {
   interactionScopeMode,
   interactionScopeValue,
@@ -54,7 +54,8 @@ export function InteractionRollup({
   const pages = useCursorPages<{ beforeOccurredAt: string; beforeEntityId: string }>();
   const options = crmTimelineOptions(organizationId, entityId, mode, pages.cursor ?? null);
   const query = useQuery({ ...options, placeholderData: keepPageWhileTurning(options.queryKey) });
-  const rows = resourceState(query).data ?? [];
+  const state = resourceState(query);
+  const rows = state.data ?? [];
   const apps = useOrganizationApps();
   const sources = useInteractionSources(organizationId, rows, apps.enabled("calendar"));
   return (
@@ -80,11 +81,10 @@ export function InteractionRollup({
           : "Readable interactions from related contacts and explicit links. A touch does not mean it advanced this pursuit."
       }
     >
-      <CrmResourceState
+      <CrmResourceBoundary
         compact
         noun="interactions"
-        pending={query.isPending}
-        error={query.error}
+        state={state}
         onRetry={() => void query.refetch()}
         loading={
           <div role="status" aria-label="Loading customer interactions">
@@ -102,40 +102,44 @@ export function InteractionRollup({
             </ol>
           </div>
         }
-      />
-      {query.isSuccess && !rows.length && (
-        <ContentNotice variant="inline" title="No interactions in this view" />
-      )}
-      {rows.length > 0 && (
-        <ol className={recordRows}>
-          {rows.map((row) => (
-            <InteractionRow
-              key={row.entityId}
-              kind={row.kind}
-              occurredAt={row.occurredAt}
-              summary={
-                <InteractionLink
-                  entityId={row.entityId}
-                  className="underline-offset-4 hover:underline"
-                  aria-label={`Open interaction: ${row.summary}`}
-                >
-                  {row.summary}
-                </InteractionLink>
-              }
-              details={[
-                <ContactLink
-                  key="contact"
-                  entityId={row.contactEntityId}
-                  className="underline-offset-4 hover:text-foreground hover:underline"
-                >
-                  Open contact
-                </ContactLink>,
-              ]}
-              source={<MeetingSourceLink source={sources[row.entityId]} className="max-w-full" />}
-            />
-          ))}
-        </ol>
-      )}
+      >
+        {(loaded) =>
+          loaded.length === 0 ? (
+            <ContentNotice variant="inline" title="No interactions in this view" />
+          ) : (
+            <ol className={recordRows}>
+              {loaded.map((row) => (
+                <InteractionRow
+                  key={row.entityId}
+                  kind={row.kind}
+                  occurredAt={row.occurredAt}
+                  summary={
+                    <InteractionLink
+                      entityId={row.entityId}
+                      className="underline-offset-4 hover:underline"
+                      aria-label={`Open interaction: ${row.summary}`}
+                    >
+                      {row.summary}
+                    </InteractionLink>
+                  }
+                  details={[
+                    <ContactLink
+                      key="contact"
+                      entityId={row.contactEntityId}
+                      className="underline-offset-4 hover:text-foreground hover:underline"
+                    >
+                      Open contact
+                    </ContactLink>,
+                  ]}
+                  source={
+                    <MeetingSourceLink source={sources[row.entityId]} className="max-w-full" />
+                  }
+                />
+              ))}
+            </ol>
+          )
+        }
+      </CrmResourceBoundary>
       {(pages.pageIndex > 0 || rows.length === pageSize) && (
         <Pager
           name="Customer interactions"

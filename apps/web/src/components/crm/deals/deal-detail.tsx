@@ -4,14 +4,14 @@ import { permissionLabels } from "@substrate/contracts/access/levels";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 
 import { CrmActivity } from "../crm-activity";
 import { crmResource } from "../crm-resource";
 import { dealAmount, outcomeLabel } from "../crm-types";
 import { FollowUps } from "../follow-ups";
 import { InteractionRollup } from "../interaction-rollup";
-import { recordChangeDialog, type RecordChangeDialog } from "../record-change-dialog";
+import type { RecordChangeDialog } from "../record-change-dialog";
 import { RecordChangeDialogs } from "../record-change-dialogs";
 import { RecordDetailView, RecordDetailLoading } from "../record-detail-view";
 import { DealTransition } from "./deal-transition";
@@ -30,19 +30,19 @@ import { useActiveStages } from "@/queries/crm/stages";
 import { useRecordMutation } from "@/queries/records/mutations";
 import { ArrowRightLeft } from "lucide-react";
 
+type DealDialog = RecordChangeDialog | "transition";
+
 export function DealDetail({ entityId }: { entityId: string }) {
   const { organizationId } = useWorkspaceScope();
   const query = useQuery(dealOptions(organizationId, entityId));
   const { pipeline, options: stages } = useActiveStages(organizationId, true);
   const mutation = useRecordMutation(organizationId, "deals");
-  const [dialog, setDialog] = useState<RecordChangeDialog | "transition" | null>(null);
+  const [dialog, setDialog] = useState<DealDialog | null>(null);
   const { data, fallback, staleNotice } = crmResource(query, <RecordDetailLoading kind="deals" />);
   if (!data) return fallback;
-  const { deal, account, contacts: participants, level } = data;
+  const { deal, level } = data;
   const archived = !!deal.archivedAt;
   const capabilities = crmRecordCapabilities({ level, archived });
-  const change = recordChangeDialog(dialog);
-  const primaryContact = participants.find((entry) => entry.isPrimary)?.contact;
   const stageName = (stageId: string) =>
     resourceState(pipeline).data?.find((stage) => stage.id === stageId)?.name ??
     "Stage unavailable";
@@ -85,51 +85,78 @@ export function DealDetail({ entityId }: { entityId: string }) {
         <WorkDiscussions entityId={entityId} />
         <CrmActivity entityId={entityId} />
       </RecordDetailView>
-      {change && (
-        <RecordChangeDialogs
-          dialog={change}
-          kind="deals"
-          entityId={entityId}
-          name={deal.title}
-          archived={archived}
-          record={{
-            ...deal,
-            // The deal shows an account only when the viewer can read it.
-            accountName: deal.accountEntityId ? account.name : undefined,
-            contactEntityIds: participants.map(({ contact }) => contact.entityId),
-            primaryContactEntityId: primaryContact?.entityId ?? null,
-            primaryContactName: primaryContact?.displayName,
-          }}
-          onClose={() => setDialog(null)}
-        />
-      )}
-      {dialog === "transition" && (
-        <DealTransition
-          stageId={deal.stageId}
-          outcome={deal.outcome}
-          lostReason={deal.lostReason}
-          stages={stages}
-          pending={mutation.isPending}
-          error={mutation.error}
-          onClose={() => setDialog(null)}
-          onSubmit={(stageId, outcome, lostReason, requestId) =>
-            mutation.mutate(
-              {
-                action: "transitionDeal",
-                organizationId,
-                entityId,
-                expectedVersion: deal.version,
-                stageId,
-                outcome,
-                lostReason,
-                requestId,
-              },
-              { onSuccess: () => setDialog(null) },
-            )
-          }
-        />
-      )}
+      <DealDialogs
+        dialog={dialog}
+        data={data}
+        stages={stages}
+        mutation={mutation}
+        onClose={() => setDialog(null)}
+      />
     </>
+  );
+}
+
+/** The open edit, archive, or move dialog of a deal. */
+function DealDialogs({
+  dialog,
+  data: { deal, account, contacts: participants },
+  stages,
+  mutation,
+  onClose,
+}: {
+  dialog: DealDialog | null;
+  data: Awaited<ReturnType<typeof getDeal>>;
+  stages: ComponentProps<typeof DealTransition>["stages"];
+  mutation: ReturnType<typeof useRecordMutation>;
+  onClose: () => void;
+}) {
+  const { organizationId } = useWorkspaceScope();
+  if (!dialog) return null;
+  if (dialog === "transition")
+    return (
+      <DealTransition
+        stageId={deal.stageId}
+        outcome={deal.outcome}
+        lostReason={deal.lostReason}
+        stages={stages}
+        pending={mutation.isPending}
+        error={mutation.error}
+        onClose={onClose}
+        onSubmit={(stageId, outcome, lostReason, requestId) =>
+          mutation.mutate(
+            {
+              action: "transitionDeal",
+              organizationId,
+              entityId: deal.entityId,
+              expectedVersion: deal.version,
+              stageId,
+              outcome,
+              lostReason,
+              requestId,
+            },
+            { onSuccess: onClose },
+          )
+        }
+      />
+    );
+  const primaryContact = participants.find((entry) => entry.isPrimary)?.contact;
+  return (
+    <RecordChangeDialogs
+      dialog={dialog}
+      kind="deals"
+      entityId={deal.entityId}
+      name={deal.title}
+      archived={!!deal.archivedAt}
+      record={{
+        ...deal,
+        // The deal shows an account only when the viewer can read it.
+        accountName: deal.accountEntityId ? account.name : undefined,
+        contactEntityIds: participants.map(({ contact }) => contact.entityId),
+        primaryContactEntityId: primaryContact?.entityId ?? null,
+        primaryContactName: primaryContact?.displayName,
+      }}
+      onClose={onClose}
+    />
   );
 }
 

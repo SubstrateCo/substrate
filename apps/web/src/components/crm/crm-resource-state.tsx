@@ -4,23 +4,15 @@ import { isAccessFailure } from "@/api/access-failure";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { PageSheetHeader, PageSheetBody } from "@/components/layout/page-sheet";
 import { usePageSheet } from "@/components/layout/page-sheet-context";
 import { useDelayedLoading } from "@/hooks/use-delayed-loading";
+import type { ResourceState } from "@/lib/resource-state";
 import { cn } from "cn";
 import { Unlink } from "lucide-react";
 
-export function CrmResourceState({
-  pending,
-  error,
-  onRetry,
-  loading,
-  record = false,
-  compact = false,
-  noun,
-}: {
-  pending: boolean;
-  error: Error | null;
+type CrmResourceViews = {
   onRetry: () => void;
   loading?: ReactNode;
   record?: boolean;
@@ -28,6 +20,53 @@ export function CrmResourceState({
   compact?: boolean;
   /** What a section failed to load, in lower case, such as "follow-ups". */
   noun?: string;
+};
+
+/**
+ * Loaded CRM data, or the loading, error, or unavailable view in its place. After a failed
+ * refresh, the loaded data stays under a notice.
+ */
+export function CrmResourceBoundary<T>({
+  state,
+  children,
+  ...views
+}: CrmResourceViews & {
+  state: ResourceState<T>;
+  children: (data: T) => ReactNode;
+}) {
+  if (state.data === undefined)
+    return (
+      <CrmResourceFallback pending={state.status === "loading"} error={state.error} {...views} />
+    );
+  return (
+    <>
+      {state.status === "stale" && (
+        <StaleNotice
+          title={
+            views.noun
+              ? `These ${views.noun} may be out of date.`
+              : "This information may be out of date."
+          }
+          onRetry={views.onRetry}
+        />
+      )}
+      {children(state.data)}
+    </>
+  );
+}
+
+/** The loading or error view of CRM data that has not loaded. */
+export function CrmResourceFallback({
+  pending,
+  error,
+  onRetry,
+  loading,
+  record = false,
+  compact = false,
+  noun,
+}: CrmResourceViews & {
+  pending: boolean;
+  error: Error | null;
 }) {
   const showLoading = useDelayedLoading(pending);
   const sheet = usePageSheet();

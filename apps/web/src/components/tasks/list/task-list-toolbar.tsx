@@ -9,7 +9,6 @@ import {
   type TaskSort,
 } from "./task-filters";
 import { TaskFilterLayout } from "./task-list-layout";
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import {
   FilterBar,
   SortControl,
@@ -17,8 +16,9 @@ import {
   type FilterOption,
   type SortOption,
 } from "@/components/filters";
-import { PersonAvatar } from "@/components/people/person-avatar";
+import { ActorAvatar } from "@/components/people/actor-avatar";
 import { Input } from "@/components/ui/input";
+import { actorIdentity } from "@/lib/actors/identity";
 import { ListTodo, UserRound } from "lucide-react";
 
 const sortOptions: SortOption<TaskSort>[] = [
@@ -36,12 +36,7 @@ function taskFilterFields(
   const actorOption = (actor: ProjectDetail["actors"][number]): FilterOption => ({
     value: actor.entityId,
     label: actor.name,
-    icon:
-      actor.type === "agent" ? (
-        <AgentAvatarView avatar={actor.avatar} size="xs" />
-      ) : (
-        <PersonAvatar size="xs" name={actor.name} image={actor.image} />
-      ),
+    icon: <ActorAvatar actor={actorIdentity(actor)} size="xs" />,
     group: actor.type === "agent" ? "Agents" : "People",
   });
   const former =
@@ -65,7 +60,7 @@ function taskFilterFields(
       icon: UserRound,
       kind: "option",
       options: [
-        { value: "unassigned", label: "Unassigned", icon: <PersonAvatar size="xs" /> },
+        { value: "unassigned", label: "Unassigned", icon: <ActorAvatar actor={null} size="xs" /> },
         ...(former ? [{ value: assignee, label: "Former member" }] : []),
         ...assignees.filter((actor) => actor.type === "human").map(actorOption),
         ...assignees.filter((actor) => actor.type === "agent").map(actorOption),

@@ -1,7 +1,8 @@
 import type { ProjectDetail } from "../types";
 import { TaskAssigneeHoverCard } from "./task-assignee-hover-card";
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
+import { ActorAvatar } from "@/components/people/actor-avatar";
 import { PersonAvatar } from "@/components/people/person-avatar";
+import { actorIdentity } from "@/lib/actors/identity";
 
 /** A task's assignee, or a blank avatar named "Former member" or "Unassigned". */
 export function TaskAssigneeAvatar({
@@ -15,11 +16,7 @@ export function TaskAssigneeAvatar({
   if (assignee)
     return (
       <TaskAssigneeHoverCard assignee={assignee}>
-        {assignee.type === "agent" ? (
-          <AgentAvatarView avatar={assignee.avatar} size="xs" />
-        ) : (
-          <PersonAvatar size="xs" name={assignee.name} image={assignee.image} />
-        )}
+        <ActorAvatar actor={actorIdentity(assignee)} size="xs" />
       </TaskAssigneeHoverCard>
     );
   const missingName = assigned ? "Former member" : undefined;

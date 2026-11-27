@@ -18,8 +18,6 @@ export function OrganizationPicture({ organizationId }: { organizationId: string
       kind="organization-logo"
       value={resource.data?.logo}
       name={resource.data?.name}
-      loading={organization.isPending}
-      error={organization.error}
       onRetry={() => void organization.refetch()}
       {...pictureMutationProps(mutations)}
     />

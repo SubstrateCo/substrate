@@ -6,14 +6,13 @@ import { Link } from "@tanstack/react-router";
 import { useId, useState } from "react";
 
 import { discussionConversationName } from "./conversation-name";
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
-import { Tag } from "@/components/feedback/tag";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
 import { MessageMarkdown } from "@/components/messaging/markdown/message-markdown";
-import { PersonAvatar } from "@/components/people/person-avatar";
+import { ActorAvatar, ActorKindTag } from "@/components/people/actor-avatar";
 import { Timestamp } from "@/components/time/timestamp";
 import { Item, ItemContent, ItemMedia } from "@/components/ui/item";
+import { actorIdentity } from "@/lib/actors/identity";
 import { plainReferenceText } from "@/lib/messaging/reference-token";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
@@ -54,16 +53,15 @@ export function DiscussionItem({ item }: { item: Discussion }) {
     association: "Linked work",
     discussion: "Discussed on a task",
   }[item.purpose];
-  const author = item.authorName ?? "Unknown author";
+  const author = actorIdentity({
+    type: item.authorType,
+    name: item.authorName ?? "Unknown author",
+    image: item.authorImage,
+    avatar: item.authorAvatar,
+  });
   return (
     <DiscussionItemLayout
-      avatar={
-        item.authorType === "agent" ? (
-          <AgentAvatarView avatar={item.authorAvatar ?? null} className="mt-0.5" />
-        ) : (
-          <PersonAvatar name={author} image={item.authorImage} className="mt-0.5" />
-        )
-      }
+      avatar={<ActorAvatar actor={author} className="mt-0.5" />}
       meta={
         <>
           {item.conversationKind ? (
@@ -92,8 +90,8 @@ export function DiscussionItem({ item }: { item: Discussion }) {
       content={
         <>
           <div className="flex min-w-0 items-center gap-1.5 text-sm">
-            <span className="truncate font-medium">{author}</span>
-            {item.authorType === "agent" && <Tag className="shrink-0">Agent</Tag>}
+            <span className="truncate font-medium">{author.name}</span>
+            <ActorKindTag actor={author} className="shrink-0" />
           </div>
           {item.deletedAt ? (
             <p className="text-sm text-muted-foreground italic">Message deleted</p>

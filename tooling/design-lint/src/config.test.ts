@@ -231,6 +231,29 @@ export const Placed = () => <PageHeader variant="pane" bordered={false} title="N
   }
 });
 
+void test("renderer design configuration keeps the person-or-agent choice in ActorAvatar", () => {
+  const directory = mkdtempSync(join(root, "apps/web/src/components/design-lint-test-"));
+  try {
+    const file = join(directory, "view.tsx");
+    writeFileSync(
+      file,
+      `
+import { AgentAvatarView } from "@/components/agents/agent-avatar";
+export const View = ({ code }: { code: string }) => <AgentAvatarView avatar={code} />;
+`,
+    );
+    assert.ok(lint(file).includes("design(no-direct-actor-avatar)"), "Use ActorAvatar instead.");
+    assert.ok(
+      !lint(join(root, "apps/web/src/components/agent-work/pending-reply.tsx")).includes(
+        "design(no-direct-actor-avatar)",
+      ),
+      "Views that only show agents may draw AgentAvatarView.",
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 function lint(file: string): string[] {
   const result = spawnSync(process.execPath, [cli, "--format", "json", file], {
     cwd: root,

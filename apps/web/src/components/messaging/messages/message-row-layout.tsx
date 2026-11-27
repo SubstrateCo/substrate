@@ -2,38 +2,41 @@ import type { ReactNode } from "react";
 
 import { cn } from "cn";
 
+/**
+ * Who wrote the row: the avatar and byline, or a continuation of the previous message from the
+ * same author, which shows neither and is named by `continued` for screen readers.
+ */
+export type MessageRowAuthor = { avatar: ReactNode; byline: ReactNode } | { continued: string };
+
 export function MessageRowLayout({
-  avatar,
-  byline,
+  author,
   children,
   toolbar,
-  grouped = false,
   highlighted = false,
-  label,
 }: {
-  avatar: ReactNode;
-  byline?: ReactNode;
+  author: MessageRowAuthor;
   children: ReactNode;
   toolbar?: ReactNode;
-  grouped?: boolean;
   highlighted?: boolean;
-  label?: string;
 }) {
+  const continued = "continued" in author;
   return (
     <article
-      aria-label={label}
+      aria-label={continued ? author.continued : undefined}
       className={cn(
         "group/message relative flex w-full gap-3 px-4 hover:bg-row-hover has-data-[state=open]:bg-row-hover",
-        grouped ? "py-0.5" : "pt-2 pb-0.5",
+        continued ? "py-0.5" : "pt-2 pb-0.5",
         highlighted &&
           "bg-row-selected before:absolute before:inset-y-0 before:left-0 before:w-0.5 before:bg-primary hover:bg-row-selected",
       )}
     >
       <div data-slot="message-gutter" className="flex w-9 shrink-0 justify-end">
-        {avatar}
+        {!continued && author.avatar}
       </div>
       <div className="min-w-0 flex-1">
-        {byline && <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">{byline}</div>}
+        {!continued && (
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5">{author.byline}</div>
+        )}
         {children}
         {toolbar}
       </div>

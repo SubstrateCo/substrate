@@ -1,4 +1,4 @@
-import type { Mailbox } from "@substrate/contracts/mail";
+import type { LabelFilterMode, Mailbox } from "@substrate/contracts/mail";
 
 import { useMutation } from "@tanstack/react-query";
 
@@ -11,6 +11,18 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Field, FieldLabel } from "@/components/ui/field";
 import { Switch } from "@/components/ui/switch";
 import { ChevronRight } from "lucide-react";
+
+/** How a label's filter shows in the sidebar, when it is not shown as usual. */
+const filterModeNotes: Partial<Record<LabelFilterMode, string>> = {
+  hide: "Hidden filter",
+  unread: "If unread",
+};
+
+function FilterModeNote({ mode }: { mode?: LabelFilterMode }) {
+  const note = mode && filterModeNotes[mode];
+  if (!note) return null;
+  return <span className="text-xs text-muted-foreground">{note}</span>;
+}
 
 export function LabelSettings({ box }: { box: Mailbox }) {
   const { onLabelVisibility } = useInboxWorkspace().labelActions;
@@ -42,12 +54,7 @@ export function LabelSettings({ box }: { box: Mailbox }) {
               <span className="min-w-0 flex-1 truncate" title={labelName(label)}>
                 <LabelTag label={label} />
               </span>
-              {label.filterMode === "hide" && (
-                <span className="text-xs text-muted-foreground">Hidden filter</span>
-              )}
-              {label.filterMode === "unread" && (
-                <span className="text-xs text-muted-foreground">If unread</span>
-              )}
+              <FilterModeNote mode={label.filterMode} />
               <LabelMenu mailboxId={box.id} label={label} />
             </div>
           ))}

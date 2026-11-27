@@ -84,54 +84,90 @@ function ShortcutRow({ item: { appHotkey, isCustom } }: { item: RegisteredAppHot
         ) : undefined
       }
       control={
-        <div className="flex items-center gap-2">
-          {recorder.isRecording ? (
-            <>
-              <span role="status" className="text-sm text-muted-foreground">
-                {recorder.steps.length > 0 ? label(recorder.steps) : "Press keys…"}
-              </span>
-              <Button type="button" variant="outline" size="sm" onClick={recorder.cancelRecording}>
-                Cancel
-              </Button>
-            </>
-          ) : (
-            <>
-              {current && <ShortcutKeys hotkey={current} />}
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                aria-label={`Change ${name} shortcut${current ? `, now ${label(current)}` : ""}`}
-                onClick={() => {
-                  setError(undefined);
-                  recorder.startRecording();
-                }}
-              >
-                Change
-              </Button>
-            </>
-          )}
-          {isCustom && !recorder.isRecording && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`Reset ${name} shortcut`}
-                  onClick={() => {
-                    setError(undefined);
-                    resetCustomHotkey(appHotkey.id);
-                  }}
-                >
-                  <RotateCcw aria-hidden="true" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Reset to default</TooltipContent>
-            </Tooltip>
-          )}
-        </div>
+        <ShortcutControl
+          name={name}
+          recording={
+            recorder.isRecording
+              ? {
+                  keys: recorder.steps.length > 0 ? label(recorder.steps) : undefined,
+                  onCancel: recorder.cancelRecording,
+                }
+              : undefined
+          }
+          current={current}
+          currentLabel={current ? label(current) : undefined}
+          custom={isCustom}
+          onChange={() => {
+            setError(undefined);
+            recorder.startRecording();
+          }}
+          onReset={() => {
+            setError(undefined);
+            resetCustomHotkey(appHotkey.id);
+          }}
+        />
       }
     />
+  );
+}
+
+/** While recording, the keys pressed so far and Cancel; otherwise the shortcut and its tools. */
+function ShortcutControl({
+  name,
+  recording,
+  current,
+  currentLabel,
+  custom,
+  onChange,
+  onReset,
+}: {
+  name: string;
+  recording?: { keys?: string; onCancel: () => void };
+  current: RegisteredAppHotkeyListItem["appHotkey"]["hotkey"];
+  currentLabel?: string;
+  custom: boolean;
+  onChange: () => void;
+  onReset: () => void;
+}) {
+  if (recording)
+    return (
+      <div className="flex items-center gap-2">
+        <span role="status" className="text-sm text-muted-foreground">
+          {recording.keys ?? "Press keys…"}
+        </span>
+        <Button type="button" variant="outline" size="sm" onClick={recording.onCancel}>
+          Cancel
+        </Button>
+      </div>
+    );
+  return (
+    <div className="flex items-center gap-2">
+      {current && <ShortcutKeys hotkey={current} />}
+      <Button
+        type="button"
+        variant="outline"
+        size="sm"
+        aria-label={`Change ${name} shortcut${currentLabel ? `, now ${currentLabel}` : ""}`}
+        onClick={onChange}
+      >
+        Change
+      </Button>
+      {custom && (
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label={`Reset ${name} shortcut`}
+              onClick={onReset}
+            >
+              <RotateCcw aria-hidden="true" />
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent>Reset to default</TooltipContent>
+        </Tooltip>
+      )}
+    </div>
   );
 }

@@ -1,6 +1,6 @@
 import type { AgentWorkTurnView } from "@substrate/contracts/agent-work";
 
-import { NeedsAttentionCard, type NeedsAttentionAction } from "./needs-attention-card";
+import { NeedsAttentionContent, type NeedsAttentionAction } from "./needs-attention-card";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { attentionReasonText } from "@/lib/agent-work/status";
@@ -17,16 +17,14 @@ const failures: Record<NeedsAttentionAction, string> = {
 /**
  * The owner's actions for a turn that needs attention, from any device. uncertainItemIds are the
  * turn's items the home desktop couldn't confirm the agent received; with them, the card offers
- * Resend and Discard for those items.
+ * Resend and Discard for those items. The caller puts it in `NeedsAttentionCard` or
+ * `NeedsAttentionInline`.
  */
 export function NeedsAttention({
   turn,
   agentName,
   uncertainItemIds = [],
-  inline = false,
 }: {
-  /** Render without a card header, inside a row that names the state. */
-  inline?: boolean;
   /** A Needs you entry has no error; the transcript shows it. */
   turn: Pick<AgentWorkTurnView, "id" | "attentionReason"> & { error?: string | null };
   agentName: string;
@@ -43,17 +41,25 @@ export function NeedsAttention({
     attempt.mutate({ kind, ids });
   const uncertain = turn.attentionReason === "uncertain_input" && uncertainItemIds.length > 0;
   return (
-    <NeedsAttentionCard
-      inline={inline}
+    <NeedsAttentionContent
       text={attentionReasonText(turn.attentionReason, agentName)}
       error={turn.error ?? null}
       pending={pending}
       failure={failure}
-      onRetry={run("retry", [turn.id])}
-      onDismiss={run("dismiss", [turn.id])}
-      onStartFresh={run("startFresh", [turn.id])}
-      onResend={uncertain ? run("resend", uncertainItemIds) : undefined}
-      onDiscard={uncertain ? run("discard", uncertainItemIds) : undefined}
+      actions={
+        uncertain
+          ? {
+              kind: "uncertain",
+              onResend: run("resend", uncertainItemIds),
+              onDiscard: run("discard", uncertainItemIds),
+            }
+          : {
+              kind: "stopped",
+              onRetry: run("retry", [turn.id]),
+              onStartFresh: run("startFresh", [turn.id]),
+              onDismiss: run("dismiss", [turn.id]),
+            }
+      }
     />
   );
 }

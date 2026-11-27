@@ -2,9 +2,8 @@ import type { PickerAgent, PickerPerson } from "@substrate/contracts/people/pick
 
 import { useRef, useState, type ReactNode } from "react";
 
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { useWorkspaceSearch } from "@/components/context/search/workspace-search-request";
-import { PersonAvatar } from "@/components/people/person-avatar";
+import { ActorAvatar } from "@/components/people/actor-avatar";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -15,6 +14,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { actorIdentity, actorLabel } from "@/lib/actors/identity";
 import type { Conversation } from "@/lib/messaging/conversations";
 import { Compass, MessageCircle, Plus, Users } from "lucide-react";
 
@@ -170,24 +170,27 @@ export function DirectMessageCreateMenu({
                   value={`person-${person.id}`}
                   onSelect={() => choose({ kind: "person", person })}
                 >
-                  <PersonAvatar name={person.name} image={person.image} />
+                  <ActorAvatar actor={actorIdentity(person)} />
                   <span className="truncate font-medium">{person.name}</span>
                   {showEmail(person) && (
                     <span className="min-w-0 truncate text-muted-foreground">{person.email}</span>
                   )}
                 </CommandItem>
               ))}
-              {agentMatches.map((agent) => (
-                <CommandItem
-                  key={agent.id}
-                  value={`agent-${agent.id}`}
-                  aria-label={`${agent.name}, Agent`}
-                  onSelect={() => choose({ kind: "agent", agent })}
-                >
-                  <AgentAvatarView avatar={agent.avatar} />
-                  <span className="truncate font-medium">{agent.name}</span>
-                </CommandItem>
-              ))}
+              {agentMatches.map((agent) => {
+                const actor = actorIdentity({ ...agent, type: "agent" });
+                return (
+                  <CommandItem
+                    key={agent.id}
+                    value={`agent-${agent.id}`}
+                    aria-label={actorLabel(actor)}
+                    onSelect={() => choose({ kind: "agent", agent })}
+                  >
+                    <ActorAvatar actor={actor} />
+                    <span className="truncate font-medium">{agent.name}</span>
+                  </CommandItem>
+                );
+              })}
               {!matches.length && !agentMatches.length && (
                 <p className="px-2 py-2 text-sm text-muted-foreground">
                   {search ? "No one here matches." : "No one else is in this workspace yet."}

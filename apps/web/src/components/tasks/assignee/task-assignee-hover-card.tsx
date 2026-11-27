@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import type { ProjectDetail } from "../types";
 import { PersonIdentityCard } from "@/components/messaging/people/person-card-view";
 import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
+import { actorIdentity } from "@/lib/actors/identity";
 
 export function TaskAssigneeHoverCard({
   assignee,
@@ -23,12 +24,7 @@ export function TaskAssigneeHoverCard({
         </span>
       </HoverCardTrigger>
       <HoverCardContent side="bottom" align="end" collisionPadding={8} className="w-80">
-        <PersonIdentityCard
-          name={assignee.name}
-          image={assignee.image}
-          avatar={assignee.avatar}
-          type={assignee.type}
-        />
+        <PersonIdentityCard actor={actorIdentity(assignee)} />
       </HoverCardContent>
     </HoverCard>
   );

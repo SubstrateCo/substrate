@@ -55,6 +55,7 @@ export function TaskDetail({
     focusAfterRender(() => document.getElementById(editButtonId));
   };
   const { canEdit } = capabilities;
+  const startEditing = canEdit ? () => setEditing(true) : undefined;
   const parent = task.parentTaskEntityId
     ? detail.tasks.find((candidate) => candidate.entityId === task.parentTaskEntityId)
     : undefined;
@@ -97,7 +98,7 @@ export function TaskDetail({
         }
         actions={
           <>
-            {canEdit && !editing && (
+            {startEditing && !editing && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -105,7 +106,7 @@ export function TaskDetail({
                     variant="ghost"
                     size="icon-sm"
                     aria-label="Edit task"
-                    onClick={() => setEditing(true)}
+                    onClick={startEditing}
                   >
                     <Pencil aria-hidden="true" />
                   </Button>
@@ -119,42 +120,11 @@ export function TaskDetail({
       />
       <PageSheetBody>
         <div className="grid min-w-0 gap-6 wrap-anywhere">
-          {editing && canEdit ? (
-            renderEditor(stopEditing)
-          ) : (
-            <div className="grid gap-2">
-              <Heading level={2} variant="record">
-                {task.title}
-              </Heading>
-              {task.description && (
-                <div className={cn(actionRow, "relative")}>
-                  <MessageMarkdown body={task.description} />
-                  <RowActions
-                    label="Description actions"
-                    className="absolute top-0 right-0 rounded-md bg-background"
-                  >
-                    {/* oxlint-disable-next-line design/icon-button-name -- CopyButton uses `label` as its aria-label. */}
-                    <CopyButton
-                      size="icon-sm"
-                      grouped
-                      label="Copy description"
-                      onCopy={() => navigator.clipboard.writeText(task.description)}
-                      successMessage="Description copied"
-                      errorMessage="Couldn’t copy description"
-                    />
-                  </RowActions>
-                </div>
-              )}
-              {!task.description && canEdit && (
-                <Pressable
-                  className="-mx-1 w-fit px-1 text-left text-sm text-muted-foreground hover:text-foreground"
-                  onClick={() => setEditing(true)}
-                >
-                  Add a description
-                </Pressable>
-              )}
-            </div>
-          )}
+          <TaskTitleBlock
+            task={task}
+            editor={editing && startEditing ? renderEditor(stopEditing) : undefined}
+            onEdit={startEditing}
+          />
           <TaskProperties detail={detail} task={task} canEdit={canEdit} onChange={onUpdate} />
           <TaskSubtasks
             subtasks={subtasks}
@@ -166,5 +136,59 @@ export function TaskDetail({
         </div>
       </PageSheetBody>
     </section>
+  );
+}
+
+/** The title and description, or the editor in their place while editing. */
+function TaskTitleBlock({
+  task,
+  editor,
+  onEdit,
+}: {
+  task: Task;
+  editor?: ReactNode;
+  /** Set for editors. */
+  onEdit?: () => void;
+}) {
+  if (editor) return editor;
+  return (
+    <div className="grid gap-2">
+      <Heading level={2} variant="record">
+        {task.title}
+      </Heading>
+      <TaskDescription description={task.description} onAdd={onEdit} />
+    </div>
+  );
+}
+
+function TaskDescription({ description, onAdd }: { description: string; onAdd?: () => void }) {
+  if (description)
+    return (
+      <div className={cn(actionRow, "relative")}>
+        <MessageMarkdown body={description} />
+        <RowActions
+          label="Description actions"
+          className="absolute top-0 right-0 rounded-md bg-background"
+        >
+          {/* oxlint-disable-next-line design/icon-button-name -- CopyButton uses `label` as its aria-label. */}
+          <CopyButton
+            size="icon-sm"
+            grouped
+            label="Copy description"
+            onCopy={() => navigator.clipboard.writeText(description)}
+            successMessage="Description copied"
+            errorMessage="Couldn’t copy description"
+          />
+        </RowActions>
+      </div>
+    );
+  if (!onAdd) return null;
+  return (
+    <Pressable
+      className="-mx-1 w-fit px-1 text-left text-sm text-muted-foreground hover:text-foreground"
+      onClick={onAdd}
+    >
+      Add a description
+    </Pressable>
   );
 }

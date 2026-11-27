@@ -4,19 +4,18 @@ import { organizationSettingsAccess } from "@substrate/contracts/auth/settings-a
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
-import { AppAgentSupportFooter, type AppAgentSupport } from "./app-agent-support";
+import type { AppAgentSupport } from "./app-agent-support";
+import { AppCard, type AppCardMode } from "./app-card";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
-import { Tag } from "@/components/feedback/tag";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { SettingsPanel } from "@/components/layout/settings-page";
 import { SettingsSection } from "@/components/layout/settings-section";
-import { Item, ItemContent, ItemHeader, ItemMedia, ItemTitle } from "@/components/ui/item";
-import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { workspaceApps } from "@/components/workspace/workspace-apps";
+import { resourceState, type ResourceState } from "@/lib/resource-state";
 import {
   organizationAppsOptions,
   useUpdateOrganizationApps,
@@ -95,6 +94,37 @@ const disableCopy = {
   },
 } as const satisfies Record<OptionalAppId, { label: string; description: string }>;
 
+const scopeCopy = {
+  organization: {
+    title: "Workspace apps",
+    description: "Owners and admins manage these apps for everyone in this workspace.",
+  },
+  user: {
+    title: "Personal apps",
+    description: "Only you can enable these apps for yourself. Other members are not affected.",
+  },
+} as const;
+
+/** Required apps are always on; other apps change only for those allowed to change them. */
+function appCardMode({
+  entry,
+  canChange,
+  enabled,
+  pending,
+  onChange,
+}: {
+  entry: (typeof catalog)[number];
+  canChange: boolean;
+  enabled: boolean;
+  pending: boolean;
+  onChange: (app: OptionalAppId, enabled: boolean) => void;
+}): AppCardMode {
+  if (entry.required) return { kind: "required" };
+  if (!canChange) return { kind: "readOnly", enabled };
+  const app = entry.id;
+  return { kind: "editable", enabled, pending, onChange: (checked) => onChange(app, checked) };
+}
+
 export function OrganizationApps({
   organizationId,
   userId,
@@ -136,97 +166,55 @@ export function OrganizationApps({
       title="Apps"
       description="Workspace apps apply to everyone. Personal apps change only for you in this workspace."
     >
-      {settings.isPending && <LoadingState label="Loading apps" />}
-      {settings.error && (
-        <ErrorState
-          title="Couldn’t load apps"
-          description="Try again to view this organization’s apps."
-          onRetry={() => void settings.refetch()}
-        />
-      )}
-      {settings.data && !settings.error && (
-        <>
-          {(["organization", "user"] as const).map((scope) => (
-            <SettingsSection
-              key={scope}
-              title={scope === "user" ? "Personal apps" : "Workspace apps"}
-              description={
-                scope === "user"
-                  ? "Only you can enable these apps for yourself. Other members are not affected."
-                  : "Owners and admins manage these apps for everyone in this workspace."
-              }
-            >
-              <div className="@container">
-                <div className="grid grid-cols-1 gap-4 @3xl:grid-cols-2 @6xl:grid-cols-3">
-                  {catalog.flatMap((entry) => {
-                    if (appScope(entry.id) !== scope) return [];
-                    const app = workspaceApps.find((item) => item.id === entry.id)!;
-                    const Icon = app.icon;
-                    const enabled = settings.data.enabledApps.includes(entry.id);
-                    const canChange = scope === "user" || canManage;
-                    return (
-                      <Item
-                        key={entry.id}
-                        variant="outline"
-                        asChild
-                        className="h-full flex-col flex-nowrap items-stretch"
-                      >
-                        <section aria-label={app.label}>
-                          <ItemHeader className="basis-auto flex-wrap">
-                            <div className="flex shrink-0 items-center gap-3">
-                              <ItemMedia>
-                                <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
-                                  <Icon className="size-5" aria-hidden />
-                                </div>
-                              </ItemMedia>
-                              <ItemTitle>
-                                {!entry.required && canChange ? (
-                                  <Label htmlFor={`organization-app-${entry.id}`}>
-                                    {app.label}
-                                  </Label>
-                                ) : (
-                                  app.label
-                                )}
-                              </ItemTitle>
-                            </div>
-                            {entry.required && <Tag>Required</Tag>}
-                            {!entry.required && canChange && (
-                              <Switch
-                                id={`organization-app-${entry.id}`}
-                                checked={enabled}
-                                disabled={pending}
-                                onCheckedChange={(checked) => {
-                                  reset();
-                                  if (!checked) setDisabling(entry.id);
-                                  else change(entry.id, true);
-                                }}
-                              />
-                            )}
-                            {!entry.required && !canChange && (
-                              <Tag>{enabled ? "Enabled" : "Disabled"}</Tag>
-                            )}
-                          </ItemHeader>
-                          <ItemContent>
-                            {/* ItemDescription clamps to two lines; these descriptions run longer. */}
-                            <p className="text-sm text-muted-foreground">{entry.description}</p>
-                          </ItemContent>
-                          <AppAgentSupportFooter app={app.label} support={entry.agentSupport} />
-                        </section>
-                      </Item>
-                    );
-                  })}
+      <AppsLoadState state={resourceState(settings)} onRetry={() => void settings.refetch()}>
+        {(data) => (
+          <>
+            {(["organization", "user"] as const).map((scope) => (
+              <SettingsSection
+                key={scope}
+                title={scopeCopy[scope].title}
+                description={scopeCopy[scope].description}
+              >
+                <div className="@container">
+                  <div className="grid grid-cols-1 gap-4 @3xl:grid-cols-2 @6xl:grid-cols-3">
+                    {catalog.flatMap((entry) => {
+                      if (appScope(entry.id) !== scope) return [];
+                      const app = workspaceApps.find((item) => item.id === entry.id)!;
+                      return (
+                        <AppCard
+                          key={entry.id}
+                          id={entry.id}
+                          label={app.label}
+                          icon={app.icon}
+                          description={entry.description}
+                          agentSupport={entry.agentSupport}
+                          mode={appCardMode({
+                            entry,
+                            canChange: scope === "user" || canManage,
+                            enabled: data.enabledApps.includes(entry.id),
+                            pending,
+                            onChange: (app, checked) => {
+                              reset();
+                              if (!checked) setDisabling(app);
+                              else change(app, true);
+                            },
+                          })}
+                        />
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            </SettingsSection>
-          ))}
-          {error && !disabling && (
-            <ErrorState
-              title="Couldn’t update apps"
-              description="Your change was not saved. Please try again."
-            />
-          )}
-        </>
-      )}
+              </SettingsSection>
+            ))}
+            {error && !disabling && (
+              <ErrorState
+                title="Couldn’t update apps"
+                description="Your change was not saved. Please try again."
+              />
+            )}
+          </>
+        )}
+      </AppsLoadState>
       {disabling && (
         <ConfirmDialog
           title={`Disable ${disableCopy[disabling].label}?`}
@@ -243,5 +231,32 @@ export function OrganizationApps({
         />
       )}
     </SettingsPanel>
+  );
+}
+
+/** The apps once loaded. A failed refresh keeps them, with the error above. */
+function AppsLoadState<T>({
+  state,
+  onRetry,
+  children,
+}: {
+  state: ResourceState<T>;
+  onRetry: () => void;
+  children: (data: T) => ReactNode;
+}) {
+  if (state.status === "loading") return <LoadingState label="Loading apps" />;
+  if (state.data === undefined)
+    return (
+      <ErrorState
+        title="Couldn’t load apps"
+        description="Try again to view this organization’s apps."
+        onRetry={onRetry}
+      />
+    );
+  return (
+    <>
+      {state.status === "stale" && <StaleNotice title="Couldn’t load apps" onRetry={onRetry} />}
+      {children(state.data)}
+    </>
   );
 }

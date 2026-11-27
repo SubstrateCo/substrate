@@ -11,6 +11,7 @@ const DIALOG_INSETS =
  */
 const SHARED_BLOCKS = [
   "people/person-avatar",
+  "people/actor-avatar",
   "layout/page-sheet",
   "layout/page-header",
   "layout/board",
@@ -133,11 +134,11 @@ export const designConfig = {
               '"{{className}}" changes the focus ring of <Pressable>, which owns it so every click target shows the same one. For a target that fills a row use focus="inset".',
           },
           {
-            pattern: "^PersonAvatar$",
+            pattern: "^(PersonAvatar|ActorAvatar)$",
             allow: ["layout"],
             deny: ["size-*", "h-*", "w-*", "min-h-*", "max-h-*", "min-w-*", "max-w-*"],
             message:
-              '"{{className}}" restyles <PersonAvatar>. Use size="sm" (24px, the default) or size="xs" (20px). PersonAvatar owns its shape and neutral fill.',
+              '"{{className}}" restyles <{{component}}>. Use size="sm" (24px, the default) or size="xs" (20px) in rows, or md, lg, and xl (32, 36, 40px) for heads. It owns its shape and fill.',
           },
           {
             pattern: "^Tag$",
@@ -193,6 +194,7 @@ export const designConfig = {
         "design/icon-button-name": "error",
         "design/no-adhoc-date-format": "error",
         "design/no-decorative-class": "error",
+        "design/no-direct-actor-avatar": "error",
         "design/no-native-date-input": "error",
         "design/no-native-element": "error",
         "design/no-raw-error-message": "warn",
@@ -269,6 +271,20 @@ export const designConfig = {
           },
         ],
       },
+    },
+    {
+      // ActorAvatar itself, and views that only ever show agents: their settings, their pages,
+      // their pending replies, and the agent DM row.
+      files: [
+        `${WEB}/components/people/actor-avatar.tsx`,
+        `${WEB}/components/agents/**`,
+        `${WEB}/components/agent-work/app/agent-page-view.tsx`,
+        `${WEB}/components/agent-work/app/agents-workspace-view.tsx`,
+        `${WEB}/components/agent-work/composer-notice.tsx`,
+        `${WEB}/components/agent-work/pending-reply.tsx`,
+        `${WEB}/components/messaging/conversations/conversation-sidebar-item.tsx`,
+      ],
+      rules: { "design/no-direct-actor-avatar": "off" },
     },
     {
       files: [`${WEB}/components/table/app-table.tsx`, `${WEB}/components/ui/**`],

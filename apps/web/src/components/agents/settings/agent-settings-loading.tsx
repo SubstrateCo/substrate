@@ -48,19 +48,28 @@ function OverviewLoading() {
 }
 
 export function AgentSettingsLoading({ page }: { page: AgentSettingsPage }) {
-  let content;
-  if (page === "overview") content = <OverviewLoading />;
-  else if (page === "routines")
-    content = (
-      <SettingsList>
-        <RoutineRowLoading />
-        <RoutineRowLoading />
-      </SettingsList>
-    );
-  else content = <ConfigurationListLoading section={page} />;
   return (
     <div role="status" aria-label="Loading agent settings">
-      <div aria-hidden="true">{content}</div>
+      <div aria-hidden="true">
+        <PageLoading page={page} />
+      </div>
     </div>
   );
+}
+
+function PageLoading({ page }: { page: AgentSettingsPage }) {
+  switch (page) {
+    case "overview":
+      return <OverviewLoading />;
+    case "routines":
+      return (
+        <SettingsList>
+          <RoutineRowLoading />
+          <RoutineRowLoading />
+        </SettingsList>
+      );
+    case "skills":
+    case "mcps":
+      return <ConfigurationListLoading section={page} />;
+  }
 }

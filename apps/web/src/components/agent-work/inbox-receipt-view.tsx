@@ -16,16 +16,15 @@ export function InboxReceiptView({
   tone,
   onSendNow,
   sending,
-  onResend,
-  onDiscard,
+  uncertain,
   resolving = false,
 }: {
   label: string;
   tone: WorkTone;
   onSendNow?: () => void;
   sending: boolean;
-  onResend?: () => void;
-  onDiscard?: () => void;
+  /** Set when the desktop couldn't confirm the agent received the message. */
+  uncertain?: { onResend: () => void; onDiscard: () => void };
   resolving?: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
@@ -49,15 +48,27 @@ export function InboxReceiptView({
           Send now
         </Button>
       )}
-      {onResend && (
-        <Button type="button" size="xs" variant="link" disabled={resolving} onClick={onResend}>
-          Resend
-        </Button>
-      )}
-      {onDiscard && (
-        <Button type="button" size="xs" variant="link" disabled={resolving} onClick={onDiscard}>
-          Discard
-        </Button>
+      {uncertain && (
+        <>
+          <Button
+            type="button"
+            size="xs"
+            variant="link"
+            disabled={resolving}
+            onClick={uncertain.onResend}
+          >
+            Resend
+          </Button>
+          <Button
+            type="button"
+            size="xs"
+            variant="link"
+            disabled={resolving}
+            onClick={uncertain.onDiscard}
+          >
+            Discard
+          </Button>
+        </>
       )}
       {confirming && onSendNow && (
         <ConfirmDialog

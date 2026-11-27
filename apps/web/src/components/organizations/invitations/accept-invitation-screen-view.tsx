@@ -9,32 +9,29 @@ import { PendingButton } from "../../feedback/pending-button";
 import { WorkspaceTile } from "../workspace-tile";
 import { FormMessage } from "@/components/feedback/form-message";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { Button } from "@/components/ui/button";
+import type { InvitationScreenState } from "@/lib/organizations/invitations";
 import { roleLabel } from "@/lib/organizations/member-policy";
 
 export function AcceptInvitationScreen({
-  invitation,
-  loading = false,
+  state,
+  stale = false,
   pending = false,
   error,
-  failed = false,
-  unavailable = false,
   onRetry,
-  available,
   onAccept,
   declining = false,
   onDecline,
   declineDialog,
   signOut,
 }: {
-  invitation?: Invitation;
-  loading?: boolean;
+  state: InvitationScreenState<Invitation>;
+  /** A refresh failed: the loaded invitation stays on screen. */
+  stale?: boolean;
   pending?: boolean;
   error?: Error | null;
-  failed?: boolean;
-  unavailable?: boolean;
   onRetry?: () => void;
-  available: boolean;
   onAccept: () => void;
   declining?: boolean;
   onDecline: () => void;
@@ -42,9 +39,7 @@ export function AcceptInvitationScreen({
   declineDialog?: ReactNode;
   signOut: ReactNode;
 }) {
-  const missing = !loading && (unavailable || (!!invitation && !available));
-  const ready = !loading && !failed && !missing && invitation;
-  const { title, description } = invitationCopy(ready, missing);
+  const { title, description } = invitationCopy(state);
   return (
     <AuthFrame
       title={title}
@@ -56,62 +51,99 @@ export function AcceptInvitationScreen({
         </>
       }
     >
-      {loading && <LoadingState label="Loading invitation" rows={2} />}
-      {!loading && failed && !unavailable && (
-        <ErrorState
-          variant="compact"
-          title="Couldn’t load invitation"
-          description="We couldn’t check this invitation. Please try again."
-          onRetry={onRetry}
-        />
-      )}
-      {missing && (
-        <Button asChild className="w-full" size="lg">
-          <Link to="/organizations">Go to your workspaces</Link>
-        </Button>
-      )}
-      {ready && (
-        <>
-          <InvitationDetails invitation={ready} />
-          <FormMessage
-            error={error}
-            errorDescription="We couldn’t accept this invitation. Please try again."
-          />
-          <PendingButton
-            className="w-full"
-            size="lg"
-            pending={pending}
-            disabled={declining}
-            onClick={onAccept}
-          >
-            Accept invitation
-          </PendingButton>
-          <Button
-            type="button"
-            variant="outline"
-            className="w-full"
-            size="lg"
-            disabled={pending || declining}
-            onClick={onDecline}
-          >
-            Decline invitation
-          </Button>
-          {declineDialog}
-        </>
-      )}
+      <AcceptInvitationBody
+        state={state}
+        stale={stale}
+        pending={pending}
+        error={error}
+        onRetry={onRetry}
+        onAccept={onAccept}
+        declining={declining}
+        onDecline={onDecline}
+        declineDialog={declineDialog}
+      />
     </AuthFrame>
+  );
+}
+
+function AcceptInvitationBody({
+  state,
+  stale,
+  pending,
+  error,
+  onRetry,
+  onAccept,
+  declining,
+  onDecline,
+  declineDialog,
+}: {
+  state: InvitationScreenState<Invitation>;
+  stale: boolean;
+  pending: boolean;
+  error?: Error | null;
+  onRetry?: () => void;
+  onAccept: () => void;
+  declining: boolean;
+  onDecline: () => void;
+  declineDialog?: ReactNode;
+}) {
+  if (state.kind === "loading") return <LoadingState label="Loading invitation" rows={2} />;
+  if (state.kind === "error")
+    return (
+      <ErrorState
+        variant="compact"
+        title="Couldn’t load invitation"
+        description="We couldn’t check this invitation. Please try again."
+        onRetry={onRetry}
+      />
+    );
+  if (state.kind === "missing")
+    return (
+      <Button asChild className="w-full" size="lg">
+        <Link to="/organizations">Go to your workspaces</Link>
+      </Button>
+    );
+  return (
+    <>
+      {stale && <StaleNotice title="This invitation may be out of date." onRetry={onRetry} />}
+      <InvitationDetails invitation={state.invitation} />
+      <FormMessage
+        error={error}
+        errorDescription="We couldn’t accept this invitation. Please try again."
+      />
+      <PendingButton
+        className="w-full"
+        size="lg"
+        pending={pending}
+        disabled={declining}
+        onClick={onAccept}
+      >
+        Accept invitation
+      </PendingButton>
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        size="lg"
+        disabled={pending || declining}
+        onClick={onDecline}
+      >
+        Decline invitation
+      </Button>
+      {declineDialog}
+    </>
   );
 }
 
 type Invitation = { organizationName: string; role: string; email: string; inviterEmail?: string };
 
-function invitationCopy(ready: Invitation | false | undefined, missing: boolean) {
-  if (ready)
+function invitationCopy(state: InvitationScreenState<Invitation>) {
+  if (state.kind === "ready")
     return {
-      title: `Join ${ready.organizationName}`,
+      title: `Join ${state.invitation.organizationName}`,
       description: "You were invited to this workspace. Accept to open it.",
     };
-  if (missing)
+  if (state.kind === "missing")
     return {
       title: "This invitation isn’t available",
       description:

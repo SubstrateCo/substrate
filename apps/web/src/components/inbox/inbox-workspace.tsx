@@ -15,15 +15,15 @@ import {
   useSelectedThread,
 } from "./inbox-data";
 import { InboxHeader, LabelFilterBar, SyncNotice } from "./inbox-header";
-import { InboxList } from "./list/inbox-list";
 import { InboxWorkspaceContext, type InboxWorkspaceValue } from "./inbox-workspace-context";
+import { InboxList } from "./list/inbox-list";
+import { SelectableMessageList } from "./list/selectable-message-list";
 import { mailboxColors } from "./mail-colors";
 import { MailPagination } from "./mail-paging";
 import { folderView } from "./mail-views";
 import { MailboxDialogs } from "./mailboxes/mailbox-dialogs";
-import { MailboxSidebar } from "./mailboxes/mailboxes";
+import { CompactMailboxPicker, MailboxSidebar, MobileViewPicker } from "./mailboxes/mailboxes";
 import { Reader } from "./reader/reader";
-import { SelectableMessageList } from "./list/selectable-message-list";
 import { ErrorState } from "@/components/feedback/error-state";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
@@ -87,6 +87,7 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
     connected: boxes,
     colors: mailboxColors(boxes),
     scope: active,
+    unified: !active && boxes.length > 1,
     onSelect: (box: typeof active) => {
       setLabel(undefined);
       setAccount(box?.id ?? null);
@@ -133,6 +134,8 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
     [api, scope],
   );
   const current = folderView(selectedLabel, view);
+  const syncing = busy || sync.isPending;
+  const syncAccount = () => sync.mutate(account);
   // Failed authority checks must also hide cached account names, counts and the open reader.
   const unreadable = accounts.isError || page.isError || thread.isError;
   if (unreadable || paging.failed)
@@ -151,25 +154,46 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
         {sidebar && !(selected && !split) && <MailboxSidebar {...nav} {...viewNav} />}
         <PageContent>
           <InboxHeader
-            sidebar={sidebar}
-            nav={nav}
-            viewNav={viewNav}
+            heading={
+              sidebar
+                ? { title: current.label, icon: <current.icon aria-hidden /> }
+                : {
+                    leading: <CompactMailboxPicker {...nav} />,
+                    title: boxes.length ? (
+                      <MobileViewPicker
+                        {...viewNav}
+                        {...nav}
+                        onSync={syncAccount}
+                        syncing={syncing}
+                      />
+                    ) : (
+                      current.label
+                    ),
+                  }
+            }
             current={current}
-            syncing={busy || sync.isPending}
-            onSync={() => sync.mutate(account)}
-            allTags={allTags}
-            onToggleTags={() => setAllTags((value) => !value)}
-            field={field}
-            search={search}
-            onSearch={(value) => {
-              setSearch(value);
-              setSelected(undefined);
-              paging.reset();
-            }}
+            tools={
+              boxes.length
+                ? {
+                    syncing,
+                    onSync: syncAccount,
+                    allTags,
+                    onToggleTags: () => setAllTags((value) => !value),
+                    field,
+                    search,
+                    onSearch: (value) => {
+                      setSearch(value);
+                      setSelected(undefined);
+                      paging.reset();
+                    },
+                  }
+                : undefined
+            }
           />
           <LabelFilterBar
             boxes={boxes}
             scope={active}
+            unified={nav.unified}
             filter={filter}
             onLabel={viewNav.onLabel}
             onClear={() => navigate("inbox")}

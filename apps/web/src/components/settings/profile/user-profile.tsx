@@ -23,8 +23,6 @@ export function UserProfile() {
           state={resource.status}
           title="Profile picture"
           description="Shown next to your messages, tasks, and mentions."
-          loading={session.isPending}
-          error={session.error}
           onRetry={() => void session.refetch()}
           kind="avatar"
           value={user?.image}

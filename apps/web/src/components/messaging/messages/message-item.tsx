@@ -20,7 +20,7 @@ import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { MessageAttachments } from "@/components/messaging/messages/attachments/message-attachments";
 import { LinkedMessage } from "@/components/messaging/messages/linked-message";
-import { messageAuthorName } from "@/components/messaging/messages/message-author";
+import { messageAuthor } from "@/components/messaging/messages/message-author";
 import { MessageItem as MessageItemView } from "@/components/messaging/messages/message-item-view";
 import { MessageReaction } from "@/components/messaging/messages/reactions/message-reaction";
 import { ReactionPeopleDialog } from "@/components/messaging/messages/reactions/reaction-people-dialog";
@@ -108,7 +108,7 @@ export function MessageItem({
           grouped={grouped && !highlighted}
           highlighted={highlighted}
           editor={
-            canPost && editing && !message.deletedAt ? (
+            canPost && editing ? (
               <EditMessageComposer
                 message={message}
                 context={context}
@@ -124,13 +124,7 @@ export function MessageItem({
             <>
               <ReferencedMessageBody context={context} body={message.body} />
               <MessageAttachments
-                sender={{
-                  name: messageAuthorName(message),
-                  image: message.authorImage,
-                  avatar: message.authorAvatar,
-                  agent: message.authorType === "agent",
-                  createdAt: message.createdAt,
-                }}
+                sender={{ actor: messageAuthor(message), createdAt: message.createdAt }}
                 attachments={message.attachments}
                 previewHref={(attachment) =>
                   messageAttachmentPreviewUrl({

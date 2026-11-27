@@ -10,17 +10,15 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Heading } from "@/components/ui/heading";
 import { Item } from "@/components/ui/item";
 import { Separator } from "@/components/ui/separator";
-import type { ResourceStatus } from "@/lib/resource-state";
+import type { ResourceState } from "@/lib/resource-state";
 import { ChevronRight, Plus } from "lucide-react";
 
 type Workspace = { id: string; name: string; logo?: string | null };
 
 export function OrganizationSelection({
-  organizations,
-  state,
-  loading = false,
+  workspaces,
+  invitationsPending = false,
   openingId,
-  loadError,
   onRetry,
   onSelect,
   signOut,
@@ -28,35 +26,39 @@ export function OrganizationSelection({
   invitations,
   hasInvitations = false,
 }: {
-  organizations?: Workspace[];
-  state: ResourceStatus;
-  loading?: boolean;
+  workspaces: ResourceState<Workspace[]>;
+  /** The invitation list has not loaded yet, so the create form waits to choose its layout. */
+  invitationsPending?: boolean;
   /** The workspace being opened, while it opens. */
   openingId?: string;
-  loadError?: Error | null;
   onRetry: () => void;
   onSelect: (id: string) => void;
   signOut: ReactNode;
   createForm: ReactNode;
   /** The user's pending invitations, shown first because they need an answer. */
   invitations?: ReactNode;
-  /** Whether the user has an invitation they can still accept. */
+  /**
+   * Whether the user has an invitation they can still accept. The `invitations` slot is opaque,
+   * and the copy and the create form's layout depend on it.
+   */
   hasInvitations?: boolean;
 }) {
+  const { data, error } = workspaces;
+  const loading = workspaces.status === "loading" || invitationsPending;
   const retryOrigin = useRef<Element | null>(null);
   const firstChoice = useRef<HTMLButtonElement | null>(null);
   const creationHeading = useRef<HTMLHeadingElement | null>(null);
   useEffect(() => {
     const origin = retryOrigin.current;
-    if (!origin || loading || loadError) return;
+    if (!origin || loading || error) return;
     if (!origin.isConnected && document.activeElement === document.body) {
       (firstChoice.current ?? creationHeading.current)?.focus();
     }
     retryOrigin.current = null;
     // oxlint-disable-next-line react/exhaustive-effect-dependencies -- Move focus once a retried load has rendered its result.
-  }, [loading, loadError, organizations]);
+  }, [loading, error, data]);
 
-  const listed = organizations ?? [];
+  const listed = data ?? [];
   // With workspaces to open or invitations to answer, creating one is a secondary, collapsed step.
   const collapsible = listed.length > 0 || hasInvitations;
   const description =
@@ -67,8 +69,8 @@ export function OrganizationSelection({
   return (
     <AuthFrame title="Choose a workspace" description={description} actions={signOut}>
       {invitations}
-      {state === "loading" && !organizations?.length && <WorkspaceListLoading />}
-      {loadError && (
+      {workspaces.status === "loading" && <WorkspaceListLoading />}
+      {error && (
         <ErrorState
           variant="compact"
           title="Couldn’t load workspaces"

@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
-import { CrmResourceState } from "../crm-resource-state";
+import { CrmResourceBoundary } from "../crm-resource-state";
 import { PipelineSettings, PipelineSettingsLoading } from "./pipeline-settings";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
@@ -45,9 +45,8 @@ export function CrmSettings() {
         description="Manage your sales pipeline and defaults for new deals."
       >
         <div>
-          <CrmResourceState
-            pending={query.isPending}
-            error={query.error}
+          <CrmResourceBoundary
+            state={state}
             onRetry={() => void query.refetch()}
             loading={
               <div role="status" aria-label="Loading CRM settings">
@@ -58,74 +57,73 @@ export function CrmSettings() {
                 </DealDefaultsSection>
               </div>
             }
-          />
-          {state.data && !state.error && (
-            <>
-              <UnsavedChangesGuard
-                dirty={dirty}
-                name="CRM defaults"
-                description="Your CRM defaults haven’t been saved."
-              />
-              <DealDefaultsSection
-                footer={
-                  canEdit && (
-                    <SettingsFooter
-                      dirty={dirty}
-                      pending={mutation.isPending}
-                      error={
-                        mutation.error
-                          ? actionErrorMessage(
-                              mutation.error,
-                              "Couldn’t save CRM defaults. Try again.",
-                            )
-                          : undefined
-                      }
-                      onDiscard={() => {
-                        setDraft(null);
-                        mutation.reset();
-                      }}
-                      onSave={() =>
-                        mutation.mutate(
-                          { action: "updateSettings", organizationId, defaultCurrency: currency },
-                          { onSuccess: () => setDraft(null) },
-                        )
-                      }
+          >
+            {() => (
+              <>
+                <UnsavedChangesGuard
+                  dirty={dirty}
+                  name="CRM defaults"
+                  description="Your CRM defaults haven’t been saved."
+                />
+                <DealDefaultsSection
+                  footer={
+                    canEdit && (
+                      <SettingsFooter
+                        dirty={dirty}
+                        pending={mutation.isPending}
+                        error={
+                          mutation.error
+                            ? actionErrorMessage(
+                                mutation.error,
+                                "Couldn’t save CRM defaults. Try again.",
+                              )
+                            : undefined
+                        }
+                        onDiscard={() => {
+                          setDraft(null);
+                          mutation.reset();
+                        }}
+                        onSave={() =>
+                          mutation.mutate(
+                            { action: "updateSettings", organizationId, defaultCurrency: currency },
+                            { onSuccess: () => setDraft(null) },
+                          )
+                        }
+                      />
+                    )
+                  }
+                >
+                  <div className="max-w-56">
+                    <SelectField
+                      label="Default currency"
+                      value={currency ?? ""}
+                      onChange={(next) => setDraft({ currency: next || null })}
+                      options={[{ value: "", label: "Not set" }, ...currencyChoices]}
+                      disabled={!canEdit || mutation.isPending}
                     />
-                  )
-                }
-              >
-                <div className="max-w-56">
-                  <SelectField
-                    label="Default currency"
-                    value={currency ?? ""}
-                    onChange={(next) => setDraft({ currency: next || null })}
-                    options={[{ value: "", label: "Not set" }, ...currencyChoices]}
-                    disabled={!canEdit || mutation.isPending}
-                  />
-                </div>
-                {!currency && (
-                  <p className="text-sm text-muted-foreground">
-                    No default set. Choose a currency when you add an amount to a deal.
-                  </p>
-                )}
-                {!canEdit && (
-                  <p className="text-sm text-muted-foreground">
-                    Only workspace owners and admins can change CRM settings.
-                  </p>
-                )}
-              </DealDefaultsSection>
-            </>
-          )}
+                  </div>
+                  {!currency && (
+                    <p className="text-sm text-muted-foreground">
+                      No default set. Choose a currency when you add an amount to a deal.
+                    </p>
+                  )}
+                  {!canEdit && (
+                    <p className="text-sm text-muted-foreground">
+                      Only workspace owners and admins can change CRM settings.
+                    </p>
+                  )}
+                </DealDefaultsSection>
+              </>
+            )}
+          </CrmResourceBoundary>
         </div>
-        <CrmResourceState
-          pending={pipeline.isPending}
-          error={pipeline.error}
+        <CrmResourceBoundary
+          state={resourceState(pipeline)}
           onRetry={() => void pipeline.refetch()}
           loading={<PipelineSettingsLoading />}
-        />
-        {!pipeline.error && pipeline.data && (
-          <PipelineSettings stages={pipeline.data} canEdit={canEdit} />
-        )}
+        >
+          {(stages) => <PipelineSettings stages={stages} canEdit={canEdit} />}
+        </CrmResourceBoundary>
       </SettingsPanel>
     </div>
   );

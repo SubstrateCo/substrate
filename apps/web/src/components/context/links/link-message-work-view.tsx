@@ -6,6 +6,8 @@ import { ErrorState } from "../../feedback/error-state";
 import { modalDialogProps } from "../../feedback/modal-dialog";
 import { PendingButton } from "../../feedback/pending-button";
 import { LinkWorkItem, LinkWorkLoading } from "./link-work-item";
+import { linkWorkState } from "./link-work-state";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandInput, CommandList } from "@/components/ui/command";
 import {
@@ -19,7 +21,7 @@ import {
 } from "@/components/ui/dialog";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMediaQuery } from "@/hooks/use-media-query";
-import type { ResourceStatus } from "@/lib/resource-state";
+import { listPhase, type ListPhase, type ResourceStatus } from "@/lib/resource-state";
 import { Link2, Plus } from "lucide-react";
 
 const kindLabels: Record<ContextEntityType, string> = {
@@ -180,9 +182,7 @@ export function LinkMessageWork({
               <div className="rounded-lg border p-1">
                 <CommandList aria-label={kindLabel} className="h-48 sm:h-72">
                   <LinkSearchStatus
-                    error={error}
-                    loading={loading}
-                    hasResults={results.length > 0}
+                    phase={listPhase({ items: results, loading, error })}
                     query={query.trim()}
                     kindLabel={kindLabel.toLowerCase()}
                     onRetry={onRetry}
@@ -194,8 +194,10 @@ export function LinkMessageWork({
                       kind={item.kind}
                       title={item.title}
                       projectName={item.projectName}
-                      chosen={chosen.has(item.id)}
-                      linked={linkedIds.has(item.id)}
+                      state={linkWorkState({
+                        linked: linkedIds.has(item.id),
+                        chosen: chosen.has(item.id),
+                      })}
                       disabled={pending}
                       onChoose={() => toggle(item)}
                     />
@@ -228,30 +230,28 @@ export function LinkMessageWork({
   );
 }
 
+/** Shown above the results, which the command list renders as its items. */
 function LinkSearchStatus({
-  error,
-  loading,
-  hasResults,
+  phase,
   query,
   kindLabel,
   onRetry,
 }: {
-  error?: Error | null;
-  loading: boolean;
-  hasResults: boolean;
+  phase: ListPhase<LinkableWork>;
   query: string;
   kindLabel: string;
   onRetry: () => void;
 }) {
-  return (
-    <>
-      {loading && !hasResults && !error && <LinkWorkLoading />}
-      {error && <ErrorState variant="compact" title="Couldn’t search work" onRetry={onRetry} />}
-      {!loading && !error && (
-        <CommandEmpty>
-          {query ? `No editable ${kindLabel} match “${query}”.` : `No editable ${kindLabel} found.`}
-        </CommandEmpty>
-      )}
-    </>
-  );
+  if (phase.status === "loading") return <LinkWorkLoading />;
+  if (phase.status === "error")
+    return <ErrorState variant="compact" title="Couldn’t search work" onRetry={onRetry} />;
+  if (phase.status === "stale")
+    return <StaleNotice title="Couldn’t search work" onRetry={onRetry} />;
+  if (phase.status === "empty")
+    return (
+      <CommandEmpty>
+        {query ? `No editable ${kindLabel} match “${query}”.` : `No editable ${kindLabel} found.`}
+      </CommandEmpty>
+    );
+  return null;
 }

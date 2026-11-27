@@ -8,7 +8,7 @@ import { InvitationAcceptedView } from "@/components/organizations/invitations/i
 import { useDeclineInvitationConfirm } from "@/components/organizations/invitations/use-decline-invitation";
 import { useExpiryTime } from "@/hooks/use-expiry-time";
 import { isDesktop } from "@/lib/desktop/auth";
-import { isInvitationExpired } from "@/lib/organizations/invitations";
+import { invitationScreenState } from "@/lib/organizations/invitations";
 import { sessionQueryOptions } from "@/queries/auth/session";
 import { invitationQueryOptions } from "@/queries/organizations/invitations";
 import {
@@ -30,10 +30,12 @@ export function AcceptInvitationScreen({ invitationId }: { invitationId: string 
         to: session.data?.session.activeOrganizationId ? "/messages" : "/organizations",
       }),
   });
-  const available =
-    !!invitation.data &&
-    !isInvitationExpired(invitation.data.expiresAt, now) &&
-    invitation.data.status === "pending";
+  const state = invitationScreenState({
+    invitation: invitation.data,
+    unavailable: isInvitationUnavailable(invitation.error),
+    failed: invitation.isError,
+    now,
+  });
   const accepted = accept.data;
   const signOut = (
     <SignOutButton destination={`/accept-invitation/${encodeURIComponent(invitationId)}`} />
@@ -50,14 +52,11 @@ export function AcceptInvitationScreen({ invitationId }: { invitationId: string 
   }
   return (
     <AcceptInvitationScreenView
-      invitation={invitation.data}
-      loading={invitation.isPending}
+      state={state}
+      stale={invitation.isError}
       pending={accept.isPending}
-      error={invitation.error || accept.error}
-      failed={invitation.isError}
-      unavailable={isInvitationUnavailable(invitation.error)}
+      error={accept.error}
       onRetry={() => void invitation.refetch()}
-      available={available}
       onAccept={() =>
         accept.mutate(undefined, {
           onSuccess: (result) => activate.mutate(result.member.organizationId),

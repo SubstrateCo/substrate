@@ -4,9 +4,8 @@ import type { ReactNode } from "react";
 
 import { MessageMarkdown } from "../markdown/message-markdown";
 import type { Message } from "../types";
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { Tag } from "@/components/feedback/tag";
-import { messageAuthorName } from "@/components/messaging/messages/message-author";
+import { messageAuthor } from "@/components/messaging/messages/message-author";
 import {
   MessageReactions,
   MessageToolbar,
@@ -15,9 +14,9 @@ import { DeletedMessageBody } from "@/components/messaging/messages/message-plac
 import { MessageRowLayout } from "@/components/messaging/messages/message-row-layout";
 import { useHasPersonCard } from "@/components/messaging/people/person-card-context";
 import { PersonCardTarget } from "@/components/messaging/people/person-card-slot";
-import { PersonAvatarFallback } from "@/components/people/person-avatar";
+import { ActorAvatar, ActorKindTag } from "@/components/people/actor-avatar";
 import { Timestamp } from "@/components/time/timestamp";
-import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import type { ActorIdentity } from "@/lib/actors/identity";
 import { cn } from "cn";
 
 export function MessageItem({
@@ -60,30 +59,27 @@ export function MessageItem({
   renderReaction?: (reaction: Message["reactions"][number]) => ReactNode;
   children?: ReactNode;
 }) {
-  const name = messageAuthorName(message);
+  const author = messageAuthor(message);
+  const content = messageContent(message, editor, body);
+  const editing = content.kind === "editing";
   return (
     <MessageRowLayout
-      label={grouped ? `${name}, continued` : undefined}
-      grouped={grouped}
-      highlighted={highlighted || !!editor}
-      avatar={
-        !grouped && (
-          <span className="relative mt-0.5 h-fit shrink-0">
-            {message.authorType === "agent" ? (
-              <AgentAvatarView avatar={message.authorAvatar ?? null} size="lg" mood={authorMood} />
-            ) : (
-              <Avatar aria-hidden="true" className="size-9">
-                {message.authorImage && <AvatarImage src={message.authorImage} alt="" />}
-                <PersonAvatarFallback name={message.authorName} />
-              </Avatar>
-            )}
-            {avatarBadge}
-          </span>
-        )
+      author={
+        grouped
+          ? { continued: `${author.name}, continued` }
+          : {
+              avatar: (
+                <span className="relative mt-0.5 h-fit shrink-0">
+                  <ActorAvatar actor={author} size="lg" mood={authorMood} />
+                  {avatarBadge}
+                </span>
+              ),
+              byline: <MessageByline message={message} author={author} status={status} />,
+            }
       }
-      byline={!grouped && <MessageByline message={message} name={name} status={status} />}
+      highlighted={highlighted || editing}
       toolbar={
-        !editor && (
+        !editing && (
           <MessageToolbar
             message={message}
             onReact={onReact}
@@ -94,14 +90,7 @@ export function MessageItem({
         )
       }
     >
-      {message.deletedAt ? (
-        <DeletedMessageBody />
-      ) : (
-        (editor ?? body ?? <MessageMarkdown body={message.body} />)
-      )}
-      {!message.deletedAt && !editor && message.editedAt && (
-        <span className="text-xs text-muted-foreground">Edited</span>
-      )}
+      <MessageBody content={content} />
       <MessageReactions
         message={message}
         onReact={onReact}
@@ -115,16 +104,44 @@ export function MessageItem({
   );
 }
 
+/** What the body shows. A deleted message wins over an open editor. */
+type MessageContent =
+  | { kind: "deleted" }
+  | { kind: "editing"; editor: ReactNode }
+  | { kind: "posted"; body: ReactNode; edited: boolean };
+
+function messageContent(message: Message, editor: ReactNode, body: ReactNode): MessageContent {
+  if (message.deletedAt) return { kind: "deleted" };
+  if (editor) return { kind: "editing", editor };
+  return {
+    kind: "posted",
+    body: body ?? <MessageMarkdown body={message.body} />,
+    edited: !!message.editedAt,
+  };
+}
+
+function MessageBody({ content }: { content: MessageContent }) {
+  if (content.kind === "deleted") return <DeletedMessageBody />;
+  if (content.kind === "editing") return content.editor;
+  return (
+    <>
+      {content.body}
+      {content.edited && <span className="text-xs text-muted-foreground">Edited</span>}
+    </>
+  );
+}
+
 function MessageByline({
   message,
-  name,
+  author,
   status,
 }: {
   message: Message;
-  name: string;
+  author: ActorIdentity;
   status?: ReactNode;
 }) {
   const hasPersonCard = useHasPersonCard();
+  const { name } = author;
   return (
     <>
       <PersonCardTarget actorId={message.authorActorEntityId} name={name}>
@@ -143,7 +160,7 @@ function MessageByline({
         format="time"
         className="shrink-0 text-xs text-muted-foreground"
       />
-      {message.authorType === "agent" && <Tag>Agent</Tag>}
+      <ActorKindTag actor={author} />
       {message.authorExternal && <Tag>External</Tag>}
       {status && <span className="flex min-w-0 flex-1 self-center">{status}</span>}
     </>

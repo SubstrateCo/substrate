@@ -3,7 +3,7 @@ import { Link } from "@tanstack/react-router";
 
 import { useState } from "react";
 
-import { CrmResourceState } from "./crm-resource-state";
+import { CrmResourceBoundary } from "./crm-resource-state";
 import { FollowUpEditor } from "./follow-up-editor";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
@@ -30,12 +30,12 @@ function EnabledFollowUps({ entityId, canCreate }: { entityId: string; canCreate
   const { organizationId } = useWorkspaceScope();
   const query = useQuery(followUpsOptions(organizationId, entityId));
   const [creating, setCreating] = useState(false);
-  const data = resourceState(query).data;
+  const state = resourceState(query);
   return (
     <RecordSection
       aria-label="Follow-ups"
       title="Follow-ups"
-      count={data?.tasks.length || undefined}
+      count={state.data?.tasks.length || undefined}
       actions={
         canCreate && (
           <RecordSectionAction label="New follow-up" onClick={() => setCreating(true)}>
@@ -44,11 +44,10 @@ function EnabledFollowUps({ entityId, canCreate }: { entityId: string; canCreate
         )
       }
     >
-      <CrmResourceState
+      <CrmResourceBoundary
         compact
         noun="follow-ups"
-        pending={query.isPending}
-        error={query.error}
+        state={state}
         onRetry={() => void query.refetch()}
         loading={
           <div role="status" aria-label="Loading follow-ups">
@@ -75,39 +74,40 @@ function EnabledFollowUps({ entityId, canCreate }: { entityId: string; canCreate
             </ul>
           </div>
         }
-      />
-      {data && !query.error && (
-        <>
-          {!data.nextAction && (
-            <ContentNotice variant="inline" title="No scheduled next action you can read" />
-          )}
-          {data.tasks.length > 0 && (
-            <ul className={recordRows}>
-              {data.tasks.map((task) => (
-                <li key={task.entityId}>
-                  <Item asChild size="xs">
-                    <Link {...workLink(organizationId, task.projectEntityId, task.entityId)}>
-                      <ItemMedia>
-                        <TaskStatusIcon status={task.status} />
-                      </ItemMedia>
-                      <ItemContent className="min-w-0">
-                        <span className="truncate">{task.title}</span>
-                      </ItemContent>
-                      <ItemActions>
-                        {task.dueDate ? (
-                          <DueDate value={task.dueDate} />
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Unscheduled</span>
-                        )}
-                      </ItemActions>
-                    </Link>
-                  </Item>
-                </li>
-              ))}
-            </ul>
-          )}
-        </>
-      )}
+      >
+        {(data) => (
+          <>
+            {!data.nextAction && (
+              <ContentNotice variant="inline" title="No scheduled next action you can read" />
+            )}
+            {data.tasks.length > 0 && (
+              <ul className={recordRows}>
+                {data.tasks.map((task) => (
+                  <li key={task.entityId}>
+                    <Item asChild size="xs">
+                      <Link {...workLink(organizationId, task.projectEntityId, task.entityId)}>
+                        <ItemMedia>
+                          <TaskStatusIcon status={task.status} />
+                        </ItemMedia>
+                        <ItemContent className="min-w-0">
+                          <span className="truncate">{task.title}</span>
+                        </ItemContent>
+                        <ItemActions>
+                          {task.dueDate ? (
+                            <DueDate value={task.dueDate} />
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Unscheduled</span>
+                          )}
+                        </ItemActions>
+                      </Link>
+                    </Item>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </>
+        )}
+      </CrmResourceBoundary>
       {creating && <FollowUpEditor entityId={entityId} onClose={() => setCreating(false)} />}
     </RecordSection>
   );

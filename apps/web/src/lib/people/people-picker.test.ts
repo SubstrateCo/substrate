@@ -1,6 +1,7 @@
 import {
   addTypedRecipients,
   limitMessage,
+  recipientActor,
   recipientFor,
   recipientAgentIds,
   recipientEmails,
@@ -23,6 +24,18 @@ test("agents stay distinct from people and email invitations", () => {
   expect(invitedRecipients(selected)).toEqual([invitation]);
   expect(recipientKey(agent)).not.toBe(recipientKey(person));
   expect(addTypedRecipients([agent], ada.email, [ada], { max: 1 }).overflow).toBe(true);
+});
+
+test("a recipient shows as its agent or person, and an invitation has no identity", () => {
+  expect(
+    recipientActor({ agent: { id: "a1", name: "Ada's assistant", avatar: "100000" } }),
+  ).toEqual({ kind: "agent", name: "Ada's assistant", avatar: "100000" });
+  expect(recipientActor({ email: ada.email, person: ada })).toEqual({
+    kind: "person",
+    name: "Ada Lovelace",
+    image: null,
+  });
+  expect(recipientActor({ email: "guest@example.test" })).toBeNull();
 });
 
 test("a typed address of an offered person picks that person instead of inviting them", () => {

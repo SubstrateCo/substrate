@@ -1,6 +1,9 @@
-import { useQuery } from "@tanstack/react-query";
+import type {
+  AgentConfiguration as AgentConfigurationView,
+  AgentRunSettings,
+} from "@substrate/contracts/agents";
 
-import type { ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 import { AgentSettingsLoading } from "./agent-settings-loading";
 import { AgentSettingsOverview } from "./agent-settings-overview";
@@ -32,41 +35,68 @@ export function AgentSettingsSheet({
   const catalog = useQuery(agentCatalogQueryOptions(userId));
   const agent = catalog.data?.agents.find((item) => item.id === agentId);
   const runSettings = catalog.data?.runSettings.find((item) => item.agentId === agentId);
-  let body: ReactNode;
-  if (catalog.error && !agent)
-    body = (
-      <ErrorState
-        variant="compact"
-        title="Couldn’t load agent settings"
-        onRetry={() => void catalog.refetch()}
-      />
-    );
-  else if (!agent) body = <AgentSettingsLoading page={page} />;
-  else if (page === "overview")
-    body = (
-      <AgentSettingsOverview
-        agent={agent}
-        runSettings={runSettings}
-        onOpenPage={onPageChange}
-        onDeleted={onDeleted}
-      />
-    );
-  else if (page === "routines") body = <Routines agentId={agent.id} name={agent.name} />;
-  else
-    body = (
-      <AgentConfiguration
-        key={`${agent.harness}/${page}`}
-        agentId={agent.id}
-        harness={agent.harness}
-        section={page}
-        defaults={agent.useStartupDefaults}
-        homeDevice={runSettings?.homeDevice ?? null}
-      />
-    );
   return (
     <>
       <AgentSettingsSheetHeader page={page} onBack={() => onPageChange("overview")} />
-      <PageSheetBody>{body}</PageSheetBody>
+      <PageSheetBody>
+        <AgentSettingsBody
+          agent={agent}
+          runSettings={runSettings}
+          error={catalog.error}
+          onRetry={() => void catalog.refetch()}
+          page={page}
+          onPageChange={onPageChange}
+          onDeleted={onDeleted}
+        />
+      </PageSheetBody>
     </>
   );
+}
+
+/** The agent's page once its catalog entry loads. A failed refresh keeps a loaded agent. */
+function AgentSettingsBody({
+  agent,
+  runSettings,
+  error,
+  onRetry,
+  page,
+  onPageChange,
+  onDeleted,
+}: {
+  agent: AgentConfigurationView | undefined;
+  runSettings: AgentRunSettings | undefined;
+  error: Error | null;
+  onRetry: () => void;
+  page: AgentSettingsPage;
+  onPageChange: (page: AgentSettingsPage) => void;
+  onDeleted: () => void;
+}) {
+  if (!agent && error)
+    return <ErrorState variant="compact" title="Couldn’t load agent settings" onRetry={onRetry} />;
+  if (!agent) return <AgentSettingsLoading page={page} />;
+  switch (page) {
+    case "overview":
+      return (
+        <AgentSettingsOverview
+          agent={agent}
+          runSettings={runSettings}
+          onOpenPage={onPageChange}
+          onDeleted={onDeleted}
+        />
+      );
+    case "routines":
+      return <Routines agentId={agent.id} name={agent.name} />;
+    case "skills":
+    case "mcps":
+      return (
+        <AgentConfiguration
+          key={`${agent.harness}/${page}`}
+          agentId={agent.id}
+          harness={agent.harness}
+          section={page}
+          defaults={agent.useStartupDefaults}
+          homeDevice={runSettings?.homeDevice ?? null}
+        />
+      );
+  }
 }

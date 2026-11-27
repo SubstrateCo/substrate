@@ -2,11 +2,10 @@ import type { AgentAvatarCode } from "@substrate/contracts/agents";
 
 import type { ReactNode } from "react";
 
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { Tag } from "@/components/feedback/tag";
-import { PersonAvatarFallback } from "@/components/people/person-avatar";
-import { Avatar, AvatarImage } from "@/components/ui/avatar";
+import { ActorAvatar } from "@/components/people/actor-avatar";
+import { actorIdentity, actorKindLabel, type ActorIdentity } from "@/lib/actors/identity";
 import { harnessLabel } from "@/lib/agents/harness-meta";
 import { roleLabel } from "@/lib/organizations/member-policy";
 import { Bot, LockKeyhole } from "lucide-react";
@@ -29,36 +28,23 @@ function agentLine(agent: NonNullable<PersonCardProfile["agent"]>) {
 }
 
 function Header({
-  name,
-  image,
-  avatar,
+  actor,
   secondary,
   action,
   tags,
   badge,
-  type = "human",
 }: {
-  name: string;
-  image?: string | null;
-  avatar?: AgentAvatarCode | null;
+  actor: ActorIdentity;
   secondary: ReactNode;
   action?: ReactNode;
   tags?: ReactNode;
   badge?: ReactNode;
-  type?: "human" | "agent";
 }) {
   return (
     <div className="flex min-w-0 items-start gap-3">
-      {type === "agent" ? (
-        <AgentAvatarView avatar={avatar ?? null} size="xl" />
-      ) : (
-        <Avatar aria-hidden="true" className="size-10 shrink-0">
-          {image && <AvatarImage src={image} alt="" />}
-          <PersonAvatarFallback name={name} />
-        </Avatar>
-      )}
+      <ActorAvatar actor={actor} size="xl" />
       <div className="min-w-0 flex-1">
-        <p className="font-medium wrap-anywhere">{name}</p>
+        <p className="font-medium wrap-anywhere">{actor.name}</p>
         {secondary}
         {tags && <div className="mt-1 flex flex-wrap gap-1">{tags}</div>}
         {action && <div className="mt-2">{action}</div>}
@@ -69,26 +55,11 @@ function Header({
 }
 
 /** Identity already visible on the source record, without loading private profile details. */
-export function PersonIdentityCard({
-  name,
-  image,
-  avatar,
-  type,
-}: {
-  name: string;
-  image?: string | null;
-  avatar?: AgentAvatarCode | null;
-  type: "human" | "agent";
-}) {
+export function PersonIdentityCard({ actor }: { actor: ActorIdentity }) {
   return (
     <Header
-      name={name}
-      image={image}
-      avatar={avatar}
-      type={type}
-      secondary={
-        <p className="text-xs text-muted-foreground">{type === "agent" ? "Agent" : "Person"}</p>
-      }
+      actor={actor}
+      secondary={<p className="text-xs text-muted-foreground">{actorKindLabel(actor)}</p>}
     />
   );
 }
@@ -109,7 +80,7 @@ export function PersonCard({
     return (
       <div role="status" aria-label={`Loading details for ${name}`} className="space-y-3">
         <Header
-          name={name}
+          actor={actorIdentity({ name })}
           secondary={
             <p aria-hidden="true" className="text-xs">
               <SkeletonText width="8rem" />
@@ -121,7 +92,7 @@ export function PersonCard({
   if (state === "unavailable" || !profile)
     return (
       <Header
-        name={name}
+        actor={actorIdentity({ name })}
         secondary={
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
             <LockKeyhole aria-hidden="true" className="size-3" />
@@ -130,6 +101,7 @@ export function PersonCard({
         }
       />
     );
+  const actor = actorIdentity(profile);
   const secondary = profile.agent ? agentLine(profile.agent) : profile.email;
   const tags = [
     profile.role && <Tag key="role">{roleLabel(profile.role)}</Tag>,
@@ -139,14 +111,11 @@ export function PersonCard({
   return (
     <div className="space-y-3">
       <Header
-        name={profile.name}
-        type={profile.type}
-        image={profile.image}
-        avatar={profile.avatar}
+        actor={actor}
         action={action}
         tags={tags.length ? tags : undefined}
         badge={
-          profile.type === "agent" && (
+          actor.kind === "agent" && (
             <Tag icon={<Bot aria-hidden="true" className="size-3" />}>Agent</Tag>
           )
         }

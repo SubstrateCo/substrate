@@ -22,22 +22,32 @@ export function ConfigurationStatus({
   error: Error | null;
   onRetry: () => void;
 }) {
-  let title = "Choose a home desktop in run settings";
-  if (!agentId) title = "Save the agent first";
-  else if (homeDeviceName) title = `Edit on ${homeDeviceName}`;
-  return (
-    <>
-      {!available && <ContentNotice variant="inline" icon={Laptop} title={title} />}
-      {available && pending && (
-        <div role="status" aria-label="Reading the agent’s files">
-          <div aria-hidden="true">
-            <ConfigurationListLoading section={section} />
-          </div>
+  if (!available)
+    return (
+      <ContentNotice
+        variant="inline"
+        icon={Laptop}
+        title={unavailableTitle(agentId, homeDeviceName)}
+      />
+    );
+  if (error)
+    return (
+      <ErrorState variant="compact" title="Couldn’t read this agent’s files" onRetry={onRetry} />
+    );
+  if (pending)
+    return (
+      <div role="status" aria-label="Reading the agent’s files">
+        <div aria-hidden="true">
+          <ConfigurationListLoading section={section} />
         </div>
-      )}
-      {error && (
-        <ErrorState variant="compact" title="Couldn’t read this agent’s files" onRetry={onRetry} />
-      )}
-    </>
-  );
+      </div>
+    );
+  return null;
+}
+
+/** Skills and MCP servers are edited only on the agent's home desktop. */
+function unavailableTitle(agentId: string | undefined, homeDeviceName: string | undefined) {
+  if (!agentId) return "Save the agent first";
+  if (homeDeviceName) return `Edit on ${homeDeviceName}`;
+  return "Choose a home desktop in run settings";
 }

@@ -58,93 +58,116 @@ export function LabelMenu({ mailboxId, label }: { mailboxId: string; label: Mail
       </Tooltip>
       <DropdownMenuContent aria-label={name} align="end">
         {colors ? (
-          <>
-            <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                setColors(false);
-              }}
-            >
-              <ArrowLeft aria-hidden />
-              Label settings
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuRadioGroup
-              aria-label="Label color"
-              className="grid grid-cols-2"
-              value={label.color ?? "auto"}
-              onValueChange={(v) =>
-                save.mutate(() =>
-                  onLabelColor(mailboxId, label.id, mailColors.find((c) => c === v) ?? null),
-                )
-              }
-            >
-              <DropdownMenuRadioItem value="auto" className="col-span-2">
-                Automatic ({defaultLabelColor(label)})
-              </DropdownMenuRadioItem>
-              {mailColors.map((c) => (
-                <DropdownMenuRadioItem value={c} key={c}>
-                  <span aria-hidden className={`size-3 rounded-sm bg-current ${ink[c]}`} />
-                  {c}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-          </>
+          <LabelColorPanel
+            label={label}
+            onBack={() => setColors(false)}
+            onColor={(color) => save.mutate(() => onLabelColor(mailboxId, label.id, color))}
+          />
         ) : (
-          <>
-            <DropdownMenuItem
-              onSelect={(e) => {
-                e.preventDefault();
-                setColors(true);
-              }}
-            >
-              <span
-                aria-hidden
-                className={`size-3 rounded-sm bg-current ${ink[label.color ?? defaultLabelColor(label)]}`}
-              />
-              Label color
-              <ChevronRight className="ml-auto" aria-hidden />
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>In label list</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              aria-label="In label list"
-              value={label.filterMode ?? "show"}
-              onValueChange={(v) => {
-                const mode = labelFilterModes.find((m) => m === v);
-                if (mode)
-                  save.mutate(() =>
-                    onLabelVisibility(mailboxId, { area: "sidebar", labelId: label.id, mode }),
-                  );
-              }}
-            >
-              {labelFilterModes.map((mode) => (
-                <DropdownMenuRadioItem key={mode} value={mode}>
-                  {modeNames[mode]}
-                </DropdownMenuRadioItem>
-              ))}
-            </DropdownMenuRadioGroup>
-            <DropdownMenuSeparator />
-            <DropdownMenuLabel>In message list</DropdownMenuLabel>
-            <DropdownMenuRadioGroup
-              aria-label="In message list"
-              value={label.hideInRows ? "hide" : "show"}
-              onValueChange={(v) =>
-                save.mutate(() =>
-                  onLabelVisibility(mailboxId, {
-                    area: "rows",
-                    labelId: label.id,
-                    visible: v === "show",
-                  }),
-                )
-              }
-            >
-              <DropdownMenuRadioItem value="show">Show</DropdownMenuRadioItem>
-              <DropdownMenuRadioItem value="hide">Hide</DropdownMenuRadioItem>
-            </DropdownMenuRadioGroup>
-          </>
+          <LabelSettingsPanel
+            label={label}
+            onColors={() => setColors(true)}
+            onVisibility={(change) => save.mutate(() => onLabelVisibility(mailboxId, change))}
+          />
         )}
       </DropdownMenuContent>
     </DropdownMenu>
+  );
+}
+
+function LabelColorPanel({
+  label,
+  onBack,
+  onColor,
+}: {
+  label: MailLabel;
+  onBack: () => void;
+  onColor: (color: MailColor | null) => void;
+}) {
+  return (
+    <>
+      <DropdownMenuItem
+        onSelect={(e) => {
+          e.preventDefault();
+          onBack();
+        }}
+      >
+        <ArrowLeft aria-hidden />
+        Label settings
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuRadioGroup
+        aria-label="Label color"
+        className="grid grid-cols-2"
+        value={label.color ?? "auto"}
+        onValueChange={(v) => onColor(mailColors.find((c) => c === v) ?? null)}
+      >
+        <DropdownMenuRadioItem value="auto" className="col-span-2">
+          Automatic ({defaultLabelColor(label)})
+        </DropdownMenuRadioItem>
+        {mailColors.map((c) => (
+          <DropdownMenuRadioItem value={c} key={c}>
+            <span aria-hidden className={`size-3 rounded-sm bg-current ${ink[c]}`} />
+            {c}
+          </DropdownMenuRadioItem>
+        ))}
+      </DropdownMenuRadioGroup>
+    </>
+  );
+}
+
+function LabelSettingsPanel({
+  label,
+  onColors,
+  onVisibility,
+}: {
+  label: MailLabel;
+  onColors: () => void;
+  onVisibility: (change: LabelDisplayChange) => void;
+}) {
+  return (
+    <>
+      <DropdownMenuItem
+        onSelect={(e) => {
+          e.preventDefault();
+          onColors();
+        }}
+      >
+        <span
+          aria-hidden
+          className={`size-3 rounded-sm bg-current ${ink[label.color ?? defaultLabelColor(label)]}`}
+        />
+        Label color
+        <ChevronRight className="ml-auto" aria-hidden />
+      </DropdownMenuItem>
+      <DropdownMenuSeparator />
+      <DropdownMenuLabel>In label list</DropdownMenuLabel>
+      <DropdownMenuRadioGroup
+        aria-label="In label list"
+        value={label.filterMode ?? "show"}
+        onValueChange={(v) => {
+          const mode = labelFilterModes.find((m) => m === v);
+          if (mode) onVisibility({ area: "sidebar", labelId: label.id, mode });
+        }}
+      >
+        {labelFilterModes.map((mode) => (
+          <DropdownMenuRadioItem key={mode} value={mode}>
+            {modeNames[mode]}
+          </DropdownMenuRadioItem>
+        ))}
+      </DropdownMenuRadioGroup>
+      <DropdownMenuSeparator />
+      <DropdownMenuLabel>In message list</DropdownMenuLabel>
+      <DropdownMenuRadioGroup
+        aria-label="In message list"
+        value={label.hideInRows ? "hide" : "show"}
+        onValueChange={(v) =>
+          onVisibility({ area: "rows", labelId: label.id, visible: v === "show" })
+        }
+      >
+        <DropdownMenuRadioItem value="show">Show</DropdownMenuRadioItem>
+        <DropdownMenuRadioItem value="hide">Hide</DropdownMenuRadioItem>
+      </DropdownMenuRadioGroup>
+    </>
   );
 }

@@ -6,7 +6,8 @@ import type { LinkProps } from "@tanstack/react-router";
 import { DesktopInstallView } from "@/components/onboarding/desktop-install-view";
 import { safeRedirect } from "@/lib/auth/navigation";
 import { desktop } from "@/lib/desktop/identity";
-import { browserInstallerPlatform, chooseInstallers } from "@/lib/desktop/installer";
+import { browserInstallerPlatform, chooseInstallers, installMode } from "@/lib/desktop/installer";
+import { resourceState } from "@/lib/resource-state";
 import { desktopReleaseQueryOptions } from "@/queries/desktop/release";
 
 export function DesktopInstall({
@@ -34,9 +35,8 @@ export function DesktopInstall({
       openHref={desktopLink(path.success ? path.data : "/messages", desktop.scheme)}
       browserLink={browserLink}
       platform={platform}
-      primary={primary}
+      mode={installMode(resourceState(release).status, primary)}
       others={others}
-      loading={release.isPending}
       error={release.error}
       onRetry={() => void release.refetch()}
       heading={heading}

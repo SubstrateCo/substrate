@@ -43,10 +43,7 @@ export function ManagedConversations({ organizationId }: { organizationId: strin
     >
       <div ref={fallback} tabIndex={-1}>
         <ManagedConversationsView
-          rows={resource.data}
-          state={resource.status}
-          loading={list.isPending}
-          error={list.error}
+          resource={resource}
           onRetry={() => void list.refetch()}
           onAddMembers={(id) => open({ kind: "members", id })}
           onTransfer={(id) => open({ kind: "transfer", id })}

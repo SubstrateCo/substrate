@@ -44,6 +44,25 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
   );
 }
 
+function RecordField({
+  label,
+  record,
+  kind,
+}: {
+  label: string;
+  record: ProposalRecord;
+  kind: RecordKind;
+}) {
+  return (
+    <Field label={label}>
+      <RecordName record={record} kind={kind} />
+    </Field>
+  );
+}
+
+function PreviewFields({ children }: { children: ReactNode }) {
+  return <dl className="grid gap-1.5 text-sm">{children}</dl>;
+}
 /** A named record, as a link when the viewer can open it. */
 export function RecordName({ record, kind }: { record: ProposalRecord; kind: RecordKind }) {
   if (record.access === "loading")
@@ -110,17 +129,11 @@ export function ProposalPreview({ target }: { target: ProposalTarget }) {
     case "reply":
       return (
         <div className="grid gap-2">
-          <dl className="grid gap-1.5 text-sm">
+          <PreviewFields>
             <Field label="Action">{target.thread ? "Reply in a thread" : "Post a message"}</Field>
-            <Field label="Conversation">
-              <RecordName record={target.conversation} kind="conversation" />
-            </Field>
-            {target.thread && (
-              <Field label="Thread">
-                <RecordName record={target.thread} kind="thread" />
-              </Field>
-            )}
-          </dl>
+            <RecordField label="Conversation" record={target.conversation} kind="conversation" />
+            {target.thread && <RecordField label="Thread" record={target.thread} kind="thread" />}
+          </PreviewFields>
           <blockquote className="rounded-lg border bg-inset px-3 py-2">
             <MessageMarkdown body={target.input.body} />
           </blockquote>
@@ -128,132 +141,94 @@ export function ProposalPreview({ target }: { target: ProposalTarget }) {
       );
     case "create_task":
       return (
-        <dl className="grid gap-1.5 text-sm">
+        <PreviewFields>
           <Field label="Action">{target.parentTask ? "Create a subtask" : "Create a task"}</Field>
-          <Field label="Project">
-            <RecordName record={target.project} kind="project" />
-          </Field>
+          <RecordField label="Project" record={target.project} kind="project" />
           {target.parentTask && (
-            <Field label="Parent task">
-              <RecordName record={target.parentTask} kind="task" />
-            </Field>
+            <RecordField label="Parent task" record={target.parentTask} kind="task" />
           )}
           {target.sourceMessage && (
-            <Field label="From message">
-              <RecordName record={target.sourceMessage} kind="message" />
-            </Field>
+            <RecordField label="From message" record={target.sourceMessage} kind="message" />
           )}
           <TaskFields fields={target.input} assignee={target.assignee} />
-        </dl>
+        </PreviewFields>
       );
     case "update_task":
       return (
-        <dl className="grid gap-1.5 text-sm">
+        <PreviewFields>
           <Field label="Action">Change a task</Field>
-          <Field label="Task">
-            <RecordName record={target.task} kind="task" />
-          </Field>
-          <Field label="Project">
-            <RecordName record={target.project} kind="project" />
-          </Field>
+          <RecordField label="Task" record={target.task} kind="task" />
+          <RecordField label="Project" record={target.project} kind="project" />
           {target.parentTask && (
-            <Field label="Parent task">
-              <RecordName record={target.parentTask} kind="task" />
-            </Field>
+            <RecordField label="Parent task" record={target.parentTask} kind="task" />
           )}
           <TaskFields fields={target.input.changes} assignee={target.assignee} />
-        </dl>
+        </PreviewFields>
       );
     case "delete_task":
       return (
-        <dl className="grid gap-1.5 text-sm">
+        <PreviewFields>
           <Field label="Action">Delete a task and its subtasks</Field>
-          <Field label="Task">
-            <RecordName record={target.task} kind="task" />
-          </Field>
-          <Field label="Project">
-            <RecordName record={target.project} kind="project" />
-          </Field>
-        </dl>
+          <RecordField label="Task" record={target.task} kind="task" />
+          <RecordField label="Project" record={target.project} kind="project" />
+        </PreviewFields>
       );
     case "share_project":
+      return (
+        <ProjectAccessPreview
+          action="Share a project"
+          project={target.project}
+          person={target.person}
+          access={permissionLabels[target.input.level]}
+        />
+      );
     case "revoke_project_access":
       return (
-        <dl className="grid gap-1.5 text-sm">
-          <Field label="Action">
-            {target.type === "share_project" ? "Share a project" : "Remove access to a project"}
-          </Field>
-          <Field label="Project">
-            <RecordName record={target.project} kind="project" />
-          </Field>
-          <Field label="Person">
-            <RecordName record={target.person} kind="person" />
-          </Field>
-          {target.type === "share_project" && (
-            <Field label="Access">{permissionLabels[target.input.level]}</Field>
-          )}
-        </dl>
+        <ProjectAccessPreview
+          action="Remove access to a project"
+          project={target.project}
+          person={target.person}
+        />
       );
     case "archive_project":
     case "restore_project":
     case "delete_project":
       return (
-        <dl className="grid gap-1.5 text-sm">
+        <PreviewFields>
           <Field label="Action">{projectActionLabels[target.type]}</Field>
-          <Field label="Project">
-            <RecordName record={target.project} kind="project" />
-          </Field>
-        </dl>
+          <RecordField label="Project" record={target.project} kind="project" />
+        </PreviewFields>
       );
     case "archive_crm_record":
       return (
-        <dl className="grid gap-1.5 text-sm">
+        <PreviewFields>
           <Field label="Action">
             {target.input.archived ? "Archive" : "Restore"} {crmKindLabels[target.input.kind]}
           </Field>
-          <Field label="Record">
-            <RecordName record={target.record} kind="record" />
-          </Field>
-        </dl>
+          <RecordField label="Record" record={target.record} kind="record" />
+        </PreviewFields>
       );
     case "delete_crm_interaction":
       return (
-        <dl className="grid gap-1.5 text-sm">
+        <PreviewFields>
           <Field label="Action">Delete an interaction</Field>
-          <Field label="Interaction">
-            <RecordName record={target.interaction} kind="interaction" />
-          </Field>
-        </dl>
+          <RecordField label="Interaction" record={target.interaction} kind="interaction" />
+        </PreviewFields>
       );
     case "assign_crm_owner":
     case "share_crm_record":
-    case "revoke_crm_access": {
-      const { action } = target;
+    case "revoke_crm_access":
       return (
-        <dl className="grid gap-1.5 text-sm">
-          <Field label="Action">{crmAccessLabels[target.type]}</Field>
-          <Field label="Record">
-            <RecordName record={target.record} kind="record" />
-          </Field>
-          <Field label="Person">
-            <RecordName record={target.person} kind="person" />
-          </Field>
-          {action.tool === "share_crm_record" && (
-            <Field label="Access">{permissionLabels[action.input.level]}</Field>
-          )}
-          {action.tool === "assign_crm_owner" && (
-            <Field label="Access">
-              {action.input.accessDecision === "keep_restricted"
-                ? "Don't share the record"
-                : "Only if they can already open it"}
-            </Field>
-          )}
-        </dl>
+        <CrmAccessPreview
+          action={crmAccessLabels[target.type]}
+          record={target.record}
+          person={target.person}
+          access={crmAccess(target.action)}
+        />
       );
-    }
     case "generic":
       return (
-        <dl className="grid gap-1.5 text-sm">
+        <PreviewFields>
           <Field label="Action">{target.title}</Field>
           {target.fields.map((field, index) => (
             // Fields keep the call's order and can repeat a label, so the index keys them.
@@ -262,9 +237,53 @@ export function ProposalPreview({ target }: { target: ProposalTarget }) {
               <GenericValue field={field} />
             </Field>
           ))}
-        </dl>
+        </PreviewFields>
       );
   }
+}
+
+/** Who gains or loses access to a project, and the access they gain. */
+function ProjectAccessPreview({
+  action,
+  project,
+  person,
+  access,
+}: {
+  action: string;
+  project: ProposalRecord;
+  person: ProposalRecord;
+  access?: ReactNode;
+}) {
+  return (
+    <PreviewFields>
+      <Field label="Action">{action}</Field>
+      <RecordField label="Project" record={project} kind="project" />
+      <RecordField label="Person" record={person} kind="person" />
+      {access && <Field label="Access">{access}</Field>}
+    </PreviewFields>
+  );
+}
+
+/** Who gains or loses access to a CRM record, and the access they gain. */
+function CrmAccessPreview({
+  action,
+  record,
+  person,
+  access,
+}: {
+  action: string;
+  record: ProposalRecord;
+  person: ProposalRecord;
+  access?: ReactNode;
+}) {
+  return (
+    <PreviewFields>
+      <Field label="Action">{action}</Field>
+      <RecordField label="Record" record={record} kind="record" />
+      <RecordField label="Person" record={person} kind="person" />
+      {access && <Field label="Access">{access}</Field>}
+    </PreviewFields>
+  );
 }
 
 const crmKindLabels = { account: "an account", contact: "a contact", deal: "a deal" };
@@ -274,6 +293,16 @@ const crmAccessLabels = {
   share_crm_record: "Share a record",
   revoke_crm_access: "Remove access to a record",
 };
+
+/** The access a CRM call gives the person. Removing access gives none. */
+function crmAccess(action: Extract<ProposalTarget, { action: unknown }>["action"]) {
+  if (action.tool === "share_crm_record") return permissionLabels[action.input.level];
+  if (action.tool === "assign_crm_owner")
+    return action.input.accessDecision === "keep_restricted"
+      ? "Don't share the record"
+      : "Only if they can already open it";
+  return undefined;
+}
 
 const projectActionLabels = {
   archive_project: "Archive a project and make its tasks read-only",

@@ -191,7 +191,7 @@ for (const kind of ["accounts", "deals"] as const) {
     }
     setStatus(500);
     await saved.refresh();
-    const stale = page.getByRole("status").filter({ hasText: "These records may be out of date." });
+    const stale = page.getByRole("status").filter({ hasText: `These ${kind} may be out of date.` });
     await expect(stale).toBeVisible();
     await expect(name).toBeVisible();
     if (kind === "deals") {

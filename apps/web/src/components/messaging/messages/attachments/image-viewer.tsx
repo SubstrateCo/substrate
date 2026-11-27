@@ -1,4 +1,3 @@
-import type { AgentAvatarCode } from "@substrate/contracts/agents";
 import type { Attachment } from "@substrate/contracts/files/attachments";
 
 import {
@@ -8,15 +7,14 @@ import {
   useState,
   type ComponentProps,
   type CSSProperties,
+  type ReactNode,
 } from "react";
 
 import { fitViewerImage } from "./image-viewer-layout";
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { imageFileActions } from "@/components/attachments/image-file-actions";
 import { ActionContextMenu } from "@/components/layout/action-context-menu";
-import { PersonAvatarFallback } from "@/components/people/person-avatar";
+import { ActorAvatar } from "@/components/people/actor-avatar";
 import { Timestamp } from "@/components/time/timestamp";
-import { Avatar, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -28,6 +26,7 @@ import {
 import { Image } from "@/components/ui/image";
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import type { ActorIdentity } from "@/lib/actors/identity";
 import { cn } from "cn";
 import {
   ArrowUpRight,
@@ -40,10 +39,7 @@ import {
 } from "lucide-react";
 
 export type ImageViewerSender = {
-  name: string;
-  image?: string | null;
-  avatar?: AgentAvatarCode | null;
-  agent: boolean;
+  actor: ActorIdentity;
   createdAt: string;
 };
 
@@ -77,7 +73,7 @@ function ImageViewerContent({
   const dialog = useRef<HTMLDivElement>(null);
   const idleTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const [idle, setIdle] = useState(false);
-  const [status, setStatus] = useState<"loading" | "ready" | "failed">("loading");
+  const [status, setStatus] = useState<ViewerStatus>("loading");
   const [rotation, setRotation] = useState(0);
   const [zoom, setZoom] = useState(1);
   const [natural, setNatural] = useState({ width: 0, height: 0 });
@@ -189,22 +185,14 @@ function ImageViewerContent({
           className={cn(controlsClass, "flex shrink-0 items-center justify-between gap-4 p-6")}
         >
           <div className="flex min-w-0 items-center gap-3">
-            {sender?.agent ? (
-              <AgentAvatarView avatar={sender.avatar ?? null} size="md" />
-            ) : (
-              sender && (
-                <Avatar aria-hidden="true">
-                  {sender.image && <AvatarImage src={sender.image} alt="" />}
-                  <PersonAvatarFallback name={sender.name} />
-                </Avatar>
-              )
-            )}
+            {sender && <ActorAvatar actor={sender.actor} size="md" />}
             <div className="min-w-0">
               <DialogTitle className="truncate">{attachment.filename}</DialogTitle>
               <DialogDescription>
                 {sender && (
                   <>
-                    {sender.name} · <Timestamp value={sender.createdAt} format="datetime" /> ·{" "}
+                    {sender.actor.name} · <Timestamp value={sender.createdAt} format="datetime" />{" "}
+                    ·{" "}
                   </>
                 )}
                 Image {position + 1} of {count}
@@ -222,45 +210,42 @@ function ImageViewerContent({
             className="grid h-(--viewer-height) min-h-full w-(--viewer-width) min-w-full grid-cols-1 grid-rows-1 place-items-center"
             style={stageStyle}
           >
-            {status === "loading" && <Spinner aria-label="Loading image" />}
-            {status === "failed" && (
-              <p role="status" className="p-4 text-sm text-muted-foreground">
-                This image couldn’t be loaded. Try downloading the file.
-              </p>
-            )}
-            {status !== "failed" && (
-              <ActionContextMenu actions={[actions]}>
-                <Image
-                  src={src}
-                  alt={attachment.filename}
-                  loading="eager"
-                  draggable={false}
-                  className={cn(
-                    "col-start-1 row-start-1 h-(--image-height) w-(--image-width) max-w-none rotate-(--image-rotation) object-contain",
-                    status !== "ready" && "invisible",
-                  )}
-                  style={imageStyle}
-                  onLoad={(event) => {
-                    setNatural({
-                      width: event.currentTarget.naturalWidth,
-                      height: event.currentTarget.naturalHeight,
-                    });
-                    setStatus("ready");
-                  }}
-                  onError={() => setStatus("failed")}
-                  onPointerMove={(event) => {
-                    event.stopPropagation();
-                    viewingImage();
-                  }}
-                  onPointerEnter={viewingImage}
-                  onPointerLeave={showControls}
-                  onPointerDown={() => {
-                    dialog.current?.focus();
-                    viewingImage();
-                  }}
-                />
-              </ActionContextMenu>
-            )}
+            <ViewerStage
+              status={status}
+              image={
+                <ActionContextMenu actions={[actions]}>
+                  <Image
+                    src={src}
+                    alt={attachment.filename}
+                    loading="eager"
+                    draggable={false}
+                    className={cn(
+                      "col-start-1 row-start-1 h-(--image-height) w-(--image-width) max-w-none rotate-(--image-rotation) object-contain",
+                      status !== "ready" && "invisible",
+                    )}
+                    style={imageStyle}
+                    onLoad={(event) => {
+                      setNatural({
+                        width: event.currentTarget.naturalWidth,
+                        height: event.currentTarget.naturalHeight,
+                      });
+                      setStatus("ready");
+                    }}
+                    onError={() => setStatus("failed")}
+                    onPointerMove={(event) => {
+                      event.stopPropagation();
+                      viewingImage();
+                    }}
+                    onPointerEnter={viewingImage}
+                    onPointerLeave={showControls}
+                    onPointerDown={() => {
+                      dialog.current?.focus();
+                      viewingImage();
+                    }}
+                  />
+                </ActionContextMenu>
+              }
+            />
           </div>
         </div>
         <footer
@@ -270,38 +255,12 @@ function ImageViewerContent({
             "flex shrink-0 flex-wrap items-center justify-between gap-4 p-6",
           )}
         >
-          <div role="group" aria-label="Image view" className="flex items-center gap-0.5">
-            <ViewerButton
-              label="Rotate image"
-              disabled={status !== "ready"}
-              onClick={() => setRotation((value) => (value + 90) % 360)}
-            >
-              <RotateCw aria-hidden="true" />
-            </ViewerButton>
-            <ViewerButton
-              label="Zoom out"
-              disabled={status !== "ready" || zoom <= 1}
-              onClick={() => setZoom((value) => Math.max(1, value - 0.5))}
-            >
-              <ZoomOut aria-hidden="true" />
-            </ViewerButton>
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label="Reset zoom"
-              disabled={status !== "ready"}
-              onClick={() => setZoom(1)}
-            >
-              {Math.round(zoom * 100)}%
-            </Button>
-            <ViewerButton
-              label="Zoom in"
-              disabled={status !== "ready" || zoom >= 4}
-              onClick={() => setZoom((value) => Math.min(4, value + 0.5))}
-            >
-              <ZoomIn aria-hidden="true" />
-            </ViewerButton>
-          </div>
+          <ViewerTools
+            ready={status === "ready"}
+            zoom={zoom}
+            onRotate={() => setRotation((value) => (value + 90) % 360)}
+            onZoom={setZoom}
+          />
           {count > 1 && (
             <div role="group" aria-label="Image navigation" className="flex gap-0.5">
               <ViewerButton label="Previous image" onClick={onPrevious}>
@@ -337,6 +296,68 @@ function ImageViewerContent({
         </footer>
       </DialogContent>
     </Dialog>
+  );
+}
+
+type ViewerStatus = "loading" | "ready" | "failed";
+
+/** The image, with a spinner over it until it loads. It stays mounted so its load event fires. */
+function ViewerStage({ status, image }: { status: ViewerStatus; image: ReactNode }) {
+  if (status === "failed")
+    return (
+      <p role="status" className="p-4 text-sm text-muted-foreground">
+        This image couldn’t be loaded. Try downloading the file.
+      </p>
+    );
+  return (
+    <>
+      {status === "loading" && <Spinner aria-label="Loading image" />}
+      {image}
+    </>
+  );
+}
+
+/** Rotate and zoom, usable once the image has loaded. */
+function ViewerTools({
+  ready,
+  zoom,
+  onRotate,
+  onZoom,
+}: {
+  ready: boolean;
+  zoom: number;
+  onRotate: () => void;
+  onZoom: (update: (zoom: number) => number) => void;
+}) {
+  return (
+    <div role="group" aria-label="Image view" className="flex items-center gap-0.5">
+      <ViewerButton label="Rotate image" disabled={!ready} onClick={onRotate}>
+        <RotateCw aria-hidden="true" />
+      </ViewerButton>
+      <ViewerButton
+        label="Zoom out"
+        disabled={!ready || zoom <= 1}
+        onClick={() => onZoom((value) => Math.max(1, value - 0.5))}
+      >
+        <ZoomOut aria-hidden="true" />
+      </ViewerButton>
+      <Button
+        variant="ghost"
+        size="sm"
+        aria-label="Reset zoom"
+        disabled={!ready}
+        onClick={() => onZoom(() => 1)}
+      >
+        {Math.round(zoom * 100)}%
+      </Button>
+      <ViewerButton
+        label="Zoom in"
+        disabled={!ready || zoom >= 4}
+        onClick={() => onZoom((value) => Math.min(4, value + 0.5))}
+      >
+        <ZoomIn aria-hidden="true" />
+      </ViewerButton>
+    </div>
   );
 }
 

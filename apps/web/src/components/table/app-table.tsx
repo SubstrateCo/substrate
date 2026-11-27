@@ -129,7 +129,7 @@ export function AppTable<TData extends RowData>({
   const table = usePagedTable({ columns, data, getRowId, pagination, rowActions });
   const rows = table.getRowModel().rows;
   const pager = pagerProps(table, name, pagination, fetching || loading);
-  const parts = tableParts({ hasRows: rows.length > 0, loading, error, pager });
+  const parts = tableParts({ hasRows: rows.length > 0, loading, error, pager, renderMobileRow });
   const showLoading = useDelayedLoading(parts.initialLoading);
   const paginated = pagination.mode === "server" || table.getPageCount() > 1;
   return (
@@ -164,8 +164,8 @@ export function AppTable<TData extends RowData>({
             paginated && parts.framed && "scrollbar-gutter-stable",
           )}
         >
-          {parts.hasRows && renderMobileRow && (
-            <MobileTableRows name={name} rows={rows} renderRow={renderMobileRow} />
+          {parts.renderMobileRow && (
+            <MobileTableRows name={name} rows={rows} renderRow={parts.renderMobileRow} />
           )}
           {parts.framed ? (
             <AppTableFrame
@@ -174,7 +174,7 @@ export function AppTable<TData extends RowData>({
               layout={layout}
               loading={loading}
               initialLoading={parts.initialLoading}
-              desktopOnly={parts.hasRows && !!renderMobileRow}
+              desktopOnly={!!parts.renderMobileRow}
               selectedRowId={selectedRowId}
               onRowClick={onRowClick}
             />
@@ -188,17 +188,21 @@ export function AppTable<TData extends RowData>({
   );
 }
 
+const ariaSort = { asc: "ascending", desc: "descending", none: "none" } as const;
+
 /** Which parts of the table show for its rows, load state, error, and pager. */
-function tableParts({
+function tableParts<MobileRow>({
   hasRows,
   loading,
   error,
   pager,
+  renderMobileRow,
 }: {
   hasRows: boolean;
   loading: boolean;
   error?: Error | null;
   pager?: PagerProps;
+  renderMobileRow?: MobileRow;
 }) {
   // The first load shows the header and skeleton rows.
   const initialLoading = loading && !hasRows && !error;
@@ -212,6 +216,8 @@ function tableParts({
     inlineError: !!error && hasRows,
     // Page-size controls and the way back stay available through loading and empty results.
     pager,
+    // Rows show as cards on narrow screens, and the table only on wider ones.
+    renderMobileRow: hasRows ? renderMobileRow : undefined,
   };
 }
 
@@ -415,15 +421,12 @@ function AppTableHeader<TData extends RowData>({
           {group.headers.map((header) => {
             const canSort = sortable && header.column.getCanSort();
             const sorting = header.column.getIsSorted();
-            let sortDirection: "ascending" | "descending" | "none" = "none";
-            if (sorting === "asc") sortDirection = "ascending";
-            else if (sorting === "desc") sortDirection = "descending";
             return (
               <TableHead
                 key={header.id}
                 colSpan={header.colSpan}
                 {...columnData(header.column.columnDef.meta, true)}
-                aria-sort={canSort ? sortDirection : undefined}
+                aria-sort={canSort ? ariaSort[sorting || "none"] : undefined}
               >
                 {!header.isPlaceholder &&
                   (canSort ? (

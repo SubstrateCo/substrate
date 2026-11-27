@@ -2,7 +2,7 @@ import { routineLimits } from "@substrate/contracts/agent-work";
 
 import { useForm, useSelector } from "@tanstack/react-form";
 
-import { useId, useRef, useState } from "react";
+import { useId, useRef, useState, type ReactNode } from "react";
 
 import {
   routineErrors,
@@ -155,60 +155,42 @@ export function RoutineEditor({
               setScheduleField(frequency === "custom" ? { frequency, cron } : { frequency })
             }
           />
-          {schedule.frequency === "custom" ? (
-            <Field data-invalid={!!errors.cron}>
-              <FieldLabel htmlFor={fieldId("cron")}>Cron expression</FieldLabel>
-              <Input
-                id={fieldId("cron")}
-                placeholder="0 9 * * 1-5"
-                maxLength={routineLimits.cron}
-                value={schedule.cron}
-                onChange={(event) => setScheduleField({ cron: event.target.value })}
-                {...errorProps("cron", !errors.cron)}
-              />
-              {fieldError("cron") || (
-                <FieldDescription id={`${fieldId("cron")}-description`}>
-                  Five fields: minute, hour, day of month, month, and weekday.
-                </FieldDescription>
-              )}
-            </Field>
-          ) : null}
-          <div
-            className={
-              schedule.frequency === "weekly"
-                ? "grid min-w-0 gap-4 sm:grid-cols-3"
-                : "grid min-w-0 gap-4 sm:grid-cols-2"
+          <ScheduleFields
+            schedule={schedule}
+            onChange={setScheduleField}
+            cronField={
+              <Field data-invalid={!!errors.cron}>
+                <FieldLabel htmlFor={fieldId("cron")}>Cron expression</FieldLabel>
+                <Input
+                  id={fieldId("cron")}
+                  placeholder="0 9 * * 1-5"
+                  maxLength={routineLimits.cron}
+                  value={schedule.cron}
+                  onChange={(event) => setScheduleField({ cron: event.target.value })}
+                  {...errorProps("cron", !errors.cron)}
+                />
+                {fieldError("cron") || (
+                  <FieldDescription id={`${fieldId("cron")}-description`}>
+                    Five fields: minute, hour, day of month, month, and weekday.
+                  </FieldDescription>
+                )}
+              </Field>
             }
-          >
-            {schedule.frequency === "weekly" && (
-              <SelectField
-                label="On"
-                value={String(schedule.weekday)}
-                onChange={(value) => setScheduleField({ weekday: Number(value) })}
-                options={weekdayNames.map((day, index) => ({ value: String(index), label: day }))}
-              />
-            )}
-            {schedule.frequency !== "custom" && (
-              <SelectField
-                label="At"
-                value={schedule.time}
-                onChange={(time) => setScheduleField({ time })}
-                options={timeOptions(schedule.time)}
-              />
-            )}
-            <Field data-invalid={!!errors.timezone}>
-              <FieldLabel htmlFor={fieldId("timezone")}>Time zone</FieldLabel>
-              <TimeZonePicker
-                id={fieldId("timezone")}
-                value={draft.timezone}
-                invalid={!!errors.timezone}
-                describedBy={errors.timezone && `${fieldId("timezone")}-error`}
-                disabled={pending}
-                onChange={(zone) => form.setFieldValue("timezone", zone)}
-              />
-              {fieldError("timezone")}
-            </Field>
-          </div>
+            timeZone={
+              <Field data-invalid={!!errors.timezone}>
+                <FieldLabel htmlFor={fieldId("timezone")}>Time zone</FieldLabel>
+                <TimeZonePicker
+                  id={fieldId("timezone")}
+                  value={draft.timezone}
+                  invalid={!!errors.timezone}
+                  describedBy={errors.timezone && `${fieldId("timezone")}-error`}
+                  disabled={pending}
+                  onChange={(zone) => form.setFieldValue("timezone", zone)}
+                />
+                {fieldError("timezone")}
+              </Field>
+            }
+          />
         </FieldSet>
         <Field orientation="horizontal" className="items-center">
           <FieldContent>
@@ -223,4 +205,56 @@ export function RoutineEditor({
       </div>
     </FormDialog>
   );
+}
+
+/** The fields for one frequency: a cron expression, or a weekday and a time. */
+function ScheduleFields({
+  schedule,
+  onChange,
+  cronField,
+  timeZone,
+}: {
+  schedule: Schedule;
+  onChange: (change: Partial<Schedule>) => void;
+  cronField: ReactNode;
+  timeZone: ReactNode;
+}) {
+  const time = (
+    <SelectField
+      label="At"
+      value={schedule.time}
+      onChange={(value) => onChange({ time: value })}
+      options={timeOptions(schedule.time)}
+    />
+  );
+  switch (schedule.frequency) {
+    case "custom":
+      return (
+        <>
+          {cronField}
+          <div className="grid min-w-0 gap-4 sm:grid-cols-2">{timeZone}</div>
+        </>
+      );
+    case "weekly":
+      return (
+        <div className="grid min-w-0 gap-4 sm:grid-cols-3">
+          <SelectField
+            label="On"
+            value={String(schedule.weekday)}
+            onChange={(value) => onChange({ weekday: Number(value) })}
+            options={weekdayNames.map((day, index) => ({ value: String(index), label: day }))}
+          />
+          {time}
+          {timeZone}
+        </div>
+      );
+    case "daily":
+    case "weekdays":
+      return (
+        <div className="grid min-w-0 gap-4 sm:grid-cols-2">
+          {time}
+          {timeZone}
+        </div>
+      );
+  }
 }

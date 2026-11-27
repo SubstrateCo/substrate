@@ -109,13 +109,7 @@ export function CalendarSettingsView({
         >
           <SettingsList>
             {settings.detachedCalendars.map((calendar) => (
-              <CalendarRow
-                key={calendar.entityId}
-                calendar={calendar}
-                now={now}
-                pending={false}
-                readOnly
-              />
+              <CalendarRow key={calendar.entityId} calendar={calendar} now={now} pending={false} />
             ))}
           </SettingsList>
         </SettingsSection>

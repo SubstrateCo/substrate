@@ -4,8 +4,10 @@ import type { ReactNode } from "react";
 
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
+import { ListBody } from "@/components/feedback/list-body";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { Tag } from "@/components/feedback/tag";
 import { rowStateVariants, rowTitleVariants } from "@/components/layout/row-state";
 import { SettingsList, SettingsSection } from "@/components/layout/settings-section";
@@ -13,6 +15,7 @@ import { MessageMarkdown } from "@/components/messaging/markdown/message-markdow
 import { Timestamp } from "@/components/time/timestamp";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Item, ItemActions, ItemContent, ItemHeader, ItemMedia } from "@/components/ui/item";
+import { listPhase } from "@/lib/resource-state";
 import { cn } from "cn";
 import { Activity, ChevronRight } from "lucide-react";
 
@@ -227,31 +230,36 @@ export function AgentActivityView({
         title="Work"
         description="Everything this agent worked on, newest first, including routines and helpers. Open a row to see its transcript."
       >
-        {error && <ErrorState variant="compact" title="Couldn’t load work" onRetry={onRetry} />}
-        {loading && !items.length && <ActivityRowsLoading />}
-        {!loading && !error && !items.length && (
-          <ContentNotice
-            icon={Activity}
-            title="No work yet"
-            description={`When you message ${name} or one of its routines runs, the work shows here.`}
-          />
-        )}
-        {items.length > 0 && (
-          <SettingsList label="Work">
-            {items.map((item) =>
-              item.kind === "row" ? (
-                <li key={item.row.id} className="grid">
-                  <ActivityRowButton row={item.row} onTranscript={onTranscript} />
-                  {item.row.attention}
-                </li>
-              ) : (
-                <li key={`routines:${item.id}`} className="grid">
-                  <RoutineRunsGroup rows={item.rows} onTranscript={onTranscript} />
-                </li>
-              ),
-            )}
-          </SettingsList>
-        )}
+        <ListBody
+          phase={listPhase({ items, loading, error })}
+          loading={<ActivityRowsLoading />}
+          error={<ErrorState variant="compact" title="Couldn’t load work" onRetry={onRetry} />}
+          empty={
+            <ContentNotice
+              icon={Activity}
+              title="No work yet"
+              description={`When you message ${name} or one of its routines runs, the work shows here.`}
+            />
+          }
+          stale={<StaleNotice title="Couldn’t load work" onRetry={onRetry} />}
+        >
+          {(rows) => (
+            <SettingsList label="Work">
+              {rows.map((item) =>
+                item.kind === "row" ? (
+                  <li key={item.row.id} className="grid">
+                    <ActivityRowButton row={item.row} onTranscript={onTranscript} />
+                    {item.row.attention}
+                  </li>
+                ) : (
+                  <li key={`routines:${item.id}`} className="grid">
+                    <RoutineRunsGroup rows={item.rows} onTranscript={onTranscript} />
+                  </li>
+                ),
+              )}
+            </SettingsList>
+          )}
+        </ListBody>
         {hasMore && (
           <PendingButton
             type="button"

@@ -24,6 +24,12 @@ export type ReaderActions = {
   onManage: () => void;
   focusList: () => void;
 };
+/** Why a change Gmail answered did not take effect. */
+const resultErrors: Partial<Record<MailActionResult, string>> = {
+  reconnect: "Reconnect this mailbox to change messages in Gmail.",
+  retry: "Gmail hasn’t confirmed the change. Try again.",
+};
+
 export function ReaderActionBar({
   message,
   mailbox,
@@ -42,11 +48,9 @@ export function ReaderActionBar({
     },
   });
   const pending = mutation.isPending;
-  let error = "";
-  if (mutation.isError) error = "Couldn’t change the message. Try again.";
-  else if (mutation.data === "reconnect")
-    error = "Reconnect this mailbox to change messages in Gmail.";
-  else if (mutation.data === "retry") error = "Gmail hasn’t confirmed the change. Try again.";
+  const error = mutation.isError
+    ? "Couldn’t change the message. Try again."
+    : (mutation.data && resultErrors[mutation.data]) || "";
   const writable = canChangeMail(mailbox);
   const unread = !!(message.flags & mailFlag.unread);
   const acted = useRef(false);
@@ -82,8 +86,7 @@ export function ReaderActionBar({
           </Button>
         )}
       </div>
-      {!confirm.value && <FormMessage error={error} />}
-      {confirm.value && (
+      {confirm.value ? (
         <ConfirmDialog
           destructive
           title="Move this message to Trash?"
@@ -98,6 +101,8 @@ export function ReaderActionBar({
           onRestoreFocus={confirm.restoreFocus}
           onConfirm={() => change("trashMessage")}
         />
+      ) : (
+        <FormMessage error={error} />
       )}
     </div>
   );

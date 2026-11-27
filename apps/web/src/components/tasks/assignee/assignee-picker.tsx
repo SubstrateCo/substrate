@@ -1,8 +1,7 @@
 import type { ReactElement, ReactNode } from "react";
 
 import type { ProjectDetail } from "../types";
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
-import { PersonAvatar } from "@/components/people/person-avatar";
+import { ActorAvatar } from "@/components/people/actor-avatar";
 import {
   Combobox,
   ComboboxCollection,
@@ -15,6 +14,7 @@ import {
   ComboboxSearch,
   ComboboxTrigger,
 } from "@/components/ui/combobox";
+import { actorIdentity } from "@/lib/actors/identity";
 
 type Actor = ProjectDetail["actors"][number];
 type Option = { value: string | null; label: string; actor?: Actor };
@@ -70,11 +70,7 @@ export function AssigneePicker({
               <ComboboxCollection>
                 {(item: Option) => (
                   <ComboboxItem key={item.value ?? "unassigned"} value={item}>
-                    {item.actor?.type === "agent" ? (
-                      <AgentAvatarView avatar={item.actor.avatar} size="xs" />
-                    ) : (
-                      <PersonAvatar size="xs" name={item.actor?.name} image={item.actor?.image} />
-                    )}
+                    <ActorAvatar actor={item.actor && actorIdentity(item.actor)} size="xs" />
                     <span className="min-w-0 flex-1 truncate">{item.label}</span>
                   </ComboboxItem>
                 )}

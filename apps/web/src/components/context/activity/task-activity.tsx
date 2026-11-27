@@ -4,9 +4,12 @@ import { ErrorState } from "../../feedback/error-state";
 import { orderActivity } from "./activity-order";
 import { ActivityRow, ActivityRowSkeleton, type ActivityEvent } from "./activity-row";
 import { ContentNotice } from "@/components/feedback/content-notice";
+import { ListBody } from "@/components/feedback/list-body";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { RecordSection } from "@/components/layout/record-section";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { listPhase } from "@/lib/resource-state";
 import { ChevronDown } from "lucide-react";
 
 // Show the newest events first; older ones stay one click away.
@@ -91,8 +94,9 @@ function ActivityList({
   const ordered = orderActivity(items);
   const shown = expanded || hidden <= 0 ? ordered : ordered.slice(0, collapsedCount);
   return (
-    <>
-      {loading && !items.length && (
+    <ListBody
+      phase={listPhase({ items: shown, loading, error })}
+      loading={
         <div role="status">
           <span className="sr-only">Loading activity</span>
           <ul aria-hidden="true">
@@ -101,34 +105,34 @@ function ActivityList({
             ))}
           </ul>
         </div>
-      )}
-      {error && <ErrorState variant="compact" title="Couldn’t load activity" onRetry={onRetry} />}
-      {!loading && !error && !items.length && (
-        <ContentNotice variant="inline" title="No activity yet" />
-      )}
-      {shown.length > 0 && (
+      }
+      error={<ErrorState variant="compact" title="Couldn’t load activity" onRetry={onRetry} />}
+      empty={<ContentNotice variant="inline" title="No activity yet" />}
+      stale={<StaleNotice title="Couldn’t load activity" onRetry={onRetry} />}
+    >
+      {(rows) => (
         <>
           <p className="mb-2 text-xs text-muted-foreground">Newest first</p>
           <ol aria-label="Activity, newest first">
-            {shown.map((event) => (
+            {rows.map((event) => (
               <ActivityRow key={event.id} event={event} />
             ))}
           </ol>
+          {hidden > 0 && (
+            <Button
+              type="button"
+              size="xs"
+              variant="disclosure"
+              className="mt-1 -ml-2"
+              aria-expanded={expanded}
+              onClick={() => onExpandedChange(!expanded)}
+            >
+              {expanded ? "Show less" : `Show ${hidden} more`}
+            </Button>
+          )}
+          {(expanded || hidden <= 0) && more}
         </>
       )}
-      {hidden > 0 && (
-        <Button
-          type="button"
-          size="xs"
-          variant="disclosure"
-          className="mt-1 -ml-2"
-          aria-expanded={expanded}
-          onClick={() => onExpandedChange(!expanded)}
-        >
-          {expanded ? "Show less" : `Show ${hidden} more`}
-        </Button>
-      )}
-      {(expanded || hidden <= 0) && more}
-    </>
+    </ListBody>
   );
 }

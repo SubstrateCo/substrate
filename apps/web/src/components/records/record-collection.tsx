@@ -4,7 +4,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useState, type ComponentProps, type ReactNode } from "react";
 
 import { CrmExport } from "@/components/crm/crm-export";
-import { CrmResourceState } from "@/components/crm/crm-resource-state";
+import { CrmResourceBoundary } from "@/components/crm/crm-resource-state";
 import { sectionLabels, singularLabels, type CrmKind } from "@/components/crm/crm-types";
 import {
   DealPipeline,
@@ -13,7 +13,6 @@ import {
 } from "@/components/crm/deals/deal-pipeline";
 import { RecordEditor } from "@/components/crm/record-editor";
 import { RecordList, type CrmListRow } from "@/components/crm/record-list";
-import { StaleNotice } from "@/components/feedback/stale-notice";
 import { FilterBar, type FilterField } from "@/components/filters";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
@@ -29,7 +28,7 @@ import { useOrganizationApps } from "@/components/workspace/organization-apps-co
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useSearchDebounce } from "@/hooks/use-search-debounce";
 import { contactLink, crmLink } from "@/lib/navigation/record-links";
-import { resourceState } from "@/lib/resource-state";
+import { resourceState, type ResourceState } from "@/lib/resource-state";
 import { contactsOptions } from "@/queries/contacts/options";
 import {
   accountsOptions,
@@ -179,17 +178,44 @@ export function RecordCollection({ kind }: { kind: CrmKind }) {
   });
   const records = collectionRecords(kind, queries);
   const boardState = resourceState(queries.boardDeals);
-  const shown = showPipeline
-    ? { query: queries.boardDeals, state: boardState }
-    : { query: records.query, state: records.state };
-  // One error per failed load: deals also need the pipeline and settings.
-  const dealsError = kind === "deals" ? (queries.pipeline.error ?? queries.settings.error) : null;
   const startCreating = () => {
     mutation.reset();
     setCreating(true);
   };
   const filtered = debounced.query !== "" || archived;
   const onCreate = records.canCreate ? startCreating : undefined;
+  const pagination = collectionPagination(records.rows, pages);
+  const shown = showPipeline
+    ? {
+        query: queries.boardDeals,
+        state: boardState,
+        loading: <DealPipelineLoading />,
+        results: (
+          <RecordPipeline
+            stages={records.stages}
+            board={boardState.data}
+            onCreate={filtered ? undefined : onCreate}
+          />
+        ),
+      }
+    : {
+        query: records.query,
+        state: records.state,
+        loading: <RecordList kind={kind} rows={[]} pagination={pagination} loading />,
+        results: (
+          <RecordList
+            kind={kind}
+            rows={records.rows}
+            fetching={records.query.isFetching}
+            pagination={pagination}
+            filtered={filtered}
+            onCreate={onCreate}
+          />
+        ),
+      };
+  // One error per failed load: deals also need the pipeline and settings.
+  const needed = kind === "deals" ? [queries.pipeline, queries.settings] : [];
+  const neededError = needed.find((query) => query.error)?.error ?? null;
   return (
     // The pipeline's columns scroll on their own, so the page does not.
     <div
@@ -244,36 +270,17 @@ export function RecordCollection({ kind }: { kind: CrmKind }) {
         </div>
         <RecordCollectionResults
           kind={kind}
-          pending={(debounced.pending || shown.query.isPending) && !shown.state.data}
-          error={(shown.state.data ? null : shown.state.error) ?? dealsError}
-          stale={shown.state.status === "stale"}
+          state={resourceState({
+            data: shown.state.data,
+            error: shown.state.error ?? neededError,
+          })}
           onRetry={() => {
             void shown.query.refetch();
-            if (kind !== "deals") return;
-            void queries.pipeline.refetch();
-            void queries.settings.refetch();
+            for (const query of needed) void query.refetch();
           }}
-          onRefresh={() => void shown.query.refetch()}
-          showPipeline={showPipeline}
-          pagination={collectionPagination(records.rows, pages)}
+          loading={shown.loading}
         >
-          {!!shown.state.data &&
-            (showPipeline ? (
-              <RecordPipeline
-                stages={records.stages}
-                board={boardState.data}
-                onCreate={filtered ? undefined : onCreate}
-              />
-            ) : (
-              <RecordList
-                kind={kind}
-                rows={records.rows}
-                fetching={shown.query.isFetching}
-                pagination={collectionPagination(records.rows, pages)}
-                filtered={filtered}
-                onCreate={onCreate}
-              />
-            ))}
+          {shown.results}
         </RecordCollectionResults>
       </div>
       {creating && (
@@ -341,48 +348,25 @@ function RecordCollectionHeader({
 
 function RecordCollectionResults({
   kind,
-  pending,
-  error,
-  stale,
+  state,
   onRetry,
-  onRefresh,
-  showPipeline,
-  pagination,
+  loading,
   children,
 }: {
   kind: CrmKind;
-  pending: boolean;
-  error: Error | null;
-  /** The shown records failed to refresh. */
-  stale: boolean;
+  /** The shown records, failed by their own load or by one they need. */
+  state: ResourceState<unknown>;
   /** Retries every failed load. */
   onRetry: () => void;
-  /** Refreshes the shown records. */
-  onRefresh: () => void;
-  /** Open deals as a pipeline board instead of a list. */
-  showPipeline: boolean;
-  pagination: AppTablePagination;
+  /** The skeleton of the list or pipeline board. */
+  loading: ReactNode;
   /** The loaded list or pipeline board. */
   children: ReactNode;
 }) {
   return (
-    <>
-      <CrmResourceState
-        noun={kind}
-        pending={pending}
-        error={error}
-        onRetry={onRetry}
-        loading={
-          showPipeline ? (
-            <DealPipelineLoading />
-          ) : (
-            <RecordList kind={kind} rows={[]} pagination={pagination} loading />
-          )
-        }
-      />
-      {stale && <StaleNotice onRetry={onRefresh}>These records may be out of date.</StaleNotice>}
-      {children}
-    </>
+    <CrmResourceBoundary noun={kind} state={state} onRetry={onRetry} loading={loading}>
+      {() => children}
+    </CrmResourceBoundary>
   );
 }
 

@@ -105,30 +105,46 @@ export function CalendarWorkspaceView({
             </InlineNotice>
           </div>
         )}
-        {state === "error" && <ErrorState title="Couldn’t load your calendar" onRetry={onRetry} />}
-        {state === "loading" && (
-          <div className="p-6">
-            <LoadingState label="Loading events" rows={5} />
-          </div>
-        )}
-        {state === "no-calendars" && (
-          <ContentNotice
-            icon={CalendarDays}
-            title="No calendars connected"
-            description="Connect your Google Calendar to see your meetings here. Calendars sync read-only."
-            action={
-              <SettingsLink>
-                <Plus aria-hidden />
-                Connect a calendar
-              </SettingsLink>
-            }
-          />
-        )}
-        {state === "ready" && body}
+        <CalendarStateBody state={state} onRetry={onRetry} body={body} />
       </PageContent>
       {aside}
     </PageLayout>
   );
+}
+
+/** The calendar once it is ready, or why it cannot be shown. */
+function CalendarStateBody({
+  state,
+  onRetry,
+  body,
+}: {
+  state: CalendarBodyState;
+  onRetry: () => void;
+  body: ReactNode;
+}) {
+  if (state === "error")
+    return <ErrorState title="Couldn’t load your calendar" onRetry={onRetry} />;
+  if (state === "loading")
+    return (
+      <div className="p-6">
+        <LoadingState label="Loading events" rows={5} />
+      </div>
+    );
+  if (state === "no-calendars")
+    return (
+      <ContentNotice
+        icon={CalendarDays}
+        title="No calendars connected"
+        description="Connect your Google Calendar to see your meetings here. Calendars sync read-only."
+        action={
+          <SettingsLink>
+            <Plus aria-hidden />
+            Connect a calendar
+          </SettingsLink>
+        }
+      />
+    );
+  return body;
 }
 
 /** The agenda view's days, or a notice when nothing is scheduled. */

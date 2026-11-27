@@ -3,7 +3,7 @@ import type { PickerAgent, PickerPerson } from "@substrate/contracts/people/pick
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 
-import { useState, type ReactNode } from "react";
+import { useState } from "react";
 
 import { ConversationPane } from "../conversations/conversation-pane";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
@@ -13,9 +13,14 @@ import {
   DirectMessageCreateMenu,
 } from "@/components/messaging/conversations/conversation-create-menu";
 import { CreateConversationDialog } from "@/components/messaging/conversations/create-conversation-dialog";
-import { MessagingWorkspace as MessagingWorkspaceView } from "@/components/messaging/workspace/messaging-workspace-view";
+import {
+  MessagingWorkspace as MessagingWorkspaceView,
+  WorkspaceLoading,
+} from "@/components/messaging/workspace/messaging-workspace-view";
+import { WorkspaceEmpty } from "@/components/messaging/workspace/workspace-empty";
 import { AppAvailability } from "@/components/workspace/app-availability";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
+import type { Conversation } from "@/lib/messaging/conversations";
 import { messageLink } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
@@ -91,25 +96,7 @@ export function MessagingWorkspace({
         (conversation) => conversation.id === conversationId,
       )
     : sidebarConversations[0];
-  const pane = selected && (
-    <ConversationPane
-      key={selected.id}
-      conversation={selected}
-      messageId={messageId}
-      turnId={turnId}
-    />
-  );
-  let content: ReactNode;
-  if (selected?.task) content = <AppAvailability app="tasks">{pane}</AppAvailability>;
-  else if (selected) content = pane;
-  else if (conversationId && !selecting)
-    content = (
-      <ContentNotice
-        icon={Unlink}
-        title="Conversation unavailable"
-        description="It may have been deleted, or you may no longer have access. Check that you’re in the right workspace."
-      />
-    );
+  const loading = conversations.isPending || selecting;
   return (
     <MessagingWorkspaceView
       state={resource.status}
@@ -119,7 +106,7 @@ export function MessagingWorkspace({
       onSidebarOpenChange={setSidebarOpen}
       conversationLink={(id) => messageLink(organizationId, id)}
       onSelect={() => setSidebarOpen(false)}
-      loading={conversations.isPending || selecting}
+      loading={loading}
       error={conversations.error}
       onRetry={() => void conversations.refetch()}
       renderSectionActions={(section, onCreate) =>
@@ -146,9 +133,59 @@ export function MessagingWorkspace({
           }}
         />
       )}
-      content={content}
+      renderContent={(onCreate) => (
+        <WorkspaceSelection
+          selected={selected}
+          messageId={messageId}
+          turnId={turnId}
+          missing={!!conversationId && !selecting}
+          loading={loading}
+          onCreate={onCreate}
+        />
+      )}
     />
   );
+}
+
+/** The selected conversation, why it can't open, or the loading or empty pane. */
+function WorkspaceSelection({
+  selected,
+  messageId,
+  turnId,
+  missing,
+  loading,
+  onCreate,
+}: {
+  selected?: Conversation;
+  messageId?: string;
+  turnId?: string;
+  /** A conversation was asked for and the lists that could hold it have loaded. */
+  missing: boolean;
+  loading: boolean;
+  onCreate: (kind: Conversation["kind"]) => void;
+}) {
+  if (selected) {
+    const pane = (
+      <ConversationPane
+        key={selected.id}
+        conversation={selected}
+        messageId={messageId}
+        turnId={turnId}
+      />
+    );
+    if (selected.task) return <AppAvailability app="tasks">{pane}</AppAvailability>;
+    return pane;
+  }
+  if (missing)
+    return (
+      <ContentNotice
+        icon={Unlink}
+        title="Conversation unavailable"
+        description="It may have been deleted, or you may no longer have access. Check that you’re in the right workspace."
+      />
+    );
+  if (loading) return <WorkspaceLoading />;
+  return <WorkspaceEmpty onCreate={onCreate} />;
 }
 
 /** Reads a selected conversation that the list leaves out, such as a task discussion. */

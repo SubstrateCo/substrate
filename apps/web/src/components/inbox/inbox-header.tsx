@@ -1,12 +1,11 @@
 import type { Mailbox } from "@substrate/contracts/mail";
 import type { MailLabelFilter } from "@substrate/contracts/mail/ipc";
 
-import type { RefObject } from "react";
+import type { ReactNode, RefObject } from "react";
 
 import { labelChoices, labelOptionValue, parseLabelOptionValue } from "./label-filter-value";
 import { defaultLabelColor, ink, labelName } from "./mail-colors";
 import type { FolderView } from "./mail-views";
-import { MailboxPicker, MobileViewPicker, type MailboxNav, type ViewNav } from "./mailboxes/mailboxes";
 import { LabelDisplayToggle } from "./message-labels";
 import { FilterBar, type FilterField, type FilterValue } from "@/components/filters";
 import { PageHeader } from "@/components/layout/page-header";
@@ -15,23 +14,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RefreshCw, Tag } from "lucide-react";
 
-export function InboxHeader({
-  sidebar,
-  nav,
-  viewNav,
-  current,
-  syncing,
-  onSync,
-  allTags,
-  onToggleTags,
-  field,
-  search,
-  onSearch,
-}: {
-  sidebar: boolean;
-  nav: MailboxNav;
-  viewNav: ViewNav;
-  current: FolderView;
+/** The header's start: the folder beside the sidebar, or the mailbox and view switches without it. */
+export type InboxHeading = { leading?: ReactNode; title: ReactNode; icon?: ReactNode };
+
+/** The header's mail tools, present once a mailbox is connected. */
+export type InboxTools = {
   syncing: boolean;
   onSync: () => void;
   allTags: boolean;
@@ -39,47 +26,46 @@ export function InboxHeader({
   field: RefObject<HTMLInputElement | null>;
   search: string;
   onSearch: (value: string) => void;
+};
+
+export function InboxHeader({
+  heading,
+  current,
+  tools,
+}: {
+  heading: InboxHeading;
+  current: FolderView;
+  tools?: InboxTools;
 }) {
-  const hasBoxes = nav.connected.length > 0;
+  if (!tools) return <PageHeader variant="pane" className="@container" {...heading} />;
+  const { syncing, onSync, allTags, onToggleTags, field, search, onSearch } = tools;
   return (
     <PageHeader
       variant="pane"
       className="@container"
-      leading={!sidebar && <MailboxPicker {...nav} compact />}
-      title={
-        sidebar || !nav.connected.length ? (
-          current.label
-        ) : (
-          <MobileViewPicker {...viewNav} {...nav} onSync={onSync} syncing={syncing} />
-        )
-      }
-      icon={sidebar ? <current.icon aria-hidden /> : undefined}
+      {...heading}
       actions={
-        hasBoxes && (
-          <>
-            <LabelDisplayToggle expanded={allTags} onToggle={onToggleTags} />
-            <span className="max-[384px]:hidden">
-              <RowAction label="Sync mail" disabled={syncing} onClick={onSync}>
-                <RefreshCw aria-hidden />
-              </RowAction>
-            </span>
-          </>
-        )
+        <>
+          <LabelDisplayToggle expanded={allTags} onToggle={onToggleTags} />
+          <span className="max-[384px]:hidden">
+            <RowAction label="Sync mail" disabled={syncing} onClick={onSync}>
+              <RefreshCw aria-hidden />
+            </RowAction>
+          </span>
+        </>
       }
     >
-      {hasBoxes && (
-        <div className="max-w-xs min-w-0">
-          <Input
-            ref={field}
-            type="search"
-            maxLength={500}
-            aria-label="Search messages"
-            placeholder={`Search ${current.label.toLowerCase()}…`}
-            value={search}
-            onChange={(e) => onSearch(e.target.value)}
-          />
-        </div>
-      )}
+      <div className="max-w-xs min-w-0">
+        <Input
+          ref={field}
+          type="search"
+          maxLength={500}
+          aria-label="Search messages"
+          placeholder={`Search ${current.label.toLowerCase()}…`}
+          value={search}
+          onChange={(e) => onSearch(e.target.value)}
+        />
+      </div>
     </PageHeader>
   );
 }
@@ -91,6 +77,7 @@ export function InboxHeader({
 export function LabelFilterBar({
   boxes,
   scope,
+  unified,
   filter,
   onLabel,
   onClear,
@@ -98,13 +85,14 @@ export function LabelFilterBar({
   boxes: readonly Mailbox[];
   /** The chosen mailbox, or null for all inboxes. */
   scope: Mailbox | null;
+  /** Group the labels by mailbox. */
+  unified: boolean;
   filter: MailLabelFilter | undefined;
   onLabel: (label: MailLabelFilter) => void;
   onClear: () => void;
 }) {
   const choices = labelChoices(boxes, scope, filter);
   if (!choices.length) return null;
-  const grouped = !scope && boxes.length > 1;
   const fields: FilterField<"label">[] = [
     {
       id: "label",
@@ -120,7 +108,7 @@ export function LabelFilterBar({
             className={`size-3.5 fill-current ${ink[label.color ?? defaultLabelColor(label)]}`}
           />
         ),
-        group: grouped ? box.address : undefined,
+        group: unified ? box.address : undefined,
       })),
     },
   ];
@@ -159,22 +147,37 @@ export function SyncNotice({
   onManage: () => void;
   onSync: (mailboxId: string | null) => void;
 }) {
+  if (problem?.status === "reconnect")
+    return (
+      <SyncNoticeRow action="Manage mailboxes" onAction={onManage}>
+        {problem.address} needs to reconnect.
+      </SyncNoticeRow>
+    );
   if (!problem && !failed) return null;
-  const reconnect = problem?.status === "reconnect";
+  return (
+    <SyncNoticeRow action="Retry sync" onAction={() => onSync(problem?.id ?? account)}>
+      Sync paused. Cached mail is available.
+    </SyncNoticeRow>
+  );
+}
+
+function SyncNoticeRow({
+  action,
+  onAction,
+  children,
+}: {
+  action: string;
+  onAction: () => void;
+  children: ReactNode;
+}) {
   return (
     <div
       role="status"
       className="flex items-center gap-2 border-b px-4 py-1 text-xs text-muted-foreground"
     >
-      {reconnect
-        ? `${problem.address} needs to reconnect.`
-        : "Sync paused. Cached mail is available."}
-      <Button
-        size="xs"
-        variant="link"
-        onClick={() => (reconnect ? onManage() : onSync(problem?.id ?? account))}
-      >
-        {reconnect ? "Manage mailboxes" : "Retry sync"}
+      {children}
+      <Button size="xs" variant="link" onClick={onAction}>
+        {action}
       </Button>
     </div>
   );

@@ -68,41 +68,62 @@ function DesktopUpdateSettingsView({
   onInstall: () => void;
   onDownload: () => void;
 }) {
-  const { install, state } = status;
-  let control;
-  if (state.status === "ready" && install === "automatic")
-    control = (
-      <PendingButton pending={pending} onClick={onInstall}>
-        Restart to update
-      </PendingButton>
-    );
-  else if (state.status === "available" && install === "manual")
-    control = (
-      <Button disabled={pending} onClick={onDownload}>
-        <ArrowUpRight aria-hidden="true" />
-        Download
-      </Button>
-    );
-  else
-    control = (
-      <PendingButton
-        variant="outline"
-        pending={pending || state.status === "checking"}
-        disabled={state.status === "downloading"}
-        onClick={onCheck}
-      >
-        Check for updates
-      </PendingButton>
-    );
   return (
     <div id="updates" tabIndex={-1} className="scroll-mt-6">
       <SettingsCard title="Updates">
         <SettingsRow
           label={`Substrate ${status.appVersion}`}
           description={<span role="status">{updateDescription(status)}</span>}
-          control={control}
+          control={
+            <UpdateControl
+              status={status}
+              pending={pending}
+              onCheck={onCheck}
+              onInstall={onInstall}
+              onDownload={onDownload}
+            />
+          }
         />
       </SettingsCard>
     </div>
+  );
+}
+
+/** Restart once an automatic update is ready, download a manual one, or check again. */
+function UpdateControl({
+  status: { install, state },
+  pending,
+  onCheck,
+  onInstall,
+  onDownload,
+}: {
+  status: DesktopUpdateStatus;
+  pending: boolean;
+  onCheck: () => void;
+  onInstall: () => void;
+  onDownload: () => void;
+}) {
+  if (state.status === "ready" && install === "automatic")
+    return (
+      <PendingButton pending={pending} onClick={onInstall}>
+        Restart to update
+      </PendingButton>
+    );
+  if (state.status === "available" && install === "manual")
+    return (
+      <Button disabled={pending} onClick={onDownload}>
+        <ArrowUpRight aria-hidden="true" />
+        Download
+      </Button>
+    );
+  return (
+    <PendingButton
+      variant="outline"
+      pending={pending || state.status === "checking"}
+      disabled={state.status === "downloading"}
+      onClick={onCheck}
+    >
+      Check for updates
+    </PendingButton>
   );
 }

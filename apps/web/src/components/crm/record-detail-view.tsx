@@ -29,7 +29,7 @@ import {
 import { Heading } from "@/components/ui/heading";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
-import { recordLink } from "@/lib/navigation/record-links";
+import { recordLink, type RecordLink } from "@/lib/navigation/record-links";
 import { Archive, Pencil, RotateCcw } from "lucide-react";
 
 export function RecordDetailView({
@@ -63,7 +63,6 @@ export function RecordDetailView({
   notice?: ReactNode;
 }) {
   const { organizationId } = useWorkspaceScope();
-  const sheet = usePageSheet();
   const menuTrigger = useRef<HTMLButtonElement>(null);
   const management = useRecordManagement({
     entityId,
@@ -75,44 +74,155 @@ export function RecordDetailView({
     enabled: kind !== "contacts",
     onRestoreFocus: () => menuTrigger.current?.focus(),
   });
-  const tools = [...management.tools, ...featureTools];
-  // Editors keep Edit in view while the record is archived, disabled until they restore it.
-  const { canArchive: editor, canEdit } = capabilities;
-  const archive: RecordTool | null = editor
+  const { canArchive, canEdit } = capabilities;
+  const archive: RecordTool | null = canArchive
     ? {
         label: archived ? "Restore" : "Archive",
         icon: archived ? <RotateCcw aria-hidden="true" /> : <Archive aria-hidden="true" />,
         onSelect: onArchive,
       }
     : null;
-  const link = recordLink(organizationId, kind, entityId);
-  const summaryText = summary && <RecordSummary>{summary}</RecordSummary>;
-  const propertyList = properties && (
-    <RecordProperties>
-      {ownerRecord && (
-        <Property label="Owner">
-          <RecordResponsible actorEntityId={ownerRecord.ownerActorEntityId} />
-        </Property>
-      )}
-      {properties}
-    </RecordProperties>
+  return (
+    <>
+      <RecordDetailLayout
+        tools={{
+          link: recordLink(organizationId, kind, entityId),
+          // Editors keep Edit in view while the record is archived, disabled until they restore it.
+          edit: canArchive ? { onEdit, disabled: !canEdit } : undefined,
+          menu: (
+            <RecordActionsMenu
+              triggerRef={menuTrigger}
+              tools={[...management.tools, ...featureTools]}
+              archive={archive}
+            />
+          ),
+        }}
+        back={
+          kind !== "contacts" && (
+            <BackLink>
+              <Link {...recordLink(organizationId, kind)}>Back to {kind}</Link>
+            </BackLink>
+          )
+        }
+        name={name}
+        archived={archived}
+        summary={summary && <RecordSummary>{summary}</RecordSummary>}
+        properties={
+          properties && (
+            <RecordProperties>
+              {ownerRecord && (
+                <Property label="Owner">
+                  <RecordResponsible actorEntityId={ownerRecord.ownerActorEntityId} />
+                </Property>
+              )}
+              {properties}
+            </RecordProperties>
+          )
+        }
+        notice={notice}
+      >
+        {children}
+      </RecordDetailLayout>
+      {management.dialogs}
+    </>
   );
-  if (sheet)
-    return (
-      <RecordDetailFrame>
-        <PageSheetHeader
-          title={sheet.label}
-          actions={
+}
+
+export function RecordDetailLoading({ kind }: { kind: CrmKind }) {
+  return (
+    <RecordDetailLayout
+      loadingLabel={`Loading ${kind}`}
+      back={
+        <div className="text-sm">
+          <SkeletonText width="7rem" />
+        </div>
+      }
+      name={<SkeletonText width="12rem" />}
+      archived={false}
+      summary={
+        <RecordSummary>
+          <SkeletonText width="20rem" />
+        </RecordSummary>
+      }
+      properties={
+        <RecordProperties>
+          {[0, 1, 2].map((key) => (
+            <div key={key} className="flex min-h-8 items-center gap-2">
+              <SkeletonText width="4rem" />
+              <SkeletonText width="8rem" />
+            </div>
+          ))}
+        </RecordProperties>
+      }
+    />
+  );
+}
+
+/** The header tools of a loaded record. */
+type RecordHeaderTools = {
+  link: RecordLink;
+  edit?: { onEdit: () => void; disabled: boolean };
+  menu: ReactNode;
+};
+
+type RecordLayoutProps = {
+  /** A loading record has none. */
+  tools?: RecordHeaderTools;
+  /** The link back to the collection, on a record page. */
+  back?: ReactNode;
+  name: ReactNode;
+  archived: boolean;
+  summary?: ReactNode;
+  properties?: ReactNode;
+  notice?: ReactNode;
+  children?: ReactNode;
+  /** Set while a skeleton stands in for the record. */
+  loadingLabel?: string;
+};
+
+/** A record in the open sheet, or as its own page. */
+function RecordDetailLayout(props: RecordLayoutProps) {
+  const sheet = usePageSheet();
+  if (sheet) return <RecordSheetLayout label={sheet.label} {...props} />;
+  return <RecordPageLayout {...props} />;
+}
+
+function RecordSheetLayout({
+  label,
+  tools,
+  name,
+  archived,
+  summary,
+  properties,
+  notice,
+  children,
+  loadingLabel,
+}: RecordLayoutProps & { label: string }) {
+  const body = (
+    <div className="grid min-w-0 gap-6 wrap-anywhere">
+      <RecordTitle name={name} archived={archived}>
+        {summary}
+      </RecordTitle>
+      {properties}
+      {children}
+    </div>
+  );
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col *:data-[slot=page-header]:shrink-0">
+      <PageSheetHeader
+        title={label}
+        actions={
+          tools && (
             <>
-              {editor && (
+              {tools.edit && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <Button
                       variant="ghost"
                       size="icon-sm"
                       aria-label="Edit"
-                      onClick={onEdit}
-                      disabled={!canEdit}
+                      onClick={tools.edit.onEdit}
+                      disabled={tools.edit.disabled}
                     >
                       <Pencil aria-hidden="true" />
                     </Button>
@@ -120,53 +230,98 @@ export function RecordDetailView({
                   <TooltipContent>Edit</TooltipContent>
                 </Tooltip>
               )}
-              <CopyLink link={link} grouped />
-              <RecordActionsMenu triggerRef={menuTrigger} tools={tools} archive={archive} />
+              <CopyLink link={tools.link} grouped />
+              {tools.menu}
             </>
-          }
-        />
-        {notice}
-        <PageSheetBody>
-          <div className="grid min-w-0 gap-6 wrap-anywhere">
-            <RecordTitle name={name} archived={archived}>
-              {summaryText}
-            </RecordTitle>
-            {propertyList}
-            {children}
-          </div>
-        </PageSheetBody>
-        {management.dialogs}
-      </RecordDetailFrame>
-    );
-  return (
-    <RecordDetailFrame>
-      {kind !== "contacts" && (
-        <BackLink>
-          <Link {...recordLink(organizationId, kind)}>Back to {kind}</Link>
-        </BackLink>
-      )}
+          )
+        }
+      />
+      {notice}
+      <PageSheetBody>
+        {loadingLabel ? (
+          <RecordLoadingStatus label={loadingLabel}>{body}</RecordLoadingStatus>
+        ) : (
+          body
+        )}
+      </PageSheetBody>
+    </div>
+  );
+}
+
+function RecordPageLayout({
+  tools,
+  back,
+  name,
+  archived,
+  summary,
+  properties,
+  notice,
+  children,
+  loadingLabel,
+}: RecordLayoutProps) {
+  const page = (
+    <>
+      {back}
       <PageHeader
         title={name}
         description={archived ? <Tag>Archived</Tag> : undefined}
         actions={
-          <>
-            <CopyLink link={link} grouped />
-            {editor && (
-              <Button variant="outline" size="sm" onClick={onEdit} disabled={!canEdit}>
-                <Pencil aria-hidden="true" />
-                Edit
-              </Button>
-            )}
-            <RecordActionsMenu triggerRef={menuTrigger} tools={tools} archive={archive} />
-          </>
+          tools && (
+            <>
+              <CopyLink link={tools.link} grouped />
+              {tools.edit && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={tools.edit.onEdit}
+                  disabled={tools.edit.disabled}
+                >
+                  <Pencil aria-hidden="true" />
+                  Edit
+                </Button>
+              )}
+              {tools.menu}
+            </>
+          )
         }
       />
       {notice}
-      <RecordPageBody summary={summaryText} properties={propertyList}>
+      <RecordPageBody summary={summary} properties={properties}>
         {children}
       </RecordPageBody>
-      {management.dialogs}
-    </RecordDetailFrame>
+    </>
+  );
+  return (
+    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
+      <div className="mx-auto max-w-4xl space-y-6">
+        {loadingLabel ? (
+          <RecordLoadingStatus label={loadingLabel} className="space-y-6">
+            {page}
+          </RecordLoadingStatus>
+        ) : (
+          page
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Announces the load once and hides the skeleton from assistive technology. */
+function RecordLoadingStatus({
+  label,
+  className,
+  children,
+}: {
+  label: string;
+  className?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div role="status" aria-label={label}>
+      <div aria-hidden="true" className={className}>
+        {children}
+      </div>
+    </div>
   );
 }
 
@@ -224,73 +379,6 @@ function RecordToolItem({
       {tool.icon}
       {tool.label}
     </DropdownMenuItem>
-  );
-}
-
-function RecordDetailFrame({ children }: { children: ReactNode }) {
-  const sheet = usePageSheet();
-  if (sheet)
-    return (
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col *:data-[slot=page-header]:shrink-0">
-        {children}
-      </div>
-    );
-  return (
-    <div className="min-h-0 min-w-0 flex-1 overflow-y-auto p-4 sm:p-6">
-      <div className="mx-auto max-w-4xl space-y-6">{children}</div>
-    </div>
-  );
-}
-
-export function RecordDetailLoading({ kind }: { kind: CrmKind }) {
-  const sheet = usePageSheet();
-  const properties = (
-    <RecordProperties>
-      {[0, 1, 2].map((key) => (
-        <div key={key} className="flex min-h-8 items-center gap-2">
-          <SkeletonText width="4rem" />
-          <SkeletonText width="8rem" />
-        </div>
-      ))}
-    </RecordProperties>
-  );
-  if (sheet)
-    return (
-      <RecordDetailFrame>
-        <PageSheetHeader title={sheet.label} />
-        <PageSheetBody>
-          <div role="status" aria-label={`Loading ${kind}`}>
-            <div aria-hidden="true" className="grid gap-6">
-              <RecordTitle name={<SkeletonText width="12rem" />} archived={false}>
-                <RecordSummary>
-                  <SkeletonText width="20rem" />
-                </RecordSummary>
-              </RecordTitle>
-              {properties}
-            </div>
-          </div>
-        </PageSheetBody>
-      </RecordDetailFrame>
-    );
-  return (
-    <RecordDetailFrame>
-      <div role="status" aria-label={`Loading ${kind}`}>
-        <div aria-hidden="true" className="space-y-6">
-          <div className="text-sm">
-            <SkeletonText width="7rem" />
-          </div>
-          <PageHeader title={<SkeletonText width="12rem" />} />
-          <RecordPageBody
-            summary={
-              <RecordSummary>
-                <SkeletonText width="20rem" />
-              </RecordSummary>
-            }
-            properties={properties}
-          />
-        </div>
-      </div>
-    </RecordDetailFrame>
   );
 }
 

@@ -10,7 +10,7 @@ import { RowAction } from "@/components/layout/row-actions";
 import { SettingsPanel } from "@/components/layout/settings-page";
 import { AppTable } from "@/components/table";
 import { roleLabel } from "@/lib/organizations/member-policy";
-import type { ResourceStatus } from "@/lib/resource-state";
+import type { ResourceState } from "@/lib/resource-state";
 import { UserMinus, Users } from "lucide-react";
 
 type PendingChange =
@@ -24,11 +24,7 @@ const roleCapabilities: Record<OrganizationRole, string> = {
 };
 
 type OrganizationMembersProps = {
-  organizationName?: string;
-  members?: MemberRowData[];
-  state: ResourceStatus;
-  loading: boolean;
-  error?: Error | null;
+  resource: ResourceState<{ organizationName: string; members: MemberRowData[] }>;
   onRetry: () => void;
   /** A link to invitations, for people who may invite. */
   inviteAction?: ReactNode;
@@ -40,11 +36,7 @@ type OrganizationMembersProps = {
 };
 
 export function OrganizationMembers({
-  organizationName,
-  members,
-  state,
-  loading,
-  error,
+  resource,
   onRetry,
   inviteAction,
   changing,
@@ -60,7 +52,7 @@ export function OrganizationMembers({
     close: closeConfirm,
     restoreFocus,
   } = useStateDialog<PendingChange>(list);
-  const blocked = state === "unavailable";
+  const blocked = resource.status === "unavailable";
   const close = () => {
     closeConfirm();
     onResetChange();
@@ -90,28 +82,25 @@ export function OrganizationMembers({
     }),
     [changing, confirm],
   );
-  const count = members?.length;
-  let description = "People in this organization and what they can do.";
-  if (count !== undefined)
-    description = `${count} ${count === 1 ? "person" : "people"} in ${organizationName || "this organization"}.`;
   return (
     <SettingsPanel
       title="Members"
-      description={description}
+      description={membersDescription(resource.data)}
       actions={blocked ? undefined : inviteAction}
     >
       <div ref={list} tabIndex={-1} className="space-y-3">
-        {state === "stale" && (
-          <StaleNotice onRetry={onRetry}>This list may be out of date.</StaleNotice>
+        {resource.status === "stale" && (
+          <StaleNotice title="This list may be out of date." onRetry={onRetry} />
         )}
         <AppTable
           name="Members"
           columns={columns}
-          data={members ?? []}
+          data={resource.data?.members ?? []}
           getRowId={(member) => member.id}
-          loading={loading && !members}
+          loading={resource.status === "loading"}
           loadingMessage="Loading members"
-          error={!members || blocked ? error : null}
+          // The stale notice above already reports a failed refresh.
+          error={resource.status === "stale" ? null : resource.error}
           errorTitle="Couldn’t load members"
           onRetry={blocked ? undefined : onRetry}
           empty={{
@@ -135,6 +124,14 @@ export function OrganizationMembers({
       )}
     </SettingsPanel>
   );
+}
+
+function membersDescription(
+  loaded: { organizationName: string; members: MemberRowData[] } | undefined,
+) {
+  if (!loaded) return "People in this organization and what they can do.";
+  const count = loaded.members.length;
+  return `${count} ${count === 1 ? "person" : "people"} in ${loaded.organizationName || "this organization"}.`;
 }
 
 function MemberChangeDialog({

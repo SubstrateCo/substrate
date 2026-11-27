@@ -1,13 +1,15 @@
+import type { CalendarEventDetail as CalendarEventDetailData } from "@substrate/contracts/calendar";
+
 import { useQuery } from "@tanstack/react-query";
 
 import { useEffect, useRef } from "react";
 
 import { CalendarEventDetail } from "./calendar-event-detail";
-import { isAccessFailure } from "@/api/access-failure";
 import { CopyLink } from "@/components/context/links/copy-link";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageAside, useAsideCovers } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
@@ -16,6 +18,7 @@ import { useWorkspaceScope } from "@/components/workspace/workspace-scope-contex
 import { eventDate } from "@/lib/calendar/days";
 import { providerLabels } from "@/lib/calendar/labels";
 import { calendarLink } from "@/lib/navigation/record-links";
+import { resourceState, type ResourceState } from "@/lib/resource-state";
 import { calendarEventOptions } from "@/queries/calendar/options";
 import { ArrowUpRight, Unlink, X } from "lucide-react";
 
@@ -36,7 +39,9 @@ export function CalendarEventPanel({
   useEffect(() => {
     if (covers) close.current?.focus();
   }, [covers]);
-  const event = query.data;
+  // Lost access redacts the cached event, so its link and provider link go with it.
+  const state = resourceState(query);
+  const event = state.data;
   return (
     <PageAside aria-label="Event details">
       <PageHeader
@@ -84,22 +89,42 @@ export function CalendarEventPanel({
           </div>
         }
       />
-      {query.error && isAccessFailure(query.error) && (
-        <ContentNotice
-          icon={Unlink}
-          title="Event unavailable"
-          description="This event was removed, or it belongs to a calendar you can’t open."
-        />
-      )}
-      {query.error && !isAccessFailure(query.error) && (
-        <ErrorState title="Couldn’t load this event" onRetry={() => void query.refetch()} />
-      )}
-      {!query.error && !event && (
-        <div className="p-4">
-          <LoadingState label="Loading event" variant="compact" />
-        </div>
-      )}
-      {!query.error && event && <CalendarEventDetail event={event} now={now} />}
+      <EventPanelBody state={state} now={now} onRetry={() => void query.refetch()} />
     </PageAside>
+  );
+}
+
+function EventPanelBody({
+  state,
+  now,
+  onRetry,
+}: {
+  state: ResourceState<CalendarEventDetailData>;
+  now: number;
+  onRetry: () => void;
+}) {
+  if (state.status === "unavailable")
+    return (
+      <ContentNotice
+        icon={Unlink}
+        title="Event unavailable"
+        description="This event was removed, or it belongs to a calendar you can’t open."
+      />
+    );
+  if (state.status === "error")
+    return <ErrorState title="Couldn’t load this event" onRetry={onRetry} />;
+  if (!state.data)
+    return (
+      <div className="p-4">
+        <LoadingState label="Loading event" variant="compact" />
+      </div>
+    );
+  return (
+    <>
+      {state.status === "stale" && (
+        <StaleNotice className="px-4 pt-4" title="Couldn’t load this event" onRetry={onRetry} />
+      )}
+      <CalendarEventDetail event={state.data} now={now} />
+    </>
   );
 }

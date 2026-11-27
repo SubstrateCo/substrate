@@ -39,25 +39,22 @@ function StopAction({
 }
 
 /**
- * Work that stopped and will not continue on its own. Retry resumes the same session; Start
- * fresh begins a new session with a handoff; Dismiss leaves it stopped. When the desktop
- * couldn't confirm that the agent received a message, Resend submits it again and Discard drops
- * it, because a retry could deliver it twice.
+ * What the owner can do. Retry resumes the same session; Start fresh begins a new session with a
+ * handoff; Dismiss leaves it stopped. When the desktop couldn't confirm that the agent received
+ * a message, Resend submits it again and Discard drops it, because a retry could deliver it twice.
  */
-export function NeedsAttentionCard({
+export type NeedsAttentionActions =
+  | { kind: "stopped"; onRetry: () => void; onStartFresh: () => void; onDismiss: () => void }
+  | { kind: "uncertain"; onResend: () => void; onDiscard: () => void };
+
+/** Work that stopped and will not continue on its own: why, and what the owner can do. */
+export function NeedsAttentionContent({
   text,
   error,
   pending,
   failure,
-  onRetry,
-  onDismiss,
-  onStartFresh,
-  onResend,
-  onDiscard,
-  inline = false,
+  actions,
 }: {
-  /** Inside an activity row that already names the state: no card, no header. */
-  inline?: boolean;
   text: string;
   /** What the runtime reported when the work stopped. Shown under Technical details only. */
   error: string | null;
@@ -65,13 +62,9 @@ export function NeedsAttentionCard({
   pending?: NeedsAttentionAction;
   /** Reviewed copy for the last failed action. */
   failure?: string;
-  onRetry: () => void;
-  onDismiss: () => void;
-  onStartFresh: () => void;
-  onResend?: () => void;
-  onDiscard?: () => void;
+  actions: NeedsAttentionActions;
 }) {
-  const content = (
+  return (
     <>
       <p>{text}</p>
       {error?.trim() && <TechnicalDetails>{error}</TechnicalDetails>}
@@ -81,46 +74,67 @@ export function NeedsAttentionCard({
           {failure}
         </p>
       )}
-      {onResend && onDiscard ? (
-        <div className="flex flex-wrap gap-2">
-          <StopAction action="resend" pending={pending} variant="default" onClick={onResend}>
-            Resend
-          </StopAction>
-          <StopAction action="discard" pending={pending} onClick={onDiscard}>
-            Discard
-          </StopAction>
-        </div>
-      ) : (
-        <div className="flex flex-wrap gap-2">
-          <StopAction action="retry" pending={pending} variant="default" onClick={onRetry}>
-            Retry
-          </StopAction>
-          <StopAction action="startFresh" pending={pending} onClick={onStartFresh}>
-            Start fresh
-          </StopAction>
-          <StopAction action="dismiss" pending={pending} variant="ghost" onClick={onDismiss}>
-            Dismiss
-          </StopAction>
-        </div>
-      )}
+      <div className="flex flex-wrap gap-2">
+        <AttentionActions actions={actions} pending={pending} />
+      </div>
     </>
   );
-  if (inline)
+}
+
+function AttentionActions({
+  actions,
+  pending,
+}: {
+  actions: NeedsAttentionActions;
+  pending?: NeedsAttentionAction;
+}) {
+  if (actions.kind === "uncertain")
     return (
-      <section
-        aria-label={stoppedNeedsYouLabel}
-        className={cn(
-          "grid min-w-0 gap-2.5 border-t px-4 py-3 text-sm",
-          toneBorder.warning,
-          toneFill.warning,
-        )}
-      >
-        {content}
-      </section>
+      <>
+        <StopAction action="resend" pending={pending} variant="default" onClick={actions.onResend}>
+          Resend
+        </StopAction>
+        <StopAction action="discard" pending={pending} onClick={actions.onDiscard}>
+          Discard
+        </StopAction>
+      </>
     );
   return (
+    <>
+      <StopAction action="retry" pending={pending} variant="default" onClick={actions.onRetry}>
+        Retry
+      </StopAction>
+      <StopAction action="startFresh" pending={pending} onClick={actions.onStartFresh}>
+        Start fresh
+      </StopAction>
+      <StopAction action="dismiss" pending={pending} variant="ghost" onClick={actions.onDismiss}>
+        Dismiss
+      </StopAction>
+    </>
+  );
+}
+
+/** Stopped work as its own card, with a header that names the state. */
+export function NeedsAttentionCard({ children }: { children: ReactNode }) {
+  return (
     <MessageCard icon={TriangleAlert} tone="attention" title={stoppedNeedsYouLabel}>
-      <MessageCardBody>{content}</MessageCardBody>
+      <MessageCardBody>{children}</MessageCardBody>
     </MessageCard>
+  );
+}
+
+/** Stopped work inside an activity row that already names the state: no card, no header. */
+export function NeedsAttentionInline({ children }: { children: ReactNode }) {
+  return (
+    <section
+      aria-label={stoppedNeedsYouLabel}
+      className={cn(
+        "grid min-w-0 gap-2.5 border-t px-4 py-3 text-sm",
+        toneBorder.warning,
+        toneFill.warning,
+      )}
+    >
+      {children}
+    </section>
   );
 }

@@ -42,7 +42,6 @@ export function TaskForm({
     <TaskFormView
       detail={detail}
       task={task}
-      parentTaskEntityId={parentTaskEntityId}
       initialStatus={initialStatus}
       renderCreate={renderCreate}
       onDirtyChange={onDirtyChange}

@@ -25,7 +25,7 @@ export function ReactionList({ message, emoji }: { message: Message; emoji?: str
     if (canExpandPreview && !isFetching && !isFetchNextPageError) void fetchNextPage();
   }, [canExpandPreview, isFetching, isFetchNextPageError, fetchNextPage]);
   if (people.isPending || (people.isError && !data))
-    return <ReactionNotice error={people.isError} onRetry={() => void people.refetch()} />;
+    return <ReactionNotice error={people.error} onRetry={() => void people.refetch()} />;
   const items = data?.pages.flatMap((page) => page.items) ?? [];
   return (
     <div>

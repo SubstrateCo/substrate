@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 
 import { singularLabels, type CrmKind } from "./crm-types";
 import { CustomerPicker } from "./customer-picker";
@@ -34,29 +34,104 @@ export type RecordDraft = {
   primaryContactName?: string;
 };
 
-export function RecordEditor({
-  kind,
-  record: openedRecord,
-  defaultCurrency,
-  pending,
-  error,
-  onClose,
-  onSubmit,
-}: {
-  kind: CrmKind;
+type EditorProps = {
   record?: RecordDraft;
   pending: boolean;
   error: Error | null;
-  defaultCurrency?: string | null;
   onClose: () => void;
   onSubmit: (write: RecordWrite) => void;
+};
+
+/** Creates or edits an account, contact, or deal. */
+export function RecordEditor({
+  kind,
+  defaultCurrency,
+  ...props
+}: EditorProps & {
+  kind: CrmKind;
+  defaultCurrency?: string | null;
 }) {
+  if (kind === "accounts") return <AccountEditor {...props} />;
+  if (kind === "contacts") return <ContactEditor {...props} />;
+  return <DealEditor {...props} defaultCurrency={defaultCurrency} />;
+}
+
+/** Keeps the record as opened, so a refetch does not change the version this edit expects. */
+function useOpenedRecord(record: RecordDraft | undefined) {
+  return useState(record)[0];
+}
+
+function AccountEditor({ record: openedRecord, onSubmit, ...dialog }: EditorProps) {
   const { organizationId } = useWorkspaceScope();
-  const singular = singularLabels[kind];
-  // Keep the record as opened, so a refetch does not change the version this edit expects.
-  const [record] = useState(openedRecord);
+  const record = useOpenedRecord(openedRecord);
+  const [requestId] = useState(() => crypto.randomUUID());
+  return (
+    <RecordEditorDialog
+      kind="accounts"
+      editing={!!record}
+      {...dialog}
+      onSubmit={(form) => {
+        const text = (name: string) => formText(form, name);
+        const fields = {
+          organizationId,
+          name: text("name"),
+          website: text("website") || null,
+          domain: text("domain") || null,
+          summary: text("summary"),
+        };
+        onSubmit(
+          record
+            ? { action: "updateAccount", entityId: record.entityId, ...fields }
+            : { action: "createAccount", requestId, ...fields },
+        );
+      }}
+    >
+      <RecordNameField kind="accounts" record={record} />
+      <AccountFields record={record} />
+      <RecordSummaryField label="Summary" record={record} />
+    </RecordEditorDialog>
+  );
+}
+
+function ContactEditor({ record: openedRecord, onSubmit, ...dialog }: EditorProps) {
+  const { organizationId } = useWorkspaceScope();
+  const record = useOpenedRecord(openedRecord);
+  return (
+    <RecordEditorDialog
+      kind="contacts"
+      editing={!!record}
+      {...dialog}
+      onSubmit={(form) => {
+        const text = (name: string) => formText(form, name);
+        const fields = {
+          organizationId,
+          displayName: text("name"),
+          notes: text("summary") || null,
+        };
+        onSubmit(
+          record
+            ? { action: "updateContact", entityId: record.entityId, ...fields }
+            : { action: "createContact", ...fields },
+        );
+      }}
+    >
+      <RecordNameField kind="contacts" record={record} />
+      <RecordSummaryField label="Notes" record={record} />
+    </RecordEditorDialog>
+  );
+}
+
+function DealEditor({
+  record: openedRecord,
+  defaultCurrency,
+  error,
+  onSubmit,
+  ...dialog
+}: EditorProps & { defaultCurrency?: string | null }) {
+  const { organizationId } = useWorkspaceScope();
+  const record = useOpenedRecord(openedRecord);
   // Creators load the pipeline before they open the editor, so the first stage is ready here.
-  const { options: stages } = useActiveStages(organizationId, kind === "deals");
+  const { options: stages } = useActiveStages(organizationId, true);
   const [accountId, setAccountId] = useState(record?.accountEntityId ?? "");
   const [contactId, setContactId] = useState(record?.primaryContactEntityId ?? "");
   const [stageId, setStageId] = useState(record?.stageId ?? stages.at(0)?.value ?? "");
@@ -64,138 +139,154 @@ export function RecordEditor({
   const [requestId] = useState(() => crypto.randomUUID());
   function submit(form: FormData) {
     const text = (name: string) => formText(form, name);
-    const entityId = record?.entityId;
-    if (kind === "accounts") {
-      const fields = {
-        organizationId,
-        name: text("name"),
-        website: text("website") || null,
-        domain: text("domain") || null,
-        summary: text("summary"),
-      };
-      onSubmit(
-        entityId
-          ? { action: "updateAccount", entityId, ...fields }
-          : { action: "createAccount", requestId, ...fields },
-      );
-    } else if (kind === "contacts") {
-      const fields = { organizationId, displayName: text("name"), notes: text("summary") || null };
-      onSubmit(
-        entityId
-          ? { action: "updateContact", entityId, ...fields }
-          : { action: "createContact", ...fields },
-      );
-    } else {
-      if (!entityId && !accountId && !contactId) {
-        setValidation("Choose an account or contact for this deal.");
-        return;
-      }
-      if (!stageId) {
-        setValidation("Choose a stage for this deal.");
-        return;
-      }
-      const amount = text("amount") || null;
-      const currency = amount === null ? null : text("currency") || null;
-      if (amount !== null && currency === null) {
-        setValidation("Choose a currency for this amount.");
-        return;
-      }
-      const fields = {
-        organizationId,
-        title: text("name"),
-        accountEntityId: accountId || null,
-        contactEntityIds: [
-          ...new Set([...(record?.contactEntityIds ?? []), ...(contactId ? [contactId] : [])]),
-        ],
-        primaryContactEntityId: contactId || null,
-        stageId,
-        amount,
-        currency,
-        expectedCloseDate: text("closeDate") || null,
-        summary: text("summary"),
-      };
-      onSubmit(
-        entityId
-          ? { action: "updateDeal", entityId, expectedVersion: record.version ?? 1, ...fields }
-          : { action: "createDeal", requestId, ...fields },
-      );
+    if (!record && !accountId && !contactId) {
+      setValidation("Choose an account or contact for this deal.");
+      return;
     }
+    if (!stageId) {
+      setValidation("Choose a stage for this deal.");
+      return;
+    }
+    const amount = text("amount") || null;
+    const currency = amount === null ? null : text("currency") || null;
+    if (amount !== null && currency === null) {
+      setValidation("Choose a currency for this amount.");
+      return;
+    }
+    const fields = {
+      organizationId,
+      title: text("name"),
+      accountEntityId: accountId || null,
+      contactEntityIds: [
+        ...new Set([...(record?.contactEntityIds ?? []), ...(contactId ? [contactId] : [])]),
+      ],
+      primaryContactEntityId: contactId || null,
+      stageId,
+      amount,
+      currency,
+      expectedCloseDate: text("closeDate") || null,
+      summary: text("summary"),
+    };
+    onSubmit(
+      record
+        ? {
+            action: "updateDeal",
+            entityId: record.entityId,
+            expectedVersion: record.version ?? 1,
+            ...fields,
+          }
+        : { action: "createDeal", requestId, ...fields },
+    );
   }
   return (
+    <RecordEditorDialog
+      kind="deals"
+      editing={!!record}
+      size="lg"
+      error={validation ?? error}
+      {...dialog}
+      onSubmit={submit}
+    >
+      <RecordNameField kind="deals" record={record} />
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <CustomerPicker
+          kind="accounts"
+          label="Account"
+          value={accountId}
+          onChange={setAccountId}
+          initialLabel={record?.accountName}
+        />
+        <CustomerPicker
+          kind="contacts"
+          label="Primary contact"
+          value={contactId}
+          onChange={setContactId}
+          initialLabel={record?.primaryContactName}
+        />
+      </div>
+      <SelectField
+        label="Stage"
+        value={stageId}
+        onChange={setStageId}
+        options={stages}
+        disabled={!!record}
+      />
+      <DealTermsFields record={record} defaultCurrency={defaultCurrency} />
+      <RecordSummaryField label="Summary" record={record} />
+    </RecordEditorDialog>
+  );
+}
+
+/** The dialog every record editor shares; its copy follows the kind and whether it edits. */
+function RecordEditorDialog({
+  kind,
+  editing,
+  size,
+  pending,
+  error,
+  onClose,
+  onSubmit,
+  children,
+}: {
+  kind: CrmKind;
+  editing: boolean;
+  size?: "lg";
+  pending: boolean;
+  error: Error | string | null;
+  onClose: () => void;
+  onSubmit: (form: FormData) => void;
+  children: ReactNode;
+}) {
+  const singular = singularLabels[kind];
+  return (
     <FormDialog
-      title={record ? `Edit ${singular}` : `New ${singular}`}
+      title={editing ? `Edit ${singular}` : `New ${singular}`}
       description={
-        record
+        editing
           ? "Update this record without changing its access."
           : "Records start with your access. Linking a customer does not share either record."
       }
-      size={kind === "deals" ? "lg" : "default"}
-      saveLabel={record ? "Save" : `Create ${singular}`}
+      size={size}
+      saveLabel={editing ? "Save" : `Create ${singular}`}
       nativeValidation
       pending={pending}
-      error={validation ?? error}
+      error={error}
       errorDescription="Couldn’t save this record. Refresh it and try again."
       onClose={onClose}
-      onSubmit={submit}
+      onSubmit={onSubmit}
     >
-      <RecordNameField kind={kind} record={record} />
-      {kind === "accounts" && <AccountFields record={record} />}
-      {kind === "deals" && (
-        <>
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-            <CustomerPicker
-              kind="accounts"
-              label="Account"
-              value={accountId}
-              onChange={setAccountId}
-              initialLabel={record?.accountName}
-            />
-            <CustomerPicker
-              kind="contacts"
-              label="Primary contact"
-              value={contactId}
-              onChange={setContactId}
-              initialLabel={record?.primaryContactName}
-            />
-          </div>
-          <SelectField
-            label="Stage"
-            value={stageId}
-            onChange={setStageId}
-            options={stages}
-            disabled={!!record}
-          />
-          <DealTermsFields record={record} defaultCurrency={defaultCurrency} />
-        </>
-      )}
-      <NativeField
-        id="crm-summary"
-        name="summary"
-        label={kind === "contacts" ? "Notes" : "Summary"}
-        multiline
-        defaultValue={record?.summary ?? record?.notes ?? ""}
-        maxLength={20000}
-      />
+      {children}
     </FormDialog>
   );
 }
 
-const missingName = {
-  accounts: "Enter an account name.",
-  contacts: "Enter a contact name.",
-  deals: "Enter a deal title.",
-} satisfies Record<CrmKind, string>;
+const nameFields = {
+  accounts: { label: "Name", missingMessage: "Enter an account name.", maxLength: 300 },
+  contacts: { label: "Name", missingMessage: "Enter a contact name.", maxLength: 1000 },
+  deals: { label: "Title", missingMessage: "Enter a deal title.", maxLength: 300 },
+} satisfies Record<CrmKind, { label: string; missingMessage: string; maxLength: number }>;
 
 function RecordNameField({ kind, record }: { kind: CrmKind; record?: RecordDraft }) {
   return (
     <NativeField
       id="crm-name"
       name="name"
-      label={kind === "deals" ? "Title" : "Name"}
+      {...nameFields[kind]}
       defaultValue={record?.name ?? record?.displayName ?? record?.title ?? ""}
       required
-      missingMessage={missingName[kind]}
-      maxLength={kind === "contacts" ? 1000 : 300}
+    />
+  );
+}
+
+function RecordSummaryField({ label, record }: { label: string; record?: RecordDraft }) {
+  return (
+    <NativeField
+      id="crm-summary"
+      name="summary"
+      label={label}
+      multiline
+      defaultValue={record?.summary ?? record?.notes ?? ""}
+      maxLength={20000}
     />
   );
 }

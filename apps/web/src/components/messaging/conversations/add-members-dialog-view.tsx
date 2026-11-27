@@ -15,6 +15,23 @@ import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { AddMembersError } from "@/lib/messaging/add-members";
 import { invitedRecipients, recipientKey } from "@/lib/people/people-picker";
 
+/** Managers add anyone, inviting by email; members add only their own agents. */
+const addCopy: Record<
+  "invite" | "agents",
+  { description: string; placeholder: string; unfinished?: string }
+> = {
+  invite: {
+    description:
+      "Workspace members and your agents join right away. Anyone else gets an invitation.",
+    placeholder: "Search people, or type an email to invite",
+  },
+  agents: {
+    description: "Add your agents here. They read with your access and run on your desktop.",
+    placeholder: "Search your agents",
+    unfinished: "Choose an agent from the list, or clear your search.",
+  },
+};
+
 export function AddMembersDialog({
   name,
   channel,
@@ -47,20 +64,15 @@ export function AddMembersDialog({
   const [recipients, setRecipients] = useState<PickedRecipient[]>([]);
   const [shareHistory, setShareHistory] = useState(false);
   const unfinishedRecipient = useUnfinishedRecipient("add-member-people");
+  const copy = allowEmail ? addCopy.invite : addCopy.agents;
   const unfinished =
-    !allowEmail && unfinishedRecipient.message
-      ? "Choose an agent from the list, or clear your search."
-      : unfinishedRecipient.message;
+    unfinishedRecipient.message && (copy.unfinished ?? unfinishedRecipient.message);
   const invited = invitedRecipients(recipients).length;
   const title = name ? `Add people to ${name}` : "Add people";
   return (
     <FormDialog
       title={title}
-      description={
-        allowEmail
-          ? "Workspace members and your agents join right away. Anyone else gets an invitation."
-          : "Add your agents here. They read with your access and run on your desktop."
-      }
+      description={copy.description}
       saveLabel={recipients.length > 1 ? `Add ${recipients.length} people` : "Add people"}
       pending={pending}
       disabled={!recipients.length && !unfinishedRecipient.pendingText.trim()}
@@ -98,9 +110,7 @@ export function AddMembersDialog({
           agents={agents}
           allowEmail={allowEmail}
           value={recipients}
-          placeholder={
-            allowEmail ? "Search people, or type an email to invite" : "Search your agents"
-          }
+          placeholder={copy.placeholder}
           disabled={pending}
           invalid={!!unfinished}
           describedBy={unfinished ? "add-member-people-error" : undefined}

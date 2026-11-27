@@ -52,22 +52,20 @@ export function InboxReceipt({
       tone={status.tone}
       sending={sendNow.isPending}
       resolving={resend.isPending || discard.isPending}
-      onResend={
+      uncertain={
         status.uncertain
-          ? () =>
-              resend.mutate(item.id, {
-                onError: (error) =>
-                  toast.error(actionErrorMessage(error, "We couldn’t resend the message.")),
-              })
-          : undefined
-      }
-      onDiscard={
-        status.uncertain
-          ? () =>
-              discard.mutate(item.id, {
-                onError: (error) =>
-                  toast.error(actionErrorMessage(error, "We couldn’t discard the message.")),
-              })
+          ? {
+              onResend: () =>
+                resend.mutate(item.id, {
+                  onError: (error) =>
+                    toast.error(actionErrorMessage(error, "We couldn’t resend the message.")),
+                }),
+              onDiscard: () =>
+                discard.mutate(item.id, {
+                  onError: (error) =>
+                    toast.error(actionErrorMessage(error, "We couldn’t discard the message.")),
+                }),
+            }
           : undefined
       }
       onSendNow={

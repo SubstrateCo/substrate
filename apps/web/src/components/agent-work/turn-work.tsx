@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useEffect, useRef } from "react";
 
 import { NeedsAttention } from "./needs-attention";
+import { NeedsAttentionCard } from "./needs-attention-card";
 import { PendingReply } from "./pending-reply";
 import { TechnicalDetails } from "./technical-details";
 import { useStopTurn } from "./use-stop-turn";
@@ -96,6 +97,32 @@ function activityLine(turn: AgentWorkTurnView) {
   return turn.status === "assigned" ? "Getting started…" : "Thinking…";
 }
 
+/** A failed turn's note, or the owner's actions for a turn that needs attention. */
+function TurnBody({
+  turn,
+  agentName,
+  uncertainItemIds,
+}: {
+  turn: AgentWorkTurnView;
+  agentName: string;
+  uncertainItemIds?: readonly string[];
+}) {
+  if (turn.status === "failed")
+    return (
+      <div className="mt-1 grid max-w-180 gap-1.5">
+        <p className="text-xs text-destructive">{failedWorkNote}</p>
+        {turn.error?.trim() && <TechnicalDetails>{turn.error}</TechnicalDetails>}
+      </div>
+    );
+  if (turn.status === "needs_attention")
+    return (
+      <NeedsAttentionCard>
+        <NeedsAttention turn={turn} agentName={agentName} uncertainItemIds={uncertainItemIds} />
+      </NeedsAttentionCard>
+    );
+  return null;
+}
+
 /**
  * One turn's body, where it belongs: its error and attention card under the agent's reply,
  * whose header shows the status. Before the agent replies, a pending reply under the owner
@@ -119,19 +146,7 @@ export function TurnWork({
   const { data: avatar } = useQuery(agentAvatarQueryOptions(userId, turn.userAgentId));
   const tone = turnTone(turn, openRequest);
   if (tone === "muted") return <MutedWorkLine label={silentLabel} />;
-  const body = (
-    <>
-      {turn.status === "failed" && (
-        <div className="mt-1 grid max-w-180 gap-1.5">
-          <p className="text-xs text-destructive">{failedWorkNote}</p>
-          {turn.error?.trim() && <TechnicalDetails>{turn.error}</TechnicalDetails>}
-        </div>
-      )}
-      {turn.status === "needs_attention" && (
-        <NeedsAttention turn={turn} agentName={agentName} uncertainItemIds={uncertainItemIds} />
-      )}
-    </>
-  );
+  const body = <TurnBody turn={turn} agentName={agentName} uncertainItemIds={uncertainItemIds} />;
   if (underReply) return body;
   return (
     <PendingReply

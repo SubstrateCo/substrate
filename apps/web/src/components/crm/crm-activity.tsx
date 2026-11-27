@@ -6,6 +6,7 @@ import { TaskActivity } from "@/components/context/activity/task-activity";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
+import { actorIdentity } from "@/lib/actors/identity";
 import { resourceState } from "@/lib/resource-state";
 import { crmActivityOptions } from "@/queries/crm/activity";
 import { useFirstPageOnLeave } from "@/queries/first-page";
@@ -28,8 +29,9 @@ export function CrmActivity({ entityId }: { entityId: string }) {
         return {
           id: item.id,
           action: `${action.charAt(0).toLowerCase()}${action.slice(1)}${fields ? ` · ${fields}` : ""}`,
-          actorName: item.actor.displayName,
-          actorType: item.actor.type,
+          // CRM activity hides which agent acted ("Agent on behalf of Alice") and returns no
+          // pictures, so an agent shows the Bot mark and a person shows initials.
+          actor: actorIdentity({ type: item.actor.type, name: item.actor.displayName }),
           createdAt: item.createdAt,
           source: null,
         };

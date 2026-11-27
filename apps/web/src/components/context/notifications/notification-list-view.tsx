@@ -6,6 +6,7 @@ import { ContentNotice } from "../../feedback/content-notice";
 import { ErrorState } from "../../feedback/error-state";
 import { PendingButton } from "../../feedback/pending-button";
 import { NotificationItem, NotificationRowsLoading, type Notification } from "./notification-item";
+import { ListBody } from "@/components/feedback/list-body";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { FilterBar, type FilterField, type FilterValue } from "@/components/filters";
 import { PageHeader } from "@/components/layout/page-header";
@@ -13,7 +14,7 @@ import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { formatDayLabel } from "@/lib/format/date";
-import type { ResourceStatus } from "@/lib/resource-state";
+import { listPhase, type ListPhase, type ResourceStatus } from "@/lib/resource-state";
 import { Bell, CheckCheck, Eye, X } from "lucide-react";
 
 type NotificationFilterFieldId = "read";
@@ -96,8 +97,7 @@ export function NotificationList({
   onClose?: () => void;
   renderEvents: (item: Notification) => ReactNode;
 }) {
-  const failed = state === "error" || state === "unavailable";
-  const empty = !failed && !loading && !items.length;
+  const phase = listPhase({ items, loading, error });
   const unread = items.some((item) => !item.read);
   return (
     <PageLayout id="notifications" aria-label="Notifications">
@@ -147,60 +147,60 @@ export function NotificationList({
               value={notificationFilterValue(filter)}
               onValueChange={(value) => onFilter(notificationFilterFrom(value))}
               // With nothing unread, the empty state offers its own "Show all".
-              clearable={!empty}
+              clearable={phase.status !== "empty"}
             />
             <div className="flex flex-1 flex-col gap-4">
-              <NotificationFeedNotice state={state} onRetry={onRetry} />
-              {loading && !items.length && !failed && (
-                <div className="-mx-3">
-                  <NotificationRowsLoading label="Loading notifications" />
-                </div>
-              )}
-              {empty && (
-                <EmptyNotificationFeed
-                  unreadOnly={filter === "unread"}
-                  onShowAll={() => onFilter("all")}
-                />
-              )}
-              {!failed && items.length > 0 && (
-                <>
-                  <ul
-                    aria-label="Notification activity"
-                    className="-mx-3 flex flex-col gap-px"
-                    onKeyDown={moveBetweenRows}
-                  >
-                    {dayLabeled(items).map(({ item, label }) => (
-                      <Fragment key={item.id}>
-                        {label && (
-                          <li
-                            role="presentation"
-                            className="px-3 pt-4 pb-1 text-xs font-medium text-muted-foreground first:pt-0"
-                          >
-                            {label}
-                          </li>
-                        )}
-                        <NotificationItem
-                          item={item}
-                          onRead={() => onRead(item.id)}
-                          onOpen={(event) => onOpen(item, event)}
-                          renderEvents={() => renderEvents(item)}
-                        />
-                      </Fragment>
-                    ))}
-                  </ul>
-                  {paging.hasMore && (
-                    <PendingButton
-                      variant="ghost"
-                      size="sm"
-                      className="self-center"
-                      pending={paging.loading}
-                      onClick={paging.onMore}
+              <NotificationFeedBody
+                phase={phase}
+                unavailable={state === "unavailable"}
+                onRetry={onRetry}
+                empty={
+                  <EmptyNotificationFeed
+                    unreadOnly={filter === "unread"}
+                    onShowAll={() => onFilter("all")}
+                  />
+                }
+              >
+                {(rows) => (
+                  <>
+                    <ul
+                      aria-label="Notification activity"
+                      className="-mx-3 flex flex-col gap-px"
+                      onKeyDown={moveBetweenRows}
                     >
-                      Show older
-                    </PendingButton>
-                  )}
-                </>
-              )}
+                      {dayLabeled(rows).map(({ item, label }) => (
+                        <Fragment key={item.id}>
+                          {label && (
+                            <li
+                              role="presentation"
+                              className="px-3 pt-4 pb-1 text-xs font-medium text-muted-foreground first:pt-0"
+                            >
+                              {label}
+                            </li>
+                          )}
+                          <NotificationItem
+                            item={item}
+                            onRead={() => onRead(item.id)}
+                            onOpen={(event) => onOpen(item, event)}
+                            renderEvents={() => renderEvents(item)}
+                          />
+                        </Fragment>
+                      ))}
+                    </ul>
+                    {paging.hasMore && (
+                      <PendingButton
+                        variant="ghost"
+                        size="sm"
+                        className="self-center"
+                        pending={paging.loading}
+                        onClick={paging.onMore}
+                      >
+                        Show older
+                      </PendingButton>
+                    )}
+                  </>
+                )}
+              </NotificationFeedBody>
             </div>
           </div>
         </div>
@@ -209,29 +209,43 @@ export function NotificationList({
   );
 }
 
-function NotificationFeedNotice({
-  state,
+function NotificationFeedBody({
+  phase,
+  unavailable,
   onRetry,
+  empty,
+  children,
 }: {
-  state: ResourceStatus;
+  phase: ListPhase<Notification>;
+  unavailable: boolean;
   onRetry: () => void;
+  empty: ReactNode;
+  children: (items: Notification[]) => ReactNode;
 }) {
-  switch (state) {
-    case "stale":
-      return <StaleNotice onRetry={onRetry}>Notifications may be out of date.</StaleNotice>;
-    case "unavailable":
-      return (
-        <ErrorState
-          title="Notifications unavailable"
-          description="Check that you still have access to this workspace."
-        />
-      );
-    case "error":
-      return <ErrorState title="Couldn’t load notifications" onRetry={onRetry} />;
-    case "ready":
-    case "loading":
-      return null;
-  }
+  return (
+    <ListBody
+      phase={phase}
+      loading={
+        <div className="-mx-3">
+          <NotificationRowsLoading label="Loading notifications" />
+        </div>
+      }
+      error={
+        unavailable ? (
+          <ErrorState
+            title="Notifications unavailable"
+            description="Check that you still have access to this workspace."
+          />
+        ) : (
+          <ErrorState title="Couldn’t load notifications" onRetry={onRetry} />
+        )
+      }
+      empty={empty}
+      stale={<StaleNotice title="Notifications may be out of date." onRetry={onRetry} />}
+    >
+      {children}
+    </ListBody>
+  );
 }
 
 function EmptyNotificationFeed({

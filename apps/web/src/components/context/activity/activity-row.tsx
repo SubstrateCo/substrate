@@ -1,26 +1,21 @@
-import type { AgentAvatarCode } from "@substrate/contracts/agents";
 import type { ConversationKind } from "@substrate/contracts/messaging/input";
 
 import { Link } from "@tanstack/react-router";
 
 import { activityTime } from "./activity-time";
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { discussionConversationName } from "@/components/context/discussions/conversation-name";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
-import { Tag } from "@/components/feedback/tag";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
-import { PersonAvatar } from "@/components/people/person-avatar";
+import { ActorAvatar, ActorKindTag } from "@/components/people/actor-avatar";
 import { Item, ItemActions, ItemContent, ItemMedia } from "@/components/ui/item";
+import type { ActorIdentity } from "@/lib/actors/identity";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import { CircleDot, Link2, MessageCircle, MessageSquare, Unlink } from "lucide-react";
 
 export type ActivityEvent = {
   id: string;
   action: string;
-  actorName: string | null;
-  actorImage?: string | null;
-  actorAvatar?: AgentAvatarCode | null;
-  actorType?: "human" | "agent";
+  actor: ActorIdentity;
   createdAt: string;
   source: {
     link: RecordLink;
@@ -46,17 +41,9 @@ export function ActivityRow({ event }: { event: ActivityEvent }) {
       icon={<Icon aria-hidden="true" className="size-3.5 shrink-0 text-muted-foreground" />}
       content={
         <>
-          {event.actorType === "agent" ? (
-            <AgentAvatarView avatar={event.actorAvatar ?? null} size="xs" />
-          ) : (
-            <PersonAvatar name={event.actorName ?? "Unknown"} image={event.actorImage} size="xs" />
-          )}
-          <span className="max-w-full truncate font-medium">{event.actorName ?? "Unknown"}</span>
-          {event.actorType === "agent" && (
-            <Tag size="sm" className="shrink-0">
-              Agent
-            </Tag>
-          )}
+          <ActorAvatar actor={event.actor} size="xs" />
+          <span className="max-w-full truncate font-medium">{event.actor.name}</span>
+          <ActorKindTag actor={event.actor} size="sm" className="shrink-0" />
           <span className="max-w-full truncate text-muted-foreground">
             {known?.verb ?? event.action}
           </span>

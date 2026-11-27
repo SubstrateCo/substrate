@@ -13,6 +13,8 @@ import { TaskBlockedCue } from "../list/task-list-item";
 import { TaskStatusIcon } from "../task-cues/task-status-icon";
 import type { TaskRelation } from "./task-relations";
 import { ContentNotice } from "@/components/feedback/content-notice";
+import { ListBody } from "@/components/feedback/list-body";
+import { StaleNotice } from "@/components/feedback/stale-notice";
 import { RecordSection } from "@/components/layout/record-section";
 import { Button } from "@/components/ui/button";
 import {
@@ -35,6 +37,7 @@ import {
 import { Spinner } from "@/components/ui/spinner";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { RecordLink } from "@/lib/navigation/record-links";
+import { listPhase, type ListPhase } from "@/lib/resource-state";
 import { hiddenTask, isClosedTask } from "@/lib/tasks/task-status";
 import { cn } from "cn";
 import { LockKeyhole, Plus, X } from "lucide-react";
@@ -63,7 +66,7 @@ export function TaskLinks({
   /** This task is open and waits on an open task. */
   blocked: boolean;
   onSelect: (taskEntityId: string) => void;
-  linkFor: (other: NonNullable<TaskRelation["other"]>) => RecordLink;
+  linkFor: (other: LinkedTask) => RecordLink;
   /** Set for editors. */
   onRemove?: (linkId: string) => void;
   pending?: boolean;
@@ -94,40 +97,14 @@ export function TaskLinks({
             <ul className="-mx-2 grid gap-px">
               {rows.map(({ id, other }) => {
                 const name = other?.title ?? hiddenTask;
-                const dimmed = other && isClosedTask(other);
-                const content = other ? (
-                  <>
-                    <span className="sr-only">{taskStatusLabels[other.status]}: </span>
-                    <TaskStatusIcon status={other.status} />
-                    <span className={`truncate ${dimmed ? "text-muted-foreground" : ""}`}>
-                      {other.title}
-                    </span>
-                    {other.projectEntityId !== projectEntityId && (
-                      <span className="max-w-2/5 shrink-0 truncate text-xs text-muted-foreground">
-                        <span className="sr-only">, in </span>
-                        {other.projectName}
-                      </span>
-                    )}
-                  </>
-                ) : null;
                 return (
                   <li key={id} className="group/link flex min-w-0 items-center gap-1">
-                    {!other && (
-                      <span className="flex h-8 min-w-0 flex-1 items-center gap-2 px-2 text-sm text-muted-foreground">
-                        <LockKeyhole aria-hidden="true" className="size-4 shrink-0" />
-                        <span className="truncate">{name}</span>
-                      </span>
-                    )}
-                    {other && other.projectEntityId === projectEntityId && (
-                      <Pressable className={rowClass} onClick={() => onSelect(other.entityId)}>
-                        {content}
-                      </Pressable>
-                    )}
-                    {other && other.projectEntityId !== projectEntityId && (
-                      <Link {...linkFor(other)} className={cn(rowClass, linkFocus)}>
-                        {content}
-                      </Link>
-                    )}
+                    <TaskLinkTarget
+                      other={other}
+                      projectEntityId={projectEntityId}
+                      onSelect={onSelect}
+                      linkFor={linkFor}
+                    />
                     {onRemove && (
                       <Tooltip>
                         <TooltipTrigger asChild>
@@ -153,6 +130,59 @@ export function TaskLinks({
         );
       })}
     </RecordSection>
+  );
+}
+
+type LinkedTask = NonNullable<TaskRelation["other"]>;
+
+/** Where a linked task opens: in place in this project, or by link in another one. */
+function TaskLinkTarget({
+  other,
+  projectEntityId,
+  onSelect,
+  linkFor,
+}: {
+  other: TaskRelation["other"];
+  projectEntityId: string;
+  onSelect: (taskEntityId: string) => void;
+  linkFor: (other: LinkedTask) => RecordLink;
+}) {
+  if (!other)
+    return (
+      <span className="flex h-8 min-w-0 flex-1 items-center gap-2 px-2 text-sm text-muted-foreground">
+        <LockKeyhole aria-hidden="true" className="size-4 shrink-0" />
+        <span className="truncate">{hiddenTask}</span>
+      </span>
+    );
+  if (other.projectEntityId === projectEntityId)
+    return (
+      <Pressable className={rowClass} onClick={() => onSelect(other.entityId)}>
+        <TaskLinkLabel task={other} />
+      </Pressable>
+    );
+  return (
+    <Link {...linkFor(other)} className={cn(rowClass, linkFocus)}>
+      <TaskLinkLabel task={other} projectName={other.projectName} />
+    </Link>
+  );
+}
+
+/** A linked task's status and title, with its project when it is in another one. */
+function TaskLinkLabel({ task, projectName }: { task: LinkedTask; projectName?: string }) {
+  return (
+    <>
+      <span className="sr-only">{taskStatusLabels[task.status]}: </span>
+      <TaskStatusIcon status={task.status} />
+      <span className={`truncate ${isClosedTask(task) ? "text-muted-foreground" : ""}`}>
+        {task.title}
+      </span>
+      {projectName && (
+        <span className="max-w-2/5 shrink-0 truncate text-xs text-muted-foreground">
+          <span className="sr-only">, in </span>
+          {projectName}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -189,6 +219,15 @@ export function TaskLinkPicker({
   pending: boolean;
   onPick: (taskEntityId: string) => void;
 }) {
+  // Results of an earlier query stay hidden while the next one loads.
+  const phase: ListPhase<LinkCandidate> = loading
+    ? { status: "loading" }
+    : listPhase({ items: results, error: searchError });
+  const searchFailed = (
+    <p role="alert" className="px-2 py-1.5 text-sm text-destructive">
+      Couldn’t search tasks.
+    </p>
+  );
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <Tooltip>
@@ -232,38 +271,39 @@ export function TaskLinkPicker({
           <Command shouldFilter={false} label="Search tasks to link">
             <CommandInput placeholder="Search tasks" value={query} onValueChange={onQueryChange} />
             <CommandList className="mt-1">
-              {loading && (
-                <p role="status" className="flex items-center gap-2 px-2 py-1.5 text-sm">
-                  <Spinner aria-hidden="true" className="size-3.5" />
-                  Searching tasks.
-                </p>
-              )}
-              {!loading && searchError && (
-                <p role="alert" className="px-2 py-1.5 text-sm text-destructive">
-                  Couldn’t search tasks.
-                </p>
-              )}
-              {!loading && !searchError && <CommandEmpty>No tasks match.</CommandEmpty>}
-              {!loading && !!results.length && (
-                <CommandGroup>
-                  {results.map((task) => (
-                    <CommandItem
-                      key={task.id}
-                      value={task.id}
-                      disabled={pending}
-                      onSelect={() => onPick(task.id)}
-                    >
-                      {task.status && <TaskStatusIcon status={task.status} />}
-                      <span className="min-w-0 flex-1 truncate">{task.title}</span>
-                      {task.projectName && (
-                        <span className="max-w-2/5 shrink-0 truncate text-xs text-muted-foreground">
-                          {task.projectName}
-                        </span>
-                      )}
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
-              )}
+              <ListBody
+                phase={phase}
+                loading={
+                  <p role="status" className="flex items-center gap-2 px-2 py-1.5 text-sm">
+                    <Spinner aria-hidden="true" className="size-3.5" />
+                    Searching tasks.
+                  </p>
+                }
+                error={searchFailed}
+                empty={<CommandEmpty>No tasks match.</CommandEmpty>}
+                stale={<StaleNotice className="px-2 py-1.5" title="Couldn’t search tasks." />}
+              >
+                {(rows) => (
+                  <CommandGroup>
+                    {rows.map((task) => (
+                      <CommandItem
+                        key={task.id}
+                        value={task.id}
+                        disabled={pending}
+                        onSelect={() => onPick(task.id)}
+                      >
+                        {task.status && <TaskStatusIcon status={task.status} />}
+                        <span className="min-w-0 flex-1 truncate">{task.title}</span>
+                        {task.projectName && (
+                          <span className="max-w-2/5 shrink-0 truncate text-xs text-muted-foreground">
+                            {task.projectName}
+                          </span>
+                        )}
+                      </CommandItem>
+                    ))}
+                  </CommandGroup>
+                )}
+              </ListBody>
             </CommandList>
           </Command>
         </div>

@@ -3,7 +3,6 @@ import type { LinkProps } from "@tanstack/react-router";
 import type { KeyboardEvent } from "react";
 
 import { sidebarId } from "./conversation-sidebar-focus";
-import { ErrorState } from "@/components/feedback/error-state";
 import {
   PageSidebar,
   PageSidebarContent,
@@ -38,8 +37,6 @@ export function ConversationSidebar({
   conversationLink,
   renderSectionActions,
   loading = false,
-  error,
-  onRetry,
 }: {
   conversations: Conversation[];
   state: ResourceStatus;
@@ -48,21 +45,14 @@ export function ConversationSidebar({
   conversationLink: (id: string) => LinkProps;
   renderSectionActions: ConversationSectionActions;
   loading?: boolean;
-  error?: Error | null;
-  onRetry?: () => void;
 }) {
   // With no conversations to show, the main pane shows the load error.
-  const showList = state !== "unavailable" && (!error || conversations.length > 0);
+  const showList = state !== "unavailable" && state !== "error";
   return (
     <PageSidebar id={sidebarId} aria-label="Conversations" aria-busy={loading}>
       <PageSidebarHeader title="Messages" />
       {showList && (
         <PageSidebarContent onKeyDown={moveBetweenConversations}>
-          {error && (
-            <div className="px-2">
-              <ErrorState variant="inline" title="Couldn’t load conversations" onRetry={onRetry} />
-            </div>
-          )}
           {(["channel", "partner", "dm"] as const).map((section) => (
             <ConversationSection
               key={section}

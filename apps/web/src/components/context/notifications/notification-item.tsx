@@ -7,9 +7,9 @@ import { useState, type MouseEvent, type ReactNode } from "react";
 import { RowAction, RowActions } from "../../layout/row-actions";
 import { rowTitleVariants } from "../../layout/row-state";
 import { Timestamp } from "../../time/timestamp";
-import { AgentAvatarView } from "@/components/agents/agent-avatar";
+import { notificationActor } from "./notification-actor";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
-import { PersonAvatar } from "@/components/people/person-avatar";
+import { ActorAvatar } from "@/components/people/actor-avatar";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Item, ItemActions, ItemContent, ItemMedia } from "@/components/ui/item";
@@ -104,8 +104,12 @@ export function NotificationItem({
 }) {
   const [expanded, setExpanded] = useState(false);
   const Icon = kindIcons[item.kind];
-  const actor = item.actorName ?? "Someone";
-  const canExpand = !!renderEvents && item.count !== undefined && item.count > 1;
+  const actor = notificationActor(item);
+  // One event needs no count: the row is that event.
+  const events: GroupedEvents | undefined =
+    item.count !== undefined && item.count > 1
+      ? { count: item.count, unread: item.unreadCount, render: renderEvents }
+      : undefined;
   return (
     <Collapsible asChild open={expanded} onOpenChange={setExpanded}>
       <li>
@@ -113,11 +117,7 @@ export function NotificationItem({
           unread={!item.read}
           avatar={
             <>
-              {item.actorAvatar ? (
-                <AgentAvatarView avatar={item.actorAvatar} />
-              ) : (
-                <PersonAvatar name={actor} image={item.actorImage} />
-              )}
+              <ActorAvatar actor={actor} />
               <span className="absolute -right-1 -bottom-1 flex size-3.5 items-center justify-center rounded-full bg-surface text-muted-foreground ring-1 ring-surface">
                 <Icon className="size-2.5" />
               </span>
@@ -125,32 +125,8 @@ export function NotificationItem({
           }
           content={
             <>
-              <NotificationSummary item={item} actor={actor} onOpen={onOpen} />
-              {/* One event needs no count: the row is that event. */}
-              {item.count !== undefined && item.count > 1 && (
-                <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
-                  {canExpand ? (
-                    <CollapsibleTrigger asChild>
-                      <Button
-                        variant="disclosure"
-                        size="xs"
-                        aria-label={`${expanded ? "Hide" : "Show"} ${item.count} events`}
-                      >
-                        <ChevronRight
-                          aria-hidden="true"
-                          className={cn("size-3 transition-transform", expanded && "rotate-90")}
-                        />
-                        {item.count} events
-                      </Button>
-                    </CollapsibleTrigger>
-                  ) : (
-                    <span>
-                      {item.count} event{item.count === 1 ? "" : "s"}
-                    </span>
-                  )}
-                  {!!item.unreadCount && <span>{item.unreadCount} unread</span>}
-                </div>
-              )}
+              <NotificationSummary item={item} actor={actor.name} onOpen={onOpen} />
+              {events && <NotificationEvents events={events} expanded={expanded} />}
             </>
           }
           meta={<Timestamp value={item.createdAt} format="relative" />}
@@ -165,15 +141,43 @@ export function NotificationItem({
             )
           }
         />
-        {canExpand && (
+        {events?.render && (
           <CollapsibleContent>
             <div className="mt-1 mb-3 ml-6 border-l pl-2 sm:ml-12 sm:pl-3">
-              {expanded && renderEvents()}
+              {expanded && events.render()}
             </div>
           </CollapsibleContent>
         )}
       </li>
     </Collapsible>
+  );
+}
+
+/** Several events grouped in one row. With `render`, the row expands to list them. */
+type GroupedEvents = { count: number; unread?: number; render?: () => ReactNode };
+
+function NotificationEvents({ events, expanded }: { events: GroupedEvents; expanded: boolean }) {
+  return (
+    <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
+      {events.render ? (
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="disclosure"
+            size="xs"
+            aria-label={`${expanded ? "Hide" : "Show"} ${events.count} events`}
+          >
+            <ChevronRight
+              aria-hidden="true"
+              className={cn("size-3 transition-transform", expanded && "rotate-90")}
+            />
+            {events.count} events
+          </Button>
+        </CollapsibleTrigger>
+      ) : (
+        <span>{events.count} events</span>
+      )}
+      {!!events.unread && <span>{events.unread} unread</span>}
+    </div>
   );
 }
 

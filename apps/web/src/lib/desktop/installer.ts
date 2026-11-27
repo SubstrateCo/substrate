@@ -33,3 +33,25 @@ export function chooseInstallers(
   if (detected) primary = available[detected] ? detected : undefined;
   return { primary, others: published.filter((platform) => platform !== primary) };
 }
+
+/** The desktop app step's main action: the viewer's installer, the browser, or neither yet. */
+export type InstallMode =
+  | { kind: "loading" }
+  | { kind: "error" }
+  | { kind: "download"; platform: InstallerPlatform }
+  | { kind: "browser" };
+
+/**
+ * Only the viewer's installer, or its absence, makes an action primary. A failed first check
+ * offers neither; a failed refresh keeps what the last check found.
+ */
+export function installMode(
+  /** The release check's load state, as 
+esourceState reports it. */
+  release: "loading" | "unavailable" | "error" | "stale" | "ready",
+  primary: InstallerPlatform | undefined,
+): InstallMode {
+  if (release === "loading") return { kind: "loading" };
+  if (release === "error" || release === "unavailable") return { kind: "error" };
+  return primary ? { kind: "download", platform: primary } : { kind: "browser" };
+}

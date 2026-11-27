@@ -21,6 +21,16 @@ function TimelineText({ icon, children }: { icon: ReactNode; children: ReactNode
   );
 }
 
+const stepIcons: Record<Extract<TranscriptEntry, { type: "step" }>["state"], ReactNode> = {
+  current: (
+    <span aria-hidden="true" className="grid size-3.5 shrink-0 place-items-center">
+      <span className="size-1.5 rounded-full bg-primary motion-safe:animate-pulse" />
+    </span>
+  ),
+  done: <Check aria-hidden="true" className="size-3.5 shrink-0 text-success" />,
+  error: <X aria-hidden="true" className="size-3.5 shrink-0 text-destructive" />,
+};
+
 export function TurnTimelineLoading() {
   return (
     <ol aria-hidden="true" className="grid gap-3 px-5 py-4">
@@ -74,17 +84,7 @@ export function TurnTimeline({
                 key={entry.key}
                 className="flex min-w-0 items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs"
               >
-                {entry.state === "current" && (
-                  <span aria-hidden="true" className="grid size-3.5 shrink-0 place-items-center">
-                    <span className="size-1.5 rounded-full bg-primary motion-safe:animate-pulse" />
-                  </span>
-                )}
-                {entry.state === "done" && (
-                  <Check aria-hidden="true" className="size-3.5 shrink-0 text-success" />
-                )}
-                {entry.state === "error" && (
-                  <X aria-hidden="true" className="size-3.5 shrink-0 text-destructive" />
-                )}
+                {stepIcons[entry.state]}
                 <span className="min-w-0 font-mono wrap-anywhere">{entry.text}</span>
               </li>
             );

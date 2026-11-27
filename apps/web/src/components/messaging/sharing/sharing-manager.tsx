@@ -5,7 +5,6 @@ import { useQuery } from "@tanstack/react-query";
 import { useRef } from "react";
 
 import { SharingInvitationForm } from "./sharing-invitation-form";
-import { isAccessFailure } from "@/api/access-failure";
 import type { SharingDetails } from "@/api/messaging/sharing";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
@@ -17,6 +16,7 @@ import {
   SharingDetailsView,
 } from "@/components/messaging/sharing/sharing-details-view";
 import { useExpiryTime } from "@/hooks/use-expiry-time";
+import { resourceState, type ResourceStatus } from "@/lib/resource-state";
 import { sharingOptions } from "@/queries/messaging/sharing";
 import { useSharingAction } from "@/queries/messaging/sharing-mutations";
 import { toast } from "sonner";
@@ -69,8 +69,9 @@ export function SharingManager({
   const details = useQuery(sharingOptions(organizationId, conversationId));
   // Losing access is not a hiccup: nothing cached may stay on screen or stay actionable. A
   // temporary failure keeps the last list, marked as possibly out of date.
-  const blocked = isAccessFailure(details.error);
-  const data = blocked ? undefined : details.data;
+  const load = resourceState(details);
+  const blocked = load.status === "unavailable";
+  const data = load.data;
   const now = useExpiryTime(data?.invitations.map((invite) => invite.expiresAt));
   // Focus returns to the row button, or to the invite field once that row is gone.
   const confirmFallback = useRef<HTMLElement>(null);
@@ -99,13 +100,7 @@ export function SharingManager({
         onInvite={(email, onSuccess) => action.mutate({ kind: "invite", email }, { onSuccess })}
         error={action.variables?.kind === "invite" ? action.error : undefined}
       >
-        <SharingLoadNotice
-          loading={details.isPending}
-          error={details.error}
-          blocked={blocked}
-          hasData={!!data}
-          onRetry={retry}
-        />
+        <SharingLoadNotice status={load.status} onRetry={retry} />
         {data && (
           <SharingDetailsView
             details={data}
@@ -175,34 +170,25 @@ export function SharingManager({
   );
 }
 
-function SharingLoadNotice({
-  loading,
-  error,
-  blocked,
-  hasData,
-  onRetry,
-}: {
-  loading: boolean;
-  error: Error | null;
-  blocked: boolean;
-  hasData: boolean;
-  onRetry: () => void;
-}) {
-  if (loading && !hasData) return <SharingDetailsLoading />;
-  if (!error) return null;
-  if (hasData)
+function SharingLoadNotice({ status, onRetry }: { status: ResourceStatus; onRetry: () => void }) {
+  if (status === "loading") return <SharingDetailsLoading />;
+  if (status === "ready") return null;
+  if (status === "stale")
     return (
-      <StaleNotice onRetry={onRetry}>This list is from earlier and may be out of date.</StaleNotice>
+      <StaleNotice title="This list is from earlier and may be out of date." onRetry={onRetry} />
+    );
+  if (status === "unavailable")
+    return (
+      <ErrorState
+        title="Sharing unavailable"
+        description="Only the people who manage this conversation, and organization admins, can manage sharing."
+      />
     );
   return (
     <ErrorState
       title="Sharing unavailable"
-      description={
-        blocked
-          ? "Only the people who manage this conversation, and organization admins, can manage sharing."
-          : "We couldn’t load sharing. Check your connection and try again."
-      }
-      onRetry={blocked ? undefined : onRetry}
+      description="We couldn’t load sharing. Check your connection and try again."
+      onRetry={onRetry}
     />
   );
 }

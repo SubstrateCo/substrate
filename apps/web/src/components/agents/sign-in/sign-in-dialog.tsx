@@ -21,23 +21,23 @@ import { TextLink } from "@/components/ui/text-link";
 import { outputSegments } from "@/lib/agents/sign-in-output";
 import { CircleAlert, CircleCheck, CircleSlash } from "lucide-react";
 
+type SignInStatus = HarnessSignInStatus | "starting";
+
 export type SignInDialogState = {
   type: "agent" | "terminal";
-  status: HarnessSignInStatus | "starting";
+  status: SignInStatus;
   output: string;
 };
 
 type StatusLine = { icon: ReactNode; text: string };
 
-function statusLine(label: string, state: SignInDialogState): StatusLine {
-  switch (state.status) {
+/** `waiting` is what the sign-in waits for while it runs. */
+function statusLine(label: string, status: SignInStatus, waiting: string): StatusLine {
+  switch (status) {
     case "starting":
       return { icon: <Spinner aria-hidden="true" />, text: `Starting ${label}` };
     case "running":
-      return {
-        icon: <Spinner aria-hidden="true" />,
-        text: state.type === "agent" ? "Finish in your browser" : `Waiting for ${label}`,
-      };
+      return { icon: <Spinner aria-hidden="true" />, text: waiting };
     case "succeeded":
       return {
         icon: <CircleCheck aria-hidden="true" className="text-success" />,
@@ -153,6 +153,105 @@ function InputLine({
   );
 }
 
+function SignInStatusLine({ status }: { status: StatusLine }) {
+  return (
+    <p role="status" className="flex items-center gap-2 text-sm [&>svg]:size-4 [&>svg]:shrink-0">
+      {status.icon}
+      <span className="min-w-0">{status.text}</span>
+    </p>
+  );
+}
+
+/** The login command's output and one line of input, while it runs. */
+function TerminalSignInBody({
+  label,
+  state,
+  sending,
+  onSend,
+  error,
+}: {
+  label: string;
+  state: SignInDialogState;
+  sending: boolean;
+  onSend: (text: string) => Promise<void>;
+  error: ReactNode;
+}) {
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Connect {label}</DialogTitle>
+        <DialogDescription>Open the link below, then paste the code you get.</DialogDescription>
+      </DialogHeader>
+      <DialogBody>
+        <SignInStatusLine status={statusLine(label, state.status, `Waiting for ${label}`)} />
+        <div className="grid min-w-0 gap-3">
+          <OutputLog output={state.output} label={label} />
+          <InputLine disabled={state.status !== "running"} pending={sending} onSend={onSend} />
+        </div>
+        {error}
+      </DialogBody>
+    </>
+  );
+}
+
+/** The agent signs in by itself, often in the system browser. */
+function AgentSignInBody({
+  label,
+  status,
+  error,
+}: {
+  label: string;
+  status: SignInStatus;
+  error: ReactNode;
+}) {
+  return (
+    <>
+      <DialogHeader>
+        <DialogTitle>Connect {label}</DialogTitle>
+        <DialogDescription>Your credentials stay with {label} on this desktop.</DialogDescription>
+      </DialogHeader>
+      <DialogBody>
+        <SignInStatusLine status={statusLine(label, status, "Finish in your browser")} />
+        {error}
+      </DialogBody>
+    </>
+  );
+}
+
+function SignInFooter({
+  status,
+  onCancel,
+  onRetry,
+  onClose,
+}: {
+  status: SignInStatus;
+  onCancel: () => void;
+  onRetry: () => void;
+  onClose: () => void;
+}) {
+  if (status === "starting" || status === "running")
+    return (
+      <Button type="button" variant="outline" onClick={onCancel}>
+        Cancel
+      </Button>
+    );
+  const closeButton = (
+    <Button type="button" variant="outline" onClick={onClose}>
+      Close
+    </Button>
+  );
+  if (status === "succeeded")
+    return <div className="flex flex-col-reverse gap-2 sm:flex-row">{closeButton}</div>;
+  return (
+    <div className="flex flex-col-reverse gap-2 sm:flex-row">
+      {closeButton}
+      <Button type="button" onClick={onRetry}>
+        Try again
+      </Button>
+    </div>
+  );
+}
+
 /**
  * Sign-in to a native agent. A terminal sign-in shows the login command's output and takes one
  * line of input at a time. An agent sign-in waits while the agent finishes in the browser.
@@ -179,53 +278,31 @@ export function SignInDialog({
   onClose: () => void;
 }) {
   const running = state.status === "starting" || state.status === "running";
-  const finished = state.status === "failed" || state.status === "cancelled";
-  const status = statusLine(label, state);
   const close = running ? onCancel : onClose;
+  const message = (
+    <FormMessage error={error} errorDescription={`We couldn’t reach ${label}. Try again.`} />
+  );
   return (
     <Dialog open onOpenChange={(open) => !open && close()}>
       <DialogContent size="lg">
-        <DialogHeader>
-          <DialogTitle>Connect {label}</DialogTitle>
-          <DialogDescription>
-            {state.type === "terminal"
-              ? "Open the link below, then paste the code you get."
-              : `Your credentials stay with ${label} on this desktop.`}
-          </DialogDescription>
-        </DialogHeader>
-        <DialogBody>
-          <p
-            role="status"
-            className="flex items-center gap-2 text-sm [&>svg]:size-4 [&>svg]:shrink-0"
-          >
-            {status.icon}
-            <span className="min-w-0">{status.text}</span>
-          </p>
-          {state.type === "terminal" && (
-            <div className="grid min-w-0 gap-3">
-              <OutputLog output={state.output} label={label} />
-              <InputLine disabled={state.status !== "running"} pending={sending} onSend={onSend} />
-            </div>
-          )}
-          <FormMessage error={error} errorDescription={`We couldn’t reach ${label}. Try again.`} />
-        </DialogBody>
+        {state.type === "terminal" ? (
+          <TerminalSignInBody
+            label={label}
+            state={state}
+            sending={sending}
+            onSend={onSend}
+            error={message}
+          />
+        ) : (
+          <AgentSignInBody label={label} status={state.status} error={message} />
+        )}
         <DialogFooter>
-          {running ? (
-            <Button type="button" variant="outline" onClick={onCancel}>
-              Cancel
-            </Button>
-          ) : (
-            <div className="flex flex-col-reverse gap-2 sm:flex-row">
-              <Button type="button" variant="outline" onClick={onClose}>
-                Close
-              </Button>
-              {finished && (
-                <Button type="button" onClick={onRetry}>
-                  Try again
-                </Button>
-              )}
-            </div>
-          )}
+          <SignInFooter
+            status={state.status}
+            onCancel={onCancel}
+            onRetry={onRetry}
+            onClose={onClose}
+          />
         </DialogFooter>
       </DialogContent>
     </Dialog>

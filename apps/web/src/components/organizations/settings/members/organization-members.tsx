@@ -46,11 +46,10 @@ export function OrganizationMembers({ organizationId }: { organizationId: string
   );
   return (
     <OrganizationMembersView
-      organizationName={resource.data?.name}
-      state={resource.status}
-      members={members}
-      loading={organization.isPending}
-      error={organization.error}
+      resource={{
+        ...resource,
+        data: resource.data && members && { organizationName: resource.data.name, members },
+      }}
       onRetry={() => void organization.refetch()}
       inviteAction={
         invitationRoles(viewerRole).length > 0 && (

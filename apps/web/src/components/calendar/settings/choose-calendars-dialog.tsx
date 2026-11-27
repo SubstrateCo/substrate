@@ -86,43 +86,18 @@ export function ChooseCalendarsDialog({
           </DialogDescription>
         </DialogHeader>
         <DialogBody>
-          {accessRequired && (
-            <InlineNotice
-              icon={TriangleAlert}
-              tone="warning"
-              action={
-                <PendingButton
-                  variant="outline"
-                  size="sm"
-                  pending={reconnecting}
-                  onClick={onReconnect}
-                >
-                  <RotateCcw aria-hidden />
-                  Reconnect with calendar access
-                </PendingButton>
-              }
-            >
-              Substrate can’t read this account’s calendars. Reconnect to grant calendar access.
-            </InlineNotice>
-          )}
-          <CalendarOptions
+          <ChooseCalendarsBody
             options={options}
             loadError={loadError}
             accessRequired={accessRequired}
             selected={selected}
             pending={pending}
+            error={error}
+            reconnecting={reconnecting}
+            onReconnect={onReconnect}
             onToggle={toggle}
             onRetry={onRetry}
           />
-          {!accessRequired && (
-            <FormMessage
-              error={error}
-              errorDescription={calendarErrorCopy(
-                error,
-                "Couldn’t connect these calendars. Try again.",
-              )}
-            />
-          )}
         </DialogBody>
         <DialogFooter>
           <Button variant="outline" disabled={pending} onClick={onClose}>
@@ -141,11 +116,55 @@ export function ChooseCalendarsDialog({
   );
 }
 
+/**
+ * Without calendar access, the reconnect notice replaces any load or connect error, since
+ * reconnecting fixes both.
+ */
+function ChooseCalendarsBody({
+  accessRequired,
+  error,
+  reconnecting,
+  onReconnect,
+  ...calendars
+}: Parameters<typeof CalendarOptions>[0] & {
+  accessRequired: boolean;
+  error: Error | null;
+  reconnecting: boolean;
+  onReconnect: () => void;
+}) {
+  if (accessRequired)
+    return (
+      <>
+        <InlineNotice
+          icon={TriangleAlert}
+          tone="warning"
+          action={
+            <PendingButton variant="outline" size="sm" pending={reconnecting} onClick={onReconnect}>
+              <RotateCcw aria-hidden />
+              Reconnect with calendar access
+            </PendingButton>
+          }
+        >
+          Substrate can’t read this account’s calendars. Reconnect to grant calendar access.
+        </InlineNotice>
+        {!calendars.loadError && <CalendarOptions {...calendars} />}
+      </>
+    );
+  return (
+    <>
+      <CalendarOptions {...calendars} />
+      <FormMessage
+        error={error}
+        errorDescription={calendarErrorCopy(error, "Couldn’t connect these calendars. Try again.")}
+      />
+    </>
+  );
+}
+
 /** The account's calendars, or why they cannot be shown yet. */
 function CalendarOptions({
   options,
   loadError,
-  accessRequired,
   selected,
   pending,
   onToggle,
@@ -153,16 +172,13 @@ function CalendarOptions({
 }: {
   options: readonly ProviderCalendarOption[] | undefined;
   loadError: Error | null;
-  accessRequired: boolean;
   selected: ReadonlySet<string>;
   pending: boolean;
   onToggle: (calendarId: string, checked: boolean) => void;
   onRetry: () => void;
 }) {
   if (loadError)
-    return accessRequired ? null : (
-      <ErrorState variant="compact" title="Couldn’t load your calendars" onRetry={onRetry} />
-    );
+    return <ErrorState variant="compact" title="Couldn’t load your calendars" onRetry={onRetry} />;
   if (!options) return <LoadingState label="Loading calendars" variant="compact" />;
   if (options.length === 0)
     return (

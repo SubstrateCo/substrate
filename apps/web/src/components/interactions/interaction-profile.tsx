@@ -19,6 +19,35 @@ import { crmLink } from "@/lib/navigation/record-links";
 import { interactionProfileOptions } from "@/queries/context/interactions";
 import { ArrowUpRight, List, Network } from "lucide-react";
 
+/** What differs between a person's and an organization's profile. */
+const profileKinds = {
+  person: {
+    section: "people",
+    back: "Back to people",
+    renderOpen: (_organizationId: string, entityId: string) => (
+      <ContactLink entityId={entityId}>
+        Open contact
+        <ArrowUpRight aria-hidden />
+      </ContactLink>
+    ),
+    subject: (entityId: string) => ({ contactEntityId: entityId, accountEntityId: undefined }),
+    /** Only an organization's activity can widen to its related people. */
+    scoped: false,
+  },
+  account: {
+    section: "accounts",
+    back: "Back to organizations",
+    renderOpen: (organizationId: string, entityId: string) => (
+      <Link {...crmLink(organizationId, "accounts", entityId)}>
+        Open in CRM
+        <ArrowUpRight aria-hidden />
+      </Link>
+    ),
+    subject: (entityId: string) => ({ contactEntityId: undefined, accountEntityId: entityId }),
+    scoped: true,
+  },
+} as const;
+
 export function InteractionProfile({
   entityId,
   type,
@@ -52,6 +81,7 @@ export function InteractionProfile({
     );
   if (!profile.data) return <LoadingState label="Loading interaction profile" />;
   const data = profile.data;
+  const kind = profileKinds[type];
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-6">
       <div className="shrink-0 space-y-2">
@@ -60,12 +90,12 @@ export function InteractionProfile({
             to="/interactions"
             search={(previous) => ({
               ...previous,
-              section: type === "person" ? "people" : "accounts",
+              section: kind.section,
               profileId: undefined,
               tab: undefined,
             })}
           >
-            Back to {type === "person" ? "people" : "organizations"}
+            {kind.back}
           </Link>
         </BackLink>
         <PageHeader
@@ -73,17 +103,7 @@ export function InteractionProfile({
           actions={
             <>
               <Button variant="outline" size="sm" asChild>
-                {type === "person" ? (
-                  <ContactLink entityId={entityId}>
-                    Open contact
-                    <ArrowUpRight aria-hidden />
-                  </ContactLink>
-                ) : (
-                  <Link {...crmLink(organizationId, "accounts", entityId)}>
-                    Open in CRM
-                    <ArrowUpRight aria-hidden />
-                  </Link>
-                )}
+                {kind.renderOpen(organizationId, entityId)}
               </Button>
               {createAction}
             </>
@@ -117,13 +137,12 @@ export function InteractionProfile({
             key={scope}
             period={{
               ...period,
-              contactEntityId: type === "person" ? entityId : undefined,
-              accountEntityId: type === "account" ? entityId : undefined,
+              ...kind.subject(entityId),
               scope,
             }}
             days={days}
             onDaysChange={onDaysChange}
-            scope={type === "account" ? scope : undefined}
+            scope={kind.scoped ? scope : undefined}
             onScopeChange={setScope}
           />
         </TabsContent>

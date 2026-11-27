@@ -10,6 +10,7 @@ import { Link } from "@tanstack/react-router";
 
 import { InboxReceiptView } from "../inbox-receipt-view";
 import { NeedsAttention } from "../needs-attention";
+import { NeedsAttentionCard } from "../needs-attention-card";
 import { RequestCard } from "../requests/request-card";
 import { NeedsYouView, type NeedsYouEntry } from "./needs-you-view";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
@@ -67,18 +68,18 @@ function UncertainItem({ item }: { item: AgentUncertainItemView }) {
       tone="attention"
       sending={false}
       resolving={resend.isPending || discard.isPending}
-      onResend={() =>
-        resend.mutate(item.id, {
-          onError: (error) =>
-            toast.error(actionErrorMessage(error, "We couldn't resend the message.")),
-        })
-      }
-      onDiscard={() =>
-        discard.mutate(item.id, {
-          onError: (error) =>
-            toast.error(actionErrorMessage(error, "We couldn't discard the message.")),
-        })
-      }
+      uncertain={{
+        onResend: () =>
+          resend.mutate(item.id, {
+            onError: (error) =>
+              toast.error(actionErrorMessage(error, "We couldn't resend the message.")),
+          }),
+        onDiscard: () =>
+          discard.mutate(item.id, {
+            onError: (error) =>
+              toast.error(actionErrorMessage(error, "We couldn't discard the message.")),
+          }),
+      }}
     />
   );
 }
@@ -101,11 +102,13 @@ export function NeedsYou() {
       agentName: turn.agent.name,
       place: <WorkPlace place={turn.place} />,
       body: (
-        <NeedsAttention
-          turn={turn}
-          agentName={turn.agent.name}
-          uncertainItemIds={turn.uncertainItemIds}
-        />
+        <NeedsAttentionCard>
+          <NeedsAttention
+            turn={turn}
+            agentName={turn.agent.name}
+            uncertainItemIds={turn.uncertainItemIds}
+          />
+        </NeedsAttentionCard>
       ),
       agentLink: agentLink(organizationId, turn.userAgentId, { view: "work", turnId: turn.id }),
     })),

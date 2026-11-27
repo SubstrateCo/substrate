@@ -1,5 +1,6 @@
 import type { PickedRecipient, PickerPerson } from "@substrate/contracts/people/picker";
 
+import type { ActorIdentity } from "@/lib/actors/identity";
 import { z } from "zod";
 
 const emailSchema = z.email().max(320);
@@ -81,6 +82,15 @@ export function recipientAgentIds(value: readonly PickedRecipient[]) {
 
 export function recipientKey(recipient: PickedRecipient) {
   return recipient.agent ? `agent:${recipient.agent.id}` : recipient.email;
+}
+
+/** Who a chosen recipient is, or null for an address that gets an invitation. */
+export function recipientActor(recipient: PickedRecipient): ActorIdentity | null {
+  if (recipient.agent)
+    return { kind: "agent", name: recipient.agent.name, avatar: recipient.agent.avatar };
+  if (recipient.person)
+    return { kind: "person", name: recipient.person.name, image: recipient.person.image ?? null };
+  return null;
 }
 
 /** Recipients who are not one of the offered people and will receive an invitation. */

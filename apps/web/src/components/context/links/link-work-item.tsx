@@ -2,6 +2,7 @@ import type { ContextEntityType } from "@substrate/contracts/context/input";
 
 import { SkeletonText } from "../../feedback/skeleton-text";
 import { entityKinds } from "../entity-kinds";
+import type { LinkWorkState } from "./link-work-state";
 import { Tag } from "@/components/feedback/tag";
 import { Checkbox } from "@/components/ui/checkbox";
 import { CommandItem } from "@/components/ui/command";
@@ -16,8 +17,7 @@ export function LinkWorkItem({
   kind,
   title,
   projectName,
-  chosen,
-  linked,
+  state,
   disabled,
   onChoose,
 }: {
@@ -25,19 +25,18 @@ export function LinkWorkItem({
   kind: ContextEntityType;
   title: string;
   projectName?: string;
-  chosen: boolean;
-  linked: boolean;
+  state: LinkWorkState;
   disabled: boolean;
   onChoose: () => void;
 }) {
   const { icon: Icon, label } = entityKinds[kind];
-  const selected = chosen && !linked;
+  const selected = state === "selected";
   let subtitle: string = label;
   if (kind === "task") subtitle = projectName ? `Task · ${projectName}` : "Task";
   return (
     <CommandItem
       value={id}
-      disabled={disabled || linked}
+      disabled={disabled || state === "linked"}
       onSelect={onChoose}
       className={linkWorkRowClass}
     >
@@ -59,7 +58,7 @@ export function LinkWorkItem({
           </>
         }
         action={
-          linked ? (
+          state === "linked" ? (
             <Tag className="shrink-0">Linked</Tag>
           ) : (
             <Checkbox

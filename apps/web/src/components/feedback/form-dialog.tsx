@@ -80,9 +80,9 @@ export function FormDialog({
         <form
           id={formId}
           onKeyDown={onKeyDown}
-          noValidate={!nativeValidation}
-          onInvalidCapture={nativeValidation ? validation.onInvalid : undefined}
-          onInput={nativeValidation ? validation.onInput : undefined}
+          {...(nativeValidation
+            ? { onInvalidCapture: validation.onInvalid, onInput: validation.onInput }
+            : { noValidate: true })}
           onSubmit={(event) => {
             event.preventDefault();
             if (pending) return;

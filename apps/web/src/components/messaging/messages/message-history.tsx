@@ -10,12 +10,12 @@ type MessageHistoryState = {
 
 /** Sits at the top of the timeline when more history exists. */
 export function OlderMessages({
-  replies = false,
+  label = "Older messages",
   hasOlder,
   pending,
   onOlder,
 }: Pick<MessageHistoryState, "hasOlder" | "pending"> & {
-  replies?: boolean;
+  label?: string;
   onOlder: () => void;
 }) {
   if (!hasOlder) return null;
@@ -29,7 +29,7 @@ export function OlderMessages({
         pending={pending === "older"}
         onClick={onOlder}
       >
-        {replies ? "Older replies" : "Older messages"}
+        {label}
       </PendingButton>
     </div>
   );
@@ -37,11 +37,11 @@ export function OlderMessages({
 
 /** Floats over the bottom of the timeline while it shows an older page. */
 export function JumpToLatest({
-  replies = false,
+  label = "Back to latest",
   hasPrevious,
   pending,
   onLatest,
-}: Pick<MessageHistoryState, "hasPrevious" | "pending" | "onLatest"> & { replies?: boolean }) {
+}: Pick<MessageHistoryState, "hasPrevious" | "pending" | "onLatest"> & { label?: string }) {
   if (!hasPrevious) return null;
   return (
     <span className="pointer-events-auto rounded-md shadow-floating">
@@ -54,7 +54,7 @@ export function JumpToLatest({
         onClick={onLatest}
       >
         <ArrowDown aria-hidden="true" />
-        {replies ? "Latest replies" : "Back to latest"}
+        {label}
       </PendingButton>
     </span>
   );

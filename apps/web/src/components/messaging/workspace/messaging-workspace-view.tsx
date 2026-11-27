@@ -11,7 +11,6 @@ import { useStateDialog } from "@/components/feedback/use-state-dialog";
 import { PageContent, PageLayout } from "@/components/layout/page-layout";
 import { ConversationHeader } from "@/components/messaging/conversations/conversation-header";
 import { MessageLoading } from "@/components/messaging/messages/message-loading";
-import { WorkspaceEmpty } from "@/components/messaging/workspace/workspace-empty";
 import { Button } from "@/components/ui/button";
 import type { Conversation } from "@/lib/messaging/conversations";
 import type { ResourceStatus } from "@/lib/resource-state";
@@ -30,7 +29,7 @@ export function MessagingWorkspace({
   state,
   error,
   onRetry,
-  content,
+  renderContent,
 }: {
   conversations: Conversation[];
   selectedId?: string;
@@ -58,8 +57,11 @@ export function MessagingWorkspace({
   state: ResourceStatus;
   error?: Error | null;
   onRetry: () => void;
-  /** The selected conversation, or why it can't open. Without it, the pane loads or is empty. */
-  content?: ReactNode;
+  /**
+   * The selected conversation, why it can't open, or the loading or empty pane. `onCreate` opens
+   * the create dialog from the empty pane.
+   */
+  renderContent: (onCreate: (kind: Conversation["kind"]) => void) => ReactNode;
 }) {
   // The empty state's buttons are gone once a conversation exists.
   const {
@@ -68,7 +70,6 @@ export function MessagingWorkspace({
     close,
     restoreFocus,
   } = useStateDialog<Conversation["kind"]>(focusConversationSidebar);
-  const blocked = state === "error" || state === "unavailable";
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       <div className="shrink-0 border-b px-2 py-1 md:hidden">
@@ -91,8 +92,6 @@ export function MessagingWorkspace({
         <ConversationSidebar
           state={state}
           loading={loading}
-          error={blocked ? error : undefined}
-          onRetry={onRetry}
           conversations={conversations}
           selectedId={selectedId}
           onSelect={onSelect}
@@ -104,9 +103,8 @@ export function MessagingWorkspace({
             state={state}
             error={error}
             onRetry={onRetry}
-            loading={loading}
             onCreate={create}
-            content={content}
+            renderContent={renderContent}
           />
         </PageContent>
       </PageLayout>
@@ -119,16 +117,14 @@ function WorkspaceContent({
   state,
   error,
   onRetry,
-  loading,
   onCreate,
-  content,
+  renderContent,
 }: {
   state: ResourceStatus;
   error?: Error | null;
   onRetry: () => void;
-  loading: boolean;
   onCreate: (kind: Conversation["kind"]) => void;
-  content?: ReactNode;
+  renderContent: (onCreate: (kind: Conversation["kind"]) => void) => ReactNode;
 }) {
   if (state === "error" || state === "unavailable")
     return (
@@ -147,20 +143,20 @@ function WorkspaceContent({
     );
   return (
     <>
-      {state === "stale" && <StaleNotice>Conversations may be out of date.</StaleNotice>}
-      {content}
-      {!content &&
-        (loading ? (
-          <section
-            aria-label="Conversation"
-            className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface"
-          >
-            <ConversationHeader title={<SkeletonText width="10rem" />} />
-            <MessageLoading label="Loading your conversations" />
-          </section>
-        ) : (
-          <WorkspaceEmpty onCreate={onCreate} />
-        ))}
+      {state === "stale" && (
+        <StaleNotice className="px-4 py-2" title="Conversations may be out of date." />
+      )}
+      {renderContent(onCreate)}
     </>
+  );
+}
+
+/** The conversation pane while the conversations load. */
+export function WorkspaceLoading() {
+  return (
+    <section aria-label="Conversation" className="flex min-h-0 min-w-0 flex-1 flex-col bg-surface">
+      <ConversationHeader title={<SkeletonText width="10rem" />} />
+      <MessageLoading label="Loading your conversations" />
+    </section>
   );
 }

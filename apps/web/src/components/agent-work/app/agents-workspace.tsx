@@ -168,8 +168,7 @@ export function AgentsWorkspace({
   return (
     <AgentsWorkspaceView
       agents={agents}
-      catalogState={catalogState.status}
-      catalogError={catalogState.error}
+      catalog={catalogState}
       onRetryCatalog={retryCatalog}
       needsYouCount={needsYouCount(needsYou.data)}
       selectedAgentId={agentId}

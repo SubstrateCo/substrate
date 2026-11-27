@@ -78,7 +78,7 @@ flowchart LR
 ### People
 
 - `PeoplePicker` adds people to a conversation, project, or group; `allowEmail` adds "Invite <email>". Do not ask for exact email addresses when the people are known. Organization invitations keep an email field.
-- `PersonAvatar` shows a person in rows, chips, and pickers; `Avatar` is for larger person heads (message authors, person cards, the user menu, picture upload). A person is a circle with initials. An agent always uses `AgentAvatarView` with its stored avatar code, never `PersonAvatar` and never an uploaded picture; the Bot mark is only its fallback for a missing code. Use `ambient="off"` at `xs`, `subtle` in rows and lists, and `lively` only in the agent's own header and settings. An organization uses `WorkspaceTile`, never an `Avatar`.
+- `ActorAvatar` shows anyone who may be an agent, from an `ActorIdentity` (`lib/actors/identity.ts`); `ActorKindTag` and `ActorKindSuffix` name an agent beside its name. `PersonAvatar` is for views that only show people; `Avatar` is for the user menu and picture upload. A person is a circle with initials. An agent draws its stored avatar code, never an uploaded picture; the Bot mark is only its fallback for a missing code. Use `ambient="off"` at `xs`, `subtle` in rows and lists, and `lively` only in the agent's own header and settings. An organization uses `WorkspaceTile`, never an `Avatar`.
 - `Tag` is the small label beside a name ("Agent", "External"). A status passes `tone` and an `icon`, so colour is never the only signal; a surface that carries a status reuses `toneBorder` and `toneFill`.
 - `AccessRow` is one person or agent with access to a record or project.
 
@@ -96,6 +96,7 @@ flowchart LR
 ### States, tables, and tasks
 
 - **`ContentNotice`** shows empty and unavailable states; `ErrorState` is its error tone. Name the situation with `icon` and offer at most one `action`, with no retry for a permanent 4xx. Pick the variant by place: the default for a page or pane with nothing else to show, `compact` in a card or a section with its own heading, `inline` in sheet sections, sidebar lists, and board columns. A failed load shows one error, in the region that would show the data.
+- **`StaleNotice`** is a failed refresh over data that is still shown: one muted status line above the data, with "Try again" when it can retry. It never replaces the data; with nothing to show, use `ErrorState`.
 - **`InlineNotice`** is a banner about the content's state, with the one action that changes it (reconnect, restore, join). `tone="warning"` is an alert; `neutral` is a status. It is not an empty state.
 - **`AppTable`** is every table; it owns loading, errors, sorting, the frame, and the pager. Pass `columns` (`createAppColumnHelper<T>().columns([...])`), `data`, `getRowId`, a specific `empty`, and `pagination` (`mode: "server"` for API pages). Give short columns `meta.width`; dates use `dateTimeColumn`; amounts use `meta.align: "end"` with `NumberCell`. The first column links to the record (`tableLink`). Icon row actions go in `rowActions`, labelled buttons in a `meta.controls` column.
 - **Boards** are `Board` > `BoardColumn` > `BoardCard` for the task board and the CRM pipeline. The whole card is the target (`boardCardTarget`); controls in a card sit above it with `relative z-10`. A board with more pages shows `Pager` under it.

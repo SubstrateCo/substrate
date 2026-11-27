@@ -2,7 +2,7 @@ import type { UseQueryResult } from "@tanstack/react-query";
 
 import type { ReactNode } from "react";
 
-import { CrmResourceState } from "./crm-resource-state";
+import { CrmResourceFallback } from "./crm-resource-state";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { resourceState } from "@/lib/resource-state";
 
@@ -13,7 +13,7 @@ export function crmResource<T>(query: UseQueryResult<T>, loading?: ReactNode) {
     return {
       data: undefined,
       fallback: (
-        <CrmResourceState
+        <CrmResourceFallback
           record
           pending={query.isPending}
           error={query.error}
@@ -27,9 +27,11 @@ export function crmResource<T>(query: UseQueryResult<T>, loading?: ReactNode) {
     fallback: null,
     staleNotice:
       state.status === "stale" ? (
-        <StaleNotice onRetry={() => void query.refetch()}>
-          This record may be out of date.
-        </StaleNotice>
+        <StaleNotice
+          className="px-4 py-2"
+          title="This record may be out of date."
+          onRetry={() => void query.refetch()}
+        />
       ) : null,
   };
 }

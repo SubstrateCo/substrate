@@ -6,7 +6,7 @@ import { Link } from "@tanstack/react-router";
 import { useState } from "react";
 
 import { interactionTypes } from "./interaction-types";
-import { CrmResourceState } from "@/components/crm/crm-resource-state";
+import { CrmResourceBoundary } from "@/components/crm/crm-resource-state";
 import { formText } from "@/components/crm/form-text";
 import { FormDialog } from "@/components/feedback/form-dialog";
 import { NativeField } from "@/components/forms/native-form";
@@ -49,7 +49,8 @@ function PublicationEditor({
   const [kind, setKind] = useState<InteractionKind>("message");
   const [consent, setConsent] = useState(false);
   const seen = new Set<string>();
-  const sources = (resourceState(related).data ?? []).filter((row) => {
+  const relatedState = resourceState(related);
+  const sources = (relatedState.data ?? []).filter((row) => {
     if (row.deletedAt || seen.has(row.messageId)) return false;
     seen.add(row.messageId);
     return true;
@@ -84,31 +85,31 @@ function PublicationEditor({
         );
       }}
     >
-      <CrmResourceState
-        compact
-        pending={related.isPending}
-        error={related.error}
-        onRetry={() => void related.refetch()}
-      />
-      <SelectField
-        label="Source message"
-        value={messageId}
-        onChange={setMessageId}
-        options={[
-          { value: "", label: "None" },
-          ...sources.map((row) => ({
-            value: row.messageId,
-            label: `${row.authorName} · ${row.conversationName ?? "Discussion"} · ${formatDateTime(row.createdAt)}`,
-          })),
-        ]}
-      />
-      {source && (
-        <Button variant="link" size="sm" asChild>
-          <Link {...messageLink(organizationId, source.conversationId, source.messageId)}>
-            Review source message
-          </Link>
-        </Button>
-      )}
+      <CrmResourceBoundary compact state={relatedState} onRetry={() => void related.refetch()}>
+        {() => (
+          <>
+            <SelectField
+              label="Source message"
+              value={messageId}
+              onChange={setMessageId}
+              options={[
+                { value: "", label: "None" },
+                ...sources.map((row) => ({
+                  value: row.messageId,
+                  label: `${row.authorName} · ${row.conversationName ?? "Discussion"} · ${formatDateTime(row.createdAt)}`,
+                })),
+              ]}
+            />
+            {source && (
+              <Button variant="link" size="sm" asChild>
+                <Link {...messageLink(organizationId, source.conversationId, source.messageId)}>
+                  Review source message
+                </Link>
+              </Button>
+            )}
+          </>
+        )}
+      </CrmResourceBoundary>
       <SelectField label="Kind" value={kind} onChange={setKind} options={publicationKinds} />
       <NativeField
         id="publication-occurred"

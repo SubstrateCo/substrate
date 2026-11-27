@@ -12,8 +12,8 @@ import { useWorkspaceScope } from "@/components/workspace/workspace-scope-contex
 import { useNow } from "@/hooks/use-now";
 import { outputLink } from "@/lib/agent-work/links";
 import { isOpenRequest } from "@/lib/agent-work/requests";
-import { sessionKindLabels, transcriptNotice, turnLabel, turnTone } from "@/lib/agent-work/status";
-import { transcriptEntries } from "@/lib/agent-work/transcript";
+import { sessionKindLabels, turnLabel, turnTone } from "@/lib/agent-work/status";
+import { transcriptBody, transcriptEntries } from "@/lib/agent-work/transcript";
 import { usageLabel } from "@/lib/agent-work/usage";
 import { messageLink } from "@/lib/navigation/record-links";
 import {
@@ -135,10 +135,14 @@ export function TurnTranscript({
     <TurnTranscriptView
       name={agentName}
       {...transcriptDetails(turn, now, requests, organizationId, canOpenConversation)}
-      unavailable={unavailable}
-      timelineNotice={local === false ? transcriptNotice(device) : undefined}
-      loading={turnLoading || (!!turn && (local === undefined || (local && events.isPending)))}
-      error={turnError ?? events.error}
+      body={transcriptBody({
+        unavailable,
+        device,
+        turn: { loading: turnLoading, loaded: !!turn },
+        local,
+        events: { loaded: !!events.data, pending: events.isPending },
+        error: turnError ?? events.error,
+      })}
       onRetry={() => {
         onRetryTurn();
         // Without a turn the events read is skipped; the turn's own retry loads it first.

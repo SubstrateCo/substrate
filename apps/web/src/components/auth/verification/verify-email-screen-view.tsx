@@ -6,6 +6,20 @@ import { FormMessage } from "@/components/feedback/form-message";
 import { Button } from "@/components/ui/button";
 import type { authLink } from "@/lib/auth/navigation";
 
+const verifyCopy = {
+  title: "Verify your email",
+  description:
+    "Open the link we emailed you to finish setting up your account. Need a new one? Resend it below.",
+  action: "Resend verification email",
+};
+
+const invalidLinkCopy = {
+  title: "This verification link doesn’t work",
+  description:
+    "It may have expired or already been used. Send a new one and open it from your inbox.",
+  action: "Send a new link",
+};
+
 export function VerifyEmailScreen({
   email,
   invalid = false,
@@ -27,7 +41,6 @@ export function VerifyEmailScreen({
   loginLink: ReturnType<typeof authLink>;
 }) {
   const footer = <AuthLink {...loginLink}>Back to sign in</AuthLink>;
-  const action = invalid ? "Send a new link" : "Resend verification email";
   if (sentTo)
     return (
       <AuthFrame
@@ -46,16 +59,9 @@ export function VerifyEmailScreen({
         </Button>
       </AuthFrame>
     );
+  const copy = invalid ? invalidLinkCopy : verifyCopy;
   return (
-    <AuthFrame
-      title={invalid ? "This verification link doesn’t work" : "Verify your email"}
-      description={
-        invalid
-          ? "It may have expired or already been used. Send a new one and open it from your inbox."
-          : "Open the link we emailed you to finish setting up your account. Need a new one? Resend it below."
-      }
-      footer={footer}
-    >
+    <AuthFrame title={copy.title} description={copy.description} footer={footer}>
       <NativeForm pending={pending} onSubmit={onSubmit}>
         <EmailField defaultValue={email} />
         <FormMessage
@@ -63,7 +69,7 @@ export function VerifyEmailScreen({
           errorDescription="We couldn’t send a verification email. Please try again."
         />
         <PendingButton className="w-full" size="lg" pending={pending}>
-          {action}
+          {copy.action}
         </PendingButton>
       </NativeForm>
     </AuthFrame>

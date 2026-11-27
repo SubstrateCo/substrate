@@ -51,9 +51,7 @@ function ProjectPaneContent({
   state,
   capabilities,
   onRetry,
-  editor,
-  sharing,
-  dangerZone,
+  renderSettings,
   notice,
   renderTaskForm,
   renderTaskDetail,
@@ -61,19 +59,15 @@ function ProjectPaneContent({
   onSelectTask,
   onTaskStatusChange,
   headerActions,
-  context,
+  renderContext,
   statusPending = false,
 }: {
   data?: ProjectDetail;
   state: ResourceStatus;
   capabilities: ProjectCapabilities;
   onRetry: () => void;
-  /** Project name and description editor, shown to editors in Settings. */
-  editor: ReactNode;
-  /** Project access, shown in Settings. */
-  sharing: ReactNode;
-  /** Archive or delete, shown last in Settings to owners. */
-  dangerZone?: ReactNode;
+  /** The Settings tab of a loaded project: its editor, access, and danger zone. */
+  renderSettings: (detail: ProjectDetail) => ReactNode;
   /** Above the tabs' content, such as the read-only notice of an archived project. */
   notice?: ReactNode;
   renderTaskForm: (props: {
@@ -92,7 +86,8 @@ function ProjectPaneContent({
   onSelectTask: (id: string | null) => void;
   onTaskStatusChange: (task: Task, status: TaskStatus) => void;
   headerActions?: ReactNode;
-  context?: ReactNode;
+  /** The Discussions tab of a loaded project. */
+  renderContext: (detail: ProjectDetail) => ReactNode;
   statusPending?: boolean;
 }) {
   const [view, setView] = useState<"list" | "board">("list");
@@ -130,7 +125,10 @@ function ProjectPaneContent({
               </ProjectTabLayout>
             </ProjectHeaderLayout>
             {state === "stale" && (
-              <StaleNotice className="border-b px-6">This project may be out of date.</StaleNotice>
+              <StaleNotice
+                className="border-b px-6 py-2"
+                title="This project may be out of date."
+              />
             )}
             {notice && <div className="px-6 pt-4">{notice}</div>}
             <TabsContent
@@ -165,7 +163,7 @@ function ProjectPaneContent({
               />
             </TabsContent>
             <TabsContent value="discussions" className="min-h-0 overflow-y-auto">
-              <div className="flex min-h-full flex-col p-6">{context}</div>
+              <div className="flex min-h-full flex-col p-6">{renderContext(detail)}</div>
             </TabsContent>
             {/* Stays mounted so an unsaved project name or description survives a tab change. */}
             <TabsContent
@@ -174,11 +172,7 @@ function ProjectPaneContent({
               hidden={tab !== "settings"}
               className="min-h-0 overflow-y-auto"
             >
-              <SettingsContent inset>
-                {canEdit && editor}
-                {sharing}
-                {dangerZone}
-              </SettingsContent>
+              <SettingsContent inset>{renderSettings(detail)}</SettingsContent>
             </TabsContent>
           </div>
         </Tabs>
@@ -265,23 +259,37 @@ function CreateTaskForm({
   });
 }
 
+/** A project that has not loaded: loading, no longer accessible, or failed. */
 function ProjectPaneState({ state, onRetry }: { state: ResourceStatus; onRetry: () => void }) {
-  const unavailable = state === "unavailable";
+  if (state === "loading")
+    return (
+      <PageContent>
+        <ProjectLoading />
+      </PageContent>
+    );
+  if (state === "unavailable") return <ProjectUnavailable />;
+  return <ProjectLoadError onRetry={onRetry} />;
+}
+
+function ProjectUnavailable() {
   return (
     <PageContent>
-      {state === "loading" ? (
-        <ProjectLoading />
-      ) : (
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          <ErrorState
-            title={unavailable ? "Project unavailable" : "Couldn’t load project"}
-            description={
-              unavailable ? "This project was removed or you no longer have access." : undefined
-            }
-            onRetry={unavailable ? undefined : onRetry}
-          />
-        </div>
-      )}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <ErrorState
+          title="Project unavailable"
+          description="This project was removed or you no longer have access."
+        />
+      </div>
+    </PageContent>
+  );
+}
+
+function ProjectLoadError({ onRetry }: { onRetry: () => void }) {
+  return (
+    <PageContent>
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        <ErrorState title="Couldn’t load project" onRetry={onRetry} />
+      </div>
     </PageContent>
   );
 }

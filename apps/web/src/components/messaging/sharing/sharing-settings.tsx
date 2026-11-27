@@ -9,6 +9,7 @@ import { isAccessFailure } from "@/api/access-failure";
 import type { SharedConversation, SharingRequest } from "@/api/messaging/sharing";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
+import { ListBody } from "@/components/feedback/list-body";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { Tag } from "@/components/feedback/tag";
@@ -18,6 +19,7 @@ import { SettingsCard } from "@/components/layout/settings-section";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
 import { SharingManager } from "@/components/messaging/sharing/sharing-manager";
 import { Button } from "@/components/ui/button";
+import { listPhase, type ListPhase } from "@/lib/resource-state";
 import { sharingConversationOptions, sharingInboxOptions } from "@/queries/messaging/sharing";
 import { Globe, Inbox } from "lucide-react";
 
@@ -34,26 +36,31 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
     void conversations.refetch();
     void inbox.refetch();
   };
+  if (blocked)
+    return (
+      <CollaborationPanel>
+        <ErrorState
+          title="Couldn’t load collaboration"
+          description="You no longer have access to collaboration settings."
+        />
+      </CollaborationPanel>
+    );
   return (
-    <SettingsPanel
-      title="External collaboration"
-      description="Approve partner channels, manage invitations, or disconnect organizations."
-    >
-      <CollaborationLoadNotice
-        failed={!!(conversations.error || inbox.error)}
-        blocked={blocked}
-        hasLists={!!(conversations.data && inbox.data)}
+    <CollaborationPanel>
+      <SharingRequestsCard
+        phase={listPhase({ items: inbox.data, loading: inbox.isPending, error: inbox.error })}
         onRetry={retry}
       />
-      {!blocked && <SharingRequestsCard pending={inbox.isPending} requests={inbox.data} />}
-      {!blocked && (
-        <SharedConversationsCard
-          pending={conversations.isPending}
-          conversations={conversations.data}
-          onManage={open}
-        />
-      )}
-      {selected && !blocked && (
+      <SharedConversationsCard
+        phase={listPhase({
+          items: conversations.data,
+          loading: conversations.isPending,
+          error: conversations.error,
+        })}
+        onRetry={retry}
+        onManage={open}
+      />
+      {selected && (
         <SharingManager
           organizationId={organizationId}
           conversationId={selected}
@@ -62,143 +69,149 @@ export function SharingSettings({ organizationId }: { organizationId: string }) 
           onRestoreFocus={restoreFocus}
         />
       )}
+    </CollaborationPanel>
+  );
+}
+
+function CollaborationPanel({ children }: { children: ReactNode }) {
+  return (
+    <SettingsPanel
+      title="External collaboration"
+      description="Approve partner channels, manage invitations, or disconnect organizations."
+    >
+      {children}
     </SettingsPanel>
   );
 }
 
-function CollaborationLoadNotice({
-  failed,
-  blocked,
-  hasLists,
+function SharingRequestsCard({
+  phase,
   onRetry,
 }: {
-  failed: boolean;
-  blocked: boolean;
-  hasLists: boolean;
+  phase: ListPhase<SharingRequest>;
   onRetry: () => void;
-}) {
-  if (!failed) return null;
-  if (!blocked && hasLists)
-    return <StaleNotice onRetry={onRetry}>This information may be out of date.</StaleNotice>;
-  return (
-    <ErrorState
-      title="Couldn’t load collaboration"
-      description={
-        blocked
-          ? "You no longer have access to collaboration settings."
-          : "This information may be out of date."
-      }
-      onRetry={blocked ? undefined : onRetry}
-    />
-  );
-}
-
-function SharingRequestsCard({
-  pending,
-  requests,
-}: {
-  pending: boolean;
-  requests?: SharingRequest[];
 }) {
   return (
     <SettingsCard title="Requests">
-      {pending && (
-        <div role="status" aria-label="Loading requests">
-          <div aria-hidden="true" className="flex flex-wrap items-center justify-between gap-3">
-            <SharingRequestContent title={<SkeletonText width="12rem" />} />
+      <ListBody
+        phase={phase}
+        loading={
+          <div role="status" aria-label="Loading requests">
+            <div aria-hidden="true" className="flex flex-wrap items-center justify-between gap-3">
+              <SharingRequestContent title={<SkeletonText width="12rem" />} />
+            </div>
           </div>
-        </div>
-      )}
-      {requests?.length === 0 && (
-        <ContentNotice
-          variant="compact"
-          icon={Inbox}
-          title="No pending requests"
-          description="Invitations from other organizations to share a conversation appear here."
-        />
-      )}
-      {requests?.map((invite) => (
-        <div key={invite.id} className="flex flex-wrap items-center justify-between gap-3">
-          <SharingRequestContent
-            title={
-              <>
-                {invite.name ?? "Conversation"} · {invite.email}
-              </>
-            }
-            action={
-              <Button asChild variant="outline">
-                <Link to="/accept-sharing/$invitationId" params={{ invitationId: invite.id }}>
-                  Review
-                </Link>
-              </Button>
-            }
+        }
+        error={<ErrorState variant="compact" title="Couldn’t load requests" onRetry={onRetry} />}
+        empty={
+          <ContentNotice
+            variant="compact"
+            icon={Inbox}
+            title="No pending requests"
+            description="Invitations from other organizations to share a conversation appear here."
           />
-        </div>
-      ))}
+        }
+        stale={<StaleNotice title="This information may be out of date." onRetry={onRetry} />}
+      >
+        {(requests) =>
+          requests.map((invite) => (
+            <div key={invite.id} className="flex flex-wrap items-center justify-between gap-3">
+              <SharingRequestContent
+                title={
+                  <>
+                    {invite.name ?? "Conversation"} · {invite.email}
+                  </>
+                }
+                action={
+                  <Button asChild variant="outline">
+                    <Link to="/accept-sharing/$invitationId" params={{ invitationId: invite.id }}>
+                      Review
+                    </Link>
+                  </Button>
+                }
+              />
+            </div>
+          ))
+        }
+      </ListBody>
     </SettingsCard>
   );
 }
 
 function SharedConversationsCard({
-  pending,
-  conversations,
+  phase,
+  onRetry,
   onManage,
 }: {
-  pending: boolean;
-  conversations?: SharedConversation[];
+  phase: ListPhase<SharedConversation>;
+  onRetry: () => void;
   onManage: (conversationId: string) => void;
 }) {
   return (
     <SettingsCard title="Shared conversations">
-      {pending && (
-        <div role="status" aria-label="Loading shared conversations">
-          <ul aria-hidden="true" className="divide-y">
-            <li className="flex flex-wrap items-center justify-between gap-3 py-2">
-              <SharedConversationTitle
-                icon={<SkeletonText width="1rem" />}
-                title={<SkeletonText width="10rem" />}
-              />
-            </li>
+      <ListBody
+        phase={phase}
+        loading={
+          <div role="status" aria-label="Loading shared conversations">
+            <ul aria-hidden="true" className="divide-y">
+              <li className="flex flex-wrap items-center justify-between gap-3 py-2">
+                <SharedConversationTitle
+                  icon={<SkeletonText width="1rem" />}
+                  title={<SkeletonText width="10rem" />}
+                />
+              </li>
+            </ul>
+          </div>
+        }
+        error={
+          <ErrorState
+            variant="compact"
+            title="Couldn’t load shared conversations"
+            onRetry={onRetry}
+          />
+        }
+        empty={
+          <ContentNotice
+            variant="compact"
+            icon={Globe}
+            title="No conversations to manage"
+            description="Conversations shared with other organizations appear here."
+          />
+        }
+        stale={<StaleNotice title="This information may be out of date." onRetry={onRetry} />}
+      >
+        {(conversations) => (
+          <ul aria-label="Shared conversations" className="divide-y">
+            {conversations.map((conversation) => (
+              <li
+                key={conversation.id}
+                className="flex flex-wrap items-center justify-between gap-3 py-2"
+              >
+                <SharedConversationTitle
+                  icon={
+                    conversation.kind === "channel" ? (
+                      <Globe aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                    ) : (
+                      <ConversationKindIcon
+                        kind={conversation.kind}
+                        className="size-4 shrink-0 text-muted-foreground"
+                      />
+                    )
+                  }
+                  title={sharedConversationTitle(conversation)}
+                  details={sharedConversationDetails(conversation)}
+                  status={
+                    conversation.status && <Tag>{sharedStatusLabels[conversation.status]}</Tag>
+                  }
+                />
+                <Button variant="ghost" onClick={() => onManage(conversation.id)}>
+                  Manage
+                </Button>
+              </li>
+            ))}
           </ul>
-        </div>
-      )}
-      {conversations?.length === 0 && (
-        <ContentNotice
-          variant="compact"
-          icon={Globe}
-          title="No conversations to manage"
-          description="Conversations shared with other organizations appear here."
-        />
-      )}
-      {!!conversations?.length && (
-        <ul aria-label="Shared conversations" className="divide-y">
-          {conversations.map((conversation) => (
-            <li
-              key={conversation.id}
-              className="flex flex-wrap items-center justify-between gap-3 py-2"
-            >
-              <SharedConversationTitle
-                icon={
-                  conversation.kind === "channel" ? (
-                    <Globe aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                  ) : (
-                    <ConversationKindIcon
-                      kind={conversation.kind}
-                      className="size-4 shrink-0 text-muted-foreground"
-                    />
-                  )
-                }
-                title={sharedConversationTitle(conversation)}
-                details={sharedConversationDetails(conversation)}
-                status={conversation.status && <Tag>{sharedStatusLabels[conversation.status]}</Tag>}
-              />
-              <Button variant="ghost" onClick={() => onManage(conversation.id)}>
-                Manage
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
+        )}
+      </ListBody>
     </SettingsCard>
   );
 }

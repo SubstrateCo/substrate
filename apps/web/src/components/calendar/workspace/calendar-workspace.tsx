@@ -3,7 +3,7 @@ import type { CalendarEventSummary } from "@substrate/contracts/calendar";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { linkOptions, useNavigate } from "@tanstack/react-router";
 
-import { useState } from "react";
+import { useState, type ComponentProps } from "react";
 
 import { CalendarEventPanel } from "../event/calendar-event-panel";
 import { CalendarMonth } from "./calendar-month";
@@ -80,19 +80,6 @@ export function CalendarWorkspace({
       to: "/calendar",
       search: { workspaceId: organizationId, view, date, eventId: event.entityId },
     });
-  const gridProps = { days, events: visible, now, selectedEventId: eventId, eventLink };
-  let body;
-  if (view === "week") body = <CalendarWeek {...gridProps} />;
-  else if (view === "month") body = <CalendarMonth {...gridProps} />;
-  else
-    body = (
-      <CalendarAgendaBody
-        days={groupEventsByDay(visible, days, showsToday ? today : undefined)}
-        now={now}
-        selectedEventId={eventId}
-        eventLink={eventLink}
-      />
-    );
   const titleDate = view === "week" ? days[3]! : anchor;
   return (
     <CalendarWorkspaceView
@@ -128,7 +115,17 @@ export function CalendarWorkspace({
         },
       }}
       needsReconnect={needsReconnect}
-      body={body}
+      body={
+        <CalendarBody
+          view={view}
+          days={days}
+          events={visible}
+          now={now}
+          today={showsToday ? today : undefined}
+          selectedEventId={eventId}
+          eventLink={eventLink}
+        />
+      }
       aside={
         eventId && (
           <CalendarEventPanel
@@ -139,6 +136,28 @@ export function CalendarWorkspace({
           />
         )
       }
+    />
+  );
+}
+
+/** The week, month, or agenda of the visible events. */
+function CalendarBody({
+  view,
+  today,
+  ...grid
+}: ComponentProps<typeof CalendarWeek> & {
+  view: CalendarViewMode;
+  /** Today, when the visible days include it. */
+  today: Date | undefined;
+}) {
+  if (view === "week") return <CalendarWeek {...grid} />;
+  if (view === "month") return <CalendarMonth {...grid} />;
+  return (
+    <CalendarAgendaBody
+      days={groupEventsByDay(grid.events, grid.days, today)}
+      now={grid.now}
+      selectedEventId={grid.selectedEventId}
+      eventLink={grid.eventLink}
     />
   );
 }

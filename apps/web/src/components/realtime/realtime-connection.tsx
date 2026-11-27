@@ -92,9 +92,28 @@ export function RealtimeConnection({
       void bridge.disconnect().catch(() => {});
     };
   }, [organizationId, userId, queryClient, router]);
-  let statusText = "Live updates disconnected.";
-  if (status === "connecting") statusText = "Reconnecting to live updates";
-  if (status === "forbidden") statusText = "Live updates unavailable. Check workspace access.";
+  return (
+    <RealtimeContainerContext value={setContainer}>
+      {status !== "connected" && <RealtimeStatusNotice status={status} container={container} />}
+      {children}
+    </RealtimeContainerContext>
+  );
+}
+
+const statusText: Record<Exclude<RealtimeStatus, "connected">, string> = {
+  connecting: "Reconnecting to live updates",
+  disconnected: "Live updates disconnected.",
+  forbidden: "Live updates unavailable. Check workspace access.",
+};
+
+/** Why live updates are off, over the page outlet when one is rendered. */
+function RealtimeStatusNotice({
+  status,
+  container,
+}: {
+  status: Exclude<RealtimeStatus, "connected">;
+  container: HTMLDivElement | null;
+}) {
   const notification = (
     <div
       // Center on the main page outlet when one is rendered; otherwise span the container.
@@ -102,14 +121,10 @@ export function RealtimeConnection({
       className={`${container ? "absolute" : "fixed"} pointer-events-none inset-x-page-outlet bottom-[max(--spacing(3),env(safe-area-inset-bottom))] z-50 flex justify-center`}
     >
       <Alert role="status" className="pointer-events-auto w-max max-w-full min-w-0">
-        <AlertDescription className="min-w-0 wrap-anywhere">{statusText}</AlertDescription>
+        <AlertDescription className="min-w-0 wrap-anywhere">{statusText[status]}</AlertDescription>
       </Alert>
     </div>
   );
-  return (
-    <RealtimeContainerContext value={setContainer}>
-      {status !== "connected" && (container ? createPortal(notification, container) : notification)}
-      {children}
-    </RealtimeContainerContext>
-  );
+  if (!container) return notification;
+  return createPortal(notification, container);
 }

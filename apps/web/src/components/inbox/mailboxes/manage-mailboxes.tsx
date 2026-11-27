@@ -32,6 +32,42 @@ type Actions = {
   onDisconnect: (id: string) => Promise<void>;
 };
 
+const statusNotes: Partial<Record<Mailbox["status"], string>> = {
+  syncing: "Syncing…",
+  reconnect: "Reconnect needed",
+  retry: "Sync paused",
+};
+
+type Outcome = { isPending: boolean; isError: boolean };
+
+/** The action in progress. The actions disable each other, so at most one runs. */
+function pendingAction(actions: Record<"rename" | "reconnect" | "disconnect", Outcome>) {
+  if (actions.rename.isPending) return "rename";
+  if (actions.reconnect.isPending) return "reconnect";
+  if (actions.disconnect.isPending) return "disconnect";
+}
+
+/** The one error line the actions share. */
+function settingsError(
+  box: Mailbox,
+  {
+    rename,
+    reconnect,
+    disconnect,
+  }: {
+    rename: Outcome;
+    reconnect: Outcome & { data?: string };
+    disconnect: Outcome;
+  },
+) {
+  if (rename.isError) return "Couldn’t save the nickname. Try again.";
+  if (reconnect.isError) return "Couldn’t reconnect Gmail. Try again.";
+  if (reconnect.data === "different-account")
+    return `Choose the Google account for ${box.address}. This connection hasn’t changed.`;
+  if (disconnect.isError) return "Couldn’t disconnect the mailbox. Try again.";
+  return "";
+}
+
 function MailboxSettings({ box, onRename, onReconnect, onDisconnect }: { box: Mailbox } & Actions) {
   const [nickname, setNickname] = useState(box.nickname ?? "");
   const [confirm, setConfirm] = useState(false);
@@ -46,16 +82,8 @@ function MailboxSettings({ box, onRename, onReconnect, onDisconnect }: { box: Ma
     mutationFn: () => onDisconnect(box.id),
     onSuccess: () => setConfirm(false),
   });
-  let pending: "rename" | "reconnect" | "disconnect" | undefined;
-  if (rename.isPending) pending = "rename";
-  else if (reconnect.isPending) pending = "reconnect";
-  else if (disconnect.isPending) pending = "disconnect";
-  let error = "";
-  if (rename.isError) error = "Couldn’t save the nickname. Try again.";
-  else if (reconnect.isError) error = "Couldn’t reconnect Gmail. Try again.";
-  else if (reconnect.data === "different-account")
-    error = `Choose the Google account for ${box.address}. This connection hasn’t changed.`;
-  else if (disconnect.isError) error = "Couldn’t disconnect the mailbox. Try again.";
+  const pending = pendingAction({ rename, reconnect, disconnect });
+  const error = settingsError(box, { rename, reconnect, disconnect });
   // The three actions share one error line, so each start clears the others' outcome.
   function clearError() {
     rename.reset();
@@ -80,9 +108,7 @@ function MailboxSettings({ box, onRename, onReconnect, onDisconnect }: { box: Ma
           ) : (
             <span>No completed sync</span>
           )}
-          {box.status === "syncing" && <span>Syncing…</span>}
-          {box.status === "reconnect" && <span>Reconnect needed</span>}
-          {box.status === "retry" && <span>Sync paused</span>}
+          {statusNotes[box.status] && <span>{statusNotes[box.status]}</span>}
         </div>
       </div>
       <form
@@ -152,12 +178,7 @@ function MailboxSettings({ box, onRename, onReconnect, onDisconnect }: { box: Ma
           Disconnect
         </Button>
       </div>
-      {error && !confirm && (
-        <p role="alert" className="text-xs text-destructive">
-          {error}
-        </p>
-      )}
-      {confirm && (
+      {confirm ? (
         <ConfirmDialog
           destructive
           title="Disconnect mailbox?"
@@ -174,6 +195,12 @@ function MailboxSettings({ box, onRename, onReconnect, onDisconnect }: { box: Ma
             disconnect.mutate();
           }}
         />
+      ) : (
+        error && (
+          <p role="alert" className="text-xs text-destructive">
+            {error}
+          </p>
+        )
       )}
     </section>
   );

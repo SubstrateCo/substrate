@@ -122,10 +122,11 @@ for (const status of [503, 403]) {
       },
     });
     expect(changed.ok()).toBe(true);
-    const feedback = agents(user.page).getByRole("alert");
-    await expect(feedback).toContainText(
-      status === 403 ? "Agents unavailable" : "Couldn’t load agents",
-    );
+    // Lost access replaces the list with an alert; a failed refresh keeps it under a status.
+    const feedback = agents(user.page)
+      .getByRole(status === 403 ? "alert" : "status")
+      .filter({ hasText: status === 403 ? "Agents unavailable" : "Couldn’t load agents" });
+    await expect(feedback).toBeVisible();
     await expect(user.page.getByText("Private diagnostic that must not be shown")).toHaveCount(0);
     if (status === 403) {
       await expect(user.page.getByText(agent.name, { exact: true })).toHaveCount(0);

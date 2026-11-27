@@ -4,7 +4,7 @@ import { useState } from "react";
 
 import { InteractionChangeDialog, type InteractionChange } from "./interaction-change-dialog";
 import { MeetingSourceLink } from "@/components/calendar/meeting-source-link";
-import { CrmResourceState } from "@/components/crm/crm-resource-state";
+import { CrmResourceBoundary } from "@/components/crm/crm-resource-state";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { InteractionLink } from "@/components/interactions/interaction-link";
 import { InteractionRow } from "@/components/interactions/interaction-row";
@@ -28,13 +28,11 @@ export function InteractionHistory({
 }) {
   const { organizationId } = useWorkspaceScope();
   const query = useQuery(interactionsOptions(organizationId, contactEntityId));
+  const state = resourceState(query);
   const apps = useOrganizationApps();
-  const sources = useInteractionSources(
-    organizationId,
-    resourceState(query).data ?? [],
-    apps.enabled("calendar"),
-  );
+  const sources = useInteractionSources(organizationId, state.data ?? [], apps.enabled("calendar"));
   const [selected, setSelected] = useState<InteractionChange | null>(null);
+  const change = openChange(selected, canEdit);
   return (
     <RecordSection
       aria-label="Interaction history"
@@ -47,67 +45,77 @@ export function InteractionHistory({
         )
       }
     >
-      <CrmResourceState
+      <CrmResourceBoundary
         compact
         noun="interactions"
-        pending={query.isPending}
-        error={query.error}
+        state={state}
         onRetry={() => void query.refetch()}
-      />
-      {!query.error && resourceState(query).data?.length === 0 && (
-        <ContentNotice variant="inline" title="No interactions recorded" />
-      )}
-      <ol className={recordRows}>
-        {(resourceState(query).data ?? []).map((interaction) => {
-          // Authors delete their own interactions, and admins delete any.
-          const deletable = interaction.canDelete;
-          return (
-            <InteractionRow
-              key={interaction.entityId}
-              kind={interaction.kind}
-              occurredAt={interaction.occurredAt}
-              summary={
-                <InteractionLink
-                  entityId={interaction.entityId}
-                  className="underline-offset-4 hover:underline"
-                  aria-label={`Open interaction: ${interaction.summary}`}
-                >
-                  {interaction.summary}
-                </InteractionLink>
-              }
-              source={
-                <MeetingSourceLink source={sources[interaction.entityId]} className="max-w-full" />
-              }
-              actions={
-                (canEdit || deletable) && (
-                  <RowActions label="Interaction actions">
-                    {canEdit && (
-                      <RowAction
-                        label="Edit interaction"
-                        onClick={() => setSelected({ ...interaction, action: "edit" })}
+      >
+        {(interactions) =>
+          interactions.length === 0 ? (
+            <ContentNotice variant="inline" title="No interactions recorded" />
+          ) : (
+            <ol className={recordRows}>
+              {interactions.map((interaction) => {
+                // Authors delete their own interactions, and admins delete any.
+                const deletable = interaction.canDelete;
+                return (
+                  <InteractionRow
+                    key={interaction.entityId}
+                    kind={interaction.kind}
+                    occurredAt={interaction.occurredAt}
+                    summary={
+                      <InteractionLink
+                        entityId={interaction.entityId}
+                        className="underline-offset-4 hover:underline"
+                        aria-label={`Open interaction: ${interaction.summary}`}
                       >
-                        <Pencil aria-hidden />
-                      </RowAction>
-                    )}
-                    {deletable && (
-                      <RowAction
-                        label="Delete interaction"
-                        destructive
-                        onClick={() => setSelected({ ...interaction, action: "delete" })}
-                      >
-                        <Trash2 aria-hidden />
-                      </RowAction>
-                    )}
-                  </RowActions>
-                )
-              }
-            />
-          );
-        })}
-      </ol>
-      {selected && (selected.action !== "edit" || canEdit) && (
-        <InteractionChangeDialog change={selected} onClose={() => setSelected(null)} />
-      )}
+                        {interaction.summary}
+                      </InteractionLink>
+                    }
+                    source={
+                      <MeetingSourceLink
+                        source={sources[interaction.entityId]}
+                        className="max-w-full"
+                      />
+                    }
+                    actions={
+                      (canEdit || deletable) && (
+                        <RowActions label="Interaction actions">
+                          {canEdit && (
+                            <RowAction
+                              label="Edit interaction"
+                              onClick={() => setSelected({ ...interaction, action: "edit" })}
+                            >
+                              <Pencil aria-hidden />
+                            </RowAction>
+                          )}
+                          {deletable && (
+                            <RowAction
+                              label="Delete interaction"
+                              destructive
+                              onClick={() => setSelected({ ...interaction, action: "delete" })}
+                            >
+                              <Trash2 aria-hidden />
+                            </RowAction>
+                          )}
+                        </RowActions>
+                      )
+                    }
+                  />
+                );
+              })}
+            </ol>
+          )
+        }
+      </CrmResourceBoundary>
+      {change && <InteractionChangeDialog change={change} onClose={() => setSelected(null)} />}
     </RecordSection>
   );
+}
+
+/** The chosen change, unless it is an edit and the reader can no longer edit. */
+function openChange(change: InteractionChange | null, canEdit: boolean) {
+  if (change?.action === "edit" && !canEdit) return null;
+  return change;
 }

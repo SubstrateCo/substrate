@@ -4,6 +4,24 @@ import { leaveConsequence } from "./leave-consequence";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { SelectField } from "@/components/forms/select-field";
 
+type OwnerCopyInput = { name: string; leaveLabel: string; publicChannel: boolean };
+
+const ownerCopy: Record<
+  "transfer" | "leave",
+  (input: OwnerCopyInput) => { title: string; description: string; confirm: string }
+> = {
+  transfer: ({ name }) => ({
+    title: `Change the owner of ${name}`,
+    description: "The new owner can add people, change the owner, and delete the conversation.",
+    confirm: "Change owner",
+  }),
+  leave: ({ name, leaveLabel, publicChannel }) => ({
+    title: `Leave ${name}?`,
+    description: `You own this conversation, so choose who owns it after you leave. ${leaveConsequence(publicChannel)}`,
+    confirm: leaveLabel,
+  }),
+};
+
 // "leave" is shown to the owner, who must hand over the conversation before leaving it.
 // Handing it over alone is a plain primary action; leaving is destructive like any other leave.
 export function OwnerDialog({
@@ -32,17 +50,13 @@ export function OwnerDialog({
   onRestoreFocus?: () => void;
 }) {
   const [owner, setOwner] = useState<string>();
-  const leaving = mode === "leave";
+  const copy = ownerCopy[mode]({ name, leaveLabel, publicChannel });
   return (
     <ConfirmDialog
-      title={leaving ? `Leave ${name}?` : `Change the owner of ${name}`}
-      description={
-        leaving
-          ? `You own this conversation, so choose who owns it after you leave. ${leaveConsequence(publicChannel)}`
-          : "The new owner can add people, change the owner, and delete the conversation."
-      }
-      confirmLabel={leaving ? leaveLabel : "Change owner"}
-      destructive={leaving}
+      title={copy.title}
+      description={copy.description}
+      confirmLabel={copy.confirm}
+      destructive={mode === "leave"}
       confirmDisabled={!owner}
       status={owner ? "" : "Choose a new owner"}
       pending={pending}
