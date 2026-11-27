@@ -82,7 +82,7 @@ test("a desktop-sent teammate invitation can be accepted by a new user in the br
   );
   await page.goto(invitation);
   await page.getByRole("link", { name: "Continue in browser", exact: true }).click();
-  await page.getByRole("link", { name: "Create account", exact: true }).click();
+  await page.getByRole("link", { name: "Create account to accept invitation", exact: true }).click();
   await signUp(page, email, password);
   await verifyEmail(page, request, email);
   await signIn(page, email, password);
@@ -197,7 +197,9 @@ test("switching accounts keeps the intended invitation", async ({
   await user.page.getByRole("button", { name: "Sign out", exact: true }).click();
   await expect(user.page).toHaveURL(/\/login\?/);
   expect(new URL(user.page.url()).searchParams.get("redirect")).toBe(destination);
-  await user.page.getByRole("link", { name: "Create account", exact: true }).click();
+  await user.page
+    .getByRole("link", { name: "Create account to accept invitation", exact: true })
+    .click();
   expect(new URL(user.page.url()).searchParams.get("redirect")).toBe(destination);
 });
 

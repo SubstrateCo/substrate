@@ -4,6 +4,7 @@ import { useRouter } from "@tanstack/react-router";
 import { BrowserElectronReturn } from "../desktop/browser-electron-return";
 import { formText } from "../form-values";
 import { LoginForm } from "@/components/auth/login/login-form-view";
+import { InvitationLoginScreen, LoginScreen } from "@/components/auth/login/login-screen-view";
 import { useAuthHref, useAuthLink, useElectronAuthorization } from "@/hooks/use-auth-href";
 import { safeRedirect } from "@/lib/auth/navigation";
 import { useEmailLogin } from "@/queries/auth/mutations";
@@ -24,31 +25,35 @@ export function BrowserLoginForm({ redirect, email }: { redirect: string; email:
         email={session.data?.user.email ?? login.variables?.email}
       />
     );
+  const invitation = safeRedirect(redirect).startsWith("/accept-invitation/");
+  const Screen = invitation ? InvitationLoginScreen : LoginScreen;
   return (
-    <LoginForm
-      email={email}
-      pending={login.isPending}
-      error={login.error}
-      onSubmit={(form) =>
-        login.mutate(
-          {
-            email: formText(form, "email"),
-            password: formText(form, "password"),
-            callbackURL: query ? authHref("/login", redirect) : safeRedirect(redirect),
-            query,
-          },
-          {
-            onSuccess: (result, input) => {
-              if (result.verificationRequired) {
-                return router.navigate(authLink("/verify-email", redirect, input.email));
-              }
-              if (!query) return router.navigate({ href: safeRedirect(redirect) });
+    <Screen signupLink={authLink("/signup", redirect)}>
+      <LoginForm
+        submitVariant={invitation ? "outline" : "default"}
+        email={email}
+        pending={login.isPending}
+        error={login.error}
+        onSubmit={(form) =>
+          login.mutate(
+            {
+              email: formText(form, "email"),
+              password: formText(form, "password"),
+              callbackURL: query ? authHref("/login", redirect) : safeRedirect(redirect),
+              query,
             },
-          },
-        )
-      }
-      forgotPasswordLink={authLink("/forgot-password", redirect)}
-      signupLink={authLink("/signup", redirect)}
-    />
+            {
+              onSuccess: (result, input) => {
+                if (result.verificationRequired) {
+                  return router.navigate(authLink("/verify-email", redirect, input.email));
+                }
+                if (!query) return router.navigate({ href: safeRedirect(redirect) });
+              },
+            },
+          )
+        }
+        forgotPasswordLink={authLink("/forgot-password", redirect)}
+      />
+    </Screen>
   );
 }
