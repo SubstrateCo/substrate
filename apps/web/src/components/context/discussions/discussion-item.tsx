@@ -5,6 +5,7 @@ import { Link } from "@tanstack/react-router";
 
 import { useId, useState } from "react";
 
+import { useRecordReferences } from "../references/use-record-references";
 import { discussionConversationName } from "./conversation-name";
 import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { ConversationKindIcon } from "@/components/messaging/conversations/conversation-kind-icon";
@@ -13,7 +14,6 @@ import { ActorAvatar, ActorKindTag } from "@/components/people/actor-avatar";
 import { Timestamp } from "@/components/time/timestamp";
 import { Item, ItemContent, ItemMedia } from "@/components/ui/item";
 import { actorIdentity } from "@/lib/actors/identity";
-import { plainReferenceText } from "@/lib/messaging/reference-token";
 import type { RecordLink } from "@/lib/navigation/record-links";
 import { cn } from "cn";
 import { MessageCircle, MessageSquareReply } from "lucide-react";
@@ -166,6 +166,7 @@ export function DiscussionItemSkeleton() {
 // Render the message like chat, but cap its height and fade it out when it overflows.
 function DiscussionBody({ body }: { body: string }) {
   const [overflows, setOverflows] = useState(false);
+  const { references, loading } = useRecordReferences(body);
   function ref(element: HTMLDivElement) {
     const observer = new ResizeObserver(() =>
       setOverflows(element.scrollHeight > element.clientHeight),
@@ -184,7 +185,7 @@ function DiscussionBody({ body }: { body: string }) {
         overflows && "mask-b-from-70%",
       )}
     >
-      <MessageMarkdown body={plainReferenceText(body)} />
+      <MessageMarkdown body={body} references={references} referencesLoading={loading} />
     </div>
   );
 }
