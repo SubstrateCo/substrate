@@ -11,7 +11,7 @@ import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import type { FormDialogEditor } from "@/components/feedback/form-dialog";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { FormTextField } from "@/components/forms/form-text-field";
-import { SettingsCard, SettingsFooter } from "@/components/layout/settings-section";
+import { SettingsFooter, SettingsSection } from "@/components/layout/settings-section";
 import { Field, FieldDescription, FieldLabel } from "@/components/ui/field";
 import { z } from "zod";
 
@@ -65,7 +65,7 @@ type AgentFormProps = {
 };
 
 /**
- * Create mode is a short dialog. Edit mode is one card with the name, model, and instructions in
+ * Create mode is a short dialog. Edit mode is one section with the name, model, and instructions in
  * one draft; leaving the settings overview with a draft asks first.
  */
 export function AgentForm({
@@ -168,7 +168,6 @@ export function AgentForm({
               <form.Field name="instructions">
                 {(field) => (
                   <AgentInstructions
-                    harness={harness}
                     startupInstructions={renderStartupInstructions({ harness, name })}
                     defaults={defaults ?? true}
                     creating={!agent}
@@ -243,22 +242,20 @@ export function AgentForm({
                 !(next.search.agentId === agent.id && next.search.settings === "overview")
               }
             />
-            <SettingsCard label="Agent details" footer={footer}>
-              <fieldset disabled={busy} className="grid min-w-0 gap-6">
-                <div className="grid min-w-0 gap-4">
-                  {nameField}
+            <SettingsSection title="Agent details">
+              <fieldset disabled={busy} className="grid min-w-0 gap-4">
+                <div className="flex min-w-0 items-center gap-4">
                   {picture}
+                  <div className="min-w-0 flex-1">{nameField}</div>
                 </div>
                 <Field>
                   <FieldLabel htmlFor={`${formId}-model`}>Model</FieldLabel>
                   {modelField}
-                  <FieldDescription>
-                    It runs on this agent’s desktop with the tools installed there.
-                  </FieldDescription>
                 </Field>
                 {instructionsField}
               </fieldset>
-            </SettingsCard>
+              <div className="border-t pt-4">{footer}</div>
+            </SettingsSection>
           </div>
         );
       }}

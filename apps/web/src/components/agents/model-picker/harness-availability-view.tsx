@@ -12,7 +12,7 @@ export type HarnessAvailabilityState =
 function describe(label: string, state: HarnessAvailabilityState) {
   switch (state.kind) {
     case "desktop-required":
-      return { tone: "bg-muted-foreground", text: "Open the desktop app to check availability." };
+      return { tone: "bg-muted-foreground", text: "Desktop only" };
     case "checking":
       return { tone: "bg-muted-foreground", text: `Checking ${label}` };
     case "error":

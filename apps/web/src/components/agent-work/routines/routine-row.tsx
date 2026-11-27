@@ -14,6 +14,7 @@ import {
   ItemTitle,
 } from "@/components/ui/item";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { needsApproval } from "@/lib/agent-work/routine-groups";
 import { formatDateTime, formatTimeZone, formatZonedDateTime } from "@/lib/format/date";
 import { CalendarClock, Hand, Pencil, Trash2 } from "lucide-react";
@@ -70,13 +71,19 @@ export function RoutineRow({
           <ItemTitle className="max-w-full">
             <span className="truncate">{routine.name}</span>
             {unapproved && <Tag tone="warning">Needs your approval</Tag>}
-            {!unapproved && !routine.enabled && <Tag>Paused</Tag>}
+            {!unapproved && !routine.enabled && !showPrompt && <Tag>Paused</Tag>}
           </ItemTitle>
-          <ItemDescription>
-            {describeSchedule(routine.cron)} ·{" "}
-            {formatTimeZone(routine.timezone, routine.nextFireAt ?? undefined)}
-          </ItemDescription>
-          {next && <ItemDescription title={next.title}>{next.text}</ItemDescription>}
+          <div className="flex flex-wrap gap-x-4 gap-y-1">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <ItemDescription tabIndex={0}>{describeSchedule(routine.cron)}</ItemDescription>
+              </TooltipTrigger>
+              <TooltipContent>
+                {formatTimeZone(routine.timezone, routine.nextFireAt ?? undefined)}
+              </TooltipContent>
+            </Tooltip>
+            {next && <ItemDescription title={next.title}>{next.text}</ItemDescription>}
+          </div>
           {/*
             Future: the last run's result, once the server reports it with each routine.
             {routine.lastRun?.status === "failed" && (
@@ -87,7 +94,19 @@ export function RoutineRow({
           */}
           {showPrompt && <ItemDescription>{routine.prompt}</ItemDescription>}
         </ItemContent>
-        <ItemActions>
+        <ItemActions className="self-start">
+          <RowActions label={`Actions for ${routine.name}`}>
+            <RowAction label={`Edit ${routine.name}`} onClick={() => onEdit(routine.id)}>
+              <Pencil />
+            </RowAction>
+            <RowAction
+              label={`Delete ${routine.name}`}
+              destructive
+              onClick={() => onDelete(routine)}
+            >
+              <Trash2 />
+            </RowAction>
+          </RowActions>
           {unapproved ? (
             <PendingButton
               type="button"
@@ -108,18 +127,6 @@ export function RoutineRow({
               onCheckedChange={(enabled) => onEnabledChange(routine, enabled)}
             />
           )}
-          <RowActions label={`Actions for ${routine.name}`}>
-            <RowAction label={`Edit ${routine.name}`} onClick={() => onEdit(routine.id)}>
-              <Pencil />
-            </RowAction>
-            <RowAction
-              label={`Delete ${routine.name}`}
-              destructive
-              onClick={() => onDelete(routine)}
-            >
-              <Trash2 />
-            </RowAction>
-          </RowActions>
         </ItemActions>
       </li>
     </Item>

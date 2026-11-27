@@ -6,21 +6,18 @@ import { Input } from "@/components/ui/input";
 import { ChevronRight } from "lucide-react";
 
 /**
- * A skills or MCP servers page in the settings sheet: what it is, a toolbar, then its lists. The
+ * A skills or MCP servers page in the settings sheet: a toolbar, then its lists. The
  * sheet header names the page, so it has no title of its own.
  */
 export function ConfigurationPage({
-  description,
   toolbar,
   children,
 }: {
-  description: string;
   toolbar: ReactNode;
   children: ReactNode;
 }) {
   return (
-    <div className="grid min-w-0 gap-4">
-      <p className="text-sm text-muted-foreground">{description}</p>
+    <div className="grid min-w-0 gap-6">
       <div className="flex flex-wrap items-center gap-2">{toolbar}</div>
       {children}
     </div>
@@ -43,7 +40,7 @@ export function ConfigurationSearch({
       type="search"
       aria-label={`Search ${label}`}
       placeholder={`Search ${count} ${label}`}
-      className="w-72 max-w-full"
+      className="min-w-0 flex-1 basis-40"
       value={value}
       onChange={(event) => onChange(event.target.value)}
     />
@@ -54,33 +51,35 @@ export function ConfigurationSearch({
 export function BuiltInGroup({
   title,
   count,
-  description,
+  actions,
   children,
 }: {
   title: string;
   count: number;
-  description: string;
+  actions?: ReactNode;
   children: ReactNode;
 }) {
   const id = useId();
   return (
-    <Collapsible className="group/builtin">
-      <CollapsibleTrigger asChild>
-        <Button type="button" variant="disclosure" size="xs" aria-controls={id}>
-          {title}
-          <span className="tabular-nums">{count}</span>
-          <ChevronRight
-            aria-hidden="true"
-            className="transition-transform duration-150 ease-out group-data-[state=open]/builtin:rotate-90 motion-reduce:transition-none"
-          />
-        </Button>
-      </CollapsibleTrigger>
-      <CollapsibleContent id={id}>
-        <div className="mt-2 grid min-w-0 gap-2">
-          <p className="text-xs text-muted-foreground">{description}</p>
-          {children}
+    <Collapsible asChild>
+      <div className="group/builtin border-t pt-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <CollapsibleTrigger asChild>
+            <Button type="button" variant="disclosure" size="xs" aria-controls={id}>
+              {title}
+              <span className="tabular-nums">{count}</span>
+              <ChevronRight
+                aria-hidden="true"
+                className="transition-transform duration-150 ease-out group-data-[state=open]/builtin:rotate-90 motion-reduce:transition-none"
+              />
+            </Button>
+          </CollapsibleTrigger>
+          {actions}
         </div>
-      </CollapsibleContent>
+        <CollapsibleContent id={id}>
+          <div className="mt-2 grid min-w-0 gap-2">{children}</div>
+        </CollapsibleContent>
+      </div>
     </Collapsible>
   );
 }

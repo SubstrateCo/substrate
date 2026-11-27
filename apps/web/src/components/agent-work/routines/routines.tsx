@@ -128,7 +128,6 @@ export function Routines({
       {editingId && (
         <RoutineEditor
           key={editingId}
-          agentName={name}
           editing={editing?.name}
           initial={
             editing

@@ -1,16 +1,8 @@
 import type { AgentSection } from "../editors/agent-form";
 import { ConfigurationListLoading } from "./configuration-sections";
+import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
-import { SettingsNote } from "@/components/layout/settings-section";
 import { Laptop } from "lucide-react";
-
-/** Where to edit the configuration when this device is not the agent's home desktop. */
-function homeNotice(section: AgentSection, homeDeviceName?: string) {
-  const items = section === "skills" ? "Skills" : "MCP servers";
-  return homeDeviceName
-    ? `${items} are edited on ${homeDeviceName}, this agent’s home desktop. Open Substrate there to change them.`
-    : `${items} are edited on this agent’s home desktop. Open Substrate on your desktop, then choose Run on this device in run settings.`;
-}
 
 export function ConfigurationStatus({
   available,
@@ -30,15 +22,12 @@ export function ConfigurationStatus({
   error: Error | null;
   onRetry: () => void;
 }) {
+  let title = "Choose a home desktop in run settings";
+  if (!agentId) title = "Save the agent first";
+  else if (homeDeviceName) title = `Edit on ${homeDeviceName}`;
   return (
     <>
-      {!available && (
-        <SettingsNote icon={<Laptop />}>
-          {agentId
-            ? homeNotice(section, homeDeviceName)
-            : "Save this agent to see its local configuration."}
-        </SettingsNote>
-      )}
+      {!available && <ContentNotice variant="inline" icon={Laptop} title={title} />}
       {available && pending && (
         <div role="status" aria-label="Reading the agent’s files">
           <div aria-hidden="true">

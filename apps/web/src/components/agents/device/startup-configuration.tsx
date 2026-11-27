@@ -1,48 +1,31 @@
 import type { HarnessSkill } from "@substrate/contracts/harness-runtime";
 
-import { Tag } from "@/components/feedback/tag";
-import { SettingsList } from "@/components/layout/settings-section";
-import {
-  Item,
-  ItemActions,
-  ItemContent,
-  ItemDescription,
-  ItemMedia,
-  ItemTitle,
-} from "@/components/ui/item";
+import { recordRows } from "@/components/layout/record-section";
+import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
 import { Blocks } from "lucide-react";
 
 /** Skills that Substrate writes into the agent folder. */
-export function StartupSkills({ skills, scanned }: { skills: HarnessSkill[]; scanned: boolean }) {
+export function StartupSkills({ skills }: { skills: HarnessSkill[] }) {
   return (
-    <SettingsList label="Substrate skills">
+    <ul aria-label="Substrate skills" className={recordRows}>
       {skills.map((skill) => (
         <Item key={skill.id} asChild size="xs">
           <li>
             <ItemContent className="min-w-0">
-              <ItemTitle className="max-w-full">{skill.name}</ItemTitle>
+              <ItemTitle className="max-w-full">
+                <code>{skill.name}</code>
+              </ItemTitle>
               <ItemDescription>{skill.description}</ItemDescription>
             </ItemContent>
-            <ItemActions>
-              <Tag>{scanned ? "Managed" : "Default"}</Tag>
-            </ItemActions>
           </li>
         </Item>
       ))}
-    </SettingsList>
+    </ul>
   );
 }
 
 /** One MCP server: its name and how the agent reaches it. */
-export function McpServerRow({
-  name,
-  detail,
-  builtIn,
-}: {
-  name: string;
-  detail?: string;
-  builtIn?: boolean;
-}) {
+export function McpServerRow({ name, detail }: { name: string; detail?: string }) {
   return (
     <Item asChild size="xs">
       <li>
@@ -53,11 +36,6 @@ export function McpServerRow({
           <ItemTitle className="max-w-full">{name}</ItemTitle>
           {detail && <ItemDescription>{detail}</ItemDescription>}
         </ItemContent>
-        {builtIn && (
-          <ItemActions>
-            <Tag>Built-in</Tag>
-          </ItemActions>
-        )}
       </li>
     </Item>
   );

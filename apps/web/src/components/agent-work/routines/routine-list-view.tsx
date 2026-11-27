@@ -6,6 +6,7 @@ import { RoutineRow, RoutineRowLoading, type RoutineRowActions } from "./routine
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { SegmentedControl } from "@/components/forms/segmented-control";
+import { RecordSection, recordRows } from "@/components/layout/record-section";
 import { SettingsList } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,7 +45,6 @@ function NewRoutineButton({ onAdd }: { onAdd: () => void }) {
  * paused. Search and a filter keep a long list short.
  */
 export function RoutineListView({
-  name,
   routines,
   now,
   loading,
@@ -53,7 +53,6 @@ export function RoutineListView({
   onAdd,
   ...actions
 }: {
-  name: string;
   routines: AgentRoutineView[];
   now: number;
   loading: boolean;
@@ -82,7 +81,6 @@ export function RoutineListView({
         variant="compact"
         icon={CalendarClock}
         title="No routines yet"
-        description={`A routine asks ${name} to do something on a schedule, like a summary every weekday at 9:00 AM.`}
         action={<NewRoutineButton onAdd={onAdd} />}
       />
     );
@@ -93,40 +91,38 @@ export function RoutineListView({
       <div className="grid min-w-0 gap-6" role="list" aria-label="Routines">
         {groups.map(({ group, routines: items }) => (
           <div role="listitem" key={group}>
-            <SettingsList title={`${groupTitles[group]} · ${items.length}`}>
-              {items.map((routine) => (
-                <RoutineRow key={routine.id} routine={routine} showPrompt {...actions} />
-              ))}
-            </SettingsList>
+            <RecordSection title={groupTitles[group]} count={items.length}>
+              <ul aria-label={groupTitles[group]} className={recordRows}>
+                {items.map((routine) => (
+                  <RoutineRow key={routine.id} routine={routine} showPrompt {...actions} />
+                ))}
+              </ul>
+            </RecordSection>
           </div>
         ))}
       </div>
     );
   return (
     <div className="grid min-w-0 gap-4">
-      <p className="text-sm text-muted-foreground">
-        Work {name} starts on a schedule. {name} can also add and change routines; you approve them
-        before they run.
-      </p>
       {routines.length > 0 && (
-        <div className="flex flex-wrap items-center gap-2">
-          <Input
-            type="search"
-            aria-label="Search routines"
-            placeholder={`Search ${routines.length} routines`}
-            className="w-72 max-w-full"
-            value={query}
-            onChange={(event) => setQuery(event.target.value)}
-          />
+        <div className="grid min-w-0 gap-3">
+          <div className="flex items-center gap-2">
+            <Input
+              type="search"
+              aria-label="Search routines"
+              placeholder={`Search ${routines.length} routines`}
+              className="min-w-0 flex-1"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <NewRoutineButton onAdd={onAdd} />
+          </div>
           <SegmentedControl
             aria-label="Show routines"
             value={filter}
             options={filterOptions}
             onValueChange={setFilter}
           />
-          <div className="ml-auto">
-            <NewRoutineButton onAdd={onAdd} />
-          </div>
         </div>
       )}
       {content}

@@ -11,16 +11,15 @@ import {
   localConfigurationOptions,
 } from "@/queries/agents/local-configuration";
 
-const named = (names: string[], builtIn: string | undefined) => {
+const named = (names: string[]) => {
   const shown = names.slice(0, 3).join(", ");
   const more = names.length > 3 ? ` and ${names.length - 3} more` : "";
-  const own = names.length ? `${shown}${more}` : "None of your own";
-  return builtIn ? `${own} · plus ${builtIn}` : own;
+  return names.length ? `${shown}${more}` : "None";
 };
 
 /**
  * Counts the agent's skills and servers from its files. Only its home desktop can read them;
- * elsewhere the rows say where to edit them.
+ * elsewhere the counts are unknown.
  */
 export function ToolsSummary({
   agent,
@@ -40,11 +39,7 @@ export function ToolsSummary({
     !!homeDevice?.current,
   );
   const configuration = useQuery(localConfigurationOptions(userId, local));
-  const elsewhere: ToolSummary = {
-    detail: homeDevice
-      ? `Edit on ${homeDevice.name}, this agent’s home desktop`
-      : "Edit on this agent’s home desktop",
-  };
+  const elsewhere: ToolSummary = { detail: "" };
   let skills = elsewhere;
   let servers = elsewhere;
   if (local && !configuration.data) {
@@ -58,17 +53,11 @@ export function ToolsSummary({
   } else if (configuration.data) {
     const own = configuration.data.skills.filter((skill) => !startupSkillIds.includes(skill.id));
     skills = {
-      detail: named(
-        own.map((skill) => openingName(skill)),
-        agent.useStartupDefaults ? "Substrate skills" : undefined,
-      ),
+      detail: named(own.map((skill) => openingName(skill))),
       count: own.length,
     };
     servers = {
-      detail: named(
-        configuration.data.mcpServers.map((server) => server.name),
-        agent.useStartupDefaults ? "the Substrate server" : undefined,
-      ),
+      detail: named(configuration.data.mcpServers.map((server) => server.name)),
       count: configuration.data.mcpServers.length,
     };
   }

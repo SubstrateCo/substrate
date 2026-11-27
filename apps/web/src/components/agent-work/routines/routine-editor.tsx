@@ -47,7 +47,6 @@ const frequencies = [
 
 /** Creates or edits a routine in a dialog. A save applies from the next run. */
 export function RoutineEditor({
-  agentName,
   editing,
   initial,
   pending,
@@ -56,7 +55,6 @@ export function RoutineEditor({
   onCancel,
   onRestoreFocus,
 }: {
-  agentName: string;
   /** The routine's current name, when editing. */
   editing?: string;
   initial: RoutineDraft;
@@ -110,11 +108,7 @@ export function RoutineEditor({
   return (
     <FormDialog
       title={editing ? `Edit ${editing}` : "New routine"}
-      description={
-        editing
-          ? `${agentName} runs it on its desktop. Changes apply from the next run.`
-          : `${agentName} runs it on its desktop and posts in your direct message with it.`
-      }
+      description={null}
       saveLabel={editing ? "Save" : "Create routine"}
       size="lg"
       pending={pending}
@@ -178,41 +172,47 @@ export function RoutineEditor({
                 </FieldDescription>
               )}
             </Field>
-          ) : (
-            <div className="grid gap-4 sm:grid-cols-2">
-              {schedule.frequency === "weekly" && (
-                <SelectField
-                  label="On"
-                  value={String(schedule.weekday)}
-                  onChange={(value) => setScheduleField({ weekday: Number(value) })}
-                  options={weekdayNames.map((day, index) => ({ value: String(index), label: day }))}
-                />
-              )}
+          ) : null}
+          <div
+            className={
+              schedule.frequency === "weekly"
+                ? "grid min-w-0 gap-4 sm:grid-cols-3"
+                : "grid min-w-0 gap-4 sm:grid-cols-2"
+            }
+          >
+            {schedule.frequency === "weekly" && (
+              <SelectField
+                label="On"
+                value={String(schedule.weekday)}
+                onChange={(value) => setScheduleField({ weekday: Number(value) })}
+                options={weekdayNames.map((day, index) => ({ value: String(index), label: day }))}
+              />
+            )}
+            {schedule.frequency !== "custom" && (
               <SelectField
                 label="At"
                 value={schedule.time}
                 onChange={(time) => setScheduleField({ time })}
                 options={timeOptions(schedule.time)}
               />
-            </div>
-          )}
+            )}
+            <Field data-invalid={!!errors.timezone}>
+              <FieldLabel htmlFor={fieldId("timezone")}>Time zone</FieldLabel>
+              <TimeZonePicker
+                id={fieldId("timezone")}
+                value={draft.timezone}
+                invalid={!!errors.timezone}
+                describedBy={errors.timezone && `${fieldId("timezone")}-error`}
+                disabled={pending}
+                onChange={(zone) => form.setFieldValue("timezone", zone)}
+              />
+              {fieldError("timezone")}
+            </Field>
+          </div>
         </FieldSet>
-        <Field data-invalid={!!errors.timezone}>
-          <FieldLabel htmlFor={fieldId("timezone")}>Time zone</FieldLabel>
-          <TimeZonePicker
-            id={fieldId("timezone")}
-            value={draft.timezone}
-            invalid={!!errors.timezone}
-            describedBy={errors.timezone && `${fieldId("timezone")}-error`}
-            disabled={pending}
-            onChange={(zone) => form.setFieldValue("timezone", zone)}
-          />
-          {fieldError("timezone")}
-        </Field>
         <Field orientation="horizontal" className="items-center">
           <FieldContent>
             <FieldLabel htmlFor={`${id}-enabled`}>Active</FieldLabel>
-            <FieldDescription>Paused routines keep their settings but don’t run.</FieldDescription>
           </FieldContent>
           <Switch
             id={`${id}-enabled`}

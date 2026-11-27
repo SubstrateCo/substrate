@@ -9,14 +9,17 @@ import { AgentForm } from "@/components/agents/editors/agent-form";
 import { AgentPicture } from "@/components/agents/editors/agent-picture";
 import { useAgentFieldRenderers } from "@/components/agents/editors/use-agent-field-renderers";
 import { AgentRunSettings } from "@/components/agents/run-settings/agent-run-settings";
-import { DangerZoneCard } from "@/components/feedback/danger-zone-card";
+import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
+import { useStateDialog } from "@/components/feedback/use-state-dialog";
+import { Button } from "@/components/ui/button";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useAgentMutations } from "@/queries/agents/mutations";
+import { Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 /**
  * Every setting of one agent on one scrolling page: its details, when it runs, a summary of its
- * routines and tools, and delete. Only the details card holds a draft; everything else saves at
+ * routines and tools, and delete. Only the details section holds a draft; everything else saves at
  * once or opens its own list.
  */
 export function AgentSettingsOverview({
@@ -33,9 +36,10 @@ export function AgentSettingsOverview({
   const { userId } = useWorkspaceScope();
   const { save, remove } = useAgentMutations(userId);
   const renderers = useAgentFieldRenderers(agent.id);
+  const deletion = useStateDialog<true>();
   const pending = save.isPending || remove.isPending;
   return (
-    <div className="grid min-w-0 gap-6">
+    <div className="grid min-w-0 gap-8">
       <AgentForm
         key={agent.id}
         {...renderers}
@@ -54,26 +58,45 @@ export function AgentSettingsOverview({
         homeDevice={runSettings?.homeDevice ?? null}
         onOpen={onOpenPage}
       />
-      <DangerZoneCard
-        title="Delete agent"
-        actionLabel={`Delete ${agent.name}`}
-        description={`Removes ${agent.name} and its settings. Messages it posted stay.`}
-        confirmTitle={`Delete ${agent.name}?`}
-        confirmDescription={`This removes ${agent.name} and its settings. Messages it already posted stay in their conversations. You can’t undo this.`}
-        pending={pending}
-        error={remove.error}
-        errorDescription="We couldn’t delete this agent. Try again."
-        onReset={() => remove.reset()}
-        onConfirm={(closeConfirm) =>
-          remove.mutate(agent.id, {
-            onSuccess: () => {
-              toast.success("Agent deleted.");
-              closeConfirm();
-              onDeleted();
-            },
-          })
-        }
-      />
+      <Button
+        type="button"
+        variant="destructive-ghost"
+        aria-label={`Delete ${agent.name}`}
+        className="-ml-3 w-fit"
+        disabled={pending}
+        onClick={() => {
+          remove.reset();
+          deletion.open(true);
+        }}
+      >
+        <Trash2 aria-hidden="true" />
+        Delete agent
+      </Button>
+      {deletion.value && (
+        <ConfirmDialog
+          title={`Delete ${agent.name}?`}
+          description="This can’t be undone. Messages it posted will stay."
+          confirmLabel="Delete agent"
+          destructive
+          pending={pending}
+          error={remove.error}
+          errorDescription="We couldn’t delete this agent. Try again."
+          onRestoreFocus={deletion.restoreFocus}
+          onClose={() => {
+            deletion.close();
+            remove.reset();
+          }}
+          onConfirm={() =>
+            remove.mutate(agent.id, {
+              onSuccess: () => {
+                toast.success("Agent deleted.");
+                deletion.close();
+                onDeleted();
+              },
+            })
+          }
+        />
+      )}
     </div>
   );
 }

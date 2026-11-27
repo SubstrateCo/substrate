@@ -6,15 +6,16 @@ import { CatalogRow } from "../catalog/catalog-row";
 import { BuiltInGroup, ConfigurationPage, ConfigurationSearch } from "./configuration-page";
 import { configurationSections, matchesSearch } from "./configuration-section-copy";
 import { McpServerRow } from "./startup-configuration";
-import { SettingsList, SettingsNote } from "@/components/layout/settings-section";
+import { RecordSection, recordRows } from "@/components/layout/record-section";
+import { SettingsNote } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import { mcpServerLimitReached } from "@/lib/agents/mcp-server-draft";
 import { Blocks, Info, Plus } from "lucide-react";
 
 /** How the agent reaches a server: the command it runs or the host it calls. */
 function serverDetail(server: HarnessMcpServer) {
-  if (server.transport === "stdio") return `Runs ${server.command}`;
-  return `Connects to ${new URL(server.url).host}`;
+  if (server.transport === "stdio") return server.command;
+  return new URL(server.url).host;
 }
 
 /*
@@ -68,11 +69,10 @@ export function McpServersSection({
   const [query, setQuery] = useState("");
   const full = mcpServerLimitReached(servers);
   const shown = servers.filter((server) => matchesSearch(query, server.name, serverDetail(server)));
-  let empty = "No servers of your own yet. Add one to give this agent more tools.";
+  let empty = "No servers yet.";
   if (query.trim()) empty = "No servers match.";
   return (
     <ConfigurationPage
-      description={configurationSections.mcps.description}
       toolbar={
         <>
           {scanned && servers.length > 0 && (
@@ -100,27 +100,30 @@ export function McpServersSection({
     >
       {status}
       {scanned && (
-        <SettingsList
-          title={`${configurationSections.mcps.listTitle} · ${servers.length} of ${maxHarnessMcpServers}`}
+        <RecordSection
+          title={configurationSections.mcps.listTitle}
+          count={`${servers.length} / ${maxHarnessMcpServers}`}
         >
-          {shown.length ? (
-            shown.map((server) => (
-              <CatalogRow
-                key={server.id}
-                name={server.name}
-                detail={serverDetail(server)}
-                picture={
-                  <Blocks aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                }
-                disabled={busy}
-                onEdit={() => onEdit(server)}
-                onDelete={() => onDelete(server)}
-              />
-            ))
-          ) : (
-            <li className="px-4 py-3 text-sm text-muted-foreground">{empty}</li>
-          )}
-        </SettingsList>
+          <ul aria-label="Your servers" className={recordRows}>
+            {shown.length ? (
+              shown.map((server) => (
+                <CatalogRow
+                  key={server.id}
+                  name={server.name}
+                  detail={serverDetail(server)}
+                  picture={
+                    <Blocks aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
+                  }
+                  disabled={busy}
+                  onEdit={() => onEdit(server)}
+                  onDelete={() => onDelete(server)}
+                />
+              ))
+            ) : (
+              <li className="px-4 py-3 text-sm text-muted-foreground">{empty}</li>
+            )}
+          </ul>
+        </RecordSection>
       )}
       {full && (
         <SettingsNote icon={<Info />}>
@@ -129,14 +132,10 @@ export function McpServersSection({
         </SettingsNote>
       )}
       {defaults && (
-        <BuiltInGroup
-          title="Built-in server"
-          count={1}
-          description="Substrate adds the built-in server, which lets the agent read and post in this workspace."
-        >
-          <SettingsList label="Built-in server">
-            <McpServerRow name="substrate" detail="Substrate workspace" builtIn />
-          </SettingsList>
+        <BuiltInGroup title="Built-in server" count={1}>
+          <ul aria-label="Built-in server" className={recordRows}>
+            <McpServerRow name="substrate" detail="Substrate workspace" />
+          </ul>
         </BuiltInGroup>
       )}
     </ConfigurationPage>

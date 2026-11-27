@@ -1,7 +1,9 @@
-import { useId, type ReactNode } from "react";
+import type { ReactNode } from "react";
 
-import { GroupTitle, SettingsList } from "@/components/layout/settings-section";
+import { recordRows } from "@/components/layout/record-section";
+import { SettingsSection } from "@/components/layout/settings-section";
 import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
+import { cn } from "cn";
 import { ArrowRight, Blocks, Sparkles, type LucideIcon } from "lucide-react";
 
 export type ToolSummary = {
@@ -32,14 +34,20 @@ function ToolRow({
             <Icon aria-hidden="true" className="text-muted-foreground" />
           </ItemMedia>
           <ItemContent className="min-w-0">
-            <ItemTitle>{title}</ItemTitle>
-            <ItemDescription>{summary.detail}</ItemDescription>
+            <div className="flex min-w-0 items-center gap-2">
+              <ItemTitle>{title}</ItemTitle>
+              <div className="ml-auto flex items-center gap-2">
+                {extra}
+                {summary.count !== undefined && (
+                  <span className="text-xs text-muted-foreground tabular-nums">
+                    {summary.count}
+                  </span>
+                )}
+                <ArrowRight aria-hidden="true" className="size-4 text-muted-foreground" />
+              </div>
+            </div>
+            {summary.detail && <ItemDescription>{summary.detail}</ItemDescription>}
           </ItemContent>
-          {extra}
-          {summary.count !== undefined && (
-            <span className="text-xs text-muted-foreground tabular-nums">{summary.count}</span>
-          )}
-          <ArrowRight aria-hidden="true" className="size-4 text-muted-foreground" />
         </button>
       </Item>
     </li>
@@ -59,11 +67,9 @@ export function ToolsSummaryView({
   servers: ToolSummary;
   onOpen: (page: "skills" | "mcps") => void;
 }) {
-  const id = useId();
   return (
-    <section aria-labelledby={`${id}-title`} className="grid min-w-0 gap-3">
-      <GroupTitle id={`${id}-title`} title="Tools" />
-      <SettingsList label="Tools">
+    <SettingsSection title="Tools">
+      <ul aria-label="Tools" className={cn(recordRows, "min-w-0 gap-4 @md:grid-cols-2")}>
         <ToolRow icon={Sparkles} title="Skills" summary={skills} onOpen={() => onOpen("skills")} />
         <ToolRow
           icon={Blocks}
@@ -73,7 +79,7 @@ export function ToolsSummaryView({
           // extra={failing > 0 && <Tag tone="destructive">{failing} can't connect</Tag>}
           onOpen={() => onOpen("mcps")}
         />
-      </SettingsList>
-    </section>
+      </ul>
+    </SettingsSection>
   );
 }

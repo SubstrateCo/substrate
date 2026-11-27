@@ -1,11 +1,10 @@
 import type { AgentRoutineView } from "@substrate/contracts/agent-work";
 
-import { useId } from "react";
-
 import { RoutineRow, RoutineRowLoading, type RoutineRowActions } from "./routine-row";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
-import { GroupTitle, SettingsList } from "@/components/layout/settings-section";
+import { recordRows } from "@/components/layout/record-section";
+import { SettingsList, SettingsSection } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import { Item, ItemContent } from "@/components/ui/item";
 import { routineHighlights } from "@/lib/agent-work/routine-groups";
@@ -18,7 +17,6 @@ const countLabel = (count: number) => `${count} ${count === 1 ? "routine" : "rou
  * However many routines the agent has, this stays a few rows long; the rest are one click away.
  */
 export function RoutineSummaryView({
-  name,
   routines,
   now,
   loading,
@@ -28,7 +26,6 @@ export function RoutineSummaryView({
   onShowAll,
   ...actions
 }: {
-  name: string;
   routines: AgentRoutineView[];
   now: number;
   loading: boolean;
@@ -37,25 +34,22 @@ export function RoutineSummaryView({
   onAdd: () => void;
   onShowAll: () => void;
 } & RoutineRowActions) {
-  const id = useId();
   const { needsYou, upcoming, activeCount, pausedCount } = routineHighlights(routines, { now });
   const shown = [...needsYou, ...upcoming];
   const description = routines.length
     ? `${countLabel(routines.length)} · ${activeCount} active · ${pausedCount} paused`
     : undefined;
   return (
-    <section aria-labelledby={`${id}-title`} className="grid min-w-0 gap-3">
-      <GroupTitle
-        id={`${id}-title`}
-        title="Routines"
-        description={description}
-        actions={
-          <Button type="button" size="sm" variant="outline" onClick={onAdd}>
-            <Plus aria-hidden="true" />
-            New routine
-          </Button>
-        }
-      />
+    <SettingsSection
+      title="Routines"
+      description={description}
+      actions={
+        <Button type="button" size="sm" variant="outline" onClick={onAdd}>
+          <Plus aria-hidden="true" />
+          New routine
+        </Button>
+      }
+    >
       {error && !routines.length && (
         <ErrorState variant="compact" title="Couldn’t load routines" onRetry={onRetry} />
       )}
@@ -67,15 +61,10 @@ export function RoutineSummaryView({
         </div>
       )}
       {!loading && !error && !routines.length && (
-        <ContentNotice
-          variant="compact"
-          icon={CalendarClock}
-          title="No routines yet"
-          description={`A routine asks ${name} to do something on a schedule.`}
-        />
+        <ContentNotice variant="compact" icon={CalendarClock} title="No routines yet" />
       )}
       {routines.length > 0 && (
-        <SettingsList label="Routines that need you and the next runs">
+        <ul aria-label="Routines that need you and the next runs" className={recordRows}>
           {shown.map((routine) => (
             <RoutineRow key={routine.id} routine={routine} {...actions} />
           ))}
@@ -93,8 +82,8 @@ export function RoutineSummaryView({
               </button>
             </Item>
           </li>
-        </SettingsList>
+        </ul>
       )}
-    </section>
+    </SettingsSection>
   );
 }

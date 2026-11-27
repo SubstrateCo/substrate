@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 
 import { FormMessage } from "@/components/feedback/form-message";
 import { PendingButton } from "@/components/feedback/pending-button";
-import { SettingsCard, SettingsRow } from "@/components/layout/settings-section";
+import { SettingsRow, SettingsSection } from "@/components/layout/settings-section";
 import { Item, ItemActions, ItemContent, ItemMedia } from "@/components/ui/item";
 import { Switch } from "@/components/ui/switch";
 import { homeDeviceLabel } from "@/lib/agents/triggers";
@@ -15,9 +15,9 @@ type HomeDevice = { name: string; online: boolean; current: boolean } | null;
 /** "When it runs": the shared frame of the card and its loading view. */
 export function WhenItRunsCard({ children }: { children: ReactNode }) {
   return (
-    <SettingsCard title="When it runs" description="Changes here save at once.">
-      <div className="grid min-w-0 divide-y">{children}</div>
-    </SettingsCard>
+    <SettingsSection title="When it runs">
+      <div className="grid min-w-0 divide-y sm:-mx-3">{children}</div>
+    </SettingsSection>
   );
 }
 
@@ -72,11 +72,6 @@ export function AgentRunSettingsView({
         device={
           <>
             <p className="text-sm font-medium">{homeDeviceLabel(homeDevice)}</p>
-            {!canRunHere && !homeDevice?.current && (
-              <p className="text-xs text-muted-foreground">
-                Open Substrate on a desktop to run this agent there.
-              </p>
-            )}
             <FormMessage
               error={moveError}
               errorDescription="We couldn’t move this agent to this device. Try again."
@@ -94,7 +89,6 @@ export function AgentRunSettingsView({
       />
       <SettingsRow
         label="Enabled"
-        description="Allow this agent to join conversations and respond to its triggers."
         htmlFor="agent-enabled"
         control={
           <Switch
@@ -112,7 +106,6 @@ export function AgentRunSettingsView({
           <SettingsRow
             key={trigger.kind}
             label={meta.title}
-            description={meta.description}
             htmlFor={id}
             control={
               <Switch
