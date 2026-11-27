@@ -6,6 +6,46 @@ const apps = (page: Page) => page.getByRole("navigation", { name: "Apps", exact:
 const rail = (page: Page, name: string) =>
   apps(page).getByRole("link", { name: new RegExp(`^${name}(?:,|$)`) });
 
+test("the macOS search shortcut stays on one line beside the input", async ({
+  account,
+  client,
+}) => {
+  const user = await client(account);
+  const { page } = user;
+  await page.addInitScript(() => {
+    Object.defineProperty(navigator, "platform", { get: () => "MacIntel" });
+    Object.defineProperty(navigator, "userAgent", {
+      get: () =>
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 Chrome/131.0.0.0 Safari/537.36",
+    });
+  });
+  await visit(user);
+  const hint = page.locator("[data-workspace-search] [data-slot=kbd-group]");
+  await expect(hint).toContainText("⌘");
+  await expect(hint).toContainText("K");
+  await expect(async () => {
+    const layout = await hint.evaluate((element) => {
+      const key = element.querySelector("[data-slot=kbd]")!;
+      const range = document.createRange();
+      range.selectNodeContents(key);
+      const text = range.getBoundingClientRect();
+      const cap = key.getBoundingClientRect();
+      const wrapper = element.closest("[data-slot=command-input-wrapper]")!.getBoundingClientRect();
+      return {
+        textTop: text.top,
+        textBottom: text.bottom,
+        capTop: cap.top,
+        capBottom: cap.bottom,
+        capRight: cap.right,
+        wrapperRight: wrapper.right,
+      };
+    });
+    expect(layout.textTop).toBeGreaterThanOrEqual(layout.capTop);
+    expect(layout.textBottom).toBeLessThanOrEqual(layout.capBottom);
+    expect(layout.capRight).toBeLessThanOrEqual(layout.wrapperRight);
+  }).toPass();
+});
+
 test("the default workspace destination is Messages without dashboard summary requests", async ({
   account,
   client,

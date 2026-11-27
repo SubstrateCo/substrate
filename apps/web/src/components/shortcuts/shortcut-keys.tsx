@@ -2,6 +2,7 @@ import { useFormatForDisplay, type Hotkey } from "@tanstack/react-hotkeys";
 
 import { hotkeySteps, useShortcutLabel } from "@/components/shortcuts/use-shortcut";
 import { Kbd, KbdGroup } from "@/components/ui/kbd";
+import { cn } from "cn";
 
 /**
  * A shortcut's keys, one key cap per step. Without `labelled`, screen readers skip it, so name the
@@ -20,7 +21,7 @@ export function ShortcutKeys({
   const label = useShortcutLabel();
   return (
     <KbdGroup
-      className={className}
+      className={cn("shrink-0 whitespace-nowrap", className)}
       aria-hidden={labelled ? undefined : "true"}
       aria-label={labelled ? label(hotkey) : undefined}
     >
