@@ -23,7 +23,7 @@ const addCopy: Record<
   invite: {
     description:
       "Workspace members and your agents join right away. Anyone else gets an invitation.",
-    placeholder: "Search people, or type an email to invite",
+    placeholder: "Search people, agents, or type an email",
   },
   agents: {
     description: "Add your agents here. They read with your access and run on your desktop.",
@@ -68,7 +68,7 @@ export function AddMembersDialog({
   const unfinished =
     unfinishedRecipient.message && (copy.unfinished ?? unfinishedRecipient.message);
   const invited = invitedRecipients(recipients).length;
-  const title = name ? `Add people to ${name}` : "Add people";
+  const title = name ? `Add people and agents to ${name}` : "Add people and agents";
   return (
     <FormDialog
       title={title}
@@ -76,7 +76,7 @@ export function AddMembersDialog({
       saveLabel={recipients.length > 1 ? `Add ${recipients.length} people` : "Add people"}
       pending={pending}
       disabled={!recipients.length && !unfinishedRecipient.pendingText.trim()}
-      status={recipients.length ? `${recipients.length} chosen` : "Choose people to add"}
+      status={recipients.length ? `${recipients.length} chosen` : null}
       error={error}
       errorDescription={
         error instanceof AddMembersError
@@ -103,7 +103,9 @@ export function AddMembersDialog({
       }}
     >
       <Field data-invalid={!!unfinished}>
-        <FieldLabel htmlFor="add-member-people">People</FieldLabel>
+        <FieldLabel htmlFor="add-member-people" className="sr-only">
+          People and agents
+        </FieldLabel>
         <PeoplePicker
           id="add-member-people"
           people={people}

@@ -264,7 +264,7 @@ test("a member adds and removes their own agent through people and members", asy
   await visit(user, channel.id);
   await user.page.getByRole("button", { name: "Add people and agents", exact: true }).click();
   const dialog = user.page.getByRole("dialog");
-  const picker = dialog.getByRole("combobox", { name: "People", exact: true });
+  const picker = dialog.getByRole("combobox", { name: "People and agents", exact: true });
   await picker.fill(actors.sender.name);
   await expect(dialog.getByRole("option").filter({ hasText: actors.sender.name })).toHaveCount(0);
   await expect(picker).toHaveAttribute("placeholder", "Search your agents");

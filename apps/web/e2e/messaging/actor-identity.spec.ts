@@ -74,7 +74,7 @@ test("missing photos keep humans and agents distinct in search, selections, memb
     await expect(page.locator("html")).toHaveClass(/dark/);
     await page.getByRole("button", { name: "Add people and agents", exact: true }).click();
     const dialog = page.getByRole("dialog");
-    const picker = dialog.getByRole("combobox", { name: "People", exact: true });
+    const picker = dialog.getByRole("combobox", { name: "People and agents", exact: true });
     await picker.fill("Maya");
     const personOption = dialog.getByRole("option").filter({ hasText: "Maya Chen" });
     const agentOption = dialog.getByRole("option").filter({ hasText: agent.name });

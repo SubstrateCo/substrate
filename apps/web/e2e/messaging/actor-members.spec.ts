@@ -26,7 +26,7 @@ for (const kind of ["channel", "group"] as const) {
     await visit(user, target.id);
     await user.page.getByRole("button", { name: "Add people and agents", exact: true }).click();
     const dialog = user.page.getByRole("dialog");
-    const picker = dialog.getByRole("combobox", { name: "People", exact: true });
+    const picker = dialog.getByRole("combobox", { name: "People and agents", exact: true });
     await picker.press("ArrowDown");
     await expect(dialog.getByRole("option").filter({ hasText: actors.member.name })).toBeVisible();
     await expect(dialog.getByRole("option").filter({ hasText: agent.name })).toBeVisible();
@@ -91,7 +91,7 @@ test("a partial add keeps only the failed agent selected and reports the saved p
   await visit(user, channel.id);
   await user.page.getByRole("button", { name: "Add people and agents", exact: true }).click();
   const dialog = user.page.getByRole("dialog");
-  const picker = dialog.getByRole("combobox", { name: "People", exact: true });
+  const picker = dialog.getByRole("combobox", { name: "People and agents", exact: true });
   await picker.fill(actors.member.name);
   await dialog.getByRole("option").filter({ hasText: actors.member.email }).click();
   await picker.fill(agent.name);
