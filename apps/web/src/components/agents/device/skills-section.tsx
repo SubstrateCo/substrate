@@ -4,10 +4,14 @@ import { useState, type ReactNode } from "react";
 
 import { CatalogRow } from "../catalog/catalog-row";
 import { openingName } from "../editors/skill-name";
-import { BuiltInGroup, ConfigurationPage, ConfigurationSearch } from "./configuration-page";
+import {
+  BuiltInGroup,
+  ConfigurationList,
+  ConfigurationPage,
+  ConfigurationSearch,
+} from "./configuration-page";
 import { configurationSections, matchesSearch } from "./configuration-section-copy";
 import { StartupSkills } from "./startup-configuration";
-import { RecordSection, recordRows } from "@/components/layout/record-section";
 import { Button } from "@/components/ui/button";
 import { Plus, RotateCcw } from "lucide-react";
 
@@ -24,32 +28,31 @@ function SkillList({
   onEdit: (id: string) => void;
   onDelete: (skill: { id: string; name: string }) => void;
 }) {
-  let empty = "No skills yet.";
+  let empty = "No skills yet. Add one to teach the agent a repeatable task.";
   if (searching) empty = "No skills match.";
+  const copy = configurationSections.skills;
   return (
-    <RecordSection title={configurationSections.skills.listTitle} count={skills.length}>
-      <ul aria-label="Your skills" className={recordRows}>
-        {skills.length ? (
-          skills.map((item) => {
-            // The list, the editor and the delete prompt all name the skill by its file name.
-            const name = openingName(item);
-            return (
-              <CatalogRow
-                key={item.id}
-                name={name}
-                mono
-                detail={item.description}
-                disabled={removing}
-                onEdit={() => onEdit(item.id)}
-                onDelete={() => onDelete({ id: item.id, name })}
-              />
-            );
-          })
-        ) : (
-          <li className="px-4 py-3 text-sm text-muted-foreground">{empty}</li>
-        )}
-      </ul>
-    </RecordSection>
+    <ConfigurationList title={copy.listTitle} description={copy.description}>
+      {skills.length ? (
+        skills.map((item) => {
+          // The list, the editor and the delete prompt all name the skill by its file name.
+          const name = openingName(item);
+          return (
+            <CatalogRow
+              key={item.id}
+              name={name}
+              mono
+              detail={item.description}
+              disabled={removing}
+              onEdit={() => onEdit(item.id)}
+              onDelete={() => onDelete({ id: item.id, name })}
+            />
+          );
+        })
+      ) : (
+        <li className="px-3 py-2.5 text-sm text-muted-foreground">{empty}</li>
+      )}
+    </ConfigurationList>
   );
 }
 
@@ -123,12 +126,14 @@ export function SkillsSection({
       {(managedSkills.length > 0 || available) && (
         <BuiltInGroup
           title="Substrate skills"
+          description="Substrate adds these and keeps them up to date. Reset restores them if they were edited on this desktop."
           count={managedSkills.length}
+          noun="skill"
           actions={
             <Button
               type="button"
               size="sm"
-              variant="ghost"
+              variant="outline"
               disabled={!available || resetting}
               onClick={onReset}
             >

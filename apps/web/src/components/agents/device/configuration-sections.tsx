@@ -1,16 +1,15 @@
 import { CatalogRowLoading } from "../catalog/catalog-row";
 import type { AgentSection } from "../editors/agent-form";
+import { ConfigurationList } from "./configuration-page";
 import { configurationSections } from "./configuration-section-copy";
-import { RecordSection, recordRows } from "@/components/layout/record-section";
 
 /** Placeholder rows for the owner's skills or servers while they load. */
 export function ConfigurationListLoading({ section }: { section: AgentSection }) {
+  const copy = configurationSections[section];
   return (
-    <RecordSection title={configurationSections[section].listTitle}>
-      <ul aria-label={configurationSections[section].listTitle} className={recordRows}>
-        <CatalogRowLoading picture={section === "mcps"} />
-        <CatalogRowLoading picture={section === "mcps"} />
-      </ul>
-    </RecordSection>
+    <ConfigurationList title={copy.listTitle} description={copy.description}>
+      <CatalogRowLoading picture={section === "mcps"} />
+      <CatalogRowLoading picture={section === "mcps"} />
+    </ConfigurationList>
   );
 }

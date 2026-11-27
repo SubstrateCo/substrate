@@ -3,19 +3,39 @@ import { maxHarnessMcpServers, type HarnessMcpServer } from "@substrate/contract
 import { useState, type ReactNode } from "react";
 
 import { CatalogRow } from "../catalog/catalog-row";
-import { BuiltInGroup, ConfigurationPage, ConfigurationSearch } from "./configuration-page";
+import {
+  BuiltInGroup,
+  ConfigurationList,
+  ConfigurationPage,
+  ConfigurationSearch,
+} from "./configuration-page";
 import { configurationSections, matchesSearch } from "./configuration-section-copy";
-import { McpServerRow } from "./startup-configuration";
-import { RecordSection, recordRows } from "@/components/layout/record-section";
+import { BuiltInServer } from "./startup-configuration";
 import { SettingsNote } from "@/components/layout/settings-section";
 import { Button } from "@/components/ui/button";
 import { mcpServerLimitReached } from "@/lib/agents/mcp-server-draft";
-import { Blocks, Info, Plus } from "lucide-react";
+import { Globe, Info, Plus, SquareTerminal } from "lucide-react";
 
-/** How the agent reaches a server: the command it runs or the host it calls. */
+/** How the agent reaches a server: the command it runs or the address it calls. */
 function serverDetail(server: HarnessMcpServer) {
-  if (server.transport === "stdio") return server.command;
-  return new URL(server.url).host;
+  if (server.transport === "stdio") return [server.command, ...(server.args ?? [])].join(" ");
+  const url = new URL(server.url);
+  return `${url.host}${url.pathname === "/" ? "" : url.pathname}`;
+}
+
+/** A server the agent runs on this desktop, or one it calls over the network. */
+function ServerDetail({ server }: { server: HarnessMcpServer }) {
+  return (
+    <>
+      {server.transport === "stdio" ? "Local" : "Remote"} ·{" "}
+      <code className="text-xs">{serverDetail(server)}</code>
+    </>
+  );
+}
+
+function ServerIcon({ server }: { server: HarnessMcpServer }) {
+  const Icon = server.transport === "stdio" ? SquareTerminal : Globe;
+  return <Icon aria-hidden="true" className="text-muted-foreground" />;
 }
 
 /*
@@ -25,7 +45,7 @@ function serverDetail(server: HarnessMcpServer) {
  *
  * const broken = servers.filter((server) => health[server.id]?.state === "failed");
  * {broken.length > 0 && (
- *   <SettingsList title={`Can't connect · ${broken.length}`}>
+ *   <ConfigurationList title={`Can't connect · ${broken.length}`}>
  *     {broken.map((server) => (
  *       <CatalogRow
  *         key={server.id}
@@ -37,7 +57,7 @@ function serverDetail(server: HarnessMcpServer) {
  *         onDelete={() => onDelete(server)}
  *       />
  *     ))}
- *   </SettingsList>
+ *   </ConfigurationList>
  * )}
  * detail={`${serverDetail(server)} · ${health[server.id]?.toolCount ?? "?"} tools`}
  */
@@ -69,8 +89,9 @@ export function McpServersSection({
   const [query, setQuery] = useState("");
   const full = mcpServerLimitReached(servers);
   const shown = servers.filter((server) => matchesSearch(query, server.name, serverDetail(server)));
-  let empty = "No servers yet.";
+  let empty = "No servers yet. Add one to give the agent more tools.";
   if (query.trim()) empty = "No servers match.";
+  const copy = configurationSections.mcps;
   return (
     <ConfigurationPage
       toolbar={
@@ -100,30 +121,23 @@ export function McpServersSection({
     >
       {status}
       {scanned && (
-        <RecordSection
-          title={configurationSections.mcps.listTitle}
-          count={`${servers.length} / ${maxHarnessMcpServers}`}
-        >
-          <ul aria-label="Your servers" className={recordRows}>
-            {shown.length ? (
-              shown.map((server) => (
-                <CatalogRow
-                  key={server.id}
-                  name={server.name}
-                  detail={serverDetail(server)}
-                  picture={
-                    <Blocks aria-hidden="true" className="size-4 shrink-0 text-muted-foreground" />
-                  }
-                  disabled={busy}
-                  onEdit={() => onEdit(server)}
-                  onDelete={() => onDelete(server)}
-                />
-              ))
-            ) : (
-              <li className="px-4 py-3 text-sm text-muted-foreground">{empty}</li>
-            )}
-          </ul>
-        </RecordSection>
+        <ConfigurationList title={copy.listTitle} description={copy.description}>
+          {shown.length ? (
+            shown.map((server) => (
+              <CatalogRow
+                key={server.id}
+                name={server.name}
+                detail={<ServerDetail server={server} />}
+                picture={<ServerIcon server={server} />}
+                disabled={busy}
+                onEdit={() => onEdit(server)}
+                onDelete={() => onDelete(server)}
+              />
+            ))
+          ) : (
+            <li className="px-3 py-2.5 text-sm text-muted-foreground">{empty}</li>
+          )}
+        </ConfigurationList>
       )}
       {full && (
         <SettingsNote icon={<Info />}>
@@ -132,10 +146,13 @@ export function McpServersSection({
         </SettingsNote>
       )}
       {defaults && (
-        <BuiltInGroup title="Built-in server" count={1}>
-          <ul aria-label="Built-in server" className={recordRows}>
-            <McpServerRow name="substrate" detail="Substrate workspace" />
-          </ul>
+        <BuiltInGroup
+          title="Built-in server"
+          description="Substrate connects every session to your workspace. It can't be removed."
+          count={1}
+          noun="server"
+        >
+          <BuiltInServer />
         </BuiltInGroup>
       )}
     </ConfigurationPage>

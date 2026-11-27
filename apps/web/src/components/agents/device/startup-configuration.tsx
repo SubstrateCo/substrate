@@ -1,42 +1,29 @@
 import type { HarnessSkill } from "@substrate/contracts/harness-runtime";
 
-import { recordRows } from "@/components/layout/record-section";
-import { Item, ItemContent, ItemDescription, ItemMedia, ItemTitle } from "@/components/ui/item";
+import { CatalogRowStatic } from "../catalog/catalog-row";
+import { ConfigurationList } from "./configuration-page";
 import { Blocks } from "lucide-react";
 
 /** Skills that Substrate writes into the agent folder. */
 export function StartupSkills({ skills }: { skills: HarnessSkill[] }) {
   return (
-    <ul aria-label="Substrate skills" className={recordRows}>
+    <ConfigurationList label="Substrate skills">
       {skills.map((skill) => (
-        <Item key={skill.id} asChild size="xs">
-          <li>
-            <ItemContent className="min-w-0">
-              <ItemTitle className="max-w-full">
-                <code>{skill.name}</code>
-              </ItemTitle>
-              <ItemDescription>{skill.description}</ItemDescription>
-            </ItemContent>
-          </li>
-        </Item>
+        <CatalogRowStatic key={skill.id} name={skill.name} detail={skill.description} mono />
       ))}
-    </ul>
+    </ConfigurationList>
   );
 }
 
-/** One MCP server: its name and how the agent reaches it. */
-export function McpServerRow({ name, detail }: { name: string; detail?: string }) {
+/** Substrate's own MCP server, which every agent reaches. */
+export function BuiltInServer() {
   return (
-    <Item asChild size="xs">
-      <li>
-        <ItemMedia variant="icon">
-          <Blocks aria-hidden="true" className="text-muted-foreground" />
-        </ItemMedia>
-        <ItemContent className="min-w-0">
-          <ItemTitle className="max-w-full">{name}</ItemTitle>
-          {detail && <ItemDescription>{detail}</ItemDescription>}
-        </ItemContent>
-      </li>
-    </Item>
+    <ConfigurationList label="Built-in server">
+      <CatalogRowStatic
+        name="substrate"
+        detail="Your Substrate workspace"
+        picture={<Blocks aria-hidden="true" className="text-muted-foreground" />}
+      />
+    </ConfigurationList>
   );
 }

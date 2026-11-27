@@ -13,6 +13,7 @@ import {
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pencil, Settings, Trash2 } from "lucide-react";
 
+/** One row of a `ConfigurationList`: the picture, name and detail, then its actions. */
 function CatalogRowLayout({
   picture,
   name,
@@ -27,9 +28,10 @@ function CatalogRowLayout({
   mono?: boolean;
 }) {
   return (
-    <Item asChild size="xs" className="group/row">
-      <li>
-        {picture && <ItemMedia>{picture}</ItemMedia>}
+    // The Item sits inside the list item, so the list's dividers stay on the <li>.
+    <li>
+      <Item className="group/row flex-nowrap">
+        {picture && <ItemMedia variant="icon">{picture}</ItemMedia>}
         <ItemContent className="min-w-0">
           <ItemTitle className="max-w-full wrap-anywhere">
             {mono ? <code>{name}</code> : name}
@@ -37,8 +39,8 @@ function CatalogRowLayout({
           <ItemDescription className="wrap-anywhere">{detail}</ItemDescription>
         </ItemContent>
         {actions && <ItemActions>{actions}</ItemActions>}
-      </li>
-    </Item>
+      </Item>
+    </li>
   );
 }
 
@@ -50,6 +52,21 @@ export function CatalogRowLoading({ picture = false }: { picture?: boolean }) {
       detail={<SkeletonText width="15rem" />}
     />
   );
+}
+
+/** A read-only row, such as a skill or server that Substrate adds on its own. */
+export function CatalogRowStatic({
+  name,
+  detail,
+  picture,
+  mono = false,
+}: {
+  name: string;
+  detail: ReactNode;
+  picture?: ReactNode;
+  mono?: boolean;
+}) {
+  return <CatalogRowLayout picture={picture} name={name} detail={detail} mono={mono} />;
 }
 
 export function CatalogRow({
@@ -65,7 +82,7 @@ export function CatalogRow({
   name: string;
   /** Show the name as a file name, in monospace. */
   mono?: boolean;
-  detail: string;
+  detail: ReactNode;
   picture?: ReactNode;
   onSettings?: () => void;
   onEdit: () => void;

@@ -24,6 +24,7 @@
 - Compose all renderer components from the shared UI primitives in `apps/web/src/components/ui`, directly or through existing shared building blocks. Do not hand-build replacements or duplicate their styles and behavior.
 - Before adding or changing guidance in `DESIGN.md`, first check whether ShadCN lint configuration, a custom deterministic lint rule, types, a shared component, or a focused test can enforce it. Prefer enforcement over prose. Keep semantic guidance only when deterministic enforcement is not practical, and remove covered prose when enforcement is added.
 - Fix `design/*` and `shadcn/*` lint errors and warnings in files you touch. Diagnostics name the component or helper to use; some also point to a `DESIGN.md` section.
+- Do not nest cards. A card inside a card, or inside a sheet, dialog, or panel that already frames it, adds borders without adding grouping. Inside a framed surface, lay out lists and groups flat: a title and description, then rows split by dividers, with spacing doing the grouping.
 - Style with shared components and the tokens in `src/components/styles.css`, so pages do not drift apart. Do not add CSS files, and rarely change the shared styles. Write CSS only when nothing else works, such as making an external library match our styles.
 - If a warning is wrong for a case, explain it in `// oxlint-disable-next-line <rule> -- <reason>`. Do not weaken a rule or a primitive to silence it.
 

@@ -1,12 +1,17 @@
 import type { AgentSection } from "../editors/agent-form";
 
 /** The copy of the skills and MCP servers sections, shared with their loading views. */
-export const configurationSections: Record<AgentSection, { listTitle: string }> = {
+export const configurationSections: Record<
+  AgentSection,
+  { listTitle: string; description: string }
+> = {
   skills: {
     listTitle: "Your skills",
+    description: "Instructions the agent loads when a task calls for them.",
   },
   mcps: {
     listTitle: "Your servers",
+    description: "Tools and data the agent can reach through MCP.",
   },
 };
 
