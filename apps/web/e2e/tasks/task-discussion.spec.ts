@@ -21,7 +21,7 @@ async function expectNoManagement(page: Page) {
   await expect(page.getByRole("button", { name: /^Members(?:,|$)/ })).toHaveCount(0);
 }
 
-test("task discussion opens shared messaging and links back to its task", async ({
+test("task discussion opens shared messaging and opens its task over the messages", async ({
   actors,
   client,
 }) => {
@@ -50,17 +50,19 @@ test("task discussion opens shared messaging and links back to its task", async 
   const message = sender.page.getByRole("article").filter({ hasText: body });
   await expect(message.getByText(body, { exact: true })).toBeVisible();
   await expect(message.getByText(actors.sender.name, { exact: true })).toBeVisible();
-  const backlink = sender.page.getByRole("link", { name: title, exact: true });
-  await expect(backlink).toHaveAttribute("href", new RegExp(`taskId=${target.id}`));
-  await backlink.click();
+  await sender.page.getByRole("link", { name: title, exact: true }).click();
   await expect(details.getByRole("heading", { name: title, exact: true })).toBeVisible();
   await expect(
     details
       .getByRole("region", { name: "Discussion", exact: true })
       .getByText(body, { exact: true }),
   ).toBeVisible();
-  expect(new URL(sender.page.url()).searchParams.get("projectId")).toBe(created.id);
-  expect(new URL(sender.page.url()).searchParams.get("taskId")).toBe(target.id);
+  // The task opens in a sheet over its discussion, not in Tasks.
+  expect(new URL(sender.page.url()).pathname).toBe("/messages");
+  await expect(message.getByText(body, { exact: true })).toBeVisible();
+  await details.getByRole("button", { name: "Close task", exact: true }).click();
+  await expect(details).toHaveCount(0);
+  await sender.page.getByRole("link", { name: title, exact: true }).click();
   await entry.click();
   await expect(sender.page.getByText(body, { exact: true })).toBeVisible();
   expect(new URL(sender.page.url()).searchParams.get("conversationId")).toBe(conversationId);
@@ -113,8 +115,7 @@ test("a view-only task discussion cannot send, and revocation clears its open me
   await expect(thread.getByRole("button", { name: "Send", exact: true })).toHaveCount(0);
   await member.page.getByRole("button", { name: "Close thread", exact: true }).click();
 
-  await sender.page.getByRole("link", { name: title, exact: true }).click();
-  await sender.page.getByRole("button", { name: "Close task", exact: true }).click();
+  await visit(sender, undefined, "/tasks", { projectId: created.entityId });
   await sender.page.getByRole("tab", { name: "Settings", exact: true }).click();
   const since = member.events.length;
   await sender.page

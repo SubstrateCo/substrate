@@ -119,6 +119,18 @@ test("create CRM records from a private message only after audience consent and 
         .getByRole("complementary", { name: "Thread", exact: true })
         .getByText(privateBody, { exact: true }),
     ).toBeVisible();
+    // The conversation names the record it was opened from and opens it over the messages.
+    await page
+      .getByRole("navigation", { name: "Opened from", exact: true })
+      .getByRole("link", { name, exact: true })
+      .click();
+    const label = { account: "Account", contact: "Contact", deal: "Deal" }[kind];
+    await expect(
+      page
+        .getByRole("dialog", { name: label, exact: true })
+        .getByRole("heading", { name, exact: true }),
+    ).toBeVisible();
+    expect(new URL(page.url()).pathname).toBe("/messages");
   }
   const accountRecord = await result<{ account: { summary: string } }>(
     await readCrm(account, "account", { entityId: createdAccountId }),

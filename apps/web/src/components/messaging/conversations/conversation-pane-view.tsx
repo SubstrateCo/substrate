@@ -20,8 +20,12 @@ type ConversationPaneProps = {
   actions?: ReactNode;
   leftNotice?: ReactNode;
   renderMemberAction?: (member: HeaderMember) => ReactNode;
-  /** Set for a task discussion: the link back to its task heads the pane. */
+  /** Set for a task discussion: the link that opens its task heads the pane. */
   taskLink?: ReactNode;
+  /** Under the header: the record the conversation was opened from. */
+  source?: ReactNode;
+  /** The record sheet over the pane: a task discussion's task, or the record it was opened from. */
+  sheet?: ReactNode;
   conversation: Conversation | null;
   /** The signed-in user, so a DM header shows the other person. */
   viewerId?: string;
@@ -93,6 +97,7 @@ function TaskDiscussionPane({
       defaultHeader={<TaskDiscussionHeader taskLink={taskLink} />}
       composer={props.composer}
       thread={props.thread}
+      sheet={props.sheet}
     >
       <PaneMessages {...props} />
     </ConversationPaneLayout>
@@ -107,6 +112,7 @@ function OpenConversationPane({
   addMembers,
   actions,
   leftNotice,
+  source,
   ...props
 }: ConversationPaneProps & { conversation: Conversation }) {
   const title = conversationName(conversation);
@@ -117,16 +123,19 @@ function OpenConversationPane({
       title={title}
       header={header}
       defaultHeader={
-        <ConversationHeader
-          title={title}
-          visibility={conversation}
-          viewerId={viewerId}
-          members={conversation.members}
-          renderMemberAction={renderMemberAction}
-          organizations={conversation.organizations}
-          addMembers={canAddMembers && addMembers}
-          actions={actions}
-        />
+        <>
+          <ConversationHeader
+            title={title}
+            visibility={conversation}
+            viewerId={viewerId}
+            members={conversation.members}
+            renderMemberAction={renderMemberAction}
+            organizations={conversation.organizations}
+            addMembers={canAddMembers && addMembers}
+            actions={actions}
+          />
+          {source}
+        </>
       }
       composer={
         <>
@@ -135,6 +144,7 @@ function OpenConversationPane({
         </>
       }
       thread={props.thread}
+      sheet={props.sheet}
     >
       <PaneMessages {...props} />
     </ConversationPaneLayout>
@@ -147,6 +157,7 @@ function ConversationPaneLayout({
   defaultHeader,
   composer,
   thread,
+  sheet,
   children,
 }: {
   title: string;
@@ -154,6 +165,7 @@ function ConversationPaneLayout({
   defaultHeader: ReactNode;
   composer?: ReactNode;
   thread?: ReactNode;
+  sheet?: ReactNode;
   children: ReactNode;
 }) {
   return (
@@ -166,6 +178,7 @@ function ConversationPaneLayout({
         </section>
       </PageContent>
       {thread}
+      {sheet}
     </PageLayout>
   );
 }

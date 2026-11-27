@@ -192,7 +192,29 @@ export function ConversationHeader({
   );
 }
 
-/** A task discussion's header: the link back to its task. */
+/** A task discussion's header: the link that opens its task. */
 export function TaskDiscussionHeader({ taskLink }: { taskLink: ReactNode }) {
   return <PageHeader variant="pane" title={taskLink} icon={<ListTodo aria-hidden="true" />} />;
+}
+
+/** Under the header: the record the conversation was opened from, linked to open it. */
+export function ConversationSourceBar({
+  icon,
+  label,
+  link,
+}: {
+  icon: ReactNode;
+  label: string;
+  link: ReactNode;
+}) {
+  return (
+    <nav
+      aria-label="Opened from"
+      className="flex h-9 shrink-0 items-center gap-1.5 border-b px-4 text-xs text-muted-foreground [&_svg]:size-3.5 [&_svg]:shrink-0"
+    >
+      {icon}
+      <span className="shrink-0">{label}</span>
+      <span className="min-w-0 truncate text-foreground">{link}</span>
+    </nav>
+  );
 }

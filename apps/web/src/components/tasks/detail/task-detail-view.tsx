@@ -39,7 +39,8 @@ export function TaskDetail({
   capabilities: ProjectCapabilities;
   task: Task;
   onSelectTask: (id: string) => void;
-  onSubtask: () => void;
+  /** Omitted where no subtask form can open. */
+  onSubtask?: () => void;
   onUpdate: (patch: Partial<TaskDraft>) => void;
   renderEditor: (onDone: () => void) => ReactNode;
   actions?: ReactNode;

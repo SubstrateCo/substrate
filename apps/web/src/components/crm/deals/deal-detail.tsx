@@ -82,7 +82,7 @@ export function DealDetail({ entityId }: { entityId: string }) {
       >
         <FollowUps entityId={entityId} canCreate={capabilities.canEdit} />
         <InteractionRollup entityId={entityId} kind="deal" />
-        <WorkDiscussions entityId={entityId} />
+        <WorkDiscussions entityId={entityId} sourceType="deal" />
         <CrmActivity entityId={entityId} />
       </RecordDetailView>
       <DealDialogs

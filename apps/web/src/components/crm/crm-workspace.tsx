@@ -1,8 +1,8 @@
 import { useNavigate } from "@tanstack/react-router";
 
 import { AccountDetail } from "./account-detail";
+import { CrmRecordSheet } from "./crm-record-sheet";
 import type { CrmSection } from "./crm-types";
-import { DealDetail } from "./deals/deal-detail";
 import { CrmSettings } from "./settings/crm-settings";
 import {
   PageContent,
@@ -12,7 +12,6 @@ import {
   PageSidebarHeader,
   SidebarNav,
 } from "@/components/layout/page-layout";
-import { PageSheet } from "@/components/layout/page-sheet";
 import { RecordCollection } from "@/components/records/record-collection";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { crmLink } from "@/lib/navigation/record-links";
@@ -47,15 +46,10 @@ export function CrmWorkspace({ section, recordId }: { section: CrmSection; recor
       <PageContent className="@container">
         <CrmContent section={section} recordId={recordId} />
       </PageContent>
-      <PageSheet
-        open={section === "deals" && !!recordId}
-        label="Deal"
-        onOpenChange={(open) => {
-          if (!open) void navigate(crmLink(organizationId, "deals"));
-        }}
-      >
-        {section === "deals" && recordId && <DealDetail key={recordId} entityId={recordId} />}
-      </PageSheet>
+      <CrmRecordSheet
+        record={section === "deals" && recordId ? { kind: "deal", entityId: recordId } : null}
+        onClose={() => void navigate(crmLink(organizationId, "deals"))}
+      />
     </PageLayout>
   );
 }

@@ -101,7 +101,7 @@ export function AccountDetail({ entityId }: { entityId: string }) {
         </RecordSection>
         <FollowUps entityId={entityId} canCreate={capabilities.canEdit} />
         <InteractionRollup entityId={entityId} kind="account" />
-        <WorkDiscussions entityId={entityId} />
+        <WorkDiscussions entityId={entityId} sourceType="account" />
         <CrmActivity entityId={entityId} />
       </RecordDetailView>
       {dialog && (

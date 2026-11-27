@@ -3,7 +3,7 @@ import type { TaskStatus } from "@substrate/contracts/tasks";
 
 import { useState, type ComponentProps, type ReactNode, type RefObject } from "react";
 
-import { TaskInspectorActive } from "../detail/task-inspector-context";
+import { TaskSheet, UnavailableTask } from "../detail/task-sheet";
 import { TaskList } from "../list/task-list";
 import type { ProjectDetail, Task } from "../types";
 import { useGuardedTab } from "./pane/use-guarded-tab";
@@ -11,7 +11,6 @@ import { useTaskPanel } from "./pane/use-task-panel";
 import { ProjectIcon } from "./project-icon";
 import { ProjectHeaderLayout, ProjectTabLayout } from "./project-layout";
 import { projectTabs } from "./project-tabs";
-import { ContentNotice } from "@/components/feedback/content-notice";
 import { DiscardChangesDialog } from "@/components/feedback/discard-changes-dialog";
 import { ErrorState } from "@/components/feedback/error-state";
 import { FormDialog, type FormDialogEditor } from "@/components/feedback/form-dialog";
@@ -21,14 +20,13 @@ import { useDraftKeys } from "@/components/feedback/unsaved-drafts-context";
 import { SegmentedControl } from "@/components/forms/segmented-control";
 import { PageHeader } from "@/components/layout/page-header";
 import { PageContent } from "@/components/layout/page-layout";
-import { PageSheet, PageSheetHeader, PageSheetBody } from "@/components/layout/page-sheet";
 import { SettingsContent } from "@/components/layout/settings-page";
 import { ProjectLoading } from "@/components/tasks/projects/project-loading";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type { ResourceStatus } from "@/lib/resource-state";
 import { hiddenTaskInline } from "@/lib/tasks/task-status";
-import { Columns3, ListTodo, Plus, Unlink } from "lucide-react";
+import { Columns3, ListTodo, Plus } from "lucide-react";
 
 const viewOptions = [
   { value: "list", label: "List", icon: ListTodo },
@@ -190,7 +188,7 @@ function ProjectPaneContent({
             onSelectTask: panel.select,
           })
         ) : (
-          <UnavailableTask />
+          <UnavailableTask description="This task was removed or you no longer have access. Choose another task." />
         )}
       </TaskSheet>
       {panel.creating && canEdit && (
@@ -331,48 +329,5 @@ function ProjectPaneHeader({
         </div>
       }
     />
-  );
-}
-
-function UnavailableTask() {
-  return (
-    <>
-      <PageSheetHeader title="Task" />
-      <PageSheetBody className="flex flex-col">
-        <ContentNotice
-          icon={Unlink}
-          title="Task unavailable"
-          description="This task was removed or you no longer have access. Choose another task."
-        />
-      </PageSheetBody>
-    </>
-  );
-}
-
-function TaskSheet({
-  open,
-  inspector,
-  onFocusCapture,
-  children,
-  onClose,
-}: {
-  open: boolean;
-  inspector: RefObject<HTMLDivElement | null>;
-  onFocusCapture: React.FocusEventHandler<HTMLElement>;
-  children: ReactNode;
-  onClose: () => void;
-}) {
-  return (
-    <PageSheet
-      open={open}
-      label="Task"
-      onOpenChange={(next) => {
-        if (!next) onClose();
-      }}
-      ref={inspector}
-      onFocusCapture={onFocusCapture}
-    >
-      <TaskInspectorActive.Provider value={open}>{children}</TaskInspectorActive.Provider>
-    </PageSheet>
   );
 }

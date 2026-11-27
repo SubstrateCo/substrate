@@ -28,6 +28,11 @@ test("links preserve workspace and exact task or message targets", () => {
     search: { workspaceId: "team", conversationId: "conversation", messageId: "reply" },
   });
 });
+test("a conversation opened from a CRM record keeps that record", () => {
+  expect(
+    messageLink("team", "conversation", undefined, { type: "deal", entityId: "renewal" }).search,
+  ).toMatchObject({ conversationId: "conversation", sourceType: "deal", sourceId: "renewal" });
+});
 test("a person opens in Contacts only when CRM is on", () => {
   expect(personLink("team", "maya", true)).toEqual(contactLink("team", "maya"));
   // All time, so the profile shows the linked record's interactions however old they are.

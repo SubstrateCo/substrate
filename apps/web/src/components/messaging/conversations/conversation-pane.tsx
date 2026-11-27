@@ -1,7 +1,7 @@
 import { canRemoveMember } from "@substrate/contracts/messaging/permissions";
 
 import { useQuery } from "@tanstack/react-query";
-import { Link, useNavigate } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 
 import { useState, type ReactNode } from "react";
 
@@ -12,6 +12,11 @@ import { ThreadPane } from "../threads/thread-pane";
 import { AddMembersDialog } from "./add-members-dialog";
 import { ConversationActions } from "./conversation-actions";
 import { AddPeopleButton, type HeaderMember } from "./conversation-header";
+import {
+  ConversationRecordSheet,
+  ConversationSource,
+  RecordSheetLink,
+} from "./conversation-source";
 import { EmptyConversation } from "./empty-conversation";
 import { LeftChannelNotice } from "./left-channel-notice";
 import { RemoveMemberAction, RemoveMemberDialog } from "./remove-member-action";
@@ -26,7 +31,7 @@ import { MessageLoading } from "@/components/messaging/messages/message-loading"
 import { ThreadPaneFrame } from "@/components/messaging/threads/thread-pane-frame";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { conversationTextLabel, type Conversation } from "@/lib/messaging/conversations";
-import { workLink } from "@/lib/navigation/record-links";
+import { messageLink, type MessageSource } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { messageTargetOptions } from "@/queries/context/links";
 import { useConversationManagement } from "@/queries/messaging/management";
@@ -38,18 +43,25 @@ export function ConversationPane({
   turnId,
   header,
   onNavigate,
+  source,
+  sheet = false,
 }: {
   conversation: Conversation;
   messageId?: string;
   turnId?: string;
   header?: ReactNode;
   onNavigate?: (target: { messageId?: string; turnId?: string }) => void;
+  /** The CRM record the conversation was opened from. */
+  source?: MessageSource;
+  /** The record sheet is open: the task of a task discussion, or the source record. */
+  sheet?: boolean;
 }) {
   const { organizationId, userId } = useWorkspaceScope();
   const navigate = useNavigate();
   const navigateConversation = useConversationNavigation(
     organizationId,
     conversation.id,
+    source,
     onNavigate,
   );
   const { join } = useConversationManagement(organizationId);
@@ -75,15 +87,20 @@ export function ConversationPane({
         header={header}
         conversation={resource.status === "unavailable" ? null : conversation}
         viewerId={userId}
-        taskLink={
-          task && (
-            <Link
-              {...workLink(organizationId, task.projectEntityId, task.taskEntityId)}
-              className="underline decoration-muted-foreground underline-offset-4 hover:text-muted-foreground"
-            >
-              {task.title}
-            </Link>
-          )
+        taskLink={task && <RecordSheetLink>{task.title}</RecordSheetLink>}
+        source={source && <ConversationSource source={source} />}
+        sheet={
+          <ConversationRecordSheet
+            conversation={conversation}
+            source={source}
+            open={sheet}
+            onClose={() =>
+              void navigate({
+                to: "/messages",
+                search: (previous) => ({ ...previous, sheet: undefined }),
+              })
+            }
+          />
         }
         renderMemberAction={(member) =>
           canRemoveMember(conversation, userId, member) ? (
@@ -160,15 +177,15 @@ export function ConversationPane({
 function useConversationNavigation(
   organizationId: string,
   conversationId: string,
+  source?: MessageSource,
   onNavigate?: (target: { messageId?: string; turnId?: string }) => void,
 ) {
   const navigate = useNavigate();
   return (target: { messageId?: string; turnId?: string }) => {
     if (onNavigate) return onNavigate(target);
-    void navigate({
-      to: "/messages",
-      search: { workspaceId: organizationId, conversationId, ...target },
-    });
+    // Threads and transcripts keep the record the conversation was opened from.
+    const link = messageLink(organizationId, conversationId, undefined, source);
+    void navigate({ ...link, search: { ...link.search, ...target } });
   };
 }
 

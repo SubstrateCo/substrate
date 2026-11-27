@@ -133,7 +133,7 @@ export function ContactDetail({ entityId }: { entityId: string }) {
         />
         <ContactMeetings contactEntityId={entityId} />
         <FollowUps entityId={entityId} canCreate={canChange} />
-        <WorkDiscussions entityId={entityId}>
+        <WorkDiscussions entityId={entityId} sourceType="contact">
           {canChange && <PublishInteraction contactEntityId={entityId} />}
         </WorkDiscussions>
         <CrmActivity entityId={entityId} />

@@ -29,7 +29,7 @@ export function TaskDetail({
   projectEntityId: string;
   taskId: string;
   onSelectTask: (id: string) => void;
-  onSubtask: () => void;
+  onSubtask?: () => void;
   visible: boolean;
 }) {
   const { organizationId } = useWorkspaceScope();
@@ -41,7 +41,7 @@ export function TaskDetail({
   useRegisterDraft(taskId, dirty);
   const detail = resource.data;
   const task = detail?.tasks.find((candidate) => candidate.entityId === taskId);
-  // The project pane renders this only for a task in its loaded project.
+  // The parent renders this only for a task in a project it loaded.
   if (!detail || !task) return null;
   return (
     <>

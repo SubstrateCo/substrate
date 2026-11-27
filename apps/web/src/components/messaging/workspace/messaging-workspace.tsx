@@ -21,7 +21,7 @@ import { WorkspaceEmpty } from "@/components/messaging/workspace/workspace-empty
 import { AppAvailability } from "@/components/workspace/app-availability";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import type { Conversation } from "@/lib/messaging/conversations";
-import { messageLink } from "@/lib/navigation/record-links";
+import { messageLink, type MessageSource } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { agentCatalogQueryOptions } from "@/queries/agents/catalog";
 import { useDirectMessage } from "@/queries/messaging/conversations";
@@ -39,10 +39,14 @@ export function MessagingWorkspace({
   conversationId,
   messageId,
   turnId,
+  source,
+  sheet,
 }: {
   conversationId?: string;
   messageId?: string;
   turnId?: string;
+  source?: MessageSource;
+  sheet?: boolean;
 }) {
   const { organizationId, userId } = useWorkspaceScope();
   // One list serves every selection, so switching conversations reads nothing again. The list
@@ -138,6 +142,8 @@ export function MessagingWorkspace({
           selected={selected}
           messageId={messageId}
           turnId={turnId}
+          source={source}
+          sheet={sheet}
           missing={!!conversationId && !selecting}
           loading={loading}
           onCreate={onCreate}
@@ -152,6 +158,8 @@ function WorkspaceSelection({
   selected,
   messageId,
   turnId,
+  source,
+  sheet,
   missing,
   loading,
   onCreate,
@@ -159,6 +167,8 @@ function WorkspaceSelection({
   selected?: Conversation;
   messageId?: string;
   turnId?: string;
+  source?: MessageSource;
+  sheet?: boolean;
   /** A conversation was asked for and the lists that could hold it have loaded. */
   missing: boolean;
   loading: boolean;
@@ -171,6 +181,8 @@ function WorkspaceSelection({
         conversation={selected}
         messageId={messageId}
         turnId={turnId}
+        source={source}
+        sheet={sheet}
       />
     );
     if (selected.task) return <AppAvailability app="tasks">{pane}</AppAvailability>;

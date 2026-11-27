@@ -8,7 +8,7 @@ import {
   type WorkDiscussionsProps,
 } from "@/components/context/discussions/work-discussions-view";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
-import { messageLink } from "@/lib/navigation/record-links";
+import { messageLink, type MessageSource } from "@/lib/navigation/record-links";
 import { resourceState } from "@/lib/resource-state";
 import { relatedContextOptions } from "@/queries/context/links";
 import { conversationsQueryOptions } from "@/queries/messaging/options";
@@ -20,8 +20,11 @@ export function WorkDiscussions({
   variant,
   children,
   visible = true,
+  sourceType,
 }: {
   entityId: string;
+  /** Set on a CRM record, so each conversation opens with a link back to the record. */
+  sourceType?: MessageSource["type"];
   label?: string;
   emptyTitle?: string;
   variant?: "inspector" | "page";
@@ -44,7 +47,12 @@ export function WorkDiscussions({
         ...item,
         conversationKind: conversation?.kind,
         private: conversation?.private,
-        link: messageLink(organizationId, item.conversationId, item.messageId),
+        link: messageLink(
+          organizationId,
+          item.conversationId,
+          item.messageId,
+          sourceType && { type: sourceType, entityId },
+        ),
       };
     }),
     loading: related.isPending,

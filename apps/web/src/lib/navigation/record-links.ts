@@ -42,10 +42,23 @@ export function linkedWorkLink(
     link.entityType === "task" ? link.entityId : undefined,
   );
 }
-export function messageLink(organizationId: string, conversationId: string, messageId?: string) {
+/** A CRM record a conversation was opened from. The conversation's pane links back to it. */
+export type MessageSource = { type: "deal" | "account" | "contact"; entityId: string };
+
+export function messageLink(
+  organizationId: string,
+  conversationId: string,
+  messageId?: string,
+  source?: MessageSource,
+) {
   return linkOptions({
     to: "/messages",
-    search: { workspaceId: organizationId, conversationId, messageId },
+    search: {
+      workspaceId: organizationId,
+      conversationId,
+      messageId,
+      ...(source && { sourceType: source.type, sourceId: source.entityId }),
+    },
   });
 }
 
