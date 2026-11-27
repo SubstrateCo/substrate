@@ -30,7 +30,8 @@ test("deleting a channel warns about linked work and removes the channel for eve
     sender.page
       .getByRole("article")
       .filter({ hasText: body })
-      .getByRole("link", { name: `${title} Not started · Created here`, exact: true }),
+      .getByRole("list", { name: "Created from this message", exact: true })
+      .getByRole("link", { name: `${title} Not started`, exact: true }),
   ).toBeVisible();
 
   const since = member.events.length;

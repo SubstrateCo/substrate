@@ -106,7 +106,10 @@ test("create CRM records from a private message only after audience consent and 
     if (kind === "account") createdAccountId = created.entityId;
     await expect(confirmation).toHaveCount(0);
     const source = page.getByRole("article").filter({ hasText: privateBody });
-    await source.getByRole("link", { name: `${name} Created here`, exact: true }).click();
+    await source
+      .getByRole("list", { name: "Created from this message", exact: true })
+      .getByRole("link", { name, exact: true })
+      .click();
     await expect(page.getByRole("heading", { name, exact: true })).toBeVisible();
     expect(new URL(page.url()).searchParams.get("recordId")).toBe(created.entityId);
     await page.reload();
@@ -192,6 +195,7 @@ test("retrying after a lost creation response keeps the same request ID and one 
     page
       .getByRole("article")
       .filter({ hasText: "Private source for a retry" })
-      .getByRole("link", { name: "Retry-safe source business Created here", exact: true }),
+      .getByRole("list", { name: "Created from this message", exact: true })
+      .getByRole("link", { name: "Retry-safe source business", exact: true }),
   ).toBeVisible();
 });

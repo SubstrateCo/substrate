@@ -30,7 +30,8 @@ test("follow existing message-task links and find the task in search", async ({
   const linkedTask = sender.page
     .getByRole("article")
     .filter({ hasText: source })
-    .getByRole("link", { name: `${title} Not started · Created here`, exact: true });
+    .getByRole("list", { name: "Created from this message", exact: true })
+    .getByRole("link", { name: `${title} Not started`, exact: true });
   await linkedTask.click();
   const task = sender.page.getByRole("region", { name: "Task details", exact: true });
   await expect(task.getByRole("heading", { name: title, exact: true })).toBeVisible();
@@ -51,7 +52,8 @@ test("follow existing message-task links and find the task in search", async ({
   await expect(
     sender.page
       .getByRole("complementary", { name: "Thread", exact: true })
-      .getByRole("link", { name: `${title} Not started · Created here`, exact: true }),
+      .getByRole("list", { name: "Created from this message", exact: true })
+      .getByRole("link", { name: `${title} Not started`, exact: true }),
   ).toBeVisible();
   const searchInput = sender.page.getByRole("combobox", { name: "Search workspace", exact: true });
   await searchInput.click();
