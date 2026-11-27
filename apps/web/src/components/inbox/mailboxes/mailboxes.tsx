@@ -119,7 +119,7 @@ function mailboxSwitchLabel(scope: Mailbox | null) {
 }
 
 /** The sidebar's mailbox switch, which names the chosen mailbox. */
-export function MailboxPicker(nav: MailboxNav) {
+function MailboxPicker(nav: MailboxNav) {
   const { scope, colors } = nav;
   return (
     <DropdownMenu>
