@@ -240,7 +240,7 @@ export function InboxWorkspace({ api, scope }: { api: MailAPI; scope: MailScope 
               />
             )}
           />
-          {!!boxes.length && !!data && (
+          {!!boxes.length && !!data && (paging.index > 0 || !!rows?.length || paging.more) && (
             <MailPagination
               paging={paging}
               onTurn={() => {

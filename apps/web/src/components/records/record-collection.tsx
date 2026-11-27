@@ -231,7 +231,7 @@ export function RecordCollection({ kind }: { kind: CrmKind }) {
         canCreate={records.canCreate}
         onCreate={startCreating}
       />
-      <div className={cn("flex min-w-0 flex-1 flex-col gap-4", showPipeline && "min-h-0")}>
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-4">
         <div className="flex flex-wrap items-center gap-2">
           <Input
             type="search"

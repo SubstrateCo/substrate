@@ -3,7 +3,7 @@ import { visit } from "../test-support/fixtures";
 import { test } from "../test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
 
-test("page turns, loading, and empty results keep the table frame and pager in place", async ({
+test("page turns and loading keep the table frame and pager in place; empty results hide the pager", async ({
   account,
   client,
 }) => {
@@ -70,10 +70,7 @@ test("page turns, loading, and empty results keep the table frame and pager in p
       await expect(page.getByRole("combobox", { name: "Rows per page" })).toBeDisabled();
       release();
       await expect(page.getByText("No matching people", { exact: true })).toBeVisible();
-      expect((await pager.boundingBox())!.y).toBeCloseTo(before!.y, 0);
-      await pager.scrollIntoViewIfNeeded();
-      await expect(pager).toBeInViewport();
-      await expect(page.getByRole("combobox", { name: "Rows per page" })).toBeEnabled();
+      await expect(pager).toHaveCount(0);
     } finally {
       release();
       await page.unroute(path);

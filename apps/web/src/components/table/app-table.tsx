@@ -128,7 +128,7 @@ export function AppTable<TData extends RowData>({
 }: AppTableProps<TData>) {
   const table = usePagedTable({ columns, data, getRowId, pagination, rowActions });
   const rows = table.getRowModel().rows;
-  const pager = pagerProps(table, name, pagination, fetching || loading);
+  const pager = pagerProps(table, name, pagination, fetching || loading, !rows.length && !loading);
   const parts = tableParts({ hasRows: rows.length > 0, loading, error, pager, renderMobileRow });
   const showLoading = useDelayedLoading(parts.initialLoading);
   const paginated = pagination.mode === "server" || table.getPageCount() > 1;
@@ -138,10 +138,11 @@ export function AppTable<TData extends RowData>({
         className={cn(
           "@container min-w-0",
           layout === "ledger" ? "flex min-h-0 flex-col gap-2" : "space-y-3",
+          // In a bounded flex column the results fill the free height above a pinned pager;
+          // elsewhere they take their rows' height and the page scrolls.
           paginated &&
             (parts.framed || parts.pager) &&
-            // oxlint-disable-next-line shadcn/no-arbitrary-values -- Cap the stable results area to the window height so its pager stays reachable in short windows.
-            "flex h-128 max-h-[60dvh] shrink-0 flex-col gap-3 space-y-0",
+            "flex min-h-64 flex-1 flex-col gap-3 space-y-0",
           !parts.framed && !parts.pager && "flex flex-1 flex-col space-y-0",
           parts.initialLoading && !showLoading && "invisible",
         )}
@@ -214,7 +215,7 @@ function tableParts<MobileRow>({
     announceLoading: loading && (hasRows || initialLoading),
     // An error over rows that are still shown is a compact notice above them.
     inlineError: !!error && hasRows,
-    // Page-size controls and the way back stay available through loading and empty results.
+    // Page-size controls and the way back stay available through loading and later empty pages.
     pager,
     // Rows show as cards on narrow screens, and the table only on wider ones.
     renderMobileRow: hasRows ? renderMobileRow : undefined,
@@ -378,6 +379,8 @@ function pagerProps<TData extends RowData>(
   name: string,
   pagination: AppTablePagination,
   fetching: boolean,
+  /** The loaded page has no rows. */
+  empty: boolean,
 ): PagerProps | undefined {
   if (pagination.mode === "client") {
     if (table.getPageCount() <= 1) return undefined;
@@ -391,8 +394,9 @@ function pagerProps<TData extends RowData>(
     };
   }
   const { pageIndex, pageSize, hasNextPage, rowCount } = pagination;
-  // A page size choice stays reachable after someone picks a larger size.
-  if (pageIndex === 0 && !hasNextPage && !pagination.pageSizeOptions) return undefined;
+  // A page size choice stays reachable after someone picks a larger size, but an empty first page
+  // has nothing to page. A later empty page keeps the way back.
+  if (pageIndex === 0 && !hasNextPage && (!pagination.pageSizeOptions || empty)) return undefined;
   return {
     name,
     pageIndex,
