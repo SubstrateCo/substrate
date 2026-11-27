@@ -389,6 +389,7 @@ test("profiles resolve only through visible conversations and keep contact detai
       external: false,
       email: owner.email,
       image: null,
+      avatar: null,
       role: "owner",
       directConversationId: null,
       agent: null,

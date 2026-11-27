@@ -1,6 +1,6 @@
-import type { AstNode, Context, NodeOf } from "@substrate/architecture-lint/ast";
+import type { AstNode, NodeOf } from "@substrate/architecture-lint/ast";
 
-export type { AstNode, Context, NodeOf, Rule } from "@substrate/architecture-lint/ast";
+export type { AstNode, NodeOf, Rule } from "@substrate/architecture-lint/ast";
 export { elementImport, elementName } from "@substrate/architecture-lint/ast";
 
 type OpeningElement = NodeOf<"JSXOpeningElement">;

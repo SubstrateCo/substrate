@@ -134,7 +134,12 @@ export function createAgentWorkServer(options: {
     async threadMessages(organizationId, conversationId, threadId, beforeMessageId) {
       const query = new URLSearchParams({ organizationId, conversationId, threadId });
       if (beforeMessageId) query.set("beforeMessageId", beforeMessageId);
-      return call(`/messaging/messages?${query}`, undefined, z.array(threadMessageSchema), "GET");
+      return call(
+        `/messaging/messages?${query.toString()}`,
+        undefined,
+        z.array(threadMessageSchema),
+        "GET",
+      );
     },
     async openRequest(input) {
       return call(
@@ -160,7 +165,7 @@ export function createAgentWorkServer(options: {
     async requestStatus(organizationId, requestId) {
       const query = new URLSearchParams(device(organizationId));
       return call(
-        `/agent-work/device/requests/${encodeURIComponent(requestId)}?${query}`,
+        `/agent-work/device/requests/${encodeURIComponent(requestId)}?${query.toString()}`,
         undefined,
         agentRequestState,
         "GET",
