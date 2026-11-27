@@ -50,7 +50,11 @@ export function AccessRow({
           {meta && <ItemDescription className="wrap-anywhere">{meta}</ItemDescription>}
         </ItemContent>
         <ItemActions>
-          {levelControl ?? <span className="shrink-0 text-sm text-muted-foreground">{level}</span>}
+          <div className="w-30 shrink-0">
+            {levelControl ?? (
+              <span className="block px-2.5 text-sm text-muted-foreground">{level}</span>
+            )}
+          </div>
           {onRemove && (
             <RowActions label={`Actions for ${name}`}>
               <RowAction
@@ -63,6 +67,7 @@ export function AccessRow({
               </RowAction>
             </RowActions>
           )}
+          {!onRemove && <span aria-hidden="true" className="w-7 shrink-0" />}
         </ItemActions>
       </li>
     </Item>

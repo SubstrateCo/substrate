@@ -57,7 +57,7 @@ export function ProjectMemberRow({
               size="sm"
               variant="ghost"
               aria-label={`${member.name} permission`}
-              className="w-30 justify-end"
+              className="w-30"
             >
               <SelectValue />
             </SelectTrigger>

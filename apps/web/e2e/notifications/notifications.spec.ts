@@ -57,6 +57,22 @@ test("single and grouped notifications expand to the correct events without mark
     }),
   ).toBeVisible();
   await expect(list.locator(`a[href*="messageId=${singleReply.id}"]`)).toBeVisible();
+  const singleRow = list
+    .getByRole("listitem")
+    .filter({ has: recipient.page.locator(`a[href*="messageId=${singleReply.id}"]`) });
+  const badge = singleRow.locator("[data-slot=item-media] > span").last();
+  const badgeAppearance = () =>
+    badge.evaluate((element) => {
+      const style = getComputedStyle(element);
+      return { background: style.backgroundColor, ring: style.boxShadow };
+    });
+  await recipient.page.mouse.move(0, 0);
+  const appearance = await badgeAppearance();
+  const row = singleRow.locator("[data-slot=item]");
+  const rowBackground = await row.evaluate((element) => getComputedStyle(element).backgroundColor);
+  await singleRow.hover();
+  await expect(row).not.toHaveCSS("background-color", rowBackground);
+  expect(await badgeAppearance()).toEqual(appearance);
   await list.getByRole("button", { name: "Show 2 events", exact: true }).click();
   const events = list.getByRole("list", { name: "Group events" });
   await expect(events.getByRole("link")).toHaveCount(2);

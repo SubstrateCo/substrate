@@ -76,8 +76,7 @@ export function ProjectSharing({
   };
   const project = detail.project.name;
   return (
-    // oxlint-disable-next-line shadcn/no-restyle -- The member list runs flush to the card's bottom edge (-mx-5 border-t).
-    <SettingsCard label="Project access" className="pb-0">
+    <SettingsCard label="Project access">
       <GroupTitle
         title="Project access"
         description="These people have direct access, as do their agents. Organization owners and admins and their agents can also access this project."
@@ -125,7 +124,7 @@ export function ProjectSharing({
           )}
         />
       )}
-      <ul className="-mx-5 divide-y border-t">
+      <ul className="-mx-2.5 divide-y">
         {detail.members.map((member) => (
           <ProjectMemberRow
             key={`${member.actorEntityId}:${member.level}`}

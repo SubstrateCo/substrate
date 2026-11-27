@@ -102,7 +102,7 @@ export function NotificationItem({
           avatar={
             <>
               <PersonAvatar name={actor} image={item.actorImage} />
-              <span className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-surface text-muted-foreground ring-2 ring-surface group-hover/row:bg-row-hover group-hover/row:ring-row-hover">
+              <span className="absolute -right-1 -bottom-1 flex size-4 items-center justify-center rounded-full bg-surface text-muted-foreground ring-2 ring-surface">
                 <Icon className="size-3" />
               </span>
             </>
