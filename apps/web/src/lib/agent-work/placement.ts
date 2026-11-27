@@ -4,6 +4,8 @@ import type {
   AgentWorkTurnView,
 } from "@substrate/contracts/agent-work";
 
+import { waits } from "./status";
+
 const newest = <T extends { createdAt: string }>(values: readonly T[]) =>
   values.reduce<T | undefined>(
     (best, value) =>
@@ -107,6 +109,17 @@ export function itemPlacements(
     add(placements, ref.messageId, item);
   }
   return placements;
+}
+
+/**
+ * The waiting owner messages that show the agent's queued reply row: the newest of each
+ * session, because the session's next turn shows under its newest source. Older waiting
+ * messages of the session show nothing of their own.
+ */
+export function queuedReplyItems(items: readonly AgentWorkItemView[]) {
+  const bySession = new Map<string, AgentWorkItemView[]>();
+  for (const item of items) if (waits(item)) add(bySession, item.sessionId, item);
+  return new Set([...bySession.values()].flatMap((list) => newest(list)?.id ?? []));
 }
 
 /**

@@ -1,4 +1,3 @@
-import { WorkOrb } from "./work-orb";
 import { PendingButton } from "@/components/feedback/pending-button";
 import { toneText } from "@/components/feedback/tag-styles";
 import { Pressable } from "@/components/ui/pressable";
@@ -14,14 +13,14 @@ function ToneIcon({ tone }: { tone: WorkTone }) {
     return <X aria-hidden="true" className="size-3.5 shrink-0 text-destructive" />;
   if (tone === "attention")
     return <CircleAlert aria-hidden="true" className="size-3.5 shrink-0 text-warning" />;
-  if (tone === "working") return <WorkOrb />;
   return null;
 }
 
 /**
  * A turn's work as one status in the reply's header, such as "Worked for 28s". It opens the
  * transcript, which holds the steps. Requests, attention cards, and errors stay in the message
- * body so they are never hidden.
+ * body so they are never hidden. Live work shows its orb in the place of the avatar, and Stop
+ * at the end of the line, so neither moves while the label changes.
  */
 export function WorkStatus({
   tone,
@@ -41,7 +40,7 @@ export function WorkStatus({
   stopping: boolean;
 }) {
   return (
-    <span className="flex max-w-full min-w-0 items-center gap-1">
+    <span className="flex max-w-full min-w-0 flex-1 items-center gap-1">
       <Tooltip>
         <TooltipTrigger asChild>
           <Pressable
@@ -69,8 +68,8 @@ export function WorkStatus({
               type="button"
               size="icon-xs"
               variant="destructive-ghost"
-              // oxlint-disable-next-line shadcn/no-restyle -- Stop an active run stays red at rest; it is not a muted delete-row action.
-              className="data-[size^=icon]:text-destructive"
+              // oxlint-disable-next-line shadcn/no-restyle -- Stop an active run stays red at rest; it is not a muted delete-row action. It sits at the end of the byline.
+              className="ml-auto data-[size^=icon]:text-destructive"
               aria-label="Stop run"
               pending={stopping}
               onClick={onStop}

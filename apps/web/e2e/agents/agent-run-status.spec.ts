@@ -39,7 +39,9 @@ test("one owner-only run status follows its source visibility and keeps run cont
   await visit(user, channel.id);
   const inline = user.page.getByRole("region", { name: "Jarvis reply", exact: true });
   const floating = user.page.getByRole("status", { name: "Agent status", exact: true });
-  await expect(inline.getByRole("button", { name: /Jarvis is working/ })).toBeVisible();
+  const timeline = user.page.getByRole("log", { name: "Messages", exact: true });
+  const composer = user.page.getByRole("textbox", { name: /^Message / });
+  await expect(inline.getByRole("button", { name: /Working ·/ })).toBeVisible();
   await expect(inline).toBeInViewport({ ratio: 1 });
   await expect(inline.getByRole("button", { name: "Stop run", exact: true })).toBeVisible();
   await expect(inline.getByRole("button", { name: "Stop run", exact: true })).toHaveAttribute(
@@ -66,13 +68,18 @@ test("one owner-only run status follows its source visibility and keeps run cont
     .filter({ hasText: "Launch review update 40:" })
     .scrollIntoViewIfNeeded();
   await expect(inline).not.toBeInViewport();
-  await expect(floating.getByRole("button", { name: /Jarvis is working/ })).toBeVisible();
+  const before = { timeline: await timeline.boundingBox(), composer: await composer.boundingBox() };
+  await expect(floating.getByRole("button", { name: /Working ·/ })).toBeVisible();
   await expect(floating.getByRole("button", { name: "Stop run", exact: true })).toHaveAttribute(
     "data-variant",
     "destructive-ghost",
   );
+  // The notice floats over the timeline: the timeline and the composer keep their place.
+  expect(await timeline.boundingBox()).toEqual(before.timeline);
+  expect(await composer.boundingBox()).toEqual(before.composer);
   await captureScreenshot(user.page, "agent-run-status-offscreen");
-  await inline.scrollIntoViewIfNeeded();
+  await floating.getByRole("button", { name: "Show Jarvis’s work", exact: true }).click();
+  await expect(inline).toBeInViewport();
   await expect(floating).toHaveCount(0);
   // The summary comes from the server; the timeline stays on the home desktop.
   await inline.getByRole("button", { name: /Open transcript/ }).click();
@@ -90,7 +97,7 @@ test("one owner-only run status follows its source visibility and keeps run cont
   );
   // The home desktop sees the stopping turn and ends it.
   await finishTurn(owner, turn, { status: "cancelled", interruption: "stop" });
-  await expect(inline.getByRole("button", { name: /Jarvis · Stopped/ })).toBeVisible();
+  await expect(inline.getByRole("button", { name: /^Stopped/ })).toBeVisible();
   await expect(inline.getByRole("button", { name: "Stop run", exact: true })).toHaveCount(0);
   await expect(floating).toHaveCount(0);
 
@@ -174,16 +181,23 @@ test("finished work moves to the published result and keeps its existing transcr
     text: "Checked the launch plan.",
   });
   await visit(user, channel.id);
-  await expect(user.page.getByRole("button", { name: /Jarvis is working/ })).toBeVisible();
+  const pending = user.page.getByRole("region", { name: "Jarvis reply", exact: true });
+  await expect(pending.getByRole("button", { name: /Working ·/ })).toBeVisible();
+  const pendingName = await pending.getByText("Jarvis", { exact: true }).boundingBox();
   const reply = await callTool(owner, turn, "reply", {
     body: "The main risk is the pending security review. Confirm an owner and finish it before Friday.",
     to: { conversationId: channel.id },
   });
   expect(reply.messageId).toBeTruthy();
-  await finishTurn(owner, turn, { status: "completed", outcome: "replied" });
   const result = user.page
     .getByRole("article")
     .filter({ hasText: "The main risk is the pending security review." });
+  // The reply takes the pending row's place: its byline stays where the row's was.
+  await expect(result.getByRole("button", { name: /Working ·/ })).toBeVisible();
+  const replyName = await result.getByText("Jarvis", { exact: true }).boundingBox();
+  expect(Math.abs(replyName!.y - pendingName!.y)).toBeLessThanOrEqual(4);
+  expect(Math.abs(replyName!.x - pendingName!.x)).toBeLessThanOrEqual(1);
+  await finishTurn(owner, turn, { status: "completed", outcome: "replied" });
   await expect(result.getByRole("button", { name: /Worked for/ })).toBeVisible();
   await expect(user.page.getByRole("region", { name: "Jarvis reply", exact: true })).toHaveCount(0);
   await expect(user.page.getByRole("status", { name: "Agent status", exact: true })).toHaveCount(0);

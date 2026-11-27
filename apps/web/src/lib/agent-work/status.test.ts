@@ -7,6 +7,7 @@ import {
   silentLabel,
   steeredLabel,
   turnLabel,
+  turnOrb,
   turnTone,
   type ItemContext,
 } from "./status";
@@ -31,8 +32,8 @@ describe("turn labels", () => {
   });
 
   test("working time counts from the start and stops when the turn ends", () => {
-    expect(turnStatus(turn(started), now).label).toBe("1m 05s");
-    expect(turnStatus(turn({ ...started, status: "waiting" }), now).label).toBe("1m 05s");
+    expect(turnStatus(turn(started), now).label).toBe("Working · 1m 05s");
+    expect(turnStatus(turn({ ...started, status: "waiting" }), now).label).toBe("Working · 1m 05s");
     expect(
       turnStatus(
         turn({
@@ -64,6 +65,22 @@ describe("turn labels", () => {
       tone: "muted",
       label: silentLabel,
     });
+  });
+});
+
+describe("orb animation", () => {
+  test("each live state has its own animation; an open request listens for the owner", () => {
+    expect(turnOrb(turn({ status: "assigned" }))).toBe("connecting");
+    expect(turnOrb(turn(started))).toBe("solving");
+    expect(turnOrb(turn({ ...started, status: "waiting" }))).toBe("listening");
+    expect(turnOrb(turn(started), { kind: "question" })).toBe("listening");
+    expect(turnOrb(turn({ status: "stopping" }))).toBe("breathing");
+  });
+
+  test("ended work shows no orb, even with a request still open", () => {
+    expect(turnOrb(turn({ status: "completed", outcome: "replied" }))).toBeNull();
+    expect(turnOrb(turn({ status: "needs_attention" }), { kind: "question" })).toBeNull();
+    expect(turnOrb(turn({ status: "failed" }))).toBeNull();
   });
 });
 

@@ -1,4 +1,10 @@
-import { itemPlacements, requestPlacements, turnConversation, turnPlacements } from "./placement";
+import {
+  itemPlacements,
+  queuedReplyItems,
+  requestPlacements,
+  turnConversation,
+  turnPlacements,
+} from "./placement";
 import { conversationId, hiddenRequest, item, output, request, source, turn } from "./test-support";
 import { describe, expect, test } from "bun:test";
 
@@ -150,6 +156,20 @@ describe("inbox item placement", () => {
       conversationId,
     );
     expect(ids(placements)).toEqual({ m1: ["waiting"] });
+  });
+
+  test("only the newest waiting owner message of a session stands in for the agent's reply", () => {
+    const older = item({ id: "older", createdAt: "2026-11-08T10:00:00Z" });
+    const newer = item({ id: "newer", createdAt: "2026-11-08T10:00:05Z" });
+    const otherSession = item({ id: "other", sessionId: "s2" });
+    // Held messages offer Send now and stay receipts; steered ones already joined live work.
+    const held = item({ id: "held", sessionId: "s3", held: true });
+    const steered = item({ id: "steered", sessionId: "s4", status: "submitted" });
+    const background = item({ id: "background", sessionId: "s5", lane: "background" });
+    expect([...queuedReplyItems([older, newer, otherSession, held, steered, background])]).toEqual([
+      "newer",
+      "other",
+    ]);
   });
 });
 

@@ -12,14 +12,15 @@ import { MutedWorkLine, WorkStatus } from "./work-status";
 import { WorkStatusTag } from "./work-status-tag";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { useNow } from "@/hooks/use-now";
-import { failedWorkNote, silentLabel, turnLabel, turnTone } from "@/lib/agent-work/status";
+import { failedWorkNote, silentLabel, turnLabel, turnOrb, turnTone } from "@/lib/agent-work/status";
 
 type TurnProps = {
   turn: AgentWorkTurnView;
   openRequest?: AgentRequestView;
   onTranscript: (turnId: string) => void;
   onVisibilityChange?: TurnVisibilityChange;
-  agentName?: string;
+  /** Shows the latest activity after the label. The pending reply shows it on its own line. */
+  inlineActivity?: boolean;
 };
 
 /** One turn's status line, with its own clock so only this text renders each second. */
@@ -46,7 +47,7 @@ function LiveTurnStatus({
   openRequest,
   onTranscript,
   onVisibilityChange,
-  agentName,
+  inlineActivity = true,
 }: TurnProps) {
   const ref = useRef<HTMLSpanElement>(null);
   useEffect(() => {
@@ -67,19 +68,23 @@ function LiveTurnStatus({
   const tone = turnTone(turn, openRequest);
   const label = turnLabel(turn, now, openRequest);
   return (
-    <span ref={ref} className="inline-flex min-w-0">
+    <span ref={ref} data-turn-status={turn.id} className="flex min-w-0 flex-1">
       <WorkStatus
         tone={tone}
-        label={
-          agentName ? `${agentName}${tone === "working" ? " is working" : ""} · ${label}` : label
-        }
-        activity={turn.activity}
+        label={label}
+        activity={inlineActivity ? turn.activity : null}
         onTranscript={() => onTranscript(turn.id)}
         onStop={onStop}
         stopping={stopping}
       />
     </span>
   );
+}
+
+/** What live work is doing, on the line where the agent's reply will go. */
+function activityLine(turn: AgentWorkTurnView) {
+  if (turn.activity) return turn.activity;
+  return turn.status === "assigned" ? "Getting started…" : "Thinking…";
 }
 
 /**
@@ -92,7 +97,7 @@ export function TurnWork({
   underReply,
   uncertainItemIds,
   ...props
-}: TurnProps & {
+}: Omit<TurnProps, "inlineActivity"> & {
   agentName: string;
   /** The turn shows under the agent's own message, not under the owner's. */
   underReply: boolean;
@@ -117,7 +122,13 @@ export function TurnWork({
   );
   if (underReply) return body;
   return (
-    <PendingReply name={agentName} status={<TurnStatus {...props} agentName={agentName} />}>
+    <PendingReply
+      name={agentName}
+      orb={turnOrb(turn, openRequest)}
+      tone={tone}
+      status={<TurnStatus {...props} inlineActivity={false} />}
+      line={tone === "working" ? activityLine(turn) : undefined}
+    >
       {body}
     </PendingReply>
   );

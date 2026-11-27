@@ -17,14 +17,27 @@ import { RequestCard } from "./requests/request-card";
 import { TurnLabel, TurnStatus, TurnWork } from "./turn-work";
 import { useVisibleTurnStatuses } from "./use-visible-turn-statuses";
 import { WorkIndicator } from "./work-indicator";
+import { WorkAvatar } from "./work-orb";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { noticeLines, noticeThread } from "@/lib/agent-work/composer-notice";
 import { conversationAgents } from "@/lib/agent-work/conversation-agents";
 import { proposalSourceLink } from "@/lib/agent-work/links";
-import { itemPlacements, requestPlacements, turnPlacements } from "@/lib/agent-work/placement";
+import {
+  itemPlacements,
+  queuedReplyItems,
+  requestPlacements,
+  turnPlacements,
+} from "@/lib/agent-work/placement";
 import { isOpenRequest } from "@/lib/agent-work/requests";
-import { agentStatus, noDesktopLabel, queueAhead, turnTone } from "@/lib/agent-work/status";
+import {
+  agentStatus,
+  noDesktopLabel,
+  queueAhead,
+  turnOrb,
+  turnTone,
+  waits,
+} from "@/lib/agent-work/status";
 import type { Conversation } from "@/lib/messaging/conversations";
 import { agentLink } from "@/lib/navigation/record-links";
 import { useNewTopic } from "@/queries/agent-work/mutations";
@@ -135,6 +148,10 @@ export function ConversationAgentWork({
     requests.data ?? [],
     agentOf,
   );
+  const queuedReplies = queuedReplyItems(items);
+  /** The latest work behind an agent's reply, or undefined for other messages. */
+  const replyTurn = (messageId: string) =>
+    outputs.has(messageId) ? placements.get(messageId)?.at(-1) : undefined;
 
   const notice = (threadId: string | null) => {
     const lines = noticeLines({
@@ -153,16 +170,13 @@ export function ConversationAgentWork({
           const request = openRequest(line.turn.id);
           return {
             key: agentId,
+            turnId: line.turn.id,
             agentName,
             tone: turnTone(line.turn, request),
+            orb: turnOrb(line.turn, request),
             label: <TurnLabel turn={line.turn} openRequest={request} />,
             status: (
-              <TurnStatus
-                turn={line.turn}
-                openRequest={request}
-                agentName={agentName}
-                onTranscript={onTranscript}
-              />
+              <TurnStatus turn={line.turn} openRequest={request} onTranscript={onTranscript} />
             ),
           };
         }
@@ -182,7 +196,13 @@ export function ConversationAgentWork({
             label: "Needs you",
             link: { link: agentLink(organizationId, agentId), label: "Open Agents" },
           };
-        return { key: agentId, agentName, ...agentStatus(line.status) };
+        const status = agentStatus(line.status);
+        return {
+          key: agentId,
+          agentName,
+          ...status,
+          orb: status.tone === "working" ? "solving" : null,
+        };
       });
     // Members list only the viewer's own agents, so the owner can reset their DM session.
     const dmAgent = conversation.kind === "dm" && threadId === null ? members[0] : undefined;
@@ -223,6 +243,9 @@ export function ConversationAgentWork({
                 );
               })}
               {waiting.map((item) => {
+                const asReply = queuedReplies.has(item.id);
+                // The session's newest waiting message carries the queued reply row.
+                if (waits(item) && !asReply) return null;
                 const agentId = agentOf(item);
                 const sameAgent = itemsByAgent.get(agentId) ?? [];
                 const status = statusByAgent?.get(agentId);
@@ -230,6 +253,7 @@ export function ConversationAgentWork({
                   <InboxReceipt
                     key={item.id}
                     item={item}
+                    asReply={asReply}
                     context={{
                       agentName: name(agentId),
                       ahead: queueAhead(item, sameAgent),
@@ -270,10 +294,20 @@ export function ConversationAgentWork({
               />
             )),
         badge: (messageId) => {
-          if (!outputs.has(messageId)) return null;
-          const latest = placements.get(messageId)?.at(-1);
-          return latest ? <WorkIndicator tone={turnTone(latest, openRequest(latest.id))} /> : null;
+          const turn = replyTurn(messageId);
+          // Live work shows the orb in place of the avatar instead.
+          if (!turn || turnOrb(turn, openRequest(turn.id))) return null;
+          return <WorkIndicator tone={turnTone(turn, openRequest(turn.id))} />;
         },
+        avatar: (messageId) => {
+          const turn = replyTurn(messageId);
+          const orb = turn && turnOrb(turn, openRequest(turn.id));
+          return orb ? <WorkAvatar state={orb} /> : null;
+        },
+        pendingReply: (messageId) =>
+          (placements.get(messageId) ?? []).some(
+            (turn) => turnTone(turn, openRequest(turn.id)) !== "muted",
+          ) || (waitingItems.get(messageId) ?? []).some((item) => queuedReplies.has(item.id)),
         notice,
       }}
     >

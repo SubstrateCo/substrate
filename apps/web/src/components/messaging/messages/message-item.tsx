@@ -9,6 +9,7 @@ import { ReferencedMessageBody } from "../../context/references/referenced-messa
 import { EditMessageComposer } from "./edit-message-composer";
 import { messageAttachmentUrl, messageAttachmentPreviewUrl } from "@/api/files/attachments";
 import type { Message } from "@/api/messaging/requests";
+import { useAgentWorkAvatar } from "@/components/agent-work/agent-work-context";
 import {
   AgentWorkBadge,
   AgentWorkSlot,
@@ -17,8 +18,8 @@ import {
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { ConfirmDialog } from "@/components/feedback/confirm-dialog";
 import { useStateDialog } from "@/components/feedback/use-state-dialog";
-import { LinkedMessage } from "@/components/messaging/messages/linked-message";
 import { MessageAttachments } from "@/components/messaging/messages/attachments/message-attachments";
+import { LinkedMessage } from "@/components/messaging/messages/linked-message";
 import { messageAuthorName } from "@/components/messaging/messages/message-author";
 import { MessageItem as MessageItemView } from "@/components/messaging/messages/message-item-view";
 import { MessageReaction } from "@/components/messaging/messages/reactions/message-reaction";
@@ -76,6 +77,7 @@ export function MessageItem({
     restoreFocus,
   } = useStateDialog<MessageDialog>(actionsTrigger);
   const reaction = useToggleReaction(organizationId, message.conversationId, message.id);
+  const workAvatar = useAgentWorkAvatar(message.id);
   const react = (emoji: string) =>
     reaction.mutate(emoji, {
       onError: (error) =>
@@ -162,6 +164,7 @@ export function MessageItem({
               }}
             />
           }
+          avatar={workAvatar}
           avatarBadge={<AgentWorkBadge messageId={message.id} />}
           status={
             message.authorType === "agent" ? <AgentWorkStatus messageId={message.id} /> : undefined

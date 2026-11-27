@@ -28,11 +28,14 @@ export function MessageItem({
   body,
   editor,
   actions,
+  avatar,
   avatarBadge,
   status,
   renderReaction,
   children,
 }: {
+  /** Replaces the author's avatar, such as while an agent's reply is still being worked on. */
+  avatar?: ReactNode;
   /** Replaces the body while the message is edited in place. */
   editor?: ReactNode;
   message: Message;
@@ -63,17 +66,19 @@ export function MessageItem({
       avatar={
         !grouped && (
           <span className="relative mt-0.5 h-fit shrink-0">
-            <Avatar
-              aria-hidden="true"
-              variant={message.authorType === "agent" ? "agent" : "default"}
-              className="size-9"
-            >
-              {message.authorImage && <AvatarImage src={message.authorImage} alt="" />}
-              <PersonAvatarFallback
-                name={message.authorName}
-                agent={message.authorType === "agent"}
-              />
-            </Avatar>
+            {avatar ?? (
+              <Avatar
+                aria-hidden="true"
+                variant={message.authorType === "agent" ? "agent" : "default"}
+                className="size-9"
+              >
+                {message.authorImage && <AvatarImage src={message.authorImage} alt="" />}
+                <PersonAvatarFallback
+                  name={message.authorName}
+                  agent={message.authorType === "agent"}
+                />
+              </Avatar>
+            )}
             {avatarBadge}
           </span>
         )
@@ -142,7 +147,7 @@ function MessageByline({
       />
       {message.authorType === "agent" && <Tag>Agent</Tag>}
       {message.authorExternal && <Tag>External</Tag>}
-      {status && <span className="flex min-w-0 self-center">{status}</span>}
+      {status && <span className="flex min-w-0 flex-1 self-center">{status}</span>}
     </>
   );
 }

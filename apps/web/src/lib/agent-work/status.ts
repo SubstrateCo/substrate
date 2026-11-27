@@ -54,7 +54,40 @@ export function turnTone(
   }
 }
 
-/** One turn as one short line, such as "1m 05s" while working. */
+/** The orb's animation for live work. Each name is a state of the `thinking-orbs` orb. */
+export type WorkOrbState = "breathing" | "connecting" | "solving" | "listening";
+
+/** Queued work waits calmly for its turn. */
+export const queuedOrb: WorkOrbState = "breathing";
+
+/**
+ * The orb animation for a live turn, or null when the work has ended: connecting while it
+ * starts, solving while it runs, listening while it waits for the owner, and breathing while
+ * it stops.
+ */
+export function turnOrb(
+  turn: AgentWorkTurnView,
+  openRequest?: Pick<AgentRequestView, "kind">,
+): WorkOrbState | null {
+  switch (turn.status) {
+    case "assigned":
+      return openRequest ? "listening" : "connecting";
+    case "running":
+      return openRequest ? "listening" : "solving";
+    case "waiting":
+      return "listening";
+    case "stopping":
+      return "breathing";
+    case "completed":
+    case "cancelled":
+    case "interrupted":
+    case "needs_attention":
+    case "failed":
+      return null;
+  }
+}
+
+/** One turn as one short line, such as "Working · 1m 05s". */
 export function turnLabel(
   turn: AgentWorkTurnView,
   now: number,
@@ -71,7 +104,7 @@ export function turnLabel(
       return resumed ? resumedLabel : "Starting";
     case "running":
     case "waiting":
-      return resumed ? `${resumedLabel} · ${ran()}` : ran();
+      return resumed ? `${resumedLabel} · ${ran()}` : `Working · ${ran()}`;
     case "stopping":
       return "Stopping";
     case "completed":
@@ -121,7 +154,8 @@ export type ItemStatus = WorkStatus & { sendNow: boolean; uncertain: boolean };
 const uncertainItemLabel = (agentName: string) =>
   `We couldn’t confirm ${agentName} received this message`;
 
-const waits = (item: AgentWorkItemView) =>
+/** An owner message that waits for its session's next turn, which Send now cannot hurry. */
+export const waits = (item: AgentWorkItemView) =>
   item.lane === "owner" &&
   !item.held &&
   (item.status === "pending" || item.status === "confirmed_unconsumed");

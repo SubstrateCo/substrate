@@ -5,6 +5,7 @@ import { Fragment, type ReactNode } from "react";
 import { MessageItem } from "./message-item";
 import type { MessagePageContext } from "@/api/context/links";
 import type { Message } from "@/api/messaging/requests";
+import { usePendingAgentReply } from "@/components/agent-work/agent-work-context";
 import { DayDivider } from "@/components/messaging/messages/day-divider";
 import { messageRows } from "@/components/messaging/messages/message-grouping";
 import { MessageList as MessageListView } from "@/components/messaging/messages/message-list-view";
@@ -56,6 +57,7 @@ export function MessageList({
     ),
   );
   const contextById = new Map(context.data?.map((row) => [row.messageId, row]));
+  const pendingAgentReply = usePendingAgentReply();
   return (
     <MessageListView
       lastId={messages.at(-1)?.id}
@@ -75,7 +77,8 @@ export function MessageList({
           {message.id === firstUnreadMessageId && <NewMessagesDivider />}
           <MessageRow
             message={message}
-            grouped={grouped}
+            // A pending agent reply row sits between this message and the one before it.
+            grouped={grouped && !pendingAgentReply(messages[index - 1]?.id ?? "")}
             onThread={onThread}
             unreadReplies={unreadReplies?.get(message.id)}
             canPost={canPost}
