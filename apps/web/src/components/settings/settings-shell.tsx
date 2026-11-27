@@ -62,7 +62,9 @@ export function SettingsShell({
   return (
     <PageLayout id="settings" aria-label="Settings">
       <SettingsNav groups={groups} />
-      <PageContent className="overflow-y-auto p-4 md:p-6">{children}</PageContent>
+      <PageContent className="overflow-y-auto p-4 md:p-6 [&_[data-slot=settings-content]]:mx-0 [&_[data-slot=settings-content]]:max-w-7xl">
+        {children}
+      </PageContent>
     </PageLayout>
   );
 }

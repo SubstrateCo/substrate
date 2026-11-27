@@ -52,3 +52,11 @@ export function SettingsPanel({
     </SettingsContent>
   );
 }
+
+export function SettingsGrid({ children }: { children: ReactNode }) {
+  return (
+    <div className="grid min-w-0 grid-cols-1 items-start gap-6 @4xl/content:grid-cols-2">
+      {children}
+    </div>
+  );
+}

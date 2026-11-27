@@ -157,7 +157,7 @@ export function OrganizationApps({
               }
             >
               <div className="@container">
-                <div className="grid grid-cols-1 gap-4 @xl:grid-cols-2 @4xl:grid-cols-3">
+                <div className="grid grid-cols-1 gap-4 @3xl:grid-cols-2 @6xl:grid-cols-3">
                   {catalog.flatMap((entry) => {
                     if (appScope(entry.id) !== scope) return [];
                     const app = workspaceApps.find((item) => item.id === entry.id)!;
@@ -172,8 +172,8 @@ export function OrganizationApps({
                         className="h-full flex-col flex-nowrap items-stretch"
                       >
                         <section aria-label={app.label}>
-                          <ItemHeader className="basis-auto">
-                            <div className="flex min-w-0 items-center gap-3">
+                          <ItemHeader className="basis-auto flex-wrap">
+                            <div className="flex shrink-0 items-center gap-3">
                               <ItemMedia>
                                 <div className="flex size-9 items-center justify-center rounded-lg bg-muted">
                                   <Icon className="size-5" aria-hidden />
