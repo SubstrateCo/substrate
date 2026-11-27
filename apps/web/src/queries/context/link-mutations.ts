@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { invalidateMessageWork } from "./mutations";
-import { attachWork, detachWork } from "@/api/context/links";
+import { attachWork } from "@/api/context/links";
 
 export function useAttachMessageWork<T extends { id: string; projectEntityId: string | null }>(
   organizationId: string,
@@ -32,15 +32,5 @@ export function useAttachMessageWork<T extends { id: string; projectEntityId: st
       await Promise.all(refreshes);
       return failures;
     },
-  });
-}
-
-export function useDetachMessageWork(organizationId: string, messageId: string) {
-  const client = useQueryClient();
-  return useMutation({
-    mutationFn: ({ entityId }: { entityId: string; projectEntityId: string | null }) =>
-      detachWork({ data: { organizationId, messageId, entityId } }),
-    onSuccess: (_, { entityId, projectEntityId }) =>
-      invalidateMessageWork(client, organizationId, messageId, entityId, projectEntityId),
   });
 }

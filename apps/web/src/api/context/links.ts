@@ -30,5 +30,3 @@ export const getRecordLabels = ({
   );
 export const attachWork = ({ data, signal }: ApiInput<z.input<typeof contextLink>>) =>
   readResult(api.context.links.$post({ json: data }, { init: { signal } }));
-export const detachWork = ({ data, signal }: ApiInput<z.input<typeof contextLink>>) =>
-  readResult(api.context.links.$delete({ json: data }, { init: { signal } }));

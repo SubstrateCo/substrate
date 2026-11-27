@@ -4,7 +4,7 @@ import { useRef, useState, type RefObject } from "react";
 import { flushSync } from "react-dom";
 
 import { LinkMessageWork } from "../../context/links/link-message-work";
-import { MessageContext, type MessageContextState } from "../../context/references/message-context";
+import type { MessageContextState } from "../../context/references/message-context";
 import { ReferencedMessageBody } from "../../context/references/referenced-message-body";
 import { EditMessageComposer } from "./edit-message-composer";
 import { messageAttachmentUrl, messageAttachmentPreviewUrl } from "@/api/files/attachments";
@@ -169,7 +169,6 @@ export function MessageItem({
           onReact={canPost ? react : undefined}
           pending={reaction.isPending}
         >
-          {!message.deletedAt && <MessageContext messageId={message.id} context={context} />}
           <AgentWorkSlot messageId={message.id} fromAgent={message.authorType === "agent"} />
           {canPost && dialog?.kind === "delete" && (
             <ConfirmDialog

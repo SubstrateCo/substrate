@@ -209,21 +209,17 @@ test("create customer records, record a call, and advance a linked deal", async 
   await linkDialog.getByRole("option", { name: /Northstar workspace rollout/ }).click();
   await linkDialog.getByRole("button", { name: "Link item", exact: true }).click();
   await expect(linkDialog).toHaveCount(0);
-  await expect(article.getByRole("link", { name: /Northstar workspace rollout/ })).toBeVisible();
   await visit(user, undefined, "/crm", { section: "deals", recordId: deal.entityId });
   const discussion = page
     .getByRole("region", { name: "Related discussions", exact: true })
     .locator(`a[href*="messageId=${message.id}"]`);
   await expect(discussion).toBeVisible();
   await discussion.click();
-  const thread = page.getByRole("complementary", { name: "Thread", exact: true });
-  const back = thread.getByRole("link", { name: "Northstar workspace rollout", exact: true });
-  await expect(back).toBeVisible();
-  await back.click();
   await expect(
-    page.getByRole("heading", { name: "Northstar workspace rollout", exact: true }),
+    page
+      .getByRole("complementary", { name: "Thread", exact: true })
+      .getByText("Review the Northstar rollout before kickoff.", { exact: true }),
   ).toBeVisible();
-  expect(new URL(page.url()).searchParams.get("recordId")).toBe(deal.entityId);
 });
 
 test("CRM default currency prefills new deal drafts and preserves an existing USD deal", async ({

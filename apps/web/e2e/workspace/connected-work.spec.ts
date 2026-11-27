@@ -27,15 +27,17 @@ test("follow existing message-task links and find the task in search", async ({
   await visit(sender, channel.id);
   const sourceMessage = sender.page.getByRole("article").filter({ hasText: source });
   await expect(sourceMessage).toBeVisible();
-  const linkedTask = sender.page
-    .getByRole("article")
-    .filter({ hasText: source })
-    .getByRole("list", { name: "Created from this message", exact: true })
-    .getByRole("link", { name: `${title} Not started`, exact: true });
-  await linkedTask.click();
+  // Messages show no attached-work panel; the link lives on the task's side.
+  await expect(sourceMessage.getByRole("link", { name: new RegExp(title) })).toHaveCount(0);
+  const searchInput = sender.page.getByRole("combobox", { name: "Search workspace", exact: true });
+  await searchInput.click();
+  await searchInput.fill(title);
+  await sender.page
+    .getByRole("region", { name: "Workspace search", exact: true })
+    .getByRole("link", { name: new RegExp(title) })
+    .click();
   const task = sender.page.getByRole("region", { name: "Task details", exact: true });
   await expect(task.getByRole("heading", { name: title, exact: true })).toBeVisible();
-  const taskId = new URL(sender.page.url()).searchParams.get("taskId");
   await task
     .getByRole("link", { name: `Created from a discussion · ${channel.name}`, exact: true })
     .click();
@@ -49,19 +51,4 @@ test("follow existing message-task links and find the task in search", async ({
   await expect(
     thread.getByRole("button", { name: "More message actions", exact: true }),
   ).toBeVisible();
-  await expect(
-    sender.page
-      .getByRole("complementary", { name: "Thread", exact: true })
-      .getByRole("list", { name: "Created from this message", exact: true })
-      .getByRole("link", { name: `${title} Not started`, exact: true }),
-  ).toBeVisible();
-  const searchInput = sender.page.getByRole("combobox", { name: "Search workspace", exact: true });
-  await searchInput.click();
-  await searchInput.fill(title);
-  await sender.page
-    .getByRole("region", { name: "Workspace search", exact: true })
-    .getByRole("link", { name: new RegExp(title) })
-    .click();
-  await expect(task.getByRole("heading", { name: title, exact: true })).toBeVisible();
-  expect(new URL(sender.page.url()).searchParams.get("taskId")).toBe(taskId);
 });
