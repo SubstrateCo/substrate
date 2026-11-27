@@ -39,7 +39,7 @@ export function CrmResourceState({
     return (
       <>
         <PageSheetHeader title={sheet.label} />
-        <PageSheetBody>{content}</PageSheetBody>
+        <PageSheetBody className="flex flex-col">{content}</PageSheetBody>
       </>
     );
   }

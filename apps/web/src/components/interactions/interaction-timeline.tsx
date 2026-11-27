@@ -132,7 +132,7 @@ function TimelinePage({
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <Card size="sm" className="min-h-0 flex-1">
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           {items.length ? (
             <InteractionList rows={items} sources={sources} />
           ) : (

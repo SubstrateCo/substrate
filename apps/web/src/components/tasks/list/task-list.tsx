@@ -90,7 +90,7 @@ export function TaskList({
         />
       )}
       {noMatches && (
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           <ContentNotice
             icon={SearchX}
             title="No matching tasks"
@@ -115,7 +115,13 @@ export function TaskList({
         />
       )}
       {!noMatches && view === "list" && (
-        <div className="min-h-0 flex-1 overflow-y-auto pb-6">
+        <div
+          className={
+            detail.tasks.length
+              ? "min-h-0 flex-1 overflow-y-auto pb-6"
+              : "flex min-h-0 flex-1 flex-col overflow-y-auto"
+          }
+        >
           {!detail.tasks.length && (
             <ContentNotice
               icon={ListTodo}

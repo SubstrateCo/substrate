@@ -50,7 +50,7 @@ export function WorkDiscussions({
   const showLoading = loading && !uniqueRows.length;
   if (variant === "page")
     return (
-      <section aria-label={label} className="space-y-3">
+      <section aria-label={label} className="flex flex-1 flex-col gap-3">
         {children}
         {showLoading && <DiscussionLoading />}
         {failure}

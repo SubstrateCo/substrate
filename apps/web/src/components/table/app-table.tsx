@@ -138,8 +138,11 @@ export function AppTable<TData extends RowData>({
         className={cn(
           "@container min-w-0",
           layout === "ledger" ? "flex min-h-0 flex-col gap-2" : "space-y-3",
-          // oxlint-disable-next-line shadcn/no-arbitrary-values -- Cap the stable results area to the window height so its pager stays reachable in short windows.
-          paginated && "flex h-128 max-h-[60dvh] shrink-0 flex-col gap-3 space-y-0",
+          paginated &&
+            (parts.framed || parts.pager) &&
+            // oxlint-disable-next-line shadcn/no-arbitrary-values -- Cap the stable results area to the window height so its pager stays reachable in short windows.
+            "flex h-128 max-h-[60dvh] shrink-0 flex-col gap-3 space-y-0",
+          !parts.framed && !parts.pager && "flex flex-1 flex-col space-y-0",
           parts.initialLoading && !showLoading && "invisible",
         )}
       >
@@ -156,7 +159,9 @@ export function AppTable<TData extends RowData>({
           tabIndex={paginated ? 0 : undefined}
           className={cn(
             "min-w-0",
-            paginated && "min-h-0 flex-1 scrollbar-gutter-stable overflow-auto",
+            !parts.framed && "flex flex-1 flex-col",
+            paginated && "min-h-0 flex-1 overflow-auto",
+            paginated && parts.framed && "scrollbar-gutter-stable",
           )}
         >
           {parts.hasRows && renderMobileRow && (

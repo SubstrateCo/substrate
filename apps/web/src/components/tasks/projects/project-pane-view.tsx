@@ -165,7 +165,7 @@ function ProjectPaneContent({
               />
             </TabsContent>
             <TabsContent value="discussions" className="min-h-0 overflow-y-auto">
-              <div className="p-6">{context}</div>
+              <div className="flex min-h-full flex-col p-6">{context}</div>
             </TabsContent>
             {/* Stays mounted so an unsaved project name or description survives a tab change. */}
             <TabsContent
@@ -272,7 +272,7 @@ function ProjectPaneState({ state, onRetry }: { state: ResourceStatus; onRetry: 
       {state === "loading" ? (
         <ProjectLoading />
       ) : (
-        <div className="min-h-0 flex-1 overflow-y-auto">
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
           <ErrorState
             title={unavailable ? "Project unavailable" : "Couldn’t load project"}
             description={
@@ -330,7 +330,7 @@ function UnavailableTask() {
   return (
     <>
       <PageSheetHeader title="Task" />
-      <PageSheetBody>
+      <PageSheetBody className="flex flex-col">
         <ContentNotice
           icon={Unlink}
           title="Task unavailable"

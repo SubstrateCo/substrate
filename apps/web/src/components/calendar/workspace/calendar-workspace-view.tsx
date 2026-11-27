@@ -134,7 +134,7 @@ export function CalendarWorkspaceView({
 /** The agenda view's days, or a notice when nothing is scheduled. */
 export function CalendarAgendaBody(props: ComponentProps<typeof CalendarAgenda>) {
   return (
-    <div className="min-h-0 flex-1 overflow-y-auto">
+    <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
       {props.days.length > 0 ? (
         <CalendarAgenda {...props} />
       ) : (
