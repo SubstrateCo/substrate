@@ -100,7 +100,7 @@ test("month view persists and shares event selection, filtering, navigation and 
   await event.click();
   await expect(page).toHaveURL(new RegExp(`eventId=${saved.eventId}`));
   await expect(event).toHaveAttribute("aria-current", "page");
-  const panel = page.getByRole("complementary", { name: "Event details", exact: true });
+  const panel = page.getByRole("dialog", { name: "Event", exact: true });
   await expect(panel.getByRole("heading", { name: "Pricing review", exact: true })).toBeVisible();
   await captureScreenshot(page, "calendar-month-selected-event");
   await page.reload();
@@ -171,14 +171,15 @@ test("an event opens beside the calendar from its link and shows what it recorde
   await visit(user, undefined, "/calendar", { date: "2020-01-15" });
   await page.getByRole("link", { name: /Pricing review/ }).click();
   await expect(page).toHaveURL(new RegExp(`eventId=${saved.eventId}`));
-  const panel = page.getByRole("complementary", { name: "Event details", exact: true });
+  const panel = page.getByRole("dialog", { name: "Event", exact: true });
   await expect(panel.getByRole("heading", { name: "Pricing review", exact: true })).toBeVisible();
   const selectedRow = page.getByRole("link", { name: /Pricing review/ });
   await page.getByRole("heading", { name: "Pricing review", exact: true }).hover();
   const selectedBackground = await selectedRow.evaluate(
     (element) => getComputedStyle(element).backgroundColor,
   );
-  await selectedRow.hover();
+  // The event sheet covers the row's center.
+  await selectedRow.hover({ position: { x: 8, y: 8 } });
   await expect
     .poll(() => selectedRow.evaluate((element) => getComputedStyle(element).backgroundColor))
     .toBe(selectedBackground);
@@ -236,7 +237,7 @@ test("a calendar interaction links back to its meeting from the contact", async 
   await expect(meetings.getByRole("link", { name: /Private review/ })).toHaveCount(0);
   await source.click();
   await expect(page).toHaveURL(new RegExp(`eventId=${saved.eventId}`));
-  const panel = page.getByRole("complementary", { name: "Event details", exact: true });
+  const panel = page.getByRole("dialog", { name: "Event", exact: true });
   await expect(panel.getByRole("heading", { name: "Pricing review", exact: true })).toBeVisible();
   await expect(panel.getByText("Recorded", { exact: true })).toBeVisible();
   await page.goBack();

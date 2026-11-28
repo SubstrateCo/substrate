@@ -32,7 +32,7 @@ test("calendar history restores its original view and event dismissal preserves 
     .getByRole("region", { name: "Month", exact: true })
     .getByRole("link", { name: /Pricing review/ })
     .click();
-  const panel = page.getByRole("complementary", { name: "Event details", exact: true });
+  const panel = page.getByRole("dialog", { name: "Event", exact: true });
   await expect(panel).toBeVisible();
   const length = await page.evaluate(() => history.length);
   await panel.getByRole("button", { name: "Close event", exact: true }).click();

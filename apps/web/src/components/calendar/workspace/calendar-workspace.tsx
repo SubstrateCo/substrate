@@ -149,14 +149,11 @@ export function CalendarWorkspace({
         />
       }
       aside={
-        eventId && (
-          <CalendarEventPanel
-            key={eventId}
-            eventId={eventId}
-            now={now}
-            onClose={() => dismiss({ eventId: undefined })}
-          />
-        )
+        <CalendarEventPanel
+          eventId={eventId}
+          now={now}
+          onClose={() => dismiss({ eventId: undefined })}
+        />
       }
     />
   );

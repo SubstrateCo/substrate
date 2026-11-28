@@ -2,16 +2,13 @@ import type { CalendarEventDetail as CalendarEventDetailData } from "@substrate/
 
 import { useQuery } from "@tanstack/react-query";
 
-import { useEffect, useRef } from "react";
-
 import { CalendarEventDetail } from "./calendar-event-detail";
 import { CopyLink } from "@/components/context/links/copy-link";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
 import { StaleNotice } from "@/components/feedback/stale-notice";
-import { PageHeader } from "@/components/layout/page-header";
-import { PageAside, useAsideCovers } from "@/components/layout/page-layout";
+import { PageSheet, PageSheetBody, PageSheetHeader } from "@/components/layout/page-sheet";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
@@ -20,35 +17,46 @@ import { providerLabels } from "@/lib/calendar/labels";
 import { calendarLink } from "@/lib/navigation/record-links";
 import { resourceState, type ResourceState } from "@/lib/resource-state";
 import { calendarEventOptions } from "@/queries/calendar/options";
-import { ArrowUpRight, Unlink, X } from "lucide-react";
+import { ArrowUpRight, Unlink } from "lucide-react";
 
-/** The side pane for one event, opened from the calendar and named in its URL. */
+/**
+ * The sheet for one event, opened from the calendar and named in its URL. Keep it mounted so the
+ * sheet can finish its exit motion.
+ */
 export function CalendarEventPanel({
   eventId,
   now,
   onClose,
 }: {
-  eventId: string;
+  eventId: string | undefined;
   now: number;
   onClose: () => void;
 }) {
+  return (
+    <PageSheet
+      open={Boolean(eventId)}
+      label="Event"
+      onOpenChange={(next) => {
+        if (!next) onClose();
+      }}
+    >
+      {eventId && <CalendarEventSheetContent key={eventId} eventId={eventId} now={now} />}
+    </PageSheet>
+  );
+}
+
+function CalendarEventSheetContent({ eventId, now }: { eventId: string; now: number }) {
   const { organizationId } = useWorkspaceScope();
   const query = useQuery(calendarEventOptions(organizationId, eventId));
-  const close = useRef<HTMLButtonElement>(null);
-  const covers = useAsideCovers();
-  useEffect(() => {
-    if (covers) close.current?.focus();
-  }, [covers]);
   // Lost access redacts the cached event, so its link and provider link go with it.
   const state = resourceState(query);
   const event = state.data;
   return (
-    <PageAside aria-label="Event details">
-      <PageHeader
-        variant="pane"
+    <>
+      <PageSheetHeader
         title="Event"
         actions={
-          <div role="group" aria-label="Event tools" className="flex gap-0.5">
+          <>
             {event && (
               <CopyLink
                 grouped
@@ -72,25 +80,11 @@ export function CalendarEventPanel({
                 <TooltipContent>{`Open in ${providerLabels[event.provider]} Calendar`}</TooltipContent>
               </Tooltip>
             )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  ref={close}
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label="Close event"
-                  onClick={onClose}
-                >
-                  <X />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Close event</TooltipContent>
-            </Tooltip>
-          </div>
+          </>
         }
       />
       <EventPanelBody state={state} now={now} onRetry={() => void query.refetch()} />
-    </PageAside>
+    </>
   );
 }
 
@@ -105,19 +99,25 @@ function EventPanelBody({
 }) {
   if (state.status === "unavailable")
     return (
-      <ContentNotice
-        icon={Unlink}
-        title="Event unavailable"
-        description="This event was removed, or it belongs to a calendar you can’t open."
-      />
+      <PageSheetBody className="flex flex-col">
+        <ContentNotice
+          icon={Unlink}
+          title="Event unavailable"
+          description="This event was removed, or it belongs to a calendar you can’t open."
+        />
+      </PageSheetBody>
     );
   if (state.status === "error")
-    return <ErrorState title="Couldn’t load this event" onRetry={onRetry} />;
+    return (
+      <PageSheetBody className="flex flex-col">
+        <ErrorState title="Couldn’t load this event" onRetry={onRetry} />
+      </PageSheetBody>
+    );
   if (!state.data)
     return (
-      <div className="p-4">
+      <PageSheetBody>
         <LoadingState label="Loading event" variant="compact" />
-      </div>
+      </PageSheetBody>
     );
   return (
     <>

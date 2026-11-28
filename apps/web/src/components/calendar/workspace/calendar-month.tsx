@@ -32,8 +32,12 @@ export function CalendarMonth({
   const cells = Math.ceil((offset + days.length) / 7) * 7;
   const sorted = [...events].sort(compareEvents);
   return (
-    <div role="region" aria-label="Month" className="min-h-0 flex-1 overflow-auto">
-      <div className="flex min-h-full min-w-xl flex-col">
+    <div
+      role="region"
+      aria-label="Month"
+      className="min-h-0 flex-1 overflow-x-auto overflow-y-hidden"
+    >
+      <div className="flex h-full min-w-xl flex-col">
         <div className="grid shrink-0 grid-cols-7 border-b">
           {Array.from({ length: 7 }, (_, index) => (
             <div key={index} className="py-2 text-center text-xs text-muted-foreground">
@@ -42,8 +46,8 @@ export function CalendarMonth({
           ))}
         </div>
         <div
-          className="grid flex-1 auto-rows-fr grid-cols-7 grid-rows-(--month-rows)"
-          style={{ "--month-rows": `repeat(${cells / 7}, minmax(7rem, 1fr))` }}
+          className="grid min-h-0 flex-1 auto-rows-fr grid-cols-7 grid-rows-(--month-rows)"
+          style={{ "--month-rows": `repeat(${cells / 7}, minmax(0, 1fr))` }}
         >
           {Array.from({ length: cells }, (_, index) => {
             const day =
@@ -52,18 +56,22 @@ export function CalendarMonth({
               return <div key={index} aria-hidden="true" className="border-r border-b bg-inset" />;
             const label = formatDayLabel(day, now);
             return (
-              <section key={index} aria-label={label} className="min-w-0 border-r border-b p-1">
+              <section
+                key={index}
+                aria-label={label}
+                className="flex min-h-0 min-w-0 flex-col border-r border-b p-1"
+              >
                 <time
                   dateTime={formatDateOnly(day)}
                   aria-current={isSameDay(day, now) ? "date" : undefined}
                   className={cn(
-                    "mb-1 flex size-6 items-center justify-center rounded-full text-xs tabular-nums",
+                    "mb-1 flex size-6 shrink-0 items-center justify-center rounded-full text-xs tabular-nums",
                     isSameDay(day, now) && "bg-primary text-primary-foreground",
                   )}
                 >
                   {day.getDate()}
                 </time>
-                <ul aria-label={label} className="space-y-0.5">
+                <ul aria-label={label} className="min-h-0 flex-1 space-y-0.5 overflow-y-auto">
                   {sorted
                     .filter((event) => eventOnDay(event, day))
                     .map((event) => {
