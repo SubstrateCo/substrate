@@ -91,6 +91,10 @@ export interface LiveTurn {
   threadId: string | null;
   sourceMessages: TurnSourceMessage[];
   outputs: TurnOutput[];
+  /** The agent wrote text outside tools in this turn. Only reply shows text to the owner. */
+  wroteText: boolean;
+  /** The turn was asked once to send its unsent answer. */
+  nudged: boolean;
   /** Events of this turn are handled one at a time, in order. */
   chain: Promise<void>;
 }

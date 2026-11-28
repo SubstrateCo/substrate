@@ -11,6 +11,7 @@ export {
   type ServerToolName,
   type ToolScope,
 } from "./registry.ts";
+export { contactDetailActions } from "./crm.ts";
 export { fileTextPage } from "./files.ts";
 export { linkKinds, linkPreview } from "./links.ts";
 export { replyResult } from "./messaging.ts";

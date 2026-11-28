@@ -28,6 +28,8 @@ Substrate is an Electron workspace for email, messages, docs, tasks, agents, and
 - Every agent-work trigger needs an entry in `packages/contracts/src/agent-work/triggers/registry.ts`. The registry alone chooses an item's lane; callers never choose one.
 - The host attaches a `TurnContext` (`{ turnId, attempt }`) to every MCP call. The model never supplies it. The server loads the turn and uses it only while it is live, in that attempt, and leased by the caller's device, which is the agent's home; everything else comes from the server's turn and session rows.
 - Runtime rules for agents live in `packages/contracts/src/agent-tools/policy.ts`. Bump `POLICY_VERSION` with every change to that text; the bump rotates every session's context.
+- Load the `mcp-tool-design` skill before you add or change an MCP tool, a tool description, an agent skill, an app guide, the agent instructions or the policy. Measure the change with `bun run evals`.
+- Everything an agent is told about an optional app comes from its app guide (`packages/contracts/src/agent-tools/skills/`). General agent text and core tools name no optional app, so a new app adds a guide and changes nothing else.
 
 ## Code organization
 

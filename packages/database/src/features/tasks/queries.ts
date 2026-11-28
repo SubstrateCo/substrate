@@ -49,14 +49,26 @@ const olderThan = (time: SQL, id: SQLWrapper, before?: { at: string; id: string 
 export async function queryTasks(
   ctx: RepositoryContext,
   input: QueryPage & {
-    projectEntityId: string;
+    /** Omitted: tasks of every active project the reader can open. */
+    projectEntityId?: string;
     statuses?: TaskStatus[];
     assigneeActorEntityId?: string;
     parentTaskEntityId?: string | null;
+    /** Only tasks due before this day (YYYY-MM-DD). */
+    dueBefore?: string;
     afterEntityId?: string;
   },
 ) {
-  await ctx.requireAccess(input.projectEntityId, "view", { type: "project" });
+  if (input.projectEntityId)
+    await ctx.requireAccess(input.projectEntityId, "view", { type: "project" });
+  const inScope = input.projectEntityId
+    ? liveProjectTasks(ctx.scope, input.projectEntityId)
+    : and(
+        eq(tasks.organizationId, ctx.scope.organizationId),
+        liveTask(),
+        isNull(projects.archivedAt),
+        ctx.readable(projects.entityId, "view", "project"),
+      );
   const afterEntityId = entityCursor(input.afterEntityId);
   // Each cursor matches one order: an ID cursor the ID order, a time cursor the newest order.
   if (afterEntityId && !input.ascending) throw new ValidationError("Invalid cursor.");
@@ -70,10 +82,18 @@ export async function queryTasks(
       .select({
         task: tasks,
         assignee: { id: actors.entityId, name: assigneeDisplayName, type: actors.type },
+        projectName: projects.name,
         updatedAt: entities.updatedAt,
       })
       .from(tasks)
       .innerJoin(entities, eq(entities.entityId, tasks.entityId))
+      .innerJoin(
+        projects,
+        and(
+          eq(projects.organizationId, tasks.organizationId),
+          eq(projects.entityId, tasks.projectEntityId),
+        ),
+      )
       .leftJoin(
         actors,
         and(
@@ -85,8 +105,9 @@ export async function queryTasks(
   )
     .where(
       and(
-        liveProjectTasks(ctx.scope, input.projectEntityId),
+        inScope,
         input.statuses ? inArray(tasks.status, input.statuses) : undefined,
+        input.dueBefore ? lt(tasks.dueDate, input.dueBefore) : undefined,
         input.assigneeActorEntityId
           ? eq(tasks.assigneeActorEntityId, input.assigneeActorEntityId)
           : undefined,

@@ -17,7 +17,13 @@ import {
 } from "@substrate/contracts/harness-runtime";
 
 import type { CatalogAgent, HostFinish, HostProgress } from "../ports.ts";
-import { envelopeItem, renderEnvelope, sortItems } from "../turns/envelope.ts";
+import {
+  envelopeItem,
+  localTime,
+  renderEnvelope,
+  sortItems,
+  unsentAnswerNudge,
+} from "../turns/envelope.ts";
 import { turnOutcome } from "../turns/outcome.ts";
 import type { LiveTurn, RuntimeContext } from "./context.ts";
 import type { Epochs } from "./epochs.ts";
@@ -422,6 +428,7 @@ export function createTurnExecutor(
     }
     const envelope = renderEnvelope({
       time: new Date(context.now()).toISOString(),
+      local: localTime(context.now()),
       session: session.kind,
       kind: turn.kind,
       attempt: turn.attempt,
@@ -560,6 +567,8 @@ export function createTurnExecutor(
       threadId: place?.threadId ?? null,
       sourceMessages,
       outputs: [],
+      wroteText: false,
+      nudged: false,
       chain: Promise.resolve(),
     };
     live.set(turn.id, state);
@@ -709,13 +718,52 @@ export function createTurnExecutor(
     context.changed({ userAgentId: state.userAgentId, turnId: state.turnId });
   }
 
+  /**
+   * An owner's message always gets a reply, and only reply shows text to the owner. A turn that
+   * wrote text and ended without publishing most likely wrote its answer as plain text. The host
+   * asks it once to send that answer; the turn then ends as it ends.
+   */
+  async function nudgeUnsentAnswer(state: LiveTurn, result: TurnResult) {
+    const unsent =
+      result.status === "completed" &&
+      state.kind === "interactive" &&
+      state.wroteText &&
+      !state.nudged &&
+      !state.handoff &&
+      !state.stopping &&
+      !state.released &&
+      state.outputs.length === 0 &&
+      state.items.some((item) => item.source === "owner_message");
+    if (!unsent) return false;
+    state.nudged = true;
+    try {
+      await context.harness.execute({
+        type: "turn",
+        organizationId: org,
+        sessionId: state.sessionId,
+        turnId: state.turnId,
+        generation: state.generation,
+        mode: state.kind,
+        input: { inputIds: state.items.map((item) => item.id), text: unsentAnswerNudge },
+        context: { turnId: state.turnId, attempt: state.attempt },
+      });
+      return true;
+    } catch {
+      // The session cannot take another prompt: the turn ends as the agent left it.
+      return false;
+    }
+  }
+
   async function handle(state: LiveTurn, event: HarnessEvent) {
     switch (event.type) {
       case "turn.started":
         await append(state, [{ kind: "turn_started", data: {} }]);
         return;
       case "text":
-        if (event.text) await append(state, [{ kind: "text", data: { text: event.text } }]);
+        if (event.text) {
+          state.wroteText = true;
+          await append(state, [{ kind: "text", data: { text: event.text } }]);
+        }
         return;
       case "item.started":
         state.activity = event.title;
@@ -761,6 +809,7 @@ export function createTurnExecutor(
         ]);
         return;
       case "turn.completed":
+        if (await nudgeUnsentAnswer(state, event.result)) return;
         await finish(state, event.result);
         return;
       case "session.closed":

@@ -65,10 +65,21 @@ export function mcpSearchQueries(ctx: RepositoryContext, identity: SessionIdenti
         id: tasks.entityId,
         title: tasks.title,
         projectId: tasks.projectEntityId,
+        projectName: projects.name,
+        status: tasks.status,
+        priority: tasks.priority,
+        dueDate: tasks.dueDate,
         at: updatedAt,
       })
       .from(tasks)
       .innerJoin(entities, entityRow(tasks.entityId))
+      .innerJoin(
+        projects,
+        and(
+          eq(projects.organizationId, tasks.organizationId),
+          eq(projects.entityId, tasks.projectEntityId),
+        ),
+      )
       .where(
         and(
           eq(tasks.organizationId, scope.organizationId),
@@ -85,7 +96,12 @@ export function mcpSearchQueries(ctx: RepositoryContext, identity: SessionIdenti
   const projectRows = (match: SQL, p: Page) => {
     const { take, older } = window(p, updatedAt, projects.entityId);
     return db
-      .select({ id: projects.entityId, title: projects.name, at: updatedAt })
+      .select({
+        id: projects.entityId,
+        title: projects.name,
+        archived: sql<boolean>`${projects.archivedAt} IS NOT NULL`,
+        at: updatedAt,
+      })
       .from(projects)
       .innerJoin(entities, entityRow(projects.entityId))
       .where(

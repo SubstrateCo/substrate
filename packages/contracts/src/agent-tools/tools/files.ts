@@ -58,7 +58,7 @@ export const fileTools = {
   list_files: {
     title: "List files",
     description:
-      "List files attached to messages and tasks you can open, newest first. Filter by words in the filename, media type or where they are attached. read_thread, read_conversation and get_task already list the files of the records they return.",
+      "List files attached to messages and tasks you can open, newest first. Filter by words in the filename, media type or where they are attached. The tools that read a message or a task already list its files.",
     readOnly: true,
     input: z
       .object({

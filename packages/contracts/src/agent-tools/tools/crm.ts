@@ -6,7 +6,6 @@ import {
   crmActivityOptions,
   crmActivityCursor,
 } from "../../crm/activity.ts";
-import { crmFromMessage } from "../../crm/from-message.ts";
 import { crmList, crmWrite } from "../../crm/input.ts";
 import { recordLinks } from "./links.ts";
 import { id, requestId, timestamp } from "./shared.ts";
@@ -14,6 +13,18 @@ import { taskResult } from "./tasks.ts";
 import { z } from "zod";
 
 const kind = z.enum(["account", "contact", "deal"]);
+export const contactDetailActions = [
+  "addIdentifier",
+  "updateIdentifier",
+  "removeIdentifier",
+  "addAddress",
+  "updateAddress",
+  "removeAddress",
+  "addUrl",
+  "updateUrl",
+  "removeUrl",
+] as const;
+const detailText = z.string().trim().min(1).max(1000).nullable().optional();
 // CRM services own their access-filtered projections. Keep every field in the JSON boundary.
 const record = z.record(z.string(), z.json());
 const recordResult = z.object({ record: z.object({ entityId: id }).catchall(z.json()) });
@@ -40,14 +51,25 @@ export const crmTools = {
   create_crm_from_message: {
     title: "Create CRM record from a message",
     description:
-      "Create a confirmed new account, contact or deal from a readable same-organization message, preserving structured provenance. Search for existing records first. Get explicit approval of the exact fields and record-reader audience before setting consentToRecordAudience. associate additionally links the discussion without widening access. Returns the current public record projection. Interactive turns only; no outreach or agent wakes.",
+      "Create a confirmed new account, contact or deal from a readable same-organization message, preserving structured provenance. Search for existing records first. Your owner must approve the fields and the record-reader audience before you set consentToRecordAudience; a request from your owner in this turn to create this record from this message is that approval. associate additionally links the discussion without widening access. Returns the current public record projection. Interactive turns only; no outreach or agent wakes.",
     readOnly: false,
     idempotent: true,
-    input: z.discriminatedUnion("kind", [
-      crmFromMessage.options[0].omit({ organizationId: true }),
-      crmFromMessage.options[1].omit({ organizationId: true }),
-      crmFromMessage.options[2].omit({ organizationId: true }),
-    ]),
+    // One flat object: some MCP clients show no fields for a tool whose input is a union. The
+    // server checks fields against the kind with crmFromMessage.
+    input: z
+      .object({
+        kind,
+        messageId: id,
+        requestId,
+        consentToRecordAudience: z.literal(true),
+        associate: z.boolean().default(false).describe("Also link the discussion to the record."),
+        fields: z
+          .record(z.string(), z.json())
+          .describe(
+            "The new record, with the fields of the matching create tool. account: name, website, domain, summary. contact: displayName, givenName, familyName, notes, email, phone, phoneCountryCode, accountEntityId, title. deal: title, stageId, accountEntityId, contactEntityIds, primaryContactEntityId, amount, currency, expectedCloseDate, summary.",
+          ),
+      })
+      .strict(),
     output: z.object({ entityId: id, entityType: kind, record }),
   },
   list_crm_activity: {
@@ -116,7 +138,7 @@ export const crmTools = {
     publishes: [{ kind: "task", id: "id" }],
     title: "Create connected CRM follow-up",
     description:
-      "Create an existing-domain task from an editable CRM record, preserving structured source and contextual links. Requires an accessible project and explicit approval of task text for that project's readers. dueDate is YYYY-MM-DD, not a time or reminder. Set consentToTaskAudience only after approval. Interactive turns only; no email or calendar invite.",
+      "Create an existing-domain task from an editable CRM record, preserving structured source and contextual links. Requires an accessible project and your owner's approval of the task text for that project's readers; a request from your owner in this turn for this follow-up is that approval. dueDate is YYYY-MM-DD, not a time or reminder. Set consentToTaskAudience only with that approval. Interactive turns only; no email or calendar invite.",
     readOnly: false,
     idempotent: true,
     input: mutations.createFollowUp.omit({ organizationId: true, action: true }).strict(),
@@ -125,15 +147,22 @@ export const crmTools = {
   list_crm_records: {
     title: "List and search CRM records",
     description:
-      "List readable customer accounts, contacts or deals. Set search to find candidates before creating a record. A name or domain match is not identity proof. To continue, pass nextAfterEntityId as afterEntityId with the same kind, search and archived; with other filters it skips matches.",
+      "List or search readable customer accounts, contacts and deals. Leave kind out to search all three at once: use that to find a customer by name, or to check that nothing exists before you create records. Each item then says its kind. Deals include their stage name. A name or domain match is not identity proof. Paging needs a kind: pass nextAfterEntityId as afterEntityId with the same kind, search and archived.",
     readOnly: true,
-    input: crmList.omit({ organizationId: true }).extend({ kind }).strict(),
+    input: crmList
+      .omit({ organizationId: true })
+      .extend({
+        kind: kind
+          .optional()
+          .describe("Omit to search accounts, contacts and deals in one call, one page of each."),
+      })
+      .strict(),
     output: z.object({ items: z.array(record), nextAfterEntityId: id.nullable() }),
   },
   get_crm_record: {
     title: "Read CRM record",
     description:
-      "Read an account, contact or deal, its permitted related records, and its newest linked messages and records. Read the deal version before updates or transitions. Relationships never grant access to another record.",
+      "Read an account, contact or deal, its permitted related records, and its newest linked messages and records. A deal includes its stage name. The CRM can be behind team chat: for a status or a briefing, also search messages for the customer with search_content. Read the deal version before updates or transitions. Relationships never grant access to another record.",
     readOnly: true,
     input: z.object({ kind, entityId: id }).strict(),
     output: z.object({ record, linked: recordLinks }),
@@ -161,25 +190,46 @@ export const crmTools = {
   update_crm_account: {
     title: "Update CRM account",
     description:
-      "Replace the account fields supplied by this form. Read first and preserve unchanged fields. Interactive turns only; does not grant access or send outreach.",
+      "Change only the account fields you supply; the others stay as they are. Interactive turns only; does not grant access or send outreach.",
     readOnly: false,
     idempotent: true,
     destructive: true,
-    input: mutations.updateAccount
-      .omit({ organizationId: true, action: true })
-      .extend({ requestId })
+    input: z
+      .object({
+        requestId,
+        entityId: id,
+        name: z.string().trim().min(1).max(300).optional(),
+        website: z
+          .url({ protocol: /^https?$/ })
+          .max(4000)
+          .nullable()
+          .optional(),
+        domain: z.string().trim().max(253).nullable().optional(),
+        summary: z.string().max(20000).optional(),
+      })
       .strict(),
     output: recordResult,
   },
   create_crm_contact: {
     title: "Create CRM contact",
     description:
-      "Create a canonical customer contact, not a user or messaging actor. Search for readable candidates first; never invent contact details or merge on a name match. Interactive turns only.",
+      "Create a canonical customer contact, not a user or messaging actor. In the same call you can add a stated email and phone and link the contact to an account with a job title; later changes use change_crm_contact_detail and set_crm_affiliation. Search for readable candidates first; never invent contact details or merge on a name match. Interactive turns only.",
     readOnly: false,
     idempotent: true,
     input: mutations.createContact
       .omit({ organizationId: true, action: true })
-      .extend({ requestId })
+      .extend({
+        requestId,
+        email: z.email().max(320).optional().describe("The contact's primary email address."),
+        phone: z.string().trim().min(1).max(100).optional().describe("The primary phone number."),
+        phoneCountryCode: z
+          .string()
+          .length(2)
+          .optional()
+          .describe("Two-letter country, for a phone number without a country prefix."),
+        accountEntityId: id.optional().describe("The account the contact works at."),
+        title: z.string().max(300).optional().describe("Job title at that account."),
+      })
       .strict(),
     output: recordResult,
   },
@@ -199,7 +249,7 @@ export const crmTools = {
   create_crm_deal: {
     title: "Create CRM deal",
     description:
-      "Create a specific sales pursuit with an account or participant contact. Read the pipeline for stageId and get_crm_settings for new-deal currency guidance. Explicit currency overrides win; null default means unset, never assume USD. Keep unknown amounts and dates null; amount and currency must be supplied together. Interactive turns only.",
+      "Create a specific sales pursuit with an account or participant contact. Read the pipeline for stageId. Call get_crm_settings only when you have an amount without a currency. Explicit currency overrides win; null default means unset, never assume USD. Keep unknown amounts and dates null; amount and currency must be supplied together. Interactive turns only.",
     readOnly: false,
     idempotent: true,
     input: mutations.createDeal
@@ -211,24 +261,51 @@ export const crmTools = {
   update_crm_deal: {
     title: "Update CRM deal",
     description:
-      "Replace deal fields using its observed expectedVersion. Read first and preserve unchanged values. On conflict read again; do not overwrite blindly. Use transition_crm_deal for outcomes. Interactive turns only.",
+      "Change only the deal fields you supply; the others stay as they are. contactEntityIds, when supplied, is the whole new list of contacts. Needs the expectedVersion from a deal read or list. On conflict read again; do not overwrite blindly. Use transition_crm_deal for the stage and for outcomes. Interactive turns only.",
     readOnly: false,
     idempotent: true,
     destructive: true,
-    input: mutations.updateDeal
-      .omit({ organizationId: true, action: true })
-      .extend({ requestId })
+    input: z
+      .object({
+        requestId,
+        entityId: id,
+        expectedVersion: z.number().int().min(1),
+        title: z.string().trim().min(1).max(300).optional(),
+        accountEntityId: id.nullable().optional(),
+        contactEntityIds: z
+          .array(id)
+          .max(100)
+          .optional()
+          .describe("Replaces all contacts of the deal. Omit to keep them."),
+        primaryContactEntityId: id.nullable().optional(),
+        amount: z
+          .string()
+          .regex(/^\d{1,15}(\.\d{1,4})?$/)
+          .nullable()
+          .optional()
+          .describe("A decimal number as text, such as 78000. Null for unknown."),
+        currency: z
+          .string()
+          .regex(/^[A-Z]{3}$/)
+          .nullable()
+          .optional(),
+        expectedCloseDate: z.iso.date().nullable().optional(),
+        summary: z.string().max(20000).optional(),
+      })
       .strict(),
     output: recordResult,
   },
   transition_crm_deal: {
     title: "Change CRM deal stage or outcome",
     description:
-      "Move a deal, close it won/lost, or explicitly reopen it with outcome open. Use observed expectedVersion and a stable stageId. On conflict reread and review. Interactive turns only; does not wake an agent.",
+      "Move a deal, close it won/lost, or explicitly reopen it with outcome open. Use the expectedVersion from a deal read or list. Leave stageId out to keep the current stage, as when you only mark a deal won or lost; set it from get_crm_pipeline to move the deal. On conflict reread and review. Interactive turns only; does not wake an agent.",
     readOnly: false,
     idempotent: true,
     destructive: true,
-    input: mutations.transitionDeal.omit({ organizationId: true, action: true }).strict(),
+    input: mutations.transitionDeal
+      .omit({ organizationId: true, action: true })
+      .extend({ stageId: id.optional().describe("Omit to keep the deal's current stage.") })
+      .strict(),
     output: recordResult,
   },
   list_crm_interactions: {
@@ -306,7 +383,7 @@ export const crmTools = {
   create_crm_interaction: {
     title: "Record manual CRM interaction",
     description:
-      "Record an observed manual customer interaction and occurrence time. Do not copy private messages through this tool: it does not preserve message provenance or publication consent. Interactive turns only; no notifications or wakes.",
+      "Record an observed manual customer interaction and occurrence time. Use it when your owner tells you about a call, meeting, email or note; their request is the approval, so record it without asking again. Do not copy private messages through this tool: it does not preserve message provenance or publication consent. Interactive turns only; no notifications or wakes.",
     readOnly: false,
     idempotent: true,
     input: mutations.createInteraction
@@ -318,7 +395,7 @@ export const crmTools = {
   publish_crm_interaction: {
     title: "Publish message as CRM interaction",
     description:
-      "Publish an owner-approved summary from a readable message with structured provenance. First obtain explicit approval for the exact summary and its audience, everyone in the workspace, who can retain the summary after source access changes. Set consentToContactAudience only after that approval. Deduplicates by contact/message and preserves later summary edits on retry. Interactive turns only; does not wake agents.",
+      "Publish an owner-approved summary from a readable message with structured provenance. Your owner must approve the summary and its audience, everyone in the workspace, who can retain the summary after source access changes. A request from your owner in this turn to record this message is that approval. Set consentToContactAudience only with that approval. Deduplicates by contact/message and preserves later summary edits on retry. Interactive turns only; does not wake agents.",
     readOnly: false,
     idempotent: true,
     input: mutations.publishInteraction.omit({ organizationId: true, action: true }).strict(),
@@ -335,22 +412,60 @@ export const crmTools = {
   change_crm_contact_detail: {
     title: "Change contact email, phone, address or URL",
     description:
-      "Add, update or remove one email or phone (identifier), postal address or web URL on a contact. Update and remove take the detail id from get_crm_record. An update replaces the detail's fields. isPrimary true makes it the primary of its kind. Never invent details; record only what a person or message states. Interactive turns only. Returns the contact.",
+      "Add, update or remove one email or phone (identifier), postal address or web URL on a contact. Update and remove take the detail id from get_crm_record. An update replaces the detail's fields. A phone number needs its country: set countryCode, such as US, or write the number with its + prefix. isPrimary true makes it the primary of its kind. Never invent details; record only what a person or message states. Interactive turns only. Returns the contact.",
     readOnly: false,
     idempotent: true,
     destructive: true,
-    // Each form action without the organization, plus a requestId.
-    input: z.discriminatedUnion("action", [
-      mutations.addIdentifier.omit({ organizationId: true }).extend({ requestId }).strict(),
-      mutations.updateIdentifier.omit({ organizationId: true }).extend({ requestId }).strict(),
-      mutations.removeIdentifier.omit({ organizationId: true }).extend({ requestId }).strict(),
-      mutations.addAddress.omit({ organizationId: true }).extend({ requestId }).strict(),
-      mutations.updateAddress.omit({ organizationId: true }).extend({ requestId }).strict(),
-      mutations.removeAddress.omit({ organizationId: true }).extend({ requestId }).strict(),
-      mutations.addUrl.omit({ organizationId: true }).extend({ requestId }).strict(),
-      mutations.updateUrl.omit({ organizationId: true }).extend({ requestId }).strict(),
-      mutations.removeUrl.omit({ organizationId: true }).extend({ requestId }).strict(),
-    ]),
+    // One flat object: some MCP clients show no fields for a tool whose input is a union. The
+    // server checks the fields of each action with the contact form's own schema.
+    input: z
+      .object({
+        requestId,
+        action: z
+          .enum(contactDetailActions)
+          .describe(
+            "add, update or remove an Identifier (an email or phone), an Address or a Url. Use add for a new number or address; update replaces an existing one.",
+          ),
+        contactEntityId: id,
+        id: id
+          .optional()
+          .describe("The detail's id from get_crm_record. Needed to update or remove."),
+        type: z.enum(["email", "phone"]).optional().describe("Identifier: email or phone."),
+        value: z
+          .string()
+          .trim()
+          .min(1)
+          .max(1000)
+          .optional()
+          .describe("Identifier: the email address or phone number."),
+        extension: z
+          .string()
+          .regex(/^[0-9]+$/)
+          .max(20)
+          .nullable()
+          .optional(),
+        countryCode: z
+          .string()
+          .length(2)
+          .optional()
+          .describe(
+            "Two letters, such as US: of a phone number without a + prefix, or of an address.",
+          ),
+        label: detailText.describe("Such as Work or Mobile."),
+        isPrimary: z.boolean().optional(),
+        url: z
+          .url({ protocol: /^https?$/ })
+          .max(4000)
+          .optional()
+          .describe("Url: the address."),
+        streetAddress: detailText,
+        extendedAddress: detailText,
+        city: detailText,
+        region: detailText,
+        postalCode: detailText,
+        formattedAddress: detailText,
+      })
+      .strict(),
     output: contactResult,
   },
   set_crm_affiliation: {

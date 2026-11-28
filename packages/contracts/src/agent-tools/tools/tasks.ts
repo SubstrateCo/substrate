@@ -14,9 +14,12 @@ const taskFields = {
   description: z.string().max(20000).describe("Markdown."),
   status,
   priority,
-  assigneeActorId: id
+  assigneeActorId: z
+    .union([id, z.literal("owner"), z.literal("me")])
     .nullable()
-    .describe("An actor ID from list_assignees or get_me. Null removes the assignee."),
+    .describe(
+      '"owner" for your owner, "me" for yourself, or an actor ID from list_assignees. Null removes the assignee.',
+    ),
   dueDate: z.iso.date().nullable().describe("YYYY-MM-DD. Null removes the due date."),
 };
 const taskSummary = z.object({
@@ -27,6 +30,7 @@ const taskSummary = z.object({
   assignee: actor.nullable(),
   dueDate: z.iso.date().nullable(),
   parentTaskId: id.nullable(),
+  project: z.object({ id, name: z.string() }),
   updatedAt: timestamp,
 });
 const relation = z
@@ -198,7 +202,7 @@ export const taskTools = {
   share_project: {
     title: "Share project",
     description:
-      "Give a person view, comment, edit or owner access to a project, or change their level. Share only with people, never with agents; use actor IDs from get_project members or list_assignees. Needs owner access. Interactive turns only. Returns the project.",
+      "Give a person view, comment, edit or owner access to a project, or change their level. Share only with people, never with agents. Find a person's actor ID with list_assignees: it also lists people who cannot open the project yet. Needs owner access. Interactive turns only. Returns the project.",
     readOnly: false,
     idempotent: true,
     input: z
@@ -224,16 +228,22 @@ export const taskTools = {
   list_tasks: {
     title: "List tasks",
     description:
-      'List task summaries in a project, most recently updated first. Filter by status, assignee (an actor ID, or "me" for your own tasks) or parent task. parentTaskId null returns only top-level tasks.',
+      'List task summaries, most recently updated first. Set projectId for one project, or leave it out to search every active project you can open in one call. Filter by status, assignee ("owner" for your owner, "me" for yourself, or an actor ID), due date or parent task. For overdue work, set dueBefore to today with statuses not_started, in_progress and in_review. parentTaskId null returns only top-level tasks.',
     readOnly: true,
     input: z
       .object({
-        projectId: id,
+        projectId: id
+          .optional()
+          .describe("Omit to list tasks from every active project you can open."),
         statuses: z.array(z.enum(taskStatusValues)).min(1).max(5).optional(),
         assigneeActorId: z
-          .union([id, z.literal("me")])
+          .union([id, z.literal("owner"), z.literal("me")])
           .optional()
-          .describe('An actor ID, or "me" for tasks assigned to you.'),
+          .describe('"owner" for tasks of your owner, "me" for your own, or an actor ID.'),
+        dueBefore: z.iso
+          .date()
+          .optional()
+          .describe("Only tasks with a due date before this day (YYYY-MM-DD)."),
         parentTaskId: id
           .nullable()
           .optional()
@@ -255,7 +265,7 @@ export const taskTools = {
     publishes: [{ kind: "task", id: "id" }],
     title: "Create task",
     description:
-      "Create a task as yourself. If the task comes from a message, set sourceMessageId so the task links back to it. Defaults: status not_started, priority none. Returns the new task.",
+      "Create a task as yourself. If the work comes from a message in a channel, group or thread, set sourceMessageId to that message so the task links back to it. Defaults: status not_started, priority none. Returns the new task.",
     readOnly: false,
     idempotent: true,
     input: z
@@ -265,7 +275,11 @@ export const taskTools = {
         ...z.object(taskFields).partial().shape,
         title: taskFields.title,
         parentTaskId: id.optional().describe("Create the task as a subtask of this task."),
-        sourceMessageId: id.optional().describe("The message this work comes from."),
+        sourceMessageId: id
+          .optional()
+          .describe(
+            "The message that describes the work, such as a teammate's channel message your owner pointed you to. When your owner only asks you in a direct message, without pointing to another message, leave it out.",
+          ),
       })
       .strict(),
     output: taskResult,
@@ -305,7 +319,8 @@ export const taskTools = {
         projectId: id.describe("The destination project."),
         parentTaskId: id
           .nullable()
-          .describe("The new parent task in the destination project, or null for top level."),
+          .default(null)
+          .describe("The new parent task in the destination project. Omit or null for top level."),
       })
       .strict(),
     output: taskResult,

@@ -39,11 +39,16 @@ export function mcpContextQueries(ctx: RepositoryContext, identity: SessionIdent
     },
     async listAssignees(input: McpInput<"list_assignees">) {
       const query = input.query?.toLowerCase();
-      const rows = await projectRepository(ctx).assignableActors(input.projectId);
+      const rows = await projectRepository(ctx).listedActors(input.projectId);
       return {
         items: rows
           .filter((row) => !query || row.name.toLowerCase().includes(query))
-          .map((row) => ({ id: row.entityId, name: row.name, type: row.type })),
+          .map((row) => ({
+            id: row.entityId,
+            name: row.name,
+            type: row.type,
+            assignable: row.assignable,
+          })),
       };
     },
   };

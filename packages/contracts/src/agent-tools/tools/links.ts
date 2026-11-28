@@ -52,7 +52,7 @@ export const linkTools = {
   list_linked_messages: {
     title: "List linked messages",
     description:
-      "Page through all messages linked to a task, project or CRM record, newest link first. get_task, get_project and get_crm_record already show the newest ones in linked.messages; use this only when linked.messageCount is larger. Use read_thread to read a message in full.",
+      "Page through all messages linked to a task, project or CRM record, newest link first. The read tool of the record already shows the newest ones in linked.messages; use this only when linked.messageCount is larger. Use read_thread to read a message in full.",
     readOnly: true,
     input: z
       .object({

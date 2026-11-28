@@ -296,6 +296,21 @@
         "@types/node": "catalog:tooling",
       },
     },
+    "tooling/agent-evals": {
+      "name": "@substrate/agent-evals",
+      "dependencies": {
+        "@substrate/agent-host": "workspace:*",
+        "@substrate/contracts": "workspace:*",
+        "@substrate/database": "workspace:*",
+        "@substrate/harness-runtime": "workspace:*",
+        "drizzle-orm": "catalog:database",
+        "postgres": "^4.0.0",
+        "sharp": "^0.34.5",
+      },
+      "devDependencies": {
+        "@types/node": "catalog:tooling",
+      },
+    },
     "tooling/architecture-lint": {
       "name": "@substrate/architecture-lint",
       "devDependencies": {
@@ -1367,6 +1382,8 @@
     "@standard-schema/spec": ["@standard-schema/spec@1.1.0", "", {}, "sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w=="],
 
     "@substrate/agent-avatars": ["@substrate/agent-avatars@workspace:packages/agent-avatars"],
+
+    "@substrate/agent-evals": ["@substrate/agent-evals@workspace:tooling/agent-evals"],
 
     "@substrate/agent-host": ["@substrate/agent-host@workspace:packages/agent-host"],
 

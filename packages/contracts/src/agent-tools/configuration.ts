@@ -43,7 +43,7 @@ function harnessAgent(
     model: agent.model,
     enabled: agent.enabled,
     instructions: agent.substrateGuide
-      ? `${startupInstructions({ ...agent, organizationId })}${agent.instructions}`
+      ? `${startupInstructions({ ...agent, organizationId }, apps)}${agent.instructions}`
       : agent.instructions,
     managedSkills: startupSkills.map((skill) => ({
       ...skill,

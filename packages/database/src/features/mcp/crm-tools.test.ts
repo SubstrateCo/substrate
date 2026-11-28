@@ -351,3 +351,61 @@ test("an approved stored CRM write runs as the agent", async () => {
     .where(eq(crmActivityEvents.entityId, created!.entityId));
   expect(activity).toEqual({ actor: agent.actorId });
 });
+
+test("a contact phone number without a country is refused, and one with a country is normalized", async () => {
+  const { call, contact } = await tools();
+  const contactEntityId = await contact("Elena");
+  const add = (fields: { value: string; countryCode?: string }) =>
+    call("change_crm_contact_detail", {
+      requestId: crypto.randomUUID(),
+      action: "addIdentifier",
+      contactEntityId,
+      type: "phone",
+      ...fields,
+    });
+  const error = await rejection(add({ value: "415-555-0199" }));
+  expect(error).toBeInstanceOf(ValidationError);
+  expect(error.message).toContain("no country");
+  const added = await add({ value: "415-555-0199", countryCode: "US" });
+  expect(added.record.identifiers).toMatchObject([{ normalizedValue: "+14155550199" }]);
+});
+
+test("a contact detail change that misses a field of its action names that field", async () => {
+  const { call, contact } = await tools();
+  const error = await rejection(
+    call("change_crm_contact_detail", {
+      requestId: crypto.randomUUID(),
+      action: "addIdentifier",
+      contactEntityId: await contact("Elena"),
+      type: "email",
+    }),
+  );
+  expect(error).toBeInstanceOf(ValidationError);
+  expect(error.message).toStartWith("value: ");
+});
+
+test("a contact created from a message takes its email and account in the same call", async () => {
+  const { alice, call, account } = await tools();
+  const channel = await alice.createConversation({ kind: "channel", name: "sales" });
+  const lead = await alice.sendMessage(
+    channel.id,
+    "New lead: Jordan Ames, jordan@pinecrest.example",
+  );
+  const accountEntityId = await account("Pinecrest Clinics");
+  const created = await call("create_crm_from_message", {
+    kind: "contact",
+    messageId: lead.id,
+    requestId: crypto.randomUUID(),
+    consentToRecordAudience: true,
+    fields: {
+      displayName: "Jordan Ames",
+      email: "jordan@pinecrest.example",
+      accountEntityId,
+      title: "Director of Operations",
+    },
+  });
+  expect(created.record).toMatchObject({
+    identifiers: [{ type: "email", value: "jordan@pinecrest.example" }],
+    affiliations: [{ affiliation: { accountEntityId, title: "Director of Operations" } }],
+  });
+});

@@ -13,8 +13,8 @@ const server = {
   name: "substrate",
   version: "1.0.0",
   instructions:
-    "Substrate connects workspace search, messages, and enabled workspace apps. Tasks, CRM and Inbox are optional. " +
-    "Use your harness's tool discovery to discover relevant operations when their schemas are not loaded; " +
+    "Substrate connects workspace search, messages, and the workspace apps that are enabled. Apps are optional, and each one adds its own tools. " +
+    "Use your harness's tool discovery to discover relevant operations when their schemas are not loaded, and load a tool's schema before its first call instead of guessing arguments; " +
     "do not assume a capability is unavailable just because its tool is not listed in context. " +
     "Load the relevant domain skills for workflow guidance. Only tools offered to this session are available; " +
     "discovery does not grant record access or permission to write.",

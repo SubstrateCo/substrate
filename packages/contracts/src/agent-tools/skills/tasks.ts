@@ -1,6 +1,7 @@
 import type { HarnessSkill } from "../../harness-runtime/local.ts";
+import type { AppGuide } from "./guide.ts";
 
-export const tasksSkill: HarnessSkill = {
+const tasksSkill: HarnessSkill = {
   id: "substrate-tasks",
   name: "substrate-tasks",
   description:
@@ -25,12 +26,19 @@ Set \`completed\` only when the work is really finished. If someone must check i
 
 ## Assignment
 
-1. Call \`list_assignees\` with the project ID and part of the name.
-2. One match: use its \`id\` as \`assigneeActorId\`.
-3. Several matches: do not choose one. Ask your owner which person they mean.
-4. No match: create the task unassigned, and say so in your reply.
+- For your owner ("mine", "on my plate", "I will take it"), set \`assigneeActorId: "owner"\`. For yourself, set \`"me"\`. Neither needs a lookup.
+- For anyone else:
+  1. Call \`list_assignees\` with the project ID and part of the name.
+  2. One match: use its \`id\` as \`assigneeActorId\`.
+  3. Several matches: do not choose one. Ask your owner which person they mean.
+  4. No match: create the task unassigned, and say so in your reply.
+- A match with \`assignable: false\` cannot open the project yet. Share the project with them first (\`share_project\`), when your owner asked for that, then assign.
 
-To find your own tasks, call \`list_tasks\` with \`assigneeActorId: "me"\`. To assign a task to yourself, use your actor ID from \`get_me\`.
+## Finding tasks
+
+- \`list_tasks\` without \`projectId\` reads every active project in one call. Do not loop over projects.
+- Your owner's tasks: \`assigneeActorId: "owner"\`. Your own: \`"me"\`.
+- Overdue tasks: \`dueBefore\` set to today, with \`statuses\` \`not_started\`, \`in_progress\` and \`in_review\`. Each task names its project.
 
 ## Creating tasks
 
@@ -40,7 +48,7 @@ To find your own tasks, call \`list_tasks\` with \`assigneeActorId: "me"\`. To a
 - The source message's files, such as a screenshot in a bug report, then show on the task in \`sourceAttachments\` for readers who can open the message. Check them with \`read_file\` to describe the problem; do not ask for the file again.
 - \`attach_task_file\` shares a message's file with everyone who can open the task. Use it only when your owner asks to attach the file to the task. It runs only in interactive turns.
 - For a subtask, set \`parentTaskId\`. A subtask must be in the same project as its parent.
-- Before you create a task, look for an existing one with the same work: \`search_names\` with \`type: "task"\` for its title, and \`search_content\` for words in its description. If you find one, use its shared discussion instead.
+- Before you create a task in an existing project, look for an existing one with the same work: one \`search_content\` call with \`type: "task"\` and one distinctive word covers titles and descriptions. One search is enough, also for several new tasks. If you find one, tell your owner instead of creating a duplicate. Skip this check for subtasks of a task you have read, and for tasks in a project you created in this turn.
 
 ## Updating tasks
 
@@ -51,7 +59,7 @@ To find your own tasks, call \`list_tasks\` with \`assigneeActorId: "me"\`. To a
 
 ## Projects
 
-- \`get_project\` returns \`yourLevel\`, \`members\` and \`archived\`. Check them before you change a project or its tasks.
+- \`get_project\` returns \`yourLevel\`, \`members\` and \`archived\`. The write tools check access themselves and say what is missing, so do not read a project only to check access before a change.
 - An archived project and its tasks are read-only. \`list_projects\` leaves archived projects out unless you set \`archived\`.
 - \`create_project\` creates a project as yourself. Look for an existing one with \`search_names\` and \`type: "project"\` first.
 - \`update_project\` changes the name or description. A description replaces the whole text.
@@ -96,4 +104,21 @@ When you change many tasks, first list the changes in your reply. Make the chang
 
 Generate a new \`requestId\` for each new task, change, discussion resolution or reply. Reuse it only to retry the same call after an error.
 `,
+};
+
+export const tasksGuide: AppGuide = {
+  app: "tasks",
+  title: "Tasks",
+  purpose:
+    'Work that someone must do, usually with an owner and a date, grouped in projects. "Remind me", "do not let this slip", "put it on my list", "follow up with them" and "who is doing what" are about tasks, also when your owner calls it a note or a ticket.',
+  rules: [
+    'Task tools take "owner" (your owner) and "me" (you) as an assignee, so they need no lookup of your own IDs.',
+  ],
+  inputs: [
+    "list_tasks { projectId?, assigneeActorId?, statuses?, dueBefore? }",
+    "list_assignees { projectId, query? }",
+    "create_task { requestId, projectId, title, description?, assigneeActorId?, dueDate?, priority?, parentTaskId?, sourceMessageId? }",
+    "update_task { requestId, taskId, changes: { title?, status?, priority?, assigneeActorId?, dueDate?, description? } }",
+  ],
+  skill: tasksSkill,
 };

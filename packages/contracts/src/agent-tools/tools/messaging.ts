@@ -54,7 +54,7 @@ export const messagingTools = {
   read_conversation: {
     title: "Read conversation",
     description:
-      'Read top-level messages in a conversation, most recent activity first. Each message shows its reply count. With since or until, the results also include older messages whose threads got replies in the window, marked includedBecause "thread_activity". Each message lists the records it references; open them with get_task, get_project or get_crm_record. Long text is cut; use read_thread to read a message and its replies in full.',
+      'Read top-level messages in a conversation, most recent activity first. Each message shows its reply count. With since or until, the results also include older messages whose threads got replies in the window, marked includedBecause "thread_activity". Each message lists the records it references; open one with the read tool of its app. Long text is cut; use read_thread to read a message and its replies in full.',
     readOnly: true,
     input: timed({ conversationId: id, ...pageInput }),
     output: page(
@@ -74,7 +74,7 @@ export const messagingTools = {
   read_thread: {
     title: "Read thread",
     description:
-      "Read a workspace message with its whole thread: the root message and its replies, oldest first. messageId can be the root or any reply. Use this to open any workspace message ID returned by another tool. Each message lists the records it references. For Gmail message IDs from search_inbox use read_inbox_message.",
+      "Read a workspace message with its whole thread: the root message and its replies, oldest first. messageId can be the root or any reply. Use this to open any workspace message ID returned by another tool. Each message lists the records it references. It opens workspace messages only, not mail.",
     readOnly: true,
     input: z
       .object({
@@ -103,7 +103,9 @@ export const messagingTools = {
           .trim()
           .min(1)
           .max(20000)
-          .describe("Markdown. Mention records only with @[kind:uuid] tokens."),
+          .describe(
+            "Markdown. You can mention a task, project or person as @[task:id], @[project:id] or @[person:id]. Write CRM accounts, contacts and deals by name, and name a message by its channel and author: a message without replies is not a thread and cannot be mentioned.",
+          ),
         ask: agentAsk.optional().describe("One question for your owner, shown under the reply."),
         to: z
           .object({

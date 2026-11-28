@@ -38,7 +38,10 @@
     "test": "bun --env-file=.env scripts/check-test-services.ts && turbo run test",
     "db:generate": "bun run --filter @substrate/database db:generate",
     "db:migrate": "bun run --filter @substrate/database db:migrate",
-    "db:seed": "bun --env-file=.env apps/server/scripts/seed-dev.ts"
+    "db:seed": "bun --env-file=.env apps/server/scripts/seed-dev.ts",
+    "evals": "bun --env-file=.env tooling/agent-evals/src/cli.ts",
+    "evals:trace": "bun tooling/agent-evals/src/trace.ts",
+    "evals:models": "bun tooling/agent-evals/src/models.ts"
   },
   "devDependencies": {
     "@shadcn/lint": "^0.2.5",

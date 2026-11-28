@@ -20,7 +20,9 @@ const routineInput = {
   cron: routineFields.cron.describe(
     'Five fields: minute hour day-of-month month day-of-week, such as "0 9 * * 1-5".',
   ),
-  timezone: routineFields.timezone.describe("An IANA time zone, such as Europe/Berlin."),
+  timezone: routineFields.timezone.describe(
+    "An IANA time zone, such as Europe/Berlin. Use the turn's timezone unless your owner names another.",
+  ),
   enabled: routineFields.enabled.describe("False pauses the routine without deleting it."),
   destination: place,
 };

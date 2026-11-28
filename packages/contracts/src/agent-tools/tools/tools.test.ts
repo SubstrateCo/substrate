@@ -100,3 +100,14 @@ test("message and task results from a server without file tools still parse, wit
   });
   expect([task.attachments, task.sourceAttachments]).toEqual([[], []]);
 });
+
+test("every tool input is one object with named fields, so every MCP client can show them", () => {
+  // A union at the top level has no properties of its own; some clients then offer no fields.
+  const hidden = Object.entries(mcpTools)
+    .filter(([, tool]) => {
+      const schema = z.toJSONSchema(tool.input, { io: "input" });
+      return schema.type !== "object" || !schema.properties;
+    })
+    .map(([name]) => name);
+  expect(hidden).toEqual([]);
+});

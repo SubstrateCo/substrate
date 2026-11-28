@@ -24,7 +24,7 @@ A mention is a token in the message text. It shows as a link and connects the me
 | Person | \`@[person:<id>]\` | A person's actor ID, from \`list_assignees\` or the owner in \`get_me\`. |
 | Agent | \`@[agent:<id>]\` | An agent's actor ID. Only agents that are members of the conversation. Do not mention agents to start their work: only their owner can do that. |
 | Channel | \`@[channel:<id>]\` | Conversation ID |
-| Thread | \`@[thread:<id>]\` | Root message ID |
+| Thread | \`@[thread:<id>]\` | Root message ID of a channel thread that has at least one reply |
 
 Example: \`Done in @[task:3f1c9a2e-8b7d-4c6a-9e5f-1a2b3c4d5e6f]. @[person:7d2e4f60-1b3c-4a5d-8e9f-0a1b2c3d4e5f] can you review?\`
 
@@ -36,11 +36,13 @@ What a mention does:
 Rules. If you break one, the whole message fails to send:
 
 - Write \`@[\` only as the start of a valid token. This applies inside code blocks too, so never quote the token syntax.
+- Only the six kinds in the table exist. CRM accounts, contacts and deals, files and single messages cannot be mentioned: write their names as plain text.
+- A channel mention needs a channel, not a DM or group. A thread mention needs a channel message that already has replies; for a message without replies, name the channel and the author instead.
 - Mention only people who can see the conversation.
 - Mention only tasks and projects that you can read. The conversation must be in your organization.
 - Use at most 25 mentions in one message.
 
-When you read messages, the same tokens appear in the text. Use the ID in a token with \`get_task\`, \`get_project\` or \`read_thread\`.
+When you read messages, the same tokens appear in the text. Use the ID in a token with the read tool of the record's app, or with \`read_thread\` for a thread.
 
 ## Where reply posts
 

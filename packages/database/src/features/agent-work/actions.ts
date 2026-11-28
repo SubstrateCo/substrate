@@ -8,6 +8,7 @@ import { requireMessage } from "../messaging/access";
 import { sendMessageAs } from "../messaging/messages/messages";
 import { projectRepository } from "../projects/repository";
 import { taskRepository } from "../tasks/repository";
+import { resolveActor } from "./actor-alias";
 
 type Agent = { entityId: string; name: string; type: "human" | "agent" };
 
@@ -28,7 +29,7 @@ export function agentActions(ctx: RepositoryContext, identity: SessionIdentity, 
         ...value,
         projectEntityId: value.projectId,
         parentTaskEntityId: value.parentTaskId,
-        assigneeActorEntityId: value.assigneeActorId,
+        assigneeActorEntityId: await resolveActor(ctx, identity, value.assigneeActorId),
       });
       if (source)
         await recordTaskSource(
@@ -39,7 +40,10 @@ export function agentActions(ctx: RepositoryContext, identity: SessionIdentity, 
       return task;
     },
     async updateTask({ taskId, changes }: Pick<McpInput<"update_task">, "taskId" | "changes">) {
-      return tasks.update(taskId, { ...changes, assigneeActorEntityId: changes.assigneeActorId });
+      return tasks.update(taskId, {
+        ...changes,
+        assigneeActorEntityId: await resolveActor(ctx, identity, changes.assigneeActorId),
+      });
     },
     /** Moves the task from the project it is in now. A move that commits first fails this one. */
     async moveTask({ taskId, projectId, parentTaskId }: Omit<McpInput<"move_task">, "requestId">) {

@@ -1407,7 +1407,12 @@ test("assignees resolve by name and list_tasks accepts me for the agent's own ta
   const { actor, call, createTask, project } = await fixture();
   const [assignee] = (await call("list_assignees", { projectId: project.entityId, query: "resea" }))
     .items;
-  expect(assignee).toEqual({ id: actor.entityId, name: "Research", type: "agent" });
+  expect(assignee).toEqual({
+    id: actor.entityId,
+    name: "Research",
+    type: "agent",
+    assignable: true,
+  });
   const mine = await createTask({ title: "Mine", assigneeActorId: assignee!.id });
   await createTask({ title: "Unassigned" });
   expect(
@@ -1415,6 +1420,12 @@ test("assignees resolve by name and list_tasks accepts me for the agent's own ta
       (item) => item.id,
     ),
   ).toEqual([mine.id]);
+});
+
+test("list_assignees also finds a person who cannot open the project yet, marked not assignable", async () => {
+  const { call, project } = await fixture();
+  const { items } = await call("list_assignees", { projectId: project.entityId, query: "bob" });
+  expect(items).toEqual([{ id: f.bob, name: "Bob", type: "human", assignable: false }]);
 });
 
 test("list_tasks reaches every match while the agent completes the tasks it has read", async () => {
@@ -1590,4 +1601,201 @@ test("failed source validation rolls back task creation; foreign owners and orga
       executeAgentTool(f.db, { ...identity, organizationId: f.orgB }, "list_projects", {}, turn),
     ),
   ).toBeInstanceOf(AccessDeniedError);
+});
+
+test("list_tasks without a project finds the owner's overdue tasks in every active project", async () => {
+  const { call, project } = await fixture();
+  const projects = f.forActor(f.alice).projects;
+  const other = await projects.create({ name: "Other" });
+  const archived = await projects.create({ name: "Old" });
+  const task = (
+    projectId: string,
+    title: string,
+    fields: { assigneeActorId: string; dueDate: string; status?: string },
+  ) => call("create_task", { requestId: crypto.randomUUID(), projectId, title, ...fields });
+  const late = await task(project.entityId, "Late", {
+    assigneeActorId: "owner",
+    dueDate: "2026-01-05",
+  });
+  const lateElsewhere = await task(other.entityId, "Late elsewhere", {
+    assigneeActorId: "owner",
+    dueDate: "2026-01-06",
+  });
+  await task(project.entityId, "Later", { assigneeActorId: "owner", dueDate: "2026-03-01" });
+  await task(project.entityId, "Late, mine", { assigneeActorId: "me", dueDate: "2026-01-05" });
+  await task(project.entityId, "Late, done", {
+    assigneeActorId: "owner",
+    dueDate: "2026-01-05",
+    status: "completed",
+  });
+  await task(archived.entityId, "Late, archived", {
+    assigneeActorId: "owner",
+    dueDate: "2026-01-05",
+  });
+  await projects.archive(archived.entityId);
+  expect(late.assignee).toMatchObject({ id: f.alice });
+
+  const { items } = await call("list_tasks", {
+    assigneeActorId: "owner",
+    dueBefore: "2026-02-01",
+    statuses: ["not_started", "in_progress", "in_review"],
+  });
+  expect(items.map((item) => `${item.title} in ${item.project.name}`).sort()).toEqual([
+    "Late elsewhere in Other",
+    "Late in Work",
+  ]);
+  expect(items.map((item) => item.id).sort()).toEqual([late.id, lateElsewhere.id].sort());
+});
+
+test("list_tasks without a project leaves out projects the owner cannot open", async () => {
+  const { call } = await fixture();
+  await f.db.update(member).set({ role: "member" }).where(eq(member.id, "alice-a"));
+  const hidden = await f.forActor(f.bob).projects.create({ name: "Private" });
+  await f.forActor(f.bob).tasks.create({ projectEntityId: hidden.entityId, title: "Secret" });
+  expect((await call("list_tasks", {})).items).toEqual([]);
+});
+
+test("list_crm_records without a kind searches accounts, contacts and deals, and names deal stages", async () => {
+  const { call } = await fixture();
+  const account = await call("create_crm_account", {
+    requestId: crypto.randomUUID(),
+    name: "Acme Freight",
+  });
+  const contact = await call("create_crm_contact", {
+    requestId: crypto.randomUUID(),
+    displayName: "Ann Acme",
+    email: "ann@acme.example",
+    accountEntityId: account.record.entityId,
+    title: "Buyer",
+  });
+  expect(contact.record).toMatchObject({
+    identifiers: [{ type: "email", value: "ann@acme.example", isPrimary: true }],
+    affiliations: [{ affiliation: { accountEntityId: account.record.entityId, title: "Buyer" } }],
+  });
+  const [stage] = await f.forActor(f.alice).crm.ensurePipeline();
+  const deal = await call("create_crm_deal", {
+    requestId: crypto.randomUUID(),
+    title: "Acme pilot",
+    accountEntityId: account.record.entityId,
+    stageId: stage!.id,
+  });
+  await call("create_crm_account", { requestId: crypto.randomUUID(), name: "Unrelated" });
+
+  const found = await call("list_crm_records", { search: "acme" });
+  expect(new Set(found.items.map((item) => item.kind))).toEqual(
+    new Set(["account", "contact", "deal"]),
+  );
+  expect(found.items).toHaveLength(3);
+  expect(found.items.find((item) => item.kind === "deal")).toMatchObject({
+    entityId: deal.record.entityId,
+    stageName: stage!.name,
+  });
+  const read = await call("get_crm_record", { kind: "deal", entityId: deal.record.entityId });
+  expect(read.record.deal).toMatchObject({ stageName: stage!.name });
+});
+
+test("a task hit of a search carries status, priority, due date and project, without a task read", async () => {
+  const { call, createTask } = await fixture();
+  await createTask({ title: "Renew zebra contract", dueDate: "2026-12-01", priority: "high" });
+  const { items } = await call("search_content", { query: "zebra", type: "task" });
+  expect(items).toMatchObject([
+    {
+      title: "Renew zebra contract",
+      status: "not_started",
+      priority: "high",
+      dueDate: "2026-12-01",
+      projectName: "Work",
+    },
+  ]);
+});
+
+test("transition_crm_deal without a stage closes the deal in the stage it is in", async () => {
+  const { call } = await fixture();
+  const stages = await f.forActor(f.alice).crm.ensurePipeline();
+  const stage = stages.at(1)!;
+  const account = await call("create_crm_account", {
+    requestId: crypto.randomUUID(),
+    name: "Harbor",
+  });
+  const deal = await call("create_crm_deal", {
+    requestId: crypto.randomUUID(),
+    title: "Harbor pilot",
+    accountEntityId: account.record.entityId,
+    stageId: stage.id,
+  });
+  const won = await call("transition_crm_deal", {
+    requestId: crypto.randomUUID(),
+    entityId: deal.record.entityId,
+    expectedVersion: 1,
+    outcome: "won",
+  });
+  expect(won.record).toMatchObject({ outcome: "won", stageId: stage.id });
+});
+
+test("update_crm_deal changes only the supplied fields and keeps the deal's contacts", async () => {
+  const { call } = await fixture();
+  const [stage] = await f.forActor(f.alice).crm.ensurePipeline();
+  const account = await call("create_crm_account", {
+    requestId: crypto.randomUUID(),
+    name: "Brightline",
+    summary: "Freight broker.",
+  });
+  const contact = await call("create_crm_contact", {
+    requestId: crypto.randomUUID(),
+    displayName: "Elena",
+  });
+  const deal = await call("create_crm_deal", {
+    requestId: crypto.randomUUID(),
+    title: "Annual plan",
+    accountEntityId: account.record.entityId,
+    contactEntityIds: [contact.record.entityId],
+    primaryContactEntityId: contact.record.entityId,
+    stageId: stage!.id,
+    amount: "48000",
+    currency: "USD",
+    expectedCloseDate: "2026-12-18",
+  });
+  await call("update_crm_deal", {
+    requestId: crypto.randomUUID(),
+    entityId: deal.record.entityId,
+    expectedVersion: 1,
+    amount: "78000",
+  });
+  const read = await call("get_crm_record", { kind: "deal", entityId: deal.record.entityId });
+  expect(read.record.deal).toMatchObject({
+    title: "Annual plan",
+    amount: "78000.0000",
+    currency: "USD",
+    expectedCloseDate: "2026-12-18",
+    accountEntityId: account.record.entityId,
+  });
+  expect(read.record.contacts).toMatchObject([
+    { contact: { entityId: contact.record.entityId }, isPrimary: true },
+  ]);
+
+  await call("update_crm_account", {
+    requestId: crypto.randomUUID(),
+    entityId: account.record.entityId,
+    domain: "brightline.example",
+  });
+  const kept = await call("get_crm_record", { kind: "account", entityId: account.record.entityId });
+  expect(kept.record.account).toMatchObject({
+    name: "Brightline",
+    summary: "Freight broker.",
+    domain: "brightline.example",
+  });
+});
+
+test("a project hit of a search says whether the project is archived", async () => {
+  const { call, project } = await fixture();
+  const projects = f.forActor(f.alice).projects;
+  const old = await projects.create({ name: "Old Work" });
+  await projects.archive(old.entityId);
+  const { items } = await call("search_names", { query: "work", type: "project" });
+  expect(items.map((item) => [item.id, "archived" in item && item.archived])).toEqual(
+    expect.arrayContaining([
+      [project.entityId, false],
+      [old.entityId, true],
+    ]),
+  );
 });

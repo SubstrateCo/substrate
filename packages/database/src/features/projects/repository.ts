@@ -360,6 +360,14 @@ export function projectRepository(context: RepositoryContext) {
       if (!row) return context.deny(projectEntityId, "view", { type: "project" });
       return withPictures(row.actors).filter((row) => row.assignable);
     },
+    /** The workspace's actors as this project lists them, each marked assignable or not. */
+    async listedActors(projectEntityId: string) {
+      const [row] = await selectWithLevel(projectEntityId, {
+        actors: scalar(availableActors(projectEntityId)),
+      });
+      if (!row) return context.deny(projectEntityId, "view", { type: "project" });
+      return withPictures(row.actors);
+    },
     async getDetail(projectEntityId: string) {
       const [row] = await selectWithLevel(projectEntityId, {
         members: scalar(members(projectEntityId)),

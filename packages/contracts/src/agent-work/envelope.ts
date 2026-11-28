@@ -4,9 +4,10 @@ import type { AgentSessionKind } from "./wakes.ts";
 
 // The turn input the desktop renders. Deterministic: items are sorted and every body is fenced.
 //
-// <turn time="ISO" session="dm" kind="interactive" attempt="1">
+// <turn time="ISO" local_time="ISO with offset" weekday="Friday" timezone="Europe/Berlin" session="dm" kind="interactive" attempt="1">
 // <changes>…only when present…</changes>
 // <item id="…" source="owner_message" author="Name" author_kind="owner" conversation="…" thread="…" message="…">…</item>
+// <reminder>Only in an interactive turn with an owner message: publish with reply.</reminder>
 // </turn>
 
 /** system marks items the runtime wrote, such as routine ticks and resume notes. */
@@ -35,8 +36,19 @@ export interface EnvelopeResumeNote {
   outputs: string[];
 }
 
+/** The clock of the desktop that runs the turn, which is the owner's own. */
+export interface EnvelopeLocalTime {
+  /** The local date and time with its UTC offset, such as 2026-11-27T21:02:49-05:00. */
+  time: string;
+  weekday: string;
+  /** The IANA time zone, such as America/New_York. */
+  timezone: string;
+}
+
 export interface EnvelopeTurn {
   time: string;
+  /** Omitted by callers that have no desktop clock. */
+  local?: EnvelopeLocalTime;
   session: AgentSessionKind;
   kind: TurnKind;
   attempt: number;

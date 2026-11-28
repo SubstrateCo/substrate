@@ -4,6 +4,7 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
+    "./envelope": "./src/turns/envelope.ts",
     "./testing": "./src/runtime/test-support.ts"
   },
   "scripts": {

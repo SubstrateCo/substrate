@@ -1,1 +1,7 @@
-export { startupSkills, startupSkillIds, enabledStartupSkills } from "./registry.ts";
+export {
+  appGuides,
+  enabledAppGuides,
+  enabledStartupSkills,
+  startupSkillIds,
+  startupSkills,
+} from "./registry.ts";

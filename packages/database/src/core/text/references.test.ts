@@ -28,3 +28,9 @@ test("channel and thread references retain distinct structured identities", () =
   ]);
   expect(() => messageReferences(`@[message:${id}]`)).toThrow("Invalid reference");
 });
+
+test("a rejected reference names its token and the kinds a message can mention", () => {
+  expect(() => messageReferences(`Updated @[deal:${id}] today`)).toThrow(
+    `Invalid reference @[deal:${id}]. A message can mention only a task, project, person, agent, channel or thread`,
+  );
+});

@@ -3,6 +3,7 @@ import {
   type AgentSourceMessage,
   type AgentWakeRequestDetail,
   type EnvelopeItem,
+  type EnvelopeLocalTime,
   type EnvelopeResumeNote,
   type EnvelopeTurn,
   type ProposalOutcome,
@@ -36,6 +37,44 @@ function resume(note: EnvelopeResumeNote) {
 }
 
 /**
+ * The desktop's wall clock at an instant. Agents read "today", weekdays and due dates from it:
+ * the turn's own time is UTC, which is another calendar day for part of the owner's evening.
+ */
+export function localTime(
+  now: number,
+  timezone = Intl.DateTimeFormat().resolvedOptions().timeZone,
+): EnvelopeLocalTime {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: timezone,
+    hourCycle: "h23",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    weekday: "long",
+    timeZoneName: "longOffset",
+  }).formatToParts(now);
+  const part = (type: Intl.DateTimeFormatPartTypes) =>
+    parts.find((entry) => entry.type === type)?.value ?? "";
+  // longOffset reads "GMT-05:00", or "GMT" alone for UTC.
+  const offset = part("timeZoneName").replace("GMT", "") || "+00:00";
+  return {
+    time: `${part("year")}-${part("month")}-${part("day")}T${part("hour")}:${part("minute")}:${part("second")}${offset}`,
+    weekday: part("weekday"),
+    timezone,
+  };
+}
+
+/** What the host sends once to an owner's turn that wrote text and ended without a reply. */
+export const unsentAnswerNudge =
+  "You ended the turn without calling reply, so your owner saw nothing. If you wrote an answer, send it now with the reply tool. Do not repeat work that is already done.";
+
+const replyReminder =
+  "Your owner reads only what you send with the reply tool. Plain text is not sent.";
+
+/**
  * Renders the turn input. The same input always gives the same bytes: items keep the order the
  * caller sorted them in, attributes have a fixed order, and every body is escaped.
  */
@@ -43,6 +82,9 @@ export function renderEnvelope(turn: EnvelopeTurn) {
   const parts = [
     `<turn${attributes([
       ["time", turn.time],
+      ["local_time", turn.local?.time ?? null],
+      ["weekday", turn.local?.weekday ?? null],
+      ["timezone", turn.local?.timezone ?? null],
       ["session", turn.session],
       ["kind", turn.kind],
       ["attempt", turn.attempt],
@@ -62,6 +104,9 @@ export function renderEnvelope(turn: EnvelopeTurn) {
         ["message", item.messageId],
       ])}>${fence(item.body)}</item>`,
     );
+  // The most common failure of a turn is an answer written as plain text, which nobody sees.
+  if (turn.kind === "interactive" && turn.items.some((item) => item.source === "owner_message"))
+    parts.push(`<reminder>${replyReminder}</reminder>`);
   parts.push("</turn>");
   return parts.join("\n");
 }

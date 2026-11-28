@@ -391,3 +391,21 @@ test("native output outside our turns is a note on the session's latest turn", a
   const notes = await f.store.events.ofKinds(organizationId, turn.turnId, ["note"]);
   expect(notes.map((event) => event.data.text)).toEqual(["Done in the background."]);
 });
+
+test("an owner's turn that ends with text but no reply is asked once to send its answer", async () => {
+  const f = await started();
+  await f.message({ body: "Who has the most open tasks?" });
+  const turn = f.turns()[0]!;
+  await f.emit(turn.turnId, { type: "text", text: "Marcus has the most, with 4." });
+  await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
+  // The turn is still live: the host asked for the answer in the same session and turn.
+  expect(f.finished(turn.turnId)).toBeUndefined();
+  expect(f.turns()).toHaveLength(2);
+  expect(f.turns()[1]).toMatchObject({ turnId: turn.turnId, context: turn.context });
+  expect(f.turns()[1]!.input.text).toContain("send it now with the reply tool");
+
+  // It asks once. A turn that still publishes nothing ends quiet.
+  await f.emit(turn.turnId, { type: "turn.completed", result: { status: "completed" } });
+  expect(f.turns()).toHaveLength(2);
+  expect(f.finished(turn.turnId)).toMatchObject({ status: "completed", outcome: "silent" });
+});

@@ -167,6 +167,7 @@ test("project export consumes startup records and pages from the last task curso
       dueDate: "2026-12-01",
     },
     assignee: null,
+    projectName: project.name,
     updatedAt,
   }));
   const exportStart = mock(async () => ({ project, firstPage: rows.slice(0, 100) }));

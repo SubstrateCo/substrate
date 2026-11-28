@@ -3,7 +3,7 @@ import type { HostItem } from "@substrate/contracts/agent-work/control";
 import { harnessCodesWithClassification } from "@substrate/contracts/harness-runtime";
 
 import type { SteerReport } from "../ports.ts";
-import { envelopeItems, renderEnvelope } from "../turns/envelope.ts";
+import { envelopeItems, localTime, renderEnvelope } from "../turns/envelope.ts";
 import type { LiveTurn, RuntimeContext } from "./context.ts";
 import { inaccessibleItems, sourceRequest } from "./source-check.ts";
 import { errorCode, type TurnExecutor } from "./turn-executor.ts";
@@ -86,6 +86,7 @@ export function createSteering(context: RuntimeContext, executor: TurnExecutor) 
       }
       const text = renderEnvelope({
         time: new Date(context.now()).toISOString(),
+        local: localTime(context.now()),
         session: state.session.kind,
         kind: state.kind,
         attempt: state.attempt,

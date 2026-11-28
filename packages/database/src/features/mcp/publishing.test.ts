@@ -289,3 +289,20 @@ test("a call that waits stores the exact call once", async () => {
     await rejection(pending("delete_task", { ...input, taskId: other.entityId }, turn)),
   ).toBeInstanceOf(ConflictError);
 });
+
+test("a reply with a mention it cannot carry says that the mention is the problem", async () => {
+  const { alice, dm, call } = await mcpFixture(f);
+  const channel = await alice.createConversation({ kind: "channel", name: "general" });
+  // A root message without replies is not a thread yet.
+  const root = await alice.sendMessage(channel.id, "Launch plan");
+  const error = await rejection(
+    call(
+      "reply",
+      { requestId: crypto.randomUUID(), body: `See @[thread:${root.id}]` },
+      dmTurn(dm.id),
+    ),
+  );
+  expect(error).toBeInstanceOf(ValidationError);
+  expect(error.message).toContain("one of its @[...] mentions cannot be used here");
+  expect(await messagesIn(dm.id)).toEqual([]);
+});

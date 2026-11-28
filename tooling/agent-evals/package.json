@@ -1,0 +1,21 @@
+{
+  "name": "@substrate/agent-evals",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "bun check",
+    "evals": "bun --env-file=../../.env src/cli.ts"
+  },
+  "dependencies": {
+    "@substrate/agent-host": "workspace:*",
+    "@substrate/contracts": "workspace:*",
+    "@substrate/database": "workspace:*",
+    "@substrate/harness-runtime": "workspace:*",
+    "drizzle-orm": "catalog:database",
+    "postgres": "^4.0.0",
+    "sharp": "^0.34.5"
+  },
+  "devDependencies": {
+    "@types/node": "catalog:tooling"
+  }
+}

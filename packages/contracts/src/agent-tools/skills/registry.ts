@@ -1,25 +1,32 @@
 import { appEnabled, type AppId } from "../../apps/index.ts";
-import { crmSkill } from "./crm.ts";
-import { inboxSkill } from "./inbox.ts";
+import { crmGuide } from "./crm.ts";
+import type { AppGuide } from "./guide.ts";
+import { inboxGuide } from "./inbox.ts";
 import { messagingSkill } from "./messaging.ts";
 import { searchSkill } from "./search.ts";
-import { tasksSkill } from "./tasks.ts";
+import { tasksGuide } from "./tasks.ts";
+
+/**
+ * One guide for each optional app that agents can use. A new app adds its guide here; nothing
+ * else in the agent's general instructions names an app.
+ */
+export const appGuides: readonly AppGuide[] = [tasksGuide, crmGuide, inboxGuide];
+
+/** The guides of the apps that are enabled, in a fixed order. */
+export function enabledAppGuides(enabledApps: readonly AppId[]) {
+  return appGuides.filter((guide) => appEnabled(enabledApps, guide.app));
+}
+
+/** Skills for every agent, whatever apps are enabled. */
+const coreSkills = [searchSkill, messagingSkill];
 
 /**
  * Domain skills that Substrate owns. They are rewritten on every sync so they match the
  * current MCP tools; local edits do not persist.
  */
-export const startupSkills = [searchSkill, messagingSkill, tasksSkill, crmSkill, inboxSkill];
+export const startupSkills = [...coreSkills, ...appGuides.map((guide) => guide.skill)];
 export const startupSkillIds = startupSkills.map((skill) => skill.id);
 
 export function enabledStartupSkills(enabledApps: readonly AppId[]) {
-  const apps = new Map<string, AppId>([
-    [tasksSkill.id, "tasks"],
-    [crmSkill.id, "crm"],
-    [inboxSkill.id, "inbox"],
-  ]);
-  return startupSkills.filter((skill) => {
-    const app = apps.get(skill.id);
-    return !app || appEnabled(enabledApps, app);
-  });
+  return [...coreSkills, ...enabledAppGuides(enabledApps).map((guide) => guide.skill)];
 }

@@ -11,12 +11,13 @@ export const searchSkill: HarnessSkill = {
 
 | Goal | Tool |
 | --- | --- |
-| Find a task, project or channel you can name | \`search_names\` |
-| Find words in descriptions or messages | \`search_content\` |
+| Find a channel by name | \`search_names\` |
+| Find a task or project, by title or by words in its description | \`search_content\` (it matches titles too; do not also run \`search_names\`) |
+| Find words in messages | \`search_content\` |
 | See what happened recently | \`list_conversations\` with \`activeSince\`, then \`read_conversation\` with \`since\` |
-| Browse work | \`list_projects\`, then \`list_tasks\` |
+| List or filter the records of one app | That app's list tool; see the app's skill |
 | Find a person to assign | \`list_assignees\` |
-| Find what a record is connected to | \`linked\` in \`get_task\`, \`get_project\` or \`get_crm_record\` |
+| Find what a record is connected to | \`linked\` in the result of the record's read tool |
 | Find what a message is about | \`records\` on each message in \`read_thread\` or \`read_conversation\` |
 | Find a file, image or screenshot | \`attachments\` on messages and tasks, or \`list_files\` |
 | Look at an image or read a text file | \`read_file\` with the file's \`file\` locator |
@@ -42,8 +43,7 @@ export const searchSkill: HarnessSkill = {
 ## After a result
 
 - Message: call \`read_thread\` with its \`id\`. This works for a reply too, and returns the whole thread. Each message lists the records it references in \`records\`.
-- Task: call \`get_task\`. It shows the source message, task links, and the newest linked messages and records in \`linked\`.
-- Project: call \`get_project\`, then \`list_tasks\`.
+- A record: call the read tool of its app. It shows the newest linked messages and records in \`linked\`.
 - Follow the IDs in \`records\` and \`linked\` to read connected work. When \`linked.messageCount\` is larger than the messages shown, call \`list_linked_messages\`.
 
 ## Catching up

@@ -4,6 +4,7 @@ import { taskLinkRelation } from "@substrate/contracts/tasks/links";
 
 import type { RepositoryContext } from "../../core/repository-context";
 import type { SessionIdentity } from "../../core/session/identity";
+import { resolveActor } from "../agent-work/actor-alias";
 import { queryProjects } from "../projects/queries";
 import { projectRepository } from "../projects/repository";
 import { linksOfTask } from "../tasks/links";
@@ -58,17 +59,18 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
     // from the last task's position instead of an offset that such moves would shift.
     async listTasks(input: McpInput<"list_tasks">) {
       const p = newestFirstPagination(scope, "list_tasks", input);
-      const assignee = input.assigneeActorId === "me" ? scope.actorEntityId : input.assigneeActorId;
+      const assignee = await resolveActor(ctx, identity, input.assigneeActorId);
       const rows = await queryTasks(ctx, {
         projectEntityId: input.projectId,
         statuses: input.statuses,
-        assigneeActorEntityId: assignee,
+        assigneeActorEntityId: assignee ?? undefined,
         parentTaskEntityId: input.parentTaskId,
+        dueBefore: input.dueBefore,
         before: p.before,
         limit: p.take,
       });
       return p.page(
-        rows.map(({ task, assignee, updatedAt }) => ({
+        rows.map(({ task, assignee, projectName, updatedAt }) => ({
           id: task.entityId,
           title: task.title,
           status: task.status,
@@ -76,6 +78,7 @@ export function mcpTaskQueries(ctx: RepositoryContext, identity: SessionIdentity
           assignee,
           dueDate: task.dueDate,
           parentTaskId: task.parentTaskEntityId,
+          project: { id: task.projectEntityId, name: projectName },
           updatedAt: iso(updatedAt),
         })),
         (task) => ({ id: task.id, ms: Date.parse(task.updatedAt) }),
