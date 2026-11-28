@@ -212,7 +212,7 @@ export async function setSkillUpdateFrequency(directory: string, frequency: Skil
   await writeState(root, { ...(await readState(root)), frequency });
 }
 
-export async function runSkillsUpdate(root: string) {
+async function runSkillsUpdate(root: string) {
   try {
     await exec("git", ["--version"], { timeout: 10_000, windowsHide: true });
   } catch {

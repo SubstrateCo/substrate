@@ -21,7 +21,7 @@ const fileRef = z.object({
   contentType: z.string(),
   size: z.number().int().describe("Bytes."),
 });
-export const fileRefs = z
+const fileRefs = z
   .array(fileRef)
   .describe("Attached files. Open one with read_file, or save it with download_file.");
 export const fileRefsOmittedByOlderServers = fileRefs.default([]);
