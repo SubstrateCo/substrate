@@ -10,11 +10,14 @@ import { withClause, type FilterValue } from "@/components/filters";
 export type InteractionDays = "7" | "30" | "all";
 export type InteractionOrigin = NonNullable<InteractionTimeline["origin"]>;
 export type InteractionScope = NonNullable<InteractionTimeline["scope"]>;
-export type InteractionFilterId = "period" | "type" | "origin" | "frequency" | "scope";
+/** Whose interactions count: the signed-in user's, or everyone's. */
+export type InteractionLoggedBy = "me" | "anyone";
+export type InteractionFilterId = "period" | "loggedBy" | "type" | "origin" | "frequency" | "scope";
 
 /** The filters one surface shows. A field the surface does not show stays unset. */
 export type InteractionFilters = {
   days: InteractionDays;
+  loggedBy?: InteractionLoggedBy;
   kind?: InteractionKind;
   origin?: InteractionOrigin;
   /** Only records with two or more interactions. */
@@ -23,6 +26,7 @@ export type InteractionFilters = {
 };
 
 const interactionDays = ["7", "30", "all"] as const;
+const interactionLoggedBy = ["me", "anyone"] as const;
 const interactionOriginValues = ["manual", "message_publication", "calendar_event"] as const;
 const interactionScopes = ["related", "linked"] as const;
 
@@ -42,6 +46,7 @@ export function interactionFilterValue(
   const is = (chosen: string | undefined) =>
     chosen ? { operator: "is" as const, values: [chosen] } : undefined;
   let value = withClause<InteractionFilterId>({}, "period", is(filters.days));
+  value = withClause(value, "loggedBy", is(filters.loggedBy));
   value = withClause(value, "type", is(filters.kind));
   value = withClause(value, "origin", is(filters.origin));
   value = withClause(value, "frequency", is(filters.repeat ? "repeat" : undefined));
@@ -50,7 +55,7 @@ export function interactionFilterValue(
 
 /**
  * The filters read from filter-bar clauses. Values the data layer does not support are dropped.
- * The period and scope are required, so a missing one keeps the `current` choice.
+ * The period, logged-by, and scope filters are required, so a missing one keeps the `current` choice.
  */
 export function interactionFiltersFrom(
   value: FilterValue<InteractionFilterId>,
@@ -58,6 +63,7 @@ export function interactionFiltersFrom(
 ): InteractionFilters {
   return {
     days: choice(value, "period", interactionDays) ?? current.days,
+    loggedBy: choice(value, "loggedBy", interactionLoggedBy) ?? current.loggedBy,
     kind: choice(value, "type", interactionKinds),
     origin: choice(value, "origin", interactionOriginValues),
     repeat: value.frequency?.values[0] === "repeat",

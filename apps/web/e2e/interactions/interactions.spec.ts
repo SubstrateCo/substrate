@@ -535,17 +535,22 @@ test("empty dashboard and timeline explain empty and unmatched results", async (
   const user = await client(account);
   const { page } = user;
   await page.emulateMedia({ colorScheme: "dark" });
+  // Both views open on the user's own interactions, so they explain that filter.
+  const ownEmpty = page.getByRole("heading", {
+    name: "You haven’t logged interactions in this period",
+    exact: true,
+  });
   await visit(user, undefined, "/interactions");
   await expect(total(page)).toHaveText("0");
-  await expect(
-    page.getByRole("heading", { name: "No interactions in this period", exact: true }),
-  ).toBeVisible();
+  await expect(ownEmpty).toBeVisible();
   await expect(page.getByRole("img", { name: /Daily interaction activity/ })).toHaveCount(0);
   await expect(page.locator("html")).toHaveClass(/dark/);
-  await visit(user, undefined, "/interactions", { section: "timeline" });
+  await page.getByRole("button", { name: "Show everyone’s interactions", exact: true }).click();
   await expect(
     page.getByRole("heading", { name: "No interactions in this period", exact: true }),
   ).toBeVisible();
+  await visit(user, undefined, "/interactions", { section: "timeline" });
+  await expect(ownEmpty).toBeVisible();
   await page.getByRole("searchbox", { name: "Search interactions", exact: true }).fill("unmatched");
   await expect(
     page.getByRole("heading", { name: "No matching interactions", exact: true }),

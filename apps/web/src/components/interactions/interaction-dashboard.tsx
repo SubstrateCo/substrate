@@ -8,6 +8,7 @@ import { useState } from "react";
 import { InteractionChart } from "./interaction-chart";
 import { InteractionDay } from "./interaction-day";
 import { interactionDay } from "./interaction-period";
+import { OwnInteractionsNotice } from "./own-interactions-notice";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
@@ -21,10 +22,12 @@ export function InteractionDashboard({
   period,
   dates,
   days,
+  onShowEveryone,
 }: {
   period: InteractionPeriod;
   dates: string[];
   days: "7" | "30";
+  onShowEveryone: () => void;
 }) {
   const [selectedDay, setSelectedDay] = useState<string>();
   const activity = useQuery(interactionActivityOptions(period));
@@ -84,11 +87,7 @@ export function InteractionDashboard({
         ))}
       </dl>
       {summary.total === 0 ? (
-        <ContentNotice
-          title="No interactions in this period"
-          icon={Activity}
-          description="Create an interaction or try a longer period."
-        />
+        <DashboardEmpty mine={period.loggedBy === "me"} onShowEveryone={onShowEveryone} />
       ) : (
         <>
           <InteractionChart
@@ -103,7 +102,12 @@ export function InteractionDashboard({
               <Button variant="link" size="sm" className="-mr-2.5" asChild>
                 <Link
                   to="/interactions"
-                  search={{ workspaceId: period.organizationId, section: "timeline", days }}
+                  search={{
+                    workspaceId: period.organizationId,
+                    section: "timeline",
+                    days,
+                    loggedBy: period.loggedBy === "me" ? "me" : "anyone",
+                  }}
                 >
                   View timeline
                 </Link>
@@ -114,5 +118,16 @@ export function InteractionDashboard({
         </>
       )}
     </div>
+  );
+}
+
+function DashboardEmpty({ mine, onShowEveryone }: { mine: boolean; onShowEveryone: () => void }) {
+  if (mine) return <OwnInteractionsNotice onShowEveryone={onShowEveryone} />;
+  return (
+    <ContentNotice
+      title="No interactions in this period"
+      icon={Activity}
+      description="Create an interaction or try a longer period."
+    />
   );
 }

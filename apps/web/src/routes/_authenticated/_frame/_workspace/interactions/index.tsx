@@ -10,6 +10,8 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/interact
       .optional()
       .default("dashboard"),
     days: z.enum(["7", "30", "all"]).optional().default("30"),
+    /** The dashboard opens on the signed-in user's own interactions. */
+    loggedBy: z.enum(["me", "anyone"]).optional().default("me"),
     profileId: z.uuid().optional(),
     recordId: z.uuid().optional(),
     tab: z.enum(["activity", "map"]).optional(),
@@ -18,11 +20,12 @@ export const Route = createFileRoute("/_authenticated/_frame/_workspace/interact
 });
 
 function InteractionsRoute() {
-  const { section, days, profileId, recordId, tab } = Route.useSearch();
+  const { section, days, loggedBy, profileId, recordId, tab } = Route.useSearch();
   return (
     <InteractionsWorkspace
       section={section}
       days={days}
+      loggedBy={loggedBy}
       profileId={profileId}
       recordId={recordId}
       tab={tab}

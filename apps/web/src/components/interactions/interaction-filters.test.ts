@@ -38,6 +38,13 @@ describe("interactionFiltersFrom", () => {
     });
   });
 
+  test("reads the logged-by choice and keeps the current one when its clause is missing", () => {
+    const current = { days: "30", loggedBy: "me" } as const;
+    expect(interactionFiltersFrom({ loggedBy: is("anyone") }, current).loggedBy).toBe("anyone");
+    expect(interactionFiltersFrom({ loggedBy: is("someone") }, current).loggedBy).toBe("me");
+    expect(interactionFiltersFrom({}, current).loggedBy).toBe("me");
+  });
+
   test("drops values the data layer does not support", () => {
     const filters = interactionFiltersFrom(
       { period: is("90"), type: is("fax"), origin: is("import"), scope: is("everyone") },

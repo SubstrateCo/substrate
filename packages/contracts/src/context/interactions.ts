@@ -44,6 +44,8 @@ export const interactionPeriod = workspace
           return false;
         }
       }),
+    /** Only interactions the signed-in actor logged. The server derives the actor. */
+    loggedBy: z.literal("me").optional(),
   })
   .refine(({ from, until }) => {
     const duration = Date.parse(until) - Date.parse(from);

@@ -7,16 +7,24 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { useState } from "react";
 
-import { originField, periodField, scopeField, typeField } from "./interaction-filter-fields";
+import {
+  loggedByField,
+  originField,
+  periodField,
+  scopeField,
+  typeField,
+} from "./interaction-filter-fields";
 import {
   interactionFiltersFrom,
   interactionFilterValue,
   type InteractionDays,
   type InteractionFilters,
+  type InteractionLoggedBy,
   type InteractionOrigin,
   type InteractionScope,
 } from "./interaction-filters";
 import { InteractionList } from "./interaction-list";
+import { OwnInteractionsNotice } from "./own-interactions-notice";
 import { ContentNotice } from "@/components/feedback/content-notice";
 import { ErrorState } from "@/components/feedback/error-state";
 import { LoadingState } from "@/components/feedback/loading-state";
@@ -38,7 +46,10 @@ export function InteractionTimeline({
   onDaysChange,
   scope,
   onScopeChange,
+  loggedBy,
+  onLoggedByChange,
 }: {
+  /** Its `loggedBy` must match the `loggedBy` choice. */
   period: TimelineInput;
   /** The activity period that `period` covers. */
   days: InteractionDays;
@@ -46,13 +57,16 @@ export function InteractionTimeline({
   /** An organization profile's scope. Without it, the bar has no Scope filter. */
   scope?: InteractionScope;
   onScopeChange?: (scope: InteractionScope) => void;
+  /** Whose interactions show. Without it, the bar has no Logged by filter. */
+  loggedBy?: InteractionLoggedBy;
+  onLoggedByChange?: (loggedBy: InteractionLoggedBy) => void;
 }) {
   const apps = useOrganizationApps();
   const [search, setSearch] = useState("");
   const [kind, setKind] = useState<InteractionKind>();
   const [origin, setOrigin] = useState<InteractionOrigin>();
   const debounced = useSearchDebounce(search, `${kind}:${origin}`);
-  const filters: InteractionFilters = { days, kind, origin, scope };
+  const filters: InteractionFilters = { days, loggedBy, kind, origin, scope };
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-4">
       <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -69,6 +83,7 @@ export function InteractionTimeline({
           aria-label="Interaction filters"
           fields={[
             periodField({ allTime: true }),
+            ...(loggedBy ? [loggedByField] : []),
             typeField,
             originField({ calendar: apps.enabled("calendar") }),
             ...(scope ? [scopeField] : []),
@@ -80,6 +95,7 @@ export function InteractionTimeline({
             setOrigin(next.origin);
             if (next.days !== days) onDaysChange(next.days);
             if (next.scope && next.scope !== scope) onScopeChange?.(next.scope);
+            if (next.loggedBy && next.loggedBy !== loggedBy) onLoggedByChange?.(next.loggedBy);
           }}
         />
       </div>
@@ -92,6 +108,7 @@ export function InteractionTimeline({
         kind={kind}
         origin={origin}
         pending={debounced.pending}
+        onShowEveryone={onLoggedByChange && (() => onLoggedByChange("anyone"))}
       />
     </div>
   );
@@ -103,12 +120,14 @@ function TimelinePage({
   kind,
   origin,
   pending,
+  onShowEveryone,
 }: {
   period: TimelineInput;
   search: string;
   kind?: InteractionKind;
   origin?: InteractionOrigin;
   pending: boolean;
+  onShowEveryone?: () => void;
 }) {
   const pages = useCursorPages<Cursor>();
   const input: TimelineInput = { ...period, search, kind, origin, ...pages.cursor };
@@ -129,23 +148,25 @@ function TimelinePage({
   if (!query.data) return <LoadingState label="Loading interactions" rows={5} />;
   const { items, nextCursor } = query.data;
   const filtered = search || kind || origin;
+  const empty =
+    !filtered && period.loggedBy === "me" && onShowEveryone ? (
+      <OwnInteractionsNotice onShowEveryone={onShowEveryone} />
+    ) : (
+      <ContentNotice
+        title={filtered ? "No matching interactions" : "No interactions in this period"}
+        icon={Activity}
+        description={
+          filtered
+            ? "Try another search, type, or origin."
+            : "Interactions logged on contacts or published from messages will appear here."
+        }
+      />
+    );
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3">
       <Card size="sm" className="min-h-0 flex-1">
         <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
-          {items.length ? (
-            <InteractionList rows={items} sources={sources} />
-          ) : (
-            <ContentNotice
-              title={filtered ? "No matching interactions" : "No interactions in this period"}
-              icon={Activity}
-              description={
-                filtered
-                  ? "Try another search, type, or origin."
-                  : "Interactions logged on contacts or published from messages will appear here."
-              }
-            />
-          )}
+          {items.length ? <InteractionList rows={items} sources={sources} /> : empty}
         </div>
       </Card>
       {(pages.pageIndex > 0 || nextCursor) && (

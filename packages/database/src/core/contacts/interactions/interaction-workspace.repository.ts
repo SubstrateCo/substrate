@@ -19,6 +19,9 @@ export const readableInteractionPeriod = (
     eq(contactInteractions.organizationId, context.scope.organizationId),
     input.allTime ? undefined : gte(contactInteractions.occurredAt, new Date(input.from)),
     input.allTime ? undefined : lt(contactInteractions.occurredAt, new Date(input.until)),
+    input.loggedBy === "me"
+      ? eq(contactInteractions.createdByActorEntityId, context.scope.actorEntityId)
+      : undefined,
     context.readable(contactInteractions.entityId, "view", "contact_interaction"),
   );
 

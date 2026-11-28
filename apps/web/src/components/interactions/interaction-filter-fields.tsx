@@ -1,7 +1,7 @@
 import type { InteractionFilterId } from "./interaction-filters";
 import { interactionKinds, interactionOrigins, interactionTypes } from "./interaction-types";
 import type { OptionFilterField } from "@/components/filters";
-import { CalendarRange, Inbox, MessageSquare, Repeat, Target } from "lucide-react";
+import { CalendarRange, Inbox, MessageSquare, Repeat, Target, UserRound } from "lucide-react";
 
 type Field = OptionFilterField<InteractionFilterId>;
 
@@ -20,6 +20,19 @@ export function periodField({ allTime }: { allTime: boolean }): Field {
     ],
   };
 }
+
+/** Whose interactions the dashboard counts. */
+export const loggedByField: Field = {
+  id: "loggedBy",
+  label: "Logged by",
+  icon: UserRound,
+  kind: "option",
+  required: true,
+  options: [
+    { value: "me", label: "Me" },
+    { value: "anyone", label: "Anyone" },
+  ],
+};
 
 export const typeField: Field = {
   id: "type",

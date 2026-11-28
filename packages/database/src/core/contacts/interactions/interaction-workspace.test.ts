@@ -82,6 +82,31 @@ describe("interaction workspace", () => {
     expect((await owner.contactInteractions.workspaceActivity(period)).summary.total).toBe(2);
   });
 
+  test("limits activity and the timeline to the caller's own records when logged by me", async () => {
+    const owner = f.forActor(f.alice);
+    const member = f.forActor(f.bob);
+    const contact = await member.contacts.create({ displayName: "Shared contact" });
+    for (const [repo, summary] of [
+      [member, "Member's"],
+      [owner, "Owner's"],
+    ] as const)
+      await repo.contactInteractions.createManual({
+        contactEntityId: contact.entityId,
+        kind: "note",
+        occurredAt: new Date("2026-11-10T12:00:00Z"),
+        summary,
+      });
+    const mine = { ...period, loggedBy: "me" as const };
+    expect((await owner.contactInteractions.workspaceActivity(period)).summary.total).toBe(2);
+    expect((await owner.contactInteractions.workspaceActivity(mine)).summary.total).toBe(1);
+    expect(
+      (await owner.contactInteractions.workspaceTimeline(mine)).items.map((r) => r.summary),
+    ).toEqual(["Owner's"]);
+    expect(
+      (await member.contactInteractions.workspaceTimeline(mine)).items.map((r) => r.summary),
+    ).toEqual(["Member's"]);
+  });
+
   test("filters the whole timeline and paginates equal times without duplicates", async () => {
     const repo = f.forActor(f.bob);
     const contact = await repo.contacts.create({ displayName: "Maya Chen" });

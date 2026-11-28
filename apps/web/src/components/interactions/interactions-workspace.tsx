@@ -5,11 +5,12 @@ import { useState, type ReactNode } from "react";
 import { InteractionDashboard } from "./interaction-dashboard";
 import { InteractionDetail } from "./interaction-detail";
 import { InteractionDirectory } from "./interaction-directory";
-import { periodField } from "./interaction-filter-fields";
+import { loggedByField, periodField } from "./interaction-filter-fields";
 import {
   interactionFiltersFrom,
   interactionFilterValue,
   type InteractionDays,
+  type InteractionLoggedBy,
 } from "./interaction-filters";
 import { ContactProfileLink } from "./interaction-link";
 import { interactionWindow } from "./interaction-period";
@@ -64,12 +65,14 @@ function directorySectionOf(section: InteractionSection): InteractionSection {
 export function InteractionsWorkspace({
   section,
   days,
+  loggedBy,
   profileId,
   recordId,
   tab,
 }: {
   section: InteractionSection;
   days: InteractionDays;
+  loggedBy: InteractionLoggedBy;
   profileId?: string;
   recordId?: string;
   tab?: "activity" | "map";
@@ -94,6 +97,11 @@ export function InteractionsWorkspace({
       to: "/interactions",
       search: (previous) => ({ ...previous, days: value }),
     });
+  const setLoggedBy = (value: InteractionLoggedBy) =>
+    void navigate({
+      to: "/interactions",
+      search: (previous) => ({ ...previous, loggedBy: value }),
+    });
   return (
     <PageLayout id="interactions" aria-label="Interactions workspace">
       <PageSidebar aria-label="Interactions">
@@ -114,6 +122,7 @@ export function InteractionsWorkspace({
                         workspaceId: organizationId,
                         section: value,
                         days: sectionDays(value, days),
+                        loggedBy,
                       },
                     },
                     current: directorySectionOf(section) === value,
@@ -135,9 +144,11 @@ export function InteractionsWorkspace({
             <InteractionsContent
               section={section}
               activeDays={activeDays}
+              loggedBy={loggedBy}
               profileId={profileId}
               tab={tab}
               onDaysChange={setDays}
+              onLoggedByChange={setLoggedBy}
               createButton={createButton}
             />
           )}
@@ -158,16 +169,20 @@ export function InteractionsWorkspace({
 function InteractionsContent({
   section,
   activeDays,
+  loggedBy,
   profileId,
   tab,
   onDaysChange,
+  onLoggedByChange,
   createButton,
 }: {
   section: InteractionSection;
   activeDays: InteractionDays;
+  loggedBy: InteractionLoggedBy;
   profileId?: string;
   tab?: "activity" | "map";
   onDaysChange: (days: InteractionDays) => void;
+  onLoggedByChange: (loggedBy: InteractionLoggedBy) => void;
   createButton: ReactNode;
 }) {
   const { organizationId } = useWorkspaceScope();
@@ -176,35 +191,42 @@ function InteractionsContent({
     activeDays === "all" ? 30 : Number(activeDays),
   );
   const filter = { ...period, allTime: activeDays === "all" ? ("true" as const) : undefined };
-  if (section === "dashboard")
+  const mine = loggedBy === "me" ? ("me" as const) : undefined;
+  if (section === "dashboard") {
+    const current = { days: activeDays, loggedBy };
     return (
       <div className="flex flex-col gap-4 md:min-h-0 md:flex-1">
         <div className="flex shrink-0 flex-wrap items-center gap-2">
           <FilterBar
             aria-label="Dashboard filters"
-            fields={[periodField({ allTime: false })]}
-            value={interactionFilterValue({ days: activeDays })}
+            fields={[periodField({ allTime: false }), loggedByField]}
+            value={interactionFilterValue(current)}
             onValueChange={(value) => {
-              const next = interactionFiltersFrom(value, { days: activeDays }).days;
-              if (next !== activeDays) onDaysChange(next);
+              const next = interactionFiltersFrom(value, current);
+              if (next.days !== activeDays) onDaysChange(next.days);
+              else if (next.loggedBy && next.loggedBy !== loggedBy) onLoggedByChange(next.loggedBy);
             }}
           />
         </div>
         <InteractionDashboard
-          key={activeDays}
-          period={period}
+          key={`${activeDays}:${loggedBy}`}
+          period={{ ...period, loggedBy: mine }}
           dates={dates}
           days={activeDays === "7" ? "7" : "30"}
+          onShowEveryone={() => onLoggedByChange("anyone")}
         />
       </div>
     );
+  }
   if (section === "timeline")
     return (
       <InteractionTimeline
         key={activeDays}
-        period={filter}
+        period={{ ...filter, loggedBy: mine }}
         days={activeDays}
         onDaysChange={onDaysChange}
+        loggedBy={loggedBy}
+        onLoggedByChange={onLoggedByChange}
       />
     );
   if (section === "people" || section === "accounts")
