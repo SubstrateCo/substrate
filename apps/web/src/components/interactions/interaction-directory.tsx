@@ -33,7 +33,8 @@ const sortOptions: SortOption<DirectorySort>[] = [
 ];
 
 const column = createAppColumnHelper<DirectoryRow>();
-const pageSizeOptions = [25, 50, 100];
+/** The largest page the server returns. */
+const maxPageSize = 100;
 
 function directoryColumns(type: DirectoryInput["type"]) {
   return column.columns([
@@ -88,7 +89,8 @@ export function InteractionDirectory({
   const [search, setSearch] = useState("");
   const [repeat, setRepeat] = useState(false);
   const [sort, setSort] = useState<DirectorySort>("latest");
-  const [pageSize, setPageSize] = useState("25");
+  // The rows that fit on screen, unknown until the table measures its space.
+  const [pageSize, setPageSize] = useState<number>();
   const debounced = useSearchDebounce(search, `${repeat}:${sort}`);
   const filters: InteractionFilters = { days, repeat };
   return (
@@ -121,17 +123,17 @@ export function InteractionDirectory({
         </div>
       </div>
       <DirectoryPage
-        key={`${debounced.query}:${repeat}:${sort}:${pageSize}`}
+        key={`${debounced.query}:${repeat}:${sort}`}
         input={{
           ...period,
           type,
-          pageSize: Number(pageSize),
+          pageSize,
           search: debounced.query,
           repeat: repeat ? "true" : undefined,
           sort,
         }}
-        pending={debounced.pending}
-        onPageSizeChange={setPageSize}
+        pending={debounced.pending || pageSize === undefined}
+        onFitPageSize={(rows) => setPageSize(Math.min(rows, maxPageSize))}
       />
     </div>
   );
@@ -140,19 +142,20 @@ export function InteractionDirectory({
 function DirectoryPage({
   input,
   pending,
-  onPageSizeChange,
+  onFitPageSize,
 }: {
   input: DirectoryInput;
   pending: boolean;
-  onPageSizeChange: (value: string) => void;
+  onFitPageSize: (rows: number) => void;
 }) {
+  // A resize changes the page size but keeps the first row in view.
   const [offset, setOffset] = useState(0);
   const query = useQuery({
     ...interactionDirectoryOptions({ ...input, offset }),
     enabled: !pending,
     placeholderData: keepPreviousData,
   });
-  const pageSize = input.pageSize ?? 25;
+  const pageSize = input.pageSize ?? 1;
   const columns = useMemo(() => directoryColumns(input.type), [input.type]);
   return (
     <AppTable
@@ -178,8 +181,7 @@ function DirectoryPage({
         pageSize,
         hasNextPage: Boolean(query.data?.more),
         onPageChange: (pageIndex) => setOffset(pageIndex * pageSize),
-        pageSizeOptions,
-        onPageSizeChange: (size) => onPageSizeChange(String(size)),
+        onFitPageSize,
       }}
     />
   );

@@ -1,6 +1,6 @@
 import { functionalUpdate, type RowData, type SortingState } from "@tanstack/react-table";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 
 import { ContentNotice } from "../feedback/content-notice";
 import { ErrorState } from "../feedback/error-state";
@@ -13,6 +13,7 @@ import {
   type AppTableInstance,
 } from "./table";
 import { Pager, type PagerProps } from "./table-pagination";
+import { useFitRows } from "./use-fit-rows";
 import { RowActions } from "@/components/layout/row-actions";
 import {
   Table,
@@ -55,6 +56,11 @@ export type AppTablePagination =
       sorting?: { value: SortingState; onChange: (next: SortingState) => void };
       pageSizeOptions?: number[];
       onPageSizeChange?: (pageSize: number) => void;
+      /**
+       * Reports how many rows fit in the results area, so the caller can load pages that never
+       * scroll. The pager then stays shown while there are rows, to keep that area's height.
+       */
+      onFitPageSize?: (pageSize: number) => void;
     };
 
 type AppTableEmpty = {
@@ -133,6 +139,8 @@ export function AppTable<TData extends RowData>({
   const parts = tableParts({ hasRows: rows.length > 0, loading, error, pager, renderMobileRow });
   const showLoading = useDelayedLoading(parts.initialLoading);
   const paginated = pagination.mode === "server" || table.getPageCount() > 1;
+  const results = useRef<HTMLDivElement>(null);
+  useFitRows(results, pagination.mode === "server" ? pagination.onFitPageSize : undefined);
   return (
     <table.AppTable>
       <div
@@ -155,6 +163,7 @@ export function AppTable<TData extends RowData>({
         )}
         {parts.inlineError && <ErrorState variant="compact" title={errorTitle} onRetry={onRetry} />}
         <div
+          ref={results}
           data-slot="table-results"
           role={paginated ? "region" : undefined}
           aria-label={paginated ? `${name} results` : undefined}
@@ -395,9 +404,10 @@ function pagerProps<TData extends RowData>(
     };
   }
   const { pageIndex, pageSize, hasNextPage, rowCount } = pagination;
-  // A page size choice stays reachable after someone picks a larger size, but an empty first page
-  // has nothing to page. A later empty page keeps the way back.
-  if (pageIndex === 0 && !hasNextPage && (!pagination.pageSizeOptions || empty)) return undefined;
+  // A page size choice stays reachable after someone picks a larger size, and a fitted page keeps
+  // its height, but an empty first page has nothing to page. A later empty page keeps the way back.
+  const sized = pagination.pageSizeOptions || pagination.onFitPageSize;
+  if (pageIndex === 0 && !hasNextPage && (!sized || empty)) return undefined;
   return {
     name,
     pageIndex,

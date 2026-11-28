@@ -3,7 +3,7 @@ import { visit } from "../test-support/fixtures";
 import { test } from "../test-support/workspace-fixtures";
 import { expect } from "@playwright/test";
 
-test("page turns and loading keep the table frame and pager in place; empty results hide the pager", async ({
+test("pages fit the screen; page turns and loading keep the table frame and pager in place; empty results hide the pager", async ({
   account,
   client,
 }) => {
@@ -33,20 +33,31 @@ test("page turns and loading keep the table frame and pager in place; empty resu
     const table = page.getByRole("table", { name: "People directory", exact: true });
     const pager = page.getByRole("navigation", { name: "People directory pagination" });
     const next = pager.getByRole("button", { name: "Next page", exact: true });
-    await expect(table.getByRole("row")).toHaveCount(26);
     const results = page.getByRole("region", { name: "People directory results", exact: true });
-    await table.getByRole("row").last().scrollIntoViewIfNeeded();
-    expect(await results.evaluate((element) => element.scrollTop)).toBeGreaterThan(0);
-    await next.scrollIntoViewIfNeeded();
+    const fits = () => results.evaluate((element) => element.scrollHeight <= element.clientHeight);
+    await expect(next).toBeEnabled();
+    const rows = await table.getByRole("row").count();
+    expect(rows).toBeGreaterThan(2);
+    expect(await fits()).toBe(true);
+    await expect(pager).toBeInViewport();
     const position = await pager.boundingBox();
     await next.click();
-    await expect(table.getByRole("row")).toHaveCount(2);
+    await expect(page.getByText("Page 2", { exact: true })).toBeVisible();
     await expect(async () => {
       expect((await pager.boundingBox())!.y).toBeCloseTo(position!.y, 0);
     }).toPass({ timeout: 2_000 });
-    await expect(pager).toBeInViewport();
+    expect(await fits()).toBe(true);
     await pager.getByRole("button", { name: "Previous page", exact: true }).click();
-    await expect(table.getByRole("row")).toHaveCount(26);
+    await expect(table.getByRole("row")).toHaveCount(rows);
+
+    // A taller window fits more rows on a page.
+    await page.setViewportSize({ width, height: 900 });
+    await expect(async () => {
+      expect(await table.getByRole("row").count()).toBeGreaterThan(rows);
+    }).toPass({ timeout: 5_000 });
+    expect(await fits()).toBe(true);
+    await page.setViewportSize({ width, height: 720 });
+    await expect(table.getByRole("row")).toHaveCount(rows);
 
     let release = () => {};
     const held = new Promise<void>((resolve) => {
@@ -67,7 +78,6 @@ test("page turns and loading keep the table frame and pager in place; empty resu
       await expect(pager).toBeVisible();
       expect((await pager.boundingBox())!.y).toBeCloseTo(before!.y, 0);
       await expect(next).toBeDisabled();
-      await expect(page.getByRole("combobox", { name: "Rows per page" })).toBeDisabled();
       release();
       await expect(page.getByText("No matching people", { exact: true })).toBeVisible();
       await expect(pager).toHaveCount(0);
