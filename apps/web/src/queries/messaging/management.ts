@@ -1,7 +1,7 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
-import { invalidateRemovedConversation } from "./mutations";
+import { forgetRemovedConversation, invalidateRemovedConversation } from "./mutations";
 import {
   deleteConversation,
   joinConversation,
@@ -9,13 +9,15 @@ import {
   transferOwnership,
 } from "@/api/messaging/requests";
 
-// onRemoved runs before cache cleanup, so a mounted conversation can navigate away first.
+// onRemoved runs before the history cleanup, so a mounted conversation can navigate away first.
+// The list forgets the conversation before that, so nothing selects it again on the way.
 export function useConversationManagement(
   organizationId: string,
   onRemoved?: (conversationId: string) => Promise<void> | void,
 ) {
   const client = useQueryClient();
   const removed = async (conversationId: string) => {
+    forgetRemovedConversation(client, organizationId, conversationId);
     await onRemoved?.(conversationId);
     await invalidateRemovedConversation(client, organizationId, conversationId);
   };

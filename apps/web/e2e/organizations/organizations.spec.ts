@@ -49,7 +49,14 @@ test("switching workspaces clears private messages, reconnects in the selected o
     .click();
   await user.page.getByRole("menuitem", { name, exact: true }).click();
   await reconnect;
-  await expect(user.page).toHaveURL(/\/messages$/);
+  // Messages names the selected workspace and never keeps the first workspace's conversation.
+  await expect
+    .poll(() => {
+      const url = new URL(user.page.url());
+      return [url.pathname, url.searchParams.get("workspaceId")];
+    })
+    .toEqual(["/messages", second.id]);
+  expect(new URL(user.page.url()).searchParams.get("conversationId")).not.toBe(first.id);
   await expect(user.page.getByText(privateBody, { exact: true })).toHaveCount(0);
   await expect(conversationButton(user.page, first.name)).toHaveCount(0);
   await user.waitForEvent(

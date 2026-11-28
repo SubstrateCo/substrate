@@ -5,6 +5,7 @@ import { QueryClient, QueryObserver, type QueryKey } from "@tanstack/react-query
 import { staleSearches } from "./context/mutations";
 import { queryKeys } from "./keys";
 import {
+  forgetRemovedConversation,
   invalidateAddedMembers,
   invalidateRemovedConversation,
   invalidateSentMessage,
@@ -484,6 +485,17 @@ test("removing a conversation drops its history and refreshes lists, discussions
   } finally {
     fixture.close();
   }
+});
+
+test("a removed conversation leaves the sidebar list before navigation, and other lists stay", () => {
+  const client = new QueryClient();
+  const list = queryKeys.conversationList("org");
+  const other = queryKeys.conversationList("other");
+  client.setQueryData(list, [{ id: "conversation" }, { id: "next" }]);
+  client.setQueryData(other, [{ id: "conversation" }]);
+  forgetRemovedConversation(client, "org", "conversation");
+  expect(client.getQueryData(list)).toEqual([{ id: "next" }]);
+  expect(client.getQueryData(other)).toEqual([{ id: "conversation" }]);
 });
 
 test("adding members refreshes conversations and that conversation's messages, not other messaging data", async () => {

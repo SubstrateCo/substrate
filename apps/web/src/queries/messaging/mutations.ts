@@ -83,6 +83,18 @@ export async function updateSentMessageHistory(
   });
 }
 
+// Call before leaving the conversation's route. The workspace opens the first listed conversation
+// when none is selected, so a removed one must leave the list first or it opens again.
+export function forgetRemovedConversation(
+  client: QueryClient,
+  organizationId: string,
+  conversationId: string,
+) {
+  client.setQueryData<{ id: string }[]>(queryKeys.conversationList(organizationId), (list) =>
+    list?.filter((conversation) => conversation.id !== conversationId),
+  );
+}
+
 // Call after leaving the conversation's route. Its history may now be unreadable or gone, so it is
 // dropped instead of refetched. Task history, discussions, alerts and search can all change.
 export function invalidateRemovedConversation(
