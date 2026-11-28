@@ -52,6 +52,7 @@ test("project members and available actors join current names, pictures and agen
   for (const viewer of [f.alice, f.bob, agent.actorId]) {
     const repos = new ActorRepositories(db, { organizationId: f.orgA, actorEntityId: viewer });
     const result = await repos.projects.getDetail(project.entityId);
+    expect(result.currentActorEntityId).toBe(viewer);
     expect(result.members.map((row) => row.name)).toEqual(["Bob", "Zoe"]);
     expect(result.actors.map((row) => row.name)).toEqual(["Amy", "Bob", "Zoe"]);
     for (const rows of [result.members, result.actors]) {

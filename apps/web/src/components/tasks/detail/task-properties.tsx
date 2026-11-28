@@ -73,13 +73,23 @@ export function TaskProperties({
   task,
   canEdit,
   onChange,
+  assignToMeAction,
 }: {
   detail: ProjectDetail;
   task: Task;
   canEdit: boolean;
   onChange: (patch: Partial<TaskDraft>) => void;
+  assignToMeAction?: ReactNode;
 }) {
-  if (canEdit) return <EditableTaskProperties detail={detail} task={task} onChange={onChange} />;
+  if (canEdit)
+    return (
+      <EditableTaskProperties
+        detail={detail}
+        task={task}
+        onChange={onChange}
+        assignToMeAction={assignToMeAction}
+      />
+    );
   return <ReadOnlyTaskProperties detail={detail} task={task} />;
 }
 
@@ -116,10 +126,12 @@ function EditableTaskProperties({
   detail,
   task,
   onChange,
+  assignToMeAction,
 }: {
   detail: ProjectDetail;
   task: Task;
   onChange: (patch: Partial<TaskDraft>) => void;
+  assignToMeAction?: ReactNode;
 }) {
   const assignee = taskAssignee(detail, task);
   return (
@@ -141,23 +153,26 @@ function EditableTaskProperties({
         />
       </Property>
       <Property label="Assignee">
-        <AssigneePicker
-          value={task.assigneeActorEntityId}
-          assignees={assignableActors(detail, task.assigneeActorEntityId)}
-          onChange={(assigneeActorEntityId) => onChange({ assigneeActorEntityId })}
-          trigger={
-            <Button
-              type="button"
-              variant="property"
-              size="sm"
-              role="combobox"
-              aria-label={actorLabel(assignee.actor, `Assignee: ${assignee.text}`)}
-              className={trigger}
-            />
-          }
-        >
-          <AssigneeValue assignee={assignee} />
-        </AssigneePicker>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <AssigneePicker
+            value={task.assigneeActorEntityId}
+            assignees={assignableActors(detail, task.assigneeActorEntityId)}
+            onChange={(assigneeActorEntityId) => onChange({ assigneeActorEntityId })}
+            trigger={
+              <Button
+                type="button"
+                variant="property"
+                size="sm"
+                role="combobox"
+                aria-label={actorLabel(assignee.actor, `Assignee: ${assignee.text}`)}
+                className={trigger}
+              />
+            }
+          >
+            <AssigneeValue assignee={assignee} />
+          </AssigneePicker>
+          {assignToMeAction}
+        </div>
       </Property>
       <Property label="Due date">
         <TaskDueDatePicker value={task.dueDate} onChange={(dueDate) => onChange({ dueDate })}>

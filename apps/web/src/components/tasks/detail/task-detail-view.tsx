@@ -28,6 +28,7 @@ export function TaskDetail({
   onUpdate,
   renderEditor,
   actions,
+  assignToMeAction,
   links,
   children,
 }: {
@@ -39,6 +40,7 @@ export function TaskDetail({
   onUpdate: (patch: Partial<TaskDraft>) => void;
   renderEditor: (onDone: () => void) => ReactNode;
   actions?: ReactNode;
+  assignToMeAction?: ReactNode;
   links?: ReactNode;
   children: ReactNode;
 }) {
@@ -120,7 +122,13 @@ export function TaskDetail({
             editor={editing && startEditing ? renderEditor(stopEditing) : undefined}
             onEdit={startEditing}
           />
-          <TaskProperties detail={detail} task={task} canEdit={canEdit} onChange={onUpdate} />
+          <TaskProperties
+            detail={detail}
+            task={task}
+            canEdit={canEdit}
+            onChange={onUpdate}
+            assignToMeAction={assignToMeAction}
+          />
           <TaskSubtasks
             subtasks={subtasks}
             onSelect={onSelectTask}

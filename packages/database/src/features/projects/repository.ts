@@ -364,6 +364,7 @@ export function projectRepository(context: RepositoryContext) {
       return {
         project: row.project,
         level: row.level!,
+        currentActorEntityId: scope.actorEntityId,
         members: withPictures(row.members),
         actors: withPictures(row.actors),
         tasks: row.tasks,

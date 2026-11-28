@@ -4,6 +4,7 @@ import { CopyLink } from "../../context/links/copy-link";
 import { TaskContext } from "../../context/references/task-context";
 import { TaskForm } from "../editor/task-form";
 import { TaskLinks } from "../links/task-links";
+import type { TaskDraft } from "../types";
 import { TaskActions } from "./task-actions";
 import { TaskDiscussion } from "./task-discussion";
 import { TaskInspectorActive } from "./task-inspector-context";
@@ -13,6 +14,7 @@ import { actionErrorMessage } from "@/components/feedback/action-error-message";
 import { UnsavedChangesGuard } from "@/components/feedback/unsaved-changes-guard";
 import { useRegisterDraft } from "@/components/feedback/unsaved-drafts-context";
 import { TaskDetail as TaskDetailView } from "@/components/tasks/detail/task-detail-view";
+import { Button } from "@/components/ui/button";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { workLink } from "@/lib/navigation/record-links";
 import { useTaskUpdate } from "@/queries/tasks/mutations";
@@ -42,6 +44,19 @@ export function TaskDetail({
   const detail = resource.data;
   const task = detail?.tasks.find((candidate) => candidate.entityId === taskId);
   if (!detail || !task) return null;
+  const currentActor = detail.actors.find(
+    (actor) => actor.entityId === detail.currentActorEntityId,
+  );
+  const updateTask = (patch: Partial<TaskDraft>) =>
+    update.mutate(
+      { taskEntityId: task.entityId, ...patch },
+      {
+        onError: (error) =>
+          toast.error(
+            actionErrorMessage(error, "Couldn’t update this task. Your change was undone."),
+          ),
+      },
+    );
   return (
     <>
       <UnsavedChangesGuard
@@ -55,19 +70,21 @@ export function TaskDetail({
         task={task}
         onSelectTask={onSelectTask}
         onSubtask={onSubtask}
-        onUpdate={(patch) =>
-          update.mutate(
-            {
-              taskEntityId: task.entityId,
-              ...patch,
-            },
-            {
-              onError: (error) =>
-                toast.error(
-                  actionErrorMessage(error, "Couldn’t update this task. Your change was undone."),
-                ),
-            },
-          )
+        onUpdate={updateTask}
+        assignToMeAction={
+          capabilities.canEdit &&
+          currentActor?.assignable &&
+          currentActor.entityId !== task.assigneeActorEntityId ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="xs"
+              disabled={update.isPending}
+              onClick={() => updateTask({ assigneeActorEntityId: currentActor.entityId })}
+            >
+              Assign to me
+            </Button>
+          ) : undefined
         }
         actions={
           <>
