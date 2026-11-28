@@ -86,6 +86,7 @@ export function RequestCardView({
   pending,
   error,
   target,
+  arriving = false,
   onRespond,
   onApprove,
   onDecline,
@@ -94,6 +95,8 @@ export function RequestCardView({
   pending?: RequestPending;
   /** Reviewed copy for the last failed answer. */
   error?: string;
+  /** The request arrived while the owner watched, so it fades in. */
+  arriving?: boolean;
   /** The records the proposal names, resolved for the viewer. Null for other requests. */
   target: ProposalTarget | null;
   onRespond: (response: AgentRequestResponse) => void;
@@ -106,7 +109,7 @@ export function RequestCardView({
   // The server leaves out what a request says when its conversation is hidden from the viewer.
   if (!payload)
     return (
-      <MessageCard icon={Hand} tone="attention" title={hiddenRequestTitle}>
+      <MessageCard icon={Hand} tone="attention" title={hiddenRequestTitle} arriving={arriving}>
         <MessageCardBody>
           <p className="text-xs text-muted-foreground">
             {request.agent.name} needs you in {hiddenConversation.toLowerCase()}.
@@ -116,7 +119,12 @@ export function RequestCardView({
     );
   if (payload.type === "proposal")
     return (
-      <MessageCard icon={Lightbulb} tone="attention" title={`${request.agent.name} proposes`}>
+      <MessageCard
+        icon={Lightbulb}
+        tone="attention"
+        title={`${request.agent.name} proposes`}
+        arriving={arriving}
+      >
         <MessageCardBody>
           {request.proposal && target ? (
             <ProposalPreview target={target} />
@@ -165,6 +173,7 @@ export function RequestCardView({
       tone="attention"
       title={payload.title}
       meta={deadline ? <Deadline deadline={deadline} /> : undefined}
+      arriving={arriving}
     >
       <MessageCardBody>
         {payload.type === "approval" ? (

@@ -1,6 +1,7 @@
 import { createContext, useContext, useId, type ComponentType, type ReactNode } from "react";
 
 import { toneBorder, toneFill } from "@/components/feedback/tag-styles";
+import { enterMotion } from "@/components/motion/motion";
 import { Heading } from "@/components/ui/heading";
 import { cn } from "cn";
 
@@ -17,12 +18,15 @@ export function MessageCard({
   title,
   meta,
   tone = "default",
+  arriving = false,
   children,
 }: {
   icon: ComponentType<{ className?: string; "aria-hidden"?: boolean }>;
   title: ReactNode;
   meta?: ReactNode;
   tone?: Tone;
+  /** The card arrived while the person watched, so it fades in. */
+  arriving?: boolean;
   children?: ReactNode;
 }) {
   const titleId = useId();
@@ -34,6 +38,7 @@ export function MessageCard({
         className={cn(
           "@container mt-2.5 w-full max-w-180 overflow-hidden rounded-lg border bg-card text-card-foreground [&+&]:mt-2",
           tone === "attention" && toneBorder.warning,
+          arriving && enterMotion.fade,
         )}
       >
         <header

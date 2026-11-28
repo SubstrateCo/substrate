@@ -157,6 +157,7 @@ Do not reserve empty space for content that may not appear (hidden action rows, 
 ## 6. Motion
 
 - The primitives own all motion: `Button` press, menus and popovers, `Dialog`, `Tooltip`, `Collapsible`, `PageSheet`, and `PageAside`. Feature code adds no animation of its own; lint rejects `transition-all`, looping attention effects, and hover growth.
+- `components/motion` owns live changes. `enterMotion` and `useArrivedLive` fade in what arrives while the person watches, never history. `useListMotion` gives rows an exit while the others glide into place, and `Fold` folds a card into its result. Animate only opacity and transform in the message log; `Fold` is the one height change, because it runs once, when a request resolves.
 - `ease-out` and `ease-drawer` in `components/styles.css` are the only curves, and `prefers-reduced-motion` shortens every animation there.
 - Live agent work is the `working` tone of `Tag` or `WorkIndicator`; "needs you" is a steady dot.
 - Keyboard-opened palettes and high-frequency list reflow do not animate.

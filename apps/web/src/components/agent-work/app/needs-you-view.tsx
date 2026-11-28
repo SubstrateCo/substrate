@@ -9,6 +9,7 @@ import { SkeletonText } from "@/components/feedback/skeleton-text";
 import { StaleNotice } from "@/components/feedback/stale-notice";
 import { PageHeader } from "@/components/layout/page-header";
 import { MessageCard, MessageCardBody } from "@/components/messaging/messages/message-card";
+import { useListMotion } from "@/components/motion/use-list-motion";
 import { Button } from "@/components/ui/button";
 import { listPhase } from "@/lib/resource-state";
 import { CheckCheck, Hand } from "lucide-react";
@@ -35,9 +36,12 @@ export function NeedsYouView({
   error: Error | null;
   onRetry: () => void;
 }) {
+  // An answered entry fades out and the entries below glide up. The container also holds the
+  // last entry's exit while the empty notice replaces the list.
+  const page = useListMotion<HTMLDivElement>("top", "fade");
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
-      <div className="mx-auto flex min-h-full w-full max-w-4xl flex-col gap-6">
+      <div ref={page} className="relative mx-auto flex min-h-full w-full max-w-4xl flex-col gap-6">
         <PageHeader
           title="Needs you"
           description="Questions, approvals, and stopped work from your agents."
@@ -80,7 +84,7 @@ export function NeedsYouView({
           {(rows) => (
             <ul aria-label="Needs you" className="grid gap-5">
               {rows.map((entry) => (
-                <li key={entry.key} className="grid min-w-0 gap-1.5">
+                <li key={entry.key} data-motion-key={entry.key} className="grid min-w-0 gap-1.5">
                   <p className="flex min-w-0 flex-wrap items-center gap-x-1.5 text-xs text-muted-foreground">
                     {entry.agentLink ? (
                       <Button

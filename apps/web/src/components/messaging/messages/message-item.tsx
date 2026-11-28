@@ -26,6 +26,7 @@ import { MessageReaction } from "@/components/messaging/messages/reactions/messa
 import { ReactionPeopleDialog } from "@/components/messaging/messages/reactions/reaction-people-dialog";
 import { PersonCardProvider } from "@/components/messaging/people/person-card-slot";
 import { PersonHoverCard } from "@/components/messaging/people/person-hover-card";
+import { useArrivedLive } from "@/components/motion/use-arrived-live";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -78,6 +79,8 @@ export function MessageItem({
   } = useStateDialog<MessageDialog>(actionsTrigger);
   const reaction = useToggleReaction(organizationId, message.conversationId, message.id);
   const workMood = useAgentWorkMood(message.id);
+  // An agent's reply takes the place of its pending reply, so it fades in instead of appearing.
+  const arrivedLive = useArrivedLive(message.createdAt);
   const react = (emoji: string) =>
     reaction.mutate(emoji, {
       onError: (error) =>
@@ -107,6 +110,7 @@ export function MessageItem({
           )}
           grouped={grouped && !highlighted}
           highlighted={highlighted}
+          arriving={arrivedLive && message.authorType === "agent"}
           editor={
             canPost && editing ? (
               <EditMessageComposer

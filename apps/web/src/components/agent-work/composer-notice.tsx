@@ -6,6 +6,8 @@ import type { ReactNode } from "react";
 
 import { AgentAvatarView } from "@/components/agents/agent-avatar";
 import { toneText } from "@/components/feedback/tag-styles";
+import { enterMotion } from "@/components/motion/motion";
+import { useListMotion } from "@/components/motion/use-list-motion";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import type { WorkMood, WorkTone } from "@/lib/agent-work/status";
@@ -43,7 +45,13 @@ function showTurn(from: HTMLElement, turnId: string) {
 function NoticePill({ line }: { line: ComposerNoticeLine }) {
   const { turnId } = line;
   return (
-    <div className="pointer-events-auto flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border bg-surface pr-1 pl-2 text-xs text-muted-foreground shadow-floating">
+    <div
+      data-motion-key={line.key}
+      className={cn(
+        "pointer-events-auto flex h-8 max-w-full min-w-0 items-center gap-1.5 rounded-lg border bg-surface pr-1 pl-2 text-xs text-muted-foreground shadow-floating",
+        enterMotion.rise,
+      )}
+    >
       <AgentAvatarView avatar={line.avatar} size="xs" mood={line.mood ?? undefined} />
       <span className="shrink-0 font-medium text-foreground">{line.agentName}</span>
       {line.status ?? (
@@ -89,18 +97,20 @@ export function ComposerNotice({
   onNewTopic?: () => void;
   startingTopic: boolean;
 }) {
-  if (!lines.length && !onNewTopic) return null;
+  // The stack stays mounted without lines, so the last pill can still leave with its exit.
+  const stack = useListMotion<HTMLDivElement>("bottom", "drop");
   return (
     <div role="status" aria-label="Agent status" className="flex items-end gap-2 px-4">
       {/* Anchored to the composer's top edge, beside the New topic row rather than above it. */}
       <div className="relative min-w-0 flex-1 self-stretch">
-        {!!lines.length && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-0 mb-3 flex flex-col items-start gap-1.5">
-            {lines.map((line) => (
-              <NoticePill key={line.key} line={line} />
-            ))}
-          </div>
-        )}
+        <div
+          ref={stack}
+          className="pointer-events-none absolute inset-x-0 bottom-0 mb-3 flex flex-col items-start gap-1.5"
+        >
+          {lines.map((line) => (
+            <NoticePill key={line.key} line={line} />
+          ))}
+        </div>
       </div>
       {onNewTopic && (
         <div className="shrink-0 pt-2">

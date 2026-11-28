@@ -23,6 +23,7 @@ export function MessageItem({
   message,
   grouped = false,
   highlighted = false,
+  arriving = false,
   onReact,
   pending = false,
   onThread,
@@ -45,6 +46,8 @@ export function MessageItem({
   grouped?: boolean;
   /** The message a link points to. */
   highlighted?: boolean;
+  /** The message arrived while the person watched, so it fades in. */
+  arriving?: boolean;
   /** A small status mark on the avatar, such as an agent run's state. Agent replies never group. */
   avatarBadge?: ReactNode;
   /** A status after the time, such as the state of the work behind an agent's reply. */
@@ -78,6 +81,7 @@ export function MessageItem({
             }
       }
       highlighted={highlighted || editing}
+      arriving={arriving}
       toolbar={
         !editing && (
           <MessageToolbar

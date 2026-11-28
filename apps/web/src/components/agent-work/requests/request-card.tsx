@@ -3,6 +3,8 @@ import type { AgentRequestView } from "@substrate/contracts/agent-work";
 import { RequestCardView, RequestResult, type RequestPending } from "./request-card-view";
 import { ApiError } from "@/api/result";
 import { actionErrorMessage } from "@/components/feedback/action-error-message";
+import { Fold } from "@/components/motion/fold";
+import { useArrivedLive } from "@/components/motion/use-arrived-live";
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
 import { proposalResultLink } from "@/lib/agent-work/links";
@@ -41,24 +43,33 @@ export function RequestCard({ request }: { request: AgentRequestView }) {
     enabled: open,
     crmEnabled: apps.enabled("crm"),
   });
+  const arriving = useArrivedLive(request.createdAt);
+  // Answering on screen, here or on another device, folds the card into its result.
   if (!open)
-    return <RequestResult request={request} link={proposalResultLink(organizationId, request)} />;
+    return (
+      <Fold state="closed">
+        <RequestResult request={request} link={proposalResultLink(organizationId, request)} />
+      </Fold>
+    );
   const pending = attempt.isPending ? pendingOf(attempt.variables) : undefined;
   const error = attempt.isError
     ? failure(attempt.error, failures[attempt.variables.kind])
     : undefined;
   const requestId = request.id;
   return (
-    <RequestCardView
-      request={request}
-      target={target}
-      pending={pending}
-      error={error}
-      onRespond={(response) => attempt.mutate({ kind: "respond", requestId, response })}
-      onApprove={() =>
-        attempt.mutate({ kind: "approve", requestId, action: request.proposal?.action ?? null })
-      }
-      onDecline={() => attempt.mutate({ kind: "decline", requestId })}
-    />
+    <Fold state="open">
+      <RequestCardView
+        request={request}
+        target={target}
+        pending={pending}
+        error={error}
+        arriving={arriving}
+        onRespond={(response) => attempt.mutate({ kind: "respond", requestId, response })}
+        onApprove={() =>
+          attempt.mutate({ kind: "approve", requestId, action: request.proposal?.action ?? null })
+        }
+        onDecline={() => attempt.mutate({ kind: "decline", requestId })}
+      />
+    </Fold>
   );
 }
