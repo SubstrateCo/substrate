@@ -13,6 +13,7 @@ import { requireDevice, type DeviceIdentity } from "./core/session/device";
 import type { SessionIdentity, OwnerSessionIdentity } from "./core/session/identity";
 import { ownerSession } from "./core/session/owner";
 import { workspaceContext, type ResolvedWorkspace } from "./core/session/workspace";
+import { createWorkspaceCache } from "./core/session/workspace-cache";
 import { createDeviceWorkRepository } from "./features/agent-work/device-repository";
 import { renewLeases } from "./features/agent-work/host/lease";
 import { createHostRepository } from "./features/agent-work/host/repository";
@@ -267,8 +268,18 @@ function standalone(
   };
 }
 
-export function createRepositories(db: DatabaseExecutor) {
+export function createRepositories(
+  db: DatabaseExecutor,
+  options: {
+    /** How long `forSession` keeps a person's resolved workspace for reads. Off by default. */
+    workspaceCacheMs?: number;
+    now?: () => number;
+  } = {},
+) {
+  const workspaces = createWorkspaceCache(db, options.workspaceCacheMs ?? 0, options.now);
   return {
+    /** Drops kept workspaces, after a membership, role, actor or profile change. */
+    forgetWorkspaces: () => workspaces.forget(),
     async forDeviceSession(identity: DeviceIdentity) {
       const device = await requireDevice(db, identity);
       const resolved = Object.freeze({ ...identity, deviceId: device.id });
@@ -337,7 +348,7 @@ export function createRepositories(db: DatabaseExecutor) {
       };
     },
     async forSession(identity: SessionIdentity) {
-      const resolved = await workspaceContext(db, identity);
+      const resolved = await workspaces.resolve(identity);
       const session = Object.freeze({ ...identity });
       return standalone(
         db,

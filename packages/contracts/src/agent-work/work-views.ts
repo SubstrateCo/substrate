@@ -1,5 +1,6 @@
 import type { TurnPlace } from "../agent-tools/turn-context.ts";
 import type { TurnKind, Usage } from "../harness-runtime/runtime.ts";
+import type { AgentRequestView } from "./request-views.ts";
 import type {
   AgentSessionResetReason,
   AgentSessionStatus,
@@ -124,6 +125,8 @@ export interface AgentConversationWorkView {
   turns: AgentWorkTurnView[];
   /** Items not yet in a finished turn: pending, held, submitted and uncertain. */
   items: AgentWorkItemView[];
+  /** The owner's requests that come from or post to this conversation. */
+  requests: AgentRequestView[];
 }
 
 /** POST /agent-work/turns/:id/stop|retry|dismiss|start-fresh: the turn after the command. */

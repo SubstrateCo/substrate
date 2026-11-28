@@ -9,7 +9,7 @@ import { afterEach, beforeEach, expect, vi, test } from "bun:test";
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
-for (const trigger of ["ready", "profile", "session"] as const) {
+for (const trigger of ["profile", "session"] as const) {
   test(`${trigger} preserves a route promise shared with a cached header observer`, async () => {
     const client = new QueryClient();
     const initial = Promise.withResolvers<string[]>();
@@ -47,17 +47,13 @@ for (const trigger of ["ready", "profile", "session"] as const) {
     });
     try {
       expect(reads).toBe(1);
-      const resync = cache.receive(
-        trigger === "ready"
-          ? { version: 1, type: "ready" }
-          : {
-              version: 1,
-              type: "change",
-              domain: trigger,
-              organizationId: "org",
-              id: crypto.randomUUID(),
-            },
-      );
+      const resync = cache.receive({
+        version: 1,
+        type: "change",
+        domain: trigger,
+        organizationId: "org",
+        id: crypto.randomUUID(),
+      });
       await advanceTimersAsync(25);
       initial.resolve(["original session"]);
       expect(await outcome).toEqual({ status: "resolved", data: ["original session"] });
@@ -76,66 +72,60 @@ for (const trigger of ["ready", "profile", "session"] as const) {
   });
 }
 
-for (const trigger of ["ready", "organization"] as const) {
-  test(`${trigger} refreshes an unobserved route load without rejecting its original promise`, async () => {
-    const client = new QueryClient();
-    const key = trigger === "ready" ? queryKeys.session : queryKeys.organizationDetail("org");
-    const initial = Promise.withResolvers<string[]>();
-    let reads = 0;
-    const read = () => {
-      reads++;
-      return reads === 1 ? initial.promise : Promise.resolve(["current"]);
-    };
-    const opts = {
-      queryKey: key,
-      staleTime: Infinity,
-      retry: false,
-      queryFn: () => read(),
-    };
-    const routeLoad = client.query(opts);
-    const outcome = routeLoad.then(
-      (data) => ({ status: "resolved", data }),
-      (error: Error) => ({ status: "rejected", error }),
-    );
-    let routed = 0;
-    const cache = createRealtimeCache({
-      queryClient: client,
-      organizationId: "org",
-      userId: "user",
-      revalidate: async () => {
-        routed++;
-      },
-      batchMs: 5,
-    });
-    try {
-      expect(client.getQueryCache().find({ queryKey: key })?.getObserversCount()).toBe(0);
-      const resync = cache.receive(
-        trigger === "ready"
-          ? { version: 1, type: "ready" }
-          : {
-              version: 1,
-              type: "change",
-              domain: "organization",
-              organizationId: "org",
-              id: crypto.randomUUID(),
-            },
-      );
-      await advanceTimersAsync(25);
-      initial.resolve(["original snapshot"]);
-      expect(await outcome).toEqual({ status: "resolved", data: ["original snapshot"] });
-      await resync;
-      await advanceTimersAsync(0);
-      expect(reads).toBe(2);
-      expect(client.getQueryData(key)).toEqual(["current"]);
-      expect(client.getQueryState(key)?.fetchStatus).toBe("idle");
-      expect(routed).toBe(1);
-    } finally {
-      initial.resolve([]);
-      cache.dispose();
-      client.clear();
-    }
+test("organization refreshes an unobserved route load without rejecting its original promise", async () => {
+  const client = new QueryClient();
+  const key = queryKeys.organizationDetail("org");
+  const initial = Promise.withResolvers<string[]>();
+  let reads = 0;
+  const read = () => {
+    reads++;
+    return reads === 1 ? initial.promise : Promise.resolve(["current"]);
+  };
+  const opts = {
+    queryKey: key,
+    staleTime: Infinity,
+    retry: false,
+    queryFn: () => read(),
+  };
+  const routeLoad = client.query(opts);
+  const outcome = routeLoad.then(
+    (data) => ({ status: "resolved", data }),
+    (error: Error) => ({ status: "rejected", error }),
+  );
+  let routed = 0;
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {
+      routed++;
+    },
+    batchMs: 5,
   });
-}
+  try {
+    expect(client.getQueryCache().find({ queryKey: key })?.getObserversCount()).toBe(0);
+    const resync = cache.receive({
+      version: 1,
+      type: "change",
+      domain: "organization",
+      organizationId: "org",
+      id: crypto.randomUUID(),
+    });
+    await advanceTimersAsync(25);
+    initial.resolve(["original snapshot"]);
+    expect(await outcome).toEqual({ status: "resolved", data: ["original snapshot"] });
+    await resync;
+    await advanceTimersAsync(0);
+    expect(reads).toBe(2);
+    expect(client.getQueryData(key)).toEqual(["current"]);
+    expect(client.getQueryState(key)?.fetchStatus).toBe("idle");
+    expect(routed).toBe(1);
+  } finally {
+    initial.resolve([]);
+    cache.dispose();
+    client.clear();
+  }
+});
 
 test("a late unobserved loader cannot refresh or revalidate a disposed generation", async () => {
   const client = new QueryClient();
@@ -158,10 +148,18 @@ test("a late unobserved loader cannot refresh or revalidate a disposed generatio
     revalidate: async () => {
       routed = true;
     },
+    batchMs: 5,
   });
   try {
-    const resync = cache.receive({ version: 1, type: "ready" });
-    await advanceTimersAsync(0);
+    const resync = cache.receive({
+      version: 1,
+      type: "change",
+      domain: "organization",
+      organizationId: "org",
+      id: crypto.randomUUID(),
+    });
+    // The refresh now waits for the loader's read.
+    await advanceTimersAsync(25);
     cache.dispose();
     initial.resolve(["original snapshot"]);
     expect(await routeLoad).toEqual(["original snapshot"]);

@@ -2,6 +2,7 @@ import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
 import { commit } from "../../../core/effects";
 import { setupDatabase } from "../../../testing/database";
+import { recordQueries } from "../../../testing/queries";
 import { notifications } from "../../notifications/schema";
 import { createMessagingService } from "../service";
 import { messagingReadPositions } from "./read-state.schema";
@@ -99,4 +100,31 @@ test("a reader viewing a thread reads its replies as they arrive, not the timeli
   expect(await reads().unreadCounts()).toMatchObject([
     { firstUnreadMessageId: elsewhere.result.id, unreadReplyThreadIds: [] },
   ]);
+});
+
+test("a read that renews its viewing lease runs one lookup and two writes", async () => {
+  await f.verifyEmails();
+  const dm = await f
+    .messaging("alice")
+    .createConversation({ kind: "dm", emails: ["bob@example.com"] });
+  const first = (await send(dm.id, "first")).result;
+  const { db, queries } = recordQueries();
+  const renew = () =>
+    commit(db, (tx) =>
+      createMessagingService(tx, { userId: "bob", organizationId: f.orgA }).markRead(
+        dm.id,
+        first.id,
+        { viewing: true },
+      ),
+    );
+  expect((await renew()).result).toEqual({ read: true, moved: true, cleared: true });
+  queries.length = 0;
+  expect((await renew()).result).toEqual({ read: true, moved: false, cleared: false });
+  // The workspace, the visible message, the position with its lease, and the notices.
+  expect(queries).toHaveLength(4);
+  const [position] = await f.db
+    .select({ viewingUntil: messagingReadPositions.viewingUntil })
+    .from(messagingReadPositions)
+    .where(eq(messagingReadPositions.actorEntityId, f.bob));
+  expect(position!.viewingUntil!.getTime()).toBeGreaterThan(Date.now());
 });

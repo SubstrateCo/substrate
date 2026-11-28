@@ -181,6 +181,22 @@ test("unchanged and older read positions publish no refresh hints", async () => 
   expect(await reads().unreadCounts()).toEqual([]);
 });
 
+test("a read reports whether it moved the position and cleared notices, so readers refresh only then", async () => {
+  await f.verifyEmails();
+  const alice = f.messaging("alice");
+  const conversation = await alice.createConversation({ kind: "dm", emails: ["bob@example.com"] });
+  const first = await alice.sendMessage(conversation.id, "first");
+  const last = await alice.sendMessage(conversation.id, "last");
+  expect((await mark(conversation.id, last.id)).result).toEqual({
+    read: true,
+    moved: true,
+    cleared: true,
+  });
+  const unchanged = { read: true, moved: false, cleared: false };
+  expect((await mark(conversation.id, last.id)).result).toEqual(unchanged);
+  expect((await mark(conversation.id, first.id)).result).toEqual(unchanged);
+});
+
 test("reading a conversation clears its message notifications through the read message only", async () => {
   await f.verifyEmails();
   const alice = f.messaging("alice");

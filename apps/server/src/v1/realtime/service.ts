@@ -3,11 +3,20 @@ import type { Database } from "@substrate/database/trusted";
 
 import { createRealtimeAuthenticator } from "../../auth/realtime-session";
 import type { Auth } from "../../auth/server";
-import { createRealtimeHub } from "./hub";
+import { createRealtimeHub, type Change } from "./hub";
 import { coalesceReceivers } from "./receivers";
 import { createRealtimeSubscription } from "./subscription";
 
-export function createRealtimeService({ db, auth }: { db: Database; auth: Auth }) {
+export function createRealtimeService({
+  db,
+  auth,
+  onChanges,
+}: {
+  db: Database;
+  auth: Auth;
+  /** Sees every batch that any server published, before its receivers do. */
+  onChanges?: (changes: Change[]) => void;
+}) {
   let failures = 0;
   const hub = createRealtimeHub({
     authenticate: createRealtimeAuthenticator(
@@ -21,7 +30,10 @@ export function createRealtimeService({ db, auth }: { db: Database; auth: Auth }
     },
   });
   const subscription = createRealtimeSubscription({
-    receive: (changes) => hub.publish(...changes),
+    receive: (changes) => {
+      onChanges?.(changes);
+      return hub.publish(...changes);
+    },
     setAvailable: (available) => hub.setAvailable(available),
   });
   return {

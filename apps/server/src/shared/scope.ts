@@ -16,7 +16,10 @@ import type { Env, ValidationTargets } from "hono";
 import { createMiddleware } from "hono/factory";
 import { z } from "zod";
 
-type Repositories = ReturnType<typeof createRepositories>;
+type Repositories = Pick<
+  ReturnType<typeof createRepositories>,
+  "forSession" | "forOwnerSession" | "forDeviceSession"
+>;
 export type ScopeEnv<S = WorkspaceScope> = Env & { Variables: { scope: S } };
 
 export interface ScopeDependencies {

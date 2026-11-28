@@ -44,7 +44,10 @@ export type RealtimeDomain = z.infer<typeof realtimeDomain>;
 // conversation details did not. "reactions": only the reactions of one message changed.
 // "read": only the viewer's read position, so only unread state, changed. Optional: without it,
 // clients refresh the whole messaging domain.
-export const realtimeScope = z.enum(["messages", "reactions", "read"]);
+//
+// "activity" narrows an agent-work change: only a live turn's activity text changed. What waits
+// for the owner, and what the host must run, did not.
+export const realtimeScope = z.enum(["messages", "reactions", "read", "activity"]);
 export type RealtimeScope = z.infer<typeof realtimeScope>;
 
 // A hint names at most this many tasks; a larger change names only the project.
@@ -64,7 +67,7 @@ export const realtimeDetail = {
 };
 
 interface MessagingDetail {
-  scope?: RealtimeScope;
+  scope?: Exclude<RealtimeScope, "activity">;
   messageId?: string;
   threadId?: string | null;
 }
@@ -84,8 +87,9 @@ export type RealtimeHint =
   | (Audience & { domain: "messaging" } & MessagingDetail)
   | (Audience & { domain: "tasks"; scope?: never } & WorkDetail)
   | (Audience & { domain: "context"; scope?: never; messageId?: string } & WorkDetail)
+  | (Audience & { domain: "agent-work"; scope?: "activity" })
   | (Audience & {
-      domain: Exclude<RealtimeDomain, "messaging" | "tasks" | "context">;
+      domain: Exclude<RealtimeDomain, "messaging" | "tasks" | "context" | "agent-work">;
       scope?: never;
     });
 

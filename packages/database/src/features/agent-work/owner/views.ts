@@ -21,6 +21,7 @@ import type { HelperRow } from "../helpers";
 import { agentHelpers } from "../helpers.schema";
 import type { TurnRow } from "../host/held-turn";
 import { openStatuses, type ItemRow } from "../items";
+import { queryConversationRequests } from "../requests/request-views";
 import { agentRequests } from "../requests/requests.schema";
 import type { SessionRow } from "../sessions";
 import { agentSessions } from "../sessions.schema";
@@ -420,7 +421,9 @@ export async function conversationWork(
     )
     .orderBy(desc(agentSessions.updatedAt), desc(agentSessions.id));
   const ids = rows.map((session) => session.id);
-  if (!ids.length) return { conversationId, sessions: [], turns: [], items: [] };
+  // A request can post here from a session of another conversation.
+  const requests = await queryConversationRequests(db, identity, conversationId);
+  if (!ids.length) return { conversationId, sessions: [], turns: [], items: [], requests };
   // Read the queue first. If the host consumes an item between these reads, its turn is
   // already committed when we load turns. The reverse order can miss both item and turn.
   const items = await db
@@ -443,6 +446,7 @@ export async function conversationWork(
     sessions: rows.map((session) => sessionView(session, visible(session))),
     turns: await turnViews(ctx, identity, turns, sessions, visible),
     items: items.map((item) => itemView(item, visible(sessions.get(item.sessionId)!))),
+    requests,
   };
 }
 

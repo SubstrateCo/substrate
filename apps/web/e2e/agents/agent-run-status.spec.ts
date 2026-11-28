@@ -48,7 +48,7 @@ test("one owner-only run status follows its source visibility and keeps run cont
     "data-variant",
     "destructive-ghost",
   );
-  await expect(floating).toHaveCount(0);
+  await expect(floating).toHaveText("");
   await inline.getByLabel("Only visible to you", { exact: true }).hover();
   await expect(user.page.getByRole("tooltip", { name: "Only visible to you" })).toBeVisible();
   await user.page.mouse.move(0, 0);
@@ -80,7 +80,7 @@ test("one owner-only run status follows its source visibility and keeps run cont
   await captureScreenshot(user.page, "agent-run-status-offscreen");
   await floating.getByRole("button", { name: "Show Jarvis’s work", exact: true }).click();
   await expect(inline).toBeInViewport();
-  await expect(floating).toHaveCount(0);
+  await expect(floating).toHaveText("");
   // The summary comes from the server; the timeline stays on the home desktop.
   await inline.getByRole("button", { name: /Open transcript/ }).click();
   const transcript = user.page.getByRole("complementary", { name: "Agent transcript" });
@@ -99,7 +99,7 @@ test("one owner-only run status follows its source visibility and keeps run cont
   await finishTurn(owner, turn, { status: "cancelled", interruption: "stop" });
   await expect(inline.getByRole("button", { name: /^Stopped/ })).toBeVisible();
   await expect(inline.getByRole("button", { name: "Stop run", exact: true })).toHaveCount(0);
-  await expect(floating).toHaveCount(0);
+  await expect(floating).toHaveText("");
 
   const member = await client(actors.member);
   await visit(member, channel.id);
@@ -109,8 +109,8 @@ test("one owner-only run status follows its source visibility and keeps run cont
   await expect(member.page.getByRole("region", { name: "Jarvis reply", exact: true })).toHaveCount(
     0,
   );
-  await expect(member.page.getByRole("status", { name: "Agent status", exact: true })).toHaveCount(
-    0,
+  await expect(member.page.getByRole("status", { name: "Agent status", exact: true })).toHaveText(
+    "",
   );
 });
 
@@ -247,7 +247,7 @@ test("finished work moves to the published result and keeps its existing transcr
   await finishTurn(owner, turn, { status: "completed", outcome: "replied" });
   await expect(result.getByRole("button", { name: /Worked for/ })).toBeVisible();
   await expect(user.page.getByRole("region", { name: "Jarvis reply", exact: true })).toHaveCount(0);
-  await expect(user.page.getByRole("status", { name: "Agent status", exact: true })).toHaveCount(0);
+  await expect(user.page.getByRole("status", { name: "Agent status", exact: true })).toHaveText("");
   await expect(result.getByRole("button", { name: "Stop run", exact: true })).toHaveCount(0);
   await result.getByRole("button", { name: /Open transcript/ }).click();
   await expect(user.page.getByRole("link", { name: "The reply", exact: true })).toBeVisible();

@@ -4,6 +4,8 @@ import { defaultWorkspaceNotificationPreferences } from "@substrate/contracts/no
 
 import { useQuery } from "@tanstack/react-query";
 
+import { useState } from "react";
+
 import {
   ConversationActionsMenu,
   type ConversationNotificationMenu,
@@ -64,7 +66,9 @@ export function ConversationActions({
     ? { onTransfer: () => open("transfer"), onDelete: () => open("delete") }
     : undefined;
 
-  const notifications = useConversationNotifications(conversation);
+  // Only the menu shows the alert settings, so they load when the person reaches for it.
+  const [wantedFor, setWantedFor] = useState<string>();
+  const notifications = useConversationNotifications(conversation, wantedFor === conversation.id);
 
   return (
     <>
@@ -72,6 +76,7 @@ export function ConversationActions({
         leaveLabel={leaveLabel}
         deleteLabel={deleteLabel}
         notifications={notifications}
+        onIntent={() => setWantedFor(conversation.id)}
         onSharing={conversation.canShare ? () => open("sharing") : undefined}
         onLeave={canLeave(conversation) ? () => open("leave") : undefined}
         {...ownershipActions}
@@ -149,17 +154,18 @@ const settingError = () => toast.error("We couldn’t change this setting. Try a
 /** The viewer's alert settings for a conversation they are a member of. Others get none. */
 function useConversationNotifications(
   conversation: Conversation,
+  load: boolean,
 ): ConversationNotificationMenu | undefined {
   const { organizationId, userId } = useWorkspaceScope();
   const member = conversation.joined;
   const own = useQuery({
     ...conversationNotificationPreferencesOptions(userId, organizationId, conversation.id),
-    enabled: member,
+    enabled: member && load,
   });
   // Channels follow the workspace level; DMs and groups always default to all.
   const workspace = useQuery({
     ...workspaceNotificationPreferencesOptions(userId, organizationId),
-    enabled: member && conversation.kind === "channel",
+    enabled: member && load && conversation.kind === "channel",
   });
   const update = useUpdateConversationNotificationPreferences(
     userId,

@@ -41,11 +41,14 @@ export function ConversationActionsMenu({
   leaveLabel = "Leave conversation",
   deleteLabel,
   notifications,
+  onIntent,
   onLeave,
   onTransfer,
   onDelete,
   onSharing,
 }: {
+  /** The person points at or opens the menu: the time to load what only the menu shows. */
+  onIntent?: () => void;
   /** "Leave channel" or "Leave group". */
   leaveLabel?: string;
   /** "Delete channel" or "Delete group": the item names what it destroys. */
@@ -60,11 +63,16 @@ export function ConversationActionsMenu({
   const hasActions = [notifications, onLeave, onTransfer, onDelete, onSharing].some(Boolean);
   if (!hasActions) return null;
   return (
-    <DropdownMenu>
+    <DropdownMenu onOpenChange={(open) => open && onIntent?.()}>
       <Tooltip>
         <TooltipTrigger asChild>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon-sm" aria-label="Conversation actions">
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Conversation actions"
+              onPointerEnter={onIntent}
+            >
               <Ellipsis />
             </Button>
           </DropdownMenuTrigger>

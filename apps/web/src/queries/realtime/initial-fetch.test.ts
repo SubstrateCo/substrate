@@ -9,6 +9,9 @@ import { afterEach, beforeEach, expect, vi, test } from "bun:test";
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => vi.useRealTimers());
 
+// A value read before the load that opened the socket: the first ready reads it again.
+const loadedEarlier = () => Date.now() - 60_000;
+
 for (const observed of [false, true]) {
   test(`ready starts the ${observed ? "observed" : "unobserved"} session replacement before unrelated refresh completes`, async () => {
     const client = new QueryClient();
@@ -24,6 +27,7 @@ for (const observed of [false, true]) {
       queryKey: queryKeys.session,
       staleTime: Infinity,
       initialData: ["old session"],
+      initialDataUpdatedAt: loadedEarlier(),
       queryFn: () => readSession(),
     };
     const sessionObserver = new QueryObserver(client, opts);
@@ -31,6 +35,7 @@ for (const observed of [false, true]) {
     const projectsObserver = new QueryObserver(client, {
       queryKey: queryKeys.projects("org"),
       initialData: ["old project"],
+      initialDataUpdatedAt: loadedEarlier(),
       staleTime: Infinity,
       queryFn: () => readProjects(),
     });
@@ -68,12 +73,14 @@ for (const observed of [false, true]) {
   });
 }
 
-test("ready waits for a pre-ready session's follow-up read before routing", async () => {
+test("ready routes with the session read that this load started, without a second read", async () => {
   const client = new QueryClient();
   const initial = Promise.withResolvers<string[]>();
-  const replacement = Promise.withResolvers<string[]>();
   let reads = 0;
-  const readSession = () => (++reads === 1 ? initial.promise : replacement.promise);
+  const readSession = () => {
+    reads++;
+    return initial.promise;
+  };
   const opts = {
     queryKey: queryKeys.session,
     staleTime: Infinity,
@@ -91,18 +98,15 @@ test("ready waits for a pre-ready session's follow-up read before routing", asyn
   });
   try {
     const ready = cache.receive({ version: 1, type: "ready" });
-    initial.resolve(["obsolete session"]);
-    expect(await original).toEqual(["obsolete session"]);
     await advanceTimersAsync(0);
-    expect(reads).toBe(2);
     expect(routed).toEqual([]);
-    replacement.resolve(["current session"]);
+    initial.resolve(["current session"]);
+    expect(await original).toEqual(["current session"]);
     await ready;
     expect(routed).toEqual([["current session"]]);
-    expect(reads).toBe(2);
+    expect(reads).toBe(1);
   } finally {
     initial.resolve([]);
-    replacement.resolve([]);
     cache.dispose();
     client.clear();
   }
@@ -123,6 +127,7 @@ for (const outcome of ["failure", "disposal"] as const) {
       queryFn: () => readSession(),
     };
     await client.query(opts);
+    client.setQueryData(queryKeys.session, ["old session"], { updatedAt: loadedEarlier() });
     let routed = false;
     const cache = createRealtimeCache({
       queryClient: client,
@@ -195,7 +200,66 @@ test("ready resync ignores a canceled page that has been replaced by another vis
   }
 });
 
-for (const trigger of ["tasks", "ready", "messaging"] as const) {
+test("ready waits for the reads of this load without repeating them, and reads earlier values again", async () => {
+  const client = new QueryClient();
+  const loading = Promise.withResolvers<string[]>();
+  const reads = { loading: 0, loaded: 0, earlier: 0 };
+  const readLoading = () => {
+    reads.loading++;
+    return loading.promise;
+  };
+  const readAgain = async (name: "loaded" | "earlier") => {
+    reads[name]++;
+    return ["read again"];
+  };
+  const unsubscribe = [
+    new QueryObserver(client, {
+      queryKey: queryKeys.project("org", "loading"),
+      staleTime: Infinity,
+      queryFn: () => readLoading(),
+    }),
+    new QueryObserver(client, {
+      queryKey: queryKeys.project("org", "loaded"),
+      staleTime: Infinity,
+      initialData: ["loaded"],
+      queryFn: () => readAgain("loaded"),
+    }),
+    new QueryObserver(client, {
+      queryKey: queryKeys.project("org", "earlier"),
+      staleTime: Infinity,
+      initialData: ["earlier"],
+      initialDataUpdatedAt: loadedEarlier(),
+      queryFn: () => readAgain("earlier"),
+    }),
+  ].map((observer) => observer.subscribe(() => {}));
+  const health: string[] = [];
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+    onHealth: (value) => health.push(value),
+  });
+  try {
+    const ready = cache.receive({ version: 1, type: "ready" });
+    await advanceTimersAsync(0);
+    // The cache is fresh only once the read on screen has loaded.
+    expect(health).toEqual(["syncing"]);
+    loading.resolve(["first read"]);
+    await ready;
+    expect(health).toEqual(["syncing", "fresh"]);
+    expect(reads).toEqual({ loading: 1, loaded: 0, earlier: 1 });
+    expect(client.getQueryData(queryKeys.project("org", "loading"))).toEqual(["first read"]);
+    expect(client.getQueryData(queryKeys.project("org", "earlier"))).toEqual(["read again"]);
+  } finally {
+    loading.resolve([]);
+    cache.dispose();
+    for (const stop of unsubscribe) stop();
+    client.clear();
+  }
+});
+
+for (const trigger of ["tasks", "messaging"] as const) {
   test(`${trigger} preserves an in-flight initial snapshot then refreshes it`, async () => {
     const client = new QueryClient();
     const key =
@@ -230,17 +294,13 @@ for (const trigger of ["tasks", "ready", "messaging"] as const) {
     });
     try {
       expect(reads).toBe(1);
-      const received = cache.receive(
-        trigger === "ready"
-          ? { version: 1, type: "ready" }
-          : {
-              version: 1,
-              type: "change",
-              domain: trigger,
-              organizationId: "org",
-              id: crypto.randomUUID(),
-            },
-      );
+      const received = cache.receive({
+        version: 1,
+        type: "change",
+        domain: trigger,
+        organizationId: "org",
+        id: crypto.randomUUID(),
+      });
       await advanceTimersAsync(25);
       initial.resolve(["obsolete project"]);
       await received;
@@ -377,8 +437,7 @@ test("disposed generation cancels private work and cannot restart it or revalida
     const resync = cache.receive({ version: 1, type: "ready" });
     cache.dispose();
     initial.resolve(["obsolete project"]);
-    const outcome = await resync.catch((error: Error) => error);
-    expect(outcome).toMatchObject({ message: "CancelledError" });
+    await resync;
     expect(reads).toBe(1);
     expect(client.getQueryData(queryKeys.projects("org"))).toBeUndefined();
     expect(routed).toBe(false);

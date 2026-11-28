@@ -9,13 +9,15 @@ import {
 } from "../test-support/fixtures";
 import { expect, type WebSocketRoute } from "@playwright/test";
 
-test("returning to a connected window recovers a committed message when its change hint is lost", async ({
+test("returning to a connected window after five minutes recovers a committed message when its change hint is lost", async ({
   actors,
   client,
 }) => {
   const channel = await conversation(actors.sender, [actors.member.email]);
   const recipient = await client(actors.member);
+  // The fake clock applies to the whole browser context, so later tests must not reuse it.
   isolateContext(recipient.page);
+  await recipient.page.clock.install();
   await recipient.page.routeWebSocket("**/api/v1/realtime?*", (socket) => {
     const server = socket.connectToServer();
     server.onMessage((message) => {
@@ -28,6 +30,8 @@ test("returning to a connected window recovers a committed message when its chan
   const body = `Committed without a delivered hint ${channel.id}`;
   await post(actors.sender, "messaging/messages", { conversationId: channel.id, body });
   await expect(recipient.page.getByText(body, { exact: true })).toHaveCount(0);
+  // A window re-reads what it shows only when its last full read is five minutes old.
+  await recipient.page.clock.fastForward("05:00");
   await recipient.page.evaluate(() => window.dispatchEvent(new Event("focus")));
   await expect(recipient.page.getByText(body, { exact: true })).toBeVisible();
   expect(recipient.events.filter((event) => event.type === "ready")).toHaveLength(readyBefore);

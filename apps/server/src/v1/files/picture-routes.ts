@@ -2,6 +2,7 @@ import {
   pictureKindParam,
   pictureOwnerParam,
   pictureUploadInput,
+  pictureVersionQuery,
 } from "@substrate/contracts/files/pictures";
 import { publicFailure } from "@substrate/contracts/result";
 
@@ -12,6 +13,9 @@ import type { PictureService } from "./pictures";
 import { privateFileResponse, privateRedirect } from "./private-response";
 import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
+
+// A person who loses access can still see a picture their browser already keeps, for this long.
+const pictureKeepSeconds = 24 * 60 * 60;
 
 export function createPictureRoutes(service: PictureService, scopes: Scopes) {
   return new Hono<ScopeEnv<UserScope>>()
@@ -48,10 +52,27 @@ export function createPictureRoutes(service: PictureService, scopes: Scopes) {
         type: "image/webp",
       });
     })
-    .get("/:purpose/:owner", v("param", pictureOwnerParam), scopes.user(), async (c) => {
-      const { purpose, owner } = c.req.valid("param");
-      const result = await service.content(c.var.scope, purpose, owner);
-      if (!result.success) return respond(c, result);
-      return privateRedirect(c, result.data.url);
-    });
+    .get(
+      "/:purpose/:owner",
+      v("param", pictureOwnerParam),
+      v("query", pictureVersionQuery),
+      scopes.user(),
+      async (c) => {
+        const { purpose, owner } = c.req.valid("param");
+        // Each upload gets a new version, so a versioned URL's bytes never change. Send them
+        // directly, so that the browser can keep them: a signed storage URL expires in a minute.
+        if (c.req.valid("query").v) {
+          const versioned = await service.bytes(c.var.scope, purpose, owner);
+          if (!versioned.success) return respond(c, versioned);
+          return privateFileResponse(c, versioned.data.bytes, {
+            disposition: "inline",
+            type: "image/webp",
+            keepSeconds: pictureKeepSeconds,
+          });
+        }
+        const result = await service.content(c.var.scope, purpose, owner);
+        if (!result.success) return respond(c, result);
+        return privateRedirect(c, result.data.url);
+      },
+    );
 }

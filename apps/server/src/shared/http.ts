@@ -24,6 +24,8 @@ const statuses = {
 } as const satisfies Record<ServiceErrorCode, number>;
 
 export function respond<T extends ServiceResult<unknown>>(c: Context, result: T) {
+  // The length lets compression leave small bodies alone: compressing them only adds bytes.
+  c.header("Content-Length", String(Buffer.byteLength(JSON.stringify(result))));
   return c.json(result, result.success ? 200 : statuses[result.error.code]);
 }
 

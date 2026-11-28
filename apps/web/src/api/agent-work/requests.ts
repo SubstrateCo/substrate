@@ -1,8 +1,6 @@
 import type {
   AgentNeedsYou,
-  AgentRequestView,
   AgentStatusView,
-  conversationRequestsInput,
   decideProposalInput,
   ownerScopeInput,
   respondRequestInput,
@@ -24,12 +22,6 @@ const routes = api["agent-work"];
 const readProposals = <T>(response: Promise<unknown>) =>
   // SAFETY: each caller names the contract type its route returns.
   readResult<T>(response as Promise<never>);
-
-export const listConversationRequests = ({
-  data,
-  signal,
-}: ApiInput<z.input<typeof conversationRequestsInput>>): Promise<AgentRequestView[]> =>
-  readProposals<AgentRequestView[]>(routes.requests.$get({ query: data }, { init: { signal } }));
 
 export const getNeedsYou = ({
   data,

@@ -34,13 +34,13 @@ function DestinationComposer({
   label: string;
 }) {
   const uploads = useAttachmentUploads();
-  usePrefetchReferences(conversationId);
+  const prefetchReferences = usePrefetchReferences(conversationId);
   const requests = useContext(ComposerSendRequests);
   if (!requests) throw new Error("Composer requires ComposerDraftProvider");
   const draftKey = `${organizationId}:${conversationId}:${threadId ?? "channel"}`;
   const send = useSendMessage(organizationId, conversationId, threadId, () => uploads.clear());
   return (
-    <div className="relative h-28 shrink-0">
+    <div className="relative h-28 shrink-0" onKeyDownCapture={prefetchReferences}>
       <FileDropZone
         label="Message attachments"
         disabled={send.isPending}

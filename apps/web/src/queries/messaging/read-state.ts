@@ -123,12 +123,15 @@ export function useConversationRead(
       if (!read) {
         read = true;
         // A read also clears the notifications of the messages it covers. Do not wait for the
-        // best-effort realtime hint to clear the Notifications dot.
+        // best-effort realtime hint to clear the Notifications dot. Most reads change nothing:
+        // the server says what this one changed, and only that is read again.
         send(true).then(
-          () =>
+          ({ moved, cleared }) =>
             Promise.all([
-              client.invalidateQueries({ queryKey: queryKeys.messageUnread(organizationId) }),
-              client.invalidateQueries({ queryKey: queryKeys.notifications(organizationId) }),
+              moved &&
+                client.invalidateQueries({ queryKey: queryKeys.messageUnread(organizationId) }),
+              cleared &&
+                client.invalidateQueries({ queryKey: queryKeys.notifications(organizationId) }),
             ]),
           () => {
             read = false;

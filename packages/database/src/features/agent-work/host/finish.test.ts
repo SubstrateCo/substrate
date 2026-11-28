@@ -1,4 +1,5 @@
 import { sessionKeys } from "@substrate/contracts/agent-work";
+import { realtimeKeys, type RealtimeHint } from "@substrate/contracts/realtime";
 
 import { registerDevice } from "../../../core/devices/repository";
 import { ConflictError } from "../../../errors";
@@ -286,4 +287,19 @@ test("a turn that could not start waits again after a delay; a started one is ke
   expect((await host.retryLater(again!.turn.id, { attempt: 1, delayMs: 0 })).result).toEqual({
     result: "kept",
   });
+});
+
+test("progress hints say when only the activity text changed, and repeat nothing", async () => {
+  const x = await runningTurn();
+  const report = async (input: { activity?: string | null; state?: "running" | "waiting" }) =>
+    (await x.host.progress(x.claimed.turn.id, { attempt: 1, consumedItemIds: [], ...input })).hints;
+  const audience = realtimeKeys.user("alice");
+  const owner: RealtimeHint = { audience, domain: "agent-work" };
+  const activity: RealtimeHint = { audience, domain: "agent-work", scope: "activity" };
+  // Only the turn's activity changes: what waits for the owner stays as it is.
+  const reading = { activity: "Reading the thread" };
+  expect([await report(reading), await report(reading)]).toEqual([[activity], []]);
+  // A state change can move the turn into or out of what needs the owner.
+  expect(await report({ state: "waiting", activity: "Waiting for approval" })).toEqual([owner]);
+  expect((await x.turnRow(x.claimed.turn.id)).activity).toBe("Waiting for approval");
 });

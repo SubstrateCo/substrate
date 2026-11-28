@@ -728,14 +728,39 @@ test("workspace detail changes refresh organization details and invitations, not
   client.clear();
 });
 
+test("an agent-work activity hint refreshes what shows a turn's activity, not what waits for the owner", () => {
+  const targets = realtimeQueryTargets({ ...change("agent-work"), scope: "activity" }, "user");
+  const client = new QueryClient();
+  const shown = [
+    queryKeys.agentWorkStatus("user", "org"),
+    queryKeys.agentWorkConversation("user", "org", "conversation"),
+    queryKeys.agentWorkActivity("user", "org", "agent"),
+    queryKeys.agentWorkTurn("user", "org", "turn"),
+  ];
+  const kept = [
+    queryKeys.agentWorkNeedsYou("user", "org"),
+    queryKeys.agentWorkRoutines("user", "org", "agent"),
+    queryKeys.agentWorkStatus("user", "other"),
+  ];
+  for (const key of [...shown, ...kept]) client.setQueryData(key, []);
+  const matched = targets.flatMap((target) =>
+    client
+      .getQueryCache()
+      .findAll({ queryKey: target.queryKey })
+      .map((query) => query.queryKey),
+  );
+  expect(matched).toEqual(shown);
+  client.clear();
+});
+
 test("agent-work hints refresh only the owner's agent work in that workspace", () => {
   const [target] = realtimeQueryTargets(change("agent-work"), "user");
   expect(target).toEqual({ queryKey: queryKeys.agentWork("user", "org") });
   const client = new QueryClient();
   const keys = [
-    queryKeys.agentWorkRequests("user", "org", "conversation"),
+    queryKeys.agentWorkTurn("user", "org", "turn"),
     queryKeys.agentWorkConversation("user", "org", "conversation"),
-    queryKeys.agentWorkRequests("user", "other", "conversation"),
+    queryKeys.agentWorkConversation("user", "other", "conversation"),
     queryKeys.agentWorkNeedsYou("other", "org"),
     // Bridge change hints keep local transcripts fresh; server hints leave them alone.
     queryKeys.agentWorkTurnEvents("user", "org", "turn"),
@@ -1091,7 +1116,8 @@ test("duplicate changes coalesce and ready resyncs cached state", async () => {
   await cache.receive(event);
   await advanceTimersAsync(25);
   expect(client.getQueryState(key)?.isInvalidated).toBe(true);
-  client.setQueryData(key, ["new"]);
+  // Read before the load that opened the socket, so ready marks it stale.
+  client.setQueryData(key, ["new"], { updatedAt: Date.now() - 60_000 });
   await cache.receive(event);
   await advanceTimersAsync(25);
   expect(client.getQueryState(key)?.isInvalidated).toBe(false);

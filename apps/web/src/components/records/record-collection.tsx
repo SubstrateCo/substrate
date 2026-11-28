@@ -96,10 +96,10 @@ function useCollectionQueries({
     ...paged(contactsOptions(organizationId, ...scopedFilters("contacts"))),
     enabled: !pending && kind === "contacts",
   });
-  // The list also loads under the board, so switching views shows rows at once.
+  // The list loads when it is shown, so the board does not read a page that may never open.
   const deals = useQuery({
     ...paged(dealsOptions(organizationId, search, archived, afterEntityId)),
-    enabled: kind === "deals" && !pending,
+    enabled: kind === "deals" && !pending && !board,
   });
   const boardDeals = useQuery({
     ...pipelineDealsOptions(organizationId, search),

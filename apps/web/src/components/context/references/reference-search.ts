@@ -2,7 +2,7 @@ import type { ReferenceKind, ReferenceTab } from "@substrate/contracts/messaging
 
 import { useQueryClient } from "@tanstack/react-query";
 
-import { useEffect } from "react";
+import { useRef } from "react";
 
 import { useOrganizationApps } from "@/components/workspace/organization-apps-context";
 import { useWorkspaceScope } from "@/components/workspace/workspace-scope-context";
@@ -28,15 +28,20 @@ export function referenceSearchInput(
   return { ...scope, kinds: [kind] };
 }
 
-/** Loads the suggestions an "@" shows, so the picker opens with results. */
+/**
+ * Returns a function that loads the suggestions an "@" shows, so the picker opens with results.
+ * Call it when the person starts to type: a conversation that is only read loads nothing.
+ */
 export function usePrefetchReferences(conversationId: string) {
   const { organizationId } = useWorkspaceScope();
   const apps = useOrganizationApps();
   const tasks = apps.enabled("tasks");
   const client = useQueryClient();
-  useEffect(() => {
-    if (!apps.ready) return;
+  const loaded = useRef(false);
+  return () => {
+    if (!apps.ready || loaded.current) return;
+    loaded.current = true;
     const input = referenceSearchInput({ organizationId, conversationId, query: "" }, "all", tasks);
     client.query(searchOptions(input)).catch(() => {});
-  }, [apps.ready, client, conversationId, organizationId, tasks]);
+  };
 }

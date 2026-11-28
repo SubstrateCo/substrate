@@ -1,7 +1,7 @@
 import { infiniteQueryOptions, queryOptions, skipToken } from "@tanstack/react-query";
 
 import { queryKeys } from "../keys";
-import { getNeedsYou, listAgentStatus, listConversationRequests } from "@/api/agent-work/requests";
+import { getNeedsYou, listAgentStatus } from "@/api/agent-work/requests";
 import { listRoutines } from "@/api/agent-work/routines";
 import { getAgentActivity, getConversationWork, getTurn } from "@/api/agent-work/work";
 
@@ -27,21 +27,7 @@ export const needsYouOptions = (userId: string, organizationId: string | null | 
     retry: false,
   });
 
-export const conversationRequestsOptions = (
-  userId: string,
-  organizationId: string,
-  conversationId: string,
-) =>
-  queryOptions({
-    queryKey: queryKeys.agentWorkRequests(userId, organizationId, conversationId),
-    queryFn: userId
-      ? ({ signal }) =>
-          listConversationRequests({ data: { organizationId, conversationId }, signal })
-      : skipToken,
-    retry: false,
-  });
-
-/** The owner's sessions, turns and open items in one conversation. */
+/** The owner's sessions, turns, open items and requests in one conversation. */
 export const conversationWorkOptions = (
   userId: string,
   organizationId: string,
@@ -53,6 +39,17 @@ export const conversationWorkOptions = (
       ? ({ signal }) => getConversationWork({ data: { organizationId, conversationId }, signal })
       : skipToken,
     retry: false,
+  });
+
+/** The conversation's requests, from the same read as its work. */
+export const conversationRequestsOptions = (
+  userId: string,
+  organizationId: string,
+  conversationId: string,
+) =>
+  queryOptions({
+    ...conversationWorkOptions(userId, organizationId, conversationId),
+    select: (work) => work.requests,
   });
 
 /** One turn's summary. A turn the caller doesn't own is not found. */

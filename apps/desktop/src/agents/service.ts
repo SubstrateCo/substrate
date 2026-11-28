@@ -322,7 +322,8 @@ export function createAgentWorkService(options: {
           })
           .catch(() => log("Could not check where agents run."));
       }
-      if (event.domain === "agent-work")
+      // An activity hint echoes a host's own progress report: it changes no work to run.
+      if (event.domain === "agent-work" && event.scope !== "activity")
         void ensure().then((current) => available(current)?.runtime.hint());
       if (event.domain === "session" || appsChanged)
         void ensure().then((current) => {

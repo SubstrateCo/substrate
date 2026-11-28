@@ -179,7 +179,15 @@ export async function progressTurn(
       ),
     );
   await consumeEvidence(db, turn, input.consumedItemIds, now);
-  if (input.state || input.activity !== undefined) changed(db, turn);
+  // A state change can move the turn into or out of what needs the owner. New activity text
+  // changes only what the turn shows, and the same text again changes nothing.
+  if (input.state) changed(db, turn);
+  else if (input.activity !== undefined && input.activity !== turn.activity)
+    effectsFor(db).hint({
+      audience: realtimeKeys.user(turn.ownerUserId),
+      domain: "agent-work",
+      scope: "activity",
+    });
   return { status: await statusOf(db, turn.id) };
 }
 

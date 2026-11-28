@@ -50,6 +50,81 @@ test("overlapping timer, focus and visibility reconciliations share one recovery
   }
 });
 
+test("reconciliation skips a full read soon after a fresh one, and reads again once it is old or failed", async () => {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+  let reads = 0;
+  let fail = false;
+  const read = async () => {
+    reads++;
+    if (fail) throw new Error("Unavailable");
+    return ["visible"];
+  };
+  const observer = new QueryObserver(client, {
+    queryKey: queryKeys.messages("org", "conversation"),
+    initialData: ["visible"],
+    staleTime: Infinity,
+    queryFn: () => read(),
+  });
+  const stop = observer.subscribe(() => {});
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+    reconcileEveryMs: 1000,
+  });
+  try {
+    await cache.reconcile();
+    expect(reads).toBe(1);
+    await advanceTimersAsync(900);
+    await cache.reconcile();
+    expect(reads).toBe(1);
+    await advanceTimersAsync(100);
+    fail = true;
+    await cache.reconcile();
+    expect(reads).toBe(2);
+    // The failed read left the cache stale, so the next return to the window reads at once.
+    fail = false;
+    await cache.reconcile();
+    expect(reads).toBe(3);
+  } finally {
+    cache.dispose();
+    stop();
+    client.clear();
+  }
+});
+
+test("reconciliation skips a full read soon after the socket's ready", async () => {
+  const client = new QueryClient();
+  let reads = 0;
+  const read = async () => {
+    reads++;
+    return ["visible"];
+  };
+  const observer = new QueryObserver(client, {
+    queryKey: queryKeys.messages("org", "conversation"),
+    initialData: ["visible"],
+    staleTime: Infinity,
+    queryFn: () => read(),
+  });
+  const stop = observer.subscribe(() => {});
+  const cache = createRealtimeCache({
+    queryClient: client,
+    organizationId: "org",
+    userId: "user",
+    revalidate: async () => {},
+  });
+  try {
+    await cache.receive({ version: 1, type: "ready" });
+    await cache.reconcile();
+    expect(reads).toBe(0);
+  } finally {
+    cache.dispose();
+    stop();
+    client.clear();
+  }
+});
+
 test("resync reads each active query once", async () => {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const reads = new Map<string, number>();

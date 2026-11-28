@@ -70,8 +70,6 @@ export const queryKeys = {
     [...queryKeys.agentWork(userId, organizationId), "status"] as const,
   agentWorkNeedsYou: (userId: string, organizationId: string) =>
     [...queryKeys.agentWork(userId, organizationId), "needs-you"] as const,
-  agentWorkRequests: (userId: string, organizationId: string, conversationId: string) =>
-    [...queryKeys.agentWork(userId, organizationId), "requests", conversationId] as const,
   agentWorkConversation: (userId: string, organizationId: string, conversationId: string) =>
     [...queryKeys.agentWork(userId, organizationId), "conversation", conversationId] as const,
   agentWorkActivity: (userId: string, organizationId: string, agentId: string) =>
@@ -80,6 +78,11 @@ export const queryKeys = {
     [...queryKeys.agentWork(userId, organizationId), "turn", turnId] as const,
   agentWorkRoutines: (userId: string, organizationId: string, agentId: string) =>
     [...queryKeys.agentWork(userId, organizationId), "routines", agentId] as const,
+  /** The server reads that show a live turn's activity text. */
+  agentWorkActivityViews: (userId: string, organizationId: string) =>
+    (["status", "conversation", "activity", "turn"] as const).map(
+      (view) => [...queryKeys.agentWork(userId, organizationId), view] as const,
+    ),
   // Local: what the home desktop's bridge returns. Only that desktop has it, and only bridge
   // change hints refresh it, so it is not under the server key.
   agentWorkLocal: (userId: string, organizationId?: string) =>

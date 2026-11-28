@@ -20,6 +20,7 @@ import { createSmtpMail } from "./mail/service";
 import { createServices } from "./services";
 import { createCommittedPublisher } from "./shared/committed";
 import { createScopes } from "./shared/scope";
+import { changesWorkspace } from "./shared/workspace-changes";
 import { createS3Storage } from "./storage/s3";
 import { createCalendarProviders } from "./v1/calendar/providers";
 import { createCalendarSync } from "./v1/calendar/sync";
@@ -44,10 +45,16 @@ const outboxRelay = createOutboxRelay({
   finish: (id) => finishOutbox(db, id),
   reportFailure: (message) => console.warn(message),
 });
+// Session reads keep a resolved workspace for 5 seconds. A membership, role or account change
+// drops them at once: here when this server commits it, and below when another server does.
+const repositories = createRepositories(db, { workspaceCacheMs: 5_000 });
 // The worker needs the committed publisher, while publication wakes that same worker.
 // No work starts until both have been constructed.
 const publish = createCommittedPublisher({
-  publish: refresh.publish,
+  publish: (hints, stored) => {
+    if (changesWorkspace(hints)) repositories.forgetWorkspaces();
+    return refresh.publish(hints, stored);
+  },
   sharingMail: { trigger: () => sharingMail.worker.trigger() },
 });
 const sharingMail = createSharingMail({ db, mail, publish });
@@ -75,9 +82,15 @@ const services = createServices({
 });
 const scopes = createScopes({
   api: createSessionApi(auth.api),
-  repositories: createRepositories(db),
+  repositories,
 });
-const realtime = createRealtimeService({ db, auth });
+const realtime = createRealtimeService({
+  db,
+  auth,
+  onChanges: (changes) => {
+    if (changesWorkspace(changes)) repositories.forgetWorkspaces();
+  },
+});
 const realtimeRoutes = createRealtimeRoutes(realtime.hub, environment.trustedOrigins);
 const app = createApp({
   auth,

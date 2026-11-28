@@ -18,10 +18,9 @@ export const organizationAppsOptions = (
     queryFn: organizationId
       ? ({ signal }) => getOrganizationApps({ data: { organizationId }, signal })
       : skipToken,
-    staleTime: 0,
-    refetchOnWindowFocus: "always",
+    // An "apps" hint reads this again at once. The poll only covers a lost hint.
     refetchOnReconnect: "always",
-    refetchInterval: 30_000,
+    refetchInterval: 5 * 60_000,
     retry: false,
   });
 

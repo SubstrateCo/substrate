@@ -7,12 +7,7 @@ import type { SessionIdentity } from "../../../core/session/identity";
 import type { MessagingSessionResolver } from "../../../core/session/messaging";
 import { AccessDeniedError } from "../../../errors";
 import { notifications } from "../../notifications/schema";
-import {
-  denyDeletedConversation,
-  loadConversation,
-  liveApprovedParticipant,
-  visibleConversations,
-} from "../access";
+import { denyDeletedConversation, liveApprovedParticipant, visibleConversations } from "../access";
 import { messagingConversations, messagingMessages, messagingParticipants } from "../schema";
 import { messagingReadPositions, messagingThreadReadPositions } from "./read-state.schema";
 import {
@@ -21,6 +16,7 @@ import {
   exists,
   gt,
   inArray,
+  is,
   isNotNull,
   isNull,
   ne,
@@ -29,7 +25,7 @@ import {
   sql,
   type SQL,
 } from "drizzle-orm";
-import { alias, type AnyPgColumn } from "drizzle-orm/pg-core";
+import { alias, PgTransaction, type AnyPgColumn } from "drizzle-orm/pg-core";
 
 // The client renews a lease about every 30 seconds while the newest message is in view in a
 // focused window. A closed or sleeping window stops renewing, so its lease ends soon after.
@@ -45,6 +41,35 @@ type UnreadCount = {
 type Position = typeof messagingReadPositions | typeof messagingThreadReadPositions;
 const before = (position: Position, at: SQL, messageId: string) =>
   sql`(${position.messageCreatedAt}, ${position.messageId}) < (${at}, ${messageId}::uuid)`;
+
+// A new lease, an ended one, or no change to the lease.
+const lease = (viewing: boolean | undefined) =>
+  viewing === undefined ? {} : { viewingUntil: viewing ? viewingLease : null };
+
+// The conflict update of a read. Without a lease it writes only when the position moves forward.
+// With one, the row is always written: the position stays unless it moves forward.
+function forward(position: Position, at: SQL, messageId: string, viewing: boolean | undefined) {
+  if (viewing === undefined)
+    return {
+      set: { messageId, messageCreatedAt: at },
+      setWhere: before(position, at, messageId),
+    };
+  const unlessBehind = (next: SQL, current: AnyPgColumn) =>
+    sql`CASE WHEN ${before(position, at, messageId)} THEN ${next} ELSE ${current} END`;
+  return {
+    set: {
+      messageId: unlessBehind(sql`${messageId}::uuid`, position.messageId),
+      messageCreatedAt: unlessBehind(at, position.messageCreatedAt),
+      ...lease(viewing),
+    },
+  };
+}
+
+// Whether the returned row's message differs from the row before this statement. The subquery
+// reads the statement's snapshot, so `where` finds the earlier row, or none for a first read.
+const movedFrom = (position: Position, where: SQL) =>
+  sql<boolean>`(SELECT prior.message_id FROM ${position} prior WHERE ${where})
+    IS DISTINCT FROM ${position.messageId}`;
 
 export function readOperations(
   db: DatabaseExecutor,
@@ -211,9 +236,10 @@ export function readOperations(
       options: { threadId?: string; viewing?: boolean } = {},
     ) {
       if (scope.actorEntityId) throw new AccessDeniedError();
-      return db.transaction(async (tx) => {
+      // The caller's transaction is joined: a failed statement fails the whole read.
+      const work = async (tx: DatabaseExecutor) => {
         const { actor } = await authenticate(tx);
-        await loadConversation(tx, scope, conversationId);
+        // The message, only in a conversation the reader can see.
         const [message] = await tx
           .select({
             id: messagingMessages.id,
@@ -221,10 +247,15 @@ export function readOperations(
             at: sql<string>`${messagingMessages.createdAt}::text`,
           })
           .from(messagingMessages)
+          .innerJoin(
+            messagingConversations,
+            eq(messagingConversations.id, messagingMessages.conversationId),
+          )
           .where(
             and(
               eq(messagingMessages.id, messageId),
               eq(messagingMessages.conversationId, conversationId),
+              visibleConversations(tx, scope),
             ),
           );
         if (!message) throw new AccessDeniedError();
@@ -239,57 +270,45 @@ export function readOperations(
           messageId,
           messageCreatedAt: at,
         };
-        const changed = await (
+        // One statement moves the position forward and sets or ends the viewing lease.
+        const [position] = await (
           threadId
             ? tx
                 .insert(messagingThreadReadPositions)
-                .values({ ...values, threadId })
+                .values({ ...values, threadId, ...lease(options.viewing) })
                 .onConflictDoUpdate({
                   target: [
                     messagingThreadReadPositions.threadId,
                     messagingThreadReadPositions.actorEntityId,
                   ],
-                  set: { messageId, messageCreatedAt: at },
-                  setWhere: before(messagingThreadReadPositions, at, messageId),
+                  ...forward(messagingThreadReadPositions, at, messageId, options.viewing),
                 })
-                .returning({ messageId: messagingThreadReadPositions.messageId })
+                .returning({
+                  moved: movedFrom(
+                    messagingThreadReadPositions,
+                    sql`prior.thread_id = ${threadId} AND prior.actor_entity_id = ${actor.entityId}`,
+                  ),
+                })
             : tx
                 .insert(messagingReadPositions)
-                .values(values)
+                .values({ ...values, ...lease(options.viewing) })
                 .onConflictDoUpdate({
                   target: [
                     messagingReadPositions.conversationId,
                     messagingReadPositions.actorEntityId,
                   ],
-                  set: { messageId, messageCreatedAt: at },
-                  setWhere: before(messagingReadPositions, at, messageId),
+                  ...forward(messagingReadPositions, at, messageId, options.viewing),
                 })
-                .returning({ messageId: messagingReadPositions.messageId })
+                .returning({
+                  moved: movedFrom(
+                    messagingReadPositions,
+                    sql`prior.conversation_id = ${conversationId} AND prior.actor_entity_id = ${actor.entityId}`,
+                  ),
+                })
         ).catch((error: Error) => denyDeletedConversation(error));
-        if (options.viewing !== undefined) {
-          const viewingUntil = options.viewing ? viewingLease : null;
-          await (threadId
-            ? tx
-                .update(messagingThreadReadPositions)
-                .set({ viewingUntil })
-                .where(
-                  and(
-                    eq(messagingThreadReadPositions.threadId, threadId),
-                    eq(messagingThreadReadPositions.actorEntityId, actor.entityId),
-                  ),
-                )
-            : tx
-                .update(messagingReadPositions)
-                .set({ viewingUntil })
-                .where(
-                  and(
-                    eq(messagingReadPositions.conversationId, conversationId),
-                    eq(messagingReadPositions.actorEntityId, actor.entityId),
-                  ),
-                ));
-        }
+        const moved = !!position?.moved;
         // A read position changes only the reader's unread counts, on the reader's devices.
-        if (changed.length)
+        if (moved)
           effectsFor(tx).hint({
             audience: realtimeKeys.actor(scope.organizationId, actor.entityId),
             domain: "messaging",
@@ -331,8 +350,10 @@ export function readOperations(
             audience: realtimeKeys.user(scope.userId),
             domain: "notifications",
           });
-        return { read: true };
-      });
+        // The reader's unread counts change only when `moved`; their notifications, when `cleared`.
+        return { read: true, moved, cleared: cleared.length > 0 };
+      };
+      return is(db, PgTransaction) ? work(db) : db.transaction(work);
     },
   };
 }

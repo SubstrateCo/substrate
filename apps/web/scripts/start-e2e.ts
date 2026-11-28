@@ -117,7 +117,6 @@ const server = Bun.serve<ProxySocketData>({
       const target = new URL(url.pathname + url.search, apiURL);
       const headers = new Headers(request.headers);
       headers.delete("host");
-      headers.delete("accept-encoding");
       try {
         const upstream = await fetch(target, {
           method: request.method,
@@ -125,6 +124,8 @@ const server = Bun.serve<ProxySocketData>({
           body: request.method === "GET" || request.method === "HEAD" ? undefined : request.body,
           redirect: "manual",
           signal: request.signal,
+          // Pass a compressed body through as it is: the browser decodes it, as in production.
+          decompress: false,
         });
         return new Response(upstream.body, {
           status: upstream.status,

@@ -36,7 +36,7 @@ function matched(cached: QueryKey[], targets: (QueryKey | QueryTarget)[]) {
 }
 
 const cached = [
-  queryKeys.agentWorkRequests("user", "org", "c1"),
+  queryKeys.agentWorkTurn("user", "org", "t1"),
   queryKeys.agentWorkConversation("user", "org", "c1"),
   queryKeys.agentWorkNeedsYou("user", "org"),
   queryKeys.messages("org", target),
@@ -98,8 +98,8 @@ describe("agent-work mutation invalidation", () => {
 
   test("a conflict still refreshes the owner's requests, but not another owner's", async () => {
     const client = new QueryClient();
-    const key = queryKeys.agentWorkRequests("user", "org", "conversation");
-    const otherOwner = queryKeys.agentWorkRequests("other-user", "org", "conversation");
+    const key = queryKeys.agentWorkConversation("user", "org", "conversation");
+    const otherOwner = queryKeys.agentWorkConversation("other-user", "org", "conversation");
     for (const cachedKey of [key, otherOwner]) client.setQueryData(cachedKey, []);
     try {
       const action = new MutationObserver(

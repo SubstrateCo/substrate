@@ -6,6 +6,8 @@ export const pictureKindParam = z.object({ purpose: pictureKind });
 export const pictureOwnerParam = z
   .object({ purpose: pictureKind, owner: z.string().min(1) })
   .refine(({ purpose, owner }) => purpose !== "project-icon" || z.uuid().safeParse(owner).success);
+/** The version an upload added to its URL. A URL with one always names the same bytes. */
+export const pictureVersionQuery = z.object({ v: z.string().min(1).optional() });
 export const pictureUploadInput = z.object({
   file: z.instanceof(File),
   organizationId: z.string().min(1).optional(),

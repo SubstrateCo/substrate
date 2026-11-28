@@ -1,3 +1,5 @@
+import { success } from "@substrate/contracts/result";
+
 import { createApp as createApplication } from "./app";
 import { appFixture } from "./test-support";
 import { describe, expect, test } from "bun:test";
@@ -124,6 +126,25 @@ describe.each(["/api/v1", "/api/mobile"])("%s product API", (prefix) => {
     expect(response.headers.get("Access-Control-Allow-Headers")?.toLowerCase()).toBe(
       "content-type",
     );
+  });
+
+  test("large results are compressed for clients that accept it, and small ones are sent as they are", async () => {
+    const dependencies = appFixture();
+    const person = { userId: "user", name: "A member", email: "member@example.com", image: null };
+    let people = Array.from({ length: 100 }, () => person);
+    dependencies.services.organizations.people = async () => success(people);
+    const read = () =>
+      createApplication(dependencies).request(`${prefix}/organizations/people?organizationId=org`, {
+        headers: { "Accept-Encoding": "gzip" },
+      });
+    const large = await read();
+    expect(large.headers.get("Content-Encoding")).toBe("gzip");
+    const decoded = new Response(large.body!.pipeThrough(new DecompressionStream("gzip")));
+    expect(await decoded.json()).toEqual(success(people));
+    people = [person];
+    const small = await read();
+    expect(small.headers.get("Content-Encoding")).toBeNull();
+    expect(await small.json()).toEqual(success(people));
   });
 
   test("untrusted preview origins cannot preflight credentialed app updates", async () => {

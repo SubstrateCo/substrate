@@ -248,6 +248,8 @@ test("an executed proposal is listed in the conversation it posted to, for its o
   expect(listed.map((view) => [view.id, view.proposal?.outcome])).toEqual([[proposalId, outcome]]);
   // The card stays where it came from; here it is only a backlink.
   expect(listed[0]!.place).toMatchObject({ access: "visible", conversationId: dm.id });
+  // The conversation's work carries the same requests, also when no session posts there.
+  expect((await work.conversationWork(target.id)).requests).toEqual(listed);
 
   // A member of the target conversation sees nothing of Alice's proposal.
   await bob.sendMessage(target.id, "Thanks");
